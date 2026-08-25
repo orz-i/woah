@@ -92,6 +92,7 @@ class ExportPipeline(
             val decoder = VideoDecoder(context, sourceUri, outputSurface = null)
             decoder.prepare()
 
+            val trackManager = com.danceanon.native.tracking.TrackManager()
             var processedFrames = 0
             var lastProgressEmitTime = 0L
 
@@ -110,9 +111,11 @@ class ExportPipeline(
                     processedFrames++
                     val selectedIds = request.selectedPersonIds.map { it.toInt() }.toSet()
 
-                    // Render to encoder surface
-                    val trackedList = selectedIds.map { id ->
-                        TrackedPerson(id = id, bbox = com.danceanon.native.inference.FloatRect(0f, 0f, targetWidth.toFloat(), targetHeight.toFloat()), mask = null, confidence = 1f, state = TrackState.ACTIVE)
+                    // Run tracking on detections
+                    val trackedList = if (processedFrames == 1) {
+                        trackManager.initialize(emptyList())
+                    } else {
+                        trackManager.update(emptyList(), ptsUs)
                     }
 
                     glRenderer.render(
