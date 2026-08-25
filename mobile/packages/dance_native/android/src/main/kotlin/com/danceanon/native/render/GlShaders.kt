@@ -3,12 +3,12 @@ package com.danceanon.native.render
 object GlShaders {
 
     val VERTEX_SHADER = """
-        #version 300 es
-        layout(location = 0) in vec4 aPosition;
-        layout(location = 1) in vec2 aTexCoord;
         uniform mat4 uTexMatrix;
         uniform vec4 uCropRect; // (left, top, right, bottom)
-        out vec2 vTexCoord;
+        attribute vec4 aPosition;
+        attribute vec2 aTexCoord;
+        varying vec2 vTexCoord;
+
         void main() {
             gl_Position = aPosition;
             vec2 cropped = vec2(
@@ -21,17 +21,16 @@ object GlShaders {
     """.trimIndent()
 
     val FRAGMENT_SHADER = """
-        #version 300 es
-        #extension GL_OES_EGL_image_external_essl3 : require
+        #extension GL_OES_EGL_image_external : require
         precision mediump float;
-        in vec2 vTexCoord;
-        out vec4 fragColor;
-        
+
+        varying vec2 vTexCoord;
+
         uniform samplerExternalOES uBaseTexture;
         uniform sampler2D uMaskTexture;
         uniform int uHasMask;
         uniform int uEffectType; // 0: solid, 1: outline, 2: blur, 3: gradient, 4: skin_whiten, 5: leg_stretch
-        
+
         uniform vec4 uFillColor;
         uniform vec4 uOutlineColor;
         uniform vec4 uGradientColor;
@@ -72,36 +71,36 @@ object GlShaders {
                 }
             }
 
-            vec4 baseColor = texture(uBaseTexture, uv);
+            vec4 baseColor = texture2D(uBaseTexture, uv);
             if (uHasMask == 0) {
-                fragColor = baseColor;
+                gl_FragColor = baseColor;
                 return;
             }
 
-            float maskVal = texture(uMaskTexture, uv).r;
+            float maskVal = texture2D(uMaskTexture, uv).r;
 
             // 2. Solid Color
             if (uEffectType == 0) {
                 if (maskVal > 0.5) {
                     vec4 effectColor = vec4(uFillColor.rgb, uOpacity * uFillColor.a);
-                    fragColor = mix(baseColor, effectColor, effectColor.a);
+                    gl_FragColor = mix(baseColor, effectColor, effectColor.a);
                     return;
                 }
             }
             // 3. Outline
             else if (uEffectType == 1) {
-                float mUp    = texture(uMaskTexture, uv + vec2(0.0, uOutlineWidth * uTexelSize.y)).r;
-                float mDown  = texture(uMaskTexture, uv - vec2(0.0, uOutlineWidth * uTexelSize.y)).r;
-                float mLeft  = texture(uMaskTexture, uv - vec2(uOutlineWidth * uTexelSize.x, 0.0)).r;
-                float mRight = texture(uMaskTexture, uv + vec2(uOutlineWidth * uTexelSize.x, 0.0)).r;
+                float mUp    = texture2D(uMaskTexture, uv + vec2(0.0, uOutlineWidth * uTexelSize.y)).r;
+                float mDown  = texture2D(uMaskTexture, uv - vec2(0.0, uOutlineWidth * uTexelSize.y)).r;
+                float mLeft  = texture2D(uMaskTexture, uv - vec2(uOutlineWidth * uTexelSize.x, 0.0)).r;
+                float mRight = texture2D(uMaskTexture, uv + vec2(uOutlineWidth * uTexelSize.x, 0.0)).r;
                 
                 float edge = max(max(abs(maskVal - mUp), abs(maskVal - mDown)), max(abs(maskVal - mLeft), abs(maskVal - mRight)));
                 if (edge > 0.2) {
-                    fragColor = mix(baseColor, uOutlineColor, uOpacity * uOutlineColor.a);
+                    gl_FragColor = mix(baseColor, uOutlineColor, uOpacity * uOutlineColor.a);
                     return;
                 } else if (maskVal > 0.5) {
                     vec4 effectColor = vec4(uFillColor.rgb, uOpacity * uFillColor.a);
-                    fragColor = mix(baseColor, effectColor, effectColor.a);
+                    gl_FragColor = mix(baseColor, effectColor, effectColor.a);
                     return;
                 }
             }
@@ -113,12 +112,12 @@ object GlShaders {
                     float r = max(1.0, uBlurRadius);
                     for (float dx = -2.0; dx <= 2.0; dx += 1.0) {
                         for (float dy = -2.0; dy <= 2.0; dy += 1.0) {
-                            sum += texture(uBaseTexture, uv + vec2(dx * r * uTexelSize.x, dy * r * uTexelSize.y));
+                            sum += texture2D(uBaseTexture, uv + vec2(dx * r * uTexelSize.x, dy * r * uTexelSize.y));
                             count += 1.0;
                         }
                     }
                     vec4 blurred = sum / count;
-                    fragColor = mix(baseColor, blurred, uOpacity);
+                    gl_FragColor = mix(baseColor, blurred, uOpacity);
                     return;
                 }
             }
@@ -127,7 +126,7 @@ object GlShaders {
                 if (maskVal > 0.5) {
                     vec4 gradColor = mix(uFillColor, uGradientColor, uv.y);
                     vec4 effectColor = vec4(gradColor.rgb, uOpacity * gradColor.a);
-                    fragColor = mix(baseColor, effectColor, effectColor.a);
+                    gl_FragColor = mix(baseColor, effectColor, effectColor.a);
                     return;
                 }
             }
@@ -135,18 +134,17 @@ object GlShaders {
             else if (uEffectType == 4) {
                 if (maskVal > 0.5) {
                     vec3 hsv = rgb2hsv(baseColor.rgb);
-                    // Skin tone hue range ~ [0.05, 0.15]
                     if (hsv.x >= 0.02 && hsv.x <= 0.18) {
                         hsv.z = min(1.0, hsv.z + 0.20 * uSkinWhitenStrength);
                         hsv.y = max(0.0, hsv.y - 0.10 * uSkinWhitenStrength);
                     }
                     vec3 whitenedRgb = hsv2rgb(hsv);
-                    fragColor = vec4(mix(baseColor.rgb, whitenedRgb, uOpacity), baseColor.a);
+                    gl_FragColor = vec4(mix(baseColor.rgb, whitenedRgb, uOpacity), baseColor.a);
                     return;
                 }
             }
 
-            fragColor = baseColor;
+            gl_FragColor = baseColor;
         }
     """.trimIndent()
 }

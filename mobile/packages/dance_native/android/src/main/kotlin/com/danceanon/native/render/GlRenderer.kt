@@ -2,7 +2,6 @@ package com.danceanon.native.render
 
 import android.opengl.GLES11Ext
 import android.opengl.GLES20
-import android.opengl.GLES30
 import com.danceanon.native.bridge.EffectConfigDto
 import com.danceanon.native.bridge.FollowConfigDto
 import com.danceanon.native.tracking.TrackedPerson
@@ -29,15 +28,22 @@ class GlRenderer : FrameRenderer {
         this.width = width
         this.height = height
 
-        val vShader = compileShader(GLES30.GL_VERTEX_SHADER, GlShaders.VERTEX_SHADER)
-        val fShader = compileShader(GLES30.GL_FRAGMENT_SHADER, GlShaders.FRAGMENT_SHADER)
+        val vShader = compileShader(GLES20.GL_VERTEX_SHADER, GlShaders.VERTEX_SHADER)
+        val fShader = compileShader(GLES20.GL_FRAGMENT_SHADER, GlShaders.FRAGMENT_SHADER)
 
-        programId = GLES30.glCreateProgram()
-        GLES30.glAttachShader(programId, vShader)
-        GLES30.glAttachShader(programId, fShader)
-        GLES30.glLinkProgram(programId)
+        programId = GLES20.glCreateProgram()
+        GLES20.glAttachShader(programId, vShader)
+        GLES20.glAttachShader(programId, fShader)
+        GLES20.glLinkProgram(programId)
 
-        // Quad vertices & texcoords
+        val linkStatus = IntArray(1)
+        GLES20.glGetProgramiv(programId, GLES20.GL_LINK_STATUS, linkStatus, 0)
+        if (linkStatus[0] == 0) {
+            val log = GLES20.glGetProgramInfoLog(programId)
+            android.util.Log.e("GlRenderer", "Program link failed: $log")
+        }
+
+        // Quad vertices & texcoords (x, y, u, v)
         val vertices = floatArrayOf(
             -1.0f, -1.0f, 0.0f, 0.0f,
              1.0f, -1.0f, 1.0f, 0.0f,
@@ -54,13 +60,13 @@ class GlRenderer : FrameRenderer {
 
         // Initialize mask texture
         val textures = IntArray(1)
-        GLES30.glGenTextures(1, textures, 0)
+        GLES20.glGenTextures(1, textures, 0)
         maskTextureId = textures[0]
-        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, maskTextureId)
-        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR)
-        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR)
-        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE)
-        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, maskTextureId)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
     }
 
     fun render(
@@ -72,14 +78,14 @@ class GlRenderer : FrameRenderer {
         follow: FollowConfigDto,
         presentationTimeUs: Long
     ) {
-        GLES30.glViewport(0, 0, width, height)
-        GLES30.glClearColor(0f, 0f, 0f, 1f)
-        GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT)
+        GLES20.glViewport(0, 0, width, height)
+        GLES20.glClearColor(0f, 0f, 0f, 1f)
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
 
-        GLES30.glUseProgram(programId)
+        GLES20.glUseProgram(programId)
 
         val matrix = texMatrix ?: identityMatrix
-        GLES30.glUniformMatrix4fv(GLES30.glGetUniformLocation(programId, "uTexMatrix"), 1, false, matrix, 0)
+        GLES20.glUniformMatrix4fv(GLES20.glGetUniformLocation(programId, "uTexMatrix"), 1, false, matrix, 0)
 
         // Parse Fill Color ARGB
         val fc = effects.fillColorArgb.toInt()
@@ -87,7 +93,7 @@ class GlRenderer : FrameRenderer {
         val fr = ((fc shr 16) and 0xFF) / 255f
         val fg = ((fc shr 8) and 0xFF) / 255f
         val fb = (fc and 0xFF) / 255f
-        GLES30.glUniform4f(GLES30.glGetUniformLocation(programId, "uFillColor"), fr, fg, fb, fa)
+        GLES20.glUniform4f(GLES20.glGetUniformLocation(programId, "uFillColor"), fr, fg, fb, fa)
 
         // Parse Border/Outline Color ARGB
         val oc = effects.borderColorArgb.toInt()
@@ -95,10 +101,10 @@ class GlRenderer : FrameRenderer {
         val or = ((oc shr 16) and 0xFF) / 255f
         val og = ((oc shr 8) and 0xFF) / 255f
         val ob = (oc and 0xFF) / 255f
-        GLES30.glUniform4f(GLES30.glGetUniformLocation(programId, "uOutlineColor"), or, og, ob, oa)
+        GLES20.glUniform4f(GLES20.glGetUniformLocation(programId, "uOutlineColor"), or, og, ob, oa)
 
         // Parse Gradient Color ARGB
-        GLES30.glUniform4f(GLES30.glGetUniformLocation(programId, "uGradientColor"), 0.5f, 0.2f, 0.9f, 1f)
+        GLES20.glUniform4f(GLES20.glGetUniformLocation(programId, "uGradientColor"), 0.5f, 0.2f, 0.9f, 1f)
 
         // Effect Mode: 0: solid, 1: outline, 2: blur, 3: gradient, 4: skin_whiten, 5: leg_stretch
         val effectMode = when (effects.fillMode.lowercase()) {
@@ -108,14 +114,14 @@ class GlRenderer : FrameRenderer {
             "mosaic" -> 2
             else -> if (effects.skinWhiten > 0) 4 else if (effects.legStretchEnabled) 5 else 0
         }
-        GLES30.glUniform1i(GLES30.glGetUniformLocation(programId, "uEffectType"), effectMode)
-        GLES30.glUniform1f(GLES30.glGetUniformLocation(programId, "uOpacity"), effects.opacity.toFloat())
-        GLES30.glUniform1f(GLES30.glGetUniformLocation(programId, "uOutlineWidth"), effects.borderWidth.toFloat())
-        GLES30.glUniform1f(GLES30.glGetUniformLocation(programId, "uBlurRadius"), effects.blurStrength.toFloat())
-        GLES30.glUniform1f(GLES30.glGetUniformLocation(programId, "uSkinWhitenStrength"), effects.skinWhiten.toFloat())
+        GLES20.glUniform1i(GLES20.glGetUniformLocation(programId, "uEffectType"), effectMode)
+        GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uOpacity"), effects.opacity.toFloat())
+        GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uOutlineWidth"), effects.borderWidth.toFloat())
+        GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uBlurRadius"), effects.blurStrength.toFloat())
+        GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uSkinWhitenStrength"), effects.skinWhiten.toFloat())
         val legRatio = if (effects.legStretchEnabled) (1.0 + effects.legStretch).toFloat() else 1.0f
-        GLES30.glUniform1f(GLES30.glGetUniformLocation(programId, "uLegStretchRatio"), legRatio)
-        GLES30.glUniform2f(GLES30.glGetUniformLocation(programId, "uTexelSize"), 1f / width.coerceAtLeast(1), 1f / height.coerceAtLeast(1))
+        GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uLegStretchRatio"), legRatio)
+        GLES20.glUniform2f(GLES20.glGetUniformLocation(programId, "uTexelSize"), 1f / width.coerceAtLeast(1), 1f / height.coerceAtLeast(1))
 
         // Follow Crop Mapping
         val cropRect = if (follow.enabled && follow.targetPersonId != null) {
@@ -129,45 +135,53 @@ class GlRenderer : FrameRenderer {
         } else {
             com.danceanon.native.inference.FloatRect(0f, 0f, 1f, 1f)
         }
-        GLES30.glUniform4f(
-            GLES30.glGetUniformLocation(programId, "uCropRect"),
+        GLES20.glUniform4f(
+            GLES20.glGetUniformLocation(programId, "uCropRect"),
             cropRect.left, cropRect.top, cropRect.right, cropRect.bottom
         )
 
         val hasSelected = selectedPersonIds.isNotEmpty() && persons.any { selectedPersonIds.contains(it.id) }
-        GLES30.glUniform1i(GLES30.glGetUniformLocation(programId, "uHasMask"), if (hasSelected) 1 else 0)
+        GLES20.glUniform1i(GLES20.glGetUniformLocation(programId, "uHasMask"), if (hasSelected) 1 else 0)
 
         // Setup base texture (OES external texture from SurfaceTexture)
-        GLES30.glActiveTexture(GLES30.GL_TEXTURE0)
-        GLES30.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, frameTexture)
-        GLES30.glUniform1i(GLES30.glGetUniformLocation(programId, "uBaseTexture"), 0)
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, frameTexture)
+        GLES20.glUniform1i(GLES20.glGetUniformLocation(programId, "uBaseTexture"), 0)
 
         // Upload and bind mask texture to Texture 1 if present
-        GLES30.glActiveTexture(GLES30.GL_TEXTURE1)
-        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, maskTextureId)
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE1)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, maskTextureId)
         val selectedPerson = persons.firstOrNull { selectedPersonIds.contains(it.id) }
         if (selectedPerson?.mask != null) {
             val mask = selectedPerson.mask!!
             mask.buffer.rewind()
-            GLES30.glTexImage2D(
-                GLES30.GL_TEXTURE_2D, 0, GLES30.GL_R8,
+            GLES20.glTexImage2D(
+                GLES20.GL_TEXTURE_2D, 0, GLES20.GL_LUMINANCE,
                 mask.width, mask.height, 0,
-                GLES30.GL_RED, GLES30.GL_UNSIGNED_BYTE, mask.buffer
+                GLES20.GL_LUMINANCE, GLES20.GL_UNSIGNED_BYTE, mask.buffer
             )
-            GLES30.glUniform1f(GLES30.glGetUniformLocation(programId, "uFootY"), selectedPerson.bbox.bottom / height.toFloat())
+            GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uFootY"), selectedPerson.bbox.bottom / height.toFloat())
         }
-        GLES30.glUniform1i(GLES30.glGetUniformLocation(programId, "uMaskTexture"), 1)
+        GLES20.glUniform1i(GLES20.glGetUniformLocation(programId, "uMaskTexture"), 1)
 
-        // Draw quad
-        vertexBuffer?.position(0)
-        GLES30.glVertexAttribPointer(0, 2, GLES30.GL_FLOAT, false, 4 * 4, vertexBuffer)
-        GLES30.glEnableVertexAttribArray(0)
+        // Bind attributes
+        val aPositionLoc = GLES20.glGetAttribLocation(programId, "aPosition")
+        val aTexCoordLoc = GLES20.glGetAttribLocation(programId, "aTexCoord")
 
-        vertexBuffer?.position(2)
-        GLES30.glVertexAttribPointer(1, 2, GLES30.GL_FLOAT, false, 4 * 4, vertexBuffer)
-        GLES30.glEnableVertexAttribArray(1)
+        if (aPositionLoc >= 0 && aTexCoordLoc >= 0) {
+            vertexBuffer?.position(0)
+            GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, 4 * 4, vertexBuffer)
+            GLES20.glEnableVertexAttribArray(aPositionLoc)
 
-        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4)
+            vertexBuffer?.position(2)
+            GLES20.glVertexAttribPointer(aTexCoordLoc, 2, GLES20.GL_FLOAT, false, 4 * 4, vertexBuffer)
+            GLES20.glEnableVertexAttribArray(aTexCoordLoc)
+
+            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
+
+            GLES20.glDisableVertexAttribArray(aPositionLoc)
+            GLES20.glDisableVertexAttribArray(aTexCoordLoc)
+        }
     }
 
     override fun render(
@@ -182,9 +196,15 @@ class GlRenderer : FrameRenderer {
     }
 
     private fun compileShader(type: Int, source: String): Int {
-        val shader = GLES30.glCreateShader(type)
-        GLES30.glShaderSource(shader, source)
-        GLES30.glCompileShader(shader)
+        val shader = GLES20.glCreateShader(type)
+        GLES20.glShaderSource(shader, source)
+        GLES20.glCompileShader(shader)
+        val compiled = IntArray(1)
+        GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compiled, 0)
+        if (compiled[0] == 0) {
+            val log = GLES20.glGetShaderInfoLog(shader)
+            android.util.Log.e("GlRenderer", "Shader compilation failed ($type): $log")
+        }
         return shader
     }
 
@@ -194,12 +214,12 @@ class GlRenderer : FrameRenderer {
 
     fun release() {
         if (programId != 0) {
-            GLES30.glDeleteProgram(programId)
+            GLES20.glDeleteProgram(programId)
             programId = 0
         }
         if (maskTextureId != 0) {
             val textures = intArrayOf(maskTextureId)
-            GLES30.glDeleteTextures(1, textures, 0)
+            GLES20.glDeleteTextures(1, textures, 0)
             maskTextureId = 0
         }
     }
