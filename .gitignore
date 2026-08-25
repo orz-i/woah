@@ -8,5 +8,29 @@ uploads/
 .DS_Store
 .venv/
 *.xlsx
-sam2_hiera_tiny.pt
-yolo11s-seg.pt
+
+# Large model weights (download/export dynamically via tools/export_yolo.py)
+*.pt
+*.onnx
+*.tflite
+models/pytorch/*.pt
+models/litert/*.tflite
+models/litert/*.onnx
+
+# Flutter / Dart build artifacts
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+android/.gradle
+android/captures/
+android/gradleApp.setting
+android/local.properties
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/App.framework
+ios/Flutter/App.podspec
+ios/Pods/
+*.lock

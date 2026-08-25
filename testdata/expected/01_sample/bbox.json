@@ -1,0 +1,47 @@
+{
+  "video": "01_sample.mp4",
+  "width": 3000,
+  "height": 6534,
+  "persons": [
+    {
+      "id": 0,
+      "left": 0.3116027628580729,
+      "top": 0.8109737287649219,
+      "right": 0.39988802083333336,
+      "bottom": 0.9031543387234083,
+      "confidence": 0.41183799505233765,
+      "thumbnail": "thumb_0.webp",
+      "mask": "mask_person_0.png"
+    },
+    {
+      "id": 1,
+      "left": 0.43209476725260415,
+      "top": 0.816937575327135,
+      "right": 0.49797111002604166,
+      "bottom": 0.8969863317120065,
+      "confidence": 0.3518569767475128,
+      "thumbnail": "thumb_1.webp",
+      "mask": "mask_person_1.png"
+    },
+    {
+      "id": 2,
+      "left": 0.4799535319010417,
+      "top": 0.8072520601373584,
+      "right": 0.5657956136067709,
+      "bottom": 0.9058837516978497,
+      "confidence": 0.41134732961654663,
+      "thumbnail": "thumb_2.webp",
+      "mask": "mask_person_2.png"
+    },
+    {
+      "id": 3,
+      "left": 0.6393174235026041,
+      "top": 0.8050181771550735,
+      "right": 0.7149842122395833,
+      "bottom": 0.9088542413959673,
+      "confidence": 0.42505839467048645,
+      "thumbnail": "thumb_3.webp",
+      "mask": "mask_person_3.png"
+    }
+  ]
+}
