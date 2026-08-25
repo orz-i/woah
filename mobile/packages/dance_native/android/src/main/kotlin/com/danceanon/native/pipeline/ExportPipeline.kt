@@ -16,6 +16,7 @@ import com.danceanon.native.render.GlRenderer
 import com.danceanon.native.tracking.TrackState
 import com.danceanon.native.tracking.TrackedPerson
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
@@ -25,6 +26,15 @@ class ExportPipeline(
     private val segmenter: YoloLiteRtSegmenter,
     private val eventEmitter: DanceProcessingEvents? = null
 ) {
+
+    private fun emitProgress(st: JobStatusDto, onStatusChange: (JobStatusDto) -> Unit) {
+        onStatusChange(st)
+        kotlinx.coroutines.CoroutineScope(Dispatchers.Main).launch {
+            try {
+                eventEmitter?.onProgressUpdate(st)
+            } catch (_: Throwable) {}
+        }
+    }
 
     suspend fun execute(
         jobId: String,
@@ -58,14 +68,17 @@ class ExportPipeline(
             errorMessage = null
         )
         onStatusChange(status)
-        try { eventEmitter?.onProgressUpdate(status) } catch (_: Throwable) {}
+        kotlinx.coroutines.CoroutineScope(Dispatchers.Main).launch {
+            try { eventEmitter?.onProgressUpdate(status) } catch (_: Throwable) {}
+        }
 
         val muxer = Mp4Muxer(tempOutFile.absolutePath, expectedTracks = if (videoInfo.hasAudio) 2 else 1)
         val audioCopier = AudioTrackCopier(context, sourceUri)
         val hasAudioTrack = audioCopier.prepare()
+        val audioFmt = audioCopier.audioFormat
 
-        if (hasAudioTrack && audioCopier.audioFormat != null) {
-            muxer.addAudioTrack(audioCopier.audioFormat!)
+        if (hasAudioTrack && audioFmt != null) {
+            muxer.addAudioTrack(audioFmt)
         } else {
             muxer.forceStartIfSingleTrack()
         }
@@ -146,8 +159,7 @@ class ExportPipeline(
                             fps = currentFps,
                             progress = progress
                         )
-                        onStatusChange(status)
-                        try { eventEmitter?.onProgressUpdate(status) } catch (_: Throwable) {}
+                        emitProgress(status, onStatusChange)
                     }
                 }
 
@@ -159,8 +171,7 @@ class ExportPipeline(
             if (isCancelled.get()) {
                 tempOutFile.delete()
                 status = status.copy(state = "cancelled")
-                onStatusChange(status)
-                try { eventEmitter?.onProgressUpdate(status) } catch (_: Throwable) {}
+                emitProgress(status, onStatusChange)
                 return@withContext
             }
 
@@ -192,8 +203,7 @@ class ExportPipeline(
                 currentFrame = totalFrames.toLong(),
                 outputUri = finalOutFile.absolutePath
             )
-            onStatusChange(status)
-            try { eventEmitter?.onProgressUpdate(status) } catch (_: Throwable) {}
+            emitProgress(status, onStatusChange)
 
         } catch (e: Exception) {
             tempOutFile.delete()
@@ -202,8 +212,7 @@ class ExportPipeline(
                 errorCode = "EXPORT_FAILED",
                 errorMessage = e.message ?: "Export failed"
             )
-            onStatusChange(status)
-            try { eventEmitter?.onProgressUpdate(status) } catch (_: Throwable) {}
+            emitProgress(status, onStatusChange)
         } finally {
             muxer.close()
             audioCopier.close()

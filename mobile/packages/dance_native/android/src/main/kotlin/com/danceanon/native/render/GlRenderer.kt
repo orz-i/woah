@@ -78,8 +78,8 @@ class GlRenderer : FrameRenderer {
         val fb = (fc and 0xFF) / 255f
         GLES30.glUniform4f(GLES30.glGetUniformLocation(programId, "uFillColor"), fr, fg, fb, fa)
 
-        // Parse Outline Color ARGB
-        val oc = effects.outlineColorArgb.toInt()
+        // Parse Border/Outline Color ARGB
+        val oc = effects.borderColorArgb.toInt()
         val oa = ((oc shr 24) and 0xFF) / 255f
         val or = ((oc shr 16) and 0xFF) / 255f
         val og = ((oc shr 8) and 0xFF) / 255f
@@ -87,29 +87,23 @@ class GlRenderer : FrameRenderer {
         GLES30.glUniform4f(GLES30.glGetUniformLocation(programId, "uOutlineColor"), or, og, ob, oa)
 
         // Parse Gradient Color ARGB
-        val gc = effects.gradientEndArgb.toInt()
-        val ga = ((gc shr 24) and 0xFF) / 255f
-        val gr = ((gc shr 16) and 0xFF) / 255f
-        val gg = ((gc shr 8) and 0xFF) / 255f
-        val gb = (gc and 0xFF) / 255f
-        GLES30.glUniform4f(GLES30.glGetUniformLocation(programId, "uGradientColor"), gr, gg, gb, ga)
+        GLES30.glUniform4f(GLES30.glGetUniformLocation(programId, "uGradientColor"), 0.5f, 0.2f, 0.9f, 1f)
 
         // Effect Mode: 0: solid, 1: outline, 2: blur, 3: gradient, 4: skin_whiten, 5: leg_stretch
-        val effectMode = when (effects.effectType.lowercase()) {
-            "solid" -> 0
-            "outline" -> 1
+        val effectMode = when (effects.fillMode.lowercase()) {
+            "solid" -> if (effects.borderWidth > 0) 1 else 0
             "blur" -> 2
             "gradient" -> 3
-            "skin_whiten" -> 4
-            "leg_stretch" -> 5
-            else -> 0
+            "mosaic" -> 2
+            else -> if (effects.skinWhiten > 0) 4 else if (effects.legStretchEnabled) 5 else 0
         }
         GLES30.glUniform1i(GLES30.glGetUniformLocation(programId, "uEffectType"), effectMode)
         GLES30.glUniform1f(GLES30.glGetUniformLocation(programId, "uOpacity"), effects.opacity.toFloat())
-        GLES30.glUniform1f(GLES30.glGetUniformLocation(programId, "uOutlineWidth"), effects.outlineWidth.toFloat())
-        GLES30.glUniform1f(GLES30.glGetUniformLocation(programId, "uBlurRadius"), effects.blurRadius.toFloat())
-        GLES30.glUniform1f(GLES30.glGetUniformLocation(programId, "uSkinWhitenStrength"), effects.skinWhitenStrength.toFloat())
-        GLES30.glUniform1f(GLES30.glGetUniformLocation(programId, "uLegStretchRatio"), effects.legStretchRatio.toFloat())
+        GLES30.glUniform1f(GLES30.glGetUniformLocation(programId, "uOutlineWidth"), effects.borderWidth.toFloat())
+        GLES30.glUniform1f(GLES30.glGetUniformLocation(programId, "uBlurRadius"), effects.blurStrength.toFloat())
+        GLES30.glUniform1f(GLES30.glGetUniformLocation(programId, "uSkinWhitenStrength"), effects.skinWhiten.toFloat())
+        val legRatio = if (effects.legStretchEnabled) (1.0 + effects.legStretch).toFloat() else 1.0f
+        GLES30.glUniform1f(GLES30.glGetUniformLocation(programId, "uLegStretchRatio"), legRatio)
         GLES30.glUniform2f(GLES30.glGetUniformLocation(programId, "uTexelSize"), 1f / width.coerceAtLeast(1), 1f / height.coerceAtLeast(1))
 
         // Follow Crop Mapping

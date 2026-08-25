@@ -51,7 +51,7 @@ class VideoDecoder(
             throw IllegalStateException("No video track found in $sourceUri")
         }
 
-        val mime = videoFormat!!.getString(MediaFormat.KEY_MIME)!
+        val mime = videoFormat!!.getString(MediaFormat.KEY_MIME) ?: "video/avc"
         val decoder = MediaCodec.createDecoderByType(mime)
         decoder.configure(videoFormat, outputSurface, null, 0)
         decoder.start()

@@ -21,17 +21,16 @@ class ImportVideoController extends StateNotifier<VideoImportState> {
     try {
       state = state.copyWith(status: VideoImportStatus.picking);
 
-      final result = await FilePicker.platform.pickFiles(
+      final files = await FilePickerPlatform.instance.pickFiles(
         type: FileType.video,
-        allowMultiple: false,
       );
 
-      if (result == null || result.files.isEmpty || result.files.single.path == null) {
+      if (files.isEmpty || files.first.path == null) {
         state = state.copyWith(status: state.videoInfo != null ? VideoImportStatus.ready : VideoImportStatus.idle);
         return;
       }
 
-      final file = result.files.single;
+      final file = files.first;
       final path = file.path!;
       final name = file.name;
 
