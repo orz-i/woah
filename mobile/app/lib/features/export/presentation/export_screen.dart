@@ -36,73 +36,14 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         .startExport(widget.project, outPath);
   }
 
-  void _showErrorDialog(BuildContext context, String error) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.error_outline, color: Colors.redAccent),
-            SizedBox(width: 8),
-            Text('导出失败详情'),
-          ],
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  '以下为底层的完整错误堆栈，您可以一键复制并反馈：',
-                  style: TextStyle(fontSize: 13, color: Colors.white70),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.black45,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.white24),
-                  ),
-                  child: SelectableText(
-                    error,
-                    style: const TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 12,
-                      color: Colors.redAccent,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          ElevatedButton.icon(
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: error));
-              Navigator.of(ctx).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  backgroundColor: Colors.green,
-                  content: Text('📋 错误日志已复制到剪贴板！'),
-                ),
-              );
-            },
-            icon: const Icon(Icons.copy_rounded),
-            label: const Text('复制错误信息'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.deepPurpleAccent,
-              foregroundColor: Colors.white,
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('关闭'),
-          ),
-        ],
+  void _copyErrorLog(BuildContext context, String? errorMessage) {
+    final text = errorMessage ?? '未知错误';
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 3),
+        content: Text('📋 错误日志已复制到剪贴板，可直接粘贴反馈！'),
       ),
     );
   }
@@ -120,7 +61,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     });
 
     final percent = (state.progress * 100).toStringAsFixed(1);
-    final isFailed = state.isFailed || state.errorMessage != null;
+    final isFailed = state.isFailed;
 
     return Scaffold(
       appBar: AppBar(
@@ -129,14 +70,6 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
           icon: const Icon(Icons.close),
           onPressed: () => _confirmCancel(context, controller),
         ),
-        actions: [
-          if (isFailed)
-            IconButton(
-              icon: const Icon(Icons.bug_report_rounded, color: Colors.redAccent),
-              tooltip: '查看错误日志',
-              onPressed: () => _showErrorDialog(context, state.errorMessage ?? '未知错误'),
-            ),
-        ],
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -210,18 +143,16 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               ),
               const SizedBox(height: 48),
 
-              // Status Description or Failure Details
+              // Status Description & Action
               SizedBox(
-                height: 84,
+                height: 80,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
-                      isFailed
-                          ? (state.errorMessage?.split('\n').firstOrNull ?? '渲染导出遇到异常中断')
-                          : _getStatusTitle(state.status),
+                      isFailed ? '渲染遇到异常，请重试或复制日志反馈' : _getStatusTitle(state.status),
                       textAlign: TextAlign.center,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -230,24 +161,22 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                             color: isFailed ? Colors.redAccent : Colors.white,
                           ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     if (isFailed)
-                      InkWell(
-                        onTap: () => _showErrorDialog(context, state.errorMessage ?? '未知错误'),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.copy_rounded, size: 14, color: Colors.deepPurpleAccent),
-                            SizedBox(width: 4),
-                            Text(
-                              '点击复制完整错误日志',
-                              style: TextStyle(
-                                color: Colors.deepPurpleAccent,
-                                fontSize: 13,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
-                          ],
+                      OutlinedButton.icon(
+                        onPressed: () => _copyErrorLog(context, state.errorMessage),
+                        icon: const Icon(Icons.copy_rounded, size: 16),
+                        label: const Text(
+                          '复制错误信息',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: const BorderSide(color: Colors.white30),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
                         ),
                       )
                     else

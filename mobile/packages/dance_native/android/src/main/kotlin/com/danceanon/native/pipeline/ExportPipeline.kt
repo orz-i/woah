@@ -135,8 +135,17 @@ class ExportPipeline(
             GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
             GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
 
+            val frameAvailable = java.util.concurrent.atomic.AtomicBoolean(false)
+            val frameSync = Object()
+
             surfaceTexture = SurfaceTexture(oesTextureId).apply {
-                setDefaultBufferSize(videoInfo.displayWidth.toInt(), videoInfo.displayHeight.toInt())
+                setDefaultBufferSize(targetWidth, targetHeight)
+                setOnFrameAvailableListener({
+                    synchronized(frameSync) {
+                        frameAvailable.set(true)
+                        frameSync.notifyAll()
+                    }
+                }, android.os.Handler(android.os.Looper.getMainLooper()))
             }
             decoderSurface = Surface(surfaceTexture)
 
@@ -146,7 +155,12 @@ class ExportPipeline(
             val trackManager = com.danceanon.native.tracking.TrackManager()
             var processedFrames = 0
             var lastProgressEmitTime = 0L
-            val stMatrix = FloatArray(16)
+            val stMatrix = floatArrayOf(
+                1f, 0f, 0f, 0f,
+                0f, 1f, 0f, 0f,
+                0f, 0f, 1f, 0f,
+                0f, 0f, 0f, 1f
+            )
 
             segmenter.initialize()
 
@@ -163,9 +177,25 @@ class ExportPipeline(
                     processedFrames++
                     val selectedIds = request.selectedPersonIds.map { it.toInt() }.toSet()
 
-                    // Update OES texture with decoded video frame
-                    surfaceTexture?.updateTexImage()
-                    surfaceTexture?.getTransformMatrix(stMatrix)
+                    // Wait for frame to be available on SurfaceTexture
+                    synchronized(frameSync) {
+                        var waited = 0
+                        while (!frameAvailable.get() && waited < 50) {
+                            try {
+                                frameSync.wait(10)
+                                waited += 10
+                            } catch (_: Exception) {}
+                        }
+                        frameAvailable.set(false)
+                    }
+
+                    // Safely update OES texture with decoded video frame
+                    try {
+                        surfaceTexture?.updateTexImage()
+                        surfaceTexture?.getTransformMatrix(stMatrix)
+                    } catch (e: Throwable) {
+                        // Soft catch: if frame was already consumed or dropped, do not crash pipeline
+                    }
 
                     // Run tracking on detections
                     val trackedList = if (processedFrames == 1) {
