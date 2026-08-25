@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:dance_domain/dance_domain.dart';
 import 'person_selection_controller.dart';
 import '../domain/person_selection_state.dart';
@@ -228,19 +229,15 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
         onPressed: hasSelection
             ? () {
                 final configured = controller.buildConfiguredProject();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      '已保存项目 ${configured?.id} 的人物选择 (${state.selectedPersonIds.toList()})，准备进入 Phase 4 特效编辑',
-                    ),
-                  ),
-                );
+                if (configured != null) {
+                  context.push('/export', extra: configured);
+                }
               }
             : null,
-        icon: const Icon(Icons.tune_rounded),
+        icon: const Icon(Icons.video_call_rounded),
         label: Text(
           hasSelection
-              ? '下一步：特效参数编辑 (已选 ${state.selectedPersonIds.length} 人)'
+              ? '下一步：开始导出视频 (已选 ${state.selectedPersonIds.length} 人)'
               : '请至少选择一位人物',
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
         ),

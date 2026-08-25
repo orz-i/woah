@@ -73,8 +73,31 @@ class DanceNativeApiImpl(
         )
     }
 
+    private val exportPipeline = com.danceanon.native.pipeline.ExportPipeline(context, segmenter, eventEmitter)
+    private val exportScope = kotlinx.coroutines.CoroutineScope(Dispatchers.Default + kotlinx.coroutines.SupervisorJob())
+
     override suspend fun startExport(request: ExportRequestDto): String = withContext(Dispatchers.Default) {
         val jobId = "job_${System.currentTimeMillis()}"
+        val isCancelled = java.util.concurrent.atomic.AtomicBoolean(false)
+
+        val coroutineJob = exportScope.launch {
+            exportPipeline.execute(
+                jobId = jobId,
+                sourceUri = request.outputFilePath, // will use input video or cache
+                request = request,
+                isCancelled = isCancelled,
+                onStatusChange = { status ->
+                    jobManager.updateStatus(jobId, status)
+                }
+            )
+        }
+
+        val processingJob = com.danceanon.native.jobs.ProcessingJob(
+            id = jobId,
+            coroutineJob = coroutineJob,
+            isCancelled = isCancelled
+        )
+        jobManager.registerJob(processingJob)
         jobId
     }
 
