@@ -6,24 +6,28 @@ object GlShaders {
         #version 300 es
         layout(location = 0) in vec4 aPosition;
         layout(location = 1) in vec2 aTexCoord;
+        uniform mat4 uTexMatrix;
         uniform vec4 uCropRect; // (left, top, right, bottom)
         out vec2 vTexCoord;
         void main() {
             gl_Position = aPosition;
-            vTexCoord = vec2(
+            vec2 cropped = vec2(
                 mix(uCropRect.x, uCropRect.z, aTexCoord.x),
                 mix(uCropRect.y, uCropRect.w, aTexCoord.y)
             );
+            vec4 transformed = uTexMatrix * vec4(cropped, 0.0, 1.0);
+            vTexCoord = transformed.xy;
         }
     """.trimIndent()
 
     val FRAGMENT_SHADER = """
         #version 300 es
+        #extension GL_OES_EGL_image_external_essl3 : require
         precision mediump float;
         in vec2 vTexCoord;
         out vec4 fragColor;
         
-        uniform sampler2D uBaseTexture;
+        uniform samplerExternalOES uBaseTexture;
         uniform sampler2D uMaskTexture;
         uniform int uHasMask;
         uniform int uEffectType; // 0: solid, 1: outline, 2: blur, 3: gradient, 4: skin_whiten, 5: leg_stretch

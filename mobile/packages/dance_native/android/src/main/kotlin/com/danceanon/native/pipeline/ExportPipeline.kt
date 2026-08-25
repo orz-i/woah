@@ -1,7 +1,10 @@
 package com.danceanon.native.pipeline
 
 import android.content.Context
-import android.media.MediaFormat
+import android.graphics.SurfaceTexture
+import android.opengl.GLES11Ext
+import android.opengl.GLES20
+import android.view.Surface
 import com.danceanon.native.bridge.DanceProcessingEvents
 import com.danceanon.native.bridge.ExportRequestDto
 import com.danceanon.native.bridge.JobStatusDto
@@ -99,6 +102,10 @@ class ExportPipeline(
 
         var eglCore: EglCore? = null
         var glRenderer: GlRenderer? = null
+        var surfaceTexture: SurfaceTexture? = null
+        var decoderSurface: Surface? = null
+        var decoder: VideoDecoder? = null
+        var oesTextureId = 0
 
         try {
             val inputSurface = encoder.prepare()
@@ -109,12 +116,28 @@ class ExportPipeline(
             glRenderer = GlRenderer()
             glRenderer.initialize(targetWidth, targetHeight)
 
-            val decoder = VideoDecoder(context, sourceUri, outputSurface = null)
+            // Setup OES texture and Surface for VideoDecoder hardware rendering
+            val oesTextures = IntArray(1)
+            GLES20.glGenTextures(1, oesTextures, 0)
+            oesTextureId = oesTextures[0]
+            GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, oesTextureId)
+            GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
+            GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
+            GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
+            GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+
+            surfaceTexture = SurfaceTexture(oesTextureId).apply {
+                setDefaultBufferSize(videoInfo.displayWidth.toInt(), videoInfo.displayHeight.toInt())
+            }
+            decoderSurface = Surface(surfaceTexture)
+
+            decoder = VideoDecoder(context, sourceUri, outputSurface = decoderSurface)
             decoder.prepare()
 
             val trackManager = com.danceanon.native.tracking.TrackManager()
             var processedFrames = 0
             var lastProgressEmitTime = 0L
+            val stMatrix = FloatArray(16)
 
             segmenter.initialize()
 
@@ -131,6 +154,10 @@ class ExportPipeline(
                     processedFrames++
                     val selectedIds = request.selectedPersonIds.map { it.toInt() }.toSet()
 
+                    // Update OES texture with decoded video frame
+                    surfaceTexture?.updateTexImage()
+                    surfaceTexture?.getTransformMatrix(stMatrix)
+
                     // Run tracking on detections
                     val trackedList = if (processedFrames == 1) {
                         trackManager.initialize(emptyList())
@@ -139,7 +166,8 @@ class ExportPipeline(
                     }
 
                     glRenderer.render(
-                        frameTexture = 0,
+                        frameTexture = oesTextureId,
+                        texMatrix = stMatrix,
                         persons = trackedList,
                         selectedPersonIds = selectedIds,
                         effects = request.effects,
@@ -221,6 +249,12 @@ class ExportPipeline(
             )
             emitProgress(status, onStatusChange)
         } finally {
+            try { decoder?.close() } catch (_: Throwable) {}
+            try { decoderSurface?.release() } catch (_: Throwable) {}
+            try { surfaceTexture?.release() } catch (_: Throwable) {}
+            if (oesTextureId != 0) {
+                try { GLES20.glDeleteTextures(1, intArrayOf(oesTextureId), 0) } catch (_: Throwable) {}
+            }
             try { muxer.close() } catch (_: Throwable) {}
             try { audioCopier.close() } catch (_: Throwable) {}
             try { encoder.close() } catch (_: Throwable) {}

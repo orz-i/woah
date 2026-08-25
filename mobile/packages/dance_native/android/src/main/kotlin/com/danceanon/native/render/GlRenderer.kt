@@ -1,5 +1,6 @@
 package com.danceanon.native.render
 
+import android.opengl.GLES11Ext
 import android.opengl.GLES20
 import android.opengl.GLES30
 import com.danceanon.native.bridge.EffectConfigDto
@@ -17,6 +18,12 @@ class GlRenderer : FrameRenderer {
     private var height = 0
     private var maskTextureId = 0
     private val follower = com.danceanon.native.camera.SmoothFollower()
+    private val identityMatrix = floatArrayOf(
+        1f, 0f, 0f, 0f,
+        0f, 1f, 0f, 0f,
+        0f, 0f, 1f, 0f,
+        0f, 0f, 0f, 1f
+    )
 
     override fun initialize(width: Int, height: Int) {
         this.width = width
@@ -56,8 +63,9 @@ class GlRenderer : FrameRenderer {
         GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE)
     }
 
-    override fun render(
+    fun render(
         frameTexture: Int,
+        texMatrix: FloatArray? = null,
         persons: List<TrackedPerson>,
         selectedPersonIds: Set<Int>,
         effects: EffectConfigDto,
@@ -69,6 +77,9 @@ class GlRenderer : FrameRenderer {
         GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT)
 
         GLES30.glUseProgram(programId)
+
+        val matrix = texMatrix ?: identityMatrix
+        GLES30.glUniformMatrix4fv(GLES30.glGetUniformLocation(programId, "uTexMatrix"), 1, false, matrix, 0)
 
         // Parse Fill Color ARGB
         val fc = effects.fillColorArgb.toInt()
@@ -126,9 +137,9 @@ class GlRenderer : FrameRenderer {
         val hasSelected = selectedPersonIds.isNotEmpty() && persons.any { selectedPersonIds.contains(it.id) }
         GLES30.glUniform1i(GLES30.glGetUniformLocation(programId, "uHasMask"), if (hasSelected) 1 else 0)
 
-        // Setup base texture
+        // Setup base texture (OES external texture from SurfaceTexture)
         GLES30.glActiveTexture(GLES30.GL_TEXTURE0)
-        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, frameTexture)
+        GLES30.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, frameTexture)
         GLES30.glUniform1i(GLES30.glGetUniformLocation(programId, "uBaseTexture"), 0)
 
         // Upload and bind mask texture to Texture 1 if present
@@ -157,6 +168,17 @@ class GlRenderer : FrameRenderer {
         GLES30.glEnableVertexAttribArray(1)
 
         GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4)
+    }
+
+    override fun render(
+        frameTexture: Int,
+        persons: List<TrackedPerson>,
+        selectedPersonIds: Set<Int>,
+        effects: EffectConfigDto,
+        follow: FollowConfigDto,
+        presentationTimeUs: Long
+    ) {
+        render(frameTexture, null, persons, selectedPersonIds, effects, follow, presentationTimeUs)
     }
 
     private fun compileShader(type: Int, source: String): Int {

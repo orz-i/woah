@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -52,19 +53,22 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
           onPressed: () => _confirmCancel(context, controller),
         ),
       ),
-      body: SafeArea(
-        child: Padding(
+      body: Center(
+        child: SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(height: 60),
-              // Circular Progress Ring
+              // Perfectly Centered Circular Progress Ring
               Stack(
                 alignment: Alignment.center,
                 children: [
                   SizedBox(
-                    width: 200,
-                    height: 200,
+                    width: 220,
+                    height: 220,
                     child: CircularProgressIndicator(
                       value: state.progress > 0 ? state.progress : null,
                       strokeWidth: 10,
@@ -74,39 +78,53 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       ),
                     ),
                   ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '$percent%',
-                        style: const TextStyle(
-                          fontSize: 38,
-                          fontWeight: FontWeight.bold,
+                  SizedBox(
+                    width: 180,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          '$percent%',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 38,
+                            fontWeight: FontWeight.bold,
+                            fontFeatures: [FontFeature.tabularFigures()],
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${state.fps.toStringAsFixed(1)} FPS',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.white60,
-                          fontWeight: FontWeight.w600,
+                        const SizedBox(height: 4),
+                        Text(
+                          '${state.fps.toStringAsFixed(1)} FPS',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.white60,
+                            fontWeight: FontWeight.w600,
+                            fontFeatures: [FontFeature.tabularFigures()],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 48),
 
-              // Fixed height Status Container to prevent layout drift
+              // Fixed height and strictly centered Status Description
               SizedBox(
-                height: 80,
+                height: 72,
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
                       _getStatusTitle(state.status),
                       textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -114,12 +132,16 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                     const SizedBox(height: 8),
                     Text(
                       '已处理 ${state.currentFrame} / ${state.totalFrames} 帧',
-                      style: const TextStyle(color: Colors.white60, fontSize: 13),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white60,
+                        fontSize: 13,
+                        fontFeatures: [FontFeature.tabularFigures()],
+                      ),
                     ),
                   ],
                 ),
               ),
-              const Spacer(),
             ],
           ),
         ),
