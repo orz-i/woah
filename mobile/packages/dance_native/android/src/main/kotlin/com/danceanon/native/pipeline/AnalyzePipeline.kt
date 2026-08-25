@@ -23,6 +23,7 @@ class AnalyzePipeline(
     suspend fun analyze(request: AnalyzeRequestDto): AnalyzeResultDto = withContext(Dispatchers.Default) {
         val videoInfo = VideoProbe.probe(context, request.videoUri)
         val cacheId = "analysis_${System.currentTimeMillis()}"
+        cacheManager.saveVideoUri(cacheId, request.videoUri)
 
         // 1. Extract first frame Bitmap
         val retriever = MediaMetadataRetriever()

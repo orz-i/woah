@@ -23,7 +23,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final outPath = '/tmp/export_$timestamp.mp4';
+      final outPath = 'export_$timestamp.mp4';
       ref
           .read(exportControllerProvider.notifier)
           .startExport(widget.project, outPath);

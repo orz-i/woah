@@ -57,6 +57,18 @@ class CacheManager(private val context: Context) {
         return file.absolutePath
     }
 
+    fun saveVideoUri(cacheId: String, videoUri: String) {
+        val dir = getAnalysisDir(cacheId)
+        val file = File(dir, "source_uri.txt")
+        file.writeText(videoUri)
+    }
+
+    fun getVideoUri(cacheId: String): String? {
+        val dir = getAnalysisDir(cacheId)
+        val file = File(dir, "source_uri.txt")
+        return if (file.exists()) file.readText().trim() else null
+    }
+
     fun clearAnalysisCache(cacheId: String) {
         val dir = File(context.cacheDir, "analysis/$cacheId")
         if (dir.exists()) {

@@ -82,15 +82,32 @@ class DanceNativeApiImpl(
         val isCancelled = java.util.concurrent.atomic.AtomicBoolean(false)
 
         val coroutineJob = exportScope.launch {
-            exportPipeline.execute(
-                jobId = jobId,
-                sourceUri = request.outputFilePath, // will use input video or cache
-                request = request,
-                isCancelled = isCancelled,
-                onStatusChange = { status ->
-                    jobManager.updateStatus(jobId, status)
-                }
-            )
+            try {
+                val sourceUri = cacheManager.getVideoUri(request.analysisCacheId) ?: request.outputFilePath
+                exportPipeline.execute(
+                    jobId = jobId,
+                    sourceUri = sourceUri,
+                    request = request,
+                    isCancelled = isCancelled,
+                    onStatusChange = { status ->
+                        jobManager.updateStatus(jobId, status)
+                    }
+                )
+            } catch (e: Throwable) {
+                android.util.Log.e("DanceNativeApiImpl", "Export failed: ${e.message}", e)
+                val failedStatus = JobStatusDto(
+                    jobId = jobId,
+                    state = "failed",
+                    currentFrame = 0L,
+                    totalFrames = 0L,
+                    fps = 0.0,
+                    progress = 0.0,
+                    outputUri = null,
+                    errorCode = "EXPORT_FAILED",
+                    errorMessage = e.message ?: "Export failed"
+                )
+                jobManager.updateStatus(jobId, failedStatus)
+            }
         }
 
         val processingJob = com.danceanon.native.jobs.ProcessingJob(

@@ -50,8 +50,15 @@ class ExportPipeline(
         val targetHeight = if (request.targetHeight > 0) request.targetHeight.toInt() else videoInfo.displayHeight.toInt()
         val targetFps = if (request.targetFps > 0) request.targetFps.toFloat() else videoInfo.fps.toFloat()
 
-        val finalOutFile = File(request.outputFilePath)
-        finalOutFile.parentFile?.mkdirs()
+        val finalOutFile = if (request.outputFilePath.startsWith("/tmp") || !request.outputFilePath.startsWith("/")) {
+            val exportDir = File(context.cacheDir, "exports")
+            exportDir.mkdirs()
+            File(exportDir, "export_${System.currentTimeMillis()}.mp4")
+        } else {
+            val f = File(request.outputFilePath)
+            f.parentFile?.mkdirs()
+            f
+        }
         val tempOutFile = File(finalOutFile.parentFile, "${finalOutFile.nameWithoutExtension}.tmp.mp4")
 
         val totalFrames = if (videoInfo.fps > 0) ((videoInfo.durationMs / 1000.0) * videoInfo.fps).toInt().coerceAtLeast(1) else 300
@@ -214,11 +221,11 @@ class ExportPipeline(
             )
             emitProgress(status, onStatusChange)
         } finally {
-            muxer.close()
-            audioCopier.close()
-            encoder.close()
-            glRenderer?.close()
-            eglCore?.close()
+            try { muxer.close() } catch (_: Throwable) {}
+            try { audioCopier.close() } catch (_: Throwable) {}
+            try { encoder.close() } catch (_: Throwable) {}
+            try { glRenderer?.close() } catch (_: Throwable) {}
+            try { eglCore?.close() } catch (_: Throwable) {}
         }
     }
 }
