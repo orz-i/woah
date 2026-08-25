@@ -15,50 +15,14 @@ class GlRenderer : FrameRenderer {
     private var vertexBuffer: FloatBuffer? = null
     private var width = 0
     private var height = 0
-
-    private val vertexShaderSource = """
-        #version 300 es
-        layout(location = 0) in vec4 aPosition;
-        layout(location = 1) in vec2 aTexCoord;
-        out vec2 vTexCoord;
-        void main() {
-            gl_Position = aPosition;
-            vTexCoord = aTexCoord;
-        }
-    """.trimIndent()
-
-    private val fragmentShaderSource = """
-        #version 300 es
-        precision mediump float;
-        in vec2 vTexCoord;
-        out vec4 fragColor;
-        
-        uniform sampler2D uBaseTexture;
-        uniform sampler2D uMaskTexture;
-        uniform vec4 uFillColor;
-        uniform float uOpacity;
-        uniform int uHasMask;
-
-        void main() {
-            vec4 baseColor = texture(uBaseTexture, vTexCoord);
-            if (uHasMask == 1) {
-                float maskVal = texture(uMaskTexture, vTexCoord).r;
-                if (maskVal > 0.5) {
-                    vec4 effectColor = vec4(uFillColor.rgb, uOpacity * uFillColor.a);
-                    fragColor = mix(baseColor, effectColor, effectColor.a);
-                    return;
-                }
-            }
-            fragColor = baseColor;
-        }
-    """.trimIndent()
+    private var maskTextureId = 0
 
     override fun initialize(width: Int, height: Int) {
         this.width = width
         this.height = height
 
-        val vShader = compileShader(GLES30.GL_VERTEX_SHADER, vertexShaderSource)
-        val fShader = compileShader(GLES30.GL_FRAGMENT_SHADER, fragmentShaderSource)
+        val vShader = compileShader(GLES30.GL_VERTEX_SHADER, GlShaders.VERTEX_SHADER)
+        val fShader = compileShader(GLES30.GL_FRAGMENT_SHADER, GlShaders.FRAGMENT_SHADER)
 
         programId = GLES30.glCreateProgram()
         GLES30.glAttachShader(programId, vShader)
@@ -79,6 +43,16 @@ class GlRenderer : FrameRenderer {
                 put(vertices)
                 position(0)
             }
+
+        // Initialize mask texture
+        val textures = IntArray(1)
+        GLES30.glGenTextures(1, textures, 0)
+        maskTextureId = textures[0]
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, maskTextureId)
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR)
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR)
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE)
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE)
     }
 
     override fun render(
@@ -96,25 +70,70 @@ class GlRenderer : FrameRenderer {
         GLES30.glUseProgram(programId)
 
         // Parse Fill Color ARGB
-        val colorInt = effects.fillColorArgb.toInt()
-        val a = ((colorInt shr 24) and 0xFF) / 255f
-        val r = ((colorInt shr 16) and 0xFF) / 255f
-        val g = ((colorInt shr 8) and 0xFF) / 255f
-        val b = (colorInt and 0xFF) / 255f
+        val fc = effects.fillColorArgb.toInt()
+        val fa = ((fc shr 24) and 0xFF) / 255f
+        val fr = ((fc shr 16) and 0xFF) / 255f
+        val fg = ((fc shr 8) and 0xFF) / 255f
+        val fb = (fc and 0xFF) / 255f
+        GLES30.glUniform4f(GLES30.glGetUniformLocation(programId, "uFillColor"), fr, fg, fb, fa)
 
-        val uFillColorLoc = GLES30.glGetUniformLocation(programId, "uFillColor")
-        GLES30.glUniform4f(uFillColorLoc, r, g, b, a)
+        // Parse Outline Color ARGB
+        val oc = effects.outlineColorArgb.toInt()
+        val oa = ((oc shr 24) and 0xFF) / 255f
+        val or = ((oc shr 16) and 0xFF) / 255f
+        val og = ((oc shr 8) and 0xFF) / 255f
+        val ob = (oc and 0xFF) / 255f
+        GLES30.glUniform4f(GLES30.glGetUniformLocation(programId, "uOutlineColor"), or, og, ob, oa)
 
-        val uOpacityLoc = GLES30.glGetUniformLocation(programId, "uOpacity")
-        GLES30.glUniform1f(uOpacityLoc, effects.opacity.toFloat())
+        // Parse Gradient Color ARGB
+        val gc = effects.gradientEndArgb.toInt()
+        val ga = ((gc shr 24) and 0xFF) / 255f
+        val gr = ((gc shr 16) and 0xFF) / 255f
+        val gg = ((gc shr 8) and 0xFF) / 255f
+        val gb = (gc and 0xFF) / 255f
+        GLES30.glUniform4f(GLES30.glGetUniformLocation(programId, "uGradientColor"), gr, gg, gb, ga)
 
-        val uHasMaskLoc = GLES30.glGetUniformLocation(programId, "uHasMask")
-        GLES30.glUniform1i(uHasMaskLoc, if (selectedPersonIds.isNotEmpty()) 1 else 0)
+        // Effect Mode: 0: solid, 1: outline, 2: blur, 3: gradient, 4: skin_whiten, 5: leg_stretch
+        val effectMode = when (effects.effectType.lowercase()) {
+            "solid" -> 0
+            "outline" -> 1
+            "blur" -> 2
+            "gradient" -> 3
+            "skin_whiten" -> 4
+            "leg_stretch" -> 5
+            else -> 0
+        }
+        GLES30.glUniform1i(GLES30.glGetUniformLocation(programId, "uEffectType"), effectMode)
+        GLES30.glUniform1f(GLES30.glGetUniformLocation(programId, "uOpacity"), effects.opacity.toFloat())
+        GLES30.glUniform1f(GLES30.glGetUniformLocation(programId, "uOutlineWidth"), effects.outlineWidth.toFloat())
+        GLES30.glUniform1f(GLES30.glGetUniformLocation(programId, "uBlurRadius"), effects.blurRadius.toFloat())
+        GLES30.glUniform1f(GLES30.glGetUniformLocation(programId, "uSkinWhitenStrength"), effects.skinWhitenStrength.toFloat())
+        GLES30.glUniform1f(GLES30.glGetUniformLocation(programId, "uLegStretchRatio"), effects.legStretchRatio.toFloat())
+        GLES30.glUniform2f(GLES30.glGetUniformLocation(programId, "uTexelSize"), 1f / width.coerceAtLeast(1), 1f / height.coerceAtLeast(1))
+
+        val hasSelected = selectedPersonIds.isNotEmpty() && persons.any { selectedPersonIds.contains(it.id) }
+        GLES30.glUniform1i(GLES30.glGetUniformLocation(programId, "uHasMask"), if (hasSelected) 1 else 0)
 
         // Setup base texture
         GLES30.glActiveTexture(GLES30.GL_TEXTURE0)
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, frameTexture)
         GLES30.glUniform1i(GLES30.glGetUniformLocation(programId, "uBaseTexture"), 0)
+
+        // Upload and bind mask texture to Texture 1 if present
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE1)
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, maskTextureId)
+        val selectedPerson = persons.firstOrNull { selectedPersonIds.contains(it.id) }
+        if (selectedPerson?.mask != null) {
+            val mask = selectedPerson.mask!!
+            mask.buffer.rewind()
+            GLES30.glTexImage2D(
+                GLES30.GL_TEXTURE_2D, 0, GLES30.GL_R8,
+                mask.width, mask.height, 0,
+                GLES30.GL_RED, GLES30.GL_UNSIGNED_BYTE, mask.buffer
+            )
+            GLES30.glUniform1f(GLES30.glGetUniformLocation(programId, "uFootY"), selectedPerson.bbox.bottom / height.toFloat())
+        }
+        GLES30.glUniform1i(GLES30.glGetUniformLocation(programId, "uMaskTexture"), 1)
 
         // Draw quad
         vertexBuffer?.position(0)
@@ -143,6 +162,11 @@ class GlRenderer : FrameRenderer {
         if (programId != 0) {
             GLES30.glDeleteProgram(programId)
             programId = 0
+        }
+        if (maskTextureId != 0) {
+            val textures = intArrayOf(maskTextureId)
+            GLES30.glDeleteTextures(1, textures, 0)
+            maskTextureId = 0
         }
     }
 }

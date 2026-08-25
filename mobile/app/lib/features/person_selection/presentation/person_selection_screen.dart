@@ -230,14 +230,14 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
             ? () {
                 final configured = controller.buildConfiguredProject();
                 if (configured != null) {
-                  context.push('/export', extra: configured);
+                  context.push('/effect_editor', extra: configured);
                 }
               }
             : null,
-        icon: const Icon(Icons.video_call_rounded),
+        icon: const Icon(Icons.tune_rounded),
         label: Text(
           hasSelection
-              ? '下一步：开始导出视频 (已选 ${state.selectedPersonIds.length} 人)'
+              ? '下一步：特效参数调节 (已选 ${state.selectedPersonIds.length} 人)'
               : '请至少选择一位人物',
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
         ),
