@@ -34,6 +34,8 @@ class AnalyzePipeline(
                 retriever.setDataSource(request.videoUri.removePrefix("file://"))
             }
             rawBitmap = retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                ?: retriever.getFrameAtTime(1000L, MediaMetadataRetriever.OPTION_CLOSEST)
+                ?: retriever.frameAtTime
         } catch (e: Exception) {
             android.util.Log.e("AnalyzePipeline", "Failed to retrieve first frame", e)
         } finally {

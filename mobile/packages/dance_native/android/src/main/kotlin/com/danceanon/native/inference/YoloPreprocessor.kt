@@ -47,25 +47,32 @@ object YoloPreprocessor {
             srcScaled.recycle()
         }
 
-        // Convert to (1, 640, 640, 3) Float32 Buffer normalized to [0.0, 1.0]
-        val byteBuffer = ByteBuffer.allocateDirect(1 * inputSize * inputSize * 3 * 4)
+        // Convert to (1, 3, 640, 640) Float32 Buffer normalized to [0.0, 1.0] (NCHW Planar format)
+        val numPixels = inputSize * inputSize
+        val byteBuffer = ByteBuffer.allocateDirect(1 * 3 * numPixels * 4)
         byteBuffer.order(ByteOrder.nativeOrder())
         val floatBuffer = byteBuffer.asFloatBuffer()
 
-        val pixels = IntArray(inputSize * inputSize)
+        val pixels = IntArray(numPixels)
         letterboxed.getPixels(pixels, 0, inputSize, 0, 0, inputSize, inputSize)
         letterboxed.recycle()
 
-        for (pixel in pixels) {
+        val rOffset = 0
+        val gOffset = numPixels
+        val bOffset = 2 * numPixels
+
+        for (i in 0 until numPixels) {
+            val pixel = pixels[i]
             val r = ((pixel shr 16) and 0xFF) / 255.0f
             val g = ((pixel shr 8) and 0xFF) / 255.0f
             val b = (pixel and 0xFF) / 255.0f
-            floatBuffer.put(r)
-            floatBuffer.put(g)
-            floatBuffer.put(b)
+
+            floatBuffer.put(rOffset + i, r)
+            floatBuffer.put(gOffset + i, g)
+            floatBuffer.put(bOffset + i, b)
         }
-        floatBuffer.rewind()
-        byteBuffer.rewind()
+        floatBuffer.position(0)
+        byteBuffer.position(0)
 
         return PreprocessResult(
             floatBuffer = floatBuffer,
