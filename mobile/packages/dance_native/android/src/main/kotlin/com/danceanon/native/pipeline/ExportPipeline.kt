@@ -171,6 +171,8 @@ class ExportPipeline(
                 val trackManager = com.danceanon.native.tracking.TrackManager()
                 var processedFrames = 0
                 var lastProgressEmitTime = 0L
+                var lastPreviewEmitTime = 0L
+                val previewFile = File(context.cacheDir, "export_preview_${jobId}.jpg")
                 val stMatrix = floatArrayOf(
                     1f, 0f, 0f, 0f,
                     0f, 1f, 0f, 0f,
@@ -250,7 +252,7 @@ class ExportPipeline(
 
                         encoder.drainEncoder(muxer, endOfStream = false)
 
-                        // Emit progress
+                        // Emit progress & real-time rendered frame snapshot
                         val now = System.currentTimeMillis()
                         if (now - lastProgressEmitTime > 200 || processedFrames % 5 == 0) {
                             lastProgressEmitTime = now
@@ -258,11 +260,25 @@ class ExportPipeline(
                             val currentFps = if (elapsedSec > 0) processedFrames / elapsedSec else 0.0
                             val progress = (processedFrames.toDouble() / totalFrames).coerceIn(0.0, 0.99)
 
+                            if (now - lastPreviewEmitTime > 300) {
+                                lastPreviewEmitTime = now
+                                try {
+                                    val previewBmp = glRenderer.captureRenderedFrame()
+                                    if (previewBmp != null) {
+                                        java.io.FileOutputStream(previewFile).use { out ->
+                                            previewBmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 75, out)
+                                        }
+                                        previewBmp.recycle()
+                                    }
+                                } catch (_: Throwable) {}
+                            }
+
                             status = status.copy(
                                 state = "processing",
                                 currentFrame = processedFrames.toLong(),
                                 fps = currentFps,
-                                progress = progress
+                                progress = progress,
+                                outputUri = if (previewFile.exists()) previewFile.absolutePath else null
                             )
                             emitProgress(status, onStatusChange)
                         }

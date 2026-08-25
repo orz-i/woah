@@ -1,6 +1,7 @@
 package com.danceanon.native.render
 
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.opengl.GLES11Ext
 import android.opengl.GLES20
 import com.danceanon.native.bridge.EffectConfigDto
@@ -22,6 +23,7 @@ class GlRenderer : FrameRenderer {
     private val fboWidth = 640
     private val fboHeight = 640
     private var fboBuffer: ByteBuffer? = null
+    private var captureBuffer: ByteBuffer? = null
 
     private val follower = com.danceanon.native.camera.SmoothFollower()
     private val identityMatrix = floatArrayOf(
@@ -100,6 +102,7 @@ class GlRenderer : FrameRenderer {
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
 
         fboBuffer = ByteBuffer.allocateDirect(fboWidth * fboHeight * 4).order(ByteOrder.nativeOrder())
+        captureBuffer = ByteBuffer.allocateDirect(width * height * 4).order(ByteOrder.nativeOrder())
     }
 
     fun captureFrameForInference(frameTexture: Int, texMatrix: FloatArray?): Bitmap? {
@@ -145,6 +148,21 @@ class GlRenderer : FrameRenderer {
         buf.rewind()
         bmp.copyPixelsFromBuffer(buf)
         return bmp
+    }
+
+    fun captureRenderedFrame(): Bitmap? {
+        val buf = captureBuffer ?: return null
+        buf.rewind()
+        GLES20.glReadPixels(0, 0, width, height, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buf)
+        val fullBmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        buf.rewind()
+        fullBmp.copyPixelsFromBuffer(buf)
+
+        // Flip vertically because glReadPixels reads bottom-to-top
+        val matrix = Matrix().apply { postScale(1f, -1f) }
+        val flipped = Bitmap.createBitmap(fullBmp, 0, 0, width, height, matrix, true)
+        fullBmp.recycle()
+        return flipped
     }
 
     fun render(
@@ -193,9 +211,9 @@ class GlRenderer : FrameRenderer {
             else -> if (effects.skinWhiten > 0) 4 else if (effects.legStretchEnabled) 5 else 0
         }
         GLES20.glUniform1i(GLES20.glGetUniformLocation(programId, "uEffectType"), effectMode)
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uOpacity"), effects.opacity.toFloat())
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uOutlineWidth"), effects.borderWidth.toFloat())
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uBlurRadius"), effects.blurStrength.toFloat())
+        GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uOpacity"), effects.opacity.toFloat().coerceIn(0.1f, 1.0f))
+        GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uOutlineWidth"), effects.borderWidth.toFloat().coerceAtLeast(1.0f))
+        GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uBlurRadius"), effects.blurStrength.toFloat().coerceAtLeast(1.0f))
         GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uSkinWhitenStrength"), effects.skinWhiten.toFloat())
         val legRatio = if (effects.legStretchEnabled) (1.0 + effects.legStretch).toFloat() else 1.0f
         GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uLegStretchRatio"), legRatio)
@@ -218,7 +236,8 @@ class GlRenderer : FrameRenderer {
             cropRect.left, cropRect.top, cropRect.right, cropRect.bottom
         )
 
-        val hasSelected = selectedPersonIds.isNotEmpty() && persons.any { selectedPersonIds.contains(it.id) }
+        val selectedPersons = persons.filter { (selectedPersonIds.isEmpty() || selectedPersonIds.contains(it.id)) && it.mask != null }
+        val hasSelected = selectedPersons.isNotEmpty()
         GLES20.glUniform1i(GLES20.glGetUniformLocation(programId, "uHasMask"), if (hasSelected) 1 else 0)
 
         // Setup base texture (OES external texture from SurfaceTexture)
@@ -229,16 +248,38 @@ class GlRenderer : FrameRenderer {
         // Upload and bind mask texture to Texture 1 if present
         GLES20.glActiveTexture(GLES20.GL_TEXTURE1)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, maskTextureId)
-        val selectedPerson = persons.firstOrNull { selectedPersonIds.contains(it.id) }
-        if (selectedPerson?.mask != null) {
-            val mask = selectedPerson.mask!!
-            mask.buffer.rewind()
-            GLES20.glTexImage2D(
-                GLES20.GL_TEXTURE_2D, 0, GLES20.GL_LUMINANCE,
-                mask.width, mask.height, 0,
-                GLES20.GL_LUMINANCE, GLES20.GL_UNSIGNED_BYTE, mask.buffer
-            )
-            GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uFootY"), selectedPerson.bbox.bottom / height.toFloat())
+        if (hasSelected) {
+            if (selectedPersons.size == 1) {
+                val mask = selectedPersons[0].mask!!
+                mask.buffer.rewind()
+                GLES20.glTexImage2D(
+                    GLES20.GL_TEXTURE_2D, 0, GLES20.GL_LUMINANCE,
+                    mask.width, mask.height, 0,
+                    GLES20.GL_LUMINANCE, GLES20.GL_UNSIGNED_BYTE, mask.buffer
+                )
+            } else {
+                val firstMask = selectedPersons[0].mask!!
+                val totalPixels = firstMask.width * firstMask.height
+                val mergedBuffer = ByteBuffer.allocateDirect(totalPixels)
+                for (i in 0 until totalPixels) {
+                    var maxVal: Byte = 0
+                    for (p in selectedPersons) {
+                        val b = p.mask!!.buffer.get(i)
+                        if ((b.toInt() and 0xFF) > (maxVal.toInt() and 0xFF)) {
+                            maxVal = b
+                        }
+                    }
+                    mergedBuffer.put(maxVal)
+                }
+                mergedBuffer.rewind()
+                GLES20.glTexImage2D(
+                    GLES20.GL_TEXTURE_2D, 0, GLES20.GL_LUMINANCE,
+                    firstMask.width, firstMask.height, 0,
+                    GLES20.GL_LUMINANCE, GLES20.GL_UNSIGNED_BYTE, mergedBuffer
+                )
+            }
+            val lowestFoot = selectedPersons.maxOf { it.bbox.bottom }
+            GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uFootY"), lowestFoot / height.toFloat())
         }
         GLES20.glUniform1i(GLES20.glGetUniformLocation(programId, "uMaskTexture"), 1)
 
