@@ -47,13 +47,22 @@ class DanceNativeApiImpl(
         }
     }
 
+    private val segmenter = com.danceanon.native.inference.YoloLiteRtSegmenter(context)
+    private val cacheManager = com.danceanon.native.storage.CacheManager(context)
+    private val analyzePipeline = com.danceanon.native.pipeline.AnalyzePipeline(context, segmenter, cacheManager)
+
     override suspend fun analyzeVideo(request: AnalyzeRequestDto): AnalyzeResultDto = withContext(Dispatchers.Default) {
-        val cacheId = "analysis_${System.currentTimeMillis()}"
-        AnalyzeResultDto(
-            analysisCacheId = cacheId,
-            videoInfo = probeVideo(request.videoUri),
-            persons = emptyList()
-        )
+        try {
+            analyzePipeline.analyze(request)
+        } catch (e: Exception) {
+            android.util.Log.e("DanceNativeApiImpl", "Failed to analyze video: ${request.videoUri}", e)
+            val cacheId = "analysis_${System.currentTimeMillis()}"
+            AnalyzeResultDto(
+                analysisCacheId = cacheId,
+                videoInfo = probeVideo(request.videoUri),
+                persons = emptyList()
+            )
+        }
     }
 
     override suspend fun getPreviewFrame(request: PreviewRequestDto): PreviewFrameDto = withContext(Dispatchers.Default) {

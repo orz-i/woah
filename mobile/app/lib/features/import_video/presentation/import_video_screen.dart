@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:dance_native/dance_native.dart';
 import '../../../repositories/native_processing_repository.dart';
 import '../domain/video_import_state.dart';
@@ -255,17 +256,13 @@ class ImportVideoScreen extends ConsumerWidget {
         ElevatedButton.icon(
           onPressed: () {
             final project = controller.createProject();
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  '成功创建项目: ${project?.id} (${info.width}x${info.height})，准备进入 Phase 2/3 首帧人物分析',
-                ),
-              ),
-            );
+            if (project != null) {
+              context.push('/person_selection', extra: project);
+            }
           },
           icon: const Icon(Icons.person_search_rounded),
           label: const Text(
-            '下一步：首帧人物分析 (Phase 2/3)',
+            '下一步：首帧人物分析',
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
           ),
           style: ElevatedButton.styleFrom(
