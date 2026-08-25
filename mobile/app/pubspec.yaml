@@ -34,6 +34,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_riverpod: ^2.6.1
   go_router: ^14.8.0
+  file_picker: ^8.1.4
+  video_player: ^2.9.2
   dance_domain:
     path: ../packages/dance_domain
   dance_native:

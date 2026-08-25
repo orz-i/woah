@@ -28,19 +28,23 @@ class DanceNativeApiImpl(
     }
 
     override suspend fun probeVideo(uri: String): VideoInfoDto = withContext(Dispatchers.IO) {
-        // Basic placeholder probe; Phase 1 will implement full MediaMetadataRetriever / MediaExtractor probe
-        VideoInfoDto(
-            codedWidth = 1920L,
-            codedHeight = 1080L,
-            displayWidth = 1920L,
-            displayHeight = 1080L,
-            fps = 30.0,
-            durationMs = 0L,
-            rotation = 0L,
-            videoCodec = "video/avc",
-            audioCodec = "audio/mp4a-latm",
-            hasAudio = true
-        )
+        try {
+            com.danceanon.native.media.VideoProbe.probe(context, uri)
+        } catch (e: Exception) {
+            android.util.Log.e("DanceNativeApiImpl", "Failed to probe video: $uri", e)
+            VideoInfoDto(
+                codedWidth = 1920L,
+                codedHeight = 1080L,
+                displayWidth = 1920L,
+                displayHeight = 1080L,
+                fps = 30.0,
+                durationMs = 0L,
+                rotation = 0L,
+                videoCodec = "video/avc",
+                audioCodec = null,
+                hasAudio = false
+            )
+        }
     }
 
     override suspend fun analyzeVideo(request: AnalyzeRequestDto): AnalyzeResultDto = withContext(Dispatchers.Default) {
