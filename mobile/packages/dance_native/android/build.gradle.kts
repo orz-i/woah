@@ -72,6 +72,7 @@ kotlin {
 }
 
 dependencies {
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.18.0")
     implementation("org.tensorflow:tensorflow-lite:2.16.1")
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("org.mockito:mockito-core:5.0.0")

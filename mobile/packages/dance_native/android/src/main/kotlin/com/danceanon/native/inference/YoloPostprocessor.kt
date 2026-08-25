@@ -22,6 +22,109 @@ object YoloPostprocessor {
     private const val ATTR_COUNT = 116
     private const val ANCHOR_COUNT = 8400
 
+    fun postprocessBuffer(
+        output0Buffer: java.nio.FloatBuffer,
+        output1Buffer: java.nio.FloatBuffer,
+        preprocess: PreprocessResult,
+        confThreshold: Float = 0.25f,
+        iouThreshold: Float = 0.50f
+    ): List<PersonDetection> {
+        val candidates = mutableListOf<RawCandidate>()
+
+        // 1. Parse raw output0 [1, 116, 8400]
+        for (i in 0 until ANCHOR_COUNT) {
+            val conf = output0Buffer.get(4 * ANCHOR_COUNT + i)
+            if (conf >= confThreshold) {
+                val cx = output0Buffer.get(0 * ANCHOR_COUNT + i)
+                val cy = output0Buffer.get(1 * ANCHOR_COUNT + i)
+                val w = output0Buffer.get(2 * ANCHOR_COUNT + i)
+                val h = output0Buffer.get(3 * ANCHOR_COUNT + i)
+
+                val x1 = cx - w / 2f
+                val y1 = cy - h / 2f
+                val x2 = cx + w / 2f
+                val y2 = cy + h / 2f
+
+                val coeffs = FloatArray(PROTO_CHANNELS) { k ->
+                    output0Buffer.get((84 + k) * ANCHOR_COUNT + i)
+                }
+
+                candidates.add(
+                    RawCandidate(
+                        x1 = x1,
+                        y1 = y1,
+                        x2 = x2,
+                        y2 = y2,
+                        confidence = conf,
+                        maskCoeffs = coeffs
+                    )
+                )
+            }
+        }
+
+        // 2. Perform Non-Maximum Suppression (NMS)
+        val kept = nms(candidates, iouThreshold)
+
+        // 3. Process kept detections: map coordinates and generate masks
+        val detections = mutableListOf<PersonDetection>()
+        val protoPixels = PROTO_SIZE * PROTO_SIZE
+
+        for (cand in kept) {
+            val srcX1 = ((cand.x1 - preprocess.padLeft) / preprocess.scale).coerceIn(0f, preprocess.srcWidth.toFloat())
+            val srcY1 = ((cand.y1 - preprocess.padTop) / preprocess.scale).coerceIn(0f, preprocess.srcHeight.toFloat())
+            val srcX2 = ((cand.x2 - preprocess.padLeft) / preprocess.scale).coerceIn(0f, preprocess.srcWidth.toFloat())
+            val srcY2 = ((cand.y2 - preprocess.padTop) / preprocess.scale).coerceIn(0f, preprocess.srcHeight.toFloat())
+
+            val bbox = FloatRect(left = srcX1, top = srcY1, right = srcX2, bottom = srcY2)
+
+            val maskBuffer = ByteBuffer.allocateDirect(PROTO_SIZE * PROTO_SIZE)
+            maskBuffer.order(ByteOrder.nativeOrder())
+
+            val protoX1 = ((cand.x1 / preprocess.inputSize) * PROTO_SIZE).toInt().coerceIn(0, PROTO_SIZE)
+            val protoY1 = ((cand.y1 / preprocess.inputSize) * PROTO_SIZE).toInt().coerceIn(0, PROTO_SIZE)
+            val protoX2 = ((cand.x2 / preprocess.inputSize) * PROTO_SIZE).toInt().coerceIn(0, PROTO_SIZE)
+            val protoY2 = ((cand.y2 / preprocess.inputSize) * PROTO_SIZE).toInt().coerceIn(0, PROTO_SIZE)
+
+            for (py in 0 until PROTO_SIZE) {
+                for (px in 0 until PROTO_SIZE) {
+                    if (px in protoX1 until protoX2 && py in protoY1 until protoY2) {
+                        var sum = 0f
+                        val pixelOffset = py * PROTO_SIZE + px
+                        for (c in 0 until PROTO_CHANNELS) {
+                            sum += cand.maskCoeffs[c] * output1Buffer.get(c * protoPixels + pixelOffset)
+                        }
+                        val prob = 1f / (1f + exp(-sum))
+                        val byteVal = if (prob > 0.5f) 255.toByte() else 0.toByte()
+                        maskBuffer.put(byteVal)
+                    } else {
+                        maskBuffer.put(0.toByte())
+                    }
+                }
+            }
+            maskBuffer.rewind()
+
+            val nativeMask = NativeMask(
+                width = PROTO_SIZE,
+                height = PROTO_SIZE,
+                buffer = maskBuffer,
+                originalWidth = preprocess.srcWidth,
+                originalHeight = preprocess.srcHeight
+            )
+
+            detections.add(
+                PersonDetection(
+                    bbox = bbox,
+                    confidence = cand.confidence,
+                    mask = nativeMask,
+                    footY = bbox.bottom
+                )
+            )
+        }
+
+        detections.sortBy { it.bbox.centerX }
+        return detections
+    }
+
     fun postprocess(
         output0: Array<Array<FloatArray>>, // [1, 116, 8400] or flattened
         output1: Array<Array<Array<FloatArray>>>, // [1, 32, 160, 160]

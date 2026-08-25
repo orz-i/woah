@@ -1,16 +1,15 @@
 package com.danceanon.native.inference
 
+import ai.onnxruntime.OnnxTensor
+import ai.onnxruntime.OrtEnvironment
+import ai.onnxruntime.OrtSession
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.tensorflow.lite.Interpreter
 import java.io.File
-import java.io.FileInputStream
 import java.nio.ByteBuffer
-import java.nio.channels.FileChannel
 
 class YoloLiteRtSegmenter(
     private val context: Context,
@@ -18,45 +17,29 @@ class YoloLiteRtSegmenter(
     private val numThreads: Int = 4
 ) : Segmenter {
 
-    private var interpreter: Interpreter? = null
-
-    // Outputs for YOLO11-seg: Output 0 is [1, 116, 8400], Output 1 is [1, 32, 160, 160]
-    private val output0 = Array(1) { Array(116) { FloatArray(8400) } }
-    private val output1 = Array(1) { Array(32) { Array(160) { FloatArray(160) } } }
+    private var ortEnv: OrtEnvironment? = null
+    private var ortSession: OrtSession? = null
 
     override suspend fun initialize() = withContext(Dispatchers.IO) {
-        if (interpreter != null) return@withContext
-
-        val options = Interpreter.Options().apply {
-            setNumThreads(numThreads)
-            setCancellable(true)
-        }
-
-        val byteBuffer: ByteBuffer = if (modelFile != null && modelFile.exists()) {
-            FileInputStream(modelFile).channel.map(
-                FileChannel.MapMode.READ_ONLY,
-                0,
-                modelFile.length()
-            )
-        } else {
-            // Try loading from assets if present, or allocate fallback
-            try {
-                val assetDescriptor = context.assets.openFd("yolo11n-seg-fp32.tflite")
-                FileInputStream(assetDescriptor.fileDescriptor).channel.map(
-                    FileChannel.MapMode.READ_ONLY,
-                    assetDescriptor.startOffset,
-                    assetDescriptor.declaredLength
-                )
-            } catch (_: Exception) {
-                // If model not yet downloaded/loaded, placeholder memory buffer
-                ByteBuffer.allocateDirect(1024)
-            }
-        }
+        if (ortSession != null) return@withContext
 
         try {
-            interpreter = Interpreter(byteBuffer, options)
+            ortEnv = OrtEnvironment.getEnvironment()
+            val sessionOptions = OrtSession.SessionOptions().apply {
+                setIntraOpNumThreads(numThreads)
+                setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
+            }
+
+            val modelBytes = if (modelFile != null && modelFile.exists()) {
+                modelFile.readBytes()
+            } else {
+                context.assets.open("yolo11n-seg.onnx").use { it.readBytes() }
+            }
+
+            ortSession = ortEnv!!.createSession(modelBytes, sessionOptions)
+            android.util.Log.i("YoloLiteRtSegmenter", "✅ ONNX Runtime Session created successfully with yolo11n-seg.onnx (${modelBytes.size / 1024 / 1024} MB)")
         } catch (e: Exception) {
-            android.util.Log.w("YoloLiteRtSegmenter", "TFLite interpreter init placeholder (model file may not be bundled in assets): ${e.message}")
+            android.util.Log.e("YoloLiteRtSegmenter", "Failed to initialize ONNX Runtime: ${e.message}", e)
         }
     }
 
@@ -66,34 +49,35 @@ class YoloLiteRtSegmenter(
         // 1. Preprocess
         val preprocess = YoloPreprocessor.processBitmap(bitmap)
 
-        val detections = if (interpreter != null) {
-            val inputs = arrayOf<Any>(preprocess.byteBuffer)
-            val outputs = mutableMapOf<Int, Any>(
-                0 to output0,
-                1 to output1
-            )
-
-            // 2. Run inference
-            interpreter?.runForMultipleInputsOutputs(inputs, outputs)
-
-            // 3. Postprocess
-            YoloPostprocessor.postprocess(
-                output0 = output0,
-                output1 = output1,
-                preprocess = preprocess
-            )
-        } else {
-            // Fallback placeholder detection if model file is not present in local test
-            val w = bitmap.width.toFloat()
-            val h = bitmap.height.toFloat()
-            listOf(
-                PersonDetection(
-                    bbox = FloatRect(left = w * 0.25f, top = h * 0.15f, right = w * 0.75f, bottom = h * 0.90f),
-                    confidence = 0.92f,
-                    mask = null,
-                    footY = h * 0.90f
+        val detections = if (ortSession != null && ortEnv != null) {
+            try {
+                val inputTensor = OnnxTensor.createTensor(
+                    ortEnv,
+                    preprocess.byteBuffer.asFloatBuffer(),
+                    longArrayOf(1, 3, 640, 640)
                 )
-            )
+                val results = ortSession!!.run(mapOf("images" to inputTensor))
+
+                val out0Tensor = results.get("output0").get() as OnnxTensor
+                val out1Tensor = results.get("output1").get() as OnnxTensor
+
+                val resultList = YoloPostprocessor.postprocessBuffer(
+                    output0Buffer = out0Tensor.floatBuffer,
+                    output1Buffer = out1Tensor.floatBuffer,
+                    preprocess = preprocess,
+                    confThreshold = 0.25f,
+                    iouThreshold = 0.50f
+                )
+
+                inputTensor.close()
+                results.close()
+                resultList
+            } catch (e: Exception) {
+                android.util.Log.e("YoloLiteRtSegmenter", "Inference error: ${e.message}", e)
+                emptyList()
+            }
+        } else {
+            emptyList()
         }
 
         val elapsed = System.currentTimeMillis() - startTime
@@ -111,7 +95,6 @@ class YoloLiteRtSegmenter(
         rotation: Int,
         timestampUs: Long
     ): SegmentationFrame = withContext(Dispatchers.Default) {
-        // Build Bitmap from buffer for preprocessor
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         bitmap.copyPixelsFromBuffer(rgbBuffer)
 
@@ -130,7 +113,9 @@ class YoloLiteRtSegmenter(
     }
 
     override fun close() {
-        interpreter?.close()
-        interpreter = null
+        ortSession?.close()
+        ortSession = null
+        ortEnv?.close()
+        ortEnv = null
     }
 }
