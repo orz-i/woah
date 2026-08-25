@@ -5,7 +5,6 @@ import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Matrix
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -43,7 +42,7 @@ class YoloLiteRtSegmenter(
         }
     }
 
-    suspend fun segmentBitmap(bitmap: Bitmap, timestampUs: Long = 0): SegmentationFrame = withContext(Dispatchers.Default) {
+    fun segmentBitmapSync(bitmap: Bitmap, timestampUs: Long = 0): SegmentationFrame {
         val startTime = System.currentTimeMillis()
 
         // 1. Preprocess
@@ -81,11 +80,15 @@ class YoloLiteRtSegmenter(
         }
 
         val elapsed = System.currentTimeMillis() - startTime
-        SegmentationFrame(
+        return SegmentationFrame(
             timestampUs = timestampUs,
             persons = detections,
             inferenceTimeMs = elapsed
         )
+    }
+
+    suspend fun segmentBitmap(bitmap: Bitmap, timestampUs: Long = 0): SegmentationFrame = withContext(Dispatchers.Default) {
+        segmentBitmapSync(bitmap, timestampUs)
     }
 
     override suspend fun segment(
@@ -97,25 +100,15 @@ class YoloLiteRtSegmenter(
     ): SegmentationFrame = withContext(Dispatchers.Default) {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         bitmap.copyPixelsFromBuffer(rgbBuffer)
-
-        val rotatedBitmap = if (rotation != 0) {
-            val matrix = Matrix().apply { postRotate(rotation.toFloat()) }
-            val rotated = Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, true)
-            bitmap.recycle()
-            rotated
-        } else {
-            bitmap
-        }
-
-        val result = segmentBitmap(rotatedBitmap, timestampUs)
-        rotatedBitmap.recycle()
+        val result = segmentBitmapSync(bitmap, timestampUs)
+        bitmap.recycle()
         result
     }
 
     override fun close() {
-        ortSession?.close()
-        ortSession = null
-        ortEnv?.close()
-        ortEnv = null
+        try {
+            ortSession?.close()
+            ortSession = null
+        } catch (_: Exception) {}
     }
 }

@@ -211,11 +211,28 @@ class ExportPipeline(
                             android.util.Log.w("ExportPipeline", "updateTexImage warning: ${e.message}")
                         }
 
+                        // Run AI segmentation & tracking on the decoded video frame
+                        val inferenceInterval = 1
+                        val detections = if (processedFrames == 1 || processedFrames % inferenceInterval == 0) {
+                            val inferenceBmp = glRenderer.captureFrameForInference(oesTextureId, stMatrix)
+                            if (inferenceBmp != null) {
+                                val seg = segmenter.segmentBitmapSync(inferenceBmp, ptsUs)
+                                inferenceBmp.recycle()
+                                seg.persons
+                            } else {
+                                emptyList()
+                            }
+                        } else {
+                            emptyList()
+                        }
+
                         // Run tracking on detections
                         val trackedList = if (processedFrames == 1) {
-                            trackManager.initialize(emptyList())
+                            trackManager.initialize(detections)
+                        } else if (detections.isNotEmpty()) {
+                            trackManager.update(detections, ptsUs)
                         } else {
-                            trackManager.update(emptyList(), ptsUs)
+                            trackManager.predict(ptsUs)
                         }
 
                         glRenderer.render(
