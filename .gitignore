@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+data/tasks/
+debug/
+input/
+output/
+uploads/
+.DS_Store
+.venv/
+*.xlsx
+sam2_hiera_tiny.pt
+yolo11s-seg.pt

@@ -1,0 +1,26 @@
+# ============================================================
+# 舞蹈视频智能打码/特效渲染系统 - 全局配置 (SAM 2 架构)
+# ============================================================
+
+# ---- YOLO 首帧检测 ----
+model:
+  path: "yolo11s-seg.pt"         # YOLO 分割模型
+  device: "auto"                  # 推理设备: auto(自动) / cuda / mps / cpu
+  conf_threshold: 0.3             # 检测置信度阈值
+  iou_threshold: 0.55             # NMS IoU 阈值
+  imgsz: 1280                     # 推理分辨率
+
+# ---- 追踪引擎 (sam2 | cutie) ----
+tracking:
+  engine: "cutie"                   # 引擎: sam2 / cutie
+  model_path: "sam2_hiera_tiny.pt"  # 权重路径
+
+# ---- 特效参数 ----
+effects:
+  dilate_kernel_size: 3           # 白边宽度
+  temporal_window: 8              # 深度排序窗口
+
+# ---- 默认路径 ----
+paths:
+  input_dir: "data/input"
+  output_dir: "data/output"

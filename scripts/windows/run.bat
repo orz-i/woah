@@ -1,0 +1,10 @@
+@echo off
+cd /d "%~dp0..\.."
+call .venv\Scripts\activate.bat
+echo ========================================
+echo   DanceAnon
+echo   Open http://localhost:8002
+echo   Press Ctrl+C to stop
+echo ========================================
+python -m uvicorn api:app --host 0.0.0.0 --port 8002
+pause
