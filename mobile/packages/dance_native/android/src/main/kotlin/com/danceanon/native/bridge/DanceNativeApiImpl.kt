@@ -94,7 +94,8 @@ class DanceNativeApiImpl(
                     }
                 )
             } catch (e: Throwable) {
-                android.util.Log.e("DanceNativeApiImpl", "Export failed: ${e.message}", e)
+                val stackTraceStr = android.util.Log.getStackTraceString(e)
+                android.util.Log.e("DanceNativeApiImpl", "Export failed: $stackTraceStr", e)
                 val failedStatus = JobStatusDto(
                     jobId = jobId,
                     state = "failed",
@@ -104,9 +105,12 @@ class DanceNativeApiImpl(
                     progress = 0.0,
                     outputUri = null,
                     errorCode = "EXPORT_FAILED",
-                    errorMessage = e.message ?: "Export failed"
+                    errorMessage = "${e.javaClass.simpleName}: ${e.message}\n${e.stackTrace.take(8).joinToString("\n")}"
                 )
                 jobManager.updateStatus(jobId, failedStatus)
+                kotlinx.coroutines.CoroutineScope(Dispatchers.Main).launch {
+                    try { eventEmitter?.onProgressUpdate(failedStatus) } catch (_: Throwable) {}
+                }
             }
         }
 

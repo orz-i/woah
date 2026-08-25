@@ -47,6 +47,8 @@ class ExportState {
 
   bool get isCompleted => status == ExportJobState.completed && outputUri != null;
 
+  bool get isFailed => status == ExportJobState.failed || errorMessage != null;
+
   ExportState copyWith({
     ExportJobState? status,
     String? jobId,

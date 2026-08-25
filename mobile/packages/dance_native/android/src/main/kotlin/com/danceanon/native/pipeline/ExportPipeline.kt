@@ -49,9 +49,18 @@ class ExportPipeline(
         val startTime = System.currentTimeMillis()
         val videoInfo = VideoProbe.probe(context, sourceUri)
 
-        val targetWidth = if (request.targetWidth > 0) request.targetWidth.toInt() else videoInfo.displayWidth.toInt()
-        val targetHeight = if (request.targetHeight > 0) request.targetHeight.toInt() else videoInfo.displayHeight.toInt()
-        val targetFps = if (request.targetFps > 0) request.targetFps.toFloat() else videoInfo.fps.toFloat()
+        var w = if (request.targetWidth > 0) request.targetWidth.toInt() else videoInfo.displayWidth.toInt()
+        var h = if (request.targetHeight > 0) request.targetHeight.toInt() else videoInfo.displayHeight.toInt()
+
+        val maxDim = kotlin.math.max(w, h)
+        if (maxDim > 1920) {
+            val scale = 1920f / maxDim
+            w = (w * scale).toInt()
+            h = (h * scale).toInt()
+        }
+        val targetWidth = ((w + 1) / 2) * 2
+        val targetHeight = ((h + 1) / 2) * 2
+        val targetFps = if (request.targetFps in 1.0..60.0) request.targetFps.toFloat() else 30.0f
 
         val finalOutFile = if (request.outputFilePath.startsWith("/tmp") || !request.outputFilePath.startsWith("/")) {
             val exportDir = File(context.cacheDir, "exports")
@@ -240,12 +249,14 @@ class ExportPipeline(
             )
             emitProgress(status, onStatusChange)
 
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             tempOutFile.delete()
+            val stackTraceStr = android.util.Log.getStackTraceString(e)
+            android.util.Log.e("ExportPipeline", "Export failed: $stackTraceStr", e)
             status = status.copy(
                 state = "failed",
                 errorCode = "EXPORT_FAILED",
-                errorMessage = e.message ?: "Export failed"
+                errorMessage = "${e.javaClass.simpleName}: ${e.message}\n${e.stackTrace.take(8).joinToString("\n")}"
             )
             emitProgress(status, onStatusChange)
         } finally {

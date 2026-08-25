@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dance_domain/dance_domain.dart';
@@ -23,12 +24,87 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final outPath = 'export_$timestamp.mp4';
-      ref
-          .read(exportControllerProvider.notifier)
-          .startExport(widget.project, outPath);
+      _startExportJob();
     });
+  }
+
+  void _startExportJob() {
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final outPath = 'export_$timestamp.mp4';
+    ref
+        .read(exportControllerProvider.notifier)
+        .startExport(widget.project, outPath);
+  }
+
+  void _showErrorDialog(BuildContext context, String error) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.redAccent),
+            SizedBox(width: 8),
+            Text('导出失败详情'),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  '以下为底层的完整错误堆栈，您可以一键复制并反馈：',
+                  style: TextStyle(fontSize: 13, color: Colors.white70),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.black45,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: SelectableText(
+                    error,
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                      color: Colors.redAccent,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          ElevatedButton.icon(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: error));
+              Navigator.of(ctx).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  backgroundColor: Colors.green,
+                  content: Text('📋 错误日志已复制到剪贴板！'),
+                ),
+              );
+            },
+            icon: const Icon(Icons.copy_rounded),
+            label: const Text('复制错误信息'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.deepPurpleAccent,
+              foregroundColor: Colors.white,
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('关闭'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -44,6 +120,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     });
 
     final percent = (state.progress * 100).toStringAsFixed(1);
+    final isFailed = state.isFailed || state.errorMessage != null;
 
     return Scaffold(
       appBar: AppBar(
@@ -52,6 +129,14 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
           icon: const Icon(Icons.close),
           onPressed: () => _confirmCancel(context, controller),
         ),
+        actions: [
+          if (isFailed)
+            IconButton(
+              icon: const Icon(Icons.bug_report_rounded, color: Colors.redAccent),
+              tooltip: '查看错误日志',
+              onPressed: () => _showErrorDialog(context, state.errorMessage ?? '未知错误'),
+            ),
+        ],
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -70,11 +155,11 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                     width: 220,
                     height: 220,
                     child: CircularProgressIndicator(
-                      value: state.progress > 0 ? state.progress : null,
+                      value: isFailed ? 1.0 : (state.progress > 0 ? state.progress : null),
                       strokeWidth: 10,
                       backgroundColor: Colors.white12,
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                        Colors.deepPurpleAccent,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        isFailed ? Colors.redAccent : Colors.deepPurpleAccent,
                       ),
                     ),
                   ),
@@ -85,26 +170,39 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Text(
-                          '$percent%',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 38,
-                            fontWeight: FontWeight.bold,
-                            fontFeatures: [FontFeature.tabularFigures()],
+                        if (isFailed) ...[
+                          const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 48),
+                          const SizedBox(height: 8),
+                          const Text(
+                            '导出失败',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.redAccent,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${state.fps.toStringAsFixed(1)} FPS',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.white60,
-                            fontWeight: FontWeight.w600,
-                            fontFeatures: [FontFeature.tabularFigures()],
+                        ] else ...[
+                          Text(
+                            '$percent%',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 38,
+                              fontWeight: FontWeight.bold,
+                              fontFeatures: [FontFeature.tabularFigures()],
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${state.fps.toStringAsFixed(1)} FPS',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.white60,
+                              fontWeight: FontWeight.w600,
+                              fontFeatures: [FontFeature.tabularFigures()],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -112,33 +210,56 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               ),
               const SizedBox(height: 48),
 
-              // Fixed height and strictly centered Status Description
+              // Status Description or Failure Details
               SizedBox(
-                height: 72,
+                height: 84,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
-                      _getStatusTitle(state.status),
+                      isFailed
+                          ? (state.errorMessage?.split('\n').firstOrNull ?? '渲染导出遇到异常中断')
+                          : _getStatusTitle(state.status),
                       textAlign: TextAlign.center,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
+                            color: isFailed ? Colors.redAccent : Colors.white,
                           ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      '已处理 ${state.currentFrame} / ${state.totalFrames} 帧',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white60,
-                        fontSize: 13,
-                        fontFeatures: [FontFeature.tabularFigures()],
+                    if (isFailed)
+                      InkWell(
+                        onTap: () => _showErrorDialog(context, state.errorMessage ?? '未知错误'),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.copy_rounded, size: 14, color: Colors.deepPurpleAccent),
+                            SizedBox(width: 4),
+                            Text(
+                              '点击复制完整错误日志',
+                              style: TextStyle(
+                                color: Colors.deepPurpleAccent,
+                                fontSize: 13,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      Text(
+                        '已处理 ${state.currentFrame} / ${state.totalFrames} 帧',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white60,
+                          fontSize: 13,
+                          fontFeatures: [FontFeature.tabularFigures()],
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -146,28 +267,62 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: state.isProcessing
-          ? SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                child: OutlinedButton.icon(
-                  onPressed: () => _confirmCancel(context, controller),
-                  icon: const Icon(Icons.cancel_outlined, color: Colors.redAccent),
-                  label: const Text(
-                    '取消导出',
-                    style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: Colors.redAccent.withAlpha(100)),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          child: isFailed
+              ? Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.arrow_back),
+                        label: const Text('返回调节'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ),
-            )
-          : null,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _startExportJob,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('重试导出'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepPurpleAccent,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : (state.isProcessing
+                  ? OutlinedButton.icon(
+                      onPressed: () => _confirmCancel(context, controller),
+                      icon: const Icon(Icons.cancel_outlined, color: Colors.redAccent),
+                      label: const Text(
+                        '取消导出',
+                        style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.redAccent.withAlpha(100)),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink()),
+        ),
+      ),
     );
   }
 
