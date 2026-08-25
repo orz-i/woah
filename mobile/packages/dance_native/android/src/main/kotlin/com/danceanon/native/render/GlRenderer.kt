@@ -41,6 +41,7 @@ class GlRenderer : FrameRenderer {
         if (linkStatus[0] == 0) {
             val log = GLES20.glGetProgramInfoLog(programId)
             android.util.Log.e("GlRenderer", "Program link failed: $log")
+            throw RuntimeException("Program link failed: $log")
         }
 
         // Quad vertices & texcoords (x, y, u, v)
@@ -204,6 +205,7 @@ class GlRenderer : FrameRenderer {
         if (compiled[0] == 0) {
             val log = GLES20.glGetShaderInfoLog(shader)
             android.util.Log.e("GlRenderer", "Shader compilation failed ($type): $log")
+            throw RuntimeException("Shader compilation failed ($type): $log")
         }
         return shader
     }
