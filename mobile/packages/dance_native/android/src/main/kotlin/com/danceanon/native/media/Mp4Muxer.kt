@@ -14,8 +14,10 @@ class Mp4Muxer(
     private val tempFile = File(outputPath)
     private val muxer: MediaMuxer = MediaMuxer(tempFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
 
-    private var videoTrackIndex = -1
-    private var audioTrackIndex = -1
+    var videoTrackIndex: Int = -1
+        private set
+    var audioTrackIndex: Int = -1
+        private set
     private var isStarted = false
     private var addedTracks = 0
     private val lock = Any()
@@ -47,6 +49,20 @@ class Mp4Muxer(
         if (!isStarted && addedTracks > 0) {
             muxer.start()
             isStarted = true
+        }
+    }
+
+    fun writeVideoSample(byteBuf: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) = synchronized(lock) {
+        if (!isStarted || videoTrackIndex < 0) return
+        if (bufferInfo.size > 0 && bufferInfo.presentationTimeUs >= 0) {
+            muxer.writeSampleData(videoTrackIndex, byteBuf, bufferInfo)
+        }
+    }
+
+    fun writeAudioSample(byteBuf: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) = synchronized(lock) {
+        if (!isStarted || audioTrackIndex < 0) return
+        if (bufferInfo.size > 0 && bufferInfo.presentationTimeUs >= 0) {
+            muxer.writeSampleData(audioTrackIndex, byteBuf, bufferInfo)
         }
     }
 

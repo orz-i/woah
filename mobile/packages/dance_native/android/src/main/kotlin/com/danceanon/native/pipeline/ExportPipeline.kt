@@ -150,7 +150,7 @@ class ExportPipeline(
                     eglCore.setPresentationTime(eglSurface, ptsUs * 1000L)
                     eglCore.swapBuffers(eglSurface)
 
-                    encoder.drainEncoder(muxer, 0, endOfStream = false)
+                    encoder.drainEncoder(muxer, endOfStream = false)
 
                     // Emit progress
                     val now = System.currentTimeMillis()
@@ -183,11 +183,11 @@ class ExportPipeline(
             }
 
             // Drain remaining encoder output
-            encoder.drainEncoder(muxer, 0, endOfStream = true)
+            encoder.drainEncoder(muxer, endOfStream = true)
 
             // Copy audio
             if (hasAudioTrack && audioCopier.audioTrackIndexInSource >= 0) {
-                audioCopier.copyToMuxer(muxer, 1)
+                audioCopier.copyToMuxer(muxer)
             }
 
             // Close pipeline

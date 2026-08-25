@@ -38,7 +38,7 @@ class AudioTrackCopier(
         return false
     }
 
-    fun copyToMuxer(muxer: Mp4Muxer, muxerAudioTrackIndex: Int, bufferCapacity: Int = 256 * 1024) {
+    fun copyToMuxer(muxer: Mp4Muxer, bufferCapacity: Int = 256 * 1024) {
         if (audioTrackIndexInSource < 0) return
 
         val buffer = ByteBuffer.allocateDirect(bufferCapacity)
@@ -53,7 +53,7 @@ class AudioTrackCopier(
             bufferInfo.presentationTimeUs = extractor.sampleTime
             bufferInfo.flags = extractor.sampleFlags
 
-            muxer.writeSampleData(muxerAudioTrackIndex, buffer, bufferInfo)
+            muxer.writeAudioSample(buffer, bufferInfo)
             extractor.advance()
         }
     }

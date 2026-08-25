@@ -54,19 +54,17 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Spacer(),
+              const SizedBox(height: 60),
               // Circular Progress Ring
               Stack(
                 alignment: Alignment.center,
                 children: [
                   SizedBox(
-                    width: 180,
-                    height: 180,
+                    width: 200,
+                    height: 200,
                     child: CircularProgressIndicator(
                       value: state.progress > 0 ? state.progress : null,
                       strokeWidth: 10,
@@ -82,7 +80,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       Text(
                         '$percent%',
                         style: const TextStyle(
-                          fontSize: 36,
+                          fontSize: 38,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -90,7 +88,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       Text(
                         '${state.fps.toStringAsFixed(1)} FPS',
                         style: const TextStyle(
-                          fontSize: 13,
+                          fontSize: 14,
                           color: Colors.white60,
                           fontWeight: FontWeight.w600,
                         ),
@@ -99,47 +97,55 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 36),
+              const SizedBox(height: 40),
 
-              // Status Description
-              Text(
-                _getStatusTitle(state.status),
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+              // Fixed height Status Container to prevent layout drift
+              SizedBox(
+                height: 80,
+                child: Column(
+                  children: [
+                    Text(
+                      _getStatusTitle(state.status),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                     ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '已处理 ${state.currentFrame} / ${state.totalFrames} 帧',
-                style: const TextStyle(color: Colors.white60, fontSize: 13),
+                    const SizedBox(height: 8),
+                    Text(
+                      '已处理 ${state.currentFrame} / ${state.totalFrames} 帧',
+                      style: const TextStyle(color: Colors.white60, fontSize: 13),
+                    ),
+                  ],
+                ),
               ),
               const Spacer(),
-
-              // Cancel button
-              if (state.isProcessing)
-                OutlinedButton.icon(
-                  onPressed: () => _confirmCancel(context, controller),
-                  icon: const Icon(Icons.cancel_outlined, color: Colors.redAccent),
-                  label: const Text(
-                    '取消导出',
-                    style: TextStyle(color: Colors.redAccent),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: Colors.redAccent.withAlpha(100)),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 14,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 16),
             ],
           ),
         ),
       ),
+      bottomNavigationBar: state.isProcessing
+          ? SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                child: OutlinedButton.icon(
+                  onPressed: () => _confirmCancel(context, controller),
+                  icon: const Icon(Icons.cancel_outlined, color: Colors.redAccent),
+                  label: const Text(
+                    '取消导出',
+                    style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: Colors.redAccent.withAlpha(100)),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+            )
+          : null,
     );
   }
 

@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'package:flutter/services.dart';
 import 'package:dance_domain/dance_domain.dart';
 import 'bridge/dance_api.g.dart';
 import 'mappers.dart';
 
 /// Concrete client for interacting with Android / iOS native engine via Pigeon
 class DanceNativeClient implements DanceProcessingEvents {
+  static const MethodChannel _channel = MethodChannel('dance_native');
   final DanceNativeApi _api;
   final StreamController<JobStatusDto> _progressController =
       StreamController<JobStatusDto>.broadcast();
@@ -98,6 +100,11 @@ class DanceNativeClient implements DanceProcessingEvents {
   /// Free native memory and cache for a project
   Future<void> releaseProject(String projectId) {
     return _api.releaseProject(projectId);
+  }
+
+  /// Save exported MP4 video to Android MediaStore System Gallery
+  Future<String?> saveVideoToGallery(String filePath) async {
+    return _channel.invokeMethod<String>('saveVideoToGallery', {'filePath': filePath});
   }
 
   void dispose() {

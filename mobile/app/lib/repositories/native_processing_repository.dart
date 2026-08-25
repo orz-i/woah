@@ -93,4 +93,9 @@ class NativeProcessingRepository {
   Future<void> releaseProject(String projectId) {
     return _client.releaseProject(projectId);
   }
+
+  Future<String?> saveVideoToGallery(String filePath) {
+    AppLogger.d('NativeRepository', 'Saving video to system gallery: $filePath');
+    return _client.saveVideoToGallery(filePath);
+  }
 }

@@ -34,7 +34,7 @@ class VideoEncoder(
         return inputSurface!!
     }
 
-    fun drainEncoder(muxer: Mp4Muxer, muxerTrackIndex: Int, endOfStream: Boolean) {
+    fun drainEncoder(muxer: Mp4Muxer, endOfStream: Boolean) {
         if (!isStarted) return
 
         if (endOfStream) {
@@ -58,7 +58,7 @@ class VideoEncoder(
                 if (bufferInfo.size > 0) {
                     outputBuffer.position(bufferInfo.offset)
                     outputBuffer.limit(bufferInfo.offset + bufferInfo.size)
-                    muxer.writeSampleData(muxerTrackIndex, outputBuffer, bufferInfo)
+                    muxer.writeVideoSample(outputBuffer, bufferInfo)
                 }
 
                 codec.releaseOutputBuffer(status, false)

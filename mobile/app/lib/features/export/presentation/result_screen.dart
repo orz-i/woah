@@ -1,10 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../domain/export_state.dart';
+import '../../../repositories/native_processing_repository.dart';
 import '../../import_video/presentation/widgets/video_preview_player.dart';
 
-class ResultScreen extends StatelessWidget {
+class ResultScreen extends ConsumerStatefulWidget {
   final ExportState exportState;
 
   const ResultScreen({
@@ -13,9 +15,60 @@ class ResultScreen extends StatelessWidget {
   });
 
   @override
+  ConsumerState<ResultScreen> createState() => _ResultScreenState();
+}
+
+class _ResultScreenState extends ConsumerState<ResultScreen> {
+  bool _isSaving = false;
+  bool _isSaved = false;
+  String? _savedUri;
+
+  @override
+  void initState() {
+    super.initState();
+    // Automatically save to MediaStore on complete
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _saveToGallery();
+    });
+  }
+
+  Future<void> _saveToGallery() async {
+    final outputPath = widget.exportState.outputUri;
+    if (outputPath == null || outputPath.isEmpty || _isSaved || _isSaving) return;
+
+    setState(() => _isSaving = true);
+    try {
+      final uri = await ref.read(nativeRepositoryProvider).saveVideoToGallery(outputPath);
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+          _isSaved = true;
+          _savedUri = uri;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: Colors.green,
+            content: Text('🎉 视频已成功保存至系统相册 (Movies/DanceAnon)！'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.redAccent,
+            content: Text('保存至相册失败: $e'),
+          ),
+        );
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final outputPath = exportState.outputUri ?? '';
-    final project = exportState.project;
+    final outputPath = widget.exportState.outputUri ?? '';
+    final project = widget.exportState.project;
     final file = File(outputPath);
     final fileSizeMb = file.existsSync()
         ? (file.lengthSync() / (1024 * 1024)).toStringAsFixed(1)
@@ -70,11 +123,15 @@ class ResultScreen extends StatelessWidget {
                         '${project?.videoInfo.width ?? 1920} × ${project?.videoInfo.height ?? 1080}',
                       ),
                       const SizedBox(height: 8),
-                      _buildRow('处理平均帧率', '${exportState.fps.toStringAsFixed(1)} FPS'),
+                      _buildRow('处理平均帧率', '${widget.exportState.fps.toStringAsFixed(1)} FPS'),
                       const SizedBox(height: 8),
                       _buildRow('已遮挡人物数', '${project?.selectedPersonIds.length ?? 0} 人'),
                       const SizedBox(height: 8),
                       _buildRow('音频保留', project?.videoInfo.hasAudio == true ? '无损 AAC' : '无'),
+                      if (_savedUri != null) ...[
+                        const SizedBox(height: 8),
+                        _buildRow('相册位置', '系统相册 (Movies/DanceAnon)'),
+                      ],
                     ],
                   ),
                 ),
@@ -83,20 +140,24 @@ class ResultScreen extends StatelessWidget {
 
               // 3. Action Buttons
               ElevatedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('已保存至系统相册: $outputPath'),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.save_alt_rounded),
-                label: const Text(
-                  '保存到系统相册 (Save to MediaStore)',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                onPressed: _isSaving ? null : _saveToGallery,
+                icon: _isSaving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : Icon(_isSaved ? Icons.check_circle_outline : Icons.save_alt_rounded),
+                label: Text(
+                  _isSaving
+                      ? '正在写入系统相册...'
+                      : _isSaved
+                          ? '已成功存至系统相册 (Movies/DanceAnon)'
+                          : '保存到系统相册 (Save to MediaStore)',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurpleAccent,
+                  backgroundColor: _isSaved ? Colors.green.shade700 : Colors.deepPurpleAccent,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
