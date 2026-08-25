@@ -16,6 +16,7 @@ class GlRenderer : FrameRenderer {
     private var width = 0
     private var height = 0
     private var maskTextureId = 0
+    private val follower = com.danceanon.native.camera.SmoothFollower()
 
     override fun initialize(width: Int, height: Int) {
         this.width = width
@@ -110,6 +111,23 @@ class GlRenderer : FrameRenderer {
         GLES30.glUniform1f(GLES30.glGetUniformLocation(programId, "uSkinWhitenStrength"), effects.skinWhitenStrength.toFloat())
         GLES30.glUniform1f(GLES30.glGetUniformLocation(programId, "uLegStretchRatio"), effects.legStretchRatio.toFloat())
         GLES30.glUniform2f(GLES30.glGetUniformLocation(programId, "uTexelSize"), 1f / width.coerceAtLeast(1), 1f / height.coerceAtLeast(1))
+
+        // Follow Crop Mapping
+        val cropRect = if (follow.enabled && follow.targetPersonId != null) {
+            val target = persons.firstOrNull { it.id == follow.targetPersonId!!.toInt() }
+            if (target != null) {
+                val cx = (target.bbox.centerX / width.toFloat()).coerceIn(0f, 1f)
+                val cy = (target.bbox.centerY / height.toFloat()).coerceIn(0f, 1f)
+                follower.update(cx, cy, follow.smoothFactor.toFloat())
+            }
+            follower.computeCropRect(follow.zoom.toFloat())
+        } else {
+            com.danceanon.native.inference.FloatRect(0f, 0f, 1f, 1f)
+        }
+        GLES30.glUniform4f(
+            GLES30.glGetUniformLocation(programId, "uCropRect"),
+            cropRect.left, cropRect.top, cropRect.right, cropRect.bottom
+        )
 
         val hasSelected = selectedPersonIds.isNotEmpty() && persons.any { selectedPersonIds.contains(it.id) }
         GLES30.glUniform1i(GLES30.glGetUniformLocation(programId, "uHasMask"), if (hasSelected) 1 else 0)

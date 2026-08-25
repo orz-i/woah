@@ -59,7 +59,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
               const Divider(height: 32),
 
               // 3. Dynamic Controls based on selected mode
-              _buildDynamicControls(context, effects, controller),
+              _buildDynamicControls(context, state, controller),
             ],
           ),
         ),
@@ -143,9 +143,10 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
 
   Widget _buildDynamicControls(
     BuildContext context,
-    EffectConfig effects,
+    EffectEditorState state,
     EffectEditorController controller,
   ) {
+    final effects = state.effects;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -229,6 +230,48 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
             max: 0.35,
             displayValue: '+${(effects.legStretch * 100).toInt()}%',
             onChanged: (val) => controller.updateLegStretch(enabled: true, stretch: val),
+          ),
+        ],
+
+        // 4. Follow Crop Controls
+        const Divider(height: 32),
+        Text(
+          '智能运镜追踪 (Follow Crop)',
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('锁定主角平滑运镜', style: TextStyle(fontSize: 13, color: Colors.white70)),
+            Switch(
+              value: state.project?.follow.enabled ?? false,
+              onChanged: (val) => controller.updateFollowConfig(
+                enabled: val,
+                targetPersonId: state.project?.selectedPersonIds.firstOrNull ?? 0,
+              ),
+              activeThumbColor: Colors.deepPurpleAccent,
+            ),
+          ],
+        ),
+        if (state.project?.follow.enabled == true) ...[
+          _buildSlider(
+            label: '镜头缩放倍率 (Zoom)',
+            value: state.project?.follow.zoom ?? 1.2,
+            min: 1.0,
+            max: 2.0,
+            displayValue: '${(state.project?.follow.zoom ?? 1.2).toStringAsFixed(1)}x',
+            onChanged: (val) => controller.updateFollowConfig(zoom: val),
+          ),
+          _buildSlider(
+            label: '运镜平滑系数 (Smooth)',
+            value: state.project?.follow.smoothFactor ?? 0.10,
+            min: 0.05,
+            max: 0.30,
+            displayValue: (state.project?.follow.smoothFactor ?? 0.10).toStringAsFixed(2),
+            onChanged: (val) => controller.updateFollowConfig(smoothFactor: val),
           ),
         ],
       ],

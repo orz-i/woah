@@ -6,10 +6,14 @@ object GlShaders {
         #version 300 es
         layout(location = 0) in vec4 aPosition;
         layout(location = 1) in vec2 aTexCoord;
+        uniform vec4 uCropRect; // (left, top, right, bottom)
         out vec2 vTexCoord;
         void main() {
             gl_Position = aPosition;
-            vTexCoord = aTexCoord;
+            vTexCoord = vec2(
+                mix(uCropRect.x, uCropRect.z, aTexCoord.x),
+                mix(uCropRect.y, uCropRect.w, aTexCoord.y)
+            );
         }
     """.trimIndent()
 

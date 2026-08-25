@@ -71,6 +71,28 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
     );
   }
 
+  void updateFollowConfig({
+    bool? enabled,
+    int? targetPersonId,
+    double? zoom,
+    double? smoothFactor,
+  }) {
+    final proj = state.project;
+    if (proj == null) return;
+
+    final currentFollow = proj.follow;
+    final updatedFollow = currentFollow.copyWith(
+      enabled: enabled ?? currentFollow.enabled,
+      targetPersonId: targetPersonId ?? currentFollow.targetPersonId,
+      zoom: zoom ?? currentFollow.zoom,
+      smoothFactor: smoothFactor ?? currentFollow.smoothFactor,
+    );
+
+    state = state.copyWith(
+      project: proj.copyWith(follow: updatedFollow),
+    );
+  }
+
   DanceProject? buildConfiguredProject() {
     final proj = state.project;
     if (proj == null) return null;
