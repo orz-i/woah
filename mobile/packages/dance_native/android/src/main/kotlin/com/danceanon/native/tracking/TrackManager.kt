@@ -178,9 +178,9 @@ class TrackManager(
                 track.missedFrames++
                 track.bbox = predBox
 
-                // Warp low-res mask based on previous -> predicted bbox motion
+                // Update mask for LOST tracks: warp for frames 1..3, conservative bbox fallback for frames >= 4
                 if (track.mask != null) {
-                    track.mask = warpMask(
+                    track.mask = updateLostMask(
                         sourceMask = track.mask!!,
                         prevBbox = prevBox,
                         predBbox = predBox,
@@ -221,13 +221,11 @@ class TrackManager(
                 val maxAllowedDist = max(lost.bbox.width, lost.bbox.height) * 0.8f
                 val isNearby = bIoU > 0.05f || dist < maxAllowedDist
 
-
                 if (isNearby && dist < bestDist) {
                     bestDist = dist
                     bestTrack = lost
                 }
             }
-
 
             if (bestTrack != null) {
                 bestTrack.bbox = det.bbox
@@ -249,7 +247,6 @@ class TrackManager(
             }
         }
 
-
         // 6. Filter out REMOVED tracks
         tracks.removeAll { it.state == TrackState.REMOVED }
 
@@ -263,7 +260,7 @@ class TrackManager(
             track.missedFrames++
             track.bbox = predBox
             if (track.mask != null) {
-                track.mask = warpMask(
+                track.mask = updateLostMask(
                     sourceMask = track.mask!!,
                     prevBbox = prevBox,
                     predBbox = predBox,
@@ -284,15 +281,17 @@ class TrackManager(
         return activeOrLost
     }
 
-
     override fun reset() {
         tracks.clear()
         nextTrackId = 0
         hasInitialized = false
     }
 
-
     companion object {
+        const val LOST_WARP_MAX_FRAMES = 3
+        const val LOST_MARGIN_TIER1_RATIO = 0.15f // 15% margin for frames 4..10
+        const val LOST_MARGIN_TIER2_RATIO = 0.25f // 25% margin for frames > 10
+
         fun computeBBoxIoU(boxA: FloatRect, boxB: FloatRect): Float {
             val interX1 = max(boxA.left, boxB.left)
             val interY1 = max(boxA.top, boxB.top)
@@ -332,25 +331,97 @@ class TrackManager(
             return if (union == 0) 1.0f else intersection.toFloat() / union.toFloat()
         }
 
+        fun updateLostMask(
+            sourceMask: NativeMask,
+            prevBbox: FloatRect,
+            predBbox: FloatRect,
+            missedFrames: Int
+        ): NativeMask {
+            if (missedFrames <= LOST_WARP_MAX_FRAMES) {
+                return warpMask(
+                    sourceMask = sourceMask,
+                    prevBbox = prevBbox,
+                    predBbox = predBbox,
+                    missedFrames = missedFrames
+                )
+            }
+            return generateConservativeFallbackMask(
+                sourceMask = sourceMask,
+                predBbox = predBbox,
+                missedFrames = missedFrames
+            )
+        }
+
+        fun generateConservativeFallbackMask(
+            sourceMask: NativeMask,
+            predBbox: FloatRect,
+            missedFrames: Int
+        ): NativeMask {
+            val w = sourceMask.width
+            val h = sourceMask.height
+            val mapper = sourceMask.mapper ?: com.danceanon.native.geometry.ModelCoordinateMapper(
+                srcWidth = max(1, sourceMask.originalWidth),
+                srcHeight = max(1, sourceMask.originalHeight),
+                modelInputSize = 640,
+                protoSize = w
+            )
+
+            val marginRatio = if (missedFrames <= 10) LOST_MARGIN_TIER1_RATIO else LOST_MARGIN_TIER2_RATIO
+            val marginX = predBbox.width * marginRatio
+            val marginY = predBbox.height * marginRatio
+
+            val expandedBox = FloatRect(
+                left = predBbox.left - marginX,
+                top = predBbox.top - marginY,
+                right = predBbox.right + marginX,
+                bottom = predBbox.bottom + marginY
+            )
+
+            val pX1 = mapper.sourceToProtoX(expandedBox.left).roundToInt().coerceIn(0, w)
+            val pY1 = mapper.sourceToProtoY(expandedBox.top).roundToInt().coerceIn(0, h)
+            val pX2 = mapper.sourceToProtoX(expandedBox.right).roundToInt().coerceIn(0, w)
+            val pY2 = mapper.sourceToProtoY(expandedBox.bottom).roundToInt().coerceIn(0, h)
+
+            val minX = min(pX1, pX2)
+            val maxX = max(pX1, pX2)
+            val minY = min(pY1, pY2)
+            val maxY = max(pY1, pY2)
+
+            val dstBuf = ByteBuffer.allocateDirect(w * h)
+            val tempArr = ByteArray(w * h)
+
+            for (y in minY until maxY) {
+                val rowOffset = y * w
+                for (x in minX until maxX) {
+                    tempArr[rowOffset + x] = 255.toByte()
+                }
+            }
+
+            dstBuf.put(tempArr)
+            dstBuf.rewind()
+
+            return NativeMask(
+                width = w,
+                height = h,
+                buffer = dstBuf,
+                originalWidth = sourceMask.originalWidth,
+                originalHeight = sourceMask.originalHeight,
+                mapper = mapper
+            )
+        }
+
         fun warpMask(
             sourceMask: NativeMask,
             prevBbox: FloatRect,
             predBbox: FloatRect,
             missedFrames: Int
         ): NativeMask {
-            // Guard against unbounded drift & rectangular dilation artifacts:
-            // Stop warping after 3 consecutive missed frames, preserve original mask buffer
-            if (missedFrames > 3) {
-                return sourceMask
-            }
-
             val w = sourceMask.width
             val h = sourceMask.height
             val srcBuf = sourceMask.buffer
             srcBuf.rewind()
 
             val dstBuf = ByteBuffer.allocateDirect(w * h)
-
 
             val prevW = max(1f, prevBbox.width)
             val prevH = max(1f, prevBbox.height)
@@ -362,8 +433,8 @@ class TrackManager(
 
             // BBox relative center shift mapped to proto coordinates via ModelCoordinateMapper
             val mapper = sourceMask.mapper ?: com.danceanon.native.geometry.ModelCoordinateMapper(
-                srcWidth = kotlin.math.max(1, sourceMask.originalWidth),
-                srcHeight = kotlin.math.max(1, sourceMask.originalHeight),
+                srcWidth = max(1, sourceMask.originalWidth),
+                srcHeight = max(1, sourceMask.originalHeight),
                 modelInputSize = 640,
                 protoSize = w
             )
@@ -373,9 +444,7 @@ class TrackManager(
             val predNormCenterX = mapper.sourceToProtoX(predBbox.centerX)
             val predNormCenterY = mapper.sourceToProtoY(predBbox.centerY)
 
-
-            // Dilation factor during missed frames (1% ~ 3% expansion)
-            val dilation = if (missedFrames in 4..8) 1 else 0
+            val dilation = if (missedFrames in 1..3) 1 else 0
 
             val tempArr = ByteArray(w * h)
 
@@ -421,7 +490,8 @@ class TrackManager(
                 height = h,
                 buffer = dstBuf,
                 originalWidth = sourceMask.originalWidth,
-                originalHeight = sourceMask.originalHeight
+                originalHeight = sourceMask.originalHeight,
+                mapper = mapper
             )
         }
     }
