@@ -55,7 +55,7 @@ class _MyAppState extends State<MyApp> {
               Text('Status: $_status'),
               if (_capabilities != null) ...[
                 const SizedBox(height: 16),
-                Text('Android API: ${_capabilities!.androidApi}'),
+                Text('Platform: ${_capabilities!.platform} ${_capabilities!.osVersion}'),
                 Text('GPU Supported: ${_capabilities!.gpuSupported}'),
                 Text('H264 Encoder: ${_capabilities!.h264Encoder}'),
                 Text('CPU Cores: ${_capabilities!.cpuCores}'),

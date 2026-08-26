@@ -129,7 +129,7 @@ class ImportVideoScreen extends ConsumerWidget {
                     physics: const BouncingScrollPhysics(),
                     children: [
                       _buildDrawerSectionTitle('系统规格与环境'),
-                      _buildInfoTile('系统版本 (API)', 'Android API ${caps.androidApi}'),
+                      _buildInfoTile('系统版本', '${caps.platform.toUpperCase()} ${caps.osVersion}'),
                       _buildInfoTile('处理器核心 (CPU)', '${caps.cpuCores} 核心'),
                       _buildInfoTile('性能配置档位', caps.recommendedProfile.toUpperCase()),
                       const SizedBox(height: 16),

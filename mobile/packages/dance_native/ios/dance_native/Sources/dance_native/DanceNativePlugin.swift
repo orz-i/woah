@@ -24,10 +24,17 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
 
   public func getCapabilities() async throws -> NativeCapabilitiesDto {
     return NativeCapabilitiesDto(
-      supportedBackends: ["coreml", "mps"],
-      maxExportResolution: "1080p",
-      supportsRealtimePreview: false,
-      isSam2Available: false
+      platform: "ios",
+      osVersion: UIDevice.current.systemVersion,
+      gpuSupported: true,
+      h264Encoder: true,
+      hevcEncoder: true,
+      maxEncodeWidth: 3840,
+      maxEncodeHeight: 2160,
+      cpuCores: Int64(ProcessInfo.processInfo.processorCount),
+      recommendedProfile: "balanced",
+      supportedProfiles: ["balanced"],
+      inferenceBackends: ["coreml", "mps"]
     )
   }
 
@@ -52,12 +59,19 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
     let durationMs = Int64(CMTimeGetSeconds(duration) * 1000.0)
     let audioTracks = try await asset.loadTracks(withMediaType: .audio)
 
+    let width = Int64(naturalSize.width)
+    let height = Int64(naturalSize.height)
+
     return VideoInfoDto(
-      width: Int64(naturalSize.width),
-      height: Int64(naturalSize.height),
-      durationMs: durationMs,
+      codedWidth: width,
+      codedHeight: height,
+      displayWidth: width,
+      displayHeight: height,
       fps: Double(nominalFrameRate),
+      durationMs: durationMs,
       rotation: 0,
+      videoCodec: "video/avc",
+      audioCodec: audioTracks.isEmpty ? nil : "audio/mp4a-latm",
       hasAudio: !audioTracks.isEmpty
     )
   }

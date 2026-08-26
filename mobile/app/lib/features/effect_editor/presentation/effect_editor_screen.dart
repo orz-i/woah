@@ -155,7 +155,6 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
       (FillMode.blur, '动态模糊', Icons.blur_on),
       (FillMode.gradient, '纵向渐变', Icons.gradient),
       (FillMode.mosaic, '像素马赛克', Icons.grid_4x4),
-      (FillMode.sticker, '趣味贴纸', Icons.emoji_emotions),
     ];
 
     return Wrap(
@@ -262,52 +261,6 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
           step: 0.05,
           displayValue: '${(effects.skinWhiten * 100).toInt()}%',
           onChanged: (val) => controller.updateSkinWhiten(val),
-        ),
-
-        // Leg stretch controls
-        const SizedBox(height: 18),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFF16161A),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withAlpha(15)),
-          ),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('智能身材比例优化', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
-                  Switch(
-                    value: effects.legStretchEnabled,
-                    onChanged: (val) {
-                      HapticFeedback.lightImpact();
-                      controller.updateLegStretch(enabled: val, stretch: 0.15);
-                    },
-                  ),
-                ],
-              ),
-              AnimatedSize(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeInOut,
-                child: effects.legStretchEnabled
-                    ? Padding(
-                        padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
-                        child: _buildStepSlider(
-                          label: '拉伸幅度',
-                          value: effects.legStretch,
-                          min: 0.05,
-                          max: 0.35,
-                          step: 0.05,
-                          displayValue: '+${(effects.legStretch * 100).toInt()}%',
-                          onChanged: (val) => controller.updateLegStretch(enabled: true, stretch: val),
-                        ),
-                      )
-                    : const SizedBox.shrink(),
-              ),
-            ],
-          ),
         ),
 
         // 4. Follow Crop Controls

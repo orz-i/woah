@@ -1,0 +1,32 @@
+{
+  "version": "1.0",
+  "test_clips": [
+    {
+      "id": "solo_dance_1080p",
+      "description": "Single dancer fast spin with dramatic arm movements",
+      "resolution": [1920, 1080],
+      "fps": 30,
+      "duration_sec": 5.0,
+      "num_persons": 1,
+      "features": ["fast_motion", "occlusion_hand_face"]
+    },
+    {
+      "id": "duo_cross_dance_1080p",
+      "description": "Two dancers crossing paths and swapping spatial left/right positions",
+      "resolution": [1920, 1080],
+      "fps": 30,
+      "duration_sec": 6.0,
+      "num_persons": 2,
+      "features": ["crossing_paths", "temporary_overlap", "id_stability"]
+    },
+    {
+      "id": "group_street_dance_720p",
+      "description": "Four dancers with members entering and exiting the camera frame",
+      "resolution": [1280, 720],
+      "fps": 30,
+      "duration_sec": 8.0,
+      "num_persons": 4,
+      "features": ["entry_exit", "scale_variation", "re_identification"]
+    }
+  ]
+}

@@ -203,32 +203,39 @@ class FlutterError (
 
 /** Generated class from Pigeon that represents data sent in messages. */
 data class NativeCapabilitiesDto (
-  val androidApi: Long,
+  val platform: String,
+  val osVersion: String,
   val gpuSupported: Boolean,
   val h264Encoder: Boolean,
   val hevcEncoder: Boolean,
   val maxEncodeWidth: Long,
   val maxEncodeHeight: Long,
   val cpuCores: Long,
-  val recommendedProfile: String
+  val recommendedProfile: String,
+  val supportedProfiles: List<String>,
+  val inferenceBackends: List<String>
 )
  {
   companion object {
     fun fromList(pigeonVar_list: List<Any?>): NativeCapabilitiesDto {
-      val androidApi = pigeonVar_list[0] as Long
-      val gpuSupported = pigeonVar_list[1] as Boolean
-      val h264Encoder = pigeonVar_list[2] as Boolean
-      val hevcEncoder = pigeonVar_list[3] as Boolean
-      val maxEncodeWidth = pigeonVar_list[4] as Long
-      val maxEncodeHeight = pigeonVar_list[5] as Long
-      val cpuCores = pigeonVar_list[6] as Long
-      val recommendedProfile = pigeonVar_list[7] as String
-      return NativeCapabilitiesDto(androidApi, gpuSupported, h264Encoder, hevcEncoder, maxEncodeWidth, maxEncodeHeight, cpuCores, recommendedProfile)
+      val platform = pigeonVar_list[0] as String
+      val osVersion = pigeonVar_list[1] as String
+      val gpuSupported = pigeonVar_list[2] as Boolean
+      val h264Encoder = pigeonVar_list[3] as Boolean
+      val hevcEncoder = pigeonVar_list[4] as Boolean
+      val maxEncodeWidth = pigeonVar_list[5] as Long
+      val maxEncodeHeight = pigeonVar_list[6] as Long
+      val cpuCores = pigeonVar_list[7] as Long
+      val recommendedProfile = pigeonVar_list[8] as String
+      val supportedProfiles = pigeonVar_list[9] as List<String>
+      val inferenceBackends = pigeonVar_list[10] as List<String>
+      return NativeCapabilitiesDto(platform, osVersion, gpuSupported, h264Encoder, hevcEncoder, maxEncodeWidth, maxEncodeHeight, cpuCores, recommendedProfile, supportedProfiles, inferenceBackends)
     }
   }
   fun toList(): List<Any?> {
     return listOf(
-      androidApi,
+      platform,
+      osVersion,
       gpuSupported,
       h264Encoder,
       hevcEncoder,
@@ -236,6 +243,8 @@ data class NativeCapabilitiesDto (
       maxEncodeHeight,
       cpuCores,
       recommendedProfile,
+      supportedProfiles,
+      inferenceBackends,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -246,12 +255,13 @@ data class NativeCapabilitiesDto (
       return true
     }
     val other = other as NativeCapabilitiesDto
-    return DanceApiPigeonUtils.deepEquals(this.androidApi, other.androidApi) && DanceApiPigeonUtils.deepEquals(this.gpuSupported, other.gpuSupported) && DanceApiPigeonUtils.deepEquals(this.h264Encoder, other.h264Encoder) && DanceApiPigeonUtils.deepEquals(this.hevcEncoder, other.hevcEncoder) && DanceApiPigeonUtils.deepEquals(this.maxEncodeWidth, other.maxEncodeWidth) && DanceApiPigeonUtils.deepEquals(this.maxEncodeHeight, other.maxEncodeHeight) && DanceApiPigeonUtils.deepEquals(this.cpuCores, other.cpuCores) && DanceApiPigeonUtils.deepEquals(this.recommendedProfile, other.recommendedProfile)
+    return DanceApiPigeonUtils.deepEquals(this.platform, other.platform) && DanceApiPigeonUtils.deepEquals(this.osVersion, other.osVersion) && DanceApiPigeonUtils.deepEquals(this.gpuSupported, other.gpuSupported) && DanceApiPigeonUtils.deepEquals(this.h264Encoder, other.h264Encoder) && DanceApiPigeonUtils.deepEquals(this.hevcEncoder, other.hevcEncoder) && DanceApiPigeonUtils.deepEquals(this.maxEncodeWidth, other.maxEncodeWidth) && DanceApiPigeonUtils.deepEquals(this.maxEncodeHeight, other.maxEncodeHeight) && DanceApiPigeonUtils.deepEquals(this.cpuCores, other.cpuCores) && DanceApiPigeonUtils.deepEquals(this.recommendedProfile, other.recommendedProfile) && DanceApiPigeonUtils.deepEquals(this.supportedProfiles, other.supportedProfiles) && DanceApiPigeonUtils.deepEquals(this.inferenceBackends, other.inferenceBackends)
   }
 
   override fun hashCode(): Int {
     var result = javaClass.hashCode()
-    result = 31 * result + DanceApiPigeonUtils.deepHash(this.androidApi)
+    result = 31 * result + DanceApiPigeonUtils.deepHash(this.platform)
+    result = 31 * result + DanceApiPigeonUtils.deepHash(this.osVersion)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.gpuSupported)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.h264Encoder)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.hevcEncoder)
@@ -259,10 +269,12 @@ data class NativeCapabilitiesDto (
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.maxEncodeHeight)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.cpuCores)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.recommendedProfile)
+    result = 31 * result + DanceApiPigeonUtils.deepHash(this.supportedProfiles)
+    result = 31 * result + DanceApiPigeonUtils.deepHash(this.inferenceBackends)
     return result
   }
   override fun toString(): String {
-    return "NativeCapabilitiesDto(androidApi=$androidApi, gpuSupported=$gpuSupported, h264Encoder=$h264Encoder, hevcEncoder=$hevcEncoder, maxEncodeWidth=$maxEncodeWidth, maxEncodeHeight=$maxEncodeHeight, cpuCores=$cpuCores, recommendedProfile=$recommendedProfile)"
+    return "NativeCapabilitiesDto(platform=$platform, osVersion=$osVersion, gpuSupported=$gpuSupported, h264Encoder=$h264Encoder, hevcEncoder=$hevcEncoder, maxEncodeWidth=$maxEncodeWidth, maxEncodeHeight=$maxEncodeHeight, cpuCores=$cpuCores, recommendedProfile=$recommendedProfile, supportedProfiles=$supportedProfiles, inferenceBackends=$inferenceBackends)"
   }
 }
 

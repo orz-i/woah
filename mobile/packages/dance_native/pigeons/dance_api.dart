@@ -13,7 +13,8 @@ import 'package:pigeon/pigeon.dart';
 ))
 
 class NativeCapabilitiesDto {
-  final int androidApi;
+  final String platform;
+  final String osVersion;
   final bool gpuSupported;
   final bool h264Encoder;
   final bool hevcEncoder;
@@ -21,9 +22,12 @@ class NativeCapabilitiesDto {
   final int maxEncodeHeight;
   final int cpuCores;
   final String recommendedProfile;
+  final List<String> supportedProfiles;
+  final List<String> inferenceBackends;
 
   NativeCapabilitiesDto({
-    required this.androidApi,
+    required this.platform,
+    required this.osVersion,
     required this.gpuSupported,
     required this.h264Encoder,
     required this.hevcEncoder,
@@ -31,6 +35,8 @@ class NativeCapabilitiesDto {
     required this.maxEncodeHeight,
     required this.cpuCores,
     required this.recommendedProfile,
+    required this.supportedProfiles,
+    required this.inferenceBackends,
   });
 }
 

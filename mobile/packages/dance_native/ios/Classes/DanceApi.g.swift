@@ -190,7 +190,8 @@ private func nilOrValue<T>(_ value: Any?) -> T? {
 
 /// Generated class from Pigeon that represents data sent in messages.
 struct NativeCapabilitiesDto: Hashable, CustomStringConvertible {
-  var androidApi: Int64
+  var platform: String
+  var osVersion: String
   var gpuSupported: Bool
   var h264Encoder: Bool
   var hevcEncoder: Bool
@@ -198,33 +199,42 @@ struct NativeCapabilitiesDto: Hashable, CustomStringConvertible {
   var maxEncodeHeight: Int64
   var cpuCores: Int64
   var recommendedProfile: String
+  var supportedProfiles: [String]
+  var inferenceBackends: [String]
 
 
   // swift-format-ignore: AlwaysUseLowerCamelCase
   static func fromList(_ pigeonVar_list: [Any?]) -> NativeCapabilitiesDto? {
-    let androidApi = pigeonVar_list[0] as! Int64
-    let gpuSupported = pigeonVar_list[1] as! Bool
-    let h264Encoder = pigeonVar_list[2] as! Bool
-    let hevcEncoder = pigeonVar_list[3] as! Bool
-    let maxEncodeWidth = pigeonVar_list[4] as! Int64
-    let maxEncodeHeight = pigeonVar_list[5] as! Int64
-    let cpuCores = pigeonVar_list[6] as! Int64
-    let recommendedProfile = pigeonVar_list[7] as! String
+    let platform = pigeonVar_list[0] as! String
+    let osVersion = pigeonVar_list[1] as! String
+    let gpuSupported = pigeonVar_list[2] as! Bool
+    let h264Encoder = pigeonVar_list[3] as! Bool
+    let hevcEncoder = pigeonVar_list[4] as! Bool
+    let maxEncodeWidth = pigeonVar_list[5] as! Int64
+    let maxEncodeHeight = pigeonVar_list[6] as! Int64
+    let cpuCores = pigeonVar_list[7] as! Int64
+    let recommendedProfile = pigeonVar_list[8] as! String
+    let supportedProfiles = pigeonVar_list[9] as! [String]
+    let inferenceBackends = pigeonVar_list[10] as! [String]
 
     return NativeCapabilitiesDto(
-      androidApi: androidApi,
+      platform: platform,
+      osVersion: osVersion,
       gpuSupported: gpuSupported,
       h264Encoder: h264Encoder,
       hevcEncoder: hevcEncoder,
       maxEncodeWidth: maxEncodeWidth,
       maxEncodeHeight: maxEncodeHeight,
       cpuCores: cpuCores,
-      recommendedProfile: recommendedProfile
+      recommendedProfile: recommendedProfile,
+      supportedProfiles: supportedProfiles,
+      inferenceBackends: inferenceBackends
     )
   }
   func toList() -> [Any?] {
     return [
-      androidApi,
+      platform,
+      osVersion,
       gpuSupported,
       h264Encoder,
       hevcEncoder,
@@ -232,18 +242,21 @@ struct NativeCapabilitiesDto: Hashable, CustomStringConvertible {
       maxEncodeHeight,
       cpuCores,
       recommendedProfile,
+      supportedProfiles,
+      inferenceBackends,
     ]
   }
   static func == (lhs: NativeCapabilitiesDto, rhs: NativeCapabilitiesDto) -> Bool {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return DanceApiPigeonInternal.deepEquals(lhs.androidApi, rhs.androidApi) && DanceApiPigeonInternal.deepEquals(lhs.gpuSupported, rhs.gpuSupported) && DanceApiPigeonInternal.deepEquals(lhs.h264Encoder, rhs.h264Encoder) && DanceApiPigeonInternal.deepEquals(lhs.hevcEncoder, rhs.hevcEncoder) && DanceApiPigeonInternal.deepEquals(lhs.maxEncodeWidth, rhs.maxEncodeWidth) && DanceApiPigeonInternal.deepEquals(lhs.maxEncodeHeight, rhs.maxEncodeHeight) && DanceApiPigeonInternal.deepEquals(lhs.cpuCores, rhs.cpuCores) && DanceApiPigeonInternal.deepEquals(lhs.recommendedProfile, rhs.recommendedProfile)
+    return DanceApiPigeonInternal.deepEquals(lhs.platform, rhs.platform) && DanceApiPigeonInternal.deepEquals(lhs.osVersion, rhs.osVersion) && DanceApiPigeonInternal.deepEquals(lhs.gpuSupported, rhs.gpuSupported) && DanceApiPigeonInternal.deepEquals(lhs.h264Encoder, rhs.h264Encoder) && DanceApiPigeonInternal.deepEquals(lhs.hevcEncoder, rhs.hevcEncoder) && DanceApiPigeonInternal.deepEquals(lhs.maxEncodeWidth, rhs.maxEncodeWidth) && DanceApiPigeonInternal.deepEquals(lhs.maxEncodeHeight, rhs.maxEncodeHeight) && DanceApiPigeonInternal.deepEquals(lhs.cpuCores, rhs.cpuCores) && DanceApiPigeonInternal.deepEquals(lhs.recommendedProfile, rhs.recommendedProfile) && DanceApiPigeonInternal.deepEquals(lhs.supportedProfiles, rhs.supportedProfiles) && DanceApiPigeonInternal.deepEquals(lhs.inferenceBackends, rhs.inferenceBackends)
   }
 
   func hash(into hasher: inout Hasher) {
     hasher.combine("NativeCapabilitiesDto")
-    DanceApiPigeonInternal.deepHash(value: androidApi, hasher: &hasher)
+    DanceApiPigeonInternal.deepHash(value: platform, hasher: &hasher)
+    DanceApiPigeonInternal.deepHash(value: osVersion, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: gpuSupported, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: h264Encoder, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: hevcEncoder, hasher: &hasher)
@@ -251,10 +264,12 @@ struct NativeCapabilitiesDto: Hashable, CustomStringConvertible {
     DanceApiPigeonInternal.deepHash(value: maxEncodeHeight, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: cpuCores, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: recommendedProfile, hasher: &hasher)
+    DanceApiPigeonInternal.deepHash(value: supportedProfiles, hasher: &hasher)
+    DanceApiPigeonInternal.deepHash(value: inferenceBackends, hasher: &hasher)
   }
 
   public var description: String {
-    return "NativeCapabilitiesDto(androidApi: \(String(describing: androidApi)), gpuSupported: \(String(describing: gpuSupported)), h264Encoder: \(String(describing: h264Encoder)), hevcEncoder: \(String(describing: hevcEncoder)), maxEncodeWidth: \(String(describing: maxEncodeWidth)), maxEncodeHeight: \(String(describing: maxEncodeHeight)), cpuCores: \(String(describing: cpuCores)), recommendedProfile: \(String(describing: recommendedProfile)))"
+    return "NativeCapabilitiesDto(platform: \(String(describing: platform)), osVersion: \(String(describing: osVersion)), gpuSupported: \(String(describing: gpuSupported)), h264Encoder: \(String(describing: h264Encoder)), hevcEncoder: \(String(describing: hevcEncoder)), maxEncodeWidth: \(String(describing: maxEncodeWidth)), maxEncodeHeight: \(String(describing: maxEncodeHeight)), cpuCores: \(String(describing: cpuCores)), recommendedProfile: \(String(describing: recommendedProfile)), supportedProfiles: \(String(describing: supportedProfiles)), inferenceBackends: \(String(describing: inferenceBackends)))"
   }
 }
 

@@ -65,6 +65,85 @@ class YoloOnnxSegmenter(
         }
     }
 
+    private val workspace = PreprocessorWorkspace(640)
+
+    fun segmentRgbaSync(
+        rgbaBuffer: ByteBuffer,
+        mapper: com.danceanon.native.geometry.ModelCoordinateMapper,
+        timestampUs: Long = 0
+    ): SegmentationFrame {
+        val session = ortSession ?: throw DanceNativeException(
+            DanceNativeException.MODEL_INIT_FAILED,
+            "YoloOnnxSegmenter session not initialized. Call initialize() first."
+        )
+        val env = ortEnv ?: throw DanceNativeException(
+            DanceNativeException.MODEL_INIT_FAILED,
+            "OrtEnvironment not initialized"
+        )
+
+        val startTime = System.currentTimeMillis()
+
+        // 1. Preprocess directly from RGBA ByteBuffer into reusable NCHW FloatBuffer
+        val preprocess = YoloPreprocessor.processRgbaBuffer(
+            rgbaBuffer = rgbaBuffer,
+            mapper = mapper,
+            workspace = workspace
+        )
+
+        // 2. Run Inference
+        val detections = try {
+            val inputTensor = OnnxTensor.createTensor(
+                env,
+                preprocess.byteBuffer.asFloatBuffer(),
+                longArrayOf(1, 3, 640, 640)
+            )
+            val results = session.run(mapOf("images" to inputTensor))
+
+            val out0Opt = results.get("output0")
+            val out1Opt = results.get("output1")
+
+            if (!out0Opt.isPresent || !out1Opt.isPresent) {
+                inputTensor.close()
+                results.close()
+                throw DanceNativeException(
+                    DanceNativeException.MODEL_OUTPUT_INVALID,
+                    "Model output0 or output1 missing from ONNX inference results"
+                )
+            }
+
+            val out0Tensor = out0Opt.get() as OnnxTensor
+            val out1Tensor = out1Opt.get() as OnnxTensor
+
+            val resultList = YoloPostprocessor.postprocessBuffer(
+                output0Buffer = out0Tensor.floatBuffer,
+                output1Buffer = out1Tensor.floatBuffer,
+                preprocess = preprocess,
+                confThreshold = 0.25f,
+                iouThreshold = 0.50f
+            )
+
+            inputTensor.close()
+            results.close()
+            resultList
+        } catch (e: DanceNativeException) {
+            throw e
+        } catch (e: Exception) {
+            android.util.Log.e("YoloOnnxSegmenter", "Inference error: ${e.message}", e)
+            throw DanceNativeException(
+                DanceNativeException.MODEL_INFERENCE_FAILED,
+                "Inference execution failed: ${e.message}",
+                e
+            )
+        }
+
+        val elapsed = System.currentTimeMillis() - startTime
+        return SegmentationFrame(
+            timestampUs = timestampUs,
+            persons = detections,
+            inferenceTimeMs = elapsed
+        )
+    }
+
     fun segmentBitmapSync(
         bitmap: Bitmap,
         timestampUs: Long = 0,

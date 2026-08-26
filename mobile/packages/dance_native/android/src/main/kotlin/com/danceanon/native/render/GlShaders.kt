@@ -25,13 +25,10 @@ void main() {
     );
 }""".trimIndent()
 
-    val FRAGMENT_SHADER = """#extension GL_OES_EGL_image_external : require
-precision mediump float;
-
+    private const val SHADER_BODY = """
 varying vec2 vOesTexCoord;
 varying vec2 vMaskTexCoord;
 
-uniform samplerExternalOES uBaseTexture;
 uniform sampler2D uMaskTexture;
 uniform sampler2D uStickerTexture;
 
@@ -166,5 +163,22 @@ void main() {
     }
 
     gl_FragColor = color;
-}""".trimIndent()
+}
+"""
+
+    val FRAGMENT_SHADER_OES = """
+#extension GL_OES_EGL_image_external : require
+precision mediump float;
+uniform samplerExternalOES uBaseTexture;
+$SHADER_BODY
+""".trimIndent()
+
+    val FRAGMENT_SHADER_2D = """
+precision mediump float;
+uniform sampler2D uBaseTexture;
+$SHADER_BODY
+""".trimIndent()
+
+    // Backward compatibility
+    val FRAGMENT_SHADER = FRAGMENT_SHADER_OES
 }

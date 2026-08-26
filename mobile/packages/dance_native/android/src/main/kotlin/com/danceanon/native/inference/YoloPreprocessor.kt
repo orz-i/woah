@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import com.danceanon.native.geometry.ModelCoordinateMapper
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
@@ -20,9 +21,59 @@ data class PreprocessResult(
     val inputSize: Int = 640
 )
 
+class PreprocessorWorkspace(val inputSize: Int = 640) {
+    val numPixels = inputSize * inputSize
+    val byteBuffer: ByteBuffer = ByteBuffer.allocateDirect(1 * 3 * numPixels * 4).apply {
+        order(ByteOrder.nativeOrder())
+    }
+    val floatBuffer: FloatBuffer = byteBuffer.asFloatBuffer()
+}
+
 object YoloPreprocessor {
 
     const val DEFAULT_INPUT_SIZE = 640
+
+    fun processRgbaBuffer(
+        rgbaBuffer: ByteBuffer,
+        mapper: ModelCoordinateMapper,
+        workspace: PreprocessorWorkspace
+    ): PreprocessResult {
+        val numPixels = workspace.numPixels
+        val floatBuffer = workspace.floatBuffer
+        val byteBuffer = workspace.byteBuffer
+        floatBuffer.clear()
+        byteBuffer.clear()
+
+        val rOffset = 0
+        val gOffset = numPixels
+        val bOffset = 2 * numPixels
+
+        rgbaBuffer.rewind()
+
+        for (i in 0 until numPixels) {
+            val r = (rgbaBuffer.get().toInt() and 0xFF) / 255.0f
+            val g = (rgbaBuffer.get().toInt() and 0xFF) / 255.0f
+            val b = (rgbaBuffer.get().toInt() and 0xFF) / 255.0f
+            rgbaBuffer.get() // Skip Alpha
+
+            floatBuffer.put(rOffset + i, r)
+            floatBuffer.put(gOffset + i, g)
+            floatBuffer.put(bOffset + i, b)
+        }
+        floatBuffer.position(0)
+        byteBuffer.position(0)
+
+        return PreprocessResult(
+            floatBuffer = floatBuffer,
+            byteBuffer = byteBuffer,
+            scale = mapper.scale,
+            padLeft = mapper.padLeft,
+            padTop = mapper.padTop,
+            srcWidth = mapper.srcWidth,
+            srcHeight = mapper.srcHeight,
+            inputSize = mapper.modelInputSize
+        )
+    }
 
     fun processBitmap(
         bitmap: Bitmap,
@@ -48,10 +99,8 @@ object YoloPreprocessor {
         val pixels = IntArray(numPixels)
 
         if (bitmap.width == inputSize && bitmap.height == inputSize) {
-            // Already a 640x640 letterboxed bitmap
             bitmap.getPixels(pixels, 0, inputSize, 0, 0, inputSize, inputSize)
         } else {
-            // Create letterboxed 640x640 Bitmap with grey padding (114, 114, 114)
             val letterboxed = Bitmap.createBitmap(inputSize, inputSize, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(letterboxed)
             val paint = Paint(Paint.FILTER_BITMAP_FLAG)
@@ -67,7 +116,6 @@ object YoloPreprocessor {
             letterboxed.recycle()
         }
 
-        // Convert to (1, 3, 640, 640) Float32 Buffer normalized to [0.0, 1.0] (NCHW Planar format)
         val rOffset = 0
         val gOffset = numPixels
         val bOffset = 2 * numPixels

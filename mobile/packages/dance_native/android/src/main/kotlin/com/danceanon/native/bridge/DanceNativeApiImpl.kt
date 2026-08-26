@@ -2,10 +2,9 @@ package com.danceanon.native.bridge
 
 import android.content.Context
 import com.danceanon.native.device.DeviceCapabilities
-import com.danceanon.native.jobs.JobManager
+import com.danceanon.native.export.ExportCoordinator
+import com.danceanon.native.export.ExportServiceController
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class DanceNativeApiImpl(
@@ -13,19 +12,26 @@ class DanceNativeApiImpl(
     private val eventEmitter: DanceProcessingEvents? = null
 ) : DanceNativeApi {
 
-    private val jobManager = JobManager()
+    private val coordinator = ExportCoordinator.getInstance(context)
+
+    init {
+        coordinator.setEventEmitter(eventEmitter)
+    }
 
     override suspend fun getCapabilities(): NativeCapabilitiesDto = withContext(Dispatchers.Default) {
-        val caps = DeviceCapabilities()
+        val caps = DeviceCapabilities.detect(context)
         NativeCapabilitiesDto(
-            androidApi = caps.androidApi.toLong(),
+            platform = "android",
+            osVersion = caps.androidApi.toString(),
             gpuSupported = caps.gpuSupported,
             h264Encoder = caps.h264Encoder,
             hevcEncoder = caps.hevcEncoder,
             maxEncodeWidth = caps.maxEncodeWidth.toLong(),
             maxEncodeHeight = caps.maxEncodeHeight.toLong(),
             cpuCores = caps.cpuCores.toLong(),
-            recommendedProfile = caps.recommendedProfile
+            recommendedProfile = caps.recommendedProfile,
+            supportedProfiles = caps.supportedProfiles,
+            inferenceBackends = caps.inferenceBackends
         )
     }
 
@@ -97,9 +103,6 @@ class DanceNativeApiImpl(
         }
     }
 
-    private val exportPipeline = com.danceanon.native.pipeline.ExportPipeline(context, segmenter, eventEmitter)
-    private val exportScope = kotlinx.coroutines.CoroutineScope(Dispatchers.Default + kotlinx.coroutines.SupervisorJob())
-
     override suspend fun startExport(request: ExportRequestDto): String = withContext(Dispatchers.Default) {
         val sourceUri = request.sourceUri
         if (sourceUri.isBlank()) {
@@ -116,89 +119,23 @@ class DanceNativeApiImpl(
         }
 
         val jobId = "job_${System.currentTimeMillis()}"
-        val isCancelled = java.util.concurrent.atomic.AtomicBoolean(false)
 
-        val initialStatus = JobStatusDto(
-            jobId = jobId,
-            state = "preparing",
-            currentFrame = 0L,
-            totalFrames = 0L,
-            fps = 0.0,
-            progress = 0.0,
-            outputUri = null,
-            errorCode = null,
-            errorMessage = null
-        )
+        // 1. Persist initial request and state into ExportJobStore
+        coordinator.registerJobRequest(jobId, request)
 
-        val coroutineJob = exportScope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
-            try {
-                com.danceanon.native.service.ExportForegroundService.start(context, jobId)
-                exportPipeline.execute(
-                    jobId = jobId,
-                    sourceUri = sourceUri,
-                    request = request,
-                    isCancelled = isCancelled,
-                    onStatusChange = { status ->
-                        jobManager.updateStatus(jobId, status)
-                        com.danceanon.native.service.ExportForegroundService.updateProgress(
-                            context,
-                            jobId,
-                            (status.progress * 100).toInt()
-                        )
-                    }
-                )
-            } catch (e: Throwable) {
-                val stackTraceStr = android.util.Log.getStackTraceString(e)
-                android.util.Log.e("DanceNativeApiImpl", "Export failed: $stackTraceStr", e)
-                val errorCode = if (e is DanceNativeException) e.code else DanceNativeException.EXPORT_FAILED
-                val failedStatus = JobStatusDto(
-                    jobId = jobId,
-                    state = "failed",
-                    currentFrame = 0L,
-                    totalFrames = 0L,
-                    fps = 0.0,
-                    progress = 0.0,
-                    outputUri = null,
-                    errorCode = errorCode,
-                    errorMessage = "${e.javaClass.simpleName}: ${e.message}\n${e.stackTrace.take(8).joinToString("\n")}"
-                )
-                jobManager.updateStatus(jobId, failedStatus)
-                kotlinx.coroutines.CoroutineScope(Dispatchers.Main).launch {
-                    try { eventEmitter?.onProgressUpdate(failedStatus) } catch (_: Throwable) {}
-                }
-            } finally {
-                com.danceanon.native.service.ExportForegroundService.stop(context)
-            }
-        }
+        // 2. Trigger ForegroundService to take ownership of execution
+        ExportServiceController.startExportService(context, jobId)
 
-        val processingJob = com.danceanon.native.jobs.ProcessingJob(
-            id = jobId,
-            coroutineJob = coroutineJob,
-            isCancelled = isCancelled,
-            initialStatus = initialStatus
-        )
-        jobManager.registerJob(processingJob)
-        coroutineJob.start()
-
+        // 3. Immediately return jobId to Flutter caller
         jobId
     }
 
     override suspend fun cancelJob(jobId: String) = withContext(Dispatchers.Default) {
-        jobManager.cancelJob(jobId)
+        coordinator.cancelJob(jobId)
     }
 
     override suspend fun getJobStatus(jobId: String): JobStatusDto = withContext(Dispatchers.Default) {
-        jobManager.getJob(jobId)?.currentStatus ?: JobStatusDto(
-            jobId = jobId,
-            state = "unknown",
-            currentFrame = 0L,
-            totalFrames = 0L,
-            fps = 0.0,
-            progress = 0.0,
-            outputUri = null,
-            errorCode = "JOB_NOT_FOUND",
-            errorMessage = "Job $jobId was not found"
-        )
+        coordinator.getJobStatus(jobId)
     }
 
     override suspend fun releaseProject(projectId: String) = withContext(Dispatchers.IO) {
@@ -208,11 +145,10 @@ class DanceNativeApiImpl(
     }
 
     fun close() {
-        try {
-            exportScope.cancel()
-        } catch (_: Throwable) {}
+        coordinator.setEventEmitter(null)
         try {
             segmenter.close()
         } catch (_: Throwable) {}
     }
 }
+

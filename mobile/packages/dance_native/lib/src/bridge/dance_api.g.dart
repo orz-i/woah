@@ -109,7 +109,8 @@ int _deepHash(Object? value) {
 
 class NativeCapabilitiesDto {
   NativeCapabilitiesDto({
-    required this.androidApi,
+    required this.platform,
+    required this.osVersion,
     required this.gpuSupported,
     required this.h264Encoder,
     required this.hevcEncoder,
@@ -117,9 +118,13 @@ class NativeCapabilitiesDto {
     required this.maxEncodeHeight,
     required this.cpuCores,
     required this.recommendedProfile,
+    required this.supportedProfiles,
+    required this.inferenceBackends,
   });
 
-  int androidApi;
+  String platform;
+
+  String osVersion;
 
   bool gpuSupported;
 
@@ -135,9 +140,14 @@ class NativeCapabilitiesDto {
 
   String recommendedProfile;
 
+  List<String> supportedProfiles;
+
+  List<String> inferenceBackends;
+
   List<Object?> _toList() {
     return <Object?>[
-      androidApi,
+      platform,
+      osVersion,
       gpuSupported,
       h264Encoder,
       hevcEncoder,
@@ -145,6 +155,8 @@ class NativeCapabilitiesDto {
       maxEncodeHeight,
       cpuCores,
       recommendedProfile,
+      supportedProfiles,
+      inferenceBackends,
     ];
   }
 
@@ -154,14 +166,17 @@ class NativeCapabilitiesDto {
   static NativeCapabilitiesDto decode(Object result) {
     result as List<Object?>;
     return NativeCapabilitiesDto(
-      androidApi: result[0]! as int,
-      gpuSupported: result[1]! as bool,
-      h264Encoder: result[2]! as bool,
-      hevcEncoder: result[3]! as bool,
-      maxEncodeWidth: result[4]! as int,
-      maxEncodeHeight: result[5]! as int,
-      cpuCores: result[6]! as int,
-      recommendedProfile: result[7]! as String,
+      platform: result[0]! as String,
+      osVersion: result[1]! as String,
+      gpuSupported: result[2]! as bool,
+      h264Encoder: result[3]! as bool,
+      hevcEncoder: result[4]! as bool,
+      maxEncodeWidth: result[5]! as int,
+      maxEncodeHeight: result[6]! as int,
+      cpuCores: result[7]! as int,
+      recommendedProfile: result[8]! as String,
+      supportedProfiles: (result[9]! as List<Object?>).cast<String>(),
+      inferenceBackends: (result[10]! as List<Object?>).cast<String>(),
     );
   }
 
@@ -174,7 +189,7 @@ class NativeCapabilitiesDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(androidApi, other.androidApi) && _deepEquals(gpuSupported, other.gpuSupported) && _deepEquals(h264Encoder, other.h264Encoder) && _deepEquals(hevcEncoder, other.hevcEncoder) && _deepEquals(maxEncodeWidth, other.maxEncodeWidth) && _deepEquals(maxEncodeHeight, other.maxEncodeHeight) && _deepEquals(cpuCores, other.cpuCores) && _deepEquals(recommendedProfile, other.recommendedProfile);
+    return _deepEquals(platform, other.platform) && _deepEquals(osVersion, other.osVersion) && _deepEquals(gpuSupported, other.gpuSupported) && _deepEquals(h264Encoder, other.h264Encoder) && _deepEquals(hevcEncoder, other.hevcEncoder) && _deepEquals(maxEncodeWidth, other.maxEncodeWidth) && _deepEquals(maxEncodeHeight, other.maxEncodeHeight) && _deepEquals(cpuCores, other.cpuCores) && _deepEquals(recommendedProfile, other.recommendedProfile) && _deepEquals(supportedProfiles, other.supportedProfiles) && _deepEquals(inferenceBackends, other.inferenceBackends);
   }
 
   @override
@@ -183,7 +198,7 @@ class NativeCapabilitiesDto {
 
   @override
   String toString() {
-    return 'NativeCapabilitiesDto(androidApi: $androidApi, gpuSupported: $gpuSupported, h264Encoder: $h264Encoder, hevcEncoder: $hevcEncoder, maxEncodeWidth: $maxEncodeWidth, maxEncodeHeight: $maxEncodeHeight, cpuCores: $cpuCores, recommendedProfile: $recommendedProfile)';
+    return 'NativeCapabilitiesDto(platform: $platform, osVersion: $osVersion, gpuSupported: $gpuSupported, h264Encoder: $h264Encoder, hevcEncoder: $hevcEncoder, maxEncodeWidth: $maxEncodeWidth, maxEncodeHeight: $maxEncodeHeight, cpuCores: $cpuCores, recommendedProfile: $recommendedProfile, supportedProfiles: $supportedProfiles, inferenceBackends: $inferenceBackends)';
   }
 }
 

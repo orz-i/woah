@@ -19,7 +19,9 @@ data class NativeMask(
     val height: Int,
     val buffer: ByteBuffer,
     val originalWidth: Int,
-    val originalHeight: Int
+    val originalHeight: Int,
+    val mapper: com.danceanon.native.geometry.ModelCoordinateMapper? = null,
+    val roiInProto: FloatRect? = null
 )
 
 data class PersonDetection(
