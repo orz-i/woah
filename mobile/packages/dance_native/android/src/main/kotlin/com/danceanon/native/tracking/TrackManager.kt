@@ -287,13 +287,25 @@ class TrackManager(
             val scaleY = predH / prevH
 
             // BBox relative center shift normalized to mask coordinate
-            val origW = max(1, sourceMask.originalWidth).toFloat()
-            val origH = max(1, sourceMask.originalHeight).toFloat()
+            val mapper = sourceMask.mapper
+            val prevNormCenterX: Float
+            val prevNormCenterY: Float
+            val predNormCenterX: Float
+            val predNormCenterY: Float
 
-            val prevNormCenterX = prevBbox.centerX / origW * w
-            val prevNormCenterY = prevBbox.centerY / origH * h
-            val predNormCenterX = predBbox.centerX / origW * w
-            val predNormCenterY = predBbox.centerY / origH * h
+            if (mapper != null) {
+                prevNormCenterX = mapper.modelToProtoX(mapper.sourceToModelX(prevBbox.centerX)).toFloat()
+                prevNormCenterY = mapper.modelToProtoY(mapper.sourceToModelY(prevBbox.centerY)).toFloat()
+                predNormCenterX = mapper.modelToProtoX(mapper.sourceToModelX(predBbox.centerX)).toFloat()
+                predNormCenterY = mapper.modelToProtoY(mapper.sourceToModelY(predBbox.centerY)).toFloat()
+            } else {
+                val origW = max(1, sourceMask.originalWidth).toFloat()
+                val origH = max(1, sourceMask.originalHeight).toFloat()
+                prevNormCenterX = prevBbox.centerX / origW * w
+                prevNormCenterY = prevBbox.centerY / origH * h
+                predNormCenterX = predBbox.centerX / origW * w
+                predNormCenterY = predBbox.centerY / origH * h
+            }
 
             // Dilation factor during missed frames (1% ~ 3% expansion)
             val dilation = if (missedFrames in 4..8) 1 else 0

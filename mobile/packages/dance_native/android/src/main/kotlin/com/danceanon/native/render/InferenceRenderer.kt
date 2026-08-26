@@ -66,11 +66,13 @@ void main() {
         GLES20.glDeleteShader(vShader)
         GLES20.glDeleteShader(fShader)
 
+        // Invert Y in quad vertices so video TOP is drawn at the lower Y of FBO.
+        // When glReadPixels reads bottom-up from row 0, it reads video TOP first!
         val vertices = floatArrayOf(
-            -1.0f, -1.0f, 0.0f, 0.0f,
-             1.0f, -1.0f, 1.0f, 0.0f,
-            -1.0f,  1.0f, 0.0f, 1.0f,
-             1.0f,  1.0f, 1.0f, 1.0f
+            -1.0f, -1.0f, 0.0f, 1.0f, // NDC left, bottom of sub-rect -> video TOP (u=0, v=1)
+             1.0f, -1.0f, 1.0f, 1.0f, // NDC right, bottom of sub-rect -> video TOP (u=1, v=1)
+            -1.0f,  1.0f, 0.0f, 0.0f, // NDC left, top of sub-rect -> video BOTTOM (u=0, v=0)
+             1.0f,  1.0f, 1.0f, 0.0f  // NDC right, top of sub-rect -> video BOTTOM (u=1, v=0)
         )
         vertexBuffer = ByteBuffer.allocateDirect(vertices.size * 4)
             .order(ByteOrder.nativeOrder())
@@ -98,15 +100,16 @@ void main() {
         // Convert mapper padLeft / scaledW into NDC range [-1, 1]
         val ndcLeft = (mapper.padLeft / mapper.modelInputSize) * 2.0f - 1.0f
         val ndcRight = ((mapper.padLeft + mapper.scaledW) / mapper.modelInputSize) * 2.0f - 1.0f
-        // Bottom-up GL: top in image corresponds to higher Y in NDC
-        val ndcTop = 1.0f - (mapper.padTop / mapper.modelInputSize) * 2.0f
-        val ndcBottom = 1.0f - ((mapper.padTop + mapper.scaledH) / mapper.modelInputSize) * 2.0f
+        // glReadPixels reads bottom-up from FBO window coordinates y=0.
+        // Video TOP is placed at lower FBO rows (padTop), and video BOTTOM at higher FBO rows (padTop + scaledH).
+        val ndcSubRectBottom = (mapper.padTop / mapper.modelInputSize) * 2.0f - 1.0f
+        val ndcSubRectTop = ((mapper.padTop + mapper.scaledH) / mapper.modelInputSize) * 2.0f - 1.0f
 
         if (uTexMatrixLoc >= 0) {
             GLES20.glUniformMatrix4fv(uTexMatrixLoc, 1, false, texMatrix, 0)
         }
         if (uLetterboxRectLoc >= 0) {
-            GLES20.glUniform4f(uLetterboxRectLoc, ndcLeft, minOf(ndcBottom, ndcTop), ndcRight, maxOf(ndcBottom, ndcTop))
+            GLES20.glUniform4f(uLetterboxRectLoc, ndcLeft, ndcSubRectBottom, ndcRight, ndcSubRectTop)
         }
 
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
