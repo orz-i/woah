@@ -10,7 +10,8 @@ import android.view.Surface
 import com.danceanon.native.bridge.DanceProcessingEvents
 import com.danceanon.native.bridge.ExportRequestDto
 import com.danceanon.native.bridge.JobStatusDto
-import com.danceanon.native.inference.YoloLiteRtSegmenter
+import com.danceanon.native.inference.YoloOnnxSegmenter
+import com.danceanon.native.jobs.JobManager
 import com.danceanon.native.media.AudioTrackCopier
 import com.danceanon.native.media.Mp4Muxer
 import com.danceanon.native.media.VideoDecoder
@@ -18,6 +19,9 @@ import com.danceanon.native.media.VideoEncoder
 import com.danceanon.native.media.VideoProbe
 import com.danceanon.native.render.EglCore
 import com.danceanon.native.render.GlRenderer
+import com.danceanon.native.storage.CacheManager
+import com.danceanon.native.tracking.HungarianSolver
+import com.danceanon.native.tracking.TrackManager
 import com.danceanon.native.tracking.TrackState
 import com.danceanon.native.tracking.TrackedPerson
 import kotlinx.coroutines.Dispatchers
@@ -26,10 +30,13 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.sqrt
 
 class ExportPipeline(
     private val context: Context,
-    private val segmenter: YoloLiteRtSegmenter,
+    private val segmenter: YoloOnnxSegmenter,
     private val eventEmitter: DanceProcessingEvents? = null
 ) {
 

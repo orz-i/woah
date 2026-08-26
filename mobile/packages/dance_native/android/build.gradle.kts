@@ -73,7 +73,21 @@ kotlin {
 
 dependencies {
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.18.0")
-    implementation("org.tensorflow:tensorflow-lite:2.16.1")
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("org.mockito:mockito-core:5.0.0")
+}
+
+val verifyModelAssets = tasks.register("verifyModelAssets") {
+    doLast {
+        val modelFile = file("src/main/assets/yolo11n-seg.onnx")
+        if (!modelFile.exists() || modelFile.length() == 0L) {
+            throw GradleException(
+                "Missing required model asset: ${modelFile.absolutePath}. Please run 'uv run python tools/export_onnx.py' or download yolo11n-seg.onnx before building."
+            )
+        }
+    }
+}
+
+tasks.matching { it.name.startsWith("preBuild") || it.name.startsWith("compile") }.configureEach {
+    dependsOn(verifyModelAssets)
 }
