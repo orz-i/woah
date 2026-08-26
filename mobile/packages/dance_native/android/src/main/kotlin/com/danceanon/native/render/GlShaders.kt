@@ -83,8 +83,8 @@ void main() {
     // 2. Solid Color Fill
     if (uEffectType == 0) {
         if (maskVal > 0.3) {
-            vec4 effectColor = vec4(uFillColor.rgb, uOpacity * uFillColor.a);
-            gl_FragColor = mix(baseColor, effectColor, effectColor.a);
+            float alpha = uOpacity * (uFillColor.a > 0.01 ? uFillColor.a : 1.0);
+            gl_FragColor = mix(baseColor, vec4(uFillColor.rgb, 1.0), alpha);
             return;
         }
     }
@@ -97,11 +97,12 @@ void main() {
         
         float edge = max(max(abs(maskVal - mUp), abs(maskVal - mDown)), max(abs(maskVal - mLeft), abs(maskVal - mRight)));
         if (edge > 0.2) {
-            gl_FragColor = mix(baseColor, uOutlineColor, uOpacity * uOutlineColor.a);
+            float outAlpha = uOpacity * (uOutlineColor.a > 0.01 ? uOutlineColor.a : 1.0);
+            gl_FragColor = mix(baseColor, vec4(uOutlineColor.rgb, 1.0), outAlpha);
             return;
         } else if (maskVal > 0.3) {
-            vec4 effectColor = vec4(uFillColor.rgb, uOpacity * uFillColor.a);
-            gl_FragColor = mix(baseColor, effectColor, effectColor.a);
+            float alpha = uOpacity * (uFillColor.a > 0.01 ? uFillColor.a : 1.0);
+            gl_FragColor = mix(baseColor, vec4(uFillColor.rgb, 1.0), alpha);
             return;
         }
     }
@@ -126,8 +127,8 @@ void main() {
     else if (uEffectType == 3) {
         if (maskVal > 0.3) {
             vec4 gradColor = mix(uFillColor, uGradientColor, maskUv.y);
-            vec4 effectColor = vec4(gradColor.rgb, uOpacity * gradColor.a);
-            gl_FragColor = mix(baseColor, effectColor, effectColor.a);
+            float alpha = uOpacity * (gradColor.a > 0.01 ? gradColor.a : 1.0);
+            gl_FragColor = mix(baseColor, vec4(gradColor.rgb, 1.0), alpha);
             return;
         }
     }

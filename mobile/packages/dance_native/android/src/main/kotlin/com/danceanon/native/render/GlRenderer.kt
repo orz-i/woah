@@ -144,10 +144,14 @@ class GlRenderer : FrameRenderer {
         GLES20.glReadPixels(0, 0, fboWidth, fboHeight, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buf)
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
 
-        val bmp = Bitmap.createBitmap(fboWidth, fboHeight, Bitmap.Config.ARGB_8888)
+        val rawBmp = Bitmap.createBitmap(fboWidth, fboHeight, Bitmap.Config.ARGB_8888)
         buf.rewind()
-        bmp.copyPixelsFromBuffer(buf)
-        return bmp
+        rawBmp.copyPixelsFromBuffer(buf)
+
+        val flipMatrix = Matrix().apply { postScale(1f, -1f) }
+        val rightSideUpBmp = Bitmap.createBitmap(rawBmp, 0, 0, fboWidth, fboHeight, flipMatrix, true)
+        rawBmp.recycle()
+        return rightSideUpBmp
     }
 
     fun captureRenderedFrame(): Bitmap? {
