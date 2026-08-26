@@ -20,14 +20,34 @@ class PersonSelectionScreen extends ConsumerStatefulWidget {
 }
 
 class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
+  late final PageController _pageController;
+  int _currentPage = 0;
+
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(viewportFraction: 0.86);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref
           .read(personSelectionControllerProvider.notifier)
           .analyzeProject(widget.project);
     });
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToPage(int page, int totalCount) {
+    if (page >= 0 && page < totalCount) {
+      _pageController.animateToPage(
+        page,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
   }
 
   @override
@@ -41,7 +61,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.symmetric(vertical: 12.0),
           child: _buildBody(context, state, controller),
         ),
       ),
@@ -127,87 +147,166 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
     final selectedCount = state.selectedPersonIds.length;
     final totalCount = persons.length;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Header & Quick Actions
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '检测到 $totalCount 位人物',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  '已按画面位置从左至右排序编号',
-                  style: TextStyle(fontSize: 12, color: Colors.white54),
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                TextButton(
-                  onPressed: () => controller.selectAll(),
-                  child: const Text('全选'),
-                ),
-                TextButton(
-                  onPressed: () => controller.deselectAll(),
-                  child: const Text('清空'),
-                ),
-              ],
-            ),
-          ],
-        ),
-        const Divider(height: 20),
+    // Safety check on page bounds
+    if (_currentPage >= totalCount) {
+      _currentPage = totalCount - 1;
+    }
 
-        // Hint Banner
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.deepPurpleAccent.withAlpha(25),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.deepPurpleAccent.withAlpha(60)),
-          ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // 1. Header & Quick Actions
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Icon(Icons.info_outline, size: 16, color: Colors.purpleAccent),
-              const SizedBox(width: 8),
-              Text(
-                '已选择 $selectedCount / $totalCount 人物将应用遮挡/美颜/拉腿特效',
-                style: const TextStyle(fontSize: 12, color: Colors.white70),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '共检测到 $totalCount 位人物',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    '左右滑动或点击箭头切换人物',
+                    style: TextStyle(fontSize: 12, color: Colors.white54),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: () => controller.selectAll(),
+                    child: const Text('全选'),
+                  ),
+                  TextButton(
+                    onPressed: () => controller.deselectAll(),
+                    child: const Text('清空'),
+                  ),
+                ],
               ),
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
 
-        // Person Cards Grid
-        Expanded(
-          child: GridView.builder(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 0.78,
+        // 2. Info Hint Banner
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.deepPurpleAccent.withAlpha(25),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.deepPurpleAccent.withAlpha(60)),
             ),
-            itemCount: persons.length,
-            itemBuilder: (context, index) {
-              final p = persons[index];
-              final isSelected = state.selectedPersonIds.contains(p.id);
-              return PersonCard(
-                person: p,
-                isSelected: isSelected,
-                onToggle: () => controller.togglePerson(p.id),
-              );
-            },
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline, size: 16, color: Colors.purpleAccent),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '已选择 $selectedCount / $totalCount 位人物进行匿名化/美颜',
+                    style: const TextStyle(fontSize: 12, color: Colors.white70),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
+        const SizedBox(height: 12),
+
+        // 3. Single-viewport Swipeable Carousel (PageView)
+        Expanded(
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              PageView.builder(
+                controller: _pageController,
+                itemCount: persons.length,
+                onPageChanged: (index) {
+                  setState(() {
+                    _currentPage = index;
+                  });
+                },
+                itemBuilder: (context, index) {
+                  final p = persons[index];
+                  final isSelected = state.selectedPersonIds.contains(p.id);
+                  return PersonCard(
+                    person: p,
+                    isSelected: isSelected,
+                    onToggle: () => controller.togglePerson(p.id),
+                  );
+                },
+              ),
+
+              // Left Nav Arrow
+              if (_currentPage > 0)
+                Positioned(
+                  left: 4,
+                  child: Material(
+                    color: Colors.black45,
+                    shape: const CircleBorder(),
+                    child: IconButton(
+                      icon: const Icon(Icons.chevron_left, color: Colors.white, size: 28),
+                      onPressed: () => _scrollToPage(_currentPage - 1, totalCount),
+                    ),
+                  ),
+                ),
+
+              // Right Nav Arrow
+              if (_currentPage < totalCount - 1)
+                Positioned(
+                  right: 4,
+                  child: Material(
+                    color: Colors.black45,
+                    shape: const CircleBorder(),
+                    child: IconButton(
+                      icon: const Icon(Icons.chevron_right, color: Colors.white, size: 28),
+                      onPressed: () => _scrollToPage(_currentPage + 1, totalCount),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        // 4. Page Indicator Dots & Page Text
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '${_currentPage + 1} / $totalCount',
+              style: const TextStyle(fontSize: 13, color: Colors.white70, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(width: 12),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(totalCount, (index) {
+                final isCurrent = index == _currentPage;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: isCurrent ? 16 : 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: isCurrent
+                        ? Colors.deepPurpleAccent
+                        : Colors.white24,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                );
+              }),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
       ],
     );
   }

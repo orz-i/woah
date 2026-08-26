@@ -30,7 +30,8 @@ void main() {
       );
 
       expect(find.text('人物 0'), findsOneWidget);
-      expect(find.text('94%'), findsOneWidget);
+      expect(find.text('置信度: 94%'), findsOneWidget);
+      expect(find.text('已选中（将应用特效）'), findsOneWidget);
       expect(find.byIcon(Icons.check), findsOneWidget);
 
       await tester.tap(find.byType(PersonCard));
@@ -61,7 +62,8 @@ void main() {
       );
 
       expect(find.text('人物 2'), findsOneWidget);
-      expect(find.text('88%'), findsOneWidget);
+      expect(find.text('置信度: 88%'), findsOneWidget);
+      expect(find.text('未选中（直通原画）'), findsOneWidget);
       expect(find.byIcon(Icons.circle_outlined), findsOneWidget);
     });
   });
