@@ -97,3 +97,11 @@ testdata/*.mp4
 *.log
 *.tmp
 emulator_screen.png
+tools/sam2_android/.models/
+tools/sam2_android/.generated/
+tools/sam2_android/reference/golden_dataset/golden_frames/
+tools/sam2_android/reference/golden_dataset/golden_masks/
+*.pte
+*.npy
+
+

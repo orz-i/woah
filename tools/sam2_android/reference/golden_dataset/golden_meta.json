@@ -1,0 +1,16 @@
+{
+  "video_path": "desktop/vendor/Cutie/examples/example.mp4",
+  "video_width": 640,
+  "video_height": 480,
+  "fps": 25.0,
+  "frame_count": 40,
+  "object_id": 0,
+  "first_bbox": [
+    154,
+    80,
+    362,
+    479
+  ],
+  "mask_threshold": 0.15,
+  "bbox_expand_ratio": 0.05
+}
