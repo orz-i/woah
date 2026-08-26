@@ -24,9 +24,14 @@ object YoloPreprocessor {
 
     const val DEFAULT_INPUT_SIZE = 640
 
-    fun processBitmap(bitmap: Bitmap, inputSize: Int = DEFAULT_INPUT_SIZE): PreprocessResult {
-        val srcW = bitmap.width
-        val srcH = bitmap.height
+    fun processBitmap(
+        bitmap: Bitmap,
+        inputSize: Int = DEFAULT_INPUT_SIZE,
+        origWidth: Int = bitmap.width,
+        origHeight: Int = bitmap.height
+    ): PreprocessResult {
+        val srcW = origWidth
+        val srcH = origHeight
 
         val scale = min(inputSize.toFloat() / srcW, inputSize.toFloat() / srcH)
         val scaledW = (srcW * scale).toInt()
@@ -35,28 +40,34 @@ object YoloPreprocessor {
         val padLeft = (inputSize - scaledW) / 2f
         val padTop = (inputSize - scaledH) / 2f
 
-        // Create letterboxed 640x640 Bitmap with grey padding (114, 114, 114)
-        val letterboxed = Bitmap.createBitmap(inputSize, inputSize, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(letterboxed)
-        val paint = Paint(Paint.FILTER_BITMAP_FLAG)
-        canvas.drawColor(Color.rgb(114, 114, 114))
-
-        val srcScaled = Bitmap.createScaledBitmap(bitmap, scaledW, scaledH, true)
-        canvas.drawBitmap(srcScaled, padLeft, padTop, paint)
-        if (srcScaled != bitmap) {
-            srcScaled.recycle()
-        }
-
-        // Convert to (1, 3, 640, 640) Float32 Buffer normalized to [0.0, 1.0] (NCHW Planar format)
         val numPixels = inputSize * inputSize
         val byteBuffer = ByteBuffer.allocateDirect(1 * 3 * numPixels * 4)
         byteBuffer.order(ByteOrder.nativeOrder())
         val floatBuffer = byteBuffer.asFloatBuffer()
 
         val pixels = IntArray(numPixels)
-        letterboxed.getPixels(pixels, 0, inputSize, 0, 0, inputSize, inputSize)
-        letterboxed.recycle()
 
+        if (bitmap.width == inputSize && bitmap.height == inputSize) {
+            // Already a 640x640 letterboxed bitmap
+            bitmap.getPixels(pixels, 0, inputSize, 0, 0, inputSize, inputSize)
+        } else {
+            // Create letterboxed 640x640 Bitmap with grey padding (114, 114, 114)
+            val letterboxed = Bitmap.createBitmap(inputSize, inputSize, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(letterboxed)
+            val paint = Paint(Paint.FILTER_BITMAP_FLAG)
+            canvas.drawColor(Color.rgb(114, 114, 114))
+
+            val srcScaled = Bitmap.createScaledBitmap(bitmap, scaledW, scaledH, true)
+            canvas.drawBitmap(srcScaled, padLeft, padTop, paint)
+            if (srcScaled != bitmap) {
+                srcScaled.recycle()
+            }
+
+            letterboxed.getPixels(pixels, 0, inputSize, 0, 0, inputSize, inputSize)
+            letterboxed.recycle()
+        }
+
+        // Convert to (1, 3, 640, 640) Float32 Buffer normalized to [0.0, 1.0] (NCHW Planar format)
         val rOffset = 0
         val gOffset = numPixels
         val bOffset = 2 * numPixels

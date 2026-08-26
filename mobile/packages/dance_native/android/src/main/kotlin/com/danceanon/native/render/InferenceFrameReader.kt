@@ -2,6 +2,7 @@ package com.danceanon.native.render
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.opengl.GLES20
@@ -9,8 +10,8 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 class InferenceFrameReader(
-    private val width: Int,
-    private val height: Int,
+    val width: Int,
+    val height: Int,
     private val targetSize: Int = 640
 ) : AutoCloseable {
 
@@ -23,11 +24,20 @@ class InferenceFrameReader(
     private val scaledCanvas: Canvas = Canvas(scaledBitmap)
     private val paint: Paint = Paint(Paint.FILTER_BITMAP_FLAG)
 
+    val scale: Float = targetSize.toFloat() / maxOf(width, height).coerceAtLeast(1)
+    val scaledW: Float = width * scale
+    val scaledH: Float = height * scale
+    val padLeft: Float = (targetSize - scaledW) / 2f
+    val padTop: Float = (targetSize - scaledH) / 2f
+
     private val transformMatrix: Matrix = Matrix().apply {
-        val scale = targetSize.toFloat() / maxOf(width, height).coerceAtLeast(1)
-        // Flip vertically because glReadPixels reads from bottom-left
+        // glReadPixels reads from bottom to top (OpenGL coordinate system).
+        // To produce a normal top-down image letterboxed into [padLeft, padTop, padLeft + scaledW, padTop + scaledH]:
+        // 1. Invert Y with scale: y -> -scale * y
+        // 2. Translate by (padLeft, padTop + scaledH) so that y=height (top of video) maps to padTop,
+        //    and y=0 (bottom of video) maps to padTop + scaledH.
         postScale(scale, -scale)
-        postTranslate(0f, targetSize.toFloat())
+        postTranslate(padLeft, padTop + scaledH)
     }
 
     fun captureFrame(): Bitmap {
@@ -36,6 +46,7 @@ class InferenceFrameReader(
         pixelBuffer.rewind()
         fullBitmap.copyPixelsFromBuffer(pixelBuffer)
 
+        scaledCanvas.drawColor(Color.rgb(114, 114, 114))
         scaledCanvas.drawBitmap(fullBitmap, transformMatrix, paint)
         return scaledBitmap
     }

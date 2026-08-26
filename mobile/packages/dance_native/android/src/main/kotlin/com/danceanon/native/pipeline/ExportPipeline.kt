@@ -236,7 +236,12 @@ class ExportPipeline(
                         val shouldInfer = (processedFrames == 1) || (processedFrames % frameStride == 0)
                         val detections = if (shouldInfer && frameReader != null) {
                             val frameBmp = frameReader.captureFrame()
-                            val seg = segmenter.segmentBitmapSync(frameBmp, ptsUs)
+                            val seg = segmenter.segmentBitmapSync(
+                                bitmap = frameBmp,
+                                timestampUs = ptsUs,
+                                origWidth = frameReader.width,
+                                origHeight = frameReader.height
+                            )
                             seg.persons
                         } else {
                             emptyList()

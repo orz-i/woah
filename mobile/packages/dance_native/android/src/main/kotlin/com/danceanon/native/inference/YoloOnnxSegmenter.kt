@@ -65,7 +65,12 @@ class YoloOnnxSegmenter(
         }
     }
 
-    fun segmentBitmapSync(bitmap: Bitmap, timestampUs: Long = 0): SegmentationFrame {
+    fun segmentBitmapSync(
+        bitmap: Bitmap,
+        timestampUs: Long = 0,
+        origWidth: Int = bitmap.width,
+        origHeight: Int = bitmap.height
+    ): SegmentationFrame {
         val session = ortSession ?: throw DanceNativeException(
             DanceNativeException.MODEL_INIT_FAILED,
             "YoloOnnxSegmenter session not initialized. Call initialize() first."
@@ -78,7 +83,11 @@ class YoloOnnxSegmenter(
         val startTime = System.currentTimeMillis()
 
         // 1. Preprocess
-        val preprocess = YoloPreprocessor.processBitmap(bitmap)
+        val preprocess = YoloPreprocessor.processBitmap(
+            bitmap = bitmap,
+            origWidth = origWidth,
+            origHeight = origHeight
+        )
 
         // 2. Run Inference
         val detections = try {
