@@ -37,7 +37,17 @@ class ProcessingProfileTest {
     }
 
     @Test
+    fun testSam2ProfileUsesDynamicImageSizeAndStride1() {
+        val profile = ProcessingProfile.fromName("sam2")
+        assertEquals("sam2", profile.name)
+        assertEquals(1, profile.inferenceStride)
+        assertEquals(com.danceanon.native.sam2.Sam2TensorContract.IMAGE_SIZE, profile.inputSize)
+        assertTrue(profile.useSam2)
+    }
+
+    @Test
     fun testDefaultFallbackToBalanced() {
+
         val nullProfile = ProcessingProfile.fromName(null)
         assertEquals(ProcessingProfile.BALANCED, nullProfile)
 
