@@ -1,36 +1,98 @@
+# ==========================================
+# Dance Anonymizer .gitignore
+# ==========================================
+
+# --- Python ---
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+
+# --- Model Weights & Cache ---
+*.pt
+*.onnx
+*.tflite
+*.engine
+*.bin
+*.weights
+models/pytorch/*.pt
+models/litert/*.tflite
+models/litert/*.onnx
+
+# --- Flutter & Dart ---
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+**/build/
+*.lock
+
+# --- Android ---
+**/android/.gradle/
+**/android/captures/
+**/android/gradleApp.setting
+**/android/local.properties
+**/android/**/build/
+**/android/app/src/main/assets/*.onnx
+**/android/app/src/main/assets/*.tflite
+*.apk
+*.aab
+*.jks
+*.keystore
+
+# --- iOS & macOS ---
+.DS_Store
+.AppleDouble
+.LSOverride
+**/ios/.symlinks/
+**/ios/Pods/
+**/ios/Podfile.lock
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/App.framework
+**/ios/Flutter/App.podspec
+**/ios/Runner.xcworkspace/xcuserdata/
+**/ios/Runner.xcodeproj/xcuserdata/
+**/ios/Runner.xcodeproj/project.xcworkspace/xcuserdata/
+DerivedData/
+
+# --- IDE & Editors ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.iml
+
+# --- Data & Temporary Storage ---
 data/tasks/
 debug/
 input/
 output/
 uploads/
-.DS_Store
-.venv/
-*.xlsx
-
-# Large model weights (download/export dynamically via tools/export_yolo.py)
-*.pt
-*.onnx
-*.tflite
-models/pytorch/*.pt
-models/litert/*.tflite
-models/litert/*.onnx
-
-# Flutter / Dart build artifacts
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
-build/
-android/.gradle
-android/captures/
-android/gradleApp.setting
-android/local.properties
-ios/.symlinks/
-ios/Flutter/Flutter.framework
-ios/Flutter/Flutter.podspec
-ios/Flutter/App.framework
-ios/Flutter/App.podspec
-ios/Pods/
-*.lock
+*.log
+*.tmp
+emulator_screen.png
