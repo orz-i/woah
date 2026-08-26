@@ -6,6 +6,7 @@ object GlShaders {
 attribute vec2 aTexCoord;
 uniform mat4 uTexMatrix;
 uniform vec4 uCropRect;
+uniform vec4 uMaskCropRect;
 varying vec2 vOesTexCoord;
 varying vec2 vMaskTexCoord;
 
@@ -17,7 +18,10 @@ void main() {
     );
     vec4 transformed = uTexMatrix * vec4(cropped, 0.0, 1.0);
     vOesTexCoord = transformed.xy;
-    vMaskTexCoord = vec2(aTexCoord.x, 1.0 - aTexCoord.y);
+    vMaskTexCoord = vec2(
+        mix(uMaskCropRect.x, uMaskCropRect.z, aTexCoord.x),
+        mix(uMaskCropRect.y, uMaskCropRect.w, 1.0 - aTexCoord.y)
+    );
 }""".trimIndent()
 
     val FRAGMENT_SHADER = """#extension GL_OES_EGL_image_external : require

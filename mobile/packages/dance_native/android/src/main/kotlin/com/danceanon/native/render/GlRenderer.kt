@@ -20,8 +20,8 @@ class GlRenderer : FrameRenderer {
     private var maskTextureId = 0
     private var fboId = 0
     private var fboTexId = 0
-    private val fboWidth = 640
-    private val fboHeight = 640
+    private var fboWidth = 640
+    private var fboHeight = 640
     private var fboBuffer: ByteBuffer? = null
     private var captureBuffer: ByteBuffer? = null
 
@@ -50,6 +50,13 @@ class GlRenderer : FrameRenderer {
     override fun initialize(width: Int, height: Int) {
         this.width = width
         this.height = height
+
+        // Proportional FBO dimensions preserving exact video aspect ratio
+        val maxDim = maxOf(width, height).coerceAtLeast(1)
+        val rawFboW = (width * 640f / maxDim).toInt()
+        val rawFboH = (height * 640f / maxDim).toInt()
+        fboWidth = maxOf(2, (rawFboW + 1) / 2 * 2)
+        fboHeight = maxOf(2, (rawFboH + 1) / 2 * 2)
 
         val vShader = compileShader(GLES20.GL_VERTEX_SHADER, GlShaders.VERTEX_SHADER)
         val fShader = compileShader(GLES20.GL_FRAGMENT_SHADER, GlShaders.FRAGMENT_SHADER)
@@ -131,6 +138,7 @@ class GlRenderer : FrameRenderer {
         val matrix = texMatrix ?: identityMatrix
         GLES20.glUniformMatrix4fv(GLES20.glGetUniformLocation(programId, "uTexMatrix"), 1, false, matrix, 0)
         GLES20.glUniform4f(GLES20.glGetUniformLocation(programId, "uCropRect"), 0f, 0f, 1f, 1f)
+        GLES20.glUniform4f(GLES20.glGetUniformLocation(programId, "uMaskCropRect"), 0f, 0f, 1f, 1f)
         GLES20.glUniform1i(GLES20.glGetUniformLocation(programId, "uHasMask"), 0)
 
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
@@ -255,6 +263,20 @@ class GlRenderer : FrameRenderer {
         GLES20.glUniform4f(
             GLES20.glGetUniformLocation(programId, "uCropRect"),
             cropRect.left, cropRect.top, cropRect.right, cropRect.bottom
+        )
+
+        // Exact letterbox crop coordinates for mask sampling
+        val letterScale = minOf(640f / fboWidth, 640f / fboHeight)
+        val scaledW = fboWidth * letterScale
+        val scaledH = fboHeight * letterScale
+        val padLeft = (640f - scaledW) / 2f
+        val padTop = (640f - scaledH) / 2f
+        GLES20.glUniform4f(
+            GLES20.glGetUniformLocation(programId, "uMaskCropRect"),
+            padLeft / 640f,
+            padTop / 640f,
+            (padLeft + scaledW) / 640f,
+            (padTop + scaledH) / 640f
         )
 
         val selectedPersons = persons.filter { (selectedPersonIds.isEmpty() || selectedPersonIds.contains(it.id)) && it.mask != null }
