@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dance_domain/dance_domain.dart';
@@ -42,10 +43,11 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
 
   void _scrollToPage(int page, int totalCount) {
     if (page >= 0 && page < totalCount) {
+      HapticFeedback.lightImpact();
       _pageController.animateToPage(
         page,
         duration: const Duration(milliseconds: 280),
-        curve: Curves.easeInOut,
+        curve: Curves.easeOutCubic,
       );
     }
   }
@@ -82,7 +84,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
             const SizedBox(
               width: 56,
               height: 56,
-              child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white),
+              child: CircularProgressIndicator(strokeWidth: 3.5, color: Colors.white),
             ),
             const SizedBox(height: 24),
             Text(
@@ -104,22 +106,29 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
 
     if (state.status == PersonSelectionStatus.error) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline_rounded, size: 48, color: Colors.redAccent),
-            const SizedBox(height: 16),
-            Text(
-              state.errorMessage ?? '分析失败',
-              style: const TextStyle(color: Colors.redAccent),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => controller.analyzeProject(widget.project),
-              child: const Text('重试分析'),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline_rounded, size: 52, color: Colors.redAccent),
+              const SizedBox(height: 16),
+              Text(
+                state.errorMessage ?? '分析失败',
+                style: const TextStyle(color: Colors.redAccent, fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  controller.analyzeProject(widget.project);
+                },
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('重试识别'),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -130,10 +139,10 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.person_off_outlined, size: 48, color: Colors.white54),
+            const Icon(Icons.person_off_outlined, size: 52, color: Colors.white54),
             const SizedBox(height: 16),
-            const Text('首帧未检测到人物，请尝试其他视频'),
-            const SizedBox(height: 16),
+            const Text('首帧未检测到人物，请尝试其他视频', style: TextStyle(color: Colors.white70)),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('返回重新选择视频'),
@@ -156,7 +165,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
       children: [
         // 1. Compact Top Bar (Selection count & Quick buttons)
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -170,10 +179,10 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.people_alt_rounded, size: 16, color: Colors.white70),
+                    const Icon(Icons.people_alt_rounded, size: 15, color: Colors.white70),
                     const SizedBox(width: 6),
                     Text(
-                      '已选择 $selectedCount / $totalCount 位人物',
+                      '已选择 $selectedCount / $totalCount 位',
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
@@ -188,21 +197,29 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
                   TextButton.icon(
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      visualDensity: VisualDensity.compact,
                     ),
-                    onPressed: () => controller.selectAll(),
-                    icon: const Icon(Icons.select_all_rounded, size: 16),
-                    label: const Text('全选'),
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      controller.selectAll();
+                    },
+                    icon: const Icon(Icons.select_all_rounded, size: 15),
+                    label: const Text('全选', style: TextStyle(fontSize: 12)),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 2),
                   TextButton.icon(
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.white60,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      visualDensity: VisualDensity.compact,
                     ),
-                    onPressed: () => controller.deselectAll(),
-                    icon: const Icon(Icons.deselect_rounded, size: 16),
-                    label: const Text('清空'),
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      controller.deselectAll();
+                    },
+                    icon: const Icon(Icons.deselect_rounded, size: 15),
+                    label: const Text('清空', style: TextStyle(fontSize: 12)),
                   ),
                 ],
               ),
@@ -215,7 +232,9 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
           child: PageView.builder(
             controller: _pageController,
             itemCount: persons.length,
+            physics: const BouncingScrollPhysics(),
             onPageChanged: (index) {
+              HapticFeedback.selectionClick();
               setState(() {
                 _currentPage = index;
               });
@@ -246,7 +265,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
                 ),
                 icon: Icon(
                   Icons.arrow_back_ios_new_rounded,
-                  size: 18,
+                  size: 16,
                   color: _currentPage > 0 ? Colors.white : Colors.white24,
                 ),
                 onPressed: _currentPage > 0
@@ -274,7 +293,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
                       return AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         margin: const EdgeInsets.symmetric(horizontal: 3),
-                        width: isCurrent ? 20 : 6,
+                        width: isCurrent ? 22 : 6,
                         height: 6,
                         decoration: BoxDecoration(
                           color: isCurrent
@@ -296,7 +315,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
                 ),
                 icon: Icon(
                   Icons.arrow_forward_ios_rounded,
-                  size: 18,
+                  size: 16,
                   color: _currentPage < totalCount - 1 ? Colors.white : Colors.white24,
                 ),
                 onPressed: _currentPage < totalCount - 1
@@ -326,6 +345,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
       child: ElevatedButton.icon(
         onPressed: hasSelection
             ? () {
+                HapticFeedback.mediumImpact();
                 final configured = controller.buildConfiguredProject();
                 if (configured != null) {
                   context.push('/effect_editor', extra: configured);
@@ -346,7 +366,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
           disabledForegroundColor: Colors.white38,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
           ),
         ),
       ),

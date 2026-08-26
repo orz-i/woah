@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:dance_domain/dance_domain.dart';
 
 class PersonCard extends StatelessWidget {
@@ -19,40 +20,43 @@ class PersonCard extends StatelessWidget {
     final confPercent = (person.confidence * 100).toInt();
 
     return GestureDetector(
-      onTap: onToggle,
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onToggle();
+      },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeInOut,
-        margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOutCubic,
+        margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
         decoration: BoxDecoration(
           color: isSelected
               ? const Color(0xFF1E1E23)
               : const Color(0xFF131316),
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(26),
           border: Border.all(
             color: isSelected
                 ? Colors.white
-                : Colors.white.withAlpha(25),
+                : Colors.white.withAlpha(20),
             width: isSelected ? 2.0 : 1.0,
           ),
           boxShadow: [
             if (isSelected)
               BoxShadow(
-                color: Colors.white.withAlpha(30),
-                blurRadius: 20,
+                color: Colors.white.withAlpha(25),
+                blurRadius: 24,
                 spreadRadius: 1,
-                offset: const Offset(0, 4),
+                offset: const Offset(0, 6),
               )
             else
               BoxShadow(
-                color: Colors.black.withAlpha(90),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+                color: Colors.black.withAlpha(100),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
               ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(24),
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -65,7 +69,7 @@ class PersonCard extends StatelessWidget {
 
               // 2. Top Header Overlay (Person ID & Confidence & Big Checkbox)
               Positioned(
-                top: 12,
+                top: 14,
                 left: 14,
                 right: 14,
                 child: Row(
@@ -91,7 +95,7 @@ class PersonCard extends StatelessWidget {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
                             color: Colors.black54,
                             borderRadius: BorderRadius.circular(8),
@@ -101,8 +105,8 @@ class PersonCard extends StatelessWidget {
                             '置信度: $confPercent%',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.white.withAlpha(200),
-                              fontWeight: FontWeight.w500,
+                              color: Colors.white.withAlpha(220),
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
@@ -137,15 +141,15 @@ class PersonCard extends StatelessWidget {
 
               // 3. Bottom Status Bar Overlay
               Positioned(
-                bottom: 12,
+                bottom: 14,
                 left: 14,
                 right: 14,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 16),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? Colors.white
-                        : Colors.white.withAlpha(12),
+                        : Colors.white.withAlpha(10),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: isSelected

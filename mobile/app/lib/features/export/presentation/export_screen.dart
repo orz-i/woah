@@ -37,13 +37,14 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   }
 
   void _copyErrorLog(BuildContext context, String? errorMessage) {
+    HapticFeedback.mediumImpact();
     final text = errorMessage ?? '未知错误';
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        backgroundColor: Colors.green,
+        backgroundColor: Color(0xFF22C55E),
         duration: Duration(seconds: 3),
-        content: Text('📋 错误日志已复制到剪贴板，可直接粘贴反馈！'),
+        content: Text('📋 错误日志已复制到剪贴板，可直接粘贴反馈！', style: TextStyle(color: Colors.white)),
       ),
     );
   }
@@ -56,6 +57,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     // Auto navigate on completion
     ref.listen<ExportState>(exportControllerProvider, (previous, next) {
       if (next.isCompleted && next.outputUri != null && next.outputUri!.endsWith('.mp4')) {
+        HapticFeedback.heavyImpact();
         context.pushReplacement('/result', extra: next);
       }
     });
@@ -73,22 +75,34 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       ),
       body: Center(
         child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Circular Progress Ring
+              // Circular Progress Ring with soft background glow
               Stack(
                 alignment: Alignment.center,
                 children: [
-                  SizedBox(
+                  Container(
                     width: 220,
                     height: 220,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        if (!isFailed)
+                          BoxShadow(
+                            color: Colors.white.withAlpha(15),
+                            blurRadius: 30,
+                            spreadRadius: 2,
+                          ),
+                      ],
+                    ),
                     child: CircularProgressIndicator(
                       value: isFailed ? 1.0 : (state.progress > 0 ? state.progress : null),
-                      strokeWidth: 10,
+                      strokeWidth: 9,
                       backgroundColor: Colors.white12,
                       valueColor: AlwaysStoppedAnimation<Color>(
                         isFailed ? Colors.redAccent : Colors.white,
@@ -121,15 +135,16 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                               fontSize: 38,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
+                              letterSpacing: -1,
                               fontFeatures: [FontFeature.tabularFigures()],
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            state.progress >= 1.0 ? '即将完成' : '处理中',
+                            state.progress >= 1.0 ? '即将完成' : '硬件加速处理中',
                             textAlign: TextAlign.center,
                             style: const TextStyle(
-                              fontSize: 14,
+                              fontSize: 13,
                               color: Colors.white60,
                               fontWeight: FontWeight.w600,
                             ),
@@ -141,17 +156,26 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                 ],
               ),
               const SizedBox(height: 24),
-              Text(
-                '已处理 ${state.currentFrame} / ${state.totalFrames} 帧',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white60,
-                  fontSize: 13,
-                  fontFeatures: [FontFeature.tabularFigures()],
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E1E24),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white10),
+                ),
+                child: Text(
+                  '已处理 ${state.currentFrame} / ${state.totalFrames} 帧',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
                 ),
               ),
 
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
 
               // Status Description & Action
               SizedBox(
@@ -192,6 +216,31 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                   ],
                 ),
               ),
+
+              const SizedBox(height: 12),
+
+              // Background Service Hint
+              if (!isFailed)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(6),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white10),
+                  ),
+                  child: Row(
+                    children: const [
+                      Icon(Icons.lock_clock_rounded, size: 18, color: Colors.white60),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          '已开启前台保活服务，锁屏或切换到其他应用仍将继续导出。',
+                          style: TextStyle(fontSize: 12, color: Colors.white60),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ),
         ),
@@ -210,7 +259,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(16),
                           ),
                         ),
                       ),
@@ -226,7 +275,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                           foregroundColor: Colors.black,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(16),
                           ),
                         ),
                       ),
@@ -245,7 +294,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                         side: BorderSide(color: Colors.redAccent.withAlpha(100)),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(16),
                         ),
                       ),
                     )
@@ -275,12 +324,13 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   }
 
   void _confirmCancel(BuildContext context, ExportController controller) {
+    HapticFeedback.lightImpact();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF18181C),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Text('确认取消导出？', style: TextStyle(color: Colors.white)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('确认取消导出？', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         content: const Text('当前导出进度将丢失，确认取消吗？', style: TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
@@ -289,6 +339,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
           ),
           TextButton(
             onPressed: () {
+              HapticFeedback.mediumImpact();
               Navigator.of(ctx).pop();
               controller.cancelExport();
               Navigator.of(context).pop();

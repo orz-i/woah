@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dance_domain/dance_domain.dart';
@@ -27,6 +28,26 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
     });
   }
 
+  void _resetToDefault(EffectEditorController controller) {
+    HapticFeedback.mediumImpact();
+    controller.updateFillMode(FillMode.solid);
+    controller.updateOpacity(1.0);
+    controller.updateFillColor(0xFF000000);
+    controller.updateBorderWidth(0.0);
+    controller.updateBorderColor(0xFFFFFFFF);
+    controller.updateBlurStrength(15.0);
+    controller.updateSkinWhiten(0.0);
+    controller.updateLegStretch(enabled: false, stretch: 0.15);
+    controller.updateFollowConfig(enabled: false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        duration: Duration(seconds: 2),
+        backgroundColor: Color(0xFF222226),
+        content: Text('已恢复默认特效参数', style: TextStyle(color: Colors.white)),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(effectEditorControllerProvider);
@@ -36,9 +57,17 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('画面特效调节'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.restart_alt_rounded),
+            tooltip: '恢复默认参数',
+            onPressed: () => _resetToDefault(controller),
+          ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -150,7 +179,10 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
             ],
           ),
           selected: isSelected,
-          onSelected: (_) => controller.updateFillMode(item.$1),
+          onSelected: (_) {
+            HapticFeedback.selectionClick();
+            controller.updateFillMode(item.$1);
+          },
           selectedColor: Colors.white,
           backgroundColor: const Color(0xFF1E1E24),
           side: BorderSide(color: isSelected ? Colors.white : Colors.white24),
@@ -169,90 +201,117 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Opacity slider
-        _buildSlider(
+        // Opacity slider with step controls
+        _buildStepSlider(
           label: '遮挡不透明度',
           value: effects.opacity,
           min: 0.1,
           max: 1.0,
+          step: 0.05,
           displayValue: '${(effects.opacity * 100).toInt()}%',
           onChanged: (val) => controller.updateOpacity(val),
         ),
 
         // Solid / Gradient Color Picker
         if (effects.fillMode == FillMode.solid || effects.fillMode == FillMode.gradient) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           const Text('遮挡填充颜色', style: TextStyle(fontSize: 13, color: Colors.white70)),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           _buildColorPalette(effects.fillColorArgb, (argb) => controller.updateFillColor(argb)),
         ],
 
         // Border Width
-        const SizedBox(height: 16),
-        _buildSlider(
+        const SizedBox(height: 18),
+        _buildStepSlider(
           label: '边缘描边粗细',
           value: effects.borderWidth,
           min: 0.0,
           max: 20.0,
+          step: 1.0,
           displayValue: '${effects.borderWidth.toInt()} 像素',
           onChanged: (val) => controller.updateBorderWidth(val),
         ),
         if (effects.borderWidth > 0) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           const Text('描边发光颜色', style: TextStyle(fontSize: 13, color: Colors.white70)),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           _buildColorPalette(effects.borderColorArgb, (argb) => controller.updateBorderColor(argb)),
         ],
 
         // Blur specific controls
         if (effects.fillMode == FillMode.blur || effects.fillMode == FillMode.mosaic) ...[
-          const SizedBox(height: 16),
-          _buildSlider(
+          const SizedBox(height: 18),
+          _buildStepSlider(
             label: '模糊 / 马赛克强度',
             value: effects.blurStrength,
             min: 1.0,
             max: 30.0,
+            step: 1.0,
             displayValue: '${effects.blurStrength.toInt()}',
             onChanged: (val) => controller.updateBlurStrength(val),
           ),
         ],
 
         // Skin Whiten controls
-        const SizedBox(height: 16),
-        _buildSlider(
+        const SizedBox(height: 18),
+        _buildStepSlider(
           label: '人像美白提亮',
           value: effects.skinWhiten,
           min: 0.0,
           max: 1.0,
+          step: 0.05,
           displayValue: '${(effects.skinWhiten * 100).toInt()}%',
           onChanged: (val) => controller.updateSkinWhiten(val),
         ),
 
         // Leg stretch controls
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('智能身材比例优化', style: TextStyle(fontSize: 13, color: Colors.white70)),
-            Switch(
-              value: effects.legStretchEnabled,
-              onChanged: (val) => controller.updateLegStretch(enabled: val, stretch: 0.15),
-            ),
-          ],
-        ),
-        if (effects.legStretchEnabled) ...[
-          _buildSlider(
-            label: '拉伸幅度',
-            value: effects.legStretch,
-            min: 0.05,
-            max: 0.35,
-            displayValue: '+${(effects.legStretch * 100).toInt()}%',
-            onChanged: (val) => controller.updateLegStretch(enabled: true, stretch: val),
+        const SizedBox(height: 18),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF16161A),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withAlpha(15)),
           ),
-        ],
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('智能身材比例优化', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                  Switch(
+                    value: effects.legStretchEnabled,
+                    onChanged: (val) {
+                      HapticFeedback.lightImpact();
+                      controller.updateLegStretch(enabled: val, stretch: 0.15);
+                    },
+                  ),
+                ],
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                child: effects.legStretchEnabled
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
+                        child: _buildStepSlider(
+                          label: '拉伸幅度',
+                          value: effects.legStretch,
+                          min: 0.05,
+                          max: 0.35,
+                          step: 0.05,
+                          displayValue: '+${(effects.legStretch * 100).toInt()}%',
+                          onChanged: (val) => controller.updateLegStretch(enabled: true, stretch: val),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
 
         // 4. Follow Crop Controls
-        const Divider(height: 32),
+        const Divider(height: 36),
         Text(
           '主角专属特写镜头',
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -260,36 +319,60 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
                 color: Colors.white,
               ),
         ),
-        const SizedBox(height: 10),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('自动跟随主角平滑运镜', style: TextStyle(fontSize: 13, color: Colors.white70)),
-            Switch(
-              value: state.project?.follow.enabled ?? false,
-              onChanged: (val) => controller.updateFollowConfig(enabled: val),
-            ),
-          ],
-        ),
-        if (state.project?.follow.enabled == true) ...[
-          _buildSlider(
-            label: '特写放大倍数',
-            value: state.project!.follow.zoom,
-            min: 1.0,
-            max: 2.5,
-            displayValue: '${state.project!.follow.zoom.toStringAsFixed(1)}倍',
-            onChanged: (val) => controller.updateFollowConfig(zoom: val),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF16161A),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withAlpha(15)),
           ),
-        ],
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('自动跟随主角平滑运镜', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                  Switch(
+                    value: state.project?.follow.enabled ?? false,
+                    onChanged: (val) {
+                      HapticFeedback.lightImpact();
+                      controller.updateFollowConfig(enabled: val);
+                    },
+                  ),
+                ],
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                child: (state.project?.follow.enabled == true)
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
+                        child: _buildStepSlider(
+                          label: '特写放大倍数',
+                          value: state.project!.follow.zoom,
+                          min: 1.0,
+                          max: 2.5,
+                          step: 0.1,
+                          displayValue: '${state.project!.follow.zoom.toStringAsFixed(1)}倍',
+                          onChanged: (val) => controller.updateFollowConfig(zoom: val),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildSlider({
+  Widget _buildStepSlider({
     required String label,
     required double value,
     required double min,
     required double max,
+    required double step,
     required String displayValue,
     required ValueChanged<double> onChanged,
   }) {
@@ -300,14 +383,57 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(label, style: const TextStyle(fontSize: 13, color: Colors.white70)),
-            Text(displayValue, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(12),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                displayValue,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+            ),
           ],
         ),
-        Slider(
-          value: value.clamp(min, max),
-          min: min,
-          max: max,
-          onChanged: onChanged,
+        const SizedBox(height: 2),
+        Row(
+          children: [
+            // Minus fine-tune button
+            IconButton(
+              icon: const Icon(Icons.remove_circle_outline_rounded, size: 20, color: Colors.white54),
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              onPressed: value > min
+                  ? () {
+                      HapticFeedback.selectionClick();
+                      onChanged((value - step).clamp(min, max));
+                    }
+                  : null,
+            ),
+            Expanded(
+              child: Slider(
+                value: value.clamp(min, max),
+                min: min,
+                max: max,
+                onChanged: (val) {
+                  onChanged(val);
+                },
+              ),
+            ),
+            // Plus fine-tune button
+            IconButton(
+              icon: const Icon(Icons.add_circle_outline_rounded, size: 20, color: Colors.white54),
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              onPressed: value < max
+                  ? () {
+                      HapticFeedback.selectionClick();
+                      onChanged((value + step).clamp(min, max));
+                    }
+                  : null,
+            ),
+          ],
         ),
       ],
     );
@@ -327,15 +453,19 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
     ];
 
     return Wrap(
-      spacing: 10,
+      spacing: 12,
       runSpacing: 10,
       children: colors.map((argb) {
         final isSelected = currentArgb == argb;
         return GestureDetector(
-          onTap: () => onSelect(argb),
-          child: Container(
-            width: 34,
-            height: 34,
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onSelect(argb);
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: isSelected ? 38 : 34,
+            height: isSelected ? 38 : 34,
             decoration: BoxDecoration(
               color: Color(argb),
               shape: BoxShape.circle,
@@ -346,8 +476,8 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
               boxShadow: [
                 if (isSelected)
                   BoxShadow(
-                    color: Colors.white.withAlpha(50),
-                    blurRadius: 8,
+                    color: Colors.white.withAlpha(60),
+                    blurRadius: 10,
                     spreadRadius: 1,
                   ),
               ],
@@ -355,7 +485,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
             child: isSelected
                 ? Icon(
                     Icons.check,
-                    size: 18,
+                    size: 20,
                     color: argb == 0xFFFFFFFF ? Colors.black : Colors.white,
                   )
                 : null,
@@ -378,6 +508,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
       ),
       child: ElevatedButton.icon(
         onPressed: () {
+          HapticFeedback.mediumImpact();
           final configured = controller.buildConfiguredProject();
           if (configured != null) {
             context.push('/export', extra: configured);
@@ -393,7 +524,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
           foregroundColor: Colors.black,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
           ),
         ),
       ),

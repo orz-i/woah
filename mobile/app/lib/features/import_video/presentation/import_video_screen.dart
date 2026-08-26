@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dance_native/dance_native.dart';
@@ -27,7 +28,10 @@ class ImportVideoScreen extends ConsumerWidget {
           builder: (scaffoldContext) => IconButton(
             icon: const Icon(Icons.info_outline_rounded),
             tooltip: '系统与设备信息 (右滑可查看)',
-            onPressed: () => Scaffold.of(scaffoldContext).openDrawer(),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              Scaffold.of(scaffoldContext).openDrawer();
+            },
           ),
         ),
         actions: [
@@ -35,7 +39,10 @@ class ImportVideoScreen extends ConsumerWidget {
             IconButton(
               icon: const Icon(Icons.refresh_rounded),
               tooltip: '重新选择视频',
-              onPressed: () => controller.reset(),
+              onPressed: () {
+                HapticFeedback.mediumImpact();
+                controller.reset();
+              },
             ),
         ],
       ),
@@ -46,14 +53,16 @@ class ImportVideoScreen extends ConsumerWidget {
           onHorizontalDragEnd: (details) {
             // Swipe right to open system info drawer
             if (details.primaryVelocity != null && details.primaryVelocity! > 250) {
+              HapticFeedback.lightImpact();
               Scaffold.of(scaffoldContext).openDrawer();
             }
           },
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 12.0),
               child: Center(
                 child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -79,7 +88,7 @@ class ImportVideoScreen extends ConsumerWidget {
     final capsAsync = ref.watch(capabilitiesProvider);
 
     return Drawer(
-      backgroundColor: const Color(0xFF0F0F12),
+      backgroundColor: const Color(0xFF0D0D10),
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
@@ -93,38 +102,45 @@ class ImportVideoScreen extends ConsumerWidget {
                     decoration: BoxDecoration(
                       color: Colors.white.withAlpha(15),
                       shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white24),
                     ),
-                    child: const Icon(Icons.memory_rounded, color: Colors.white, size: 24),
+                    child: const Icon(Icons.memory_rounded, color: Colors.white, size: 22),
                   ),
                   const SizedBox(width: 12),
                   const Text(
                     '系统与设备信息',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 17,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               const Text(
-                '当前设备硬件加速与引擎环境参数',
+                '当前设备硬件加速与引擎运行参数',
                 style: TextStyle(fontSize: 12, color: Colors.white54),
               ),
-              const Divider(height: 32),
+              const Divider(height: 28),
               Expanded(
                 child: capsAsync.when(
                   data: (caps) => ListView(
+                    physics: const BouncingScrollPhysics(),
                     children: [
+                      _buildDrawerSectionTitle('系统规格与环境'),
                       _buildInfoTile('系统版本 (API)', 'Android API ${caps.androidApi}'),
-                      _buildInfoTile('图形渲染 (GPU)', caps.gpuSupported ? 'GLES 3.0 硬件加速' : 'CPU 软解'),
-                      _buildInfoTile('硬件编解码 (H.264)', caps.h264Encoder ? '支持 (MediaCodec)' : '未启用'),
                       _buildInfoTile('处理器核心 (CPU)', '${caps.cpuCores} 核心'),
                       _buildInfoTile('性能配置档位', caps.recommendedProfile.toUpperCase()),
-                      const Divider(height: 32),
-                      _buildInfoTile('核心引擎状态', '正常运行 (Zero-Copy GLES)'),
-                      _buildInfoTile('应用版本', 'v1.0.0 (内测版)'),
+                      const SizedBox(height: 16),
+                      _buildDrawerSectionTitle('图形与加速能力'),
+                      _buildInfoTile('图形渲染 (GPU)', caps.gpuSupported ? 'GLES 3.0 硬件加速' : 'CPU 软解'),
+                      _buildInfoTile('硬件编解码 (H.264)', caps.h264Encoder ? '支持 (MediaCodec)' : '未启用'),
+                      _buildInfoTile('零内存拷贝管线', 'Zero-Copy OES/GLES'),
+                      const SizedBox(height: 16),
+                      _buildDrawerSectionTitle('软件与引擎'),
+                      _buildInfoTile('核心 AI 引擎', 'ONNX Runtime Native'),
+                      _buildInfoTile('应用版本', 'v1.0.0 (Pro Studio)'),
                     ],
                   ),
                   loading: () => const Center(
@@ -152,16 +168,26 @@ class ImportVideoScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildDrawerSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+      child: Text(
+        title,
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white38, letterSpacing: 0.5),
+      ),
+    );
+  }
+
   Widget _buildInfoTile(String title, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10.0),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(title, style: const TextStyle(fontSize: 13, color: Colors.white70)),
           Text(
             value,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
           ),
         ],
       ),
@@ -181,7 +207,7 @@ class ImportVideoScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.redAccent.withAlpha(20),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(color: Colors.redAccent.withAlpha(60)),
             ),
             child: Row(
@@ -199,70 +225,87 @@ class ImportVideoScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
         ],
-        InkWell(
-          onTap: () => controller.pickAndProbeVideo(),
-          borderRadius: BorderRadius.circular(24),
-          child: Container(
-            height: 280,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: const Color(0xFF131316),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: Colors.white.withAlpha(25),
-                width: 1.2,
-                strokeAlign: BorderSide.strokeAlignInside,
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              HapticFeedback.mediumImpact();
+              controller.pickAndProbeVideo();
+            },
+            borderRadius: BorderRadius.circular(28),
+            splashColor: Colors.white.withAlpha(20),
+            highlightColor: Colors.white.withAlpha(10),
+            child: Container(
+              height: 290,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: const Color(0xFF131316),
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: Colors.white.withAlpha(25),
+                  width: 1.2,
+                  strokeAlign: BorderSide.strokeAlignInside,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(120),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(22),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(15),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(22),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withAlpha(12),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white24, width: 1.5),
+                    ),
+                    child: const Icon(
+                      Icons.video_library_rounded,
+                      size: 48,
+                      color: Colors.white,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.video_library_rounded,
-                    size: 48,
-                    color: Colors.white,
+                  const SizedBox(height: 20),
+                  Text(
+                    '选择舞蹈视频',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: -0.3,
+                        ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  '选择舞蹈视频',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  '支持常见视频格式，自动校准画面方向',
-                  style: TextStyle(fontSize: 13, color: Colors.white54),
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(10),
-                    borderRadius: BorderRadius.circular(20),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '支持常见视频格式，自动校准画面方向',
+                    style: TextStyle(fontSize: 13, color: Colors.white54),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.swipe_right_rounded, size: 16, color: Colors.white60),
-                      SizedBox(width: 6),
-                      Text(
-                        '向右滑动可查看系统信息',
-                        style: TextStyle(fontSize: 12, color: Colors.white60),
-                      ),
-                    ],
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withAlpha(8),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.swipe_right_rounded, size: 15, color: Colors.white60),
+                        SizedBox(width: 6),
+                        Text(
+                          '向右滑动可查看系统信息',
+                          style: TextStyle(fontSize: 12, color: Colors.white60, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -276,19 +319,23 @@ class ImportVideoScreen extends ConsumerWidget {
         : '正在解析视频信息...';
 
     return Container(
-      height: 260,
+      height: 280,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: const Color(0xFF131316),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
         border: Border.all(color: Colors.white.withAlpha(20)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const CircularProgressIndicator(color: Colors.white),
-          const SizedBox(height: 18),
-          Text(text, style: const TextStyle(fontSize: 14, color: Colors.white70)),
+          const SizedBox(
+            width: 44,
+            height: 44,
+            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+          ),
+          const SizedBox(height: 20),
+          Text(text, style: const TextStyle(fontSize: 14, color: Colors.white70, fontWeight: FontWeight.w500)),
         ],
       ),
     );
@@ -301,21 +348,72 @@ class ImportVideoScreen extends ConsumerWidget {
   ) {
     final info = state.videoInfo!;
     final videoPath = state.videoPath!;
+    final durationSec = (info.durationMs / 1000.0).toStringAsFixed(1);
+    final isVertical = info.height > info.width;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // 1. Video Player
-        VideoPreviewPlayer(
-          videoPath: videoPath,
-          aspectRatio: info.aspectRatio,
+        // 1. Video Player Container with Shadow
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(150),
+                blurRadius: 24,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              VideoPreviewPlayer(
+                videoPath: videoPath,
+                aspectRatio: info.aspectRatio,
+              ),
+              // Floating Video Info Badges
+              Positioned(
+                top: 12,
+                left: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withAlpha(180),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isVertical ? Icons.stay_current_portrait_rounded : Icons.stay_current_landscape_rounded,
+                        size: 14,
+                        color: Colors.white70,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        '${info.width}×${info.height} · ${info.fps.toStringAsFixed(0)}fps · $durationSec秒',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 24),
 
         // 2. Next step button (Pure white on black)
         ElevatedButton.icon(
           onPressed: () {
+            HapticFeedback.mediumImpact();
             final project = controller.createProject();
             if (project != null) {
               context.push('/person_selection', extra: project);
@@ -330,8 +428,9 @@ class ImportVideoScreen extends ConsumerWidget {
             backgroundColor: Colors.white,
             foregroundColor: Colors.black,
             padding: const EdgeInsets.symmetric(vertical: 16),
+            elevation: 2,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
             ),
           ),
         ),
