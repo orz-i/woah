@@ -26,10 +26,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   @override
   void initState() {
     super.initState();
-    // Automatically save to MediaStore on complete
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _saveToGallery();
-    });
+    // Do not auto-save to gallery; user can click the save button manually
   }
 
   Future<void> _saveToGallery() async {
