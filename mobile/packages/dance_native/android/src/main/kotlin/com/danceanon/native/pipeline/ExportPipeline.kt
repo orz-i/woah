@@ -119,15 +119,14 @@ class ExportPipeline(
             var oesTextureId = 0
 
             try {
-                muxer = Mp4Muxer(tempOutFile.absolutePath, expectedTracks = if (videoInfo.hasAudio) 2 else 1)
                 audioCopier = AudioTrackCopier(context, sourceUri)
                 val hasAudioTrack = audioCopier.prepare()
-                val audioFmt = audioCopier.audioFormat
+                val audioFmt = if (hasAudioTrack) audioCopier.audioFormat else null
+                val actualHasAudio = hasAudioTrack && audioFmt != null
 
-                if (hasAudioTrack && audioFmt != null) {
+                muxer = Mp4Muxer(tempOutFile.absolutePath, expectedTracks = if (actualHasAudio) 2 else 1)
+                if (actualHasAudio && audioFmt != null) {
                     muxer.addAudioTrack(audioFmt)
-                } else {
-                    muxer.forceStartIfSingleTrack()
                 }
 
                 encoder = VideoEncoder(

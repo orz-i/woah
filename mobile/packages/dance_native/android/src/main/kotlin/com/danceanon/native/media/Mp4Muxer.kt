@@ -52,40 +52,49 @@ class Mp4Muxer(
         }
     }
 
-    fun writeVideoSample(byteBuf: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) = synchronized(lock) {
-        if (!isStarted || videoTrackIndex < 0) return
-        if (bufferInfo.size > 0 && bufferInfo.presentationTimeUs >= 0) {
-            muxer.writeSampleData(videoTrackIndex, byteBuf, bufferInfo)
-        }
-    }
-
-    fun writeAudioSample(byteBuf: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) = synchronized(lock) {
-        if (!isStarted || audioTrackIndex < 0) return
-        if (bufferInfo.size > 0 && bufferInfo.presentationTimeUs >= 0) {
-            muxer.writeSampleData(audioTrackIndex, byteBuf, bufferInfo)
-        }
-    }
-
-    fun writeSampleData(trackIndex: Int, byteBuf: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) = synchronized(lock) {
-        if (!isStarted) {
-            return
-        }
-        if (bufferInfo.size > 0 && bufferInfo.presentationTimeUs >= 0) {
-            muxer.writeSampleData(trackIndex, byteBuf, bufferInfo)
-        }
-    }
-
-    override fun close() = synchronized(lock) {
-        try {
-            if (isStarted) {
-                muxer.stop()
+    fun writeVideoSample(byteBuf: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) {
+        synchronized(lock) {
+            check(isStarted) { "Cannot write video sample: Muxer has not started" }
+            check(videoTrackIndex >= 0) { "Video track has not been added to muxer" }
+            if (bufferInfo.size > 0 && bufferInfo.presentationTimeUs >= 0) {
+                muxer.writeSampleData(videoTrackIndex, byteBuf, bufferInfo)
             }
-        } catch (_: Exception) {
-        } finally {
+        }
+    }
+
+    fun writeAudioSample(byteBuf: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) {
+        synchronized(lock) {
+            check(isStarted) { "Cannot write audio sample: Muxer has not started" }
+            check(audioTrackIndex >= 0) { "Audio track has not been added to muxer" }
+            if (bufferInfo.size > 0 && bufferInfo.presentationTimeUs >= 0) {
+                muxer.writeSampleData(audioTrackIndex, byteBuf, bufferInfo)
+            }
+        }
+    }
+
+    fun writeSampleData(trackIndex: Int, byteBuf: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) {
+        synchronized(lock) {
+            check(isStarted) { "Cannot write sample data: Muxer has not started" }
+            check(trackIndex >= 0) { "Invalid track index: $trackIndex" }
+            if (bufferInfo.size > 0 && bufferInfo.presentationTimeUs >= 0) {
+                muxer.writeSampleData(trackIndex, byteBuf, bufferInfo)
+            }
+        }
+    }
+
+    override fun close() {
+        synchronized(lock) {
             try {
-                muxer.release()
-            } catch (_: Exception) {}
-            isStarted = false
+                if (isStarted) {
+                    muxer.stop()
+                }
+            } catch (_: Exception) {
+            } finally {
+                try {
+                    muxer.release()
+                } catch (_: Exception) {}
+                isStarted = false
+            }
         }
     }
 }

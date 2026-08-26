@@ -117,6 +117,9 @@ class DanceNativePlugin :
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
         DanceNativeApi.setUp(binding.binaryMessenger, null)
+        try {
+            apiImpl?.close()
+        } catch (_: Throwable) {}
         apiImpl = null
         context = null
     }
