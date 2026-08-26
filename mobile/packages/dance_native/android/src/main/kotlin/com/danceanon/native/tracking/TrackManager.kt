@@ -339,9 +339,22 @@ class TrackManager(
             predBbox: FloatRect,
             missedFrames: Int
         ): NativeMask {
-            // Preserve organic person silhouette mask instead of generating an opaque bounding rectangle
-            return warpMask(sourceMask, prevBbox, predBbox, missedFrames)
+            if (missedFrames <= LOST_WARP_MAX_FRAMES) {
+                return warpMask(
+                    sourceMask = sourceMask,
+                    prevBbox = prevBbox,
+                    predBbox = predBbox,
+                    missedFrames = missedFrames
+                )
+            }
+
+            return generateConservativeFallbackMask(
+                sourceMask = sourceMask,
+                predBbox = predBbox,
+                missedFrames = missedFrames
+            )
         }
+
 
 
         fun generateConservativeFallbackMask(
