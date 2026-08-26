@@ -74,8 +74,9 @@ class DanceNativeClient implements DanceProcessingEvents {
     int targetHeight = 1080,
     double targetFps = 30.0,
     int videoBitrate = 8000000,
-    String processingProfile = 'balanced',
+    String processingProfile = 'quality',
   }) {
+
     return _api.startExport(ExportRequestDto(
       sourceUri: sourceUri,
       analysisCacheId: analysisCacheId,

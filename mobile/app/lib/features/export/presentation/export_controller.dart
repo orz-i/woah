@@ -38,7 +38,11 @@ class ExportController extends StateNotifier<ExportState> {
   }
 
   /// Launch export pipeline
-  Future<void> startExport(DanceProject project, String outputPath) async {
+  Future<void> startExport(
+    DanceProject project,
+    String outputPath, {
+    String processingProfile = 'quality',
+  }) async {
     try {
       state = state.copyWith(
         status: ExportJobState.preparing,
@@ -47,7 +51,7 @@ class ExportController extends StateNotifier<ExportState> {
         errorMessage: null,
       );
 
-      AppLogger.d('ExportController', 'Starting export for project ${project.id}');
+      AppLogger.d('ExportController', 'Starting export for project ${project.id} (profile: $processingProfile)');
       final jobId = await _repository.startExport(
         sourceUri: project.sourceUri,
         analysisCacheId: project.analysisCacheId ?? '',
@@ -58,7 +62,9 @@ class ExportController extends StateNotifier<ExportState> {
         targetWidth: project.videoInfo.width,
         targetHeight: project.videoInfo.height,
         targetFps: project.videoInfo.fps,
+        processingProfile: processingProfile,
       );
+
 
       state = state.copyWith(jobId: jobId);
     } catch (e, stack) {

@@ -20,9 +20,10 @@ data class ProcessingProfile(
                 "quality" -> QUALITY
                 "speed" -> SPEED
                 "balanced" -> BALANCED
-                else -> BALANCED
+                else -> QUALITY
             }
         }
+
     }
 }
 

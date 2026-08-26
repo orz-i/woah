@@ -69,6 +69,7 @@ class NativeProcessingRepository {
     int targetHeight = 1080,
     double targetFps = 30.0,
     int videoBitrate = 8000000,
+    String processingProfile = 'quality',
   }) {
     return _client.startExport(
       sourceUri: sourceUri,
@@ -81,8 +82,10 @@ class NativeProcessingRepository {
       targetHeight: targetHeight,
       targetFps: targetFps,
       videoBitrate: videoBitrate,
+      processingProfile: processingProfile,
     );
   }
+
 
   Future<void> cancelJob(String jobId) {
     return _client.cancelJob(jobId);

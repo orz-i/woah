@@ -55,10 +55,18 @@ final appRouter = GoRouter(
       path: '/export',
       name: 'export',
       builder: (context, state) {
+        if (state.extra is ExportArgs) {
+          final args = state.extra as ExportArgs;
+          return ExportScreen(
+            project: args.project,
+            processingProfile: args.processingProfile,
+          );
+        }
         final project = state.extra as DanceProject;
         return ExportScreen(project: project);
       },
     ),
+
 
     GoRoute(
       path: '/result',

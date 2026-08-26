@@ -4,7 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dance_domain/dance_domain.dart';
+import '../../export/presentation/export_screen.dart';
 import '../../../repositories/native_processing_repository.dart';
+
 
 class FramePreviewArgs {
   final DanceProject project;
@@ -34,7 +36,9 @@ class _FramePreviewScreenState extends ConsumerState<FramePreviewScreen> {
   String? _previewPath;
   bool _isLoading = false;
   String? _errorMessage;
+  String _selectedProfile = 'quality';
   final TransformationController _transformationController = TransformationController();
+
 
   @override
   void initState() {
@@ -305,6 +309,36 @@ class _FramePreviewScreenState extends ConsumerState<FramePreviewScreen> {
                       _buildChip('规格: ${videoInfo.displayWidth}×${videoInfo.displayHeight}'),
                     ],
                   ),
+
+                  const SizedBox(height: 12),
+                  const Divider(color: Colors.white10, height: 1),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      const Text(
+                        '导出处理引擎: ',
+                        style: TextStyle(fontSize: 12, color: Colors.white70, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          child: Row(
+                            children: [
+                              _buildProfileChip('quality', '🌟 质量 (默认)'),
+                              const SizedBox(width: 6),
+                              _buildProfileChip('sam2', '⚡ SAM2 时序'),
+                              const SizedBox(width: 6),
+                              _buildProfileChip('balanced', '⚖️ 均衡'),
+                              const SizedBox(width: 6),
+                              _buildProfileChip('speed', '🚀 极速'),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -339,7 +373,13 @@ class _FramePreviewScreenState extends ConsumerState<FramePreviewScreen> {
                     child: ElevatedButton.icon(
                       onPressed: () {
                         HapticFeedback.mediumImpact();
-                        context.push('/export', extra: project);
+                        context.push(
+                          '/export',
+                          extra: ExportArgs(
+                            project: project,
+                            processingProfile: _selectedProfile,
+                          ),
+                        );
                       },
                       icon: const Icon(Icons.movie_creation_rounded, size: 20),
                       label: const Text(
@@ -365,6 +405,38 @@ class _FramePreviewScreenState extends ConsumerState<FramePreviewScreen> {
     );
   }
 
+  Widget _buildProfileChip(String profileKey, String label) {
+    final isSelected = _selectedProfile == profileKey;
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() {
+          _selectedProfile = profileKey;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : const Color(0xFF23232A),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? Colors.white : Colors.white12,
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            color: isSelected ? Colors.black : Colors.white70,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildChip(String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -380,3 +452,4 @@ class _FramePreviewScreenState extends ConsumerState<FramePreviewScreen> {
     );
   }
 }
+

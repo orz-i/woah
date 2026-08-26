@@ -46,14 +46,14 @@ class ProcessingProfileTest {
     }
 
     @Test
-    fun testDefaultFallbackToBalanced() {
-
+    fun testDefaultFallbackToQuality() {
         val nullProfile = ProcessingProfile.fromName(null)
-        assertEquals(ProcessingProfile.BALANCED, nullProfile)
+        assertEquals(ProcessingProfile.QUALITY, nullProfile)
 
         val unknownProfile = ProcessingProfile.fromName("ultra_fast")
-        assertEquals(ProcessingProfile.BALANCED, unknownProfile)
+        assertEquals(ProcessingProfile.QUALITY, unknownProfile)
     }
+
 
     @Test
     fun testInferenceCadenceWithStride3MaintainsTracking() {

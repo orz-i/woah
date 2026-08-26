@@ -1,18 +1,30 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dance_domain/dance_domain.dart';
 import 'export_controller.dart';
 import '../domain/export_state.dart';
 
+class ExportArgs {
+  final DanceProject project;
+  final String processingProfile;
+
+  const ExportArgs({
+    required this.project,
+    this.processingProfile = 'quality',
+  });
+}
+
 class ExportScreen extends ConsumerStatefulWidget {
   final DanceProject project;
+  final String processingProfile;
 
   const ExportScreen({
     super.key,
     required this.project,
+    this.processingProfile = 'quality',
   });
 
   @override
@@ -33,8 +45,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     final outPath = 'export_$timestamp.mp4';
     ref
         .read(exportControllerProvider.notifier)
-        .startExport(widget.project, outPath);
+        .startExport(widget.project, outPath, processingProfile: widget.processingProfile);
   }
+
 
   void _copyErrorLog(BuildContext context, String? errorMessage) {
     HapticFeedback.mediumImpact();
@@ -157,24 +170,52 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                 ],
               ),
               const SizedBox(height: 24),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E24),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white10),
-                ),
-                child: Text(
-                  '已处理 ${state.currentFrame} / ${state.totalFrames} 帧',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    fontFeatures: [FontFeature.tabularFigures()],
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E1E24),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    child: Text(
+                      switch (widget.processingProfile.toLowerCase()) {
+                        'sam2' => '⚡ SAM2 时序跟踪',
+                        'speed' => '🚀 极速导出',
+                        'balanced' => '⚖️ 均衡模式',
+                        _ => '🌟 质量优先',
+                      },
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E1E24),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    child: Text(
+                      '已处理 ${state.currentFrame} / ${state.totalFrames} 帧',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        fontFeatures: [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ),
+                ],
               ),
+
 
               const SizedBox(height: 24),
 
