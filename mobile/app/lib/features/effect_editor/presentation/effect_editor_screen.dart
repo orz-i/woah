@@ -123,11 +123,13 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
             if (hasImage)
               Image.file(
                 File(displayPath),
-                key: ValueKey(displayPath),
+                key: ValueKey('${displayPath}_${state.previewRequestId}'),
                 fit: BoxFit.contain,
                 width: double.infinity,
                 height: double.infinity,
+                gaplessPlayback: true,
               )
+
             else
               const Icon(Icons.auto_fix_high_rounded, size: 48, color: Colors.white30),
 

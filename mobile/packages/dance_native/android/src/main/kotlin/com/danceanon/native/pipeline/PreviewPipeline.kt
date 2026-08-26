@@ -216,12 +216,20 @@ class PreviewPipeline(
         eglCore.releaseSurface(eglSurface)
         eglCore.close()
 
-        // 5. Save preview file
-        val previewOutFile = File(context.cacheDir, "preview_${request.analysisCacheId}_${request.timestampMs}.jpg")
+        // 5. Save preview file with unique timestamp nonce to prevent Flutter image caching
+        try {
+            val oldFiles = context.cacheDir.listFiles { _, name ->
+                name.startsWith("preview_${request.analysisCacheId}_") && name.endsWith(".jpg")
+            }
+            oldFiles?.forEach { it.delete() }
+        } catch (_: Exception) {}
+
+        val previewOutFile = File(context.cacheDir, "preview_${request.analysisCacheId}_${request.timestampMs}_${System.currentTimeMillis()}.jpg")
         FileOutputStream(previewOutFile).use { out ->
             renderedBitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
         }
         renderedBitmap.recycle()
+
 
         val elapsed = (System.currentTimeMillis() - startTime).toDouble()
 

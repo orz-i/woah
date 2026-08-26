@@ -158,7 +158,9 @@ class _FramePreviewScreenState extends ConsumerState<FramePreviewScreen> {
                             File(_previewPath!),
                             key: ValueKey(_previewPath),
                             fit: BoxFit.contain,
+                            gaplessPlayback: true,
                           ),
+
                         ),
                       )
                     else if (!_isLoading)

@@ -102,9 +102,14 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
     if (proj == null) return;
 
     final currentFollow = proj.follow;
+    final defaultTargetId = targetPersonId ??
+        currentFollow.targetPersonId ??
+        proj.selectedPersonIds.firstOrNull ??
+        proj.persons.firstOrNull?.id;
+
     final updatedFollow = currentFollow.copyWith(
       enabled: enabled ?? currentFollow.enabled,
-      targetPersonId: targetPersonId ?? currentFollow.targetPersonId,
+      targetPersonId: defaultTargetId,
       zoom: zoom ?? currentFollow.zoom,
       smoothFactor: smoothFactor ?? currentFollow.smoothFactor,
     );
@@ -138,15 +143,15 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
       );
 
       try {
+        final currentProj = state.project ?? project;
         // V1 constraint: strictly preview timestampMs = 0 (first frame) to avoid Hungarian instability
         final result = await repo.getPreviewFrame(
           analysisCacheId: cacheId,
           timestampMs: 0,
-          selectedPersonIds: project.selectedPersonIds.toList(),
+          selectedPersonIds: currentProj.selectedPersonIds.toList(),
           effects: state.effects,
-          follow: project.follow,
+          follow: currentProj.follow,
         );
-
 
         // Discard outdated responses
         if (state.previewRequestId == currentRequestId) {

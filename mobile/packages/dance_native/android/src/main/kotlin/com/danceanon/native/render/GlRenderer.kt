@@ -285,17 +285,21 @@ class GlRenderer : FrameRenderer {
         if (prog.uTexelSizeLoc >= 0) GLES20.glUniform2f(prog.uTexelSizeLoc, 1f / width.coerceAtLeast(1), 1f / height.coerceAtLeast(1))
 
         // Follow Crop Mapping
-        val cropRect = if (follow.enabled && follow.targetPersonId != null) {
-            val target = persons.firstOrNull { it.id == follow.targetPersonId!!.toInt() }
+        val cropRect = if (follow.enabled) {
+            val targetId = follow.targetPersonId?.toInt() ?: selectedPersonIds.firstOrNull() ?: persons.firstOrNull()?.id
+            val target = persons.firstOrNull { it.id == targetId }
             if (target != null) {
-                val cx = (target.bbox.centerX / width.toFloat()).coerceIn(0f, 1f)
-                val cy = (target.bbox.centerY / height.toFloat()).coerceIn(0f, 1f)
+                val refW = maxOf(1, target.mask?.originalWidth ?: width)
+                val refH = maxOf(1, target.mask?.originalHeight ?: height)
+                val cx = (target.bbox.centerX / refW.toFloat()).coerceIn(0f, 1f)
+                val cy = (target.bbox.centerY / refH.toFloat()).coerceIn(0f, 1f)
                 follower.update(cx, cy, follow.smoothFactor.toFloat())
             }
             follower.computeCropRect(follow.zoom.toFloat())
         } else {
             com.danceanon.native.inference.FloatRect(0f, 0f, 1f, 1f)
         }
+
         if (prog.uCropRectLoc >= 0) {
             GLES20.glUniform4f(
                 prog.uCropRectLoc,

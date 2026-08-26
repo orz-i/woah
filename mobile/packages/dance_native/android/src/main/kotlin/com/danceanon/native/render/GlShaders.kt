@@ -144,15 +144,15 @@ void main() {
 
     // 4. Real Outward Outline Expansion
     if (uBorderWidth > 0.1 && uBorderColor.a > 0.01) {
-        float r = uBorderWidth;
-        float m0 = texture2D(uMaskTexture, maskUv + vec2(0.0, r * uTexelSize.y)).r;
-        float m1 = texture2D(uMaskTexture, maskUv - vec2(0.0, r * uTexelSize.y)).r;
-        float m2 = texture2D(uMaskTexture, maskUv + vec2(r * uTexelSize.x, 0.0)).r;
-        float m3 = texture2D(uMaskTexture, maskUv - vec2(r * uTexelSize.x, 0.0)).r;
-        float m4 = texture2D(uMaskTexture, maskUv + vec2(0.707 * r * uTexelSize.x, 0.707 * r * uTexelSize.y)).r;
-        float m5 = texture2D(uMaskTexture, maskUv + vec2(-0.707 * r * uTexelSize.x, 0.707 * r * uTexelSize.y)).r;
-        float m6 = texture2D(uMaskTexture, maskUv + vec2(0.707 * r * uTexelSize.x, -0.707 * r * uTexelSize.y)).r;
-        float m7 = texture2D(uMaskTexture, maskUv + vec2(-0.707 * r * uTexelSize.x, -0.707 * r * uTexelSize.y)).r;
+        vec2 borderStep = uTexelSize * (uBorderWidth * 3.0);
+        float m0 = texture2D(uMaskTexture, maskUv + vec2(0.0, borderStep.y)).r;
+        float m1 = texture2D(uMaskTexture, maskUv - vec2(0.0, borderStep.y)).r;
+        float m2 = texture2D(uMaskTexture, maskUv + vec2(borderStep.x, 0.0)).r;
+        float m3 = texture2D(uMaskTexture, maskUv - vec2(borderStep.x, 0.0)).r;
+        float m4 = texture2D(uMaskTexture, maskUv + vec2(0.707 * borderStep.x, 0.707 * borderStep.y)).r;
+        float m5 = texture2D(uMaskTexture, maskUv + vec2(-0.707 * borderStep.x, 0.707 * borderStep.y)).r;
+        float m6 = texture2D(uMaskTexture, maskUv + vec2(0.707 * borderStep.x, -0.707 * borderStep.y)).r;
+        float m7 = texture2D(uMaskTexture, maskUv + vec2(-0.707 * borderStep.x, -0.707 * borderStep.y)).r;
 
         float maxNeighbor = max(max(max(m0, m1), max(m2, m3)), max(max(m4, m5), max(m6, m7)));
         float outline = clamp(maxNeighbor - maskVal, 0.0, 1.0);
@@ -160,6 +160,7 @@ void main() {
             color = mix(color, vec4(uBorderColor.rgb, 1.0), outline * uBorderColor.a);
         }
     }
+
 
     // 5. Sticker Overlay
     if (uHasSticker == 1) {
