@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dance_domain/dance_domain.dart';
+import '../../frame_preview/presentation/frame_preview_screen.dart';
 import 'effect_editor_controller.dart';
 import '../domain/effect_editor_state.dart';
 
@@ -519,12 +520,18 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
           HapticFeedback.mediumImpact();
           final configured = controller.buildConfiguredProject();
           if (configured != null) {
-            context.push('/export', extra: configured);
+            context.push(
+              '/frame_preview',
+              extra: FramePreviewArgs(
+                project: configured,
+                initialPreviewPath: state.previewPath,
+              ),
+            );
           }
         },
-        icon: const Icon(Icons.movie_creation_rounded, size: 20),
+        icon: const Icon(Icons.preview_rounded, size: 20),
         label: const Text(
-          '下一步：生成并导出视频',
+          '下一步：首帧效果确认',
           style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
         ),
         style: ElevatedButton.styleFrom(
