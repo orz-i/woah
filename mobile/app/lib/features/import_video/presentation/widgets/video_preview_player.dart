@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'package:app/app/router.dart';
 
 class VideoPreviewPlayer extends StatefulWidget {
   final String videoPath;
@@ -16,15 +17,30 @@ class VideoPreviewPlayer extends StatefulWidget {
   State<VideoPreviewPlayer> createState() => _VideoPreviewPlayerState();
 }
 
-class _VideoPreviewPlayerState extends State<VideoPreviewPlayer> {
+class _VideoPreviewPlayerState extends State<VideoPreviewPlayer>
+    with WidgetsBindingObserver, RouteAware {
   VideoPlayerController? _controller;
   bool _isInitialized = false;
   String? _errorMessage;
+  bool _isSubscribedToRoute = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initPlayer();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isSubscribedToRoute) {
+      final modalRoute = ModalRoute.of(context);
+      if (modalRoute != null) {
+        rootRouteObserver.subscribe(this, modalRoute);
+        _isSubscribedToRoute = true;
+      }
+    }
   }
 
   @override
@@ -34,6 +50,31 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer> {
       _controller?.dispose();
       _isInitialized = false;
       _initPlayer();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden) {
+      _pause();
+    }
+  }
+
+  @override
+  void didPushNext() {
+    // When a new route has been pushed on top of this one, pause video playback
+    _pause();
+  }
+
+  void _pause() {
+    if (_controller != null && _controller!.value.isPlaying) {
+      _controller!.pause();
+      if (mounted) {
+        setState(() {});
+      }
     }
   }
 
@@ -63,7 +104,14 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    if (_isSubscribedToRoute) {
+      rootRouteObserver.unsubscribe(this);
+      _isSubscribedToRoute = false;
+    }
+    _controller?.pause();
     _controller?.dispose();
+    _controller = null;
     super.dispose();
   }
 

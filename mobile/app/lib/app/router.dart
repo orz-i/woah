@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dance_domain/dance_domain.dart';
 import '../features/import_video/presentation/import_video_screen.dart';
@@ -7,8 +8,11 @@ import '../features/export/presentation/export_screen.dart';
 import '../features/export/presentation/result_screen.dart';
 import '../features/export/domain/export_state.dart';
 
+final rootRouteObserver = RouteObserver<ModalRoute<void>>();
+
 final appRouter = GoRouter(
   initialLocation: '/',
+  observers: [rootRouteObserver],
   routes: [
     GoRoute(
       path: '/',
