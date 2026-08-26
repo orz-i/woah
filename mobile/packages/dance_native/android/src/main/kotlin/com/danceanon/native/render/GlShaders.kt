@@ -12,15 +12,16 @@ varying vec2 vMaskTexCoord;
 
 void main() {
     gl_Position = aPosition;
-    vec2 cropped = vec2(
-        mix(uCropRect.x, uCropRect.z, aTexCoord.x),
-        mix(uCropRect.y, uCropRect.w, aTexCoord.y)
+    vec2 screenUv = aTexCoord;
+    vec2 contentUv = vec2(
+        mix(uCropRect.x, uCropRect.z, screenUv.x),
+        mix(uCropRect.y, uCropRect.w, screenUv.y)
     );
-    vec4 transformed = uTexMatrix * vec4(cropped, 0.0, 1.0);
+    vec4 transformed = uTexMatrix * vec4(contentUv, 0.0, 1.0);
     vOesTexCoord = transformed.xy;
     vMaskTexCoord = vec2(
-        mix(uMaskCropRect.x, uMaskCropRect.z, aTexCoord.x),
-        mix(uMaskCropRect.y, uMaskCropRect.w, 1.0 - aTexCoord.y)
+        mix(uMaskCropRect.x, uMaskCropRect.z, contentUv.x),
+        mix(uMaskCropRect.y, uMaskCropRect.w, 1.0 - contentUv.y)
     );
 }""".trimIndent()
 
