@@ -64,6 +64,7 @@ class DanceNativeClient implements DanceProcessingEvents {
 
   /// Start background video export job
   Future<String> startExport({
+    required String sourceUri,
     required String analysisCacheId,
     required String outputFilePath,
     required List<int> selectedPersonIds,
@@ -75,6 +76,7 @@ class DanceNativeClient implements DanceProcessingEvents {
     int videoBitrate = 8000000,
   }) {
     return _api.startExport(ExportRequestDto(
+      sourceUri: sourceUri,
       analysisCacheId: analysisCacheId,
       outputFilePath: outputFilePath,
       selectedPersonIds: selectedPersonIds,

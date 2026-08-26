@@ -11,19 +11,43 @@ import java.io.File
 object VideoProbe {
 
     fun probe(context: Context, uriString: String): VideoInfoDto {
+        if (uriString.isBlank()) {
+            throw com.danceanon.native.bridge.DanceNativeException(
+                com.danceanon.native.bridge.DanceNativeException.INVALID_ARGUMENT,
+                "Video URI cannot be empty"
+            )
+        }
+
         val retriever = MediaMetadataRetriever()
         val extractor = MediaExtractor()
 
         try {
             // Configure DataSource for file path or content URI
-            if (uriString.startsWith("content://")) {
-                val uri = Uri.parse(uriString)
-                retriever.setDataSource(context, uri)
-                extractor.setDataSource(context, uri, null)
-            } else {
-                val cleanPath = uriString.removePrefix("file://")
-                retriever.setDataSource(cleanPath)
-                extractor.setDataSource(cleanPath)
+            try {
+                if (uriString.startsWith("content://")) {
+                    val uri = Uri.parse(uriString)
+                    retriever.setDataSource(context, uri)
+                    extractor.setDataSource(context, uri, null)
+                } else {
+                    val cleanPath = uriString.removePrefix("file://")
+                    val file = File(cleanPath)
+                    if (!file.exists() || !file.canRead()) {
+                        throw com.danceanon.native.bridge.DanceNativeException(
+                            com.danceanon.native.bridge.DanceNativeException.VIDEO_OPEN_FAILED,
+                            "Video file does not exist or is not readable: $cleanPath"
+                        )
+                    }
+                    retriever.setDataSource(cleanPath)
+                    extractor.setDataSource(cleanPath)
+                }
+            } catch (e: com.danceanon.native.bridge.DanceNativeException) {
+                throw e
+            } catch (e: Exception) {
+                throw com.danceanon.native.bridge.DanceNativeException(
+                    com.danceanon.native.bridge.DanceNativeException.VIDEO_OPEN_FAILED,
+                    "Failed to open video source: $uriString (${e.message})",
+                    e
+                )
             }
 
             // 1. Extract metadata via MediaMetadataRetriever
@@ -33,15 +57,16 @@ object VideoProbe {
             val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
             val hasAudioStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_HAS_AUDIO)
 
-            var codedWidth = rawWidthStr?.toIntOrNull() ?: 1920
-            var codedHeight = rawHeightStr?.toIntOrNull() ?: 1080
+            var codedWidth = rawWidthStr?.toIntOrNull() ?: 0
+            var codedHeight = rawHeightStr?.toIntOrNull() ?: 0
             val rotation = (rotationStr?.toIntOrNull() ?: 0) % 360
             val durationMs = durationStr?.toLongOrNull() ?: 0L
             var hasAudio = hasAudioStr?.equals("yes", ignoreCase = true) ?: false
 
-            var videoMime = "video/avc"
+            var videoMime: String? = null
             var audioMime: String? = null
-            var fps = 30.0
+            var fps = 0.0
+            var foundVideoTrack = false
 
             // 2. Deep inspection via MediaExtractor tracks
             val trackCount = extractor.trackCount
@@ -50,6 +75,7 @@ object VideoProbe {
                 val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
 
                 if (mime.startsWith("video/")) {
+                    foundVideoTrack = true
                     videoMime = mime
                     if (format.containsKey(MediaFormat.KEY_WIDTH)) {
                         codedWidth = format.getInteger(MediaFormat.KEY_WIDTH)
@@ -68,9 +94,19 @@ object VideoProbe {
                 }
             }
 
+            if (!foundVideoTrack || videoMime == null || codedWidth <= 0 || codedHeight <= 0) {
+                throw com.danceanon.native.bridge.DanceNativeException(
+                    com.danceanon.native.bridge.DanceNativeException.VIDEO_TRACK_NOT_FOUND,
+                    "No valid video track found in media file: $uriString"
+                )
+            }
+
             // 3. Fallback FPS estimation via PTS difference if needed
             if (fps <= 0.0 || fps > 240.0) {
                 fps = estimateFpsFromExtractor(extractor)
+            }
+            if (fps <= 0.0) {
+                fps = 30.0
             }
 
             // 4. Calculate visual display dimensions with rotation applied

@@ -740,6 +740,7 @@ struct PreviewFrameDto: Hashable, CustomStringConvertible {
 
 /// Generated class from Pigeon that represents data sent in messages.
 struct ExportRequestDto: Hashable, CustomStringConvertible {
+  var sourceUri: String
   var analysisCacheId: String
   var outputFilePath: String
   var selectedPersonIds: [Int64]
@@ -753,17 +754,19 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
 
   // swift-format-ignore: AlwaysUseLowerCamelCase
   static func fromList(_ pigeonVar_list: [Any?]) -> ExportRequestDto? {
-    let analysisCacheId = pigeonVar_list[0] as! String
-    let outputFilePath = pigeonVar_list[1] as! String
-    let selectedPersonIds = pigeonVar_list[2] as! [Int64]
-    let effects = pigeonVar_list[3] as! EffectConfigDto
-    let follow = pigeonVar_list[4] as! FollowConfigDto
-    let targetWidth = pigeonVar_list[5] as! Int64
-    let targetHeight = pigeonVar_list[6] as! Int64
-    let targetFps = pigeonVar_list[7] as! Double
-    let videoBitrate = pigeonVar_list[8] as! Int64
+    let sourceUri = pigeonVar_list[0] as! String
+    let analysisCacheId = pigeonVar_list[1] as! String
+    let outputFilePath = pigeonVar_list[2] as! String
+    let selectedPersonIds = pigeonVar_list[3] as! [Int64]
+    let effects = pigeonVar_list[4] as! EffectConfigDto
+    let follow = pigeonVar_list[5] as! FollowConfigDto
+    let targetWidth = pigeonVar_list[6] as! Int64
+    let targetHeight = pigeonVar_list[7] as! Int64
+    let targetFps = pigeonVar_list[8] as! Double
+    let videoBitrate = pigeonVar_list[9] as! Int64
 
     return ExportRequestDto(
+      sourceUri: sourceUri,
       analysisCacheId: analysisCacheId,
       outputFilePath: outputFilePath,
       selectedPersonIds: selectedPersonIds,
@@ -777,6 +780,7 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
   }
   func toList() -> [Any?] {
     return [
+      sourceUri,
       analysisCacheId,
       outputFilePath,
       selectedPersonIds,
@@ -792,11 +796,12 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return DanceApiPigeonInternal.deepEquals(lhs.analysisCacheId, rhs.analysisCacheId) && DanceApiPigeonInternal.deepEquals(lhs.outputFilePath, rhs.outputFilePath) && DanceApiPigeonInternal.deepEquals(lhs.selectedPersonIds, rhs.selectedPersonIds) && DanceApiPigeonInternal.deepEquals(lhs.effects, rhs.effects) && DanceApiPigeonInternal.deepEquals(lhs.follow, rhs.follow) && DanceApiPigeonInternal.deepEquals(lhs.targetWidth, rhs.targetWidth) && DanceApiPigeonInternal.deepEquals(lhs.targetHeight, rhs.targetHeight) && DanceApiPigeonInternal.deepEquals(lhs.targetFps, rhs.targetFps) && DanceApiPigeonInternal.deepEquals(lhs.videoBitrate, rhs.videoBitrate)
+    return DanceApiPigeonInternal.deepEquals(lhs.sourceUri, rhs.sourceUri) && DanceApiPigeonInternal.deepEquals(lhs.analysisCacheId, rhs.analysisCacheId) && DanceApiPigeonInternal.deepEquals(lhs.outputFilePath, rhs.outputFilePath) && DanceApiPigeonInternal.deepEquals(lhs.selectedPersonIds, rhs.selectedPersonIds) && DanceApiPigeonInternal.deepEquals(lhs.effects, rhs.effects) && DanceApiPigeonInternal.deepEquals(lhs.follow, rhs.follow) && DanceApiPigeonInternal.deepEquals(lhs.targetWidth, rhs.targetWidth) && DanceApiPigeonInternal.deepEquals(lhs.targetHeight, rhs.targetHeight) && DanceApiPigeonInternal.deepEquals(lhs.targetFps, rhs.targetFps) && DanceApiPigeonInternal.deepEquals(lhs.videoBitrate, rhs.videoBitrate)
   }
 
   func hash(into hasher: inout Hasher) {
     hasher.combine("ExportRequestDto")
+    DanceApiPigeonInternal.deepHash(value: sourceUri, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: analysisCacheId, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: outputFilePath, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: selectedPersonIds, hasher: &hasher)
@@ -809,7 +814,7 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
   }
 
   public var description: String {
-    return "ExportRequestDto(analysisCacheId: \(String(describing: analysisCacheId)), outputFilePath: \(String(describing: outputFilePath)), selectedPersonIds: \(String(describing: selectedPersonIds)), effects: \(String(describing: effects)), follow: \(String(describing: follow)), targetWidth: \(String(describing: targetWidth)), targetHeight: \(String(describing: targetHeight)), targetFps: \(String(describing: targetFps)), videoBitrate: \(String(describing: videoBitrate)))"
+    return "ExportRequestDto(sourceUri: \(String(describing: sourceUri)), analysisCacheId: \(String(describing: analysisCacheId)), outputFilePath: \(String(describing: outputFilePath)), selectedPersonIds: \(String(describing: selectedPersonIds)), effects: \(String(describing: effects)), follow: \(String(describing: follow)), targetWidth: \(String(describing: targetWidth)), targetHeight: \(String(describing: targetHeight)), targetFps: \(String(describing: targetFps)), videoBitrate: \(String(describing: videoBitrate)))"
   }
 }
 

@@ -49,7 +49,8 @@ class ExportController extends StateNotifier<ExportState> {
 
       AppLogger.d('ExportController', 'Starting export for project ${project.id}');
       final jobId = await _repository.startExport(
-        analysisCacheId: project.analysisCacheId ?? 'analysis_default',
+        sourceUri: project.sourceUri,
+        analysisCacheId: project.analysisCacheId ?? '',
         outputFilePath: outputPath,
         selectedPersonIds: project.selectedPersonIds.toList(),
         effects: project.effects,

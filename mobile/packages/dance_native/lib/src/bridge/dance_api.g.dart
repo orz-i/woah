@@ -749,6 +749,7 @@ class PreviewFrameDto {
 
 class ExportRequestDto {
   ExportRequestDto({
+    required this.sourceUri,
     required this.analysisCacheId,
     required this.outputFilePath,
     required this.selectedPersonIds,
@@ -759,6 +760,8 @@ class ExportRequestDto {
     required this.targetFps,
     required this.videoBitrate,
   });
+
+  String sourceUri;
 
   String analysisCacheId;
 
@@ -780,6 +783,7 @@ class ExportRequestDto {
 
   List<Object?> _toList() {
     return <Object?>[
+      sourceUri,
       analysisCacheId,
       outputFilePath,
       selectedPersonIds,
@@ -798,15 +802,16 @@ class ExportRequestDto {
   static ExportRequestDto decode(Object result) {
     result as List<Object?>;
     return ExportRequestDto(
-      analysisCacheId: result[0]! as String,
-      outputFilePath: result[1]! as String,
-      selectedPersonIds: (result[2]! as List<Object?>).cast<int>(),
-      effects: result[3]! as EffectConfigDto,
-      follow: result[4]! as FollowConfigDto,
-      targetWidth: result[5]! as int,
-      targetHeight: result[6]! as int,
-      targetFps: result[7]! as double,
-      videoBitrate: result[8]! as int,
+      sourceUri: result[0]! as String,
+      analysisCacheId: result[1]! as String,
+      outputFilePath: result[2]! as String,
+      selectedPersonIds: (result[3]! as List<Object?>).cast<int>(),
+      effects: result[4]! as EffectConfigDto,
+      follow: result[5]! as FollowConfigDto,
+      targetWidth: result[6]! as int,
+      targetHeight: result[7]! as int,
+      targetFps: result[8]! as double,
+      videoBitrate: result[9]! as int,
     );
   }
 
@@ -819,7 +824,7 @@ class ExportRequestDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(analysisCacheId, other.analysisCacheId) && _deepEquals(outputFilePath, other.outputFilePath) && _deepEquals(selectedPersonIds, other.selectedPersonIds) && _deepEquals(effects, other.effects) && _deepEquals(follow, other.follow) && _deepEquals(targetWidth, other.targetWidth) && _deepEquals(targetHeight, other.targetHeight) && _deepEquals(targetFps, other.targetFps) && _deepEquals(videoBitrate, other.videoBitrate);
+    return _deepEquals(sourceUri, other.sourceUri) && _deepEquals(analysisCacheId, other.analysisCacheId) && _deepEquals(outputFilePath, other.outputFilePath) && _deepEquals(selectedPersonIds, other.selectedPersonIds) && _deepEquals(effects, other.effects) && _deepEquals(follow, other.follow) && _deepEquals(targetWidth, other.targetWidth) && _deepEquals(targetHeight, other.targetHeight) && _deepEquals(targetFps, other.targetFps) && _deepEquals(videoBitrate, other.videoBitrate);
   }
 
   @override
@@ -828,7 +833,7 @@ class ExportRequestDto {
 
   @override
   String toString() {
-    return 'ExportRequestDto(analysisCacheId: $analysisCacheId, outputFilePath: $outputFilePath, selectedPersonIds: $selectedPersonIds, effects: $effects, follow: $follow, targetWidth: $targetWidth, targetHeight: $targetHeight, targetFps: $targetFps, videoBitrate: $videoBitrate)';
+    return 'ExportRequestDto(sourceUri: $sourceUri, analysisCacheId: $analysisCacheId, outputFilePath: $outputFilePath, selectedPersonIds: $selectedPersonIds, effects: $effects, follow: $follow, targetWidth: $targetWidth, targetHeight: $targetHeight, targetFps: $targetFps, videoBitrate: $videoBitrate)';
   }
 }
 

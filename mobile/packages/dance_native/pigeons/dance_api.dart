@@ -179,6 +179,7 @@ class PreviewFrameDto {
 }
 
 class ExportRequestDto {
+  final String sourceUri;
   final String analysisCacheId;
   final String outputFilePath;
   final List<int> selectedPersonIds;
@@ -190,6 +191,7 @@ class ExportRequestDto {
   final int videoBitrate;
 
   ExportRequestDto({
+    required this.sourceUri,
     required this.analysisCacheId,
     required this.outputFilePath,
     required this.selectedPersonIds,

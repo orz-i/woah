@@ -8,10 +8,11 @@ import java.util.concurrent.atomic.AtomicBoolean
 class ProcessingJob(
     val id: String,
     val coroutineJob: Job,
-    val isCancelled: AtomicBoolean = AtomicBoolean(false)
+    val isCancelled: AtomicBoolean = AtomicBoolean(false),
+    initialStatus: JobStatusDto? = null
 ) {
     @Volatile
-    var currentStatus: JobStatusDto = JobStatusDto(
+    var currentStatus: JobStatusDto = initialStatus ?: JobStatusDto(
         jobId = id,
         state = "queued",
         currentFrame = 0,
@@ -24,8 +25,11 @@ class ProcessingJob(
     )
 }
 
-class JobManager {
+class JobManager(
+    private val maxCompletedJobs: Int = 50
+) {
     private val jobs = ConcurrentHashMap<String, ProcessingJob>()
+    private val completedJobOrder = java.util.concurrent.ConcurrentLinkedQueue<String>()
 
     fun registerJob(job: ProcessingJob) {
         jobs[job.id] = job
@@ -34,14 +38,24 @@ class JobManager {
     fun getJob(jobId: String): ProcessingJob? = jobs[jobId]
 
     fun updateStatus(jobId: String, status: JobStatusDto) {
-        jobs[jobId]?.currentStatus = status
+        val job = jobs[jobId] ?: return
+        job.currentStatus = status
+        if (status.state == "completed" || status.state == "failed" || status.state == "cancelled") {
+            completedJobOrder.add(jobId)
+            while (completedJobOrder.size > maxCompletedJobs) {
+                val oldJobId = completedJobOrder.poll()
+                if (oldJobId != null) {
+                    jobs.remove(oldJobId)
+                }
+            }
+        }
     }
 
     fun cancelJob(jobId: String) {
         jobs[jobId]?.let { job ->
             job.isCancelled.set(true)
             job.coroutineJob.cancel()
-            job.currentStatus = job.currentStatus.copy(state = "cancelled")
+            updateStatus(jobId, job.currentStatus.copy(state = "cancelled"))
         }
     }
 

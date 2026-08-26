@@ -724,6 +724,7 @@ data class PreviewFrameDto (
 
 /** Generated class from Pigeon that represents data sent in messages. */
 data class ExportRequestDto (
+  val sourceUri: String,
   val analysisCacheId: String,
   val outputFilePath: String,
   val selectedPersonIds: List<Long>,
@@ -737,20 +738,22 @@ data class ExportRequestDto (
  {
   companion object {
     fun fromList(pigeonVar_list: List<Any?>): ExportRequestDto {
-      val analysisCacheId = pigeonVar_list[0] as String
-      val outputFilePath = pigeonVar_list[1] as String
-      val selectedPersonIds = pigeonVar_list[2] as List<Long>
-      val effects = pigeonVar_list[3] as EffectConfigDto
-      val follow = pigeonVar_list[4] as FollowConfigDto
-      val targetWidth = pigeonVar_list[5] as Long
-      val targetHeight = pigeonVar_list[6] as Long
-      val targetFps = pigeonVar_list[7] as Double
-      val videoBitrate = pigeonVar_list[8] as Long
-      return ExportRequestDto(analysisCacheId, outputFilePath, selectedPersonIds, effects, follow, targetWidth, targetHeight, targetFps, videoBitrate)
+      val sourceUri = pigeonVar_list[0] as String
+      val analysisCacheId = pigeonVar_list[1] as String
+      val outputFilePath = pigeonVar_list[2] as String
+      val selectedPersonIds = pigeonVar_list[3] as List<Long>
+      val effects = pigeonVar_list[4] as EffectConfigDto
+      val follow = pigeonVar_list[5] as FollowConfigDto
+      val targetWidth = pigeonVar_list[6] as Long
+      val targetHeight = pigeonVar_list[7] as Long
+      val targetFps = pigeonVar_list[8] as Double
+      val videoBitrate = pigeonVar_list[9] as Long
+      return ExportRequestDto(sourceUri, analysisCacheId, outputFilePath, selectedPersonIds, effects, follow, targetWidth, targetHeight, targetFps, videoBitrate)
     }
   }
   fun toList(): List<Any?> {
     return listOf(
+      sourceUri,
       analysisCacheId,
       outputFilePath,
       selectedPersonIds,
@@ -770,11 +773,12 @@ data class ExportRequestDto (
       return true
     }
     val other = other as ExportRequestDto
-    return DanceApiPigeonUtils.deepEquals(this.analysisCacheId, other.analysisCacheId) && DanceApiPigeonUtils.deepEquals(this.outputFilePath, other.outputFilePath) && DanceApiPigeonUtils.deepEquals(this.selectedPersonIds, other.selectedPersonIds) && DanceApiPigeonUtils.deepEquals(this.effects, other.effects) && DanceApiPigeonUtils.deepEquals(this.follow, other.follow) && DanceApiPigeonUtils.deepEquals(this.targetWidth, other.targetWidth) && DanceApiPigeonUtils.deepEquals(this.targetHeight, other.targetHeight) && DanceApiPigeonUtils.deepEquals(this.targetFps, other.targetFps) && DanceApiPigeonUtils.deepEquals(this.videoBitrate, other.videoBitrate)
+    return DanceApiPigeonUtils.deepEquals(this.sourceUri, other.sourceUri) && DanceApiPigeonUtils.deepEquals(this.analysisCacheId, other.analysisCacheId) && DanceApiPigeonUtils.deepEquals(this.outputFilePath, other.outputFilePath) && DanceApiPigeonUtils.deepEquals(this.selectedPersonIds, other.selectedPersonIds) && DanceApiPigeonUtils.deepEquals(this.effects, other.effects) && DanceApiPigeonUtils.deepEquals(this.follow, other.follow) && DanceApiPigeonUtils.deepEquals(this.targetWidth, other.targetWidth) && DanceApiPigeonUtils.deepEquals(this.targetHeight, other.targetHeight) && DanceApiPigeonUtils.deepEquals(this.targetFps, other.targetFps) && DanceApiPigeonUtils.deepEquals(this.videoBitrate, other.videoBitrate)
   }
 
   override fun hashCode(): Int {
     var result = javaClass.hashCode()
+    result = 31 * result + DanceApiPigeonUtils.deepHash(this.sourceUri)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.analysisCacheId)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.outputFilePath)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.selectedPersonIds)
@@ -787,7 +791,7 @@ data class ExportRequestDto (
     return result
   }
   override fun toString(): String {
-    return "ExportRequestDto(analysisCacheId=$analysisCacheId, outputFilePath=$outputFilePath, selectedPersonIds=$selectedPersonIds, effects=$effects, follow=$follow, targetWidth=$targetWidth, targetHeight=$targetHeight, targetFps=$targetFps, videoBitrate=$videoBitrate)"
+    return "ExportRequestDto(sourceUri=$sourceUri, analysisCacheId=$analysisCacheId, outputFilePath=$outputFilePath, selectedPersonIds=$selectedPersonIds, effects=$effects, follow=$follow, targetWidth=$targetWidth, targetHeight=$targetHeight, targetFps=$targetFps, videoBitrate=$videoBitrate)"
   }
 }
 
