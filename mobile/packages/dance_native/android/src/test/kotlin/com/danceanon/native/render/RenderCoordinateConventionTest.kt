@@ -47,13 +47,15 @@ class RenderCoordinateConventionTest {
     }
 
     /**
-     * This regression guard ensures Mask texture sampling aligns directly with contentUv.y.
+     * This regression guard prevents accidental reintroduction
+     * of direct GL contentUv mask sampling into top-left model masks.
      */
     @Test
-    fun testMaskShaderUsesDirectContentUvConvention() {
+    fun testMaskShaderUsesVisualTopLeftYConvention() {
         assertTrue(
-            GlShaders.VERTEX_SHADER.contains("mix(uMaskCropRect.y, uMaskCropRect.w, contentUv.y)")
+            GlShaders.VERTEX_SHADER.contains("1.0 - contentUv.y")
         )
     }
 }
+
 

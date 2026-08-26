@@ -66,14 +66,16 @@ void main() {
         GLES20.glDeleteShader(vShader)
         GLES20.glDeleteShader(fShader)
 
-        // Invert Y in quad vertices so video TOP is drawn at the lower Y of FBO.
+        // Align Y in quad vertices so video TOP is drawn at the lower Y of FBO (Row 0).
+        // Under SurfaceTexture stMatrix: v=0 is video TOP, v=1 is video BOTTOM.
         // When glReadPixels reads bottom-up from row 0, it reads video TOP first!
         val vertices = floatArrayOf(
-            -1.0f, -1.0f, 0.0f, 1.0f, // NDC left, bottom of sub-rect -> video TOP (u=0, v=1)
-             1.0f, -1.0f, 1.0f, 1.0f, // NDC right, bottom of sub-rect -> video TOP (u=1, v=1)
-            -1.0f,  1.0f, 0.0f, 0.0f, // NDC left, top of sub-rect -> video BOTTOM (u=0, v=0)
-             1.0f,  1.0f, 1.0f, 0.0f  // NDC right, top of sub-rect -> video BOTTOM (u=1, v=0)
+            -1.0f, -1.0f, 0.0f, 0.0f, // NDC left, bottom of sub-rect -> video TOP (u=0, v=0)
+             1.0f, -1.0f, 1.0f, 0.0f, // NDC right, bottom of sub-rect -> video TOP (u=1, v=0)
+            -1.0f,  1.0f, 0.0f, 1.0f, // NDC left, top of sub-rect -> video BOTTOM (u=0, v=1)
+             1.0f,  1.0f, 1.0f, 1.0f  // NDC right, top of sub-rect -> video BOTTOM (u=1, v=1)
         )
+
         vertexBuffer = ByteBuffer.allocateDirect(vertices.size * 4)
             .order(ByteOrder.nativeOrder())
             .asFloatBuffer()
