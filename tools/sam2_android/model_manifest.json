@@ -1,0 +1,18 @@
+{
+  "model_family": "sam2",
+  "variant": "hiera_tiny",
+  "checkpoint": "models/pytorch/sam2_hiera_tiny.pt",
+  "checkpoint_bytes": 155906050,
+  "checkpoint_sha256": "65b50056e05bcb13694174f51bb6da89c894b57b75ccdf0ba6352c597c5d1125",
+  "config": "desktop/vendor/sam2/sam2_hiera_t.yaml",
+  "config_sha256": "829706a768d641fa8644e194d1d69322af5d837b099e8731af1476227f7c5691",
+  "sam2_source_path": "desktop/vendor/sam2",
+  "image_size": 1024,
+  "num_maskmem": 7,
+  "mem_dim": 64,
+  "d_model": 256,
+  "sigmoid_scale_for_mem_enc": 20.0,
+  "sigmoid_bias_for_mem_enc": -10.0,
+  "mask_threshold": 0.15,
+  "bbox_expand_ratio": 0.05
+}
