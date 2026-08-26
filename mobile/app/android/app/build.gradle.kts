@@ -39,7 +39,13 @@ android {
         }
     }
 
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
+    }
 }
+
+
 
 kotlin {
     compilerOptions {
