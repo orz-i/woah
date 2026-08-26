@@ -10,11 +10,11 @@ import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 data class TrackingConfig(
-    val bboxIouWeight: Float = 0.60f,
-    val maskIouWeight: Float = 0.10f,
-    val motionWeight: Float = 0.30f,
-    val minMatchScore: Float = 0.20f,
-    val maxMissedFrames: Int = 30
+    val maxMissedFrames: Int = 15,
+    val minMatchScore: Float = 0.15f,
+    val bboxIouWeight: Float = 0.40f,
+    val maskIouWeight: Float = 0.20f,
+    val motionWeight: Float = 0.40f
 )
 
 
@@ -218,8 +218,10 @@ class TrackManager(
                 val dy = lost.bbox.centerY - det.bbox.centerY
                 val dist = sqrt(dx * dx + dy * dy)
                 val bIoU = computeBBoxIoU(lost.bbox, det.bbox)
-                val maxAllowedDist = max(lost.bbox.width, lost.bbox.height) * 0.8f
+                val maxAllowedDist = max(lost.bbox.width, lost.bbox.height) * 0.9f
                 val isNearby = bIoU > 0.05f || dist < maxAllowedDist
+
+
 
                 if (isNearby && dist < bestDist) {
                     bestDist = dist
@@ -337,20 +339,10 @@ class TrackManager(
             predBbox: FloatRect,
             missedFrames: Int
         ): NativeMask {
-            if (missedFrames <= LOST_WARP_MAX_FRAMES) {
-                return warpMask(
-                    sourceMask = sourceMask,
-                    prevBbox = prevBbox,
-                    predBbox = predBbox,
-                    missedFrames = missedFrames
-                )
-            }
-            return generateConservativeFallbackMask(
-                sourceMask = sourceMask,
-                predBbox = predBbox,
-                missedFrames = missedFrames
-            )
+            // Preserve organic person silhouette mask instead of generating an opaque bounding rectangle
+            return warpMask(sourceMask, prevBbox, predBbox, missedFrames)
         }
+
 
         fun generateConservativeFallbackMask(
             sourceMask: NativeMask,
