@@ -1,0 +1,43 @@
+{
+  "image_features": {
+    "top_vision_feature": {
+      "maxAbsError": 1.0047107934951782e-05,
+      "meanAbsError": 5.730008751925197e-07
+    },
+    "high_res_feature_0": {
+      "maxAbsError": 1.817941665649414e-06,
+      "meanAbsError": 6.115783435234334e-08
+    },
+    "high_res_feature_1": {
+      "maxAbsError": 6.079673767089844e-06,
+      "meanAbsError": 3.758219406790886e-07
+    }
+  },
+  "init_step": {
+    "mask_iou": 1.0,
+    "obj_ptr": {
+      "maxAbsError": 2.205371856689453e-06,
+      "meanAbsError": 5.9841840993613e-07
+    },
+    "memory_features": {
+      "maxAbsError": 3.504753112792969e-05,
+      "meanAbsError": 1.6414888932558824e-06
+    },
+    "memory_pos_enc": {
+      "maxAbsError": 5.960464477539063e-08,
+      "meanAbsError": 3.784407454077154e-09
+    }
+  },
+  "temporal_step": {
+    "mask_iou": 1.0,
+    "obj_ptr": {
+      "maxAbsError": 3.6954879760742188e-06,
+      "meanAbsError": 8.122988219838589e-07
+    },
+    "memory_features": {
+      "maxAbsError": 3.981590270996094e-05,
+      "meanAbsError": 3.1605031836079434e-06
+    }
+  },
+  "status": "PASS"
+}
