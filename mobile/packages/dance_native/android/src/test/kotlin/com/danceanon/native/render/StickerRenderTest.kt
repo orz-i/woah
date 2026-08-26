@@ -64,4 +64,35 @@ class StickerRenderTest {
         assertTrue(tex2dSource.contains("uStickerTexture"), "2D Fragment shader must declare uStickerTexture")
         assertTrue(tex2dSource.contains("uStickerRect"), "2D Fragment shader must declare uStickerRect")
     }
+
+    @Test
+    fun testMaskBufferMergingLogic() {
+        val width = 160
+        val height = 160
+        val total = width * height
+
+        val buf1 = ByteBuffer.allocateDirect(total)
+        val buf2 = ByteBuffer.allocateDirect(total)
+
+        // Set non-overlapping and overlapping pixels
+        buf1.put(10, 200.toByte())
+        buf1.put(20, 100.toByte())
+
+        buf2.put(10, 150.toByte())
+        buf2.put(20, 250.toByte())
+        buf2.put(30, 180.toByte())
+
+        val merged = ByteBuffer.allocateDirect(total)
+        for (i in 0 until total) {
+            val v1 = buf1.get(i).toInt() and 0xFF
+            val v2 = buf2.get(i).toInt() and 0xFF
+            val maxV = maxOf(v1, v2).toByte()
+            merged.put(maxV)
+        }
+
+        assertEquals(200, merged.get(10).toInt() and 0xFF)
+        assertEquals(250, merged.get(20).toInt() and 0xFF)
+        assertEquals(180, merged.get(30).toInt() and 0xFF)
+        assertEquals(0, merged.get(40).toInt() and 0xFF)
+    }
 }
