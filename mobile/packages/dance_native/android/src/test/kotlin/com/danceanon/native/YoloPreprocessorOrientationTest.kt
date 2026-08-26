@@ -165,5 +165,47 @@ class YoloPreprocessorOrientationTest {
         val bottomPaddingVal = floatBuffer.get(600 * 640 + 320)
         assertTrue(bottomPaddingVal in 0.44f..0.46f, "Row 600 should be gray padding")
     }
+
+    @Test
+    fun rightToLeftColOrderFlipsHorizontalAxis() {
+        // 2x2 image:
+        // Row 0: RED   GREEN
+        // Row 1: BLUE  YELLOW
+        val workspace = PreprocessorWorkspace(inputSize = 2)
+        val mapper = ModelCoordinateMapper(srcWidth = 2, srcHeight = 2, modelInputSize = 2, protoSize = 2)
+
+        val buffer = ByteBuffer.allocateDirect(2 * 2 * 4).order(ByteOrder.nativeOrder())
+        // Row 0: Red, Green
+        buffer.put(255.toByte()).put(0.toByte()).put(0.toByte()).put(255.toByte()) // (0,0) Red
+        buffer.put(0.toByte()).put(255.toByte()).put(0.toByte()).put(255.toByte()) // (1,0) Green
+        // Row 1: Blue, Yellow
+        buffer.put(0.toByte()).put(0.toByte()).put(255.toByte()).put(255.toByte()) // (0,1) Blue
+        buffer.put(255.toByte()).put(255.toByte()).put(0.toByte()).put(255.toByte()) // (1,1) Yellow
+        buffer.rewind()
+
+        val result = YoloPreprocessor.processRgbaBuffer(
+            rgbaBuffer = buffer,
+            mapper = mapper,
+            workspace = workspace,
+            rowOrder = RgbaRowOrder.TOP_TO_BOTTOM,
+            colOrder = com.danceanon.native.inference.RgbaColOrder.RIGHT_TO_LEFT
+        )
+        val floatBuf = result.floatBuffer
+        floatBuf.rewind()
+
+        val numPixels = 4
+        val rOffset = 0
+        val gOffset = numPixels
+
+        // After RIGHT_TO_LEFT:
+        // Row 0 pixel 0 should be GREEN (was pixel 1):
+        assertEquals(0.0f, floatBuf.get(rOffset + 0))
+        assertEquals(1.0f, floatBuf.get(gOffset + 0))
+
+        // Row 0 pixel 1 should be RED (was pixel 0):
+        assertEquals(1.0f, floatBuf.get(rOffset + 1))
+        assertEquals(0.0f, floatBuf.get(gOffset + 1))
+    }
 }
+
 
