@@ -101,6 +101,8 @@ tools/sam2_android/.models/
 tools/sam2_android/.generated/
 tools/sam2_android/reference/golden_dataset/golden_frames/
 tools/sam2_android/reference/golden_dataset/golden_masks/
+tools/sam2_onnx/.generated/
+tools/sam2_onnx/runtime_output/
 *.pte
 *.npy
 

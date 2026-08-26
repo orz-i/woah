@@ -1,0 +1,217 @@
+{
+  "video_path": "desktop/vendor/Cutie/examples/example.mp4",
+  "video_sha256": "ec72c2e1fd27ba6e9a2d90eccf28f1404da60cf9b557a6bf3e390f0ed29c9392",
+  "video_width": 640,
+  "video_height": 480,
+  "fps": 25.0,
+  "frame_count": 40,
+  "first_bbox": [
+    154,
+    80,
+    362,
+    479
+  ],
+  "opencv_version": "5.0.0",
+  "frames": [
+    {
+      "index": 0,
+      "filename": "00000.jpg",
+      "sha256": "9176e9ea1d0cd084f0e57496eb489d3a9dc061201b1502777bb82c652eaf72a2"
+    },
+    {
+      "index": 1,
+      "filename": "00001.jpg",
+      "sha256": "eab4b595b6c83279c2ee82d5e0c8411a5be1c460ded443e797efa3338ccff667"
+    },
+    {
+      "index": 2,
+      "filename": "00002.jpg",
+      "sha256": "eb98fb1cc49b33a5fa1a187481e520dadc079dced0c9f758dd44d63ddd9d00ad"
+    },
+    {
+      "index": 3,
+      "filename": "00003.jpg",
+      "sha256": "8b1e2d887c4e5af3ce01da87131861405c247b97416b863921939c3fbeed0167"
+    },
+    {
+      "index": 4,
+      "filename": "00004.jpg",
+      "sha256": "93b29dc9acd2a27e9b0a1b0546b288711bfa492f7d7f0356e92b1ce300eec928"
+    },
+    {
+      "index": 5,
+      "filename": "00005.jpg",
+      "sha256": "f7ea38ff56b94befc1523c0ad381244e4154f3885a8dcc7d7b1b80c2688aae2a"
+    },
+    {
+      "index": 6,
+      "filename": "00006.jpg",
+      "sha256": "71a1b1b123830fc947ba616db2884e0500a250c1b8790ec6c34481330c858acc"
+    },
+    {
+      "index": 7,
+      "filename": "00007.jpg",
+      "sha256": "270d4c8684b27dd091f946989df3d4ed255b1e77294f09e1068e5ac03c50b010"
+    },
+    {
+      "index": 8,
+      "filename": "00008.jpg",
+      "sha256": "e6f9700254d60d8ecf63830b79c81934da8df68c3e0b9a3754de13494ad49e16"
+    },
+    {
+      "index": 9,
+      "filename": "00009.jpg",
+      "sha256": "f2a6a2ba3d856f7c77da70b5706ca56d15aa6509b3ff5afb222afda1d2590850"
+    },
+    {
+      "index": 10,
+      "filename": "00010.jpg",
+      "sha256": "2663f3ca4f68f9a24dbe9a301345c168f559a65fa8ba0297c56c549e7b7501fe"
+    },
+    {
+      "index": 11,
+      "filename": "00011.jpg",
+      "sha256": "2152e4c593b13959323cadd179c46cfff4ae18065ca13c7bcdc07d5ab3c0cb1b"
+    },
+    {
+      "index": 12,
+      "filename": "00012.jpg",
+      "sha256": "7e07499c16357dff53c2ca191b13b258d7079e108aa339ea9b36f616b3613f81"
+    },
+    {
+      "index": 13,
+      "filename": "00013.jpg",
+      "sha256": "aeb24475bd18b761700a1033564af2aa3ae23798051cbba91997af6e76f7e512"
+    },
+    {
+      "index": 14,
+      "filename": "00014.jpg",
+      "sha256": "8cf46df425f73bfc18059f6234e7edecd0e044caf86db94d8a862d6f40e7a107"
+    },
+    {
+      "index": 15,
+      "filename": "00015.jpg",
+      "sha256": "f70133bf182473ba920aa46dde0b8bbeb70eb86848454588fc80561ebd2298a0"
+    },
+    {
+      "index": 16,
+      "filename": "00016.jpg",
+      "sha256": "a05358d1f45afa9d5e2107419fc441905a0a2f1cafc9d60aa32eb7f6b5a04b9a"
+    },
+    {
+      "index": 17,
+      "filename": "00017.jpg",
+      "sha256": "33ac07be88e25ad4ae7c8746ae3fe904e7f038e2ae416f4cc5d85de24b647768"
+    },
+    {
+      "index": 18,
+      "filename": "00018.jpg",
+      "sha256": "ee0b423e20f74ed6a915000ce260e08c565a33b1670fb59975038d7ad5fae6a4"
+    },
+    {
+      "index": 19,
+      "filename": "00019.jpg",
+      "sha256": "97d6472869d30422ac844d668bf007d4bdd745f3b52ec12cbcff69ec56b67c9a"
+    },
+    {
+      "index": 20,
+      "filename": "00020.jpg",
+      "sha256": "c1614005592e9fd4c8d3e5eb89f24eb0b7ed26ad09c9a9c865342c3a5ad0dc1c"
+    },
+    {
+      "index": 21,
+      "filename": "00021.jpg",
+      "sha256": "621c1a35fac5147ba497bd112ddc9d64a003e9ef9878172e6736176a7d9b02e6"
+    },
+    {
+      "index": 22,
+      "filename": "00022.jpg",
+      "sha256": "2a19303c5a733fcde93382c2666b50c09c9b84f5bde73c9f2f428aed601bf338"
+    },
+    {
+      "index": 23,
+      "filename": "00023.jpg",
+      "sha256": "a88ae029a4d9f8752d517c5de9b1af35a9df978d4a8c093ebe978c12a9ff6fec"
+    },
+    {
+      "index": 24,
+      "filename": "00024.jpg",
+      "sha256": "304838db092cb01cef8f8de9fb0b94e1960773756d94163a3348f6f0c418ed10"
+    },
+    {
+      "index": 25,
+      "filename": "00025.jpg",
+      "sha256": "d779b0714c1f9be6f406a0728215f2921d4a676fcc9521c81898fcfb877494e9"
+    },
+    {
+      "index": 26,
+      "filename": "00026.jpg",
+      "sha256": "46a897461627bf28762716bd717f5f6f4e825f1aee9dd1e0bb36c57e03bf9774"
+    },
+    {
+      "index": 27,
+      "filename": "00027.jpg",
+      "sha256": "125042175cf978306fa8fd7b412b4b4005484d9949272b32c9c614f577908336"
+    },
+    {
+      "index": 28,
+      "filename": "00028.jpg",
+      "sha256": "216de796c9ac451ccad26b13772fbd3b8b67600559d914dbe8064a61e5217fcb"
+    },
+    {
+      "index": 29,
+      "filename": "00029.jpg",
+      "sha256": "9e1a477913f376e924f47e8347b236bb8aeb328c06110cb06626e7a0dcc36a63"
+    },
+    {
+      "index": 30,
+      "filename": "00030.jpg",
+      "sha256": "9454577f8fbfbb28f64c6ecd492c69c97fbf1ca2270ea5c9f23ec620f6ebde02"
+    },
+    {
+      "index": 31,
+      "filename": "00031.jpg",
+      "sha256": "b533e8fbf054ba73cb5f194a511b74ae701c68f65f93a976f5fd32a870dac2fb"
+    },
+    {
+      "index": 32,
+      "filename": "00032.jpg",
+      "sha256": "736b9f5ba8fb009136d8d9490642d3adfde0e38ab4027a36026ef55c9af0a0a0"
+    },
+    {
+      "index": 33,
+      "filename": "00033.jpg",
+      "sha256": "f4313ec17ac702546906d8edaeacef22e52526a5f41f3e524bbd2beb8e30efcc"
+    },
+    {
+      "index": 34,
+      "filename": "00034.jpg",
+      "sha256": "bc0db86409cd033a6e248de80db36faab07c2d96bdd0cbebe16358fd41eed497"
+    },
+    {
+      "index": 35,
+      "filename": "00035.jpg",
+      "sha256": "b35f847cfd823b8afbc1229d9121364dd2e7c2d20113af44ff32279d62361ae6"
+    },
+    {
+      "index": 36,
+      "filename": "00036.jpg",
+      "sha256": "972ae5961659daabe61d84e8bf1ce15fb6b3a43f45bde16bc23cd25afa95a1d7"
+    },
+    {
+      "index": 37,
+      "filename": "00037.jpg",
+      "sha256": "57a400d4a9cb4031450cd2422a004fbabebc7016d284efdbabf5abc264a30771"
+    },
+    {
+      "index": 38,
+      "filename": "00038.jpg",
+      "sha256": "6929621a650c58f46463c4e57593efcd7a973de331bcbca6f3b0ad1135f13ecf"
+    },
+    {
+      "index": 39,
+      "filename": "00039.jpg",
+      "sha256": "ae020ad4b3501969b6eb303735560f250e14edc89dcbe4420729e7598e13396b"
+    }
+  ]
+}

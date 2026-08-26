@@ -1,0 +1,322 @@
+{
+  "sam2_image_features": {
+    "file_name": "sam2_image_features.onnx",
+    "size_mb": 104.34,
+    "opset_imports": {
+      "ai.onnx": 17
+    },
+    "inputs": [
+      {
+        "name": "image",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          3,
+          1024,
+          1024
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "top_vision_feature",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          256,
+          "Addtop_vision_feature_dim_2",
+          "Addtop_vision_feature_dim_3"
+        ]
+      },
+      {
+        "name": "top_vision_pos_enc",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          "Casttop_vision_pos_enc_dim_1",
+          "Casttop_vision_pos_enc_dim_2",
+          "Casttop_vision_pos_enc_dim_3"
+        ]
+      },
+      {
+        "name": "high_res_feature_0",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          32,
+          "Convhigh_res_feature_0_dim_2",
+          "Convhigh_res_feature_0_dim_3"
+        ]
+      },
+      {
+        "name": "high_res_feature_1",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          64,
+          "Convhigh_res_feature_0_dim_2",
+          "Convhigh_res_feature_0_dim_3"
+        ]
+      }
+    ]
+  },
+  "sam2_init_step": {
+    "file_name": "sam2_init_step.onnx",
+    "size_mb": 22.4,
+    "opset_imports": {
+      "ai.onnx": 17
+    },
+    "inputs": [
+      {
+        "name": "top_vision_feature",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          256,
+          64,
+          64
+        ]
+      },
+      {
+        "name": "high_res_feature_0",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          32,
+          256,
+          256
+        ]
+      },
+      {
+        "name": "high_res_feature_1",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          64,
+          128,
+          128
+        ]
+      },
+      {
+        "name": "point_coords",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          "num_points",
+          2
+        ]
+      },
+      {
+        "name": "point_labels",
+        "dtype": "INT32",
+        "shape": [
+          "batch_size",
+          "num_points"
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "low_res_mask",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          1,
+          "Unsqueezelow_res_mask_dim_2",
+          "Unsqueezelow_res_mask_dim_3"
+        ]
+      },
+      {
+        "name": "high_res_mask",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          1,
+          "Unsqueezehigh_res_mask_dim_2",
+          "Unsqueezehigh_res_mask_dim_3"
+        ]
+      },
+      {
+        "name": "object_score_logits",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          1
+        ]
+      },
+      {
+        "name": "obj_ptr",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          256
+        ]
+      },
+      {
+        "name": "memory_features",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          64,
+          "Convmemory_features_dim_2",
+          "Convmemory_features_dim_3"
+        ]
+      },
+      {
+        "name": "memory_pos_enc",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          "Castmemory_pos_enc_dim_1",
+          "Castmemory_pos_enc_dim_2",
+          "Castmemory_pos_enc_dim_3"
+        ]
+      }
+    ]
+  },
+  "sam2_temporal_step": {
+    "file_name": "sam2_temporal_step.onnx",
+    "size_mb": 49.47,
+    "opset_imports": {
+      "ai.onnx": 17
+    },
+    "inputs": [
+      {
+        "name": "current_top_feature",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          256,
+          64,
+          64
+        ]
+      },
+      {
+        "name": "current_top_pos",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          256,
+          64,
+          64
+        ]
+      },
+      {
+        "name": "current_high_res_0",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          32,
+          256,
+          256
+        ]
+      },
+      {
+        "name": "current_high_res_1",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          64,
+          128,
+          128
+        ]
+      },
+      {
+        "name": "selected_memory_features",
+        "dtype": "FLOAT",
+        "shape": [
+          "num_memories",
+          "batch_size",
+          64,
+          64,
+          64
+        ]
+      },
+      {
+        "name": "selected_memory_pos",
+        "dtype": "FLOAT",
+        "shape": [
+          "num_memories",
+          "batch_size",
+          64,
+          64,
+          64
+        ]
+      },
+      {
+        "name": "memory_tpos_indices",
+        "dtype": "INT64",
+        "shape": [
+          "num_memories"
+        ]
+      },
+      {
+        "name": "selected_obj_ptrs",
+        "dtype": "FLOAT",
+        "shape": [
+          "num_ptrs",
+          "batch_size",
+          256
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "low_res_mask",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          1,
+          "Unsqueezelow_res_mask_dim_2",
+          "Unsqueezelow_res_mask_dim_3"
+        ]
+      },
+      {
+        "name": "high_res_mask",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          1,
+          "Unsqueezehigh_res_mask_dim_2",
+          "Unsqueezehigh_res_mask_dim_3"
+        ]
+      },
+      {
+        "name": "object_score_logits",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          1
+        ]
+      },
+      {
+        "name": "obj_ptr",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          256
+        ]
+      },
+      {
+        "name": "memory_features",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          64,
+          "Convmemory_features_dim_2",
+          "Convmemory_features_dim_3"
+        ]
+      },
+      {
+        "name": "memory_pos_enc",
+        "dtype": "FLOAT",
+        "shape": [
+          "batch_size",
+          "Castmemory_pos_enc_dim_1",
+          "Castmemory_pos_enc_dim_2",
+          "Castmemory_pos_enc_dim_3"
+        ]
+      }
+    ]
+  }
+}
