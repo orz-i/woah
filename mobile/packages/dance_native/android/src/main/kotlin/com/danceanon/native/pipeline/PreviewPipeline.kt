@@ -23,6 +23,22 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 
+/**
+ * Interface specification reserved for future non-zero timestamp tracking preview.
+ *
+ * In future phases, track states will be snapshotted every N seconds.
+ * When seeking to arbitrary timestamp T, decoding will start from the closest snapshot <= T,
+ * tracking forward to T to guarantee stable person IDs.
+ *
+ * NOTE: For V1, timeline preview is strictly pinned to timestampMs = 0 in the UI
+ * to prevent single-frame Hungarian matching identity drift.
+ */
+interface TrackingSnapshotCache {
+    fun saveSnapshot(timestampMs: Long, tracks: List<com.danceanon.native.tracking.TrackedPerson>)
+    fun getNearestSnapshot(timestampMs: Long): Pair<Long, List<com.danceanon.native.tracking.TrackedPerson>>?
+    fun clear()
+}
+
 class PreviewPipeline(
     private val context: Context,
     private val segmenter: YoloOnnxSegmenter,
@@ -31,6 +47,13 @@ class PreviewPipeline(
     private val analysisCache = PreviewAnalysisCache()
 
     suspend fun renderPreview(request: PreviewRequestDto): PreviewFrameDto = withContext(Dispatchers.Default) {
+        if (request.timestampMs != 0L) {
+            android.util.Log.w(
+                "PreviewPipeline",
+                "Non-zero timestamp preview (${request.timestampMs}ms) in V1 may exhibit identity drift. Recommended timestampMs = 0."
+            )
+        }
+
         val startTime = System.currentTimeMillis()
 
         val sourceUri = cacheManager.getVideoUri(request.analysisCacheId)
@@ -94,13 +117,8 @@ class PreviewPipeline(
             // 2. Perform AI Segmentation
             segmenter.initialize()
             val segResult = segmenter.segmentBitmapSync(baseRotatedBitmap, request.timestampMs * 1000L)
-            val detections = segResult.persons.map { det ->
-                if (det.mask != null) {
-                    det.copy(mask = com.danceanon.native.privacy.MaskPrivacyProcessor.dilate(det.mask, radius = 1))
-                } else {
-                    det
-                }
-            }
+            val detections = com.danceanon.native.privacy.PrivacySegmentationProcessor.DEFAULT.applyPrivacySafety(segResult.persons)
+
 
             // 3. Assign stable IDs matching analysis cache
             val metadata = cacheManager.getAnalysisMetadata(request.analysisCacheId)
@@ -213,4 +231,13 @@ class PreviewPipeline(
             renderTimeMs = elapsed
         )
     }
+
+    fun clearForAnalysis(cacheId: String) {
+        analysisCache.clearForAnalysis(cacheId)
+    }
+
+    fun clear() {
+        analysisCache.clear()
+    }
 }
+

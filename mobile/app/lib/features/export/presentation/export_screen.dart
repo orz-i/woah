@@ -141,8 +141,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            state.progress >= 1.0 ? '即将完成' : '硬件加速处理中',
+                            state.progress >= 1.0 ? '即将完成' : '本地端侧处理中',
                             textAlign: TextAlign.center,
+
                             style: const TextStyle(
                               fontSize: 13,
                               color: Colors.white60,

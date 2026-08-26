@@ -132,4 +132,103 @@ class TrackManagerTest {
         val ids = finalTracks.map { it.id }.toSet()
         assertEquals(setOf(0, 2), ids)
     }
+
+    @Test
+    fun testRemovedTrackDoesNotReviveInPredictOrUpdate() {
+        val maxMissed = 3
+        val tracker = TrackManager(TrackingConfig(maxMissedFrames = maxMissed))
+
+        val personA = PersonDetection(FloatRect(100f, 100f, 200f, 300f), 0.95f, createTestMask())
+        val init = tracker.initialize(listOf(personA))
+        assertEquals(1, init.size)
+        assertEquals(0, init[0].id)
+
+        val dtUs = 33333L
+
+        // Predict for maxMissed + 2 frames
+        for (i in 1..(maxMissed + 2)) {
+            val preds = tracker.predict(i * dtUs)
+            if (i <= maxMissed) {
+                assertEquals(1, preds.size, "Should be kept as LOST up to maxMissed")
+                assertEquals(TrackState.LOST, preds[0].state)
+            } else {
+                assertTrue(preds.isEmpty(), "Beyond maxMissed, track must be filtered out as REMOVED")
+            }
+        }
+
+        // Now a new detection appears at the exact same location
+        val newPersonAtSameLocation = PersonDetection(FloatRect(100f, 100f, 200f, 300f), 0.95f, createTestMask())
+        val updated = tracker.update(listOf(newPersonAtSameLocation), (maxMissed + 3) * dtUs)
+
+        assertEquals(1, updated.size)
+        assertEquals(1, updated[0].id, "New detection must be assigned a new track ID (1), NOT reviving removed ID (0)")
+        assertEquals(TrackState.ACTIVE, updated[0].state)
+    }
+
+    @Test
+    fun testWarpMaskMultiAspectRatioLetterboxParity() {
+        // Test 16:9 Landscape, 9:16 Portrait, and 1:1 Square
+        val aspectRatios = listOf(
+            Triple(1920, 1080, "16:9 Landscape"),
+            Triple(1080, 1920, "9:16 Portrait"),
+            Triple(1080, 1080, "1:1 Square")
+        )
+
+        for ((srcW, srcH, desc) in aspectRatios) {
+            val mapper = com.danceanon.native.geometry.ModelCoordinateMapper(srcW, srcH, modelInputSize = 640, protoSize = 160)
+            val protoW = 160
+            val protoH = 160
+
+            // Create a mask with a single mark at the bbox center
+            val prevBbox = FloatRect(
+                left = srcW * 0.4f,
+                top = srcH * 0.4f,
+                right = srcW * 0.6f,
+                bottom = srcH * 0.6f
+            )
+
+            val maskBuf = ByteBuffer.allocateDirect(protoW * protoH)
+            val prevProtoX = mapper.sourceToProtoX(prevBbox.centerX).toInt().coerceIn(0, 159)
+            val prevProtoY = mapper.sourceToProtoY(prevBbox.centerY).toInt().coerceIn(0, 159)
+
+            for (i in 0 until protoW * protoH) maskBuf.put(0.toByte())
+            maskBuf.put(prevProtoY * protoW + prevProtoX, 255.toByte())
+            maskBuf.rewind()
+
+            val nativeMask = NativeMask(
+                width = protoW,
+                height = protoH,
+                buffer = maskBuf,
+                originalWidth = srcW,
+                originalHeight = srcH,
+                mapper = mapper
+            )
+
+            // Translate bbox by +10% in X and +10% in Y
+            val predBbox = FloatRect(
+                left = prevBbox.left + srcW * 0.1f,
+                top = prevBbox.top + srcH * 0.1f,
+                right = prevBbox.right + srcW * 0.1f,
+                bottom = prevBbox.bottom + srcH * 0.1f
+            )
+
+            val warped = TrackManager.warpMask(
+                sourceMask = nativeMask,
+                prevBbox = prevBbox,
+                predBbox = predBbox,
+                missedFrames = 1
+            )
+
+            val expectedNewProtoX = mapper.sourceToProtoX(predBbox.centerX).toInt().coerceIn(0, 159)
+            val expectedNewProtoY = mapper.sourceToProtoY(predBbox.centerY).toInt().coerceIn(0, 159)
+
+            val warpedBuf = warped.buffer
+            warpedBuf.rewind()
+
+            // The marked pixel in the warped mask should have translated to around (expectedNewProtoX, expectedNewProtoY)
+            val pixelVal = warpedBuf.get(expectedNewProtoY * protoW + expectedNewProtoX).toInt() and 0xFF
+            assertEquals(255, pixelVal, "$desc: Warped mask center must align with translated bbox proto coordinates")
+        }
+    }
 }
+

@@ -68,26 +68,37 @@ vec3 hsv2rgb(vec3 c) {
 }
 
 void main() {
-    vec2 uv = vOesTexCoord;
+    vec2 originalUv = vOesTexCoord;
     vec2 maskUv = vMaskTexCoord;
 
-    // 1. Leg stretch non-linear dual coordinate warp
-    if (uLegStretchEnabled == 1 && uLegStretch > 1.0) {
-        if (uv.y >= uLegZoneTop && uv.y <= uLegZoneBottom) {
-            float range = max(0.01, uLegZoneBottom - uLegZoneTop);
-            float t = (uv.y - uLegZoneTop) / range;
-            uv.y = uLegZoneTop + (t / uLegStretch) * range;
-        }
-    }
-
-    vec4 color = texture2D(uBaseTexture, uv);
+    vec4 originalColor = texture2D(uBaseTexture, originalUv);
 
     if (uHasMask == 0) {
-        gl_FragColor = color;
+        gl_FragColor = originalColor;
         return;
     }
 
     float maskVal = texture2D(uMaskTexture, maskUv).r;
+
+    // 1. Leg stretch non-linear dual coordinate warp - APPLIED PERSON-ONLY
+    vec2 warpedUv = originalUv;
+    if (uLegStretchEnabled == 1 && uLegStretch > 1.0) {
+        if (originalUv.y >= uLegZoneTop && originalUv.y <= uLegZoneBottom) {
+            float range = max(0.01, uLegZoneBottom - uLegZoneTop);
+            float t = (originalUv.y - uLegZoneTop) / range;
+            warpedUv.y = uLegZoneTop + (t / uLegStretch) * range;
+        }
+    }
+
+    // Only warp within person mask; background strictly preserves original coordinates
+    vec4 color = originalColor;
+    if (maskVal > 0.05 && uLegStretchEnabled == 1 && uLegStretch > 1.0) {
+        vec4 warpedColor = texture2D(uBaseTexture, warpedUv);
+        color = mix(originalColor, warpedColor, maskVal);
+    }
+
+    vec2 uv = originalUv;
+
 
     // 2. Skin whiten effect
     if (uSkinWhiten > 0.01 && maskVal > 0.1) {

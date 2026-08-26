@@ -1,6 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dance_domain/dance_domain.dart';
+import 'package:dance_native/dance_native.dart';
+import 'package:app/repositories/native_processing_repository.dart';
 import 'package:app/features/effect_editor/presentation/effect_editor_controller.dart';
+
 
 void main() {
   group('EffectEditorController Tests', () {
@@ -53,5 +56,55 @@ void main() {
       expect(configured!.effects.legStretchEnabled, isTrue);
       expect(configured.effects.legStretch, equals(0.20));
     });
+
+    test('Initializes preview and guards against out-of-order responses with sequence ID', () async {
+      final repo = _FakeNativeRepository();
+      final projectWithCache = testProject.copyWith(analysisCacheId: 'cache_123');
+      final controller = EffectEditorController(repository: repo);
+
+      controller.init(projectWithCache);
+      expect(controller.state.previewLoading, isTrue);
+
+      // Await initial preview completion
+      await Future.delayed(const Duration(milliseconds: 50));
+      expect(controller.state.previewLoading, isFalse);
+      expect(controller.state.previewPath, equals('/path/to/rendered_preview.jpg'));
+      expect(repo.lastTimestampMs, equals(0));
+
+      // Trigger debounced update
+      controller.updateOpacity(0.5);
+
+      // Wait for debounce timer (200ms)
+      await Future.delayed(const Duration(milliseconds: 250));
+      expect(controller.state.previewRequestId, greaterThan(1));
+      expect(controller.state.previewPath, equals('/path/to/rendered_preview.jpg'));
+      controller.dispose();
+    });
+
   });
 }
+
+class _FakeNativeRepository implements NativeProcessingRepository {
+  int? lastTimestampMs;
+
+  @override
+  Future<PreviewFrameDto> getPreviewFrame({
+    required String analysisCacheId,
+    required int timestampMs,
+    required List<int> selectedPersonIds,
+    required EffectConfig effects,
+    FollowConfig follow = const FollowConfig(),
+  }) async {
+    lastTimestampMs = timestampMs;
+    return PreviewFrameDto(
+      thumbnailPath: '/path/to/rendered_preview.jpg',
+      renderTimeMs: 12,
+      timestampMs: 0,
+    );
+
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+

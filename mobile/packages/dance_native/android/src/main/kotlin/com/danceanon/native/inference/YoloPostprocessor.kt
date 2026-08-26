@@ -103,13 +103,22 @@ object YoloPostprocessor {
             }
             maskBuffer.rewind()
 
+            val mapper = com.danceanon.native.geometry.ModelCoordinateMapper(
+                srcWidth = preprocess.srcWidth,
+                srcHeight = preprocess.srcHeight,
+                modelInputSize = preprocess.inputSize,
+                protoSize = PROTO_SIZE
+            )
+
             val nativeMask = NativeMask(
                 width = PROTO_SIZE,
                 height = PROTO_SIZE,
                 buffer = maskBuffer,
                 originalWidth = preprocess.srcWidth,
-                originalHeight = preprocess.srcHeight
+                originalHeight = preprocess.srcHeight,
+                mapper = mapper
             )
+
 
             detections.add(
                 PersonDetection(
@@ -208,13 +217,22 @@ object YoloPostprocessor {
             }
             maskBuffer.rewind()
 
+            val mapper = com.danceanon.native.geometry.ModelCoordinateMapper(
+                srcWidth = preprocess.srcWidth,
+                srcHeight = preprocess.srcHeight,
+                modelInputSize = preprocess.inputSize,
+                protoSize = PROTO_SIZE
+            )
+
             val nativeMask = NativeMask(
                 width = PROTO_SIZE,
                 height = PROTO_SIZE,
                 buffer = maskBuffer,
                 originalWidth = preprocess.srcWidth,
-                originalHeight = preprocess.srcHeight
+                originalHeight = preprocess.srcHeight,
+                mapper = mapper
             )
+
 
             detections.add(
                 PersonDetection(

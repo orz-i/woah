@@ -50,6 +50,7 @@ class TrackManager(
 
     private val tracks = mutableListOf<InternalTrack>()
     private var nextTrackId = 0
+    private var hasInitialized = false
 
     override fun initialize(detections: List<PersonDetection>): List<TrackedPerson> {
         val defaultIds = detections.indices.toList()
@@ -74,17 +75,35 @@ class TrackManager(
             tracks.add(track)
             nextTrackId = maxOf(nextTrackId, trackId + 1)
         }
+        hasInitialized = true
         return tracks.map { it.toTrackedPerson() }
     }
 
     override fun update(detections: List<PersonDetection>, timestampUs: Long): List<TrackedPerson> {
-        if (tracks.isEmpty()) {
+        if (!hasInitialized) {
             return initialize(detections)
         }
 
         if (detections.isEmpty()) {
             return predict(timestampUs)
         }
+
+        if (tracks.isEmpty()) {
+            // Already initialized, but all prior tracks were removed.
+            // Assign fresh incremental IDs without resetting nextTrackId.
+            for (det in detections) {
+                val newTrack = InternalTrack(
+                    id = nextTrackId++,
+                    bbox = det.bbox,
+                    mask = det.mask,
+                    confidence = det.confidence,
+                    state = TrackState.ACTIVE
+                )
+                tracks.add(newTrack)
+            }
+            return tracks.map { it.toTrackedPerson() }
+        }
+
 
         // 1. Predict all tracks with 8D Kalman Filter
         val previousBoxes = tracks.map { it.bbox }
@@ -198,7 +217,7 @@ class TrackManager(
     }
 
     override fun predict(timestampUs: Long): List<TrackedPerson> {
-        return tracks.map { track ->
+        val activeOrLost = tracks.map { track ->
             val prevBox = track.bbox
             val predBox = track.kalman.predict(timestampUs)
             track.missedFrames++
@@ -218,12 +237,20 @@ class TrackManager(
             }
             track.toTrackedPerson()
         }.filter { it.state != TrackState.REMOVED }
+
+        // Guarantee internal collection purge so removed tracks never participate in matching or revive
+        tracks.removeAll { it.state == TrackState.REMOVED }
+
+        return activeOrLost
     }
+
 
     override fun reset() {
         tracks.clear()
         nextTrackId = 0
+        hasInitialized = false
     }
+
 
     companion object {
         fun computeBBoxIoU(boxA: FloatRect, boxB: FloatRect): Float {
@@ -286,26 +313,19 @@ class TrackManager(
             val scaleX = predW / prevW
             val scaleY = predH / prevH
 
-            // BBox relative center shift normalized to mask coordinate
-            val mapper = sourceMask.mapper
-            val prevNormCenterX: Float
-            val prevNormCenterY: Float
-            val predNormCenterX: Float
-            val predNormCenterY: Float
+            // BBox relative center shift mapped to proto coordinates via ModelCoordinateMapper
+            val mapper = sourceMask.mapper ?: com.danceanon.native.geometry.ModelCoordinateMapper(
+                srcWidth = kotlin.math.max(1, sourceMask.originalWidth),
+                srcHeight = kotlin.math.max(1, sourceMask.originalHeight),
+                modelInputSize = 640,
+                protoSize = w
+            )
 
-            if (mapper != null) {
-                prevNormCenterX = mapper.modelToProtoX(mapper.sourceToModelX(prevBbox.centerX)).toFloat()
-                prevNormCenterY = mapper.modelToProtoY(mapper.sourceToModelY(prevBbox.centerY)).toFloat()
-                predNormCenterX = mapper.modelToProtoX(mapper.sourceToModelX(predBbox.centerX)).toFloat()
-                predNormCenterY = mapper.modelToProtoY(mapper.sourceToModelY(predBbox.centerY)).toFloat()
-            } else {
-                val origW = max(1, sourceMask.originalWidth).toFloat()
-                val origH = max(1, sourceMask.originalHeight).toFloat()
-                prevNormCenterX = prevBbox.centerX / origW * w
-                prevNormCenterY = prevBbox.centerY / origH * h
-                predNormCenterX = predBbox.centerX / origW * w
-                predNormCenterY = predBbox.centerY / origH * h
-            }
+            val prevNormCenterX = mapper.sourceToProtoX(prevBbox.centerX)
+            val prevNormCenterY = mapper.sourceToProtoY(prevBbox.centerY)
+            val predNormCenterX = mapper.sourceToProtoX(predBbox.centerX)
+            val predNormCenterY = mapper.sourceToProtoY(predBbox.centerY)
+
 
             // Dilation factor during missed frames (1% ~ 3% expansion)
             val dilation = if (missedFrames in 4..8) 1 else 0

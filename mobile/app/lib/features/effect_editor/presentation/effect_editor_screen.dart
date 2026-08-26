@@ -73,8 +73,9 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // 1. Preview Frame Card
-              _buildPreviewCard(state),
+              _buildPreviewCard(state, controller),
               const SizedBox(height: 20),
+
 
               // 2. Effect Mode Selector
               Text(
@@ -98,9 +99,9 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
     );
   }
 
-  Widget _buildPreviewCard(EffectEditorState state) {
-    final thumbPath = state.previewThumbnailPath;
-    final hasThumb = thumbPath != null && thumbPath.isNotEmpty && File(thumbPath).existsSync();
+  Widget _buildPreviewCard(EffectEditorState state, EffectEditorController controller) {
+    final displayPath = state.previewPath ?? state.previewThumbnailPath;
+    final hasImage = displayPath != null && displayPath.isNotEmpty && File(displayPath).existsSync();
 
     final modeName = switch (state.effects.fillMode) {
       FillMode.solid => '纯色遮挡',
@@ -113,20 +114,59 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
     return Card(
       clipBehavior: Clip.antiAlias,
       child: Container(
-        height: 220,
+        height: 240,
         color: const Color(0xFF131316),
         child: Stack(
           alignment: Alignment.center,
           children: [
-            if (hasThumb)
+            if (hasImage)
               Image.file(
-                File(thumbPath),
+                File(displayPath),
+                key: ValueKey(displayPath),
                 fit: BoxFit.contain,
                 width: double.infinity,
                 height: double.infinity,
               )
             else
               const Icon(Icons.auto_fix_high_rounded, size: 48, color: Colors.white30),
+
+            if (state.previewLoading)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black38,
+                  alignment: Alignment.center,
+                  child: const SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                  ),
+                ),
+              ),
+
+            if (state.previewError != null)
+              Positioned(
+                top: 12,
+                left: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.85),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.error_outline, size: 14, color: Colors.white),
+                      const SizedBox(width: 4),
+                      Text(
+                        '预览生成失败: ${state.previewError}',
+                        style: const TextStyle(fontSize: 10, color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
             Positioned(
               bottom: 12,
               right: 12,
@@ -137,9 +177,23 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.white24),
                 ),
-                child: Text(
-                  '当前样式: $modeName',
-                  style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (state.previewPath != null) ...[
+                      const Icon(Icons.check_circle, size: 12, color: Colors.greenAccent),
+                      const SizedBox(width: 4),
+                      const Text(
+                        'Native 预览',
+                        style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    Text(
+                      '当前样式: $modeName',
+                      style: const TextStyle(fontSize: 11, color: Colors.white70),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -148,6 +202,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
       ),
     );
   }
+
 
   Widget _buildModeChips(FillMode current, EffectEditorController controller) {
     final modes = [

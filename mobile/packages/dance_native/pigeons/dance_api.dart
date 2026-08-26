@@ -8,9 +8,10 @@ import 'package:pigeon/pigeon.dart';
   kotlinOptions: KotlinOptions(
     package: 'com.danceanon.native.bridge',
   ),
-  swiftOut: 'ios/Classes/DanceApi.g.swift',
+  swiftOut: 'ios/dance_native/Sources/dance_native/DanceApi.g.swift',
   swiftOptions: SwiftOptions(),
 ))
+
 
 class NativeCapabilitiesDto {
   final String platform;

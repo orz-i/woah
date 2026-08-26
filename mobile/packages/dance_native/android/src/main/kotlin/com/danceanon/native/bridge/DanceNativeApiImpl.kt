@@ -123,12 +123,35 @@ class DanceNativeApiImpl(
         // 1. Persist initial request and state into ExportJobStore
         coordinator.registerJobRequest(jobId, request)
 
-        // 2. Trigger ForegroundService to take ownership of execution
-        ExportServiceController.startExportService(context, jobId)
+        try {
+            // 2. Trigger ForegroundService to take ownership of execution
+            ExportServiceController.startExportService(context, jobId)
+        } catch (e: Throwable) {
+            android.util.Log.e("DanceNativeApiImpl", "Failed to start export foreground service: ${e.message}", e)
+            val failedStatus = JobStatusDto(
+                jobId = jobId,
+                state = "failed",
+                currentFrame = 0L,
+                totalFrames = 0L,
+                fps = 0.0,
+                progress = 0.0,
+                outputUri = null,
+                errorCode = DanceNativeException.EXPORT_FAILED,
+                errorMessage = "Failed to start export service: ${e.message}"
+            )
+            coordinator.jobStore.updateStatus(jobId, failedStatus)
+            coordinator.onJobFinished(jobId)
+            throw DanceNativeException(
+                DanceNativeException.EXPORT_FAILED,
+                "Could not start export foreground service: ${e.message}",
+                e
+            )
+        }
 
         // 3. Immediately return jobId to Flutter caller
         jobId
     }
+
 
     override suspend fun cancelJob(jobId: String) = withContext(Dispatchers.Default) {
         coordinator.cancelJob(jobId)
@@ -141,14 +164,19 @@ class DanceNativeApiImpl(
     override suspend fun releaseProject(projectId: String) = withContext(Dispatchers.IO) {
         if (projectId.isNotBlank()) {
             cacheManager.clearAnalysisCache(projectId)
+            previewPipeline.clearForAnalysis(projectId)
         }
     }
 
     fun close() {
         coordinator.setEventEmitter(null)
         try {
+            previewPipeline.clear()
+        } catch (_: Throwable) {}
+        try {
             segmenter.close()
         } catch (_: Throwable) {}
     }
 }
+
 

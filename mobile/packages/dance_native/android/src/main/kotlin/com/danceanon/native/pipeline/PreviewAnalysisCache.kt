@@ -2,7 +2,6 @@ package com.danceanon.native.pipeline
 
 import android.graphics.Bitmap
 import com.danceanon.native.tracking.TrackedPerson
-import java.util.concurrent.ConcurrentHashMap
 
 data class CachedPreviewAnalysis(
     val frameBitmap: Bitmap,
@@ -10,29 +9,71 @@ data class CachedPreviewAnalysis(
     val timestampMs: Long
 )
 
-class PreviewAnalysisCache {
+/**
+ * Thread-safe LRU Cache for preview analysis frames and track states.
+ * Automatically recycles evicted Bitmaps to prevent native memory leaks.
+ */
+class PreviewAnalysisCache(val maxEntries: Int = 4) {
 
-    private val cache = ConcurrentHashMap<String, CachedPreviewAnalysis>()
+    private val lock = Any()
+    private val lruMap = object : LinkedHashMap<String, CachedPreviewAnalysis>(maxEntries, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CachedPreviewAnalysis>?): Boolean {
+            if (size > maxEntries && eldest != null) {
+                recycleItem(eldest.value)
+                return true
+            }
+            return false
+        }
+    }
+
+    private fun recycleItem(item: CachedPreviewAnalysis) {
+        try {
+            if (!item.frameBitmap.isRecycled) {
+                item.frameBitmap.recycle()
+            }
+        } catch (_: Throwable) {}
+    }
 
     fun get(cacheKey: String): CachedPreviewAnalysis? {
-        return cache[cacheKey]
+        synchronized(lock) {
+            return lruMap[cacheKey]
+        }
     }
 
     fun put(cacheKey: String, item: CachedPreviewAnalysis) {
-        val old = cache.put(cacheKey, item)
-        if (old != null && old.frameBitmap != item.frameBitmap) {
-            try {
-                old.frameBitmap.recycle()
-            } catch (_: Throwable) {}
+        synchronized(lock) {
+            val old = lruMap.put(cacheKey, item)
+            if (old != null && old.frameBitmap != item.frameBitmap) {
+                recycleItem(old)
+            }
+        }
+    }
+
+    fun clearForAnalysis(cacheId: String) {
+        synchronized(lock) {
+            val iterator = lruMap.entries.iterator()
+            while (iterator.hasNext()) {
+                val entry = iterator.next()
+                if (entry.key.startsWith("${cacheId}_") || entry.key == cacheId) {
+                    recycleItem(entry.value)
+                    iterator.remove()
+                }
+            }
         }
     }
 
     fun clear() {
-        for ((_, item) in cache) {
-            try {
-                item.frameBitmap.recycle()
-            } catch (_: Throwable) {}
+        synchronized(lock) {
+            for (item in lruMap.values) {
+                recycleItem(item)
+            }
+            lruMap.clear()
         }
-        cache.clear()
+    }
+
+    fun size(): Int {
+        synchronized(lock) {
+            return lruMap.size
+        }
     }
 }

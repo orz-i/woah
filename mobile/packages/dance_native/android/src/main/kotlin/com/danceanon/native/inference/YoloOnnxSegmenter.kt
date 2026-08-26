@@ -92,40 +92,36 @@ class YoloOnnxSegmenter(
 
         // 2. Run Inference
         val detections = try {
-            val inputTensor = OnnxTensor.createTensor(
+            OnnxTensor.createTensor(
                 env,
                 preprocess.byteBuffer.asFloatBuffer(),
                 longArrayOf(1, 3, 640, 640)
-            )
-            val results = session.run(mapOf("images" to inputTensor))
+            ).use { inputTensor ->
+                session.run(mapOf("images" to inputTensor)).use { results ->
+                    val out0Opt = results.get("output0")
+                    val out1Opt = results.get("output1")
 
-            val out0Opt = results.get("output0")
-            val out1Opt = results.get("output1")
+                    if (!out0Opt.isPresent || !out1Opt.isPresent) {
+                        throw DanceNativeException(
+                            DanceNativeException.MODEL_OUTPUT_INVALID,
+                            "Model output0 or output1 missing from ONNX inference results"
+                        )
+                    }
 
-            if (!out0Opt.isPresent || !out1Opt.isPresent) {
-                inputTensor.close()
-                results.close()
-                throw DanceNativeException(
-                    DanceNativeException.MODEL_OUTPUT_INVALID,
-                    "Model output0 or output1 missing from ONNX inference results"
-                )
+                    val out0Tensor = out0Opt.get() as OnnxTensor
+                    val out1Tensor = out1Opt.get() as OnnxTensor
+
+                    YoloPostprocessor.postprocessBuffer(
+                        output0Buffer = out0Tensor.floatBuffer,
+                        output1Buffer = out1Tensor.floatBuffer,
+                        preprocess = preprocess,
+                        confThreshold = 0.25f,
+                        iouThreshold = 0.50f
+                    )
+                }
             }
-
-            val out0Tensor = out0Opt.get() as OnnxTensor
-            val out1Tensor = out1Opt.get() as OnnxTensor
-
-            val resultList = YoloPostprocessor.postprocessBuffer(
-                output0Buffer = out0Tensor.floatBuffer,
-                output1Buffer = out1Tensor.floatBuffer,
-                preprocess = preprocess,
-                confThreshold = 0.25f,
-                iouThreshold = 0.50f
-            )
-
-            inputTensor.close()
-            results.close()
-            resultList
         } catch (e: DanceNativeException) {
+
             throw e
         } catch (e: Exception) {
             android.util.Log.e("YoloOnnxSegmenter", "Inference error: ${e.message}", e)
@@ -170,40 +166,36 @@ class YoloOnnxSegmenter(
 
         // 2. Run Inference
         val detections = try {
-            val inputTensor = OnnxTensor.createTensor(
+            OnnxTensor.createTensor(
                 env,
                 preprocess.byteBuffer.asFloatBuffer(),
                 longArrayOf(1, 3, 640, 640)
-            )
-            val results = session.run(mapOf("images" to inputTensor))
+            ).use { inputTensor ->
+                session.run(mapOf("images" to inputTensor)).use { results ->
+                    val out0Opt = results.get("output0")
+                    val out1Opt = results.get("output1")
 
-            val out0Opt = results.get("output0")
-            val out1Opt = results.get("output1")
+                    if (!out0Opt.isPresent || !out1Opt.isPresent) {
+                        throw DanceNativeException(
+                            DanceNativeException.MODEL_OUTPUT_INVALID,
+                            "Model output0 or output1 missing from ONNX inference results"
+                        )
+                    }
 
-            if (!out0Opt.isPresent || !out1Opt.isPresent) {
-                inputTensor.close()
-                results.close()
-                throw DanceNativeException(
-                    DanceNativeException.MODEL_OUTPUT_INVALID,
-                    "Model output0 or output1 missing from ONNX inference results"
-                )
+                    val out0Tensor = out0Opt.get() as OnnxTensor
+                    val out1Tensor = out1Opt.get() as OnnxTensor
+
+                    YoloPostprocessor.postprocessBuffer(
+                        output0Buffer = out0Tensor.floatBuffer,
+                        output1Buffer = out1Tensor.floatBuffer,
+                        preprocess = preprocess,
+                        confThreshold = 0.25f,
+                        iouThreshold = 0.50f
+                    )
+                }
             }
-
-            val out0Tensor = out0Opt.get() as OnnxTensor
-            val out1Tensor = out1Opt.get() as OnnxTensor
-
-            val resultList = YoloPostprocessor.postprocessBuffer(
-                output0Buffer = out0Tensor.floatBuffer,
-                output1Buffer = out1Tensor.floatBuffer,
-                preprocess = preprocess,
-                confThreshold = 0.25f,
-                iouThreshold = 0.50f
-            )
-
-            inputTensor.close()
-            results.close()
-            resultList
         } catch (e: DanceNativeException) {
+
             throw e
         } catch (e: Exception) {
             android.util.Log.e("YoloOnnxSegmenter", "Inference error: ${e.message}", e)

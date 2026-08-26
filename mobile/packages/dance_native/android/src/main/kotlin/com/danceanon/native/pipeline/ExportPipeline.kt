@@ -193,20 +193,19 @@ class ExportPipeline(
                 val trackManager = TrackManager()
                 val frameStride = 1
                 var lastProgressEmitTime = 0L
-                var lastPreviewEmitTime = 0L
-                val previewFile = File(context.cacheDir, "export_preview_${jobId}.jpg")
 
                 while (!isCancelled.get()) {
                     val fed = decoder.feedInputBuffer()
                     var reachedEOS = false
 
                     decoder.drainOutputBuffer { ptsUs, isEOS ->
-                        if (isEOS) {
+                        if (isEOS || isCancelled.get()) {
                             reachedEOS = true
                             return@drainOutputBuffer
                         }
 
                         processedFrames++
+
                         val selectedIds = request.selectedPersonIds.map { it.toInt() }.toSet()
 
                         // Await frame arrival from decoder hardware rendering (immediate wakeup via frameHandler)
@@ -249,10 +248,13 @@ class ExportPipeline(
                             val seg = profiler.recordStage("inference") {
                                 segmenter.segmentRgbaSync(rgbaBuffer, mapper, ptsUs)
                             }
-                            seg.persons
+                            profiler.recordStage("privacySafety") {
+                                com.danceanon.native.privacy.PrivacySegmentationProcessor.DEFAULT.applyPrivacySafety(seg.persons)
+                            }
                         } else {
                             emptyList()
                         }
+
 
                         // 3. Run tracking on detections with stable ID mapping from analysis cache
                         val trackedList = profiler.recordStage("tracking") {
@@ -325,35 +327,19 @@ class ExportPipeline(
                             )
                         }
 
-                        // 2. Capture live preview snapshot BEFORE eglSwapBuffers (while backbuffer contains the rendered frame)
-                        val now = System.currentTimeMillis()
-                        if (now - lastPreviewEmitTime > 250) {
-                            lastPreviewEmitTime = now
-                            try {
-                                val previewBmp = glRenderer.captureRenderedFrame()
-                                if (previewBmp != null) {
-                                    java.io.FileOutputStream(previewFile).use { out ->
-                                        previewBmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 70, out)
-                                    }
-                                    previewBmp.recycle()
-                                }
-                            } catch (t: Throwable) {
-                                android.util.Log.w("ExportPipeline", "Preview capture failed: ${t.message}")
-                            }
-                        }
-
-                        // 3. Swap buffers to push rendered frame to hardware encoder
+                        // 2. Swap buffers to push rendered frame to hardware encoder
                         if (eglSurface != null) {
                             eglCore.setPresentationTime(eglSurface, ptsUs * 1000L)
                             eglCore.swapBuffers(eglSurface)
                         }
 
-                        // 4. Drain encoder output to MP4 muxer
+                        // 3. Drain encoder output to MP4 muxer
                         profiler.recordStage("drainEncoder") {
                             encoder.drainEncoder(muxer, endOfStream = false)
                         }
 
-                        // 5. Emit progress based on presentation timestamp
+                        // 4. Emit progress based on presentation timestamp
+                        val now = System.currentTimeMillis()
                         if (now - lastProgressEmitTime > 200 || processedFrames % 5 == 0) {
                             lastProgressEmitTime = now
                             val elapsedSec = (now - startTime) / 1000.0
@@ -370,16 +356,17 @@ class ExportPipeline(
                                 currentFrame = processedFrames.toLong(),
                                 fps = currentFps,
                                 progress = progress,
-                                outputUri = if (previewFile.exists()) previewFile.absolutePath else null
+                                outputUri = null
                             )
                             emitProgress(status, onStatusChange)
                         }
                     }
 
-                    if (reachedEOS || (!fed && processedFrames >= totalEstFrames)) {
+                    if (reachedEOS || isCancelled.get() || (!fed && processedFrames >= totalEstFrames)) {
                         break
                     }
                 }
+
 
                 if (isCancelled.get()) {
                     tempOutFile.delete()
@@ -392,6 +379,15 @@ class ExportPipeline(
 
                 // Drain remaining encoder output
                 encoder.drainEncoder(muxer, endOfStream = true)
+
+                if (isCancelled.get()) {
+                    tempOutFile.delete()
+                    inferenceFbo.close()
+                    inferenceRenderer.close()
+                    status = status.copy(state = "cancelled")
+                    emitProgress(status, onStatusChange)
+                    return@post
+                }
 
                 // Copy audio
                 if (hasAudioTrack && audioCopier.audioTrackIndexInSource >= 0) {
@@ -410,11 +406,19 @@ class ExportPipeline(
                 eglCore.releaseSurface(eglSurface)
                 eglCore.close()
 
+                if (isCancelled.get()) {
+                    tempOutFile.delete()
+                    status = status.copy(state = "cancelled")
+                    emitProgress(status, onStatusChange)
+                    return@post
+                }
+
                 // Atomically finalize output file
                 if (tempOutFile.exists()) {
                     if (finalOutFile.exists()) finalOutFile.delete()
                     tempOutFile.renameTo(finalOutFile)
                 }
+
 
                 status = status.copy(
                     state = "completed",
@@ -447,8 +451,12 @@ class ExportPipeline(
                 try { encoder?.close() } catch (_: Throwable) {}
                 try { glRenderer?.close() } catch (_: Throwable) {}
                 try { eglCore?.close() } catch (_: Throwable) {}
+                if (isCancelled.get()) {
+                    try { tempOutFile.delete() } catch (_: Throwable) {}
+                }
                 pipelineLatch.countDown()
             }
+
         }
 
         pipelineLatch.await()

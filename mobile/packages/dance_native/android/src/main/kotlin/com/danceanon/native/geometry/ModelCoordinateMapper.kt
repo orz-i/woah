@@ -60,4 +60,21 @@ data class ModelCoordinateMapper(
     fun modelToProtoY(modelY: Float): Int {
         return ((modelY / modelInputSize) * protoSize).toInt().coerceIn(0, protoSize)
     }
+
+    fun modelToProtoXFloat(modelX: Float): Float {
+        return (modelX / modelInputSize) * protoSize
+    }
+
+    fun modelToProtoYFloat(modelY: Float): Float {
+        return (modelY / modelInputSize) * protoSize
+    }
+
+    fun sourceToProtoX(srcX: Float): Float {
+        return modelToProtoXFloat(sourceToModelX(srcX))
+    }
+
+    fun sourceToProtoY(srcY: Float): Float {
+        return modelToProtoYFloat(sourceToModelY(srcY))
+    }
 }
+

@@ -119,7 +119,7 @@ class ImportVideoScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 6),
               const Text(
-                '当前设备硬件加速与引擎运行参数',
+                '当前设备端侧引擎运行参数',
                 style: TextStyle(fontSize: 12, color: Colors.white54),
               ),
               const Divider(height: 28),
@@ -128,21 +128,22 @@ class ImportVideoScreen extends ConsumerWidget {
                   data: (caps) => ListView(
                     physics: const BouncingScrollPhysics(),
                     children: [
-                      _buildDrawerSectionTitle('系统规格与环境'),
+                       _buildDrawerSectionTitle('系统规格与环境'),
                       _buildInfoTile('系统版本', '${caps.platform.toUpperCase()} ${caps.osVersion}'),
                       _buildInfoTile('处理器核心 (CPU)', '${caps.cpuCores} 核心'),
                       _buildInfoTile('性能配置档位', caps.recommendedProfile.toUpperCase()),
                       const SizedBox(height: 16),
                       _buildDrawerSectionTitle('图形与加速能力'),
-                      _buildInfoTile('图形渲染 (GPU)', caps.gpuSupported ? 'GLES 3.0 硬件加速' : 'CPU 软解'),
-                      _buildInfoTile('硬件编解码 (H.264)', caps.h264Encoder ? '支持 (MediaCodec)' : '未启用'),
+                      _buildInfoTile('图形渲染 (GPU)', caps.gpuSupported ? 'OpenGL ES 硬件渲染' : '软件渲染'),
+                      _buildInfoTile('编解码器', caps.h264Encoder ? 'MediaCodec 硬件编码' : '软件编码'),
                       _buildInfoTile('零内存拷贝管线', 'Zero-Copy OES/GLES'),
                       const SizedBox(height: 16),
-                      _buildDrawerSectionTitle('软件与引擎'),
-                      _buildInfoTile('核心 AI 引擎', 'ONNX Runtime Native'),
+                      _buildDrawerSectionTitle('AI 推理后端'),
+                      _buildInfoTile('推理引擎', 'ONNX Runtime (CPU/端侧)'),
                       _buildInfoTile('应用版本', 'v1.0.0 (Pro Studio)'),
                     ],
                   ),
+
                   loading: () => const Center(
                     child: CircularProgressIndicator(color: Colors.white),
                   ),

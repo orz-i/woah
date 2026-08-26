@@ -34,7 +34,7 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
       cpuCores: Int64(ProcessInfo.processInfo.processorCount),
       recommendedProfile: "balanced",
       supportedProfiles: ["balanced"],
-      inferenceBackends: ["coreml", "mps"]
+      inferenceBackends: ["coreml", "metal"]
     )
   }
 
@@ -59,17 +59,32 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
     let durationMs = Int64(CMTimeGetSeconds(duration) * 1000.0)
     let audioTracks = try await asset.loadTracks(withMediaType: .audio)
 
-    let width = Int64(naturalSize.width)
-    let height = Int64(naturalSize.height)
+    let codedWidth = Int64(naturalSize.width)
+    let codedHeight = Int64(naturalSize.height)
+
+    // Calculate visual rotation and display dimensions via preferredTransform
+    let transform = try await track.load(.preferredTransform)
+    var rotation: Int64 = 0
+    if transform.a == 0 && transform.b == 1.0 && transform.c == -1.0 && transform.d == 0 {
+      rotation = 90
+    } else if transform.a == -1.0 && transform.b == 0 && transform.c == 0 && transform.d == -1.0 {
+      rotation = 180
+    } else if transform.a == 0 && transform.b == -1.0 && transform.c == 1.0 && transform.d == 0 {
+      rotation = 270
+    }
+
+    let isRotated = (rotation == 90 || rotation == 270)
+    let displayWidth = isRotated ? codedHeight : codedWidth
+    let displayHeight = isRotated ? codedWidth : codedHeight
 
     return VideoInfoDto(
-      codedWidth: width,
-      codedHeight: height,
-      displayWidth: width,
-      displayHeight: height,
+      codedWidth: codedWidth,
+      codedHeight: codedHeight,
+      displayWidth: displayWidth,
+      displayHeight: displayHeight,
       fps: Double(nominalFrameRate),
       durationMs: durationMs,
-      rotation: 0,
+      rotation: rotation,
       videoCodec: "video/avc",
       audioCodec: audioTracks.isEmpty ? nil : "audio/mp4a-latm",
       hasAudio: !audioTracks.isEmpty
@@ -77,19 +92,19 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
   }
 
   public func analyzeVideo(request: AnalyzeRequestDto) async throws -> AnalyzeResultDto {
-    throw PigeonError(code: "NOT_IMPLEMENTED", message: "iOS CoreML analysis pipeline is in development", details: nil)
+    throw PigeonError(code: "PLATFORM_NOT_SUPPORTED", message: "iOS CoreML segmentation pipeline will be supported in future releases", details: nil)
   }
 
   public func getPreviewFrame(request: PreviewRequestDto) async throws -> PreviewFrameDto {
-    throw PigeonError(code: "NOT_IMPLEMENTED", message: "iOS preview pipeline is in development", details: nil)
+    throw PigeonError(code: "PLATFORM_NOT_SUPPORTED", message: "iOS preview rendering pipeline will be supported in future releases", details: nil)
   }
 
   public func startExport(request: ExportRequestDto) async throws -> String {
-    throw PigeonError(code: "NOT_IMPLEMENTED", message: "iOS export pipeline is in development", details: nil)
+    throw PigeonError(code: "PLATFORM_NOT_SUPPORTED", message: "iOS background export pipeline will be supported in future releases", details: nil)
   }
 
   public func cancelJob(jobId: String) async throws {
-    // No-op for stub
+    // Graceful no-op on iOS stub
   }
 
   public func getJobStatus(jobId: String) async throws -> JobStatusDto {
@@ -101,12 +116,12 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
       fps: 0,
       progress: 0,
       outputUri: nil,
-      errorCode: "NOT_IMPLEMENTED",
-      errorMessage: "iOS background export pipeline is in development"
+      errorCode: "PLATFORM_NOT_SUPPORTED",
+      errorMessage: "iOS background export pipeline is not implemented yet"
     )
   }
 
   public func releaseProject(projectId: String) async throws {
-    // No-op
+    // Graceful no-op on iOS stub
   }
 }

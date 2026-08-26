@@ -72,18 +72,20 @@ class AnalyzePipeline(
         // 3. Initialize & Run YOLO Segmentation
         segmenter.initialize()
         val segFrame = segmenter.segmentBitmap(visualBitmap, 0)
+        val safePersons = com.danceanon.native.privacy.PrivacySegmentationProcessor.DEFAULT.applyPrivacySafety(segFrame.persons)
 
         // 4. Build DetectedPersonDto list with thumbnails and save metadata
         val detectedPersons = mutableListOf<DetectedPersonDto>()
         val cachedPersons = mutableListOf<com.danceanon.native.storage.CachedPerson>()
 
-        for ((index, person) in segFrame.persons.withIndex()) {
+        for ((index, person) in safePersons.withIndex()) {
             val thumbPath = cacheManager.savePersonThumbnail(
                 cacheId = cacheId,
                 personId = index,
                 frameBitmap = visualBitmap,
                 bbox = person.bbox
             )
+
 
             val normX1 = (person.bbox.left / visualW).toDouble().coerceIn(0.0, 1.0)
             val normY1 = (person.bbox.top / visualH).toDouble().coerceIn(0.0, 1.0)

@@ -3,16 +3,25 @@ package com.danceanon.native.export
 import android.content.Context
 import com.danceanon.native.bridge.JobStatusDto
 import org.json.JSONArray
-import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
-class ExportJobStore(private val context: Context) {
+class ExportJobStore(
+    private val filesDir: File,
+    val diskPersistIntervalMs: Long = 3000L
+) {
+    constructor(context: Context, diskPersistIntervalMs: Long = 3000L) : this(context.filesDir, diskPersistIntervalMs)
 
     private val lock = Any()
     private val memoryCache = ConcurrentHashMap<String, ExportJobRecord>()
+    private var lastDiskPersistTime = 0L
+
+    var diskWriteCount = 0
+        private set
+
     private val storeFile: File
-        get() = File(context.filesDir, "export_jobs.json")
+        get() = File(filesDir, "export_jobs.json")
+
 
     init {
         loadFromDisk()
@@ -31,8 +40,8 @@ class ExportJobStore(private val context: Context) {
                         }
                     }
                 }
-            } catch (e: Throwable) {
-                android.util.Log.w("ExportJobStore", "Failed to load jobs from disk: ")
+            } catch (_: Throwable) {
+                android.util.Log.w("ExportJobStore", "Failed to load jobs from disk")
             }
         }
     }
@@ -43,14 +52,16 @@ class ExportJobStore(private val context: Context) {
             memoryCache.values.sortedByDescending { it.createdAt }.take(100).forEach {
                 arr.put(it.toJson())
             }
-            val tempFile = File(context.filesDir, "export_jobs.json.tmp")
+            val tempFile = File(filesDir, "export_jobs.json.tmp")
+
             tempFile.writeText(arr.toString(2))
             if (tempFile.exists()) {
                 if (storeFile.exists()) storeFile.delete()
                 tempFile.renameTo(storeFile)
             }
+            diskWriteCount++
         } catch (e: Throwable) {
-            android.util.Log.e("ExportJobStore", "Failed to persist jobs to disk: ")
+            android.util.Log.e("ExportJobStore", "Failed to persist jobs to disk: ${e.message}")
         }
     }
 
@@ -58,6 +69,7 @@ class ExportJobStore(private val context: Context) {
         synchronized(lock) {
             record.updatedAt = System.currentTimeMillis()
             memoryCache[record.jobId] = record
+            lastDiskPersistTime = System.currentTimeMillis()
             persistToDiskLocked()
         }
     }
@@ -77,7 +89,24 @@ class ExportJobStore(private val context: Context) {
             record.outputUri = status.outputUri ?: record.outputUri
             record.errorCode = status.errorCode ?: record.errorCode
             record.errorMessage = status.errorMessage ?: record.errorMessage
-            record.updatedAt = System.currentTimeMillis()
+            val now = System.currentTimeMillis()
+            record.updatedAt = now
+
+            val isTerminal = when (status.state.lowercase()) {
+                "completed", "failed", "cancelled", "interrupted" -> true
+                else -> false
+            }
+
+            if (isTerminal || (now - lastDiskPersistTime) >= diskPersistIntervalMs) {
+                lastDiskPersistTime = now
+                persistToDiskLocked()
+            }
+        }
+    }
+
+    fun flush() {
+        synchronized(lock) {
+            lastDiskPersistTime = System.currentTimeMillis()
             persistToDiskLocked()
         }
     }
@@ -95,6 +124,7 @@ class ExportJobStore(private val context: Context) {
                 }
             }
             if (changed) {
+                lastDiskPersistTime = System.currentTimeMillis()
                 persistToDiskLocked()
             }
         }

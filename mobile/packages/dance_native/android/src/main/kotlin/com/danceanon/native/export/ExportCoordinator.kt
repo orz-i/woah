@@ -53,6 +53,13 @@ class ExportCoordinator private constructor(private val appContext: Context) {
         }
     }
 
+    fun cancelAllJobs() {
+        for (jobId in activeCancellations.keys) {
+            cancelJob(jobId)
+        }
+    }
+
+
     private val notifyScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main + kotlinx.coroutines.SupervisorJob())
 
     fun notifyProgress(status: JobStatusDto) {

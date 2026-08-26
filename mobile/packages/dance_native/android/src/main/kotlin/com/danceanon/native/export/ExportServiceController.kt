@@ -12,16 +12,13 @@ object ExportServiceController {
             action = ExportForegroundService.ACTION_START
             putExtra(ExportForegroundService.EXTRA_JOB_ID, jobId)
         }
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
-            }
-        } catch (e: Exception) {
-            android.util.Log.e("ExportServiceController", "Failed to start export foreground service: ", e)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
         }
     }
+
 
     fun stopExportService(context: Context) {
         val intent = Intent(context, ExportForegroundService::class.java).apply {

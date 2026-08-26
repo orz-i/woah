@@ -18,12 +18,12 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "C:\Users\mouta/.cargo/bin" >> 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
 
-      - name: Verify Python Tools & Export Dummy/ONNX Model
+      - name: Verify Python Tools
         run: |
           uv run python tools/evaluate_tracking.py
           uv run python tools/verify_video.py
@@ -37,7 +37,6 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.x'
           channel: 'stable'
           cache: true
 
@@ -55,6 +54,10 @@ jobs:
           cd ../dance_native && flutter test
           cd ../../app && flutter test
 
+      - name: Setup Android Model Asset
+        run: |
+          uv run python tools/setup_models.py --android
+
       - name: Run Android Native Unit Tests
         run: |
           cd mobile/app/android
@@ -65,3 +68,4 @@ jobs:
         run: |
           cd mobile/app/android
           ./gradlew :app:assembleDebug
+

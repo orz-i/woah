@@ -19,10 +19,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.ConcurrentHashMap
 
 class ExportForegroundService : Service() {
+
 
     private val serviceJob = SupervisorJob()
     private val serviceScope = CoroutineScope(Dispatchers.Default + serviceJob)
@@ -153,10 +156,19 @@ class ExportForegroundService : Service() {
                 manager?.notify(NOTIFICATION_ID, notification)
             }
             ACTION_STOP -> {
-                runningJobs.values.forEach { it.cancel() }
-                runningJobs.clear()
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
+                val coordinator = ExportCoordinator.getInstance(applicationContext)
+                coordinator.cancelAllJobs()
+                serviceScope.launch {
+                    try {
+                        withTimeoutOrNull(4000L) {
+                            runningJobs.values.toList().joinAll()
+                        }
+                    } finally {
+                        runningJobs.clear()
+                        stopForeground(STOP_FOREGROUND_REMOVE)
+                        stopSelf()
+                    }
+                }
             }
         }
         return START_NOT_STICKY
@@ -181,24 +193,18 @@ class ExportForegroundService : Service() {
     override fun onTimeout(startId: Int, fgsType: Int) {
         android.util.Log.e("ExportForegroundService", "Foreground service timed out (startId=$startId, type=$fgsType)")
         val coordinator = ExportCoordinator.getInstance(applicationContext)
-        runningJobs.forEach { (jobId, coroutine) ->
-            coroutine.cancel()
-            val timeoutStatus = JobStatusDto(
-                jobId = jobId,
-                state = "failed",
-                currentFrame = 0L,
-                totalFrames = 0L,
-                fps = 0.0,
-                progress = 0.0,
-                outputUri = null,
-                errorCode = "SERVICE_TIMEOUT",
-                errorMessage = "Export timed out by Android OS"
-            )
-            coordinator.notifyProgress(timeoutStatus)
+        coordinator.cancelAllJobs()
+        serviceScope.launch {
+            try {
+                withTimeoutOrNull(2000L) {
+                    runningJobs.values.toList().joinAll()
+                }
+            } finally {
+                runningJobs.clear()
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+            }
         }
-        runningJobs.clear()
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -206,11 +212,14 @@ class ExportForegroundService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         try {
+            val coordinator = ExportCoordinator.getInstance(applicationContext)
+            coordinator.cancelAllJobs()
             serviceScope.cancel()
             segmenter?.close()
             segmenter = null
         } catch (_: Throwable) {}
     }
+
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
