@@ -25,6 +25,7 @@ data class ExportJobRecord(
     var outputUri: String? = null,
     var errorCode: String? = null,
     var errorMessage: String? = null,
+    val processingProfile: String = "balanced",
     val effectsJson: String = "{}",
     val followJson: String = "{}"
 ) {
@@ -65,6 +66,7 @@ data class ExportJobRecord(
         obj.put("outputUri", outputUri ?: JSONObject.NULL)
         obj.put("errorCode", errorCode ?: JSONObject.NULL)
         obj.put("errorMessage", errorMessage ?: JSONObject.NULL)
+        obj.put("processingProfile", processingProfile)
         obj.put("effectsJson", effectsJson)
         obj.put("followJson", followJson)
         return obj
@@ -97,6 +99,7 @@ data class ExportJobRecord(
                 outputUri = if (obj.isNull("outputUri")) null else obj.optString("outputUri"),
                 errorCode = if (obj.isNull("errorCode")) null else obj.optString("errorCode"),
                 errorMessage = if (obj.isNull("errorMessage")) null else obj.optString("errorMessage"),
+                processingProfile = obj.optString("processingProfile", "balanced"),
                 effectsJson = obj.optString("effectsJson", "{}"),
                 followJson = obj.optString("followJson", "{}")
             )
@@ -137,6 +140,7 @@ data class ExportJobRecord(
                 targetFps = request.targetFps,
                 videoBitrate = request.videoBitrate.toInt(),
                 selectedPersonIds = request.selectedPersonIds.map { it.toInt() },
+                processingProfile = request.processingProfile,
                 effectsJson = effectsObj.toString(),
                 followJson = followObj.toString()
             )

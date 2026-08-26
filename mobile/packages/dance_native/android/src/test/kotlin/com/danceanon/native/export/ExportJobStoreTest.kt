@@ -35,7 +35,8 @@ class ExportJobStoreTest {
             targetWidth = 1920,
             targetHeight = 1080,
             targetFps = 30.0,
-            videoBitrate = 8000000
+            videoBitrate = 8000000,
+            processingProfile = "balanced"
         )
     }
 
@@ -88,6 +89,46 @@ class ExportJobStoreTest {
             )
             store.updateStatus("job_throttle_test", completedStatus)
             assertEquals(initialWrites + 1, store.diskWriteCount, "Terminal state must write to disk immediately")
+        } finally {
+            tempDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun testProcessingJobBecomesInterruptedAfterRecovery() {
+        val tempDir = File(System.getProperty("java.io.tmpdir"), "job_recovery_test_${System.currentTimeMillis()}")
+        tempDir.mkdirs()
+
+        try {
+            // 1. Initial process session: create and save active job (processing) and a finished job (completed)
+            val store1 = ExportJobStore(filesDir = tempDir, diskPersistIntervalMs = 1000L)
+            val activeRecord = ExportJobRecord.fromRequest("job_active_123", createDummyRequest(), initialState = "processing")
+            activeRecord.progress = 0.45
+            activeRecord.currentFrame = 45L
+            activeRecord.totalFrames = 100L
+            store1.saveJob(activeRecord)
+
+            val completedRecord = ExportJobRecord.fromRequest("job_done_456", createDummyRequest(), initialState = "completed")
+            completedRecord.progress = 1.0
+            completedRecord.outputUri = "/output/done.mp4"
+            store1.saveJob(completedRecord)
+
+            // 2. Simulate process death and app restart: new ExportJobStore loaded from same directory
+            val store2 = ExportJobStore(filesDir = tempDir, diskPersistIntervalMs = 1000L)
+            assertEquals("processing", store2.getJob("job_active_123")?.state, "Loaded state before reconciliation should be processing")
+
+            // Run reconciliation
+            store2.markActiveJobsAsInterrupted()
+
+            val recoveredActive = store2.getJob("job_active_123")
+            val recoveredDone = store2.getJob("job_done_456")
+
+            assertEquals("interrupted", recoveredActive?.state, "Active jobs killed by process death must transition to interrupted")
+            assertEquals("EXPORT_INTERRUPTED", recoveredActive?.errorCode)
+            assertEquals(0.45, recoveredActive?.progress)
+
+            assertEquals("completed", recoveredDone?.state, "Completed jobs must retain completed terminal state")
+            assertEquals("/output/done.mp4", recoveredDone?.outputUri)
         } finally {
             tempDir.deleteRecursively()
         }

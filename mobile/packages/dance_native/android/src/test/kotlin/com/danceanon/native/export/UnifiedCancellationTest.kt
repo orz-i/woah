@@ -43,7 +43,8 @@ class UnifiedCancellationTest {
             targetWidth = 1920,
             targetHeight = 1080,
             targetFps = 30.0,
-            videoBitrate = 8000000
+            videoBitrate = 8000000,
+            processingProfile = "balanced"
         )
 
         // Mock ExportJobStore in memory
