@@ -15,6 +15,11 @@ enum class RgbaRowOrder {
     BOTTOM_TO_TOP
 }
 
+enum class RgbaColOrder {
+    LEFT_TO_RIGHT,
+    RIGHT_TO_LEFT
+}
+
 data class PreprocessResult(
     val floatBuffer: FloatBuffer,
     val byteBuffer: ByteBuffer,
@@ -42,7 +47,8 @@ object YoloPreprocessor {
         rgbaBuffer: ByteBuffer,
         mapper: ModelCoordinateMapper,
         workspace: PreprocessorWorkspace,
-        rowOrder: RgbaRowOrder = RgbaRowOrder.TOP_TO_BOTTOM
+        rowOrder: RgbaRowOrder = RgbaRowOrder.TOP_TO_BOTTOM,
+        colOrder: RgbaColOrder = RgbaColOrder.LEFT_TO_RIGHT
     ): PreprocessResult {
         val expectedBytes = workspace.inputSize * workspace.inputSize * 4
         require(rgbaBuffer.capacity() >= expectedBytes) {
@@ -69,9 +75,14 @@ object YoloPreprocessor {
             val srcRowOffset = srcY * inputSize * 4
             val dstRowOffset = dstY * inputSize
 
-            for (x in 0 until inputSize) {
-                val srcByteOffset = srcRowOffset + x * 4
-                val dstPixelIndex = dstRowOffset + x
+            for (dstX in 0 until inputSize) {
+                val srcX = when (colOrder) {
+                    RgbaColOrder.LEFT_TO_RIGHT -> dstX
+                    RgbaColOrder.RIGHT_TO_LEFT -> inputSize - 1 - dstX
+                }
+
+                val srcByteOffset = srcRowOffset + srcX * 4
+                val dstPixelIndex = dstRowOffset + dstX
 
                 val r = (rgbaBuffer.get(srcByteOffset).toInt() and 0xFF) / 255.0f
                 val g = (rgbaBuffer.get(srcByteOffset + 1).toInt() and 0xFF) / 255.0f
@@ -85,6 +96,7 @@ object YoloPreprocessor {
 
         floatBuffer.position(0)
         byteBuffer.position(0)
+
 
         return PreprocessResult(
             floatBuffer = floatBuffer,
