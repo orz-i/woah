@@ -127,13 +127,17 @@ class TrackManager(
                 val dx = predBox.centerX - detBox.centerX
                 val dy = predBox.centerY - detBox.centerY
                 val dist = sqrt(dx * dx + dy * dy)
+                val absDx = kotlin.math.abs(dx)
+                val absDy = kotlin.math.abs(dy)
 
-                // Spatial gating: maskIoU is only meaningful if detections are spatially proximate
-                val isProximate = bIoU > 0f || dist < refDim * 0.8f
+                // Spatial gating: maskIoU is meaningful if detections are proximate or aligned horizontally for vertical dance jump
+                val isProximate = bIoU > 0f || dist < refDim * 1.2f || (absDx < refDim * 0.7f && absDy < refDim * 2.2f)
                 val mIoU = if (isProximate) computeMaskIoU(trackMask, det.mask) else 0f
 
+                // Anisotropic dance motion score: vertical jump (small dx, large dy) is favored over lateral drift
                 val motionScore = if (refDim > 0f) {
-                    (1.0f - (dist / (refDim * 1.5f))).coerceIn(0f, 1f)
+                    val weightedDist = sqrt(dx * dx * 2.5f + dy * dy * 0.6f)
+                    (1.0f - (weightedDist / (refDim * 2.5f))).coerceIn(0f, 1f)
                 } else {
                     0f
                 }
@@ -146,7 +150,7 @@ class TrackManager(
             }
         }
 
-        val maxCost = (1.0f - config.minMatchScore).coerceIn(0.1f, 0.95f)
+        val maxCost = (1.0f - config.minMatchScore).coerceIn(0.1f, 0.90f)
         val matchResult = HungarianSolver.match(costMatrix, maxCostThreshold = maxCost)
         val matchedTrackIndices = mutableSetOf<Int>()
         val matchedDetectionIndices = mutableSetOf<Int>()
@@ -204,7 +208,7 @@ class TrackManager(
             }
         }
 
-        // Try to match unassigned detections with currently LOST tracks by proximity
+        // Try to match unassigned detections with currently LOST tracks by proximity and horizontal alignment
         val lostTracks = tracks.filter { it.state == TrackState.LOST && !matchedTrackIndices.contains(tracks.indexOf(it)) }
         val reclaimedTrackIds = mutableSetOf<Int>()
 
@@ -218,8 +222,10 @@ class TrackManager(
                 val dy = lost.bbox.centerY - det.bbox.centerY
                 val dist = sqrt(dx * dx + dy * dy)
                 val bIoU = computeBBoxIoU(lost.bbox, det.bbox)
-                val maxAllowedDist = max(lost.bbox.width, lost.bbox.height) * 0.9f
-                val isNearby = bIoU > 0.05f || dist < maxAllowedDist
+                val refDim = max(lost.bbox.width, lost.bbox.height)
+                val absDx = kotlin.math.abs(dx)
+                val absDy = kotlin.math.abs(dy)
+                val isNearby = bIoU > 0.05f || dist < refDim * 0.9f || (absDx < refDim * 0.5f && absDy < refDim * 2.5f)
 
 
 
@@ -248,6 +254,7 @@ class TrackManager(
                 tracks.add(newTrack)
             }
         }
+
 
         // 6. Filter out REMOVED tracks
         tracks.removeAll { it.state == TrackState.REMOVED }

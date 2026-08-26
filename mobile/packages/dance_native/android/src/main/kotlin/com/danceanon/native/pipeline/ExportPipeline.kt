@@ -254,14 +254,13 @@ class ExportPipeline(
                                         val debugBmp = android.graphics.Bitmap.createBitmap(640, 640, android.graphics.Bitmap.Config.ARGB_8888)
                                         for (dstY in 0 until 640) {
                                             val srcY = 639 - dstY
-                                            for (dstX in 0 until 640) {
-                                                val srcX = 639 - dstX
-                                                val offset = (srcY * 640 + srcX) * 4
+                                            for (x in 0 until 640) {
+                                                val offset = (srcY * 640 + x) * 4
                                                 val r = rgbaBuffer.get(offset).toInt() and 0xFF
                                                 val g = rgbaBuffer.get(offset + 1).toInt() and 0xFF
                                                 val b = rgbaBuffer.get(offset + 2).toInt() and 0xFF
                                                 val a = rgbaBuffer.get(offset + 3).toInt() and 0xFF
-                                                debugBmp.setPixel(dstX, dstY, (a shl 24) or (r shl 16) or (g shl 8) or b)
+                                                debugBmp.setPixel(x, dstY, (a shl 24) or (r shl 16) or (g shl 8) or b)
                                             }
                                         }
                                         val debugOut = File(context.cacheDir, "debug_inference_frame_0.png")
@@ -272,8 +271,9 @@ class ExportPipeline(
                                         android.util.Log.i("ExportPipeline", "Saved debug inference frame 0: ${debugOut.absolutePath}")
                                     } catch (_: Throwable) {}
                                 }
-                                segmenter.segmentGlReadbackRgbaSync(rgbaBuffer, mapper, ptsUs, colOrder = RgbaColOrder.RIGHT_TO_LEFT)
+                                segmenter.segmentGlReadbackRgbaSync(rgbaBuffer, mapper, ptsUs, colOrder = RgbaColOrder.LEFT_TO_RIGHT)
                             }
+
 
                             if (processedFrames == 1) {
                                 for ((idx, det) in seg.persons.withIndex()) {

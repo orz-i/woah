@@ -99,7 +99,7 @@ class YoloOnnxSegmenter(
         rgbaBuffer: ByteBuffer,
         mapper: com.danceanon.native.geometry.ModelCoordinateMapper,
         timestampUs: Long = 0,
-        colOrder: RgbaColOrder = RgbaColOrder.RIGHT_TO_LEFT
+        colOrder: RgbaColOrder = RgbaColOrder.LEFT_TO_RIGHT
     ): SegmentationFrame {
         return segmentRgbaSync(
             rgbaBuffer = rgbaBuffer,
@@ -109,6 +109,7 @@ class YoloOnnxSegmenter(
             colOrder = colOrder
         )
     }
+
 
 
     fun segmentRgbaSync(
