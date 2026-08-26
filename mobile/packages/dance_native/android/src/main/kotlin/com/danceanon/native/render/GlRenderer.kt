@@ -34,10 +34,12 @@ class GlRenderer : FrameRenderer {
         val uLegZoneTopLoc: Int,
         val uLegZoneBottomLoc: Int,
         val uHasStickerLoc: Int,
+        val uStickerRectLoc: Int,
         val uTexelSizeLoc: Int,
         val uFootYLoc: Int,
         val uBaseTextureLoc: Int,
-        val uMaskTextureLoc: Int
+        val uMaskTextureLoc: Int,
+        val uStickerTextureLoc: Int
     )
 
     private var oesProgram: ProgramLocations? = null
@@ -47,7 +49,11 @@ class GlRenderer : FrameRenderer {
     private var width = 0
     private var height = 0
     private var maskTextureId = 0
+    private var stickerTextureId = 0
+    private var loadedStickerAssetId: String? = null
     private var captureBuffer: ByteBuffer? = null
+    private var mergedMaskBuffer: ByteBuffer? = null
+    private var mergedMaskCapacity = 0
 
     private val follower = com.danceanon.native.camera.SmoothFollower()
     private val identityMatrix = floatArrayOf(
@@ -74,6 +80,44 @@ class GlRenderer : FrameRenderer {
             val error = GLES20.glGetError()
             if (error != GLES20.GL_NO_ERROR) {
                 android.util.Log.e("GlRenderer", "GL Error after $stage: 0x${Integer.toHexString(error)}")
+            }
+        }
+
+        fun createDefaultStickerBitmap(): Bitmap? {
+            return try {
+                val size = 128
+                val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888) ?: return null
+                val canvas = android.graphics.Canvas(bitmap)
+                val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+
+                // Yellow face background
+                paint.color = android.graphics.Color.argb(255, 255, 215, 0)
+                paint.style = android.graphics.Paint.Style.FILL
+                canvas.drawCircle(size / 2f, size / 2f, size / 2f - 4f, paint)
+
+                // Dark border outline
+                paint.color = android.graphics.Color.argb(255, 30, 30, 30)
+                paint.style = android.graphics.Paint.Style.STROKE
+                paint.strokeWidth = 6f
+                canvas.drawCircle(size / 2f, size / 2f, size / 2f - 4f, paint)
+
+                // Eyes / Sunglasses
+                paint.style = android.graphics.Paint.Style.FILL
+                paint.color = android.graphics.Color.BLACK
+                canvas.drawRoundRect(24f, 40f, 60f, 65f, 8f, 8f, paint)
+                canvas.drawRoundRect(68f, 40f, 104f, 65f, 8f, 8f, paint)
+                canvas.drawRect(56f, 48f, 72f, 56f, paint)
+
+                // Smile
+                paint.style = android.graphics.Paint.Style.STROKE
+                paint.strokeWidth = 5f
+                paint.strokeCap = android.graphics.Paint.Cap.ROUND
+                val mouthRect = android.graphics.RectF(38f, 62f, 90f, 98f)
+                canvas.drawArc(mouthRect, 20f, 140f, false, paint)
+
+                bitmap
+            } catch (_: Throwable) {
+                null
             }
         }
     }
@@ -111,8 +155,69 @@ class GlRenderer : FrameRenderer {
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
         checkGlError("initMaskTexture")
+        // captureBuffer is lazily allocated on first capture call to avoid reserving 8~33MB during export
+    }
 
-        captureBuffer = ByteBuffer.allocateDirect(width * height * 4).order(ByteOrder.nativeOrder())
+    private fun getOrCreateCaptureBuffer(): ByteBuffer {
+        val reqCapacity = width * height * 4
+        var buf = captureBuffer
+        if (buf == null || buf.capacity() < reqCapacity) {
+            buf = ByteBuffer.allocateDirect(reqCapacity).order(ByteOrder.nativeOrder())
+            captureBuffer = buf
+        }
+        return buf
+    }
+
+    private fun ensureStickerTexture(assetId: String?): Int {
+        if (stickerTextureId != 0 && loadedStickerAssetId == assetId) {
+            return stickerTextureId
+        }
+
+        var bitmap: Bitmap? = null
+        try {
+            if (!assetId.isNullOrBlank()) {
+                val f = java.io.File(assetId)
+                if (f.exists() && f.length() > 0) {
+                    bitmap = android.graphics.BitmapFactory.decodeFile(assetId)
+                }
+            }
+        } catch (_: Throwable) {}
+
+        if (bitmap == null) {
+            bitmap = createDefaultStickerBitmap()
+        }
+
+        if (stickerTextureId == 0) {
+            val tex = IntArray(1)
+            GLES20.glGenTextures(1, tex, 0)
+            stickerTextureId = tex[0]
+        }
+
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, stickerTextureId)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+
+        if (bitmap != null) {
+            try {
+                android.opengl.GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0)
+                bitmap.recycle()
+            } catch (_: Throwable) {}
+        } else {
+            val fallbackBuf = ByteBuffer.allocateDirect(16 * 16 * 4).order(ByteOrder.nativeOrder())
+            for (i in 0 until 16 * 16) {
+                fallbackBuf.put(255.toByte()) // R
+                fallbackBuf.put(215.toByte()) // G
+                fallbackBuf.put(0.toByte())   // B
+                fallbackBuf.put(255.toByte()) // A
+            }
+            fallbackBuf.rewind()
+            GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, 16, 16, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, fallbackBuf)
+        }
+
+        loadedStickerAssetId = assetId
+        return stickerTextureId
     }
 
     private fun buildProgram(fragmentShaderSource: String): ProgramLocations {
@@ -156,10 +261,12 @@ class GlRenderer : FrameRenderer {
             uLegZoneTopLoc = GLES20.glGetUniformLocation(programId, "uLegZoneTop"),
             uLegZoneBottomLoc = GLES20.glGetUniformLocation(programId, "uLegZoneBottom"),
             uHasStickerLoc = GLES20.glGetUniformLocation(programId, "uHasSticker"),
+            uStickerRectLoc = GLES20.glGetUniformLocation(programId, "uStickerRect"),
             uTexelSizeLoc = GLES20.glGetUniformLocation(programId, "uTexelSize"),
             uFootYLoc = GLES20.glGetUniformLocation(programId, "uFootY"),
             uBaseTextureLoc = GLES20.glGetUniformLocation(programId, "uBaseTexture"),
-            uMaskTextureLoc = GLES20.glGetUniformLocation(programId, "uMaskTexture")
+            uMaskTextureLoc = GLES20.glGetUniformLocation(programId, "uMaskTexture"),
+            uStickerTextureLoc = GLES20.glGetUniformLocation(programId, "uStickerTexture")
         )
     }
 
@@ -182,6 +289,7 @@ class GlRenderer : FrameRenderer {
         if (prog.uCropRectLoc >= 0) GLES20.glUniform4f(prog.uCropRectLoc, 0f, 0f, 1f, 1f)
         if (prog.uMaskCropRectLoc >= 0) GLES20.glUniform4f(prog.uMaskCropRectLoc, 0f, 0f, 1f, 1f)
         if (prog.uHasMaskLoc >= 0) GLES20.glUniform1i(prog.uHasMaskLoc, 0)
+        if (prog.uHasStickerLoc >= 0) GLES20.glUniform1i(prog.uHasStickerLoc, 0)
 
         val target = if (textureType == SourceTextureType.OES) GLES11Ext.GL_TEXTURE_EXTERNAL_OES else GLES20.GL_TEXTURE_2D
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
@@ -193,7 +301,7 @@ class GlRenderer : FrameRenderer {
     }
 
     fun captureFrameForInference(): Bitmap? {
-        val buf = captureBuffer ?: return null
+        val buf = getOrCreateCaptureBuffer()
         buf.rewind()
         GLES20.glReadPixels(0, 0, width, height, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buf)
         val fullBmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
@@ -210,7 +318,7 @@ class GlRenderer : FrameRenderer {
     }
 
     fun captureRenderedFrame(): Bitmap? {
-        val buf = captureBuffer ?: return null
+        val buf = getOrCreateCaptureBuffer()
         buf.rewind()
         GLES20.glReadPixels(0, 0, width, height, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buf)
         val fullBmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
@@ -242,8 +350,6 @@ class GlRenderer : FrameRenderer {
         val matrix = texMatrix ?: identityMatrix
         if (prog.uTexMatrixLoc >= 0) GLES20.glUniformMatrix4fv(prog.uTexMatrixLoc, 1, false, matrix, 0)
 
-
-
         // Parse Fill Color ARGB
         val fc = effects.fillColorArgb.toInt()
         val fa = ((fc shr 24) and 0xFF) / 255f
@@ -252,7 +358,7 @@ class GlRenderer : FrameRenderer {
         val fb = (fc and 0xFF) / 255f
         if (prog.uFillColorLoc >= 0) GLES20.glUniform4f(prog.uFillColorLoc, fr, fg, fb, fa)
 
-        // Parse Border/Outline Color ARGB (Fixed uniform location: uBorderColor)
+        // Parse Border/Outline Color ARGB
         val oc = effects.borderColorArgb.toInt()
         val oa = ((oc shr 24) and 0xFF) / 255f
         val or = ((oc shr 16) and 0xFF) / 255f
@@ -283,7 +389,6 @@ class GlRenderer : FrameRenderer {
         if (prog.uLegStretchLoc >= 0) GLES20.glUniform1f(prog.uLegStretchLoc, legStretch)
         if (prog.uLegZoneTopLoc >= 0) GLES20.glUniform1f(prog.uLegZoneTopLoc, effects.legZoneTop.toFloat().coerceIn(0f, 1f))
         if (prog.uLegZoneBottomLoc >= 0) GLES20.glUniform1f(prog.uLegZoneBottomLoc, effects.legZoneBottom.toFloat().coerceIn(0f, 1f))
-        if (prog.uHasStickerLoc >= 0) GLES20.glUniform1i(prog.uHasStickerLoc, 0)
         if (prog.uTexelSizeLoc >= 0) GLES20.glUniform2f(prog.uTexelSizeLoc, 1f / width.coerceAtLeast(1), 1f / height.coerceAtLeast(1))
 
         // Follow Crop Mapping
@@ -355,7 +460,12 @@ class GlRenderer : FrameRenderer {
             } else {
                 val firstMask = finalPersons[0].mask!!
                 val totalPixels = firstMask.width * firstMask.height
-                val mergedBuffer = ByteBuffer.allocateDirect(totalPixels)
+                if (mergedMaskBuffer == null || mergedMaskCapacity < totalPixels) {
+                    mergedMaskBuffer = ByteBuffer.allocateDirect(totalPixels)
+                    mergedMaskCapacity = totalPixels
+                }
+                val mergedBuffer = mergedMaskBuffer!!
+                mergedBuffer.clear()
                 for (i in 0 until totalPixels) {
                     var maxVal: Byte = 0
                     for (p in finalPersons) {
@@ -377,6 +487,34 @@ class GlRenderer : FrameRenderer {
             if (prog.uFootYLoc >= 0) GLES20.glUniform1f(prog.uFootYLoc, lowestFoot / height.toFloat())
         }
         if (prog.uMaskTextureLoc >= 0) GLES20.glUniform1i(prog.uMaskTextureLoc, 1)
+
+        // Sticker effect runtime connection
+        if (effects.faceStickerEnabled && hasSelected) {
+            val primaryPerson = finalPersons[0]
+            val refW = maxOf(1, primaryPerson.mask?.originalWidth ?: width)
+            val refH = maxOf(1, primaryPerson.mask?.originalHeight ?: height)
+
+            // Approximate head zone: top 25% of target person's bounding box
+            val headZoneHeight = primaryPerson.bbox.height * 0.25f
+            val headCenterX = primaryPerson.bbox.centerX
+            val headCenterY = primaryPerson.bbox.top + headZoneHeight * 0.5f
+            val scale = effects.stickerScale.toFloat().coerceIn(0.5f, 3.0f)
+            val halfDim = (maxOf(primaryPerson.bbox.width * 0.35f, headZoneHeight * 0.6f) * scale).coerceAtLeast(10f)
+
+            val sLeft = ((headCenterX - halfDim) / refW.toFloat()).coerceIn(0f, 1f)
+            val sRight = ((headCenterX + halfDim) / refW.toFloat()).coerceIn(0f, 1f)
+            val sTop = ((headCenterY - halfDim) / refH.toFloat()).coerceIn(0f, 1f)
+            val sBottom = ((headCenterY + halfDim) / refH.toFloat()).coerceIn(0f, 1f)
+
+            val texId = ensureStickerTexture(effects.stickerAssetId)
+            GLES20.glActiveTexture(GLES20.GL_TEXTURE2)
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texId)
+            if (prog.uStickerTextureLoc >= 0) GLES20.glUniform1i(prog.uStickerTextureLoc, 2)
+            if (prog.uStickerRectLoc >= 0) GLES20.glUniform4f(prog.uStickerRectLoc, sLeft, sTop, sRight, sBottom)
+            if (prog.uHasStickerLoc >= 0) GLES20.glUniform1i(prog.uHasStickerLoc, 1)
+        } else {
+            if (prog.uHasStickerLoc >= 0) GLES20.glUniform1i(prog.uHasStickerLoc, 0)
+        }
 
         drawQuad(prog)
         checkGlError("render")
@@ -451,6 +589,17 @@ class GlRenderer : FrameRenderer {
             GLES20.glDeleteTextures(1, textures, 0)
             maskTextureId = 0
         }
+
+        if (stickerTextureId != 0) {
+            val textures = intArrayOf(stickerTextureId)
+            GLES20.glDeleteTextures(1, textures, 0)
+            stickerTextureId = 0
+            loadedStickerAssetId = null
+        }
+
+        captureBuffer = null
+        mergedMaskBuffer = null
     }
 }
+
 
