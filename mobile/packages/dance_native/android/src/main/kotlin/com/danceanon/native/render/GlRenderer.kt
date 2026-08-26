@@ -220,8 +220,7 @@ class GlRenderer : FrameRenderer {
             (padTop + scaledH) / 640f
         )
 
-        val selectedPersons = persons.filter { (selectedPersonIds.isEmpty() || selectedPersonIds.contains(it.id)) && it.mask != null }
-        val finalPersons = if (selectedPersons.isNotEmpty()) selectedPersons else persons.filter { it.mask != null }
+        val finalPersons = persons.filter { selectedPersonIds.contains(it.id) && it.mask != null }
         val hasSelected = finalPersons.isNotEmpty()
         GLES20.glUniform1i(GLES20.glGetUniformLocation(programId, "uHasMask"), if (hasSelected) 1 else 0)
 

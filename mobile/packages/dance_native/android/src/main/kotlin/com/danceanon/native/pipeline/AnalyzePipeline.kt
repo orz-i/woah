@@ -39,14 +39,18 @@ class AnalyzePipeline(
                 ?: retriever.frameAtTime
         } catch (e: Exception) {
             android.util.Log.e("AnalyzePipeline", "Failed to retrieve first frame", e)
+            throw com.danceanon.native.bridge.DanceNativeException(
+                com.danceanon.native.bridge.DanceNativeException.VIDEO_OPEN_FAILED,
+                "Failed to extract first frame from video: ${request.videoUri} (${e.message})",
+                e
+            )
         } finally {
             try { retriever.release() } catch (_: Throwable) {}
         }
 
-        val frameBitmap = rawBitmap ?: Bitmap.createBitmap(
-            videoInfo.displayWidth.toInt(),
-            videoInfo.displayHeight.toInt(),
-            Bitmap.Config.ARGB_8888
+        val frameBitmap = rawBitmap ?: throw com.danceanon.native.bridge.DanceNativeException(
+            com.danceanon.native.bridge.DanceNativeException.VIDEO_OPEN_FAILED,
+            "Could not decode first video frame from: ${request.videoUri}"
         )
 
         // 2. Rotate to align visual coordinate system if needed
@@ -69,8 +73,10 @@ class AnalyzePipeline(
         segmenter.initialize()
         val segFrame = segmenter.segmentBitmap(visualBitmap, 0)
 
-        // 4. Build DetectedPersonDto list with thumbnails
+        // 4. Build DetectedPersonDto list with thumbnails and save metadata
         val detectedPersons = mutableListOf<DetectedPersonDto>()
+        val cachedPersons = mutableListOf<com.danceanon.native.storage.CachedPerson>()
+
         for ((index, person) in segFrame.persons.withIndex()) {
             val thumbPath = cacheManager.savePersonThumbnail(
                 cacheId = cacheId,
@@ -95,12 +101,35 @@ class AnalyzePipeline(
                     confidence = person.confidence.toDouble()
                 )
             )
+
+            cachedPersons.add(
+                com.danceanon.native.storage.CachedPerson(
+                    id = index,
+                    bbox = com.danceanon.native.storage.CachedBBox(
+                        left = normX1,
+                        top = normY1,
+                        right = normX2,
+                        bottom = normY2
+                    ),
+                    confidence = person.confidence.toDouble()
+                )
+            )
         }
+
+        // Save analysis.json metadata for export ID binding
+        cacheManager.saveAnalysisMetadata(
+            cacheId = cacheId,
+            metadata = com.danceanon.native.storage.AnalysisMetadata(
+                schemaVersion = 1,
+                sourceUri = request.videoUri,
+                persons = cachedPersons
+            )
+        )
 
         if (visualBitmap != rawBitmap) {
             visualBitmap.recycle()
         }
-        rawBitmap?.recycle()
+        rawBitmap.recycle()
 
         AnalyzeResultDto(
             analysisCacheId = cacheId,

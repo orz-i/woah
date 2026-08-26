@@ -238,9 +238,61 @@ class ExportPipeline(
                             emptyList()
                         }
 
-                        // 3. Run tracking on detections
+                        // 3. Run tracking on detections with stable ID mapping from analysis cache
                         val trackedList = if (processedFrames == 1) {
-                            trackManager.initialize(detections)
+                            val cacheMgr = com.danceanon.native.storage.CacheManager(context)
+                            val metadata = if (request.analysisCacheId.isNotBlank()) cacheMgr.getAnalysisMetadata(request.analysisCacheId) else null
+                            if (metadata != null && metadata.persons.isNotEmpty() && detections.isNotEmpty()) {
+                                val cached = metadata.persons
+                                val costMatrix = Array(cached.size) { r ->
+                                    val cPerson = cached[r]
+                                    val cLeft = (cPerson.bbox.left * targetWidth).toFloat()
+                                    val cTop = (cPerson.bbox.top * targetHeight).toFloat()
+                                    val cRight = (cPerson.bbox.right * targetWidth).toFloat()
+                                    val cBottom = (cPerson.bbox.bottom * targetHeight).toFloat()
+                                    val cBox = com.danceanon.native.inference.FloatRect(cLeft, cTop, cRight, cBottom)
+
+                                    FloatArray(detections.size) { c ->
+                                        val dBox = detections[c].bbox
+                                        val interX1 = maxOf(cBox.left, dBox.left)
+                                        val interY1 = maxOf(cBox.top, dBox.top)
+                                        val interX2 = minOf(cBox.right, dBox.right)
+                                        val interY2 = minOf(cBox.bottom, dBox.bottom)
+                                        val interW = maxOf(0f, interX2 - interX1)
+                                        val interH = maxOf(0f, interY2 - interY1)
+                                        val interArea = interW * interH
+                                        val unionArea = cBox.width * cBox.height + dBox.width * dBox.height - interArea
+                                        val iou = if (unionArea <= 0f) 0f else interArea / unionArea
+
+                                        val dx = (cBox.centerX - dBox.centerX) / targetWidth.toFloat()
+                                        val dy = (cBox.centerY - dBox.centerY) / targetHeight.toFloat()
+                                        val dist = kotlin.math.sqrt(dx * dx + dy * dy).coerceIn(0f, 1f)
+                                        (0.6f * (1.0f - iou) + 0.4f * dist).coerceIn(0f, 1f)
+                                    }
+                                }
+                                val matchResult = com.danceanon.native.tracking.HungarianSolver.match(costMatrix, maxCostThreshold = 0.70f)
+                                val assignedIds = IntArray(detections.size) { -1 }
+                                val usedIds = mutableSetOf<Int>()
+                                for (m in matchResult.matches) {
+                                    val cachedId = cached[m.first].id
+                                    assignedIds[m.second] = cachedId
+                                    usedIds.add(cachedId)
+                                }
+                                var nextId = (cached.maxOfOrNull { it.id } ?: -1) + 1
+                                for (i in assignedIds.indices) {
+                                    if (assignedIds[i] == -1) {
+                                        while (usedIds.contains(nextId)) {
+                                            nextId++
+                                        }
+                                        assignedIds[i] = nextId
+                                        usedIds.add(nextId)
+                                        nextId++
+                                    }
+                                }
+                                trackManager.initializeWithAssignedIds(detections, assignedIds.toList())
+                            } else {
+                                trackManager.initialize(detections)
+                            }
                         } else if (detections.isNotEmpty()) {
                             trackManager.update(detections, ptsUs)
                         } else {

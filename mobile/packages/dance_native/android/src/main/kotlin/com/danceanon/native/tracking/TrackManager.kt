@@ -42,18 +42,27 @@ class TrackManager(
     private var nextTrackId = 0
 
     override fun initialize(detections: List<PersonDetection>): List<TrackedPerson> {
+        val defaultIds = detections.indices.toList()
+        return initializeWithAssignedIds(detections, defaultIds)
+    }
+
+    fun initializeWithAssignedIds(
+        detections: List<PersonDetection>,
+        assignedIds: List<Int>
+    ): List<TrackedPerson> {
         tracks.clear()
         nextTrackId = 0
         for ((index, det) in detections.withIndex()) {
+            val trackId = if (index < assignedIds.size) assignedIds[index] else nextTrackId
             val track = InternalTrack(
-                id = index,
+                id = trackId,
                 bbox = det.bbox,
                 mask = det.mask,
                 confidence = det.confidence,
                 state = TrackState.ACTIVE
             )
             tracks.add(track)
-            nextTrackId = maxOf(nextTrackId, index + 1)
+            nextTrackId = maxOf(nextTrackId, trackId + 1)
         }
         return tracks.map { it.toTrackedPerson() }
     }
