@@ -343,11 +343,14 @@ class ExportPipeline(
                                 } else {
                                     trackManager.initialize(detections)
                                 }
+                            } else if (!shouldInfer) {
+                                trackManager.predictWithoutObservation(ptsUs)
                             } else if (detections.isNotEmpty()) {
                                 trackManager.update(detections, ptsUs)
                             } else {
                                 trackManager.predict(ptsUs)
                             }
+
                         }
 
                         // 4. Render final anonymized frame to EGL surface (encoder input)

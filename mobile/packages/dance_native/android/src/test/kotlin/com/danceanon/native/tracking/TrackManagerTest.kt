@@ -230,5 +230,62 @@ class TrackManagerTest {
             assertEquals(255, pixelVal, "$desc: Warped mask center must align with translated bbox proto coordinates")
         }
     }
+
+    @Test
+    fun skippedInferenceDoesNotIncrementMissedFrames() {
+        val tracker = TrackManager()
+        val det = PersonDetection(FloatRect(100f, 100f, 200f, 300f), 0.95f, createTestMask())
+        tracker.initialize(listOf(det))
+
+        // Stride skip for 5 frames
+        for (i in 1..5) {
+            val results = tracker.predictWithoutObservation(i * 33333L)
+            assertEquals(1, results.size)
+            assertEquals(0, results[0].missedFrames, "Skipped inference MUST NOT increment missedFrames")
+            assertEquals(TrackState.ACTIVE, results[0].state, "Skipped inference MUST keep track in ACTIVE state")
+        }
+    }
+
+    @Test
+    fun skippedInferenceStillMovesPredictedBBoxAndPrivacyMask() {
+        val tracker = TrackManager()
+        val det0 = PersonDetection(FloatRect(100f, 100f, 200f, 300f), 0.95f, createTestMask())
+        tracker.initialize(listOf(det0))
+
+        // Train velocity with one update
+        val det1 = PersonDetection(FloatRect(120f, 100f, 220f, 300f), 0.95f, createTestMask())
+        tracker.update(listOf(det1), 33333L)
+
+        // Predict on skipped frame
+        val results = tracker.predictWithoutObservation(66666L)
+        assertEquals(1, results.size)
+        assertTrue(results[0].bbox.centerX > 160f, "Predicted bbox should advance based on learned velocity")
+        assertNotNull(results[0].mask, "Privacy mask must be present and warped during skipped frame")
+    }
+
+    @Test
+    fun actualEmptyDetectionIncrementsMissedFramesAndEventuallyMarksTrackLost() {
+        val tracker = TrackManager(TrackingConfig(maxMissedFrames = 3))
+        val det = PersonDetection(FloatRect(100f, 100f, 200f, 300f), 0.95f, createTestMask())
+        tracker.initialize(listOf(det))
+
+        // Detector actual misses
+        val res1 = tracker.predict(33333L)
+        assertEquals(1, res1[0].missedFrames)
+        assertEquals(TrackState.LOST, res1[0].state)
+
+        val res2 = tracker.predict(66666L)
+        assertEquals(2, res2[0].missedFrames)
+        assertEquals(TrackState.LOST, res2[0].state)
+
+        val res3 = tracker.predict(99999L)
+        assertEquals(3, res3[0].missedFrames)
+        assertEquals(TrackState.LOST, res3[0].state)
+
+        // 4th miss exceeds maxMissedFrames=3 -> removed
+        val res4 = tracker.predict(133332L)
+        assertEquals(0, res4.size, "Track should be removed after exceeding maxMissedFrames")
+    }
 }
+
 

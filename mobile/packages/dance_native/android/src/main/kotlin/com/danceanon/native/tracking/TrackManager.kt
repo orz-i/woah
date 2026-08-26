@@ -255,25 +255,48 @@ class TrackManager(
         return tracks.map { it.toTrackedPerson() }
     }
 
+    fun predictWithoutObservation(timestampUs: Long): List<TrackedPerson> {
+        return predictInternal(timestampUs, countAsDetectionMiss = false)
+    }
+
     override fun predict(timestampUs: Long): List<TrackedPerson> {
+        return predictInternal(timestampUs, countAsDetectionMiss = true)
+    }
+
+    private fun predictInternal(timestampUs: Long, countAsDetectionMiss: Boolean): List<TrackedPerson> {
         val activeOrLost = tracks.map { track ->
             val prevBox = track.bbox
             val predBox = track.kalman.predict(timestampUs)
-            track.missedFrames++
             track.bbox = predBox
-            if (track.mask != null) {
-                track.mask = updateLostMask(
-                    sourceMask = track.mask!!,
-                    prevBbox = prevBox,
-                    predBbox = predBox,
-                    missedFrames = track.missedFrames
-                )
-            }
-            if (track.missedFrames > config.maxMissedFrames) {
-                track.state = TrackState.REMOVED
+
+            if (countAsDetectionMiss) {
+                track.missedFrames++
+                if (track.mask != null) {
+                    track.mask = updateLostMask(
+                        sourceMask = track.mask!!,
+                        prevBbox = prevBox,
+                        predBbox = predBox,
+                        missedFrames = track.missedFrames
+                    )
+                }
+                if (track.missedFrames > config.maxMissedFrames) {
+                    track.state = TrackState.REMOVED
+                } else {
+                    track.state = TrackState.LOST
+                }
             } else {
-                track.state = TrackState.LOST
+                // Prediction during skipped inference cadence (stride):
+                // Warp mask smoothly to follow predicted bbox without penalizing track state or missed frame counts.
+                if (track.mask != null) {
+                    track.mask = warpMask(
+                        sourceMask = track.mask!!,
+                        prevBbox = prevBox,
+                        predBbox = predBox,
+                        missedFrames = 1
+                    )
+                }
             }
+
             track.toTrackedPerson()
         }.filter { it.state != TrackState.REMOVED }
 
@@ -282,6 +305,7 @@ class TrackManager(
 
         return activeOrLost
     }
+
 
     override fun reset() {
         tracks.clear()
