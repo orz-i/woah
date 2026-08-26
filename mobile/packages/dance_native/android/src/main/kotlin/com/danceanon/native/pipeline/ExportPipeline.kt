@@ -273,11 +273,18 @@ class ExportPipeline(
 
                                         FloatArray(detections.size) { c ->
                                             val dBox = detections[c].bbox
-                                            1.0f - com.danceanon.native.tracking.TrackManager.computeBBoxIoU(cBox, dBox)
+                                            val iou = com.danceanon.native.tracking.TrackManager.computeBBoxIoU(cBox, dBox)
+                                            val refDim = maxOf(cBox.width, cBox.height, 1f)
+                                            val dx = cBox.centerX - dBox.centerX
+                                            val dy = cBox.centerY - dBox.centerY
+                                            val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+                                            val distScore = (1.0f - (dist / (refDim * 1.5f))).coerceIn(0f, 1f)
+                                            val score = 0.7f * iou + 0.3f * distScore
+                                            (1.0f - score).coerceIn(0f, 1f)
                                         }
                                     }
 
-                                    val matchResult = com.danceanon.native.tracking.HungarianSolver.match(costMatrix, maxCostThreshold = 0.75f)
+                                    val matchResult = com.danceanon.native.tracking.HungarianSolver.match(costMatrix, maxCostThreshold = 0.85f)
                                     val assignedIds = IntArray(detections.size) { -1 }
                                     val usedIds = mutableSetOf<Int>()
 
@@ -291,7 +298,7 @@ class ExportPipeline(
                                         }
                                     }
 
-                                    var nextId = 1
+                                    var nextId = 0
                                     for (i in assignedIds.indices) {
                                         if (assignedIds[i] == -1) {
                                             while (usedIds.contains(nextId)) {
@@ -303,6 +310,7 @@ class ExportPipeline(
                                         }
                                     }
                                     trackManager.initializeWithAssignedIds(detections, assignedIds.toList())
+
                                 } else {
                                     trackManager.initialize(detections)
                                 }

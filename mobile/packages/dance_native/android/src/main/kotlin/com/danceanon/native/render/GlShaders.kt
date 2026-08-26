@@ -21,8 +21,9 @@ void main() {
     vOesTexCoord = transformed.xy;
     vMaskTexCoord = vec2(
         mix(uMaskCropRect.x, uMaskCropRect.z, contentUv.x),
-        mix(uMaskCropRect.y, uMaskCropRect.w, 1.0 - contentUv.y)
+        mix(uMaskCropRect.y, uMaskCropRect.w, contentUv.y)
     );
+
 
 
 }""".trimIndent()

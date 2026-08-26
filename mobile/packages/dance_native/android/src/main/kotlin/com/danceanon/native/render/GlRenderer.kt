@@ -216,14 +216,7 @@ class GlRenderer : FrameRenderer {
         val fullBmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         buf.rewind()
         fullBmp.copyPixelsFromBuffer(buf)
-
-        // ReadPixels reads bottom-up from FBO row 0: flip vertically to produce visual-correct Bitmap
-        val matrix = Matrix().apply {
-            postScale(1f, -1f)
-        }
-        val flippedBmp = Bitmap.createBitmap(fullBmp, 0, 0, width, height, matrix, true)
-        fullBmp.recycle()
-        return flippedBmp
+        return fullBmp
     }
 
 
@@ -246,18 +239,9 @@ class GlRenderer : FrameRenderer {
 
         GLES20.glUseProgram(prog.programId)
 
-        val defaultMatrix = if (textureType == SourceTextureType.TEXTURE_2D) {
-            floatArrayOf(
-                1f,  0f, 0f, 0f,
-                0f, -1f, 0f, 0f,
-                0f,  0f, 1f, 0f,
-                0f,  1f, 0f, 1f
-            )
-        } else {
-            identityMatrix
-        }
-        val matrix = texMatrix ?: defaultMatrix
+        val matrix = texMatrix ?: identityMatrix
         if (prog.uTexMatrixLoc >= 0) GLES20.glUniformMatrix4fv(prog.uTexMatrixLoc, 1, false, matrix, 0)
+
 
 
         // Parse Fill Color ARGB
