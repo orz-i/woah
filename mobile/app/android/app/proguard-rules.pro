@@ -6,6 +6,9 @@
 -keep class io.flutter.**  { *; }
 -keep class io.flutter.plugins.**  { *; }
 
+# Google Play Core / SplitCompat (suppress warnings for Flutter deferred components)
+-dontwarn com.google.android.play.core.**
+
 # ONNX Runtime (CRITICAL: JNI symbols must be preserved)
 -keep class ai.onnxruntime.** { *; }
 -dontwarn ai.onnxruntime.**
