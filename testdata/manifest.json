@@ -1,0 +1,65 @@
+{
+  "version": "1.0",
+  "test_clips": [
+    {
+      "id": "solo_fast_spin_1080p",
+      "category": "solo",
+      "description": "Single dancer fast spin with dramatic arm movements and rapid rotation",
+      "resolution": [1920, 1080],
+      "fps": 30.0,
+      "duration_sec": 5.0,
+      "num_persons": 1,
+      "features": ["fast_motion", "rapid_rotation", "motion_blur"]
+    },
+    {
+      "id": "duo_cross_path_1080p",
+      "category": "duo_crossing",
+      "description": "Two dancers crossing paths and swapping spatial left/right positions",
+      "resolution": [1920, 1080],
+      "fps": 30.0,
+      "duration_sec": 6.0,
+      "num_persons": 2,
+      "features": ["crossing_paths", "temporary_overlap", "id_stability", "hungarian_matching"]
+    },
+    {
+      "id": "fast_runner_720p",
+      "category": "fast_motion",
+      "description": "Person sprinting across camera frame with strong velocity",
+      "resolution": [1280, 720],
+      "fps": 30.0,
+      "duration_sec": 4.0,
+      "num_persons": 1,
+      "features": ["kalman_velocity_tracking", "stride_profile_verification"]
+    },
+    {
+      "id": "person_exit_reenter_1080p",
+      "category": "boundary",
+      "description": "Person exiting screen boundary and re-entering 2 seconds later",
+      "resolution": [1920, 1080],
+      "fps": 30.0,
+      "duration_sec": 7.0,
+      "num_persons": 1,
+      "features": ["track_removal_after_timeout", "new_track_creation"]
+    },
+    {
+      "id": "portrait_dance_9x16",
+      "category": "portrait",
+      "description": "Vertical smartphone video with 9:16 aspect ratio letterbox",
+      "resolution": [1080, 1920],
+      "fps": 30.0,
+      "duration_sec": 5.0,
+      "num_persons": 1,
+      "features": ["portrait_letterbox_mapping", "coordinate_mapper_verification"]
+    },
+    {
+      "id": "long_sequence_60s",
+      "category": "endurance",
+      "description": "60-second endurance clip for memory leak and thermal throttling verification",
+      "resolution": [1920, 1080],
+      "fps": 30.0,
+      "duration_sec": 60.0,
+      "num_persons": 3,
+      "features": ["memory_profiling", "long_running_foreground_service", "battery_thermal"]
+    }
+  ]
+}

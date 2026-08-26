@@ -91,6 +91,7 @@ debug/
 input/
 output/
 uploads/
+testdata/*.mp4
 *.log
 *.tmp
 emulator_screen.png
