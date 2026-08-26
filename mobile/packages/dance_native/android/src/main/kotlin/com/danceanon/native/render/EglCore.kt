@@ -70,6 +70,19 @@ class EglCore : AutoCloseable {
         return eglSurface
     }
 
+    fun createOffscreenSurface(width: Int, height: Int): EGLSurface {
+        val pbufferAttribs = intArrayOf(
+            EGL14.EGL_WIDTH, width,
+            EGL14.EGL_HEIGHT, height,
+            EGL14.EGL_NONE
+        )
+        val eglSurface = EGL14.eglCreatePbufferSurface(eglDisplay, eglConfig, pbufferAttribs, 0)
+        if (eglSurface == EGL14.EGL_NO_SURFACE) {
+            throw RuntimeException("Failed to create EGL pbuffer surface")
+        }
+        return eglSurface
+    }
+
     fun makeCurrent(eglSurface: EGLSurface) {
         if (!EGL14.eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext)) {
             throw RuntimeException("eglMakeCurrent failed")

@@ -53,6 +53,7 @@ class DanceNativeApiImpl(
     private val segmenter = com.danceanon.native.inference.YoloOnnxSegmenter(context)
     private val cacheManager = com.danceanon.native.storage.CacheManager(context)
     private val analyzePipeline = com.danceanon.native.pipeline.AnalyzePipeline(context, segmenter, cacheManager)
+    private val previewPipeline = com.danceanon.native.pipeline.PreviewPipeline(context, segmenter, cacheManager)
 
     override suspend fun analyzeVideo(request: AnalyzeRequestDto): AnalyzeResultDto = withContext(Dispatchers.Default) {
         if (request.videoUri.isBlank()) {
@@ -76,11 +77,24 @@ class DanceNativeApiImpl(
     }
 
     override suspend fun getPreviewFrame(request: PreviewRequestDto): PreviewFrameDto = withContext(Dispatchers.Default) {
-        PreviewFrameDto(
-            thumbnailPath = "",
-            timestampMs = request.timestampMs,
-            renderTimeMs = 0.0
-        )
+        if (request.analysisCacheId.isBlank()) {
+            throw DanceNativeException(
+                DanceNativeException.INVALID_ARGUMENT,
+                "analysisCacheId cannot be empty"
+            )
+        }
+        try {
+            previewPipeline.renderPreview(request)
+        } catch (e: DanceNativeException) {
+            throw e
+        } catch (e: Throwable) {
+            android.util.Log.e("DanceNativeApiImpl", "Failed to render preview frame: ${e.message}", e)
+            throw DanceNativeException(
+                DanceNativeException.RENDER_FAILED,
+                "Failed to render preview frame: ${e.message}",
+                e
+            )
+        }
     }
 
     private val exportPipeline = com.danceanon.native.pipeline.ExportPipeline(context, segmenter, eventEmitter)

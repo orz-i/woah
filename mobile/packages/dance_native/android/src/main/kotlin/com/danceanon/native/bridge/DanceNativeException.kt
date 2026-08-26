@@ -22,6 +22,10 @@ class DanceNativeException(
 
         const val ANALYSIS_FAILED = "ANALYSIS_FAILED"
         const val ANALYSIS_CACHE_MISSING = "ANALYSIS_CACHE_MISSING"
+        const val CACHE_NOT_FOUND = "CACHE_NOT_FOUND"
+
+        const val DECODE_FRAME_FAILED = "DECODE_FRAME_FAILED"
+        const val RENDER_FAILED = "RENDER_FAILED"
 
         const val ENCODER_UNSUPPORTED = "ENCODER_UNSUPPORTED"
         const val ENCODER_FAILED = "ENCODER_FAILED"
