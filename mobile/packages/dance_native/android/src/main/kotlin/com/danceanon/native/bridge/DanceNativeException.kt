@@ -39,5 +39,6 @@ class DanceNativeException(
         const val OUT_OF_STORAGE = "OUT_OF_STORAGE"
         const val INVALID_ARGUMENT = "INVALID_ARGUMENT"
         const val NOT_IMPLEMENTED = "NOT_IMPLEMENTED"
+        const val SAM2_RUNTIME_NOT_VALIDATED = "SAM2_RUNTIME_NOT_VALIDATED"
     }
 }

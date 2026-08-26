@@ -203,10 +203,10 @@ class ExportPipeline(
 
 
                 if (isSam2Mode) {
-                    sam2Fbo = com.danceanon.native.sam2.Sam2InputFbo(com.danceanon.native.sam2.Sam2TensorContract.IMAGE_SIZE)
-                    sam2Renderer = com.danceanon.native.sam2.Sam2InputRenderer()
-                    sam2Tracker = com.danceanon.native.sam2.Sam2VideoTracker("", "", "", "")
-                    android.util.Log.i("ExportPipeline", "Initialized SAM2 temporal tracking engine (1024x1024)")
+                    throw com.danceanon.native.bridge.DanceNativeException(
+                        com.danceanon.native.bridge.DanceNativeException.SAM2_RUNTIME_NOT_VALIDATED,
+                        "SAM2 ONNX runtime has not passed standalone parity validation."
+                    )
                 }
 
                 while (!isCancelled.get()) {

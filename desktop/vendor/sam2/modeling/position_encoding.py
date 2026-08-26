@@ -215,37 +215,25 @@ def apply_rotary_enc(
     freqs_cis: torch.Tensor,
     repeat_freqs_k: bool = False,
 ):
-    cos = freqs_cis.real.float()
-    sin = freqs_cis.imag.float()
-
-    xq_r = xq.float().reshape(*xq.shape[:-1], -1, 2)
-    q_a = xq_r[..., 0]
-    q_b = xq_r[..., 1]
-
-    cos_q = reshape_for_broadcast(cos, q_a)
-    sin_q = reshape_for_broadcast(sin, q_a)
-
-    xq_out = torch.stack([q_a * cos_q - q_b * sin_q, q_a * sin_q + q_b * cos_q], dim=-1).flatten(-2)
-
-    if xk.shape[-2] == 0:
-        return xq_out.type_as(xq), xk
-
-    xk_r = xk.float().reshape(*xk.shape[:-1], -1, 2)
-    k_a = xk_r[..., 0]
-    k_b = xk_r[..., 1]
-
-    cos_k = cos_q
-    sin_k = sin_q
+    xq_ = torch.view_as_complex(xq.float().reshape(*xq.shape[:-1], -1, 2))
+    xk_ = (
+        torch.view_as_complex(xk.float().reshape(*xk.shape[:-1], -1, 2))
+        if xk.shape[-2] != 0
+        else None
+    )
+    freqs_cis = reshape_for_broadcast(freqs_cis, xq_)
+    xq_out = torch.view_as_real(xq_ * freqs_cis).flatten(3)
+    if xk_ is None:
+        # no keys to rotate, due to dropout
+        return xq_out.type_as(xq).to(xq.device), xk
+    # repeat freqs along seq_len dim to match k seq_len
     if repeat_freqs_k:
-        r = k_a.shape[-2] // q_a.shape[-2]
-        if r > 1:
-            cos_k = cos_q.unsqueeze(2).expand(-1, -1, r, -1, -1).flatten(2, 3)
-            sin_k = sin_q.unsqueeze(2).expand(-1, -1, r, -1, -1).flatten(2, 3)
-
-    xk_out = torch.stack([k_a * cos_k - k_b * sin_k, k_a * sin_k + k_b * cos_k], dim=-1).flatten(-2)
-    return xq_out.type_as(xq), xk_out.type_as(xk)
-
-
-
-
-
+        r = xk_.shape[-2] // xq_.shape[-2]
+        if freqs_cis.is_cuda:
+            freqs_cis = freqs_cis.repeat(*([1] * (freqs_cis.ndim - 2)), r, 1)
+        else:
+            # torch.repeat on complex numbers may not be supported on non-CUDA devices
+            # (freqs_cis has 4 dims and we repeat on dim 2) so we use expand + flatten
+            freqs_cis = freqs_cis.unsqueeze(2).expand(-1, -1, r, -1, -1).flatten(2, 3)
+    xk_out = torch.view_as_real(xk_ * freqs_cis).flatten(3)
+    return xq_out.type_as(xq).to(xq.device), xk_out.type_as(xk).to(xk.device)
