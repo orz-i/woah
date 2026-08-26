@@ -22,7 +22,7 @@ class Sam2VideoTracker(
     val memoryAttentionPath: String
 ) : ISam2VideoTracker {
 
-    private val activeStates = mutableMapOf<Int, Sam2VideoState>()
+    private val activeStates = mutableMapOf<Int, Sam2OnnxVideoState>()
     private var sourceWidth = 0
     private var sourceHeight = 0
 
@@ -31,7 +31,7 @@ class Sam2VideoTracker(
         sourceWidth = request.sourceWidth
         sourceHeight = request.sourceHeight
 
-        val state = Sam2VideoState(request.objectId)
+        val state = Sam2OnnxVideoState(request.objectId)
         activeStates[request.objectId] = state
 
         // Transform bbox prompt to model coordinates
@@ -94,4 +94,5 @@ class Sam2VideoTracker(
         reset()
     }
 }
+
 

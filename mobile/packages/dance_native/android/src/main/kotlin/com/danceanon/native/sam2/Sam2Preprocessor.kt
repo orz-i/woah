@@ -54,6 +54,56 @@ object Sam2Preprocessor {
     }
 
     /**
+     * Converts a visual RGB Bitmap directly into a pre-allocated Direct FloatBuffer (NCHW).
+     */
+    fun preprocessBitmapToBuffer(bitmap: Bitmap, targetBuffer: java.nio.FloatBuffer) {
+        val targetSize = Sam2TensorContract.IMAGE_SIZE
+        val resized = if (bitmap.width == targetSize && bitmap.height == targetSize) {
+            bitmap
+        } else {
+            Bitmap.createScaledBitmap(bitmap, targetSize, targetSize, true)
+        }
+
+        val pixels = IntArray(targetSize * targetSize)
+        resized.getPixels(pixels, 0, targetSize, 0, 0, targetSize, targetSize)
+
+        val channelSize = targetSize * targetSize
+        val meanR = Sam2TensorContract.NORM_MEAN[0]
+        val meanG = Sam2TensorContract.NORM_MEAN[1]
+        val meanB = Sam2TensorContract.NORM_MEAN[2]
+
+        val stdR = Sam2TensorContract.NORM_STD[0]
+        val stdG = Sam2TensorContract.NORM_STD[1]
+        val stdB = Sam2TensorContract.NORM_STD[2]
+
+        targetBuffer.clear()
+
+        // R plane
+        for (i in 0 until channelSize) {
+            val r = ((pixels[i] shr 16) and 0xFF) / 255.0f
+            targetBuffer.put(i, (r - meanR) / stdR)
+        }
+        // G plane
+        for (i in 0 until channelSize) {
+            val g = ((pixels[i] shr 8) and 0xFF) / 255.0f
+            targetBuffer.put(channelSize + i, (g - meanG) / stdG)
+        }
+        // B plane
+        for (i in 0 until channelSize) {
+            val b = (pixels[i] and 0xFF) / 255.0f
+            targetBuffer.put(2 * channelSize + i, (b - meanB) / stdB)
+        }
+
+        targetBuffer.position(3 * channelSize)
+        targetBuffer.flip()
+
+        if (resized !== bitmap) {
+            resized.recycle()
+        }
+    }
+
+
+    /**
      * Transforms a bounding box prompt from source visual coordinates [0, srcW] x [0, srcH]
      * to SAM2 model image coordinates [0, 1024] x [0, 1024].
      * Returns floatArrayOf(x1, y1, x2, y2).

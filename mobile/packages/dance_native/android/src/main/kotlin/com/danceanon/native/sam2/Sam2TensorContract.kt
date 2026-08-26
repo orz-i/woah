@@ -9,6 +9,7 @@ object Sam2TensorContract {
     const val NUM_MASKMEM = 7
     const val MEM_DIM = 64
     const val HIDDEN_DIM = 256
+    const val MAX_OBJ_PTRS = 16
     const val LOW_RES_MASK_SIZE = 256
     const val FEAT_SIZE = 64
 
@@ -17,4 +18,18 @@ object Sam2TensorContract {
 
     val NORM_MEAN = floatArrayOf(0.485f, 0.456f, 0.406f)
     val NORM_STD = floatArrayOf(0.229f, 0.224f, 0.225f)
+
+    // ONNX Model Names
+    const val MODEL_IMAGE_FEATURES = "sam2_image_features.onnx"
+    const val MODEL_INIT_STEP = "sam2_init_step.onnx"
+    const val MODEL_TEMPORAL_STEP = "sam2_temporal_step.onnx"
+
+    // Buffer sizes in elements
+    const val TOP_FEAT_ELEMS = 256 * 64 * 64
+    const val HIGH_RES_0_ELEMS = 32 * 256 * 256
+    const val HIGH_RES_1_ELEMS = 64 * 128 * 128
+    const val MEM_FEAT_ELEMS = 64 * 64 * 64
+    const val OBJ_PTR_ELEMS = 256
+    const val MASK_1024_ELEMS = 1024 * 1024
 }
+

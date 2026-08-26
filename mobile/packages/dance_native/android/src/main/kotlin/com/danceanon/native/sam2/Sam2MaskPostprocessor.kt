@@ -11,15 +11,15 @@ object Sam2MaskPostprocessor {
 
     /**
      * Derives a bounding box from a soft probability mask.
-     * Matches desktop reference parity: threshold = 0.15, expand_ratio = 0.05.
+     * Returns null if mask is empty / no pixels exceed threshold.
      */
-    fun computeBboxFromMask(
+    fun computeBboxFromMaskStrict(
         mask: FloatArray,
         width: Int,
         height: Int,
         threshold: Float = Sam2TensorContract.MASK_THRESHOLD,
         expandRatio: Float = Sam2TensorContract.BBOX_EXPAND_RATIO
-    ): FloatRect {
+    ): FloatRect? {
         var minX = width
         var maxX = -1
         var minY = height
@@ -38,7 +38,7 @@ object Sam2MaskPostprocessor {
         }
 
         if (maxX < minX || maxY < minY) {
-            return FloatRect(0f, 0f, width.toFloat(), height.toFloat())
+            return null
         }
 
         val bw = (maxX - minX + 1).toFloat()
@@ -53,6 +53,47 @@ object Sam2MaskPostprocessor {
 
         return FloatRect(left, top, right, bottom)
     }
+
+    /**
+     * Derives a bounding box from a soft probability mask.
+     * Matches desktop reference parity: threshold = 0.15, expand_ratio = 0.05.
+     */
+    fun computeBboxFromMask(
+        mask: FloatArray,
+        width: Int,
+        height: Int,
+        threshold: Float = Sam2TensorContract.MASK_THRESHOLD,
+        expandRatio: Float = Sam2TensorContract.BBOX_EXPAND_RATIO
+    ): FloatRect {
+        return computeBboxFromMaskStrict(mask, width, height, threshold, expandRatio)
+            ?: FloatRect(0f, 0f, width.toFloat(), height.toFloat())
+    }
+
+    /**
+     * Compute active mask area above threshold.
+     */
+    fun computeMaskArea(
+        mask: FloatArray,
+        threshold: Float = Sam2TensorContract.MASK_THRESHOLD
+    ): Float {
+        var count = 0
+        for (v in mask) {
+            if (v > threshold) {
+                count++
+            }
+        }
+        return count.toFloat()
+    }
+
+    /**
+     * Applies sigmoid activation in-place.
+     */
+    fun sigmoidInPlace(arr: FloatArray) {
+        for (i in arr.indices) {
+            arr[i] = 1.0f / (1.0f + kotlin.math.exp(-arr[i]))
+        }
+    }
+
 
     /**
      * Bilinear interpolation to resize low-res mask [maskW x maskH] to source [srcW x srcH].
