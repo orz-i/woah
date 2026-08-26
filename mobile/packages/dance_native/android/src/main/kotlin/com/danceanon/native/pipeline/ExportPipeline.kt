@@ -191,7 +191,8 @@ class ExportPipeline(
                 val totalEstFrames = ((videoInfo.durationMs / 1000.0) * targetFps).toLong().coerceAtLeast(1L)
                 val stMatrix = FloatArray(16)
                 val trackManager = TrackManager()
-                val frameStride = 1
+                val profile = ProcessingProfile.fromName(request.processingProfile)
+                val frameStride = profile.inferenceStride
                 var lastProgressEmitTime = 0L
 
                 while (!isCancelled.get()) {

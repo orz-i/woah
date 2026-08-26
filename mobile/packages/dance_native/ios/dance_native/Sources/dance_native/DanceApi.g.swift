@@ -765,6 +765,7 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
   var targetHeight: Int64
   var targetFps: Double
   var videoBitrate: Int64
+  var processingProfile: String
 
 
   // swift-format-ignore: AlwaysUseLowerCamelCase
@@ -779,6 +780,7 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
     let targetHeight = pigeonVar_list[7] as! Int64
     let targetFps = pigeonVar_list[8] as! Double
     let videoBitrate = pigeonVar_list[9] as! Int64
+    let processingProfile = pigeonVar_list[10] as! String
 
     return ExportRequestDto(
       sourceUri: sourceUri,
@@ -790,7 +792,8 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
       targetWidth: targetWidth,
       targetHeight: targetHeight,
       targetFps: targetFps,
-      videoBitrate: videoBitrate
+      videoBitrate: videoBitrate,
+      processingProfile: processingProfile
     )
   }
   func toList() -> [Any?] {
@@ -805,13 +808,14 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
       targetHeight,
       targetFps,
       videoBitrate,
+      processingProfile,
     ]
   }
   static func == (lhs: ExportRequestDto, rhs: ExportRequestDto) -> Bool {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return DanceApiPigeonInternal.deepEquals(lhs.sourceUri, rhs.sourceUri) && DanceApiPigeonInternal.deepEquals(lhs.analysisCacheId, rhs.analysisCacheId) && DanceApiPigeonInternal.deepEquals(lhs.outputFilePath, rhs.outputFilePath) && DanceApiPigeonInternal.deepEquals(lhs.selectedPersonIds, rhs.selectedPersonIds) && DanceApiPigeonInternal.deepEquals(lhs.effects, rhs.effects) && DanceApiPigeonInternal.deepEquals(lhs.follow, rhs.follow) && DanceApiPigeonInternal.deepEquals(lhs.targetWidth, rhs.targetWidth) && DanceApiPigeonInternal.deepEquals(lhs.targetHeight, rhs.targetHeight) && DanceApiPigeonInternal.deepEquals(lhs.targetFps, rhs.targetFps) && DanceApiPigeonInternal.deepEquals(lhs.videoBitrate, rhs.videoBitrate)
+    return DanceApiPigeonInternal.deepEquals(lhs.sourceUri, rhs.sourceUri) && DanceApiPigeonInternal.deepEquals(lhs.analysisCacheId, rhs.analysisCacheId) && DanceApiPigeonInternal.deepEquals(lhs.outputFilePath, rhs.outputFilePath) && DanceApiPigeonInternal.deepEquals(lhs.selectedPersonIds, rhs.selectedPersonIds) && DanceApiPigeonInternal.deepEquals(lhs.effects, rhs.effects) && DanceApiPigeonInternal.deepEquals(lhs.follow, rhs.follow) && DanceApiPigeonInternal.deepEquals(lhs.targetWidth, rhs.targetWidth) && DanceApiPigeonInternal.deepEquals(lhs.targetHeight, rhs.targetHeight) && DanceApiPigeonInternal.deepEquals(lhs.targetFps, rhs.targetFps) && DanceApiPigeonInternal.deepEquals(lhs.videoBitrate, rhs.videoBitrate) && DanceApiPigeonInternal.deepEquals(lhs.processingProfile, rhs.processingProfile)
   }
 
   func hash(into hasher: inout Hasher) {
@@ -826,10 +830,11 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
     DanceApiPigeonInternal.deepHash(value: targetHeight, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: targetFps, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: videoBitrate, hasher: &hasher)
+    DanceApiPigeonInternal.deepHash(value: processingProfile, hasher: &hasher)
   }
 
   public var description: String {
-    return "ExportRequestDto(sourceUri: \(String(describing: sourceUri)), analysisCacheId: \(String(describing: analysisCacheId)), outputFilePath: \(String(describing: outputFilePath)), selectedPersonIds: \(String(describing: selectedPersonIds)), effects: \(String(describing: effects)), follow: \(String(describing: follow)), targetWidth: \(String(describing: targetWidth)), targetHeight: \(String(describing: targetHeight)), targetFps: \(String(describing: targetFps)), videoBitrate: \(String(describing: videoBitrate)))"
+    return "ExportRequestDto(sourceUri: \(String(describing: sourceUri)), analysisCacheId: \(String(describing: analysisCacheId)), outputFilePath: \(String(describing: outputFilePath)), selectedPersonIds: \(String(describing: selectedPersonIds)), effects: \(String(describing: effects)), follow: \(String(describing: follow)), targetWidth: \(String(describing: targetWidth)), targetHeight: \(String(describing: targetHeight)), targetFps: \(String(describing: targetFps)), videoBitrate: \(String(describing: videoBitrate)), processingProfile: \(String(describing: processingProfile)))"
   }
 }
 

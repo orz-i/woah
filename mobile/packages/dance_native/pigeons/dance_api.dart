@@ -196,6 +196,7 @@ class ExportRequestDto {
   final int targetHeight;
   final double targetFps;
   final int videoBitrate;
+  final String processingProfile;
 
   ExportRequestDto({
     required this.sourceUri,
@@ -208,6 +209,7 @@ class ExportRequestDto {
     required this.targetHeight,
     required this.targetFps,
     required this.videoBitrate,
+    required this.processingProfile,
   });
 }
 

@@ -66,6 +66,8 @@ data class DeviceCapabilities(
                 hasHevc = api >= Build.VERSION_CODES.LOLLIPOP
             }
 
+            val recProfile = if (cores >= 8) "balanced" else "speed"
+
             return DeviceCapabilities(
                 androidApi = api,
                 gpuSupported = isGpuSupported,
@@ -74,8 +76,8 @@ data class DeviceCapabilities(
                 maxEncodeWidth = maxWidth,
                 maxEncodeHeight = maxHeight,
                 cpuCores = cores,
-                recommendedProfile = "balanced",
-                supportedProfiles = listOf("balanced"),
+                recommendedProfile = recProfile,
+                supportedProfiles = listOf("quality", "balanced", "speed"),
                 inferenceBackends = listOf("onnx_cpu")
             )
         }

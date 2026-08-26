@@ -774,6 +774,7 @@ class ExportRequestDto {
     required this.targetHeight,
     required this.targetFps,
     required this.videoBitrate,
+    required this.processingProfile,
   });
 
   String sourceUri;
@@ -796,6 +797,8 @@ class ExportRequestDto {
 
   int videoBitrate;
 
+  String processingProfile;
+
   List<Object?> _toList() {
     return <Object?>[
       sourceUri,
@@ -808,6 +811,7 @@ class ExportRequestDto {
       targetHeight,
       targetFps,
       videoBitrate,
+      processingProfile,
     ];
   }
 
@@ -827,6 +831,7 @@ class ExportRequestDto {
       targetHeight: result[7]! as int,
       targetFps: result[8]! as double,
       videoBitrate: result[9]! as int,
+      processingProfile: result[10]! as String,
     );
   }
 
@@ -839,7 +844,7 @@ class ExportRequestDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(sourceUri, other.sourceUri) && _deepEquals(analysisCacheId, other.analysisCacheId) && _deepEquals(outputFilePath, other.outputFilePath) && _deepEquals(selectedPersonIds, other.selectedPersonIds) && _deepEquals(effects, other.effects) && _deepEquals(follow, other.follow) && _deepEquals(targetWidth, other.targetWidth) && _deepEquals(targetHeight, other.targetHeight) && _deepEquals(targetFps, other.targetFps) && _deepEquals(videoBitrate, other.videoBitrate);
+    return _deepEquals(sourceUri, other.sourceUri) && _deepEquals(analysisCacheId, other.analysisCacheId) && _deepEquals(outputFilePath, other.outputFilePath) && _deepEquals(selectedPersonIds, other.selectedPersonIds) && _deepEquals(effects, other.effects) && _deepEquals(follow, other.follow) && _deepEquals(targetWidth, other.targetWidth) && _deepEquals(targetHeight, other.targetHeight) && _deepEquals(targetFps, other.targetFps) && _deepEquals(videoBitrate, other.videoBitrate) && _deepEquals(processingProfile, other.processingProfile);
   }
 
   @override
@@ -848,7 +853,7 @@ class ExportRequestDto {
 
   @override
   String toString() {
-    return 'ExportRequestDto(sourceUri: $sourceUri, analysisCacheId: $analysisCacheId, outputFilePath: $outputFilePath, selectedPersonIds: $selectedPersonIds, effects: $effects, follow: $follow, targetWidth: $targetWidth, targetHeight: $targetHeight, targetFps: $targetFps, videoBitrate: $videoBitrate)';
+    return 'ExportRequestDto(sourceUri: $sourceUri, analysisCacheId: $analysisCacheId, outputFilePath: $outputFilePath, selectedPersonIds: $selectedPersonIds, effects: $effects, follow: $follow, targetWidth: $targetWidth, targetHeight: $targetHeight, targetFps: $targetFps, videoBitrate: $videoBitrate, processingProfile: $processingProfile)';
   }
 }
 
