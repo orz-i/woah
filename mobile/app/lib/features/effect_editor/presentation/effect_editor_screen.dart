@@ -55,17 +55,32 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
     final controller = ref.read(effectEditorControllerProvider.notifier);
     final effects = state.effects;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('画面特效调节'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.restart_alt_rounded),
-            tooltip: '恢复默认参数',
-            onPressed: () => _resetToDefault(controller),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        final configured = controller.buildConfiguredProject();
+        context.pop(configured);
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('画面特效调节'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () {
+              final configured = controller.buildConfiguredProject();
+              context.pop(configured);
+            },
           ),
-        ],
-      ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.restart_alt_rounded),
+              tooltip: '恢复默认参数',
+              onPressed: () => _resetToDefault(controller),
+            ),
+          ],
+        ),
+
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -97,8 +112,10 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
         ),
       ),
       bottomNavigationBar: _buildBottomBar(context, state, controller),
+      ),
     );
   }
+
 
   Widget _buildPreviewCard(EffectEditorState state, EffectEditorController controller) {
     final displayPath = state.previewPath ?? state.previewThumbnailPath;

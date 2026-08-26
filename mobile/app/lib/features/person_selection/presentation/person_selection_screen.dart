@@ -344,14 +344,18 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
       ),
       child: ElevatedButton.icon(
         onPressed: hasSelection
-            ? () {
+            ? () async {
                 HapticFeedback.mediumImpact();
                 final configured = controller.buildConfiguredProject();
                 if (configured != null) {
-                  context.push('/effect_editor', extra: configured);
+                  final resultProj = await context.push<DanceProject>('/effect_editor', extra: configured);
+                  if (resultProj != null) {
+                    controller.updateProject(resultProj);
+                  }
                 }
               }
             : null,
+
         icon: const Icon(Icons.tune_rounded, size: 20),
         label: Text(
           hasSelection

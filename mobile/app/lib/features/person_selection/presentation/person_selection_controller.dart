@@ -77,11 +77,23 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
     final proj = state.project;
     if (proj == null) return null;
 
+    final updatedPersons = state.persons.map((p) {
+      return p.copyWith(selected: state.selectedPersonIds.contains(p.id));
+    }).toList();
+
     return proj.copyWith(
-      persons: state.persons,
+      persons: updatedPersons,
       selectedPersonIds: state.selectedPersonIds,
       analysisCacheId: state.analysisCacheId,
       updatedAt: DateTime.now(),
+    );
+  }
+
+  /// Update project state (e.g. when returning from effect editor with updated effects/follow)
+  void updateProject(DanceProject updated) {
+    state = state.copyWith(
+      project: updated,
+      selectedPersonIds: updated.selectedPersonIds.isNotEmpty ? updated.selectedPersonIds : state.selectedPersonIds,
     );
   }
 }
