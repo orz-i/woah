@@ -244,7 +244,8 @@ class GlRenderer : FrameRenderer {
         )
 
         val selectedPersons = persons.filter { (selectedPersonIds.isEmpty() || selectedPersonIds.contains(it.id)) && it.mask != null }
-        val hasSelected = selectedPersons.isNotEmpty()
+        val finalPersons = if (selectedPersons.isNotEmpty()) selectedPersons else persons.filter { it.mask != null }
+        val hasSelected = finalPersons.isNotEmpty()
         GLES20.glUniform1i(GLES20.glGetUniformLocation(programId, "uHasMask"), if (hasSelected) 1 else 0)
 
         // Setup base texture (OES external texture from SurfaceTexture)
@@ -255,9 +256,11 @@ class GlRenderer : FrameRenderer {
         // Upload and bind mask texture to Texture 1 if present
         GLES20.glActiveTexture(GLES20.GL_TEXTURE1)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, maskTextureId)
+        GLES20.glPixelStorei(GLES20.GL_UNPACK_ALIGNMENT, 1)
+
         if (hasSelected) {
-            if (selectedPersons.size == 1) {
-                val mask = selectedPersons[0].mask!!
+            if (finalPersons.size == 1) {
+                val mask = finalPersons[0].mask!!
                 mask.buffer.rewind()
                 GLES20.glTexImage2D(
                     GLES20.GL_TEXTURE_2D, 0, GLES20.GL_LUMINANCE,
@@ -265,12 +268,12 @@ class GlRenderer : FrameRenderer {
                     GLES20.GL_LUMINANCE, GLES20.GL_UNSIGNED_BYTE, mask.buffer
                 )
             } else {
-                val firstMask = selectedPersons[0].mask!!
+                val firstMask = finalPersons[0].mask!!
                 val totalPixels = firstMask.width * firstMask.height
                 val mergedBuffer = ByteBuffer.allocateDirect(totalPixels)
                 for (i in 0 until totalPixels) {
                     var maxVal: Byte = 0
-                    for (p in selectedPersons) {
+                    for (p in finalPersons) {
                         val b = p.mask!!.buffer.get(i)
                         if ((b.toInt() and 0xFF) > (maxVal.toInt() and 0xFF)) {
                             maxVal = b
@@ -285,7 +288,7 @@ class GlRenderer : FrameRenderer {
                     GLES20.GL_LUMINANCE, GLES20.GL_UNSIGNED_BYTE, mergedBuffer
                 )
             }
-            val lowestFoot = selectedPersons.maxOf { it.bbox.bottom }
+            val lowestFoot = finalPersons.maxOf { it.bbox.bottom }
             GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uFootY"), lowestFoot / height.toFloat())
         }
         GLES20.glUniform1i(GLES20.glGetUniformLocation(programId, "uMaskTexture"), 1)

@@ -5,6 +5,7 @@ import com.danceanon.native.inference.NativeMask
 import com.danceanon.native.inference.PersonDetection
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sqrt
 
 class InternalTrack(
     val id: Int,
@@ -34,13 +35,15 @@ class InternalTrack(
 }
 
 class TrackManager(
-    private val maxMissedFrames: Int = 30
+    private val maxMissedFrames: Int = 60
 ) : PersonTracker {
 
     private val tracks = mutableListOf<InternalTrack>()
+    private var nextTrackId = 0
 
     override fun initialize(detections: List<PersonDetection>): List<TrackedPerson> {
         tracks.clear()
+        nextTrackId = 0
         for ((index, det) in detections.withIndex()) {
             val track = InternalTrack(
                 id = index,
@@ -50,6 +53,7 @@ class TrackManager(
                 state = TrackState.ACTIVE
             )
             tracks.add(track)
+            nextTrackId = maxOf(nextTrackId, index + 1)
         }
         return tracks.map { it.toTrackedPerson() }
     }
@@ -59,6 +63,10 @@ class TrackManager(
             return initialize(detections)
         }
 
+        if (detections.isEmpty()) {
+            return predict(timestampUs)
+        }
+
         // 1. Predict all tracks with Kalman Filter
         val predictedBoxes = tracks.map { track ->
             val pred = track.kalman.predict()
@@ -66,22 +74,26 @@ class TrackManager(
             pred
         }
 
-        // 2. First Stage: Match ACTIVE tracks with high-confidence detections
-        val activeIndices = tracks.indices.filter { tracks[it].state == TrackState.ACTIVE }
-        val costMatrixActive = Array(activeIndices.size) { r ->
-            val trackIdx = activeIndices[r]
-            val predBox = predictedBoxes[trackIdx]
+        // 2. Compute cost matrix based on IoU + Euclidean Center Distance
+        val costMatrix = Array(tracks.size) { r ->
+            val predBox = predictedBoxes[r]
             FloatArray(detections.size) { c ->
-                1.0f - computeIoU(predBox, detections[c].bbox)
+                val detBox = detections[c].bbox
+                val iou = computeIoU(predBox, detBox)
+                val dx = (predBox.centerX - detBox.centerX) / 640f
+                val dy = (predBox.centerY - detBox.centerY) / 640f
+                val dist = sqrt(dx * dx + dy * dy).coerceIn(0f, 1f)
+                // Low cost when IoU is high or centers are close
+                (0.6f * (1.0f - iou) + 0.4f * dist).coerceIn(0f, 1f)
             }
         }
 
-        val firstMatch = HungarianSolver.match(costMatrixActive, maxCostThreshold = 0.55f)
+        val matchResult = HungarianSolver.match(costMatrix, maxCostThreshold = 0.85f)
         val matchedTrackIndices = mutableSetOf<Int>()
         val matchedDetectionIndices = mutableSetOf<Int>()
 
-        for (match in firstMatch.matches) {
-            val trackIdx = activeIndices[match.first]
+        for (match in matchResult.matches) {
+            val trackIdx = match.first
             val detIdx = match.second
             matchedTrackIndices.add(trackIdx)
             matchedDetectionIndices.add(detIdx)
@@ -96,49 +108,32 @@ class TrackManager(
             track.kalman.update(det.bbox)
         }
 
-        // 3. Second Stage: Match LOST tracks with remaining unmatched detections
-        val lostIndices = tracks.indices.filter { tracks[it].state == TrackState.LOST && !matchedTrackIndices.contains(it) }
-        val remainingDetIndices = detections.indices.filter { !matchedDetectionIndices.contains(it) }
-
-        if (lostIndices.isNotEmpty() && remainingDetIndices.isNotEmpty()) {
-            val costMatrixLost = Array(lostIndices.size) { r ->
-                val trackIdx = lostIndices[r]
-                val predBox = predictedBoxes[trackIdx]
-                FloatArray(remainingDetIndices.size) { c ->
-                    val detIdx = remainingDetIndices[c]
-                    1.0f - computeIoU(predBox, detections[detIdx].bbox)
-                }
-            }
-
-            val secondMatch = HungarianSolver.match(costMatrixLost, maxCostThreshold = 0.70f)
-            for (match in secondMatch.matches) {
-                val trackIdx = lostIndices[match.first]
-                val detIdx = remainingDetIndices[match.second]
-                matchedTrackIndices.add(trackIdx)
-                matchedDetectionIndices.add(detIdx)
-
-                val track = tracks[trackIdx]
-                val det = detections[detIdx]
-                track.bbox = det.bbox
-                track.mask = det.mask ?: track.mask
-                track.confidence = det.confidence
-                track.missedFrames = 0
-                track.state = TrackState.ACTIVE
-                track.kalman.update(det.bbox)
-            }
-        }
-
-        // 4. Handle unmatched tracks
+        // 3. Handle unmatched tracks
         for (i in tracks.indices) {
             if (!matchedTrackIndices.contains(i)) {
                 val track = tracks[i]
                 track.missedFrames++
-                track.bbox = predictedBoxes[i] // Use predicted bounding box as fallback
+                track.bbox = predictedBoxes[i]
                 if (track.missedFrames > maxMissedFrames) {
                     track.state = TrackState.REMOVED
                 } else {
                     track.state = TrackState.LOST
                 }
+            }
+        }
+
+        // 4. Add new tracks for unmatched detections
+        for (c in detections.indices) {
+            if (!matchedDetectionIndices.contains(c)) {
+                val det = detections[c]
+                val newTrack = InternalTrack(
+                    id = nextTrackId++,
+                    bbox = det.bbox,
+                    mask = det.mask,
+                    confidence = det.confidence,
+                    state = TrackState.ACTIVE
+                )
+                tracks.add(newTrack)
             }
         }
 
@@ -157,6 +152,7 @@ class TrackManager(
 
     override fun reset() {
         tracks.clear()
+        nextTrackId = 0
     }
 
     private fun computeIoU(boxA: FloatRect, boxB: FloatRect): Float {

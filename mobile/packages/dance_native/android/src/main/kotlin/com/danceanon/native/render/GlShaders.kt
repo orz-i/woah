@@ -82,7 +82,7 @@ void main() {
 
     // 2. Solid Color Fill
     if (uEffectType == 0) {
-        if (maskVal > 0.3) {
+        if (maskVal > 0.05) {
             float alpha = uOpacity * (uFillColor.a > 0.01 ? uFillColor.a : 1.0);
             gl_FragColor = mix(baseColor, vec4(uFillColor.rgb, 1.0), alpha);
             return;
@@ -96,11 +96,11 @@ void main() {
         float mRight = texture2D(uMaskTexture, maskUv + vec2(uOutlineWidth * uTexelSize.x, 0.0)).r;
         
         float edge = max(max(abs(maskVal - mUp), abs(maskVal - mDown)), max(abs(maskVal - mLeft), abs(maskVal - mRight)));
-        if (edge > 0.2) {
+        if (edge > 0.05) {
             float outAlpha = uOpacity * (uOutlineColor.a > 0.01 ? uOutlineColor.a : 1.0);
             gl_FragColor = mix(baseColor, vec4(uOutlineColor.rgb, 1.0), outAlpha);
             return;
-        } else if (maskVal > 0.3) {
+        } else if (maskVal > 0.05) {
             float alpha = uOpacity * (uFillColor.a > 0.01 ? uFillColor.a : 1.0);
             gl_FragColor = mix(baseColor, vec4(uFillColor.rgb, 1.0), alpha);
             return;
@@ -108,7 +108,7 @@ void main() {
     }
     // 4. Blur / Mosaic
     else if (uEffectType == 2) {
-        if (maskVal > 0.3) {
+        if (maskVal > 0.05) {
             vec4 sum = vec4(0.0);
             float count = 0.0;
             float r = max(3.0, uBlurRadius * 2.0);
@@ -125,7 +125,7 @@ void main() {
     }
     // 5. Gradient Color
     else if (uEffectType == 3) {
-        if (maskVal > 0.3) {
+        if (maskVal > 0.05) {
             vec4 gradColor = mix(uFillColor, uGradientColor, maskUv.y);
             float alpha = uOpacity * (gradColor.a > 0.01 ? gradColor.a : 1.0);
             gl_FragColor = mix(baseColor, vec4(gradColor.rgb, 1.0), alpha);
@@ -134,7 +134,7 @@ void main() {
     }
     // 6. Skin whiten
     else if (uEffectType == 4) {
-        if (maskVal > 0.3) {
+        if (maskVal > 0.05) {
             vec3 hsv = rgb2hsv(baseColor.rgb);
             if (hsv.x >= 0.02 && hsv.x <= 0.18) {
                 hsv.z = min(1.0, hsv.z + 0.20 * uSkinWhitenStrength);
