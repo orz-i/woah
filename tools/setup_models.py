@@ -35,16 +35,36 @@ def compute_sha256(file_path: Path) -> str:
     return hasher.hexdigest()
 
 def verify_onnx_contract(onnx_path: Path) -> bool:
-    """Optionally verifies ONNX tensor shapes if onnx is importable."""
+    """Verifies ONNX model integrity and exact input/output tensor contract for Android native pipeline."""
     try:
         import onnx
         model = onnx.load(str(onnx_path))
         onnx.checker.check_model(model)
-        print(f"  [ONNX Checker] Model integrity verified successfully (opset: {model.opset_import[0].version})")
+
+        # 1. Verify inputs
+        inputs = model.graph.input
+        if not inputs:
+            print("  ❌ [ONNX Contract Error] Model has no inputs")
+            return False
+
+        input_names = [inp.name for inp in inputs]
+        if "images" not in input_names:
+            print(f"  ❌ [ONNX Contract Error] Expected input tensor 'images', got: {input_names}")
+            return False
+
+        # 2. Verify outputs
+        outputs = model.graph.output
+        output_names = [out.name for out in outputs]
+        if "output0" not in output_names or "output1" not in output_names:
+            print(f"  ❌ [ONNX Contract Error] Expected outputs 'output0' and 'output1', got: {output_names}")
+            return False
+
+        opset = model.opset_import[0].version if model.opset_import else "unknown"
+        print(f"  ✅ [ONNX Checker] Model contract verified successfully (opset: {opset}, inputs: {input_names}, outputs: {output_names})")
         return True
     except Exception as e:
-        print(f"  [ONNX Checker Note] Skipping deep graph check ({e})")
-        return True
+        print(f"  ❌ [ONNX Contract Error] Failed to verify ONNX graph: {e}")
+        return False
 
 def setup_android_model(root: Path) -> bool:
     source_model = root / "models" / "litert" / f"{MODEL_NAME}.onnx"
@@ -88,16 +108,19 @@ def setup_android_model(root: Path) -> bool:
     file_size_mb = target_model.stat().st_size / (1024 * 1024)
     sha256_hash = compute_sha256(target_model)
 
-    verify_onnx_contract(target_model)
+    if not verify_onnx_contract(target_model):
+        print(f"❌ Model contract verification failed for: {target_model}")
+        return False
 
     print("\n==========================================")
     print("SUCCESS: Android Model Asset Ready!")
     print(f"  Path:     {target_model}")
     print(f"  Size:     {file_size_mb:.2f} MB")
     print(f"  SHA256:   {sha256_hash}")
-    print(f"  Verified: {sha256_hash == EXPECTED_SHA256}")
+    print(f"  Contract: PASS")
     print("==========================================\n")
     return True
+
 
 
 def main():

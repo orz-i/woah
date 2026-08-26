@@ -46,7 +46,9 @@ models/litert/*.onnx
 .flutter-plugins-dependencies
 .packages
 **/build/
-*.lock
+pubspec.lock
+!uv.lock
+
 
 # --- Android ---
 **/android/.gradle/

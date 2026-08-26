@@ -11,6 +11,9 @@ dependencies = [
     "torch>=2.0.0",
     "torchvision>=0.15.0",
     "pillow>=9.0.0",
+    "onnxscript>=0.7.1",
+    "onnxruntime>=1.24.3",
+    "onnxslim>=0.1.96",
 ]
 
 [tool.uv]

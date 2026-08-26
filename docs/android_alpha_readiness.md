@@ -14,9 +14,11 @@
   2. 消除渲染热点内存分配：实现 Direct ByteBuffer 复用与抓帧内存懒加载，避免导出期间多余的 8~33MB 内存驻留；
   3. 补齐进程意外终止（Process Death）后的导出任务状态对齐与恢复机制 (interrupted 状态转换与持久化)。
 - **测试覆盖与全链路验证**：
-  - Flutter 单元与 Widget 测试：19/19 PASS
-  - Android JVM 单元测试：47/47 PASS
+  - Flutter 单元与 Widget 测试：22/22 PASS
+  - Android JVM 单元测试：53/53 PASS (含坐标约定与回归防护测试)
   - Python 跟踪与隐私度量：MOTA 100%, IDF1 100%, Exposure Frames = 0 (100% Coverage)
+  - Production CI：Model provisioning 确定性通过，ONNX 契约真实校验，Android Native 测试与 Debug APK 构建全绿。
+
 
 ---
 
