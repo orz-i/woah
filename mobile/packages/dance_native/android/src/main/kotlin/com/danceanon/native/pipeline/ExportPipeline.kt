@@ -196,6 +196,18 @@ class ExportPipeline(
                 val profile = ProcessingProfile.fromName(request.processingProfile)
                 val frameStride = profile.inferenceStride
                 var lastProgressEmitTime = 0L
+                val isSam2Mode = profile.useSam2
+                var sam2Fbo: com.danceanon.native.sam2.Sam2InputFbo? = null
+                var sam2Renderer: com.danceanon.native.sam2.Sam2InputRenderer? = null
+                var sam2Tracker: com.danceanon.native.sam2.ISam2VideoTracker? = null
+
+
+                if (isSam2Mode) {
+                    sam2Fbo = com.danceanon.native.sam2.Sam2InputFbo(com.danceanon.native.sam2.Sam2TensorContract.IMAGE_SIZE)
+                    sam2Renderer = com.danceanon.native.sam2.Sam2InputRenderer()
+                    sam2Tracker = com.danceanon.native.sam2.Sam2VideoTracker("", "", "", "")
+                    android.util.Log.i("ExportPipeline", "Initialized SAM2 temporal tracking engine (1024x1024)")
+                }
 
                 while (!isCancelled.get()) {
                     val fed = decoder.feedInputBuffer()
@@ -239,141 +251,162 @@ class ExportPipeline(
                             glRenderer.renderBase(oesTextureId, finalTexMatrix)
                         }
 
-                        // 2. Perform 640x640 GPU letterbox rendering and zero-allocation inference
-                        val shouldInfer = (processedFrames == 1) || (processedFrames % frameStride == 0)
-                        val detections = if (shouldInfer) {
-                            profiler.recordStage("gpuLetterbox") {
-                                inferenceRenderer.renderToFbo(oesTextureId, finalTexMatrix, mapper, inferenceFbo)
-                            }
-                            val debugSize = inferenceFbo.size
-                            if (processedFrames <= 5) {
-                                val currentFb = IntArray(1)
-                                GLES20.glGetIntegerv(GLES20.GL_FRAMEBUFFER_BINDING, currentFb, 0)
-                                android.util.Log.i(
-                                    "ExportPipeline",
-                                    "INFERENCE_READBACK frame=$processedFrames " +
-                                    "target=${targetWidth}x${targetHeight} " +
-                                    "fbo=$debugSize " +
-                                    "mapperSrc=${mapper.srcWidth}x${mapper.srcHeight} " +
-                                    "scaled=${mapper.scaledW}x${mapper.scaledH} " +
-                                    "pad=(${mapper.padLeft},${mapper.padTop}) " +
-                                    "fbBeforeRead=${currentFb[0]} " +
-                                    "fbExpected=$debugSize"
-                                )
-                            }
-                            val rgbaBuffer = profiler.recordStage("readback640") {
-                                inferenceFbo.readRgbaPixels()
-                            }
-                            val seg = profiler.recordStage("inference") {
-                                if (processedFrames <= 10) {
-                                    try {
-                                        val debugBmp = android.graphics.Bitmap.createBitmap(debugSize, debugSize, android.graphics.Bitmap.Config.ARGB_8888)
-                                        for (dstY in 0 until debugSize) {
-                                            val srcY = debugSize - 1 - dstY
-                                            for (x in 0 until debugSize) {
-                                                val offset = (srcY * debugSize + x) * 4
-                                                val r = rgbaBuffer.get(offset).toInt() and 0xFF
-                                                val g = rgbaBuffer.get(offset + 1).toInt() and 0xFF
-                                                val b = rgbaBuffer.get(offset + 2).toInt() and 0xFF
-                                                val a = rgbaBuffer.get(offset + 3).toInt() and 0xFF
-                                                debugBmp.setPixel(x, dstY, (a shl 24) or (r shl 16) or (g shl 8) or b)
-                                            }
-                                        }
-                                        val frameNumStr = String.format("%04d", processedFrames)
-                                        val debugOut = File(context.cacheDir, "debug_inference_$frameNumStr.png")
-                                        java.io.FileOutputStream(debugOut).use { out ->
-                                            debugBmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
-                                        }
-                                        debugBmp.recycle()
-                                        android.util.Log.i("ExportPipeline", "Saved debug inference image $processedFrames: ${debugOut.absolutePath}")
-                                    } catch (_: Throwable) {}
-                                }
-                                segmenter.segmentGlReadbackRgbaSync(rgbaBuffer, mapper, ptsUs, colOrder = RgbaColOrder.LEFT_TO_RIGHT)
-                            }
-
-
-
+                        // 2. Perform Inference / Temporal Mask Tracking
+                        val trackedList: List<com.danceanon.native.tracking.TrackedPerson> = if (isSam2Mode && sam2Fbo != null && sam2Renderer != null && sam2Tracker != null) {
                             if (processedFrames == 1) {
-                                for ((idx, det) in seg.persons.withIndex()) {
-                                    android.util.Log.i("ExportPipeline", "Export frame 1 det[$idx]: bbox=(${det.bbox.left}, ${det.bbox.top}, ${det.bbox.right}, ${det.bbox.bottom}) centerY=${det.bbox.centerY}")
+                                // Frame 1: YOLO anchor detection to register prompt boxes
+                                inferenceRenderer.renderToFbo(oesTextureId, finalTexMatrix, mapper, inferenceFbo)
+                                val rgbaBuffer = inferenceFbo.readRgbaPixels()
+                                val seg = segmenter.segmentGlReadbackRgbaSync(rgbaBuffer, mapper, ptsUs, colOrder = RgbaColOrder.LEFT_TO_RIGHT)
+                                val initialPersons = seg.persons.sortedBy { it.bbox.centerX }
+
+                                initialPersons.mapIndexed { idx, det ->
+                                    val dummyBmp = android.graphics.Bitmap.createBitmap(targetWidth, targetHeight, android.graphics.Bitmap.Config.ARGB_8888)
+                                    sam2Tracker.initialize(
+                                        com.danceanon.native.sam2.Sam2InitRequest(
+                                            frame = dummyBmp,
+                                            sourceWidth = targetWidth,
+                                            sourceHeight = targetHeight,
+                                            objectId = idx,
+                                            bbox = det.bbox
+                                        )
+                                    )
+                                    dummyBmp.recycle()
+
+                                    val visualMask = det.mask?.copy(
+                                        samplingRect = com.danceanon.native.inference.FloatRect(0f, 0f, 1f, 1f)
+                                    ) ?: det.mask
+
+                                    com.danceanon.native.tracking.TrackedPerson(
+                                        id = idx,
+                                        bbox = det.bbox,
+                                        mask = visualMask,
+                                        confidence = det.confidence,
+                                        state = com.danceanon.native.tracking.TrackState.ACTIVE
+                                    )
                                 }
-                            }
-                            profiler.recordStage("privacySafety") {
-                                com.danceanon.native.privacy.PrivacySegmentationProcessor.DEFAULT.applyPrivacySafety(seg.persons)
+                            } else {
+                                // Frame 2+: SAM2 persistent temporal propagation
+                                sam2Renderer.renderToFbo(oesTextureId, finalTexMatrix, sam2Fbo)
+                                val dummyBmp = android.graphics.Bitmap.createBitmap(targetWidth, targetHeight, android.graphics.Bitmap.Config.ARGB_8888)
+                                val sam2Results = sam2Tracker.step(dummyBmp, processedFrames)
+                                dummyBmp.recycle()
+
+                                sam2Results.map { res ->
+                                    val maskBuffer = java.nio.ByteBuffer.allocateDirect(targetWidth * targetHeight)
+                                    for (v in res.softMask) {
+                                        maskBuffer.put((v * 255f).toInt().coerceIn(0, 255).toByte())
+                                    }
+                                    maskBuffer.rewind()
+
+                                    val sam2Mask = com.danceanon.native.inference.NativeMask(
+                                        width = targetWidth,
+                                        height = targetHeight,
+                                        buffer = maskBuffer,
+                                        originalWidth = targetWidth,
+                                        originalHeight = targetHeight,
+                                        samplingRect = com.danceanon.native.inference.FloatRect(0f, 0f, 1f, 1f)
+                                    )
+
+                                    com.danceanon.native.tracking.TrackedPerson(
+                                        id = res.objectId,
+                                        bbox = res.bbox,
+                                        mask = sam2Mask,
+                                        confidence = 1.0f,
+                                        state = com.danceanon.native.tracking.TrackState.ACTIVE
+                                    )
+                                }
                             }
 
                         } else {
-                            emptyList()
-                        }
-
-
-                        // 3. Run tracking on detections with stable ID mapping from analysis cache
-                        val trackedList = profiler.recordStage("tracking") {
-                            if (processedFrames == 1) {
-                                val cacheMgr = com.danceanon.native.storage.CacheManager(context)
-                                val metadata = if (request.analysisCacheId.isNotBlank()) cacheMgr.getAnalysisMetadata(request.analysisCacheId) else null
-                                if (metadata != null && metadata.persons.isNotEmpty() && detections.isNotEmpty()) {
-                                    val cached = metadata.persons
-                                    val costMatrix = Array(cached.size) { r ->
-                                        val cPerson = cached[r]
-                                        val cLeft = (cPerson.bbox.left * targetWidth).toFloat()
-                                        val cTop = (cPerson.bbox.top * targetHeight).toFloat()
-                                        val cRight = (cPerson.bbox.right * targetWidth).toFloat()
-                                        val cBottom = (cPerson.bbox.bottom * targetHeight).toFloat()
-                                        val cBox = com.danceanon.native.inference.FloatRect(cLeft, cTop, cRight, cBottom)
-
-                                        FloatArray(detections.size) { c ->
-                                            val dBox = detections[c].bbox
-                                            val iou = com.danceanon.native.tracking.TrackManager.computeBBoxIoU(cBox, dBox)
-                                            val refDim = maxOf(cBox.width, cBox.height, 1f)
-                                            val dx = cBox.centerX - dBox.centerX
-                                            val dy = cBox.centerY - dBox.centerY
-                                            val dist = kotlin.math.sqrt(dx * dx + dy * dy)
-                                            val distScore = (1.0f - (dist / (refDim * 1.5f))).coerceIn(0f, 1f)
-                                            val score = 0.7f * iou + 0.3f * distScore
-                                            (1.0f - score).coerceIn(0f, 1f)
-                                        }
-                                    }
-
-                                    val matchResult = com.danceanon.native.tracking.HungarianSolver.match(costMatrix, maxCostThreshold = 0.85f)
-                                    val assignedIds = IntArray(detections.size) { -1 }
-                                    val usedIds = mutableSetOf<Int>()
-
-                                    for (match in matchResult.matches) {
-                                        val cIdx = match.first
-                                        val dIdx = match.second
-                                        if (dIdx < detections.size && cIdx < cached.size) {
-                                            val pId = cached[cIdx].id.toInt()
-                                            assignedIds[dIdx] = pId
-                                            usedIds.add(pId)
-                                        }
-                                    }
-
-                                    var nextId = 0
-                                    for (i in assignedIds.indices) {
-                                        if (assignedIds[i] == -1) {
-                                            while (usedIds.contains(nextId)) {
-                                                nextId++
-                                            }
-                                            assignedIds[i] = nextId
-                                            usedIds.add(nextId)
-                                            nextId++
-                                        }
-                                    }
-                                    trackManager.initializeWithAssignedIds(detections, assignedIds.toList())
-
-                                } else {
-                                    trackManager.initialize(detections)
+                            // Standard YOLO pipeline
+                            val shouldInfer = (processedFrames == 1) || (processedFrames % frameStride == 0)
+                            val detections = if (shouldInfer) {
+                                profiler.recordStage("gpuLetterbox") {
+                                    inferenceRenderer.renderToFbo(oesTextureId, finalTexMatrix, mapper, inferenceFbo)
                                 }
-                            } else if (!shouldInfer) {
-                                trackManager.predictWithoutObservation(ptsUs)
-                            } else if (detections.isNotEmpty()) {
-                                trackManager.update(detections, ptsUs)
+                                val debugSize = inferenceFbo.size
+                                val rgbaBuffer = profiler.recordStage("readback640") {
+                                    inferenceFbo.readRgbaPixels()
+                                }
+                                val seg = profiler.recordStage("inference") {
+                                    segmenter.segmentGlReadbackRgbaSync(rgbaBuffer, mapper, ptsUs, colOrder = RgbaColOrder.LEFT_TO_RIGHT)
+                                }
+                                profiler.recordStage("privacySafety") {
+                                    com.danceanon.native.privacy.PrivacySegmentationProcessor.DEFAULT.applyPrivacySafety(seg.persons)
+                                }
                             } else {
-                                trackManager.predict(ptsUs)
+                                emptyList()
                             }
 
+                            // Tracking on detections
+                            profiler.recordStage("tracking") {
+                                if (processedFrames == 1) {
+                                    val cacheMgr = com.danceanon.native.storage.CacheManager(context)
+                                    val metadata = if (request.analysisCacheId.isNotBlank()) cacheMgr.getAnalysisMetadata(request.analysisCacheId) else null
+                                    if (metadata != null && metadata.persons.isNotEmpty() && detections.isNotEmpty()) {
+                                        val cached = metadata.persons
+                                        val costMatrix = Array(cached.size) { r ->
+                                            val cPerson = cached[r]
+                                            val cLeft = (cPerson.bbox.left * targetWidth).toFloat()
+                                            val cTop = (cPerson.bbox.top * targetHeight).toFloat()
+                                            val cRight = (cPerson.bbox.right * targetWidth).toFloat()
+                                            val cBottom = (cPerson.bbox.bottom * targetHeight).toFloat()
+                                            val cBox = com.danceanon.native.inference.FloatRect(cLeft, cTop, cRight, cBottom)
+
+                                            FloatArray(detections.size) { c ->
+                                                val dBox = detections[c].bbox
+                                                val iou = com.danceanon.native.tracking.TrackManager.computeBBoxIoU(cBox, dBox)
+                                                val refDim = maxOf(cBox.width, cBox.height, 1f)
+                                                val dx = cBox.centerX - dBox.centerX
+                                                val dy = cBox.centerY - dBox.centerY
+                                                val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+                                                val distScore = (1.0f - (dist / (refDim * 1.5f))).coerceIn(0f, 1f)
+                                                val score = 0.7f * iou + 0.3f * distScore
+                                                (1.0f - score).coerceIn(0f, 1f)
+                                            }
+                                        }
+
+                                        val matchResult = com.danceanon.native.tracking.HungarianSolver.match(costMatrix, maxCostThreshold = 0.85f)
+                                        val assignedIds = IntArray(detections.size) { -1 }
+                                        val usedIds = mutableSetOf<Int>()
+
+                                        for (match in matchResult.matches) {
+                                            val cIdx = match.first
+                                            val dIdx = match.second
+                                            if (dIdx < detections.size && cIdx < cached.size) {
+                                                val pId = cached[cIdx].id.toInt()
+                                                assignedIds[dIdx] = pId
+                                                usedIds.add(pId)
+                                            }
+                                        }
+
+                                        var nextId = 0
+                                        for (i in assignedIds.indices) {
+                                            if (assignedIds[i] == -1) {
+                                                while (usedIds.contains(nextId)) {
+                                                    nextId++
+                                                }
+                                                assignedIds[i] = nextId
+                                                usedIds.add(nextId)
+                                                nextId++
+                                            }
+                                        }
+                                        trackManager.initializeWithAssignedIds(detections, assignedIds.toList())
+
+                                    } else {
+                                        trackManager.initialize(detections)
+                                    }
+                                } else if (!shouldInfer) {
+                                    trackManager.predictWithoutObservation(ptsUs)
+                                } else if (detections.isNotEmpty()) {
+                                    trackManager.update(detections, ptsUs)
+                                } else {
+                                    trackManager.predict(ptsUs)
+                                }
+                            }
                         }
+
 
                         // 4. Render final anonymized frame to EGL surface (encoder input)
                         profiler.recordStage("renderEffects") {
@@ -457,9 +490,13 @@ class ExportPipeline(
                 }
 
                 // Close pipeline resources
+                sam2Fbo?.close()
+                sam2Renderer?.close()
+                sam2Tracker?.close()
                 inferenceFbo.close()
                 inferenceRenderer.close()
                 profiler.printSummary(jobId)
+
 
                 muxer.close()
                 decoder.close()

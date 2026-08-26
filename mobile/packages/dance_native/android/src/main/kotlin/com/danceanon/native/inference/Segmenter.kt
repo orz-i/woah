@@ -21,8 +21,10 @@ data class NativeMask(
     val originalWidth: Int,
     val originalHeight: Int,
     val mapper: com.danceanon.native.geometry.ModelCoordinateMapper? = null,
-    val roiInProto: FloatRect? = null
+    val roiInProto: FloatRect? = null,
+    val samplingRect: FloatRect? = null
 )
+
 
 data class PersonDetection(
     val bbox: FloatRect,

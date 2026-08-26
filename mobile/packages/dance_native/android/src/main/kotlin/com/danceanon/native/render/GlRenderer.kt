@@ -442,28 +442,43 @@ class GlRenderer : FrameRenderer {
             )
         }
 
-        // Exact letterbox crop coordinates for mask sampling
-        val maxDim = maxOf(width, height).coerceAtLeast(1)
-        val downW = (width * 640f / maxDim)
-        val downH = (height * 640f / maxDim)
-        val letterScale = minOf(640f / downW, 640f / downH)
-        val scaledW = downW * letterScale
-        val scaledH = downH * letterScale
-        val padLeft = (640f - scaledW) / 2f
-        val padTop = (640f - scaledH) / 2f
-        if (prog.uMaskCropRectLoc >= 0) {
-            GLES20.glUniform4f(
-                prog.uMaskCropRectLoc,
-                padLeft / 640f,
-                padTop / 640f,
-                (padLeft + scaledW) / 640f,
-                (padTop + scaledH) / 640f
-            )
-        }
-
         val finalPersons = persons.filter { selectedPersonIds.contains(it.id) && it.mask != null }
         val hasSelected = finalPersons.isNotEmpty()
+
+        // Mask sampling rect: use explicit samplingRect if present (e.g. SAM2 full visual texture), else fallback to YOLO letterbox
+        val customSamplingRect = finalPersons.firstOrNull()?.mask?.samplingRect
+        if (customSamplingRect != null) {
+            if (prog.uMaskCropRectLoc >= 0) {
+                GLES20.glUniform4f(
+                    prog.uMaskCropRectLoc,
+                    customSamplingRect.left,
+                    customSamplingRect.top,
+                    customSamplingRect.right,
+                    customSamplingRect.bottom
+                )
+            }
+        } else {
+            val maxDim = maxOf(width, height).coerceAtLeast(1)
+            val downW = (width * 640f / maxDim)
+            val downH = (height * 640f / maxDim)
+            val letterScale = minOf(640f / downW, 640f / downH)
+            val scaledW = downW * letterScale
+            val scaledH = downH * letterScale
+            val padLeft = (640f - scaledW) / 2f
+            val padTop = (640f - scaledH) / 2f
+            if (prog.uMaskCropRectLoc >= 0) {
+                GLES20.glUniform4f(
+                    prog.uMaskCropRectLoc,
+                    padLeft / 640f,
+                    padTop / 640f,
+                    (padLeft + scaledW) / 640f,
+                    (padTop + scaledH) / 640f
+                )
+            }
+        }
+
         if (prog.uHasMaskLoc >= 0) GLES20.glUniform1i(prog.uHasMaskLoc, if (hasSelected) 1 else 0)
+
 
         // Setup base texture
         val target = if (textureType == SourceTextureType.OES) GLES11Ext.GL_TEXTURE_EXTERNAL_OES else GLES20.GL_TEXTURE_2D
