@@ -33,21 +33,28 @@ varying vec2 vMaskTexCoord;
 
 uniform samplerExternalOES uBaseTexture;
 uniform sampler2D uMaskTexture;
+uniform sampler2D uStickerTexture;
+
 uniform int uHasMask;
-uniform int uEffectType; // 0: solid, 1: outline, 2: blur, 3: gradient, 4: skin_whiten, 5: leg_stretch
+uniform int uFillMode; // 0: none/solid, 1: outline, 2: blur, 3: gradient, 4: skin_whiten, 5: mosaic
 
 uniform vec4 uFillColor;
-uniform vec4 uOutlineColor;
+uniform vec4 uBorderColor;
 uniform vec4 uGradientColor;
 uniform float uOpacity;
-uniform float uOutlineWidth;
+uniform float uBorderWidth;
 uniform float uBlurRadius;
-uniform float uSkinWhitenStrength;
-uniform float uLegStretchRatio;
-uniform float uFootY;
+uniform float uSkinWhiten;
+
+uniform int uLegStretchEnabled;
+uniform float uLegStretch;
+uniform float uLegZoneTop;
+uniform float uLegZoneBottom;
+
+uniform int uHasSticker;
+uniform vec4 uStickerRect; // (left, top, right, bottom)
 uniform vec2 uTexelSize;
 
-// RGB to HSV conversion
 vec3 rgb2hsv(vec3 c) {
     vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
     vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
@@ -57,7 +64,6 @@ vec3 rgb2hsv(vec3 c) {
     return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
 }
 
-// HSV to RGB conversion
 vec3 hsv2rgb(vec3 c) {
     vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
     vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
@@ -68,85 +74,97 @@ void main() {
     vec2 uv = vOesTexCoord;
     vec2 maskUv = vMaskTexCoord;
 
-    // 1. Leg stretch UV warping
-    if (uHasMask == 1 && uEffectType == 5 && uLegStretchRatio > 1.0) {
-        float waistY = uFootY - 0.45;
-        if (maskUv.y > waistY && maskUv.y <= uFootY) {
-            float t = (maskUv.y - waistY) / (uFootY - waistY);
-            maskUv.y = waistY + t / uLegStretchRatio * (uFootY - waistY);
+    // 1. Leg stretch non-linear dual coordinate warp
+    if (uLegStretchEnabled == 1 && uLegStretch > 1.0) {
+        if (uv.y >= uLegZoneTop && uv.y <= uLegZoneBottom) {
+            float range = max(0.01, uLegZoneBottom - uLegZoneTop);
+            float t = (uv.y - uLegZoneTop) / range;
+            uv.y = uLegZoneTop + (t / uLegStretch) * range;
         }
     }
 
-    vec4 baseColor = texture2D(uBaseTexture, uv);
+    vec4 color = texture2D(uBaseTexture, uv);
+
     if (uHasMask == 0) {
-        gl_FragColor = baseColor;
+        gl_FragColor = color;
         return;
     }
 
     float maskVal = texture2D(uMaskTexture, maskUv).r;
-    if (maskVal <= 0.05) {
-        gl_FragColor = baseColor;
-        return;
-    }
 
-    // 2. Solid Color Fill
-    if (uEffectType == 0) {
-        float alpha = uOpacity * (uFillColor.a > 0.01 ? uFillColor.a : 1.0);
-        gl_FragColor = mix(baseColor, vec4(uFillColor.rgb, 1.0), alpha);
-        return;
-    }
-    // 3. Outline Glow
-    else if (uEffectType == 1) {
-        float mUp    = texture2D(uMaskTexture, maskUv + vec2(0.0, uOutlineWidth * uTexelSize.y)).r;
-        float mDown  = texture2D(uMaskTexture, maskUv - vec2(0.0, uOutlineWidth * uTexelSize.y)).r;
-        float mLeft  = texture2D(uMaskTexture, maskUv - vec2(uOutlineWidth * uTexelSize.x, 0.0)).r;
-        float mRight = texture2D(uMaskTexture, maskUv + vec2(uOutlineWidth * uTexelSize.x, 0.0)).r;
-        
-        float edge = max(max(abs(maskVal - mUp), abs(maskVal - mDown)), max(abs(maskVal - mLeft), abs(maskVal - mRight)));
-        if (edge > 0.05) {
-            float outAlpha = uOpacity * (uOutlineColor.a > 0.01 ? uOutlineColor.a : 1.0);
-            gl_FragColor = mix(baseColor, vec4(uOutlineColor.rgb, 1.0), outAlpha);
-            return;
-        } else {
-            float alpha = uOpacity * (uFillColor.a > 0.01 ? uFillColor.a : 1.0);
-            gl_FragColor = mix(baseColor, vec4(uFillColor.rgb, 1.0), alpha);
-            return;
-        }
-    }
-    // 4. Blur / Mosaic
-    else if (uEffectType == 2) {
-        vec4 sum = vec4(0.0);
-        float count = 0.0;
-        float r = max(3.0, uBlurRadius * 2.0);
-        for (float dx = -3.0; dx <= 3.0; dx += 1.5) {
-            for (float dy = -3.0; dy <= 3.0; dy += 1.5) {
-                sum += texture2D(uBaseTexture, uv + vec2(dx * r * uTexelSize.x, dy * r * uTexelSize.y));
-                count += 1.0;
-            }
-        }
-        vec4 blurred = sum / count;
-        gl_FragColor = mix(baseColor, blurred, uOpacity);
-        return;
-    }
-    // 5. Gradient Color
-    else if (uEffectType == 3) {
-        vec4 gradColor = mix(uFillColor, uGradientColor, maskUv.y);
-        float alpha = uOpacity * (gradColor.a > 0.01 ? gradColor.a : 1.0);
-        gl_FragColor = mix(baseColor, vec4(gradColor.rgb, 1.0), alpha);
-        return;
-    }
-    // 6. Skin whiten
-    else if (uEffectType == 4) {
-        vec3 hsv = rgb2hsv(baseColor.rgb);
+    // 2. Skin whiten effect
+    if (uSkinWhiten > 0.01 && maskVal > 0.1) {
+        vec3 hsv = rgb2hsv(color.rgb);
         if (hsv.x >= 0.02 && hsv.x <= 0.18) {
-            hsv.z = min(1.0, hsv.z + 0.20 * uSkinWhitenStrength);
-            hsv.y = max(0.0, hsv.y - 0.10 * uSkinWhitenStrength);
+            hsv.z = min(1.0, hsv.z + 0.25 * uSkinWhiten * maskVal);
+            hsv.y = max(0.0, hsv.y - 0.15 * uSkinWhiten * maskVal);
+            color = vec4(hsv2rgb(hsv), color.a);
         }
-        vec3 whitenedRgb = hsv2rgb(hsv);
-        gl_FragColor = vec4(mix(baseColor.rgb, whitenedRgb, uOpacity), baseColor.a);
-        return;
     }
 
-    gl_FragColor = baseColor;
+    // 3. Body Anonymization / Fill Effect (Solid / Gradient / Blur / Mosaic)
+    if (maskVal > 0.05) {
+        vec4 effectColor = color;
+        if (uFillMode == 0) { // Solid
+            effectColor = vec4(uFillColor.rgb, 1.0);
+        } else if (uFillMode == 2) { // Blur
+            vec4 sum = vec4(0.0);
+            float count = 0.0;
+            float r = max(2.0, uBlurRadius * 2.0);
+            for (float dx = -2.0; dx <= 2.0; dx += 1.0) {
+                for (float dy = -2.0; dy <= 2.0; dy += 1.0) {
+                    sum += texture2D(uBaseTexture, uv + vec2(dx * r * uTexelSize.x, dy * r * uTexelSize.y));
+                    count += 1.0;
+                }
+            }
+            effectColor = sum / count;
+        } else if (uFillMode == 3) { // Gradient
+            effectColor = mix(uFillColor, uGradientColor, maskUv.y);
+        } else if (uFillMode == 5) { // Mosaic / Pixelate
+            float blockSize = max(4.0, uBlurRadius * 4.0);
+            vec2 blockUv = vec2(
+                floor(uv.x / (blockSize * uTexelSize.x)) * (blockSize * uTexelSize.x),
+                floor(uv.y / (blockSize * uTexelSize.y)) * (blockSize * uTexelSize.y)
+            );
+            effectColor = texture2D(uBaseTexture, blockUv);
+        }
+
+        float blendAlpha = uOpacity * maskVal;
+        color = mix(color, effectColor, blendAlpha);
+    }
+
+    // 4. Real Outward Outline Expansion
+    if (uBorderWidth > 0.1 && uBorderColor.a > 0.01) {
+        float r = uBorderWidth;
+        float m0 = texture2D(uMaskTexture, maskUv + vec2(0.0, r * uTexelSize.y)).r;
+        float m1 = texture2D(uMaskTexture, maskUv - vec2(0.0, r * uTexelSize.y)).r;
+        float m2 = texture2D(uMaskTexture, maskUv + vec2(r * uTexelSize.x, 0.0)).r;
+        float m3 = texture2D(uMaskTexture, maskUv - vec2(r * uTexelSize.x, 0.0)).r;
+        float m4 = texture2D(uMaskTexture, maskUv + vec2(0.707 * r * uTexelSize.x, 0.707 * r * uTexelSize.y)).r;
+        float m5 = texture2D(uMaskTexture, maskUv + vec2(-0.707 * r * uTexelSize.x, 0.707 * r * uTexelSize.y)).r;
+        float m6 = texture2D(uMaskTexture, maskUv + vec2(0.707 * r * uTexelSize.x, -0.707 * r * uTexelSize.y)).r;
+        float m7 = texture2D(uMaskTexture, maskUv + vec2(-0.707 * r * uTexelSize.x, -0.707 * r * uTexelSize.y)).r;
+
+        float maxNeighbor = max(max(max(m0, m1), max(m2, m3)), max(max(m4, m5), max(m6, m7)));
+        float outline = clamp(maxNeighbor - maskVal, 0.0, 1.0);
+        if (outline > 0.05) {
+            color = mix(color, vec4(uBorderColor.rgb, 1.0), outline * uBorderColor.a);
+        }
+    }
+
+    // 5. Sticker Overlay
+    if (uHasSticker == 1) {
+        if (uv.x >= uStickerRect.x && uv.x <= uStickerRect.z &&
+            uv.y >= uStickerRect.y && uv.y <= uStickerRect.w) {
+            vec2 stickerUv = vec2(
+                (uv.x - uStickerRect.x) / (uStickerRect.z - uStickerRect.x),
+                (uv.y - uStickerRect.y) / (uStickerRect.w - uStickerRect.y)
+            );
+            vec4 stickerColor = texture2D(uStickerTexture, stickerUv);
+            color = mix(color, vec4(stickerColor.rgb, 1.0), stickerColor.a);
+        }
+    }
+
+    gl_FragColor = color;
 }""".trimIndent()
 }

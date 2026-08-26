@@ -169,21 +169,27 @@ class GlRenderer : FrameRenderer {
         // Parse Gradient Color ARGB
         GLES20.glUniform4f(GLES20.glGetUniformLocation(programId, "uGradientColor"), 0.5f, 0.2f, 0.9f, 1f)
 
-        // Effect Mode: 0: solid, 1: outline, 2: blur, 3: gradient, 4: skin_whiten, 5: leg_stretch
-        val effectMode = when (effects.fillMode.lowercase()) {
-            "solid" -> if (effects.borderWidth > 0) 1 else 0
+        // Composed Fill Mode: 0: solid, 2: blur, 3: gradient, 5: mosaic
+        val fillModeInt = when (effects.fillMode.lowercase()) {
+            "solid" -> 0
             "blur" -> 2
             "gradient" -> 3
-            "mosaic" -> 2
-            else -> if (effects.skinWhiten > 0) 4 else if (effects.legStretchEnabled) 5 else 0
+            "mosaic" -> 5
+            else -> 0
         }
-        GLES20.glUniform1i(GLES20.glGetUniformLocation(programId, "uEffectType"), effectMode)
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uOpacity"), effects.opacity.toFloat().coerceIn(0.1f, 1.0f))
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uOutlineWidth"), effects.borderWidth.toFloat().coerceAtLeast(1.0f))
+        GLES20.glUniform1i(GLES20.glGetUniformLocation(programId, "uFillMode"), fillModeInt)
+        GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uOpacity"), effects.opacity.toFloat().coerceIn(0.0f, 1.0f))
+        GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uBorderWidth"), effects.borderWidth.toFloat())
         GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uBlurRadius"), effects.blurStrength.toFloat().coerceAtLeast(1.0f))
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uSkinWhitenStrength"), effects.skinWhiten.toFloat())
-        val legRatio = if (effects.legStretchEnabled) (1.0 + effects.legStretch).toFloat() else 1.0f
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uLegStretchRatio"), legRatio)
+        GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uSkinWhiten"), effects.skinWhiten.toFloat())
+
+        val legStretchEnabled = if (effects.legStretchEnabled) 1 else 0
+        val legStretch = (1.0 + effects.legStretch).toFloat().coerceAtLeast(1.0f)
+        GLES20.glUniform1i(GLES20.glGetUniformLocation(programId, "uLegStretchEnabled"), legStretchEnabled)
+        GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uLegStretch"), legStretch)
+        GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uLegZoneTop"), effects.legZoneTop.toFloat().coerceIn(0f, 1f))
+        GLES20.glUniform1f(GLES20.glGetUniformLocation(programId, "uLegZoneBottom"), effects.legZoneBottom.toFloat().coerceIn(0f, 1f))
+        GLES20.glUniform1i(GLES20.glGetUniformLocation(programId, "uHasSticker"), 0)
         GLES20.glUniform2f(GLES20.glGetUniformLocation(programId, "uTexelSize"), 1f / width.coerceAtLeast(1), 1f / height.coerceAtLeast(1))
 
         // Follow Crop Mapping
