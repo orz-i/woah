@@ -60,11 +60,38 @@ class InferenceFbo(val size: Int = 640) : AutoCloseable {
     }
 
     fun readRgbaPixels(): ByteBuffer {
-        pixelBuffer.rewind()
-        GLES20.glReadPixels(0, 0, size, size, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, pixelBuffer)
-        pixelBuffer.rewind()
-        return pixelBuffer
+        val previousFramebuffer = IntArray(1)
+        GLES20.glGetIntegerv(GLES20.GL_FRAMEBUFFER_BINDING, previousFramebuffer, 0)
+
+        try {
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, framebufferId)
+
+            val actualFramebuffer = IntArray(1)
+            GLES20.glGetIntegerv(GLES20.GL_FRAMEBUFFER_BINDING, actualFramebuffer, 0)
+            if (actualFramebuffer[0] != framebufferId) {
+                android.util.Log.e(
+                    "InferenceFbo",
+                    "Readback framebuffer mismatch: expected $framebufferId, got ${actualFramebuffer[0]}"
+                )
+            }
+
+            val status = GLES20.glCheckFramebufferStatus(GLES20.GL_FRAMEBUFFER)
+            if (status != GLES20.GL_FRAMEBUFFER_COMPLETE) {
+                android.util.Log.e(
+                    "InferenceFbo",
+                    "Framebuffer incomplete during readback: id=$framebufferId, size=$size, status=$status"
+                )
+            }
+
+            pixelBuffer.rewind()
+            GLES20.glReadPixels(0, 0, size, size, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, pixelBuffer)
+            pixelBuffer.rewind()
+            return pixelBuffer
+        } finally {
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, previousFramebuffer[0])
+        }
     }
+
 
     override fun close() {
         if (framebufferId != 0) {

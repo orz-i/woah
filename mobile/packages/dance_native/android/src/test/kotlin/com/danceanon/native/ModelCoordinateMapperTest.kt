@@ -55,4 +55,49 @@ class ModelCoordinateMapperTest {
         assertEquals(80, protoX)
         assertEquals(80, protoY)
     }
+
+    @Test
+    fun testMultiAspectRatioLetterboxInvariants() {
+        val testCases = listOf(
+            Pair(1920, 1080), // Case A: 16:9 Landscape
+            Pair(1280, 720),  // Case B: 16:9 Landscape
+            Pair(1080, 1920), // Case C: 9:16 Portrait
+            Pair(1024, 1024), // Case D: 1:1 Square
+            Pair(1440, 1080), // Case E: 4:3
+            Pair(2560, 1080), // 21:9 Ultrawide
+            Pair(720, 1280),  // 9:16 Portrait
+            Pair(3840, 2160)  // 4K UHD
+        )
+
+        val modelSizes = listOf(640, 320, 160)
+
+        for ((srcW, srcH) in testCases) {
+            for (mSize in modelSizes) {
+                val mapper = ModelCoordinateMapper(srcWidth = srcW, srcHeight = srcH, modelInputSize = mSize)
+
+                // Invariant 1: Inside model bounds
+                assertTrue(mapper.scaledW <= mSize + 0.01f, "scaledW exceeds modelSize for ${srcW}x${srcH}")
+                assertTrue(mapper.scaledH <= mSize + 0.01f, "scaledH exceeds modelSize for ${srcW}x${srcH}")
+
+                // Invariant 2: Non-negative padding
+                assertTrue(mapper.padLeft >= -0.01f, "padLeft is negative for ${srcW}x${srcH}")
+                assertTrue(mapper.padTop >= -0.01f, "padTop is negative for ${srcW}x${srcH}")
+
+                // Invariant 3: Aspect ratio preservation
+                val srcAspect = srcW.toFloat() / srcH.toFloat()
+                val scaledAspect = mapper.scaledW / mapper.scaledH
+                assertEquals(srcAspect, scaledAspect, 0.01f, "Aspect ratio mismatch for ${srcW}x${srcH}")
+
+                // Invariant 4: Fit-inside (at least one dimension reaches modelInputSize, no crop)
+                val reachesW = kotlin.math.abs(mapper.scaledW - mSize) < 0.01f
+                val reachesH = kotlin.math.abs(mapper.scaledH - mSize) < 0.01f
+                assertTrue(reachesW || reachesH, "Fit-inside failed (neither dimension filled) for ${srcW}x${srcH}")
+
+                // Invariant 5: Symmetry of letterbox padding
+                assertEquals(mSize.toFloat(), mapper.scaledW + 2 * mapper.padLeft, 0.01f)
+                assertEquals(mSize.toFloat(), mapper.scaledH + 2 * mapper.padTop, 0.01f)
+            }
+        }
+    }
 }
+

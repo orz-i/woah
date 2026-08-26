@@ -245,17 +245,33 @@ class ExportPipeline(
                             profiler.recordStage("gpuLetterbox") {
                                 inferenceRenderer.renderToFbo(oesTextureId, finalTexMatrix, mapper, inferenceFbo)
                             }
+                            val debugSize = inferenceFbo.size
+                            if (processedFrames <= 5) {
+                                val currentFb = IntArray(1)
+                                GLES20.glGetIntegerv(GLES20.GL_FRAMEBUFFER_BINDING, currentFb, 0)
+                                android.util.Log.i(
+                                    "ExportPipeline",
+                                    "INFERENCE_READBACK frame=$processedFrames " +
+                                    "target=${targetWidth}x${targetHeight} " +
+                                    "fbo=$debugSize " +
+                                    "mapperSrc=${mapper.srcWidth}x${mapper.srcHeight} " +
+                                    "scaled=${mapper.scaledW}x${mapper.scaledH} " +
+                                    "pad=(${mapper.padLeft},${mapper.padTop}) " +
+                                    "fbBeforeRead=${currentFb[0]} " +
+                                    "fbExpected=$debugSize"
+                                )
+                            }
                             val rgbaBuffer = profiler.recordStage("readback640") {
                                 inferenceFbo.readRgbaPixels()
                             }
                             val seg = profiler.recordStage("inference") {
-                                if (processedFrames == 1) {
+                                if (processedFrames <= 10) {
                                     try {
-                                        val debugBmp = android.graphics.Bitmap.createBitmap(640, 640, android.graphics.Bitmap.Config.ARGB_8888)
-                                        for (dstY in 0 until 640) {
-                                            val srcY = 639 - dstY
-                                            for (x in 0 until 640) {
-                                                val offset = (srcY * 640 + x) * 4
+                                        val debugBmp = android.graphics.Bitmap.createBitmap(debugSize, debugSize, android.graphics.Bitmap.Config.ARGB_8888)
+                                        for (dstY in 0 until debugSize) {
+                                            val srcY = debugSize - 1 - dstY
+                                            for (x in 0 until debugSize) {
+                                                val offset = (srcY * debugSize + x) * 4
                                                 val r = rgbaBuffer.get(offset).toInt() and 0xFF
                                                 val g = rgbaBuffer.get(offset + 1).toInt() and 0xFF
                                                 val b = rgbaBuffer.get(offset + 2).toInt() and 0xFF
@@ -263,16 +279,18 @@ class ExportPipeline(
                                                 debugBmp.setPixel(x, dstY, (a shl 24) or (r shl 16) or (g shl 8) or b)
                                             }
                                         }
-                                        val debugOut = File(context.cacheDir, "debug_inference_frame_0.png")
+                                        val frameNumStr = String.format("%04d", processedFrames)
+                                        val debugOut = File(context.cacheDir, "debug_inference_$frameNumStr.png")
                                         java.io.FileOutputStream(debugOut).use { out ->
                                             debugBmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
                                         }
                                         debugBmp.recycle()
-                                        android.util.Log.i("ExportPipeline", "Saved debug inference frame 0: ${debugOut.absolutePath}")
+                                        android.util.Log.i("ExportPipeline", "Saved debug inference image $processedFrames: ${debugOut.absolutePath}")
                                     } catch (_: Throwable) {}
                                 }
                                 segmenter.segmentGlReadbackRgbaSync(rgbaBuffer, mapper, ptsUs, colOrder = RgbaColOrder.LEFT_TO_RIGHT)
                             }
+
 
 
                             if (processedFrames == 1) {
