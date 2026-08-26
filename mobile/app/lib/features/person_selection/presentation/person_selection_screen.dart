@@ -26,7 +26,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(viewportFraction: 0.86);
+    _pageController = PageController(viewportFraction: 1.0);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref
           .read(personSelectionControllerProvider.notifier)
@@ -44,7 +44,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
     if (page >= 0 && page < totalCount) {
       _pageController.animateToPage(
         page,
-        duration: const Duration(milliseconds: 300),
+        duration: const Duration(milliseconds: 280),
         curve: Curves.easeInOut,
       );
     }
@@ -58,12 +58,10 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('人物选择 (Select Persons)'),
+        elevation: 0,
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12.0),
-          child: _buildBody(context, state, controller),
-        ),
+        child: _buildBody(context, state, controller),
       ),
       bottomNavigationBar: state.status == PersonSelectionStatus.ready
           ? _buildBottomBar(context, state, controller)
@@ -155,158 +153,156 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // 1. Header & Quick Actions
+        // 1. Compact Top Bar (Selection count & Quick buttons)
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '共检测到 $totalCount 位人物',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 2),
-                  const Text(
-                    '左右滑动或点击箭头切换人物',
-                    style: TextStyle(fontSize: 12, color: Colors.white54),
-                  ),
-                ],
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.deepPurpleAccent.withAlpha(35),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.deepPurpleAccent.withAlpha(70)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.people_alt_rounded, size: 16, color: Colors.purpleAccent),
+                    const SizedBox(width: 6),
+                    Text(
+                      '已选择 $selectedCount / $totalCount 位人物',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               Row(
                 children: [
-                  TextButton(
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    ),
                     onPressed: () => controller.selectAll(),
-                    child: const Text('全选'),
+                    icon: const Icon(Icons.select_all_rounded, size: 16),
+                    label: const Text('全选'),
                   ),
-                  TextButton(
+                  const SizedBox(width: 4),
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    ),
                     onPressed: () => controller.deselectAll(),
-                    child: const Text('清空'),
+                    icon: const Icon(Icons.deselect_rounded, size: 16),
+                    label: const Text('清空'),
                   ),
                 ],
               ),
             ],
           ),
         ),
-        const SizedBox(height: 8),
 
-        // 2. Info Hint Banner
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.deepPurpleAccent.withAlpha(25),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.deepPurpleAccent.withAlpha(60)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.info_outline, size: 16, color: Colors.purpleAccent),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '已选择 $selectedCount / $totalCount 位人物进行匿名化/美颜',
-                    style: const TextStyle(fontSize: 12, color: Colors.white70),
-                  ),
-                ),
-              ],
-            ),
+        // 2. Main Showcase: Full Single-Viewport Carousel (PageView)
+        Expanded(
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: persons.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentPage = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              final p = persons[index];
+              final isSelected = state.selectedPersonIds.contains(p.id);
+              return PersonCard(
+                person: p,
+                isSelected: isSelected,
+                onToggle: () => controller.togglePerson(p.id),
+              );
+            },
           ),
         ),
-        const SizedBox(height: 12),
 
-        // 3. Single-viewport Swipeable Carousel (PageView)
-        Expanded(
-          child: Stack(
-            alignment: Alignment.center,
+        // 3. Integrated Navigation & Pagination Bar
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 6.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              PageView.builder(
-                controller: _pageController,
-                itemCount: persons.length,
-                onPageChanged: (index) {
-                  setState(() {
-                    _currentPage = index;
-                  });
-                },
-                itemBuilder: (context, index) {
-                  final p = persons[index];
-                  final isSelected = state.selectedPersonIds.contains(p.id);
-                  return PersonCard(
-                    person: p,
-                    isSelected: isSelected,
-                    onToggle: () => controller.togglePerson(p.id),
-                  );
-                },
+              // Previous Arrow Button
+              IconButton(
+                style: IconButton.styleFrom(
+                  backgroundColor: _currentPage > 0 ? Colors.white.withAlpha(20) : Colors.transparent,
+                  disabledBackgroundColor: Colors.transparent,
+                ),
+                icon: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  size: 18,
+                  color: _currentPage > 0 ? Colors.white : Colors.white24,
+                ),
+                onPressed: _currentPage > 0
+                    ? () => _scrollToPage(_currentPage - 1, totalCount)
+                    : null,
               ),
 
-              // Left Nav Arrow
-              if (_currentPage > 0)
-                Positioned(
-                  left: 4,
-                  child: Material(
-                    color: Colors.black45,
-                    shape: const CircleBorder(),
-                    child: IconButton(
-                      icon: const Icon(Icons.chevron_left, color: Colors.white, size: 28),
-                      onPressed: () => _scrollToPage(_currentPage - 1, totalCount),
+              // Page Indicator Dots & Page Text
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '第 ${_currentPage + 1} / $totalCount 位人物',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: List.generate(totalCount, (index) {
+                      final isCurrent = index == _currentPage;
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        width: isCurrent ? 20 : 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: isCurrent
+                              ? Colors.deepPurpleAccent
+                              : Colors.white24,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      );
+                    }),
+                  ),
+                ],
+              ),
 
-              // Right Nav Arrow
-              if (_currentPage < totalCount - 1)
-                Positioned(
-                  right: 4,
-                  child: Material(
-                    color: Colors.black45,
-                    shape: const CircleBorder(),
-                    child: IconButton(
-                      icon: const Icon(Icons.chevron_right, color: Colors.white, size: 28),
-                      onPressed: () => _scrollToPage(_currentPage + 1, totalCount),
-                    ),
-                  ),
+              // Next Arrow Button
+              IconButton(
+                style: IconButton.styleFrom(
+                  backgroundColor: _currentPage < totalCount - 1 ? Colors.white.withAlpha(20) : Colors.transparent,
+                  disabledBackgroundColor: Colors.transparent,
                 ),
+                icon: Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 18,
+                  color: _currentPage < totalCount - 1 ? Colors.white : Colors.white24,
+                ),
+                onPressed: _currentPage < totalCount - 1
+                    ? () => _scrollToPage(_currentPage + 1, totalCount)
+                    : null,
+              ),
             ],
           ),
         ),
-
-        const SizedBox(height: 8),
-
-        // 4. Page Indicator Dots & Page Text
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              '${_currentPage + 1} / $totalCount',
-              style: const TextStyle(fontSize: 13, color: Colors.white70, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(width: 12),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: List.generate(totalCount, (index) {
-                final isCurrent = index == _currentPage;
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  width: isCurrent ? 16 : 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: isCurrent
-                        ? Colors.deepPurpleAccent
-                        : Colors.white24,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                );
-              }),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
       ],
     );
   }
@@ -319,7 +315,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
     final hasSelection = state.selectedPersonIds.isNotEmpty;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
       decoration: const BoxDecoration(
         color: Color(0xFF1D1B20),
         border: Border(top: BorderSide(color: Colors.white10)),
