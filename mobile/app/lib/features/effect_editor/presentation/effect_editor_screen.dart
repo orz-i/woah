@@ -35,7 +35,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('特效参数调节 (Effect Editor)'),
+        title: const Text('画面特效调节'),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -49,7 +49,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
 
               // 2. Effect Mode Selector
               Text(
-                '特效填充模式',
+                '遮挡样式选择',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -72,6 +72,14 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
   Widget _buildPreviewCard(EffectEditorState state) {
     final thumbPath = state.previewThumbnailPath;
     final hasThumb = thumbPath != null && thumbPath.isNotEmpty && File(thumbPath).existsSync();
+
+    final modeName = switch (state.effects.fillMode) {
+      FillMode.solid => '纯色遮挡',
+      FillMode.blur => '动态模糊',
+      FillMode.gradient => '纵向渐变',
+      FillMode.mosaic => '像素马赛克',
+      FillMode.sticker => '趣味贴纸',
+    };
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -101,7 +109,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
                   border: Border.all(color: Colors.white24),
                 ),
                 child: Text(
-                  '当前模式: ${state.effects.fillMode.name.toUpperCase()}',
+                  '当前样式: $modeName',
                   style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -132,7 +140,13 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
             children: [
               Icon(item.$3, size: 16, color: isSelected ? Colors.black : Colors.white70),
               const SizedBox(width: 6),
-              Text(item.$2, style: TextStyle(color: isSelected ? Colors.black : Colors.white, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+              Text(
+                item.$2,
+                style: TextStyle(
+                  color: isSelected ? Colors.black : Colors.white,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
             ],
           ),
           selected: isSelected,
@@ -155,9 +169,9 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Opacity slider (Common for all)
+        // Opacity slider
         _buildSlider(
-          label: '不透明度 (Opacity)',
+          label: '遮挡不透明度',
           value: effects.opacity,
           min: 0.1,
           max: 1.0,
@@ -168,24 +182,24 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
         // Solid / Gradient Color Picker
         if (effects.fillMode == FillMode.solid || effects.fillMode == FillMode.gradient) ...[
           const SizedBox(height: 16),
-          const Text('主填充颜色 (Fill Color)', style: TextStyle(fontSize: 13, color: Colors.white70)),
+          const Text('遮挡填充颜色', style: TextStyle(fontSize: 13, color: Colors.white70)),
           const SizedBox(height: 8),
           _buildColorPalette(effects.fillColorArgb, (argb) => controller.updateFillColor(argb)),
         ],
 
-        // Border / Outline Width
+        // Border Width
         const SizedBox(height: 16),
         _buildSlider(
-          label: '边缘描边宽度 (Border Width)',
+          label: '边缘描边粗细',
           value: effects.borderWidth,
           min: 0.0,
           max: 20.0,
-          displayValue: '${effects.borderWidth.toInt()} px',
+          displayValue: '${effects.borderWidth.toInt()} 像素',
           onChanged: (val) => controller.updateBorderWidth(val),
         ),
         if (effects.borderWidth > 0) ...[
           const SizedBox(height: 12),
-          const Text('描边颜色 (Border Color)', style: TextStyle(fontSize: 13, color: Colors.white70)),
+          const Text('描边发光颜色', style: TextStyle(fontSize: 13, color: Colors.white70)),
           const SizedBox(height: 8),
           _buildColorPalette(effects.borderColorArgb, (argb) => controller.updateBorderColor(argb)),
         ],
@@ -194,11 +208,11 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
         if (effects.fillMode == FillMode.blur || effects.fillMode == FillMode.mosaic) ...[
           const SizedBox(height: 16),
           _buildSlider(
-            label: '模糊/马赛克强度 (Blur Strength)',
+            label: '模糊 / 马赛克强度',
             value: effects.blurStrength,
             min: 1.0,
             max: 30.0,
-            displayValue: '${effects.blurStrength.toInt()} px',
+            displayValue: '${effects.blurStrength.toInt()}',
             onChanged: (val) => controller.updateBlurStrength(val),
           ),
         ],
@@ -206,7 +220,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
         // Skin Whiten controls
         const SizedBox(height: 16),
         _buildSlider(
-          label: '肤色美白强度 (Skin Whiten)',
+          label: '人像美白提亮',
           value: effects.skinWhiten,
           min: 0.0,
           max: 1.0,
@@ -219,7 +233,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('智能拉腿优化 (Leg Stretch)', style: TextStyle(fontSize: 13, color: Colors.white70)),
+            const Text('智能身材比例优化', style: TextStyle(fontSize: 13, color: Colors.white70)),
             Switch(
               value: effects.legStretchEnabled,
               onChanged: (val) => controller.updateLegStretch(enabled: val, stretch: 0.15),
@@ -240,7 +254,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
         // 4. Follow Crop Controls
         const Divider(height: 32),
         Text(
-          '智能运镜追踪 (Follow Crop)',
+          '主角专属特写镜头',
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
@@ -250,7 +264,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('锁定主角平滑运镜', style: TextStyle(fontSize: 13, color: Colors.white70)),
+            const Text('自动跟随主角平滑运镜', style: TextStyle(fontSize: 13, color: Colors.white70)),
             Switch(
               value: state.project?.follow.enabled ?? false,
               onChanged: (val) => controller.updateFollowConfig(enabled: val),
@@ -259,11 +273,11 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
         ),
         if (state.project?.follow.enabled == true) ...[
           _buildSlider(
-            label: '特写镜头变焦倍数 (Zoom)',
+            label: '特写放大倍数',
             value: state.project!.follow.zoom,
             min: 1.0,
             max: 2.5,
-            displayValue: '${state.project!.follow.zoom.toStringAsFixed(1)}x',
+            displayValue: '${state.project!.follow.zoom.toStringAsFixed(1)}倍',
             onChanged: (val) => controller.updateFollowConfig(zoom: val),
           ),
         ],
@@ -371,7 +385,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
         },
         icon: const Icon(Icons.movie_creation_rounded, size: 20),
         label: const Text(
-          '下一步：开始硬件编码导出',
+          '下一步：生成并导出视频',
           style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
         ),
         style: ElevatedButton.styleFrom(

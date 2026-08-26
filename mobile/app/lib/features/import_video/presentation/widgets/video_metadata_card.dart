@@ -17,7 +17,6 @@ class VideoMetadataCard extends StatelessWidget {
     final durationSec = (info.durationMs / 1000.0).toStringAsFixed(1);
 
     return Card(
-      elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -25,13 +24,14 @@ class VideoMetadataCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.analytics_outlined, color: Colors.cyanAccent),
+                const Icon(Icons.movie_outlined, color: Colors.white70, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    fileName ?? '视频规格参数 (Video Metadata)',
+                    fileName ?? '视频基本信息',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -55,51 +55,51 @@ class VideoMetadataCard extends StatelessWidget {
             _buildGridRow(
               context,
               icon1: Icons.aspect_ratio,
-              label1: '显示分辨率',
+              label1: '画面分辨率',
               value1: '${info.width} × ${info.height}',
               icon2: Icons.screen_rotation,
-              label2: '朝向角度',
+              label2: '拍摄方向',
               value2: '${info.rotation}°',
             ),
             const SizedBox(height: 12),
             _buildGridRow(
               context,
               icon1: Icons.speed,
-              label1: '帧率 (FPS)',
+              label1: '画面流畅度',
               value1: '${info.fps.toStringAsFixed(1)} fps',
               icon2: Icons.timer_outlined,
-              label2: '时长',
+              label2: '视频时长',
               value2: '$durationSec 秒',
             ),
             const SizedBox(height: 12),
             _buildGridRow(
               context,
               icon1: Icons.video_file_outlined,
-              label1: '视频编码',
+              label1: '视频格式',
               value1: _formatCodec(info.videoCodec),
               icon2: Icons.audiotrack,
               label2: '音频声道',
               value2: info.hasAudio
-                  ? (info.audioCodec != null ? _formatCodec(info.audioCodec!) : '存在音轨')
+                  ? (info.audioCodec != null ? _formatCodec(info.audioCodec!) : '包含音频')
                   : '无音频',
             ),
             if (info.rotation != 0) ...[
               const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.amber.withAlpha(30),
+                  color: Colors.white.withAlpha(10),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.amber.withAlpha(80)),
+                  border: Border.all(color: Colors.white12),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.info_outline, color: Colors.amberAccent, size: 18),
+                    const Icon(Icons.info_outline, color: Colors.white70, size: 18),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        '检测到录制朝向 ${info.rotation}° (编码 ${info.codedWidth}×${info.codedHeight})，AI与渲染已自动对齐为视觉 ${info.width}×${info.height}。',
-                        style: const TextStyle(fontSize: 12, color: Colors.amberAccent),
+                        '检测到录制朝向 ${info.rotation}°，画面已自动校准为最佳播放方向。',
+                        style: const TextStyle(fontSize: 12, color: Colors.white70),
                       ),
                     ),
                   ],
@@ -139,7 +139,7 @@ class VideoMetadataCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(label, style: const TextStyle(fontSize: 11, color: Colors.white54)),
-            Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
           ],
         ),
       ],

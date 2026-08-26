@@ -11,7 +11,7 @@ void main() {
     );
 
     expect(find.text('Dance Anonymizer'), findsOneWidget);
-    expect(find.text('原生引擎与硬件状态'), findsOneWidget);
+    expect(find.text('智能舞蹈视频人物隐私保护'), findsOneWidget);
     expect(find.text('选择舞蹈视频'), findsOneWidget);
   });
 }

@@ -65,7 +65,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('视频渲染导出'),
+        title: const Text('正在导出视频'),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => _confirmCancel(context, controller),
@@ -120,18 +120,18 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                             style: const TextStyle(
                               fontSize: 38,
                               fontWeight: FontWeight.bold,
+                              color: Colors.white,
                               fontFeatures: [FontFeature.tabularFigures()],
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${state.fps.toStringAsFixed(1)} FPS',
+                            state.progress >= 1.0 ? '即将完成' : '处理中',
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                               fontSize: 14,
                               color: Colors.white60,
                               fontWeight: FontWeight.w600,
-                              fontFeatures: [FontFeature.tabularFigures()],
                             ),
                           ),
                         ],
@@ -162,7 +162,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
-                      isFailed ? '渲染遇到异常，请重试或复制日志反馈' : _getStatusTitle(state.status),
+                      isFailed ? '导出遇到异常，请重试或复制日志反馈' : _getStatusTitle(state.status),
                       textAlign: TextAlign.center,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -222,8 +222,8 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                         icon: const Icon(Icons.refresh_rounded),
                         label: const Text('重试导出'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.deepPurpleAccent,
-                          foregroundColor: Colors.white,
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -257,20 +257,20 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
 
   String _getStatusTitle(ExportJobState status) {
     switch (status) {
+      case ExportJobState.queued:
+        return '正在排队等待处理...';
       case ExportJobState.preparing:
-        return '正在初始化硬件编解码器与 OpenGL 环境...';
+        return '正在准备视频资源...';
       case ExportJobState.processing:
-        return '正在进行逐帧 AI 分割与特效渲染...';
+        return '正在智能识别并绘制遮挡...';
       case ExportJobState.muxing:
-        return '正在混合原音轨与封装 MP4...';
+        return '正在合成音频并完成保存...';
       case ExportJobState.completed:
         return '导出完成！';
       case ExportJobState.cancelled:
         return '已取消导出';
       case ExportJobState.failed:
         return '导出失败';
-      default:
-        return '处理中...';
     }
   }
 
@@ -278,12 +278,14 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('确认取消导出？'),
-        content: const Text('正在进行中的视频渲染进度将丢失，并释放硬件编码器。'),
+        backgroundColor: const Color(0xFF18181C),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text('确认取消导出？', style: TextStyle(color: Colors.white)),
+        content: const Text('当前导出进度将丢失，确认取消吗？', style: TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('继续导出'),
+            child: const Text('继续导出', style: TextStyle(color: Colors.white)),
           ),
           TextButton(
             onPressed: () {
@@ -293,7 +295,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
             },
             child: const Text('确认取消', style: TextStyle(color: Colors.redAccent)),
           ),
-          ],
+        ],
       ),
     );
   }

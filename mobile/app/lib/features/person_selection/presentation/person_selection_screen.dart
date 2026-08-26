@@ -57,7 +57,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('人物选择 (Select Persons)'),
+        title: const Text('选择目标人物'),
         elevation: 0,
       ),
       body: SafeArea(
@@ -86,7 +86,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
             ),
             const SizedBox(height: 24),
             Text(
-              '正在进行首帧 YOLO 分割与人物分析...',
+              '正在智能识别画面人物...',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -94,7 +94,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              '按从左到右排序并裁剪高清人物缩略图',
+              '已按画面位置从左到右智能排列',
               style: TextStyle(color: Colors.white60, fontSize: 13),
             ),
           ],
@@ -335,7 +335,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
         icon: const Icon(Icons.tune_rounded, size: 20),
         label: Text(
           hasSelection
-              ? '下一步：特效参数调节 (已选 ${state.selectedPersonIds.length} 人)'
+              ? '下一步：调节特效 (已选 ${state.selectedPersonIds.length} 人)'
               : '请至少选择一位人物',
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
         ),

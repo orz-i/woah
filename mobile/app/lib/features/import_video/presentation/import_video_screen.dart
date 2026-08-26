@@ -1,24 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:dance_native/dance_native.dart';
-import '../../../repositories/native_processing_repository.dart';
 import '../domain/video_import_state.dart';
 import 'import_video_controller.dart';
 import 'widgets/video_metadata_card.dart';
 import 'widgets/video_preview_player.dart';
-
-final capabilitiesProvider = FutureProvider<NativeCapabilitiesDto>((ref) async {
-  final repo = ref.watch(nativeRepositoryProvider);
-  return repo.getCapabilities();
-});
 
 class ImportVideoScreen extends ConsumerWidget {
   const ImportVideoScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final capsAsync = ref.watch(capabilitiesProvider);
     final importState = ref.watch(importVideoControllerProvider);
     final controller = ref.read(importVideoControllerProvider.notifier);
 
@@ -40,8 +32,8 @@ class ImportVideoScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 1. Hardware capabilities card
-              _buildCapabilitiesCard(context, capsAsync),
+              // 1. App Introduction / Feature Header Banner
+              _buildFeatureHeader(context),
               const SizedBox(height: 16),
 
               // 2. Main content area
@@ -58,76 +50,41 @@ class ImportVideoScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildCapabilitiesCard(
-    BuildContext context,
-    AsyncValue<NativeCapabilitiesDto> capsAsync,
-  ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.memory_rounded, color: Colors.white70, size: 18),
-                const SizedBox(width: 8),
+  Widget _buildFeatureHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF131316),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF2E2E34)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(12),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.shield_outlined, size: 22, color: Colors.white),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
                 Text(
-                  '原生引擎与硬件状态',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                  '智能舞蹈视频人物隐私保护',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+                SizedBox(height: 3),
+                Text(
+                  '精准识别人体轮廓 · 动态遮挡 · 保留原始高清画质',
+                  style: TextStyle(fontSize: 12, color: Colors.white54),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            capsAsync.when(
-              data: (caps) => Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildCapsBadge('API', '${caps.androidApi}'),
-                  _buildCapsBadge('GPU', caps.gpuSupported ? 'GLES 3.0' : 'No'),
-                  _buildCapsBadge('H.264', caps.h264Encoder ? '支持' : '不支持'),
-                  _buildCapsBadge('CPU', '${caps.cpuCores}核'),
-                  _buildCapsBadge('Profile', caps.recommendedProfile.toUpperCase()),
-                ],
-              ),
-              loading: () => const Row(
-                children: [
-                  SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
-                  ),
-                  SizedBox(width: 8),
-                  Text('检测设备能力中...', style: TextStyle(fontSize: 12, color: Colors.white60)),
-                ],
-              ),
-              error: (err, _) => Text(
-                'Native 连接异常: $err',
-                style: const TextStyle(color: Colors.redAccent, fontSize: 12),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCapsBadge(String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E24),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withAlpha(15)),
-      ),
-      child: Column(
-        children: [
-          Text(label, style: const TextStyle(fontSize: 10, color: Colors.white54)),
-          const SizedBox(height: 2),
-          Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
+          ),
         ],
       ),
     );
@@ -204,7 +161,7 @@ class ImportVideoScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  '支持 MP4 / MOV / H.264 / HEVC，自动校准旋转朝向',
+                  '支持常见视频格式，自动校准画面方向',
                   style: TextStyle(fontSize: 12, color: Colors.white54),
                 ),
               ],
@@ -217,8 +174,8 @@ class ImportVideoScreen extends ConsumerWidget {
 
   Widget _buildLoadingCard(BuildContext context, VideoImportStatus status) {
     final text = status == VideoImportStatus.picking
-        ? '正在选取本地视频...'
-        : '正在通过 Native 引擎深度解析视频规格...';
+        ? '正在选取视频...'
+        : '正在解析视频信息...';
 
     return Container(
       height: 240,
@@ -274,7 +231,7 @@ class ImportVideoScreen extends ConsumerWidget {
           },
           icon: const Icon(Icons.person_search_rounded, size: 20),
           label: const Text(
-            '下一步：首帧人物分析',
+            '下一步：智能识别人物',
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
           ),
           style: ElevatedButton.styleFrom(
