@@ -132,6 +132,7 @@ class DanceNativeApiImpl(
 
         val coroutineJob = exportScope.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
             try {
+                com.danceanon.native.service.ExportForegroundService.start(context, jobId)
                 exportPipeline.execute(
                     jobId = jobId,
                     sourceUri = sourceUri,
@@ -139,6 +140,11 @@ class DanceNativeApiImpl(
                     isCancelled = isCancelled,
                     onStatusChange = { status ->
                         jobManager.updateStatus(jobId, status)
+                        com.danceanon.native.service.ExportForegroundService.updateProgress(
+                            context,
+                            jobId,
+                            (status.progress * 100).toInt()
+                        )
                     }
                 )
             } catch (e: Throwable) {
@@ -160,6 +166,8 @@ class DanceNativeApiImpl(
                 kotlinx.coroutines.CoroutineScope(Dispatchers.Main).launch {
                     try { eventEmitter?.onProgressUpdate(failedStatus) } catch (_: Throwable) {}
                 }
+            } finally {
+                com.danceanon.native.service.ExportForegroundService.stop(context)
             }
         }
 
