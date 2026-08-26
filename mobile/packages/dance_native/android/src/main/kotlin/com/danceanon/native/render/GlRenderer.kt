@@ -18,11 +18,6 @@ class GlRenderer : FrameRenderer {
     private var width = 0
     private var height = 0
     private var maskTextureId = 0
-    private var fboId = 0
-    private var fboTexId = 0
-    private var fboWidth = 640
-    private var fboHeight = 640
-    private var fboBuffer: ByteBuffer? = null
     private var captureBuffer: ByteBuffer? = null
 
     private val follower = com.danceanon.native.camera.SmoothFollower()
@@ -50,13 +45,6 @@ class GlRenderer : FrameRenderer {
     override fun initialize(width: Int, height: Int) {
         this.width = width
         this.height = height
-
-        // Proportional FBO dimensions preserving exact video aspect ratio
-        val maxDim = maxOf(width, height).coerceAtLeast(1)
-        val rawFboW = (width * 640f / maxDim).toInt()
-        val rawFboH = (height * 640f / maxDim).toInt()
-        fboWidth = maxOf(2, (rawFboW + 1) / 2 * 2)
-        fboHeight = maxOf(2, (rawFboH + 1) / 2 * 2)
 
         val vShader = compileShader(GLES20.GL_VERTEX_SHADER, GlShaders.VERTEX_SHADER)
         val fShader = compileShader(GLES20.GL_FRAGMENT_SHADER, GlShaders.FRAGMENT_SHADER)
@@ -99,42 +87,16 @@ class GlRenderer : FrameRenderer {
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
 
-        initFboCapture()
-    }
-
-    private fun initFboCapture() {
-        val fbos = IntArray(1)
-        GLES20.glGenFramebuffers(1, fbos, 0)
-        fboId = fbos[0]
-
-        val textures = IntArray(1)
-        GLES20.glGenTextures(1, textures, 0)
-        fboTexId = textures[0]
-
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, fboTexId)
-        GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, fboWidth, fboHeight, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null)
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
-
-        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboId)
-        GLES20.glFramebufferTexture2D(GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0, GLES20.GL_TEXTURE_2D, fboTexId, 0)
-        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
-
-        fboBuffer = ByteBuffer.allocateDirect(fboWidth * fboHeight * 4).order(ByteOrder.nativeOrder())
         captureBuffer = ByteBuffer.allocateDirect(width * height * 4).order(ByteOrder.nativeOrder())
     }
 
-    fun captureFrameForInference(frameTexture: Int, texMatrix: FloatArray?): Bitmap? {
-        val buf = fboBuffer ?: return null
-
-        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboId)
-        GLES20.glViewport(0, 0, fboWidth, fboHeight)
+    fun renderBase(frameTexture: Int, texMatrix: FloatArray?) {
+        GLES20.glViewport(0, 0, width, height)
         GLES20.glClearColor(0f, 0f, 0f, 1f)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
 
         GLES20.glUseProgram(programId)
+
         val matrix = texMatrix ?: identityMatrix
         GLES20.glUniformMatrix4fv(GLES20.glGetUniformLocation(programId, "uTexMatrix"), 1, false, matrix, 0)
         GLES20.glUniform4f(GLES20.glGetUniformLocation(programId, "uCropRect"), 0f, 0f, 1f, 1f)
@@ -145,38 +107,10 @@ class GlRenderer : FrameRenderer {
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, frameTexture)
         GLES20.glUniform1i(GLES20.glGetUniformLocation(programId, "uBaseTexture"), 0)
 
-        val aPositionLoc = GLES20.glGetAttribLocation(programId, "aPosition")
-        val aTexCoordLoc = GLES20.glGetAttribLocation(programId, "aTexCoord")
-        if (aPositionLoc >= 0 && aTexCoordLoc >= 0) {
-            vertexBuffer?.position(0)
-            GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, 4 * 4, vertexBuffer)
-            GLES20.glEnableVertexAttribArray(aPositionLoc)
-
-            vertexBuffer?.position(2)
-            GLES20.glVertexAttribPointer(aTexCoordLoc, 2, GLES20.GL_FLOAT, false, 4 * 4, vertexBuffer)
-            GLES20.glEnableVertexAttribArray(aTexCoordLoc)
-
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
-
-            GLES20.glDisableVertexAttribArray(aPositionLoc)
-            GLES20.glDisableVertexAttribArray(aTexCoordLoc)
-        }
-
-        buf.rewind()
-        GLES20.glReadPixels(0, 0, fboWidth, fboHeight, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buf)
-        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
-
-        val rawBmp = Bitmap.createBitmap(fboWidth, fboHeight, Bitmap.Config.ARGB_8888)
-        buf.rewind()
-        rawBmp.copyPixelsFromBuffer(buf)
-
-        val flipMatrix = Matrix().apply { postScale(1f, -1f) }
-        val rightSideUpBmp = Bitmap.createBitmap(rawBmp, 0, 0, fboWidth, fboHeight, flipMatrix, true)
-        rawBmp.recycle()
-        return rightSideUpBmp
+        drawQuad()
     }
 
-    fun captureRenderedFrame(): Bitmap? {
+    fun captureFrameForInference(): Bitmap? {
         val buf = captureBuffer ?: return null
         buf.rewind()
         GLES20.glReadPixels(0, 0, width, height, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buf)
@@ -184,7 +118,7 @@ class GlRenderer : FrameRenderer {
         buf.rewind()
         fullBmp.copyPixelsFromBuffer(buf)
 
-        // Scale and flip vertically
+        // Downscale to max 640 for fast YOLO inference & flip vertically because glReadPixels reads bottom-up
         val scale = 640f / maxOf(width, height).coerceAtLeast(1)
         val matrix = Matrix().apply {
             postScale(scale, -scale)
@@ -192,6 +126,10 @@ class GlRenderer : FrameRenderer {
         val scaledBmp = Bitmap.createBitmap(fullBmp, 0, 0, width, height, matrix, true)
         fullBmp.recycle()
         return scaledBmp
+    }
+
+    fun captureRenderedFrame(): Bitmap? {
+        return captureFrameForInference()
     }
 
     fun render(
@@ -266,9 +204,12 @@ class GlRenderer : FrameRenderer {
         )
 
         // Exact letterbox crop coordinates for mask sampling
-        val letterScale = minOf(640f / fboWidth, 640f / fboHeight)
-        val scaledW = fboWidth * letterScale
-        val scaledH = fboHeight * letterScale
+        val maxDim = maxOf(width, height).coerceAtLeast(1)
+        val downW = (width * 640f / maxDim)
+        val downH = (height * 640f / maxDim)
+        val letterScale = minOf(640f / downW, 640f / downH)
+        val scaledW = downW * letterScale
+        val scaledH = downH * letterScale
         val padLeft = (640f - scaledW) / 2f
         val padTop = (640f - scaledH) / 2f
         GLES20.glUniform4f(
@@ -329,7 +270,21 @@ class GlRenderer : FrameRenderer {
         }
         GLES20.glUniform1i(GLES20.glGetUniformLocation(programId, "uMaskTexture"), 1)
 
-        // Bind attributes
+        drawQuad()
+    }
+
+    override fun render(
+        frameTexture: Int,
+        persons: List<TrackedPerson>,
+        selectedPersonIds: Set<Int>,
+        effects: EffectConfigDto,
+        follow: FollowConfigDto,
+        presentationTimeUs: Long
+    ) {
+        render(frameTexture, null, persons, selectedPersonIds, effects, follow, presentationTimeUs)
+    }
+
+    private fun drawQuad() {
         val aPositionLoc = GLES20.glGetAttribLocation(programId, "aPosition")
         val aTexCoordLoc = GLES20.glGetAttribLocation(programId, "aTexCoord")
 
@@ -347,17 +302,6 @@ class GlRenderer : FrameRenderer {
             GLES20.glDisableVertexAttribArray(aPositionLoc)
             GLES20.glDisableVertexAttribArray(aTexCoordLoc)
         }
-    }
-
-    override fun render(
-        frameTexture: Int,
-        persons: List<TrackedPerson>,
-        selectedPersonIds: Set<Int>,
-        effects: EffectConfigDto,
-        follow: FollowConfigDto,
-        presentationTimeUs: Long
-    ) {
-        render(frameTexture, null, persons, selectedPersonIds, effects, follow, presentationTimeUs)
     }
 
     private fun compileShader(type: Int, source: String): Int {
@@ -387,14 +331,6 @@ class GlRenderer : FrameRenderer {
             val textures = intArrayOf(maskTextureId)
             GLES20.glDeleteTextures(1, textures, 0)
             maskTextureId = 0
-        }
-        if (fboId != 0) {
-            GLES20.glDeleteFramebuffers(1, intArrayOf(fboId), 0)
-            fboId = 0
-        }
-        if (fboTexId != 0) {
-            GLES20.glDeleteTextures(1, intArrayOf(fboTexId), 0)
-            fboTexId = 0
         }
     }
 }

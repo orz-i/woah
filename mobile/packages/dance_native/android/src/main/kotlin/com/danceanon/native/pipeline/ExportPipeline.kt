@@ -220,10 +220,13 @@ class ExportPipeline(
                         val rotation = videoInfo.rotation.toInt()
                         val finalTexMatrix = GlRenderer.computeTransformMatrix(stMatrix, rotation)
 
-                        // Run AI segmentation & tracking on the decoded video frame
+                        // 1. Draw base video frame to EGL window surface
+                        glRenderer.renderBase(oesTextureId, finalTexMatrix)
+
+                        // 2. Capture real frame for AI segmentation & tracking directly from EGL surface
                         val inferenceInterval = 1
                         val detections = if (processedFrames == 1 || processedFrames % inferenceInterval == 0) {
-                            val inferenceBmp = glRenderer.captureFrameForInference(oesTextureId, finalTexMatrix)
+                            val inferenceBmp = glRenderer.captureFrameForInference()
                             if (inferenceBmp != null) {
                                 val seg = segmenter.segmentBitmapSync(inferenceBmp, ptsUs)
                                 inferenceBmp.recycle()
@@ -235,7 +238,7 @@ class ExportPipeline(
                             emptyList()
                         }
 
-                        // Run tracking on detections
+                        // 3. Run tracking on detections
                         val trackedList = if (processedFrames == 1) {
                             trackManager.initialize(detections)
                         } else if (detections.isNotEmpty()) {
@@ -244,7 +247,7 @@ class ExportPipeline(
                             trackManager.predict(ptsUs)
                         }
 
-                        // 1. Render final anonymized frame to EGL surface (encoder input)
+                        // 4. Render final anonymized frame to EGL surface (encoder input)
                         glRenderer.render(
                             frameTexture = oesTextureId,
                             texMatrix = finalTexMatrix,
