@@ -10,6 +10,11 @@ import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import kotlin.math.min
 
+enum class RgbaRowOrder {
+    TOP_TO_BOTTOM,
+    BOTTOM_TO_TOP
+}
+
 data class PreprocessResult(
     val floatBuffer: FloatBuffer,
     val byteBuffer: ByteBuffer,
@@ -36,8 +41,15 @@ object YoloPreprocessor {
     fun processRgbaBuffer(
         rgbaBuffer: ByteBuffer,
         mapper: ModelCoordinateMapper,
-        workspace: PreprocessorWorkspace
+        workspace: PreprocessorWorkspace,
+        rowOrder: RgbaRowOrder = RgbaRowOrder.TOP_TO_BOTTOM
     ): PreprocessResult {
+        val expectedBytes = workspace.inputSize * workspace.inputSize * 4
+        require(rgbaBuffer.capacity() >= expectedBytes) {
+            "RGBA buffer too small: capacity ${rgbaBuffer.capacity()} < expected $expectedBytes"
+        }
+
+        val inputSize = workspace.inputSize
         val numPixels = workspace.numPixels
         val floatBuffer = workspace.floatBuffer
         val byteBuffer = workspace.byteBuffer
@@ -48,18 +60,29 @@ object YoloPreprocessor {
         val gOffset = numPixels
         val bOffset = 2 * numPixels
 
-        rgbaBuffer.rewind()
+        for (dstY in 0 until inputSize) {
+            val srcY = when (rowOrder) {
+                RgbaRowOrder.TOP_TO_BOTTOM -> dstY
+                RgbaRowOrder.BOTTOM_TO_TOP -> inputSize - 1 - dstY
+            }
 
-        for (i in 0 until numPixels) {
-            val r = (rgbaBuffer.get().toInt() and 0xFF) / 255.0f
-            val g = (rgbaBuffer.get().toInt() and 0xFF) / 255.0f
-            val b = (rgbaBuffer.get().toInt() and 0xFF) / 255.0f
-            rgbaBuffer.get() // Skip Alpha
+            val srcRowOffset = srcY * inputSize * 4
+            val dstRowOffset = dstY * inputSize
 
-            floatBuffer.put(rOffset + i, r)
-            floatBuffer.put(gOffset + i, g)
-            floatBuffer.put(bOffset + i, b)
+            for (x in 0 until inputSize) {
+                val srcByteOffset = srcRowOffset + x * 4
+                val dstPixelIndex = dstRowOffset + x
+
+                val r = (rgbaBuffer.get(srcByteOffset).toInt() and 0xFF) / 255.0f
+                val g = (rgbaBuffer.get(srcByteOffset + 1).toInt() and 0xFF) / 255.0f
+                val b = (rgbaBuffer.get(srcByteOffset + 2).toInt() and 0xFF) / 255.0f
+
+                floatBuffer.put(rOffset + dstPixelIndex, r)
+                floatBuffer.put(gOffset + dstPixelIndex, g)
+                floatBuffer.put(bOffset + dstPixelIndex, b)
+            }
         }
+
         floatBuffer.position(0)
         byteBuffer.position(0)
 
@@ -74,6 +97,7 @@ object YoloPreprocessor {
             inputSize = mapper.modelInputSize
         )
     }
+
 
     fun processBitmap(
         bitmap: Bitmap,

@@ -2,6 +2,7 @@ package com.danceanon.native
 
 import com.danceanon.native.geometry.ModelCoordinateMapper
 import com.danceanon.native.inference.PreprocessorWorkspace
+import com.danceanon.native.inference.RgbaRowOrder
 import com.danceanon.native.inference.YoloPreprocessor
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -10,6 +11,96 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class YoloPreprocessorOrientationTest {
+
+    @Test
+    fun glReadPixelsBottomUpBufferIsConvertedToTopDownYoloInput() {
+        // Visual image (2x2):
+        // Visual Row 0 (TOP):    RED   RED
+        // Visual Row 1 (BOTTOM): BLUE  BLUE
+        //
+        // But OpenGL glReadPixels returns bottom-up buffer:
+        // FBO Row 0 (BOTTOM): BLUE  BLUE
+        // FBO Row 1 (TOP):    RED   RED
+        val workspace = PreprocessorWorkspace(inputSize = 2)
+        val mapper = ModelCoordinateMapper(srcWidth = 2, srcHeight = 2, modelInputSize = 2, protoSize = 2)
+
+        val glReadPixelsBuffer = ByteBuffer.allocateDirect(2 * 2 * 4).order(ByteOrder.nativeOrder())
+        // Row 0 (FBO bottom = Blue):
+        glReadPixelsBuffer.put(0.toByte()).put(0.toByte()).put(255.toByte()).put(255.toByte()) // (0,0) Blue
+        glReadPixelsBuffer.put(0.toByte()).put(0.toByte()).put(255.toByte()).put(255.toByte()) // (1,0) Blue
+        // Row 1 (FBO top = Red):
+        glReadPixelsBuffer.put(255.toByte()).put(0.toByte()).put(0.toByte()).put(255.toByte()) // (0,1) Red
+        glReadPixelsBuffer.put(255.toByte()).put(0.toByte()).put(0.toByte()).put(255.toByte()) // (1,1) Red
+        glReadPixelsBuffer.rewind()
+
+        val result = YoloPreprocessor.processRgbaBuffer(
+            rgbaBuffer = glReadPixelsBuffer,
+            mapper = mapper,
+            workspace = workspace,
+            rowOrder = RgbaRowOrder.BOTTOM_TO_TOP
+        )
+        val floatBuf = result.floatBuffer
+        floatBuf.rewind()
+
+        val numPixels = 4
+        val rOffset = 0
+        val bOffset = 2 * numPixels
+
+        // NCHW Tensor Row 0 (Visual TOP) should be RED (R=1.0, B=0.0):
+        assertEquals(1.0f, floatBuf.get(rOffset + 0), "Tensor pixel 0 R should be 1.0 (RED)")
+        assertEquals(1.0f, floatBuf.get(rOffset + 1), "Tensor pixel 1 R should be 1.0 (RED)")
+        assertEquals(0.0f, floatBuf.get(bOffset + 0), "Tensor pixel 0 B should be 0.0 (not BLUE)")
+        assertEquals(0.0f, floatBuf.get(bOffset + 1), "Tensor pixel 1 B should be 0.0 (not BLUE)")
+
+        // NCHW Tensor Row 1 (Visual BOTTOM) should be BLUE (R=0.0, B=1.0):
+        assertEquals(0.0f, floatBuf.get(rOffset + 2), "Tensor pixel 2 R should be 0.0 (not RED)")
+        assertEquals(0.0f, floatBuf.get(rOffset + 3), "Tensor pixel 3 R should be 0.0 (not RED)")
+        assertEquals(1.0f, floatBuf.get(bOffset + 2), "Tensor pixel 2 B should be 1.0 (BLUE)")
+        assertEquals(1.0f, floatBuf.get(bOffset + 3), "Tensor pixel 3 B should be 1.0 (BLUE)")
+    }
+
+    @Test
+    fun topDownRgbaBufferIsNotFlipped() {
+        // Standard top-down buffer:
+        // Row 0: RED   RED
+        // Row 1: BLUE  BLUE
+        val workspace = PreprocessorWorkspace(inputSize = 2)
+        val mapper = ModelCoordinateMapper(srcWidth = 2, srcHeight = 2, modelInputSize = 2, protoSize = 2)
+
+        val topDownBuffer = ByteBuffer.allocateDirect(2 * 2 * 4).order(ByteOrder.nativeOrder())
+        // Row 0 (Top = Red):
+        topDownBuffer.put(255.toByte()).put(0.toByte()).put(0.toByte()).put(255.toByte())
+        topDownBuffer.put(255.toByte()).put(0.toByte()).put(0.toByte()).put(255.toByte())
+        // Row 1 (Bottom = Blue):
+        topDownBuffer.put(0.toByte()).put(0.toByte()).put(255.toByte()).put(255.toByte())
+        topDownBuffer.put(0.toByte()).put(0.toByte()).put(255.toByte()).put(255.toByte())
+        topDownBuffer.rewind()
+
+        val result = YoloPreprocessor.processRgbaBuffer(
+            rgbaBuffer = topDownBuffer,
+            mapper = mapper,
+            workspace = workspace,
+            rowOrder = RgbaRowOrder.TOP_TO_BOTTOM
+        )
+        val floatBuf = result.floatBuffer
+        floatBuf.rewind()
+
+        val numPixels = 4
+        val rOffset = 0
+        val bOffset = 2 * numPixels
+
+        // NCHW Tensor Row 0 should be RED:
+        assertEquals(1.0f, floatBuf.get(rOffset + 0))
+        assertEquals(1.0f, floatBuf.get(rOffset + 1))
+        assertEquals(0.0f, floatBuf.get(bOffset + 0))
+        assertEquals(0.0f, floatBuf.get(bOffset + 1))
+
+        // NCHW Tensor Row 1 should be BLUE:
+        assertEquals(0.0f, floatBuf.get(rOffset + 2))
+        assertEquals(0.0f, floatBuf.get(rOffset + 3))
+        assertEquals(1.0f, floatBuf.get(bOffset + 2))
+        assertEquals(1.0f, floatBuf.get(bOffset + 3))
+    }
 
     @Test
     fun testNonSymmetricTopObjectOrientationParity() {
@@ -25,17 +116,13 @@ class YoloPreprocessorOrientationTest {
         assertEquals(640f, mapper.scaledW)
         assertEquals(360f, mapper.scaledH)
 
-        // Simulate FBO memory read by glReadPixels where video TOP is rendered at lower FBO rows
-        // FBO size = 640x640 RGBA
+        // In FBO memory read by glReadPixels (bottom-up):
+        // FBO rows 0..139: bottom letterbox padding (gray 114)
+        // FBO rows 140..463: bottom 90% of video content (black)
+        // FBO rows 464..499: top 10% of video containing bright person pixels (padTop area in top-down)
+        // FBO rows 500..639: top letterbox padding (gray 114)
         val numPixels = 640 * 640
         val rgbaBuffer = ByteBuffer.allocateDirect(numPixels * 4).order(ByteOrder.nativeOrder())
-
-        // In FBO layout produced by InferenceRenderer:
-        // rows 0..139: letterbox padding (gray 114)
-        // row 140: video TOP (padTop)
-        // rows 140..176: top 10% of video containing bright person pixels
-        // rows 177..499: remaining video content (black)
-        // rows 500..639: letterbox padding (gray 114)
         val gray = 114.toByte()
         val white = 255.toByte()
         val black = 0.toByte()
@@ -44,7 +131,7 @@ class YoloPreprocessorOrientationTest {
             for (col in 0 until 640) {
                 val pixelVal = when {
                     row < 140 -> gray
-                    row in 140..176 && col in 66..133 -> white // Person in top 10%
+                    row in 464..499 && col in 66..133 -> white // Person in top 10% (located near top of FBO)
                     row in 140 until 500 -> black
                     else -> gray
                 }
@@ -57,7 +144,7 @@ class YoloPreprocessorOrientationTest {
         rgbaBuffer.rewind()
 
         val workspace = PreprocessorWorkspace(640)
-        val result = YoloPreprocessor.processRgbaBuffer(rgbaBuffer, mapper, workspace)
+        val result = YoloPreprocessor.processRgbaBuffer(rgbaBuffer, mapper, workspace, rowOrder = RgbaRowOrder.BOTTOM_TO_TOP)
         val floatBuffer = result.floatBuffer
         floatBuffer.rewind()
 
@@ -79,3 +166,4 @@ class YoloPreprocessorOrientationTest {
         assertTrue(bottomPaddingVal in 0.44f..0.46f, "Row 600 should be gray padding")
     }
 }
+

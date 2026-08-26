@@ -95,10 +95,24 @@ class YoloOnnxSegmenter(
 
     private val workspace = PreprocessorWorkspace(640)
 
-    fun segmentRgbaSync(
+    fun segmentGlReadbackRgbaSync(
         rgbaBuffer: ByteBuffer,
         mapper: com.danceanon.native.geometry.ModelCoordinateMapper,
         timestampUs: Long = 0
+    ): SegmentationFrame {
+        return segmentRgbaSync(
+            rgbaBuffer = rgbaBuffer,
+            mapper = mapper,
+            timestampUs = timestampUs,
+            rowOrder = RgbaRowOrder.BOTTOM_TO_TOP
+        )
+    }
+
+    fun segmentRgbaSync(
+        rgbaBuffer: ByteBuffer,
+        mapper: com.danceanon.native.geometry.ModelCoordinateMapper,
+        timestampUs: Long = 0,
+        rowOrder: RgbaRowOrder = RgbaRowOrder.TOP_TO_BOTTOM
     ): SegmentationFrame {
         val session = ortSession ?: throw DanceNativeException(
             DanceNativeException.MODEL_INIT_FAILED,
@@ -111,12 +125,14 @@ class YoloOnnxSegmenter(
 
         val startTime = System.currentTimeMillis()
 
-        // 1. Preprocess directly from RGBA ByteBuffer into reusable NCHW FloatBuffer
+        // 1. Preprocess directly from RGBA ByteBuffer into reusable NCHW FloatBuffer with explicit row ordering
         val preprocess = YoloPreprocessor.processRgbaBuffer(
             rgbaBuffer = rgbaBuffer,
             mapper = mapper,
-            workspace = workspace
+            workspace = workspace,
+            rowOrder = rowOrder
         )
+
 
         // 2. Run Inference
         val detections = try {

@@ -247,11 +247,39 @@ class ExportPipeline(
                                 inferenceFbo.readRgbaPixels()
                             }
                             val seg = profiler.recordStage("inference") {
-                                segmenter.segmentRgbaSync(rgbaBuffer, mapper, ptsUs)
+                                if (processedFrames == 1) {
+                                    try {
+                                        val debugBmp = android.graphics.Bitmap.createBitmap(640, 640, android.graphics.Bitmap.Config.ARGB_8888)
+                                        for (dstY in 0 until 640) {
+                                            val srcY = 639 - dstY
+                                            for (x in 0 until 640) {
+                                                val offset = (srcY * 640 + x) * 4
+                                                val r = rgbaBuffer.get(offset).toInt() and 0xFF
+                                                val g = rgbaBuffer.get(offset + 1).toInt() and 0xFF
+                                                val b = rgbaBuffer.get(offset + 2).toInt() and 0xFF
+                                                val a = rgbaBuffer.get(offset + 3).toInt() and 0xFF
+                                                debugBmp.setPixel(x, dstY, (a shl 24) or (r shl 16) or (g shl 8) or b)
+                                            }
+                                        }
+                                        val debugOut = File(context.cacheDir, "debug_inference_frame_0.png")
+                                        java.io.FileOutputStream(debugOut).use { out ->
+                                            debugBmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+                                        }
+                                        debugBmp.recycle()
+                                        android.util.Log.i("ExportPipeline", "Saved debug inference frame 0: ${debugOut.absolutePath}")
+                                    } catch (_: Throwable) {}
+                                }
+                                segmenter.segmentGlReadbackRgbaSync(rgbaBuffer, mapper, ptsUs)
+                            }
+                            if (processedFrames == 1) {
+                                for ((idx, det) in seg.persons.withIndex()) {
+                                    android.util.Log.i("ExportPipeline", "Export frame 1 det[$idx]: bbox=(${det.bbox.left}, ${det.bbox.top}, ${det.bbox.right}, ${det.bbox.bottom}) centerY=${det.bbox.centerY}")
+                                }
                             }
                             profiler.recordStage("privacySafety") {
                                 com.danceanon.native.privacy.PrivacySegmentationProcessor.DEFAULT.applyPrivacySafety(seg.persons)
                             }
+
                         } else {
                             emptyList()
                         }
