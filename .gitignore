@@ -36,9 +36,9 @@ htmlcov/
 *.engine
 *.bin
 *.weights
-models/pytorch/*.pt
-models/litert/*.tflite
-models/litert/*.onnx
+*.data
+models/
+
 
 # --- Flutter & Dart ---
 .dart_tool/

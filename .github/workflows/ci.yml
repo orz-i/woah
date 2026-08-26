@@ -71,6 +71,6 @@ jobs:
 
       - name: Build Android Debug APK
         run: |
-          cd mobile/app/android
-          ./gradlew :app:assembleDebug
+          cd mobile/app
+          flutter build apk --debug
 
