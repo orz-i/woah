@@ -50,9 +50,15 @@ android {
     defaultConfig {
         minSdk = 24
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles("consumer-rules.pro")
+    }
+
+    androidResources {
+        noCompress += listOf("onnx", "tflite")
     }
 
     testOptions {
+
 
         unitTests {
             isIncludeAndroidResources = true

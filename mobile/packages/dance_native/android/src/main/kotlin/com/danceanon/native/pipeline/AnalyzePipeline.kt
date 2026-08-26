@@ -53,18 +53,28 @@ class AnalyzePipeline(
             "Could not decode first video frame from: ${request.videoUri}"
         )
 
+        // Safety: Ensure bitmap is a software bitmap (ARGB_8888) to allow CPU pixel access and cropping
+        val softwareBitmap = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && frameBitmap.config == Bitmap.Config.HARDWARE) {
+            frameBitmap.copy(Bitmap.Config.ARGB_8888, false).also {
+                if (frameBitmap != it) frameBitmap.recycle()
+            }
+        } else {
+            frameBitmap
+        }
+
         // 2. Rotate to align visual coordinate system if needed
         val rotation = videoInfo.rotation.toInt()
         val visualBitmap = if (rotation != 0) {
             val matrix = Matrix().apply { postRotate(rotation.toFloat()) }
-            val rotated = Bitmap.createBitmap(frameBitmap, 0, 0, frameBitmap.width, frameBitmap.height, matrix, true)
-            if (frameBitmap != rawBitmap) {
-                frameBitmap.recycle()
+            val rotated = Bitmap.createBitmap(softwareBitmap, 0, 0, softwareBitmap.width, softwareBitmap.height, matrix, true)
+            if (softwareBitmap != rotated) {
+                softwareBitmap.recycle()
             }
             rotated
         } else {
-            frameBitmap
+            softwareBitmap
         }
+
 
         val visualW = visualBitmap.width.toFloat()
         val visualH = visualBitmap.height.toFloat()
@@ -128,10 +138,16 @@ class AnalyzePipeline(
             )
         )
 
-        if (visualBitmap != rawBitmap) {
+        if (visualBitmap != softwareBitmap && !visualBitmap.isRecycled) {
             visualBitmap.recycle()
         }
-        rawBitmap.recycle()
+        if (softwareBitmap != rawBitmap && !softwareBitmap.isRecycled) {
+            softwareBitmap.recycle()
+        }
+        if (!rawBitmap.isRecycled) {
+            rawBitmap.recycle()
+        }
+
 
         AnalyzeResultDto(
             analysisCacheId = cacheId,

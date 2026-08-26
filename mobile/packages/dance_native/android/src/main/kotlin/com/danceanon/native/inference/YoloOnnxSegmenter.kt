@@ -27,35 +27,62 @@ class YoloOnnxSegmenter(
             ortEnv = OrtEnvironment.getEnvironment()
             val sessionOptions = OrtSession.SessionOptions().apply {
                 setIntraOpNumThreads(numThreads)
-                setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
+                setOptimizationLevel(OrtSession.SessionOptions.OptLevel.BASIC_OPT)
             }
 
-            val modelBytes = if (modelFile != null && modelFile.exists()) {
-                modelFile.readBytes()
-            } else {
+            if (modelFile != null && modelFile.exists() && modelFile.length() > 0L) {
+                ortSession = ortEnv!!.createSession(modelFile.absolutePath, sessionOptions)
+                android.util.Log.i("YoloOnnxSegmenter", "✅ Loaded ONNX session from file: ${modelFile.absolutePath} (${modelFile.length() / 1024 / 1024} MB)")
+                return@withContext
+            }
+
+            // Extract asset model to internal files directory to enable mmap (0-copy, avoids OOM and asset decompression limits)
+            val modelsDir = File(context.filesDir, "models").apply { if (!exists()) mkdirs() }
+            val extractedModelFile = File(modelsDir, "yolo11n-seg.onnx")
+
+            val assetSize = try {
+                context.assets.openFd("yolo11n-seg.onnx").use { it.length }
+            } catch (_: Throwable) {
+                -1L
+            }
+
+            val needsCopy = !extractedModelFile.exists() ||
+                    extractedModelFile.length() == 0L ||
+                    (assetSize > 0L && extractedModelFile.length() != assetSize)
+
+            if (needsCopy) {
+                val tempFile = File(modelsDir, "yolo11n-seg.onnx.tmp")
                 try {
-                    context.assets.open("yolo11n-seg.onnx").use { it.readBytes() }
+                    context.assets.open("yolo11n-seg.onnx").use { input ->
+                        java.io.FileOutputStream(tempFile).use { output ->
+                            input.copyTo(output, bufferSize = 65536)
+                        }
+                    }
+                    if (extractedModelFile.exists()) extractedModelFile.delete()
+                    tempFile.renameTo(extractedModelFile)
                 } catch (e: Exception) {
+                    tempFile.delete()
+                    android.util.Log.e("YoloOnnxSegmenter", "Failed to extract model from assets: ${e.message}", e)
                     throw DanceNativeException(
                         DanceNativeException.MODEL_NOT_FOUND,
-                        "Asset model 'yolo11n-seg.onnx' not found in APK assets",
+                        "Asset model 'yolo11n-seg.onnx' could not be extracted: ${e.message}",
                         e
                     )
                 }
             }
 
-            if (modelBytes.isEmpty()) {
+            if (!extractedModelFile.exists() || extractedModelFile.length() == 0L) {
                 throw DanceNativeException(
                     DanceNativeException.MODEL_NOT_FOUND,
-                    "ONNX model file is empty"
+                    "Extracted model file is missing or empty: ${extractedModelFile.absolutePath}"
                 )
             }
 
-            ortSession = ortEnv!!.createSession(modelBytes, sessionOptions)
-            android.util.Log.i("YoloOnnxSegmenter", "✅ ONNX Runtime Session created successfully with yolo11n-seg.onnx (${modelBytes.size / 1024 / 1024} MB)")
+            ortSession = ortEnv!!.createSession(extractedModelFile.absolutePath, sessionOptions)
+            android.util.Log.i("YoloOnnxSegmenter", "✅ ONNX Runtime Session created successfully via mmap (${extractedModelFile.length() / 1024 / 1024} MB)")
         } catch (e: DanceNativeException) {
             throw e
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             android.util.Log.e("YoloOnnxSegmenter", "Failed to initialize ONNX Runtime: ${e.message}", e)
             throw DanceNativeException(
                 DanceNativeException.MODEL_INIT_FAILED,
@@ -64,6 +91,7 @@ class YoloOnnxSegmenter(
             )
         }
     }
+
 
     private val workspace = PreprocessorWorkspace(640)
 

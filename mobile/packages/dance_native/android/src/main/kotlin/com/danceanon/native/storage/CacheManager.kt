@@ -27,14 +27,16 @@ class CacheManager(private val context: Context) {
 
         val w = frameBitmap.width
         val h = frameBitmap.height
+        if (w <= 1 || h <= 1) return ""
 
         // Expand bbox by 10%
         val bw = bbox.width
         val bh = bbox.height
-        val cropX1 = (bbox.left - bw * 0.1f).toInt().coerceIn(0, w - 1)
-        val cropY1 = (bbox.top - bh * 0.1f).toInt().coerceIn(0, h - 1)
+        val cropX1 = (bbox.left - bw * 0.1f).toInt().coerceIn(0, (w - 2).coerceAtLeast(0))
+        val cropY1 = (bbox.top - bh * 0.1f).toInt().coerceIn(0, (h - 2).coerceAtLeast(0))
         val cropX2 = (bbox.right + bw * 0.1f).toInt().coerceIn(cropX1 + 1, w)
         val cropY2 = (bbox.bottom + bh * 0.1f).toInt().coerceIn(cropY1 + 1, h)
+
 
         val cropW = cropX2 - cropX1
         val cropH = cropY2 - cropY1
