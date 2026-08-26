@@ -80,7 +80,11 @@ void main() {
         return;
     }
 
-    float maskVal = texture2D(uMaskTexture, maskUv).r;
+    float maskVal = 0.0;
+    if (maskUv.x >= 0.0 && maskUv.x <= 1.0 && maskUv.y >= 0.0 && maskUv.y <= 1.0) {
+        maskVal = texture2D(uMaskTexture, maskUv).r;
+    }
+
 
     // 1. Leg stretch non-linear dual coordinate warp - APPLIED PERSON-ONLY
     vec2 warpedUv = originalUv;

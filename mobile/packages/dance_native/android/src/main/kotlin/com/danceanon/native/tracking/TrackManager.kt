@@ -10,12 +10,13 @@ import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 data class TrackingConfig(
-    val bboxIouWeight: Float = 0.45f,
-    val maskIouWeight: Float = 0.30f,
-    val motionWeight: Float = 0.25f,
-    val minMatchScore: Float = 0.35f,
-    val maxMissedFrames: Int = 15
+    val bboxIouWeight: Float = 0.60f,
+    val maskIouWeight: Float = 0.10f,
+    val motionWeight: Float = 0.30f,
+    val minMatchScore: Float = 0.20f,
+    val maxMissedFrames: Int = 30
 )
+
 
 class InternalTrack(
     val id: Int,
@@ -195,10 +196,48 @@ class TrackManager(
             }
         }
 
-        // 5. Add new tracks for unmatched detections
+        // 5. Recovery association: associate unmatched detections with LOST tracks before creating new tracks
+        val unassignedDetections = mutableListOf<PersonDetection>()
         for (c in detections.indices) {
             if (!matchedDetectionIndices.contains(c)) {
-                val det = detections[c]
+                unassignedDetections.add(detections[c])
+            }
+        }
+
+        // Try to match unassigned detections with currently LOST tracks by proximity
+        val lostTracks = tracks.filter { it.state == TrackState.LOST && !matchedTrackIndices.contains(tracks.indexOf(it)) }
+        val reclaimedTrackIds = mutableSetOf<Int>()
+
+        for (det in unassignedDetections) {
+            var bestTrack: InternalTrack? = null
+            var bestDist = Float.MAX_VALUE
+
+            for (lost in lostTracks) {
+                if (reclaimedTrackIds.contains(lost.id)) continue
+                val dx = lost.bbox.centerX - det.bbox.centerX
+                val dy = lost.bbox.centerY - det.bbox.centerY
+                val dist = sqrt(dx * dx + dy * dy)
+                val bIoU = computeBBoxIoU(lost.bbox, det.bbox)
+                val maxAllowedDist = max(lost.bbox.width, lost.bbox.height) * 0.8f
+                val isNearby = bIoU > 0.05f || dist < maxAllowedDist
+
+
+                if (isNearby && dist < bestDist) {
+                    bestDist = dist
+                    bestTrack = lost
+                }
+            }
+
+
+            if (bestTrack != null) {
+                bestTrack.bbox = det.bbox
+                bestTrack.mask = det.mask ?: bestTrack.mask
+                bestTrack.confidence = det.confidence
+                bestTrack.missedFrames = 0
+                bestTrack.state = TrackState.ACTIVE
+                bestTrack.kalman.init(det.bbox, timestampUs)
+                reclaimedTrackIds.add(bestTrack.id)
+            } else {
                 val newTrack = InternalTrack(
                     id = nextTrackId++,
                     bbox = det.bbox,
@@ -209,6 +248,7 @@ class TrackManager(
                 tracks.add(newTrack)
             }
         }
+
 
         // 6. Filter out REMOVED tracks
         tracks.removeAll { it.state == TrackState.REMOVED }
@@ -298,12 +338,19 @@ class TrackManager(
             predBbox: FloatRect,
             missedFrames: Int
         ): NativeMask {
+            // Guard against unbounded drift & rectangular dilation artifacts:
+            // Stop warping after 3 consecutive missed frames, preserve original mask buffer
+            if (missedFrames > 3) {
+                return sourceMask
+            }
+
             val w = sourceMask.width
             val h = sourceMask.height
             val srcBuf = sourceMask.buffer
             srcBuf.rewind()
 
             val dstBuf = ByteBuffer.allocateDirect(w * h)
+
 
             val prevW = max(1f, prevBbox.width)
             val prevH = max(1f, prevBbox.height)
