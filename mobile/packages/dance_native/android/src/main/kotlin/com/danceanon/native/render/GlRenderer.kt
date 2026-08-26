@@ -63,7 +63,26 @@ class GlRenderer : FrameRenderer {
         0f, 0f, 0f, 1f
     )
 
+    private val bitmapTextureMatrix = floatArrayOf(
+        1f,  0f, 0f, 0f,
+        0f, -1f, 0f, 0f,
+        0f,  0f, 1f, 0f,
+        0f,  1f, 0f, 1f
+    )
+
+    private fun resolveTextureMatrix(
+        textureType: SourceTextureType,
+        provided: FloatArray?
+    ): FloatArray {
+        if (provided != null) return provided
+        return when (textureType) {
+            SourceTextureType.TEXTURE_2D -> bitmapTextureMatrix
+            SourceTextureType.OES -> identityMatrix
+        }
+    }
+
     companion object {
+
         fun computeTransformMatrix(stMatrix: FloatArray, rotation: Int): FloatArray {
             if (rotation == 0) return stMatrix
             val result = FloatArray(16)
@@ -284,7 +303,7 @@ class GlRenderer : FrameRenderer {
 
         GLES20.glUseProgram(prog.programId)
 
-        val matrix = texMatrix ?: identityMatrix
+        val matrix = resolveTextureMatrix(textureType, texMatrix)
         if (prog.uTexMatrixLoc >= 0) GLES20.glUniformMatrix4fv(prog.uTexMatrixLoc, 1, false, matrix, 0)
         if (prog.uCropRectLoc >= 0) GLES20.glUniform4f(prog.uCropRectLoc, 0f, 0f, 1f, 1f)
         if (prog.uMaskCropRectLoc >= 0) GLES20.glUniform4f(prog.uMaskCropRectLoc, 0f, 0f, 1f, 1f)
@@ -324,7 +343,15 @@ class GlRenderer : FrameRenderer {
         val fullBmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         buf.rewind()
         fullBmp.copyPixelsFromBuffer(buf)
-        return fullBmp
+
+        val flipMatrix = Matrix().apply {
+            postScale(1f, -1f)
+        }
+        val visualBitmap = Bitmap.createBitmap(fullBmp, 0, 0, width, height, flipMatrix, true)
+        if (visualBitmap !== fullBmp) {
+            fullBmp.recycle()
+        }
+        return visualBitmap
     }
 
 
@@ -347,8 +374,9 @@ class GlRenderer : FrameRenderer {
 
         GLES20.glUseProgram(prog.programId)
 
-        val matrix = texMatrix ?: identityMatrix
+        val matrix = resolveTextureMatrix(textureType, texMatrix)
         if (prog.uTexMatrixLoc >= 0) GLES20.glUniformMatrix4fv(prog.uTexMatrixLoc, 1, false, matrix, 0)
+
 
         // Parse Fill Color ARGB
         val fc = effects.fillColorArgb.toInt()
