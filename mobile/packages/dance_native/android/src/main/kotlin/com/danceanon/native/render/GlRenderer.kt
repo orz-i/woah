@@ -33,6 +33,20 @@ class GlRenderer : FrameRenderer {
         0f, 0f, 0f, 1f
     )
 
+    companion object {
+        fun computeTransformMatrix(stMatrix: FloatArray, rotation: Int): FloatArray {
+            if (rotation == 0) return stMatrix
+            val result = FloatArray(16)
+            val rotMatrix = FloatArray(16)
+            android.opengl.Matrix.setIdentityM(rotMatrix, 0)
+            android.opengl.Matrix.translateM(rotMatrix, 0, 0.5f, 0.5f, 0f)
+            android.opengl.Matrix.rotateM(rotMatrix, 0, -rotation.toFloat(), 0f, 0f, 1f)
+            android.opengl.Matrix.translateM(rotMatrix, 0, -0.5f, -0.5f, 0f)
+            android.opengl.Matrix.multiplyMM(result, 0, stMatrix, 0, rotMatrix, 0)
+            return result
+        }
+    }
+
     override fun initialize(width: Int, height: Int) {
         this.width = width
         this.height = height

@@ -217,10 +217,13 @@ class ExportPipeline(
                             android.util.Log.w("ExportPipeline", "updateTexImage warning: ${e.message}")
                         }
 
+                        val rotation = videoInfo.rotation.toInt()
+                        val finalTexMatrix = GlRenderer.computeTransformMatrix(stMatrix, rotation)
+
                         // Run AI segmentation & tracking on the decoded video frame
                         val inferenceInterval = 1
                         val detections = if (processedFrames == 1 || processedFrames % inferenceInterval == 0) {
-                            val inferenceBmp = glRenderer.captureFrameForInference(oesTextureId, stMatrix)
+                            val inferenceBmp = glRenderer.captureFrameForInference(oesTextureId, finalTexMatrix)
                             if (inferenceBmp != null) {
                                 val seg = segmenter.segmentBitmapSync(inferenceBmp, ptsUs)
                                 inferenceBmp.recycle()
@@ -244,7 +247,7 @@ class ExportPipeline(
                         // 1. Render final anonymized frame to EGL surface (encoder input)
                         glRenderer.render(
                             frameTexture = oesTextureId,
-                            texMatrix = stMatrix,
+                            texMatrix = finalTexMatrix,
                             persons = trackedList,
                             selectedPersonIds = selectedIds,
                             effects = request.effects,
