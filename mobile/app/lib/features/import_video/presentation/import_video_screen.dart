@@ -284,26 +284,6 @@ class ImportVideoScreen extends ConsumerWidget {
                     '支持常见视频格式，自动校准画面方向',
                     style: TextStyle(fontSize: 13, color: Colors.white54),
                   ),
-                  const SizedBox(height: 24),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(8),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white10),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(Icons.swipe_right_rounded, size: 15, color: Colors.white60),
-                        SizedBox(width: 6),
-                        Text(
-                          '向右滑动可查看系统信息',
-                          style: TextStyle(fontSize: 12, color: Colors.white60, fontWeight: FontWeight.w500),
-                        ),
-                      ],
-                    ),
-                  ),
                 ],
               ),
             ),

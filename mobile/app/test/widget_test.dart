@@ -12,6 +12,6 @@ void main() {
 
     expect(find.text('Dance Anonymizer'), findsOneWidget);
     expect(find.text('选择舞蹈视频'), findsOneWidget);
-    expect(find.text('向右滑动可查看系统信息'), findsOneWidget);
+    expect(find.text('支持常见视频格式，自动校准画面方向'), findsOneWidget);
   });
 }
