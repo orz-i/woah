@@ -158,11 +158,14 @@ class GlRenderer : FrameRenderer {
         buf.rewind()
         fullBmp.copyPixelsFromBuffer(buf)
 
-        // Flip vertically because glReadPixels reads bottom-to-top
-        val matrix = Matrix().apply { postScale(1f, -1f) }
-        val flipped = Bitmap.createBitmap(fullBmp, 0, 0, width, height, matrix, true)
+        // Scale and flip vertically
+        val scale = 640f / maxOf(width, height).coerceAtLeast(1)
+        val matrix = Matrix().apply {
+            postScale(scale, -scale)
+        }
+        val scaledBmp = Bitmap.createBitmap(fullBmp, 0, 0, width, height, matrix, true)
         fullBmp.recycle()
-        return flipped
+        return scaledBmp
     }
 
     fun render(

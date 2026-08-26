@@ -96,9 +96,13 @@ class ExportPipeline(
 
         segmenter.initialize()
 
-        // Dedicated GL thread with active Looper to guarantee EGLContext thread-affinity and instant frame callbacks
+        // Dedicated GL thread for EGL context, rendering, and encoding
         val glThread = HandlerThread("ExportGlPipeline").apply { start() }
         val glHandler = Handler(glThread.looper)
+
+        // Separate thread for SurfaceTexture frame callbacks so it is NEVER blocked by the GL render loop
+        val frameThread = HandlerThread("FrameNotifier").apply { start() }
+        val frameHandler = Handler(frameThread.looper)
 
         val pipelineLatch = CountDownLatch(1)
         var pipelineException: Throwable? = null
@@ -161,7 +165,7 @@ class ExportPipeline(
                             frameAvailable = true
                             frameSync.notifyAll()
                         }
-                    }, glHandler)
+                    }, frameHandler)
                 }
                 decoderSurface = Surface(surfaceTexture)
 
@@ -193,10 +197,10 @@ class ExportPipeline(
                         processedFrames++
                         val selectedIds = request.selectedPersonIds.map { it.toInt() }.toSet()
 
-                        // Await frame arrival from decoder hardware rendering
+                        // Await frame arrival from decoder hardware rendering (immediate wakeup via frameHandler)
                         synchronized(frameSync) {
                             var waited = 0
-                            while (!frameAvailable && waited < 100) {
+                            while (!frameAvailable && waited < 80) {
                                 try {
                                     frameSync.wait(10)
                                     waited += 10
@@ -237,6 +241,7 @@ class ExportPipeline(
                             trackManager.predict(ptsUs)
                         }
 
+                        // 1. Render final anonymized frame to EGL surface (encoder input)
                         glRenderer.render(
                             frameTexture = oesTextureId,
                             texMatrix = stMatrix,
@@ -247,31 +252,36 @@ class ExportPipeline(
                             presentationTimeUs = ptsUs
                         )
 
+                        // 2. Capture live preview snapshot BEFORE eglSwapBuffers (while backbuffer contains the rendered frame)
+                        val now = System.currentTimeMillis()
+                        if (now - lastPreviewEmitTime > 250) {
+                            lastPreviewEmitTime = now
+                            try {
+                                val previewBmp = glRenderer.captureRenderedFrame()
+                                if (previewBmp != null) {
+                                    java.io.FileOutputStream(previewFile).use { out ->
+                                        previewBmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 70, out)
+                                    }
+                                    previewBmp.recycle()
+                                }
+                            } catch (t: Throwable) {
+                                android.util.Log.w("ExportPipeline", "Preview capture failed: ${t.message}")
+                            }
+                        }
+
+                        // 3. Swap buffers to push rendered frame to hardware encoder
                         eglCore.setPresentationTime(eglSurface, ptsUs * 1000L)
                         eglCore.swapBuffers(eglSurface)
 
+                        // 4. Drain encoder output to MP4 muxer
                         encoder.drainEncoder(muxer, endOfStream = false)
 
-                        // Emit progress & real-time rendered frame snapshot
-                        val now = System.currentTimeMillis()
+                        // 5. Emit progress
                         if (now - lastProgressEmitTime > 200 || processedFrames % 5 == 0) {
                             lastProgressEmitTime = now
                             val elapsedSec = (now - startTime) / 1000.0
                             val currentFps = if (elapsedSec > 0) processedFrames / elapsedSec else 0.0
                             val progress = (processedFrames.toDouble() / totalFrames).coerceIn(0.0, 0.99)
-
-                            if (now - lastPreviewEmitTime > 300) {
-                                lastPreviewEmitTime = now
-                                try {
-                                    val previewBmp = glRenderer.captureRenderedFrame()
-                                    if (previewBmp != null) {
-                                        java.io.FileOutputStream(previewFile).use { out ->
-                                            previewBmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 75, out)
-                                        }
-                                        previewBmp.recycle()
-                                    }
-                                } catch (_: Throwable) {}
-                            }
 
                             status = status.copy(
                                 state = "processing",
@@ -354,6 +364,7 @@ class ExportPipeline(
         }
 
         pipelineLatch.await()
+        frameThread.quitSafely()
         glThread.quitSafely()
     }
 }
