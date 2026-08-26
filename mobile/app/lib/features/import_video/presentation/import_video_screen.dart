@@ -28,7 +28,7 @@ class ImportVideoScreen extends ConsumerWidget {
         actions: [
           if (importState.isReady)
             IconButton(
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(Icons.refresh_rounded),
               tooltip: '重新选择',
               onPressed: () => controller.reset(),
             ),
@@ -70,17 +70,18 @@ class ImportVideoScreen extends ConsumerWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.memory, color: Colors.purpleAccent, size: 20),
+                const Icon(Icons.memory_rounded, color: Colors.white70, size: 18),
                 const SizedBox(width: 8),
                 Text(
                   '原生引擎与硬件状态',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             capsAsync.when(
               data: (caps) => Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -97,10 +98,10 @@ class ImportVideoScreen extends ConsumerWidget {
                   SizedBox(
                     width: 14,
                     height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
                   ),
                   SizedBox(width: 8),
-                  Text('检测设备能力中...', style: TextStyle(fontSize: 12)),
+                  Text('检测设备能力中...', style: TextStyle(fontSize: 12, color: Colors.white60)),
                 ],
               ),
               error: (err, _) => Text(
@@ -115,12 +116,20 @@ class ImportVideoScreen extends ConsumerWidget {
   }
 
   Widget _buildCapsBadge(String label, String value) {
-    return Column(
-      children: [
-        Text(label, style: const TextStyle(fontSize: 10, color: Colors.white54)),
-        const SizedBox(height: 2),
-        Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-      ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E24),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withAlpha(15)),
+      ),
+      child: Column(
+        children: [
+          Text(label, style: const TextStyle(fontSize: 10, color: Colors.white54)),
+          const SizedBox(height: 2),
+          Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
+        ],
+      ),
     );
   }
 
@@ -135,13 +144,13 @@ class ImportVideoScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.redAccent.withAlpha(40),
+              color: Colors.redAccent.withAlpha(20),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.redAccent.withAlpha(100)),
+              border: Border.all(color: Colors.redAccent.withAlpha(60)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.error_outline, color: Colors.redAccent),
+                const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -161,11 +170,11 @@ class ImportVideoScreen extends ConsumerWidget {
             height: 240,
             width: double.infinity,
             decoration: BoxDecoration(
-              color: const Color(0xFF1D1B20),
+              color: const Color(0xFF131316),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: Colors.purpleAccent.withAlpha(60),
-                width: 1.5,
+                color: Colors.white.withAlpha(30),
+                width: 1.2,
                 strokeAlign: BorderSide.strokeAlignInside,
               ),
             ),
@@ -173,15 +182,16 @@ class ImportVideoScreen extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(18),
+                  padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.purpleAccent.withAlpha(30),
+                    color: Colors.white.withAlpha(15),
                     shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white24),
                   ),
                   child: const Icon(
                     Icons.video_library_rounded,
-                    size: 48,
-                    color: Colors.purpleAccent,
+                    size: 44,
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -189,11 +199,12 @@ class ImportVideoScreen extends ConsumerWidget {
                   '选择舞蹈视频',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  '支持 MP4 / MOV / H.264 / HEVC，自动处理手机旋转朝向',
+                  '支持 MP4 / MOV / H.264 / HEVC，自动校准旋转朝向',
                   style: TextStyle(fontSize: 12, color: Colors.white54),
                 ),
               ],
@@ -207,19 +218,20 @@ class ImportVideoScreen extends ConsumerWidget {
   Widget _buildLoadingCard(BuildContext context, VideoImportStatus status) {
     final text = status == VideoImportStatus.picking
         ? '正在选取本地视频...'
-        : '正在通过 Native MediaExtractor 深度解析视频规格...';
+        : '正在通过 Native 引擎深度解析视频规格...';
 
     return Container(
       height: 240,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: const Color(0xFF1D1B20),
+        color: const Color(0xFF131316),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withAlpha(20)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const CircularProgressIndicator(),
+          const CircularProgressIndicator(color: Colors.white),
           const SizedBox(height: 16),
           Text(text, style: const TextStyle(fontSize: 14, color: Colors.white70)),
         ],
@@ -252,7 +264,7 @@ class ImportVideoScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 24),
 
-        // 3. Next step button
+        // 3. Next step button (Pure white on black)
         ElevatedButton.icon(
           onPressed: () {
             final project = controller.createProject();
@@ -260,14 +272,14 @@ class ImportVideoScreen extends ConsumerWidget {
               context.push('/person_selection', extra: project);
             }
           },
-          icon: const Icon(Icons.person_search_rounded),
+          icon: const Icon(Icons.person_search_rounded, size: 20),
           label: const Text(
             '下一步：首帧人物分析',
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
           ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.deepPurpleAccent,
-            foregroundColor: Colors.white,
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black,
             padding: const EdgeInsets.symmetric(vertical: 16),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),

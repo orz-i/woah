@@ -26,21 +26,21 @@ class PersonCard extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFF22153B)
-              : const Color(0xFF191720),
+              ? const Color(0xFF1E1E23)
+              : const Color(0xFF131316),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: isSelected
-                ? Colors.deepPurpleAccent
+                ? Colors.white
                 : Colors.white.withAlpha(25),
-            width: isSelected ? 2.5 : 1.0,
+            width: isSelected ? 2.0 : 1.0,
           ),
           boxShadow: [
             if (isSelected)
               BoxShadow(
-                color: Colors.deepPurpleAccent.withAlpha(90),
+                color: Colors.white.withAlpha(30),
                 blurRadius: 20,
-                spreadRadius: 2,
+                spreadRadius: 1,
                 offset: const Offset(0, 4),
               )
             else
@@ -75,16 +75,16 @@ class PersonCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? Colors.deepPurpleAccent
-                            : Colors.white.withAlpha(25),
+                            ? Colors.white
+                            : Colors.white.withAlpha(20),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         '人物 ${person.id}',
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: isSelected ? Colors.black : Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 15,
+                          fontSize: 14,
                         ),
                       ),
                     ),
@@ -93,8 +93,9 @@ class PersonCard extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.black45,
+                            color: Colors.black54,
                             borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.white12),
                           ),
                           child: Text(
                             '置信度: $confPercent%',
@@ -113,19 +114,19 @@ class PersonCard extends StatelessWidget {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: isSelected
-                                ? Colors.deepPurpleAccent
+                                ? Colors.white
                                 : Colors.black54,
                             border: Border.all(
                               color: isSelected
-                                  ? Colors.purpleAccent
+                                  ? Colors.white
                                   : Colors.white38,
-                              width: 2.0,
+                              width: 1.8,
                             ),
                           ),
                           child: Icon(
                             isSelected ? Icons.check : Icons.circle_outlined,
                             size: 18,
-                            color: Colors.white,
+                            color: isSelected ? Colors.black : Colors.white54,
                           ),
                         ),
                       ],
@@ -143,12 +144,12 @@ class PersonCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? Colors.deepPurpleAccent.withAlpha(50)
-                        : Colors.white.withAlpha(15),
+                        ? Colors.white
+                        : Colors.white.withAlpha(12),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: isSelected
-                          ? Colors.deepPurpleAccent.withAlpha(120)
+                          ? Colors.white
                           : Colors.white10,
                     ),
                   ),
@@ -161,7 +162,7 @@ class PersonCard extends StatelessWidget {
                             : Icons.add_circle_outline_rounded,
                         size: 18,
                         color: isSelected
-                            ? Colors.purpleAccent
+                            ? Colors.black
                             : Colors.white60,
                       ),
                       const SizedBox(width: 8),
@@ -171,7 +172,7 @@ class PersonCard extends StatelessWidget {
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
                           color: isSelected
-                              ? Colors.purpleAccent
+                              ? Colors.black
                               : Colors.white60,
                         ),
                       ),

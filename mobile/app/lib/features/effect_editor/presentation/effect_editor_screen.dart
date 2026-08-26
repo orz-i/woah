@@ -52,6 +52,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
                 '特效填充模式',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
               ),
               const SizedBox(height: 10),
@@ -75,8 +76,8 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
     return Card(
       clipBehavior: Clip.antiAlias,
       child: Container(
-        height: 200,
-        color: const Color(0xFF1E1C24),
+        height: 220,
+        color: const Color(0xFF131316),
         child: Stack(
           alignment: Alignment.center,
           children: [
@@ -88,19 +89,20 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
                 height: double.infinity,
               )
             else
-              const Icon(Icons.auto_fix_high_rounded, size: 48, color: Colors.white38),
+              const Icon(Icons.auto_fix_high_rounded, size: 48, color: Colors.white30),
             Positioned(
               bottom: 12,
               right: 12,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: Colors.black87,
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white24),
                 ),
                 child: Text(
-                  '当前模式: ${state.effects.fillMode.name}',
-                  style: const TextStyle(fontSize: 11, color: Colors.white70),
+                  '当前模式: ${state.effects.fillMode.name.toUpperCase()}',
+                  style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -128,14 +130,17 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
           label: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(item.$3, size: 16),
+              Icon(item.$3, size: 16, color: isSelected ? Colors.black : Colors.white70),
               const SizedBox(width: 6),
-              Text(item.$2),
+              Text(item.$2, style: TextStyle(color: isSelected ? Colors.black : Colors.white, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
             ],
           ),
           selected: isSelected,
           onSelected: (_) => controller.updateFillMode(item.$1),
-          selectedColor: Colors.deepPurpleAccent.withAlpha(80),
+          selectedColor: Colors.white,
+          backgroundColor: const Color(0xFF1E1E24),
+          side: BorderSide(color: isSelected ? Colors.white : Colors.white24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         );
       }).toList(),
     );
@@ -218,7 +223,6 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
             Switch(
               value: effects.legStretchEnabled,
               onChanged: (val) => controller.updateLegStretch(enabled: val, stretch: 0.15),
-              activeThumbColor: Colors.deepPurpleAccent,
             ),
           ],
         ),
@@ -239,6 +243,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
           '智能运镜追踪 (Follow Crop)',
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
         ),
         const SizedBox(height: 10),
@@ -248,30 +253,18 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
             const Text('锁定主角平滑运镜', style: TextStyle(fontSize: 13, color: Colors.white70)),
             Switch(
               value: state.project?.follow.enabled ?? false,
-              onChanged: (val) => controller.updateFollowConfig(
-                enabled: val,
-                targetPersonId: state.project?.selectedPersonIds.firstOrNull ?? 0,
-              ),
-              activeThumbColor: Colors.deepPurpleAccent,
+              onChanged: (val) => controller.updateFollowConfig(enabled: val),
             ),
           ],
         ),
         if (state.project?.follow.enabled == true) ...[
           _buildSlider(
-            label: '镜头缩放倍率 (Zoom)',
-            value: state.project?.follow.zoom ?? 1.2,
+            label: '特写镜头变焦倍数 (Zoom)',
+            value: state.project!.follow.zoom,
             min: 1.0,
-            max: 2.0,
-            displayValue: '${(state.project?.follow.zoom ?? 1.2).toStringAsFixed(1)}x',
+            max: 2.5,
+            displayValue: '${state.project!.follow.zoom.toStringAsFixed(1)}x',
             onChanged: (val) => controller.updateFollowConfig(zoom: val),
-          ),
-          _buildSlider(
-            label: '运镜平滑系数 (Smooth)',
-            value: state.project?.follow.smoothFactor ?? 0.10,
-            min: 0.05,
-            max: 0.30,
-            displayValue: (state.project?.follow.smoothFactor ?? 0.10).toStringAsFixed(2),
-            onChanged: (val) => controller.updateFollowConfig(smoothFactor: val),
           ),
         ],
       ],
@@ -293,14 +286,13 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(label, style: const TextStyle(fontSize: 13, color: Colors.white70)),
-            Text(displayValue, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            Text(displayValue, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white)),
           ],
         ),
         Slider(
           value: value.clamp(min, max),
           min: min,
           max: max,
-          activeColor: Colors.deepPurpleAccent,
           onChanged: onChanged,
         ),
       ],
@@ -309,40 +301,50 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
 
   Widget _buildColorPalette(int currentArgb, ValueChanged<int> onSelect) {
     final colors = [
-      (0xFF000000, '经典黑'),
-      (0xFF7C4DFF, '潮流紫'),
-      (0xFF00E5FF, '霓虹蓝'),
-      (0xFFFF4081, '樱花粉'),
-      (0xFF00E676, '荧光绿'),
-      (0xFFFFFFFF, '纯白'),
+      0xFF000000, // Pure Black
+      0xFF202020, // Dark Grey
+      0xFF808080, // Medium Grey
+      0xFFFFFFFF, // Pure White
+      0xFF7C4DFF, // Deep Purple
+      0xFF2979FF, // Blue
+      0xFF00E676, // Green
+      0xFFFF5252, // Red
+      0xFFFFD700, // Gold
     ];
 
-    return Row(
-      children: colors.map((c) {
-        final isSelected = currentArgb == c.$1;
-        return Padding(
-          padding: const EdgeInsets.only(right: 10),
-          child: GestureDetector(
-            onTap: () => onSelect(c.$1),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: Color(c.$1),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected ? Colors.white : Colors.white24,
-                  width: isSelected ? 3.0 : 1.0,
-                ),
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: colors.map((argb) {
+        final isSelected = currentArgb == argb;
+        return GestureDetector(
+          onTap: () => onSelect(argb),
+          child: Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: Color(argb),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isSelected ? Colors.white : Colors.white24,
+                width: isSelected ? 2.5 : 1.0,
               ),
-              child: isSelected
-                  ? Icon(
-                      Icons.check,
-                      size: 18,
-                      color: c.$1 == 0xFFFFFFFF ? Colors.black : Colors.white,
-                    )
-                  : null,
+              boxShadow: [
+                if (isSelected)
+                  BoxShadow(
+                    color: Colors.white.withAlpha(50),
+                    blurRadius: 8,
+                    spreadRadius: 1,
+                  ),
+              ],
             ),
+            child: isSelected
+                ? Icon(
+                    Icons.check,
+                    size: 18,
+                    color: argb == 0xFFFFFFFF ? Colors.black : Colors.white,
+                  )
+                : null,
           ),
         );
       }).toList(),
@@ -355,10 +357,10 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
     EffectEditorController controller,
   ) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
       decoration: const BoxDecoration(
-        color: Color(0xFF1D1B20),
-        border: Border(top: BorderSide(color: Colors.white10)),
+        color: Color(0xFF131316),
+        border: Border(top: BorderSide(color: Color(0xFF2E2E34))),
       ),
       child: ElevatedButton.icon(
         onPressed: () {
@@ -367,14 +369,14 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
             context.push('/export', extra: configured);
           }
         },
-        icon: const Icon(Icons.video_call_rounded),
+        icon: const Icon(Icons.movie_creation_rounded, size: 20),
         label: const Text(
-          '下一步：开始导出视频',
+          '下一步：开始硬件编码导出',
           style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.deepPurpleAccent,
-          foregroundColor: Colors.white,
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),

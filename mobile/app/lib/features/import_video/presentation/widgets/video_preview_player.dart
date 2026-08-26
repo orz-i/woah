@@ -204,9 +204,9 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer>
               controller,
               allowScrubbing: true,
               colors: const VideoProgressColors(
-                playedColor: Colors.deepPurpleAccent,
-                bufferedColor: Colors.white24,
-                backgroundColor: Colors.black45,
+                playedColor: Colors.white,
+                bufferedColor: Colors.white30,
+                backgroundColor: Colors.black54,
               ),
             ),
           ],

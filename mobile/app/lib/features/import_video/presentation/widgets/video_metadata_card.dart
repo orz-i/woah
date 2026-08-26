@@ -38,16 +38,15 @@ class VideoMetadataCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isVertical
-                        ? Colors.deepPurple.withAlpha(128)
-                        : Colors.blueGrey.withAlpha(128),
+                    color: const Color(0xFF222228),
                     borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.white24),
                   ),
                   child: Text(
                     isVertical ? '竖屏' : '横屏',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
                   ),
                 ),
               ],

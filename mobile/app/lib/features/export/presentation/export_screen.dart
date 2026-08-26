@@ -91,7 +91,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       strokeWidth: 10,
                       backgroundColor: Colors.white12,
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        isFailed ? Colors.redAccent : Colors.deepPurpleAccent,
+                        isFailed ? Colors.redAccent : Colors.white,
                       ),
                     ),
                   ),

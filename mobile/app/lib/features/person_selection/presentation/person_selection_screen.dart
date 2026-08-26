@@ -82,13 +82,14 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
             const SizedBox(
               width: 56,
               height: 56,
-              child: CircularProgressIndicator(strokeWidth: 3),
+              child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white),
             ),
             const SizedBox(height: 24),
             Text(
               '正在进行首帧 YOLO 分割与人物分析...',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
             ),
             const SizedBox(height: 8),
@@ -106,7 +107,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
+            const Icon(Icons.error_outline_rounded, size: 48, color: Colors.redAccent),
             const SizedBox(height: 16),
             Text(
               state.errorMessage ?? '分析失败',
@@ -162,14 +163,14 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.deepPurpleAccent.withAlpha(35),
+                  color: const Color(0xFF1E1E24),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.deepPurpleAccent.withAlpha(70)),
+                  border: Border.all(color: Colors.white.withAlpha(25)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.people_alt_rounded, size: 16, color: Colors.purpleAccent),
+                    const Icon(Icons.people_alt_rounded, size: 16, color: Colors.white70),
                     const SizedBox(width: 6),
                     Text(
                       '已选择 $selectedCount / $totalCount 位人物',
@@ -186,6 +187,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
                 children: [
                   TextButton.icon(
                     style: TextButton.styleFrom(
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     ),
                     onPressed: () => controller.selectAll(),
@@ -195,6 +197,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
                   const SizedBox(width: 4),
                   TextButton.icon(
                     style: TextButton.styleFrom(
+                      foregroundColor: Colors.white60,
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     ),
                     onPressed: () => controller.deselectAll(),
@@ -238,7 +241,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
               // Previous Arrow Button
               IconButton(
                 style: IconButton.styleFrom(
-                  backgroundColor: _currentPage > 0 ? Colors.white.withAlpha(20) : Colors.transparent,
+                  backgroundColor: _currentPage > 0 ? const Color(0xFF1E1E24) : Colors.transparent,
                   disabledBackgroundColor: Colors.transparent,
                 ),
                 icon: Icon(
@@ -275,7 +278,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
                         height: 6,
                         decoration: BoxDecoration(
                           color: isCurrent
-                              ? Colors.deepPurpleAccent
+                              ? Colors.white
                               : Colors.white24,
                           borderRadius: BorderRadius.circular(3),
                         ),
@@ -288,7 +291,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
               // Next Arrow Button
               IconButton(
                 style: IconButton.styleFrom(
-                  backgroundColor: _currentPage < totalCount - 1 ? Colors.white.withAlpha(20) : Colors.transparent,
+                  backgroundColor: _currentPage < totalCount - 1 ? const Color(0xFF1E1E24) : Colors.transparent,
                   disabledBackgroundColor: Colors.transparent,
                 ),
                 icon: Icon(
@@ -317,8 +320,8 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
       decoration: const BoxDecoration(
-        color: Color(0xFF1D1B20),
-        border: Border(top: BorderSide(color: Colors.white10)),
+        color: Color(0xFF131316),
+        border: Border(top: BorderSide(color: Color(0xFF2E2E34))),
       ),
       child: ElevatedButton.icon(
         onPressed: hasSelection
@@ -329,7 +332,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
                 }
               }
             : null,
-        icon: const Icon(Icons.tune_rounded),
+        icon: const Icon(Icons.tune_rounded, size: 20),
         label: Text(
           hasSelection
               ? '下一步：特效参数调节 (已选 ${state.selectedPersonIds.length} 人)'
@@ -337,9 +340,10 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.deepPurpleAccent,
-          foregroundColor: Colors.white,
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
           disabledBackgroundColor: Colors.white12,
+          disabledForegroundColor: Colors.white38,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),

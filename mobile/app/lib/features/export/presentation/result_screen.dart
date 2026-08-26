@@ -154,8 +154,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _isSaved ? Colors.green.shade700 : Colors.deepPurpleAccent,
-                  foregroundColor: Colors.white,
+                  backgroundColor: _isSaved ? const Color(0xFF22C55E) : Colors.white,
+                  foregroundColor: _isSaved ? Colors.white : Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
