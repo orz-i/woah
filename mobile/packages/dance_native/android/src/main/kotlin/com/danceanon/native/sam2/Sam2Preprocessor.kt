@@ -102,6 +102,86 @@ object Sam2Preprocessor {
         }
     }
 
+    /**
+     * Resizes and normalizes ARGB IntArray directly into a Direct FloatBuffer (NCHW).
+     */
+    fun preprocessRgbPixelsToBuffer(
+        pixels: IntArray,
+        srcW: Int,
+        srcH: Int,
+        targetBuffer: java.nio.FloatBuffer
+    ) {
+        val targetSize = Sam2TensorContract.IMAGE_SIZE
+        val channelSize = targetSize * targetSize
+        val meanR = Sam2TensorContract.NORM_MEAN[0]
+        val meanG = Sam2TensorContract.NORM_MEAN[1]
+        val meanB = Sam2TensorContract.NORM_MEAN[2]
+
+        val stdR = Sam2TensorContract.NORM_STD[0]
+        val stdG = Sam2TensorContract.NORM_STD[1]
+        val stdB = Sam2TensorContract.NORM_STD[2]
+
+        targetBuffer.clear()
+
+        val scaleX = srcW.toFloat() / targetSize.toFloat()
+        val scaleY = srcH.toFloat() / targetSize.toFloat()
+
+        for (y in 0 until targetSize) {
+            val srcY = (y + 0.5f) * scaleY - 0.5f
+            val srcYClamped = srcY.coerceIn(0f, (srcH - 1).toFloat())
+            val y0 = kotlin.math.floor(srcYClamped).toInt()
+            val y1 = kotlin.math.min(y0 + 1, srcH - 1)
+            val dy = srcYClamped - y0
+            val rowDst = y * targetSize
+            val row0 = y0 * srcW
+            val row1 = y1 * srcW
+
+            for (x in 0 until targetSize) {
+                val srcX = (x + 0.5f) * scaleX - 0.5f
+                val srcXClamped = srcX.coerceIn(0f, (srcW - 1).toFloat())
+                val x0 = kotlin.math.floor(srcXClamped).toInt()
+                val x1 = kotlin.math.min(x0 + 1, srcW - 1)
+                val dx = srcXClamped - x0
+
+                val p00 = pixels[row0 + x0]
+                val p01 = pixels[row0 + x1]
+                val p10 = pixels[row1 + x0]
+                val p11 = pixels[row1 + x1]
+
+                // R
+                val r00 = ((p00 shr 16) and 0xFF) / 255.0f
+                val r01 = ((p01 shr 16) and 0xFF) / 255.0f
+                val r10 = ((p10 shr 16) and 0xFF) / 255.0f
+                val r11 = ((p11 shr 16) and 0xFF) / 255.0f
+                val r = (r00 * (1f - dx) + r01 * dx) * (1f - dy) + (r10 * (1f - dx) + r11 * dx) * dy
+
+                // G
+                val g00 = ((p00 shr 8) and 0xFF) / 255.0f
+                val g01 = ((p01 shr 8) and 0xFF) / 255.0f
+                val g10 = ((p10 shr 8) and 0xFF) / 255.0f
+                val g11 = ((p11 shr 8) and 0xFF) / 255.0f
+                val g = (g00 * (1f - dx) + g01 * dx) * (1f - dy) + (g10 * (1f - dx) + g11 * dx) * dy
+
+                // B
+                val b00 = (p00 and 0xFF) / 255.0f
+                val b01 = (p01 and 0xFF) / 255.0f
+                val b10 = (p10 and 0xFF) / 255.0f
+                val b11 = (p11 and 0xFF) / 255.0f
+                val b = (b00 * (1f - dx) + b01 * dx) * (1f - dy) + (b10 * (1f - dx) + b11 * dx) * dy
+
+                val idx = rowDst + x
+                targetBuffer.put(idx, (r - meanR) / stdR)
+                targetBuffer.put(channelSize + idx, (g - meanG) / stdG)
+                targetBuffer.put(2 * channelSize + idx, (b - meanB) / stdB)
+            }
+        }
+
+        targetBuffer.position(3 * channelSize)
+        targetBuffer.flip()
+    }
+
+
+
 
     /**
      * Transforms a bounding box prompt from source visual coordinates [0, srcW] x [0, srcH]

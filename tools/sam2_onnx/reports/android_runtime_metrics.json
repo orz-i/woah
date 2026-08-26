@@ -1,0 +1,23 @@
+            {
+              "total_frames": 40,
+              "mean_mask_iou": 0.9843413,
+              "min_mask_iou": 0.9133497,
+              "has_3_frame_divergence": false,
+              "mean_bbox_center_error": 4.6080956,
+              "max_bbox_center_error": 32.024994,
+              "runtime_telemetry": {
+  "model_load_ms": 0,
+  "frames_recorded": 40,
+  "image_encoder_p50_ms": 3124.0,
+  "image_encoder_p95_ms": 3676.0,
+  "temporal_step_p50_ms": 3749.0,
+  "temporal_step_p95_ms": 4436.0,
+  "total_frame_p50_ms": 6931.0,
+  "total_frame_p95_ms": 8131.0,
+  "total_frame_max_ms": 9554.0,
+  "peak_pss_kb": 0,
+  "java_heap_kb": 194618,
+  "native_heap_kb": 0,
+  "state_memory_bytes": 83927040
+}
+            }

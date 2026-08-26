@@ -86,6 +86,7 @@ kotlin {
 
 dependencies {
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.18.0")
+    testImplementation("com.microsoft.onnxruntime:onnxruntime:1.18.0")
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("org.json:json:20240303")
     testImplementation("org.mockito:mockito-core:5.0.0")
