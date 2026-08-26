@@ -116,13 +116,14 @@ class ExportPipeline(
 
         glHandler.post {
             var eglCore: EglCore? = null
+            var eglSurface: android.opengl.EGLSurface? = null
             var glRenderer: GlRenderer? = null
             var surfaceTexture: SurfaceTexture? = null
-            var decoderSurface: Surface? = null
             var decoder: VideoDecoder? = null
             var encoder: VideoEncoder? = null
             var muxer: Mp4Muxer? = null
             var audioCopier: AudioTrackCopier? = null
+            var frameReader: com.danceanon.native.render.InferenceFrameReader? = null
             var oesTextureId = 0
 
             try {
@@ -145,21 +146,23 @@ class ExportPipeline(
 
                 val inputSurface = encoder.prepare()
                 eglCore = EglCore()
-                val eglSurface = eglCore.createWindowSurface(inputSurface)
-                eglCore.makeCurrent(eglSurface)
+                val surf = eglCore.createWindowSurface(inputSurface)
+                eglSurface = surf
+                eglCore.makeCurrent(surf)
 
                 glRenderer = GlRenderer()
                 glRenderer.initialize(targetWidth, targetHeight)
 
-                // Setup OES texture for VideoDecoder hardware rendering
                 val oesTextures = IntArray(1)
-                GLES20.glGenTextures(1, oesTextures, 0)
+                android.opengl.GLES20.glGenTextures(1, oesTextures, 0)
                 oesTextureId = oesTextures[0]
-                GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, oesTextureId)
-                GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
-                GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
-                GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
-                GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+                android.opengl.GLES20.glBindTexture(android.opengl.GLES11Ext.GL_TEXTURE_EXTERNAL_OES, oesTextureId)
+                android.opengl.GLES20.glTexParameteri(android.opengl.GLES11Ext.GL_TEXTURE_EXTERNAL_OES, android.opengl.GLES20.GL_TEXTURE_MIN_FILTER, android.opengl.GLES20.GL_LINEAR)
+                android.opengl.GLES20.glTexParameteri(android.opengl.GLES11Ext.GL_TEXTURE_EXTERNAL_OES, android.opengl.GLES20.GL_TEXTURE_MAG_FILTER, android.opengl.GLES20.GL_LINEAR)
+                android.opengl.GLES20.glTexParameteri(android.opengl.GLES11Ext.GL_TEXTURE_EXTERNAL_OES, android.opengl.GLES20.GL_TEXTURE_WRAP_S, android.opengl.GLES20.GL_CLAMP_TO_EDGE)
+                android.opengl.GLES20.glTexParameteri(android.opengl.GLES11Ext.GL_TEXTURE_EXTERNAL_OES, android.opengl.GLES20.GL_TEXTURE_WRAP_T, android.opengl.GLES20.GL_CLAMP_TO_EDGE)
+
+                frameReader = com.danceanon.native.render.InferenceFrameReader(targetWidth, targetHeight, 640)
 
                 val frameSync = Object()
                 var frameAvailable = false
@@ -173,22 +176,22 @@ class ExportPipeline(
                         }
                     }, frameHandler)
                 }
-                decoderSurface = Surface(surfaceTexture)
 
-                decoder = VideoDecoder(context, sourceUri, outputSurface = decoderSurface)
+                decoder = VideoDecoder(
+                    context = context,
+                    sourceUri = sourceUri,
+                    outputSurface = android.view.Surface(surfaceTexture)
+                )
                 decoder.prepare()
 
-                val trackManager = com.danceanon.native.tracking.TrackManager()
                 var processedFrames = 0
+                val totalEstFrames = ((videoInfo.durationMs / 1000.0) * targetFps).toLong().coerceAtLeast(1L)
+                val stMatrix = FloatArray(16)
+                val trackManager = TrackManager()
+                val frameStride = 1
                 var lastProgressEmitTime = 0L
                 var lastPreviewEmitTime = 0L
                 val previewFile = File(context.cacheDir, "export_preview_${jobId}.jpg")
-                val stMatrix = floatArrayOf(
-                    1f, 0f, 0f, 0f,
-                    0f, 1f, 0f, 0f,
-                    0f, 0f, 1f, 0f,
-                    0f, 0f, 0f, 1f
-                )
 
                 while (!isCancelled.get()) {
                     val fed = decoder.feedInputBuffer()
@@ -229,17 +232,12 @@ class ExportPipeline(
                         // 1. Draw base video frame to EGL window surface
                         glRenderer.renderBase(oesTextureId, finalTexMatrix)
 
-                        // 2. Capture real frame for AI segmentation & tracking directly from EGL surface
-                        val inferenceInterval = 1
-                        val detections = if (processedFrames == 1 || processedFrames % inferenceInterval == 0) {
-                            val inferenceBmp = glRenderer.captureFrameForInference()
-                            if (inferenceBmp != null) {
-                                val seg = segmenter.segmentBitmapSync(inferenceBmp, ptsUs)
-                                inferenceBmp.recycle()
-                                seg.persons
-                            } else {
-                                emptyList()
-                            }
+                        // 2. Capture frame for AI segmentation using reusable InferenceFrameReader
+                        val shouldInfer = (processedFrames == 1) || (processedFrames % frameStride == 0)
+                        val detections = if (shouldInfer && frameReader != null) {
+                            val frameBmp = frameReader.captureFrame()
+                            val seg = segmenter.segmentBitmapSync(frameBmp, ptsUs)
+                            seg.persons
                         } else {
                             emptyList()
                         }
@@ -334,8 +332,10 @@ class ExportPipeline(
                         }
 
                         // 3. Swap buffers to push rendered frame to hardware encoder
-                        eglCore.setPresentationTime(eglSurface, ptsUs * 1000L)
-                        eglCore.swapBuffers(eglSurface)
+                        if (eglSurface != null) {
+                            eglCore.setPresentationTime(eglSurface, ptsUs * 1000L)
+                            eglCore.swapBuffers(eglSurface)
+                        }
 
                         // 4. Drain encoder output to MP4 muxer
                         encoder.drainEncoder(muxer, endOfStream = false)
@@ -345,7 +345,7 @@ class ExportPipeline(
                             lastProgressEmitTime = now
                             val elapsedSec = (now - startTime) / 1000.0
                             val currentFps = if (elapsedSec > 0) processedFrames / elapsedSec else 0.0
-                            val progress = (processedFrames.toDouble() / totalFrames).coerceIn(0.0, 0.99)
+                            val progress = (processedFrames.toDouble() / totalEstFrames).coerceIn(0.0, 0.99)
 
                             status = status.copy(
                                 state = "processing",
@@ -358,7 +358,7 @@ class ExportPipeline(
                         }
                     }
 
-                    if (reachedEOS || (!fed && processedFrames >= totalFrames)) {
+                    if (reachedEOS || (!fed && processedFrames >= totalEstFrames)) {
                         break
                     }
                 }
@@ -413,7 +413,7 @@ class ExportPipeline(
                 pipelineException = e
             } finally {
                 try { decoder?.close() } catch (_: Throwable) {}
-                try { decoderSurface?.release() } catch (_: Throwable) {}
+                try { frameReader?.close() } catch (_: Throwable) {}
                 try { surfaceTexture?.release() } catch (_: Throwable) {}
                 if (oesTextureId != 0) {
                     try { GLES20.glDeleteTextures(1, intArrayOf(oesTextureId), 0) } catch (_: Throwable) {}
