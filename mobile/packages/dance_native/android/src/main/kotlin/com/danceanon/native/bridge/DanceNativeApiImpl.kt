@@ -35,6 +35,12 @@ class DanceNativeApiImpl(
             supportedProfiles.add("sam2")
         }
 
+        val backends = mutableListOf<String>()
+        if (caps.gpuSupported) {
+            backends.add("litert_gpu")
+        }
+        backends.add("litert_cpu")
+
         NativeCapabilitiesDto(
             platform = "android",
             osVersion = caps.androidApi.toString(),
@@ -46,11 +52,7 @@ class DanceNativeApiImpl(
             cpuCores = caps.cpuCores.toLong(),
             recommendedProfile = caps.recommendedProfile,
             supportedProfiles = supportedProfiles,
-            inferenceBackends = if (sam2State == Sam2GpuState.AVAILABLE) {
-                listOf("litert_gpu", "litert_cpu")
-            } else {
-                listOf("litert_cpu")
-            }
+            inferenceBackends = backends
         )
     }
 

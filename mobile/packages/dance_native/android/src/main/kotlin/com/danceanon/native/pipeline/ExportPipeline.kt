@@ -129,11 +129,8 @@ class ExportPipeline(
             var audioCopier: AudioTrackCopier? = null
             var frameReader: com.danceanon.native.render.InferenceFrameReader? = null
             var oesTextureId = 0
-            var fallbackTexture2DId = 0
             var livePreviewFile: java.io.File? = null
             var decoderSurface: android.view.Surface? = null
-            var fallbackRetriever: android.media.MediaMetadataRetriever? = null
-            var use2DFallbackMode = false
             var previewScope: kotlinx.coroutines.CoroutineScope? = null
 
             try {
@@ -172,23 +169,16 @@ class ExportPipeline(
                 android.opengl.GLES20.glTexParameteri(android.opengl.GLES11Ext.GL_TEXTURE_EXTERNAL_OES, android.opengl.GLES20.GL_TEXTURE_WRAP_S, android.opengl.GLES20.GL_CLAMP_TO_EDGE)
                 android.opengl.GLES20.glTexParameteri(android.opengl.GLES11Ext.GL_TEXTURE_EXTERNAL_OES, android.opengl.GLES20.GL_TEXTURE_WRAP_T, android.opengl.GLES20.GL_CLAMP_TO_EDGE)
 
-                // Allocate 2D fallback texture
-                val tex2D = IntArray(1)
-                android.opengl.GLES20.glGenTextures(1, tex2D, 0)
-                fallbackTexture2DId = tex2D[0]
-                android.opengl.GLES20.glBindTexture(android.opengl.GLES20.GL_TEXTURE_2D, fallbackTexture2DId)
-                android.opengl.GLES20.glTexParameteri(android.opengl.GLES20.GL_TEXTURE_2D, android.opengl.GLES20.GL_TEXTURE_MIN_FILTER, android.opengl.GLES20.GL_LINEAR)
-                android.opengl.GLES20.glTexParameteri(android.opengl.GLES20.GL_TEXTURE_2D, android.opengl.GLES20.GL_TEXTURE_MAG_FILTER, android.opengl.GLES20.GL_LINEAR)
-                android.opengl.GLES20.glTexParameteri(android.opengl.GLES20.GL_TEXTURE_2D, android.opengl.GLES20.GL_TEXTURE_WRAP_S, android.opengl.GLES20.GL_CLAMP_TO_EDGE)
-                android.opengl.GLES20.glTexParameteri(android.opengl.GLES20.GL_TEXTURE_2D, android.opengl.GLES20.GL_TEXTURE_WRAP_T, android.opengl.GLES20.GL_CLAMP_TO_EDGE)
+
 
                 val inferenceFbo = com.danceanon.native.render.InferenceFbo(640)
                 val inferenceRenderer = com.danceanon.native.render.InferenceRenderer()
                 val mapper = com.danceanon.native.geometry.ModelCoordinateMapper(targetWidth, targetHeight, 640)
                 val profiler = com.danceanon.native.profiler.PipelineProfiler()
 
+                val frameAvailableSequence = java.util.concurrent.atomic.AtomicLong(0L)
+                val consumedFrameSequence = java.util.concurrent.atomic.AtomicLong(0L)
                 val frameSync = Object()
-                var frameAvailable = false
 
                 surfaceTexture = SurfaceTexture(oesTextureId).apply {
                     val bufW = if (videoInfo.codedWidth > 0) videoInfo.codedWidth.toInt() else targetWidth
@@ -196,7 +186,7 @@ class ExportPipeline(
                     setDefaultBufferSize(bufW, bufH)
                     setOnFrameAvailableListener({
                         synchronized(frameSync) {
-                            frameAvailable = true
+                            frameAvailableSequence.incrementAndGet()
                             frameSync.notifyAll()
                         }
                     }, frameHandler)
@@ -211,6 +201,7 @@ class ExportPipeline(
                 decoder.prepare()
 
                 var processedFrames = 0
+                val targetFps = if (videoInfo.fps > 0) videoInfo.fps else 30.0
                 val totalEstFrames = ((videoInfo.durationMs / 1000.0) * targetFps).toLong().coerceAtLeast(1L)
                 val frameDurationNs = (1_000_000_000.0 / targetFps).toLong().coerceAtLeast(1_000_000L)
                 val stMatrix = FloatArray(16).apply {
@@ -265,8 +256,8 @@ class ExportPipeline(
                 while (!isCancelled.get() && !decoder.isOutputEOS) {
                     while (!isCancelled.get() && !decoder.isInputEOS && decoder.feedInputBuffer(timeoutUs = 0L)) {}
 
-                    val frameInfo = decoder.dequeueAndRenderSingleFrame(timeoutUs = 10_000L)
-                    if (frameInfo == null) {
+                    val token = decoder.dequeueOutputBufferToken(timeoutUs = 10_000L)
+                    if (token == null) {
                         if (decoder.isOutputEOS) {
                             break
                         }
@@ -282,101 +273,66 @@ class ExportPipeline(
                     }
                     emptyFrameStreak = 0
 
-                    if (frameInfo.isEOS || isCancelled.get()) {
+                    if (token.isEOS || isCancelled.get()) {
+                        decoder.releaseOutputBuffer(token.bufferIndex, false)
                         break
                     }
 
-                    val ptsUs = frameInfo.presentationTimeUs
+                    val ptsUs = token.presentationTimeUs
+                    val targetSeq = frameAvailableSequence.get() + 1L
+
+                    // Handshake: Release buffer to SurfaceTexture and wait for onFrameAvailable sequence increment
+                    decoder.releaseOutputBuffer(token.bufferIndex, true)
+
+                    var frameReceived = false
+                    synchronized(frameSync) {
+                        val deadline = System.currentTimeMillis() + 500L
+                        while (frameAvailableSequence.get() < targetSeq && System.currentTimeMillis() < deadline) {
+                            val waitMs = deadline - System.currentTimeMillis()
+                            if (waitMs > 0) {
+                                try {
+                                    frameSync.wait(waitMs)
+                                } catch (_: InterruptedException) {}
+                            }
+                        }
+                        frameReceived = frameAvailableSequence.get() >= targetSeq
+                    }
+
+                    if (!frameReceived) {
+                        android.util.Log.w(
+                            "ExportPipeline",
+                            "[Telemetry Warning] SurfaceTexture frame wait timeout (500ms) on frame #$processedFrames (pts=${ptsUs}us). Attempting recovery updateTexImage."
+                        )
+                    }
+
+                    consumedFrameSequence.set(frameAvailableSequence.get())
                     decodedFrameCount++
                     lastDecoderPtsUs = ptsUs
                     processedFrames++
 
-                        val selectedIds = request.selectedPersonIds.map { it.toInt() }.toSet()
+                    val selectedIds = request.selectedPersonIds.map { it.toInt() }.toSet()
 
-                        // Await frame arrival from decoder hardware rendering (immediate wakeup via frameHandler)
-                        synchronized(frameSync) {
-                            var waited = 0
-                            while (!frameAvailable && waited < 500) {
-                                try {
-                                    frameSync.wait(20)
-                                    waited += 20
-                                } catch (_: InterruptedException) {}
-                            }
-                            if (!frameAvailable) {
-                                android.util.Log.w("ExportPipeline", "[Telemetry Warning] SurfaceTexture frame wait timeout (waited ${waited}ms) on frame #$processedFrames (pts=${ptsUs}us)")
-                            }
-                            frameAvailable = false
-                        }
+                    // Ensure OES texture is active and bound before latching frame
+                    android.opengl.GLES20.glActiveTexture(android.opengl.GLES20.GL_TEXTURE0)
+                    android.opengl.GLES20.glBindTexture(android.opengl.GLES11Ext.GL_TEXTURE_EXTERNAL_OES, oesTextureId)
 
-                        // Ensure OES texture is active and bound before latching frame
-                        android.opengl.GLES20.glActiveTexture(android.opengl.GLES20.GL_TEXTURE0)
-                        android.opengl.GLES20.glBindTexture(android.opengl.GLES11Ext.GL_TEXTURE_EXTERNAL_OES, oesTextureId)
+                    // Latch and update OES texture with decoded video frame
+                    try {
+                        surfaceTexture?.updateTexImage()
+                        surfaceTexture?.getTransformMatrix(stMatrix)
+                        latchedFrameCount++
+                    } catch (e: Throwable) {
+                        android.util.Log.w("ExportPipeline", "updateTexImage warning: ${e.message}")
+                        continue
+                    }
 
-                        // Latch and update OES texture with decoded video frame
-                        try {
-                            surfaceTexture?.updateTexImage()
-                            surfaceTexture?.getTransformMatrix(stMatrix)
-                            latchedFrameCount++
-                        } catch (e: Throwable) {
-                            android.util.Log.w("ExportPipeline", "updateTexImage warning: ${e.message}")
-                        }
+                    val rotation = videoInfo.rotation.toInt()
+                    val finalTexMatrix = GlRenderer.computeTransformMatrix(stMatrix, rotation)
 
-                        val rotation = videoInfo.rotation.toInt()
-                        val finalTexMatrix = GlRenderer.computeTransformMatrix(stMatrix, rotation)
-
-
-
-                        // 1. Prepare video texture for current frame
-                        var renderTexId = oesTextureId
-                        var renderTexType = com.danceanon.native.render.SourceTextureType.OES
-                        var renderTexMatrix: FloatArray? = finalTexMatrix
-
-                        if (use2DFallbackMode) {
-                            val retriever = fallbackRetriever
-                            var fallbackBmp: android.graphics.Bitmap? = null
-                            if (retriever != null) {
-                                try {
-                                    fallbackBmp = retriever.getFrameAtTime(ptsUs, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-                                        ?: retriever.getFrameAtTime(ptsUs, android.media.MediaMetadataRetriever.OPTION_CLOSEST)
-                                } catch (t: Throwable) {
-                                    android.util.Log.e("ExportPipeline", "[Fallback Error] MediaMetadataRetriever failed to get frame at pts=$ptsUs us: ${t.message}", t)
-                                }
-                            }
-
-                            if (fallbackBmp != null) {
-                                val softwareBmp = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && fallbackBmp.config == android.graphics.Bitmap.Config.HARDWARE) {
-                                    fallbackBmp.copy(android.graphics.Bitmap.Config.ARGB_8888, false).also {
-                                        if (fallbackBmp != it) fallbackBmp.recycle()
-                                    }
-                                } else {
-                                    fallbackBmp
-                                }
-
-                                val rot = videoInfo.rotation.toInt()
-                                val rotatedBmp = if (rot != 0) {
-                                    val mat = android.graphics.Matrix().apply { postRotate(rot.toFloat()) }
-                                    val rb = android.graphics.Bitmap.createBitmap(softwareBmp, 0, 0, softwareBmp.width, softwareBmp.height, mat, true)
-                                    if (softwareBmp != rb) softwareBmp.recycle()
-                                    rb
-                                } else {
-                                    softwareBmp
-                                }
-
-                                android.opengl.GLES20.glActiveTexture(android.opengl.GLES20.GL_TEXTURE0)
-                                android.opengl.GLES20.glBindTexture(android.opengl.GLES20.GL_TEXTURE_2D, fallbackTexture2DId)
-                                android.opengl.GLUtils.texImage2D(android.opengl.GLES20.GL_TEXTURE_2D, 0, rotatedBmp, 0)
-                                rotatedBmp.recycle()
-
-                                renderTexId = fallbackTexture2DId
-                                renderTexType = com.danceanon.native.render.SourceTextureType.TEXTURE_2D
-                                renderTexMatrix = null
-                            } else {
-                                android.util.Log.w("ExportPipeline", "[Fallback Warning] Null frame from retriever at pts=$ptsUs us. Keeping 2D Texture mode to prevent rendering broken OES.")
-                                renderTexId = fallbackTexture2DId
-                                renderTexType = com.danceanon.native.render.SourceTextureType.TEXTURE_2D
-                                renderTexMatrix = null
-                            }
-                        }
+                    // 1. Prepare video texture for current frame
+                    val renderTexId = oesTextureId
+                    val renderTexType = com.danceanon.native.render.SourceTextureType.OES
+                    val renderTexMatrix: FloatArray? = finalTexMatrix
 
                         // 2. Perform Inference / Temporal Mask Tracking
                         val trackedList: List<com.danceanon.native.tracking.TrackedPerson> = if (isSam2Mode && sam2Fbo != null && sam2Renderer != null && sam2Tracker != null) {
@@ -628,86 +584,6 @@ class ExportPipeline(
 
 
                         // 4. Render final anonymized frame to EGL surface (encoder input)
-                        // Stage 1 (GL/OES render) self-healing check on initial frames (frames 1..5)
-                        if (processedFrames <= 5 && !use2DFallbackMode) {
-                            profiler.recordStage("renderEffects") {
-                                glRenderer.render(
-                                    frameTexture = oesTextureId,
-                                    texMatrix = finalTexMatrix,
-                                    persons = trackedList,
-                                    selectedPersonIds = selectedIds,
-                                    effects = request.effects,
-                                    follow = request.follow,
-                                    presentationTimeUs = ptsUs,
-                                    textureType = com.danceanon.native.render.SourceTextureType.OES
-                                )
-                            }
-
-                            val sampleBmp = glRenderer.captureRenderedFrame()
-                            val isOesOutputBlack = isFrameBlack(sampleBmp)
-                            sampleBmp?.recycle()
-
-                            if (isOesOutputBlack) {
-                                // Double check if source frame is actually non-black to prevent false positives on black fade-in
-                                val probeRetriever = android.media.MediaMetadataRetriever().apply {
-                                    if (sourceUri.startsWith("content://")) {
-                                        setDataSource(context, android.net.Uri.parse(sourceUri))
-                                    } else {
-                                        setDataSource(sourceUri.removePrefix("file://"))
-                                    }
-                                }
-                                var probeBmp: android.graphics.Bitmap? = null
-                                try {
-                                    probeBmp = probeRetriever.getFrameAtTime(ptsUs, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-                                        ?: probeRetriever.getFrameAtTime(ptsUs, android.media.MediaMetadataRetriever.OPTION_CLOSEST)
-                                } catch (t: Throwable) {
-                                    android.util.Log.e("ExportPipeline", "[Stage 1 Probe] Retriever probe error: ${t.message}", t)
-                                }
-
-                                val isSourceBlack = isFrameBlack(probeBmp)
-                                if (!isSourceBlack) {
-                                    android.util.Log.w(
-                                        "ExportPipeline",
-                                        "[Stage 1 Error] OES hardware texture rendered black while source frame contains real video pixels on frame #$processedFrames. Auto-activating 2D Frame Provider fallback!"
-                                    )
-                                    use2DFallbackMode = true
-                                    fallbackRetriever = probeRetriever
-
-                                    if (probeBmp != null) {
-                                        val softwareBmp = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && probeBmp.config == android.graphics.Bitmap.Config.HARDWARE) {
-                                            probeBmp.copy(android.graphics.Bitmap.Config.ARGB_8888, false).also {
-                                                if (probeBmp != it) probeBmp.recycle()
-                                            }
-                                        } else {
-                                            probeBmp
-                                        }
-
-                                        val rot = videoInfo.rotation.toInt()
-                                        val rotatedBmp = if (rot != 0) {
-                                            val mat = android.graphics.Matrix().apply { postRotate(rot.toFloat()) }
-                                            val rb = android.graphics.Bitmap.createBitmap(softwareBmp, 0, 0, softwareBmp.width, softwareBmp.height, mat, true)
-                                            if (softwareBmp != rb) softwareBmp.recycle()
-                                            rb
-                                        } else {
-                                            softwareBmp
-                                        }
-                                        android.opengl.GLES20.glActiveTexture(android.opengl.GLES20.GL_TEXTURE0)
-                                        android.opengl.GLES20.glBindTexture(android.opengl.GLES20.GL_TEXTURE_2D, fallbackTexture2DId)
-                                        android.opengl.GLUtils.texImage2D(android.opengl.GLES20.GL_TEXTURE_2D, 0, rotatedBmp, 0)
-                                        rotatedBmp.recycle()
-
-                                        renderTexId = fallbackTexture2DId
-                                        renderTexType = com.danceanon.native.render.SourceTextureType.TEXTURE_2D
-                                        renderTexMatrix = null
-                                    }
-                                } else {
-                                    probeBmp?.recycle()
-                                    try { probeRetriever.release() } catch (_: Throwable) {}
-                                    android.util.Log.i("ExportPipeline", "[Telemetry] Frame #$processedFrames detected as genuine black frame in source video (fade-in / dark scene).")
-                                }
-                            }
-                        }
-
                         profiler.recordStage("renderEffects") {
                             glRenderer.render(
                                 frameTexture = renderTexId,
@@ -912,14 +788,10 @@ class ExportPipeline(
                 try { previewScope?.cancel() } catch (_: Throwable) {}
                 try { decoder?.close() } catch (_: Throwable) {}
                 try { decoderSurface?.release() } catch (_: Throwable) {}
-                try { fallbackRetriever?.release() } catch (_: Throwable) {}
                 try { frameReader?.close() } catch (_: Throwable) {}
                 try { surfaceTexture?.release() } catch (_: Throwable) {}
                 if (oesTextureId != 0) {
                     try { GLES20.glDeleteTextures(1, intArrayOf(oesTextureId), 0) } catch (_: Throwable) {}
-                }
-                if (fallbackTexture2DId != 0) {
-                    try { GLES20.glDeleteTextures(1, intArrayOf(fallbackTexture2DId), 0) } catch (_: Throwable) {}
                 }
                 try { muxer?.close() } catch (_: Throwable) {}
                 try { audioCopier?.close() } catch (_: Throwable) {}

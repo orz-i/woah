@@ -37,7 +37,7 @@ object Sam2GpuCapabilityManager {
     fun markUnavailable(reason: String) {
         currentState = Sam2GpuState.UNAVAILABLE
         unavailableReason = reason
-        Log.w(TAG, "[SAM2-GATE] Explicitly marked UNAVAILABLE: ")
+        Log.w(TAG, "[SAM2-GATE] Explicitly marked UNAVAILABLE: $reason")
     }
 
     fun resetForTesting() {
@@ -77,7 +77,7 @@ object Sam2GpuCapabilityManager {
 
                 // 2. Validate effective accelerator is strictly GPU
                 if (probeRunner.effectiveAccelerator != LiteRtAccelerator.GPU) {
-                    throw IllegalStateException("LiteRT image_features runner effective accelerator was not GPU ()")
+                    throw IllegalStateException("LiteRT image_features runner effective accelerator was not GPU (${probeRunner.effectiveAccelerator})")
                 }
 
                 // 3. Validate input/output buffers
@@ -86,7 +86,7 @@ object Sam2GpuCapabilityManager {
                 val outBufs = probeRunner.getOutputBuffers()
 
                 if (inBufs.isEmpty() || outBufs.size < 4) {
-                    throw IllegalStateException("Unexpected buffer counts for SAM2 image features: in=, out= (expected 1 in, >=4 out)")
+                    throw IllegalStateException("Unexpected buffer counts for SAM2 image features: in=${inBufs.size}, out=${outBufs.size} (expected 1 in, >=4 out)")
                 }
 
                 // 4. Write legal [1, 3, 1024, 1024] FP32 dummy input
@@ -112,16 +112,16 @@ object Sam2GpuCapabilityManager {
 
                 Log.i(
                     TAG,
-                    "[SAM2-GATE]\nstate=AVAILABLE\nmodel=sam2_image_features.tflite\naccelerator=GPU\ncompile_ms=\nwarmup_ms="
+                    "[SAM2-GATE]\nstate=AVAILABLE\nmodel=sam2_image_features.tflite\naccelerator=GPU\ncompile_ms=$compileMs\nwarmup_ms=$warmupMs"
                 )
             } catch (e: Throwable) {
-                val reasonMsg = ": "
+                val reasonMsg = "${e.javaClass.simpleName}: ${e.message}"
                 currentState = Sam2GpuState.UNAVAILABLE
-                unavailableReason = "Stage  failed: "
+                unavailableReason = "Stage $probeStage failed: $reasonMsg"
 
                 Log.w(
                     TAG,
-                    "[SAM2-GATE]\nstate=UNAVAILABLE\nstage=\nreason=",
+                    "[SAM2-GATE]\nstate=UNAVAILABLE\nstage=$probeStage\nreason=$unavailableReason",
                     e
                 )
             } finally {

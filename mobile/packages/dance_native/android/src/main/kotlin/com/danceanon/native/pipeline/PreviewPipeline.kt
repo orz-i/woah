@@ -70,7 +70,13 @@ class PreviewPipeline(
         val trackedPersons: List<com.danceanon.native.tracking.TrackedPerson>
 
         if (cachedEntry != null && !cachedEntry.frameBitmap.isRecycled) {
-            rotatedBitmap = cachedEntry.frameBitmap.copy(cachedEntry.frameBitmap.config ?: Bitmap.Config.ARGB_8888, true)
+            val srcBmp = cachedEntry.frameBitmap
+            val cfg = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && srcBmp.config == Bitmap.Config.HARDWARE) {
+                Bitmap.Config.ARGB_8888
+            } else {
+                srcBmp.config ?: Bitmap.Config.ARGB_8888
+            }
+            rotatedBitmap = srcBmp.copy(cfg, true)
             trackedPersons = cachedEntry.trackedPersons
         } else {
             // 1. Extract frame Bitmap at requested timestamp
@@ -100,15 +106,24 @@ class PreviewPipeline(
                 try { retriever.release() } catch (_: Exception) {}
             }
 
+            // Convert Android Hardware Bitmap to ARGB_8888 software bitmap for OpenGL upload & inference
+            val softwareBmp = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && rawBitmap.config == Bitmap.Config.HARDWARE) {
+                rawBitmap.copy(Bitmap.Config.ARGB_8888, false).also {
+                    if (rawBitmap != it) rawBitmap.recycle()
+                }
+            } else {
+                rawBitmap
+            }
+
             // Apply rotation if needed
             val rotation = videoInfo.rotation.toInt()
             val baseRotatedBitmap = if (rotation != 0) {
                 val matrix = Matrix().apply { postRotate(rotation.toFloat()) }
-                val rotated = Bitmap.createBitmap(rawBitmap, 0, 0, rawBitmap.width, rawBitmap.height, matrix, true)
-                rawBitmap.recycle()
+                val rotated = Bitmap.createBitmap(softwareBmp, 0, 0, softwareBmp.width, softwareBmp.height, matrix, true)
+                if (softwareBmp != rotated) softwareBmp.recycle()
                 rotated
             } else {
-                rawBitmap
+                softwareBmp
             }
 
             val frameWidth = baseRotatedBitmap.width
@@ -191,6 +206,8 @@ class PreviewPipeline(
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, frameTextureId)
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
         GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, rotatedBitmap, 0)
         rotatedBitmap.recycle()
 

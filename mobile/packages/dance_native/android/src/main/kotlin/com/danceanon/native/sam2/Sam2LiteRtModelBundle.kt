@@ -58,7 +58,7 @@ class Sam2LiteRtModelBundle(
                 if (imgRunner.effectiveAccelerator != LiteRtAccelerator.GPU) {
                     throw DanceNativeException(
                         DanceNativeException.SAM2_GPU_UNAVAILABLE,
-                        "SAM2 requires a verified LiteRT GPU accelerator on this device (image_features effective accelerator was )"
+                        "SAM2 requires a verified LiteRT GPU accelerator on this device (image_features effective accelerator was ${imgRunner.effectiveAccelerator})"
                     )
                 }
 
@@ -93,7 +93,7 @@ class Sam2LiteRtModelBundle(
                 try { initRunner?.close() } catch (_: Throwable) {}
                 try { tempRunner?.close() } catch (_: Throwable) {}
 
-                Sam2GpuCapabilityManager.markUnavailable("Bundle init failed: ")
+                Sam2GpuCapabilityManager.markUnavailable("Bundle init failed: ${e.javaClass.simpleName}: ${e.message}")
 
                 if (e is DanceNativeException && e.code == DanceNativeException.SAM2_GPU_UNAVAILABLE) {
                     throw e
@@ -101,7 +101,7 @@ class Sam2LiteRtModelBundle(
 
                 throw DanceNativeException(
                     DanceNativeException.SAM2_GPU_UNAVAILABLE,
-                    "SAM2 requires a verified LiteRT GPU accelerator on this device: ",
+                    "SAM2 requires a verified LiteRT GPU accelerator on this device: ${e.javaClass.simpleName}: ${e.message}",
                     e
                 )
             }
@@ -134,7 +134,7 @@ class Sam2LiteRtModelBundle(
                 if (imgRunner.effectiveAccelerator != LiteRtAccelerator.GPU) {
                     throw DanceNativeException(
                         DanceNativeException.SAM2_GPU_UNAVAILABLE,
-                        "SAM2 requires a verified LiteRT GPU accelerator on this device (image_features effective accelerator was )"
+                        "SAM2 requires a verified LiteRT GPU accelerator on this device (image_features effective accelerator was ${imgRunner.effectiveAccelerator})"
                     )
                 }
 
@@ -165,7 +165,7 @@ class Sam2LiteRtModelBundle(
                 try { initRunner?.close() } catch (_: Throwable) {}
                 try { tempRunner?.close() } catch (_: Throwable) {}
 
-                Sam2GpuCapabilityManager.markUnavailable("Bundle file init failed: ")
+                Sam2GpuCapabilityManager.markUnavailable("Bundle file init failed: ${e.javaClass.simpleName}: ${e.message}")
 
                 if (e is DanceNativeException && e.code == DanceNativeException.SAM2_GPU_UNAVAILABLE) {
                     throw e
@@ -173,7 +173,7 @@ class Sam2LiteRtModelBundle(
 
                 throw DanceNativeException(
                     DanceNativeException.SAM2_GPU_UNAVAILABLE,
-                    "SAM2 requires a verified LiteRT GPU accelerator on this device: ",
+                    "SAM2 requires a verified LiteRT GPU accelerator on this device: ${e.javaClass.simpleName}: ${e.message}",
                     e
                 )
             }

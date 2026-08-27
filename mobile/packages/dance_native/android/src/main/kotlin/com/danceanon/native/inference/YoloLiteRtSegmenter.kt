@@ -68,7 +68,7 @@ class YoloLiteRtSegmenter(
 
             Log.i(
                 TAG,
-                "[LiteRT YOLO] Initialized successfully with requested: , effective accelerator: "
+                "[LiteRT YOLO] Initialized successfully model=${modelRunner.modelName} with requested: $requestedAccelerator, effective accelerator: ${modelRunner.effectiveAccelerator}"
             )
         } catch (e: DanceNativeException) {
             throw e
@@ -76,7 +76,7 @@ class YoloLiteRtSegmenter(
             Log.e(TAG, "[LiteRT YOLO] Failed to initialize: ", e)
             throw DanceNativeException(
                 DanceNativeException.MODEL_INIT_FAILED,
-                "Failed to initialize LiteRT YOLO Segmenter: ",
+                "Failed to initialize LiteRT YOLO Segmenter: ${e.javaClass.simpleName}: ${e.message}",
                 e
             )
         }
@@ -164,7 +164,7 @@ class YoloLiteRtSegmenter(
             Log.e(TAG, "[LiteRT YOLO] Inference error: ", e)
             throw DanceNativeException(
                 DanceNativeException.MODEL_INFERENCE_FAILED,
-                "Inference execution failed on LiteRT YOLO: ",
+                "Inference execution failed on LiteRT YOLO: ${e.javaClass.simpleName}: ${e.message}",
                 e
             )
         }
@@ -239,7 +239,7 @@ class YoloLiteRtSegmenter(
             Log.e(TAG, "[LiteRT YOLO] Inference error: ", e)
             throw DanceNativeException(
                 DanceNativeException.MODEL_INFERENCE_FAILED,
-                "Inference execution failed on LiteRT YOLO: ",
+                "Inference execution failed on LiteRT YOLO: ${e.javaClass.simpleName}: ${e.message}",
                 e
             )
         }

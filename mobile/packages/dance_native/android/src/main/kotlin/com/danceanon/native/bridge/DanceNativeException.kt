@@ -6,9 +6,9 @@ package com.danceanon.native.bridge
  */
 class DanceNativeException(
     val code: String,
-    override val message: String,
+    detailMessage: String,
     cause: Throwable? = null
-) : RuntimeException("[] ", cause) {
+) : RuntimeException("[$code] $detailMessage", cause) {
 
     companion object {
         const val VIDEO_OPEN_FAILED = "VIDEO_OPEN_FAILED"

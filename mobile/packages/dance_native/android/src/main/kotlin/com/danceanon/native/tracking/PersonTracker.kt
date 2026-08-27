@@ -7,6 +7,7 @@ import com.danceanon.native.inference.PersonDetection
 enum class TrackState {
     NEW,
     ACTIVE,
+    OCCLUDED,
     LOST,
     REMOVED
 }

@@ -129,12 +129,24 @@ class YoloLiteRtTensorAdapter(
             }
         }
 
-        // NMS
-        val kept = nms(candidates, iouThreshold)
+        // 2. Perform Mask-Aware Non-Maximum Suppression (NMS)
+        val protoView: ProtoTensorView = if (!isOut1Nhwc) {
+            NchwBufferProtoView(output1Buffer, PROTO_CHANNELS, PROTO_SIZE)
+        } else {
+            NhwcBufferProtoView(output1Buffer, PROTO_CHANNELS, PROTO_SIZE)
+        }
 
-        // Process kept detections
+        val (kept, maskCache) = YoloMaskDecoder.maskAwareNms(
+            candidates = candidates,
+            protoView = protoView,
+            bboxIouThreshold = iouThreshold,
+            maskIouThreshold = YoloMaskDecoder.DEFAULT_MASK_IOU_THRESHOLD,
+            inputSize = preprocess.inputSize,
+            protoSize = PROTO_SIZE
+        )
+
+        // 3. Process kept detections
         val detections = mutableListOf<PersonDetection>()
-        val protoPixels = PROTO_SIZE * PROTO_SIZE
 
         for (cand in kept) {
             val srcX1 = ((cand.x1 - preprocess.padLeft) / preprocess.scale).coerceIn(0f, preprocess.srcWidth.toFloat())
@@ -144,41 +156,12 @@ class YoloLiteRtTensorAdapter(
 
             val bbox = FloatRect(left = srcX1, top = srcY1, right = srcX2, bottom = srcY2)
 
+            val maskBytes = maskCache.getMask(cand)
             val maskBuffer = ByteBuffer.allocateDirect(PROTO_SIZE * PROTO_SIZE).apply {
                 order(ByteOrder.nativeOrder())
+                put(maskBytes)
+                rewind()
             }
-
-            val protoX1 = ((cand.x1 / preprocess.inputSize) * PROTO_SIZE).toInt().coerceIn(0, PROTO_SIZE)
-            val protoY1 = ((cand.y1 / preprocess.inputSize) * PROTO_SIZE).toInt().coerceIn(0, PROTO_SIZE)
-            val protoX2 = ((cand.x2 / preprocess.inputSize) * PROTO_SIZE).toInt().coerceIn(0, PROTO_SIZE)
-            val protoY2 = ((cand.y2 / preprocess.inputSize) * PROTO_SIZE).toInt().coerceIn(0, PROTO_SIZE)
-
-            for (py in 0 until PROTO_SIZE) {
-                for (px in 0 until PROTO_SIZE) {
-                    if (px in protoX1 until protoX2 && py in protoY1 until protoY2) {
-                        var sum = 0f
-                        if (!isOut1Nhwc) {
-                            // [1, 32, 160, 160]
-                            val pixelOffset = py * PROTO_SIZE + px
-                            for (c in 0 until PROTO_CHANNELS) {
-                                sum += cand.maskCoeffs[c] * output1Buffer.get(c * protoPixels + pixelOffset)
-                            }
-                        } else {
-                            // [1, 160, 160, 32]
-                            val pixelOffset = (py * PROTO_SIZE + px) * PROTO_CHANNELS
-                            for (c in 0 until PROTO_CHANNELS) {
-                                sum += cand.maskCoeffs[c] * output1Buffer.get(pixelOffset + c)
-                            }
-                        }
-                        val prob = 1f / (1f + exp(-sum))
-                        val byteVal = if (prob > 0.5f) 255.toByte() else 0.toByte()
-                        maskBuffer.put(byteVal)
-                    } else {
-                        maskBuffer.put(0.toByte())
-                    }
-                }
-            }
-            maskBuffer.rewind()
 
             val mapper = ModelCoordinateMapper(
                 srcWidth = preprocess.srcWidth,
@@ -208,41 +191,5 @@ class YoloLiteRtTensorAdapter(
 
         detections.sortBy { it.bbox.centerX }
         return detections
-    }
-
-    private fun nms(candidates: List<RawCandidate>, iouThresh: Float): List<RawCandidate> {
-        val sorted = candidates.sortedByDescending { it.confidence }.toMutableList()
-        val selected = mutableListOf<RawCandidate>()
-
-        while (sorted.isNotEmpty()) {
-            val current = sorted.removeAt(0)
-            selected.add(current)
-
-            val iterator = sorted.iterator()
-            while (iterator.hasNext()) {
-                val next = iterator.next()
-                if (calculateIoU(current, next) > iouThresh) {
-                    iterator.remove()
-                }
-            }
-        }
-        return selected
-    }
-
-    private fun calculateIoU(a: RawCandidate, b: RawCandidate): Float {
-        val interX1 = max(a.x1, b.x1)
-        val interY1 = max(a.y1, b.y1)
-        val interX2 = min(a.x2, b.x2)
-        val interY2 = min(a.y2, b.y2)
-
-        val interW = max(0f, interX2 - interX1)
-        val interH = max(0f, interY2 - interY1)
-        val interArea = interW * interH
-
-        val areaA = (a.x2 - a.x1) * (a.y2 - a.y1)
-        val areaB = (b.x2 - b.x1) * (b.y2 - b.y1)
-        val unionArea = areaA + areaB - interArea
-
-        return if (unionArea <= 0f) 0f else interArea / unionArea
     }
 }

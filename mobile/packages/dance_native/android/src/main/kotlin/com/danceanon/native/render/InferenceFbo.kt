@@ -43,7 +43,7 @@ class InferenceFbo(val size: Int = 640) : AutoCloseable {
 
         val status = GLES20.glCheckFramebufferStatus(GLES20.GL_FRAMEBUFFER)
         if (status != GLES20.GL_FRAMEBUFFER_COMPLETE) {
-            android.util.Log.e("InferenceFbo", "Framebuffer incomplete, status: ")
+            android.util.Log.e("InferenceFbo", "Framebuffer incomplete, status: $status")
         }
 
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)

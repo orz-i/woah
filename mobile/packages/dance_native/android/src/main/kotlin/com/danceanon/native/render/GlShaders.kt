@@ -8,8 +8,10 @@ attribute vec2 aTexCoord;
 uniform mat4 uTexMatrix;
 uniform vec4 uCropRect;
 uniform vec4 uMaskCropRect;
+uniform vec4 uOccluderCropRect;
 varying vec2 vOesTexCoord;
 varying vec2 vMaskTexCoord;
+varying vec2 vOccluderTexCoord;
 
 void main() {
     gl_Position = aPosition;
@@ -25,6 +27,10 @@ void main() {
         mix(uMaskCropRect.x, uMaskCropRect.z, contentUv.x),
         mix(uMaskCropRect.y, uMaskCropRect.w, 1.0 - contentUv.y)
     );
+    vOccluderTexCoord = vec2(
+        mix(uOccluderCropRect.x, uOccluderCropRect.z, contentUv.x),
+        mix(uOccluderCropRect.y, uOccluderCropRect.w, 1.0 - contentUv.y)
+    );
 }
 """.trim()
 
@@ -32,11 +38,14 @@ void main() {
     private const val SHADER_BODY = """
 varying vec2 vOesTexCoord;
 varying vec2 vMaskTexCoord;
+varying vec2 vOccluderTexCoord;
 
 uniform sampler2D uMaskTexture;
+uniform sampler2D uOccluderTexture;
 uniform sampler2D uStickerTexture;
 
 uniform int uHasMask;
+uniform int uHasOccluder;
 uniform int uFillMode; // 0: none/solid, 1: outline, 2: blur, 3: gradient, 4: skin_whiten, 5: mosaic
 
 uniform vec4 uFillColor;
@@ -74,6 +83,7 @@ vec3 hsv2rgb(vec3 c) {
 void main() {
     vec2 originalUv = vOesTexCoord;
     vec2 maskUv = vMaskTexCoord;
+    vec2 occluderUv = vOccluderTexCoord;
 
     vec4 originalColor = texture2D(uBaseTexture, originalUv);
 
@@ -82,10 +92,17 @@ void main() {
         return;
     }
 
-    float maskVal = 0.0;
+    float privacyVal = 0.0;
     if (maskUv.x >= 0.0 && maskUv.x <= 1.0 && maskUv.y >= 0.0 && maskUv.y <= 1.0) {
-        maskVal = texture2D(uMaskTexture, maskUv).r;
+        privacyVal = texture2D(uMaskTexture, maskUv).r;
     }
+
+    float occluderVal = 0.0;
+    if (uHasOccluder == 1 && occluderUv.x >= 0.0 && occluderUv.x <= 1.0 && occluderUv.y >= 0.0 && occluderUv.y <= 1.0) {
+        occluderVal = texture2D(uOccluderTexture, occluderUv).r;
+    }
+
+    float maskVal = privacyVal * (1.0 - occluderVal);
 
 
     // 1. Leg stretch non-linear dual coordinate warp - APPLIED PERSON-ONLY

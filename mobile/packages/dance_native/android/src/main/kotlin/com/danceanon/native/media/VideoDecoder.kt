@@ -100,9 +100,15 @@ class VideoDecoder(
         val isEOS: Boolean
     )
 
-    fun dequeueAndRenderSingleFrame(timeoutUs: Long = 10_000L): DecodedFrameInfo? {
+    data class DecodedFrameToken(
+        val bufferIndex: Int,
+        val presentationTimeUs: Long,
+        val isEOS: Boolean
+    )
+
+    fun dequeueOutputBufferToken(timeoutUs: Long = 10_000L): DecodedFrameToken? {
         val decoder = codec ?: return null
-        if (isEOSOutput) return DecodedFrameInfo(0L, isEOS = true)
+        if (isEOSOutput) return DecodedFrameToken(-1, 0L, isEOS = true)
 
         while (true) {
             val status = decoder.dequeueOutputBuffer(bufferInfo, timeoutUs)
@@ -116,12 +122,27 @@ class VideoDecoder(
                     isEOSOutput = true
                 }
                 val pts = bufferInfo.presentationTimeUs
-
-                // Release to render on surface if outputSurface was provided and not EOS
-                decoder.releaseOutputBuffer(status, outputSurface != null && !isEOS)
-                return DecodedFrameInfo(pts, isEOS)
+                return DecodedFrameToken(status, pts, isEOS)
             }
         }
+    }
+
+    fun releaseOutputBuffer(bufferIndex: Int, render: Boolean) {
+        if (bufferIndex >= 0 && codec != null) {
+            try {
+                codec?.releaseOutputBuffer(bufferIndex, render)
+            } catch (t: Throwable) {
+                android.util.Log.w("VideoDecoder", "releaseOutputBuffer failed: ${t.message}")
+            }
+        }
+    }
+
+    fun dequeueAndRenderSingleFrame(timeoutUs: Long = 10_000L): DecodedFrameInfo? {
+        val token = dequeueOutputBufferToken(timeoutUs) ?: return null
+        if (token.bufferIndex >= 0) {
+            releaseOutputBuffer(token.bufferIndex, outputSurface != null && !token.isEOS)
+        }
+        return DecodedFrameInfo(token.presentationTimeUs, token.isEOS)
     }
 
     fun drainOutputBuffer(timeoutUs: Long = 10_000L, onFrameReady: (ptsUs: Long, isEOS: Boolean) -> Unit) {

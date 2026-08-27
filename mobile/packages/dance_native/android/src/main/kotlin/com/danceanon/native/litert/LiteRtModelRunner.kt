@@ -72,7 +72,7 @@ class LiteRtModelRunner(
         executor.submit(Callable {
             val model = compiledModel ?: throw DanceNativeException(
                 DanceNativeException.MODEL_INIT_FAILED,
-                "[] Model runner not initialized"
+                "Model runner not initialized for '$modelName'"
             )
             model.run(inputBuffers, outputBuffers)
         }).get()
@@ -109,23 +109,23 @@ class LiteRtModelRunner(
                 outputBuffers = outBufs
                 effective = LiteRtAccelerator.GPU
             } catch (gpuEx: Throwable) {
-                fallbackReason = ": "
+                fallbackReason = "${gpuEx.javaClass.simpleName}: ${gpuEx.message}"
                 closeResources(gpuModel, inBufs, outBufs)
                 if (!policy.allowCpuFallback) {
                     Log.e(
                         TAG,
-                        "[LiteRT] model= requested=GPU strict GPU initialization failed: ",
+                        "[LiteRT] model=$modelName requested=GPU strict GPU initialization failed: ${gpuEx.message}",
                         gpuEx
                     )
                     throw DanceNativeException(
                         DanceNativeException.MODEL_INIT_FAILED,
-                        "Failed strict GPU initialization for LiteRT model '': ",
+                        "Failed strict GPU initialization for LiteRT model '$modelName': ${gpuEx.message}",
                         gpuEx
                     )
                 } else {
                     Log.w(
                         TAG,
-                        "[LiteRT] model= requested=GPU gpu_compile_failed= -> falling back to CPU",
+                        "[LiteRT] model=$modelName requested=GPU gpu_compile_failed=$fallbackReason -> falling back to CPU",
                         gpuEx
                     )
                 }
@@ -156,10 +156,10 @@ class LiteRtModelRunner(
                 effective = LiteRtAccelerator.CPU
             } catch (cpuEx: Throwable) {
                 closeResources(cpuModel, inBufs, outBufs)
-                Log.e(TAG, "[LiteRT] model= CPU initialization failed: ", cpuEx)
+                Log.e(TAG, "[LiteRT] model=$modelName CPU initialization failed: ${cpuEx.message}", cpuEx)
                 throw DanceNativeException(
                     DanceNativeException.MODEL_INIT_FAILED,
-                    "Failed to initialize LiteRT model '' (GPU & CPU failed): ",
+                    "Failed to initialize LiteRT model '$modelName' (GPU & CPU failed): ${cpuEx.message}",
                     cpuEx
                 )
             }
@@ -183,31 +183,27 @@ class LiteRtModelRunner(
         if (effective == LiteRtAccelerator.GPU) {
             Log.i(
                 TAG,
-                "[LiteRT]\nmodel=\nruntime=LiteRT\nrequested=GPU\neffective=GPU\ncompile_ms=\nwarmup_ms=\ninputs=\noutputs="
+                "[LiteRT]\nmodel=$modelName\nruntime=LiteRT\nrequested=GPU\neffective=GPU\ncompile_ms=$compileMs\nwarmup_ms=$warmupMs\ninputs=$inShapes\noutputs=$outShapes"
             )
         } else {
             Log.i(
                 TAG,
-                "[LiteRT]\nmodel=\nruntime=LiteRT\nrequested=\ngpu_compile_failed=\neffective=CPU\ncpu_compile_ms=\nwarmup_ms=\ninputs=\noutputs="
+                "[LiteRT]\nmodel=$modelName\nruntime=LiteRT\nrequested=${policy.requestedAccelerator}\ngpu_compile_failed=$fallbackReason\neffective=CPU\ncpu_compile_ms=$compileMs\nwarmup_ms=$warmupMs\ninputs=$inShapes\noutputs=$outShapes"
             )
         }
     }
 
     private fun createCompiledModel(options: CompiledModel.Options): CompiledModel {
-        return when {
-            modelFile != null && modelFile.exists() && modelFile.length() > 0L -> {
-                CompiledModel.create(modelFile.absolutePath, options)
-            }
-            assetManager != null && !assetPath.isNullOrEmpty() -> {
-                CompiledModel.create(assetManager, assetPath, options)
-            }
-            else -> {
-                throw DanceNativeException(
-                    DanceNativeException.MODEL_NOT_FOUND,
-                    "No valid model source provided for LiteRT runner ''"
-                )
-            }
+        if (modelFile != null && modelFile.exists() && modelFile.length() > 0L) {
+            return CompiledModel.create(modelFile.absolutePath, options)
         }
+        if (assetManager != null && !assetPath.isNullOrEmpty()) {
+            return CompiledModel.create(assetManager, assetPath, options)
+        }
+        throw DanceNativeException(
+            DanceNativeException.MODEL_NOT_FOUND,
+            "No valid model source provided for LiteRT runner '$modelName'"
+        )
     }
 
     private fun extractInputShapes(): List<List<Int>> {
@@ -236,7 +232,7 @@ class LiteRtModelRunner(
         if (compiledModel == null) {
             throw DanceNativeException(
                 DanceNativeException.MODEL_INIT_FAILED,
-                "[] Model runner is not initialized. Call initialize() first."
+                "Model runner is not initialized for '$modelName'. Call initialize() first."
             )
         }
     }
@@ -257,9 +253,9 @@ class LiteRtModelRunner(
 
     private fun closeQuietly() {
         closeResources(compiledModel, inputBuffers, outputBuffers)
+        compiledModel = null
         inputBuffers = emptyList()
         outputBuffers = emptyList()
-        compiledModel = null
     }
 
     override fun close() {
@@ -279,18 +275,58 @@ class LiteRtModelRunner(
     companion object {
         private const val TAG = "LiteRtModelRunner"
 
+        fun ensureAssetExtracted(context: Context, assetPath: String): File {
+            val modelsDir = File(context.filesDir, "litert_models").apply { mkdirs() }
+            val fileName = File(assetPath).name
+            val targetFile = File(modelsDir, fileName)
+
+            try {
+                val assetFd = try { context.assets.openFd(assetPath) } catch (_: Throwable) { null }
+                val assetLen = assetFd?.length ?: -1L
+                assetFd?.close()
+
+                if (!targetFile.exists() || (assetLen > 0 && targetFile.length() != assetLen) || targetFile.length() == 0L) {
+                    val tempFile = File(modelsDir, "${fileName}.tmp")
+                    context.assets.open(assetPath).use { input ->
+                        java.io.FileOutputStream(tempFile).use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    if (tempFile.exists() && tempFile.length() > 0L) {
+                        if (targetFile.exists()) targetFile.delete()
+                        tempFile.renameTo(targetFile)
+                    }
+                }
+            } catch (t: Throwable) {
+                Log.w(TAG, "Asset extraction to disk info for '$assetPath': ${t.message}")
+            }
+
+            return if (targetFile.exists() && targetFile.length() > 0L) targetFile else File(assetPath)
+        }
+
         fun fromAsset(
             context: Context,
             assetPath: String,
             modelName: String = File(assetPath).name,
             policy: LiteRtRunnerPolicy = LiteRtRunnerPolicy.STRICT_GPU
         ): LiteRtModelRunner {
-            return LiteRtModelRunner(
-                modelName = modelName,
-                assetPath = assetPath,
-                assetManager = context.assets,
-                policy = policy
-            )
+            val extracted = ensureAssetExtracted(context, assetPath)
+            return if (extracted.exists() && extracted.length() > 0L) {
+                LiteRtModelRunner(
+                    modelName = modelName,
+                    modelFile = extracted,
+                    assetPath = assetPath,
+                    assetManager = context.assets,
+                    policy = policy
+                )
+            } else {
+                LiteRtModelRunner(
+                    modelName = modelName,
+                    assetPath = assetPath,
+                    assetManager = context.assets,
+                    policy = policy
+                )
+            }
         }
 
         fun fromAsset(
@@ -299,12 +335,23 @@ class LiteRtModelRunner(
             modelName: String = File(assetPath).name,
             requestedAccelerator: LiteRtAccelerator
         ): LiteRtModelRunner {
-            return LiteRtModelRunner(
-                modelName = modelName,
-                assetPath = assetPath,
-                assetManager = context.assets,
-                requestedAccelerator = requestedAccelerator
-            )
+            val extracted = ensureAssetExtracted(context, assetPath)
+            return if (extracted.exists() && extracted.length() > 0L) {
+                LiteRtModelRunner(
+                    modelName = modelName,
+                    modelFile = extracted,
+                    assetPath = assetPath,
+                    assetManager = context.assets,
+                    requestedAccelerator = requestedAccelerator
+                )
+            } else {
+                LiteRtModelRunner(
+                    modelName = modelName,
+                    assetPath = assetPath,
+                    assetManager = context.assets,
+                    requestedAccelerator = requestedAccelerator
+                )
+            }
         }
 
         fun fromFile(
