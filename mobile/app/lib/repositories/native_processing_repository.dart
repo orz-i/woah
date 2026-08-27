@@ -106,4 +106,19 @@ class NativeProcessingRepository {
     AppLogger.d('NativeRepository', 'Saving video to system gallery: $filePath');
     return _client.saveVideoToGallery(filePath);
   }
+
+  Future<Map<dynamic, dynamic>?> createDiagnosticBundle() {
+    AppLogger.d('NativeRepository', 'Creating diagnostic bundle...');
+    return _client.createDiagnosticBundle();
+  }
+
+  Future<Map<dynamic, dynamic>?> shareDiagnosticBundle({String? filePath, String? publicUri}) {
+    AppLogger.d('NativeRepository', 'Sharing diagnostic bundle...');
+    return _client.shareDiagnosticBundle(filePath: filePath, publicUri: publicUri);
+  }
+
+  Future<void> clearDiagnosticLogs() {
+    AppLogger.d('NativeRepository', 'Clearing diagnostic logs...');
+    return _client.clearDiagnosticLogs();
+  }
 }

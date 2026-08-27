@@ -122,6 +122,41 @@ class _FramePreviewScreenState extends ConsumerState<FramePreviewScreen> {
     }
   }
 
+  Future<void> _exportDiagnostics() async {
+    try {
+      final repo = ref.read(nativeRepositoryProvider);
+      final bundle = await repo.createDiagnosticBundle();
+      final fileName = bundle?['fileName'] as String? ?? 'diagnostic_bundle.zip';
+      final filePath = bundle?['filePath'] as String?;
+      final publicUri = bundle?['publicUri'] as String?;
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('诊断包已生成: $fileName'),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+
+      await repo.shareDiagnosticBundle(
+        filePath: filePath,
+        publicUri: publicUri,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('导出诊断包失败: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   void _resetZoom() {
     _transformationController.value = Matrix4.identity();
   }
@@ -156,6 +191,11 @@ class _FramePreviewScreenState extends ConsumerState<FramePreviewScreen> {
         backgroundColor: const Color(0xFF131316),
         elevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.bug_report_outlined),
+            tooltip: '导出诊断日志',
+            onPressed: _exportDiagnostics,
+          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             tooltip: '重新渲染预览',

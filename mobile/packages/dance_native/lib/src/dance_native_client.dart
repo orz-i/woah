@@ -114,6 +114,27 @@ class DanceNativeClient implements DanceProcessingEvents {
     return _channel.invokeMethod<String>('saveVideoToGallery', {'filePath': filePath});
   }
 
+  /// Create diagnostic bundle ZIP file
+  Future<Map<dynamic, dynamic>?> createDiagnosticBundle() async {
+    return _channel.invokeMapMethod<dynamic, dynamic>('createDiagnosticBundle');
+  }
+
+  /// Share diagnostic bundle via system share sheet
+  Future<Map<dynamic, dynamic>?> shareDiagnosticBundle({
+    String? filePath,
+    String? publicUri,
+  }) async {
+    return _channel.invokeMapMethod<dynamic, dynamic>('shareDiagnosticBundle', {
+      'filePath': filePath,
+      'publicUri': publicUri,
+    });
+  }
+
+  /// Clear old diagnostic logs
+  Future<void> clearDiagnosticLogs() async {
+    await _channel.invokeMethod<void>('clearDiagnosticLogs');
+  }
+
   void dispose() {
     _progressController.close();
     DanceProcessingEvents.setUp(null);

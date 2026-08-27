@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dance_domain/dance_domain.dart';
+import '../../../repositories/native_processing_repository.dart';
 import 'export_controller.dart';
 import '../domain/export_state.dart';
 
@@ -62,6 +63,41 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         content: Text('📋 错误日志已复制到剪贴板，可直接粘贴反馈！', style: TextStyle(color: Colors.white)),
       ),
     );
+  }
+
+  Future<void> _exportDiagnostics(BuildContext context) async {
+    try {
+      final repo = ref.read(nativeRepositoryProvider);
+      final bundle = await repo.createDiagnosticBundle();
+      final fileName = bundle?['fileName'] as String? ?? 'diagnostic_bundle.zip';
+      final filePath = bundle?['filePath'] as String?;
+      final publicUri = bundle?['publicUri'] as String?;
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('诊断包已生成: $fileName'),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+
+      await repo.shareDiagnosticBundle(
+        filePath: filePath,
+        publicUri: publicUri,
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('导出诊断包失败: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -423,21 +459,43 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                     ),
                     const SizedBox(height: 10),
                     if (isFailed)
-                      OutlinedButton.icon(
-                        onPressed: () => _copyErrorLog(context, state.errorMessage),
-                        icon: const Icon(Icons.copy_rounded, size: 16),
-                        label: const Text(
-                          '复制错误信息',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          side: const BorderSide(color: Colors.white30),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: () => _copyErrorLog(context, state.errorMessage),
+                            icon: const Icon(Icons.copy_rounded, size: 16),
+                            label: const Text(
+                              '复制错误信息',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: const BorderSide(color: Colors.white30),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 10),
+                          OutlinedButton.icon(
+                            onPressed: () => _exportDiagnostics(context),
+                            icon: const Icon(Icons.bug_report_outlined, size: 16, color: Color(0xFF60A5FA)),
+                            label: const Text(
+                              '导出诊断包',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF60A5FA)),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF60A5FA),
+                              side: const BorderSide(color: Color(0xFF3B82F6)),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                   ],
                 ),

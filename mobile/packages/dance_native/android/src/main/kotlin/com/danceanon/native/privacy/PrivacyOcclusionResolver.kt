@@ -1,7 +1,8 @@
 package com.danceanon.native.privacy
 
+import com.danceanon.native.diagnostics.NativeDiagnostics
 import com.danceanon.native.inference.NativeMask
-import com.danceanon.native.inference.PersonDetection
+import com.danceanon.native.tracking.TrackState
 import com.danceanon.native.tracking.TrackedPerson
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -16,18 +17,22 @@ data class ResolvedCompositorMasks(
 object PrivacyOcclusionResolver {
 
     /**
-     * Resolves selected privacy targets and unselected visible occluders into
-     * two separate merged masks with isolated privacy safety dilation.
+     * Resolves selected privacy targets and explicit foreground occluders into
+     * an effective, hole-free privacy mask.
+     * Enforces:
+     * 1. ACTIVE selected targets are NEVER subtracted by unselected persons.
+     * 2. OCCLUDED selected targets only subtract explicit unselected occluders (occludedByTrackIds).
+     * 3. Single dilation on selected targets, ZERO dilation on unselected occluders.
+     * 4. Multi-selected targets are evaluated per-target, then combined by union.
      */
     fun resolveMasks(
         persons: List<TrackedPerson>,
         selectedPersonIds: Set<Int>,
         applyDilationToPrivacyTargets: Boolean = true,
-        dilationRadius: Int = 1
+        dilationRadius: Int = 1,
+        ptsUs: Long = 0L
     ): ResolvedCompositorMasks {
         val selectedPersons = persons.filter { selectedPersonIds.contains(it.id) && it.mask != null }
-        val unselectedPersons = persons.filter { !selectedPersonIds.contains(it.id) && it.mask != null }
-
         if (selectedPersons.isEmpty()) {
             return ResolvedCompositorMasks(
                 privacyMask = null,
@@ -37,27 +42,74 @@ object PrivacyOcclusionResolver {
             )
         }
 
-        // Privacy targets receive safety dilation
-        val privacyMasks = selectedPersons.mapNotNull { person ->
-            val orig = person.mask ?: return@mapNotNull null
-            if (applyDilationToPrivacyTargets && dilationRadius > 0) {
-                MaskPrivacyProcessor.dilate(orig, radius = dilationRadius)
+        val unselectedPersonsMap = persons.filter { !selectedPersonIds.contains(it.id) && it.mask != null }
+            .associateBy { it.id }
+
+        val effectiveSelectedMasks = mutableListOf<NativeMask>()
+
+        for (target in selectedPersons) {
+            val rawMask = target.mask ?: continue
+            val dilatedMask = if (applyDilationToPrivacyTargets && dilationRadius > 0) {
+                MaskPrivacyProcessor.dilate(rawMask, radius = dilationRadius)
             } else {
-                orig
+                rawMask
             }
+
+            val effectiveMask = when (target.state) {
+                TrackState.ACTIVE, TrackState.NEW -> {
+                    // ACTIVE foreground target: strictly NO subtraction from any unselected person
+                    dilatedMask
+                }
+                TrackState.OCCLUDED, TrackState.REACQUIRING -> {
+                    // Only subtract explicit unselected occluders
+                    val explicitOccluders = target.occludedByTrackIds.mapNotNull { unselectedPersonsMap[it]?.mask }
+                    if (explicitOccluders.isNotEmpty()) {
+                        val mergedOccluder = mergeMasks(explicitOccluders)
+                        computeEffectivePrivacyMask(dilatedMask, mergedOccluder) ?: dilatedMask
+                    } else {
+                        dilatedMask
+                    }
+                }
+                TrackState.LOST, TrackState.REMOVED -> {
+                    // LOST track: no explicit occluder subtraction to avoid under-coverage
+                    dilatedMask
+                }
+            }
+
+            // Telemetry & under-coverage verification
+            val rawArea = countMaskPixels(rawMask)
+            val dilatedArea = countMaskPixels(dilatedMask)
+            val effArea = countMaskPixels(effectiveMask)
+            val coverageRatio = if (dilatedArea > 0) effArea.toFloat() / dilatedArea.toFloat() else 1.0f
+
+            if (target.state == TrackState.ACTIVE && coverageRatio < 0.85f) {
+                NativeDiagnostics.event(
+                    level = "WARN",
+                    component = "PrivacyOcclusionResolver",
+                    event = "PRIVACY_UNDERCOVERAGE",
+                    fields = mapOf(
+                        "target_id" to target.id,
+                        "state" to target.state.name,
+                        "coverage_ratio" to coverageRatio,
+                        "raw_area" to rawArea,
+                        "dilated_area" to dilatedArea,
+                        "effective_area" to effArea,
+                        "occluder_ids" to target.occludedByTrackIds.toList(),
+                        "pts_us" to ptsUs
+                    )
+                )
+            }
+
+            effectiveSelectedMasks.add(effectiveMask)
         }
 
-        // Occluder targets strictly preserve raw organic boundaries without dilation
-        val occluderMasks = unselectedPersons.mapNotNull { it.mask }
-
-        val privacyMask = mergeMasks(privacyMasks)
-        val occluderMask = mergeMasks(occluderMasks)
+        val mergedPrivacy = mergeMasks(effectiveSelectedMasks)
 
         return ResolvedCompositorMasks(
-            privacyMask = privacyMask,
-            occluderMask = occluderMask,
-            hasPrivacy = privacyMask != null,
-            hasOccluder = occluderMask != null
+            privacyMask = mergedPrivacy,
+            occluderMask = null,
+            hasPrivacy = (mergedPrivacy != null),
+            hasOccluder = false
         )
     }
 
@@ -118,15 +170,20 @@ object PrivacyOcclusionResolver {
         oBuf.rewind()
 
         val outBuf = ByteBuffer.allocateDirect(totalPixels).order(ByteOrder.nativeOrder())
-        for (i in 0 until totalPixels) {
+        val tempBytes = ByteArray(totalPixels)
+
+        val len = minOf(totalPixels, pBuf.capacity(), oBuf.capacity())
+        for (i in 0 until len) {
             val pVal = (pBuf.get(i).toInt() and 0xFF) / 255f
-            val oVal = if (i < oBuf.capacity()) (oBuf.get(i).toInt() and 0xFF) / 255f else 0f
-            val effective = pVal * (1.0f - oVal)
-            val byteVal = (effective * 255f).toInt().coerceIn(0, 255).toByte()
-            outBuf.put(byteVal)
+            val oVal = (oBuf.get(i).toInt() and 0xFF) / 255f
+            val effective = (pVal * (1.0f - oVal)).coerceIn(0f, 1f)
+            tempBytes[i] = (effective * 255f).toInt().coerceIn(0, 255).toByte()
         }
+
         pBuf.rewind()
         oBuf.rewind()
+
+        outBuf.put(tempBytes)
         outBuf.rewind()
 
         return NativeMask(
@@ -138,5 +195,21 @@ object PrivacyOcclusionResolver {
             mapper = privacyMask.mapper,
             samplingRect = privacyMask.samplingRect
         )
+    }
+
+    fun countMaskPixels(mask: NativeMask?): Int {
+        if (mask == null) return 0
+        val buf = mask.buffer
+        buf.rewind()
+        var count = 0
+        val total = mask.width * mask.height
+        val len = minOf(total, buf.capacity())
+        for (i in 0 until len) {
+            if ((buf.get(i).toInt() and 0xFF) > 128) {
+                count++
+            }
+        }
+        buf.rewind()
+        return count
     }
 }

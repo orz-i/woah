@@ -27,12 +27,15 @@ class DanceNativePlugin :
     private var apiImpl: DanceNativeApiImpl? = null
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-        context = flutterPluginBinding.applicationContext
+        val appCtx = flutterPluginBinding.applicationContext
+        context = appCtx
+        com.danceanon.native.diagnostics.NativeDiagnostics.initialize(appCtx)
+
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "dance_native")
         channel.setMethodCallHandler(this)
 
         val eventEmitter = DanceProcessingEvents(flutterPluginBinding.binaryMessenger)
-        val impl = DanceNativeApiImpl(flutterPluginBinding.applicationContext, eventEmitter)
+        val impl = DanceNativeApiImpl(appCtx, eventEmitter)
         apiImpl = impl
         DanceNativeApi.setUp(flutterPluginBinding.binaryMessenger, impl)
     }
@@ -59,6 +62,43 @@ class DanceNativePlugin :
                     android.util.Log.e("DanceNativePlugin", "Failed to save video to gallery: ${e.message}", e)
                     result.error("SAVE_FAILED", e.message ?: "Failed to save video to gallery", null)
                 }
+            }
+            "createDiagnosticBundle" -> {
+                val ctx = context
+                if (ctx == null) {
+                    result.error("NO_CONTEXT", "Plugin context is null", null)
+                    return
+                }
+                try {
+                    val bundleInfo = com.danceanon.native.diagnostics.DiagnosticBundleExporter.createBundle(ctx)
+                    result.success(bundleInfo)
+                } catch (e: Exception) {
+                    android.util.Log.e("DanceNativePlugin", "Failed to create diagnostic bundle: ${e.message}", e)
+                    result.error("BUNDLE_FAILED", e.message ?: "Failed to create diagnostic bundle", null)
+                }
+            }
+            "shareDiagnosticBundle" -> {
+                val ctx = context
+                if (ctx == null) {
+                    result.error("NO_CONTEXT", "Plugin context is null", null)
+                    return
+                }
+                val filePath = call.argument<String>("filePath")
+                val publicUri = call.argument<String>("publicUri")
+                try {
+                    val shareResult = com.danceanon.native.diagnostics.DiagnosticBundleExporter.shareBundle(ctx, filePath, publicUri)
+                    result.success(shareResult)
+                } catch (e: Exception) {
+                    android.util.Log.e("DanceNativePlugin", "Failed to share diagnostic bundle: ${e.message}", e)
+                    result.error("SHARE_FAILED", e.message ?: "Failed to share diagnostic bundle", null)
+                }
+            }
+            "clearDiagnosticLogs" -> {
+                val ctx = context
+                if (ctx != null) {
+                    com.danceanon.native.diagnostics.DiagnosticBundleExporter.clearLogs(ctx)
+                }
+                result.success(null)
             }
             else -> {
                 result.notImplemented()

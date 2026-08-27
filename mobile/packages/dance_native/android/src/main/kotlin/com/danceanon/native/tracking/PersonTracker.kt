@@ -8,6 +8,7 @@ enum class TrackState {
     NEW,
     ACTIVE,
     OCCLUDED,
+    REACQUIRING,
     LOST,
     REMOVED
 }
@@ -19,7 +20,8 @@ data class TrackedPerson(
     var confidence: Float,
     var missedFrames: Int = 0,
     var age: Int = 1,
-    var state: TrackState = TrackState.NEW
+    var state: TrackState = TrackState.NEW,
+    var occludedByTrackIds: Set<Int> = emptySet()
 )
 
 interface PersonTracker {

@@ -279,18 +279,19 @@ class LiteRtModelRunner(
             val modelsDir = File(context.filesDir, "litert_models").apply { mkdirs() }
             val fileName = File(assetPath).name
             val targetFile = File(modelsDir, fileName)
+            var extractException: Throwable? = null
 
             try {
                 var needsExtract = !targetFile.exists() || targetFile.length() == 0L
-                if (!needsExtract) {
-                    try {
-                        val fd = context.assets.openFd(assetPath)
-                        if (fd.length > 0L && targetFile.length() != fd.length) {
-                            needsExtract = true
-                        }
-                        fd.close()
-                    } catch (_: Throwable) {}
-                }
+                var assetLen = -1L
+                try {
+                    val fd = context.assets.openFd(assetPath)
+                    assetLen = fd.length
+                    if (assetLen > 0L && targetFile.length() != assetLen) {
+                        needsExtract = true
+                    }
+                    fd.close()
+                } catch (_: Throwable) {}
 
                 if (needsExtract) {
                     val tempFile = File(modelsDir, "${fileName}.tmp.${System.currentTimeMillis()}")
@@ -321,10 +322,32 @@ class LiteRtModelRunner(
                     }
                 }
             } catch (t: Throwable) {
+                extractException = t
                 Log.w(TAG, "Asset extraction to disk info for '$assetPath': ${t.message}")
             }
 
-            return if (targetFile.exists() && targetFile.length() > 0L) targetFile else File(assetPath)
+            val exists = targetFile.exists() && targetFile.length() > 0L
+            val finalFile = if (exists) targetFile else File(assetPath)
+
+            try {
+                com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                    level = if (exists) "INFO" else "WARN",
+                    component = "LiteRtModelRunner",
+                    event = "SAM_MODEL_EXTRACT",
+                    fields = mapOf(
+                        "asset_path" to assetPath,
+                        "target_path" to targetFile.absolutePath,
+                        "target_length" to (if (targetFile.exists()) targetFile.length() else 0L),
+                        "exists" to targetFile.exists(),
+                        "readable" to targetFile.canRead(),
+                        "success" to exists,
+                        "fallback_to_asset" to !exists
+                    ),
+                    throwable = extractException
+                )
+            } catch (_: Throwable) {}
+
+            return finalFile
         }
 
         fun fromAsset(

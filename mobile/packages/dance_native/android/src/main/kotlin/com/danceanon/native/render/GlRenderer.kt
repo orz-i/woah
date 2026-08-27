@@ -485,7 +485,11 @@ class GlRenderer : FrameRenderer {
             )
         }
 
-        val resolved = com.danceanon.native.privacy.PrivacyOcclusionResolver.resolveMasks(persons, selectedPersonIds)
+        val resolved = com.danceanon.native.privacy.PrivacyOcclusionResolver.resolveMasks(
+            persons = persons,
+            selectedPersonIds = selectedPersonIds,
+            ptsUs = presentationTimeUs
+        )
         val hasSelected = resolved.hasPrivacy
         val hasOccluder = resolved.hasOccluder
 

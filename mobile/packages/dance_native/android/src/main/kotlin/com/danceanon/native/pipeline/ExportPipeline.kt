@@ -507,9 +507,8 @@ class ExportPipeline(
                                 val seg = profiler.recordStage("yoloCpuInference") {
                                     segmenter.segmentGlReadbackRgbaSync(rgbaBuffer, mapper, ptsUs, colOrder = RgbaColOrder.LEFT_TO_RIGHT)
                                 }
-                                profiler.recordStage("privacySafety") {
-                                    com.danceanon.native.privacy.PrivacySegmentationProcessor.DEFAULT.applyPrivacySafety(seg.persons)
-                                }
+                                // Export QUALITY path: YOLO raw organic masks directly enter TrackManager without pre-dilation
+                                seg.persons
                             } else {
                                 emptyList()
                             }
@@ -582,6 +581,25 @@ class ExportPipeline(
                             }
                         }
 
+                        // Validate selected target survival
+                        val trackedIds = trackedList.map { it.id }.toSet()
+                        for (sId in selectedIds) {
+                            if (!trackedIds.contains(sId)) {
+                                com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                                    level = "CRITICAL",
+                                    component = "ExportPipeline",
+                                    event = "SELECTED_TARGET_MISSING",
+                                    fields = mapOf(
+                                        "job_id" to jobId,
+                                        "selected_id" to sId,
+                                        "frame" to processedFrames,
+                                        "pts_us" to ptsUs,
+                                        "tracked_ids" to trackedIds.toList(),
+                                        "tracked_states" to trackedList.map { "${it.id}:${it.state.name}" }
+                                    )
+                                )
+                            }
+                        }
 
                         // 4. Render final anonymized frame to EGL surface (encoder input)
                         profiler.recordStage("renderEffects") {
@@ -772,6 +790,28 @@ class ExportPipeline(
                     outputUri = finalOutFile.absolutePath
                 )
                 emitProgress(status, onStatusChange)
+
+                try {
+                    com.danceanon.native.diagnostics.NativeDiagnostics.recordPipelineSummary(
+                        jobId = jobId,
+                        summary = mapOf(
+                            "job_id" to jobId,
+                            "profile" to request.processingProfile,
+                            "source_width" to videoInfo.displayWidth,
+                            "source_height" to videoInfo.displayHeight,
+                            "source_fps" to videoInfo.fps,
+                            "target_width" to targetWidth,
+                            "target_height" to targetHeight,
+                            "target_fps" to targetFps,
+                            "selected_ids" to request.selectedPersonIds.map { it.toInt() },
+                            "decoded_frames" to decodedFrameCount,
+                            "latched_frames" to latchedFrameCount,
+                            "rendered_frames" to renderedFrameCount,
+                            "encoded_frames" to encodedFrameCount,
+                            "state" to "completed"
+                        )
+                    )
+                } catch (_: Throwable) {}
 
             } catch (e: Throwable) {
                 tempOutFile.delete()

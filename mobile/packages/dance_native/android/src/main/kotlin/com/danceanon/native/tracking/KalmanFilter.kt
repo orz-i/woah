@@ -61,6 +61,14 @@ class KalmanFilter {
         }
     }
 
+    fun dampenVelocity(factor: Float = 0.70f) {
+        val f = factor.coerceIn(0f, 1f)
+        state[4] *= f
+        state[5] *= f
+        state[6] *= f
+        state[7] *= f
+    }
+
     /**
      * Predict next state given elapsed time dt (or compute from timestampUs).
      */

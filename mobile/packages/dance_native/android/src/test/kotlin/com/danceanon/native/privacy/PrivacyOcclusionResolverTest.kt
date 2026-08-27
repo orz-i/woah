@@ -45,15 +45,57 @@ class PrivacyOcclusionResolverTest {
     }
 
     @Test
-    fun testCaseA_SelectedBackgroundAndUnselectedForegroundOverlap() {
-        // Selected Person A: covers (x: 2..7, y: 2..7)
+    fun testCase1_ActiveSelectedTargetNeverCarvedByUnselectedPerson() {
+        // Selected Person A is ACTIVE: covers (x: 2..7, y: 2..7)
         val maskA = createBinaryMask(10, 10, 2..7, 2..7)
         val personA = TrackedPerson(
             id = 0,
             bbox = FloatRect(20f, 20f, 70f, 70f),
             mask = maskA,
             confidence = 0.9f,
-            state = TrackState.ACTIVE
+            state = TrackState.ACTIVE,
+            occludedByTrackIds = emptySet()
+        )
+
+        // Unselected Person B overlaps A: covers (x: 5..8, y: 2..7)
+        val maskB = createBinaryMask(10, 10, 5..8, 2..7)
+        val personB = TrackedPerson(
+            id = 1,
+            bbox = FloatRect(50f, 20f, 80f, 70f),
+            mask = maskB,
+            confidence = 0.9f,
+            state = TrackState.ACTIVE,
+            occludedByTrackIds = emptySet()
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = listOf(personA, personB),
+            selectedPersonIds = setOf(0),
+            applyDilationToPrivacyTargets = false
+        )
+
+        assertTrue(resolved.hasPrivacy)
+        assertNotNull(resolved.privacyMask)
+
+        // Since Person A is ACTIVE (foreground), Person B must NOT carve holes in A
+        for (y in 2..7) {
+            for (x in 2..7) {
+                assertEquals(255, getPixel(resolved.privacyMask!!, x, y), "ACTIVE person A must retain 255 privacy across entire body")
+            }
+        }
+    }
+
+    @Test
+    fun testCase2_OccludedSelectedTargetCarvedOnlyByExplicitOccluder() {
+        // Selected Person A is OCCLUDED by B: covers (x: 2..7, y: 2..7)
+        val maskA = createBinaryMask(10, 10, 2..7, 2..7)
+        val personA = TrackedPerson(
+            id = 0,
+            bbox = FloatRect(20f, 20f, 70f, 70f),
+            mask = maskA,
+            confidence = 0.9f,
+            state = TrackState.OCCLUDED,
+            occludedByTrackIds = setOf(1)
         )
 
         // Unselected Person B (Foreground Occluder): covers (x: 5..8, y: 2..7)
@@ -73,105 +115,38 @@ class PrivacyOcclusionResolverTest {
         )
 
         assertTrue(resolved.hasPrivacy)
-        assertTrue(resolved.hasOccluder)
         assertNotNull(resolved.privacyMask)
-        assertNotNull(resolved.occluderMask)
+        val eff = resolved.privacyMask!!
 
-        val effectiveMask = PrivacyOcclusionResolver.computeEffectivePrivacyMask(
-            privacyMask = resolved.privacyMask,
-            occluderMask = resolved.occluderMask
-        )
-        assertNotNull(effectiveMask)
+        // 1. Non-occluded region of A (x: 3, y: 4): 255
+        assertEquals(255, getPixel(eff, 3, 4), "Non-occluded region of selected person must retain full privacy")
 
-        // 1. In A's non-overlapping region (x: 3, y: 4): effective privacy must be 255
-        assertEquals(255, getPixel(effectiveMask, 3, 4), "Non-occluded region of selected person must retain full privacy")
-
-        // 2. In overlap region (x: 6, y: 4): effective privacy must be 0 (occluder B protects foreground person!)
-        assertEquals(0, getPixel(effectiveMask, 6, 4), "Occluded region must have 0 privacy to preserve foreground unselected person")
-
-        // 3. Outside both persons (x: 0, y: 0): effective privacy must be 0
-        assertEquals(0, getPixel(effectiveMask, 0, 0))
+        // 2. Explicitly occluded region (x: 6, y: 4): 0 (occluder B protects foreground person)
+        assertEquals(0, getPixel(eff, 6, 4), "Occluded region must have 0 privacy to preserve foreground unselected person")
     }
 
     @Test
-    fun testCaseB_SelectedForegroundPreservesFullPrivacy() {
-        // Selected Person A (Foreground): covers (x: 2..5, y: 2..5)
-        val maskA = createBinaryMask(10, 10, 2..5, 2..5)
+    fun testCase3_TwoSelectedPersonsBothAnonymizedEvenWhenOccluding() {
+        val maskA = createBinaryMask(10, 10, 2..7, 2..7)
         val personA = TrackedPerson(
             id = 0,
-            bbox = FloatRect(20f, 20f, 50f, 50f),
+            bbox = FloatRect(20f, 20f, 70f, 70f),
             mask = maskA,
             confidence = 0.9f,
-            state = TrackState.ACTIVE
+            state = TrackState.OCCLUDED,
+            occludedByTrackIds = setOf(1)
         )
 
-        // Unselected Person B (separate region): covers (x: 7..9, y: 7..9)
-        val maskB = createBinaryMask(10, 10, 7..9, 7..9)
+        val maskB = createBinaryMask(10, 10, 5..8, 2..7)
         val personB = TrackedPerson(
             id = 1,
-            bbox = FloatRect(70f, 70f, 90f, 90f),
+            bbox = FloatRect(50f, 20f, 80f, 70f),
             mask = maskB,
             confidence = 0.9f,
             state = TrackState.ACTIVE
         )
 
-        val resolved = PrivacyOcclusionResolver.resolveMasks(
-            persons = listOf(personA, personB),
-            selectedPersonIds = setOf(0),
-            applyDilationToPrivacyTargets = false
-        )
-
-        val effectiveMask = PrivacyOcclusionResolver.computeEffectivePrivacyMask(
-            privacyMask = resolved.privacyMask,
-            occluderMask = resolved.occluderMask
-        )
-        assertNotNull(effectiveMask)
-
-        for (y in 2..5) {
-            for (x in 2..5) {
-                assertEquals(255, getPixel(effectiveMask, x, y), "All pixels of selected person A must be 255")
-            }
-        }
-    }
-
-    @Test
-    fun testCaseC_NoOverlapNoOcclusion() {
-        val maskA = createBinaryMask(10, 10, 1..3, 1..3)
-        val personA = TrackedPerson(
-            id = 0,
-            bbox = FloatRect(10f, 10f, 30f, 30f),
-            mask = maskA,
-            confidence = 0.9f,
-            state = TrackState.ACTIVE
-        )
-
-        val resolved = PrivacyOcclusionResolver.resolveMasks(
-            persons = listOf(personA),
-            selectedPersonIds = setOf(0),
-            applyDilationToPrivacyTargets = false
-        )
-
-        assertTrue(resolved.hasPrivacy)
-        assertFalse(resolved.hasOccluder)
-        assertNull(resolved.occluderMask)
-
-        val effectiveMask = PrivacyOcclusionResolver.computeEffectivePrivacyMask(
-            privacyMask = resolved.privacyMask,
-            occluderMask = resolved.occluderMask
-        )
-        assertNotNull(effectiveMask)
-        assertEquals(255, getPixel(effectiveMask, 2, 2))
-        assertEquals(0, getPixel(effectiveMask, 5, 5))
-    }
-
-    @Test
-    fun testCaseD_TwoSelectedPersonsBothAnonymized() {
-        val maskA = createBinaryMask(10, 10, 1..3, 1..3)
-        val personA = TrackedPerson(id = 0, bbox = FloatRect(10f, 10f, 30f, 30f), mask = maskA, confidence = 0.9f, state = TrackState.ACTIVE)
-
-        val maskB = createBinaryMask(10, 10, 6..8, 6..8)
-        val personB = TrackedPerson(id = 1, bbox = FloatRect(60f, 60f, 80f, 80f), mask = maskB, confidence = 0.9f, state = TrackState.ACTIVE)
-
+        // Both A and B are selected!
         val resolved = PrivacyOcclusionResolver.resolveMasks(
             persons = listOf(personA, personB),
             selectedPersonIds = setOf(0, 1),
@@ -179,19 +154,67 @@ class PrivacyOcclusionResolverTest {
         )
 
         assertTrue(resolved.hasPrivacy)
-        assertFalse(resolved.hasOccluder)
+        assertNotNull(resolved.privacyMask)
+        val eff = resolved.privacyMask!!
 
-        val effectiveMask = PrivacyOcclusionResolver.computeEffectivePrivacyMask(
-            privacyMask = resolved.privacyMask,
-            occluderMask = resolved.occluderMask
-        )
-        assertNotNull(effectiveMask)
-        assertEquals(255, getPixel(effectiveMask, 2, 2), "Person A must be masked")
-        assertEquals(255, getPixel(effectiveMask, 7, 7), "Person B must be masked")
+        // Even though A is occluded by B, since B is ALSO selected, overlap must remain 255
+        assertEquals(255, getPixel(eff, 6, 4), "Overlap of two selected persons must remain 255 (both anonymized)")
     }
 
     @Test
-    fun testCaseE_TwoUnselectedPersonsNeverProducePrivacyMask() {
+    fun testCase4_MultiTargetIsolationOccluderDoesNotAffectUnrelatedTarget() {
+        // Selected Person A is OCCLUDED by B
+        val maskA = createBinaryMask(10, 10, 1..3, 1..3)
+        val personA = TrackedPerson(
+            id = 0,
+            bbox = FloatRect(10f, 10f, 30f, 30f),
+            mask = maskA,
+            confidence = 0.9f,
+            state = TrackState.OCCLUDED,
+            occludedByTrackIds = setOf(1)
+        )
+
+        // Unselected Person B occludes A (and happens to overlap with (x: 2..3, y: 1..3))
+        val maskB = createBinaryMask(10, 10, 2..5, 1..3)
+        val personB = TrackedPerson(
+            id = 1,
+            bbox = FloatRect(20f, 10f, 50f, 30f),
+            mask = maskB,
+            confidence = 0.9f,
+            state = TrackState.ACTIVE
+        )
+
+        // Selected Person C is separate and ACTIVE (x: 7..9, y: 7..9)
+        val maskC = createBinaryMask(10, 10, 7..9, 7..9)
+        val personC = TrackedPerson(
+            id = 2,
+            bbox = FloatRect(70f, 70f, 90f, 90f),
+            mask = maskC,
+            confidence = 0.9f,
+            state = TrackState.ACTIVE,
+            occludedByTrackIds = emptySet()
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = listOf(personA, personB, personC),
+            selectedPersonIds = setOf(0, 2),
+            applyDilationToPrivacyTargets = false
+        )
+
+        assertTrue(resolved.hasPrivacy)
+        assertNotNull(resolved.privacyMask)
+        val eff = resolved.privacyMask!!
+
+        // Person C is completely untouched
+        for (y in 7..9) {
+            for (x in 7..9) {
+                assertEquals(255, getPixel(eff, x, y), "Target C must remain completely 255")
+            }
+        }
+    }
+
+    @Test
+    fun testCase5_TwoUnselectedPersonsNeverProducePrivacyMask() {
         val maskA = createBinaryMask(10, 10, 1..3, 1..3)
         val personA = TrackedPerson(id = 0, bbox = FloatRect(10f, 10f, 30f, 30f), mask = maskA, confidence = 0.9f, state = TrackState.ACTIVE)
 
