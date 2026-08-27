@@ -308,16 +308,17 @@ class ExportPipeline(
                                 }
 
                                 profiler.recordStage("sam2MaskGen") {
+                                    val maskSize = com.danceanon.native.sam2.Sam2TensorContract.MASK_OUTPUT_SIZE
                                     sam2Results.map { res ->
-                                        val maskBuffer = java.nio.ByteBuffer.allocateDirect(targetWidth * targetHeight)
+                                        val maskBuffer = java.nio.ByteBuffer.allocateDirect(maskSize * maskSize)
                                         for (v in res.softMask) {
                                             maskBuffer.put((v * 255f).toInt().coerceIn(0, 255).toByte())
                                         }
                                         maskBuffer.rewind()
 
                                         val sam2Mask = com.danceanon.native.inference.NativeMask(
-                                            width = targetWidth,
-                                            height = targetHeight,
+                                            width = maskSize,
+                                            height = maskSize,
                                             buffer = maskBuffer,
                                             originalWidth = targetWidth,
                                             originalHeight = targetHeight,
@@ -333,6 +334,7 @@ class ExportPipeline(
                                         )
                                     }
                                 }
+
                             }
                         } else {
 

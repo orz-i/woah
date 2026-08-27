@@ -81,5 +81,49 @@ class Sam2PreprocessorTest {
         // Center pixel should be average 0.5
         assertEquals(0.5f, resized[4], 0.01f)
     }
+
+    @Test
+    fun testMaskBboxDerivationScaledToSource() {
+        val maskW = 256
+        val maskH = 256
+        val srcW = 1280
+        val srcH = 720
+        val mask = FloatArray(maskW * maskH) { 0f }
+
+        // Object in mask at [64..127, 64..127] (quarter size)
+        for (y in 64..127) {
+            for (x in 64..127) {
+                mask[y * maskW + x] = 0.9f
+            }
+        }
+
+        val bbox = Sam2MaskPostprocessor.computeBboxFromMaskStrict(
+            mask = mask,
+            width = maskW,
+            height = maskH,
+            srcWidth = srcW,
+            srcHeight = srcH,
+            threshold = 0.15f,
+            expandRatio = 0.0f
+        )
+
+        assertTrue(bbox != null)
+        // x in src: 64 / 256 * 1280 = 320, 128 / 256 * 1280 = 640
+        assertEquals(320.0f, bbox.left, 0.5f)
+        assertEquals(640.0f, bbox.right, 0.5f)
+        // y in src: 64 / 256 * 720 = 180, 128 / 256 * 720 = 360
+        assertEquals(180.0f, bbox.top, 0.5f)
+        assertEquals(360.0f, bbox.bottom, 0.5f)
+    }
+
+    @Test
+    fun testFastSigmoidInPlace() {
+        val arr = floatArrayOf(-10f, 0f, 10f)
+        Sam2MaskPostprocessor.fastSigmoidInPlace(arr)
+        assertEquals(0.0f, arr[0])
+        assertEquals(0.5f, arr[1], 0.001f)
+        assertEquals(1.0f, arr[2])
+    }
 }
+
 

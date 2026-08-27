@@ -156,8 +156,21 @@ class Sam2OnnxGoldenParityTest {
                 goldMaskFloats[i] = 1.0f / (1.0f + kotlin.math.exp(-goldMaskFloats[i]))
             }
 
-            val iou = computeMaskIoU(trackRes.softMask, goldMaskFloats, threshold = 0.50f)
+            val evalMask = if (trackRes.softMask.size != goldMaskFloats.size) {
+                Sam2MaskPostprocessor.resizeMaskBilinear(
+                    trackRes.softMask,
+                    Sam2TensorContract.MASK_OUTPUT_SIZE,
+                    Sam2TensorContract.MASK_OUTPUT_SIZE,
+                    srcW,
+                    srcH
+                )
+            } else {
+                trackRes.softMask
+            }
+
+            val iou = computeMaskIoU(evalMask, goldMaskFloats, threshold = 0.50f)
             ious.add(iou)
+
 
             val goldBbox = Sam2MaskPostprocessor.computeBboxFromMask(goldMaskFloats, srcW, srcH)
             val cxOrt = (trackRes.bbox.left + trackRes.bbox.right) / 2f

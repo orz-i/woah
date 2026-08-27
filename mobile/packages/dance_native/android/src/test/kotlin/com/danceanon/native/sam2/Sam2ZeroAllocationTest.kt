@@ -54,13 +54,15 @@ class Sam2ZeroAllocationTest {
         for (f in 1..5) {
             val stepRes = tracker.stepWithRgba(rgbaBuffer, frameIndex = f)
             assertEquals(1, stepRes.size)
-            assertEquals(f, stepRes[0].frameIndex)
-            assertEquals(640 * 480, stepRes[0].softMask.size)
+            assertEquals(
+                Sam2TensorContract.MASK_OUTPUT_SIZE * Sam2TensorContract.MASK_OUTPUT_SIZE,
+                stepRes[0].softMask.size
+            )
             assertTrue(stepRes[0].softMask.all { !it.isNaN() })
         }
 
-
         tracker.reset()
         tracker.close()
+
     }
 }

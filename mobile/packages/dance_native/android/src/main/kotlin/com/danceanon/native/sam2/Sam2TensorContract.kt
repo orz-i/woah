@@ -11,7 +11,9 @@ object Sam2TensorContract {
     const val HIDDEN_DIM = 256
     const val MAX_OBJ_PTRS = 16
     const val LOW_RES_MASK_SIZE = 256
+    const val MASK_OUTPUT_SIZE = 256
     const val FEAT_SIZE = 64
+
 
     const val MASK_THRESHOLD = 0.15f
     const val BBOX_EXPAND_RATIO = 0.05f

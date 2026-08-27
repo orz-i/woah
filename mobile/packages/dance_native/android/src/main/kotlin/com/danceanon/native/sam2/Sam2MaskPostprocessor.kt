@@ -11,12 +11,15 @@ object Sam2MaskPostprocessor {
 
     /**
      * Derives a bounding box from a soft probability mask.
+     * Supports mapping from compact mask dimensions to source visual frame dimensions.
      * Returns null if mask is empty / no pixels exceed threshold.
      */
     fun computeBboxFromMaskStrict(
         mask: FloatArray,
         width: Int,
         height: Int,
+        srcWidth: Int = width,
+        srcHeight: Int = height,
         threshold: Float = Sam2TensorContract.MASK_THRESHOLD,
         expandRatio: Float = Sam2TensorContract.BBOX_EXPAND_RATIO
     ): FloatRect? {
@@ -41,15 +44,23 @@ object Sam2MaskPostprocessor {
             return null
         }
 
-        val bw = (maxX - minX + 1).toFloat()
-        val bh = (maxY - minY + 1).toFloat()
+        val scaleX = srcWidth.toFloat() / width.toFloat()
+        val scaleY = srcHeight.toFloat() / height.toFloat()
+
+        val origMinX = minX * scaleX
+        val origMaxX = (maxX + 1) * scaleX
+        val origMinY = minY * scaleY
+        val origMaxY = (maxY + 1) * scaleY
+
+        val bw = (origMaxX - origMinX)
+        val bh = (origMaxY - origMinY)
         val expandW = bw * expandRatio
         val expandH = bh * expandRatio
 
-        val left = max(0f, minX - expandW)
-        val top = max(0f, minY - expandH)
-        val right = min(width.toFloat(), maxX + 1 + expandW)
-        val bottom = min(height.toFloat(), maxY + 1 + expandH)
+        val left = max(0f, origMinX - expandW)
+        val top = max(0f, origMinY - expandH)
+        val right = min(srcWidth.toFloat(), origMaxX + expandW)
+        val bottom = min(srcHeight.toFloat(), origMaxY + expandH)
 
         return FloatRect(left, top, right, bottom)
     }
@@ -65,7 +76,7 @@ object Sam2MaskPostprocessor {
         threshold: Float = Sam2TensorContract.MASK_THRESHOLD,
         expandRatio: Float = Sam2TensorContract.BBOX_EXPAND_RATIO
     ): FloatRect {
-        return computeBboxFromMaskStrict(mask, width, height, threshold, expandRatio)
+        return computeBboxFromMaskStrict(mask, width, height, width, height, threshold, expandRatio)
             ?: FloatRect(0f, 0f, width.toFloat(), height.toFloat())
     }
 
@@ -86,13 +97,28 @@ object Sam2MaskPostprocessor {
     }
 
     /**
-     * Applies sigmoid activation in-place.
+     * Applies fast sigmoid activation in-place.
      */
-    fun sigmoidInPlace(arr: FloatArray) {
+    fun fastSigmoidInPlace(arr: FloatArray) {
         for (i in arr.indices) {
-            arr[i] = 1.0f / (1.0f + kotlin.math.exp(-arr[i]))
+            val x = arr[i]
+            if (x >= 4.0f) {
+                arr[i] = 1.0f
+            } else if (x <= -4.0f) {
+                arr[i] = 0.0f
+            } else {
+                arr[i] = 1.0f / (1.0f + kotlin.math.exp(-x))
+            }
         }
     }
+
+    /**
+     * Applies standard sigmoid activation in-place.
+     */
+    fun sigmoidInPlace(arr: FloatArray) {
+        fastSigmoidInPlace(arr)
+    }
+
 
 
     /**

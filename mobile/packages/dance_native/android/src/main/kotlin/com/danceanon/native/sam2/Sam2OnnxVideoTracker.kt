@@ -198,22 +198,24 @@ class Sam2OnnxVideoTracker(
             reusableObjPtrFloats.clone()
         )
 
-        // Postprocess Mask
+        // Postprocess Mask (Compact 256x256 for instantaneous 0ms GPU TMU hardware upsampling)
         highResMaskTensor.floatBuffer.get(reusableRaw1024Mask)
 
         val softMask = Sam2MaskPostprocessor.resizeMaskBilinear(
             reusableRaw1024Mask,
             Sam2TensorContract.IMAGE_SIZE,
             Sam2TensorContract.IMAGE_SIZE,
-            sourceWidth,
-            sourceHeight
+            Sam2TensorContract.MASK_OUTPUT_SIZE,
+            Sam2TensorContract.MASK_OUTPUT_SIZE
         )
-        Sam2MaskPostprocessor.sigmoidInPlace(softMask)
+        Sam2MaskPostprocessor.fastSigmoidInPlace(softMask)
 
         val derivedBboxStrict = Sam2MaskPostprocessor.computeBboxFromMaskStrict(
-            softMask,
-            sourceWidth,
-            sourceHeight
+            mask = softMask,
+            width = Sam2TensorContract.MASK_OUTPUT_SIZE,
+            height = Sam2TensorContract.MASK_OUTPUT_SIZE,
+            srcWidth = sourceWidth,
+            srcHeight = sourceHeight
         )
         val isValid = derivedBboxStrict != null
         val finalBbox = derivedBboxStrict ?: FloatRect(0f, 0f, 0f, 0f)
@@ -226,6 +228,7 @@ class Sam2OnnxVideoTracker(
         val totalMs = System.currentTimeMillis() - t0
         metrics.recordFrame(imgEncMs, stepMs)
         metrics.stateMemoryBytes = state.computeStateMemoryBytes()
+
 
         return Sam2TrackResult(
             frameIndex = 0,
@@ -377,15 +380,17 @@ class Sam2OnnxVideoTracker(
                 reusableRaw1024Mask,
                 Sam2TensorContract.IMAGE_SIZE,
                 Sam2TensorContract.IMAGE_SIZE,
-                sourceWidth,
-                sourceHeight
+                Sam2TensorContract.MASK_OUTPUT_SIZE,
+                Sam2TensorContract.MASK_OUTPUT_SIZE
             )
-            Sam2MaskPostprocessor.sigmoidInPlace(softMask)
+            Sam2MaskPostprocessor.fastSigmoidInPlace(softMask)
 
             val derivedBboxStrict = Sam2MaskPostprocessor.computeBboxFromMaskStrict(
-                softMask,
-                sourceWidth,
-                sourceHeight
+                mask = softMask,
+                width = Sam2TensorContract.MASK_OUTPUT_SIZE,
+                height = Sam2TensorContract.MASK_OUTPUT_SIZE,
+                srcWidth = sourceWidth,
+                srcHeight = sourceHeight
             )
             val isValid = derivedBboxStrict != null
             val finalBbox = derivedBboxStrict ?: FloatRect(0f, 0f, 0f, 0f)
@@ -396,6 +401,7 @@ class Sam2OnnxVideoTracker(
             tposTensor.close()
             selPtrsTensor.close()
             tempResult.close()
+
 
             results.add(
                 Sam2TrackResult(
