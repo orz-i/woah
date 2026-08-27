@@ -56,6 +56,18 @@ class RenderCoordinateConventionTest {
             GlShaders.VERTEX_SHADER.contains("1.0 - contentUv.y")
         )
     }
+
+    @Test
+    fun testComputeTransformMatrixDegenerateProtection() {
+        val zeroMat = FloatArray(16) // all zeros
+        val safeMat = GlRenderer.computeTransformMatrix(zeroMat, 0)
+        assertEquals(1f, safeMat[0])
+        assertEquals(1f, safeMat[5])
+        assertEquals(1f, safeMat[10])
+        assertEquals(1f, safeMat[15])
+    }
 }
+
+
 
 

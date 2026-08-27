@@ -83,19 +83,24 @@ class GlRenderer : FrameRenderer {
 
     companion object {
 
-        fun computeTransformMatrix(stMatrix: FloatArray, rotation: Int): FloatArray {
-            if (rotation == 0) return stMatrix
-            val result = FloatArray(16)
-            val rotMatrix = FloatArray(16)
-            android.opengl.Matrix.setIdentityM(rotMatrix, 0)
-            android.opengl.Matrix.translateM(rotMatrix, 0, 0.5f, 0.5f, 0f)
-            android.opengl.Matrix.rotateM(rotMatrix, 0, -rotation.toFloat(), 0f, 0f, 1f)
-            android.opengl.Matrix.translateM(rotMatrix, 0, -0.5f, -0.5f, 0f)
-            android.opengl.Matrix.multiplyMM(result, 0, stMatrix, 0, rotMatrix, 0)
-            return result
+        fun computeTransformMatrix(stMatrix: FloatArray, rotation: Int = 0): FloatArray {
+            val isDegenerate = stMatrix[0] == 0f && stMatrix[5] == 0f && stMatrix[10] == 0f && stMatrix[15] == 0f
+            if (isDegenerate) {
+                return floatArrayOf(
+                    1f, 0f, 0f, 0f,
+                    0f, 1f, 0f, 0f,
+                    0f, 0f, 1f, 0f,
+                    0f, 0f, 0f, 1f
+                )
+            }
+            // SurfaceTexture.getTransformMatrix already contains decoder orientation metadata in Android 7.0+.
+            // Double rotation pushes texture coordinates outside [0, 1] resulting in black screen.
+            return stMatrix
         }
 
+
         fun checkGlError(stage: String) {
+
             val error = GLES20.glGetError()
             if (error != GLES20.GL_NO_ERROR) {
                 android.util.Log.e("GlRenderer", "GL Error after $stage: 0x${Integer.toHexString(error)}")

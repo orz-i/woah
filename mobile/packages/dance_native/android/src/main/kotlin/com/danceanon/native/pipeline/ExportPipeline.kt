@@ -191,7 +191,9 @@ class ExportPipeline(
 
                 var processedFrames = 0
                 val totalEstFrames = ((videoInfo.durationMs / 1000.0) * targetFps).toLong().coerceAtLeast(1L)
-                val stMatrix = FloatArray(16)
+                val stMatrix = FloatArray(16).apply {
+                    android.opengl.Matrix.setIdentityM(this, 0)
+                }
                 val trackManager = TrackManager()
                 val profile = ProcessingProfile.fromName(request.processingProfile)
                 val frameStride = profile.inferenceStride
@@ -212,8 +214,6 @@ class ExportPipeline(
                     val bundle = com.danceanon.native.sam2.Sam2OnnxModelLoader.loadFromAssets(context)
                     sam2Tracker = com.danceanon.native.sam2.Sam2OnnxVideoTracker(bundle, encoderStride = frameStride)
                 }
-
-
 
                 while (!isCancelled.get()) {
                     val fed = decoder.feedInputBuffer()
@@ -252,10 +252,6 @@ class ExportPipeline(
                         val rotation = videoInfo.rotation.toInt()
                         val finalTexMatrix = GlRenderer.computeTransformMatrix(stMatrix, rotation)
 
-                        // 1. Draw base video frame to EGL window surface
-                        profiler.recordStage("renderBase") {
-                            glRenderer.renderBase(oesTextureId, finalTexMatrix)
-                        }
 
                         // 2. Perform Inference / Temporal Mask Tracking
                         val trackedList: List<com.danceanon.native.tracking.TrackedPerson> = if (isSam2Mode && sam2Fbo != null && sam2Renderer != null && sam2Tracker != null) {
