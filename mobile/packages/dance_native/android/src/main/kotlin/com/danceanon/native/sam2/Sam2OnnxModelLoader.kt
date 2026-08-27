@@ -73,7 +73,7 @@ object Sam2OnnxModelLoader {
         numThreads: Int = minOf(Runtime.getRuntime().availableProcessors().coerceAtLeast(2), 4)
     ): OrtSession.SessionOptions {
         val options = OrtSession.SessionOptions().apply {
-            setOptimizationLevel(OrtSession.SessionOptions.OptLevel.BASIC_OPT)
+            setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
             setIntraOpNumThreads(numThreads)
             try {
                 addConfigEntry("session.use_env_allocators", "1")
@@ -98,10 +98,6 @@ object Sam2OnnxModelLoader {
         return options
     }
 
-
-
-
-
     fun loadFromAssets(context: Context, assetPrefix: String = "models/sam2_onnx"): Sam2OnnxSessionBundle {
         val cacheDir = File(context.filesDir, "models/sam2_onnx")
         cacheDir.mkdirs()
@@ -114,42 +110,67 @@ object Sam2OnnxModelLoader {
 
         for (modelName in models) {
             val dest = File(cacheDir, modelName)
-            if (!dest.exists() || dest.length() == 0L) {
-                val candidatePaths = listOfNotNull(
-                    if (assetPrefix.isNotEmpty()) "$assetPrefix/$modelName" else null,
-                    "models/sam2_onnx/$modelName",
-                    "sam2_onnx/$modelName",
-                    "models/$modelName",
-                    modelName
-                ).distinct()
+            val candidatePaths = listOfNotNull(
+                if (assetPrefix.isNotEmpty()) "$assetPrefix/$modelName" else null,
+                "models/sam2_onnx/$modelName",
+                "sam2_onnx/$modelName",
+                "models/$modelName",
+                modelName
+            ).distinct()
 
-                var copied = false
-                var lastErr: Throwable? = null
-                for (cand in candidatePaths) {
+            var copied = false
+            var lastErr: Throwable? = null
+
+            for (cand in candidatePaths) {
+                try {
+                    // Check asset length if available to detect stale cache
+                    var assetLength = -1L
                     try {
+                        context.assets.openFd(cand).use { fd ->
+                            assetLength = fd.length
+                        }
+                    } catch (_: Throwable) {
+                        // Fallback: estimate from input stream
+                        try {
+                            context.assets.open(cand).use { stream ->
+                                assetLength = stream.available().toLong()
+                            }
+                        } catch (_: Throwable) {}
+                    }
+
+                    val needCopy = !dest.exists() || dest.length() == 0L || (assetLength > 0 && dest.length() != assetLength)
+
+                    if (needCopy) {
+                        println("[Loader] Syncing asset '$cand' (${assetLength / 1024 / 1024} MB) to '$dest'...")
+                        val tempDest = File(cacheDir, "$modelName.tmp")
                         context.assets.open(cand).use { input ->
-                            FileOutputStream(dest).use { output ->
+                            FileOutputStream(tempDest).use { output ->
                                 input.copyTo(output)
                             }
                         }
-                        copied = true
-                        break
-                    } catch (e: Throwable) {
-                        lastErr = e
+                        if (dest.exists()) dest.delete()
+                        tempDest.renameTo(dest)
                     }
-                }
 
-                if (!copied || dest.length() == 0L) {
-                    throw java.io.FileNotFoundException(
-                        "Required SAM2 ONNX model '$modelName' not found in assets (${candidatePaths.joinToString()}). " +
-                        "Please ensure sam2_image_features.onnx, sam2_init_step.onnx, and sam2_temporal_step.onnx " +
-                        "are placed in src/main/assets/models/sam2_onnx/. Underlying error: ${lastErr?.message}"
-                    )
+                    println("[Loader] Model '$modelName' ready: ${dest.length() / (1024 * 1024)} MB")
+                    copied = true
+                    break
+                } catch (e: Throwable) {
+                    lastErr = e
                 }
+            }
+
+            if (!copied || !dest.exists() || dest.length() == 0L) {
+                throw java.io.FileNotFoundException(
+                    "Required SAM2 ONNX model '$modelName' not found in assets (${candidatePaths.joinToString()}). " +
+                    "Please ensure sam2_image_features.onnx, sam2_init_step.onnx, and sam2_temporal_step.onnx " +
+                    "are placed in src/main/assets/models/sam2_onnx/. Underlying error: ${lastErr?.message}"
+                )
             }
         }
 
         return loadFromDirectory(cacheDir)
     }
+
 }
 

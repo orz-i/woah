@@ -201,6 +201,10 @@ class ExportPipeline(
                 var sam2Renderer: com.danceanon.native.sam2.Sam2InputRenderer? = null
                 var sam2Tracker: com.danceanon.native.sam2.ISam2VideoTracker? = null
 
+                android.util.Log.i(
+                    "ExportPipeline",
+                    "Pipeline Config: isSam2Mode=$isSam2Mode, profileName=${profile.name}, stride=$frameStride, inputSize=${profile.inputSize}, target=${targetWidth}x${targetHeight}"
+                )
 
                 if (isSam2Mode) {
                     sam2Fbo = com.danceanon.native.sam2.Sam2InputFbo(com.danceanon.native.sam2.Sam2TensorContract.IMAGE_SIZE)
@@ -208,6 +212,7 @@ class ExportPipeline(
                     val bundle = com.danceanon.native.sam2.Sam2OnnxModelLoader.loadFromAssets(context)
                     sam2Tracker = com.danceanon.native.sam2.Sam2OnnxVideoTracker(bundle, encoderStride = frameStride)
                 }
+
 
 
                 while (!isCancelled.get()) {
