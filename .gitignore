@@ -51,6 +51,7 @@ pubspec.lock
 
 
 # --- Android ---
+.kotlin/
 **/android/.gradle/
 **/android/captures/
 **/android/gradleApp.setting

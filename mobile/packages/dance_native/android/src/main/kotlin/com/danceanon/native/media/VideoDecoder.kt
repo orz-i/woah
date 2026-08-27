@@ -88,6 +88,33 @@ class VideoDecoder(
         return false
     }
 
+    val isInputEOS: Boolean
+        get() = isEOSInput
+
+    data class DecodedFrameInfo(
+        val presentationTimeUs: Long,
+        val isEOS: Boolean
+    )
+
+    fun dequeueAndRenderSingleFrame(timeoutUs: Long = 10_000L): DecodedFrameInfo? {
+        val decoder = codec ?: return null
+        while (true) {
+            val status = decoder.dequeueOutputBuffer(bufferInfo, timeoutUs)
+            if (status == MediaCodec.INFO_TRY_AGAIN_LATER) {
+                return null
+            } else if (status == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                videoFormat = decoder.outputFormat
+            } else if (status >= 0) {
+                val isEOS = (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0
+                val pts = bufferInfo.presentationTimeUs
+
+                // Release to render on surface if outputSurface was provided and not EOS
+                decoder.releaseOutputBuffer(status, outputSurface != null && !isEOS)
+                return DecodedFrameInfo(pts, isEOS)
+            }
+        }
+    }
+
     fun drainOutputBuffer(timeoutUs: Long = 10_000L, onFrameReady: (ptsUs: Long, isEOS: Boolean) -> Unit) {
         val decoder = codec ?: return
 
@@ -100,7 +127,7 @@ class VideoDecoder(
                 val pts = bufferInfo.presentationTimeUs
 
                 // Release to render on surface if outputSurface was provided
-                decoder.releaseOutputBuffer(status, outputSurface != null)
+                decoder.releaseOutputBuffer(status, outputSurface != null && !isEOS)
 
                 onFrameReady(pts, isEOS)
 

@@ -22,6 +22,7 @@ class YoloLiteRtSegmenter(
     private var runner: LiteRtModelRunner? = null
     private var tensorAdapter: YoloLiteRtTensorAdapter? = null
     private val workspace = PreprocessorWorkspace(640)
+    private val reusableInputFloats = FloatArray(1 * 3 * 640 * 640)
 
     val runtimeInfo: LiteRtRuntimeInfo?
         get() = runner?.runtimeInfo
@@ -131,9 +132,9 @@ class YoloLiteRtSegmenter(
             val inBuf = inputBufs[0]
             val floatBuf = preprocess.floatBuffer
             floatBuf.position(0)
-            val floatArray = FloatArray(floatBuf.remaining())
-            floatBuf.get(floatArray)
-            inBuf.writeFloat(floatArray)
+            val count = minOf(floatBuf.remaining(), reusableInputFloats.size)
+            floatBuf.get(reusableInputFloats, 0, count)
+            inBuf.writeFloat(reusableInputFloats)
 
             modelRunner.runInference()
 
@@ -206,9 +207,9 @@ class YoloLiteRtSegmenter(
             val inBuf = inputBufs[0]
             val floatBuf = preprocess.floatBuffer
             floatBuf.position(0)
-            val floatArray = FloatArray(floatBuf.remaining())
-            floatBuf.get(floatArray)
-            inBuf.writeFloat(floatArray)
+            val count = minOf(floatBuf.remaining(), reusableInputFloats.size)
+            floatBuf.get(reusableInputFloats, 0, count)
+            inBuf.writeFloat(reusableInputFloats)
 
             modelRunner.runInference()
 

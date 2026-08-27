@@ -34,15 +34,16 @@ class Sam2LiteRtModelBundle(
 
         suspend fun loadFromAssetsAsync(
             context: Context,
-            accelerator: LiteRtAccelerator = LiteRtAccelerator.GPU
+            accelerator: LiteRtAccelerator = LiteRtAccelerator.CPU
         ): Sam2LiteRtModelBundle = withContext(Dispatchers.IO) {
+            // SAM2 models (108MB vision transformer, prompt decoder, 5D temporal recurrence)
+            // run reliably and deterministically across all Android devices on CPU with XNNPACK.
+            // Using CPU eliminates mobile GPU driver SIGSEGV/abort crashes during OpenCL graph compilation.
             val imgRunner = LiteRtModelRunner.fromAsset(
                 context = context,
                 assetPath = Sam2TensorContract.MODEL_IMAGE_FEATURES,
-                requestedAccelerator = accelerator
+                requestedAccelerator = LiteRtAccelerator.CPU
             )
-            // Init and Temporal steps contain 5D memory tensors and discrete prompt decoders
-            // that run with optimal latency on CPU (XNNPACK) while avoiding mobile GPU 5D tensor aborts.
             val initRunner = LiteRtModelRunner.fromAsset(
                 context = context,
                 assetPath = Sam2TensorContract.MODEL_INIT_STEP,
@@ -67,14 +68,14 @@ class Sam2LiteRtModelBundle(
 
         fun loadFromDirectory(
             modelsDir: File,
-            accelerator: LiteRtAccelerator = LiteRtAccelerator.GPU
+            accelerator: LiteRtAccelerator = LiteRtAccelerator.CPU
         ): Sam2LiteRtModelBundle = runBlocking(Dispatchers.IO) {
             loadFromDirectoryAsync(modelsDir, accelerator)
         }
 
         suspend fun loadFromDirectoryAsync(
             modelsDir: File,
-            accelerator: LiteRtAccelerator = LiteRtAccelerator.GPU
+            accelerator: LiteRtAccelerator = LiteRtAccelerator.CPU
         ): Sam2LiteRtModelBundle = withContext(Dispatchers.IO) {
             val imgFile = File(modelsDir, File(Sam2TensorContract.MODEL_IMAGE_FEATURES).name)
             val initFile = File(modelsDir, File(Sam2TensorContract.MODEL_INIT_STEP).name)
@@ -82,7 +83,7 @@ class Sam2LiteRtModelBundle(
 
             val imgRunner = LiteRtModelRunner.fromFile(
                 modelFile = imgFile,
-                requestedAccelerator = accelerator
+                requestedAccelerator = LiteRtAccelerator.CPU
             )
             val initRunner = LiteRtModelRunner.fromFile(
                 modelFile = initFile,

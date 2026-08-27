@@ -27,6 +27,7 @@ import com.danceanon.native.tracking.TrackManager
 import com.danceanon.native.tracking.TrackState
 import com.danceanon.native.tracking.TrackedPerson
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -132,6 +133,7 @@ class ExportPipeline(
             var decoderSurface: android.view.Surface? = null
             var fallbackRetriever: android.media.MediaMetadataRetriever? = null
             var use2DFallbackMode = false
+            var previewScope: kotlinx.coroutines.CoroutineScope? = null
 
             try {
                 audioCopier = AudioTrackCopier(context, sourceUri)
@@ -209,9 +211,11 @@ class ExportPipeline(
 
                 var processedFrames = 0
                 val totalEstFrames = ((videoInfo.durationMs / 1000.0) * targetFps).toLong().coerceAtLeast(1L)
+                val frameDurationNs = (1_000_000_000.0 / targetFps).toLong().coerceAtLeast(1_000_000L)
                 val stMatrix = FloatArray(16).apply {
                     android.opengl.Matrix.setIdentityM(this, 0)
                 }
+                var basePtsUs = -1L
                 var lastPresentationNs = -1L
                 val trackManager = TrackManager()
                 val profile = ProcessingProfile.fromName(request.processingProfile)
@@ -237,21 +241,29 @@ class ExportPipeline(
                 var lastLivePreviewCaptureTime = 0L
                 var previewFlip = 0
                 val livePreviewDir = java.io.File(context.cacheDir, "export_live_preview").apply { mkdirs() }
-
-
-
+                val scope = kotlinx.coroutines.CoroutineScope(Dispatchers.IO + kotlinx.coroutines.SupervisorJob())
+                previewScope = scope
+                val isPreviewSaving = java.util.concurrent.atomic.AtomicBoolean(false)
+                var lastPreviewFilePath: String? = null
+                var sam2Initialized = false
 
                 while (!isCancelled.get()) {
-                    val fed = decoder.feedInputBuffer()
-                    var reachedEOS = false
+                    while (!isCancelled.get() && decoder.feedInputBuffer(timeoutUs = 0L)) {}
 
-                    decoder.drainOutputBuffer { ptsUs, isEOS ->
-                        if (isEOS || isCancelled.get()) {
-                            reachedEOS = true
-                            return@drainOutputBuffer
+                    val frameInfo = decoder.dequeueAndRenderSingleFrame(timeoutUs = 10_000L)
+                    if (frameInfo == null) {
+                        if (decoder.isInputEOS) {
+                            break
                         }
+                        continue
+                    }
 
-                        processedFrames++
+                    if (frameInfo.isEOS || isCancelled.get()) {
+                        break
+                    }
+
+                    val ptsUs = frameInfo.presentationTimeUs
+                    processedFrames++
 
                         val selectedIds = request.selectedPersonIds.map { it.toInt() }.toSet()
 
@@ -341,8 +353,8 @@ class ExportPipeline(
 
                         // 2. Perform Inference / Temporal Mask Tracking
                         val trackedList: List<com.danceanon.native.tracking.TrackedPerson> = if (isSam2Mode && sam2Fbo != null && sam2Renderer != null && sam2Tracker != null) {
-                            if (processedFrames == 1) {
-                                // Frame 1: YOLO anchor detection to register prompt boxes
+                            if (!sam2Initialized) {
+                                // YOLO anchor detection to register prompt boxes
                                 val initialPersons = profiler.recordStage("yoloAnchor") {
                                     inferenceRenderer.renderToFbo(renderTexId, finalTexMatrix, mapper, inferenceFbo, renderTexType)
                                     val yoloRgbaBuffer = inferenceFbo.readRgbaPixels()
@@ -350,45 +362,51 @@ class ExportPipeline(
                                     seg.persons.sortedBy { it.bbox.centerX }
                                 }
 
-                                val sam2RgbaBuffer = profiler.recordStage("sam2Readback") {
-                                    sam2Renderer.renderToFbo(renderTexId, finalTexMatrix, sam2Fbo, renderTexType)
-                                    sam2Fbo.readRgbaPixels()
-                                }
-
-                                profiler.recordStage("sam2Init") {
-                                    val maskSize = com.danceanon.native.sam2.Sam2TensorContract.MASK_OUTPUT_SIZE
-                                    initialPersons.mapIndexed { idx, det ->
-                                        val initRes = sam2Tracker.initializeWithRgba(
-                                            rgbaBuffer = sam2RgbaBuffer,
-                                            width = targetWidth,
-                                            height = targetHeight,
-                                            objectId = idx,
-                                            bbox = det.bbox
-                                        )
-
-                                        val maskBuffer = java.nio.ByteBuffer.allocateDirect(maskSize * maskSize)
-                                        for (v in initRes.softMask) {
-                                            maskBuffer.put((v * 255f).toInt().coerceIn(0, 255).toByte())
-                                        }
-                                        maskBuffer.rewind()
-
-                                        val sam2Mask = com.danceanon.native.inference.NativeMask(
-                                            width = maskSize,
-                                            height = maskSize,
-                                            buffer = maskBuffer,
-                                            originalWidth = targetWidth,
-                                            originalHeight = targetHeight,
-                                            samplingRect = com.danceanon.native.inference.FloatRect(0f, 0f, 1f, 1f)
-                                        )
-
-                                        com.danceanon.native.tracking.TrackedPerson(
-                                            id = idx,
-                                            bbox = initRes.bbox,
-                                            mask = sam2Mask,
-                                            confidence = det.confidence,
-                                            state = com.danceanon.native.tracking.TrackState.ACTIVE
-                                        )
+                                if (initialPersons.isNotEmpty()) {
+                                    val sam2RgbaBuffer = profiler.recordStage("sam2Readback") {
+                                        sam2Renderer.renderToFbo(renderTexId, finalTexMatrix, sam2Fbo, renderTexType)
+                                        sam2Fbo.readRgbaPixels()
                                     }
+
+                                    val resultPersons = profiler.recordStage("sam2Init") {
+                                        val maskSize = com.danceanon.native.sam2.Sam2TensorContract.MASK_OUTPUT_SIZE
+                                        initialPersons.mapIndexed { idx, det ->
+                                            val initRes = sam2Tracker.initializeWithRgba(
+                                                rgbaBuffer = sam2RgbaBuffer,
+                                                width = targetWidth,
+                                                height = targetHeight,
+                                                objectId = idx,
+                                                bbox = det.bbox
+                                            )
+
+                                            val maskBuffer = java.nio.ByteBuffer.allocateDirect(maskSize * maskSize)
+                                            for (v in initRes.softMask) {
+                                                maskBuffer.put((v * 255f).toInt().coerceIn(0, 255).toByte())
+                                            }
+                                            maskBuffer.rewind()
+
+                                            val sam2Mask = com.danceanon.native.inference.NativeMask(
+                                                width = maskSize,
+                                                height = maskSize,
+                                                buffer = maskBuffer,
+                                                originalWidth = targetWidth,
+                                                originalHeight = targetHeight,
+                                                samplingRect = com.danceanon.native.inference.FloatRect(0f, 0f, 1f, 1f)
+                                            )
+
+                                            com.danceanon.native.tracking.TrackedPerson(
+                                                id = idx,
+                                                bbox = initRes.bbox,
+                                                mask = sam2Mask,
+                                                confidence = det.confidence,
+                                                state = com.danceanon.native.tracking.TrackState.ACTIVE
+                                            )
+                                        }
+                                    }
+                                    sam2Initialized = true
+                                    resultPersons
+                                } else {
+                                    emptyList()
                                 }
                             } else {
                                 // Frame 2+: SAM2 persistent temporal propagation with direct FBO RGBA and Stride Caching
@@ -616,100 +634,103 @@ class ExportPipeline(
                         }
 
 
-                        // Optional live preview capture when enabled
-                        val now = System.currentTimeMillis()
-                        var currentLivePreviewPath = status.currentPreviewPath
-                        if (request.enableLivePreview && (now - lastLivePreviewCaptureTime > 350 || processedFrames == 1)) {
-                            lastLivePreviewCaptureTime = now
-                            try {
-                                val visualBmp = glRenderer.captureRenderedFrame()
-                                if (visualBmp != null) {
-                                    val scale = minOf(1.0f, 480f / maxOf(visualBmp.width, visualBmp.height))
-                                    val previewBmp = if (scale < 1.0f) {
-                                        android.graphics.Bitmap.createScaledBitmap(
-                                            visualBmp,
-                                            (visualBmp.width * scale).toInt().coerceAtLeast(1),
-                                            (visualBmp.height * scale).toInt().coerceAtLeast(1),
-                                            true
-                                        )
-                                    } else {
-                                        visualBmp
-                                    }
-                                    previewFlip = 1 - previewFlip
-                                    val targetPreviewFile = java.io.File(livePreviewDir, "preview_${jobId}_$previewFlip.jpg")
-                                    val tempPreview = java.io.File(livePreviewDir, "preview_${jobId}_tmp.jpg")
-                                    java.io.FileOutputStream(tempPreview).use { out ->
-                                        previewBmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 75, out)
-                                    }
-                                    if (previewBmp !== visualBmp) {
-                                        previewBmp.recycle()
-                                    }
-                                    visualBmp.recycle()
-                                    if (tempPreview.exists()) {
-                                        if (targetPreviewFile.exists()) targetPreviewFile.delete()
-                                        tempPreview.renameTo(targetPreviewFile)
-                                        currentLivePreviewPath = targetPreviewFile.absolutePath
+                    // Optional live preview capture when enabled (async background IO)
+                    val now = System.currentTimeMillis()
+                    if (request.enableLivePreview && (now - lastLivePreviewCaptureTime > 350 || processedFrames == 1)) {
+                        lastLivePreviewCaptureTime = now
+                        if (isPreviewSaving.compareAndSet(false, true)) {
+                            val capturedBmp = glRenderer.captureRenderedFrame()
+                            if (capturedBmp != null) {
+                                previewFlip = 1 - previewFlip
+                                val flipIndex = previewFlip
+                                previewScope?.launch {
+                                    try {
+                                        val scale = minOf(1.0f, 480f / maxOf(capturedBmp.width, capturedBmp.height))
+                                        val previewBmp = if (scale < 1.0f) {
+                                            android.graphics.Bitmap.createScaledBitmap(
+                                                capturedBmp,
+                                                (capturedBmp.width * scale).toInt().coerceAtLeast(1),
+                                                (capturedBmp.height * scale).toInt().coerceAtLeast(1),
+                                                true
+                                            )
+                                        } else {
+                                            capturedBmp
+                                        }
+                                        val targetPreviewFile = java.io.File(livePreviewDir, "preview_${jobId}_$flipIndex.jpg")
+                                        val tempPreview = java.io.File(livePreviewDir, "preview_${jobId}_tmp_$flipIndex.jpg")
+                                        java.io.FileOutputStream(tempPreview).use { out ->
+                                            previewBmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 75, out)
+                                        }
+                                        if (previewBmp !== capturedBmp) {
+                                            previewBmp.recycle()
+                                        }
+                                        capturedBmp.recycle()
+                                        if (tempPreview.exists()) {
+                                            if (targetPreviewFile.exists()) targetPreviewFile.delete()
+                                            tempPreview.renameTo(targetPreviewFile)
+                                            lastPreviewFilePath = targetPreviewFile.absolutePath
+                                        }
+                                    } catch (e: Throwable) {
+                                        try { capturedBmp.recycle() } catch (_: Throwable) {}
+                                        android.util.Log.w("ExportPipeline", "Live preview capture async warning: ${e.message}")
+                                    } finally {
+                                        isPreviewSaving.set(false)
                                     }
                                 }
-                            } catch (e: Throwable) {
-                                android.util.Log.w("ExportPipeline", "Live preview capture warning: ${e.message}")
-                            }
-                        }
-
-
-                        // 2. Swap buffers to push rendered frame to hardware encoder (Stage 2 handoff)
-                        if (eglSurface != null) {
-                            val rawPtsNs = ptsUs.coerceAtLeast(0L) * 1000L
-                            val presentationNs = if (rawPtsNs > lastPresentationNs) {
-                                lastPresentationNs = rawPtsNs
-                                rawPtsNs
                             } else {
-                                lastPresentationNs += 1_000_000L // Ensure at least 1ms progression
-                                lastPresentationNs
+                                isPreviewSaving.set(false)
                             }
-                            eglCore.setPresentationTime(eglSurface, presentationNs)
-                            val swapSuccess = eglCore.swapBuffers(eglSurface)
-                            if (!swapSuccess) {
-                                android.util.Log.e(
-                                    "ExportPipeline",
-                                    "[Stage 2 Error] eglSwapBuffers returned false on frame #$processedFrames (pts=${ptsUs}us). Encoder surface handoff failed!"
-                                )
-                            }
-                        }
-
-                        // 3. Drain encoder output to MP4 muxer (Stage 3 packet writing)
-                        profiler.recordStage("drainEncoder") {
-                            encoder.drainEncoder(muxer, endOfStream = false)
-                        }
-
-
-
-                        // 4. Emit progress based on presentation timestamp
-                        if (now - lastProgressEmitTime > 200 || processedFrames % 5 == 0) {
-                            lastProgressEmitTime = now
-                            val elapsedSec = (now - startTime) / 1000.0
-                            val currentFps = if (elapsedSec > 0) processedFrames / elapsedSec else 0.0
-                            val durationUs = videoInfo.durationMs * 1000L
-                            val progress = if (durationUs > 0) {
-                                (ptsUs.toDouble() / durationUs).coerceIn(0.0, 0.99)
-                            } else {
-                                (processedFrames.toDouble() / totalEstFrames).coerceIn(0.0, 0.99)
-                            }
-
-                            status = status.copy(
-                                state = "processing",
-                                currentFrame = processedFrames.toLong(),
-                                fps = currentFps,
-                                progress = progress,
-                                outputUri = null,
-                                currentPreviewPath = currentLivePreviewPath
-                            )
-                            emitProgress(status, onStatusChange)
                         }
                     }
 
-                    if (reachedEOS || isCancelled.get() || (!fed && processedFrames >= totalEstFrames)) {
-                        break
+                    // 2. Swap buffers to push rendered frame to hardware encoder with smooth monotonic PTS
+                    if (eglSurface != null) {
+                        if (basePtsUs < 0L) {
+                            basePtsUs = ptsUs
+                        }
+                        val relPtsNs = (ptsUs - basePtsUs).coerceAtLeast(0L) * 1000L
+                        val presentationNs = if (relPtsNs > lastPresentationNs) {
+                            relPtsNs
+                        } else {
+                            if (lastPresentationNs >= 0L) lastPresentationNs + frameDurationNs else 0L
+                        }
+                        lastPresentationNs = presentationNs
+                        eglCore.setPresentationTime(eglSurface, presentationNs)
+                        val swapSuccess = eglCore.swapBuffers(eglSurface)
+                        if (!swapSuccess) {
+                            android.util.Log.e(
+                                "ExportPipeline",
+                                "[Stage 2 Error] eglSwapBuffers returned false on frame #$processedFrames (pts=${ptsUs}us). Encoder surface handoff failed!"
+                            )
+                        }
+                    }
+
+                    // 3. Drain encoder output to MP4 muxer (Stage 3 packet writing)
+                    profiler.recordStage("drainEncoder") {
+                        encoder.drainEncoder(muxer, endOfStream = false)
+                    }
+
+                    // 4. Emit progress based on presentation timestamp
+                    if (now - lastProgressEmitTime > 200 || processedFrames % 5 == 0) {
+                        lastProgressEmitTime = now
+                        val elapsedSec = (now - startTime) / 1000.0
+                        val currentFps = if (elapsedSec > 0) processedFrames / elapsedSec else 0.0
+                        val durationUs = videoInfo.durationMs * 1000L
+                        val progress = if (durationUs > 0) {
+                            (ptsUs.toDouble() / durationUs).coerceIn(0.0, 0.99)
+                        } else {
+                            (processedFrames.toDouble() / totalEstFrames).coerceIn(0.0, 0.99)
+                        }
+
+                        status = status.copy(
+                            state = "processing",
+                            currentFrame = processedFrames.toLong(),
+                            fps = currentFps,
+                            progress = progress,
+                            outputUri = null,
+                            currentPreviewPath = lastPreviewFilePath ?: status.currentPreviewPath
+                        )
+                        emitProgress(status, onStatusChange)
                     }
                 }
 
@@ -791,6 +812,7 @@ class ExportPipeline(
                 emitProgress(status, onStatusChange)
                 pipelineException = e
             } finally {
+                try { previewScope?.cancel() } catch (_: Throwable) {}
                 try { decoder?.close() } catch (_: Throwable) {}
                 try { decoderSurface?.release() } catch (_: Throwable) {}
                 try { fallbackRetriever?.release() } catch (_: Throwable) {}
