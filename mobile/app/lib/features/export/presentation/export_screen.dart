@@ -250,12 +250,13 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                           File(state.currentPreviewPath!).existsSync())
                         Image.file(
                           File(state.currentPreviewPath!),
-                          key: ValueKey(state.currentFrame),
+                          key: ValueKey('${state.currentPreviewPath}_${state.currentFrame}'),
                           width: double.infinity,
                           height: double.infinity,
                           fit: BoxFit.contain,
                           gaplessPlayback: true,
                         )
+
                       else
                         Container(
                           color: const Color(0xFF1E1E24),

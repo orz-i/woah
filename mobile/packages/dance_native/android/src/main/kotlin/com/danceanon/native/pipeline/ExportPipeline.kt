@@ -235,8 +235,9 @@ class ExportPipeline(
                 }
 
                 var lastLivePreviewCaptureTime = 0L
+                var previewFlip = 0
                 val livePreviewDir = java.io.File(context.cacheDir, "export_live_preview").apply { mkdirs() }
-                livePreviewFile = java.io.File(livePreviewDir, "preview_${jobId}.jpg")
+
 
 
 
@@ -577,7 +578,7 @@ class ExportPipeline(
                         // Optional live preview capture when enabled
                         val now = System.currentTimeMillis()
                         var currentLivePreviewPath = status.currentPreviewPath
-                        if (request.enableLivePreview && (now - lastLivePreviewCaptureTime > 400 || processedFrames == 1)) {
+                        if (request.enableLivePreview && (now - lastLivePreviewCaptureTime > 350 || processedFrames == 1)) {
                             lastLivePreviewCaptureTime = now
                             try {
                                 val visualBmp = glRenderer.captureRenderedFrame()
@@ -593,6 +594,8 @@ class ExportPipeline(
                                     } else {
                                         visualBmp
                                     }
+                                    previewFlip = 1 - previewFlip
+                                    val targetPreviewFile = java.io.File(livePreviewDir, "preview_${jobId}_$previewFlip.jpg")
                                     val tempPreview = java.io.File(livePreviewDir, "preview_${jobId}_tmp.jpg")
                                     java.io.FileOutputStream(tempPreview).use { out ->
                                         previewBmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 75, out)
@@ -602,15 +605,16 @@ class ExportPipeline(
                                     }
                                     visualBmp.recycle()
                                     if (tempPreview.exists()) {
-                                        if (livePreviewFile.exists()) livePreviewFile.delete()
-                                        tempPreview.renameTo(livePreviewFile)
-                                        currentLivePreviewPath = livePreviewFile.absolutePath
+                                        if (targetPreviewFile.exists()) targetPreviewFile.delete()
+                                        tempPreview.renameTo(targetPreviewFile)
+                                        currentLivePreviewPath = targetPreviewFile.absolutePath
                                     }
                                 }
                             } catch (e: Throwable) {
                                 android.util.Log.w("ExportPipeline", "Live preview capture warning: ${e.message}")
                             }
                         }
+
 
                         // 2. Swap buffers to push rendered frame to hardware encoder
                         if (eglSurface != null) {
@@ -755,11 +759,17 @@ class ExportPipeline(
                 try { encoder?.close() } catch (_: Throwable) {}
                 try { glRenderer?.close() } catch (_: Throwable) {}
                 try { eglCore?.close() } catch (_: Throwable) {}
-                try { if (livePreviewFile?.exists() == true) livePreviewFile?.delete() } catch (_: Throwable) {}
+                try {
+                    val livePreviewDir = java.io.File(context.cacheDir, "export_live_preview")
+                    java.io.File(livePreviewDir, "preview_${jobId}_0.jpg").delete()
+                    java.io.File(livePreviewDir, "preview_${jobId}_1.jpg").delete()
+                    java.io.File(livePreviewDir, "preview_${jobId}_tmp.jpg").delete()
+                } catch (_: Throwable) {}
                 if (isCancelled.get()) {
                     try { tempOutFile.delete() } catch (_: Throwable) {}
                 }
                 pipelineLatch.countDown()
+
 
             }
 

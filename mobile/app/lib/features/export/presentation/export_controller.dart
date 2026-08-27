@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'package:dance_domain/dance_domain.dart';
 import 'package:dance_native/dance_native.dart';
 import '../../../core/logging/app_logger.dart';
@@ -24,6 +27,13 @@ class ExportController extends StateNotifier<ExportState> {
     _progressSub = _repository.progressStream.listen((statusDto) {
       if (state.jobId != null && statusDto.jobId != state.jobId) return;
 
+      final newPreviewPath = statusDto.currentPreviewPath;
+      if (newPreviewPath != null && newPreviewPath.isNotEmpty) {
+        try {
+          FileImage(File(newPreviewPath)).evict();
+        } catch (_) {}
+      }
+
       final jobState = ExportJobState.fromString(statusDto.state);
       state = state.copyWith(
         status: jobState,
@@ -32,11 +42,12 @@ class ExportController extends StateNotifier<ExportState> {
         totalFrames: statusDto.totalFrames,
         fps: statusDto.fps,
         outputUri: statusDto.outputUri,
-        currentPreviewPath: statusDto.currentPreviewPath ?? state.currentPreviewPath,
+        currentPreviewPath: newPreviewPath ?? state.currentPreviewPath,
         errorMessage: statusDto.errorMessage,
       );
     });
   }
+
 
   /// Toggle real-time rendered frame preview display
   void toggleLivePreview(bool enabled) {
