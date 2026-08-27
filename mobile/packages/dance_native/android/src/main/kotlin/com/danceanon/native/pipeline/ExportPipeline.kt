@@ -203,11 +203,12 @@ class ExportPipeline(
 
 
                 if (isSam2Mode) {
-                    throw com.danceanon.native.bridge.DanceNativeException(
-                        com.danceanon.native.bridge.DanceNativeException.SAM2_RUNTIME_NOT_VALIDATED,
-                        "SAM2 ONNX runtime has not passed standalone parity validation."
-                    )
+                    sam2Fbo = com.danceanon.native.sam2.Sam2InputFbo(com.danceanon.native.sam2.Sam2TensorContract.IMAGE_SIZE)
+                    sam2Renderer = com.danceanon.native.sam2.Sam2InputRenderer()
+                    val bundle = com.danceanon.native.sam2.Sam2OnnxModelLoader.loadFromAssets(context)
+                    sam2Tracker = com.danceanon.native.sam2.Sam2OnnxVideoTracker(bundle)
                 }
+
 
                 while (!isCancelled.get()) {
                     val fed = decoder.feedInputBuffer()
