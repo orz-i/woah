@@ -206,7 +206,7 @@ class ExportPipeline(
                     sam2Fbo = com.danceanon.native.sam2.Sam2InputFbo(com.danceanon.native.sam2.Sam2TensorContract.IMAGE_SIZE)
                     sam2Renderer = com.danceanon.native.sam2.Sam2InputRenderer()
                     val bundle = com.danceanon.native.sam2.Sam2OnnxModelLoader.loadFromAssets(context)
-                    sam2Tracker = com.danceanon.native.sam2.Sam2OnnxVideoTracker(bundle)
+                    sam2Tracker = com.danceanon.native.sam2.Sam2OnnxVideoTracker(bundle, encoderStride = frameStride)
                 }
 
 
@@ -257,22 +257,21 @@ class ExportPipeline(
                             if (processedFrames == 1) {
                                 // Frame 1: YOLO anchor detection to register prompt boxes
                                 inferenceRenderer.renderToFbo(oesTextureId, finalTexMatrix, mapper, inferenceFbo)
-                                val rgbaBuffer = inferenceFbo.readRgbaPixels()
-                                val seg = segmenter.segmentGlReadbackRgbaSync(rgbaBuffer, mapper, ptsUs, colOrder = RgbaColOrder.LEFT_TO_RIGHT)
+                                val yoloRgbaBuffer = inferenceFbo.readRgbaPixels()
+                                val seg = segmenter.segmentGlReadbackRgbaSync(yoloRgbaBuffer, mapper, ptsUs, colOrder = RgbaColOrder.LEFT_TO_RIGHT)
                                 val initialPersons = seg.persons.sortedBy { it.bbox.centerX }
 
+                                sam2Renderer.renderToFbo(oesTextureId, finalTexMatrix, sam2Fbo)
+                                val sam2RgbaBuffer = sam2Fbo.readRgbaPixels()
+
                                 initialPersons.mapIndexed { idx, det ->
-                                    val dummyBmp = android.graphics.Bitmap.createBitmap(targetWidth, targetHeight, android.graphics.Bitmap.Config.ARGB_8888)
-                                    sam2Tracker.initialize(
-                                        com.danceanon.native.sam2.Sam2InitRequest(
-                                            frame = dummyBmp,
-                                            sourceWidth = targetWidth,
-                                            sourceHeight = targetHeight,
-                                            objectId = idx,
-                                            bbox = det.bbox
-                                        )
+                                    sam2Tracker.initializeWithRgba(
+                                        rgbaBuffer = sam2RgbaBuffer,
+                                        width = targetWidth,
+                                        height = targetHeight,
+                                        objectId = idx,
+                                        bbox = det.bbox
                                     )
-                                    dummyBmp.recycle()
 
                                     val visualMask = det.mask?.copy(
                                         samplingRect = com.danceanon.native.inference.FloatRect(0f, 0f, 1f, 1f)
@@ -287,11 +286,10 @@ class ExportPipeline(
                                     )
                                 }
                             } else {
-                                // Frame 2+: SAM2 persistent temporal propagation
+                                // Frame 2+: SAM2 persistent temporal propagation with direct FBO RGBA and Stride Caching
                                 sam2Renderer.renderToFbo(oesTextureId, finalTexMatrix, sam2Fbo)
-                                val dummyBmp = android.graphics.Bitmap.createBitmap(targetWidth, targetHeight, android.graphics.Bitmap.Config.ARGB_8888)
-                                val sam2Results = sam2Tracker.step(dummyBmp, processedFrames)
-                                dummyBmp.recycle()
+                                val sam2RgbaBuffer = sam2Fbo.readRgbaPixels()
+                                val sam2Results = sam2Tracker.stepWithRgba(sam2RgbaBuffer, processedFrames)
 
                                 sam2Results.map { res ->
                                     val maskBuffer = java.nio.ByteBuffer.allocateDirect(targetWidth * targetHeight)
@@ -318,6 +316,7 @@ class ExportPipeline(
                                     )
                                 }
                             }
+
 
                         } else {
                             // Standard YOLO pipeline

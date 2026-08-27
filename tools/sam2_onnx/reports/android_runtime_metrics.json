@@ -8,15 +8,15 @@
               "runtime_telemetry": {
   "model_load_ms": 0,
   "frames_recorded": 40,
-  "image_encoder_p50_ms": 3796.0,
-  "image_encoder_p95_ms": 4718.0,
-  "temporal_step_p50_ms": 4051.0,
-  "temporal_step_p95_ms": 4965.0,
-  "total_frame_p50_ms": 7833.0,
-  "total_frame_p95_ms": 9524.0,
-  "total_frame_max_ms": 9903.0,
+  "image_encoder_p50_ms": 4187.0,
+  "image_encoder_p95_ms": 5414.0,
+  "temporal_step_p50_ms": 4537.0,
+  "temporal_step_p95_ms": 5733.0,
+  "total_frame_p50_ms": 8766.0,
+  "total_frame_p95_ms": 11147.0,
+  "total_frame_max_ms": 15098.0,
   "peak_pss_kb": 0,
-  "java_heap_kb": 194472,
+  "java_heap_kb": 232528,
   "native_heap_kb": 0,
   "state_memory_bytes": 83927040
 }

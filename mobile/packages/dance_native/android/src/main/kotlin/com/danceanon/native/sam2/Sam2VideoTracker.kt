@@ -8,7 +8,9 @@ import com.danceanon.native.inference.FloatRect
  */
 interface ISam2VideoTracker : AutoCloseable {
     fun initialize(request: Sam2InitRequest): Sam2TrackResult
+    fun initializeWithRgba(rgbaBuffer: java.nio.ByteBuffer, width: Int, height: Int, objectId: Int, bbox: FloatRect): Sam2TrackResult
     fun step(frame: Bitmap, frameIndex: Int): List<Sam2TrackResult>
+    fun stepWithRgba(rgbaBuffer: java.nio.ByteBuffer, frameIndex: Int): List<Sam2TrackResult>
     fun reset()
 }
 
@@ -21,6 +23,7 @@ class Sam2VideoTracker(
     val memoryEncoderPath: String,
     val memoryAttentionPath: String
 ) : ISam2VideoTracker {
+
 
     private val activeStates = mutableMapOf<Int, Sam2OnnxVideoState>()
     private var sourceWidth = 0
@@ -59,6 +62,19 @@ class Sam2VideoTracker(
         )
     }
 
+    override fun initializeWithRgba(
+        rgbaBuffer: java.nio.ByteBuffer,
+        width: Int,
+        height: Int,
+        objectId: Int,
+        bbox: FloatRect
+    ): Sam2TrackResult {
+        val dummyBmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val res = initialize(Sam2InitRequest(dummyBmp, width, height, objectId, bbox))
+        dummyBmp.recycle()
+        return res
+    }
+
     override fun step(frame: Bitmap, frameIndex: Int): List<Sam2TrackResult> {
         val startTime = System.currentTimeMillis()
         val results = mutableListOf<Sam2TrackResult>()
@@ -84,6 +100,14 @@ class Sam2VideoTracker(
 
         return results
     }
+
+    override fun stepWithRgba(rgbaBuffer: java.nio.ByteBuffer, frameIndex: Int): List<Sam2TrackResult> {
+        val dummyBmp = Bitmap.createBitmap(maxOf(sourceWidth, 1), maxOf(sourceHeight, 1), Bitmap.Config.ARGB_8888)
+        val res = step(dummyBmp, frameIndex)
+        dummyBmp.recycle()
+        return res
+    }
+
 
     override fun reset() {
         activeStates.values.forEach { it.reset() }

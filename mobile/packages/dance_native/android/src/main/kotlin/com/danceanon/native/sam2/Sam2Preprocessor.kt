@@ -180,6 +180,45 @@ object Sam2Preprocessor {
         targetBuffer.flip()
     }
 
+    /**
+     * Converts a 1024x1024 RGBA Direct ByteBuffer (from Sam2InputFbo) directly into a Direct FloatBuffer (NCHW).
+     * Zero bitmap allocations, direct fast conversion.
+     */
+
+    fun preprocessRgbaBufferToBuffer(
+        rgbaBuffer: java.nio.ByteBuffer,
+        targetBuffer: java.nio.FloatBuffer
+    ) {
+        val targetSize = Sam2TensorContract.IMAGE_SIZE
+        val channelSize = targetSize * targetSize
+        val meanR = Sam2TensorContract.NORM_MEAN[0]
+        val meanG = Sam2TensorContract.NORM_MEAN[1]
+        val meanB = Sam2TensorContract.NORM_MEAN[2]
+
+        val stdR = Sam2TensorContract.NORM_STD[0]
+        val stdG = Sam2TensorContract.NORM_STD[1]
+        val stdB = Sam2TensorContract.NORM_STD[2]
+
+        targetBuffer.clear()
+        rgbaBuffer.rewind()
+
+        for (i in 0 until channelSize) {
+            val r = (rgbaBuffer.get().toInt() and 0xFF) / 255.0f
+            val g = (rgbaBuffer.get().toInt() and 0xFF) / 255.0f
+            val b = (rgbaBuffer.get().toInt() and 0xFF) / 255.0f
+            rgbaBuffer.get() // skip Alpha
+
+            targetBuffer.put(i, (r - meanR) / stdR)
+            targetBuffer.put(channelSize + i, (g - meanG) / stdG)
+            targetBuffer.put(2 * channelSize + i, (b - meanB) / stdB)
+        }
+
+        targetBuffer.position(3 * channelSize)
+        targetBuffer.flip()
+        rgbaBuffer.rewind()
+    }
+
+
 
 
 

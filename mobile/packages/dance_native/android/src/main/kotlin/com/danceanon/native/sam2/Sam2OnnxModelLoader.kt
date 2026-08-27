@@ -27,10 +27,7 @@ object Sam2OnnxModelLoader {
         }
 
         val env = OrtEnvironment.getEnvironment()
-        val sessionOptions = OrtSession.SessionOptions().apply {
-            setOptimizationLevel(OrtSession.SessionOptions.OptLevel.BASIC_OPT)
-            setIntraOpNumThreads(4)
-        }
+        var sessionOptions = createOptimalSessionOptions(4)
 
         try {
             println("[Loader] Loading image_features: ${imgFeatFile.absolutePath} (${imgFeatFile.length() / 1024 / 1024} MB)...")
@@ -48,10 +45,54 @@ object Sam2OnnxModelLoader {
                 temporalStepSession = sessTemp
             )
         } catch (e: Throwable) {
-            println("[Loader] ERROR: ${e.message}")
-            throw IllegalStateException("Failed to create ONNX session for models in ${modelsDir.absolutePath}: ${e.message}", e)
+            println("[Loader] Preferred session creation failed (${e.message}), trying standard CPU fallback...")
+            try {
+                sessionOptions = OrtSession.SessionOptions().apply {
+                    setOptimizationLevel(OrtSession.SessionOptions.OptLevel.BASIC_OPT)
+                    setIntraOpNumThreads(4)
+                }
+                val sessImg = env.createSession(imgFeatFile.absolutePath, sessionOptions)
+                val sessInit = env.createSession(initStepFile.absolutePath, sessionOptions)
+                val sessTemp = env.createSession(tempStepFile.absolutePath, sessionOptions)
+                println("[Loader] All 3 ONNX sessions loaded successfully via CPU fallback!")
+
+                return Sam2OnnxSessionBundle(
+                    env = env,
+                    imageFeaturesSession = sessImg,
+                    initStepSession = sessInit,
+                    temporalStepSession = sessTemp
+                )
+            } catch (fallbackErr: Throwable) {
+                println("[Loader] ERROR: ${fallbackErr.message}")
+                throw IllegalStateException("Failed to create ONNX session for models in ${modelsDir.absolutePath}: ${fallbackErr.message}", fallbackErr)
+            }
         }
     }
+
+    fun createOptimalSessionOptions(numThreads: Int = 4): OrtSession.SessionOptions {
+        val options = OrtSession.SessionOptions().apply {
+            setOptimizationLevel(OrtSession.SessionOptions.OptLevel.BASIC_OPT)
+            setIntraOpNumThreads(numThreads)
+        }
+
+        try {
+            val qnnMethod = options.javaClass.methods.firstOrNull { it.name == "addQnn" }
+            if (qnnMethod != null) {
+                val qnnOptions = mapOf(
+                    "backend_type" to "HTP",
+                    "htp_performance_mode" to "burst",
+                    "htp_precision" to "fp16"
+                )
+                qnnMethod.invoke(options, qnnOptions)
+                println("[Loader] ✅ Qualcomm QNN Execution Provider (HTP) configured")
+            }
+        } catch (t: Throwable) {
+            println("[Loader] QNN EP probe note: ${t.message}")
+        }
+
+        return options
+    }
+
 
 
 
