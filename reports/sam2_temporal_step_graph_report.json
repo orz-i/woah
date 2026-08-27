@@ -1,0 +1,27 @@
+{
+  "model_path": "D:\\dance-anonymizer\\models\\litert\\sam2_temporal_step.tflite",
+  "file_name": "sam2_temporal_step.tflite",
+  "file_size_bytes": 67496452,
+  "file_size_mb": 64.37,
+  "subgraphs": [],
+  "operator_counts": {
+    "GELU": 9,
+    "DIV": 1,
+    "LOG": 1
+  },
+  "unique_operators": [
+    "DIV",
+    "GELU",
+    "LOG"
+  ],
+  "tensor_types": {},
+  "has_dynamic_shapes": false,
+  "dynamic_tensor_count": 0,
+  "total_tensors": 0,
+  "total_operators": 11,
+  "gpu_delegate_risk_factors": [
+    "GELU: Custom or composite op might decompose into elementary ops during GPU delegate compile"
+  ],
+  "tf_lite_interpreter_note": "TF lite interpreter scan skipped/failed: No module named 'tensorflow'",
+  "format_magic": "TFL3"
+}

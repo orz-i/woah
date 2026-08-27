@@ -1,0 +1,47 @@
+{
+  "sam2_image_features": {
+    "file_size_mb": 108.33,
+    "total_operators": 23,
+    "unique_operators": [
+      "ADD",
+      "DIV",
+      "EXP",
+      "GELU",
+      "LOG",
+      "MUL",
+      "PAD",
+      "POW"
+    ],
+    "risk_factors": [
+      "GELU: Custom or composite op might decompose into elementary ops during GPU delegate compile"
+    ]
+  },
+  "yolo11n_seg_fp16": {
+    "file_size_mb": 11.25,
+    "total_operators": 0,
+    "unique_operators": [],
+    "risk_factors": []
+  },
+  "sam2_init_step": {
+    "file_size_mb": 27.33,
+    "total_operators": 9,
+    "unique_operators": [
+      "GELU"
+    ],
+    "risk_factors": [
+      "GELU: Custom or composite op might decompose into elementary ops during GPU delegate compile"
+    ]
+  },
+  "sam2_temporal_step": {
+    "file_size_mb": 64.37,
+    "total_operators": 11,
+    "unique_operators": [
+      "DIV",
+      "GELU",
+      "LOG"
+    ],
+    "risk_factors": [
+      "GELU: Custom or composite op might decompose into elementary ops during GPU delegate compile"
+    ]
+  }
+}

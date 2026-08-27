@@ -20,7 +20,7 @@ class KalmanFilter {
     private var lastTimestampUs: Long = -1L
 
     private val stdWeightPosition = 1f / 20f
-    private val stdWeightVelocity = 1f / 10f
+    private val stdWeightVelocity = 1.0f
 
     fun init(bbox: FloatRect, timestampUs: Long = -1L) {
         val w = bbox.width
@@ -67,6 +67,51 @@ class KalmanFilter {
         state[5] *= f
         state[6] *= f
         state[7] *= f
+    }
+
+    /**
+     * Computes the squared Mahalanobis gating distance d^2 = y^T * S^-1 * y
+     * without modifying the filter state.
+     */
+    fun gatingDistance(bbox: FloatRect): Float {
+        val w = bbox.width
+        val h = max(1e-4f, bbox.height)
+        val cx = bbox.centerX
+        val cy = bbox.centerY
+        val a = if (h > 0) w / h else 1f
+
+        val z = floatArrayOf(cx, cy, a, h)
+
+        val rStd = floatArrayOf(
+            stdWeightPosition * h,
+            stdWeightPosition * h,
+            1e-1f,
+            stdWeightPosition * h
+        )
+        val rMat = FloatArray(4) { i -> rStd[i] * rStd[i] }
+
+        val innovation = FloatArray(4) { i -> z[i] - state[i] }
+
+        val sMat = Array(4) { FloatArray(4) }
+        for (i in 0 until 4) {
+            for (j in 0 until 4) {
+                sMat[i][j] = covariance[i][j]
+            }
+            sMat[i][i] += rMat[i]
+        }
+
+        val sInv = invert4x4(sMat) ?: return Float.MAX_VALUE
+
+        var dSquared = 0f
+        for (i in 0 until 4) {
+            var sInvY = 0f
+            for (j in 0 until 4) {
+                sInvY += sInv[i][j] * innovation[j]
+            }
+            dSquared += innovation[i] * sInvY
+        }
+
+        return if (dSquared < 0f) Float.MAX_VALUE else dSquared
     }
 
     /**

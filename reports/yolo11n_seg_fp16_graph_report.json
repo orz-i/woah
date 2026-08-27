@@ -1,0 +1,17 @@
+{
+  "model_path": "D:\\dance-anonymizer\\models\\litert\\yolo11n-seg-fp16.tflite",
+  "file_name": "yolo11n-seg-fp16.tflite",
+  "file_size_bytes": 11799725,
+  "file_size_mb": 11.25,
+  "subgraphs": [],
+  "operator_counts": {},
+  "unique_operators": [],
+  "tensor_types": {},
+  "has_dynamic_shapes": false,
+  "dynamic_tensor_count": 0,
+  "total_tensors": 0,
+  "total_operators": 0,
+  "gpu_delegate_risk_factors": [],
+  "tf_lite_interpreter_note": "TF lite interpreter scan skipped/failed: No module named 'tensorflow'",
+  "format_magic": "TFL3"
+}

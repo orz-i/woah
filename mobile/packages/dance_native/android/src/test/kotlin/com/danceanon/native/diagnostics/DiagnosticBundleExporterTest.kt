@@ -29,7 +29,7 @@ class DiagnosticBundleExporterTest {
             event = "EXPORT_START"
         )
         NativeDiagnostics.breadcrumb("Test", "STAGE_1")
-        NativeDiagnostics.flushBlocking(500L)
+        NativeDiagnostics.flushCriticalNow(1000L)
 
         val result = DiagnosticBundleExporter.createBundle(mockContext)
         assertNotNull(result)

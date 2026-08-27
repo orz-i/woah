@@ -25,37 +25,42 @@ object DiagnosticBundleExporter {
 
     fun createBundle(context: Context): Map<String, Any?> {
         val appCtx = context.applicationContext ?: context
-        NativeDiagnostics.flushBlocking(500L)
-
-        val diagDir = File(appCtx.filesDir, "diagnostics")
-        val exportDir = File(appCtx.cacheDir, "diagnostics/export").apply { mkdirs() }
         val sessionId = NativeDiagnostics.getCurrentSessionId()
 
         val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("UTC")
         }.format(Date())
 
+        val snapshotStagingDir = File(appCtx.cacheDir, "diag_snapshot_${sessionId}_${System.currentTimeMillis()}").apply { mkdirs() }
+
+        // 1. Consistent snapshot barrier: flush & atomic copy in single-thread writer executor
+        val stagedFiles = NativeDiagnostics.createConsistentSnapshot(snapshotStagingDir, timeoutMs = 5000L)
+        if (stagedFiles == null) {
+            try { snapshotStagingDir.deleteRecursively() } catch (_: Throwable) {}
+            NativeDiagnostics.event(
+                level = "ERROR",
+                component = "DiagnosticBundleExporter",
+                event = "DIAGNOSTIC_SNAPSHOT_TIMEOUT",
+                fields = mapOf("session_id" to sessionId)
+            )
+            throw IllegalStateException("DIAGNOSTIC_SNAPSHOT_TIMEOUT: Failed to acquire consistent diagnostic snapshot barrier within 5000ms")
+        }
+
+        val exportDir = File(appCtx.cacheDir, "diagnostics/export").apply { mkdirs() }
         val zipFileName = "woah_diag_${timeStamp}_${sessionId}.zip"
         val tempZipFile = File(exportDir, zipFileName)
 
-        // 1. Gather all diagnostic files
+        // 2. Generate manifest.json inside snapshot directory
         val filesToZip = mutableListOf<File>()
-        if (diagDir.exists() && diagDir.isDirectory) {
-            val diagFiles = diagDir.listFiles() ?: emptyArray()
-            for (f in diagFiles) {
-                if (f.isFile && !f.name.endsWith(".tmp")) {
-                    filesToZip.add(f)
-                }
-            }
-        }
+        filesToZip.addAll(stagedFiles.filter { it.isFile && it.length() > 0L })
 
-        // 2. Generate manifest.json
         val manifestJson = JSONObject().apply {
             put("session_id", sessionId)
             put("created_at", SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
                 timeZone = TimeZone.getTimeZone("UTC")
             }.format(Date()))
             put("android_api", Build.VERSION.SDK_INT)
+            put("snapshot_complete", true)
             try {
                 val pInfo = appCtx.packageManager.getPackageInfo(appCtx.packageName, 0)
                 put("app_version", pInfo.versionName ?: "")
@@ -74,13 +79,13 @@ object DiagnosticBundleExporter {
             put("file_list", filesArray)
         }
 
-        val manifestFile = File(exportDir, "manifest.json")
+        val manifestFile = File(snapshotStagingDir, "manifest.json")
         FileOutputStream(manifestFile).use { fos ->
             fos.write(manifestJson.toString(2).toByteArray(Charsets.UTF_8))
         }
         filesToZip.add(0, manifestFile)
 
-        // 3. Compress files into ZIP
+        // 3. Compress snapshot files into ZIP
         FileOutputStream(tempZipFile).use { fos ->
             ZipOutputStream(fos).use { zos ->
                 val buffer = ByteArray(16 * 1024)
@@ -99,7 +104,8 @@ object DiagnosticBundleExporter {
             }
         }
 
-        try { manifestFile.delete() } catch (_: Throwable) {}
+        // Clean up snapshot staging directory
+        try { snapshotStagingDir.deleteRecursively() } catch (_: Throwable) {}
 
         // 4. For Android 10+ (API >= 29): publish to MediaStore.Downloads (Downloads/DanceAnon/Diagnostics/)
         var publicUriStr: String? = null
@@ -146,7 +152,7 @@ object DiagnosticBundleExporter {
                     val destFile = File(extDir, zipFileName)
                     tempZipFile.copyTo(destFile, overwrite = true)
                     finalFilePath = destFile.absolutePath
-                    publicUriStr = Uri.fromFile(destFile).toString()
+                    publicUriStr = try { Uri.fromFile(destFile)?.toString() } catch (_: Throwable) { null }
                 }
             } catch (t: Throwable) {
                 Log.w(TAG, "Failed to save diagnostic bundle to external files: ${t.message}")
@@ -188,9 +194,9 @@ object DiagnosticBundleExporter {
         val appCtx = context.applicationContext ?: context
 
         val uri = if (!publicUriStr.isNullOrBlank()) {
-            Uri.parse(publicUriStr)
+            try { Uri.parse(publicUriStr) } catch (_: Throwable) { null }
         } else if (!filePath.isNullOrBlank()) {
-            Uri.fromFile(File(filePath))
+            try { Uri.fromFile(File(filePath)) } catch (_: Throwable) { null }
         } else {
             null
         }
@@ -199,36 +205,23 @@ object DiagnosticBundleExporter {
             return mapOf("success" to false, "error" to "No valid URI or file path provided")
         }
 
-        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-            type = "application/zip"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-
-        val chooser = Intent.createChooser(shareIntent, "分享诊断包").apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-
         try {
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "application/zip"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+
+            val chooser = Intent.createChooser(shareIntent, "分享诊断包 / Share Diagnostic Bundle").apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
             appCtx.startActivity(chooser)
-            NativeDiagnostics.event(
-                level = "INFO",
-                component = "DiagnosticBundleExporter",
-                event = "DIAGNOSTIC_BUNDLE_SHARED",
-                fields = mapOf("uri" to uri.toString())
-            )
-            return mapOf(
-                "success" to true,
-                "uri" to uri.toString()
-            )
+
+            return mapOf("success" to true)
         } catch (t: Throwable) {
-            Log.w(TAG, "Failed to start share chooser: ${t.message}")
-            return mapOf(
-                "success" to false,
-                "error" to (t.message ?: "Failed to open share activity"),
-                "uri" to uri.toString()
-            )
+            Log.e(TAG, "Failed to launch share intent: ${t.message}", t)
+            return mapOf("success" to false, "error" to (t.message ?: "Unknown error"))
         }
     }
 

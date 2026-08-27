@@ -3,6 +3,7 @@ package com.danceanon.native.sam2
 import android.content.Context
 import android.util.Log
 import com.danceanon.native.diagnostics.NativeDiagnostics
+import com.danceanon.native.diagnostics.ProcessLogCapture
 import com.danceanon.native.litert.LiteRtAccelerator
 import com.danceanon.native.litert.LiteRtModelRunner
 import com.danceanon.native.litert.LiteRtRunnerPolicy
@@ -10,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -39,6 +41,15 @@ object Sam2GpuCapabilityManager {
 
     @Volatile
     private var probeAttemptCount: Int = 0
+
+    @Volatile
+    private var yoloGpuControlState: String = "UNKNOWN"
+
+    @Volatile
+    private var yoloGpuControlReason: String? = null
+
+    @Volatile
+    private var yoloGpuControlStage: String? = null
 
     private val mutex = Mutex()
 
@@ -82,6 +93,9 @@ object Sam2GpuCapabilityManager {
         failedStage = null
         failedAtWallTime = null
         probeAttemptCount = 0
+        yoloGpuControlState = "UNKNOWN"
+        yoloGpuControlReason = null
+        yoloGpuControlStage = null
     }
 
     fun setForTesting(state: Sam2GpuState, reason: String? = null) {
@@ -103,6 +117,11 @@ object Sam2GpuCapabilityManager {
             currentState = Sam2GpuState.PROBING
             var probeRunner: LiteRtModelRunner? = null
             var probeStage = "compile"
+
+            // Start process-local native log capture
+            val diagDir = File(context.filesDir, "diagnostics").apply { mkdirs() }
+            val nativeLogFile = File(diagDir, "sam_gpu_native_log.txt")
+            ProcessLogCapture.start(nativeLogFile)
 
             NativeDiagnostics.event(
                 level = "INFO",
@@ -301,6 +320,12 @@ object Sam2GpuCapabilityManager {
                 try {
                     probeRunner?.close()
                 } catch (_: Throwable) {}
+
+                // Run YOLO GPU Control Experiment (PHASE F)
+                runYoloGpuControlExperiment(context)
+
+                // Stop native log capture
+                ProcessLogCapture.stop()
                 persistCapabilities()
             }
 
@@ -308,15 +333,68 @@ object Sam2GpuCapabilityManager {
         }
     }
 
+    private suspend fun runYoloGpuControlExperiment(context: Context) {
+        var yoloRunner: LiteRtModelRunner? = null
+        try {
+            yoloGpuControlStage = "compile"
+            yoloRunner = LiteRtModelRunner.fromAsset(
+                context = context,
+                assetPath = "models/litert/yolo11n-seg-fp16.tflite",
+                policy = LiteRtRunnerPolicy.STRICT_GPU
+            )
+            yoloRunner.initialize()
+
+            yoloGpuControlStage = "buffer"
+            val inBufs = yoloRunner.getInputBuffers()
+            val outBufs = yoloRunner.getOutputBuffers()
+
+            if (inBufs.isNotEmpty() && outBufs.isNotEmpty()) {
+                yoloGpuControlStage = "run"
+                val dummy = FloatArray(1 * 3 * 640 * 640) { 0.5f }
+                inBufs[0].writeFloat(dummy)
+                yoloRunner.runInference()
+                val out = outBufs[0].readFloat()
+                if (out.isNotEmpty()) {
+                    yoloGpuControlState = "AVAILABLE"
+                    yoloGpuControlReason = null
+                } else {
+                    yoloGpuControlState = "UNAVAILABLE"
+                    yoloGpuControlReason = "Empty output float array"
+                }
+            } else {
+                yoloGpuControlState = "UNAVAILABLE"
+                yoloGpuControlReason = "Unexpected buffer counts: in=${inBufs.size}, out=${outBufs.size}"
+            }
+        } catch (t: Throwable) {
+            val root = NativeDiagnostics.rootCause(t)
+            yoloGpuControlState = "UNAVAILABLE"
+            yoloGpuControlReason = "Stage $yoloGpuControlStage failed: ${root.javaClass.simpleName}: ${root.message}"
+        } finally {
+            try { yoloRunner?.close() } catch (_: Throwable) {}
+        }
+    }
+
     private fun persistCapabilities() {
         NativeDiagnostics.recordCapabilities(
             mapOf(
-                "state" to currentState.name,
-                "is_available" to (currentState == Sam2GpuState.AVAILABLE),
-                "unavailable_reason" to (unavailableReason ?: ""),
-                "failed_stage" to (failedStage ?: ""),
-                "failed_at_wall_time" to (failedAtWallTime ?: ""),
-                "probe_attempt_count" to probeAttemptCount
+                "sam2" to mapOf(
+                    "state" to currentState.name,
+                    "is_available" to (currentState == Sam2GpuState.AVAILABLE),
+                    "unavailable_reason" to (unavailableReason ?: ""),
+                    "failed_stage" to (failedStage ?: ""),
+                    "failed_at_wall_time" to (failedAtWallTime ?: ""),
+                    "probe_attempt_count" to probeAttemptCount
+                ),
+                "yolo_gpu_control" to mapOf(
+                    "state" to yoloGpuControlState,
+                    "stage" to (yoloGpuControlStage ?: ""),
+                    "reason" to (yoloGpuControlReason ?: "")
+                ),
+                "native_log_capture" to mapOf(
+                    "available" to ProcessLogCapture.isCaptureAvailable(),
+                    "file_name" to "sam_gpu_native_log.txt",
+                    "error" to (ProcessLogCapture.getCaptureError() ?: "")
+                )
             )
         )
     }

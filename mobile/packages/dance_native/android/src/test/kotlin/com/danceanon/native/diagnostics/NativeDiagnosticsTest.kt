@@ -31,7 +31,7 @@ class NativeDiagnosticsTest {
             )
         )
 
-        NativeDiagnostics.flushBlocking(500L)
+        NativeDiagnostics.flushCriticalNow(1000L)
 
         val logFile = NativeDiagnostics.getCurrentLogFile()
         assertNotNull(logFile)
@@ -79,7 +79,7 @@ class NativeDiagnosticsTest {
 
         executor.shutdown()
         executor.awaitTermination(2, TimeUnit.SECONDS)
-        NativeDiagnostics.flushBlocking(500L)
+        NativeDiagnostics.flushCriticalNow(1000L)
 
         val logFile = NativeDiagnostics.getCurrentLogFile()
         assertNotNull(logFile)

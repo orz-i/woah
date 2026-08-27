@@ -21,9 +21,10 @@ object PrivacyOcclusionResolver {
      * an effective, hole-free privacy mask.
      * Enforces:
      * 1. ACTIVE selected targets are NEVER subtracted by unselected persons.
-     * 2. OCCLUDED selected targets only subtract explicit unselected occluders (occludedByTrackIds).
-     * 3. Single dilation on selected targets, ZERO dilation on unselected occluders.
-     * 4. Multi-selected targets are evaluated per-target, then combined by union.
+     * 2. OCCLUDED selected targets only subtract freshly observed explicit foreground occluders (occludedByTrackIds).
+     * 3. REACQUIRING targets NEVER subtract occluders (stale occluders cleared, privacy wins).
+     * 4. Single dilation on selected targets, ZERO dilation on unselected occluders.
+     * 5. Multi-selected targets are evaluated per-target, then combined by union.
      */
     fun resolveMasks(
         persons: List<TrackedPerson>,
@@ -60,8 +61,8 @@ object PrivacyOcclusionResolver {
                     // ACTIVE foreground target: strictly NO subtraction from any unselected person
                     dilatedMask
                 }
-                TrackState.OCCLUDED, TrackState.REACQUIRING -> {
-                    // Only subtract explicit unselected occluders
+                TrackState.OCCLUDED -> {
+                    // OCCLUDED target: only subtract explicit freshly observed foreground occluders
                     val explicitOccluders = target.occludedByTrackIds.mapNotNull { unselectedPersonsMap[it]?.mask }
                     if (explicitOccluders.isNotEmpty()) {
                         val mergedOccluder = mergeMasks(explicitOccluders)
@@ -70,8 +71,12 @@ object PrivacyOcclusionResolver {
                         dilatedMask
                     }
                 }
+                TrackState.REACQUIRING -> {
+                    // REACQUIRING target: active overlap has ended, strictly NO subtraction to avoid stale hole
+                    dilatedMask
+                }
                 TrackState.LOST, TrackState.REMOVED -> {
-                    // LOST track: no explicit occluder subtraction to avoid under-coverage
+                    // LOST track: no subtraction to avoid privacy holes
                     dilatedMask
                 }
             }
@@ -80,13 +85,14 @@ object PrivacyOcclusionResolver {
             val rawArea = countMaskPixels(rawMask)
             val dilatedArea = countMaskPixels(dilatedMask)
             val effArea = countMaskPixels(effectiveMask)
+            val removedArea = (dilatedArea - effArea).coerceAtLeast(0)
             val coverageRatio = if (dilatedArea > 0) effArea.toFloat() / dilatedArea.toFloat() else 1.0f
 
-            if (target.state == TrackState.ACTIVE && coverageRatio < 0.85f) {
+            if (target.state == TrackState.OCCLUDED && coverageRatio < 0.85f) {
                 NativeDiagnostics.event(
-                    level = "WARN",
+                    level = "INFO",
                     component = "PrivacyOcclusionResolver",
-                    event = "PRIVACY_UNDERCOVERAGE",
+                    event = "PRIVACY_COVERAGE_DROP",
                     fields = mapOf(
                         "target_id" to target.id,
                         "state" to target.state.name,
@@ -94,6 +100,7 @@ object PrivacyOcclusionResolver {
                         "raw_area" to rawArea,
                         "dilated_area" to dilatedArea,
                         "effective_area" to effArea,
+                        "removed_area" to removedArea,
                         "occluder_ids" to target.occludedByTrackIds.toList(),
                         "pts_us" to ptsUs
                     )
@@ -163,33 +170,41 @@ object PrivacyOcclusionResolver {
         if (privacyMask == null) return null
         if (occluderMask == null) return privacyMask
 
-        val totalPixels = privacyMask.width * privacyMask.height
-        val pBuf = privacyMask.buffer
-        val oBuf = occluderMask.buffer
-        pBuf.rewind()
-        oBuf.rewind()
+        val width = privacyMask.width
+        val height = privacyMask.height
+        val totalPixels = width * height
 
-        val outBuf = ByteBuffer.allocateDirect(totalPixels).order(ByteOrder.nativeOrder())
+        val privBuf = privacyMask.buffer
+        val occBuf = occluderMask.buffer
+        privBuf.rewind()
+        occBuf.rewind()
+
+        val dstBuf = ByteBuffer.allocateDirect(totalPixels).order(ByteOrder.nativeOrder())
         val tempBytes = ByteArray(totalPixels)
 
-        val len = minOf(totalPixels, pBuf.capacity(), oBuf.capacity())
-        for (i in 0 until len) {
-            val pVal = (pBuf.get(i).toInt() and 0xFF) / 255f
-            val oVal = (oBuf.get(i).toInt() and 0xFF) / 255f
-            val effective = (pVal * (1.0f - oVal)).coerceIn(0f, 1f)
-            tempBytes[i] = (effective * 255f).toInt().coerceIn(0, 255).toByte()
+        for (i in 0 until totalPixels) {
+            val pVal = privBuf.get(i).toInt() and 0xFF
+            val oVal = if (i < occBuf.capacity()) (occBuf.get(i).toInt() and 0xFF) else 0
+
+            // If occluder is solid foreground (>= 128), subtract it from privacy
+            val effectiveVal = if (oVal >= 128) {
+                0
+            } else {
+                pVal
+            }
+            tempBytes[i] = effectiveVal.toByte()
         }
 
-        pBuf.rewind()
-        oBuf.rewind()
+        privBuf.rewind()
+        occBuf.rewind()
 
-        outBuf.put(tempBytes)
-        outBuf.rewind()
+        dstBuf.put(tempBytes)
+        dstBuf.rewind()
 
         return NativeMask(
-            width = privacyMask.width,
-            height = privacyMask.height,
-            buffer = outBuf,
+            width = width,
+            height = height,
+            buffer = dstBuf,
             originalWidth = privacyMask.originalWidth,
             originalHeight = privacyMask.originalHeight,
             mapper = privacyMask.mapper,
@@ -202,8 +217,7 @@ object PrivacyOcclusionResolver {
         val buf = mask.buffer
         buf.rewind()
         var count = 0
-        val total = mask.width * mask.height
-        val len = minOf(total, buf.capacity())
+        val len = buf.capacity()
         for (i in 0 until len) {
             if ((buf.get(i).toInt() and 0xFF) > 128) {
                 count++

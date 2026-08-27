@@ -253,6 +253,17 @@ class ExportPipeline(
                 var lastEncoderPtsUs = -1L
                 var emptyFrameStreak = 0
 
+                // SurfaceTexture Timing & Diagnostics Metrics (PHASE E)
+                var surfaceWaitTimeoutCount = 0L
+                var duplicateSurfaceTimestampCount = 0L
+                var nonMonotonicSurfaceTimestampCount = 0L
+                var maxAbsSurfacePtsDeltaUs = 0L
+                val surfacePtsDeltaSamples = mutableListOf<Long>()
+                var lastSurfaceTimestampNs = -1L
+
+                // Target Missing Streak Map (PHASE A & D)
+                val missingTargetStreakMap = mutableMapOf<Int, Int>()
+
                 while (!isCancelled.get() && !decoder.isOutputEOS) {
                     while (!isCancelled.get() && !decoder.isInputEOS && decoder.feedInputBuffer(timeoutUs = 0L)) {}
 
@@ -299,10 +310,29 @@ class ExportPipeline(
                     }
 
                     if (!frameReceived) {
+                        surfaceWaitTimeoutCount++
                         android.util.Log.w(
                             "ExportPipeline",
-                            "[Telemetry Warning] SurfaceTexture frame wait timeout (500ms) on frame #$processedFrames (pts=${ptsUs}us). Attempting recovery updateTexImage."
+                            "[Telemetry Warning] SurfaceTexture frame wait timeout (500ms) on frame #$processedFrames (pts=${ptsUs}us). Attempting 100ms retry."
                         )
+                        synchronized(frameSync) {
+                            val retryDeadline = System.currentTimeMillis() + 100L
+                            while (frameAvailableSequence.get() < targetSeq && System.currentTimeMillis() < retryDeadline) {
+                                val waitMs = retryDeadline - System.currentTimeMillis()
+                                if (waitMs > 0) {
+                                    try {
+                                        frameSync.wait(waitMs)
+                                    } catch (_: InterruptedException) {}
+                                }
+                            }
+                            frameReceived = frameAvailableSequence.get() >= targetSeq
+                        }
+                        if (!frameReceived) {
+                            throw DanceNativeException(
+                                DanceNativeException.FRAME_DECODE_TIMEOUT,
+                                "SurfaceTexture frame wait timeout exceeded after retry on frame #$processedFrames (pts=${ptsUs}us)"
+                            )
+                        }
                     }
 
                     consumedFrameSequence.set(frameAvailableSequence.get())
@@ -321,6 +351,26 @@ class ExportPipeline(
                         surfaceTexture?.updateTexImage()
                         surfaceTexture?.getTransformMatrix(stMatrix)
                         latchedFrameCount++
+
+                        // SurfaceTexture Timing Diagnostics
+                        val surfaceTimestampNs = surfaceTexture?.timestamp ?: 0L
+                        if (lastSurfaceTimestampNs > 0L) {
+                            if (surfaceTimestampNs == lastSurfaceTimestampNs) {
+                                duplicateSurfaceTimestampCount++
+                            } else if (surfaceTimestampNs < lastSurfaceTimestampNs) {
+                                nonMonotonicSurfaceTimestampCount++
+                            }
+                        }
+                        lastSurfaceTimestampNs = surfaceTimestampNs
+
+                        val surfacePtsUs = surfaceTimestampNs / 1000L
+                        val deltaUs = kotlin.math.abs(surfacePtsUs - ptsUs)
+                        if (deltaUs > maxAbsSurfacePtsDeltaUs) {
+                            maxAbsSurfacePtsDeltaUs = deltaUs
+                        }
+                        if (surfacePtsDeltaSamples.size < 5000) {
+                            surfacePtsDeltaSamples.add(deltaUs)
+                        }
                     } catch (e: Throwable) {
                         android.util.Log.w("ExportPipeline", "updateTexImage warning: ${e.message}")
                         continue
@@ -581,23 +631,60 @@ class ExportPipeline(
                             }
                         }
 
-                        // Validate selected target survival
+                        // Validate selected target survival with rate-limited telemetry (PHASE A & D)
                         val trackedIds = trackedList.map { it.id }.toSet()
                         for (sId in selectedIds) {
                             if (!trackedIds.contains(sId)) {
-                                com.danceanon.native.diagnostics.NativeDiagnostics.event(
-                                    level = "CRITICAL",
-                                    component = "ExportPipeline",
-                                    event = "SELECTED_TARGET_MISSING",
-                                    fields = mapOf(
-                                        "job_id" to jobId,
-                                        "selected_id" to sId,
-                                        "frame" to processedFrames,
-                                        "pts_us" to ptsUs,
-                                        "tracked_ids" to trackedIds.toList(),
-                                        "tracked_states" to trackedList.map { "${it.id}:${it.state.name}" }
+                                val streak = missingTargetStreakMap.getOrDefault(sId, 0) + 1
+                                missingTargetStreakMap[sId] = streak
+
+                                if (streak == 1) {
+                                    com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                                        level = "CRITICAL",
+                                        component = "ExportPipeline",
+                                        event = "SELECTED_TARGET_MISSING",
+                                        fields = mapOf(
+                                            "job_id" to jobId,
+                                            "selected_id" to sId,
+                                            "frame" to processedFrames,
+                                            "pts_us" to ptsUs,
+                                            "missing_streak" to streak,
+                                            "tracked_ids" to trackedIds.toList(),
+                                            "tracked_states" to trackedList.map { "${it.id}:${it.state.name}" }
+                                        )
                                     )
-                                )
+                                } else if (streak % 30 == 0) {
+                                    com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                                        level = "WARN",
+                                        component = "ExportPipeline",
+                                        event = "SELECTED_TARGET_MISSING_SAMPLED",
+                                        fields = mapOf(
+                                            "job_id" to jobId,
+                                            "selected_id" to sId,
+                                            "frame" to processedFrames,
+                                            "pts_us" to ptsUs,
+                                            "missing_streak" to streak,
+                                            "tracked_ids" to trackedIds.toList(),
+                                            "tracked_states" to trackedList.map { "${it.id}:${it.state.name}" }
+                                        )
+                                    )
+                                }
+                            } else {
+                                val previousMissing = missingTargetStreakMap.remove(sId)
+                                if (previousMissing != null && previousMissing > 0) {
+                                    com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                                        level = "INFO",
+                                        component = "ExportPipeline",
+                                        event = "SELECTED_TARGET_RECOVERED",
+                                        fields = mapOf(
+                                            "job_id" to jobId,
+                                            "selected_id" to sId,
+                                            "frame" to processedFrames,
+                                            "pts_us" to ptsUs,
+                                            "missing_duration_frames" to previousMissing
+                                        )
+                                    )
+                                }
                             }
                         }
 
@@ -792,6 +879,11 @@ class ExportPipeline(
                 emitProgress(status, onStatusChange)
 
                 try {
+                    val p95DeltaUs = if (surfacePtsDeltaSamples.isNotEmpty()) {
+                        val sorted = surfacePtsDeltaSamples.sorted()
+                        sorted[(sorted.size * 0.95).toInt().coerceAtMost(sorted.size - 1)]
+                    } else 0L
+
                     com.danceanon.native.diagnostics.NativeDiagnostics.recordPipelineSummary(
                         jobId = jobId,
                         summary = mapOf(
@@ -808,6 +900,11 @@ class ExportPipeline(
                             "latched_frames" to latchedFrameCount,
                             "rendered_frames" to renderedFrameCount,
                             "encoded_frames" to encodedFrameCount,
+                            "surface_wait_timeout_count" to surfaceWaitTimeoutCount,
+                            "duplicate_surface_timestamp_count" to duplicateSurfaceTimestampCount,
+                            "non_monotonic_surface_timestamp_count" to nonMonotonicSurfaceTimestampCount,
+                            "max_surface_pts_delta_us" to maxAbsSurfacePtsDeltaUs,
+                            "p95_surface_pts_delta_us" to p95DeltaUs,
                             "state" to "completed"
                         )
                     )

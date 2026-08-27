@@ -10,6 +10,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedWriter
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.FileWriter
 import java.io.PrintWriter
@@ -19,6 +20,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 import java.util.UUID
+import java.util.concurrent.Callable
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -29,14 +31,16 @@ import java.util.concurrent.atomic.AtomicLong
  * Production native diagnostics infrastructure.
  * Enforces:
  * 1. Async JSONL file writes via dedicated single-thread executor (no hot-path blocking).
- * 2. Synchronous atomic breadcrumb before high-risk native calls (survives SIGSEGV / GPU driver crash).
- * 3. Strict log rotation (8 MiB / session, keep 4 sessions, total <= 32 MiB).
- * 4. ApplicationExitInfo extraction (Android API >= 30).
- * 5. Device & LiteRT environment telemetry with privacy sanitization.
+ * 2. True rollover & rotation (8 MiB / segment, session_<id>_000.jsonl, total <= 32 MiB).
+ * 3. Consistent snapshot barrier: snapshot operations are serialized through the single-thread
+ *    writer executor, guaranteeing flush and atomic file copy without reading partial lines.
+ * 4. Synchronous atomic breadcrumb before high-risk native calls (survives SIGSEGV / GPU driver crash).
+ * 5. ApplicationExitInfo extraction (Android API >= 30).
+ * 6. Device & LiteRT environment telemetry with privacy sanitization.
  */
 object NativeDiagnostics {
     private const val TAG = "NativeDiagnostics"
-    private const val MAX_SESSION_BYTES = 8L * 1024L * 1024L // 8 MiB
+    private const val MAX_SEGMENT_BYTES = 8L * 1024L * 1024L // 8 MiB per segment
     private const val MAX_RETAINED_SESSIONS = 4
     private const val MAX_TRACE_BYTES = 2L * 1024L * 1024L // 2 MiB
 
@@ -46,7 +50,8 @@ object NativeDiagnostics {
 
     private val sessionId: String = generateSessionId()
     private val sessionStartTimeMs = System.currentTimeMillis()
-    private val bytesWritten = AtomicLong(0L)
+    private val bytesWrittenInSegment = AtomicLong(0L)
+    private var currentSegmentIndex = 0
 
     private val writerExecutor = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "NativeDiagWriter").apply { isDaemon = true }
@@ -73,14 +78,7 @@ object NativeDiagnostics {
         diagnosticsDir = diagDir
 
         synchronized(lock) {
-            val fileName = "session_${sessionId}.jsonl"
-            val logFile = File(diagDir, fileName)
-            currentLogFile = logFile
-            try {
-                currentWriter = BufferedWriter(FileWriter(logFile, true))
-            } catch (e: Throwable) {
-                Log.e(TAG, "Failed to initialize diagnostic writer: ${e.message}", e)
-            }
+            openNewSegmentLocked(diagDir)
         }
 
         // 1. Initial diagnostic event
@@ -110,6 +108,23 @@ object NativeDiagnostics {
         }
     }
 
+    private fun openNewSegmentLocked(diagDir: File) {
+        try {
+            currentWriter?.flush()
+            currentWriter?.close()
+        } catch (_: Throwable) {}
+
+        val fileName = "session_${sessionId}_${String.format(Locale.US, "%03d", currentSegmentIndex)}.jsonl"
+        val logFile = File(diagDir, fileName)
+        currentLogFile = logFile
+        bytesWrittenInSegment.set(if (logFile.exists()) logFile.length() else 0L)
+        try {
+            currentWriter = BufferedWriter(FileWriter(logFile, true))
+        } catch (e: Throwable) {
+            Log.e(TAG, "Failed to initialize diagnostic writer: ${e.message}", e)
+        }
+    }
+
     fun getCurrentSessionId(): String = sessionId
 
     fun getDiagnosticsDir(): File? = diagnosticsDir
@@ -118,6 +133,7 @@ object NativeDiagnostics {
 
     /**
      * Non-blocking structured JSONL log event.
+     * Guaranteed never to block the calling thread (even for CRITICAL level).
      */
     fun event(
         level: String,
@@ -170,10 +186,6 @@ object NativeDiagnostics {
         writerExecutor.submit {
             writeLogLine(line)
         }
-
-        if (level.equals("CRITICAL", ignoreCase = true)) {
-            flushBlocking(300L)
-        }
     }
 
     /**
@@ -221,17 +233,53 @@ object NativeDiagnostics {
         }
     }
 
-    fun flush() {
-        writerExecutor.submit {
+    /**
+     * Creates a consistent point-in-time snapshot barrier for bundle exporting.
+     * Executed strictly inside the single-thread writer executor after flushing all pending events.
+     * Returns the list of consistent staged files, or throws/returns null on timeout.
+     */
+    fun createConsistentSnapshot(
+        stagingDir: File,
+        timeoutMs: Long = 5000L
+    ): List<File>? {
+        val diagDir = diagnosticsDir ?: return null
+
+        val task = writerExecutor.submit(Callable<List<File>> {
             synchronized(lock) {
+                // 1. Flush any pending memory buffers to disk
                 try {
                     currentWriter?.flush()
                 } catch (_: Throwable) {}
+
+                // 2. Prepare staging directory
+                if (!stagingDir.exists()) {
+                    stagingDir.mkdirs()
+                }
+
+                // 3. Copy all diagnostic files to staging directory
+                val copiedFiles = mutableListOf<File>()
+                val sourceFiles = diagDir.listFiles() ?: emptyArray()
+                for (src in sourceFiles) {
+                    if (src.isFile && !src.name.endsWith(".tmp") && !src.name.contains(".tmp.")) {
+                        val dest = File(stagingDir, src.name)
+                        src.copyTo(dest, overwrite = true)
+                        copiedFiles.add(dest)
+                    }
+                }
+
+                copiedFiles
             }
+        })
+
+        return try {
+            task.get(timeoutMs, TimeUnit.MILLISECONDS)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Snapshot barrier timed out or failed: ${e.message}", e)
+            null
         }
     }
 
-    fun flushBlocking(timeoutMs: Long = 500L) {
+    fun flushCriticalNow(timeoutMs: Long = 1000L) {
         val latch = CountDownLatch(1)
         writerExecutor.submit {
             synchronized(lock) {
@@ -345,10 +393,15 @@ object NativeDiagnostics {
                 writer.write(line)
                 writer.newLine()
                 val lineBytes = line.toByteArray(Charsets.UTF_8).size + 1
-                bytesWritten.addAndGet(lineBytes.toLong())
+                val total = bytesWrittenInSegment.addAndGet(lineBytes.toLong())
 
-                if (bytesWritten.get() > MAX_SESSION_BYTES) {
-                    writer.flush()
+                if (total >= MAX_SEGMENT_BYTES) {
+                    val diagDir = diagnosticsDir
+                    if (diagDir != null) {
+                        currentSegmentIndex++
+                        openNewSegmentLocked(diagDir)
+                        rotateLogs(diagDir)
+                    }
                 }
             } catch (e: Throwable) {
                 Log.e(TAG, "Error writing log line: ${e.message}")
@@ -546,21 +599,36 @@ object NativeDiagnostics {
             if (file == current) continue
             count++
             if (count >= MAX_RETAINED_SESSIONS) {
-                file.delete()
+                try {
+                    file.delete()
+                } catch (_: Throwable) {}
             }
         }
     }
 
-    private fun sanitizeValue(value: Any?): Any? {
-        if (value == null) return null
+    private fun generateSessionId(): String {
+        val ts = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }.format(Date())
+        val shortUuid = UUID.randomUUID().toString().take(8)
+        return "${ts}_${shortUuid}"
+    }
+
+    private fun sanitizeString(str: String): String {
+        return str
+            .replace(Regex("""content://media/external/video/media/(\d+)"""), "content://media/.../$1")
+            .replace(Regex("""/storage/emulated/0/[^"\s]+"""), "/storage/emulated/0/...")
+    }
+
+    private fun sanitizeValue(value: Any?): Any {
         return when (value) {
-            is Number, is Boolean, is String -> {
-                val str = value.toString()
-                if (str.startsWith("content://") || str.startsWith("file://")) {
-                    sanitizeUri(str)
-                } else {
-                    value
-                }
+            null -> JSONObject.NULL
+            is Number, is Boolean -> value
+            is String -> sanitizeString(value)
+            is List<*> -> {
+                val arr = JSONArray()
+                for (item in value) arr.put(sanitizeValue(item))
+                arr
             }
             is Map<*, *> -> {
                 val obj = JSONObject()
@@ -569,41 +637,7 @@ object NativeDiagnostics {
                 }
                 obj
             }
-            is Collection<*> -> {
-                val arr = JSONArray()
-                for (item in value) {
-                    arr.put(sanitizeValue(item))
-                }
-                arr
-            }
-            is Array<*> -> {
-                val arr = JSONArray()
-                for (item in value) {
-                    arr.put(sanitizeValue(item))
-                }
-                arr
-            }
             else -> value.toString()
         }
-    }
-
-    fun sanitizeUri(uri: String): String {
-        return try {
-            val idx = uri.lastIndexOf('/')
-            val basename = if (idx >= 0 && idx < uri.length - 1) uri.substring(idx + 1) else "media"
-            val scheme = if (uri.contains("://")) uri.substringBefore("://") else "uri"
-            val hash = Integer.toHexString(uri.hashCode())
-            "${scheme}://[redacted_${hash}]/${basename}"
-        } catch (_: Throwable) {
-            "uri://[redacted]"
-        }
-    }
-
-    private fun generateSessionId(): String {
-        val df = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).apply {
-            timeZone = TimeZone.getTimeZone("UTC")
-        }
-        val rand = UUID.randomUUID().toString().take(8)
-        return "${df.format(Date())}_${rand}"
     }
 }

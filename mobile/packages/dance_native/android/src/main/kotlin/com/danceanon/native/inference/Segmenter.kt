@@ -12,6 +12,7 @@ data class FloatRect(
     val height: Float get() = (bottom - top).coerceAtLeast(0f)
     val centerX: Float get() = left + width / 2f
     val centerY: Float get() = top + height / 2f
+    fun offset(dx: Float, dy: Float): FloatRect = FloatRect(left + dx, top + dy, right + dx, bottom + dy)
 }
 
 data class NativeMask(
