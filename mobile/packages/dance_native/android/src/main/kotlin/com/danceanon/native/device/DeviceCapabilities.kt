@@ -16,7 +16,7 @@ data class DeviceCapabilities(
     val cpuCores: Int = Runtime.getRuntime().availableProcessors(),
     val recommendedProfile: String = "balanced",
     val supportedProfiles: List<String> = listOf("balanced"),
-    val inferenceBackends: List<String> = listOf("onnx_cpu")
+    val inferenceBackends: List<String> = listOf("litert_gpu", "litert_cpu")
 ) {
     companion object {
         fun detect(context: Context): DeviceCapabilities {
@@ -78,7 +78,7 @@ data class DeviceCapabilities(
                 cpuCores = cores,
                 recommendedProfile = recProfile,
                 supportedProfiles = listOf("quality", "balanced", "speed"),
-                inferenceBackends = listOf("onnx_cpu")
+                inferenceBackends = listOf("litert_gpu", "litert_cpu")
             )
         }
     }

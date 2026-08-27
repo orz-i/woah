@@ -12,7 +12,7 @@ import com.danceanon.native.bridge.ExportRequestDto
 import com.danceanon.native.bridge.JobStatusDto
 import com.danceanon.native.inference.RgbaColOrder
 import com.danceanon.native.inference.RgbaRowOrder
-import com.danceanon.native.inference.YoloOnnxSegmenter
+import com.danceanon.native.inference.YoloLiteRtSegmenter
 import com.danceanon.native.jobs.JobManager
 import com.danceanon.native.media.AudioTrackCopier
 import com.danceanon.native.media.Mp4Muxer
@@ -38,7 +38,7 @@ import kotlin.math.sqrt
 
 class ExportPipeline(
     private val context: Context,
-    private val segmenter: YoloOnnxSegmenter,
+    private val segmenter: YoloLiteRtSegmenter,
     private val eventEmitter: DanceProcessingEvents? = null
 ) {
 
@@ -230,8 +230,8 @@ class ExportPipeline(
                 if (isSam2Mode) {
                     sam2Fbo = com.danceanon.native.sam2.Sam2InputFbo(com.danceanon.native.sam2.Sam2TensorContract.IMAGE_SIZE)
                     sam2Renderer = com.danceanon.native.sam2.Sam2InputRenderer()
-                    val bundle = com.danceanon.native.sam2.Sam2OnnxModelLoader.loadFromAssets(context)
-                    sam2Tracker = com.danceanon.native.sam2.Sam2OnnxVideoTracker(bundle, encoderStride = frameStride)
+                    val bundle = com.danceanon.native.sam2.Sam2LiteRtModelBundle.loadFromAssets(context)
+                    sam2Tracker = com.danceanon.native.sam2.Sam2LiteRtVideoTracker(bundle, encoderStride = frameStride)
                 }
 
                 var lastLivePreviewCaptureTime = 0L
@@ -356,8 +356,9 @@ class ExportPipeline(
                                 }
 
                                 profiler.recordStage("sam2Init") {
+                                    val maskSize = com.danceanon.native.sam2.Sam2TensorContract.MASK_OUTPUT_SIZE
                                     initialPersons.mapIndexed { idx, det ->
-                                        sam2Tracker.initializeWithRgba(
+                                        val initRes = sam2Tracker.initializeWithRgba(
                                             rgbaBuffer = sam2RgbaBuffer,
                                             width = targetWidth,
                                             height = targetHeight,
@@ -365,14 +366,25 @@ class ExportPipeline(
                                             bbox = det.bbox
                                         )
 
-                                        val visualMask = det.mask?.copy(
+                                        val maskBuffer = java.nio.ByteBuffer.allocateDirect(maskSize * maskSize)
+                                        for (v in initRes.softMask) {
+                                            maskBuffer.put((v * 255f).toInt().coerceIn(0, 255).toByte())
+                                        }
+                                        maskBuffer.rewind()
+
+                                        val sam2Mask = com.danceanon.native.inference.NativeMask(
+                                            width = maskSize,
+                                            height = maskSize,
+                                            buffer = maskBuffer,
+                                            originalWidth = targetWidth,
+                                            originalHeight = targetHeight,
                                             samplingRect = com.danceanon.native.inference.FloatRect(0f, 0f, 1f, 1f)
-                                        ) ?: det.mask
+                                        )
 
                                         com.danceanon.native.tracking.TrackedPerson(
                                             id = idx,
-                                            bbox = det.bbox,
-                                            mask = visualMask,
+                                            bbox = initRes.bbox,
+                                            mask = sam2Mask,
                                             confidence = det.confidence,
                                             state = com.danceanon.native.tracking.TrackState.ACTIVE
                                         )

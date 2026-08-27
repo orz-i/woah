@@ -8,7 +8,7 @@ import android.net.Uri
 import com.danceanon.native.bridge.AnalyzeRequestDto
 import com.danceanon.native.bridge.AnalyzeResultDto
 import com.danceanon.native.bridge.DetectedPersonDto
-import com.danceanon.native.inference.YoloOnnxSegmenter
+import com.danceanon.native.inference.YoloLiteRtSegmenter
 import com.danceanon.native.media.VideoProbe
 import com.danceanon.native.storage.CacheManager
 import kotlinx.coroutines.Dispatchers
@@ -16,7 +16,7 @@ import kotlinx.coroutines.withContext
 
 class AnalyzePipeline(
     private val context: Context,
-    private val segmenter: YoloOnnxSegmenter,
+    private val segmenter: YoloLiteRtSegmenter,
     private val cacheManager: CacheManager
 ) {
 

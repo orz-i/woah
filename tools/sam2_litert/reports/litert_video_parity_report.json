@@ -1,0 +1,147 @@
+{
+  "total_frames": 40,
+  "mean_mask_iou": 0.9832414306765076,
+  "min_mask_iou": 0.9072670118343196,
+  "has_3_frame_divergence": false,
+  "mean_bbox_center_error": 4.138392769459123,
+  "max_bbox_center_error": 32.5,
+  "image_encoder_p50_ms": 21797.74850400281,
+  "image_encoder_p95_ms": 25453.67130070007,
+  "temporal_step_p50_ms": 18952.801637002267,
+  "temporal_step_p95_ms": 30041.84313824588,
+  "total_frame_p50_ms": 40800.19813999388,
+  "total_frame_p95_ms": 53960.8862051049,
+  "pass_gate_s3": true,
+  "worst_5_frames": [
+    {
+      "frame": 16,
+      "mask_iou": 0.9072670118343196,
+      "bbox_center_error": 14.5,
+      "litert_bbox": [
+        177,
+        44,
+        474,
+        480
+      ],
+      "gold_bbox": [
+        177,
+        73,
+        474,
+        480
+      ],
+      "memory_frame_indices": [
+        0,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ]
+    },
+    {
+      "frame": 14,
+      "mask_iou": 0.9274651320030819,
+      "bbox_center_error": 19.0,
+      "litert_bbox": [
+        173,
+        44,
+        460,
+        480
+      ],
+      "gold_bbox": [
+        173,
+        82,
+        460,
+        480
+      ],
+      "memory_frame_indices": [
+        0,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "frame": 12,
+      "mask_iou": 0.9315803417671215,
+      "bbox_center_error": 18.006943105369107,
+      "litert_bbox": [
+        175,
+        46,
+        440,
+        480
+      ],
+      "gold_bbox": [
+        174,
+        82,
+        440,
+        480
+      ],
+      "memory_frame_indices": [
+        0,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ]
+    },
+    {
+      "frame": 11,
+      "mask_iou": 0.9319490166286823,
+      "bbox_center_error": 9.5,
+      "litert_bbox": [
+        176,
+        47,
+        430,
+        480
+      ],
+      "gold_bbox": [
+        175,
+        66,
+        431,
+        480
+      ],
+      "memory_frame_indices": [
+        0,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "frame": 8,
+      "mask_iou": 0.956129887342611,
+      "bbox_center_error": 9.513148795220223,
+      "litert_bbox": [
+        166,
+        47,
+        460,
+        480
+      ],
+      "gold_bbox": [
+        165,
+        66,
+        460,
+        480
+      ],
+      "memory_frame_indices": [
+        0,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    }
+  ]
+}

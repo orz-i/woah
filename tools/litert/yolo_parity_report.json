@@ -1,0 +1,9 @@
+{
+  "onnx_detections": 1,
+  "tflite_detections": 1,
+  "matched_count": 1,
+  "mean_bbox_iou": 0.9999986290931702,
+  "mean_mask_iou": 1.0,
+  "mean_conf_diff": 5.960464477539063e-08,
+  "pass_gate": true
+}

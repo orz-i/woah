@@ -21,10 +21,10 @@ object Sam2TensorContract {
     val NORM_MEAN = floatArrayOf(0.485f, 0.456f, 0.406f)
     val NORM_STD = floatArrayOf(0.229f, 0.224f, 0.225f)
 
-    // ONNX Model Names
-    const val MODEL_IMAGE_FEATURES = "sam2_image_features.onnx"
-    const val MODEL_INIT_STEP = "sam2_init_step.onnx"
-    const val MODEL_TEMPORAL_STEP = "sam2_temporal_step.onnx"
+    // LiteRT Model Asset Paths
+    const val MODEL_IMAGE_FEATURES = "models/litert/sam2_image_features.tflite"
+    const val MODEL_INIT_STEP = "models/litert/sam2_init_step.tflite"
+    const val MODEL_TEMPORAL_STEP = "models/litert/sam2_temporal_step.tflite"
 
     // Buffer sizes in elements
     const val TOP_FEAT_ELEMS = 256 * 64 * 64
@@ -33,5 +33,6 @@ object Sam2TensorContract {
     const val MEM_FEAT_ELEMS = 64 * 64 * 64
     const val OBJ_PTR_ELEMS = 256
     const val MASK_1024_ELEMS = 1024 * 1024
+    const val TOTAL_MEM_TOKENS = NUM_MASKMEM * 4096 + MAX_OBJ_PTRS * 4 // 28736
 }
 

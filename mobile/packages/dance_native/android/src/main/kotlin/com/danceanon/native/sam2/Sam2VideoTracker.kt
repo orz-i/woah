@@ -5,7 +5,7 @@ import com.danceanon.native.inference.FloatRect
 
 /**
  * High-level coordinator interface for SAM2 video temporal tracking.
- * Implemented strictly by [Sam2OnnxVideoTracker] using ONNX Runtime.
+ * Implemented strictly by [Sam2LiteRtVideoTracker] using App-bundled LiteRT 2.1.5.
  */
 interface ISam2VideoTracker : AutoCloseable {
     fun initialize(request: Sam2InitRequest): Sam2TrackResult

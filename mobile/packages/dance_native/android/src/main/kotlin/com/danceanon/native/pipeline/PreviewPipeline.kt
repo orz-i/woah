@@ -11,7 +11,7 @@ import com.danceanon.native.bridge.DanceNativeException
 import com.danceanon.native.bridge.PreviewFrameDto
 import com.danceanon.native.bridge.PreviewRequestDto
 import com.danceanon.native.inference.FloatRect
-import com.danceanon.native.inference.YoloOnnxSegmenter
+import com.danceanon.native.inference.YoloLiteRtSegmenter
 import com.danceanon.native.media.VideoProbe
 import com.danceanon.native.render.EglCore
 import com.danceanon.native.render.GlRenderer
@@ -41,7 +41,7 @@ interface TrackingSnapshotCache {
 
 class PreviewPipeline(
     private val context: Context,
-    private val segmenter: YoloOnnxSegmenter,
+    private val segmenter: YoloLiteRtSegmenter,
     private val cacheManager: CacheManager
 ) {
     private val analysisCache = PreviewAnalysisCache()

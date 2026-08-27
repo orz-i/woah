@@ -14,15 +14,15 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 @RunWith(AndroidJUnit4::class)
-class YoloOnnxSegmenterSmokeTest {
+class YoloLiteRtSegmenterSmokeTest {
 
     @Test
-    fun testYoloOnnxSegmenterInitializationAndBufferInferenceSmoke() = runBlocking {
+    fun testYoloLiteRtSegmenterInitializationAndBufferInferenceSmoke() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        val segmenter = YoloOnnxSegmenter(context)
+        val segmenter = YoloLiteRtSegmenter(context)
 
         try {
-            // 1. Initialize ONNX runtime session and load model from assets
+            // 1. Initialize LiteRT model runner (GPU first, CPU fallback)
             segmenter.initialize()
 
             // 2. Prepare 640x640 dummy RGBA DirectByteBuffer

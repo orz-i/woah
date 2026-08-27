@@ -12,7 +12,7 @@ import android.os.IBinder
 import com.danceanon.native.bridge.DanceNativeException
 import com.danceanon.native.bridge.JobStatusDto
 import com.danceanon.native.export.ExportCoordinator
-import com.danceanon.native.inference.YoloOnnxSegmenter
+import com.danceanon.native.inference.YoloLiteRtSegmenter
 import com.danceanon.native.pipeline.ExportPipeline
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,7 +30,7 @@ class ExportForegroundService : Service() {
     private val serviceJob = SupervisorJob()
     private val serviceScope = CoroutineScope(Dispatchers.Default + serviceJob)
     private val runningJobs = ConcurrentHashMap<String, Job>()
-    private var segmenter: YoloOnnxSegmenter? = null
+    private var segmenter: YoloLiteRtSegmenter? = null
 
     companion object {
         const val CHANNEL_ID = "dance_anon_export_channel"
@@ -83,7 +83,7 @@ class ExportForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        segmenter = YoloOnnxSegmenter(applicationContext)
+        segmenter = YoloLiteRtSegmenter(applicationContext)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

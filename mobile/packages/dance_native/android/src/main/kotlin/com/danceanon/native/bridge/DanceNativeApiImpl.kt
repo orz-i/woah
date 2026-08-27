@@ -56,7 +56,7 @@ class DanceNativeApiImpl(
         }
     }
 
-    private val segmenter = com.danceanon.native.inference.YoloOnnxSegmenter(context)
+    private val segmenter = com.danceanon.native.inference.YoloLiteRtSegmenter(context)
     private val cacheManager = com.danceanon.native.storage.CacheManager(context)
     private val analyzePipeline = com.danceanon.native.pipeline.AnalyzePipeline(context, segmenter, cacheManager)
     private val previewPipeline = com.danceanon.native.pipeline.PreviewPipeline(context, segmenter, cacheManager)

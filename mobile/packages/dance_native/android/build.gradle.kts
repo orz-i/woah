@@ -54,21 +54,16 @@ android {
     }
 
     androidResources {
-        noCompress += listOf("onnx", "tflite")
+        noCompress += listOf("tflite")
     }
 
     testOptions {
-
-
         unitTests {
             isIncludeAndroidResources = true
             isReturnDefaultValues = true
             all {
                 it.useJUnitPlatform()
-
-
                 it.outputs.upToDateWhen { false }
-
                 it.testLogging {
                     events("passed", "skipped", "failed", "standardOut", "standardError")
                     showStandardStreams = true
@@ -85,8 +80,8 @@ kotlin {
 }
 
 dependencies {
-    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.18.0")
-    testImplementation("com.microsoft.onnxruntime:onnxruntime:1.18.0")
+    implementation("com.google.ai.edge.litert:litert:2.1.5")
+
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("org.json:json:20240303")
     testImplementation("org.mockito:mockito-core:5.0.0")
@@ -97,20 +92,20 @@ dependencies {
     androidTestImplementation("org.jetbrains.kotlin:kotlin-test")
 }
 
-
-val syncSam2ModelAssets = tasks.register("syncSam2ModelAssets") {
+val syncLiteRtModelAssets = tasks.register("syncLiteRtModelAssets") {
     doLast {
-        val targetDir = file("src/main/assets/models/sam2_onnx")
-        val generatedDir = rootProject.file("../../tools/sam2_onnx/.generated")
-        if (generatedDir.exists()) {
-            val sam2Files = listOf(
-                "sam2_image_features.onnx",
-                "sam2_init_step.onnx",
-                "sam2_temporal_step.onnx"
+        val targetDir = file("src/main/assets/models/litert")
+        val repoModelsDir = rootProject.file("../../models/litert")
+        if (repoModelsDir.exists()) {
+            val litertFiles = listOf(
+                "yolo11n-seg-fp16.tflite",
+                "sam2_image_features.tflite",
+                "sam2_init_step.tflite",
+                "sam2_temporal_step.tflite"
             )
             targetDir.mkdirs()
-            for (fname in sam2Files) {
-                val srcFile = File(generatedDir, fname)
+            for (fname in litertFiles) {
+                val srcFile = File(repoModelsDir, fname)
                 val destFile = File(targetDir, fname)
                 if (srcFile.exists() && (!destFile.exists() || destFile.length() != srcFile.length())) {
                     srcFile.copyTo(destFile, overwrite = true)
@@ -120,19 +115,54 @@ val syncSam2ModelAssets = tasks.register("syncSam2ModelAssets") {
     }
 }
 
-val verifyModelAssets = tasks.register("verifyModelAssets") {
-    dependsOn(syncSam2ModelAssets)
+val verifyLiteRtModelAssets = tasks.register("verifyLiteRtModelAssets") {
+    dependsOn(syncLiteRtModelAssets)
     doLast {
-        val modelFile = file("src/main/assets/yolo11n-seg.onnx")
-        if (!modelFile.exists() || modelFile.length() == 0L) {
-            throw GradleException(
-                "Missing required model asset: ${modelFile.absolutePath}. Please run 'uv run python tools/export_yolo.py' or download yolo11n-seg.onnx before building."
-            )
+        val requiredModels = listOf(
+            "models/litert/yolo11n-seg-fp16.tflite",
+            "models/litert/sam2_image_features.tflite",
+            "models/litert/sam2_init_step.tflite",
+            "models/litert/sam2_temporal_step.tflite"
+        )
+        for (m in requiredModels) {
+            val modelFile = file("src/main/assets/$m")
+            if (!modelFile.exists() || modelFile.length() == 0L) {
+                throw GradleException(
+                    "Missing required LiteRT model asset: ${modelFile.absolutePath}. Ensure Phase 2-6 exports are complete."
+                )
+            }
+        }
+    }
+}
+
+val verifyNoOnnxRuntime = tasks.register("verifyNoOnnxRuntime") {
+    doLast {
+        configurations.forEach { cfg ->
+            cfg.dependencies.forEach { dep ->
+                val group = dep.group ?: ""
+                val name = dep.name
+                if (group.contains("onnxruntime", ignoreCase = true) || name.contains("onnxruntime", ignoreCase = true)) {
+                    throw GradleException("Hard Migration Violation: ONNX Runtime dependency found in $cfg: $group:$name")
+                }
+            }
+        }
+    }
+}
+
+val verifyNoPlayServicesLiteRt = tasks.register("verifyNoPlayServicesLiteRt") {
+    doLast {
+        configurations.forEach { cfg ->
+            cfg.dependencies.forEach { dep ->
+                val group = dep.group ?: ""
+                val name = dep.name
+                if (group.contains("play-services-tflite", ignoreCase = true) || group.contains("tensorflow-lite", ignoreCase = true) || name.contains("play-services-tflite", ignoreCase = true)) {
+                    throw GradleException("Hard Migration Violation: Play Services / Legacy TFLite dependency found in $cfg: $group:$name. Must use App-bundled LiteRT 2.1.5.")
+                }
+            }
         }
     }
 }
 
 tasks.matching { it.name.startsWith("preBuild") || it.name.startsWith("compile") }.configureEach {
-    dependsOn(verifyModelAssets)
+    dependsOn(verifyLiteRtModelAssets, verifyNoOnnxRuntime, verifyNoPlayServicesLiteRt)
 }
-

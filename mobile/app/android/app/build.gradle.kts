@@ -26,7 +26,7 @@ android {
     }
 
     androidResources {
-        noCompress += listOf("onnx", "tflite")
+        noCompress += listOf("tflite")
     }
 
     buildTypes {
