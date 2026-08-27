@@ -13,7 +13,7 @@ import java.nio.LongBuffer
 /**
  * Real production and standalone ONNX Runtime video tracker for SAM2 Hiera Tiny.
  * Strictly adheres to the SAM2 temporal state and memory attention tensor contracts.
- * Supports direct FBO RGBA preprocessing and configurable Encoder Stride caching.
+ * Features zero JNI direct buffer allocations, feature caching, and FBO RGBA direct preprocessing.
  */
 class Sam2OnnxVideoTracker(
     val bundle: Sam2OnnxSessionBundle,
@@ -36,6 +36,20 @@ class Sam2OnnxVideoTracker(
     // Pre-allocated NCHW direct image input buffer (1024x1024 RGB)
     private val inputImageBuffer: FloatBuffer = ByteBuffer.allocateDirect(1 * 3 * Sam2TensorContract.IMAGE_SIZE * Sam2TensorContract.IMAGE_SIZE * 4)
         .order(ByteOrder.nativeOrder()).asFloatBuffer()
+
+    // Reusable pooled direct buffers for zero runtime allocation
+    private val reusablePtsBuffer: FloatBuffer = ByteBuffer.allocateDirect(4 * 4)
+        .order(ByteOrder.nativeOrder()).asFloatBuffer()
+    private val reusableLabelsBuffer: IntBuffer = ByteBuffer.allocateDirect(2 * 4)
+        .order(ByteOrder.nativeOrder()).asIntBuffer()
+    private val reusableTposBuffer: LongBuffer = ByteBuffer.allocateDirect(Sam2TensorContract.NUM_MASKMEM * 8)
+        .order(ByteOrder.nativeOrder()).asLongBuffer()
+
+    // Reusable output extraction float arrays
+    private val reusableMemFeatFloats = FloatArray(Sam2TensorContract.MEM_FEAT_ELEMS)
+    private val reusableMemPosFloats = FloatArray(Sam2TensorContract.MEM_FEAT_ELEMS)
+    private val reusableObjPtrFloats = FloatArray(Sam2TensorContract.OBJ_PTR_ELEMS)
+    private val reusableRaw1024Mask = FloatArray(Sam2TensorContract.MASK_1024_ELEMS)
 
     private fun releaseFeatureCache() {
         try {
@@ -95,7 +109,6 @@ class Sam2OnnxVideoTracker(
         }
     }
 
-
     private inline fun initializeInternal(
         objectId: Int,
         bbox: FloatRect,
@@ -136,24 +149,24 @@ class Sam2OnnxVideoTracker(
         val high0 = cachedHigh0Tensor!!
         val high1 = cachedHigh1Tensor!!
 
-        // 2. Prepare Prompt Inputs
+        // 2. Prepare Prompt Inputs using reusable direct buffers
         val tStep0 = System.currentTimeMillis()
         val modelBbox = Sam2Preprocessor.transformBboxPrompt(bbox, width, height)
-        val ptsBuffer = ByteBuffer.allocateDirect(4 * 4).order(ByteOrder.nativeOrder()).asFloatBuffer().apply {
-            put(modelBbox[0])
-            put(modelBbox[1])
-            put(modelBbox[2])
-            put(modelBbox[3])
-            flip()
-        }
-        val labelsBuffer = ByteBuffer.allocateDirect(2 * 4).order(ByteOrder.nativeOrder()).asIntBuffer().apply {
-            put(2)
-            put(3)
-            flip()
-        }
+        
+        reusablePtsBuffer.clear()
+        reusablePtsBuffer.put(modelBbox[0])
+        reusablePtsBuffer.put(modelBbox[1])
+        reusablePtsBuffer.put(modelBbox[2])
+        reusablePtsBuffer.put(modelBbox[3])
+        reusablePtsBuffer.flip()
 
-        val ptsTensor = OnnxTensor.createTensor(bundle.env, ptsBuffer, longArrayOf(1, 2, 2))
-        val labelsTensor = OnnxTensor.createTensor(bundle.env, labelsBuffer, longArrayOf(1, 2))
+        reusableLabelsBuffer.clear()
+        reusableLabelsBuffer.put(2)
+        reusableLabelsBuffer.put(3)
+        reusableLabelsBuffer.flip()
+
+        val ptsTensor = OnnxTensor.createTensor(bundle.env, reusablePtsBuffer, longArrayOf(1, 2, 2))
+        val labelsTensor = OnnxTensor.createTensor(bundle.env, reusableLabelsBuffer, longArrayOf(1, 2))
 
         val initInputs = mapOf(
             "top_vision_feature" to topFeat,
@@ -167,30 +180,29 @@ class Sam2OnnxVideoTracker(
         val tStep1 = System.currentTimeMillis()
         val stepMs = tStep1 - tStep0
 
-        // Extract outputs
+        // Extract outputs into reusable float arrays
         val highResMaskTensor = initResult.get("high_res_mask").get() as OnnxTensor
         val memFeatTensor = initResult.get("memory_features").get() as OnnxTensor
         val memPosTensor = initResult.get("memory_pos_enc").get() as OnnxTensor
         val objPtrTensor = initResult.get("obj_ptr").get() as OnnxTensor
 
-        val memFeatFloats = FloatArray(Sam2TensorContract.MEM_FEAT_ELEMS)
-        memFeatTensor.floatBuffer.get(memFeatFloats)
+        memFeatTensor.floatBuffer.get(reusableMemFeatFloats)
+        memPosTensor.floatBuffer.get(reusableMemPosFloats)
+        objPtrTensor.floatBuffer.get(reusableObjPtrFloats)
 
-        val memPosFloats = FloatArray(Sam2TensorContract.MEM_FEAT_ELEMS)
-        memPosTensor.floatBuffer.get(memPosFloats)
-
-        val objPtrFloats = FloatArray(Sam2TensorContract.OBJ_PTR_ELEMS)
-        objPtrTensor.floatBuffer.get(objPtrFloats)
-
-        // Update State
-        state.addConditioningFrame(0, memFeatFloats, memPosFloats, objPtrFloats)
+        // Update State with deep copied memory slices
+        state.addConditioningFrame(
+            0,
+            reusableMemFeatFloats.clone(),
+            reusableMemPosFloats.clone(),
+            reusableObjPtrFloats.clone()
+        )
 
         // Postprocess Mask
-        val raw1024Mask = FloatArray(Sam2TensorContract.MASK_1024_ELEMS)
-        highResMaskTensor.floatBuffer.get(raw1024Mask)
+        highResMaskTensor.floatBuffer.get(reusableRaw1024Mask)
 
         val softMask = Sam2MaskPostprocessor.resizeMaskBilinear(
-            raw1024Mask,
+            reusableRaw1024Mask,
             Sam2TensorContract.IMAGE_SIZE,
             Sam2TensorContract.IMAGE_SIZE,
             sourceWidth,
@@ -252,7 +264,6 @@ class Sam2OnnxVideoTracker(
         }
     }
 
-
     private inline fun stepInternal(
         frameIndex: Int,
         prepareInput: (FloatBuffer) -> Unit
@@ -312,13 +323,14 @@ class Sam2OnnxVideoTracker(
                 sel.memoryPosBuffer,
                 longArrayOf(sel.memoryCount.toLong(), 1, 64, 64, 64)
             )
-            val tposBuffer = ByteBuffer.allocateDirect(sel.memoryCount * 8).order(ByteOrder.nativeOrder()).asLongBuffer().apply {
-                put(sel.memoryTPosIndices)
-                flip()
-            }
+            
+            reusableTposBuffer.clear()
+            reusableTposBuffer.put(sel.memoryTPosIndices)
+            reusableTposBuffer.flip()
+
             val tposTensor = OnnxTensor.createTensor(
                 bundle.env,
-                tposBuffer,
+                reusableTposBuffer,
                 longArrayOf(sel.memoryCount.toLong())
             )
             val selPtrsTensor = OnnxTensor.createTensor(
@@ -348,22 +360,21 @@ class Sam2OnnxVideoTracker(
             val memPosTensor = tempResult.get("memory_pos_enc").get() as OnnxTensor
             val objPtrTensor = tempResult.get("obj_ptr").get() as OnnxTensor
 
-            val memFeatFloats = FloatArray(Sam2TensorContract.MEM_FEAT_ELEMS)
-            memFeatTensor.floatBuffer.get(memFeatFloats)
+            memFeatTensor.floatBuffer.get(reusableMemFeatFloats)
+            memPosTensor.floatBuffer.get(reusableMemPosFloats)
+            objPtrTensor.floatBuffer.get(reusableObjPtrFloats)
 
-            val memPosFloats = FloatArray(Sam2TensorContract.MEM_FEAT_ELEMS)
-            memPosTensor.floatBuffer.get(memPosFloats)
+            state.addNonConditioningFrame(
+                frameIndex,
+                reusableMemFeatFloats.clone(),
+                reusableMemPosFloats.clone(),
+                reusableObjPtrFloats.clone()
+            )
 
-            val objPtrFloats = FloatArray(Sam2TensorContract.OBJ_PTR_ELEMS)
-            objPtrTensor.floatBuffer.get(objPtrFloats)
-
-            state.addNonConditioningFrame(frameIndex, memFeatFloats, memPosFloats, objPtrFloats)
-
-            val raw1024Mask = FloatArray(Sam2TensorContract.MASK_1024_ELEMS)
-            highResMaskTensor.floatBuffer.get(raw1024Mask)
+            highResMaskTensor.floatBuffer.get(reusableRaw1024Mask)
 
             val softMask = Sam2MaskPostprocessor.resizeMaskBilinear(
-                raw1024Mask,
+                reusableRaw1024Mask,
                 Sam2TensorContract.IMAGE_SIZE,
                 Sam2TensorContract.IMAGE_SIZE,
                 sourceWidth,

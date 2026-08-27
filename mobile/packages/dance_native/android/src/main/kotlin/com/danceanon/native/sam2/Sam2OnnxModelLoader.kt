@@ -69,10 +69,15 @@ object Sam2OnnxModelLoader {
         }
     }
 
-    fun createOptimalSessionOptions(numThreads: Int = 4): OrtSession.SessionOptions {
+    fun createOptimalSessionOptions(
+        numThreads: Int = minOf(Runtime.getRuntime().availableProcessors().coerceAtLeast(2), 4)
+    ): OrtSession.SessionOptions {
         val options = OrtSession.SessionOptions().apply {
             setOptimizationLevel(OrtSession.SessionOptions.OptLevel.BASIC_OPT)
             setIntraOpNumThreads(numThreads)
+            try {
+                addConfigEntry("session.use_env_allocators", "1")
+            } catch (_: Throwable) {}
         }
 
         try {
@@ -92,6 +97,7 @@ object Sam2OnnxModelLoader {
 
         return options
     }
+
 
 
 

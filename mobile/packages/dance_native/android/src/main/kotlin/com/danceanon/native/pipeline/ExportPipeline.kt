@@ -256,69 +256,81 @@ class ExportPipeline(
                         val trackedList: List<com.danceanon.native.tracking.TrackedPerson> = if (isSam2Mode && sam2Fbo != null && sam2Renderer != null && sam2Tracker != null) {
                             if (processedFrames == 1) {
                                 // Frame 1: YOLO anchor detection to register prompt boxes
-                                inferenceRenderer.renderToFbo(oesTextureId, finalTexMatrix, mapper, inferenceFbo)
-                                val yoloRgbaBuffer = inferenceFbo.readRgbaPixels()
-                                val seg = segmenter.segmentGlReadbackRgbaSync(yoloRgbaBuffer, mapper, ptsUs, colOrder = RgbaColOrder.LEFT_TO_RIGHT)
-                                val initialPersons = seg.persons.sortedBy { it.bbox.centerX }
+                                val initialPersons = profiler.recordStage("yoloAnchor") {
+                                    inferenceRenderer.renderToFbo(oesTextureId, finalTexMatrix, mapper, inferenceFbo)
+                                    val yoloRgbaBuffer = inferenceFbo.readRgbaPixels()
+                                    val seg = segmenter.segmentGlReadbackRgbaSync(yoloRgbaBuffer, mapper, ptsUs, colOrder = RgbaColOrder.LEFT_TO_RIGHT)
+                                    seg.persons.sortedBy { it.bbox.centerX }
+                                }
 
-                                sam2Renderer.renderToFbo(oesTextureId, finalTexMatrix, sam2Fbo)
-                                val sam2RgbaBuffer = sam2Fbo.readRgbaPixels()
+                                val sam2RgbaBuffer = profiler.recordStage("sam2Readback") {
+                                    sam2Renderer.renderToFbo(oesTextureId, finalTexMatrix, sam2Fbo)
+                                    sam2Fbo.readRgbaPixels()
+                                }
 
-                                initialPersons.mapIndexed { idx, det ->
-                                    sam2Tracker.initializeWithRgba(
-                                        rgbaBuffer = sam2RgbaBuffer,
-                                        width = targetWidth,
-                                        height = targetHeight,
-                                        objectId = idx,
-                                        bbox = det.bbox
-                                    )
+                                profiler.recordStage("sam2Init") {
+                                    initialPersons.mapIndexed { idx, det ->
+                                        sam2Tracker.initializeWithRgba(
+                                            rgbaBuffer = sam2RgbaBuffer,
+                                            width = targetWidth,
+                                            height = targetHeight,
+                                            objectId = idx,
+                                            bbox = det.bbox
+                                        )
 
-                                    val visualMask = det.mask?.copy(
-                                        samplingRect = com.danceanon.native.inference.FloatRect(0f, 0f, 1f, 1f)
-                                    ) ?: det.mask
+                                        val visualMask = det.mask?.copy(
+                                            samplingRect = com.danceanon.native.inference.FloatRect(0f, 0f, 1f, 1f)
+                                        ) ?: det.mask
 
-                                    com.danceanon.native.tracking.TrackedPerson(
-                                        id = idx,
-                                        bbox = det.bbox,
-                                        mask = visualMask,
-                                        confidence = det.confidence,
-                                        state = com.danceanon.native.tracking.TrackState.ACTIVE
-                                    )
+                                        com.danceanon.native.tracking.TrackedPerson(
+                                            id = idx,
+                                            bbox = det.bbox,
+                                            mask = visualMask,
+                                            confidence = det.confidence,
+                                            state = com.danceanon.native.tracking.TrackState.ACTIVE
+                                        )
+                                    }
                                 }
                             } else {
                                 // Frame 2+: SAM2 persistent temporal propagation with direct FBO RGBA and Stride Caching
-                                sam2Renderer.renderToFbo(oesTextureId, finalTexMatrix, sam2Fbo)
-                                val sam2RgbaBuffer = sam2Fbo.readRgbaPixels()
-                                val sam2Results = sam2Tracker.stepWithRgba(sam2RgbaBuffer, processedFrames)
+                                val sam2RgbaBuffer = profiler.recordStage("sam2Readback") {
+                                    sam2Renderer.renderToFbo(oesTextureId, finalTexMatrix, sam2Fbo)
+                                    sam2Fbo.readRgbaPixels()
+                                }
 
-                                sam2Results.map { res ->
-                                    val maskBuffer = java.nio.ByteBuffer.allocateDirect(targetWidth * targetHeight)
-                                    for (v in res.softMask) {
-                                        maskBuffer.put((v * 255f).toInt().coerceIn(0, 255).toByte())
+                                val sam2Results = profiler.recordStage("sam2Tracking") {
+                                    sam2Tracker.stepWithRgba(sam2RgbaBuffer, processedFrames)
+                                }
+
+                                profiler.recordStage("sam2MaskGen") {
+                                    sam2Results.map { res ->
+                                        val maskBuffer = java.nio.ByteBuffer.allocateDirect(targetWidth * targetHeight)
+                                        for (v in res.softMask) {
+                                            maskBuffer.put((v * 255f).toInt().coerceIn(0, 255).toByte())
+                                        }
+                                        maskBuffer.rewind()
+
+                                        val sam2Mask = com.danceanon.native.inference.NativeMask(
+                                            width = targetWidth,
+                                            height = targetHeight,
+                                            buffer = maskBuffer,
+                                            originalWidth = targetWidth,
+                                            originalHeight = targetHeight,
+                                            samplingRect = com.danceanon.native.inference.FloatRect(0f, 0f, 1f, 1f)
+                                        )
+
+                                        com.danceanon.native.tracking.TrackedPerson(
+                                            id = res.objectId,
+                                            bbox = res.bbox,
+                                            mask = sam2Mask,
+                                            confidence = 1.0f,
+                                            state = com.danceanon.native.tracking.TrackState.ACTIVE
+                                        )
                                     }
-                                    maskBuffer.rewind()
-
-                                    val sam2Mask = com.danceanon.native.inference.NativeMask(
-                                        width = targetWidth,
-                                        height = targetHeight,
-                                        buffer = maskBuffer,
-                                        originalWidth = targetWidth,
-                                        originalHeight = targetHeight,
-                                        samplingRect = com.danceanon.native.inference.FloatRect(0f, 0f, 1f, 1f)
-                                    )
-
-                                    com.danceanon.native.tracking.TrackedPerson(
-                                        id = res.objectId,
-                                        bbox = res.bbox,
-                                        mask = sam2Mask,
-                                        confidence = 1.0f,
-                                        state = com.danceanon.native.tracking.TrackState.ACTIVE
-                                    )
                                 }
                             }
-
-
                         } else {
+
                             // Standard YOLO pipeline
                             val shouldInfer = (processedFrames == 1) || (processedFrames % frameStride == 0)
                             val detections = if (shouldInfer) {
