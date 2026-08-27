@@ -98,7 +98,30 @@ dependencies {
 }
 
 
+val syncSam2ModelAssets = tasks.register("syncSam2ModelAssets") {
+    doLast {
+        val targetDir = file("src/main/assets/models/sam2_onnx")
+        val generatedDir = rootProject.file("../../tools/sam2_onnx/.generated")
+        if (generatedDir.exists()) {
+            val sam2Files = listOf(
+                "sam2_image_features.onnx",
+                "sam2_init_step.onnx",
+                "sam2_temporal_step.onnx"
+            )
+            targetDir.mkdirs()
+            for (fname in sam2Files) {
+                val srcFile = File(generatedDir, fname)
+                val destFile = File(targetDir, fname)
+                if (srcFile.exists() && (!destFile.exists() || destFile.length() != srcFile.length())) {
+                    srcFile.copyTo(destFile, overwrite = true)
+                }
+            }
+        }
+    }
+}
+
 val verifyModelAssets = tasks.register("verifyModelAssets") {
+    dependsOn(syncSam2ModelAssets)
     doLast {
         val modelFile = file("src/main/assets/yolo11n-seg.onnx")
         if (!modelFile.exists() || modelFile.length() == 0L) {
@@ -112,3 +135,4 @@ val verifyModelAssets = tasks.register("verifyModelAssets") {
 tasks.matching { it.name.startsWith("preBuild") || it.name.startsWith("compile") }.configureEach {
     dependsOn(verifyModelAssets)
 }
+

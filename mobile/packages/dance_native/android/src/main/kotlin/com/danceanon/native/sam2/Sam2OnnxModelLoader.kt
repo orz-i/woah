@@ -57,11 +57,36 @@ object Sam2OnnxModelLoader {
         for (modelName in models) {
             val dest = File(cacheDir, modelName)
             if (!dest.exists() || dest.length() == 0L) {
-                val assetPath = if (assetPrefix.isEmpty()) modelName else "$assetPrefix/$modelName"
-                context.assets.open(assetPath).use { input ->
-                    FileOutputStream(dest).use { output ->
-                        input.copyTo(output)
+                val candidatePaths = listOfNotNull(
+                    if (assetPrefix.isNotEmpty()) "$assetPrefix/$modelName" else null,
+                    "models/sam2_onnx/$modelName",
+                    "sam2_onnx/$modelName",
+                    "models/$modelName",
+                    modelName
+                ).distinct()
+
+                var copied = false
+                var lastErr: Throwable? = null
+                for (cand in candidatePaths) {
+                    try {
+                        context.assets.open(cand).use { input ->
+                            FileOutputStream(dest).use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                        copied = true
+                        break
+                    } catch (e: Throwable) {
+                        lastErr = e
                     }
+                }
+
+                if (!copied || dest.length() == 0L) {
+                    throw java.io.FileNotFoundException(
+                        "Required SAM2 ONNX model '$modelName' not found in assets (${candidatePaths.joinToString()}). " +
+                        "Please ensure sam2_image_features.onnx, sam2_init_step.onnx, and sam2_temporal_step.onnx " +
+                        "are placed in src/main/assets/models/sam2_onnx/. Underlying error: ${lastErr?.message}"
+                    )
                 }
             }
         }
@@ -69,3 +94,4 @@ object Sam2OnnxModelLoader {
         return loadFromDirectory(cacheDir)
     }
 }
+
