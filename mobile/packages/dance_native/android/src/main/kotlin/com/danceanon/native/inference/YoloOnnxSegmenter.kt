@@ -32,9 +32,10 @@ class YoloOnnxSegmenter(
 
             if (modelFile != null && modelFile.exists() && modelFile.length() > 0L) {
                 ortSession = ortEnv!!.createSession(modelFile.absolutePath, sessionOptions)
-                android.util.Log.i("YoloOnnxSegmenter", "✅ Loaded ONNX session from file: ${modelFile.absolutePath} (${modelFile.length() / 1024 / 1024} MB)")
+                android.util.Log.i("YoloOnnxSegmenter", "[Telemetry] YOLO Session initialized: Runtime=ONNX Runtime (CPUExecutionProvider), Threads=$numThreads, Model=${modelFile.absolutePath} (${modelFile.length() / 1024 / 1024} MB)")
                 return@withContext
             }
+
 
             // Extract asset model to internal files directory to enable mmap (0-copy, avoids OOM and asset decompression limits)
             val modelsDir = File(context.filesDir, "models").apply { if (!exists()) mkdirs() }
@@ -79,7 +80,8 @@ class YoloOnnxSegmenter(
             }
 
             ortSession = ortEnv!!.createSession(extractedModelFile.absolutePath, sessionOptions)
-            android.util.Log.i("YoloOnnxSegmenter", "✅ ONNX Runtime Session created successfully via mmap (${extractedModelFile.length() / 1024 / 1024} MB)")
+            android.util.Log.i("YoloOnnxSegmenter", "[Telemetry] YOLO Session created via mmap: Runtime=ONNX Runtime (CPUExecutionProvider), Threads=$numThreads, Size=${extractedModelFile.length() / 1024 / 1024} MB")
+
         } catch (e: DanceNativeException) {
             throw e
         } catch (e: Throwable) {

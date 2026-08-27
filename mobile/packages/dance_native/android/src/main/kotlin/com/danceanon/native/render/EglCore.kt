@@ -68,18 +68,44 @@ class EglCore : AutoCloseable {
         )
 
         var chosenConfig: EGLConfig? = null
+        var chosenTier = -1
         val configs = arrayOfNulls<EGLConfig>(1)
         val numConfigs = IntArray(1)
 
-        for (attribs in candidateAttribs) {
+        for ((index, attribs) in candidateAttribs.withIndex()) {
             val success = EGL14.eglChooseConfig(eglDisplay, attribs, 0, configs, 0, 1, numConfigs, 0)
             if (success && numConfigs[0] > 0 && configs[0] != null) {
                 chosenConfig = configs[0]
+                chosenTier = index + 1
                 break
             }
         }
 
         eglConfig = chosenConfig ?: throw RuntimeException("Unable to find suitable EGLConfig for hardware rendering")
+
+        val queryVal = IntArray(1)
+        fun queryAttrib(attrib: Int): Int {
+            EGL14.eglGetConfigAttrib(eglDisplay, eglConfig, attrib, queryVal, 0)
+            return queryVal[0]
+        }
+
+        val configId = queryAttrib(EGL14.EGL_CONFIG_ID)
+        val rSize = queryAttrib(EGL14.EGL_RED_SIZE)
+        val gSize = queryAttrib(EGL14.EGL_GREEN_SIZE)
+        val bSize = queryAttrib(EGL14.EGL_BLUE_SIZE)
+        val aSize = queryAttrib(EGL14.EGL_ALPHA_SIZE)
+        val recordable = queryAttrib(EGLExt.EGL_RECORDABLE_ANDROID)
+
+        android.util.Log.i(
+            "EglCore",
+            "[Telemetry] Selected EGL Tier $chosenTier: ConfigID=$configId, RGBA=$rSize-$gSize-$bSize-$aSize, EGL_RECORDABLE_ANDROID=$recordable"
+        )
+        if (chosenTier >= 3) {
+            android.util.Log.w(
+                "EglCore",
+                "[Telemetry WARNING] EGLConfig downgraded to Tier $chosenTier (Non-Recordable config!). Hardware encoder surface might encounter vendor compatibility issues."
+            )
+        }
 
         val contextAttribs = intArrayOf(
             EGL14.EGL_CONTEXT_CLIENT_VERSION, 2,
@@ -89,14 +115,14 @@ class EglCore : AutoCloseable {
         if (eglContext == EGL14.EGL_NO_CONTEXT) {
             throw RuntimeException("Failed to create EGL context")
         }
-
     }
 
     fun createWindowSurface(surface: Surface): EGLSurface {
         val surfaceAttribs = intArrayOf(EGL14.EGL_NONE)
         val eglSurface = EGL14.eglCreateWindowSurface(eglDisplay, eglConfig, surface, surfaceAttribs, 0)
         if (eglSurface == EGL14.EGL_NO_SURFACE) {
-            throw RuntimeException("Failed to create EGL window surface")
+            val err = EGL14.eglGetError()
+            throw RuntimeException("Failed to create EGL window surface. EGL error: 0x${Integer.toHexString(err)}")
         }
         return eglSurface
     }
@@ -109,24 +135,32 @@ class EglCore : AutoCloseable {
         )
         val eglSurface = EGL14.eglCreatePbufferSurface(eglDisplay, eglConfig, pbufferAttribs, 0)
         if (eglSurface == EGL14.EGL_NO_SURFACE) {
-            throw RuntimeException("Failed to create EGL pbuffer surface")
+            val err = EGL14.eglGetError()
+            throw RuntimeException("Failed to create EGL pbuffer surface. EGL error: 0x${Integer.toHexString(err)}")
         }
         return eglSurface
     }
 
     fun makeCurrent(eglSurface: EGLSurface) {
         if (!EGL14.eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext)) {
-            throw RuntimeException("eglMakeCurrent failed")
+            val err = EGL14.eglGetError()
+            throw RuntimeException("eglMakeCurrent failed. EGL error: 0x${Integer.toHexString(err)}")
         }
     }
 
     fun swapBuffers(eglSurface: EGLSurface): Boolean {
-        return EGL14.eglSwapBuffers(eglDisplay, eglSurface)
+        val success = EGL14.eglSwapBuffers(eglDisplay, eglSurface)
+        if (!success) {
+            val err = EGL14.eglGetError()
+            android.util.Log.e("EglCore", "[Stage 2 Error] eglSwapBuffers failed! EGL error: 0x${Integer.toHexString(err)}")
+        }
+        return success
     }
 
     fun setPresentationTime(eglSurface: EGLSurface, nsecs: Long) {
         EGLExt.eglPresentationTimeANDROID(eglDisplay, eglSurface, nsecs)
     }
+
 
     fun releaseSurface(eglSurface: EGLSurface?) {
         if (eglSurface != null && eglSurface != EGL14.EGL_NO_SURFACE && eglDisplay != EGL14.EGL_NO_DISPLAY) {

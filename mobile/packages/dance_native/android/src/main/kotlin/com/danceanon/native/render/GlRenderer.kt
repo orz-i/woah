@@ -150,9 +150,15 @@ class GlRenderer : FrameRenderer {
         this.width = width
         this.height = height
 
+        val vendor = GLES20.glGetString(GLES20.GL_VENDOR) ?: "Unknown"
+        val renderer = GLES20.glGetString(GLES20.GL_RENDERER) ?: "Unknown"
+        val version = GLES20.glGetString(GLES20.GL_VERSION) ?: "Unknown"
+        android.util.Log.i("GlRenderer", "[Telemetry] GL initialized: Vendor=$vendor, Renderer=$renderer, Version=$version, Canvas=${width}x${height}")
+
         oesProgram = buildProgram(GlShaders.FRAGMENT_SHADER_OES)
         texture2DProgram = buildProgram(GlShaders.FRAGMENT_SHADER_2D)
         checkGlError("buildPrograms")
+
 
         // Quad vertices & texcoords (x, y, u, v)
         val vertices = floatArrayOf(

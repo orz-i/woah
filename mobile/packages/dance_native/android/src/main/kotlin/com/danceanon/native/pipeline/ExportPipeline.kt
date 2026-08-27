@@ -264,6 +264,9 @@ class ExportPipeline(
                                     waited += 20
                                 } catch (_: InterruptedException) {}
                             }
+                            if (!frameAvailable) {
+                                android.util.Log.w("ExportPipeline", "[Telemetry Warning] SurfaceTexture frame wait timeout (waited ${waited}ms) on frame #$processedFrames (pts=${ptsUs}us)")
+                            }
                             frameAvailable = false
                         }
 
@@ -296,7 +299,9 @@ class ExportPipeline(
                                 try {
                                     fallbackBmp = retriever.getFrameAtTime(ptsUs, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
                                         ?: retriever.getFrameAtTime(ptsUs, android.media.MediaMetadataRetriever.OPTION_CLOSEST)
-                                } catch (_: Throwable) {}
+                                } catch (t: Throwable) {
+                                    android.util.Log.e("ExportPipeline", "[Fallback Error] MediaMetadataRetriever failed to get frame at pts=$ptsUs us: ${t.message}", t)
+                                }
                             }
 
                             if (fallbackBmp != null) {
@@ -323,6 +328,11 @@ class ExportPipeline(
                                 android.opengl.GLUtils.texImage2D(android.opengl.GLES20.GL_TEXTURE_2D, 0, rotatedBmp, 0)
                                 rotatedBmp.recycle()
 
+                                renderTexId = fallbackTexture2DId
+                                renderTexType = com.danceanon.native.render.SourceTextureType.TEXTURE_2D
+                                renderTexMatrix = null
+                            } else {
+                                android.util.Log.w("ExportPipeline", "[Fallback Warning] Null frame from retriever at pts=$ptsUs us. Keeping 2D Texture mode to prevent rendering broken OES.")
                                 renderTexId = fallbackTexture2DId
                                 renderTexType = com.danceanon.native.render.SourceTextureType.TEXTURE_2D
                                 renderTexMatrix = null
@@ -413,14 +423,14 @@ class ExportPipeline(
                             // Standard YOLO pipeline
                             val shouldInfer = (processedFrames == 1) || (processedFrames % frameStride == 0)
                             val detections = if (shouldInfer) {
-                                profiler.recordStage("gpuLetterbox") {
+                                profiler.recordStage("fboLetterbox") {
                                     inferenceRenderer.renderToFbo(renderTexId, finalTexMatrix, mapper, inferenceFbo, renderTexType)
                                 }
                                 val debugSize = inferenceFbo.size
                                 val rgbaBuffer = profiler.recordStage("readback640") {
                                     inferenceFbo.readRgbaPixels()
                                 }
-                                val seg = profiler.recordStage("inference") {
+                                val seg = profiler.recordStage("yoloCpuInference") {
                                     segmenter.segmentGlReadbackRgbaSync(rgbaBuffer, mapper, ptsUs, colOrder = RgbaColOrder.LEFT_TO_RIGHT)
                                 }
                                 profiler.recordStage("privacySafety") {
@@ -500,8 +510,8 @@ class ExportPipeline(
 
 
                         // 4. Render final anonymized frame to EGL surface (encoder input)
-                        // Self-healing black screen check on frame 1
-                        if (processedFrames == 1 && !use2DFallbackMode) {
+                        // Stage 1 (GL/OES render) self-healing check on initial frames (frames 1..5)
+                        if (processedFrames <= 5 && !use2DFallbackMode) {
                             profiler.recordStage("renderEffects") {
                                 glRenderer.render(
                                     frameTexture = oesTextureId,
@@ -516,47 +526,66 @@ class ExportPipeline(
                             }
 
                             val sampleBmp = glRenderer.captureRenderedFrame()
-                            val isBlack = isFrameBlack(sampleBmp)
+                            val isOesOutputBlack = isFrameBlack(sampleBmp)
                             sampleBmp?.recycle()
 
-                            if (isBlack) {
-                                android.util.Log.w("ExportPipeline", "OES Hardware pipe rendered black screen on Android 16/Device. Auto-activating 2D Frame Provider fallback!")
-                                use2DFallbackMode = true
-                                fallbackRetriever = android.media.MediaMetadataRetriever().apply {
+                            if (isOesOutputBlack) {
+                                // Double check if source frame is actually non-black to prevent false positives on black fade-in
+                                val probeRetriever = android.media.MediaMetadataRetriever().apply {
                                     if (sourceUri.startsWith("content://")) {
                                         setDataSource(context, android.net.Uri.parse(sourceUri))
                                     } else {
                                         setDataSource(sourceUri.removePrefix("file://"))
                                     }
                                 }
-
-                                // Re-render frame 1 with 2D fallback immediately so first frame is not black
-                                val firstRetriever = fallbackRetriever
-                                var fallbackBmp: android.graphics.Bitmap? = null
-                                if (firstRetriever != null) {
-                                    try {
-                                        fallbackBmp = firstRetriever.getFrameAtTime(ptsUs, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-                                            ?: firstRetriever.getFrameAtTime(ptsUs, android.media.MediaMetadataRetriever.OPTION_CLOSEST)
-                                    } catch (_: Throwable) {}
+                                var probeBmp: android.graphics.Bitmap? = null
+                                try {
+                                    probeBmp = probeRetriever.getFrameAtTime(ptsUs, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                                        ?: probeRetriever.getFrameAtTime(ptsUs, android.media.MediaMetadataRetriever.OPTION_CLOSEST)
+                                } catch (t: Throwable) {
+                                    android.util.Log.e("ExportPipeline", "[Stage 1 Probe] Retriever probe error: ${t.message}", t)
                                 }
-                                if (fallbackBmp != null) {
-                                    val rot = videoInfo.rotation.toInt()
-                                    val rotatedBmp = if (rot != 0) {
-                                        val mat = android.graphics.Matrix().apply { postRotate(rot.toFloat()) }
-                                        val rb = android.graphics.Bitmap.createBitmap(fallbackBmp, 0, 0, fallbackBmp.width, fallbackBmp.height, mat, true)
-                                        if (fallbackBmp != rb) fallbackBmp.recycle()
-                                        rb
-                                    } else {
-                                        fallbackBmp
-                                    }
-                                    android.opengl.GLES20.glActiveTexture(android.opengl.GLES20.GL_TEXTURE0)
-                                    android.opengl.GLES20.glBindTexture(android.opengl.GLES20.GL_TEXTURE_2D, fallbackTexture2DId)
-                                    android.opengl.GLUtils.texImage2D(android.opengl.GLES20.GL_TEXTURE_2D, 0, rotatedBmp, 0)
-                                    rotatedBmp.recycle()
 
-                                    renderTexId = fallbackTexture2DId
-                                    renderTexType = com.danceanon.native.render.SourceTextureType.TEXTURE_2D
-                                    renderTexMatrix = null
+                                val isSourceBlack = isFrameBlack(probeBmp)
+                                if (!isSourceBlack) {
+                                    android.util.Log.w(
+                                        "ExportPipeline",
+                                        "[Stage 1 Error] OES hardware texture rendered black while source frame contains real video pixels on frame #$processedFrames. Auto-activating 2D Frame Provider fallback!"
+                                    )
+                                    use2DFallbackMode = true
+                                    fallbackRetriever = probeRetriever
+
+                                    if (probeBmp != null) {
+                                        val softwareBmp = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && probeBmp.config == android.graphics.Bitmap.Config.HARDWARE) {
+                                            probeBmp.copy(android.graphics.Bitmap.Config.ARGB_8888, false).also {
+                                                if (probeBmp != it) probeBmp.recycle()
+                                            }
+                                        } else {
+                                            probeBmp
+                                        }
+
+                                        val rot = videoInfo.rotation.toInt()
+                                        val rotatedBmp = if (rot != 0) {
+                                            val mat = android.graphics.Matrix().apply { postRotate(rot.toFloat()) }
+                                            val rb = android.graphics.Bitmap.createBitmap(softwareBmp, 0, 0, softwareBmp.width, softwareBmp.height, mat, true)
+                                            if (softwareBmp != rb) softwareBmp.recycle()
+                                            rb
+                                        } else {
+                                            softwareBmp
+                                        }
+                                        android.opengl.GLES20.glActiveTexture(android.opengl.GLES20.GL_TEXTURE0)
+                                        android.opengl.GLES20.glBindTexture(android.opengl.GLES20.GL_TEXTURE_2D, fallbackTexture2DId)
+                                        android.opengl.GLUtils.texImage2D(android.opengl.GLES20.GL_TEXTURE_2D, 0, rotatedBmp, 0)
+                                        rotatedBmp.recycle()
+
+                                        renderTexId = fallbackTexture2DId
+                                        renderTexType = com.danceanon.native.render.SourceTextureType.TEXTURE_2D
+                                        renderTexMatrix = null
+                                    }
+                                } else {
+                                    probeBmp?.recycle()
+                                    try { probeRetriever.release() } catch (_: Throwable) {}
+                                    android.util.Log.i("ExportPipeline", "[Telemetry] Frame #$processedFrames detected as genuine black frame in source video (fade-in / dark scene).")
                                 }
                             }
                         }
@@ -616,7 +645,7 @@ class ExportPipeline(
                         }
 
 
-                        // 2. Swap buffers to push rendered frame to hardware encoder
+                        // 2. Swap buffers to push rendered frame to hardware encoder (Stage 2 handoff)
                         if (eglSurface != null) {
                             val rawPtsNs = ptsUs.coerceAtLeast(0L) * 1000L
                             val presentationNs = if (rawPtsNs > lastPresentationNs) {
@@ -627,13 +656,20 @@ class ExportPipeline(
                                 lastPresentationNs
                             }
                             eglCore.setPresentationTime(eglSurface, presentationNs)
-                            eglCore.swapBuffers(eglSurface)
+                            val swapSuccess = eglCore.swapBuffers(eglSurface)
+                            if (!swapSuccess) {
+                                android.util.Log.e(
+                                    "ExportPipeline",
+                                    "[Stage 2 Error] eglSwapBuffers returned false on frame #$processedFrames (pts=${ptsUs}us). Encoder surface handoff failed!"
+                                )
+                            }
                         }
 
-                        // 3. Drain encoder output to MP4 muxer
+                        // 3. Drain encoder output to MP4 muxer (Stage 3 packet writing)
                         profiler.recordStage("drainEncoder") {
                             encoder.drainEncoder(muxer, endOfStream = false)
                         }
+
 
 
                         // 4. Emit progress based on presentation timestamp
@@ -784,27 +820,23 @@ class ExportPipeline(
         if (bitmap == null) return true
         val w = bitmap.width
         val h = bitmap.height
-        val samplePoints = listOf(
-            Pair(w / 4, h / 4),
-            Pair(w / 2, h / 4),
-            Pair(3 * w / 4, h / 4),
-            Pair(w / 4, h / 2),
-            Pair(w / 2, h / 2),
-            Pair(3 * w / 4, h / 2),
-            Pair(w / 4, 3 * h / 4),
-            Pair(w / 2, 3 * h / 4),
-            Pair(3 * w / 4, 3 * h / 4)
-        )
-        for (pt in samplePoints) {
-            val pixel = bitmap.getPixel(pt.first.coerceIn(0, w - 1), pt.second.coerceIn(0, h - 1))
-            val r = (pixel shr 16) and 0xFF
-            val g = (pixel shr 8) and 0xFF
-            val b = pixel and 0xFF
-            if (r > 5 || g > 5 || b > 5) {
-                return false
+        var nonBlackPixels = 0
+        for (gx in 1..5) {
+            for (gy in 1..5) {
+                val px = (w * gx / 6).coerceIn(0, w - 1)
+                val py = (h * gy / 6).coerceIn(0, h - 1)
+                val pixel = bitmap.getPixel(px, py)
+                val r = (pixel shr 16) and 0xFF
+                val g = (pixel shr 8) and 0xFF
+                val b = pixel and 0xFF
+                if (r > 8 || g > 8 || b > 8) {
+                    nonBlackPixels++
+                    if (nonBlackPixels >= 2) return false
+                }
             }
         }
-        return true
+        return nonBlackPixels == 0
     }
 }
+
 

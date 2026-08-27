@@ -31,7 +31,20 @@ class VideoEncoder(
         inputSurface = codec.createInputSurface()
         codec.start()
         isStarted = true
+
+        val codecName = try { codec.name } catch (_: Throwable) { "Unknown" }
+        val isHw = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            try { codec.codecInfo.isHardwareAccelerated } catch (_: Throwable) { "Unknown" }
+        } else {
+            "N/A"
+        }
+        android.util.Log.i(
+            "VideoEncoder",
+            "[Telemetry] Hardware VideoEncoder started: name=$codecName, isHw=$isHw, canvas=${width}x${height}@${fps}fps, bitrate=$bitrate"
+        )
+
         return inputSurface!!
+
     }
 
     fun drainEncoder(muxer: Mp4Muxer, endOfStream: Boolean) {

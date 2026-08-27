@@ -86,17 +86,20 @@ object Sam2OnnxModelLoader {
                 val qnnOptions = mapOf(
                     "backend_type" to "HTP",
                     "htp_performance_mode" to "burst",
-                    "htp_precision" to "fp16"
+                    "enable_htp_fp16_precision" to "1"
                 )
                 qnnMethod.invoke(options, qnnOptions)
-                println("[Loader] ✅ Qualcomm QNN Execution Provider (HTP) configured")
+                println("[Loader Telemetry] ✅ Qualcomm QNN Execution Provider (HTP NPU) registered")
+            } else {
+                println("[Loader Telemetry] ℹ️ Standard ONNX Runtime detected (CPUExecutionProvider). QNN / NPU runtime not present in classpath; operating on CPU with $numThreads threads.")
             }
         } catch (t: Throwable) {
-            println("[Loader] QNN EP probe note: ${t.message}")
+            println("[Loader Telemetry] QNN EP probe fallback to CPU: ${t.message}")
         }
 
         return options
     }
+
 
     fun loadFromAssets(context: Context, assetPrefix: String = "models/sam2_onnx"): Sam2OnnxSessionBundle {
         val cacheDir = File(context.filesDir, "models/sam2_onnx")
