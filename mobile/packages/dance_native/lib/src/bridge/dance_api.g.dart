@@ -775,6 +775,7 @@ class ExportRequestDto {
     required this.targetFps,
     required this.videoBitrate,
     required this.processingProfile,
+    required this.enableLivePreview,
   });
 
   String sourceUri;
@@ -799,6 +800,8 @@ class ExportRequestDto {
 
   String processingProfile;
 
+  bool enableLivePreview;
+
   List<Object?> _toList() {
     return <Object?>[
       sourceUri,
@@ -812,6 +815,7 @@ class ExportRequestDto {
       targetFps,
       videoBitrate,
       processingProfile,
+      enableLivePreview,
     ];
   }
 
@@ -832,6 +836,7 @@ class ExportRequestDto {
       targetFps: result[8]! as double,
       videoBitrate: result[9]! as int,
       processingProfile: result[10]! as String,
+      enableLivePreview: result[11]! as bool,
     );
   }
 
@@ -844,7 +849,7 @@ class ExportRequestDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(sourceUri, other.sourceUri) && _deepEquals(analysisCacheId, other.analysisCacheId) && _deepEquals(outputFilePath, other.outputFilePath) && _deepEquals(selectedPersonIds, other.selectedPersonIds) && _deepEquals(effects, other.effects) && _deepEquals(follow, other.follow) && _deepEquals(targetWidth, other.targetWidth) && _deepEquals(targetHeight, other.targetHeight) && _deepEquals(targetFps, other.targetFps) && _deepEquals(videoBitrate, other.videoBitrate) && _deepEquals(processingProfile, other.processingProfile);
+    return _deepEquals(sourceUri, other.sourceUri) && _deepEquals(analysisCacheId, other.analysisCacheId) && _deepEquals(outputFilePath, other.outputFilePath) && _deepEquals(selectedPersonIds, other.selectedPersonIds) && _deepEquals(effects, other.effects) && _deepEquals(follow, other.follow) && _deepEquals(targetWidth, other.targetWidth) && _deepEquals(targetHeight, other.targetHeight) && _deepEquals(targetFps, other.targetFps) && _deepEquals(videoBitrate, other.videoBitrate) && _deepEquals(processingProfile, other.processingProfile) && _deepEquals(enableLivePreview, other.enableLivePreview);
   }
 
   @override
@@ -853,7 +858,7 @@ class ExportRequestDto {
 
   @override
   String toString() {
-    return 'ExportRequestDto(sourceUri: $sourceUri, analysisCacheId: $analysisCacheId, outputFilePath: $outputFilePath, selectedPersonIds: $selectedPersonIds, effects: $effects, follow: $follow, targetWidth: $targetWidth, targetHeight: $targetHeight, targetFps: $targetFps, videoBitrate: $videoBitrate, processingProfile: $processingProfile)';
+    return 'ExportRequestDto(sourceUri: $sourceUri, analysisCacheId: $analysisCacheId, outputFilePath: $outputFilePath, selectedPersonIds: $selectedPersonIds, effects: $effects, follow: $follow, targetWidth: $targetWidth, targetHeight: $targetHeight, targetFps: $targetFps, videoBitrate: $videoBitrate, processingProfile: $processingProfile, enableLivePreview: $enableLivePreview)';
   }
 }
 
@@ -866,6 +871,7 @@ class JobStatusDto {
     required this.fps,
     required this.progress,
     this.outputUri,
+    this.currentPreviewPath,
     this.errorCode,
     this.errorMessage,
   });
@@ -884,6 +890,8 @@ class JobStatusDto {
 
   String? outputUri;
 
+  String? currentPreviewPath;
+
   String? errorCode;
 
   String? errorMessage;
@@ -897,6 +905,7 @@ class JobStatusDto {
       fps,
       progress,
       outputUri,
+      currentPreviewPath,
       errorCode,
       errorMessage,
     ];
@@ -915,8 +924,9 @@ class JobStatusDto {
       fps: result[4]! as double,
       progress: result[5]! as double,
       outputUri: result[6] as String?,
-      errorCode: result[7] as String?,
-      errorMessage: result[8] as String?,
+      currentPreviewPath: result[7] as String?,
+      errorCode: result[8] as String?,
+      errorMessage: result[9] as String?,
     );
   }
 
@@ -929,7 +939,7 @@ class JobStatusDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(jobId, other.jobId) && _deepEquals(state, other.state) && _deepEquals(currentFrame, other.currentFrame) && _deepEquals(totalFrames, other.totalFrames) && _deepEquals(fps, other.fps) && _deepEquals(progress, other.progress) && _deepEquals(outputUri, other.outputUri) && _deepEquals(errorCode, other.errorCode) && _deepEquals(errorMessage, other.errorMessage);
+    return _deepEquals(jobId, other.jobId) && _deepEquals(state, other.state) && _deepEquals(currentFrame, other.currentFrame) && _deepEquals(totalFrames, other.totalFrames) && _deepEquals(fps, other.fps) && _deepEquals(progress, other.progress) && _deepEquals(outputUri, other.outputUri) && _deepEquals(currentPreviewPath, other.currentPreviewPath) && _deepEquals(errorCode, other.errorCode) && _deepEquals(errorMessage, other.errorMessage);
   }
 
   @override
@@ -938,7 +948,7 @@ class JobStatusDto {
 
   @override
   String toString() {
-    return 'JobStatusDto(jobId: $jobId, state: $state, currentFrame: $currentFrame, totalFrames: $totalFrames, fps: $fps, progress: $progress, outputUri: $outputUri, errorCode: $errorCode, errorMessage: $errorMessage)';
+    return 'JobStatusDto(jobId: $jobId, state: $state, currentFrame: $currentFrame, totalFrames: $totalFrames, fps: $fps, progress: $progress, outputUri: $outputUri, currentPreviewPath: $currentPreviewPath, errorCode: $errorCode, errorMessage: $errorMessage)';
   }
 }
 

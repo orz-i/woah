@@ -197,6 +197,7 @@ class ExportRequestDto {
   final double targetFps;
   final int videoBitrate;
   final String processingProfile;
+  final bool enableLivePreview;
 
   ExportRequestDto({
     required this.sourceUri,
@@ -210,6 +211,7 @@ class ExportRequestDto {
     required this.targetFps,
     required this.videoBitrate,
     required this.processingProfile,
+    this.enableLivePreview = false,
   });
 }
 
@@ -221,6 +223,7 @@ class JobStatusDto {
   final double fps;
   final double progress;
   final String? outputUri;
+  final String? currentPreviewPath;
   final String? errorCode;
   final String? errorMessage;
 
@@ -232,10 +235,12 @@ class JobStatusDto {
     required this.fps,
     required this.progress,
     this.outputUri,
+    this.currentPreviewPath,
     this.errorCode,
     this.errorMessage,
   });
 }
+
 
 @HostApi()
 abstract class DanceNativeApi {

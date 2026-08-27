@@ -127,6 +127,7 @@ class ExportPipeline(
             var audioCopier: AudioTrackCopier? = null
             var frameReader: com.danceanon.native.render.InferenceFrameReader? = null
             var oesTextureId = 0
+            var livePreviewFile: java.io.File? = null
 
             try {
                 audioCopier = AudioTrackCopier(context, sourceUri)
@@ -214,6 +215,11 @@ class ExportPipeline(
                     val bundle = com.danceanon.native.sam2.Sam2OnnxModelLoader.loadFromAssets(context)
                     sam2Tracker = com.danceanon.native.sam2.Sam2OnnxVideoTracker(bundle, encoderStride = frameStride)
                 }
+
+                var lastLivePreviewCaptureTime = 0L
+                val livePreviewDir = java.io.File(context.cacheDir, "export_live_preview").apply { mkdirs() }
+                livePreviewFile = java.io.File(livePreviewDir, "preview_${jobId}.jpg")
+
 
                 while (!isCancelled.get()) {
                     val fed = decoder.feedInputBuffer()
@@ -437,6 +443,44 @@ class ExportPipeline(
                             )
                         }
 
+                        // Optional live preview capture when enabled
+                        val now = System.currentTimeMillis()
+                        var currentLivePreviewPath = status.currentPreviewPath
+                        if (request.enableLivePreview && (now - lastLivePreviewCaptureTime > 400 || processedFrames == 1)) {
+                            lastLivePreviewCaptureTime = now
+                            try {
+                                val visualBmp = glRenderer.captureRenderedFrame()
+                                if (visualBmp != null) {
+                                    val scale = minOf(1.0f, 480f / maxOf(visualBmp.width, visualBmp.height))
+                                    val previewBmp = if (scale < 1.0f) {
+                                        android.graphics.Bitmap.createScaledBitmap(
+                                            visualBmp,
+                                            (visualBmp.width * scale).toInt().coerceAtLeast(1),
+                                            (visualBmp.height * scale).toInt().coerceAtLeast(1),
+                                            true
+                                        )
+                                    } else {
+                                        visualBmp
+                                    }
+                                    val tempPreview = java.io.File(livePreviewDir, "preview_${jobId}_tmp.jpg")
+                                    java.io.FileOutputStream(tempPreview).use { out ->
+                                        previewBmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 75, out)
+                                    }
+                                    if (previewBmp !== visualBmp) {
+                                        previewBmp.recycle()
+                                    }
+                                    visualBmp.recycle()
+                                    if (tempPreview.exists()) {
+                                        if (livePreviewFile.exists()) livePreviewFile.delete()
+                                        tempPreview.renameTo(livePreviewFile)
+                                        currentLivePreviewPath = livePreviewFile.absolutePath
+                                    }
+                                }
+                            } catch (e: Throwable) {
+                                android.util.Log.w("ExportPipeline", "Live preview capture warning: ${e.message}")
+                            }
+                        }
+
                         // 2. Swap buffers to push rendered frame to hardware encoder
                         if (eglSurface != null) {
                             eglCore.setPresentationTime(eglSurface, ptsUs * 1000L)
@@ -449,7 +493,6 @@ class ExportPipeline(
                         }
 
                         // 4. Emit progress based on presentation timestamp
-                        val now = System.currentTimeMillis()
                         if (now - lastProgressEmitTime > 200 || processedFrames % 5 == 0) {
                             lastProgressEmitTime = now
                             val elapsedSec = (now - startTime) / 1000.0
@@ -466,7 +509,8 @@ class ExportPipeline(
                                 currentFrame = processedFrames.toLong(),
                                 fps = currentFps,
                                 progress = progress,
-                                outputUri = null
+                                outputUri = null,
+                                currentPreviewPath = currentLivePreviewPath
                             )
                             emitProgress(status, onStatusChange)
                         }
@@ -476,6 +520,7 @@ class ExportPipeline(
                         break
                     }
                 }
+
 
 
                 if (isCancelled.get()) {
@@ -565,10 +610,13 @@ class ExportPipeline(
                 try { encoder?.close() } catch (_: Throwable) {}
                 try { glRenderer?.close() } catch (_: Throwable) {}
                 try { eglCore?.close() } catch (_: Throwable) {}
+                try { if (livePreviewFile?.exists() == true) livePreviewFile?.delete() } catch (_: Throwable) {}
                 if (isCancelled.get()) {
+
                     try { tempOutFile.delete() } catch (_: Throwable) {}
                 }
                 pipelineLatch.countDown()
+
             }
 
         }

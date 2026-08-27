@@ -44,8 +44,10 @@ class UnifiedCancellationTest {
             targetHeight = 1080,
             targetFps = 30.0,
             videoBitrate = 8000000,
-            processingProfile = "balanced"
+            processingProfile = "balanced",
+            enableLivePreview = false
         )
+
 
         // Mock ExportJobStore in memory
         val record = ExportJobRecord.fromRequest("job_cancel_test", request, initialState = "processing")

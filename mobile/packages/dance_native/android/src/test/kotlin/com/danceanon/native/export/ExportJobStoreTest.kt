@@ -36,9 +36,11 @@ class ExportJobStoreTest {
             targetHeight = 1080,
             targetFps = 30.0,
             videoBitrate = 8000000,
-            processingProfile = "balanced"
+            processingProfile = "balanced",
+            enableLivePreview = false
         )
     }
+
 
     @Test
     fun testThrottledDiskWritesAndImmediateTerminalPersistence() {

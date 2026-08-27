@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -6,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:dance_domain/dance_domain.dart';
 import 'export_controller.dart';
 import '../domain/export_state.dart';
+
 
 class ExportArgs {
   final DanceProject project;
@@ -95,80 +97,251 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Circular Progress Ring with soft background glow
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    width: 220,
-                    height: 220,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        if (!isFailed)
-                          BoxShadow(
-                            color: Colors.white.withAlpha(15),
-                            blurRadius: 30,
-                            spreadRadius: 2,
-                          ),
-                      ],
-                    ),
-                    child: CircularProgressIndicator(
-                      value: isFailed ? 1.0 : (state.progress > 0 ? state.progress : null),
-                      strokeWidth: 9,
-                      backgroundColor: Colors.white12,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        isFailed ? Colors.redAccent : Colors.white,
+              // Live Preview Toggle Bar
+              if (!isFailed && state.isProcessing) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E1E24),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white10),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.remove_red_eye_outlined, size: 20, color: Colors.white70),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '实时画面预览',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              '实时监视打码处理后的视频帧（默认关闭）',
+                              style: TextStyle(
+                                color: Colors.white38,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch.adaptive(
+                        value: state.showLivePreview,
+                        activeThumbColor: Colors.white,
+                        activeTrackColor: const Color(0xFF3B82F6),
+                        onChanged: (val) {
+                          HapticFeedback.lightImpact();
+                          controller.toggleLivePreview(val);
+                        },
+                      ),
+
+                    ],
+                  ),
+                ),
+              ],
+
+              // Central Visual Display: Toggle between Circular Progress & Live Rendered Frame
+              AnimatedCrossFade(
+                duration: const Duration(milliseconds: 300),
+                crossFadeState: (state.showLivePreview && !isFailed)
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
+                firstChild: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      width: 220,
+                      height: 220,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          if (!isFailed)
+                            BoxShadow(
+                              color: Colors.white.withAlpha(15),
+                              blurRadius: 30,
+                              spreadRadius: 2,
+                            ),
+                        ],
+                      ),
+                      child: CircularProgressIndicator(
+                        value: isFailed ? 1.0 : (state.progress > 0 ? state.progress : null),
+                        strokeWidth: 9,
+                        backgroundColor: Colors.white12,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          isFailed ? Colors.redAccent : Colors.white,
+                        ),
                       ),
                     ),
+                    SizedBox(
+                      width: 180,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          if (isFailed) ...[
+                            const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 48),
+                            const SizedBox(height: 8),
+                            const Text(
+                              '导出失败',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.redAccent,
+                              ),
+                            ),
+                          ] else ...[
+                            Text(
+                              '$percent%',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 38,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                letterSpacing: -1,
+                                fontFeatures: [FontFeature.tabularFigures()],
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              state.progress >= 1.0 ? '即将完成' : '本地端侧处理中',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Colors.white60,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                secondChild: Container(
+                  width: double.infinity,
+                  constraints: const BoxConstraints(maxHeight: 280),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF141418),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFF3B82F6).withAlpha(80), width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF3B82F6).withAlpha(25),
+                        blurRadius: 24,
+                        spreadRadius: 2,
+                      ),
+                    ],
                   ),
-                  SizedBox(
-                    width: 180,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        if (isFailed) ...[
-                          const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 48),
-                          const SizedBox(height: 8),
-                          const Text(
-                            '导出失败',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.redAccent,
+                  clipBehavior: Clip.antiAlias,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      if (state.currentPreviewPath != null &&
+                          File(state.currentPreviewPath!).existsSync())
+                        Image.file(
+                          File(state.currentPreviewPath!),
+                          key: ValueKey(state.currentFrame),
+                          width: double.infinity,
+                          height: double.infinity,
+                          fit: BoxFit.contain,
+                          gaplessPlayback: true,
+                        )
+                      else
+                        Container(
+                          color: const Color(0xFF1E1E24),
+                          child: const Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 32,
+                                  height: 32,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 3,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                                SizedBox(height: 12),
+                                Text(
+                                  '正在捕获实时处理帧...',
+                                  style: TextStyle(color: Colors.white60, fontSize: 13),
+                                ),
+                              ],
                             ),
                           ),
-                        ] else ...[
-                          Text(
+                        ),
+                      // Top Overlay Tag
+                      Positioned(
+                        top: 12,
+                        left: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withAlpha(180),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.white12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF22C55E),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const Text(
+                                '实时渲染中',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Bottom Overlay Progress
+                      Positioned(
+                        bottom: 12,
+                        right: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withAlpha(180),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.white12),
+                          ),
+                          child: Text(
                             '$percent%',
-                            textAlign: TextAlign.center,
                             style: const TextStyle(
-                              fontSize: 38,
-                              fontWeight: FontWeight.bold,
                               color: Colors.white,
-                              letterSpacing: -1,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
                               fontFeatures: [FontFeature.tabularFigures()],
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            state.progress >= 1.0 ? '即将完成' : '本地端侧处理中',
-                            textAlign: TextAlign.center,
-
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Colors.white60,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
+
               const SizedBox(height: 24),
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -215,7 +388,17 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                   ),
                 ],
               ),
-
+              if (state.fps > 0) ...[
+                const SizedBox(height: 8),
+                Text(
+                  '当前渲染速度: ${state.fps.toStringAsFixed(1)} FPS',
+                  style: const TextStyle(
+                    color: Colors.white38,
+                    fontSize: 12,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ],
 
               const SizedBox(height: 24),
 
@@ -283,6 +466,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                     ],
                   ),
                 ),
+
             ],
           ),
         ),

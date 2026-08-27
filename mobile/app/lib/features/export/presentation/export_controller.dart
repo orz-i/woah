@@ -32,9 +32,15 @@ class ExportController extends StateNotifier<ExportState> {
         totalFrames: statusDto.totalFrames,
         fps: statusDto.fps,
         outputUri: statusDto.outputUri,
+        currentPreviewPath: statusDto.currentPreviewPath ?? state.currentPreviewPath,
         errorMessage: statusDto.errorMessage,
       );
     });
+  }
+
+  /// Toggle real-time rendered frame preview display
+  void toggleLivePreview(bool enabled) {
+    state = state.copyWith(showLivePreview: enabled);
   }
 
   /// Launch export pipeline
@@ -63,8 +69,8 @@ class ExportController extends StateNotifier<ExportState> {
         targetHeight: project.videoInfo.height,
         targetFps: project.videoInfo.fps,
         processingProfile: processingProfile,
+        enableLivePreview: true, // Allow native pipeline to capture lightweight previews for UI toggle
       );
-
 
       state = state.copyWith(jobId: jobId);
     } catch (e, stack) {
@@ -75,6 +81,7 @@ class ExportController extends StateNotifier<ExportState> {
       );
     }
   }
+
 
   /// Cancel current export job
   Future<void> cancelExport() async {

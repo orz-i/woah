@@ -746,7 +746,8 @@ data class ExportRequestDto (
   val targetHeight: Long,
   val targetFps: Double,
   val videoBitrate: Long,
-  val processingProfile: String
+  val processingProfile: String,
+  val enableLivePreview: Boolean
 )
  {
   companion object {
@@ -762,7 +763,8 @@ data class ExportRequestDto (
       val targetFps = pigeonVar_list[8] as Double
       val videoBitrate = pigeonVar_list[9] as Long
       val processingProfile = pigeonVar_list[10] as String
-      return ExportRequestDto(sourceUri, analysisCacheId, outputFilePath, selectedPersonIds, effects, follow, targetWidth, targetHeight, targetFps, videoBitrate, processingProfile)
+      val enableLivePreview = pigeonVar_list[11] as Boolean
+      return ExportRequestDto(sourceUri, analysisCacheId, outputFilePath, selectedPersonIds, effects, follow, targetWidth, targetHeight, targetFps, videoBitrate, processingProfile, enableLivePreview)
     }
   }
   fun toList(): List<Any?> {
@@ -778,6 +780,7 @@ data class ExportRequestDto (
       targetFps,
       videoBitrate,
       processingProfile,
+      enableLivePreview,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -788,7 +791,7 @@ data class ExportRequestDto (
       return true
     }
     val other = other as ExportRequestDto
-    return DanceApiPigeonUtils.deepEquals(this.sourceUri, other.sourceUri) && DanceApiPigeonUtils.deepEquals(this.analysisCacheId, other.analysisCacheId) && DanceApiPigeonUtils.deepEquals(this.outputFilePath, other.outputFilePath) && DanceApiPigeonUtils.deepEquals(this.selectedPersonIds, other.selectedPersonIds) && DanceApiPigeonUtils.deepEquals(this.effects, other.effects) && DanceApiPigeonUtils.deepEquals(this.follow, other.follow) && DanceApiPigeonUtils.deepEquals(this.targetWidth, other.targetWidth) && DanceApiPigeonUtils.deepEquals(this.targetHeight, other.targetHeight) && DanceApiPigeonUtils.deepEquals(this.targetFps, other.targetFps) && DanceApiPigeonUtils.deepEquals(this.videoBitrate, other.videoBitrate) && DanceApiPigeonUtils.deepEquals(this.processingProfile, other.processingProfile)
+    return DanceApiPigeonUtils.deepEquals(this.sourceUri, other.sourceUri) && DanceApiPigeonUtils.deepEquals(this.analysisCacheId, other.analysisCacheId) && DanceApiPigeonUtils.deepEquals(this.outputFilePath, other.outputFilePath) && DanceApiPigeonUtils.deepEquals(this.selectedPersonIds, other.selectedPersonIds) && DanceApiPigeonUtils.deepEquals(this.effects, other.effects) && DanceApiPigeonUtils.deepEquals(this.follow, other.follow) && DanceApiPigeonUtils.deepEquals(this.targetWidth, other.targetWidth) && DanceApiPigeonUtils.deepEquals(this.targetHeight, other.targetHeight) && DanceApiPigeonUtils.deepEquals(this.targetFps, other.targetFps) && DanceApiPigeonUtils.deepEquals(this.videoBitrate, other.videoBitrate) && DanceApiPigeonUtils.deepEquals(this.processingProfile, other.processingProfile) && DanceApiPigeonUtils.deepEquals(this.enableLivePreview, other.enableLivePreview)
   }
 
   override fun hashCode(): Int {
@@ -804,10 +807,11 @@ data class ExportRequestDto (
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.targetFps)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.videoBitrate)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.processingProfile)
+    result = 31 * result + DanceApiPigeonUtils.deepHash(this.enableLivePreview)
     return result
   }
   override fun toString(): String {
-    return "ExportRequestDto(sourceUri=$sourceUri, analysisCacheId=$analysisCacheId, outputFilePath=$outputFilePath, selectedPersonIds=$selectedPersonIds, effects=$effects, follow=$follow, targetWidth=$targetWidth, targetHeight=$targetHeight, targetFps=$targetFps, videoBitrate=$videoBitrate, processingProfile=$processingProfile)"
+    return "ExportRequestDto(sourceUri=$sourceUri, analysisCacheId=$analysisCacheId, outputFilePath=$outputFilePath, selectedPersonIds=$selectedPersonIds, effects=$effects, follow=$follow, targetWidth=$targetWidth, targetHeight=$targetHeight, targetFps=$targetFps, videoBitrate=$videoBitrate, processingProfile=$processingProfile, enableLivePreview=$enableLivePreview)"
   }
 }
 
@@ -820,6 +824,7 @@ data class JobStatusDto (
   val fps: Double,
   val progress: Double,
   val outputUri: String? = null,
+  val currentPreviewPath: String? = null,
   val errorCode: String? = null,
   val errorMessage: String? = null
 )
@@ -833,9 +838,10 @@ data class JobStatusDto (
       val fps = pigeonVar_list[4] as Double
       val progress = pigeonVar_list[5] as Double
       val outputUri = pigeonVar_list[6] as String?
-      val errorCode = pigeonVar_list[7] as String?
-      val errorMessage = pigeonVar_list[8] as String?
-      return JobStatusDto(jobId, state, currentFrame, totalFrames, fps, progress, outputUri, errorCode, errorMessage)
+      val currentPreviewPath = pigeonVar_list[7] as String?
+      val errorCode = pigeonVar_list[8] as String?
+      val errorMessage = pigeonVar_list[9] as String?
+      return JobStatusDto(jobId, state, currentFrame, totalFrames, fps, progress, outputUri, currentPreviewPath, errorCode, errorMessage)
     }
   }
   fun toList(): List<Any?> {
@@ -847,6 +853,7 @@ data class JobStatusDto (
       fps,
       progress,
       outputUri,
+      currentPreviewPath,
       errorCode,
       errorMessage,
     )
@@ -859,7 +866,7 @@ data class JobStatusDto (
       return true
     }
     val other = other as JobStatusDto
-    return DanceApiPigeonUtils.deepEquals(this.jobId, other.jobId) && DanceApiPigeonUtils.deepEquals(this.state, other.state) && DanceApiPigeonUtils.deepEquals(this.currentFrame, other.currentFrame) && DanceApiPigeonUtils.deepEquals(this.totalFrames, other.totalFrames) && DanceApiPigeonUtils.deepEquals(this.fps, other.fps) && DanceApiPigeonUtils.deepEquals(this.progress, other.progress) && DanceApiPigeonUtils.deepEquals(this.outputUri, other.outputUri) && DanceApiPigeonUtils.deepEquals(this.errorCode, other.errorCode) && DanceApiPigeonUtils.deepEquals(this.errorMessage, other.errorMessage)
+    return DanceApiPigeonUtils.deepEquals(this.jobId, other.jobId) && DanceApiPigeonUtils.deepEquals(this.state, other.state) && DanceApiPigeonUtils.deepEquals(this.currentFrame, other.currentFrame) && DanceApiPigeonUtils.deepEquals(this.totalFrames, other.totalFrames) && DanceApiPigeonUtils.deepEquals(this.fps, other.fps) && DanceApiPigeonUtils.deepEquals(this.progress, other.progress) && DanceApiPigeonUtils.deepEquals(this.outputUri, other.outputUri) && DanceApiPigeonUtils.deepEquals(this.currentPreviewPath, other.currentPreviewPath) && DanceApiPigeonUtils.deepEquals(this.errorCode, other.errorCode) && DanceApiPigeonUtils.deepEquals(this.errorMessage, other.errorMessage)
   }
 
   override fun hashCode(): Int {
@@ -871,12 +878,13 @@ data class JobStatusDto (
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.fps)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.progress)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.outputUri)
+    result = 31 * result + DanceApiPigeonUtils.deepHash(this.currentPreviewPath)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.errorCode)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.errorMessage)
     return result
   }
   override fun toString(): String {
-    return "JobStatusDto(jobId=$jobId, state=$state, currentFrame=$currentFrame, totalFrames=$totalFrames, fps=$fps, progress=$progress, outputUri=$outputUri, errorCode=$errorCode, errorMessage=$errorMessage)"
+    return "JobStatusDto(jobId=$jobId, state=$state, currentFrame=$currentFrame, totalFrames=$totalFrames, fps=$fps, progress=$progress, outputUri=$outputUri, currentPreviewPath=$currentPreviewPath, errorCode=$errorCode, errorMessage=$errorMessage)"
   }
 }
 private open class DanceApiPigeonCodec : StandardMessageCodec() {

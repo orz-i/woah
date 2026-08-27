@@ -70,6 +70,7 @@ class NativeProcessingRepository {
     double targetFps = 30.0,
     int videoBitrate = 8000000,
     String processingProfile = 'quality',
+    bool enableLivePreview = false,
   }) {
     return _client.startExport(
       sourceUri: sourceUri,
@@ -83,8 +84,10 @@ class NativeProcessingRepository {
       targetFps: targetFps,
       videoBitrate: videoBitrate,
       processingProfile: processingProfile,
+      enableLivePreview: enableLivePreview,
     );
   }
+
 
 
   Future<void> cancelJob(String jobId) {

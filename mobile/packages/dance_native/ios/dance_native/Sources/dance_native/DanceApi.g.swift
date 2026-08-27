@@ -766,6 +766,7 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
   var targetFps: Double
   var videoBitrate: Int64
   var processingProfile: String
+  var enableLivePreview: Bool
 
 
   // swift-format-ignore: AlwaysUseLowerCamelCase
@@ -781,6 +782,7 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
     let targetFps = pigeonVar_list[8] as! Double
     let videoBitrate = pigeonVar_list[9] as! Int64
     let processingProfile = pigeonVar_list[10] as! String
+    let enableLivePreview = pigeonVar_list[11] as! Bool
 
     return ExportRequestDto(
       sourceUri: sourceUri,
@@ -793,7 +795,8 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
       targetHeight: targetHeight,
       targetFps: targetFps,
       videoBitrate: videoBitrate,
-      processingProfile: processingProfile
+      processingProfile: processingProfile,
+      enableLivePreview: enableLivePreview
     )
   }
   func toList() -> [Any?] {
@@ -809,13 +812,14 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
       targetFps,
       videoBitrate,
       processingProfile,
+      enableLivePreview,
     ]
   }
   static func == (lhs: ExportRequestDto, rhs: ExportRequestDto) -> Bool {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return DanceApiPigeonInternal.deepEquals(lhs.sourceUri, rhs.sourceUri) && DanceApiPigeonInternal.deepEquals(lhs.analysisCacheId, rhs.analysisCacheId) && DanceApiPigeonInternal.deepEquals(lhs.outputFilePath, rhs.outputFilePath) && DanceApiPigeonInternal.deepEquals(lhs.selectedPersonIds, rhs.selectedPersonIds) && DanceApiPigeonInternal.deepEquals(lhs.effects, rhs.effects) && DanceApiPigeonInternal.deepEquals(lhs.follow, rhs.follow) && DanceApiPigeonInternal.deepEquals(lhs.targetWidth, rhs.targetWidth) && DanceApiPigeonInternal.deepEquals(lhs.targetHeight, rhs.targetHeight) && DanceApiPigeonInternal.deepEquals(lhs.targetFps, rhs.targetFps) && DanceApiPigeonInternal.deepEquals(lhs.videoBitrate, rhs.videoBitrate) && DanceApiPigeonInternal.deepEquals(lhs.processingProfile, rhs.processingProfile)
+    return DanceApiPigeonInternal.deepEquals(lhs.sourceUri, rhs.sourceUri) && DanceApiPigeonInternal.deepEquals(lhs.analysisCacheId, rhs.analysisCacheId) && DanceApiPigeonInternal.deepEquals(lhs.outputFilePath, rhs.outputFilePath) && DanceApiPigeonInternal.deepEquals(lhs.selectedPersonIds, rhs.selectedPersonIds) && DanceApiPigeonInternal.deepEquals(lhs.effects, rhs.effects) && DanceApiPigeonInternal.deepEquals(lhs.follow, rhs.follow) && DanceApiPigeonInternal.deepEquals(lhs.targetWidth, rhs.targetWidth) && DanceApiPigeonInternal.deepEquals(lhs.targetHeight, rhs.targetHeight) && DanceApiPigeonInternal.deepEquals(lhs.targetFps, rhs.targetFps) && DanceApiPigeonInternal.deepEquals(lhs.videoBitrate, rhs.videoBitrate) && DanceApiPigeonInternal.deepEquals(lhs.processingProfile, rhs.processingProfile) && DanceApiPigeonInternal.deepEquals(lhs.enableLivePreview, rhs.enableLivePreview)
   }
 
   func hash(into hasher: inout Hasher) {
@@ -831,10 +835,11 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
     DanceApiPigeonInternal.deepHash(value: targetFps, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: videoBitrate, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: processingProfile, hasher: &hasher)
+    DanceApiPigeonInternal.deepHash(value: enableLivePreview, hasher: &hasher)
   }
 
   public var description: String {
-    return "ExportRequestDto(sourceUri: \(String(describing: sourceUri)), analysisCacheId: \(String(describing: analysisCacheId)), outputFilePath: \(String(describing: outputFilePath)), selectedPersonIds: \(String(describing: selectedPersonIds)), effects: \(String(describing: effects)), follow: \(String(describing: follow)), targetWidth: \(String(describing: targetWidth)), targetHeight: \(String(describing: targetHeight)), targetFps: \(String(describing: targetFps)), videoBitrate: \(String(describing: videoBitrate)), processingProfile: \(String(describing: processingProfile)))"
+    return "ExportRequestDto(sourceUri: \(String(describing: sourceUri)), analysisCacheId: \(String(describing: analysisCacheId)), outputFilePath: \(String(describing: outputFilePath)), selectedPersonIds: \(String(describing: selectedPersonIds)), effects: \(String(describing: effects)), follow: \(String(describing: follow)), targetWidth: \(String(describing: targetWidth)), targetHeight: \(String(describing: targetHeight)), targetFps: \(String(describing: targetFps)), videoBitrate: \(String(describing: videoBitrate)), processingProfile: \(String(describing: processingProfile)), enableLivePreview: \(String(describing: enableLivePreview)))"
   }
 }
 
@@ -847,6 +852,7 @@ struct JobStatusDto: Hashable, CustomStringConvertible {
   var fps: Double
   var progress: Double
   var outputUri: String? = nil
+  var currentPreviewPath: String? = nil
   var errorCode: String? = nil
   var errorMessage: String? = nil
 
@@ -860,8 +866,9 @@ struct JobStatusDto: Hashable, CustomStringConvertible {
     let fps = pigeonVar_list[4] as! Double
     let progress = pigeonVar_list[5] as! Double
     let outputUri: String? = nilOrValue(pigeonVar_list[6])
-    let errorCode: String? = nilOrValue(pigeonVar_list[7])
-    let errorMessage: String? = nilOrValue(pigeonVar_list[8])
+    let currentPreviewPath: String? = nilOrValue(pigeonVar_list[7])
+    let errorCode: String? = nilOrValue(pigeonVar_list[8])
+    let errorMessage: String? = nilOrValue(pigeonVar_list[9])
 
     return JobStatusDto(
       jobId: jobId,
@@ -871,6 +878,7 @@ struct JobStatusDto: Hashable, CustomStringConvertible {
       fps: fps,
       progress: progress,
       outputUri: outputUri,
+      currentPreviewPath: currentPreviewPath,
       errorCode: errorCode,
       errorMessage: errorMessage
     )
@@ -884,6 +892,7 @@ struct JobStatusDto: Hashable, CustomStringConvertible {
       fps,
       progress,
       outputUri,
+      currentPreviewPath,
       errorCode,
       errorMessage,
     ]
@@ -892,7 +901,7 @@ struct JobStatusDto: Hashable, CustomStringConvertible {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return DanceApiPigeonInternal.deepEquals(lhs.jobId, rhs.jobId) && DanceApiPigeonInternal.deepEquals(lhs.state, rhs.state) && DanceApiPigeonInternal.deepEquals(lhs.currentFrame, rhs.currentFrame) && DanceApiPigeonInternal.deepEquals(lhs.totalFrames, rhs.totalFrames) && DanceApiPigeonInternal.deepEquals(lhs.fps, rhs.fps) && DanceApiPigeonInternal.deepEquals(lhs.progress, rhs.progress) && DanceApiPigeonInternal.deepEquals(lhs.outputUri, rhs.outputUri) && DanceApiPigeonInternal.deepEquals(lhs.errorCode, rhs.errorCode) && DanceApiPigeonInternal.deepEquals(lhs.errorMessage, rhs.errorMessage)
+    return DanceApiPigeonInternal.deepEquals(lhs.jobId, rhs.jobId) && DanceApiPigeonInternal.deepEquals(lhs.state, rhs.state) && DanceApiPigeonInternal.deepEquals(lhs.currentFrame, rhs.currentFrame) && DanceApiPigeonInternal.deepEquals(lhs.totalFrames, rhs.totalFrames) && DanceApiPigeonInternal.deepEquals(lhs.fps, rhs.fps) && DanceApiPigeonInternal.deepEquals(lhs.progress, rhs.progress) && DanceApiPigeonInternal.deepEquals(lhs.outputUri, rhs.outputUri) && DanceApiPigeonInternal.deepEquals(lhs.currentPreviewPath, rhs.currentPreviewPath) && DanceApiPigeonInternal.deepEquals(lhs.errorCode, rhs.errorCode) && DanceApiPigeonInternal.deepEquals(lhs.errorMessage, rhs.errorMessage)
   }
 
   func hash(into hasher: inout Hasher) {
@@ -904,12 +913,13 @@ struct JobStatusDto: Hashable, CustomStringConvertible {
     DanceApiPigeonInternal.deepHash(value: fps, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: progress, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: outputUri, hasher: &hasher)
+    DanceApiPigeonInternal.deepHash(value: currentPreviewPath, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: errorCode, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: errorMessage, hasher: &hasher)
   }
 
   public var description: String {
-    return "JobStatusDto(jobId: \(String(describing: jobId)), state: \(String(describing: state)), currentFrame: \(String(describing: currentFrame)), totalFrames: \(String(describing: totalFrames)), fps: \(String(describing: fps)), progress: \(String(describing: progress)), outputUri: \(String(describing: outputUri)), errorCode: \(String(describing: errorCode)), errorMessage: \(String(describing: errorMessage)))"
+    return "JobStatusDto(jobId: \(String(describing: jobId)), state: \(String(describing: state)), currentFrame: \(String(describing: currentFrame)), totalFrames: \(String(describing: totalFrames)), fps: \(String(describing: fps)), progress: \(String(describing: progress)), outputUri: \(String(describing: outputUri)), currentPreviewPath: \(String(describing: currentPreviewPath)), errorCode: \(String(describing: errorCode)), errorMessage: \(String(describing: errorMessage)))"
   }
 }
 

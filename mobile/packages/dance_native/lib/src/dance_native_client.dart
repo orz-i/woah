@@ -75,8 +75,8 @@ class DanceNativeClient implements DanceProcessingEvents {
     double targetFps = 30.0,
     int videoBitrate = 8000000,
     String processingProfile = 'quality',
+    bool enableLivePreview = false,
   }) {
-
     return _api.startExport(ExportRequestDto(
       sourceUri: sourceUri,
       analysisCacheId: analysisCacheId,
@@ -89,8 +89,10 @@ class DanceNativeClient implements DanceProcessingEvents {
       targetFps: targetFps,
       videoBitrate: videoBitrate,
       processingProfile: processingProfile,
+      enableLivePreview: enableLivePreview,
     ));
   }
+
 
   /// Cancel an ongoing export job
   Future<void> cancelJob(String jobId) {

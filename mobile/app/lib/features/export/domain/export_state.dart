@@ -26,6 +26,8 @@ class ExportState {
   final int totalFrames;
   final double fps;
   final String? outputUri;
+  final String? currentPreviewPath;
+  final bool showLivePreview;
   final String? errorMessage;
 
   const ExportState({
@@ -37,6 +39,8 @@ class ExportState {
     this.totalFrames = 0,
     this.fps = 0.0,
     this.outputUri,
+    this.currentPreviewPath,
+    this.showLivePreview = false,
     this.errorMessage,
   });
 
@@ -58,6 +62,8 @@ class ExportState {
     int? totalFrames,
     double? fps,
     String? outputUri,
+    String? currentPreviewPath,
+    bool? showLivePreview,
     String? errorMessage,
   }) {
     return ExportState(
@@ -69,7 +75,10 @@ class ExportState {
       totalFrames: totalFrames ?? this.totalFrames,
       fps: fps ?? this.fps,
       outputUri: outputUri ?? this.outputUri,
+      currentPreviewPath: currentPreviewPath ?? this.currentPreviewPath,
+      showLivePreview: showLivePreview ?? this.showLivePreview,
       errorMessage: errorMessage ?? this.errorMessage,
     );
   }
 }
+

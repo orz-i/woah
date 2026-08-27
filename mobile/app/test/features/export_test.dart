@@ -34,5 +34,20 @@ void main() {
       expect(state2.isProcessing, isFalse);
       expect(state2.isCompleted, isTrue);
     });
+
+    test('ExportState defaults showLivePreview to false and updates with preview path', () {
+      const defaultState = ExportState();
+      expect(defaultState.showLivePreview, isFalse);
+      expect(defaultState.currentPreviewPath, isNull);
+
+      final updatedState = defaultState.copyWith(
+        showLivePreview: true,
+        currentPreviewPath: '/cache/export_live_preview/preview_job_1.jpg',
+      );
+
+      expect(updatedState.showLivePreview, isTrue);
+      expect(updatedState.currentPreviewPath, equals('/cache/export_live_preview/preview_job_1.jpg'));
+    });
   });
 }
+
