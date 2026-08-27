@@ -283,19 +283,64 @@ class ExportPipeline(
 
 
 
+                        // 1. Prepare video texture for current frame
+                        var renderTexId = oesTextureId
+                        var renderTexType = com.danceanon.native.render.SourceTextureType.OES
+                        var renderTexMatrix: FloatArray? = finalTexMatrix
+
+                        if (use2DFallbackMode) {
+                            val retriever = fallbackRetriever
+                            var fallbackBmp: android.graphics.Bitmap? = null
+                            if (retriever != null) {
+                                try {
+                                    fallbackBmp = retriever.getFrameAtTime(ptsUs, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                                        ?: retriever.getFrameAtTime(ptsUs, android.media.MediaMetadataRetriever.OPTION_CLOSEST)
+                                } catch (_: Throwable) {}
+                            }
+
+                            if (fallbackBmp != null) {
+                                val softwareBmp = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && fallbackBmp.config == android.graphics.Bitmap.Config.HARDWARE) {
+                                    fallbackBmp.copy(android.graphics.Bitmap.Config.ARGB_8888, false).also {
+                                        if (fallbackBmp != it) fallbackBmp.recycle()
+                                    }
+                                } else {
+                                    fallbackBmp
+                                }
+
+                                val rot = videoInfo.rotation.toInt()
+                                val rotatedBmp = if (rot != 0) {
+                                    val mat = android.graphics.Matrix().apply { postRotate(rot.toFloat()) }
+                                    val rb = android.graphics.Bitmap.createBitmap(softwareBmp, 0, 0, softwareBmp.width, softwareBmp.height, mat, true)
+                                    if (softwareBmp != rb) softwareBmp.recycle()
+                                    rb
+                                } else {
+                                    softwareBmp
+                                }
+
+                                android.opengl.GLES20.glActiveTexture(android.opengl.GLES20.GL_TEXTURE0)
+                                android.opengl.GLES20.glBindTexture(android.opengl.GLES20.GL_TEXTURE_2D, fallbackTexture2DId)
+                                android.opengl.GLUtils.texImage2D(android.opengl.GLES20.GL_TEXTURE_2D, 0, rotatedBmp, 0)
+                                rotatedBmp.recycle()
+
+                                renderTexId = fallbackTexture2DId
+                                renderTexType = com.danceanon.native.render.SourceTextureType.TEXTURE_2D
+                                renderTexMatrix = null
+                            }
+                        }
+
                         // 2. Perform Inference / Temporal Mask Tracking
                         val trackedList: List<com.danceanon.native.tracking.TrackedPerson> = if (isSam2Mode && sam2Fbo != null && sam2Renderer != null && sam2Tracker != null) {
                             if (processedFrames == 1) {
                                 // Frame 1: YOLO anchor detection to register prompt boxes
                                 val initialPersons = profiler.recordStage("yoloAnchor") {
-                                    inferenceRenderer.renderToFbo(oesTextureId, finalTexMatrix, mapper, inferenceFbo)
+                                    inferenceRenderer.renderToFbo(renderTexId, finalTexMatrix, mapper, inferenceFbo, renderTexType)
                                     val yoloRgbaBuffer = inferenceFbo.readRgbaPixels()
                                     val seg = segmenter.segmentGlReadbackRgbaSync(yoloRgbaBuffer, mapper, ptsUs, colOrder = RgbaColOrder.LEFT_TO_RIGHT)
                                     seg.persons.sortedBy { it.bbox.centerX }
                                 }
 
                                 val sam2RgbaBuffer = profiler.recordStage("sam2Readback") {
-                                    sam2Renderer.renderToFbo(oesTextureId, finalTexMatrix, sam2Fbo)
+                                    sam2Renderer.renderToFbo(renderTexId, finalTexMatrix, sam2Fbo, renderTexType)
                                     sam2Fbo.readRgbaPixels()
                                 }
 
@@ -325,7 +370,7 @@ class ExportPipeline(
                             } else {
                                 // Frame 2+: SAM2 persistent temporal propagation with direct FBO RGBA and Stride Caching
                                 val sam2RgbaBuffer = profiler.recordStage("sam2Readback") {
-                                    sam2Renderer.renderToFbo(oesTextureId, finalTexMatrix, sam2Fbo)
+                                    sam2Renderer.renderToFbo(renderTexId, finalTexMatrix, sam2Fbo, renderTexType)
                                     sam2Fbo.readRgbaPixels()
                                 }
 
@@ -368,7 +413,7 @@ class ExportPipeline(
                             val shouldInfer = (processedFrames == 1) || (processedFrames % frameStride == 0)
                             val detections = if (shouldInfer) {
                                 profiler.recordStage("gpuLetterbox") {
-                                    inferenceRenderer.renderToFbo(oesTextureId, finalTexMatrix, mapper, inferenceFbo)
+                                    inferenceRenderer.renderToFbo(renderTexId, finalTexMatrix, mapper, inferenceFbo, renderTexType)
                                 }
                                 val debugSize = inferenceFbo.size
                                 val rgbaBuffer = profiler.recordStage("readback640") {
@@ -454,10 +499,6 @@ class ExportPipeline(
 
 
                         // 4. Render final anonymized frame to EGL surface (encoder input)
-                        var renderTexId = oesTextureId
-                        var renderTexType = com.danceanon.native.render.SourceTextureType.OES
-                        var renderTexMatrix: FloatArray? = finalTexMatrix
-
                         // Self-healing black screen check on frame 1
                         if (processedFrames == 1 && !use2DFallbackMode) {
                             profiler.recordStage("renderEffects") {
@@ -487,46 +528,35 @@ class ExportPipeline(
                                         setDataSource(sourceUri.removePrefix("file://"))
                                     }
                                 }
-                            }
-                        }
 
-                        if (use2DFallbackMode) {
-                            val retriever = fallbackRetriever
-                            var fallbackBmp: android.graphics.Bitmap? = null
-                            if (retriever != null) {
-                                try {
-                                    fallbackBmp = retriever.getFrameAtTime(ptsUs, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-                                        ?: retriever.getFrameAtTime(ptsUs, android.media.MediaMetadataRetriever.OPTION_CLOSEST)
-                                } catch (_: Throwable) {}
-                            }
-
-                            if (fallbackBmp != null) {
-                                val softwareBmp = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && fallbackBmp.config == android.graphics.Bitmap.Config.HARDWARE) {
-                                    fallbackBmp.copy(android.graphics.Bitmap.Config.ARGB_8888, false).also {
-                                        if (fallbackBmp != it) fallbackBmp.recycle()
+                                // Re-render frame 1 with 2D fallback immediately so first frame is not black
+                                val firstRetriever = fallbackRetriever
+                                var fallbackBmp: android.graphics.Bitmap? = null
+                                if (firstRetriever != null) {
+                                    try {
+                                        fallbackBmp = firstRetriever.getFrameAtTime(ptsUs, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                                            ?: firstRetriever.getFrameAtTime(ptsUs, android.media.MediaMetadataRetriever.OPTION_CLOSEST)
+                                    } catch (_: Throwable) {}
+                                }
+                                if (fallbackBmp != null) {
+                                    val rot = videoInfo.rotation.toInt()
+                                    val rotatedBmp = if (rot != 0) {
+                                        val mat = android.graphics.Matrix().apply { postRotate(rot.toFloat()) }
+                                        val rb = android.graphics.Bitmap.createBitmap(fallbackBmp, 0, 0, fallbackBmp.width, fallbackBmp.height, mat, true)
+                                        if (fallbackBmp != rb) fallbackBmp.recycle()
+                                        rb
+                                    } else {
+                                        fallbackBmp
                                     }
-                                } else {
-                                    fallbackBmp
+                                    android.opengl.GLES20.glActiveTexture(android.opengl.GLES20.GL_TEXTURE0)
+                                    android.opengl.GLES20.glBindTexture(android.opengl.GLES20.GL_TEXTURE_2D, fallbackTexture2DId)
+                                    android.opengl.GLUtils.texImage2D(android.opengl.GLES20.GL_TEXTURE_2D, 0, rotatedBmp, 0)
+                                    rotatedBmp.recycle()
+
+                                    renderTexId = fallbackTexture2DId
+                                    renderTexType = com.danceanon.native.render.SourceTextureType.TEXTURE_2D
+                                    renderTexMatrix = null
                                 }
-
-                                val rot = videoInfo.rotation.toInt()
-                                val rotatedBmp = if (rot != 0) {
-                                    val mat = android.graphics.Matrix().apply { postRotate(rot.toFloat()) }
-                                    val rb = android.graphics.Bitmap.createBitmap(softwareBmp, 0, 0, softwareBmp.width, softwareBmp.height, mat, true)
-                                    if (softwareBmp != rb) softwareBmp.recycle()
-                                    rb
-                                } else {
-                                    softwareBmp
-                                }
-
-                                android.opengl.GLES20.glActiveTexture(android.opengl.GLES20.GL_TEXTURE0)
-                                android.opengl.GLES20.glBindTexture(android.opengl.GLES20.GL_TEXTURE_2D, fallbackTexture2DId)
-                                android.opengl.GLUtils.texImage2D(android.opengl.GLES20.GL_TEXTURE_2D, 0, rotatedBmp, 0)
-                                rotatedBmp.recycle()
-
-                                renderTexId = fallbackTexture2DId
-                                renderTexType = com.danceanon.native.render.SourceTextureType.TEXTURE_2D
-                                renderTexMatrix = null
                             }
                         }
 
@@ -542,6 +572,7 @@ class ExportPipeline(
                                 textureType = renderTexType
                             )
                         }
+
 
                         // Optional live preview capture when enabled
                         val now = System.currentTimeMillis()

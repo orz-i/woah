@@ -128,9 +128,14 @@ class EglCore : AutoCloseable {
         EGLExt.eglPresentationTimeANDROID(eglDisplay, eglSurface, nsecs)
     }
 
-    fun releaseSurface(eglSurface: EGLSurface) {
-        EGL14.eglDestroySurface(eglDisplay, eglSurface)
+    fun releaseSurface(eglSurface: EGLSurface?) {
+        if (eglSurface != null && eglSurface != EGL14.EGL_NO_SURFACE && eglDisplay != EGL14.EGL_NO_DISPLAY) {
+            try {
+                EGL14.eglDestroySurface(eglDisplay, eglSurface)
+            } catch (_: Throwable) {}
+        }
     }
+
 
     override fun close() {
         if (eglDisplay != EGL14.EGL_NO_DISPLAY) {

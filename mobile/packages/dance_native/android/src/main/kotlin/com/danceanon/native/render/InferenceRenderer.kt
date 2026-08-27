@@ -37,7 +37,7 @@ void main() {
 }
 """
 
-        private const val FRAGMENT_SHADER = """
+        private const val FRAGMENT_SHADER_OES = """
 #extension GL_OES_EGL_image_external : require
 #extension GL_OES_EGL_image_external_essl3 : enable
 #ifdef GL_FRAGMENT_PRECISION_HIGH
@@ -53,26 +53,36 @@ void main() {
 }
 """
 
+        private const val FRAGMENT_SHADER_2D = """
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+varying vec2 vTexCoord;
+uniform sampler2D uBaseTexture;
 
+void main() {
+    gl_FragColor = texture2D(uBaseTexture, vTexCoord);
+}
+"""
     }
 
+    private class ProgramRefs(
+        val programId: Int,
+        val aPositionLoc: Int,
+        val aTexCoordLoc: Int,
+        val uTexMatrixLoc: Int,
+        val uLetterboxRectLoc: Int,
+        val uBaseTextureLoc: Int
+    )
+
+    private var oesProgram: ProgramRefs? = null
+    private var tex2dProgram: ProgramRefs? = null
+
     init {
-        val vShader = compileShader(GLES20.GL_VERTEX_SHADER, VERTEX_SHADER)
-        val fShader = compileShader(GLES20.GL_FRAGMENT_SHADER, FRAGMENT_SHADER)
-
-        programId = GLES20.glCreateProgram()
-        GLES20.glAttachShader(programId, vShader)
-        GLES20.glAttachShader(programId, fShader)
-        GLES20.glLinkProgram(programId)
-
-        aPositionLoc = GLES20.glGetAttribLocation(programId, "aPosition")
-        aTexCoordLoc = GLES20.glGetAttribLocation(programId, "aTexCoord")
-        uTexMatrixLoc = GLES20.glGetUniformLocation(programId, "uTexMatrix")
-        uLetterboxRectLoc = GLES20.glGetUniformLocation(programId, "uLetterboxRect")
-        uBaseTextureLoc = GLES20.glGetUniformLocation(programId, "uBaseTexture")
-
-        GLES20.glDeleteShader(vShader)
-        GLES20.glDeleteShader(fShader)
+        oesProgram = createProgram(FRAGMENT_SHADER_OES)
+        tex2dProgram = createProgram(FRAGMENT_SHADER_2D)
 
         // Align Y in quad vertices so video TOP is drawn at the lower Y of FBO (Row 0).
         // Under SurfaceTexture stMatrix: v=0 is video TOP, v=1 is video BOTTOM.
@@ -93,11 +103,35 @@ void main() {
             }
     }
 
+    private fun createProgram(fragShaderSrc: String): ProgramRefs {
+        val vShader = compileShader(GLES20.GL_VERTEX_SHADER, VERTEX_SHADER)
+        val fShader = compileShader(GLES20.GL_FRAGMENT_SHADER, fragShaderSrc)
+
+        val progId = GLES20.glCreateProgram()
+        GLES20.glAttachShader(progId, vShader)
+        GLES20.glAttachShader(progId, fShader)
+        GLES20.glLinkProgram(progId)
+
+        val refs = ProgramRefs(
+            programId = progId,
+            aPositionLoc = GLES20.glGetAttribLocation(progId, "aPosition"),
+            aTexCoordLoc = GLES20.glGetAttribLocation(progId, "aTexCoord"),
+            uTexMatrixLoc = GLES20.glGetUniformLocation(progId, "uTexMatrix"),
+            uLetterboxRectLoc = GLES20.glGetUniformLocation(progId, "uLetterboxRect"),
+            uBaseTextureLoc = GLES20.glGetUniformLocation(progId, "uBaseTexture")
+        )
+
+        GLES20.glDeleteShader(vShader)
+        GLES20.glDeleteShader(fShader)
+        return refs
+    }
+
     fun renderToFbo(
-        oesTextureId: Int,
+        textureId: Int,
         texMatrix: FloatArray,
         mapper: ModelCoordinateMapper,
-        fbo: InferenceFbo
+        fbo: InferenceFbo,
+        textureType: SourceTextureType = SourceTextureType.OES
     ) {
         fbo.bind()
 
@@ -105,46 +139,52 @@ void main() {
         GLES20.glClearColor(0.44705883f, 0.44705883f, 0.44705883f, 1.0f)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
 
-        GLES20.glUseProgram(programId)
+        val prog = if (textureType == SourceTextureType.OES) oesProgram else tex2dProgram
+        if (prog == null) {
+            fbo.unbind()
+            return
+        }
+
+        GLES20.glUseProgram(prog.programId)
 
         // Convert mapper padLeft / scaledW into NDC range [-1, 1]
         val ndcLeft = (mapper.padLeft / mapper.modelInputSize) * 2.0f - 1.0f
         val ndcRight = ((mapper.padLeft + mapper.scaledW) / mapper.modelInputSize) * 2.0f - 1.0f
-        // glReadPixels reads bottom-up from FBO window coordinates y=0.
-        // Video TOP is placed at lower FBO rows (padTop), and video BOTTOM at higher FBO rows (padTop + scaledH).
         val ndcSubRectBottom = (mapper.padTop / mapper.modelInputSize) * 2.0f - 1.0f
         val ndcSubRectTop = ((mapper.padTop + mapper.scaledH) / mapper.modelInputSize) * 2.0f - 1.0f
 
-        if (uTexMatrixLoc >= 0) {
-            GLES20.glUniformMatrix4fv(uTexMatrixLoc, 1, false, texMatrix, 0)
+        if (prog.uTexMatrixLoc >= 0) {
+            GLES20.glUniformMatrix4fv(prog.uTexMatrixLoc, 1, false, texMatrix, 0)
         }
-        if (uLetterboxRectLoc >= 0) {
-            GLES20.glUniform4f(uLetterboxRectLoc, ndcLeft, ndcSubRectBottom, ndcRight, ndcSubRectTop)
+        if (prog.uLetterboxRectLoc >= 0) {
+            GLES20.glUniform4f(prog.uLetterboxRectLoc, ndcLeft, ndcSubRectBottom, ndcRight, ndcSubRectTop)
         }
 
+        val target = if (textureType == SourceTextureType.OES) GLES11Ext.GL_TEXTURE_EXTERNAL_OES else GLES20.GL_TEXTURE_2D
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
-        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, oesTextureId)
-        if (uBaseTextureLoc >= 0) {
-            GLES20.glUniform1i(uBaseTextureLoc, 0)
+        GLES20.glBindTexture(target, textureId)
+        if (prog.uBaseTextureLoc >= 0) {
+            GLES20.glUniform1i(prog.uBaseTextureLoc, 0)
         }
 
-        if (aPositionLoc >= 0 && aTexCoordLoc >= 0) {
+        if (prog.aPositionLoc >= 0 && prog.aTexCoordLoc >= 0) {
             vertexBuffer?.position(0)
-            GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, 4 * 4, vertexBuffer)
-            GLES20.glEnableVertexAttribArray(aPositionLoc)
+            GLES20.glVertexAttribPointer(prog.aPositionLoc, 2, GLES20.GL_FLOAT, false, 4 * 4, vertexBuffer)
+            GLES20.glEnableVertexAttribArray(prog.aPositionLoc)
 
             vertexBuffer?.position(2)
-            GLES20.glVertexAttribPointer(aTexCoordLoc, 2, GLES20.GL_FLOAT, false, 4 * 4, vertexBuffer)
-            GLES20.glEnableVertexAttribArray(aTexCoordLoc)
+            GLES20.glVertexAttribPointer(prog.aTexCoordLoc, 2, GLES20.GL_FLOAT, false, 4 * 4, vertexBuffer)
+            GLES20.glEnableVertexAttribArray(prog.aTexCoordLoc)
 
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
 
-            GLES20.glDisableVertexAttribArray(aPositionLoc)
-            GLES20.glDisableVertexAttribArray(aTexCoordLoc)
+            GLES20.glDisableVertexAttribArray(prog.aPositionLoc)
+            GLES20.glDisableVertexAttribArray(prog.aTexCoordLoc)
         }
 
         fbo.unbind()
     }
+
 
     private fun compileShader(type: Int, source: String): Int {
         val shader = GLES20.glCreateShader(type)
@@ -161,9 +201,15 @@ void main() {
     }
 
     override fun close() {
-        if (programId != 0) {
-            GLES20.glDeleteProgram(programId)
-            programId = 0
+        oesProgram?.let {
+            if (it.programId != 0) GLES20.glDeleteProgram(it.programId)
         }
+        oesProgram = null
+
+        tex2dProgram?.let {
+            if (it.programId != 0) GLES20.glDeleteProgram(it.programId)
+        }
+        tex2dProgram = null
     }
 }
+
