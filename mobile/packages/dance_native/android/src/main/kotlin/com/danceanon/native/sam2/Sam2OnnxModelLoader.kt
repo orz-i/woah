@@ -81,24 +81,27 @@ object Sam2OnnxModelLoader {
         }
 
         try {
-            val qnnMethod = options.javaClass.methods.firstOrNull { it.name == "addQnn" }
-            if (qnnMethod != null) {
-                val qnnOptions = mapOf(
-                    "backend_type" to "HTP",
-                    "htp_performance_mode" to "burst",
-                    "enable_htp_fp16_precision" to "1"
-                )
-                qnnMethod.invoke(options, qnnOptions)
-                println("[Loader Telemetry] ✅ Qualcomm QNN Execution Provider (HTP NPU) registered")
+            val available = OrtEnvironment.getAvailableProviders()
+            println("[Loader Telemetry] 🔍 ORT Runtime Providers available in classpath: ${available.joinToString { it.name }}")
+
+            val hasNnapi = available.any { it.name.contains("NNAPI", ignoreCase = true) }
+            if (hasNnapi) {
+                try {
+                    options.addNnapi()
+                    println("[Loader Telemetry] ✅ NNAPI Execution Provider registered for hardware acceleration")
+                } catch (nnapiErr: Throwable) {
+                    println("[Loader Telemetry] ⚠️ NNAPI registration fallback to CPU: ${nnapiErr.message}")
+                }
             } else {
-                println("[Loader Telemetry] ℹ️ Standard ONNX Runtime detected (CPUExecutionProvider). QNN / NPU runtime not present in classpath; operating on CPU with $numThreads threads.")
+                println("[Loader Telemetry] ℹ️ Standard CPU execution configured (CPUExecutionProvider, threads=$numThreads). Note: QNN/HTP requires a dedicated custom QNN-enabled ORT build.")
             }
         } catch (t: Throwable) {
-            println("[Loader Telemetry] QNN EP probe fallback to CPU: ${t.message}")
+            println("[Loader Telemetry] Provider discovery fallback to CPU: ${t.message}")
         }
 
         return options
     }
+
 
 
     fun loadFromAssets(context: Context, assetPrefix: String = "models/sam2_onnx"): Sam2OnnxSessionBundle {

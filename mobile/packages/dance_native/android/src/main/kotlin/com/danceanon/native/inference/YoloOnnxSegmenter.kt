@@ -25,6 +25,7 @@ class YoloOnnxSegmenter(
 
         try {
             ortEnv = OrtEnvironment.getEnvironment()
+            val available = OrtEnvironment.getAvailableProviders()
             val sessionOptions = OrtSession.SessionOptions().apply {
                 setIntraOpNumThreads(numThreads)
                 setOptimizationLevel(OrtSession.SessionOptions.OptLevel.BASIC_OPT)
@@ -32,9 +33,13 @@ class YoloOnnxSegmenter(
 
             if (modelFile != null && modelFile.exists() && modelFile.length() > 0L) {
                 ortSession = ortEnv!!.createSession(modelFile.absolutePath, sessionOptions)
-                android.util.Log.i("YoloOnnxSegmenter", "[Telemetry] YOLO Session initialized: Runtime=ONNX Runtime (CPUExecutionProvider), Threads=$numThreads, Model=${modelFile.absolutePath} (${modelFile.length() / 1024 / 1024} MB)")
+                android.util.Log.i(
+                    "YoloOnnxSegmenter",
+                    "[Telemetry] YOLO Session initialized: Runtime=ONNX Runtime (CPUExecutionProvider), AvailableEPs=${available.joinToString { it.name }}, Threads=$numThreads, Model=${modelFile.absolutePath} (${modelFile.length() / 1024 / 1024} MB)"
+                )
                 return@withContext
             }
+
 
 
             // Extract asset model to internal files directory to enable mmap (0-copy, avoids OOM and asset decompression limits)
@@ -80,7 +85,11 @@ class YoloOnnxSegmenter(
             }
 
             ortSession = ortEnv!!.createSession(extractedModelFile.absolutePath, sessionOptions)
-            android.util.Log.i("YoloOnnxSegmenter", "[Telemetry] YOLO Session created via mmap: Runtime=ONNX Runtime (CPUExecutionProvider), Threads=$numThreads, Size=${extractedModelFile.length() / 1024 / 1024} MB")
+            android.util.Log.i(
+                "YoloOnnxSegmenter",
+                "[Telemetry] YOLO Session created via mmap: Runtime=ONNX Runtime (CPUExecutionProvider), AvailableEPs=${available.joinToString { it.name }}, Threads=$numThreads, Size=${extractedModelFile.length() / 1024 / 1024} MB"
+            )
+
 
         } catch (e: DanceNativeException) {
             throw e
