@@ -66,18 +66,19 @@ def run_litert_40frame_video():
     num_frames = meta['frame_count']
     first_bbox = meta['first_bbox']
 
-    print(f'[LiteRT SAM2 Video] Initializing LiteRT interpreters (40 frames, {w}x{h})...')
-    interp_img = litert_interp.Interpreter(model_path=os.path.join(models_dir, 'sam2_image_features.tflite'))
+    print(f'[LiteRT SAM2 Video] Initializing LiteRT interpreters (40 frames, {w}x{h})...', flush=True)
+    threads = max(1, os.cpu_count() or 4)
+    interp_img = litert_interp.Interpreter(model_path=os.path.join(models_dir, 'sam2_image_features.tflite'), num_threads=threads)
     interp_img.allocate_tensors()
     img_in_details = interp_img.get_input_details()
     img_out_details = interp_img.get_output_details()
 
-    interp_init = litert_interp.Interpreter(model_path=os.path.join(models_dir, 'sam2_init_step.tflite'))
+    interp_init = litert_interp.Interpreter(model_path=os.path.join(models_dir, 'sam2_init_step.tflite'), num_threads=threads)
     interp_init.allocate_tensors()
     init_in_details = interp_init.get_input_details()
     init_out_details = interp_init.get_output_details()
 
-    interp_temp = litert_interp.Interpreter(model_path=os.path.join(models_dir, 'sam2_temporal_step.tflite'))
+    interp_temp = litert_interp.Interpreter(model_path=os.path.join(models_dir, 'sam2_temporal_step.tflite'), num_threads=threads)
     interp_temp.allocate_tensors()
     temp_in_details = interp_temp.get_input_details()
     temp_out_details = interp_temp.get_output_details()
@@ -242,7 +243,7 @@ def run_litert_40frame_video():
         })
 
         if f_idx % 10 == 0 or f_idx == num_frames - 1:
-            print(f'  [Frame {f_idx:02d}] Mask IoU: {iou:.4f} | CenterErr: {center_err:.2f}px | MemCount: {curr_mem_count} | PtrCount: {curr_ptr_count} | Total: {img_times[-1] + step_times[-1]:.1f}ms')
+            print(f'  [Frame {f_idx:02d}] Mask IoU: {iou:.4f} | CenterErr: {center_err:.2f}px | MemCount: {curr_mem_count} | PtrCount: {curr_ptr_count} | Total: {img_times[-1] + step_times[-1]:.1f}ms', flush=True)
 
     mean_iou = float(np.mean(ious))
     min_iou = float(np.min(ious))

@@ -17,34 +17,38 @@ class Sam2OnnxStateManager:
         self.stride = memory_temporal_stride_for_eval
         self.max_cond_frames_in_attn = max_cond_frames_in_attn
         
-        self.cond_frame_outputs = {}      # frame_idx -> {'memory_features': np.ndarray, 'memory_pos_enc': np.ndarray, 'obj_ptr': np.ndarray}
-        self.non_cond_frame_outputs = {}  # frame_idx -> {'memory_features': np.ndarray, 'memory_pos_enc': np.ndarray, 'obj_ptr': np.ndarray}
+        self.cond_frame_outputs = {}      # frame_idx -> {'memory_features': np.ndarray, 'memory_pos_enc': np.ndarray}
+        self.cond_obj_ptrs = {}           # frame_idx -> obj_ptr
+        self.non_cond_frame_outputs = {}  # frame_idx -> {'memory_features': np.ndarray, 'memory_pos_enc': np.ndarray}
+        self.non_cond_obj_ptrs = {}       # frame_idx -> obj_ptr
         
     def add_conditioning_frame(self, frame_idx: int, memory_features: np.ndarray, memory_pos_enc: np.ndarray, obj_ptr: np.ndarray):
         self.cond_frame_outputs[frame_idx] = {
             'memory_features': memory_features,
             'memory_pos_enc': memory_pos_enc,
-            'obj_ptr': obj_ptr
         }
+        self.cond_obj_ptrs[frame_idx] = obj_ptr
         
     def add_non_conditioning_frame(self, frame_idx: int, memory_features: np.ndarray, memory_pos_enc: np.ndarray, obj_ptr: np.ndarray):
+        # Bound memory features to recent 6 frames (O(1) memory)
         self.non_cond_frame_outputs[frame_idx] = {
             'memory_features': memory_features,
             'memory_pos_enc': memory_pos_enc,
-            'obj_ptr': obj_ptr
         }
+        while len(self.non_cond_frame_outputs) > (self.num_maskmem - 1):
+            oldest_key = next(iter(self.non_cond_frame_outputs.keys()))
+            del self.non_cond_frame_outputs[oldest_key]
+            
+        # Bound obj pointers to recent 16 frames
+        self.non_cond_obj_ptrs[frame_idx] = obj_ptr
+        while len(self.non_cond_obj_ptrs) > self.max_obj_ptrs_in_encoder:
+            oldest_key = next(iter(self.non_cond_obj_ptrs.keys()))
+            del self.non_cond_obj_ptrs[oldest_key]
         
     def select_for_frame(self, frame_idx: int, num_frames: int = 40):
         # 1. Conditioning frames
-        # Select closest cond frames
-        if self.max_cond_frames_in_attn > 0 and len(self.cond_frame_outputs) > self.max_cond_frames_in_attn:
-            sorted_conds = sorted(self.cond_frame_outputs.keys(), key=lambda t: abs(t - frame_idx))
-            selected_cond_keys = set(sorted_conds[:self.max_cond_frames_in_attn])
-        else:
-            selected_cond_keys = set(self.cond_frame_outputs.keys())
-            
+        selected_cond_keys = set(self.cond_frame_outputs.keys())
         selected_cond_outputs = {k: self.cond_frame_outputs[k] for k in selected_cond_keys}
-        unselected_cond_outputs = {k: self.cond_frame_outputs[k] for k in self.cond_frame_outputs if k not in selected_cond_keys}
         
         # t_pos = 0 for selected conditioning frames
         selected_memories = []
@@ -69,9 +73,6 @@ class Sam2OnnxStateManager:
                 prev_frame_idx = prev_frame_idx - (t_rel - 2) * self.stride
                 
             out = self.non_cond_frame_outputs.get(prev_frame_idx, None)
-            if out is None:
-                out = unselected_cond_outputs.get(prev_frame_idx, None)
-                
             if out is not None:
                 selected_memories.append(out['memory_features'])
                 selected_memory_pos.append(out['memory_pos_enc'])
@@ -86,7 +87,7 @@ class Sam2OnnxStateManager:
         # Add past/current conditioning pointers
         ptr_cond_keys = sorted([t for t in selected_cond_keys if t <= frame_idx])
         for t in ptr_cond_keys:
-            selected_ptrs.append(self.cond_frame_outputs[t]['obj_ptr'])
+            selected_ptrs.append(self.cond_obj_ptrs[t])
             selected_ptr_frame_indices.append(t)
             
         # Add past non-conditioning pointers
@@ -94,9 +95,9 @@ class Sam2OnnxStateManager:
             t = frame_idx - t_diff
             if t < 0 or (num_frames is not None and t >= num_frames):
                 break
-            out = self.non_cond_frame_outputs.get(t, unselected_cond_outputs.get(t, None))
-            if out is not None:
-                selected_ptrs.append(out['obj_ptr'])
+            ptr = self.non_cond_obj_ptrs.get(t, None)
+            if ptr is not None:
+                selected_ptrs.append(ptr)
                 selected_ptr_frame_indices.append(t)
                 
         num_obj_ptr_tokens = len(selected_ptrs) * (self.hidden_dim // self.mem_dim)

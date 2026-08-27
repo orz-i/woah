@@ -5,12 +5,12 @@
   "has_3_frame_divergence": false,
   "mean_bbox_center_error": 4.138392769459123,
   "max_bbox_center_error": 32.5,
-  "image_encoder_p50_ms": 21797.74850400281,
-  "image_encoder_p95_ms": 25453.67130070007,
-  "temporal_step_p50_ms": 18952.801637002267,
-  "temporal_step_p95_ms": 30041.84313824588,
-  "total_frame_p50_ms": 40800.19813999388,
-  "total_frame_p95_ms": 53960.8862051049,
+  "image_encoder_p50_ms": 19242.867499997374,
+  "image_encoder_p95_ms": 31164.01279998825,
+  "temporal_step_p50_ms": 14760.45190001605,
+  "temporal_step_p95_ms": 28994.102459988775,
+  "total_frame_p50_ms": 34249.72534994595,
+  "total_frame_p95_ms": 55449.312095009365,
   "pass_gate_s3": true,
   "worst_5_frames": [
     {

@@ -24,6 +24,7 @@ class VideoDecoder(
         private set
 
     private var isEOSInput = false
+    private var isEOSOutput = false
     private val bufferInfo = MediaCodec.BufferInfo()
 
     fun prepare() {
@@ -91,6 +92,9 @@ class VideoDecoder(
     val isInputEOS: Boolean
         get() = isEOSInput
 
+    val isOutputEOS: Boolean
+        get() = isEOSOutput
+
     data class DecodedFrameInfo(
         val presentationTimeUs: Long,
         val isEOS: Boolean
@@ -98,6 +102,8 @@ class VideoDecoder(
 
     fun dequeueAndRenderSingleFrame(timeoutUs: Long = 10_000L): DecodedFrameInfo? {
         val decoder = codec ?: return null
+        if (isEOSOutput) return DecodedFrameInfo(0L, isEOS = true)
+
         while (true) {
             val status = decoder.dequeueOutputBuffer(bufferInfo, timeoutUs)
             if (status == MediaCodec.INFO_TRY_AGAIN_LATER) {
@@ -106,6 +112,9 @@ class VideoDecoder(
                 videoFormat = decoder.outputFormat
             } else if (status >= 0) {
                 val isEOS = (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0
+                if (isEOS) {
+                    isEOSOutput = true
+                }
                 val pts = bufferInfo.presentationTimeUs
 
                 // Release to render on surface if outputSurface was provided and not EOS
@@ -117,6 +126,7 @@ class VideoDecoder(
 
     fun drainOutputBuffer(timeoutUs: Long = 10_000L, onFrameReady: (ptsUs: Long, isEOS: Boolean) -> Unit) {
         val decoder = codec ?: return
+        if (isEOSOutput) return
 
         while (true) {
             val status = decoder.dequeueOutputBuffer(bufferInfo, timeoutUs)
@@ -124,6 +134,9 @@ class VideoDecoder(
                 break
             } else if (status >= 0) {
                 val isEOS = (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0
+                if (isEOS) {
+                    isEOSOutput = true
+                }
                 val pts = bufferInfo.presentationTimeUs
 
                 // Release to render on surface if outputSurface was provided

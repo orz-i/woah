@@ -342,4 +342,34 @@ class LostTrackPrivacySafetyTest {
         val coverageRatio = coveredCount.toDouble() / targetPixels.toDouble()
         assertTrue(coverageRatio >= 0.95, "Conservative privacy fallback coverage must cover >= 95% of predicted target region (actual: )")
     }
+
+    @Test
+    fun testCanonicalMaskIsNotOverwrittenByWarpOrFallback() {
+        val tracker = TrackManager(TrackingConfig(maxMissedFrames = 30))
+        val box0 = FloatRect(100f, 100f, 200f, 400f)
+        val initialMask = createSyntheticMask(fillBox = box0)
+        val initialCount = countMaskPixels(initialMask)
+
+        tracker.initialize(listOf(PersonDetection(bbox = box0, confidence = 0.95f, mask = initialMask)))
+
+        // Predict 10 frames into the future (frames 1..3 warp, frames 4..10 fallback rectangle)
+        for (f in 1..10) {
+            val res = tracker.predict(f * 33_333L)
+            assertEquals(1, res.size)
+            assertNotNull(res[0].mask)
+        }
+
+        // Now inject a new detection at frame 11 to simulate reacquisition
+        val reDetectBox = FloatRect(250f, 100f, 350f, 400f)
+        val newCanonicalMask = createSyntheticMask(fillBox = reDetectBox)
+        val newCount = countMaskPixels(newCanonicalMask)
+
+        val updated = tracker.update(listOf(PersonDetection(bbox = reDetectBox, confidence = 0.95f, mask = newCanonicalMask)), 11 * 33_333L)
+        assertEquals(1, updated.size)
+        val recovered = updated[0]
+
+        assertEquals(TrackState.ACTIVE, recovered.state)
+        assertEquals(0, recovered.missedFrames)
+        assertEquals(newCount, countMaskPixels(recovered.mask!!), "Canonical mask must be restored on reacquisition without rectangular corruption")
+    }
 }

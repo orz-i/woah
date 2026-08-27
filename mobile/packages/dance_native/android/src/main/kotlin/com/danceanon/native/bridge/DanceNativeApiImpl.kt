@@ -4,6 +4,8 @@ import android.content.Context
 import com.danceanon.native.device.DeviceCapabilities
 import com.danceanon.native.export.ExportCoordinator
 import com.danceanon.native.export.ExportServiceController
+import com.danceanon.native.sam2.Sam2GpuCapabilityManager
+import com.danceanon.native.sam2.Sam2GpuState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -20,6 +22,19 @@ class DanceNativeApiImpl(
 
     override suspend fun getCapabilities(): NativeCapabilitiesDto = withContext(Dispatchers.Default) {
         val caps = DeviceCapabilities.detect(context)
+
+        val sam2State = try {
+            Sam2GpuCapabilityManager.probe(context)
+        } catch (e: Throwable) {
+            android.util.Log.w("DanceNativeApiImpl", "SAM2 capability probe failed: ${e.message}")
+            Sam2GpuState.UNAVAILABLE
+        }
+
+        val supportedProfiles = mutableListOf("quality", "balanced", "speed")
+        if (sam2State == Sam2GpuState.AVAILABLE) {
+            supportedProfiles.add("sam2")
+        }
+
         NativeCapabilitiesDto(
             platform = "android",
             osVersion = caps.androidApi.toString(),
@@ -30,8 +45,12 @@ class DanceNativeApiImpl(
             maxEncodeHeight = caps.maxEncodeHeight.toLong(),
             cpuCores = caps.cpuCores.toLong(),
             recommendedProfile = caps.recommendedProfile,
-            supportedProfiles = caps.supportedProfiles,
-            inferenceBackends = caps.inferenceBackends
+            supportedProfiles = supportedProfiles,
+            inferenceBackends = if (sam2State == Sam2GpuState.AVAILABLE) {
+                listOf("litert_gpu", "litert_cpu")
+            } else {
+                listOf("litert_cpu")
+            }
         )
     }
 
@@ -116,6 +135,16 @@ class DanceNativeApiImpl(
                 DanceNativeException.INVALID_ARGUMENT,
                 "outputFilePath is empty"
             )
+        }
+
+        // Native Hard Gate: if requested profile is sam2, verify SAM2 GPU capability is AVAILABLE
+        if (request.processingProfile.equals("sam2", ignoreCase = true)) {
+            if (!Sam2GpuCapabilityManager.isAvailable()) {
+                throw DanceNativeException(
+                    DanceNativeException.SAM2_GPU_UNAVAILABLE,
+                    "SAM2 requires a verified LiteRT GPU accelerator on this device."
+                )
+            }
         }
 
         val jobId = "job_${System.currentTimeMillis()}"

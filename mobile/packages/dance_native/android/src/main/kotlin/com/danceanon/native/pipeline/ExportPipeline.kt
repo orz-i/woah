@@ -7,6 +7,7 @@ import android.opengl.GLES20
 import android.os.Handler
 import android.os.HandlerThread
 import android.view.Surface
+import com.danceanon.native.bridge.DanceNativeException
 import com.danceanon.native.bridge.DanceProcessingEvents
 import com.danceanon.native.bridge.ExportRequestDto
 import com.danceanon.native.bridge.JobStatusDto
@@ -232,6 +233,12 @@ class ExportPipeline(
                 )
 
                 if (isSam2Mode) {
+                    if (!com.danceanon.native.sam2.Sam2GpuCapabilityManager.isAvailable()) {
+                        throw DanceNativeException(
+                            DanceNativeException.SAM2_GPU_UNAVAILABLE,
+                            "SAM2 requires a verified LiteRT GPU accelerator on this device."
+                        )
+                    }
                     sam2Fbo = com.danceanon.native.sam2.Sam2InputFbo(com.danceanon.native.sam2.Sam2TensorContract.IMAGE_SIZE)
                     sam2Renderer = com.danceanon.native.sam2.Sam2InputRenderer()
                     val bundle = com.danceanon.native.sam2.Sam2LiteRtModelBundle.loadFromAssets(context)
@@ -247,22 +254,41 @@ class ExportPipeline(
                 var lastPreviewFilePath: String? = null
                 var sam2Initialized = false
 
-                while (!isCancelled.get()) {
-                    while (!isCancelled.get() && decoder.feedInputBuffer(timeoutUs = 0L)) {}
+                var decodedFrameCount = 0L
+                var latchedFrameCount = 0L
+                var renderedFrameCount = 0L
+                var encodedFrameCount = 0L
+                var lastDecoderPtsUs = -1L
+                var lastEncoderPtsUs = -1L
+                var emptyFrameStreak = 0
+
+                while (!isCancelled.get() && !decoder.isOutputEOS) {
+                    while (!isCancelled.get() && !decoder.isInputEOS && decoder.feedInputBuffer(timeoutUs = 0L)) {}
 
                     val frameInfo = decoder.dequeueAndRenderSingleFrame(timeoutUs = 10_000L)
                     if (frameInfo == null) {
-                        if (decoder.isInputEOS) {
+                        if (decoder.isOutputEOS) {
+                            break
+                        }
+                        emptyFrameStreak++
+                        if (decoder.isInputEOS && emptyFrameStreak > 200) {
+                            android.util.Log.w(
+                                "ExportPipeline",
+                                "[Decoder] Drain timed out after input EOS ($emptyFrameStreak empty iterations). Breaking loop."
+                            )
                             break
                         }
                         continue
                     }
+                    emptyFrameStreak = 0
 
                     if (frameInfo.isEOS || isCancelled.get()) {
                         break
                     }
 
                     val ptsUs = frameInfo.presentationTimeUs
+                    decodedFrameCount++
+                    lastDecoderPtsUs = ptsUs
                     processedFrames++
 
                         val selectedIds = request.selectedPersonIds.map { it.toInt() }.toSet()
@@ -290,6 +316,7 @@ class ExportPipeline(
                         try {
                             surfaceTexture?.updateTexImage()
                             surfaceTexture?.getTransformMatrix(stMatrix)
+                            latchedFrameCount++
                         } catch (e: Throwable) {
                             android.util.Log.w("ExportPipeline", "updateTexImage warning: ${e.message}")
                         }
@@ -368,14 +395,75 @@ class ExportPipeline(
                                         sam2Fbo.readRgbaPixels()
                                     }
 
+                                    val cacheMgr = com.danceanon.native.storage.CacheManager(context)
+                                    val metadata = if (request.analysisCacheId.isNotBlank()) cacheMgr.getAnalysisMetadata(request.analysisCacheId) else null
+                                    val assignedIds: List<Int> = if (metadata != null && metadata.persons.isNotEmpty() && initialPersons.isNotEmpty()) {
+                                        val cached = metadata.persons
+                                        val costMatrix = Array(cached.size) { r ->
+                                            val cPerson = cached[r]
+                                            val cLeft = (cPerson.bbox.left * targetWidth).toFloat()
+                                            val cTop = (cPerson.bbox.top * targetHeight).toFloat()
+                                            val cRight = (cPerson.bbox.right * targetWidth).toFloat()
+                                            val cBottom = (cPerson.bbox.bottom * targetHeight).toFloat()
+                                            val cBox = com.danceanon.native.inference.FloatRect(cLeft, cTop, cRight, cBottom)
+
+                                            FloatArray(initialPersons.size) { c ->
+                                                val dBox = initialPersons[c].bbox
+                                                val iou = com.danceanon.native.tracking.TrackManager.computeBBoxIoU(cBox, dBox)
+                                                val refDim = maxOf(cBox.width, cBox.height, 1f)
+                                                val dx = cBox.centerX - dBox.centerX
+                                                val dy = cBox.centerY - dBox.centerY
+                                                val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+                                                val distScore = (1.0f - (dist / (refDim * 1.5f))).coerceIn(0f, 1f)
+                                                val score = 0.7f * iou + 0.3f * distScore
+                                                (1.0f - score).coerceIn(0f, 1f)
+                                            }
+                                        }
+
+                                        val matchResult = com.danceanon.native.tracking.HungarianSolver.match(costMatrix, maxCostThreshold = 0.85f)
+                                        val ids = IntArray(initialPersons.size) { -1 }
+                                        val usedIds = mutableSetOf<Int>()
+
+                                        for (match in matchResult.matches) {
+                                            val cIdx = match.first
+                                            val dIdx = match.second
+                                            if (dIdx < initialPersons.size && cIdx < cached.size) {
+                                                val pId = cached[cIdx].id.toInt()
+                                                ids[dIdx] = pId
+                                                usedIds.add(pId)
+                                            }
+                                        }
+
+                                        var nextId = 0
+                                        for (i in ids.indices) {
+                                            if (ids[i] == -1) {
+                                                while (usedIds.contains(nextId)) {
+                                                    nextId++
+                                                }
+                                                ids[i] = nextId
+                                                usedIds.add(nextId)
+                                                nextId++
+                                            }
+                                        }
+                                        ids.toList()
+                                    } else {
+                                        initialPersons.indices.toList()
+                                    }
+
+                                    val targetPersons = initialPersons.mapIndexed { idx, det ->
+                                        assignedIds[idx] to det
+                                    }.filter { (personId, _) ->
+                                        selectedIds.contains(personId)
+                                    }
+
                                     val resultPersons = profiler.recordStage("sam2Init") {
                                         val maskSize = com.danceanon.native.sam2.Sam2TensorContract.MASK_OUTPUT_SIZE
-                                        initialPersons.mapIndexed { idx, det ->
+                                        targetPersons.map { (personId, det) ->
                                             val initRes = sam2Tracker.initializeWithRgba(
                                                 rgbaBuffer = sam2RgbaBuffer,
                                                 width = targetWidth,
                                                 height = targetHeight,
-                                                objectId = idx,
+                                                objectId = personId,
                                                 bbox = det.bbox
                                             )
 
@@ -395,7 +483,7 @@ class ExportPipeline(
                                             )
 
                                             com.danceanon.native.tracking.TrackedPerson(
-                                                id = idx,
+                                                id = personId,
                                                 bbox = initRes.bbox,
                                                 mask = sam2Mask,
                                                 confidence = det.confidence,
@@ -631,6 +719,7 @@ class ExportPipeline(
                                 presentationTimeUs = ptsUs,
                                 textureType = renderTexType
                             )
+                            renderedFrameCount++
                         }
 
 
@@ -702,6 +791,9 @@ class ExportPipeline(
                                 "ExportPipeline",
                                 "[Stage 2 Error] eglSwapBuffers returned false on frame #$processedFrames (pts=${ptsUs}us). Encoder surface handoff failed!"
                             )
+                        } else {
+                            encodedFrameCount++
+                            lastEncoderPtsUs = presentationNs / 1000L
                         }
                     }
 
@@ -733,6 +825,11 @@ class ExportPipeline(
                         emitProgress(status, onStatusChange)
                     }
                 }
+
+                android.util.Log.i(
+                    "ExportPipeline",
+                    "[Pipeline Telemetry] decoded=$decodedFrameCount, latched=$latchedFrameCount, rendered=$renderedFrameCount, encoded=$encodedFrameCount, lastDecPts=${lastDecoderPtsUs}us, lastEncPts=${lastEncoderPtsUs}us"
+                )
 
 
 

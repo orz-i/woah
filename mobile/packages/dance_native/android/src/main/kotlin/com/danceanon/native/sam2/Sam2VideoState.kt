@@ -28,23 +28,34 @@ data class Sam2TrackResult(
 )
 
 /**
- * Memory record for a single frame.
- * All arrays are flat FP32 arrays representing:
+ * Memory record for heavy spatial-temporal features (~2MB per slot).
+ * Flat FP32 arrays:
  * - memoryFeatures: [1, 64, 64, 64] -> 262,144 floats
  * - memoryPosEnc: [1, 64, 64, 64] -> 262,144 floats
- * - objPtr: [1, 256] -> 256 floats
  */
-class Sam2MemorySlot(
+class MemoryFrameSlot(
     var frameIndex: Int = -1,
     val memoryFeatures: FloatArray = FloatArray(Sam2TensorContract.MEM_FEAT_ELEMS),
-    val memoryPosEnc: FloatArray = FloatArray(Sam2TensorContract.MEM_FEAT_ELEMS),
-    val objPtr: FloatArray = FloatArray(Sam2TensorContract.OBJ_PTR_ELEMS)
+    val memoryPosEnc: FloatArray = FloatArray(Sam2TensorContract.MEM_FEAT_ELEMS)
 ) {
-    val memorySizeBytes: Long = (memoryFeatures.size + memoryPosEnc.size + objPtr.size) * 4L
+    val memorySizeBytes: Long = (memoryFeatures.size + memoryPosEnc.size) * 4L
 }
 
 /**
- * Persistent state for a single tracked object across video frames with zero-allocation slot recycling.
+ * Lightweight object pointer record (~1KB per slot).
+ * Flat FP32 array:
+ * - objPtr: [1, 256] -> 256 floats
+ */
+class ObjPtrSlot(
+    var frameIndex: Int = -1,
+    val objPtr: FloatArray = FloatArray(Sam2TensorContract.OBJ_PTR_ELEMS)
+) {
+    val memorySizeBytes: Long = objPtr.size * 4L
+}
+
+/**
+ * Persistent state for a single tracked object across video frames with strictly bounded O(1) memory
+ * and zero per-frame heap allocations.
  */
 class Sam2VideoState(
     val objectId: Int,
@@ -53,20 +64,39 @@ class Sam2VideoState(
     val hiddenDim: Int = Sam2TensorContract.HIDDEN_DIM,
     val maxObjPtrs: Int = Sam2TensorContract.MAX_OBJ_PTRS
 ) {
-    val condFrameOutputs = mutableMapOf<Int, Sam2MemorySlot>()
-    val nonCondFrameOutputs = mutableMapOf<Int, Sam2MemorySlot>()
-    private val slotPool = ArrayDeque<Sam2MemorySlot>()
+    val maxNonCondMemFrames: Int = numMaskMem - 1 // 6
+
+    val condFrameOutputs = mutableMapOf<Int, MemoryFrameSlot>()
+    val condObjPtrs = mutableMapOf<Int, ObjPtrSlot>()
+
+    val nonCondFrameOutputs = LinkedHashMap<Int, MemoryFrameSlot>()
+    val nonCondObjPtrs = LinkedHashMap<Int, ObjPtrSlot>()
+
+    private val memSlotPool = ArrayDeque<MemoryFrameSlot>()
+    private val ptrSlotPool = ArrayDeque<ObjPtrSlot>()
+
     var isInitialized = false
 
-    private fun obtainSlot(frameIndex: Int): Sam2MemorySlot {
-        val slot = if (slotPool.isNotEmpty()) slotPool.pop() else Sam2MemorySlot()
+    private fun obtainMemSlot(frameIndex: Int): MemoryFrameSlot {
+        val slot = if (memSlotPool.isNotEmpty()) memSlotPool.pop() else MemoryFrameSlot()
         slot.frameIndex = frameIndex
         return slot
     }
 
-    private fun recycleSlot(slot: Sam2MemorySlot) {
+    private fun recycleMemSlot(slot: MemoryFrameSlot) {
         slot.frameIndex = -1
-        slotPool.push(slot)
+        memSlotPool.push(slot)
+    }
+
+    private fun obtainPtrSlot(frameIndex: Int): ObjPtrSlot {
+        val slot = if (ptrSlotPool.isNotEmpty()) ptrSlotPool.pop() else ObjPtrSlot()
+        slot.frameIndex = frameIndex
+        return slot
+    }
+
+    private fun recyclePtrSlot(slot: ObjPtrSlot) {
+        slot.frameIndex = -1
+        ptrSlotPool.push(slot)
     }
 
     fun addConditioningFrame(
@@ -75,15 +105,21 @@ class Sam2VideoState(
         memoryPosEnc: FloatArray,
         objPtr: FloatArray
     ) {
-        val existing = condFrameOutputs.remove(frameIndex)
-        if (existing != null) recycleSlot(existing)
+        val existingMem = condFrameOutputs.remove(frameIndex)
+        if (existingMem != null) recycleMemSlot(existingMem)
 
-        val slot = obtainSlot(frameIndex)
-        System.arraycopy(memoryFeatures, 0, slot.memoryFeatures, 0, slot.memoryFeatures.size)
-        System.arraycopy(memoryPosEnc, 0, slot.memoryPosEnc, 0, slot.memoryPosEnc.size)
-        System.arraycopy(objPtr, 0, slot.objPtr, 0, slot.objPtr.size)
+        val existingPtr = condObjPtrs.remove(frameIndex)
+        if (existingPtr != null) recyclePtrSlot(existingPtr)
 
-        condFrameOutputs[frameIndex] = slot
+        val memSlot = obtainMemSlot(frameIndex)
+        System.arraycopy(memoryFeatures, 0, memSlot.memoryFeatures, 0, memSlot.memoryFeatures.size)
+        System.arraycopy(memoryPosEnc, 0, memSlot.memoryPosEnc, 0, memSlot.memoryPosEnc.size)
+        condFrameOutputs[frameIndex] = memSlot
+
+        val ptrSlot = obtainPtrSlot(frameIndex)
+        System.arraycopy(objPtr, 0, ptrSlot.objPtr, 0, ptrSlot.objPtr.size)
+        condObjPtrs[frameIndex] = ptrSlot
+
         isInitialized = true
     }
 
@@ -93,36 +129,56 @@ class Sam2VideoState(
         memoryPosEnc: FloatArray,
         objPtr: FloatArray
     ) {
-        val existing = nonCondFrameOutputs.remove(frameIndex)
-        if (existing != null) recycleSlot(existing)
+        // 1. Manage nonCondFrameOutputs with bounded FIFO eviction
+        val existingMem = nonCondFrameOutputs.remove(frameIndex)
+        if (existingMem != null) recycleMemSlot(existingMem)
 
-        val slot = obtainSlot(frameIndex)
-        System.arraycopy(memoryFeatures, 0, slot.memoryFeatures, 0, slot.memoryFeatures.size)
-        System.arraycopy(memoryPosEnc, 0, slot.memoryPosEnc, 0, slot.memoryPosEnc.size)
-        System.arraycopy(objPtr, 0, slot.objPtr, 0, slot.objPtr.size)
+        while (nonCondFrameOutputs.size >= maxNonCondMemFrames) {
+            val oldestKey = nonCondFrameOutputs.keys.first()
+            val oldestSlot = nonCondFrameOutputs.remove(oldestKey)
+            if (oldestSlot != null) recycleMemSlot(oldestSlot)
+        }
 
-        nonCondFrameOutputs[frameIndex] = slot
+        val memSlot = obtainMemSlot(frameIndex)
+        System.arraycopy(memoryFeatures, 0, memSlot.memoryFeatures, 0, memSlot.memoryFeatures.size)
+        System.arraycopy(memoryPosEnc, 0, memSlot.memoryPosEnc, 0, memSlot.memoryPosEnc.size)
+        nonCondFrameOutputs[frameIndex] = memSlot
+
+        // 2. Manage nonCondObjPtrs with bounded FIFO eviction
+        val existingPtr = nonCondObjPtrs.remove(frameIndex)
+        if (existingPtr != null) recyclePtrSlot(existingPtr)
+
+        while (nonCondObjPtrs.size >= maxObjPtrs) {
+            val oldestKey = nonCondObjPtrs.keys.first()
+            val oldestSlot = nonCondObjPtrs.remove(oldestKey)
+            if (oldestSlot != null) recyclePtrSlot(oldestSlot)
+        }
+
+        val ptrSlot = obtainPtrSlot(frameIndex)
+        System.arraycopy(objPtr, 0, ptrSlot.objPtr, 0, ptrSlot.objPtr.size)
+        nonCondObjPtrs[frameIndex] = ptrSlot
     }
 
     fun computeStateMemoryBytes(): Long {
         var total = 0L
-        for (slot in condFrameOutputs.values) {
-            total += slot.memorySizeBytes
-        }
-        for (slot in nonCondFrameOutputs.values) {
-            total += slot.memorySizeBytes
-        }
-        for (slot in slotPool) {
-            total += slot.memorySizeBytes
-        }
+        for (slot in condFrameOutputs.values) total += slot.memorySizeBytes
+        for (slot in nonCondFrameOutputs.values) total += slot.memorySizeBytes
+        for (slot in condObjPtrs.values) total += slot.memorySizeBytes
+        for (slot in nonCondObjPtrs.values) total += slot.memorySizeBytes
+        for (slot in memSlotPool) total += slot.memorySizeBytes
+        for (slot in ptrSlotPool) total += slot.memorySizeBytes
         return total
     }
 
     fun reset() {
-        for (slot in condFrameOutputs.values) recycleSlot(slot)
-        for (slot in nonCondFrameOutputs.values) recycleSlot(slot)
+        for (slot in condFrameOutputs.values) recycleMemSlot(slot)
+        for (slot in nonCondFrameOutputs.values) recycleMemSlot(slot)
+        for (slot in condObjPtrs.values) recyclePtrSlot(slot)
+        for (slot in nonCondObjPtrs.values) recyclePtrSlot(slot)
         condFrameOutputs.clear()
         nonCondFrameOutputs.clear()
+        condObjPtrs.clear()
+        nonCondObjPtrs.clear()
         isInitialized = false
     }
 }

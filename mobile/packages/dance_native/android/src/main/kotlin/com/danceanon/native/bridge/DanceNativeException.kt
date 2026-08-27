@@ -8,7 +8,7 @@ class DanceNativeException(
     val code: String,
     override val message: String,
     cause: Throwable? = null
-) : RuntimeException("[$code] $message", cause) {
+) : RuntimeException("[] ", cause) {
 
     companion object {
         const val VIDEO_OPEN_FAILED = "VIDEO_OPEN_FAILED"
@@ -40,5 +40,6 @@ class DanceNativeException(
         const val INVALID_ARGUMENT = "INVALID_ARGUMENT"
         const val NOT_IMPLEMENTED = "NOT_IMPLEMENTED"
         const val SAM2_RUNTIME_NOT_VALIDATED = "SAM2_RUNTIME_NOT_VALIDATED"
+        const val SAM2_GPU_UNAVAILABLE = "SAM2_GPU_UNAVAILABLE"
     }
 }

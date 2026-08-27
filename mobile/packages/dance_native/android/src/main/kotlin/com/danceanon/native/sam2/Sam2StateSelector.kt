@@ -51,7 +51,7 @@ object Sam2StateSelector {
     ): Sam2LiteRtStaticStateBundle {
         bundle.reset()
 
-        val selectedMemSlots = mutableListOf<Sam2MemorySlot>()
+        val selectedMemSlots = mutableListOf<MemoryFrameSlot>()
         val selectedTPosIndices = mutableListOf<Long>()
 
         // 1. Selected conditioning frames (t_pos = 0 -> index = 6)
@@ -88,7 +88,7 @@ object Sam2StateSelector {
         // Past / current conditioning pointers
         for (k in sortedCondKeys) {
             if (k <= frameIndex) {
-                val slot = state.condFrameOutputs[k] ?: continue
+                val slot = state.condObjPtrs[k] ?: continue
                 selectedPtrSlots.add(slot.objPtr)
                 bundle.objPtrFrameIndices.add(k)
             }
@@ -98,7 +98,7 @@ object Sam2StateSelector {
         for (tDiff in 1 until maxPtrs) {
             val t = frameIndex - tDiff
             if (t < 0) break
-            val slot = state.nonCondFrameOutputs[t]
+            val slot = state.nonCondObjPtrs[t]
             if (slot != null) {
                 selectedPtrSlots.add(slot.objPtr)
                 bundle.objPtrFrameIndices.add(t)

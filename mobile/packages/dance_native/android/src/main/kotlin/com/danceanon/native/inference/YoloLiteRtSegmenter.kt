@@ -6,6 +6,7 @@ import android.util.Log
 import com.danceanon.native.bridge.DanceNativeException
 import com.danceanon.native.litert.LiteRtAccelerator
 import com.danceanon.native.litert.LiteRtModelRunner
+import com.danceanon.native.litert.LiteRtRunnerPolicy
 import com.danceanon.native.litert.LiteRtRuntimeInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -34,18 +35,24 @@ class YoloLiteRtSegmenter(
         if (runner != null) return@withContext
 
         try {
+            val policy = if (requestedAccelerator == LiteRtAccelerator.GPU) {
+                LiteRtRunnerPolicy.GPU_WITH_CPU_FALLBACK
+            } else {
+                LiteRtRunnerPolicy.STRICT_CPU
+            }
+
             val modelRunner = if (modelFile != null && modelFile.exists() && modelFile.length() > 0L) {
                 LiteRtModelRunner.fromFile(
                     modelFile = modelFile,
                     modelName = modelFile.name,
-                    requestedAccelerator = requestedAccelerator
+                    policy = policy
                 )
             } else {
                 LiteRtModelRunner.fromAsset(
                     context = context,
                     assetPath = assetPath,
                     modelName = File(assetPath).name,
-                    requestedAccelerator = requestedAccelerator
+                    policy = policy
                 )
             }
 
@@ -61,15 +68,15 @@ class YoloLiteRtSegmenter(
 
             Log.i(
                 TAG,
-                "[LiteRT YOLO] Initialized successfully with effective accelerator: ${modelRunner.effectiveAccelerator}"
+                "[LiteRT YOLO] Initialized successfully with requested: , effective accelerator: "
             )
         } catch (e: DanceNativeException) {
             throw e
         } catch (e: Throwable) {
-            Log.e(TAG, "[LiteRT YOLO] Failed to initialize: ${e.message}", e)
+            Log.e(TAG, "[LiteRT YOLO] Failed to initialize: ", e)
             throw DanceNativeException(
                 DanceNativeException.MODEL_INIT_FAILED,
-                "Failed to initialize LiteRT YOLO Segmenter: ${e.message}",
+                "Failed to initialize LiteRT YOLO Segmenter: ",
                 e
             )
         }
@@ -154,10 +161,10 @@ class YoloLiteRtSegmenter(
         } catch (e: DanceNativeException) {
             throw e
         } catch (e: Throwable) {
-            Log.e(TAG, "[LiteRT YOLO] Inference error: ${e.message}", e)
+            Log.e(TAG, "[LiteRT YOLO] Inference error: ", e)
             throw DanceNativeException(
                 DanceNativeException.MODEL_INFERENCE_FAILED,
-                "Inference execution failed on LiteRT YOLO: ${e.message}",
+                "Inference execution failed on LiteRT YOLO: ",
                 e
             )
         }
@@ -229,10 +236,10 @@ class YoloLiteRtSegmenter(
         } catch (e: DanceNativeException) {
             throw e
         } catch (e: Throwable) {
-            Log.e(TAG, "[LiteRT YOLO] Inference error: ${e.message}", e)
+            Log.e(TAG, "[LiteRT YOLO] Inference error: ", e)
             throw DanceNativeException(
                 DanceNativeException.MODEL_INFERENCE_FAILED,
-                "Inference execution failed on LiteRT YOLO: ${e.message}",
+                "Inference execution failed on LiteRT YOLO: ",
                 e
             )
         }

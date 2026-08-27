@@ -37,8 +37,8 @@ class _FramePreviewScreenState extends ConsumerState<FramePreviewScreen> {
   bool _isLoading = false;
   String? _errorMessage;
   String _selectedProfile = 'quality';
+  bool _sam2Available = false;
   final TransformationController _transformationController = TransformationController();
-
 
   @override
   void initState() {
@@ -46,6 +46,32 @@ class _FramePreviewScreenState extends ConsumerState<FramePreviewScreen> {
     _previewPath = widget.initialPreviewPath;
     if (_previewPath == null || !File(_previewPath!).existsSync()) {
       _loadPreview();
+    }
+    _checkCapabilities();
+  }
+
+  Future<void> _checkCapabilities() async {
+    try {
+      final repo = ref.read(nativeRepositoryProvider);
+      final caps = await repo.getCapabilities();
+      final sam2Available = caps.supportedProfiles.contains('sam2');
+      if (mounted) {
+        setState(() {
+          _sam2Available = sam2Available;
+          if (!_sam2Available && _selectedProfile == 'sam2') {
+            _selectedProfile = 'quality';
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _sam2Available = false;
+          if (_selectedProfile == 'sam2') {
+            _selectedProfile = 'quality';
+          }
+        });
+      }
     }
   }
 
@@ -327,8 +353,10 @@ class _FramePreviewScreenState extends ConsumerState<FramePreviewScreen> {
                           child: Row(
                             children: [
                               _buildProfileChip('quality', '🌟 质量 (默认)'),
-                              const SizedBox(width: 6),
-                              _buildProfileChip('sam2', '⚡ SAM2 时序'),
+                              if (_sam2Available) ...[
+                                const SizedBox(width: 6),
+                                _buildProfileChip('sam2', '⚡ SAM2 时序'),
+                              ],
                               const SizedBox(width: 6),
                               _buildProfileChip('balanced', '⚖️ 均衡'),
                               const SizedBox(width: 6),
@@ -373,11 +401,12 @@ class _FramePreviewScreenState extends ConsumerState<FramePreviewScreen> {
                     child: ElevatedButton.icon(
                       onPressed: () {
                         HapticFeedback.mediumImpact();
+                        final effectiveProfile = (_selectedProfile == 'sam2' && !_sam2Available) ? 'quality' : _selectedProfile;
                         context.push(
                           '/export',
                           extra: ExportArgs(
                             project: project,
-                            processingProfile: _selectedProfile,
+                            processingProfile: effectiveProfile,
                           ),
                         );
                       },

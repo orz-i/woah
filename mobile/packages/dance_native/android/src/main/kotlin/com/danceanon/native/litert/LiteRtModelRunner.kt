@@ -7,18 +7,42 @@ import com.danceanon.native.bridge.DanceNativeException
 import com.google.ai.edge.litert.Accelerator
 import com.google.ai.edge.litert.CompiledModel
 import com.google.ai.edge.litert.TensorBuffer
-import com.google.ai.edge.litert.TensorType
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.Callable
+import java.util.concurrent.Executors
 
 class LiteRtModelRunner(
     val modelName: String,
     private val modelFile: File? = null,
     private val assetPath: String? = null,
     private val assetManager: AssetManager? = null,
-    val requestedAccelerator: LiteRtAccelerator = LiteRtAccelerator.GPU
+    val policy: LiteRtRunnerPolicy = LiteRtRunnerPolicy.STRICT_GPU
 ) : AutoCloseable {
+
+    constructor(
+        modelName: String,
+        modelFile: File? = null,
+        assetPath: String? = null,
+        assetManager: AssetManager? = null,
+        requestedAccelerator: LiteRtAccelerator
+    ) : this(
+        modelName = modelName,
+        modelFile = modelFile,
+        assetPath = assetPath,
+        assetManager = assetManager,
+        policy = if (requestedAccelerator == LiteRtAccelerator.GPU) {
+            LiteRtRunnerPolicy.GPU_WITH_CPU_FALLBACK
+        } else {
+            LiteRtRunnerPolicy.STRICT_CPU
+        }
+    )
+
+    private val executor = Executors.newSingleThreadExecutor { runnable ->
+        Thread(runnable, "LiteRtRunner-").apply { isDaemon = true }
+    }
+    private val dispatcher = executor.asCoroutineDispatcher()
 
     private var compiledModel: CompiledModel? = null
     private var inputBuffers: List<TensorBuffer> = emptyList()
@@ -26,6 +50,9 @@ class LiteRtModelRunner(
 
     var runtimeInfo: LiteRtRuntimeInfo? = null
         private set
+
+    val requestedAccelerator: LiteRtAccelerator
+        get() = policy.requestedAccelerator
 
     val effectiveAccelerator: LiteRtAccelerator
         get() = runtimeInfo?.effectiveAccelerator ?: requestedAccelerator
@@ -42,69 +69,97 @@ class LiteRtModelRunner(
 
     fun runInference() {
         checkInitialized()
-        val model = compiledModel ?: throw DanceNativeException(
-            DanceNativeException.MODEL_INIT_FAILED,
-            "[$modelName] Model runner not initialized"
-        )
-        model.run(inputBuffers, outputBuffers)
+        executor.submit(Callable {
+            val model = compiledModel ?: throw DanceNativeException(
+                DanceNativeException.MODEL_INIT_FAILED,
+                "[] Model runner not initialized"
+            )
+            model.run(inputBuffers, outputBuffers)
+        }).get()
     }
 
-    suspend fun initialize() = withContext(Dispatchers.IO) {
+    suspend fun initialize() = withContext(dispatcher) {
         if (compiledModel != null) return@withContext
 
-        val startTotalMs = System.currentTimeMillis()
         var effective = LiteRtAccelerator.CPU
         var fallbackReason: String? = null
         var compileMs = 0L
         var warmupMs = 0L
 
-        if (requestedAccelerator == LiteRtAccelerator.GPU) {
+        if (policy.requestedAccelerator == LiteRtAccelerator.GPU) {
             val compileStart = System.currentTimeMillis()
+            var gpuModel: CompiledModel? = null
+            var inBufs: List<TensorBuffer> = emptyList()
+            var outBufs: List<TensorBuffer> = emptyList()
             try {
                 val gpuOptions = CompiledModel.Options(setOf(Accelerator.GPU))
-                val gpuModel = createCompiledModel(gpuOptions)
-                val inBufs = gpuModel.createInputBuffers()
-                val outBufs = gpuModel.createOutputBuffers()
+                gpuModel = createCompiledModel(gpuOptions)
+                inBufs = gpuModel.createInputBuffers()
+                outBufs = gpuModel.createOutputBuffers()
                 compileMs = System.currentTimeMillis() - compileStart
 
-                warmupMs = tryWarmup(gpuModel, inBufs, outBufs)
+                if (policy.requireWarmupSuccess) {
+                    val t0 = System.currentTimeMillis()
+                    gpuModel.run(inBufs, outBufs)
+                    warmupMs = System.currentTimeMillis() - t0
+                }
 
                 compiledModel = gpuModel
                 inputBuffers = inBufs
                 outputBuffers = outBufs
                 effective = LiteRtAccelerator.GPU
             } catch (gpuEx: Throwable) {
-                fallbackReason = "${gpuEx.javaClass.simpleName}: ${gpuEx.message}"
-                Log.w(
-                    TAG,
-                    "[LiteRT] model=$modelName requested=GPU gpu_compile_failed=$fallbackReason -> falling back to CPU",
-                    gpuEx
-                )
-                closeQuietly()
+                fallbackReason = ": "
+                closeResources(gpuModel, inBufs, outBufs)
+                if (!policy.allowCpuFallback) {
+                    Log.e(
+                        TAG,
+                        "[LiteRT] model= requested=GPU strict GPU initialization failed: ",
+                        gpuEx
+                    )
+                    throw DanceNativeException(
+                        DanceNativeException.MODEL_INIT_FAILED,
+                        "Failed strict GPU initialization for LiteRT model '': ",
+                        gpuEx
+                    )
+                } else {
+                    Log.w(
+                        TAG,
+                        "[LiteRT] model= requested=GPU gpu_compile_failed= -> falling back to CPU",
+                        gpuEx
+                    )
+                }
             }
         }
 
         if (compiledModel == null) {
             val compileStart = System.currentTimeMillis()
+            var cpuModel: CompiledModel? = null
+            var inBufs: List<TensorBuffer> = emptyList()
+            var outBufs: List<TensorBuffer> = emptyList()
             try {
                 val cpuOptions = CompiledModel.Options(setOf(Accelerator.CPU))
-                val cpuModel = createCompiledModel(cpuOptions)
-                val inBufs = cpuModel.createInputBuffers()
-                val outBufs = cpuModel.createOutputBuffers()
+                cpuModel = createCompiledModel(cpuOptions)
+                inBufs = cpuModel.createInputBuffers()
+                outBufs = cpuModel.createOutputBuffers()
                 compileMs = System.currentTimeMillis() - compileStart
 
-                warmupMs = tryWarmup(cpuModel, inBufs, outBufs)
+                if (policy.requireWarmupSuccess) {
+                    val t0 = System.currentTimeMillis()
+                    cpuModel.run(inBufs, outBufs)
+                    warmupMs = System.currentTimeMillis() - t0
+                }
 
                 compiledModel = cpuModel
                 inputBuffers = inBufs
                 outputBuffers = outBufs
                 effective = LiteRtAccelerator.CPU
             } catch (cpuEx: Throwable) {
-                closeQuietly()
-                Log.e(TAG, "[LiteRT] model=$modelName CPU initialization failed: ${cpuEx.message}", cpuEx)
+                closeResources(cpuModel, inBufs, outBufs)
+                Log.e(TAG, "[LiteRT] model= CPU initialization failed: ", cpuEx)
                 throw DanceNativeException(
                     DanceNativeException.MODEL_INIT_FAILED,
-                    "Failed to initialize LiteRT model '$modelName' (GPU & CPU failed): ${cpuEx.message}",
+                    "Failed to initialize LiteRT model '' (GPU & CPU failed): ",
                     cpuEx
                 )
             }
@@ -115,7 +170,7 @@ class LiteRtModelRunner(
 
         val info = LiteRtRuntimeInfo(
             modelName = modelName,
-            requestedAccelerator = requestedAccelerator,
+            requestedAccelerator = policy.requestedAccelerator,
             effectiveAccelerator = effective,
             compileMs = compileMs,
             warmupMs = warmupMs,
@@ -128,24 +183,13 @@ class LiteRtModelRunner(
         if (effective == LiteRtAccelerator.GPU) {
             Log.i(
                 TAG,
-                "[LiteRT]\nmodel=$modelName\nruntime=LiteRT\nrequested=GPU\neffective=GPU\ncompile_ms=$compileMs\nwarmup_ms=$warmupMs\ninputs=$inShapes\noutputs=$outShapes"
+                "[LiteRT]\nmodel=\nruntime=LiteRT\nrequested=GPU\neffective=GPU\ncompile_ms=\nwarmup_ms=\ninputs=\noutputs="
             )
         } else {
             Log.i(
                 TAG,
-                "[LiteRT]\nmodel=$modelName\nruntime=LiteRT\nrequested=$requestedAccelerator\ngpu_compile_failed=${fallbackReason ?: "N/A"}\neffective=CPU\ncpu_compile_ms=$compileMs\nwarmup_ms=$warmupMs\ninputs=$inShapes\noutputs=$outShapes"
+                "[LiteRT]\nmodel=\nruntime=LiteRT\nrequested=\ngpu_compile_failed=\neffective=CPU\ncpu_compile_ms=\nwarmup_ms=\ninputs=\noutputs="
             )
-        }
-    }
-
-    private fun tryWarmup(model: CompiledModel, inBufs: List<TensorBuffer>, outBufs: List<TensorBuffer>): Long {
-        return try {
-            val t0 = System.currentTimeMillis()
-            model.run(inBufs, outBufs)
-            System.currentTimeMillis() - t0
-        } catch (warmupEx: Throwable) {
-            Log.w(TAG, "[LiteRT] model=$modelName warmup skipped (${warmupEx.message})")
-            0L
         }
     }
 
@@ -160,7 +204,7 @@ class LiteRtModelRunner(
             else -> {
                 throw DanceNativeException(
                     DanceNativeException.MODEL_NOT_FOUND,
-                    "No valid model source provided for LiteRT runner '$modelName'"
+                    "No valid model source provided for LiteRT runner ''"
                 )
             }
         }
@@ -170,7 +214,6 @@ class LiteRtModelRunner(
         return try {
             val count = inputBuffers.size
             (0 until count).map { idx ->
-                // Try signature default if available
                 emptyList<Int>()
             }
         } catch (_: Throwable) {
@@ -193,27 +236,44 @@ class LiteRtModelRunner(
         if (compiledModel == null) {
             throw DanceNativeException(
                 DanceNativeException.MODEL_INIT_FAILED,
-                "[$modelName] Model runner is not initialized. Call initialize() first."
+                "[] Model runner is not initialized. Call initialize() first."
             )
         }
     }
 
+    private fun closeResources(
+        model: CompiledModel?,
+        inBufs: List<TensorBuffer>,
+        outBufs: List<TensorBuffer>
+    ) {
+        for (b in inBufs) {
+            try { b.close() } catch (_: Throwable) {}
+        }
+        for (b in outBufs) {
+            try { b.close() } catch (_: Throwable) {}
+        }
+        try { model?.close() } catch (_: Throwable) {}
+    }
+
     private fun closeQuietly() {
-        for (b in inputBuffers) {
-            try { b.close() } catch (_: Throwable) {}
-        }
+        closeResources(compiledModel, inputBuffers, outputBuffers)
         inputBuffers = emptyList()
-        for (b in outputBuffers) {
-            try { b.close() } catch (_: Throwable) {}
-        }
         outputBuffers = emptyList()
-        try { compiledModel?.close() } catch (_: Throwable) {}
         compiledModel = null
     }
 
     override fun close() {
-        closeQuietly()
-        runtimeInfo = null
+        try {
+            executor.submit {
+                closeQuietly()
+                runtimeInfo = null
+            }.get()
+        } catch (_: Throwable) {
+            closeQuietly()
+            runtimeInfo = null
+        } finally {
+            executor.shutdown()
+        }
     }
 
     companion object {
@@ -223,7 +283,21 @@ class LiteRtModelRunner(
             context: Context,
             assetPath: String,
             modelName: String = File(assetPath).name,
-            requestedAccelerator: LiteRtAccelerator = LiteRtAccelerator.GPU
+            policy: LiteRtRunnerPolicy = LiteRtRunnerPolicy.STRICT_GPU
+        ): LiteRtModelRunner {
+            return LiteRtModelRunner(
+                modelName = modelName,
+                assetPath = assetPath,
+                assetManager = context.assets,
+                policy = policy
+            )
+        }
+
+        fun fromAsset(
+            context: Context,
+            assetPath: String,
+            modelName: String = File(assetPath).name,
+            requestedAccelerator: LiteRtAccelerator
         ): LiteRtModelRunner {
             return LiteRtModelRunner(
                 modelName = modelName,
@@ -236,7 +310,19 @@ class LiteRtModelRunner(
         fun fromFile(
             modelFile: File,
             modelName: String = modelFile.name,
-            requestedAccelerator: LiteRtAccelerator = LiteRtAccelerator.GPU
+            policy: LiteRtRunnerPolicy = LiteRtRunnerPolicy.STRICT_GPU
+        ): LiteRtModelRunner {
+            return LiteRtModelRunner(
+                modelName = modelName,
+                modelFile = modelFile,
+                policy = policy
+            )
+        }
+
+        fun fromFile(
+            modelFile: File,
+            modelName: String = modelFile.name,
+            requestedAccelerator: LiteRtAccelerator
         ): LiteRtModelRunner {
             return LiteRtModelRunner(
                 modelName = modelName,

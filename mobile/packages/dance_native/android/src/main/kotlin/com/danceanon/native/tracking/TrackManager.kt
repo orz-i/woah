@@ -17,11 +17,19 @@ data class TrackingConfig(
     val motionWeight: Float = 0.40f
 )
 
-
+/**
+ * Internal tracking representation enforcing strict separation between:
+ * 1. Canonical observed segmentation (lastObservedMask, lastObservedBbox)
+ * 2. Predicted motion state (currentPredictedBbox)
+ * 3. Rendered privacy fallback mask (currentRenderMask)
+ * This guarantees zero recursive warping deformation and immediate lossless mask restoration on reacquisition.
+ */
 class InternalTrack(
     val id: Int,
-    var bbox: FloatRect,
-    var mask: NativeMask?,
+    var lastObservedBbox: FloatRect,
+    var lastObservedMask: NativeMask?,
+    var currentPredictedBbox: FloatRect = lastObservedBbox,
+    var currentRenderMask: NativeMask? = lastObservedMask,
     var confidence: Float,
     val kalman: KalmanFilter = KalmanFilter(),
     var state: TrackState = TrackState.ACTIVE,
@@ -29,14 +37,26 @@ class InternalTrack(
     var age: Int = 1
 ) {
     init {
-        kalman.init(bbox)
+        kalman.init(lastObservedBbox)
     }
+
+    var bbox: FloatRect
+        get() = currentPredictedBbox
+        set(value) {
+            currentPredictedBbox = value
+        }
+
+    var mask: NativeMask?
+        get() = currentRenderMask
+        set(value) {
+            currentRenderMask = value
+        }
 
     fun toTrackedPerson(): TrackedPerson {
         return TrackedPerson(
             id = id,
-            bbox = bbox,
-            mask = mask,
+            bbox = currentPredictedBbox,
+            mask = currentRenderMask,
             confidence = confidence,
             missedFrames = missedFrames,
             age = age,
@@ -68,8 +88,10 @@ class TrackManager(
             val trackId = if (index < assignedIds.size) assignedIds[index] else nextTrackId
             val track = InternalTrack(
                 id = trackId,
-                bbox = det.bbox,
-                mask = det.mask,
+                lastObservedBbox = det.bbox,
+                lastObservedMask = det.mask,
+                currentPredictedBbox = det.bbox,
+                currentRenderMask = det.mask,
                 confidence = det.confidence,
                 state = TrackState.ACTIVE
             )
@@ -95,8 +117,10 @@ class TrackManager(
             for (det in detections) {
                 val newTrack = InternalTrack(
                     id = nextTrackId++,
-                    bbox = det.bbox,
-                    mask = det.mask,
+                    lastObservedBbox = det.bbox,
+                    lastObservedMask = det.mask,
+                    currentPredictedBbox = det.bbox,
+                    currentRenderMask = det.mask,
                     confidence = det.confidence,
                     state = TrackState.ACTIVE
                 )
@@ -105,9 +129,7 @@ class TrackManager(
             return tracks.map { it.toTrackedPerson() }
         }
 
-
         // 1. Predict all tracks with 8D Kalman Filter
-        val previousBoxes = tracks.map { it.bbox }
         val predictedBoxes = tracks.map { track ->
             val pred = track.kalman.predict(timestampUs)
             track.age++
@@ -117,7 +139,7 @@ class TrackManager(
         // 2. Compute cost matrix based on BBox IoU + Mask IoU + Motion Score
         val costMatrix = Array(tracks.size) { r ->
             val predBox = predictedBoxes[r]
-            val trackMask = tracks[r].mask
+            val trackMask = tracks[r].lastObservedMask
             FloatArray(detections.size) { c ->
                 val det = detections[c]
                 val detBox = det.bbox
@@ -155,7 +177,7 @@ class TrackManager(
         val matchedTrackIndices = mutableSetOf<Int>()
         val matchedDetectionIndices = mutableSetOf<Int>()
 
-        // 3. Update matched tracks
+        // 3. Update matched tracks with fresh canonical observation
         for (match in matchResult.matches) {
             val trackIdx = match.first
             val detIdx = match.second
@@ -164,29 +186,29 @@ class TrackManager(
 
             val track = tracks[trackIdx]
             val det = detections[detIdx]
-            track.bbox = det.bbox
-            track.mask = det.mask ?: track.mask
+            track.lastObservedBbox = det.bbox
+            track.lastObservedMask = det.mask ?: track.lastObservedMask
+            track.currentPredictedBbox = det.bbox
+            track.currentRenderMask = det.mask ?: track.lastObservedMask
             track.confidence = det.confidence
             track.missedFrames = 0
             track.state = TrackState.ACTIVE
             track.kalman.update(det.bbox, timestampUs)
         }
 
-        // 4. Handle unmatched (LOST) tracks: synchronize warp mask and handle expansion
+        // 4. Handle unmatched (LOST) tracks: transform directly from canonical lastObservedMask
         for (i in tracks.indices) {
             if (!matchedTrackIndices.contains(i)) {
                 val track = tracks[i]
-                val prevBox = previousBoxes[i]
                 val predBox = predictedBoxes[i]
 
                 track.missedFrames++
-                track.bbox = predBox
+                track.currentPredictedBbox = predBox
 
-                // Update mask for LOST tracks: warp for frames 1..3, conservative bbox fallback for frames >= 4
-                if (track.mask != null) {
-                    track.mask = updateLostMask(
-                        sourceMask = track.mask!!,
-                        prevBbox = prevBox,
+                if (track.lastObservedMask != null) {
+                    track.currentRenderMask = updateLostMask(
+                        canonicalMask = track.lastObservedMask!!,
+                        observedBbox = track.lastObservedBbox,
                         predBbox = predBox,
                         missedFrames = track.missedFrames
                     )
@@ -218,16 +240,14 @@ class TrackManager(
 
             for (lost in lostTracks) {
                 if (reclaimedTrackIds.contains(lost.id)) continue
-                val dx = lost.bbox.centerX - det.bbox.centerX
-                val dy = lost.bbox.centerY - det.bbox.centerY
+                val dx = lost.currentPredictedBbox.centerX - det.bbox.centerX
+                val dy = lost.currentPredictedBbox.centerY - det.bbox.centerY
                 val dist = sqrt(dx * dx + dy * dy)
-                val bIoU = computeBBoxIoU(lost.bbox, det.bbox)
-                val refDim = max(lost.bbox.width, lost.bbox.height)
+                val bIoU = computeBBoxIoU(lost.currentPredictedBbox, det.bbox)
+                val refDim = max(lost.currentPredictedBbox.width, lost.currentPredictedBbox.height)
                 val absDx = kotlin.math.abs(dx)
                 val absDy = kotlin.math.abs(dy)
                 val isNearby = bIoU > 0.05f || dist < refDim * 0.9f || (absDx < refDim * 0.5f && absDy < refDim * 2.5f)
-
-
 
                 if (isNearby && dist < bestDist) {
                     bestDist = dist
@@ -236,8 +256,11 @@ class TrackManager(
             }
 
             if (bestTrack != null) {
-                bestTrack.bbox = det.bbox
-                bestTrack.mask = det.mask ?: bestTrack.mask
+                // Reacquisition: immediately restore organic segmentation from new detection
+                bestTrack.lastObservedBbox = det.bbox
+                bestTrack.lastObservedMask = det.mask ?: bestTrack.lastObservedMask
+                bestTrack.currentPredictedBbox = det.bbox
+                bestTrack.currentRenderMask = det.mask ?: bestTrack.lastObservedMask
                 bestTrack.confidence = det.confidence
                 bestTrack.missedFrames = 0
                 bestTrack.state = TrackState.ACTIVE
@@ -246,15 +269,16 @@ class TrackManager(
             } else {
                 val newTrack = InternalTrack(
                     id = nextTrackId++,
-                    bbox = det.bbox,
-                    mask = det.mask,
+                    lastObservedBbox = det.bbox,
+                    lastObservedMask = det.mask,
+                    currentPredictedBbox = det.bbox,
+                    currentRenderMask = det.mask,
                     confidence = det.confidence,
                     state = TrackState.ACTIVE
                 )
                 tracks.add(newTrack)
             }
         }
-
 
         // 6. Filter out REMOVED tracks
         tracks.removeAll { it.state == TrackState.REMOVED }
@@ -272,16 +296,15 @@ class TrackManager(
 
     private fun predictInternal(timestampUs: Long, countAsDetectionMiss: Boolean): List<TrackedPerson> {
         val activeOrLost = tracks.map { track ->
-            val prevBox = track.bbox
             val predBox = track.kalman.predict(timestampUs)
-            track.bbox = predBox
+            track.currentPredictedBbox = predBox
 
             if (countAsDetectionMiss) {
                 track.missedFrames++
-                if (track.mask != null) {
-                    track.mask = updateLostMask(
-                        sourceMask = track.mask!!,
-                        prevBbox = prevBox,
+                if (track.lastObservedMask != null) {
+                    track.currentRenderMask = updateLostMask(
+                        canonicalMask = track.lastObservedMask!!,
+                        observedBbox = track.lastObservedBbox,
                         predBbox = predBox,
                         missedFrames = track.missedFrames
                     )
@@ -293,13 +316,13 @@ class TrackManager(
                 }
             } else {
                 // Prediction during skipped inference cadence (stride):
-                // Warp mask smoothly to follow predicted bbox without penalizing track state or missed frame counts.
-                if (track.mask != null) {
-                    track.mask = warpMask(
-                        sourceMask = track.mask!!,
-                        prevBbox = prevBox,
+                // Warp smoothly from canonical lastObservedMask without mutating lastObservedMask
+                if (track.lastObservedMask != null) {
+                    track.currentRenderMask = warpMask(
+                        sourceMask = track.lastObservedMask!!,
+                        prevBbox = track.lastObservedBbox,
                         predBbox = predBox,
-                        missedFrames = 1
+                        missedFrames = 0
                     )
                 }
             }
@@ -312,7 +335,6 @@ class TrackManager(
 
         return activeOrLost
     }
-
 
     override fun reset() {
         tracks.clear()
@@ -365,28 +387,26 @@ class TrackManager(
         }
 
         fun updateLostMask(
-            sourceMask: NativeMask,
-            prevBbox: FloatRect,
+            canonicalMask: NativeMask,
+            observedBbox: FloatRect,
             predBbox: FloatRect,
             missedFrames: Int
         ): NativeMask {
             if (missedFrames <= LOST_WARP_MAX_FRAMES) {
                 return warpMask(
-                    sourceMask = sourceMask,
-                    prevBbox = prevBbox,
+                    sourceMask = canonicalMask,
+                    prevBbox = observedBbox,
                     predBbox = predBbox,
                     missedFrames = missedFrames
                 )
             }
 
             return generateConservativeFallbackMask(
-                sourceMask = sourceMask,
+                sourceMask = canonicalMask,
                 predBbox = predBbox,
                 missedFrames = missedFrames
             )
         }
-
-
 
         fun generateConservativeFallbackMask(
             sourceMask: NativeMask,
@@ -467,7 +487,6 @@ class TrackManager(
             val scaleX = predW / prevW
             val scaleY = predH / prevH
 
-            // BBox relative center shift mapped to proto coordinates via ModelCoordinateMapper
             val mapper = sourceMask.mapper ?: com.danceanon.native.geometry.ModelCoordinateMapper(
                 srcWidth = max(1, sourceMask.originalWidth),
                 srcHeight = max(1, sourceMask.originalHeight),
