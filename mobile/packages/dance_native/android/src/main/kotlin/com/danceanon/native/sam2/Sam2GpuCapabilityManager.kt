@@ -89,13 +89,15 @@ object Sam2GpuCapabilityManager {
                     throw IllegalStateException("Unexpected buffer counts for SAM2 image features: in=${inBufs.size}, out=${outBufs.size} (expected 1 in, >=4 out)")
                 }
 
-                // 4. Write legal [1, 3, 1024, 1024] FP32 dummy input
+                // 4. Write legal [1, 3, 1024, 1024] FP32 dummy input with valid normalized floats
                 probeStage = "run"
-                val dummyInput = FloatArray(1 * 3 * 1024 * 1024)
+                val dummyInput = FloatArray(1 * 3 * 1024 * 1024) { 0.5f }
                 inBufs[0].writeFloat(dummyInput)
 
-                // 5. Execute real GPU inference
+                // 5. Execute real GPU inference and measure warmup time
+                val t0 = System.currentTimeMillis()
                 probeRunner.runInference()
+                val warmupMs = System.currentTimeMillis() - t0
 
                 // 6. Confirm output buffer readability
                 probeStage = "readback"
@@ -105,7 +107,6 @@ object Sam2GpuCapabilityManager {
                 }
 
                 val compileMs = probeRunner.runtimeInfo?.compileMs ?: 0L
-                val warmupMs = probeRunner.runtimeInfo?.warmupMs ?: 0L
 
                 currentState = Sam2GpuState.AVAILABLE
                 unavailableReason = null

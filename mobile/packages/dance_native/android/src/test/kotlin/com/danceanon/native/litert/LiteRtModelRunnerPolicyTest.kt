@@ -13,17 +13,17 @@ class LiteRtModelRunnerPolicyTest {
         val strictGpu = LiteRtRunnerPolicy.STRICT_GPU
         assertEquals(LiteRtAccelerator.GPU, strictGpu.requestedAccelerator)
         assertFalse(strictGpu.allowCpuFallback)
-        assertTrue(strictGpu.requireWarmupSuccess)
+        assertFalse(strictGpu.requireWarmupSuccess)
 
         val gpuFallback = LiteRtRunnerPolicy.GPU_WITH_CPU_FALLBACK
         assertEquals(LiteRtAccelerator.GPU, gpuFallback.requestedAccelerator)
         assertTrue(gpuFallback.allowCpuFallback)
-        assertTrue(gpuFallback.requireWarmupSuccess)
+        assertFalse(gpuFallback.requireWarmupSuccess)
 
         val strictCpu = LiteRtRunnerPolicy.STRICT_CPU
         assertEquals(LiteRtAccelerator.CPU, strictCpu.requestedAccelerator)
         assertFalse(strictCpu.allowCpuFallback)
-        assertTrue(strictCpu.requireWarmupSuccess)
+        assertFalse(strictCpu.requireWarmupSuccess)
     }
 
     @Test

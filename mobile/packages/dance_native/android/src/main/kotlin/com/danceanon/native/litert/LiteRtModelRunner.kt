@@ -281,20 +281,43 @@ class LiteRtModelRunner(
             val targetFile = File(modelsDir, fileName)
 
             try {
-                val assetFd = try { context.assets.openFd(assetPath) } catch (_: Throwable) { null }
-                val assetLen = assetFd?.length ?: -1L
-                assetFd?.close()
-
-                if (!targetFile.exists() || (assetLen > 0 && targetFile.length() != assetLen) || targetFile.length() == 0L) {
-                    val tempFile = File(modelsDir, "${fileName}.tmp")
-                    context.assets.open(assetPath).use { input ->
-                        java.io.FileOutputStream(tempFile).use { output ->
-                            input.copyTo(output)
+                var needsExtract = !targetFile.exists() || targetFile.length() == 0L
+                if (!needsExtract) {
+                    try {
+                        val fd = context.assets.openFd(assetPath)
+                        if (fd.length > 0L && targetFile.length() != fd.length) {
+                            needsExtract = true
                         }
-                    }
-                    if (tempFile.exists() && tempFile.length() > 0L) {
-                        if (targetFile.exists()) targetFile.delete()
-                        tempFile.renameTo(targetFile)
+                        fd.close()
+                    } catch (_: Throwable) {}
+                }
+
+                if (needsExtract) {
+                    val tempFile = File(modelsDir, "${fileName}.tmp.${System.currentTimeMillis()}")
+                    try {
+                        context.assets.open(assetPath).use { input ->
+                            java.io.FileOutputStream(tempFile).use { output ->
+                                val buffer = ByteArray(64 * 1024)
+                                var read: Int
+                                while (input.read(buffer).also { read = it } != -1) {
+                                    output.write(buffer, 0, read)
+                                }
+                                output.flush()
+                            }
+                        }
+                        if (tempFile.exists() && tempFile.length() > 0L) {
+                            if (targetFile.exists()) {
+                                targetFile.delete()
+                            }
+                            if (!tempFile.renameTo(targetFile)) {
+                                tempFile.copyTo(targetFile, overwrite = true)
+                                tempFile.delete()
+                            }
+                        }
+                    } finally {
+                        if (tempFile.exists()) {
+                            tempFile.delete()
+                        }
                     }
                 }
             } catch (t: Throwable) {
