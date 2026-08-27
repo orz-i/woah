@@ -190,13 +190,22 @@ void main() {
 
     val FRAGMENT_SHADER_OES = """
 #extension GL_OES_EGL_image_external : require
+#extension GL_OES_EGL_image_external_essl3 : enable
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
+#endif
 uniform samplerExternalOES uBaseTexture;
 $SHADER_BODY
 """.trimIndent()
 
     val FRAGMENT_SHADER_2D = """
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
+#endif
 uniform sampler2D uBaseTexture;
 $SHADER_BODY
 """.trimIndent()
@@ -204,3 +213,4 @@ $SHADER_BODY
     // Backward compatibility
     val FRAGMENT_SHADER = FRAGMENT_SHADER_OES
 }
+

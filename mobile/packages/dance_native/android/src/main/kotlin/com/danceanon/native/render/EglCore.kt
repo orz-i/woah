@@ -25,31 +25,61 @@ class EglCore : AutoCloseable {
             throw RuntimeException("unable to initialize EGL14")
         }
 
-        val attribList = intArrayOf(
-            EGL14.EGL_RED_SIZE, 8,
-            EGL14.EGL_GREEN_SIZE, 8,
-            EGL14.EGL_BLUE_SIZE, 8,
-            EGL14.EGL_ALPHA_SIZE, 8,
-            EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
-            EGLExt.EGL_RECORDABLE_ANDROID, 1,
-            EGL14.EGL_NONE
-        )
-
-        val configs = arrayOfNulls<EGLConfig>(1)
-        val numConfigs = IntArray(1)
-        val success = EGL14.eglChooseConfig(eglDisplay, attribList, 0, configs, 0, configs.size, numConfigs, 0)
-        if (!success || numConfigs[0] == 0 || configs[0] == null) {
-            val fallbackAttribs = intArrayOf(
+        val candidateAttribs = listOf(
+            // Tier 1: 8888 RGBA + RECORDABLE (Preferred for MediaCodec input surface)
+            intArrayOf(
                 EGL14.EGL_RED_SIZE, 8,
                 EGL14.EGL_GREEN_SIZE, 8,
                 EGL14.EGL_BLUE_SIZE, 8,
                 EGL14.EGL_ALPHA_SIZE, 8,
                 EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
+                EGLExt.EGL_RECORDABLE_ANDROID, 1,
+                EGL14.EGL_SURFACE_TYPE, EGL14.EGL_WINDOW_BIT or EGL14.EGL_PBUFFER_BIT,
+                EGL14.EGL_NONE
+            ),
+            // Tier 2: 888 RGB + RECORDABLE
+            intArrayOf(
+                EGL14.EGL_RED_SIZE, 8,
+                EGL14.EGL_GREEN_SIZE, 8,
+                EGL14.EGL_BLUE_SIZE, 8,
+                EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
+                EGLExt.EGL_RECORDABLE_ANDROID, 1,
+                EGL14.EGL_SURFACE_TYPE, EGL14.EGL_WINDOW_BIT,
+                EGL14.EGL_NONE
+            ),
+            // Tier 3: 8888 Standard Window
+            intArrayOf(
+                EGL14.EGL_RED_SIZE, 8,
+                EGL14.EGL_GREEN_SIZE, 8,
+                EGL14.EGL_BLUE_SIZE, 8,
+                EGL14.EGL_ALPHA_SIZE, 8,
+                EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
+                EGL14.EGL_SURFACE_TYPE, EGL14.EGL_WINDOW_BIT,
+                EGL14.EGL_NONE
+            ),
+            // Tier 4: Fallback any GLES2
+            intArrayOf(
+                EGL14.EGL_RED_SIZE, 8,
+                EGL14.EGL_GREEN_SIZE, 8,
+                EGL14.EGL_BLUE_SIZE, 8,
+                EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
                 EGL14.EGL_NONE
             )
-            EGL14.eglChooseConfig(eglDisplay, fallbackAttribs, 0, configs, 0, configs.size, numConfigs, 0)
+        )
+
+        var chosenConfig: EGLConfig? = null
+        val configs = arrayOfNulls<EGLConfig>(1)
+        val numConfigs = IntArray(1)
+
+        for (attribs in candidateAttribs) {
+            val success = EGL14.eglChooseConfig(eglDisplay, attribs, 0, configs, 0, 1, numConfigs, 0)
+            if (success && numConfigs[0] > 0 && configs[0] != null) {
+                chosenConfig = configs[0]
+                break
+            }
         }
-        eglConfig = configs[0] ?: throw RuntimeException("Unable to find suitable EGLConfig")
+
+        eglConfig = chosenConfig ?: throw RuntimeException("Unable to find suitable EGLConfig for hardware rendering")
 
         val contextAttribs = intArrayOf(
             EGL14.EGL_CONTEXT_CLIENT_VERSION, 2,
@@ -59,6 +89,7 @@ class EglCore : AutoCloseable {
         if (eglContext == EGL14.EGL_NO_CONTEXT) {
             throw RuntimeException("Failed to create EGL context")
         }
+
     }
 
     fun createWindowSurface(surface: Surface): EGLSurface {

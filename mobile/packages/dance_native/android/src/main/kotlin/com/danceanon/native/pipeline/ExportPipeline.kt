@@ -174,8 +174,11 @@ class ExportPipeline(
                 var frameAvailable = false
 
                 surfaceTexture = SurfaceTexture(oesTextureId).apply {
-                    setDefaultBufferSize(targetWidth, targetHeight)
+                    val bufW = if (videoInfo.codedWidth > 0) videoInfo.codedWidth.toInt() else targetWidth
+                    val bufH = if (videoInfo.codedHeight > 0) videoInfo.codedHeight.toInt() else targetHeight
+                    setDefaultBufferSize(bufW, bufH)
                     setOnFrameAvailableListener({
+
                         synchronized(frameSync) {
                             frameAvailable = true
                             frameSync.notifyAll()
@@ -195,6 +198,7 @@ class ExportPipeline(
                 val stMatrix = FloatArray(16).apply {
                     android.opengl.Matrix.setIdentityM(this, 0)
                 }
+                var lastPresentationNs = -1L
                 val trackManager = TrackManager()
                 val profile = ProcessingProfile.fromName(request.processingProfile)
                 val frameStride = profile.inferenceStride
@@ -238,14 +242,18 @@ class ExportPipeline(
                         // Await frame arrival from decoder hardware rendering (immediate wakeup via frameHandler)
                         synchronized(frameSync) {
                             var waited = 0
-                            while (!frameAvailable && waited < 80) {
+                            while (!frameAvailable && waited < 500) {
                                 try {
-                                    frameSync.wait(10)
-                                    waited += 10
+                                    frameSync.wait(20)
+                                    waited += 20
                                 } catch (_: InterruptedException) {}
                             }
                             frameAvailable = false
                         }
+
+                        // Ensure OES texture is active and bound before latching frame
+                        android.opengl.GLES20.glActiveTexture(android.opengl.GLES20.GL_TEXTURE0)
+                        android.opengl.GLES20.glBindTexture(android.opengl.GLES11Ext.GL_TEXTURE_EXTERNAL_OES, oesTextureId)
 
                         // Latch and update OES texture with decoded video frame
                         try {
@@ -257,6 +265,7 @@ class ExportPipeline(
 
                         val rotation = videoInfo.rotation.toInt()
                         val finalTexMatrix = GlRenderer.computeTransformMatrix(stMatrix, rotation)
+
 
 
                         // 2. Perform Inference / Temporal Mask Tracking
@@ -483,7 +492,15 @@ class ExportPipeline(
 
                         // 2. Swap buffers to push rendered frame to hardware encoder
                         if (eglSurface != null) {
-                            eglCore.setPresentationTime(eglSurface, ptsUs * 1000L)
+                            val rawPtsNs = ptsUs.coerceAtLeast(0L) * 1000L
+                            val presentationNs = if (rawPtsNs > lastPresentationNs) {
+                                lastPresentationNs = rawPtsNs
+                                rawPtsNs
+                            } else {
+                                lastPresentationNs += 1_000_000L // Ensure at least 1ms progression
+                                lastPresentationNs
+                            }
+                            eglCore.setPresentationTime(eglSurface, presentationNs)
                             eglCore.swapBuffers(eglSurface)
                         }
 
@@ -491,6 +508,7 @@ class ExportPipeline(
                         profiler.recordStage("drainEncoder") {
                             encoder.drainEncoder(muxer, endOfStream = false)
                         }
+
 
                         // 4. Emit progress based on presentation timestamp
                         if (now - lastProgressEmitTime > 200 || processedFrames % 5 == 0) {

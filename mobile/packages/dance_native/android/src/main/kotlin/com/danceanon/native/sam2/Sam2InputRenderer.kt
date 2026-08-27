@@ -35,7 +35,12 @@ void main() {
 
         private const val FRAGMENT_SHADER = """
 #extension GL_OES_EGL_image_external : require
+#extension GL_OES_EGL_image_external_essl3 : enable
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
+#endif
 varying vec2 vTexCoord;
 uniform samplerExternalOES uBaseTexture;
 
@@ -43,6 +48,7 @@ void main() {
     gl_FragColor = texture2D(uBaseTexture, vTexCoord);
 }
 """
+
     }
 
     init {
