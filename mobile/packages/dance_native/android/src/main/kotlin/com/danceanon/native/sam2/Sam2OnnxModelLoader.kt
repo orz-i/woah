@@ -28,21 +28,32 @@ object Sam2OnnxModelLoader {
 
         val env = OrtEnvironment.getEnvironment()
         val sessionOptions = OrtSession.SessionOptions().apply {
-            setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
+            setOptimizationLevel(OrtSession.SessionOptions.OptLevel.BASIC_OPT)
             setIntraOpNumThreads(4)
         }
 
-        val sessImg = env.createSession(imgFeatFile.absolutePath, sessionOptions)
-        val sessInit = env.createSession(initStepFile.absolutePath, sessionOptions)
-        val sessTemp = env.createSession(tempStepFile.absolutePath, sessionOptions)
+        try {
+            println("[Loader] Loading image_features: ${imgFeatFile.absolutePath} (${imgFeatFile.length() / 1024 / 1024} MB)...")
+            val sessImg = env.createSession(imgFeatFile.absolutePath, sessionOptions)
+            println("[Loader] Loading init_step: ${initStepFile.absolutePath} (${initStepFile.length() / 1024 / 1024} MB)...")
+            val sessInit = env.createSession(initStepFile.absolutePath, sessionOptions)
+            println("[Loader] Loading temporal_step: ${tempStepFile.absolutePath} (${tempStepFile.length() / 1024 / 1024} MB)...")
+            val sessTemp = env.createSession(tempStepFile.absolutePath, sessionOptions)
+            println("[Loader] All 3 ONNX sessions loaded successfully!")
 
-        return Sam2OnnxSessionBundle(
-            env = env,
-            imageFeaturesSession = sessImg,
-            initStepSession = sessInit,
-            temporalStepSession = sessTemp
-        )
+            return Sam2OnnxSessionBundle(
+                env = env,
+                imageFeaturesSession = sessImg,
+                initStepSession = sessInit,
+                temporalStepSession = sessTemp
+            )
+        } catch (e: Throwable) {
+            println("[Loader] ERROR: ${e.message}")
+            throw IllegalStateException("Failed to create ONNX session for models in ${modelsDir.absolutePath}: ${e.message}", e)
+        }
     }
+
+
 
     fun loadFromAssets(context: Context, assetPrefix: String = "models/sam2_onnx"): Sam2OnnxSessionBundle {
         val cacheDir = File(context.filesDir, "models/sam2_onnx")

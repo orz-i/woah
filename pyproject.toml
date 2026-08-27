@@ -14,6 +14,7 @@ dependencies = [
     "onnxscript>=0.7.1",
     "onnxruntime>=1.24.3",
     "onnxslim>=0.1.96",
+    "onnxconverter-common>=1.16.0",
 ]
 
 [tool.uv]
