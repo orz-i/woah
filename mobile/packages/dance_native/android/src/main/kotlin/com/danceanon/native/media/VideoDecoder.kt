@@ -53,10 +53,18 @@ class VideoDecoder(
 
         val mime = videoFormat!!.getString(MediaFormat.KEY_MIME) ?: "video/avc"
         val decoder = MediaCodec.createDecoderByType(mime)
+        if (outputSurface != null) {
+            // Ensure format does not carry conflicting raw pixel format when rendering to surface
+            videoFormat!!.removeKey(MediaFormat.KEY_COLOR_FORMAT)
+            try {
+                videoFormat!!.setInteger(MediaFormat.KEY_COLOR_FORMAT, android.media.MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
+            } catch (_: Throwable) {}
+        }
         decoder.configure(videoFormat, outputSurface, null, 0)
         decoder.start()
         codec = decoder
     }
+
 
     fun feedInputBuffer(timeoutUs: Long = 10_000L): Boolean {
         if (isEOSInput || codec == null) return false

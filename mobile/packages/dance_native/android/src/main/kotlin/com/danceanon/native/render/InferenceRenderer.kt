@@ -32,7 +32,8 @@ void main() {
     gl_Position = vec4(x, y, 0.0, 1.0);
 
     vec4 transformed = uTexMatrix * vec4(aTexCoord, 0.0, 1.0);
-    vTexCoord = transformed.xy;
+    float invW = 1.0 / (transformed.w != 0.0 ? transformed.w : 1.0);
+    vTexCoord = transformed.xy * invW;
 }
 """
 
@@ -51,6 +52,7 @@ void main() {
     gl_FragColor = texture2D(uBaseTexture, vTexCoord);
 }
 """
+
 
     }
 

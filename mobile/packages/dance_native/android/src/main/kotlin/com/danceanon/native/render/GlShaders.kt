@@ -2,7 +2,8 @@ package com.danceanon.native.render
 
 object GlShaders {
 
-    val VERTEX_SHADER = """attribute vec4 aPosition;
+    val VERTEX_SHADER = """
+attribute vec4 aPosition;
 attribute vec2 aTexCoord;
 uniform mat4 uTexMatrix;
 uniform vec4 uCropRect;
@@ -18,18 +19,15 @@ void main() {
         mix(uCropRect.y, uCropRect.w, screenUv.y)
     );
     vec4 transformed = uTexMatrix * vec4(contentUv, 0.0, 1.0);
-    vOesTexCoord = transformed.xy;
+    float invW = 1.0 / (transformed.w != 0.0 ? transformed.w : 1.0);
+    vOesTexCoord = transformed.xy * invW;
     vMaskTexCoord = vec2(
         mix(uMaskCropRect.x, uMaskCropRect.z, contentUv.x),
         mix(uMaskCropRect.y, uMaskCropRect.w, 1.0 - contentUv.y)
     );
+}
+""".trim()
 
-
-
-
-
-
-}""".trimIndent()
 
     private const val SHADER_BODY = """
 varying vec2 vOesTexCoord;
@@ -198,7 +196,7 @@ precision mediump float;
 #endif
 uniform samplerExternalOES uBaseTexture;
 $SHADER_BODY
-""".trimIndent()
+""".trim()
 
     val FRAGMENT_SHADER_2D = """
 #ifdef GL_FRAGMENT_PRECISION_HIGH
@@ -208,9 +206,10 @@ precision mediump float;
 #endif
 uniform sampler2D uBaseTexture;
 $SHADER_BODY
-""".trimIndent()
+""".trim()
 
     // Backward compatibility
     val FRAGMENT_SHADER = FRAGMENT_SHADER_OES
 }
+
 
