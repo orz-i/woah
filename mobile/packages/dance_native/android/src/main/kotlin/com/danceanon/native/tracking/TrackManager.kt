@@ -573,6 +573,10 @@ class TrackManager(
                 reservedGroupTrackIndices.remove(tIdx)
 
                 val prevState = track.state
+                val associationPredictedBbox = track.currentPredictedBbox
+                val associationLastObservedBbox = track.lastObservedBbox
+                val associationBBoxIoU = computeBBoxIoU(associationPredictedBbox, det.bbox)
+                val associationMaskIoU = computeMaskIoU(getPredictedMask(track), det.mask)
                 track.lastObservedBbox = det.bbox
                 track.lastObservedMask = det.mask ?: track.lastObservedMask
                 track.currentPredictedBbox = det.bbox
@@ -597,9 +601,24 @@ class TrackManager(
                         "track_id" to track.id,
                         "det_index" to dIdx,
                         "assigned_score" to assignedScore,
+                        "bbox_iou" to associationBBoxIoU,
+                        "mask_iou" to associationMaskIoU,
                         "row_margin" to rowMargin,
                         "col_margin" to colMargin,
                         "prev_state" to prevState.name,
+                        "predicted_bbox" to listOf(
+                            associationPredictedBbox.left,
+                            associationPredictedBbox.top,
+                            associationPredictedBbox.right,
+                            associationPredictedBbox.bottom
+                        ),
+                        "last_observed_bbox" to listOf(
+                            associationLastObservedBbox.left,
+                            associationLastObservedBbox.top,
+                            associationLastObservedBbox.right,
+                            associationLastObservedBbox.bottom
+                        ),
+                        "detection_bbox" to listOf(det.bbox.left, det.bbox.top, det.bbox.right, det.bbox.bottom),
                         "pts_us" to timestampUs
                     )
                 )
@@ -689,6 +708,10 @@ class TrackManager(
                 matchedDetectionIndices.add(dIdx)
 
                 val prevState = track.state
+                val associationPredictedBbox = track.currentPredictedBbox
+                val associationLastObservedBbox = track.lastObservedBbox
+                val associationBBoxIoU = computeBBoxIoU(associationPredictedBbox, det.bbox)
+                val associationMaskIoU = computeMaskIoU(getPredictedMask(track), det.mask)
                 track.lastObservedBbox = det.bbox
                 track.lastObservedMask = det.mask ?: track.lastObservedMask
                 track.currentPredictedBbox = det.bbox
@@ -712,7 +735,22 @@ class TrackManager(
                         "track_id" to track.id,
                         "det_index" to dIdx,
                         "assigned_score" to assignedScore,
+                        "bbox_iou" to associationBBoxIoU,
+                        "mask_iou" to associationMaskIoU,
                         "prev_state" to prevState.name,
+                        "predicted_bbox" to listOf(
+                            associationPredictedBbox.left,
+                            associationPredictedBbox.top,
+                            associationPredictedBbox.right,
+                            associationPredictedBbox.bottom
+                        ),
+                        "last_observed_bbox" to listOf(
+                            associationLastObservedBbox.left,
+                            associationLastObservedBbox.top,
+                            associationLastObservedBbox.right,
+                            associationLastObservedBbox.bottom
+                        ),
+                        "detection_bbox" to listOf(det.bbox.left, det.bbox.top, det.bbox.right, det.bbox.bottom),
                         "pts_us" to timestampUs
                     )
                 )
@@ -971,6 +1009,10 @@ class TrackManager(
             }
 
             if (bestTrack != null) {
+                val recoveryPredictedBbox = bestTrack.currentPredictedBbox
+                val recoveryLastObservedBbox = bestTrack.lastObservedBbox
+                val recoveryBBoxIoU = computeBBoxIoU(recoveryPredictedBbox, det.bbox)
+                val recoveryMaskIoU = computeMaskIoU(getPredictedMask(bestTrack), det.mask)
                 bestTrack.lastObservedBbox = det.bbox
                 bestTrack.lastObservedMask = det.mask ?: bestTrack.lastObservedMask
                 bestTrack.currentPredictedBbox = det.bbox
@@ -994,6 +1036,21 @@ class TrackManager(
                         "track_id" to bestTrack.id,
                         "det_index" to detIndex,
                         "distance" to bestDist,
+                        "bbox_iou" to recoveryBBoxIoU,
+                        "mask_iou" to recoveryMaskIoU,
+                        "predicted_bbox" to listOf(
+                            recoveryPredictedBbox.left,
+                            recoveryPredictedBbox.top,
+                            recoveryPredictedBbox.right,
+                            recoveryPredictedBbox.bottom
+                        ),
+                        "last_observed_bbox" to listOf(
+                            recoveryLastObservedBbox.left,
+                            recoveryLastObservedBbox.top,
+                            recoveryLastObservedBbox.right,
+                            recoveryLastObservedBbox.bottom
+                        ),
+                        "detection_bbox" to listOf(det.bbox.left, det.bbox.top, det.bbox.right, det.bbox.bottom),
                         "pts_us" to timestampUs
                     )
                 )
