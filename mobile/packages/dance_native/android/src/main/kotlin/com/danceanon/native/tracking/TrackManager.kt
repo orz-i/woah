@@ -376,18 +376,15 @@ class TrackManager(
         val matchedTrackIndices = mutableSetOf<Int>()
         val matchedDetectionIndices = mutableSetOf<Int>()
 
-        // Cache predicted warped masks once per track
-        val predictedMaskCache = mutableMapOf<Int, NativeMask?>()
-        fun getPredictedMask(track: InternalTrack): NativeMask? {
-            return predictedMaskCache.getOrPut(track.id) {
-                val src = track.lastObservedMask ?: return@getOrPut null
-                warpMask(
-                    sourceMask = src,
-                    prevBbox = track.lastObservedBbox,
-                    predBbox = track.currentPredictedBbox,
-                    missedFrames = 0
-                )
-            }
+        fun computePredictedMaskIoU(track: InternalTrack, detMask: NativeMask?): Float {
+            val src = track.lastObservedMask ?: return 0f
+            return computeWarpedMaskIoU(
+                sourceMask = src,
+                prevBbox = track.lastObservedBbox,
+                predBbox = track.currentPredictedBbox,
+                candidateMask = detMask,
+                sampleStride = ASSOCIATION_MASK_IOU_SAMPLE_STRIDE
+            )
         }
 
         fun computeMatchScore(track: InternalTrack, det: PersonDetection): Float {
@@ -420,8 +417,7 @@ class TrackManager(
                 return 0f
             }
 
-            val predMask = getPredictedMask(track)
-            val mIoU = computeMaskIoU(predMask, det.mask, sampleStride = ASSOCIATION_MASK_IOU_SAMPLE_STRIDE)
+            val mIoU = computePredictedMaskIoU(track, det.mask)
             val distScore = (1.0f - (dist / maxAllowedDist)).coerceIn(0f, 1f)
             val motionScore = maxOf(distScore, (1.0f - (gateDist / (config.kalmanGatingThreshold * 2f))).coerceIn(0f, 1f))
 
@@ -473,7 +469,7 @@ class TrackManager(
                            config.directionWeight * directionScore
 
             // Penalize candidate if both track and detection have non-null masks with negligible spatial overlap
-            val maskPenalty = if (predMask != null && det.mask != null && mIoU < 0.05f) 0.4f else 1.0f
+            val maskPenalty = if (track.lastObservedMask != null && det.mask != null && mIoU < 0.05f) 0.4f else 1.0f
 
             return (rawScore * maskPenalty).coerceIn(0f, 1f)
         }
@@ -586,8 +582,16 @@ class TrackManager(
                 val hasRowSeparation = rowMargin >= config.associationAmbiguityMargin
                 val hasColSeparation = colMargin >= config.associationAmbiguityMargin
                 val isScoreValid = assignedScore >= config.minMatchScore
+                val candidateBBoxIoU = computeBBoxIoU(track.currentPredictedBbox, det.bbox)
+                val candidateMaskIoU = computePredictedMaskIoU(track, det.mask)
+                val protectedIdentityEvidenceOk = if (protectedTrackIds.contains(track.id)) {
+                    isProtectedGroupIdentityEvidenceSufficient(track.state, candidateBBoxIoU, candidateMaskIoU)
+                } else {
+                    true
+                }
 
-                val isReciprocalBest = isScoreValid && isRowTop && isColTop && hasRowSeparation && hasColSeparation
+                val isReciprocalBest = isScoreValid && isRowTop && isColTop &&
+                    hasRowSeparation && hasColSeparation && protectedIdentityEvidenceOk
 
                 if (!isReciprocalBest) {
                     NativeDiagnostics.event(
@@ -605,6 +609,9 @@ class TrackManager(
                             "col_second_best" to colSecondBest,
                             "row_margin" to rowMargin,
                             "col_margin" to colMargin,
+                            "bbox_iou" to candidateBBoxIoU,
+                            "mask_iou" to candidateMaskIoU,
+                            "protected_identity_evidence_ok" to protectedIdentityEvidenceOk,
                             "required_margin" to config.associationAmbiguityMargin,
                             "min_score" to config.minMatchScore
                         )
@@ -628,8 +635,8 @@ class TrackManager(
                 val prevState = track.state
                 val associationPredictedBbox = track.currentPredictedBbox
                 val associationLastObservedBbox = track.lastObservedBbox
-                val associationBBoxIoU = computeBBoxIoU(associationPredictedBbox, det.bbox)
-                val associationMaskIoU = computeMaskIoU(getPredictedMask(track), det.mask, sampleStride = ASSOCIATION_MASK_IOU_SAMPLE_STRIDE)
+                val associationBBoxIoU = candidateBBoxIoU
+                val associationMaskIoU = candidateMaskIoU
                 recordReliableObservedMotion(track, det)
                 track.lastObservedBbox = det.bbox
                 track.lastObservedMask = det.mask ?: track.lastObservedMask
@@ -911,7 +918,7 @@ class TrackManager(
                 val associationPredictedBbox = track.currentPredictedBbox
                 val associationLastObservedBbox = track.lastObservedBbox
                 val associationBBoxIoU = computeBBoxIoU(associationPredictedBbox, det.bbox)
-                val associationMaskIoU = computeMaskIoU(getPredictedMask(track), det.mask, sampleStride = ASSOCIATION_MASK_IOU_SAMPLE_STRIDE)
+                val associationMaskIoU = computePredictedMaskIoU(track, det.mask)
                 recordReliableObservedMotion(track, det)
                 track.lastObservedBbox = det.bbox
                 track.lastObservedMask = det.mask ?: track.lastObservedMask
@@ -1255,11 +1262,7 @@ class TrackManager(
                 val maxRecoverDist = refDim * 0.8f
                 val isNearby = bIoU > 0.05f || dist < maxRecoverDist
 
-                val recoveryMaskIoU = computeMaskIoU(
-                    getPredictedMask(candTrack),
-                    det.mask,
-                    sampleStride = ASSOCIATION_MASK_IOU_SAMPLE_STRIDE
-                )
+                val recoveryMaskIoU = computePredictedMaskIoU(candTrack, det.mask)
                 val protectedIdentityEvidenceOk = if (protectedTrackIds.contains(candTrack.id)) {
                     bIoU >= PROTECTED_RECOVERY_MIN_BBOX_IOU ||
                         recoveryMaskIoU >= PROTECTED_RECOVERY_MIN_MASK_IOU
@@ -1277,7 +1280,7 @@ class TrackManager(
                 val recoveryPredictedBbox = bestTrack.currentPredictedBbox
                 val recoveryLastObservedBbox = bestTrack.lastObservedBbox
                 val recoveryBBoxIoU = computeBBoxIoU(recoveryPredictedBbox, det.bbox)
-                val recoveryMaskIoU = computeMaskIoU(getPredictedMask(bestTrack), det.mask, sampleStride = ASSOCIATION_MASK_IOU_SAMPLE_STRIDE)
+                val recoveryMaskIoU = computePredictedMaskIoU(bestTrack, det.mask)
                 recordReliableObservedMotion(bestTrack, det)
                 bestTrack.lastObservedBbox = det.bbox
                 bestTrack.lastObservedMask = det.mask ?: bestTrack.lastObservedMask
@@ -1473,11 +1476,30 @@ class TrackManager(
 
     companion object {
         private const val ASSOCIATION_MASK_IOU_SAMPLE_STRIDE = 4
+        private const val PROTECTED_GROUP_ACTIVE_MIN_BBOX_IOU = 0.35f
+        private const val PROTECTED_GROUP_ACTIVE_MIN_MASK_IOU = 0.20f
+        private const val PROTECTED_GROUP_REACQUIRE_MIN_BBOX_IOU = 0.45f
+        private const val PROTECTED_GROUP_REACQUIRE_MIN_MASK_IOU = 0.25f
         private const val PROTECTED_RECOVERY_MIN_BBOX_IOU = 0.50f
         private const val PROTECTED_RECOVERY_MIN_MASK_IOU = 0.45f
         const val LOST_WARP_MAX_FRAMES = 3
         const val LOST_MARGIN_TIER1_RATIO = 0.15f // 15% margin for frames 4..10
         const val LOST_MARGIN_TIER2_RATIO = 0.25f // 25% margin for frames > 10
+
+        fun isProtectedGroupIdentityEvidenceSufficient(
+            state: TrackState,
+            bboxIoU: Float,
+            maskIoU: Float
+        ): Boolean {
+            return when (state) {
+                TrackState.OCCLUDED, TrackState.REACQUIRING ->
+                    bboxIoU >= PROTECTED_GROUP_REACQUIRE_MIN_BBOX_IOU ||
+                        maskIoU >= PROTECTED_GROUP_REACQUIRE_MIN_MASK_IOU
+                else ->
+                    bboxIoU >= PROTECTED_GROUP_ACTIVE_MIN_BBOX_IOU ||
+                        maskIoU >= PROTECTED_GROUP_ACTIVE_MIN_MASK_IOU
+            }
+        }
 
         fun computeBBoxIntersectionArea(boxA: FloatRect, boxB: FloatRect): Float {
             val interX1 = max(boxA.left, boxB.left)
@@ -1530,6 +1552,83 @@ class TrackManager(
                     if (a && b) intersection++
                     if (a || b) union++
                 }
+            }
+
+            return if (union == 0) 1.0f else intersection.toFloat() / union.toFloat()
+        }
+
+        fun computeWarpedMaskIoU(
+            sourceMask: NativeMask?,
+            prevBbox: FloatRect,
+            predBbox: FloatRect,
+            candidateMask: NativeMask?,
+            sampleStride: Int = ASSOCIATION_MASK_IOU_SAMPLE_STRIDE
+        ): Float {
+            if (sourceMask == null || candidateMask == null) return 0f
+            if (sourceMask.width != candidateMask.width || sourceMask.height != candidateMask.height) return 0f
+
+            val w = sourceMask.width
+            val h = sourceMask.height
+            val stride = sampleStride.coerceAtLeast(1)
+            val sourceBuf = sourceMask.buffer
+            val candidateBuf = candidateMask.buffer
+
+            val prevW = max(1f, prevBbox.width)
+            val prevH = max(1f, prevBbox.height)
+            val predW = max(1f, predBbox.width)
+            val predH = max(1f, predBbox.height)
+            val scaleX = predW / prevW
+            val scaleY = predH / prevH
+
+            val mapper = sourceMask.mapper ?: com.danceanon.native.geometry.ModelCoordinateMapper(
+                srcWidth = max(1, sourceMask.originalWidth),
+                srcHeight = max(1, sourceMask.originalHeight),
+                modelInputSize = 640,
+                protoSize = w
+            )
+            val prevCenterX = mapper.sourceToProtoX(prevBbox.centerX)
+            val prevCenterY = mapper.sourceToProtoY(prevBbox.centerY)
+            val predCenterX = mapper.sourceToProtoX(predBbox.centerX)
+            val predCenterY = mapper.sourceToProtoY(predBbox.centerY)
+
+            var intersection = 0
+            var union = 0
+            var y = 0
+            while (y < h) {
+                val floatY = (y - predCenterY) / scaleY + prevCenterY
+                val y0 = kotlin.math.floor(floatY).toInt()
+                val y1 = y0 + 1
+                val wy1 = (floatY - y0).coerceIn(0f, 1f)
+                val wy0 = 1f - wy1
+
+                var x = 0
+                while (x < w) {
+                    val floatX = (x - predCenterX) / scaleX + prevCenterX
+                    val x0 = kotlin.math.floor(floatX).toInt()
+                    val x1 = x0 + 1
+                    val wx1 = (floatX - x0).coerceIn(0f, 1f)
+                    val wx0 = 1f - wx1
+
+                    fun sample(ix: Int, iy: Int): Int {
+                        return if (ix in 0 until w && iy in 0 until h) {
+                            sourceBuf.get(iy * w + ix).toInt() and 0xFF
+                        } else {
+                            0
+                        }
+                    }
+
+                    val v00 = sample(x0, y0)
+                    val v01 = sample(x1, y0)
+                    val v10 = sample(x0, y1)
+                    val v11 = sample(x1, y1)
+                    val warped = (v00 * wx0 + v01 * wx1) * wy0 + (v10 * wx0 + v11 * wx1) * wy1
+                    val a = warped > 128f
+                    val b = (candidateBuf.get(y * w + x).toInt() and 0xFF) > 128
+                    if (a && b) intersection++
+                    if (a || b) union++
+                    x += stride
+                }
+                y += stride
             }
 
             return if (union == 0) 1.0f else intersection.toFloat() / union.toFloat()

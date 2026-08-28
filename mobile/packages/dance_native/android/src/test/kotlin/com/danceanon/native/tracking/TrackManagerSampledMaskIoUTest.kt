@@ -46,4 +46,48 @@ class TrackManagerSampledMaskIoUTest {
         assertTrue(sampledIdentical > sampledShifted && sampledShifted > sampledDisjoint)
         assertTrue(kotlin.math.abs(sampledShifted - exactShifted) < 0.08f)
     }
+
+    @Test
+    fun directWarpedSampleIoUMatchesMaterializedWarpOrdering() {
+        val base = rectMask(left = 32, top = 24, right = 112, bottom = 144)
+        val prevBox = com.danceanon.native.inference.FloatRect(600f, 250f, 1000f, 950f)
+        val predBox = com.danceanon.native.inference.FloatRect(680f, 270f, 1080f, 970f)
+        val materialized = TrackManager.warpMask(base, prevBox, predBox, missedFrames = 0)
+        val sameMotionCandidate = materialized
+        val wrongCandidate = rectMask(left = 20, top = 24, right = 88, bottom = 144)
+
+        val expectedGood = TrackManager.computeMaskIoU(materialized, sameMotionCandidate, sampleStride = 4)
+        val expectedBad = TrackManager.computeMaskIoU(materialized, wrongCandidate, sampleStride = 4)
+        val directGood = TrackManager.computeWarpedMaskIoU(base, prevBox, predBox, sameMotionCandidate, sampleStride = 4)
+        val directBad = TrackManager.computeWarpedMaskIoU(base, prevBox, predBox, wrongCandidate, sampleStride = 4)
+
+        assertTrue(kotlin.math.abs(directGood - expectedGood) < 0.02f)
+        assertTrue(kotlin.math.abs(directBad - expectedBad) < 0.05f)
+        assertTrue(directGood > directBad)
+    }
+
+    @Test
+    fun protectedSelectedGroupCommitRequiresAbsoluteIdentityEvidence() {
+        assertTrue(
+            !TrackManager.isProtectedGroupIdentityEvidenceSufficient(
+                TrackState.REACQUIRING,
+                bboxIoU = 0.30f,
+                maskIoU = 0.06f
+            )
+        )
+        assertTrue(
+            TrackManager.isProtectedGroupIdentityEvidenceSufficient(
+                TrackState.REACQUIRING,
+                bboxIoU = 0.55f,
+                maskIoU = 0.05f
+            )
+        )
+        assertTrue(
+            TrackManager.isProtectedGroupIdentityEvidenceSufficient(
+                TrackState.ACTIVE,
+                bboxIoU = 0.10f,
+                maskIoU = 0.35f
+            )
+        )
+    }
 }
