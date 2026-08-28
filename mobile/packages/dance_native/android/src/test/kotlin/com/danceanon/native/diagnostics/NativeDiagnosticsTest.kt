@@ -57,6 +57,32 @@ class NativeDiagnosticsTest {
     }
 
     @Test
+    fun testPipelineLifecycleWritesLatestStageAtomically() {
+        val tempDir = Files.createTempDirectory("native_diag_lifecycle").toFile()
+        val mockContext = object : android.content.ContextWrapper(null) {
+            override fun getFilesDir(): File = File(tempDir, "files").apply { mkdirs() }
+            override fun getCacheDir(): File = File(tempDir, "cache").apply { mkdirs() }
+            override fun getApplicationContext(): android.content.Context = this
+            override fun getPackageName(): String = "com.danceanon.woah"
+        }
+
+        NativeDiagnostics.initialize(mockContext)
+        NativeDiagnostics.recordPipelineLifecycle(
+            stage = "EXPORTING",
+            jobId = "job-123",
+            fields = mapOf("rendered_frames" to 42)
+        )
+        NativeDiagnostics.flushCriticalNow(1000L)
+
+        val diagDir = NativeDiagnostics.getDiagnosticsDir()
+        assertNotNull(diagDir)
+        val lifecycle = JSONObject(File(diagDir, "pipeline_lifecycle.json").readText())
+        assertEquals("EXPORTING", lifecycle.getString("stage"))
+        assertEquals("job-123", lifecycle.getString("job_id"))
+        assertEquals(42, lifecycle.getJSONObject("details").getInt("rendered_frames"))
+    }
+
+    @Test
     fun testConcurrentEventCallsDoNotCorruptFile() {
         val tempDir = Files.createTempDirectory("diag_concurrent_test").toFile()
         val mockContext = createMockContext(tempDir)

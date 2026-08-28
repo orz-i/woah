@@ -100,6 +100,14 @@ class ExportPipeline(
             errorCode = null,
             errorMessage = null
         )
+        com.danceanon.native.diagnostics.NativeDiagnostics.recordPipelineLifecycle(
+            stage = "PREPARING",
+            jobId = jobId,
+            fields = mapOf(
+                "profile" to request.processingProfile,
+                "selected_ids" to request.selectedPersonIds.map { it.toInt() }
+            )
+        )
         onStatusChange(status)
         kotlinx.coroutines.CoroutineScope(Dispatchers.Main).launch {
             try { eventEmitter?.onProgressUpdate(status) } catch (_: Throwable) {}
@@ -263,6 +271,16 @@ class ExportPipeline(
 
                 // Target Missing Streak Map (PHASE A & D)
                 val missingTargetStreakMap = mutableMapOf<Int, Int>()
+
+                com.danceanon.native.diagnostics.NativeDiagnostics.recordPipelineLifecycle(
+                    stage = "EXPORTING",
+                    jobId = jobId,
+                    fields = mapOf(
+                        "target_width" to targetWidth,
+                        "target_height" to targetHeight,
+                        "target_fps" to targetFps
+                    )
+                )
 
                 while (!isCancelled.get() && !decoder.isOutputEOS) {
                     while (!isCancelled.get() && !decoder.isInputEOS && decoder.feedInputBuffer(timeoutUs = 0L)) {}
@@ -860,6 +878,11 @@ class ExportPipeline(
                     tempOutFile.delete()
                     status = status.copy(state = "cancelled")
                     emitProgress(status, onStatusChange)
+                    com.danceanon.native.diagnostics.NativeDiagnostics.recordPipelineLifecycle(
+                        stage = "CANCELLED",
+                        jobId = jobId,
+                        fields = mapOf("rendered_frames" to renderedFrameCount)
+                    )
                     return@post
                 }
 
@@ -908,6 +931,15 @@ class ExportPipeline(
                             "state" to "completed"
                         )
                     )
+                    com.danceanon.native.diagnostics.NativeDiagnostics.recordPipelineLifecycle(
+                        stage = "COMPLETED",
+                        jobId = jobId,
+                        fields = mapOf(
+                            "decoded_frames" to decodedFrameCount,
+                            "rendered_frames" to renderedFrameCount,
+                            "encoded_frames" to encodedFrameCount
+                        )
+                    )
                 } catch (_: Throwable) {}
 
             } catch (e: Throwable) {
@@ -920,6 +952,13 @@ class ExportPipeline(
                     errorMessage = "${e.javaClass.simpleName}: ${e.message}\n${e.stackTrace.take(8).joinToString("\n")}"
                 )
                 emitProgress(status, onStatusChange)
+                com.danceanon.native.diagnostics.NativeDiagnostics.recordPipelineLifecycle(
+                    stage = "FAILED",
+                    jobId = jobId,
+                    fields = mapOf(
+                        "error_type" to e.javaClass.simpleName
+                    )
+                )
                 pipelineException = e
             } finally {
                 try { previewScope?.cancel() } catch (_: Throwable) {}

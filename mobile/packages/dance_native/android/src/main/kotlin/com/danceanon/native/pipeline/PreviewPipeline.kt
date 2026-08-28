@@ -47,6 +47,13 @@ class PreviewPipeline(
     private val analysisCache = PreviewAnalysisCache()
 
     suspend fun renderPreview(request: PreviewRequestDto): PreviewFrameDto = withContext(Dispatchers.Default) {
+        com.danceanon.native.diagnostics.NativeDiagnostics.recordPipelineLifecycle(
+            stage = "PREVIEW",
+            fields = mapOf(
+                "timestamp_ms" to request.timestampMs,
+                "analysis_cache_id_present" to request.analysisCacheId.isNotEmpty()
+            )
+        )
         if (request.timestampMs != 0L) {
             android.util.Log.w(
                 "PreviewPipeline",

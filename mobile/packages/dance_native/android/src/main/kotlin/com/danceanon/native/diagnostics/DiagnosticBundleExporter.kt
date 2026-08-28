@@ -57,7 +57,25 @@ object DiagnosticBundleExporter {
         val perJobPipelineSummaries = filesToZip.filter {
             it.name.startsWith("pipeline_summary_") && it.name.endsWith(".json")
         }
-        val exportDiagnosticsComplete = perJobPipelineSummaries.isNotEmpty()
+        val lifecycleFile = filesToZip.firstOrNull { it.name == "pipeline_lifecycle.json" }
+        val lifecycleJson = lifecycleFile?.let {
+            try { JSONObject(it.readText(Charsets.UTF_8)) } catch (_: Throwable) { null }
+        }
+        val lifecycleStage = lifecycleJson?.optString("stage")?.takeIf { it.isNotBlank() } ?: "UNKNOWN"
+        val lifecycleJobId = lifecycleJson?.optString("job_id")?.takeIf { it.isNotBlank() && it != "null" }
+        val matchingSummaryExists = if (lifecycleJobId != null) {
+            perJobPipelineSummaries.any { it.name == "pipeline_summary_${lifecycleJobId}.json" }
+        } else {
+            false
+        }
+        val exportDiagnosticsComplete = lifecycleStage == "COMPLETED" && matchingSummaryExists
+        val diagnosticScope = when (lifecycleStage) {
+            "PREVIEW" -> "preview"
+            "PREPARING", "EXPORTING" -> "export_in_progress"
+            "COMPLETED" -> if (exportDiagnosticsComplete) "complete_export" else "completed_missing_summary"
+            "FAILED", "CANCELLED" -> "terminal_incomplete_export"
+            else -> "unknown_incomplete"
+        }
 
         val manifestJson = JSONObject().apply {
             put("session_id", sessionId)
@@ -68,10 +86,9 @@ object DiagnosticBundleExporter {
             put("git_commit_sha", BuildConfig.GIT_COMMIT_SHA)
             put("build_timestamp", BuildConfig.BUILD_TIMESTAMP)
             put("export_diagnostics_complete", exportDiagnosticsComplete)
-            put(
-                "diagnostic_scope",
-                if (exportDiagnosticsComplete) "complete_export" else "preview_or_in_progress"
-            )
+            put("diagnostic_scope", diagnosticScope)
+            put("pipeline_lifecycle_stage", lifecycleStage)
+            put("pipeline_lifecycle_job_id", lifecycleJobId ?: JSONObject.NULL)
             put(
                 "pipeline_summary_files",
                 JSONArray().apply { perJobPipelineSummaries.forEach { put(it.name) } }

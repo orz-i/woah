@@ -110,6 +110,46 @@ object NativeDiagnostics {
         }
     }
 
+    fun recordPipelineLifecycle(
+        stage: String,
+        jobId: String? = null,
+        fields: Map<String, Any?> = emptyMap()
+    ) {
+        val diagDir = diagnosticsDir ?: return
+        writerExecutor.submit {
+            try {
+                val json = JSONObject().apply {
+                    put("session_id", sessionId)
+                    put("stage", stage)
+                    put("job_id", jobId ?: JSONObject.NULL)
+                    put("updated_at", isoFormat.format(Date()))
+                    val details = JSONObject()
+                    for ((k, v) in fields) {
+                        details.put(k, sanitizeValue(v))
+                    }
+                    put("details", details)
+                }
+
+                val targetFile = File(diagDir, "pipeline_lifecycle.json")
+                val tmpFile = File(diagDir, "pipeline_lifecycle.json.tmp")
+                FileOutputStream(tmpFile).use { fos ->
+                    fos.write(json.toString(2).toByteArray(Charsets.UTF_8))
+                    fos.flush()
+                }
+                if (targetFile.exists()) targetFile.delete()
+                if (!tmpFile.renameTo(targetFile)) {
+                    FileOutputStream(targetFile).use { fos ->
+                        fos.write(json.toString(2).toByteArray(Charsets.UTF_8))
+                        fos.flush()
+                    }
+                    tmpFile.delete()
+                }
+            } catch (t: Throwable) {
+                Log.w(TAG, "Failed to write pipeline_lifecycle.json: ${t.message}")
+            }
+        }
+    }
+
     private fun openNewSegmentLocked(diagDir: File) {
         try {
             currentWriter?.flush()

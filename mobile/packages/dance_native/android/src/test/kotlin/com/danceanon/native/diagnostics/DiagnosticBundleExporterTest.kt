@@ -30,6 +30,10 @@ class DiagnosticBundleExporterTest {
             component = "TestExporter",
             event = "EXPORT_START"
         )
+        NativeDiagnostics.recordPipelineLifecycle(
+            stage = "PREVIEW",
+            fields = mapOf("timestamp_ms" to 0L)
+        )
         NativeDiagnostics.breadcrumb("Test", "STAGE_1")
         NativeDiagnostics.flushCriticalNow(1000L)
 
@@ -61,6 +65,7 @@ class DiagnosticBundleExporterTest {
         assertTrue(entryNames.any { it.startsWith("session_") && it.endsWith(".jsonl") }, "ZIP must contain session jsonl log")
         assertTrue(entryNames.contains("last_breadcrumb.json"), "ZIP must contain last_breadcrumb.json")
         assertTrue(entryNames.contains("device.json"), "ZIP must contain device.json")
+        assertTrue(entryNames.contains("pipeline_lifecycle.json"), "ZIP must contain pipeline lifecycle state")
 
         val manifest = JSONObject(assertNotNull(manifestText))
         assertEquals(BuildConfig.GIT_COMMIT_SHA, manifest.getString("git_commit_sha"))
@@ -68,7 +73,9 @@ class DiagnosticBundleExporterTest {
         assertTrue(manifest.has("version_name"))
         assertTrue(manifest.has("version_code"))
         assertEquals(false, manifest.getBoolean("export_diagnostics_complete"))
-        assertEquals("preview_or_in_progress", manifest.getString("diagnostic_scope"))
+        assertEquals("preview", manifest.getString("diagnostic_scope"))
+        assertEquals("PREVIEW", manifest.getString("pipeline_lifecycle_stage"))
+        assertTrue(manifest.isNull("pipeline_lifecycle_job_id"))
         assertEquals(0, manifest.getJSONArray("pipeline_summary_files").length())
     }
 }
