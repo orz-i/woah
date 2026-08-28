@@ -201,6 +201,48 @@ object PrivacyOcclusionResolver {
             val removedArea = (dilatedArea - effArea).coerceAtLeast(0)
             val coverageRatio = if (dilatedArea > 0) effArea.toFloat() / dilatedArea.toFloat() else 1.0f
 
+            // Independent geometry-health telemetry. `coverageRatio` above only
+            // measures pixels removed by foreground ownership; it cannot detect
+            // a raw/warped selected mask that has already collapsed to a small
+            // portion of the person's bbox. NativeMask carries the mapper needed
+            // to compare source-space bbox geometry with proto-space mask pixels
+            // without mixing coordinate systems.
+            val mapper = rawMask.mapper
+            val bboxProtoArea = if (mapper != null) {
+                val protoLeft = mapper.sourceToProtoX(target.bbox.left)
+                val protoTop = mapper.sourceToProtoY(target.bbox.top)
+                val protoRight = mapper.sourceToProtoX(target.bbox.right)
+                val protoBottom = mapper.sourceToProtoY(target.bbox.bottom)
+                ((protoRight - protoLeft).coerceAtLeast(0f) *
+                    (protoBottom - protoTop).coerceAtLeast(0f)).coerceAtLeast(1f)
+            } else {
+                0f
+            }
+            val maskBboxFillRatio = if (bboxProtoArea > 0f) {
+                rawArea.toFloat() / bboxProtoArea
+            } else {
+                -1f
+            }
+
+            if (maskBboxFillRatio >= 0f && maskBboxFillRatio < 0.12f) {
+                NativeDiagnostics.event(
+                    level = "WARN",
+                    component = "PrivacyOcclusionResolver",
+                    event = "SELECTED_MASK_LOW_BBOX_OCCUPANCY",
+                    fields = mapOf(
+                        "target_id" to target.id,
+                        "state" to target.state.name,
+                        "observed_this_frame" to target.observedThisFrame,
+                        "mask_bbox_fill_ratio" to maskBboxFillRatio,
+                        "raw_area" to rawArea,
+                        "bbox_proto_area" to bboxProtoArea,
+                        "mask_width" to rawMask.width,
+                        "mask_height" to rawMask.height,
+                        "pts_us" to ptsUs
+                    )
+                )
+            }
+
             if (coverageRatio < 0.65f) {
                 NativeDiagnostics.event(
                     level = "WARN",
