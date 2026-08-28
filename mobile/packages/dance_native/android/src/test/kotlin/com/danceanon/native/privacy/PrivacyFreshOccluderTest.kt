@@ -93,7 +93,8 @@ class PrivacyFreshOccluderTest {
         val resolved = PrivacyOcclusionResolver.resolveMasks(
             persons = listOf(target, explicitOccluder, unrelatedOther),
             selectedPersonIds = setOf(0),
-            applyDilationToPrivacyTargets = false
+            applyDilationToPrivacyTargets = false,
+            occluderErosionRadius = 0
         )
 
         assertTrue(resolved.hasPrivacy)
@@ -106,5 +107,54 @@ class PrivacyFreshOccluderTest {
             if ((pBuf.get(i).toInt() and 0xFF) > 0) nonZeroCount++
         }
         assertEquals(0, nonZeroCount, "Explicit foreground occluder subtracted all overlapping solid pixels")
+    }
+
+    private fun createRectMask(size: Int = 64, xRange: IntRange, yRange: IntRange): NativeMask {
+        val buf = ByteBuffer.allocateDirect(size * size)
+        for (y in 0 until size) {
+            for (x in 0 until size) {
+                buf.put(if (x in xRange && y in yRange) 255.toByte() else 0.toByte())
+            }
+        }
+        buf.rewind()
+        return NativeMask(width = size, height = size, buffer = buf, originalWidth = 640, originalHeight = 640)
+    }
+
+    @Test
+    fun testOccludedTargetPreservesSafetyBoundaryWhenEroded() {
+        val target = TrackedPerson(
+            id = 0,
+            bbox = FloatRect(100f, 100f, 200f, 300f),
+            mask = createRectMask(64, 10..50, 10..50),
+            confidence = 0.95f,
+            state = TrackState.OCCLUDED,
+            occludedByTrackIds = setOf(1)
+        )
+
+        val explicitOccluder = TrackedPerson(
+            id = 1,
+            bbox = FloatRect(100f, 100f, 200f, 300f),
+            mask = createRectMask(64, 10..50, 10..50),
+            confidence = 0.95f,
+            state = TrackState.ACTIVE
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = listOf(target, explicitOccluder),
+            selectedPersonIds = setOf(0),
+            applyDilationToPrivacyTargets = false,
+            occluderErosionRadius = 1
+        )
+
+        assertTrue(resolved.hasPrivacy)
+        assertNotNull(resolved.privacyMask)
+        val pBuf = resolved.privacyMask!!.buffer
+        pBuf.rewind()
+        var nonZeroCount = 0
+        for (i in 0 until pBuf.capacity()) {
+            if ((pBuf.get(i).toInt() and 0xFF) > 0) nonZeroCount++
+        }
+        // Original 41x41 = 1681 pixels. Eroded core 39x39 = 1521 pixels. Retained 1-pixel boundary halo = 160 pixels.
+        assertEquals(160, nonZeroCount, "Occluder core erosion must preserve safety halo on target border")
     }
 }

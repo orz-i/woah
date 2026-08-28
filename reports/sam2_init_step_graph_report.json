@@ -10,14 +10,136 @@
   "unique_operators": [
     "GELU"
   ],
-  "tensor_types": {},
+  "tensor_types": {
+    "float32": 703,
+    "int32": 74,
+    "bool": 17,
+    "int64": 5
+  },
   "has_dynamic_shapes": false,
   "dynamic_tensor_count": 0,
-  "total_tensors": 0,
+  "total_tensors": 799,
   "total_operators": 9,
   "gpu_delegate_risk_factors": [
     "GELU: Custom or composite op might decompose into elementary ops during GPU delegate compile"
   ],
-  "tf_lite_interpreter_note": "TF lite interpreter scan skipped/failed: No module named 'tensorflow'",
+  "input_tensors": [
+    {
+      "name": "serving_default_args_0",
+      "index": 0,
+      "shape": [
+        1,
+        256,
+        64,
+        64
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "serving_default_args_1",
+      "index": 1,
+      "shape": [
+        1,
+        32,
+        256,
+        256
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "serving_default_args_2",
+      "index": 2,
+      "shape": [
+        1,
+        64,
+        128,
+        128
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "serving_default_args_3",
+      "index": 3,
+      "shape": [
+        1,
+        2,
+        2
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "serving_default_args_4",
+      "index": 4,
+      "shape": [
+        1,
+        2
+      ],
+      "dtype": "int32"
+    }
+  ],
+  "output_tensors": [
+    {
+      "name": "serving_default_output_0_output",
+      "index": 676,
+      "shape": [
+        1,
+        1,
+        256,
+        256
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "serving_default_output_1_output",
+      "index": 678,
+      "shape": [
+        1,
+        1,
+        1024,
+        1024
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "serving_default_output_2_output",
+      "index": 658,
+      "shape": [
+        1,
+        1
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "serving_default_output_3_output",
+      "index": 687,
+      "shape": [
+        1,
+        256
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "serving_default_output_4_output",
+      "index": 798,
+      "shape": [
+        1,
+        64,
+        64,
+        64
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "serving_default_output_5_output",
+      "index": 258,
+      "shape": [
+        1,
+        64,
+        64,
+        64
+      ],
+      "dtype": "float32"
+    }
+  ],
   "format_magic": "TFL3"
 }

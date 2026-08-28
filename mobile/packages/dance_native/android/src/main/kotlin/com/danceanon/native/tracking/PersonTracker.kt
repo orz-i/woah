@@ -21,7 +21,9 @@ data class TrackedPerson(
     var missedFrames: Int = 0,
     var age: Int = 1,
     var state: TrackState = TrackState.NEW,
-    var occludedByTrackIds: Set<Int> = emptySet()
+    var occludedByTrackIds: Set<Int> = emptySet(),
+    var observedThisFrame: Boolean = (state == TrackState.ACTIVE || state == TrackState.NEW),
+    var footY: Float? = null
 )
 
 interface PersonTracker {

@@ -330,10 +330,31 @@ object NativeDiagnostics {
                 }
                 json.put("summary", sObj)
 
+                val contentBytes = json.toString(2).toByteArray(Charsets.UTF_8)
+
+                // 1. Write per-job summary file
+                val perJobFile = File(diagDir, "pipeline_summary_${jobId}.json")
+                FileOutputStream(perJobFile).use { fos ->
+                    fos.write(contentBytes)
+                    fos.flush()
+                }
+
+                // 2. Write latest pipeline_summary.json symlink/copy
                 val targetFile = File(diagDir, "pipeline_summary.json")
                 FileOutputStream(targetFile).use { fos ->
-                    fos.write(json.toString(2).toByteArray(Charsets.UTF_8))
+                    fos.write(contentBytes)
                     fos.flush()
+                }
+
+                // 3. Prune old job summaries, keeping latest 5
+                val summaryFiles = diagDir.listFiles { _, name ->
+                    name.startsWith("pipeline_summary_") && name.endsWith(".json")
+                }?.sortedByDescending { it.lastModified() }
+
+                if (summaryFiles != null && summaryFiles.size > 5) {
+                    for (oldFile in summaryFiles.drop(5)) {
+                        try { oldFile.delete() } catch (_: Throwable) {}
+                    }
                 }
             } catch (t: Throwable) {
                 Log.w(TAG, "Failed to write pipeline_summary.json: ${t.message}")

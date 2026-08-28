@@ -6,12 +6,50 @@
   "subgraphs": [],
   "operator_counts": {},
   "unique_operators": [],
-  "tensor_types": {},
+  "tensor_types": {
+    "float32": 602,
+    "int32": 41
+  },
   "has_dynamic_shapes": false,
   "dynamic_tensor_count": 0,
-  "total_tensors": 0,
+  "total_tensors": 643,
   "total_operators": 0,
   "gpu_delegate_risk_factors": [],
-  "tf_lite_interpreter_note": "TF lite interpreter scan skipped/failed: No module named 'tensorflow'",
+  "input_tensors": [
+    {
+      "name": "serving_default_args_0",
+      "index": 0,
+      "shape": [
+        1,
+        3,
+        640,
+        640
+      ],
+      "dtype": "float32"
+    }
+  ],
+  "output_tensors": [
+    {
+      "name": "serving_default_output_0_output",
+      "index": 641,
+      "shape": [
+        1,
+        116,
+        8400
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "serving_default_output_1_output",
+      "index": 642,
+      "shape": [
+        1,
+        32,
+        160,
+        160
+      ],
+      "dtype": "float32"
+    }
+  ],
   "format_magic": "TFL3"
 }

@@ -24,14 +24,76 @@
     "PAD",
     "POW"
   ],
-  "tensor_types": {},
+  "tensor_types": {
+    "float32": 1058,
+    "int32": 173,
+    "int64": 7
+  },
   "has_dynamic_shapes": false,
   "dynamic_tensor_count": 0,
-  "total_tensors": 0,
+  "total_tensors": 1238,
   "total_operators": 23,
   "gpu_delegate_risk_factors": [
     "GELU: Custom or composite op might decompose into elementary ops during GPU delegate compile"
   ],
-  "tf_lite_interpreter_note": "TF lite interpreter scan skipped/failed: No module named 'tensorflow'",
+  "input_tensors": [
+    {
+      "name": "serving_default_args_0",
+      "index": 0,
+      "shape": [
+        1,
+        3,
+        1024,
+        1024
+      ],
+      "dtype": "float32"
+    }
+  ],
+  "output_tensors": [
+    {
+      "name": "serving_default_output_0_output",
+      "index": 1231,
+      "shape": [
+        1,
+        256,
+        64,
+        64
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "serving_default_output_1_output",
+      "index": 285,
+      "shape": [
+        1,
+        256,
+        64,
+        64
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "serving_default_output_2_output",
+      "index": 1235,
+      "shape": [
+        1,
+        32,
+        256,
+        256
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "serving_default_output_3_output",
+      "index": 1237,
+      "shape": [
+        1,
+        64,
+        128,
+        128
+      ],
+      "dtype": "float32"
+    }
+  ],
   "format_magic": "TFL3"
 }

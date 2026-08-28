@@ -25,7 +25,10 @@ data class TrackingConfig(
     val kalmanGatingThreshold: Float = 16.0f,
     val minSceneMotionInliers: Int = 2,
     val sceneMotionTolerance: Float = 25.0f,
-    val maxGlobalShift: Float = 300.0f
+    val maxGlobalShift: Float = 300.0f,
+    val enableSceneMotionCompensation: Boolean = false,
+    val foregroundFootYMarginRatio: Float = 0.05f,
+    val privacyOccluderErosionRadius: Int = 1
 )
 
 enum class OcclusionGroupState {
@@ -47,6 +50,7 @@ data class OcclusionGroup(
  * 2. Predicted motion state (currentPredictedBbox)
  * 3. Rendered privacy fallback mask (currentRenderMask)
  * 4. Separate counters for lostFrames, occludedFrames, and reacquireFrames.
+ * 5. Current-frame fresh observation metadata (observedThisFrame, lastObservedFootY, currentObservedFootY).
  */
 class InternalTrack(
     val id: Int,
@@ -61,7 +65,10 @@ class InternalTrack(
     var occludedFrames: Int = 0,
     var reacquireFrames: Int = 0,
     val occludedByTrackIds: MutableSet<Int> = mutableSetOf(),
-    var age: Int = 1
+    var age: Int = 1,
+    var observedThisFrame: Boolean = false,
+    var lastObservedFootY: Float = lastObservedBbox.bottom,
+    var currentObservedFootY: Float? = null
 ) {
     init {
         kalman.init(lastObservedBbox)
@@ -98,7 +105,9 @@ class InternalTrack(
             missedFrames = missedFrames,
             age = age,
             state = state,
-            occludedByTrackIds = occludedByTrackIds.toSet()
+            occludedByTrackIds = occludedByTrackIds.toSet(),
+            observedThisFrame = observedThisFrame,
+            footY = currentObservedFootY ?: lastObservedFootY
         )
     }
 }
@@ -133,7 +142,10 @@ class TrackManager(
                 currentPredictedBbox = det.bbox,
                 currentRenderMask = det.mask,
                 confidence = det.confidence,
-                state = TrackState.ACTIVE
+                state = TrackState.ACTIVE,
+                observedThisFrame = true,
+                lastObservedFootY = det.footY,
+                currentObservedFootY = det.footY
             )
             tracks.add(track)
             nextTrackId = maxOf(nextTrackId, trackId + 1)
@@ -143,12 +155,17 @@ class TrackManager(
     }
 
     private fun updateOcclusionGroups(predictedTracks: List<InternalTrack>, timestampUs: Long) {
-        // 1. Identify current spatial overlaps
-        val overlappingPairs = mutableSetOf<Pair<Int, Int>>()
-        for (i in predictedTracks.indices) {
-            val trackA = predictedTracks[i]
-            for (j in i + 1 until predictedTracks.size) {
-                val trackB = predictedTracks[j]
+        // 1. Build adjacency graph of current spatial overlaps based on predicted boxes
+        val overlapAdj = mutableMapOf<Int, MutableSet<Int>>()
+        val validTracks = predictedTracks.filter { it.state != TrackState.REMOVED }
+        for (t in validTracks) {
+            overlapAdj[t.id] = mutableSetOf()
+        }
+
+        for (i in validTracks.indices) {
+            val trackA = validTracks[i]
+            for (j in i + 1 until validTracks.size) {
+                val trackB = validTracks[j]
                 val interArea = computeBBoxIntersectionArea(trackA.currentPredictedBbox, trackB.currentPredictedBbox)
                 val minArea = minOf(
                     trackA.currentPredictedBbox.width * trackA.currentPredictedBbox.height,
@@ -156,63 +173,86 @@ class TrackManager(
                 )
                 val overlapRatio = if (minArea > 0f) interArea / minArea else 0f
                 if (overlapRatio >= config.occlusionOverlapRatio) {
-                    overlappingPairs.add(Pair(minOf(trackA.id, trackB.id), maxOf(trackA.id, trackB.id)))
+                    overlapAdj[trackA.id]?.add(trackB.id)
+                    overlapAdj[trackB.id]?.add(trackA.id)
                 }
             }
         }
 
-        // 2. Update existing groups or create new ones
-        for (pair in overlappingPairs) {
-            val existing = occlusionGroups.find { it.trackIds.contains(pair.first) || it.trackIds.contains(pair.second) }
-            if (existing != null) {
-                existing.trackIds.add(pair.first)
-                existing.trackIds.add(pair.second)
+        // 2. Find connected components on overlap graph (size >= 2)
+        val visited = mutableSetOf<Int>()
+        val activeComponents = mutableListOf<Set<Int>>()
+        for (tId in overlapAdj.keys) {
+            if (!visited.contains(tId)) {
+                val component = mutableSetOf<Int>()
+                val queue = ArrayDeque<Int>()
+                queue.add(tId)
+                visited.add(tId)
+                while (queue.isNotEmpty()) {
+                    val curr = queue.removeFirst()
+                    component.add(curr)
+                    for (neighbor in overlapAdj[curr].orEmpty()) {
+                        if (!visited.contains(neighbor)) {
+                            visited.add(neighbor)
+                            queue.add(neighbor)
+                        }
+                    }
+                }
+                if (component.size >= 2) {
+                    activeComponents.add(component)
+                }
+            }
+        }
+
+        // 3. Match active components to existing occlusion groups or create new ones
+        val matchedGroupIndices = mutableSetOf<Int>()
+        for (comp in activeComponents) {
+            val existingIdx = occlusionGroups.indices.find { idx ->
+                !matchedGroupIndices.contains(idx) && occlusionGroups[idx].trackIds.any { comp.contains(it) }
+            }
+            if (existingIdx != null) {
+                val existing = occlusionGroups[existingIdx]
+                existing.trackIds.clear()
+                existing.trackIds.addAll(comp)
                 existing.lastOverlapTimestampUs = timestampUs
                 existing.state = OcclusionGroupState.ACTIVE_OVERLAP
                 existing.reacquireFrames = 0
+                matchedGroupIndices.add(existingIdx)
             } else {
                 occlusionGroups.add(
                     OcclusionGroup(
-                        trackIds = mutableSetOf(pair.first, pair.second),
+                        trackIds = comp.toMutableSet(),
                         startedAtUs = timestampUs,
                         lastOverlapTimestampUs = timestampUs,
                         state = OcclusionGroupState.ACTIVE_OVERLAP,
                         reacquireFrames = 0
                     )
                 )
+                matchedGroupIndices.add(occlusionGroups.size - 1)
             }
         }
 
-        // 3. Transition non-overlapping groups to REACQUIRING only when active observation ceases
-        for (group in occlusionGroups) {
-            val anyActiveOverlap = overlappingPairs.any { pair ->
-                group.trackIds.contains(pair.first) && group.trackIds.contains(pair.second)
-            }
-            val anyMemberObserved = group.trackIds.any { tId ->
-                val t = predictedTracks.find { it.id == tId }
-                t != null && t.state == TrackState.ACTIVE && t.missedFrames == 0
-            }
-            val isGroupActive = anyActiveOverlap || (group.state == OcclusionGroupState.ACTIVE_OVERLAP && anyMemberObserved)
-
-            if (!isGroupActive) {
+        // 4. For existing groups not in active overlap, transition to REACQUIRING immediately and clear stale occluders
+        for (idx in occlusionGroups.indices) {
+            if (!matchedGroupIndices.contains(idx)) {
+                val group = occlusionGroups[idx]
                 if (group.state == OcclusionGroupState.ACTIVE_OVERLAP) {
                     group.state = OcclusionGroupState.REACQUIRING
                     group.reacquireFrames = 1
+                    for (tId in group.trackIds) {
+                        predictedTracks.find { it.id == tId }?.occludedByTrackIds?.clear()
+                    }
                 } else {
                     group.reacquireFrames++
                 }
-            } else {
-                group.state = OcclusionGroupState.ACTIVE_OVERLAP
-                group.reacquireFrames = 0
-                group.lastOverlapTimestampUs = timestampUs
             }
         }
 
-        // 4. Purge exhausted or dead groups
+        // 5. Purge exhausted or dead groups
         occlusionGroups.removeAll { group ->
-            val validTracks = predictedTracks.filter { group.trackIds.contains(it.id) && it.state != TrackState.REMOVED }
+            val aliveTracks = predictedTracks.filter { group.trackIds.contains(it.id) && it.state != TrackState.REMOVED }
             val isExhausted = (group.state == OcclusionGroupState.REACQUIRING && group.reacquireFrames > config.postOcclusionGraceFrames)
-            validTracks.size < 2 || isExhausted
+            aliveTracks.size < 2 || isExhausted
         }
     }
 
@@ -225,6 +265,12 @@ class TrackManager(
             return predict(timestampUs)
         }
 
+        // Reset per-frame observation state
+        for (t in tracks) {
+            t.observedThisFrame = false
+            t.currentObservedFootY = null
+        }
+
         if (tracks.isEmpty()) {
             for (det in detections) {
                 val newTrack = InternalTrack(
@@ -234,7 +280,10 @@ class TrackManager(
                     currentPredictedBbox = det.bbox,
                     currentRenderMask = det.mask,
                     confidence = det.confidence,
-                    state = TrackState.ACTIVE
+                    state = TrackState.ACTIVE,
+                    observedThisFrame = true,
+                    lastObservedFootY = det.footY,
+                    currentObservedFootY = det.footY
                 )
                 tracks.add(newTrack)
             }
@@ -250,7 +299,23 @@ class TrackManager(
         }
 
         val sceneMotion = SceneMotionEstimator.estimateSceneMotion(tracks, detections, config)
-        if (sceneMotion.confidence > 0f && (abs(sceneMotion.dx) > 0.5f || abs(sceneMotion.dy) > 0.5f)) {
+        if (sceneMotion.inlierCount > 0 || sceneMotion.confidence > 0f) {
+            NativeDiagnostics.event(
+                level = "INFO",
+                component = "TrackManager",
+                event = "SCENE_MOTION_ESTIMATED",
+                fields = mapOf(
+                    "dx" to sceneMotion.dx,
+                    "dy" to sceneMotion.dy,
+                    "inliers" to sceneMotion.inlierCount,
+                    "confidence" to sceneMotion.confidence,
+                    "applied" to config.enableSceneMotionCompensation,
+                    "pts_us" to timestampUs
+                )
+            )
+        }
+
+        if (config.enableSceneMotionCompensation && sceneMotion.confidence > 0f && (abs(sceneMotion.dx) > 0.5f || abs(sceneMotion.dy) > 0.5f)) {
             for (i in tracks.indices) {
                 tracks[i].currentPredictedBbox = rawPredictedBoxes[i].offset(sceneMotion.dx, sceneMotion.dy)
             }
@@ -282,44 +347,76 @@ class TrackManager(
             val bIoU = computeBBoxIoU(predBox, detBox)
             val gateDist = track.kalman.gatingDistance(det.bbox)
 
-            val dx = detBox.centerX - predBox.centerX
-            val dy = detBox.centerY - predBox.centerY
-            val dist = sqrt(dx * dx + dy * dy)
-            val maxAllowedDist = if (track.state == TrackState.REACQUIRING) {
-                max(predBox.width * 2.0f, predBox.height * 1.0f)
+            val dxPred = detBox.centerX - predBox.centerX
+            val dyPred = detBox.centerY - predBox.centerY
+            val distToPred = sqrt(dxPred * dxPred + dyPred * dyPred)
+
+            val dxObs = detBox.centerX - track.lastObservedBbox.centerX
+            val dyObs = detBox.centerY - track.lastObservedBbox.centerY
+            val distToObs = sqrt(dxObs * dxObs + dyObs * dyObs)
+
+            val dist = if (track.state == TrackState.REACQUIRING) minOf(distToPred, distToObs) else distToPred
+            val inGroup = occlusionGroups.any { it.trackIds.contains(track.id) }
+            val isFlexibleGate = track.state == TrackState.REACQUIRING || inGroup
+            val maxAllowedDist = if (isFlexibleGate) {
+                max(predBox.width * 2.5f, predBox.height * 1.5f)
             } else {
                 max(predBox.width, predBox.height * 0.6f)
             }
 
             // Physical Gate: Reject candidates with no spatial overlap that exceed physical displacement limit
-            if (bIoU <= 0f && (dist > maxAllowedDist || (track.state != TrackState.REACQUIRING && gateDist > config.kalmanGatingThreshold))) {
+            if (bIoU <= 0f && (dist > maxAllowedDist || (!isFlexibleGate && gateDist > config.kalmanGatingThreshold))) {
                 return 0f
             }
 
-            val predMask = getPredictedMask(track)
+            val predMask = if (track.state == TrackState.REACQUIRING && distToObs < distToPred) {
+                track.lastObservedMask
+            } else {
+                getPredictedMask(track)
+            }
             val mIoU = computeMaskIoU(predMask, det.mask)
-            val motionScore = (1.0f - (gateDist / (config.kalmanGatingThreshold * 2f))).coerceIn(0f, 1f)
+            val motionScore = if (isFlexibleGate) {
+                (1.0f - (dist / maxAllowedDist)).coerceIn(0f, 1f)
+            } else {
+                (1.0f - (gateDist / (config.kalmanGatingThreshold * 2f))).coerceIn(0f, 1f)
+            }
 
             val vx = track.kalman.state[4]
             val vy = track.kalman.state[5]
             val motionDx = detBox.centerX - track.lastObservedBbox.centerX
             val motionDy = detBox.centerY - track.lastObservedBbox.centerY
-            val dirXMatch = if (abs(vx) > 1f && abs(motionDx) > 1f) (vx * motionDx > 0) else true
-            val dirYMatch = if (abs(vy) > 1f && abs(motionDy) > 1f) (vy * motionDy > 0) else true
-            val directionScore = if (dirXMatch && dirYMatch) 1.0f else if (dirXMatch || dirYMatch) 0.5f else 0.0f
+            val dirXMatch = if (abs(vx) > 50f && abs(motionDx) > 10f) (vx * motionDx > 0) else null
+            val dirYMatch = if (abs(vy) > 50f && abs(motionDy) > 10f) (vy * motionDy > 0) else null
+            val directionScore = when {
+                dirXMatch == true && dirYMatch == true -> 1.0f
+                dirXMatch == false && dirYMatch == false -> 0.0f
+                dirXMatch == false || dirYMatch == false -> 0.25f
+                dirXMatch == true || dirYMatch == true -> 0.75f
+                else -> 0.5f
+            }
 
-            return config.bboxIouWeight * bIoU +
-                   config.maskIouWeight * mIoU +
-                   config.motionWeight * motionScore +
-                   config.directionWeight * directionScore
+            val rawScore = config.bboxIouWeight * bIoU +
+                           config.maskIouWeight * mIoU +
+                           config.motionWeight * motionScore +
+                           config.directionWeight * directionScore
+
+            // Penalize candidate if both track and detection have non-null masks with zero spatial overlap
+            val maskPenalty = if (predMask != null && det.mask != null && mIoU < 0.05f) 0.5f else 1.0f
+
+            // Strong direction contradiction penalty when moving at significant velocity in opposite direction
+            val directionPenalty = if (dirXMatch == false && abs(motionDx) > 20f && abs(vx) > 100f) 0.2f else 1.0f
+
+            return (rawScore * maskPenalty * directionPenalty).coerceIn(0f, 1f)
         }
 
-        // 3. PHASE B: OCCLUSION / REACQUIRING GROUP-FIRST ASSOCIATION
+        // 3. PHASE B: OCCLUSION / REACQUIRING GROUP-FIRST ASSOCIATION WITH RESERVATION ISOLATION
+        val reservedGroupTrackIndices = mutableSetOf<Int>()
+        val reservedGroupDetectionIndices = mutableSetOf<Int>()
+
         for (group in occlusionGroups) {
             val groupTrackIndices = tracks.indices.filter { idx ->
                 val t = tracks[idx]
-                group.trackIds.contains(t.id) && !matchedTrackIndices.contains(idx) &&
-                (t.state == TrackState.OCCLUDED || t.state == TrackState.REACQUIRING || t.state == TrackState.ACTIVE)
+                group.trackIds.contains(t.id) && !matchedTrackIndices.contains(idx) && t.state != TrackState.REMOVED
             }
             if (groupTrackIndices.isEmpty()) continue
 
@@ -343,14 +440,28 @@ class TrackManager(
                 !matchedDetectionIndices.contains(dIdx) &&
                 computeBBoxIntersectionArea(groupEnvelope, detections[dIdx].bbox) > 0f
             }
+
+            // Reserve all group tracks and candidate detections to isolate from Global Hungarian
+            for (tIdx in groupTrackIndices) {
+                reservedGroupTrackIndices.add(tIdx)
+            }
+            for (dIdx in candidateDetectionIndices) {
+                reservedGroupDetectionIndices.add(dIdx)
+            }
+
             if (candidateDetectionIndices.isEmpty()) continue
 
-            val groupCostMatrix = Array(groupTrackIndices.size) { r ->
+            // Score matrix for group
+            val scoreMatrix = Array(groupTrackIndices.size) { r ->
                 val track = tracks[groupTrackIndices[r]]
                 FloatArray(candidateDetectionIndices.size) { c ->
-                    val det = detections[candidateDetectionIndices[c]]
-                    val score = computeMatchScore(track, det)
-                    (1.0f - score).coerceIn(0f, 1f)
+                    computeMatchScore(track, detections[candidateDetectionIndices[c]])
+                }
+            }
+
+            val groupCostMatrix = Array(groupTrackIndices.size) { r ->
+                FloatArray(candidateDetectionIndices.size) { c ->
+                    (1.0f - scoreMatrix[r][c]).coerceIn(0f, 1f)
                 }
             }
 
@@ -358,16 +469,26 @@ class TrackManager(
             val matchResult = HungarianSolver.match(groupCostMatrix, maxCostThreshold = maxCost)
 
             for (match in matchResult.matches) {
-                val tIdx = groupTrackIndices[match.first]
-                val dIdx = candidateDetectionIndices[match.second]
+                val r = match.first
+                val c = match.second
+                val tIdx = groupTrackIndices[r]
+                val dIdx = candidateDetectionIndices[c]
                 val track = tracks[tIdx]
                 val det = detections[dIdx]
 
-                // Ambiguity Check: Ensure best score is clearly superior to second best score
-                val scoresForTrack = candidateDetectionIndices.map { computeMatchScore(track, detections[it]) }.sortedDescending()
-                val bestScore = scoresForTrack.firstOrNull() ?: 0f
-                val secondBest = scoresForTrack.getOrNull(1) ?: 0f
-                val isAmbiguous = (scoresForTrack.size > 1) && (bestScore - secondBest < config.associationAmbiguityMargin)
+                val assignedScore = scoreMatrix[r][c]
+
+                // Ambiguity Check: Ensure reciprocal-best matching and distinct superiority
+                val rowScores = scoreMatrix[r].sortedDescending()
+                val rowBest = rowScores.firstOrNull() ?: 0f
+                val rowSecondBest = rowScores.getOrNull(1) ?: 0f
+                val colBest = (0 until groupTrackIndices.size).map { scoreMatrix[it][c] }.maxOrNull() ?: 0f
+
+                val isRowAmbiguous = (rowScores.size > 1) && (rowBest - rowSecondBest < config.associationAmbiguityMargin)
+                val isColAmbiguous = (assignedScore < colBest - config.associationAmbiguityMargin)
+                val isBelowThreshold = assignedScore < config.minMatchScore
+
+                val isAmbiguous = isRowAmbiguous || isColAmbiguous || isBelowThreshold
 
                 if (isAmbiguous) {
                     NativeDiagnostics.event(
@@ -377,20 +498,23 @@ class TrackManager(
                         fields = mapOf(
                             "group_id" to group.trackIds.toList(),
                             "track_id" to track.id,
-                            "best_score" to bestScore,
-                            "second_best_score" to secondBest,
-                            "margin" to config.associationAmbiguityMargin,
-                            "candidate_count" to candidateDetectionIndices.size
+                            "det_index" to dIdx,
+                            "assigned_score" to assignedScore,
+                            "row_best" to rowBest,
+                            "row_second_best" to rowSecondBest,
+                            "col_best" to colBest,
+                            "margin" to config.associationAmbiguityMargin
                         )
                     )
                     // Defer identity commitment: keep track in REACQUIRING
-                    if (track.state == TrackState.OCCLUDED) {
+                    if (track.state == TrackState.OCCLUDED || track.state == TrackState.ACTIVE) {
                         track.state = TrackState.REACQUIRING
                     }
+                    // Keep track and detection reserved so Global Hungarian will NOT forcibly match them
                     continue
                 }
 
-                // Commit group match
+                // High confidence commit
                 matchedTrackIndices.add(tIdx)
                 matchedDetectionIndices.add(dIdx)
 
@@ -405,6 +529,9 @@ class TrackManager(
                 track.reacquireFrames = 0
                 track.occludedByTrackIds.clear()
                 track.state = TrackState.ACTIVE
+                track.observedThisFrame = true
+                track.currentObservedFootY = det.footY
+                track.lastObservedFootY = det.footY
                 track.kalman.update(det.bbox, timestampUs)
 
                 if (prevState == TrackState.OCCLUDED || prevState == TrackState.REACQUIRING) {
@@ -421,9 +548,13 @@ class TrackManager(
             }
         }
 
-        // 4. Global Hungarian Matching on Remaining Unmatched Tracks & Detections
-        val remainingTrackIndices = tracks.indices.filter { !matchedTrackIndices.contains(it) }
-        val remainingDetectionIndices = detections.indices.filter { !matchedDetectionIndices.contains(it) }
+        // 4. Global Hungarian Matching on Remaining Non-Group Unmatched Tracks & Detections
+        val remainingTrackIndices = tracks.indices.filter {
+            !matchedTrackIndices.contains(it) && !reservedGroupTrackIndices.contains(it)
+        }
+        val remainingDetectionIndices = detections.indices.filter {
+            !matchedDetectionIndices.contains(it) && !reservedGroupDetectionIndices.contains(it)
+        }
 
         if (remainingTrackIndices.isNotEmpty() && remainingDetectionIndices.isNotEmpty()) {
             val costMatrix = Array(remainingTrackIndices.size) { r ->
@@ -458,6 +589,9 @@ class TrackManager(
                 track.reacquireFrames = 0
                 track.occludedByTrackIds.clear()
                 track.state = TrackState.ACTIVE
+                track.observedThisFrame = true
+                track.currentObservedFootY = det.footY
+                track.lastObservedFootY = det.footY
                 track.kalman.update(det.bbox, timestampUs)
 
                 if (prevState == TrackState.OCCLUDED || prevState == TrackState.REACQUIRING) {
@@ -496,7 +630,9 @@ class TrackManager(
                     }
                 }
 
-                val isOccluded = freshlyMatchedOtherTracks.isNotEmpty()
+                val inActiveGroup = occlusionGroups.any { it.trackIds.contains(track.id) && it.state == OcclusionGroupState.ACTIVE_OVERLAP }
+                val inReacquiringGroup = occlusionGroups.any { it.trackIds.contains(track.id) && it.state == OcclusionGroupState.REACQUIRING }
+                val isOccluded = freshlyMatchedOtherTracks.isNotEmpty() || (inActiveGroup && freshlyMatchedOtherTracks.isNotEmpty())
 
                 if (isOccluded) {
                     track.occludedFrames++
@@ -505,7 +641,6 @@ class TrackManager(
                     for (other in freshlyMatchedOtherTracks) {
                         track.occludedByTrackIds.add(other.id)
                     }
-                    track.kalman.dampenVelocity(0.70f)
 
                     // STRICT REQUIREMENT: OCCLUDED state MUST NEVER generate rectangle fallback!
                     if (track.lastObservedMask != null) {
@@ -516,15 +651,31 @@ class TrackManager(
                             missedFrames = 0
                         )
                     }
-                } else {
-                    // Occlusion ended / separated
-                    when (track.state) {
-                        TrackState.OCCLUDED -> {
-                            // Transition to REACQUIRING - immediately CLEAR stale occluders
-                            track.state = TrackState.REACQUIRING
-                            track.lostFrames = 0
-                            track.reacquireFrames = 1
-                            track.occludedByTrackIds.clear()
+                } else if (inReacquiringGroup || track.state == TrackState.OCCLUDED || track.state == TrackState.REACQUIRING) {
+                    // Occlusion ended / separated -> in REACQUIRING state
+                    if (track.state == TrackState.OCCLUDED) {
+                        track.state = TrackState.REACQUIRING
+                        track.lostFrames = 0
+                        track.reacquireFrames = 1
+                        track.occludedByTrackIds.clear()
+                        if (track.lastObservedMask != null) {
+                            track.currentRenderMask = warpMask(
+                                sourceMask = track.lastObservedMask!!,
+                                prevBbox = track.lastObservedBbox,
+                                predBbox = predBox,
+                                missedFrames = 0
+                            )
+                        }
+                        NativeDiagnostics.event(
+                            level = "INFO",
+                            component = "TrackManager",
+                            event = "REACQUIRE_START",
+                            fields = mapOf("track_id" to track.id)
+                        )
+                    } else {
+                        track.reacquireFrames++
+                        track.occludedByTrackIds.clear()
+                        if (track.reacquireFrames <= config.postOcclusionGraceFrames) {
                             if (track.lastObservedMask != null) {
                                 track.currentRenderMask = warpMask(
                                     sourceMask = track.lastObservedMask!!,
@@ -533,50 +684,31 @@ class TrackManager(
                                     missedFrames = 0
                                 )
                             }
-                            NativeDiagnostics.event(
-                                level = "INFO",
-                                component = "TrackManager",
-                                event = "REACQUIRE_START",
-                                fields = mapOf("track_id" to track.id)
-                            )
-                        }
-                        TrackState.REACQUIRING -> {
-                            track.reacquireFrames++
+                        } else {
+                            track.state = TrackState.LOST
+                            track.lostFrames = 1
                             track.occludedByTrackIds.clear()
-                            if (track.reacquireFrames <= config.postOcclusionGraceFrames) {
-                                // Continue REACQUIRING grace period with organic warp
-                                if (track.lastObservedMask != null) {
-                                    track.currentRenderMask = warpMask(
-                                        sourceMask = track.lastObservedMask!!,
-                                        prevBbox = track.lastObservedBbox,
-                                        predBbox = predBox,
-                                        missedFrames = 0
-                                    )
-                                }
-                            } else {
-                                // Reacquire grace period exhausted -> transition to LOST
-                                track.state = TrackState.LOST
-                                track.lostFrames = 1
-                                track.occludedByTrackIds.clear()
-                                if (track.lastObservedMask != null) {
-                                    track.currentRenderMask = updateLostMask(
-                                        canonicalMask = track.lastObservedMask!!,
-                                        observedBbox = track.lastObservedBbox,
-                                        predBbox = predBox,
-                                        missedFrames = track.lostFrames
-                                    )
-                                }
-                                NativeDiagnostics.event(
-                                    level = "WARN",
-                                    component = "TrackManager",
-                                    event = "REACQUIRE_TIMEOUT",
-                                    fields = mapOf(
-                                        "track_id" to track.id,
-                                        "grace_frames" to config.postOcclusionGraceFrames
-                                    )
+                            if (track.lastObservedMask != null) {
+                                track.currentRenderMask = updateLostMask(
+                                    canonicalMask = track.lastObservedMask!!,
+                                    observedBbox = track.lastObservedBbox,
+                                    predBbox = predBox,
+                                    missedFrames = track.lostFrames
                                 )
                             }
+                            NativeDiagnostics.event(
+                                level = "WARN",
+                                component = "TrackManager",
+                                event = "REACQUIRE_TIMEOUT",
+                                fields = mapOf(
+                                    "track_id" to track.id,
+                                    "grace_frames" to config.postOcclusionGraceFrames
+                                )
+                            )
                         }
+                    }
+                } else {
+                    when (track.state) {
                         TrackState.ACTIVE, TrackState.NEW -> {
                             track.state = TrackState.LOST
                             track.lostFrames = 1
@@ -616,22 +748,22 @@ class TrackManager(
                                 }
                             }
                         }
-                        TrackState.REMOVED -> {}
+                        TrackState.REMOVED, TrackState.OCCLUDED, TrackState.REACQUIRING -> {}
                     }
                 }
             }
         }
 
-        // 6. Ordinary Recovery Association on Remaining Unassigned Detections
+        // 6. Ordinary Recovery Association on Remaining Truly LOST Tracks
         val unassignedDetections = mutableListOf<PersonDetection>()
         for (c in detections.indices) {
-            if (!matchedDetectionIndices.contains(c)) {
+            if (!matchedDetectionIndices.contains(c) && !reservedGroupDetectionIndices.contains(c)) {
                 unassignedDetections.add(detections[c])
             }
         }
 
         val recoverableTracks = tracks.filter {
-            (it.state == TrackState.LOST || it.state == TrackState.REACQUIRING) && !matchedTrackIndices.contains(tracks.indexOf(it))
+            it.state == TrackState.LOST && !matchedTrackIndices.contains(tracks.indexOf(it))
         }
         val reclaimedTrackIds = mutableSetOf<Int>()
 
@@ -648,11 +780,7 @@ class TrackManager(
                 val refDim = max(candTrack.currentPredictedBbox.width, candTrack.currentPredictedBbox.height)
                 val absDx = abs(dx)
                 val absDy = abs(dy)
-                val isNearby = if (candTrack.state == TrackState.REACQUIRING) {
-                    bIoU > 0.02f || dist < refDim * 1.5f || (absDx < refDim * 1.2f && absDy < refDim * 2.5f)
-                } else {
-                    bIoU > 0.05f || dist < refDim * 0.9f || (absDx < refDim * 0.5f && absDy < refDim * 2.5f)
-                }
+                val isNearby = bIoU > 0.05f || dist < refDim * 0.9f || (absDx < refDim * 0.5f && absDy < refDim * 2.5f)
 
                 if (isNearby && dist < bestDist) {
                     bestDist = dist
@@ -671,6 +799,9 @@ class TrackManager(
                 bestTrack.reacquireFrames = 0
                 bestTrack.occludedByTrackIds.clear()
                 bestTrack.state = TrackState.ACTIVE
+                bestTrack.observedThisFrame = true
+                bestTrack.currentObservedFootY = det.footY
+                bestTrack.lastObservedFootY = det.footY
                 bestTrack.kalman.update(det.bbox, timestampUs)
                 reclaimedTrackIds.add(bestTrack.id)
             } else {
@@ -681,7 +812,10 @@ class TrackManager(
                     currentPredictedBbox = det.bbox,
                     currentRenderMask = det.mask,
                     confidence = det.confidence,
-                    state = TrackState.ACTIVE
+                    state = TrackState.ACTIVE,
+                    observedThisFrame = true,
+                    lastObservedFootY = det.footY,
+                    currentObservedFootY = det.footY
                 )
                 tracks.add(newTrack)
             }

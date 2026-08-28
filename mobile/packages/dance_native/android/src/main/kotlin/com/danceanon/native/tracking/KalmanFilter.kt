@@ -20,7 +20,7 @@ class KalmanFilter {
     private var lastTimestampUs: Long = -1L
 
     private val stdWeightPosition = 1f / 20f
-    private val stdWeightVelocity = 1.0f
+    private val stdWeightVelocity = 1f / 10f
 
     fun init(bbox: FloatRect, timestampUs: Long = -1L) {
         val w = bbox.width

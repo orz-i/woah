@@ -11,7 +11,10 @@ from typing import List, Tuple, Union
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from iopath.common.file_io import g_pathmgr
+try:
+    from iopath.common.file_io import g_pathmgr
+except ImportError:
+    g_pathmgr = None
 
 from sam2.modeling.backbones.utils import (
     PatchEmbed,
