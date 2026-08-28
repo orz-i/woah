@@ -638,7 +638,9 @@ class TrackManager(
 
         // 4. Global Hungarian Matching on Remaining Non-Group Unmatched Tracks & Detections
         val remainingTrackIndices = tracks.indices.filter {
-            !matchedTrackIndices.contains(it) && !reservedGroupTrackIndices.contains(it)
+            !matchedTrackIndices.contains(it) &&
+                !reservedGroupTrackIndices.contains(it) &&
+                (tracks[it].state == TrackState.ACTIVE || tracks[it].state == TrackState.NEW)
         }
         val remainingDetectionIndices = detections.indices.filter {
             !matchedDetectionIndices.contains(it) && !reservedGroupDetectionIndices.contains(it)
@@ -925,10 +927,29 @@ class TrackManager(
                     max(det.bbox.width, det.bbox.height)
                 )
 
-                val maxRecoverDist = if (candTrack.lostFrames > 1) refDim * 1.5f else refDim * 0.8f
+                // LOST recovery must follow the current motion prediction rather
+                // than becoming more permissive with age. If the Kalman state has
+                // advanced meaningfully from lastObserved, require the candidate
+                // to make progress in that predicted direction (or overlap the
+                // predicted box). This prevents a passer occupying the stale
+                // lastObserved location from stealing the LOST identity.
+                val predDx = candTrack.currentPredictedBbox.centerX - candTrack.lastObservedBbox.centerX
+                val predDy = candTrack.currentPredictedBbox.centerY - candTrack.lastObservedBbox.centerY
+                val predTravel = sqrt(predDx * predDx + predDy * predDy)
+                val candDx = det.bbox.centerX - candTrack.lastObservedBbox.centerX
+                val candDy = det.bbox.centerY - candTrack.lastObservedBbox.centerY
+                val predictionProgress = if (predTravel > 1e-4f) {
+                    (candDx * predDx + candDy * predDy) / (predTravel * predTravel)
+                } else {
+                    1.0f
+                }
+                val hasMeaningfulPrediction = predTravel >= refDim * 0.10f
+                val motionConsistent = !hasMeaningfulPrediction || bIoU > 0.05f || predictionProgress >= 0.25f
+
+                val maxRecoverDist = refDim * 0.8f
                 val isNearby = bIoU > 0.05f || dist < maxRecoverDist
 
-                if (isNearby && dist < bestDist) {
+                if (isNearby && motionConsistent && dist < bestDist) {
                     bestDist = dist
                     bestTrack = candTrack
                 }
