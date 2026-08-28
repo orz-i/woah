@@ -652,7 +652,7 @@ class TrackManager(
 
                 val inActiveGroup = occlusionGroups.any { it.trackIds.contains(track.id) && it.state == OcclusionGroupState.ACTIVE_OVERLAP }
                 val inReacquiringGroup = occlusionGroups.any { it.trackIds.contains(track.id) && it.state == OcclusionGroupState.REACQUIRING }
-                val isOccluded = freshlyMatchedOtherTracks.isNotEmpty() || (inActiveGroup && freshlyMatchedOtherTracks.isNotEmpty())
+                val isOccluded = freshlyMatchedOtherTracks.isNotEmpty()
 
                 if (isOccluded) {
                     track.occludedFrames++

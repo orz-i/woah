@@ -113,17 +113,17 @@ object YoloMaskDecoder {
             return maskBytes
         }
 
-        val protoX1 = ((cand.x1 / inputSize) * protoSize).toInt().coerceIn(0, protoSize)
-        val protoY1 = ((cand.y1 / inputSize) * protoSize).toInt().coerceIn(0, protoSize)
-        val protoX2 = ((cand.x2 / inputSize) * protoSize).toInt().coerceIn(0, protoSize)
-        val protoY2 = ((cand.y2 / inputSize) * protoSize).toInt().coerceIn(0, protoSize)
+        val margin = 1
+        val protoX1 = (kotlin.math.floor((cand.x1 / inputSize) * protoSize).toInt() - margin).coerceIn(0, protoSize)
+        val protoY1 = (kotlin.math.floor((cand.y1 / inputSize) * protoSize).toInt() - margin).coerceIn(0, protoSize)
+        val protoX2 = (kotlin.math.ceil((cand.x2 / inputSize) * protoSize).toInt() + margin).coerceIn(0, protoSize)
+        val protoY2 = (kotlin.math.ceil((cand.y2 / inputSize) * protoSize).toInt() + margin).coerceIn(0, protoSize)
 
         for (py in protoY1 until protoY2) {
             val rowOffset = py * protoSize
             for (px in protoX1 until protoX2) {
                 val sum = protoView.getDotProduct(px, py, cand.maskCoeffs)
-                val prob = 1f / (1f + kotlin.math.exp(-sum))
-                if (prob > 0.5f) {
+                if (sum > 0f) {
                     maskBytes[rowOffset + px] = 255.toByte()
                 }
             }
