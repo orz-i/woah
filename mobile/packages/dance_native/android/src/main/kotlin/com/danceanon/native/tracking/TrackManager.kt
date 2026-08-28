@@ -68,7 +68,10 @@ class InternalTrack(
     var age: Int = 1,
     var observedThisFrame: Boolean = false,
     var lastObservedFootY: Float = lastObservedBbox.bottom,
-    var currentObservedFootY: Float? = null
+    var currentObservedFootY: Float? = null,
+    var lastReliableObservedMotionDx: Float = 0f,
+    var lastReliableObservedMotionDy: Float = 0f,
+    var lastReliableObservedMotionTimestampUs: Long = Long.MIN_VALUE
 ) {
     init {
         kalman.init(lastObservedBbox)
@@ -386,11 +389,13 @@ class TrackManager(
             val dyPred = detBox.centerY - predBox.centerY
             val distToPred = sqrt(dxPred * dxPred + dyPred * dyPred)
 
-            val dxObs = detBox.centerX - track.lastObservedBbox.centerX
-            val dyObs = detBox.centerY - track.lastObservedBbox.centerY
-            val distToObs = sqrt(dxObs * dxObs + dyObs * dyObs)
-
-            val dist = if (track.state == TrackState.REACQUIRING || track.state == TrackState.LOST) minOf(distToPred, distToObs) else distToPred
+            // Association is prediction-first.  A REACQUIRING identity must not
+            // be pulled back toward its stale lastObserved location after two
+            // people cross: that makes A prefer the person who moved into A's
+            // old position.  The Kalman prediction already carries the motion
+            // evidence; lastObserved remains useful for direction diagnostics,
+            // but is not a competing distance shortcut for identity commitment.
+            val dist = distToPred
             val inGroup = occlusionGroups.any { it.trackIds.contains(track.id) }
             val isFlexibleGate = track.state == TrackState.REACQUIRING || track.state == TrackState.LOST || inGroup
             val maxAllowedDist = if (isFlexibleGate) {
@@ -404,14 +409,37 @@ class TrackManager(
                 return 0f
             }
 
-            val predMask = if (track.state == TrackState.REACQUIRING && distToObs < distToPred) {
-                track.lastObservedMask
-            } else {
-                getPredictedMask(track)
-            }
+            val predMask = getPredictedMask(track)
             val mIoU = computeMaskIoU(predMask, det.mask)
             val distScore = (1.0f - (dist / maxAllowedDist)).coerceIn(0f, 1f)
             val motionScore = maxOf(distScore, (1.0f - (gateDist / (config.kalmanGatingThreshold * 2f))).coerceIn(0f, 1f))
+
+            // During the short post-ambiguity reacquisition window, preserve
+            // the sign of the last reliable observed->observed displacement.
+            // This is deliberately not a permanent direction lock: the evidence
+            // expires after 0.5s.  If two people cross, returning to the old side
+            // (projection ~= 0 or negative) must not beat the identity that
+            // continues along the recent trajectory merely because bbox IoU is
+            // temporarily larger there.
+            if (track.state == TrackState.REACQUIRING) {
+                val historyDx = track.lastReliableObservedMotionDx
+                val historyDy = track.lastReliableObservedMotionDy
+                val historyMagSq = historyDx * historyDx + historyDy * historyDy
+                val historyAgeUs = if (track.lastReliableObservedMotionTimestampUs == Long.MIN_VALUE) {
+                    Long.MAX_VALUE
+                } else {
+                    (timestampUs - track.lastReliableObservedMotionTimestampUs).coerceAtLeast(0L)
+                }
+                val minReliableMotion = max(10f, max(track.lastObservedBbox.width, track.lastObservedBbox.height) * 0.08f)
+                if (historyAgeUs <= 500_000L && historyMagSq >= minReliableMotion * minReliableMotion) {
+                    val candidateDx = detBox.centerX - track.lastObservedBbox.centerX
+                    val candidateDy = detBox.centerY - track.lastObservedBbox.centerY
+                    val progress = (candidateDx * historyDx + candidateDy * historyDy) / historyMagSq
+                    if (progress < 0.15f) {
+                        return 0f
+                    }
+                }
+            }
 
             val vx = track.kalman.state[4]
             val vy = track.kalman.state[5]
@@ -439,9 +467,23 @@ class TrackManager(
             return (rawScore * maskPenalty).coerceIn(0f, 1f)
         }
 
+        fun recordReliableObservedMotion(track: InternalTrack, det: PersonDetection) {
+            val dx = det.bbox.centerX - track.lastObservedBbox.centerX
+            val dy = det.bbox.centerY - track.lastObservedBbox.centerY
+            val magnitude = sqrt(dx * dx + dy * dy)
+            val minReliableMotion = max(5f, max(track.lastObservedBbox.width, track.lastObservedBbox.height) * 0.03f)
+            if (magnitude >= minReliableMotion) {
+                track.lastReliableObservedMotionDx = dx
+                track.lastReliableObservedMotionDy = dy
+                track.lastReliableObservedMotionTimestampUs = timestampUs
+            }
+        }
+
         // 3. PHASE B: OCCLUSION / REACQUIRING GROUP-FIRST ASSOCIATION WITH RESERVATION ISOLATION
         val reservedGroupTrackIndices = mutableSetOf<Int>()
         val reservedGroupDetectionIndices = mutableSetOf<Int>()
+        val reservedGlobalDetectionIndices = mutableSetOf<Int>()
+        val globalAmbiguousTrackIndices = mutableSetOf<Int>()
 
         for (group in occlusionGroups) {
             val groupTrackIndices = tracks.indices.filter { idx ->
@@ -577,6 +619,7 @@ class TrackManager(
                 val associationLastObservedBbox = track.lastObservedBbox
                 val associationBBoxIoU = computeBBoxIoU(associationPredictedBbox, det.bbox)
                 val associationMaskIoU = computeMaskIoU(getPredictedMask(track), det.mask)
+                recordReliableObservedMotion(track, det)
                 track.lastObservedBbox = det.bbox
                 track.lastObservedMask = det.mask ?: track.lastObservedMask
                 track.currentPredictedBbox = det.bbox
@@ -704,6 +747,152 @@ class TrackManager(
                 val det = detections[dIdx]
                 val assignedScore = scoreMatrix[match.first][match.second]
 
+                val rowBest = scoreMatrix[match.first].maxOrNull() ?: 0f
+                val colBest = scoreMatrix.indices.maxOfOrNull { r -> scoreMatrix[r][match.second] } ?: 0f
+                val rowSecondBest = scoreMatrix[match.first]
+                    .indices
+                    .filter { it != match.second }
+                    .map { scoreMatrix[match.first][it] }
+                    .maxOrNull()
+                val colSecondBest = scoreMatrix.indices
+                    .filter { it != match.first }
+                    .map { scoreMatrix[it][match.second] }
+                    .maxOrNull()
+                val epsilon = 1e-6f
+                val rowMargin = rowSecondBest?.let { assignedScore - it } ?: Float.POSITIVE_INFINITY
+                val colMargin = colSecondBest?.let { assignedScore - it } ?: Float.POSITIVE_INFINITY
+                val rowHasConfusableAlternative = remainingDetectionIndices.indices.any { altCol ->
+                    if (altCol == match.second) return@any false
+                    val altScore = scoreMatrix[match.first][altCol]
+                    if ((rowBest - altScore) > config.associationAmbiguityMargin) return@any false
+                    val altDet = detections[remainingDetectionIndices[altCol]]
+                    val inter = computeBBoxIntersectionArea(det.bbox, altDet.bbox)
+                    val minArea = minOf(
+                        det.bbox.width * det.bbox.height,
+                        altDet.bbox.width * altDet.bbox.height
+                    ).coerceAtLeast(1e-4f)
+                    (inter / minArea) >= 0.10f
+                }
+                val colHasConfusableAlternative = remainingTrackIndices.indices.any { altRow ->
+                    if (altRow == match.first) return@any false
+                    val altScore = scoreMatrix[altRow][match.second]
+                    if ((colBest - altScore) > config.associationAmbiguityMargin) return@any false
+                    val altTrack = tracks[remainingTrackIndices[altRow]]
+                    val inter = computeBBoxIntersectionArea(track.currentPredictedBbox, altTrack.currentPredictedBbox)
+                    val minArea = minOf(
+                        track.currentPredictedBbox.width * track.currentPredictedBbox.height,
+                        altTrack.currentPredictedBbox.width * altTrack.currentPredictedBbox.height
+                    ).coerceAtLeast(1e-4f)
+                    (inter / minArea) >= 0.10f
+                }
+                val hasAmbiguousGeometry =
+                    (rowMargin < config.associationAmbiguityMargin && rowHasConfusableAlternative) ||
+                    (colMargin < config.associationAmbiguityMargin && colHasConfusableAlternative)
+                val isCommitValid = assignedScore >= config.minMatchScore &&
+                    assignedScore >= rowBest - epsilon &&
+                    assignedScore >= colBest - epsilon &&
+                    !hasAmbiguousGeometry
+
+                if (!isCommitValid) {
+                    globalAmbiguousTrackIndices.add(tIdx)
+                    reservedGlobalDetectionIndices.add(dIdx)
+                    val confusableDetectionIndices = mutableSetOf(dIdx)
+
+                    // Reserve the whole confusable detection cluster for this
+                    // ambiguous row, not only the single Hungarian assignment.
+                    // Otherwise a near-identical alternative can fall through
+                    // to ordinary recovery/new-track creation in the same frame,
+                    // producing exactly the duplicate-ID churn ambiguity deferral
+                    // is intended to prevent.
+                    for (altCol in remainingDetectionIndices.indices) {
+                        if (altCol == match.second) continue
+                        val altScore = scoreMatrix[match.first][altCol]
+                        if ((rowBest - altScore) > config.associationAmbiguityMargin) continue
+                        val altDetIndex = remainingDetectionIndices[altCol]
+                        val altDet = detections[altDetIndex]
+                        val inter = computeBBoxIntersectionArea(det.bbox, altDet.bbox)
+                        val minArea = minOf(
+                            det.bbox.width * det.bbox.height,
+                            altDet.bbox.width * altDet.bbox.height
+                        ).coerceAtLeast(1e-4f)
+                        if ((inter / minArea) >= 0.10f) {
+                            reservedGlobalDetectionIndices.add(altDetIndex)
+                            confusableDetectionIndices.add(altDetIndex)
+                        }
+                    }
+
+                    // If Global Hungarian itself discovers a spatially
+                    // confusable multi-person assignment before predicted
+                    // track boxes have overlapped, promote the competing
+                    // tracks into an occlusion group immediately.  Otherwise
+                    // they become REACQUIRING without any group owning their
+                    // next-frame separation, leaving no matcher allowed to
+                    // commit the identities again.
+                    val ambiguityTrackIds = mutableSetOf<Int>()
+                    for (candidateRow in remainingTrackIndices.indices) {
+                        val hasPlausibleEdgeIntoCluster = confusableDetectionIndices.any { candidateDetIndex ->
+                            val candidateCol = remainingDetectionIndices.indexOf(candidateDetIndex)
+                            candidateCol >= 0 && scoreMatrix[candidateRow][candidateCol] >= config.minMatchScore
+                        }
+                        if (hasPlausibleEdgeIntoCluster) {
+                            ambiguityTrackIds.add(tracks[remainingTrackIndices[candidateRow]].id)
+                        }
+                    }
+                    if (ambiguityTrackIds.size >= 2) {
+                        val existing = occlusionGroups.firstOrNull { group ->
+                            group.trackIds.any { ambiguityTrackIds.contains(it) }
+                        }
+                        if (existing != null) {
+                            existing.trackIds.addAll(ambiguityTrackIds)
+                            existing.state = OcclusionGroupState.REACQUIRING
+                            existing.reacquireFrames = maxOf(existing.reacquireFrames, 1)
+                        } else {
+                            occlusionGroups.add(
+                                OcclusionGroup(
+                                    trackIds = ambiguityTrackIds,
+                                    startedAtUs = timestampUs,
+                                    lastOverlapTimestampUs = timestampUs,
+                                    state = OcclusionGroupState.REACQUIRING,
+                                    reacquireFrames = 1
+                                )
+                            )
+                            NativeDiagnostics.event(
+                                level = "INFO",
+                                component = "TrackManager",
+                                event = "OCCLUSION_GROUP_CREATE",
+                                fields = mapOf(
+                                    "track_ids" to ambiguityTrackIds.toList(),
+                                    "reason" to "GLOBAL_AMBIGUITY",
+                                    "pts_us" to timestampUs
+                                )
+                            )
+                        }
+                    }
+
+                    NativeDiagnostics.event(
+                        level = "WARN",
+                        component = "TrackManager",
+                        event = "GLOBAL_ASSOCIATION_AMBIGUOUS",
+                        fields = mapOf(
+                            "track_id" to track.id,
+                            "det_index" to dIdx,
+                            "assigned_score" to assignedScore,
+                            "row_best" to rowBest,
+                            "col_best" to colBest,
+                            "row_second_best" to rowSecondBest,
+                            "col_second_best" to colSecondBest,
+                            "row_margin" to rowMargin,
+                            "col_margin" to colMargin,
+                            "row_confusable_geometry" to rowHasConfusableAlternative,
+                            "col_confusable_geometry" to colHasConfusableAlternative,
+                            "reserved_detection_indices" to reservedGlobalDetectionIndices.toList(),
+                            "required_margin" to config.associationAmbiguityMargin,
+                            "pts_us" to timestampUs
+                        )
+                    )
+                    continue
+                }
+
                 matchedTrackIndices.add(tIdx)
                 matchedDetectionIndices.add(dIdx)
 
@@ -712,6 +901,7 @@ class TrackManager(
                 val associationLastObservedBbox = track.lastObservedBbox
                 val associationBBoxIoU = computeBBoxIoU(associationPredictedBbox, det.bbox)
                 val associationMaskIoU = computeMaskIoU(getPredictedMask(track), det.mask)
+                recordReliableObservedMotion(track, det)
                 track.lastObservedBbox = det.bbox
                 track.lastObservedMask = det.mask ?: track.lastObservedMask
                 track.currentPredictedBbox = det.bbox
@@ -821,7 +1011,10 @@ class TrackManager(
                             missedFrames = 0
                         )
                     }
-                } else if (inActiveGroup || inReacquiringGroup || track.state == TrackState.OCCLUDED || track.state == TrackState.REACQUIRING) {
+                } else if (
+                    inActiveGroup || inReacquiringGroup || globalAmbiguousTrackIndices.contains(i) ||
+                    track.state == TrackState.OCCLUDED || track.state == TrackState.REACQUIRING
+                ) {
                     // Unresolved group identity or ended occlusion -> REACQUIRING.
                     // In particular, if every group assignment was rejected as
                     // ambiguous there may be no freshly matched occluder to mark
@@ -864,7 +1057,7 @@ class TrackManager(
                             event = "REACQUIRE_START",
                             fields = mapOf(
                                 "track_id" to track.id,
-                                "reason" to "AMBIGUOUS_GROUP",
+                                "reason" to if (globalAmbiguousTrackIndices.contains(i)) "AMBIGUOUS_GLOBAL" else "AMBIGUOUS_GROUP",
                                 "pts_us" to timestampUs
                             )
                         )
@@ -953,8 +1146,38 @@ class TrackManager(
         // 6. Ordinary Recovery Association on Remaining Truly LOST Tracks
         val unassignedDetections = mutableListOf<Pair<Int, PersonDetection>>()
         for (c in detections.indices) {
-            if (!matchedDetectionIndices.contains(c) && !reservedGroupDetectionIndices.contains(c)) {
-                unassignedDetections.add(c to detections[c])
+            if (
+                !matchedDetectionIndices.contains(c) &&
+                !reservedGroupDetectionIndices.contains(c) &&
+                !reservedGlobalDetectionIndices.contains(c)
+            ) {
+                val det = detections[c]
+                val plausiblyOwnedByUnresolvedIdentity = tracks.indices.any { tIdx ->
+                    val track = tracks[tIdx]
+                    val unresolved =
+                        track.state == TrackState.REACQUIRING ||
+                        globalAmbiguousTrackIndices.contains(tIdx) ||
+                        occlusionGroups.any {
+                            it.state == OcclusionGroupState.REACQUIRING && it.trackIds.contains(track.id)
+                        }
+                    unresolved && computeMatchScore(track, det) >= config.minMatchScore
+                }
+
+                if (plausiblyOwnedByUnresolvedIdentity) {
+                    reservedGlobalDetectionIndices.add(c)
+                    NativeDiagnostics.event(
+                        level = "INFO",
+                        component = "TrackManager",
+                        event = "UNRESOLVED_IDENTITY_DETECTION_RESERVED",
+                        fields = mapOf(
+                            "det_index" to c,
+                            "bbox" to listOf(det.bbox.left, det.bbox.top, det.bbox.right, det.bbox.bottom),
+                            "pts_us" to timestampUs
+                        )
+                    )
+                } else {
+                    unassignedDetections.add(c to det)
+                }
             }
         }
 
@@ -1013,6 +1236,7 @@ class TrackManager(
                 val recoveryLastObservedBbox = bestTrack.lastObservedBbox
                 val recoveryBBoxIoU = computeBBoxIoU(recoveryPredictedBbox, det.bbox)
                 val recoveryMaskIoU = computeMaskIoU(getPredictedMask(bestTrack), det.mask)
+                recordReliableObservedMotion(bestTrack, det)
                 bestTrack.lastObservedBbox = det.bbox
                 bestTrack.lastObservedMask = det.mask ?: bestTrack.lastObservedMask
                 bestTrack.currentPredictedBbox = det.bbox

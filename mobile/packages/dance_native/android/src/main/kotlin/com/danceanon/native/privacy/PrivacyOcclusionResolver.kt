@@ -31,6 +31,8 @@ object PrivacyOcclusionResolver {
     private const val MIN_UNSELECTED_PROBABILITY = 0.50f
     private const val MIN_STALE_RAW_PROBABILITY_ADVANTAGE = 0.10f
     private const val MIN_UNSELECTED_IDENTITY_AGE_FRAMES = 3
+    private const val YOUNG_IDENTITY_OWNERSHIP_MARGIN = 0.30f
+    private const val YOUNG_IDENTITY_RAW_PROBABILITY_ADVANTAGE = 0.25f
     private const val MAX_FOOT_Y_BIAS = 0.03f
     private const val EXPLICIT_OCCLUDER_BIAS = 0.04f
 
@@ -106,7 +108,7 @@ object PrivacyOcclusionResolver {
                     val isCandFresh = cand.observedThisFrame
                     val isExplicitOccluder = target.occludedByTrackIds.contains(cand.id)
                     val hasStableIdentity = isExplicitOccluder || cand.age >= MIN_UNSELECTED_IDENTITY_AGE_FRAMES
-                    val ownershipMask = if (isCandFresh && hasStableIdentity) {
+                    val ownershipMask = if (isCandFresh) {
                         computeUnselectedOwnershipMask(
                             selectedMask = rawMask,
                             selected = target,
@@ -338,6 +340,12 @@ object PrivacyOcclusionResolver {
         val selectedBuf = selectedMask.buffer
         val unselectedBuf = unselectedMask.buffer
         val ownershipBytes = ByteArray(totalPixels)
+        val isYoungIdentity = !explicitOccluder && unselected.age < MIN_UNSELECTED_IDENTITY_AGE_FRAMES
+        val requiredOwnershipMargin = if (isYoungIdentity) {
+            YOUNG_IDENTITY_OWNERSHIP_MARGIN
+        } else {
+            OWNERSHIP_MARGIN
+        }
 
         for (i in 0 until totalPixels) {
             val selectedProb = (selectedBuf.get(i).toInt() and 0xFF) / 255f
@@ -346,10 +354,15 @@ object PrivacyOcclusionResolver {
 
             val selectedEvidence = selectedProb * selected.confidence.coerceIn(0f, 1f) * selectedStalenessScale
             val unselectedEvidence = unselectedProb * unselected.confidence.coerceIn(0f, 1f) + footBias + relationBias
-            val hasRawInstanceAdvantage = selected.observedThisFrame || explicitOccluder ||
-                (unselectedProb - selectedProb) >= MIN_STALE_RAW_PROBABILITY_ADVANTAGE
+            val rawProbabilityAdvantage = unselectedProb - selectedProb
+            val hasRawInstanceAdvantage = when {
+                explicitOccluder -> true
+                isYoungIdentity -> rawProbabilityAdvantage >= YOUNG_IDENTITY_RAW_PROBABILITY_ADVANTAGE
+                selected.observedThisFrame -> true
+                else -> rawProbabilityAdvantage >= MIN_STALE_RAW_PROBABILITY_ADVANTAGE
+            }
 
-            if (hasRawInstanceAdvantage && (unselectedEvidence - selectedEvidence) >= OWNERSHIP_MARGIN) {
+            if (hasRawInstanceAdvantage && (unselectedEvidence - selectedEvidence) >= requiredOwnershipMargin) {
                 ownershipBytes[i] = 255.toByte()
             }
         }

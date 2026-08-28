@@ -53,4 +53,44 @@ class TrackManagerAmbiguousCrossingTest {
             assertTrue(t.mask != null, "Mask must not be null during ambiguous overlap")
         }
     }
+
+    @Test
+    fun testGlobalNearTieBeforeOverlapDoesNotCommitIdentity() {
+        tracker = TrackManager(
+            TrackingConfig(
+                minMatchScore = 0.15f,
+                bboxIouWeight = 1.0f,
+                maskIouWeight = 0.0f,
+                motionWeight = 0.0f,
+                directionWeight = 0.0f,
+                associationAmbiguityMargin = 0.05f
+            )
+        )
+
+        // Tracks are close but not overlapping, so no occlusion group exists yet.
+        val initial = tracker.initialize(
+            listOf(
+                PersonDetection(FloatRect(100f, 100f, 200f, 300f), 0.95f, createDummyMask()),
+                PersonDetection(FloatRect(210f, 100f, 310f, 300f), 0.95f, createDummyMask())
+            )
+        )
+        val originalIds = initial.map { it.id }.toSet()
+
+        // Two almost-identical detections span both tracks. Global Hungarian can
+        // produce a mathematically valid assignment, but neither row nor column
+        // has enough alternative margin to justify an identity commitment.
+        val tracks = tracker.update(
+            listOf(
+                PersonDetection(FloatRect(150f, 100f, 260f, 300f), 0.95f, createDummyMask()),
+                PersonDetection(FloatRect(151f, 100f, 261f, 300f), 0.95f, createDummyMask())
+            ),
+            timestampUs = 33_333L
+        )
+
+        assertEquals(originalIds, tracks.map { it.id }.toSet(), "ambiguous global detections must not mint replacement identities")
+        assertTrue(
+            tracks.all { it.state == TrackState.REACQUIRING && !it.observedThisFrame },
+            "global near-ties must defer identity commitment before an occlusion group has formed"
+        )
+    }
 }

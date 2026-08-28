@@ -100,11 +100,11 @@ class PrivacySoftPixelOwnershipTest {
     }
 
     @Test
-    fun testNewUnselectedIdentityCannotImmediatelyCarveSelectedPrivacy() {
-        val selected = person(id = 0, maskValue = 140, footY = 120f, age = 20)
+    fun testNewUnselectedIdentityCannotCarveOnAmbiguousEvidence() {
+        val selected = person(id = 0, maskValue = 220, footY = 120f, age = 20)
         val newbornUnselected = person(
             id = 7,
-            maskValue = 250,
+            maskValue = 230,
             confidence = 0.99f,
             footY = 120f,
             age = 1
@@ -119,9 +119,35 @@ class PrivacySoftPixelOwnershipTest {
 
         val center = resolved.privacyMask!!.buffer.get(8 * 16 + 8).toInt() and 0xFF
         assertEquals(
-            140,
+            220,
             center,
-            "newly-created unselected identity must not immediately carve selected privacy"
+            "newly-created unselected identity must not carve selected privacy from weak/ambiguous evidence"
+        )
+    }
+
+    @Test
+    fun testNewFreshForegroundCanOwnPixelsWhenInstanceEvidenceIsOverwhelming() {
+        val selected = person(id = 0, maskValue = 140, confidence = 0.90f, footY = 120f, age = 20)
+        val newbornForeground = person(
+            id = 7,
+            maskValue = 250,
+            confidence = 0.99f,
+            footY = 120f,
+            age = 1
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = listOf(selected, newbornForeground),
+            selectedPersonIds = setOf(0),
+            applyDilationToPrivacyTargets = false,
+            occluderErosionRadius = 1
+        )
+
+        val center = resolved.privacyMask!!.buffer.get(8 * 16 + 8).toInt() and 0xFF
+        assertEquals(
+            0,
+            center,
+            "fresh unselected foreground with overwhelming per-pixel instance evidence should remain visible even before age 3"
         )
     }
 }

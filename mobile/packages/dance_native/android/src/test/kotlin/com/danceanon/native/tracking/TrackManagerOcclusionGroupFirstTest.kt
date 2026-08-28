@@ -69,7 +69,14 @@ class TrackManagerOcclusionGroupFirstTest {
         assertTrue(trackB != null, "Track B must exist")
 
         // CRITICAL CHECK: Person A (moving right) must be at x=255, Person B (moving left) must be at x=150
-        assertTrue(trackA.bbox.left > 240f, "Person A must continue rightwards (>240), was ${trackA.bbox.left}")
-        assertTrue(trackB.bbox.left < 170f, "Person B must continue leftwards (<170), was ${trackB.bbox.left}")
+        val debugTracks = f4Tracks.map { "id=${it.id},state=${it.state},left=${it.bbox.left},observed=${it.observedThisFrame}" }
+        assertTrue(
+            trackA.bbox.left > 240f,
+            "Person A must continue rightwards (>240), was ${trackA.bbox.left}; tracks=$debugTracks"
+        )
+        assertTrue(
+            trackB.bbox.left < 170f,
+            "Person B must continue leftwards (<170), was ${trackB.bbox.left}; tracks=$debugTracks"
+        )
     }
 }
