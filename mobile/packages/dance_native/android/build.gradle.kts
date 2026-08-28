@@ -1,3 +1,5 @@
+import java.time.Instant
+
 group = "com.danceanon.dance_native"
 version = "1.0-SNAPSHOT"
 
@@ -25,6 +27,16 @@ plugins {
     id("com.android.library")
 }
 
+val diagnosticGitCommitSha = System.getenv("GIT_COMMIT_SHA")?.takeIf { it.isNotBlank() }
+    ?: runCatching {
+        providers.exec {
+            commandLine("git", "rev-parse", "HEAD")
+        }.standardOutput.asText.get().trim()
+    }.getOrDefault("unknown")
+
+val diagnosticBuildTimestamp = System.getenv("BUILD_TIMESTAMP")?.takeIf { it.isNotBlank() }
+    ?: Instant.now().toString()
+
 android {
     namespace = "com.danceanon.dance_native"
 
@@ -51,6 +63,12 @@ android {
         minSdk = 24
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
+        buildConfigField("String", "GIT_COMMIT_SHA", "\"$diagnosticGitCommitSha\"")
+        buildConfigField("String", "BUILD_TIMESTAMP", "\"$diagnosticBuildTimestamp\"")
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     androidResources {

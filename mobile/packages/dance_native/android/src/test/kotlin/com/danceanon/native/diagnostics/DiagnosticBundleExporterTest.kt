@@ -1,5 +1,7 @@
 package com.danceanon.native.diagnostics
 
+import com.danceanon.dance_native.BuildConfig
+import org.json.JSONObject
 import java.io.File
 import java.io.FileInputStream
 import java.nio.file.Files
@@ -42,10 +44,14 @@ class DiagnosticBundleExporterTest {
 
         // Inspect ZIP entries
         val entryNames = mutableSetOf<String>()
+        var manifestText: String? = null
         ZipInputStream(FileInputStream(zipFile)).use { zis ->
             var entry = zis.nextEntry
             while (entry != null) {
                 entryNames.add(entry.name)
+                if (entry.name == "manifest.json") {
+                    manifestText = zis.readBytes().toString(Charsets.UTF_8)
+                }
                 zis.closeEntry()
                 entry = zis.nextEntry
             }
@@ -55,5 +61,11 @@ class DiagnosticBundleExporterTest {
         assertTrue(entryNames.any { it.startsWith("session_") && it.endsWith(".jsonl") }, "ZIP must contain session jsonl log")
         assertTrue(entryNames.contains("last_breadcrumb.json"), "ZIP must contain last_breadcrumb.json")
         assertTrue(entryNames.contains("device.json"), "ZIP must contain device.json")
+
+        val manifest = JSONObject(assertNotNull(manifestText))
+        assertEquals(BuildConfig.GIT_COMMIT_SHA, manifest.getString("git_commit_sha"))
+        assertEquals(BuildConfig.BUILD_TIMESTAMP, manifest.getString("build_timestamp"))
+        assertTrue(manifest.has("version_name"))
+        assertTrue(manifest.has("version_code"))
     }
 }

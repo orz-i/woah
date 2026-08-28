@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
+import com.danceanon.dance_native.BuildConfig
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -60,13 +61,24 @@ object DiagnosticBundleExporter {
                 timeZone = TimeZone.getTimeZone("UTC")
             }.format(Date()))
             put("android_api", Build.VERSION.SDK_INT)
-            put("git_commit_sha", "b6756c43f06dc0654798aa0f28d14869d92413ce")
-            put("build_timestamp", "2026-08-28T11:45:00Z")
+            put("git_commit_sha", BuildConfig.GIT_COMMIT_SHA)
+            put("build_timestamp", BuildConfig.BUILD_TIMESTAMP)
             try {
                 val pInfo = appCtx.packageManager.getPackageInfo(appCtx.packageName, 0)
-                put("app_version", pInfo.versionName ?: "")
+                val versionName = pInfo.versionName ?: ""
+                val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    pInfo.longVersionCode
+                } else {
+                    @Suppress("DEPRECATION")
+                    pInfo.versionCode.toLong()
+                }
+                put("app_version", versionName)
+                put("version_name", versionName)
+                put("version_code", versionCode)
             } catch (_: Throwable) {
                 put("app_version", "unknown")
+                put("version_name", "unknown")
+                put("version_code", -1L)
             }
 
             val filesArray = JSONArray()
