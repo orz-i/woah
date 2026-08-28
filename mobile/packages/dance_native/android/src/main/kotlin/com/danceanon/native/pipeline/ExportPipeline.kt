@@ -114,6 +114,38 @@ class ExportPipeline(
         }
 
         segmenter.initialize()
+        val yoloRuntimeInfo = segmenter.runtimeInfo
+        val yoloEffectiveAccelerator = segmenter.effectiveAccelerator
+        val yoloRequestedAccelerator = yoloRuntimeInfo?.requestedAccelerator?.name ?: "GPU"
+        val yoloFallbackReason = yoloRuntimeInfo?.fallbackReason
+        com.danceanon.native.diagnostics.NativeDiagnostics.recordPipelineLifecycle(
+            stage = "PREPARING",
+            jobId = jobId,
+            fields = mapOf(
+                "yolo_requested_accelerator" to yoloRequestedAccelerator,
+                "yolo_effective_accelerator" to yoloEffectiveAccelerator.name,
+                "yolo_gpu_fallback_reason" to yoloFallbackReason,
+                "yolo_compile_ms" to yoloRuntimeInfo?.compileMs,
+                "yolo_warmup_ms" to yoloRuntimeInfo?.warmupMs
+            )
+        )
+        com.danceanon.native.diagnostics.NativeDiagnostics.event(
+            level = if (yoloEffectiveAccelerator == com.danceanon.native.litert.LiteRtAccelerator.GPU) "INFO" else "WARN",
+            component = "ExportPipeline",
+            event = if (yoloEffectiveAccelerator == com.danceanon.native.litert.LiteRtAccelerator.GPU) {
+                "YOLO_EXPORT_GPU_ACTIVE"
+            } else {
+                "YOLO_EXPORT_CPU_FALLBACK"
+            },
+            fields = mapOf(
+                "job_id" to jobId,
+                "requested_accelerator" to yoloRequestedAccelerator,
+                "effective_accelerator" to yoloEffectiveAccelerator.name,
+                "fallback_reason" to yoloFallbackReason,
+                "compile_ms" to yoloRuntimeInfo?.compileMs,
+                "warmup_ms" to yoloRuntimeInfo?.warmupMs
+            )
+        )
 
         // Dedicated GL thread for EGL context, rendering, and encoding
         val glThread = HandlerThread("ExportGlPipeline").apply { start() }
@@ -278,7 +310,10 @@ class ExportPipeline(
                     fields = mapOf(
                         "target_width" to targetWidth,
                         "target_height" to targetHeight,
-                        "target_fps" to targetFps
+                        "target_fps" to targetFps,
+                        "yolo_requested_accelerator" to yoloRequestedAccelerator,
+                        "yolo_effective_accelerator" to yoloEffectiveAccelerator.name,
+                        "yolo_gpu_fallback_reason" to yoloFallbackReason
                     )
                 )
 
@@ -928,6 +963,9 @@ class ExportPipeline(
                             "non_monotonic_surface_timestamp_count" to nonMonotonicSurfaceTimestampCount,
                             "max_surface_pts_delta_us" to maxAbsSurfacePtsDeltaUs,
                             "p95_surface_pts_delta_us" to p95DeltaUs,
+                            "yolo_requested_accelerator" to yoloRequestedAccelerator,
+                            "yolo_effective_accelerator" to yoloEffectiveAccelerator.name,
+                            "yolo_gpu_fallback_reason" to yoloFallbackReason,
                             "state" to "completed"
                         )
                     )
@@ -937,7 +975,10 @@ class ExportPipeline(
                         fields = mapOf(
                             "decoded_frames" to decodedFrameCount,
                             "rendered_frames" to renderedFrameCount,
-                            "encoded_frames" to encodedFrameCount
+                            "encoded_frames" to encodedFrameCount,
+                            "yolo_requested_accelerator" to yoloRequestedAccelerator,
+                            "yolo_effective_accelerator" to yoloEffectiveAccelerator.name,
+                            "yolo_gpu_fallback_reason" to yoloFallbackReason
                         )
                     )
                 } catch (_: Throwable) {}

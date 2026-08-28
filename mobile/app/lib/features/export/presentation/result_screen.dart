@@ -22,11 +22,55 @@ class ResultScreen extends ConsumerStatefulWidget {
 class _ResultScreenState extends ConsumerState<ResultScreen> {
   bool _isSaving = false;
   bool _isSaved = false;
+  bool _isExportingDiagnostics = false;
   String? _savedUri;
 
   @override
   void initState() {
     super.initState();
+  }
+
+  Future<void> _exportDiagnostics() async {
+    if (_isExportingDiagnostics) return;
+
+    HapticFeedback.mediumImpact();
+    setState(() => _isExportingDiagnostics = true);
+    try {
+      final repo = ref.read(nativeRepositoryProvider);
+      final bundle = await repo.createDiagnosticBundle();
+      final fileName = bundle?['fileName'] as String? ?? 'diagnostic_bundle.zip';
+      final filePath = bundle?['filePath'] as String?;
+      final publicUri = bundle?['publicUri'] as String?;
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('完整导出诊断包已生成: $fileName'),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+
+      await repo.shareDiagnosticBundle(
+        filePath: filePath,
+        publicUri: publicUri,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('导出诊断包失败: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isExportingDiagnostics = false);
+      }
+    }
   }
 
   Future<void> _saveToGallery() async {
@@ -224,6 +268,29 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _isSaved ? const Color(0xFF22C55E) : Colors.white,
                   foregroundColor: _isSaved ? Colors.white : Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _isExportingDiagnostics ? null : _exportDiagnostics,
+                icon: _isExportingDiagnostics
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.bug_report_outlined),
+                label: Text(
+                  _isExportingDiagnostics ? '正在生成诊断包...' : '导出并分享完整诊断包',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF60A5FA),
+                  side: const BorderSide(color: Color(0xFF3B82F6)),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),

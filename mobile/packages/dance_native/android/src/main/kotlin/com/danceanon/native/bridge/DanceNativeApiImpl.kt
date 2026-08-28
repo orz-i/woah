@@ -155,6 +155,28 @@ class DanceNativeApiImpl(
         coordinator.registerJobRequest(jobId, request)
 
         try {
+            // Preview/analyze owns its own LiteRT YOLO runner.  Release it before
+            // starting the foreground export service so the export runner can
+            // acquire the GPU/OpenCL delegate without competing with a stale
+            // preview CompiledModel.  Preview is lazy-initialized on the next
+            // render call, so this handoff is reversible if the user returns.
+            try {
+                previewPipeline.clear()
+                segmenter.close()
+                com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                    level = "INFO",
+                    component = "DanceNativeApiImpl",
+                    event = "YOLO_PREVIEW_GPU_RELEASED_FOR_EXPORT",
+                    fields = mapOf("job_id" to jobId)
+                )
+            } catch (releaseError: Throwable) {
+                android.util.Log.w(
+                    "DanceNativeApiImpl",
+                    "Failed to release preview YOLO before export: ${releaseError.message}",
+                    releaseError
+                )
+            }
+
             // 2. Trigger ForegroundService to take ownership of execution
             ExportServiceController.startExportService(context, jobId)
         } catch (e: Throwable) {
