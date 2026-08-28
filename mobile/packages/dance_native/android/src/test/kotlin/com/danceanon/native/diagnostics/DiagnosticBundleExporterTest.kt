@@ -67,5 +67,8 @@ class DiagnosticBundleExporterTest {
         assertEquals(BuildConfig.BUILD_TIMESTAMP, manifest.getString("build_timestamp"))
         assertTrue(manifest.has("version_name"))
         assertTrue(manifest.has("version_code"))
+        assertEquals(false, manifest.getBoolean("export_diagnostics_complete"))
+        assertEquals("preview_or_in_progress", manifest.getString("diagnostic_scope"))
+        assertEquals(0, manifest.getJSONArray("pipeline_summary_files").length())
     }
 }

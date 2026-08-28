@@ -617,20 +617,35 @@ class TrackManager(
                 }
             }
 
-            // Reserve candidate detections that overlap any unresolved group track
-            val unresolvedTracks = groupTrackIndices.filter { !matchedTrackIndices.contains(it) }.map { tracks[it] }
-            if (unresolvedTracks.isNotEmpty()) {
-                for (c in candidateDetectionIndices.indices) {
-                    if (!matchedGroupCols.contains(c)) {
-                        val dIdx = candidateDetectionIndices[c]
-                        val detBox = detections[dIdx].bbox
-                        val overlapsUnresolved = unresolvedTracks.any { uTrack ->
-                            computeBBoxIntersectionArea(uTrack.currentPredictedBbox, detBox) > 0f ||
-                            computeBBoxIntersectionArea(uTrack.lastObservedBbox, detBox) > 0f
-                        }
-                        if (overlapsUnresolved) {
-                            reservedGroupDetectionIndices.add(dIdx)
-                        }
+            // Keep every uncommitted detection that still overlaps this active /
+            // reacquiring group under group ownership for the current frame.
+            // Otherwise a transient fragment or duplicate detection can fall
+            // through to ordinary recovery and immediately mint a new identity
+            // while the people are still overlapping. A genuinely independent
+            // person becomes eligible again as soon as it no longer overlaps the
+            // group's current/last-observed ownership region.
+            for (c in candidateDetectionIndices.indices) {
+                if (!matchedGroupCols.contains(c)) {
+                    val dIdx = candidateDetectionIndices[c]
+                    val detBox = detections[dIdx].bbox
+                    val overlapsGroupMember = groupTrackIndices.any { tIdx ->
+                        val groupTrack = tracks[tIdx]
+                        computeBBoxIntersectionArea(groupTrack.currentPredictedBbox, detBox) > 0f ||
+                            computeBBoxIntersectionArea(groupTrack.lastObservedBbox, detBox) > 0f
+                    }
+                    if (overlapsGroupMember) {
+                        reservedGroupDetectionIndices.add(dIdx)
+                        NativeDiagnostics.event(
+                            level = "INFO",
+                            component = "TrackManager",
+                            event = "GROUP_DETECTION_RESERVED",
+                            fields = mapOf(
+                                "group_id" to group.trackIds.toList(),
+                                "det_index" to dIdx,
+                                "reason" to "UNCOMMITTED_OVERLAP",
+                                "pts_us" to timestampUs
+                            )
+                        )
                     }
                 }
             }
@@ -983,8 +998,9 @@ class TrackManager(
                     )
                 )
             } else {
+                val newTrackId = nextTrackId++
                 val newTrack = InternalTrack(
-                    id = nextTrackId++,
+                    id = newTrackId,
                     lastObservedBbox = det.bbox,
                     lastObservedMask = det.mask,
                     currentPredictedBbox = det.bbox,
@@ -996,6 +1012,17 @@ class TrackManager(
                     currentObservedFootY = det.footY
                 )
                 tracks.add(newTrack)
+                NativeDiagnostics.event(
+                    level = "INFO",
+                    component = "TrackManager",
+                    event = "NEW_TRACK_CREATED",
+                    fields = mapOf(
+                        "track_id" to newTrackId,
+                        "det_index" to detIndex,
+                        "bbox" to listOf(det.bbox.left, det.bbox.top, det.bbox.right, det.bbox.bottom),
+                        "pts_us" to timestampUs
+                    )
+                )
             }
         }
 

@@ -149,4 +149,39 @@ class TrackManagerAmbiguousReservationTest {
         )
         assertTrue(trackedInitialIds.none { it.observedThisFrame })
     }
+
+    @Test
+    fun testExtraDetectionInsideActiveOcclusionGroupDoesNotCreateDuplicateId() {
+        val tracker = TrackManager(
+            TrackingConfig(
+                minMatchScore = 0.20f,
+                bboxIouWeight = 1.0f,
+                maskIouWeight = 0.0f,
+                motionWeight = 0.0f,
+                directionWeight = 0.0f
+            )
+        )
+
+        val initial = tracker.initialize(
+            listOf(
+                PersonDetection(FloatRect(100f, 100f, 200f, 300f), 0.95f),
+                PersonDetection(FloatRect(140f, 100f, 240f, 300f), 0.95f)
+            )
+        )
+        val originalIds = initial.map { it.id }.toSet()
+
+        // The third detection is a transient fragment/duplicate inside the same
+        // overlap group. During active group ownership it must not mint ID 2.
+        val tracks = tracker.update(
+            detections = listOf(
+                PersonDetection(FloatRect(104f, 100f, 204f, 300f), 0.95f),
+                PersonDetection(FloatRect(144f, 100f, 244f, 300f), 0.95f),
+                PersonDetection(FloatRect(122f, 110f, 218f, 292f), 0.80f)
+            ),
+            timestampUs = 33_333L
+        )
+
+        assertEquals(originalIds, tracks.map { it.id }.toSet())
+        assertEquals(2, tracks.size, "overlap-group fragment must not create a duplicate identity")
+    }
 }

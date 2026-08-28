@@ -29,12 +29,14 @@ class PrivacySoftPixelOwnershipTest {
         confidence: Float = 0.95f,
         state: TrackState = TrackState.ACTIVE,
         observed: Boolean = true,
-        footY: Float = 120f
+        footY: Float = 120f,
+        age: Int = 5
     ): TrackedPerson = TrackedPerson(
         id = id,
         bbox = FloatRect(30f, 20f, 130f, 120f),
         mask = createSoftRectMask(maskValue),
         confidence = confidence,
+        age = age,
         state = state,
         observedThisFrame = observed,
         footY = footY
@@ -95,5 +97,31 @@ class PrivacySoftPixelOwnershipTest {
 
         val center = resolved.privacyMask!!.buffer.get(8 * 16 + 8).toInt() and 0xFF
         assertEquals(0, center, "fresh strong instance evidence should prevent an obviously stale privacy mask covering the foreground")
+    }
+
+    @Test
+    fun testNewUnselectedIdentityCannotImmediatelyCarveSelectedPrivacy() {
+        val selected = person(id = 0, maskValue = 140, footY = 120f, age = 20)
+        val newbornUnselected = person(
+            id = 7,
+            maskValue = 250,
+            confidence = 0.99f,
+            footY = 120f,
+            age = 1
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = listOf(selected, newbornUnselected),
+            selectedPersonIds = setOf(0),
+            applyDilationToPrivacyTargets = false,
+            occluderErosionRadius = 1
+        )
+
+        val center = resolved.privacyMask!!.buffer.get(8 * 16 + 8).toInt() and 0xFF
+        assertEquals(
+            140,
+            center,
+            "newly-created unselected identity must not immediately carve selected privacy"
+        )
     }
 }

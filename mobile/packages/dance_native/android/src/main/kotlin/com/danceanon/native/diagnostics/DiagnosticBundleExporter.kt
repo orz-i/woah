@@ -54,6 +54,10 @@ object DiagnosticBundleExporter {
         // 2. Generate manifest.json inside snapshot directory
         val filesToZip = mutableListOf<File>()
         filesToZip.addAll(stagedFiles.filter { it.isFile && it.length() > 0L })
+        val perJobPipelineSummaries = filesToZip.filter {
+            it.name.startsWith("pipeline_summary_") && it.name.endsWith(".json")
+        }
+        val exportDiagnosticsComplete = perJobPipelineSummaries.isNotEmpty()
 
         val manifestJson = JSONObject().apply {
             put("session_id", sessionId)
@@ -63,6 +67,15 @@ object DiagnosticBundleExporter {
             put("android_api", Build.VERSION.SDK_INT)
             put("git_commit_sha", BuildConfig.GIT_COMMIT_SHA)
             put("build_timestamp", BuildConfig.BUILD_TIMESTAMP)
+            put("export_diagnostics_complete", exportDiagnosticsComplete)
+            put(
+                "diagnostic_scope",
+                if (exportDiagnosticsComplete) "complete_export" else "preview_or_in_progress"
+            )
+            put(
+                "pipeline_summary_files",
+                JSONArray().apply { perJobPipelineSummaries.forEach { put(it.name) } }
+            )
             try {
                 val pInfo = appCtx.packageManager.getPackageInfo(appCtx.packageName, 0)
                 val versionName = pInfo.versionName ?: ""

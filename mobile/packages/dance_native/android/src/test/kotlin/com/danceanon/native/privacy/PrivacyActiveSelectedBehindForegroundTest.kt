@@ -42,6 +42,7 @@ class PrivacyActiveSelectedBehindForegroundTest {
             bbox = FloatRect(100f, 100f, 200f, 400f),
             mask = createRectMask(64, 10..50, 10..50, value = 245),
             confidence = 0.95f,
+            age = 5,
             state = TrackState.ACTIVE,
             observedThisFrame = true,
             footY = 400f

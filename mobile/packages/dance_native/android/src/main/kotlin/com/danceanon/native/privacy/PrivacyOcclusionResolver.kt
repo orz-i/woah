@@ -30,6 +30,7 @@ object PrivacyOcclusionResolver {
     private const val OWNERSHIP_MARGIN = 0.12f
     private const val MIN_UNSELECTED_PROBABILITY = 0.50f
     private const val MIN_STALE_RAW_PROBABILITY_ADVANTAGE = 0.10f
+    private const val MIN_UNSELECTED_IDENTITY_AGE_FRAMES = 3
     private const val MAX_FOOT_Y_BIAS = 0.03f
     private const val EXPLICIT_OCCLUDER_BIAS = 0.04f
 
@@ -104,7 +105,8 @@ object PrivacyOcclusionResolver {
 
                     val isCandFresh = cand.observedThisFrame
                     val isExplicitOccluder = target.occludedByTrackIds.contains(cand.id)
-                    val ownershipMask = if (isCandFresh) {
+                    val hasStableIdentity = isExplicitOccluder || cand.age >= MIN_UNSELECTED_IDENTITY_AGE_FRAMES
+                    val ownershipMask = if (isCandFresh && hasStableIdentity) {
                         computeUnselectedOwnershipMask(
                             selectedMask = rawMask,
                             selected = target,
@@ -154,6 +156,8 @@ object PrivacyOcclusionResolver {
                                 "mask_overlap" to maskOverlapRatio,
                                 "ownership_pixels" to ownershipPixels,
                                 "explicit_occluder" to isExplicitOccluder,
+                                "candidate_age" to cand.age,
+                                "identity_stable" to hasStableIdentity,
                                 "target_state" to target.state.name,
                                 "pts_us" to ptsUs
                             )
@@ -173,6 +177,8 @@ object PrivacyOcclusionResolver {
                                 "mask_overlap" to maskOverlapRatio,
                                 "ownership_pixels" to ownershipPixels,
                                 "explicit_occluder" to isExplicitOccluder,
+                                "candidate_age" to cand.age,
+                                "identity_stable" to hasStableIdentity,
                                 "target_state" to target.state.name,
                                 "pts_us" to ptsUs
                             )
