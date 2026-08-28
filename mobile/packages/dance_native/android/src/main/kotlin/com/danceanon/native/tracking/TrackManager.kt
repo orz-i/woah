@@ -65,8 +65,13 @@ class InternalTrack(
     var occludedFrames: Int = 0,
     var reacquireFrames: Int = 0,
     val occludedByTrackIds: MutableSet<Int> = mutableSetOf(),
+    var occlusionMotionBbox: FloatRect? = null,
     var age: Int = 1,
     var observedThisFrame: Boolean = false,
+    var observedOnPreviousFrame: Boolean = false,
+    var hasFreshObservedMotion: Boolean = false,
+    var freshObservedMotionDx: Float = 0f,
+    var freshObservedMotionDy: Float = 0f,
     var lastObservedFootY: Float = lastObservedBbox.bottom,
     var currentObservedFootY: Float? = null,
     var lastReliableObservedMotionDx: Float = 0f,
@@ -316,7 +321,9 @@ class TrackManager(
 
         // Reset per-frame observation state
         for (t in tracks) {
+            t.observedOnPreviousFrame = t.observedThisFrame
             t.observedThisFrame = false
+            t.hasFreshObservedMotion = false
             t.currentObservedFootY = null
         }
 
@@ -477,6 +484,11 @@ class TrackManager(
         fun recordReliableObservedMotion(track: InternalTrack, det: PersonDetection) {
             val dx = det.bbox.centerX - track.lastObservedBbox.centerX
             val dy = det.bbox.centerY - track.lastObservedBbox.centerY
+            if (track.observedOnPreviousFrame) {
+                track.hasFreshObservedMotion = true
+                track.freshObservedMotionDx = dx
+                track.freshObservedMotionDy = dy
+            }
             val magnitude = sqrt(dx * dx + dy * dy)
             val minReliableMotion = max(5f, max(track.lastObservedBbox.width, track.lastObservedBbox.height) * 0.03f)
             if (magnitude >= minReliableMotion) {
@@ -647,6 +659,7 @@ class TrackManager(
                 track.occludedFrames = 0
                 track.reacquireFrames = 0
                 track.occludedByTrackIds.clear()
+                track.occlusionMotionBbox = null
                 track.state = TrackState.ACTIVE
                 track.observedThisFrame = true
                 track.currentObservedFootY = det.footY
@@ -929,6 +942,7 @@ class TrackManager(
                 track.occludedFrames = 0
                 track.reacquireFrames = 0
                 track.occludedByTrackIds.clear()
+                track.occlusionMotionBbox = null
                 track.state = TrackState.ACTIVE
                 track.observedThisFrame = true
                 track.currentObservedFootY = det.footY
@@ -1018,31 +1032,37 @@ class TrackManager(
                     // identity's own Kalman prediction.  This keeps long
                     // occlusions spatially bounded without making a selected
                     // target visually follow one unselected person.
-                    val consensusDx = medianOf(
-                        freshlyMatchedOtherTracks.map {
-                            it.currentPredictedBbox.centerX - it.lastObservedBbox.centerX
-                        }
-                    )
-                    val consensusDy = medianOf(
-                        freshlyMatchedOtherTracks.map {
-                            it.currentPredictedBbox.centerY - it.lastObservedBbox.centerY
-                        }
-                    )
-                    val groupPredBox = track.lastObservedBbox.offset(consensusDx, consensusDy)
+                    val freshMotionTracks = freshlyMatchedOtherTracks.filter { it.hasFreshObservedMotion }
+                    val consensusStepDx = medianOf(freshMotionTracks.map { it.freshObservedMotionDx })
+                    val consensusStepDy = medianOf(freshMotionTracks.map { it.freshObservedMotionDy })
+
+                    // Keep an accumulated group-motion anchor across the entire
+                    // occlusion. Re-basing every frame on lastObservedBbox only
+                    // applies one frame of motion and makes the privacy mask lag
+                    // or appear frozen during sustained movement.
+                    val previousGroupPredBox = track.occlusionMotionBbox ?: track.lastObservedBbox
+                    val groupPredBox = previousGroupPredBox.offset(consensusStepDx, consensusStepDy)
+                    track.occlusionMotionBbox = groupPredBox
                     val blendedPredBox = blendBboxes(predBox, groupPredBox, OCCLUSION_GROUP_MOTION_BLEND)
                     track.currentPredictedBbox = blendedPredBox
 
                     val ownDx = predBox.centerX - track.lastObservedBbox.centerX
                     val ownDy = predBox.centerY - track.lastObservedBbox.centerY
                     val ownMotion = sqrt(ownDx * ownDx + ownDy * ownDy)
-                    val groupMotion = sqrt(consensusDx * consensusDx + consensusDy * consensusDy)
+                    val groupDx = groupPredBox.centerX - track.lastObservedBbox.centerX
+                    val groupDy = groupPredBox.centerY - track.lastObservedBbox.centerY
+                    val groupMotion = sqrt(groupDx * groupDx + groupDy * groupDy)
                     val motionAgreement = if (ownMotion > 1e-3f && groupMotion > 1e-3f) {
-                        (ownDx * consensusDx + ownDy * consensusDy) / (ownMotion * groupMotion)
+                        (ownDx * groupDx + ownDy * groupDy) / (ownMotion * groupMotion)
                     } else {
                         0f
                     }
-                    val groupIsNearlyStatic = groupMotion < max(track.lastObservedBbox.width, track.lastObservedBbox.height) * 0.02f
-                    val motionDisagrees = groupIsNearlyStatic || motionAgreement < 0.25f
+                    val groupStepMotion = sqrt(
+                        consensusStepDx * consensusStepDx + consensusStepDy * consensusStepDy
+                    )
+                    val groupIsNearlyStatic = groupStepMotion <
+                        max(track.lastObservedBbox.width, track.lastObservedBbox.height) * 0.02f
+                    val motionDisagrees = freshMotionTracks.isEmpty() || groupIsNearlyStatic || motionAgreement < 0.25f
 
                     // Preserve momentum while the identity prediction agrees with
                     // the observed group's motion.  Only damp repeatedly when the
@@ -1127,6 +1147,7 @@ class TrackManager(
                             track.state = TrackState.LOST
                             track.lostFrames = 1
                             track.occludedByTrackIds.clear()
+                            track.occlusionMotionBbox = null
                             if (track.lastObservedMask != null) {
                                 track.currentRenderMask = updateLostMask(
                                     canonicalMask = track.lastObservedMask!!,
@@ -1152,6 +1173,7 @@ class TrackManager(
                             track.state = TrackState.LOST
                             track.lostFrames = 1
                             track.occludedByTrackIds.clear()
+                            track.occlusionMotionBbox = null
                             if (track.lastObservedMask != null) {
                                 track.currentRenderMask = updateLostMask(
                                     canonicalMask = track.lastObservedMask!!,
@@ -1323,6 +1345,7 @@ class TrackManager(
                 bestTrack.occludedFrames = 0
                 bestTrack.reacquireFrames = 0
                 bestTrack.occludedByTrackIds.clear()
+                bestTrack.occlusionMotionBbox = null
                 bestTrack.state = TrackState.ACTIVE
                 bestTrack.observedThisFrame = true
                 bestTrack.currentObservedFootY = det.footY
@@ -1399,6 +1422,16 @@ class TrackManager(
     }
 
     private fun predictInternal(timestampUs: Long, countAsDetectionMiss: Boolean): List<TrackedPerson> {
+        // A prediction-only frame is not a fresh person observation. Keeping the
+        // previous frame's flag set would let a later association treat a
+        // multi-frame displacement as one-frame fresh group motion.
+        for (track in tracks) {
+            track.observedOnPreviousFrame = false
+            track.observedThisFrame = false
+            track.hasFreshObservedMotion = false
+            track.currentObservedFootY = null
+        }
+
         val activeOrLost = tracks.map { track ->
             val predBox = track.kalman.predict(timestampUs)
             track.currentPredictedBbox = predBox
@@ -1410,22 +1443,21 @@ class TrackManager(
                 if (isOccluded) {
                     track.occludedFrames++
                     track.state = TrackState.OCCLUDED
-                    val primaryOccluderId = track.occludedByTrackIds.firstOrNull()
-                    val occluder = tracks.find { it.id == primaryOccluderId }
-                    val anchoredPredBox = if (occluder != null) {
-                        val dx = occluder.currentPredictedBbox.centerX - occluder.lastObservedBbox.centerX
-                        val dy = occluder.currentPredictedBbox.centerY - occluder.lastObservedBbox.centerY
-                        track.lastObservedBbox.offset(dx, dy)
-                    } else {
-                        track.lastObservedBbox
-                    }
-                    track.currentPredictedBbox = anchoredPredBox
+                    // No fresh observation exists on this frame, so never hand
+                    // motion ownership to an arbitrary occluder. Hold the last
+                    // accumulated group anchor and blend it with this identity's
+                    // own Kalman prediction to remain bounded until evidence
+                    // returns.
+                    val groupPredBox = track.occlusionMotionBbox ?: track.lastObservedBbox
+                    track.occlusionMotionBbox = groupPredBox
+                    val boundedPredBox = blendBboxes(predBox, groupPredBox, OCCLUSION_GROUP_MOTION_BLEND)
+                    track.currentPredictedBbox = boundedPredBox
                     track.kalman.dampenVelocity(0.50f)
                     if (track.lastObservedMask != null) {
                         track.currentRenderMask = warpMask(
                             sourceMask = track.lastObservedMask!!,
                             prevBbox = track.lastObservedBbox,
-                            predBbox = anchoredPredBox,
+                            predBbox = boundedPredBox,
                             missedFrames = 0
                         )
                     }
@@ -1445,6 +1477,7 @@ class TrackManager(
                         track.state = TrackState.LOST
                         track.lostFrames = 1
                         track.occludedByTrackIds.clear()
+                        track.occlusionMotionBbox = null
                         if (track.lastObservedMask != null) {
                             track.currentRenderMask = updateLostMask(
                                 canonicalMask = track.lastObservedMask!!,
@@ -1457,6 +1490,7 @@ class TrackManager(
                 } else {
                     track.state = TrackState.LOST
                     track.lostFrames++
+                    track.occlusionMotionBbox = null
                     if (track.lastObservedMask != null) {
                         track.currentRenderMask = updateLostMask(
                             canonicalMask = track.lastObservedMask!!,
