@@ -355,9 +355,9 @@ class TrackManager(
             val dyObs = detBox.centerY - track.lastObservedBbox.centerY
             val distToObs = sqrt(dxObs * dxObs + dyObs * dyObs)
 
-            val dist = if (track.state == TrackState.REACQUIRING) minOf(distToPred, distToObs) else distToPred
+            val dist = if (track.state == TrackState.REACQUIRING || track.state == TrackState.LOST) minOf(distToPred, distToObs) else distToPred
             val inGroup = occlusionGroups.any { it.trackIds.contains(track.id) }
-            val isFlexibleGate = track.state == TrackState.REACQUIRING || inGroup
+            val isFlexibleGate = track.state == TrackState.REACQUIRING || track.state == TrackState.LOST || inGroup
             val maxAllowedDist = if (isFlexibleGate) {
                 max(predBox.width * 2.5f, predBox.height * 1.5f)
             } else {
@@ -783,7 +783,8 @@ class TrackManager(
         }
 
         val recoverableTracks = tracks.filter {
-            it.state == TrackState.LOST && !matchedTrackIndices.contains(tracks.indexOf(it))
+            (it.state == TrackState.LOST || it.state == TrackState.REACQUIRING || it.state == TrackState.OCCLUDED) &&
+            !matchedTrackIndices.contains(tracks.indexOf(it))
         }
         val reclaimedTrackIds = mutableSetOf<Int>()
 
@@ -793,14 +794,27 @@ class TrackManager(
 
             for (candTrack in recoverableTracks) {
                 if (reclaimedTrackIds.contains(candTrack.id)) continue
-                val dx = candTrack.currentPredictedBbox.centerX - det.bbox.centerX
-                val dy = candTrack.currentPredictedBbox.centerY - det.bbox.centerY
-                val dist = sqrt(dx * dx + dy * dy)
-                val bIoU = computeBBoxIoU(candTrack.currentPredictedBbox, det.bbox)
-                val refDim = max(candTrack.currentPredictedBbox.width, candTrack.currentPredictedBbox.height)
-                val absDx = abs(dx)
-                val absDy = abs(dy)
-                val isNearby = bIoU > 0.05f || dist < refDim * 0.9f || (absDx < refDim * 0.5f && absDy < refDim * 2.5f)
+                val dxPred = candTrack.currentPredictedBbox.centerX - det.bbox.centerX
+                val dyPred = candTrack.currentPredictedBbox.centerY - det.bbox.centerY
+                val distPred = sqrt(dxPred * dxPred + dyPred * dyPred)
+
+                val dxObs = candTrack.lastObservedBbox.centerX - det.bbox.centerX
+                val dyObs = candTrack.lastObservedBbox.centerY - det.bbox.centerY
+                val distObs = sqrt(dxObs * dxObs + dyObs * dyObs)
+
+                val dist = minOf(distPred, distObs)
+                val bIoU = maxOf(
+                    computeBBoxIoU(candTrack.currentPredictedBbox, det.bbox),
+                    computeBBoxIoU(candTrack.lastObservedBbox, det.bbox)
+                )
+                val refDim = max(
+                    max(candTrack.currentPredictedBbox.width, candTrack.currentPredictedBbox.height),
+                    max(det.bbox.width, det.bbox.height)
+                )
+                val absDx = abs(candTrack.currentPredictedBbox.centerX - det.bbox.centerX)
+                val absDy = abs(candTrack.currentPredictedBbox.centerY - det.bbox.centerY)
+
+                val isNearby = bIoU > 0.05f || dist < refDim * 0.8f || (absDx < refDim * 0.5f && absDy < refDim * 2.0f)
 
                 if (isNearby && dist < bestDist) {
                     bestDist = dist
@@ -1002,17 +1016,9 @@ class TrackManager(
             predBbox: FloatRect,
             missedFrames: Int
         ): NativeMask {
-            if (missedFrames <= LOST_WARP_MAX_FRAMES) {
-                return warpMask(
-                    sourceMask = canonicalMask,
-                    prevBbox = observedBbox,
-                    predBbox = predBbox,
-                    missedFrames = missedFrames
-                )
-            }
-
-            return generateConservativeFallbackMask(
+            return warpMask(
                 sourceMask = canonicalMask,
+                prevBbox = observedBbox,
                 predBbox = predBbox,
                 missedFrames = missedFrames
             )
@@ -1109,7 +1115,7 @@ class TrackManager(
             val predNormCenterX = mapper.sourceToProtoX(predBbox.centerX)
             val predNormCenterY = mapper.sourceToProtoY(predBbox.centerY)
 
-            val dilation = if (missedFrames in 1..3) 1 else 0
+            val dilation = if (missedFrames > 10) 2 else if (missedFrames > 0) 1 else 0
 
             val tempArr = ByteArray(w * h)
 
@@ -1125,13 +1131,14 @@ class TrackManager(
                 }
             }
 
-            // Apply slight dilation for LOST frames to prevent under-anonymization
+            // Apply slight organic dilation for LOST frames to prevent under-anonymization without rigid boxes
             if (dilation > 0) {
+                val rad = dilation
                 for (y in 0 until h) {
                     for (x in 0 until w) {
                         var maxVal: Byte = tempArr[y * w + x]
-                        for (dy in -1..1) {
-                            for (dx in -1..1) {
+                        for (dy in -rad..rad) {
+                            for (dx in -rad..rad) {
                                 val ny = y + dy
                                 val nx = x + dx
                                 if (nx in 0 until w && ny in 0 until h) {
