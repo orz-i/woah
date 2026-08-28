@@ -475,15 +475,31 @@ class TrackManager(
 
                 val assignedScore = scoreMatrix[r][c]
 
-                // Mutual / Reciprocal-Best Commitment Check
+                // Mutual / Reciprocal-Best Commitment Check.
+                // A privacy-sensitive identity commit must be the actual best edge
+                // in both directions and must be separated from the next-best
+                // alternative. "Within ambiguity margin of best" is still ambiguous.
                 val rowBest = (0 until candidateDetectionIndices.size).map { scoreMatrix[r][it] }.maxOrNull() ?: 0f
                 val colBest = (0 until groupTrackIndices.size).map { scoreMatrix[it][c] }.maxOrNull() ?: 0f
+                val rowSecondBest = (0 until candidateDetectionIndices.size)
+                    .filter { it != c }
+                    .map { scoreMatrix[r][it] }
+                    .maxOrNull()
+                val colSecondBest = (0 until groupTrackIndices.size)
+                    .filter { it != r }
+                    .map { scoreMatrix[it][c] }
+                    .maxOrNull()
 
-                val isRowTop = assignedScore >= (rowBest - config.associationAmbiguityMargin)
-                val isColTop = assignedScore >= (colBest - config.associationAmbiguityMargin)
+                val epsilon = 1e-6f
+                val isRowTop = assignedScore >= (rowBest - epsilon)
+                val isColTop = assignedScore >= (colBest - epsilon)
+                val rowMargin = rowSecondBest?.let { assignedScore - it } ?: Float.POSITIVE_INFINITY
+                val colMargin = colSecondBest?.let { assignedScore - it } ?: Float.POSITIVE_INFINITY
+                val hasRowSeparation = rowMargin >= config.associationAmbiguityMargin
+                val hasColSeparation = colMargin >= config.associationAmbiguityMargin
                 val isScoreValid = assignedScore >= config.minMatchScore
 
-                val isReciprocalBest = isScoreValid && isRowTop && isColTop
+                val isReciprocalBest = isScoreValid && isRowTop && isColTop && hasRowSeparation && hasColSeparation
 
                 if (!isReciprocalBest) {
                     NativeDiagnostics.event(
@@ -497,6 +513,11 @@ class TrackManager(
                             "assigned_score" to assignedScore,
                             "row_best" to rowBest,
                             "col_best" to colBest,
+                            "row_second_best" to rowSecondBest,
+                            "col_second_best" to colSecondBest,
+                            "row_margin" to rowMargin,
+                            "col_margin" to colMargin,
+                            "required_margin" to config.associationAmbiguityMargin,
                             "min_score" to config.minMatchScore
                         )
                     )
@@ -531,6 +552,22 @@ class TrackManager(
                 track.currentObservedFootY = det.footY
                 track.lastObservedFootY = det.footY
                 track.kalman.update(det.bbox, timestampUs)
+
+                NativeDiagnostics.event(
+                    level = "INFO",
+                    component = "TrackManager",
+                    event = "GROUP_ASSIGNMENT_COMMIT",
+                    fields = mapOf(
+                        "group_id" to group.trackIds.toList(),
+                        "track_id" to track.id,
+                        "det_index" to dIdx,
+                        "assigned_score" to assignedScore,
+                        "row_margin" to rowMargin,
+                        "col_margin" to colMargin,
+                        "prev_state" to prevState.name,
+                        "pts_us" to timestampUs
+                    )
+                )
 
                 if (prevState == TrackState.OCCLUDED || prevState == TrackState.REACQUIRING) {
                     NativeDiagnostics.event(
@@ -573,12 +610,16 @@ class TrackManager(
         }
 
         if (remainingTrackIndices.isNotEmpty() && remainingDetectionIndices.isNotEmpty()) {
-            val costMatrix = Array(remainingTrackIndices.size) { r ->
+            val scoreMatrix = Array(remainingTrackIndices.size) { r ->
                 val track = tracks[remainingTrackIndices[r]]
                 FloatArray(remainingDetectionIndices.size) { c ->
                     val det = detections[remainingDetectionIndices[c]]
-                    val score = computeMatchScore(track, det)
-                    (1.0f - score).coerceIn(0f, 1f)
+                    computeMatchScore(track, det)
+                }
+            }
+            val costMatrix = Array(remainingTrackIndices.size) { r ->
+                FloatArray(remainingDetectionIndices.size) { c ->
+                    (1.0f - scoreMatrix[r][c]).coerceIn(0f, 1f)
                 }
             }
 
@@ -590,6 +631,7 @@ class TrackManager(
                 val dIdx = remainingDetectionIndices[match.second]
                 val track = tracks[tIdx]
                 val det = detections[dIdx]
+                val assignedScore = scoreMatrix[match.first][match.second]
 
                 matchedTrackIndices.add(tIdx)
                 matchedDetectionIndices.add(dIdx)
@@ -609,6 +651,19 @@ class TrackManager(
                 track.currentObservedFootY = det.footY
                 track.lastObservedFootY = det.footY
                 track.kalman.update(det.bbox, timestampUs)
+
+                NativeDiagnostics.event(
+                    level = "INFO",
+                    component = "TrackManager",
+                    event = "GLOBAL_ASSIGNMENT_COMMIT",
+                    fields = mapOf(
+                        "track_id" to track.id,
+                        "det_index" to dIdx,
+                        "assigned_score" to assignedScore,
+                        "prev_state" to prevState.name,
+                        "pts_us" to timestampUs
+                    )
+                )
 
                 if (prevState == TrackState.OCCLUDED || prevState == TrackState.REACQUIRING) {
                     NativeDiagnostics.event(
@@ -676,8 +731,11 @@ class TrackManager(
                             missedFrames = 0
                         )
                     }
-                } else if (inReacquiringGroup || track.state == TrackState.OCCLUDED || track.state == TrackState.REACQUIRING) {
-                    // Occlusion ended / separated -> in REACQUIRING state
+                } else if (inActiveGroup || inReacquiringGroup || track.state == TrackState.OCCLUDED || track.state == TrackState.REACQUIRING) {
+                    // Unresolved group identity or ended occlusion -> REACQUIRING.
+                    // In particular, if every group assignment was rejected as
+                    // ambiguous there may be no freshly matched occluder to mark
+                    // this track OCCLUDED; it still must not fall through to LOST.
                     if (track.state == TrackState.OCCLUDED) {
                         track.state = TrackState.REACQUIRING
                         track.lostFrames = 0
@@ -696,6 +754,29 @@ class TrackManager(
                             component = "TrackManager",
                             event = "REACQUIRE_START",
                             fields = mapOf("track_id" to track.id)
+                        )
+                    } else if (track.state != TrackState.REACQUIRING) {
+                        track.state = TrackState.REACQUIRING
+                        track.lostFrames = 0
+                        track.reacquireFrames = 1
+                        track.occludedByTrackIds.clear()
+                        if (track.lastObservedMask != null) {
+                            track.currentRenderMask = warpMask(
+                                sourceMask = track.lastObservedMask!!,
+                                prevBbox = track.lastObservedBbox,
+                                predBbox = predBox,
+                                missedFrames = 0
+                            )
+                        }
+                        NativeDiagnostics.event(
+                            level = "INFO",
+                            component = "TrackManager",
+                            event = "REACQUIRE_START",
+                            fields = mapOf(
+                                "track_id" to track.id,
+                                "reason" to "AMBIGUOUS_GROUP",
+                                "pts_us" to timestampUs
+                            )
                         )
                     } else {
                         track.reacquireFrames++

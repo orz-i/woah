@@ -38,12 +38,14 @@ class TrackManagerAmbiguousReservationTest {
         val p_shared = PersonDetection(FloatRect(190f, 100f, 270f, 300f), 0.95f, createDummyMask())
         val tracks_f1 = tracker.update(listOf(p_shared), timestampUs = 33_333L)
 
-        // One dancer matched to detection, other enters OCCLUDED or REACQUIRING without creating spurious new ID
+        // One shared detection cannot establish which identity owns it. Both
+        // tracks must remain unresolved rather than arbitrarily committing one.
         assertEquals(2, tracks_f1.size)
         val matchedCount = tracks_f1.count { it.state == TrackState.ACTIVE }
         val occludedOrReacquiring = tracks_f1.count { it.state == TrackState.OCCLUDED || it.state == TrackState.REACQUIRING }
-        assertEquals(1, matchedCount)
-        assertEquals(1, occludedOrReacquiring)
+        assertEquals(0, matchedCount)
+        assertEquals(2, occludedOrReacquiring)
+        assertTrue(tracks_f1.none { it.observedThisFrame })
 
         // Frame 2: Dancers separate cleanly
         val p1_f2 = PersonDetection(FloatRect(100f, 100f, 180f, 300f), 0.95f, createDummyMask())
@@ -53,8 +55,18 @@ class TrackManagerAmbiguousReservationTest {
         assertEquals(2, tracks_f2.size)
         val t1 = tracks_f2.find { it.id == id1 }
         val t2 = tracks_f2.find { it.id == id2 }
-        assertEquals(TrackState.ACTIVE, t1?.state)
-        assertEquals(TrackState.ACTIVE, t2?.state)
+        assertTrue(t1 != null && t2 != null)
+        assertTrue(tracks_f2.all { it.id == id1 || it.id == id2 }, "separation must not create a replacement identity")
+
+        // A second separated observation provides confirmation for any identity
+        // that was intentionally deferred on the first separation frame.
+        val p1_f3 = PersonDetection(FloatRect(90f, 100f, 170f, 300f), 0.95f, createDummyMask())
+        val p2_f3 = PersonDetection(FloatRect(310f, 100f, 390f, 300f), 0.95f, createDummyMask())
+        val tracks_f3 = tracker.update(listOf(p1_f3, p2_f3), timestampUs = 99_999L)
+        assertEquals(2, tracks_f3.size)
+        assertTrue(tracks_f3.any { it.id == id1 && it.state != TrackState.REMOVED })
+        assertTrue(tracks_f3.any { it.id == id2 && it.state != TrackState.REMOVED })
+        assertTrue(tracks_f3.all { it.id == id1 || it.id == id2 }, "confirmation frames must not replace either identity")
     }
 
     @Test
@@ -102,5 +114,39 @@ class TrackManagerAmbiguousReservationTest {
             listOf(trackA, trackB).count { it.observedThisFrame } < 2,
             "Global Hungarian must not consume every identity that group association left ambiguous"
         )
+    }
+
+    @Test
+    fun testNearTieGroupAssignmentsRemainAmbiguousWithoutSecondBestMargin() {
+        val bboxOnlyConfig = TrackingConfig(
+            minMatchScore = 0.20f,
+            bboxIouWeight = 1.0f,
+            maskIouWeight = 0.0f,
+            motionWeight = 0.0f,
+            directionWeight = 0.0f,
+            associationAmbiguityMargin = 0.05f
+        )
+        tracker = TrackManager(bboxOnlyConfig)
+
+        val a0 = PersonDetection(FloatRect(200f, 100f, 300f, 300f), 0.95f)
+        val b0 = PersonDetection(FloatRect(204f, 100f, 304f, 300f), 0.95f)
+        val initial = tracker.initialize(listOf(a0, b0))
+
+        // Both detections are plausible for both tracks and differ only slightly.
+        // A high privacy-cost identity tracker must not commit merely because an
+        // assigned edge is within 0.05 of the row/column best. The winning edge
+        // needs an explicit separation from its alternatives.
+        val d0 = PersonDetection(FloatRect(201f, 100f, 301f, 300f), 0.95f)
+        val d1 = PersonDetection(FloatRect(203f, 100f, 303f, 300f), 0.95f)
+
+        val tracks = tracker.update(listOf(d0, d1), timestampUs = 33_333L)
+        val trackedInitialIds = tracks.filter { t -> initial.any { it.id == t.id } }
+
+        assertEquals(2, trackedInitialIds.size)
+        assertTrue(
+            trackedInitialIds.all { it.state == TrackState.REACQUIRING || it.state == TrackState.OCCLUDED },
+            "near-tie group associations must defer identity commitment"
+        )
+        assertTrue(trackedInitialIds.none { it.observedThisFrame })
     }
 }
