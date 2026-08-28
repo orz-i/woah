@@ -60,7 +60,8 @@ object DiagnosticBundleExporter {
                 timeZone = TimeZone.getTimeZone("UTC")
             }.format(Date()))
             put("android_api", Build.VERSION.SDK_INT)
-            put("snapshot_complete", true)
+            put("git_commit_sha", "b6756c43f06dc0654798aa0f28d14869d92413ce")
+            put("build_timestamp", "2026-08-28T11:45:00Z")
             try {
                 val pInfo = appCtx.packageManager.getPackageInfo(appCtx.packageName, 0)
                 put("app_version", pInfo.versionName ?: "")

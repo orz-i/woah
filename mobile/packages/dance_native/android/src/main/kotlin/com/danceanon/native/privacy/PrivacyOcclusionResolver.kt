@@ -44,6 +44,7 @@ object PrivacyOcclusionResolver {
         applyDilationToPrivacyTargets: Boolean = true,
         dilationRadius: Int = 1,
         occluderErosionRadius: Int = 1,
+        foregroundFootYMarginRatio: Float = 0.05f,
         ptsUs: Long = 0L
     ): ResolvedCompositorMasks {
         val selectedPersons = persons.filter { selectedPersonIds.contains(it.id) && it.mask != null }
@@ -69,8 +70,8 @@ object PrivacyOcclusionResolver {
 
             val acceptedOccluderCores = mutableListOf<NativeMask>()
 
-            // Evaluate candidate occluders only if target is not in non-subtracting states (REACQUIRING/LOST)
-            if (target.state != TrackState.REACQUIRING && target.state != TrackState.LOST && target.state != TrackState.REMOVED) {
+            // Evaluate candidate occluders for all targets except REMOVED
+            if (target.state != TrackState.REMOVED) {
                 val targetBbox = target.bbox
                 val targetArea = (targetBbox.width * targetBbox.height).coerceAtLeast(1e-4f)
                 val targetFootY = target.footY ?: targetBbox.bottom
@@ -93,7 +94,7 @@ object PrivacyOcclusionResolver {
                     // Depth evaluation
                     val footYDelta = candFootY - targetFootY // positive means cand is lower in frame / in front
                     val personMinH = minOf(targetBbox.height, candBbox.height).coerceAtLeast(10f)
-                    val footYThreshold = personMinH * 0.03f // conservative depth margin
+                    val footYThreshold = personMinH * foregroundFootYMarginRatio
 
                     val isTargetFresh = target.observedThisFrame
                     val isCandFresh = cand.observedThisFrame
@@ -105,13 +106,9 @@ object PrivacyOcclusionResolver {
                         // CASE A: Target is explicitly occluded by this candidate in tracking
                         val isExplicitOccluder = target.occludedByTrackIds.contains(cand.id)
                         isExplicitOccluder && (footYDelta > -footYThreshold)
-                    } else if (isTargetFresh) {
-                        // CASE B: Both target and candidate are freshly observed
-                        // Strict requirement: candidate must have distinctly larger footY (foreground)
-                        footYDelta > footYThreshold
                     } else {
-                        // Unobserved non-occluded target: PRIVACY WINS
-                        false
+                        // CASE B: Candidate has clear foreground depth evidence (footY lower in frame)
+                        footYDelta > footYThreshold
                     }
 
                     val evidence = OcclusionEvidence(

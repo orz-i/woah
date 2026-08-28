@@ -136,7 +136,8 @@ void main() {
     }
 
     // 3. Body Anonymization / Fill Effect (Solid / Gradient / Blur / Mosaic)
-    if (maskVal > 0.05) {
+    float blendAlpha = smoothstep(0.15, 0.85, maskVal) * uOpacity;
+    if (blendAlpha > 0.001) {
         vec4 effectColor = color;
         if (uFillMode == 0) { // Solid
             effectColor = vec4(uFillColor.rgb, 1.0);
@@ -162,7 +163,6 @@ void main() {
             effectColor = texture2D(uBaseTexture, blockUv);
         }
 
-        float blendAlpha = uOpacity * maskVal;
         color = mix(color, effectColor, blendAlpha);
     }
 
@@ -180,8 +180,9 @@ void main() {
 
         float maxNeighbor = max(max(max(m0, m1), max(m2, m3)), max(max(m4, m5), max(m6, m7)));
         float outline = clamp(maxNeighbor - maskVal, 0.0, 1.0);
-        if (outline > 0.05) {
-            color = mix(color, vec4(uBorderColor.rgb, 1.0), outline * uBorderColor.a);
+        float outlineAlpha = smoothstep(0.10, 0.80, outline) * uBorderColor.a;
+        if (outlineAlpha > 0.001) {
+            color = mix(color, vec4(uBorderColor.rgb, 1.0), outlineAlpha);
         }
     }
 

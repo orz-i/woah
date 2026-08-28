@@ -123,9 +123,9 @@ object YoloMaskDecoder {
             val rowOffset = py * protoSize
             for (px in protoX1 until protoX2) {
                 val sum = protoView.getDotProduct(px, py, cand.maskCoeffs)
-                if (sum > 0f) {
-                    maskBytes[rowOffset + px] = 255.toByte()
-                }
+                val prob = 1.0f / (1.0f + kotlin.math.exp(-sum))
+                val byteVal = (prob * 255f).toInt().coerceIn(0, 255).toByte()
+                maskBytes[rowOffset + px] = byteVal
             }
         }
         return maskBytes
