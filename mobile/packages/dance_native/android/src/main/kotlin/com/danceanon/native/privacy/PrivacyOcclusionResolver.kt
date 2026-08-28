@@ -3,6 +3,8 @@ package com.danceanon.native.privacy
 import com.danceanon.native.diagnostics.NativeDiagnostics
 import com.danceanon.native.inference.FloatRect
 import com.danceanon.native.inference.NativeMask
+import com.danceanon.native.tracking.FreshPrivacyClassEvidence
+import com.danceanon.native.tracking.PrivacySelectionClass
 import com.danceanon.native.tracking.TrackState
 import com.danceanon.native.tracking.TrackedPerson
 import java.nio.ByteBuffer
@@ -53,9 +55,44 @@ object PrivacyOcclusionResolver {
         dilationRadius: Int = 1,
         occluderErosionRadius: Int = 1,
         foregroundFootYMarginRatio: Float = 0.05f,
-        ptsUs: Long = 0L
+        ptsUs: Long = 0L,
+        freshClassEvidence: List<FreshPrivacyClassEvidence> = emptyList(),
+        suppressedSelectedTrackIds: Set<Int> = emptySet()
     ): ResolvedCompositorMasks {
-        val selectedPersons = persons.filter { selectedPersonIds.contains(it.id) && it.mask != null }
+        val evidenceSelectedIds = mutableSetOf<Int>()
+        val evidencePersons = freshClassEvidence.mapIndexedNotNull { index, evidence ->
+            val mask = evidence.detection.mask ?: return@mapIndexedNotNull null
+            val evidenceId = Int.MIN_VALUE + index
+            if (evidence.selectionClass == PrivacySelectionClass.SELECTED) {
+                evidenceSelectedIds.add(evidenceId)
+            }
+            TrackedPerson(
+                id = evidenceId,
+                bbox = evidence.detection.bbox,
+                mask = mask,
+                confidence = evidence.detection.confidence,
+                missedFrames = 0,
+                age = MIN_UNSELECTED_IDENTITY_AGE_FRAMES,
+                state = TrackState.ACTIVE,
+                occludedByTrackIds = emptySet(),
+                observedThisFrame = true,
+                footY = evidence.detection.footY
+            )
+        }
+        val privacyPersons = if (suppressedSelectedTrackIds.isEmpty() && evidencePersons.isEmpty()) {
+            persons
+        } else {
+            persons.filterNot {
+                selectedPersonIds.contains(it.id) && suppressedSelectedTrackIds.contains(it.id)
+            } + evidencePersons
+        }
+        val effectiveSelectedIds = if (evidenceSelectedIds.isEmpty()) {
+            selectedPersonIds
+        } else {
+            selectedPersonIds + evidenceSelectedIds
+        }
+
+        val selectedPersons = privacyPersons.filter { effectiveSelectedIds.contains(it.id) && it.mask != null }
         if (selectedPersons.isEmpty()) {
             return ResolvedCompositorMasks(
                 privacyMask = null,
@@ -65,7 +102,7 @@ object PrivacyOcclusionResolver {
             )
         }
 
-        val unselectedPersons = persons.filter { !selectedPersonIds.contains(it.id) && it.mask != null }
+        val unselectedPersons = privacyPersons.filter { !effectiveSelectedIds.contains(it.id) && it.mask != null }
         val effectiveSelectedMasks = mutableListOf<NativeMask>()
 
         for (target in selectedPersons) {

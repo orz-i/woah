@@ -406,7 +406,9 @@ class GlRenderer : FrameRenderer {
         effects: EffectConfigDto,
         follow: FollowConfigDto,
         presentationTimeUs: Long,
-        textureType: SourceTextureType = SourceTextureType.OES
+        textureType: SourceTextureType = SourceTextureType.OES,
+        freshPrivacyClassEvidence: List<com.danceanon.native.tracking.FreshPrivacyClassEvidence> = emptyList(),
+        suppressedSelectedPrivacyTrackIds: Set<Int> = emptySet()
     ) {
         GLES20.glViewport(0, 0, width, height)
         GLES20.glClearColor(0f, 0f, 0f, 1f)
@@ -488,7 +490,9 @@ class GlRenderer : FrameRenderer {
         val resolved = com.danceanon.native.privacy.PrivacyOcclusionResolver.resolveMasks(
             persons = persons,
             selectedPersonIds = selectedPersonIds,
-            ptsUs = presentationTimeUs
+            ptsUs = presentationTimeUs,
+            freshClassEvidence = freshPrivacyClassEvidence,
+            suppressedSelectedTrackIds = suppressedSelectedPrivacyTrackIds
         )
         val hasSelected = resolved.hasPrivacy
         val hasOccluder = resolved.hasOccluder

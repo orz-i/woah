@@ -46,6 +46,10 @@ class TrackManagerAmbiguousReservationTest {
         assertEquals(0, matchedCount)
         assertEquals(2, occludedOrReacquiring)
         assertTrue(tracks_f1.none { it.observedThisFrame })
+        assertTrue(
+            tracker.getFreshPrivacyClassEvidence().isEmpty(),
+            "merged/missing detection cardinality must not infer a privacy class"
+        )
 
         // Frame 2: Dancers separate cleanly
         val p1_f2 = PersonDetection(FloatRect(100f, 100f, 180f, 300f), 0.95f, createDummyMask())
@@ -183,5 +187,97 @@ class TrackManagerAmbiguousReservationTest {
 
         assertEquals(originalIds, tracks.map { it.id }.toSet())
         assertEquals(2, tracks.size, "overlap-group fragment must not create a duplicate identity")
+        assertTrue(
+            tracker.getFreshPrivacyClassEvidence().isEmpty(),
+            "extra fragment/duplicate cardinality must not infer a privacy class"
+        )
+    }
+
+    @Test
+    fun testBalancedResidualSelectedDetectionBecomesFreshPrivacyEvidenceWithoutIdentityCommit() {
+        tracker = TrackManager(
+            TrackingConfig(
+                minMatchScore = 0.20f,
+                bboxIouWeight = 1.0f,
+                maskIouWeight = 0.0f,
+                motionWeight = 0.0f,
+                directionWeight = 0.0f,
+                associationAmbiguityMargin = 0.05f
+            )
+        )
+        tracker.setProtectedTrackIds(setOf(0))
+        tracker.initializeWithAssignedIds(
+            listOf(
+                PersonDetection(FloatRect(100f, 100f, 200f, 300f), 0.95f, createDummyMask()),
+                PersonDetection(FloatRect(140f, 100f, 240f, 300f), 0.95f, createDummyMask())
+            ),
+            listOf(0, 1)
+        )
+
+        val tracks = tracker.update(
+            listOf(
+                // Equally plausible for both tracks -> exact selected identity must defer.
+                PersonDetection(FloatRect(120f, 100f, 220f, 300f), 0.95f, createDummyMask()),
+                // Clear unselected observation -> commits track 1.
+                PersonDetection(FloatRect(150f, 100f, 250f, 300f), 0.95f, createDummyMask())
+            ),
+            33_333L
+        )
+
+        val selected = tracks.single { it.id == 0 }
+        val unselected = tracks.single { it.id == 1 }
+        assertTrue(!selected.observedThisFrame, "selected identity must remain uncommitted")
+        assertTrue(unselected.observedThisFrame, "unselected identity should consume its clear detection")
+
+        val evidence = tracker.getFreshPrivacyClassEvidence()
+        assertEquals(1, evidence.size)
+        assertEquals(PrivacySelectionClass.SELECTED, evidence.single().selectionClass)
+        assertEquals(setOf(0), evidence.single().residualTrackIds)
+        assertEquals(FloatRect(120f, 100f, 220f, 300f), evidence.single().detection.bbox)
+        assertEquals(setOf(0), tracker.getPrivacySuppressedSelectedTrackIds())
+    }
+
+    @Test
+    fun testBalancedResidualUnselectedDetectionBecomesFreshPrivacyEvidenceWithoutIdentityCommit() {
+        tracker = TrackManager(
+            TrackingConfig(
+                minMatchScore = 0.20f,
+                bboxIouWeight = 1.0f,
+                maskIouWeight = 0.0f,
+                motionWeight = 0.0f,
+                directionWeight = 0.0f,
+                associationAmbiguityMargin = 0.05f
+            )
+        )
+        tracker.setProtectedTrackIds(setOf(0))
+        tracker.initializeWithAssignedIds(
+            listOf(
+                PersonDetection(FloatRect(100f, 100f, 200f, 300f), 0.95f, createDummyMask()),
+                PersonDetection(FloatRect(140f, 100f, 240f, 300f), 0.95f, createDummyMask())
+            ),
+            listOf(0, 1)
+        )
+
+        val tracks = tracker.update(
+            listOf(
+                // Clear selected observation -> commits track 0.
+                PersonDetection(FloatRect(90f, 100f, 190f, 300f), 0.95f, createDummyMask()),
+                // Equally plausible for selected/unselected -> exact track 1 identity defers.
+                PersonDetection(FloatRect(120f, 100f, 220f, 300f), 0.95f, createDummyMask())
+            ),
+            33_333L
+        )
+
+        val selected = tracks.single { it.id == 0 }
+        val unselected = tracks.single { it.id == 1 }
+        assertTrue(selected.observedThisFrame)
+        assertTrue(!unselected.observedThisFrame, "unselected identity must remain uncommitted")
+
+        val evidence = tracker.getFreshPrivacyClassEvidence()
+        assertEquals(1, evidence.size)
+        assertEquals(PrivacySelectionClass.UNSELECTED, evidence.single().selectionClass)
+        assertEquals(setOf(1), evidence.single().residualTrackIds)
+        assertEquals(FloatRect(120f, 100f, 220f, 300f), evidence.single().detection.bbox)
+        assertTrue(tracker.getPrivacySuppressedSelectedTrackIds().isEmpty())
     }
 }

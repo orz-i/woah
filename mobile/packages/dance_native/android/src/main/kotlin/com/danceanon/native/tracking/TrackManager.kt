@@ -44,6 +44,24 @@ data class OcclusionGroup(
     var reacquireFrames: Int = 0
 )
 
+enum class PrivacySelectionClass {
+    SELECTED,
+    UNSELECTED
+}
+
+/**
+ * Fresh YOLO evidence whose privacy class is known even though its exact track
+ * identity is intentionally left unresolved. This is only emitted for balanced
+ * occlusion groups where one privacy class has been fully committed already and
+ * every remaining track belongs to the other class.
+ */
+data class FreshPrivacyClassEvidence(
+    val selectionClass: PrivacySelectionClass,
+    val detectionIndex: Int,
+    val detection: PersonDetection,
+    val residualTrackIds: Set<Int>
+)
+
 /**
  * Internal tracking representation enforcing strict separation between:
  * 1. Canonical observed segmentation (lastObservedMask, lastObservedBbox)
@@ -127,6 +145,8 @@ class TrackManager(
     private val tracks = mutableListOf<InternalTrack>()
     private val occlusionGroups = mutableListOf<OcclusionGroup>()
     private val protectedTrackIds = mutableSetOf<Int>()
+    private val currentPrivacyClassEvidence = mutableListOf<FreshPrivacyClassEvidence>()
+    private val currentPrivacySuppressedSelectedTrackIds = mutableSetOf<Int>()
     private var nextTrackId = 0
     private var hasInitialized = false
 
@@ -140,6 +160,10 @@ class TrackManager(
         protectedTrackIds.addAll(ids)
     }
 
+    fun getFreshPrivacyClassEvidence(): List<FreshPrivacyClassEvidence> = currentPrivacyClassEvidence
+
+    fun getPrivacySuppressedSelectedTrackIds(): Set<Int> = currentPrivacySuppressedSelectedTrackIds
+
     override fun initialize(detections: List<PersonDetection>): List<TrackedPerson> {
         val defaultIds = detections.indices.toList()
         return initializeWithAssignedIds(detections, defaultIds)
@@ -151,6 +175,8 @@ class TrackManager(
     ): List<TrackedPerson> {
         tracks.clear()
         occlusionGroups.clear()
+        currentPrivacyClassEvidence.clear()
+        currentPrivacySuppressedSelectedTrackIds.clear()
         nextTrackId = 0
         for ((index, det) in detections.withIndex()) {
             val trackId = if (index < assignedIds.size) assignedIds[index] else nextTrackId
@@ -314,6 +340,9 @@ class TrackManager(
         if (!hasInitialized) {
             return initialize(detections)
         }
+
+        currentPrivacyClassEvidence.clear()
+        currentPrivacySuppressedSelectedTrackIds.clear()
 
         if (detections.isEmpty()) {
             return predict(timestampUs)
@@ -560,6 +589,7 @@ class TrackManager(
 
             val matchedGroupRows = mutableSetOf<Int>()
             val matchedGroupCols = mutableSetOf<Int>()
+            val reservedThisGroup = mutableSetOf<Int>()
 
             for (match in matchResult.matches) {
                 val r = match.first
@@ -728,6 +758,7 @@ class TrackManager(
                     }
                     if (overlapsGroupMember) {
                         reservedGroupDetectionIndices.add(dIdx)
+                        reservedThisGroup.add(dIdx)
                         NativeDiagnostics.event(
                             level = "INFO",
                             component = "TrackManager",
@@ -740,6 +771,61 @@ class TrackManager(
                             )
                         )
                     }
+                }
+            }
+
+            // Identity may remain ambiguous while privacy membership is already
+            // deterministic at the group-set level. Only infer a class when the
+            // group is cardinality-balanced (one candidate per track), every
+            // remaining candidate is still owned by the group, and all remaining
+            // tracks belong to the same selected/unselected class. This does not
+            // assign any detection to a concrete track ID.
+            val residualTrackIndices = groupTrackIndices.filter { !matchedTrackIndices.contains(it) }
+            val residualDetectionIndices = candidateDetectionIndices.filter { !matchedDetectionIndices.contains(it) }
+            val balancedResidualSet =
+                candidateDetectionIndices.size == groupTrackIndices.size &&
+                    residualTrackIndices.isNotEmpty() &&
+                    residualTrackIndices.size == residualDetectionIndices.size &&
+                    residualDetectionIndices.all { reservedThisGroup.contains(it) }
+
+            if (balancedResidualSet) {
+                val residualTrackIds = residualTrackIndices.map { tracks[it].id }.toSet()
+                val allSelected = residualTrackIds.all { protectedTrackIds.contains(it) }
+                val allUnselected = residualTrackIds.none { protectedTrackIds.contains(it) }
+                val selectionClass = when {
+                    allSelected -> PrivacySelectionClass.SELECTED
+                    allUnselected -> PrivacySelectionClass.UNSELECTED
+                    else -> null
+                }
+
+                if (selectionClass != null && residualDetectionIndices.all { detections[it].mask != null }) {
+                    for (dIdx in residualDetectionIndices) {
+                        currentPrivacyClassEvidence.add(
+                            FreshPrivacyClassEvidence(
+                                selectionClass = selectionClass,
+                                detectionIndex = dIdx,
+                                detection = detections[dIdx],
+                                residualTrackIds = residualTrackIds
+                            )
+                        )
+                    }
+                    if (selectionClass == PrivacySelectionClass.SELECTED) {
+                        currentPrivacySuppressedSelectedTrackIds.addAll(residualTrackIds)
+                    }
+                    NativeDiagnostics.event(
+                        level = "INFO",
+                        component = "TrackManager",
+                        event = "PRIVACY_CLASS_EVIDENCE_INFERRED",
+                        fields = mapOf(
+                            "group_id" to group.trackIds.toList(),
+                            "selection_class" to selectionClass.name,
+                            "residual_track_ids" to residualTrackIds.toList(),
+                            "detection_indices" to residualDetectionIndices,
+                            "candidate_count" to candidateDetectionIndices.size,
+                            "track_count" to groupTrackIndices.size,
+                            "pts_us" to timestampUs
+                        )
+                    )
                 }
             }
         }
@@ -1422,6 +1508,9 @@ class TrackManager(
     }
 
     private fun predictInternal(timestampUs: Long, countAsDetectionMiss: Boolean): List<TrackedPerson> {
+        currentPrivacyClassEvidence.clear()
+        currentPrivacySuppressedSelectedTrackIds.clear()
+
         // A prediction-only frame is not a fresh person observation. Keeping the
         // previous frame's flag set would let a later association treat a
         // multi-frame displacement as one-frame fresh group motion.
@@ -1536,6 +1625,8 @@ class TrackManager(
         tracks.clear()
         occlusionGroups.clear()
         protectedTrackIds.clear()
+        currentPrivacyClassEvidence.clear()
+        currentPrivacySuppressedSelectedTrackIds.clear()
         nextTrackId = 0
         hasInitialized = false
     }

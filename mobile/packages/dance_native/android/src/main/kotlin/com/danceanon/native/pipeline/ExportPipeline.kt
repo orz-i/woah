@@ -437,6 +437,8 @@ class ExportPipeline(
                     val renderTexId = oesTextureId
                     val renderTexType = com.danceanon.native.render.SourceTextureType.OES
                     val renderTexMatrix: FloatArray? = finalTexMatrix
+                    var freshPrivacyClassEvidence = emptyList<com.danceanon.native.tracking.FreshPrivacyClassEvidence>()
+                    var suppressedSelectedPrivacyTrackIds = emptySet<Int>()
 
                         // 2. Perform Inference / Temporal Mask Tracking
                         val trackedList: List<com.danceanon.native.tracking.TrackedPerson> = if (isSam2Mode && sam2Fbo != null && sam2Renderer != null && sam2Tracker != null) {
@@ -621,7 +623,7 @@ class ExportPipeline(
                             }
 
                             // Tracking on detections
-                            profiler.recordStage("tracking") {
+                            val tracked = profiler.recordStage("tracking") {
                                 if (processedFrames == 1) {
                                     val cacheMgr = com.danceanon.native.storage.CacheManager(context)
                                     val metadata = if (request.analysisCacheId.isNotBlank()) cacheMgr.getAnalysisMetadata(request.analysisCacheId) else null
@@ -686,6 +688,9 @@ class ExportPipeline(
                                     trackManager.predict(ptsUs)
                                 }
                             }
+                            freshPrivacyClassEvidence = trackManager.getFreshPrivacyClassEvidence()
+                            suppressedSelectedPrivacyTrackIds = trackManager.getPrivacySuppressedSelectedTrackIds()
+                            tracked
                         }
 
                         // Validate selected target survival with rate-limited telemetry (PHASE A & D)
@@ -755,7 +760,9 @@ class ExportPipeline(
                                 effects = request.effects,
                                 follow = request.follow,
                                 presentationTimeUs = ptsUs,
-                                textureType = renderTexType
+                                textureType = renderTexType,
+                                freshPrivacyClassEvidence = freshPrivacyClassEvidence,
+                                suppressedSelectedPrivacyTrackIds = suppressedSelectedPrivacyTrackIds
                             )
                             renderedFrameCount++
                         }
