@@ -611,6 +611,9 @@ class ExportPipeline(
                                 val seg = profiler.recordStage("yoloCpuInference") {
                                     segmenter.segmentGlReadbackRgbaSync(rgbaBuffer, mapper, ptsUs, colOrder = RgbaColOrder.LEFT_TO_RIGHT)
                                 }
+                                for ((stage, elapsedMs) in seg.stageTimingsMs) {
+                                    profiler.recordSample(stage, elapsedMs)
+                                }
                                 // Export QUALITY path: YOLO raw organic masks directly enter TrackManager without pre-dilation
                                 seg.persons
                             } else {

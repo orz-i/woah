@@ -37,7 +37,8 @@ data class PersonDetection(
 data class SegmentationFrame(
     val timestampUs: Long,
     val persons: List<PersonDetection>,
-    val inferenceTimeMs: Long
+    val inferenceTimeMs: Long,
+    val stageTimingsMs: Map<String, Long> = emptyMap()
 )
 
 interface Segmenter : AutoCloseable {

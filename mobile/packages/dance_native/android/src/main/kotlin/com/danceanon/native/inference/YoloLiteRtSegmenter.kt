@@ -114,8 +114,10 @@ class YoloLiteRtSegmenter(
         )
 
         val startTime = System.currentTimeMillis()
+        val stageTimings = linkedMapOf<String, Long>()
 
         // 1. Preprocess directly into reusable workspace FloatBuffer
+        val preprocessStartNs = System.nanoTime()
         val preprocess = YoloPreprocessor.processRgbaBuffer(
             rgbaBuffer = rgbaBuffer,
             mapper = mapper,
@@ -123,6 +125,7 @@ class YoloLiteRtSegmenter(
             rowOrder = rowOrder,
             colOrder = colOrder
         )
+        stageTimings["yoloPreprocess"] = (System.nanoTime() - preprocessStartNs) / 1_000_000
 
         // 2. Write input buffer and run inference
         val detections = try {
@@ -138,26 +141,35 @@ class YoloLiteRtSegmenter(
 
             val inBuf = inputBufs[0]
             val floatBuf = preprocess.floatBuffer
+            val inputWriteStartNs = System.nanoTime()
             floatBuf.position(0)
             val count = minOf(floatBuf.remaining(), reusableInputFloats.size)
             floatBuf.get(reusableInputFloats, 0, count)
             inBuf.writeFloat(reusableInputFloats)
+            stageTimings["yoloInputWrite"] = (System.nanoTime() - inputWriteStartNs) / 1_000_000
 
+            val runStartNs = System.nanoTime()
             modelRunner.runInference()
+            stageTimings["yoloLiteRtRun"] = (System.nanoTime() - runStartNs) / 1_000_000
 
+            val outputReadStartNs = System.nanoTime()
             val out0Floats = outputBufs[0].readFloat()
             val out1Floats = outputBufs[1].readFloat()
+            stageTimings["yoloOutputRead"] = (System.nanoTime() - outputReadStartNs) / 1_000_000
 
             val out0Buf = java.nio.FloatBuffer.wrap(out0Floats)
             val out1Buf = java.nio.FloatBuffer.wrap(out1Floats)
 
-            adapter.parseDetections(
+            val decodeStartNs = System.nanoTime()
+            val parsed = adapter.parseDetections(
                 output0Buffer = out0Buf,
                 output1Buffer = out1Buf,
                 preprocess = preprocess,
                 confThreshold = 0.25f,
                 iouThreshold = 0.50f
             )
+            stageTimings["yoloDecode"] = (System.nanoTime() - decodeStartNs) / 1_000_000
+            parsed
         } catch (e: DanceNativeException) {
             throw e
         } catch (e: Throwable) {
@@ -173,7 +185,8 @@ class YoloLiteRtSegmenter(
         return SegmentationFrame(
             timestampUs = timestampUs,
             persons = detections,
-            inferenceTimeMs = elapsed
+            inferenceTimeMs = elapsed,
+            stageTimingsMs = stageTimings
         )
     }
 

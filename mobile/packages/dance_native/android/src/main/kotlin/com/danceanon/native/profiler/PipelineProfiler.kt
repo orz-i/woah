@@ -17,6 +17,10 @@ class PipelineProfiler {
         }
     }
 
+    fun recordSample(stage: String, elapsedMs: Long) {
+        stageTimes.getOrPut(stage) { CopyOnWriteArrayList() }.add(elapsedMs.coerceAtLeast(0L))
+    }
+
     fun printSummary(jobId: String) {
         val sb = StringBuilder()
         sb.appendLine("================= [Pipeline Profiler Report: ] =================")
