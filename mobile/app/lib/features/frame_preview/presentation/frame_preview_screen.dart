@@ -314,135 +314,118 @@ class _FramePreviewScreenState extends ConsumerState<FramePreviewScreen> {
     );
   }
 
-  /// 顶部悬浮操作栏
+  /// 顶部一体化极简导航栏 (自适应屏幕宽度，绝不溢出)
   Widget _buildTopFloatingBar() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        // 返回
-        ClipOval(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Material(
-              color: Colors.black.withAlpha(140),
-              child: InkWell(
-                onTap: () {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFF141418).withAlpha(180),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white.withAlpha(25)),
+          ),
+          child: Row(
+            children: [
+              // 返回
+              IconButton(
+                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                tooltip: '返回',
+                onPressed: () {
                   HapticFeedback.lightImpact();
                   context.pop();
                 },
-                child: Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white.withAlpha(30)),
+              ),
+
+              const SizedBox(width: 4),
+
+              // 标题
+              const Expanded(
+                child: Text(
+                  '首帧效果确认',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                    letterSpacing: 0.2,
                   ),
-                  child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-            ),
-          ),
-        ),
 
-        // 标题胶囊
-        ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.black.withAlpha(140),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withAlpha(30)),
+              // 重新渲染
+              IconButton(
+                icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                tooltip: '重新渲染预览',
+                onPressed: _isLoading
+                    ? null
+                    : () {
+                        HapticFeedback.lightImpact();
+                        _loadPreview();
+                      },
               ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.remove_red_eye_rounded, size: 15, color: Colors.white),
-                  SizedBox(width: 6),
-                  Text(
-                    '首帧效果确认',
-                    style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+
+              // 更多功能菜单 (重置缩放、导出诊断、抽屉开关)
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_horiz_rounded, color: Colors.white70, size: 20),
+                color: const Color(0xFF1E1E24),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                onSelected: (value) {
+                  HapticFeedback.selectionClick();
+                  if (value == 'reset_zoom') {
+                    _resetZoom();
+                  } else if (value == 'diagnostics') {
+                    _exportDiagnostics();
+                  } else if (value == 'toggle_drawer') {
+                    final current = _drawerController.size;
+                    if (current < 0.1) {
+                      _drawerController.animateTo(0.36, duration: const Duration(milliseconds: 260), curve: Curves.easeOutCubic);
+                    } else {
+                      _drawerController.animateTo(0.045, duration: const Duration(milliseconds: 260), curve: Curves.easeOutCubic);
+                    }
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'reset_zoom',
+                    child: Row(
+                      children: [
+                        Icon(Icons.fit_screen_rounded, size: 18, color: Colors.white70),
+                        SizedBox(width: 10),
+                        Text('重置画面缩放', style: TextStyle(color: Colors.white, fontSize: 13)),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'diagnostics',
+                    child: Row(
+                      children: [
+                        Icon(Icons.bug_report_outlined, size: 18, color: Colors.white70),
+                        SizedBox(width: 10),
+                        Text('导出诊断日志', style: TextStyle(color: Colors.white, fontSize: 13)),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'toggle_drawer',
+                    child: Row(
+                      children: [
+                        Icon(Icons.tune_rounded, size: 18, color: Colors.white70),
+                        SizedBox(width: 10),
+                        Text('展开/收起参数抽屉', style: TextStyle(color: Colors.white, fontSize: 13)),
+                      ],
+                    ),
                   ),
                 ],
               ),
-            ),
-          ),
-        ),
-
-        // 快捷操作区
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildFloatingCircleButton(
-              icon: Icons.tune_rounded,
-              tooltip: '展开/收起参数抽屉',
-              onTap: () {
-                final current = _drawerController.size;
-                if (current < 0.1) {
-                  _drawerController.animateTo(
-                    0.36,
-                    duration: const Duration(milliseconds: 260),
-                    curve: Curves.easeOutCubic,
-                  );
-                } else {
-                  _drawerController.animateTo(
-                    0.045,
-                    duration: const Duration(milliseconds: 260),
-                    curve: Curves.easeOutCubic,
-                  );
-                }
-              },
-            ),
-            const SizedBox(width: 8),
-            _buildFloatingCircleButton(
-              icon: Icons.fit_screen_rounded,
-              tooltip: '重置画面缩放',
-              onTap: _resetZoom,
-            ),
-            const SizedBox(width: 8),
-            _buildFloatingCircleButton(
-              icon: Icons.refresh_rounded,
-              tooltip: '重新渲染',
-              onTap: _isLoading ? () {} : _loadPreview,
-            ),
-            const SizedBox(width: 8),
-            _buildFloatingCircleButton(
-              icon: Icons.bug_report_outlined,
-              tooltip: '导出诊断',
-              onTap: _exportDiagnostics,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFloatingCircleButton({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onTap,
-  }) {
-    return ClipOval(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Material(
-          color: Colors.black.withAlpha(140),
-          child: InkWell(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              onTap();
-            },
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withAlpha(30)),
-              ),
-              child: Icon(icon, color: Colors.white, size: 18),
-            ),
+            ],
           ),
         ),
       ),

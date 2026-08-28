@@ -136,6 +136,7 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
     _debounceTimer?.cancel();
 
     void executeRequest() async {
+      if (!mounted) return;
       final currentRequestId = ++_nextRequestId;
       state = state.copyWith(
         previewLoading: true,
@@ -154,6 +155,8 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
           follow: currentProj.follow,
         );
 
+        if (!mounted) return;
+
         // Discard outdated responses
         if (state.previewRequestId == currentRequestId) {
           state = state.copyWith(
@@ -163,6 +166,7 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
           );
         }
       } catch (e) {
+        if (!mounted) return;
         if (state.previewRequestId == currentRequestId) {
           state = state.copyWith(
             previewLoading: false,

@@ -205,112 +205,81 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
     );
   }
 
-  /// 顶部悬浮毛玻璃操作胶囊
+  /// 顶部一体化极简导航栏 (自适应屏幕宽度，绝不溢出)
   Widget _buildTopFloatingBar(
     BuildContext context,
     EffectEditorController controller,
     EffectEditorState state,
   ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        // 返回按钮
-        _buildFloatingCircleButton(
-          icon: Icons.arrow_back_rounded,
-          tooltip: '返回',
-          onTap: () {
-            final configured = controller.buildConfiguredProject();
-            context.pop(configured);
-          },
-        ),
-
-        // 中间标题胶囊
-        ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.black.withAlpha(140),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withAlpha(30)),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.palette_rounded, size: 15, color: Colors.white),
-                  SizedBox(width: 6),
-                  Text(
-                    '画面特效调节',
-                    style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-
-        // 右侧操作组 (抽屉展开/收起 + 恢复默认)
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildFloatingCircleButton(
-              icon: Icons.tune_rounded,
-              tooltip: '展开/收起设置抽屉',
-              onTap: () {
-                final current = _drawerController.size;
-                if (current < 0.1) {
-                  _drawerController.animateTo(
-                    0.44,
-                    duration: const Duration(milliseconds: 260),
-                    curve: Curves.easeOutCubic,
-                  );
-                } else {
-                  _drawerController.animateTo(
-                    0.045,
-                    duration: const Duration(milliseconds: 260),
-                    curve: Curves.easeOutCubic,
-                  );
-                }
-              },
-            ),
-            const SizedBox(width: 8),
-            _buildFloatingCircleButton(
-              icon: Icons.restart_alt_rounded,
-              tooltip: '恢复默认参数',
-              onTap: () => _resetToDefault(controller),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFloatingCircleButton({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onTap,
-  }) {
-    return ClipOval(
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Material(
-          color: Colors.black.withAlpha(140),
-          child: InkWell(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              onTap();
-            },
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withAlpha(30)),
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFF141418).withAlpha(180),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white.withAlpha(25)),
+          ),
+          child: Row(
+            children: [
+              // 返回
+              IconButton(
+                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                tooltip: '返回',
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  final configured = controller.buildConfiguredProject();
+                  context.pop(configured);
+                },
               ),
-              child: Icon(icon, color: Colors.white, size: 20),
-            ),
+
+              const SizedBox(width: 4),
+
+              // 标题
+              const Expanded(
+                child: Text(
+                  '画面特效调节',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                    letterSpacing: 0.2,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+
+              // 展开/收起抽屉
+              IconButton(
+                icon: const Icon(Icons.tune_rounded, color: Colors.white, size: 20),
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                tooltip: '展开/收起设置抽屉',
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  final current = _drawerController.size;
+                  if (current < 0.1) {
+                    _drawerController.animateTo(0.44, duration: const Duration(milliseconds: 260), curve: Curves.easeOutCubic);
+                  } else {
+                    _drawerController.animateTo(0.045, duration: const Duration(milliseconds: 260), curve: Curves.easeOutCubic);
+                  }
+                },
+              ),
+
+              // 恢复默认
+              IconButton(
+                icon: const Icon(Icons.restart_alt_rounded, color: Colors.white70, size: 20),
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                tooltip: '恢复默认参数',
+                onPressed: () => _resetToDefault(controller),
+              ),
+            ],
           ),
         ),
       ),
