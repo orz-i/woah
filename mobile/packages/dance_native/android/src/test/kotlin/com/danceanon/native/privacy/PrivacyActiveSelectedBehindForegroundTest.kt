@@ -12,11 +12,11 @@ import java.nio.ByteBuffer
 
 class PrivacyActiveSelectedBehindForegroundTest {
 
-    private fun createRectMask(size: Int = 64, xRange: IntRange, yRange: IntRange): NativeMask {
+    private fun createRectMask(size: Int = 64, xRange: IntRange, yRange: IntRange, value: Int = 255): NativeMask {
         val buf = ByteBuffer.allocateDirect(size * size)
         for (y in 0 until size) {
             for (x in 0 until size) {
-                buf.put(if (x in xRange && y in yRange) 255.toByte() else 0.toByte())
+                buf.put(if (x in xRange && y in yRange) value.coerceIn(0, 255).toByte() else 0.toByte())
             }
         }
         buf.rewind()
@@ -29,7 +29,7 @@ class PrivacyActiveSelectedBehindForegroundTest {
         val selectedPerson = TrackedPerson(
             id = 0,
             bbox = FloatRect(100f, 100f, 200f, 300f),
-            mask = createRectMask(64, 10..50, 10..50),
+            mask = createRectMask(64, 10..50, 10..50, value = 140),
             confidence = 0.95f,
             state = TrackState.ACTIVE,
             observedThisFrame = true,
@@ -40,7 +40,7 @@ class PrivacyActiveSelectedBehindForegroundTest {
         val foregroundUnselected = TrackedPerson(
             id = 1,
             bbox = FloatRect(100f, 100f, 200f, 400f),
-            mask = createRectMask(64, 10..50, 10..50),
+            mask = createRectMask(64, 10..50, 10..50, value = 245),
             confidence = 0.95f,
             state = TrackState.ACTIVE,
             observedThisFrame = true,
@@ -62,7 +62,8 @@ class PrivacyActiveSelectedBehindForegroundTest {
         for (i in 0 until pBuf.capacity()) {
             if ((pBuf.get(i).toInt() and 0xFF) > 0) nonZeroCount++
         }
-        // Foreground occluder core (1521 pixels) is subtracted from background target (1681 pixels), leaving safety border (160 pixels)
-        assertEquals(160, nonZeroCount, "Foreground unselected person must carve privacy mask from background selected person")
+        // Soft instance evidence clearly favors the unselected foreground in the
+        // overlap core; erosion keeps the selected privacy safety border.
+        assertEquals(160, nonZeroCount, "Clear unselected soft ownership must carve only the safe foreground core")
     }
 }

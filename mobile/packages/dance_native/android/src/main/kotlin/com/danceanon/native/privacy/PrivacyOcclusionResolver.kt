@@ -27,6 +27,12 @@ data class OcclusionEvidence(
 
 object PrivacyOcclusionResolver {
 
+    private const val OWNERSHIP_MARGIN = 0.12f
+    private const val MIN_UNSELECTED_PROBABILITY = 0.50f
+    private const val MIN_STALE_RAW_PROBABILITY_ADVANTAGE = 0.10f
+    private const val MAX_FOOT_Y_BIAS = 0.03f
+    private const val EXPLICIT_OCCLUDER_BIAS = 0.04f
+
     /**
      * Resolves selected privacy targets and explicit foreground occluders into
      * an effective, hole-free privacy mask.
@@ -96,20 +102,23 @@ object PrivacyOcclusionResolver {
                     val personMinH = minOf(targetBbox.height, candBbox.height).coerceAtLeast(10f)
                     val footYThreshold = personMinH * foregroundFootYMarginRatio
 
-                    val isTargetFresh = target.observedThisFrame
                     val isCandFresh = cand.observedThisFrame
-
-                    val isStrongForeground = if (!isCandFresh) {
-                        // Stale unselected candidate is NEVER trusted to carve privacy
-                        false
-                    } else if (target.state == TrackState.OCCLUDED) {
-                        // CASE A: Target is explicitly occluded by this candidate in tracking
-                        val isExplicitOccluder = target.occludedByTrackIds.contains(cand.id)
-                        isExplicitOccluder && (footYDelta > -footYThreshold)
+                    val isExplicitOccluder = target.occludedByTrackIds.contains(cand.id)
+                    val ownershipMask = if (isCandFresh) {
+                        computeUnselectedOwnershipMask(
+                            selectedMask = rawMask,
+                            selected = target,
+                            unselectedMask = candMask,
+                            unselected = cand,
+                            footYDelta = footYDelta,
+                            personHeight = personMinH,
+                            explicitOccluder = isExplicitOccluder
+                        )
                     } else {
-                        // CASE B: Candidate has clear foreground depth evidence (footY lower in frame)
-                        footYDelta > footYThreshold
+                        null
                     }
+                    val ownershipPixels = countMaskPixels(ownershipMask)
+                    val isStrongForeground = ownershipPixels > 0
 
                     val evidence = OcclusionEvidence(
                         targetId = target.id,
@@ -122,11 +131,13 @@ object PrivacyOcclusionResolver {
                     )
 
                     if (isStrongForeground) {
-                        // Strong foreground occluder: erode raw occluder mask to create safety core
-                        val occluderCore = if (occluderErosionRadius > 0) {
-                            MaskPrivacyProcessor.erode(candMask, radius = occluderErosionRadius)
+                        // Only pixels with clear unselected ownership are eligible
+                        // for subtraction. Erode that ownership region itself so a
+                        // privacy-safe halo remains around ambiguous boundaries.
+                        val occluderCore = if (occluderErosionRadius > 0 && ownershipMask != null) {
+                            MaskPrivacyProcessor.erode(ownershipMask, radius = occluderErosionRadius)
                         } else {
-                            candMask
+                            ownershipMask ?: continue
                         }
                         acceptedOccluderCores.add(occluderCore)
 
@@ -141,6 +152,8 @@ object PrivacyOcclusionResolver {
                                 "threshold" to footYThreshold,
                                 "bbox_overlap" to bboxOverlapRatio,
                                 "mask_overlap" to maskOverlapRatio,
+                                "ownership_pixels" to ownershipPixels,
+                                "explicit_occluder" to isExplicitOccluder,
                                 "target_state" to target.state.name,
                                 "pts_us" to ptsUs
                             )
@@ -158,6 +171,8 @@ object PrivacyOcclusionResolver {
                                 "threshold" to footYThreshold,
                                 "bbox_overlap" to bboxOverlapRatio,
                                 "mask_overlap" to maskOverlapRatio,
+                                "ownership_pixels" to ownershipPixels,
+                                "explicit_occluder" to isExplicitOccluder,
                                 "target_state" to target.state.name,
                                 "pts_us" to ptsUs
                             )
@@ -224,6 +239,87 @@ object PrivacyOcclusionResolver {
             occluderMask = null,
             hasPrivacy = (mergedPrivacy != null),
             hasOccluder = false
+        )
+    }
+
+    /**
+     * Produces a binary ownership mask containing only pixels whose evidence
+     * clearly favors the fresh unselected instance over the selected target.
+     * Ambiguous pixels remain zero, which means privacy wins downstream.
+     *
+     * The YOLO mask buffer is already a 0..255 soft probability field. Identity
+     * confidence is multiplied into that probability. Stale selected tracks get
+     * a bounded evidence discount so a fresh foreground instance can recover
+     * pixels from an obviously stale warped privacy mask, without making stale
+     * state alone sufficient to carve privacy. footY and explicit occluder
+     * relation contribute only small tie-breaking biases.
+     */
+    private fun computeUnselectedOwnershipMask(
+        selectedMask: NativeMask,
+        selected: TrackedPerson,
+        unselectedMask: NativeMask,
+        unselected: TrackedPerson,
+        footYDelta: Float,
+        personHeight: Float,
+        explicitOccluder: Boolean
+    ): NativeMask? {
+        if (selectedMask.width != unselectedMask.width || selectedMask.height != unselectedMask.height) return null
+
+        val width = selectedMask.width
+        val height = selectedMask.height
+        val totalPixels = width * height
+        if (selectedMask.buffer.capacity() < totalPixels || unselectedMask.buffer.capacity() < totalPixels) return null
+
+        val selectedStalenessScale = when {
+            selected.observedThisFrame -> 1.0f
+            selected.state == TrackState.REACQUIRING -> 0.70f
+            selected.state == TrackState.LOST -> 0.55f
+            selected.state == TrackState.OCCLUDED -> 0.80f
+            else -> 0.85f
+        }
+
+        val normalizedFootDelta = if (personHeight > 1e-4f) {
+            (footYDelta / personHeight).coerceIn(-0.25f, 0.25f)
+        } else {
+            0f
+        }
+        val footBias = (normalizedFootDelta * (MAX_FOOT_Y_BIAS / 0.25f))
+            .coerceIn(-MAX_FOOT_Y_BIAS, MAX_FOOT_Y_BIAS)
+        val relationBias = if (explicitOccluder) EXPLICIT_OCCLUDER_BIAS else 0f
+
+        val selectedBuf = selectedMask.buffer
+        val unselectedBuf = unselectedMask.buffer
+        val ownershipBytes = ByteArray(totalPixels)
+
+        for (i in 0 until totalPixels) {
+            val selectedProb = (selectedBuf.get(i).toInt() and 0xFF) / 255f
+            val unselectedProb = (unselectedBuf.get(i).toInt() and 0xFF) / 255f
+            if (unselectedProb < MIN_UNSELECTED_PROBABILITY || selectedProb <= 0f) continue
+
+            val selectedEvidence = selectedProb * selected.confidence.coerceIn(0f, 1f) * selectedStalenessScale
+            val unselectedEvidence = unselectedProb * unselected.confidence.coerceIn(0f, 1f) + footBias + relationBias
+            val hasRawInstanceAdvantage = selected.observedThisFrame || explicitOccluder ||
+                (unselectedProb - selectedProb) >= MIN_STALE_RAW_PROBABILITY_ADVANTAGE
+
+            if (hasRawInstanceAdvantage && (unselectedEvidence - selectedEvidence) >= OWNERSHIP_MARGIN) {
+                ownershipBytes[i] = 255.toByte()
+            }
+        }
+
+        if (ownershipBytes.none { (it.toInt() and 0xFF) != 0 }) return null
+
+        val ownershipBuffer = ByteBuffer.allocateDirect(totalPixels).order(ByteOrder.nativeOrder())
+        ownershipBuffer.put(ownershipBytes)
+        ownershipBuffer.rewind()
+        return NativeMask(
+            width = width,
+            height = height,
+            buffer = ownershipBuffer,
+            originalWidth = selectedMask.originalWidth,
+            originalHeight = selectedMask.originalHeight,
+            mapper = selectedMask.mapper,
+            roiInProto = selectedMask.roiInProto,
+            samplingRect = selectedMask.samplingRect
         )
     }
 
