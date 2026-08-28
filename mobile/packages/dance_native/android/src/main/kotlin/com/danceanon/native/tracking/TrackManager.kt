@@ -219,16 +219,25 @@ class TrackManager(
                 existing.reacquireFrames = 0
                 matchedGroupIndices.add(existingIdx)
             } else {
-                occlusionGroups.add(
-                    OcclusionGroup(
-                        trackIds = comp.toMutableSet(),
-                        startedAtUs = timestampUs,
-                        lastOverlapTimestampUs = timestampUs,
-                        state = OcclusionGroupState.ACTIVE_OVERLAP,
-                        reacquireFrames = 0
+                val newGroup = OcclusionGroup(
+                    trackIds = comp.toMutableSet(),
+                    startedAtUs = timestampUs,
+                    lastOverlapTimestampUs = timestampUs,
+                    state = OcclusionGroupState.ACTIVE_OVERLAP,
+                    reacquireFrames = 0
+                )
+                occlusionGroups.add(newGroup)
+                matchedGroupIndices.add(occlusionGroups.size - 1)
+                NativeDiagnostics.event(
+                    level = "INFO",
+                    component = "TrackManager",
+                    event = "OCCLUSION_GROUP_CREATE",
+                    fields = mapOf(
+                        "track_ids" to newGroup.trackIds.toList(),
+                        "started_at_us" to newGroup.startedAtUs,
+                        "pts_us" to timestampUs
                     )
                 )
-                matchedGroupIndices.add(occlusionGroups.size - 1)
             }
         }
 
@@ -242,6 +251,17 @@ class TrackManager(
                     for (tId in group.trackIds) {
                         predictedTracks.find { it.id == tId }?.occludedByTrackIds?.clear()
                     }
+                    NativeDiagnostics.event(
+                        level = "INFO",
+                        component = "TrackManager",
+                        event = "OCCLUSION_GROUP_REACQUIRE_START",
+                        fields = mapOf(
+                            "track_ids" to group.trackIds.toList(),
+                            "started_at_us" to group.startedAtUs,
+                            "last_overlap_us" to group.lastOverlapTimestampUs,
+                            "pts_us" to timestampUs
+                        )
+                    )
                 } else {
                     group.reacquireFrames++
                 }
@@ -249,11 +269,26 @@ class TrackManager(
         }
 
         // 5. Purge exhausted or dead groups
-        occlusionGroups.removeAll { group ->
+        val groupsToRemove = occlusionGroups.filter { group ->
             val aliveTracks = predictedTracks.filter { group.trackIds.contains(it.id) && it.state != TrackState.REMOVED }
             val isExhausted = (group.state == OcclusionGroupState.REACQUIRING && group.reacquireFrames > config.postOcclusionGraceFrames)
             aliveTracks.size < 2 || isExhausted
         }
+        for (group in groupsToRemove) {
+            NativeDiagnostics.event(
+                level = "INFO",
+                component = "TrackManager",
+                event = "OCCLUSION_GROUP_END",
+                fields = mapOf(
+                    "track_ids" to group.trackIds.toList(),
+                    "state" to group.state.name,
+                    "reacquire_frames" to group.reacquireFrames,
+                    "duration_us" to (timestampUs - group.startedAtUs).coerceAtLeast(0L),
+                    "pts_us" to timestampUs
+                )
+            )
+        }
+        occlusionGroups.removeAll(groupsToRemove.toSet())
     }
 
     override fun update(detections: List<PersonDetection>, timestampUs: Long): List<TrackedPerson> {
@@ -861,10 +896,10 @@ class TrackManager(
         }
 
         // 6. Ordinary Recovery Association on Remaining Truly LOST Tracks
-        val unassignedDetections = mutableListOf<PersonDetection>()
+        val unassignedDetections = mutableListOf<Pair<Int, PersonDetection>>()
         for (c in detections.indices) {
             if (!matchedDetectionIndices.contains(c) && !reservedGroupDetectionIndices.contains(c)) {
-                unassignedDetections.add(detections[c])
+                unassignedDetections.add(c to detections[c])
             }
         }
 
@@ -874,7 +909,7 @@ class TrackManager(
         }
         val reclaimedTrackIds = mutableSetOf<Int>()
 
-        for (det in unassignedDetections) {
+        for ((detIndex, det) in unassignedDetections) {
             var bestTrack: InternalTrack? = null
             var bestDist = Float.MAX_VALUE
 
@@ -915,6 +950,17 @@ class TrackManager(
                 bestTrack.lastObservedFootY = det.footY
                 bestTrack.kalman.update(det.bbox, timestampUs)
                 reclaimedTrackIds.add(bestTrack.id)
+                NativeDiagnostics.event(
+                    level = "INFO",
+                    component = "TrackManager",
+                    event = "ORDINARY_RECOVERY_COMMIT",
+                    fields = mapOf(
+                        "track_id" to bestTrack.id,
+                        "det_index" to detIndex,
+                        "distance" to bestDist,
+                        "pts_us" to timestampUs
+                    )
+                )
             } else {
                 val newTrack = InternalTrack(
                     id = nextTrackId++,
