@@ -47,6 +47,44 @@ class LostTrackPrivacySafetyTest {
         )
     }
 
+    @Test
+    fun testProtectedSelectedIdentitySurvivesRemovalWindowAndReacquiresOriginalId() {
+        val tracker = TrackManager(TrackingConfig(maxMissedFrames = 15))
+        tracker.setProtectedTrackIds(setOf(42))
+
+        val initialBox = FloatRect(760f, 350f, 980f, 875f)
+        val initialMask = createSyntheticMask(fillBox = initialBox)
+        tracker.initializeWithAssignedIds(
+            listOf(PersonDetection(initialBox, 0.95f, initialMask)),
+            listOf(42)
+        )
+
+        var pts = 33_333L
+        repeat(16) {
+            val tracks = tracker.update(emptyList(), pts)
+            pts += 33_333L
+            assertNotNull(tracks.find { it.id == 42 }, "selected identity must not be removed at miss ${it + 1}")
+        }
+
+        val tombstone = tracker.predictWithoutObservation(pts).find { it.id == 42 }
+        assertNotNull(tombstone)
+        assertEquals(TrackState.LOST, tombstone.state)
+        assertEquals(null, tombstone.mask, "stale selected mask must stop rendering after normal LOST window")
+
+        val returnBox = FloatRect(675f, 415f, 950f, 880f)
+        val returnMask = createSyntheticMask(fillBox = returnBox)
+        val recovered = tracker.update(
+            listOf(PersonDetection(returnBox, 0.95f, returnMask)),
+            pts + 33_333L
+        )
+
+        val selected = recovered.find { it.id == 42 }
+        assertNotNull(selected, "returning selected person must recover the protected identity")
+        assertEquals(TrackState.ACTIVE, selected.state)
+        assertTrue(selected.observedThisFrame)
+        assertEquals(1, recovered.size, "reappearance must not mint a replacement identity")
+    }
+
     private fun computeMaskCenter(mask: NativeMask): Pair<Float, Float> {
         val buf = mask.buffer
         buf.rewind()

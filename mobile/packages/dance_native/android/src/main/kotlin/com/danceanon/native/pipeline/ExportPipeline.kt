@@ -250,6 +250,7 @@ class ExportPipeline(
                 var basePtsUs = -1L
                 var lastPresentationNs = -1L
                 val trackManager = TrackManager()
+                trackManager.setProtectedTrackIds(request.selectedPersonIds.map { it.toInt() }.toSet())
                 val profile = ProcessingProfile.fromName(request.processingProfile)
                 val frameStride = profile.inferenceStride
                 var lastProgressEmitTime = 0L
@@ -963,6 +964,7 @@ class ExportPipeline(
                             "non_monotonic_surface_timestamp_count" to nonMonotonicSurfaceTimestampCount,
                             "max_surface_pts_delta_us" to maxAbsSurfacePtsDeltaUs,
                             "p95_surface_pts_delta_us" to p95DeltaUs,
+                            "stage_timings" to profiler.snapshotSummary(),
                             "yolo_requested_accelerator" to yoloRequestedAccelerator,
                             "yolo_effective_accelerator" to yoloEffectiveAccelerator.name,
                             "yolo_gpu_fallback_reason" to yoloFallbackReason,

@@ -121,8 +121,19 @@ class TrackManager(
 
     private val tracks = mutableListOf<InternalTrack>()
     private val occlusionGroups = mutableListOf<OcclusionGroup>()
+    private val protectedTrackIds = mutableSetOf<Int>()
     private var nextTrackId = 0
     private var hasInitialized = false
+
+    /**
+     * Privacy-selected identities are durable identity slots. They may stop
+     * rendering after the normal LOST grace window, but must not be destroyed
+     * and later re-created under a different ID while the export is running.
+     */
+    fun setProtectedTrackIds(ids: Set<Int>) {
+        protectedTrackIds.clear()
+        protectedTrackIds.addAll(ids)
+    }
 
     override fun initialize(detections: List<PersonDetection>): List<TrackedPerson> {
         val defaultIds = detections.indices.toList()
@@ -1115,17 +1126,36 @@ class TrackManager(
                             track.lostFrames++
                             track.occludedByTrackIds.clear()
                             if (track.lostFrames > config.maxMissedFrames) {
-                                track.state = TrackState.REMOVED
-                                NativeDiagnostics.event(
-                                    level = "WARN",
-                                    component = "TrackManager",
-                                    event = "TRACK_REMOVED",
-                                    fields = mapOf(
-                                        "track_id" to track.id,
-                                        "lost_frames" to track.lostFrames,
-                                        "max_missed" to config.maxMissedFrames
+                                if (protectedTrackIds.contains(track.id)) {
+                                    // Preserve only identity evidence. A very stale
+                                    // warped mask must not keep covering unrelated
+                                    // foreground pixels while the target is absent.
+                                    track.currentRenderMask = null
+                                    if (track.lostFrames == config.maxMissedFrames + 1) {
+                                        NativeDiagnostics.event(
+                                            level = "WARN",
+                                            component = "TrackManager",
+                                            event = "PROTECTED_TRACK_RETAINED_LOST",
+                                            fields = mapOf(
+                                                "track_id" to track.id,
+                                                "lost_frames" to track.lostFrames,
+                                                "max_missed" to config.maxMissedFrames
+                                            )
+                                        )
+                                    }
+                                } else {
+                                    track.state = TrackState.REMOVED
+                                    NativeDiagnostics.event(
+                                        level = "WARN",
+                                        component = "TrackManager",
+                                        event = "TRACK_REMOVED",
+                                        fields = mapOf(
+                                            "track_id" to track.id,
+                                            "lost_frames" to track.lostFrames,
+                                            "max_missed" to config.maxMissedFrames
+                                        )
                                     )
-                                )
+                                }
                             } else {
                                 if (track.lastObservedMask != null) {
                                     track.currentRenderMask = updateLostMask(
@@ -1389,12 +1419,21 @@ class TrackManager(
                         )
                     }
                     if (track.lostFrames > config.maxMissedFrames) {
-                        track.state = TrackState.REMOVED
+                        if (protectedTrackIds.contains(track.id)) {
+                            track.currentRenderMask = null
+                        } else {
+                            track.state = TrackState.REMOVED
+                        }
                     }
                 }
             } else {
                 // Prediction during skipped inference cadence (stride):
-                if (track.lastObservedMask != null) {
+                if (protectedTrackIds.contains(track.id) &&
+                    track.state == TrackState.LOST &&
+                    track.lostFrames > config.maxMissedFrames
+                ) {
+                    track.currentRenderMask = null
+                } else if (track.lastObservedMask != null) {
                     track.currentRenderMask = warpMask(
                         sourceMask = track.lastObservedMask!!,
                         prevBbox = track.lastObservedBbox,
@@ -1415,6 +1454,7 @@ class TrackManager(
     override fun reset() {
         tracks.clear()
         occlusionGroups.clear()
+        protectedTrackIds.clear()
         nextTrackId = 0
         hasInitialized = false
     }

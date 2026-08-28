@@ -121,8 +121,9 @@ class PrivacyOcclusionResolverTest {
         // 1. Non-occluded region of A (x: 3, y: 4): 255
         assertEquals(255, getPixel(eff, 3, 4), "Non-occluded region of selected person must retain full privacy")
 
-        // 2. Explicitly occluded region (x: 6, y: 4): 0 (occluder B protects foreground person)
-        assertEquals(0, getPixel(eff, 6, 4), "Occluded region must have 0 privacy to preserve foreground unselected person")
+        // 2. Binary overlap alone is ambiguous. The explicit tracker relation
+        // cannot substitute for per-pixel ownership evidence, so privacy wins.
+        assertEquals(255, getPixel(eff, 6, 4), "Ambiguous explicit overlap must preserve selected privacy")
     }
 
     @Test

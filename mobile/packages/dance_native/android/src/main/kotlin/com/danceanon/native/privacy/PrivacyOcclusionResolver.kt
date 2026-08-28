@@ -34,7 +34,6 @@ object PrivacyOcclusionResolver {
     private const val YOUNG_IDENTITY_OWNERSHIP_MARGIN = 0.30f
     private const val YOUNG_IDENTITY_RAW_PROBABILITY_ADVANTAGE = 0.25f
     private const val MAX_FOOT_Y_BIAS = 0.03f
-    private const val EXPLICIT_OCCLUDER_BIAS = 0.04f
 
     /**
      * Resolves selected privacy targets and explicit foreground occluders into
@@ -335,8 +334,6 @@ object PrivacyOcclusionResolver {
         }
         val footBias = (normalizedFootDelta * (MAX_FOOT_Y_BIAS / 0.25f))
             .coerceIn(-MAX_FOOT_Y_BIAS, MAX_FOOT_Y_BIAS)
-        val relationBias = if (explicitOccluder) EXPLICIT_OCCLUDER_BIAS else 0f
-
         val selectedBuf = selectedMask.buffer
         val unselectedBuf = unselectedMask.buffer
         val ownershipBytes = ByteArray(totalPixels)
@@ -353,10 +350,13 @@ object PrivacyOcclusionResolver {
             if (unselectedProb < MIN_UNSELECTED_PROBABILITY || selectedProb <= 0f) continue
 
             val selectedEvidence = selectedProb * selected.confidence.coerceIn(0f, 1f) * selectedStalenessScale
-            val unselectedEvidence = unselectedProb * unselected.confidence.coerceIn(0f, 1f) + footBias + relationBias
+            // An occlusion-group relation is identity/context evidence only. It
+            // must never manufacture pixel ownership. Device diagnostics showed
+            // near-identical selected/unselected masks being carved simply
+            // because explicitOccluder contributed a positive evidence bias.
+            val unselectedEvidence = unselectedProb * unselected.confidence.coerceIn(0f, 1f) + footBias
             val rawProbabilityAdvantage = unselectedProb - selectedProb
             val hasRawInstanceAdvantage = when {
-                explicitOccluder -> true
                 isYoungIdentity -> rawProbabilityAdvantage >= YOUNG_IDENTITY_RAW_PROBABILITY_ADVANTAGE
                 selected.observedThisFrame -> true
                 else -> rawProbabilityAdvantage >= MIN_STALE_RAW_PROBABILITY_ADVANTAGE

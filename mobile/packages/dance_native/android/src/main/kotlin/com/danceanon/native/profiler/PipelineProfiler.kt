@@ -33,4 +33,28 @@ class PipelineProfiler {
         sb.appendLine("=======================================================================")
         android.util.Log.i("PipelineProfiler", sb.toString())
     }
+
+    fun snapshotSummary(): Map<String, Map<String, Number>> {
+        return stageTimes.entries.sortedBy { it.key }.associate { (stage, times) ->
+            val sorted = times.sorted()
+            if (sorted.isEmpty()) {
+                stage to mapOf(
+                    "count" to 0,
+                    "avg_ms" to 0.0,
+                    "p50_ms" to 0L,
+                    "p95_ms" to 0L,
+                    "max_ms" to 0L
+                )
+            } else {
+                val count = sorted.size
+                stage to mapOf(
+                    "count" to count,
+                    "avg_ms" to sorted.average(),
+                    "p50_ms" to sorted[count / 2],
+                    "p95_ms" to sorted[(count * 0.95).toInt().coerceAtMost(count - 1)],
+                    "max_ms" to sorted.last()
+                )
+            }
+        }
+    }
 }

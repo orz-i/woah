@@ -64,7 +64,7 @@ class PrivacyFreshOccluderTest {
     }
 
     @Test
-    fun testOccludedTargetSubtractsOnlyExplicitForegroundOccluder() {
+    fun testExplicitOccluderRelationAloneCannotCarveAmbiguousSelectedPrivacy() {
         val target = TrackedPerson(
             id = 0,
             bbox = FloatRect(100f, 100f, 200f, 300f),
@@ -99,14 +99,15 @@ class PrivacyFreshOccluderTest {
 
         assertTrue(resolved.hasPrivacy)
         assertNotNull(resolved.privacyMask)
-        // Explicit occluder subtracted solid foreground pixels
+        // Identical per-pixel evidence is ambiguous. The tracker relation alone
+        // must not create foreground ownership or punch a hole in privacy.
         val pBuf = resolved.privacyMask!!.buffer
         pBuf.rewind()
         var nonZeroCount = 0
         for (i in 0 until pBuf.capacity()) {
             if ((pBuf.get(i).toInt() and 0xFF) > 0) nonZeroCount++
         }
-        assertEquals(0, nonZeroCount, "Explicit foreground occluder subtracted all overlapping solid pixels")
+        assertTrue(nonZeroCount > 0, "ambiguous identical masks must preserve selected privacy")
     }
 
     private fun createRectMask(size: Int = 64, xRange: IntRange, yRange: IntRange): NativeMask {
@@ -154,7 +155,8 @@ class PrivacyFreshOccluderTest {
         for (i in 0 until pBuf.capacity()) {
             if ((pBuf.get(i).toInt() and 0xFF) > 0) nonZeroCount++
         }
-        // Original 41x41 = 1681 pixels. Eroded core 39x39 = 1521 pixels. Retained 1-pixel boundary halo = 160 pixels.
-        assertEquals(160, nonZeroCount, "Occluder core erosion must preserve safety halo on target border")
+        // Identical binary masks provide no per-pixel ownership advantage.
+        // An explicit tracker relation alone must not carve selected privacy.
+        assertEquals(1681, nonZeroCount, "ambiguous explicit overlap must preserve the full selected mask")
     }
 }

@@ -12,11 +12,11 @@ import java.nio.ByteBuffer
 
 class PrivacyOccludedStrongForegroundTest {
 
-    private fun createRectMask(size: Int = 64, xRange: IntRange, yRange: IntRange): NativeMask {
+    private fun createRectMask(size: Int = 64, xRange: IntRange, yRange: IntRange, value: Int = 255): NativeMask {
         val buf = ByteBuffer.allocateDirect(size * size)
         for (y in 0 until size) {
             for (x in 0 until size) {
-                buf.put(if (x in xRange && y in yRange) 255.toByte() else 0.toByte())
+                buf.put(if (x in xRange && y in yRange) value.coerceIn(0, 255).toByte() else 0.toByte())
             }
         }
         buf.rewind()
@@ -24,12 +24,12 @@ class PrivacyOccludedStrongForegroundTest {
     }
 
     @Test
-    fun testOccludedTargetCarvedOnlyByConfirmedExplicitOccluder() {
+    fun testExplicitOccluderNeedsPixelEvidenceBeforeCarvingSelectedPrivacy() {
         // Selected person 0 is OCCLUDED by track 1
         val occludedTarget = TrackedPerson(
             id = 0,
             bbox = FloatRect(100f, 100f, 200f, 300f),
-            mask = createRectMask(64, 10..50, 10..50),
+            mask = createRectMask(64, 10..50, 10..50, value = 140),
             confidence = 0.95f,
             state = TrackState.OCCLUDED,
             observedThisFrame = false,
@@ -41,7 +41,7 @@ class PrivacyOccludedStrongForegroundTest {
         val explicitOccluder = TrackedPerson(
             id = 1,
             bbox = FloatRect(100f, 100f, 200f, 350f),
-            mask = createRectMask(64, 10..50, 10..50),
+            mask = createRectMask(64, 10..50, 10..50, value = 255),
             confidence = 0.95f,
             state = TrackState.ACTIVE,
             observedThisFrame = true,
