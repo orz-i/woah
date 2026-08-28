@@ -85,6 +85,37 @@ class LostTrackPrivacySafetyTest {
         assertEquals(1, recovered.size, "reappearance must not mint a replacement identity")
     }
 
+    @Test
+    fun testProtectedSelectedRejectsWeakEvidenceRecoveryCandidate() {
+        val tracker = TrackManager(TrackingConfig(maxMissedFrames = 3))
+        tracker.setProtectedTrackIds(setOf(42))
+
+        val initialBox = FloatRect(700f, 300f, 900f, 800f)
+        val initialMask = createSyntheticMask(fillBox = initialBox)
+        tracker.initializeWithAssignedIds(
+            listOf(PersonDetection(initialBox, 0.95f, initialMask)),
+            listOf(42)
+        )
+
+        var pts = 33_333L
+        repeat(4) {
+            tracker.update(emptyList(), pts)
+            pts += 33_333L
+        }
+
+        val weakBox = FloatRect(610f, 360f, 850f, 850f)
+        val weakMask = createSyntheticMask(fillBox = FloatRect(600f, 100f, 690f, 260f))
+        val tracks = tracker.update(
+            listOf(PersonDetection(weakBox, 0.95f, weakMask)),
+            pts
+        )
+
+        val selected = tracks.find { it.id == 42 }
+        assertNotNull(selected)
+        assertEquals(TrackState.LOST, selected.state)
+        assertTrue(!selected.observedThisFrame)
+    }
+
     private fun computeMaskCenter(mask: NativeMask): Pair<Float, Float> {
         val buf = mask.buffer
         buf.rewind()
