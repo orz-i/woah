@@ -6,6 +6,7 @@ import com.danceanon.native.inference.RgbaRowOrder
 import com.danceanon.native.inference.YoloPreprocessor
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -205,6 +206,60 @@ class YoloPreprocessorOrientationTest {
         // Row 0 pixel 1 should be RED (was pixel 0):
         assertEquals(1.0f, floatBuf.get(rOffset + 1))
         assertEquals(0.0f, floatBuf.get(gOffset + 1))
+    }
+
+    @Test
+    fun optimizedRgbaArrayMatchesReferenceNormalizationAndFloatBufferContract() {
+        val inputSize = 16
+        val numPixels = inputSize * inputSize
+        val workspace = PreprocessorWorkspace(inputSize)
+        val mapper = ModelCoordinateMapper(
+            srcWidth = inputSize,
+            srcHeight = inputSize,
+            modelInputSize = inputSize,
+            protoSize = inputSize
+        )
+        val buffer = ByteBuffer.allocateDirect(numPixels * 4).order(ByteOrder.BIG_ENDIAN)
+
+        for (value in 0 until numPixels) {
+            val r = value and 0xFF
+            val g = 255 - r
+            val b = (r * 37) and 0xFF
+            buffer.put(r.toByte())
+            buffer.put(g.toByte())
+            buffer.put(b.toByte())
+            buffer.put(255.toByte())
+        }
+        buffer.rewind()
+
+        val result = YoloPreprocessor.processRgbaBuffer(
+            rgbaBuffer = buffer,
+            mapper = mapper,
+            workspace = workspace,
+            rowOrder = RgbaRowOrder.TOP_TO_BOTTOM
+        )
+
+        assertEquals(ByteOrder.BIG_ENDIAN, buffer.order(), "preprocessor must restore caller byte order")
+        val floatBuffer = result.floatBuffer
+        val rOffset = 0
+        val gOffset = numPixels
+        val bOffset = 2 * numPixels
+
+        for (i in 0 until numPixels) {
+            val r = i and 0xFF
+            val g = 255 - r
+            val b = (r * 37) and 0xFF
+            val expectedR = r / 255.0f
+            val expectedG = g / 255.0f
+            val expectedB = b / 255.0f
+
+            assertTrue(abs(workspace.floatArray[rOffset + i] - expectedR) <= 1e-7f)
+            assertTrue(abs(workspace.floatArray[gOffset + i] - expectedG) <= 1e-7f)
+            assertTrue(abs(workspace.floatArray[bOffset + i] - expectedB) <= 1e-7f)
+            assertEquals(workspace.floatArray[rOffset + i], floatBuffer.get(rOffset + i))
+            assertEquals(workspace.floatArray[gOffset + i], floatBuffer.get(gOffset + i))
+            assertEquals(workspace.floatArray[bOffset + i], floatBuffer.get(bOffset + i))
+        }
     }
 }
 

@@ -146,7 +146,13 @@ class YoloLiteRtTensorAdapter(
         )
 
         // 3. Process kept detections
-        val detections = mutableListOf<PersonDetection>()
+        val detections = ArrayList<PersonDetection>(kept.size)
+        val mapper = ModelCoordinateMapper(
+            srcWidth = preprocess.srcWidth,
+            srcHeight = preprocess.srcHeight,
+            modelInputSize = preprocess.inputSize,
+            protoSize = PROTO_SIZE
+        )
 
         for (cand in kept) {
             val srcX1 = ((cand.x1 - preprocess.padLeft) / preprocess.scale).coerceIn(0f, preprocess.srcWidth.toFloat())
@@ -162,13 +168,6 @@ class YoloLiteRtTensorAdapter(
                 put(maskBytes)
                 rewind()
             }
-
-            val mapper = ModelCoordinateMapper(
-                srcWidth = preprocess.srcWidth,
-                srcHeight = preprocess.srcHeight,
-                modelInputSize = preprocess.inputSize,
-                protoSize = PROTO_SIZE
-            )
 
             val nativeMask = NativeMask(
                 width = PROTO_SIZE,

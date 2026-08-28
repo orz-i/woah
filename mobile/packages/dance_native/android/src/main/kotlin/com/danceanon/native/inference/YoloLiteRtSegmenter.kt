@@ -140,12 +140,8 @@ class YoloLiteRtSegmenter(
             }
 
             val inBuf = inputBufs[0]
-            val floatBuf = preprocess.floatBuffer
             val inputWriteStartNs = System.nanoTime()
-            floatBuf.position(0)
-            val count = minOf(floatBuf.remaining(), reusableInputFloats.size)
-            floatBuf.get(reusableInputFloats, 0, count)
-            inBuf.writeFloat(reusableInputFloats)
+            inBuf.writeFloat(workspace.floatArray)
             stageTimings["yoloInputWrite"] = (System.nanoTime() - inputWriteStartNs) / 1_000_000
 
             val runStartNs = System.nanoTime()

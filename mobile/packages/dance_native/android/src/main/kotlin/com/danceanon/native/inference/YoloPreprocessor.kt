@@ -33,6 +33,7 @@ data class PreprocessResult(
 
 class PreprocessorWorkspace(val inputSize: Int = 640) {
     val numPixels = inputSize * inputSize
+    val floatArray = FloatArray(1 * 3 * numPixels)
     val byteBuffer: ByteBuffer = ByteBuffer.allocateDirect(1 * 3 * numPixels * 4).apply {
         order(ByteOrder.nativeOrder())
     }
@@ -57,6 +58,7 @@ object YoloPreprocessor {
 
         val inputSize = workspace.inputSize
         val numPixels = workspace.numPixels
+        val inputFloats = workspace.floatArray
         val floatBuffer = workspace.floatBuffer
         val byteBuffer = workspace.byteBuffer
         floatBuffer.clear()
@@ -66,34 +68,43 @@ object YoloPreprocessor {
         val gOffset = numPixels
         val bOffset = 2 * numPixels
 
-        for (dstY in 0 until inputSize) {
-            val srcY = when (rowOrder) {
-                RgbaRowOrder.TOP_TO_BOTTOM -> dstY
-                RgbaRowOrder.BOTTOM_TO_TOP -> inputSize - 1 - dstY
-            }
-
-            val srcRowOffset = srcY * inputSize * 4
-            val dstRowOffset = dstY * inputSize
-
-            for (dstX in 0 until inputSize) {
-                val srcX = when (colOrder) {
-                    RgbaColOrder.LEFT_TO_RIGHT -> dstX
-                    RgbaColOrder.RIGHT_TO_LEFT -> inputSize - 1 - dstX
+        val previousOrder = rgbaBuffer.order()
+        rgbaBuffer.order(ByteOrder.LITTLE_ENDIAN)
+        try {
+            for (dstY in 0 until inputSize) {
+                val srcY = when (rowOrder) {
+                    RgbaRowOrder.TOP_TO_BOTTOM -> dstY
+                    RgbaRowOrder.BOTTOM_TO_TOP -> inputSize - 1 - dstY
                 }
 
-                val srcByteOffset = srcRowOffset + srcX * 4
-                val dstPixelIndex = dstRowOffset + dstX
+                val srcRowOffset = srcY * inputSize * 4
+                val dstRowOffset = dstY * inputSize
+                var srcByteOffset = when (colOrder) {
+                    RgbaColOrder.LEFT_TO_RIGHT -> srcRowOffset
+                    RgbaColOrder.RIGHT_TO_LEFT -> srcRowOffset + (inputSize - 1) * 4
+                }
+                val srcStep = if (colOrder == RgbaColOrder.LEFT_TO_RIGHT) 4 else -4
 
-                val r = (rgbaBuffer.get(srcByteOffset).toInt() and 0xFF) / 255.0f
-                val g = (rgbaBuffer.get(srcByteOffset + 1).toInt() and 0xFF) / 255.0f
-                val b = (rgbaBuffer.get(srcByteOffset + 2).toInt() and 0xFF) / 255.0f
-
-                floatBuffer.put(rOffset + dstPixelIndex, r)
-                floatBuffer.put(gOffset + dstPixelIndex, g)
-                floatBuffer.put(bOffset + dstPixelIndex, b)
+                for (dstX in 0 until inputSize) {
+                    // RGBA bytes read as a little-endian Int become 0xAABBGGRR.
+                    // One absolute getInt replaces three direct-buffer byte gets.
+                    val rgba = rgbaBuffer.getInt(srcByteOffset)
+                    val dstPixelIndex = dstRowOffset + dstX
+                    inputFloats[rOffset + dstPixelIndex] = (rgba and 0xFF) * INV_255
+                    inputFloats[gOffset + dstPixelIndex] = ((rgba ushr 8) and 0xFF) * INV_255
+                    inputFloats[bOffset + dstPixelIndex] = ((rgba ushr 16) and 0xFF) * INV_255
+                    srcByteOffset += srcStep
+                }
             }
+        } finally {
+            rgbaBuffer.order(previousOrder)
         }
 
+        // Preserve the existing PreprocessResult FloatBuffer contract for
+        // tests/alternate callers using one bulk native copy instead of 1.2M
+        // absolute FloatBuffer.put calls. The LiteRT hot path writes floatArray
+        // directly and does not copy this buffer back into another FloatArray.
+        floatBuffer.put(inputFloats)
         floatBuffer.position(0)
         byteBuffer.position(0)
 
@@ -180,4 +191,6 @@ object YoloPreprocessor {
             inputSize = inputSize
         )
     }
+
+    private const val INV_255 = 1.0f / 255.0f
 }

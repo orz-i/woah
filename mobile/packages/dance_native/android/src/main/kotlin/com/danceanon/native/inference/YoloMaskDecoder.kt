@@ -1,6 +1,7 @@
 package com.danceanon.native.inference
 
 import java.nio.FloatBuffer
+import java.util.IdentityHashMap
 
 data class RawCandidate(
     val x1: Float,
@@ -166,11 +167,16 @@ object YoloMaskDecoder {
         private val inputSize: Int = DEFAULT_INPUT_SIZE,
         private val protoSize: Int = DEFAULT_PROTO_SIZE
     ) {
-        private val cache = mutableMapOf<RawCandidate, ByteArray>()
+        // Candidates are immutable objects created once per frame and the NMS/
+        // final decode paths reuse the same instances. Identity keys avoid
+        // hashing all 32 mask coefficients on every cache lookup.
+        private val cache = IdentityHashMap<RawCandidate, ByteArray>()
 
         fun getMask(cand: RawCandidate): ByteArray {
-            return cache.getOrPut(cand) {
-                decodeCandidateMask(cand, protoView, inputSize, protoSize)
+            val cached = cache[cand]
+            if (cached != null) return cached
+            return decodeCandidateMask(cand, protoView, inputSize, protoSize).also {
+                cache[cand] = it
             }
         }
     }
@@ -183,17 +189,19 @@ object YoloMaskDecoder {
         inputSize: Int = DEFAULT_INPUT_SIZE,
         protoSize: Int = DEFAULT_PROTO_SIZE
     ): Pair<List<RawCandidate>, CandidateMaskCache> {
-        val sorted = candidates.sortedByDescending { it.confidence }.toMutableList()
-        val selected = mutableListOf<RawCandidate>()
+        val sorted = candidates.sortedByDescending { it.confidence }
+        val selected = ArrayList<RawCandidate>(sorted.size)
+        val suppressed = BooleanArray(sorted.size)
         val cache = CandidateMaskCache(protoView, inputSize, protoSize)
 
-        while (sorted.isNotEmpty()) {
-            val current = sorted.removeAt(0)
+        for (i in sorted.indices) {
+            if (suppressed[i]) continue
+            val current = sorted[i]
             selected.add(current)
 
-            val iterator = sorted.iterator()
-            while (iterator.hasNext()) {
-                val next = iterator.next()
+            for (j in i + 1 until sorted.size) {
+                if (suppressed[j]) continue
+                val next = sorted[j]
                 val bboxIoU = calculateBboxIoU(current, next)
                 if (bboxIoU > bboxIouThreshold) {
                     val maskCurrent = cache.getMask(current)
@@ -202,9 +210,7 @@ object YoloMaskDecoder {
 
                     if (maskIoU >= maskIouThreshold) {
                         // High mask overlap: duplicate detection -> suppress
-                        iterator.remove()
-                    } else {
-                        // Low mask overlap: two distinct overlapping people -> keep both
+                        suppressed[j] = true
                     }
                 }
             }
