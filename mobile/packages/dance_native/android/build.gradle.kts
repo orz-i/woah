@@ -1,4 +1,18 @@
 import java.time.Instant
+import java.security.MessageDigest
+
+fun sha256(file: File): String {
+    val digest = MessageDigest.getInstance("SHA-256")
+    file.inputStream().buffered().use { input ->
+        val buffer = ByteArray(1024 * 1024)
+        while (true) {
+            val read = input.read(buffer)
+            if (read <= 0) break
+            digest.update(buffer, 0, read)
+        }
+    }
+    return digest.digest().joinToString("") { "%02x".format(it) }
+}
 
 group = "com.danceanon.dance_native"
 version = "1.0-SNAPSHOT"
@@ -125,8 +139,13 @@ val syncLiteRtModelAssets = tasks.register("syncLiteRtModelAssets") {
             for (fname in litertFiles) {
                 val srcFile = File(repoModelsDir, fname)
                 val destFile = File(targetDir, fname)
-                if (srcFile.exists() && (!destFile.exists() || destFile.length() != srcFile.length())) {
-                    srcFile.copyTo(destFile, overwrite = true)
+                if (srcFile.exists()) {
+                    val needsCopy = !destFile.exists() ||
+                        destFile.length() != srcFile.length() ||
+                        sha256(destFile) != sha256(srcFile)
+                    if (needsCopy) {
+                        srcFile.copyTo(destFile, overwrite = true)
+                    }
                 }
             }
         }

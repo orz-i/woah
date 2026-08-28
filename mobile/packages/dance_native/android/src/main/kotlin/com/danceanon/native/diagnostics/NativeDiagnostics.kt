@@ -15,6 +15,8 @@ import java.io.FileOutputStream
 import java.io.FileWriter
 import java.io.PrintWriter
 import java.io.StringWriter
+import java.io.InputStream
+import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -601,12 +603,36 @@ object NativeDiagnostics {
                 put("length", if (sam2ImgFile.exists()) sam2ImgFile.length() else 0L)
                 put("readable", sam2ImgFile.canRead())
                 put("last_modified", sam2ImgFile.lastModified())
+                put("extracted_sha256", if (sam2ImgFile.exists()) sha256(sam2ImgFile.inputStream()) else "")
+                val assetSha = try {
+                    context.assets.open("models/litert/sam2_image_features.tflite").use { sha256(it) }
+                } catch (_: Throwable) {
+                    ""
+                }
+                put("asset_sha256", assetSha)
+                put(
+                    "asset_matches_extracted",
+                    assetSha.isNotEmpty() && sam2ImgFile.exists() && assetSha == getString("extracted_sha256")
+                )
             }
             put("sam2_image_features", sam2Info)
         }
         json.put("ml_environment", ml)
 
         return json
+    }
+
+    private fun sha256(input: InputStream): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        input.buffered().use { stream ->
+            val buffer = ByteArray(1024 * 1024)
+            while (true) {
+                val read = stream.read(buffer)
+                if (read <= 0) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
     private fun rotateLogs(diagDir: File) {

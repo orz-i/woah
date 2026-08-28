@@ -8,7 +8,34 @@ LiteRT GPU delegate compatibility differences between models.
 import os
 import sys
 import json
+import hashlib
 from pathlib import Path
+
+
+def _json_shape(value):
+    if value is None:
+        return []
+    return [int(x) for x in value]
+
+
+def _tensor_summary(tensor_by_index, index):
+    if index is None or int(index) < 0:
+        return {"index": int(index) if index is not None else -1, "optional": True}
+    idx = int(index)
+    detail = tensor_by_index.get(idx)
+    if detail is None:
+        return {"index": idx, "missing_detail": True}
+    shape = _json_shape(detail.get("shape", []))
+    shape_signature = _json_shape(detail.get("shape_signature", shape))
+    dtype = detail.get("dtype")
+    return {
+        "index": idx,
+        "name": detail.get("name", ""),
+        "shape": shape,
+        "shape_signature": shape_signature,
+        "rank": len(shape),
+        "dtype": str(dtype.__name__ if hasattr(dtype, "__name__") else dtype),
+    }
 
 def analyze_tflite_model(model_path: str) -> dict:
     if not os.path.exists(model_path):
@@ -28,8 +55,13 @@ def analyze_tflite_model(model_path: str) -> dict:
         "dynamic_tensor_count": 0,
         "total_tensors": 0,
         "total_operators": 0,
-        "gpu_delegate_risk_factors": []
+        "gpu_delegate_risk_factors": [],
+        "operators": [],
+        "gpu_blocker_candidates": []
     }
+
+    with open(model_path, "rb") as f:
+        report["sha256"] = hashlib.sha256(f.read()).hexdigest()
 
     # Attempt analysis using tensorflow/tflite schema if available
     try:
@@ -40,6 +72,7 @@ def analyze_tflite_model(model_path: str) -> dict:
         input_details = interpreter.get_input_details()
         output_details = interpreter.get_output_details()
         tensor_details = interpreter.get_tensor_details()
+        tensor_by_index = {int(t["index"]): t for t in tensor_details}
 
         report["input_tensors"] = [
             {
@@ -70,10 +103,52 @@ def analyze_tflite_model(model_path: str) -> dict:
                 report["has_dynamic_shapes"] = True
                 report["dynamic_tensor_count"] += 1
 
+        # Private but stable-enough diagnostic API available in TensorFlow's
+        # Lite interpreter. Unlike raw-byte string scanning this returns the
+        # actual flatbuffer execution order and tensor indices.
+        get_ops_details = getattr(interpreter, "_get_ops_details", None)
+        if callable(get_ops_details):
+            ops = get_ops_details()
+            parsed_ops = []
+            blockers = []
+            for op_index, op in enumerate(ops):
+                op_name = str(op.get("op_name", "UNKNOWN"))
+                inputs = [_tensor_summary(tensor_by_index, i) for i in op.get("inputs", [])]
+                outputs = [_tensor_summary(tensor_by_index, i) for i in op.get("outputs", [])]
+                record = {
+                    "op_index": op_index,
+                    "opcode": op_name,
+                    "inputs": inputs,
+                    "outputs": outputs,
+                }
+                parsed_ops.append(record)
+
+                max_rank = max(
+                    [t.get("rank", 0) for t in inputs + outputs if not t.get("optional")],
+                    default=0,
+                )
+                if op_name in {"BROADCAST_TO", "GATHER_ND"} or (op_name == "RESHAPE" and max_rank >= 5):
+                    blockers.append(record)
+
+            report["operators"] = parsed_ops
+            report["total_operators"] = len(parsed_ops)
+            op_counts = {}
+            for op in parsed_ops:
+                name = op["opcode"]
+                op_counts[name] = op_counts.get(name, 0) + 1
+            report["operator_counts"] = op_counts
+            report["unique_operators"] = sorted(op_counts)
+            report["gpu_blocker_candidates"] = blockers
+        else:
+            report["ops_details_note"] = "Interpreter._get_ops_details() unavailable"
+
     except Exception as e:
         report["tf_lite_interpreter_note"] = f"TF lite interpreter scan skipped/failed: {e}"
 
-    # Also parse raw flatbuffer / byte inspect for known opcode names and markers
+    report["operator_parser_available"] = bool(report["operators"])
+
+    # Raw bytes are retained only as a format sanity check. Operator truth must
+    # come from _get_ops_details() above, not string scanning.
     try:
         with open(model_path, "rb") as f:
             data = f.read()
@@ -83,29 +158,9 @@ def analyze_tflite_model(model_path: str) -> dict:
             magic = data[4:8]
             report["format_magic"] = magic.decode("latin1", errors="ignore")
 
-        # Scan for common TFLite operator strings in the schema string table
-        known_ops = [
-            "CONV_2D", "DEPTHWISE_CONV_2D", "TRANSPOSE_CONV", "FULLY_CONNECTED",
-            "BATCH_MATMUL", "GELU", "SOFTMAX", "LOGISTIC", "RELU", "RELU6",
-            "ADD", "SUB", "MUL", "DIV", "POW", "SQUARED_DIFFERENCE",
-            "RESHAPE", "TRANSPOSE", "STRIDED_SLICE", "SLICE", "PACK", "UNPACK",
-            "CONCATENATION", "SPLIT", "SPLIT_V", "RESIZE_BILINEAR", "RESIZE_NEAREST_NEIGHBOR",
-            "MEAN", "SUM", "REDUCE_MAX", "REDUCE_MIN", "PAD", "PADV2",
-            "CUSTOM", "SELECT", "SELECT_V2", "CAST", "EXP", "LOG", "SQRT", "RSQRT"
-        ]
-
-        found_ops = {}
-        for op in known_ops:
-            count = data.count(op.encode("utf-8"))
-            if count > 0:
-                found_ops[op] = count
-
-        report["operator_counts"] = found_ops
-        report["unique_operators"] = sorted(list(found_ops.keys()))
-        report["total_operators"] = sum(found_ops.values())
-
         # GPU delegate risk evaluation
         risks = []
+        found_ops = report.get("operator_counts", {})
         if "BATCH_MATMUL" in found_ops:
             risks.append("BATCH_MATMUL: Multi-head attention MatMul may require specific FP16 texture layout on Qualcomm Adreno")
         if "RESIZE_BILINEAR" in found_ops:
@@ -137,24 +192,43 @@ def main():
     ]
 
     summary = {}
+    parsed_model_count = 0
     for name, path in models_to_analyze:
         print(f"[Analyzing] {name} at {path}...")
         report = analyze_tflite_model(str(path))
+        if not report.get("operator_parser_available"):
+            print(
+                "  -> SKIPPED report overwrite: no real TFLite operator parser is available "
+                f"({report.get('tf_lite_interpreter_note', 'unknown reason')})"
+            )
+            summary[name] = {
+                "sha256": report.get("sha256"),
+                "file_size_mb": report.get("file_size_mb"),
+                "analysis_status": "PARSER_UNAVAILABLE",
+                "note": report.get("tf_lite_interpreter_note"),
+            }
+            continue
         out_file = reports_dir / f"{name}_graph_report.json"
         with open(out_file, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2)
         print(f"  -> Saved report to {out_file}")
+        parsed_model_count += 1
         summary[name] = {
+            "sha256": report.get("sha256"),
             "file_size_mb": report.get("file_size_mb"),
             "total_operators": report.get("total_operators"),
             "unique_operators": report.get("unique_operators"),
+            "gpu_blocker_candidate_count": len(report.get("gpu_blocker_candidates", [])),
             "risk_factors": report.get("gpu_delegate_risk_factors")
         }
 
-    summary_file = reports_dir / "litert_models_comparison_summary.json"
-    with open(summary_file, "w", encoding="utf-8") as f:
-        json.dump(summary, f, indent=2)
-    print(f"[Done] Summary written to {summary_file}")
+    if parsed_model_count > 0:
+        summary_file = reports_dir / "litert_models_comparison_summary.json"
+        with open(summary_file, "w", encoding="utf-8") as f:
+            json.dump(summary, f, indent=2)
+        print(f"[Done] Summary written to {summary_file}")
+    else:
+        print("[Done] No trusted reports were overwritten because no real operator parser was available.")
 
 if __name__ == "__main__":
     main()
