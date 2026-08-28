@@ -375,23 +375,25 @@ class TrackManager(
                 getPredictedMask(track)
             }
             val mIoU = computeMaskIoU(predMask, det.mask)
+            val distScore = (1.0f - (dist / maxAllowedDist)).coerceIn(0f, 1f)
             val motionScore = if (isFlexibleGate) {
-                (1.0f - (dist / maxAllowedDist)).coerceIn(0f, 1f)
+                distScore
             } else {
-                (1.0f - (gateDist / (config.kalmanGatingThreshold * 2f))).coerceIn(0f, 1f)
+                maxOf(distScore, (1.0f - (gateDist / (config.kalmanGatingThreshold * 2f))).coerceIn(0f, 1f))
             }
 
             val vx = track.kalman.state[4]
             val vy = track.kalman.state[5]
             val motionDx = detBox.centerX - track.lastObservedBbox.centerX
             val motionDy = detBox.centerY - track.lastObservedBbox.centerY
-            val dirXMatch = if (abs(vx) > 50f && abs(motionDx) > 10f) (vx * motionDx > 0) else null
-            val dirYMatch = if (abs(vy) > 50f && abs(motionDy) > 10f) (vy * motionDy > 0) else null
+            val dirXMatch = if (abs(vx) > 30f && abs(motionDx) > 10f) (vx * motionDx > 0) else null
+            val dirYMatch = if (abs(vy) > 30f && abs(motionDy) > 10f) (vy * motionDy > 0) else null
             val directionScore = when {
                 dirXMatch == true && dirYMatch == true -> 1.0f
+                dirXMatch == true && dirYMatch == null -> 1.0f
+                dirXMatch == null && dirYMatch == true -> 1.0f
                 dirXMatch == false && dirYMatch == false -> 0.0f
-                dirXMatch == false || dirYMatch == false -> 0.25f
-                dirXMatch == true || dirYMatch == true -> 0.75f
+                dirXMatch == false || dirYMatch == false -> 0.0f
                 else -> 0.5f
             }
 
@@ -400,19 +402,13 @@ class TrackManager(
                            config.motionWeight * motionScore +
                            config.directionWeight * directionScore
 
-            // Penalize candidate if both track and detection have non-null masks with zero spatial overlap
-            val maskPenalty = if (predMask != null && det.mask != null && mIoU < 0.05f) 0.5f else 1.0f
+            // Penalize candidate only if both track and detection have non-null masks with zero spatial overlap
+            val maskPenalty = if (predMask != null && det.mask != null && mIoU < 0.05f && bIoU <= 0f) 0.5f else 1.0f
 
-            // Strong direction contradiction penalty when moving at significant velocity in opposite direction
-            val directionPenalty = if (dirXMatch == false && abs(motionDx) > 20f && abs(vx) > 100f) 0.2f else 1.0f
-
-            return (rawScore * maskPenalty * directionPenalty).coerceIn(0f, 1f)
+            return (rawScore * maskPenalty).coerceIn(0f, 1f)
         }
 
-        // 3. PHASE B: OCCLUSION / REACQUIRING GROUP-FIRST ASSOCIATION WITH RESERVATION ISOLATION
-        val reservedGroupTrackIndices = mutableSetOf<Int>()
-        val reservedGroupDetectionIndices = mutableSetOf<Int>()
-
+        // 3. PHASE B: OCCLUSION / REACQUIRING GROUP-FIRST ASSOCIATION
         for (group in occlusionGroups) {
             val groupTrackIndices = tracks.indices.filter { idx ->
                 val t = tracks[idx]
@@ -443,11 +439,6 @@ class TrackManager(
                 computeBBoxIntersectionArea(groupEnvelope, detections[dIdx].bbox) > 0f
             }
 
-            // Reserve group tracks to isolate from Global Hungarian
-            for (tIdx in groupTrackIndices) {
-                reservedGroupTrackIndices.add(tIdx)
-            }
-
             if (candidateDetectionIndices.isEmpty()) continue
 
             // Score matrix for group
@@ -467,9 +458,6 @@ class TrackManager(
             val maxCost = (1.0f - config.minMatchScore).coerceIn(0.1f, 0.90f)
             val matchResult = HungarianSolver.match(groupCostMatrix, maxCostThreshold = maxCost)
 
-            val matchedGroupRows = mutableSetOf<Int>()
-            val matchedGroupCols = mutableSetOf<Int>()
-
             for (match in matchResult.matches) {
                 val r = match.first
                 val c = match.second
@@ -479,46 +467,13 @@ class TrackManager(
                 val det = detections[dIdx]
 
                 val assignedScore = scoreMatrix[r][c]
-
-                // Mutual / Reciprocal-Best Commitment Check
-                val rowBest = (0 until candidateDetectionIndices.size).map { scoreMatrix[r][it] }.maxOrNull() ?: 0f
-                val colBest = (0 until groupTrackIndices.size).map { scoreMatrix[it][c] }.maxOrNull() ?: 0f
-
-                val isRowTop = assignedScore >= (rowBest - 0.01f)
-                val isColTop = assignedScore >= (colBest - 0.01f)
-                val isScoreValid = assignedScore >= config.minMatchScore
-
-                val isReciprocalBest = isScoreValid && isRowTop && isColTop
-
-                if (!isReciprocalBest) {
-                    NativeDiagnostics.event(
-                        level = "WARN",
-                        component = "TrackManager",
-                        event = "ASSOCIATION_AMBIGUOUS",
-                        fields = mapOf(
-                            "group_id" to group.trackIds.toList(),
-                            "track_id" to track.id,
-                            "det_index" to dIdx,
-                            "assigned_score" to assignedScore,
-                            "row_best" to rowBest,
-                            "col_best" to colBest,
-                            "min_score" to config.minMatchScore
-                        )
-                    )
-                    // Defer identity commitment: keep track in REACQUIRING
-                    if (track.state == TrackState.OCCLUDED || track.state == TrackState.ACTIVE) {
-                        track.state = TrackState.REACQUIRING
-                    }
-                    reservedGroupTrackIndices.add(tIdx)
-                    reservedGroupDetectionIndices.add(dIdx)
+                if (assignedScore < config.minMatchScore) {
                     continue
                 }
 
-                // High confidence reciprocal-best commit
+                // Commit group match
                 matchedTrackIndices.add(tIdx)
                 matchedDetectionIndices.add(dIdx)
-                matchedGroupRows.add(r)
-                matchedGroupCols.add(c)
 
                 val prevState = track.state
                 track.lastObservedBbox = det.bbox
@@ -548,32 +503,14 @@ class TrackManager(
                     )
                 }
             }
-
-            // Reserve candidate detections that overlap any unresolved group track
-            val unresolvedTracks = groupTrackIndices.filter { !matchedTrackIndices.contains(it) }.map { tracks[it] }
-            if (unresolvedTracks.isNotEmpty()) {
-                for (c in candidateDetectionIndices.indices) {
-                    if (!matchedGroupCols.contains(c)) {
-                        val dIdx = candidateDetectionIndices[c]
-                        val detBox = detections[dIdx].bbox
-                        val overlapsUnresolved = unresolvedTracks.any { uTrack ->
-                            computeBBoxIntersectionArea(uTrack.currentPredictedBbox, detBox) > 0f ||
-                            computeBBoxIntersectionArea(uTrack.lastObservedBbox, detBox) > 0f
-                        }
-                        if (overlapsUnresolved) {
-                            reservedGroupDetectionIndices.add(dIdx)
-                        }
-                    }
-                }
-            }
         }
 
         // 4. Global Hungarian Matching on Remaining Non-Group Unmatched Tracks & Detections
         val remainingTrackIndices = tracks.indices.filter {
-            !matchedTrackIndices.contains(it) && !reservedGroupTrackIndices.contains(it)
+            !matchedTrackIndices.contains(it)
         }
         val remainingDetectionIndices = detections.indices.filter {
-            !matchedDetectionIndices.contains(it) && !reservedGroupDetectionIndices.contains(it)
+            !matchedDetectionIndices.contains(it)
         }
 
         if (remainingTrackIndices.isNotEmpty() && remainingDetectionIndices.isNotEmpty()) {
@@ -777,7 +714,7 @@ class TrackManager(
         // 6. Ordinary Recovery Association on Remaining Truly LOST Tracks
         val unassignedDetections = mutableListOf<PersonDetection>()
         for (c in detections.indices) {
-            if (!matchedDetectionIndices.contains(c) && !reservedGroupDetectionIndices.contains(c)) {
+            if (!matchedDetectionIndices.contains(c)) {
                 unassignedDetections.add(detections[c])
             }
         }
