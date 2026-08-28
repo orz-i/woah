@@ -56,4 +56,51 @@ class TrackManagerAmbiguousReservationTest {
         assertEquals(TrackState.ACTIVE, t1?.state)
         assertEquals(TrackState.ACTIVE, t2?.state)
     }
+
+    @Test
+    fun testAmbiguousGroupAssignmentsDoNotLeakIntoGlobalHungarian() {
+        val bboxOnlyConfig = TrackingConfig(
+            minMatchScore = 0.20f,
+            bboxIouWeight = 1.0f,
+            maskIouWeight = 0.0f,
+            motionWeight = 0.0f,
+            directionWeight = 0.0f,
+            associationAmbiguityMargin = 0.05f
+        )
+        tracker = TrackManager(bboxOnlyConfig)
+
+        // The initial tracks overlap enough to form one occlusion group.
+        val a0 = PersonDetection(FloatRect(200f, 100f, 300f, 300f), 0.95f)
+        val b0 = PersonDetection(FloatRect(220f, 100f, 320f, 300f), 0.95f)
+        val initial = tracker.initialize(listOf(a0, b0))
+        val idA = initial[0].id
+        val idB = initial[1].id
+
+        // BBox-only score geometry intentionally makes the Hungarian optimum use
+        // assignments that are not reciprocal best:
+        //   A -> leftCandidate is far below A's row-best score.
+        //   B -> centerCandidate is below that detection's column-best score.
+        // Group association must therefore defer both identities instead of
+        // allowing Global Hungarian to immediately commit the same assignments.
+        val centerCandidate = PersonDetection(FloatRect(206f, 100f, 306f, 300f), 0.95f)
+        val leftCandidate = PersonDetection(FloatRect(155f, 100f, 255f, 300f), 0.95f)
+
+        val tracks = tracker.update(
+            detections = listOf(centerCandidate, leftCandidate),
+            timestampUs = 33_333L
+        )
+
+        val trackA = tracks.single { it.id == idA }
+        val trackB = tracks.single { it.id == idB }
+
+        val unresolved = listOf(trackA, trackB).filter {
+            it.state == TrackState.REACQUIRING || it.state == TrackState.OCCLUDED
+        }
+        assertTrue(unresolved.isNotEmpty(), "at least one ambiguous group identity must remain unresolved")
+        assertTrue(unresolved.all { !it.observedThisFrame })
+        assertTrue(
+            listOf(trackA, trackB).count { it.observedThisFrame } < 2,
+            "Global Hungarian must not consume every identity that group association left ambiguous"
+        )
+    }
 }

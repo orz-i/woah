@@ -566,10 +566,10 @@ class TrackManager(
 
         // 4. Global Hungarian Matching on Remaining Non-Group Unmatched Tracks & Detections
         val remainingTrackIndices = tracks.indices.filter {
-            !matchedTrackIndices.contains(it)
+            !matchedTrackIndices.contains(it) && !reservedGroupTrackIndices.contains(it)
         }
         val remainingDetectionIndices = detections.indices.filter {
-            !matchedDetectionIndices.contains(it)
+            !matchedDetectionIndices.contains(it) && !reservedGroupDetectionIndices.contains(it)
         }
 
         if (remainingTrackIndices.isNotEmpty() && remainingDetectionIndices.isNotEmpty()) {
