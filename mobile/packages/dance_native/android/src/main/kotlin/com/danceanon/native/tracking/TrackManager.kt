@@ -420,20 +420,22 @@ class TrackManager(
             }
             if (groupTrackIndices.isEmpty()) continue
 
-            // Determine group bounding envelope with 20% margin
+            // Determine group bounding envelope encompassing predicted and last observed boxes with margin
             var envLeft = Float.MAX_VALUE
             var envTop = Float.MAX_VALUE
             var envRight = Float.MIN_VALUE
             var envBottom = Float.MIN_VALUE
             for (idx in groupTrackIndices) {
-                val box = tracks[idx].currentPredictedBbox
-                envLeft = min(envLeft, box.left)
-                envTop = min(envTop, box.top)
-                envRight = max(envRight, box.right)
-                envBottom = max(envBottom, box.bottom)
+                val t = tracks[idx]
+                val pBox = t.currentPredictedBbox
+                val oBox = t.lastObservedBbox
+                envLeft = minOf(envLeft, pBox.left, oBox.left)
+                envTop = minOf(envTop, pBox.top, oBox.top)
+                envRight = maxOf(envRight, pBox.right, oBox.right)
+                envBottom = maxOf(envBottom, pBox.bottom, oBox.bottom)
             }
-            val marginX = (envRight - envLeft) * 0.20f
-            val marginY = (envBottom - envTop) * 0.20f
+            val marginX = max((envRight - envLeft) * 0.50f, 100f)
+            val marginY = max((envBottom - envTop) * 0.50f, 100f)
             val groupEnvelope = FloatRect(envLeft - marginX, envTop - marginY, envRight + marginX, envBottom + marginY)
 
             val candidateDetectionIndices = detections.indices.filter { dIdx ->
@@ -441,12 +443,9 @@ class TrackManager(
                 computeBBoxIntersectionArea(groupEnvelope, detections[dIdx].bbox) > 0f
             }
 
-            // Reserve all group tracks and candidate detections to isolate from Global Hungarian
+            // Reserve group tracks to isolate from Global Hungarian
             for (tIdx in groupTrackIndices) {
                 reservedGroupTrackIndices.add(tIdx)
-            }
-            for (dIdx in candidateDetectionIndices) {
-                reservedGroupDetectionIndices.add(dIdx)
             }
 
             if (candidateDetectionIndices.isEmpty()) continue
@@ -468,6 +467,9 @@ class TrackManager(
             val maxCost = (1.0f - config.minMatchScore).coerceIn(0.1f, 0.90f)
             val matchResult = HungarianSolver.match(groupCostMatrix, maxCostThreshold = maxCost)
 
+            val matchedGroupRows = mutableSetOf<Int>()
+            val matchedGroupCols = mutableSetOf<Int>()
+
             for (match in matchResult.matches) {
                 val r = match.first
                 val c = match.second
@@ -478,19 +480,17 @@ class TrackManager(
 
                 val assignedScore = scoreMatrix[r][c]
 
-                // Ambiguity Check: Ensure reciprocal-best matching and distinct superiority
-                val rowScores = scoreMatrix[r].sortedDescending()
-                val rowBest = rowScores.firstOrNull() ?: 0f
-                val rowSecondBest = rowScores.getOrNull(1) ?: 0f
+                // Mutual / Reciprocal-Best Commitment Check
+                val rowBest = (0 until candidateDetectionIndices.size).map { scoreMatrix[r][it] }.maxOrNull() ?: 0f
                 val colBest = (0 until groupTrackIndices.size).map { scoreMatrix[it][c] }.maxOrNull() ?: 0f
 
-                val isRowAmbiguous = (rowScores.size > 1) && (rowBest - rowSecondBest < config.associationAmbiguityMargin)
-                val isColAmbiguous = (assignedScore < colBest - config.associationAmbiguityMargin)
-                val isBelowThreshold = assignedScore < config.minMatchScore
+                val isRowTop = assignedScore >= (rowBest - 0.01f)
+                val isColTop = assignedScore >= (colBest - 0.01f)
+                val isScoreValid = assignedScore >= config.minMatchScore
 
-                val isAmbiguous = isRowAmbiguous || isColAmbiguous || isBelowThreshold
+                val isReciprocalBest = isScoreValid && isRowTop && isColTop
 
-                if (isAmbiguous) {
+                if (!isReciprocalBest) {
                     NativeDiagnostics.event(
                         level = "WARN",
                         component = "TrackManager",
@@ -501,22 +501,24 @@ class TrackManager(
                             "det_index" to dIdx,
                             "assigned_score" to assignedScore,
                             "row_best" to rowBest,
-                            "row_second_best" to rowSecondBest,
                             "col_best" to colBest,
-                            "margin" to config.associationAmbiguityMargin
+                            "min_score" to config.minMatchScore
                         )
                     )
                     // Defer identity commitment: keep track in REACQUIRING
                     if (track.state == TrackState.OCCLUDED || track.state == TrackState.ACTIVE) {
                         track.state = TrackState.REACQUIRING
                     }
-                    // Keep track and detection reserved so Global Hungarian will NOT forcibly match them
+                    reservedGroupTrackIndices.add(tIdx)
+                    reservedGroupDetectionIndices.add(dIdx)
                     continue
                 }
 
-                // High confidence commit
+                // High confidence reciprocal-best commit
                 matchedTrackIndices.add(tIdx)
                 matchedDetectionIndices.add(dIdx)
+                matchedGroupRows.add(r)
+                matchedGroupCols.add(c)
 
                 val prevState = track.state
                 track.lastObservedBbox = det.bbox
@@ -544,6 +546,24 @@ class TrackManager(
                             "prev_state" to prevState.name
                         )
                     )
+                }
+            }
+
+            // Reserve candidate detections that overlap any unresolved group track
+            val unresolvedTracks = groupTrackIndices.filter { !matchedTrackIndices.contains(it) }.map { tracks[it] }
+            if (unresolvedTracks.isNotEmpty()) {
+                for (c in candidateDetectionIndices.indices) {
+                    if (!matchedGroupCols.contains(c)) {
+                        val dIdx = candidateDetectionIndices[c]
+                        val detBox = detections[dIdx].bbox
+                        val overlapsUnresolved = unresolvedTracks.any { uTrack ->
+                            computeBBoxIntersectionArea(uTrack.currentPredictedBbox, detBox) > 0f ||
+                            computeBBoxIntersectionArea(uTrack.lastObservedBbox, detBox) > 0f
+                        }
+                        if (overlapsUnresolved) {
+                            reservedGroupDetectionIndices.add(dIdx)
+                        }
+                    }
                 }
             }
         }

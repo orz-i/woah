@@ -170,7 +170,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.85),
+                    color: Colors.red.withValues(alpha: 0.85),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Row(

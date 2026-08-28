@@ -16,6 +16,7 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
   int _nextRequestId = 0;
 
   EffectEditorController({NativeProcessingRepository? repository})
+      // ignore: prefer_initializing_formals
       : _repository = repository,
         super(const EffectEditorState());
 

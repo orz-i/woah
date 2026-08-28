@@ -58,10 +58,13 @@ class MultiScaleAttention(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         B, H, W, _ = x.shape
-        # qkv with shape (B, H * W, 3, nHead, C)
-        qkv = self.qkv(x).reshape(B, H * W, 3, self.num_heads, -1)
-        # q, k, v with shape (B, H * W, nheads, C)
-        q, k, v = torch.unbind(qkv, 2)
+        # Compute qkv in 4D: (B, H*W, 3*dim_out)
+        qkv = self.qkv(x.reshape(B, H * W, -1))
+        # Chunk into q, k, v (each B, H*W, dim_out) -> avoids 5D tensor unbind / GATHER_ND
+        q, k, v = torch.chunk(qkv, 3, dim=-1)
+        q = q.reshape(B, H * W, self.num_heads, -1)
+        k = k.reshape(B, H * W, self.num_heads, -1)
+        v = v.reshape(B, H * W, self.num_heads, -1)
 
         # Q pooling (for downsample at stage changes)
         if self.q_pool:
@@ -277,10 +280,10 @@ class Hiera(nn.Module):
         h, w = hw
         window_embed = self.pos_embed_window
         pos_embed = F.interpolate(self.pos_embed, size=(h, w), mode="bicubic")
-        pos_embed = pos_embed + window_embed.tile(
-            [x // y for x, y in zip(pos_embed.shape, window_embed.shape)]
-        )
-        pos_embed = pos_embed.permute(0, 2, 3, 1)
+        rep_h = h // window_embed.shape[2]
+        rep_w = w // window_embed.shape[3]
+        window_embed_repeated = window_embed.repeat(1, 1, rep_h, rep_w)
+        pos_embed = (pos_embed + window_embed_repeated).permute(0, 2, 3, 1)
         return pos_embed
 
     def forward(self, x: torch.Tensor) -> List[torch.Tensor]:

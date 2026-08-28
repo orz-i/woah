@@ -91,9 +91,9 @@ object PrivacyOcclusionResolver {
                     if (maskOverlapRatio <= 0.02f) continue
 
                     // Depth evaluation
-                    val footYDelta = candFootY - targetFootY // positive means cand is lower / in front
+                    val footYDelta = candFootY - targetFootY // positive means cand is lower in frame / in front
                     val personMinH = minOf(targetBbox.height, candBbox.height).coerceAtLeast(10f)
-                    val footYThreshold = personMinH * 0.08f
+                    val footYThreshold = personMinH * 0.03f // conservative depth margin
 
                     val isTargetFresh = target.observedThisFrame
                     val isCandFresh = cand.observedThisFrame
@@ -101,14 +101,17 @@ object PrivacyOcclusionResolver {
                     val isStrongForeground = if (!isCandFresh) {
                         // Stale unselected candidate is NEVER trusted to carve privacy
                         false
-                    } else if (target.state == TrackState.OCCLUDED || !isTargetFresh) {
-                        // CASE A: Target is unobserved/occluded, candidate is freshly observed
-                        // Candidate is accepted if not distinctly behind target
-                        footYDelta > -footYThreshold
-                    } else {
+                    } else if (target.state == TrackState.OCCLUDED) {
+                        // CASE A: Target is explicitly occluded by this candidate in tracking
+                        val isExplicitOccluder = target.occludedByTrackIds.contains(cand.id)
+                        isExplicitOccluder && (footYDelta > -footYThreshold)
+                    } else if (isTargetFresh) {
                         // CASE B: Both target and candidate are freshly observed
                         // Strict requirement: candidate must have distinctly larger footY (foreground)
                         footYDelta > footYThreshold
+                    } else {
+                        // Unobserved non-occluded target: PRIVACY WINS
+                        false
                     }
 
                     val evidence = OcclusionEvidence(
