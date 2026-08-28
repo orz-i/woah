@@ -1,9 +1,12 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dance_domain/dance_domain.dart';
+import '../../../core/widgets/stage_viewport.dart';
+import '../../../core/widgets/bottom_control_drawer.dart';
 import '../../frame_preview/presentation/frame_preview_screen.dart';
 import 'effect_editor_controller.dart';
 import '../domain/effect_editor_state.dart';
@@ -21,12 +24,22 @@ class EffectEditorScreen extends ConsumerStatefulWidget {
 }
 
 class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
+  final TransformationController _stageTransformationController = TransformationController();
+  final DraggableScrollableController _drawerController = DraggableScrollableController();
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(effectEditorControllerProvider.notifier).init(widget.project);
     });
+  }
+
+  @override
+  void dispose() {
+    _stageTransformationController.dispose();
+    _drawerController.dispose();
+    super.dispose();
   }
 
   void _resetToDefault(EffectEditorController controller) {
@@ -53,7 +66,6 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(effectEditorControllerProvider);
     final controller = ref.read(effectEditorControllerProvider.notifier);
-    final effects = state.effects;
 
     return PopScope(
       canPop: false,
@@ -63,210 +75,322 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
         context.pop(configured);
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('画面特效调节'),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded),
-            onPressed: () {
-              final configured = controller.buildConfiguredProject();
-              context.pop(configured);
-            },
-          ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.restart_alt_rounded),
-              tooltip: '恢复默认参数',
-              onPressed: () => _resetToDefault(controller),
+        backgroundColor: const Color(0xFF0A0A0C),
+        resizeToAvoidBottomInset: false,
+        body: Stack(
+          children: [
+            // Layer 0: 全屏多媒体主舞台 (Multimedia Stage Viewport)
+            Positioned.fill(
+              child: StageViewport(
+                transformationController: _stageTransformationController,
+                child: _buildStagePreview(state),
+              ),
+            ),
+
+            // Layer 1: 顶部悬浮毛玻璃操作栏 (Floating Glassmorphism Bar)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: _buildTopFloatingBar(context, controller, state),
+                ),
+              ),
+            ),
+
+            // Layer 2: 底部从下至上控制抽屉 (可完全收起至边缘，内容完全可滑动)
+            Positioned.fill(
+              child: BottomControlDrawer(
+                controller: _drawerController,
+                minChildSize: 0.045,
+                initialChildSize: 0.44,
+                maxChildSize: 0.85,
+                snapSizes: const [0.045, 0.44, 0.85],
+                peekHeader: _buildDrawerPeekHeader(state, controller),
+                bottomActionBar: _buildDrawerBottomBar(context, state, controller),
+                child: _buildDrawerContent(context, state, controller),
+              ),
             ),
           ],
         ),
-
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 1. Preview Frame Card
-              _buildPreviewCard(state, controller),
-              const SizedBox(height: 20),
-
-
-              // 2. Effect Mode Selector
-              Text(
-                '遮挡样式选择',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-              ),
-              const SizedBox(height: 10),
-              _buildModeChips(effects.fillMode, controller),
-              const Divider(height: 32),
-
-              // 3. Dynamic Controls based on selected mode
-              _buildDynamicControls(context, state, controller),
-            ],
-          ),
-        ),
-      ),
-      bottomNavigationBar: _buildBottomBar(context, state, controller),
       ),
     );
   }
 
-
-  Widget _buildPreviewCard(EffectEditorState state, EffectEditorController controller) {
+  /// 全屏主舞台内容
+  Widget _buildStagePreview(EffectEditorState state) {
     final displayPath = state.previewPath ?? state.previewThumbnailPath;
     final hasImage = displayPath != null && displayPath.isNotEmpty && File(displayPath).existsSync();
 
-    final modeName = switch (state.effects.fillMode) {
-      FillMode.solid => '纯色遮挡',
-      FillMode.blur => '动态模糊',
-      FillMode.gradient => '纵向渐变',
-      FillMode.mosaic => '像素马赛克',
-      FillMode.sticker => '趣味贴纸',
-    };
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        if (hasImage)
+          Image.file(
+            File(displayPath),
+            key: ValueKey('${displayPath}_${state.previewRequestId}'),
+            fit: BoxFit.contain,
+            gaplessPlayback: true,
+          )
+        else
+          const Center(
+            child: Icon(
+              Icons.auto_fix_high_rounded,
+              size: 64,
+              color: Colors.white24,
+            ),
+          ),
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Container(
-        height: 240,
-        color: const Color(0xFF131316),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            if (hasImage)
-              Image.file(
-                File(displayPath),
-                key: ValueKey('${displayPath}_${state.previewRequestId}'),
-                fit: BoxFit.contain,
-                width: double.infinity,
-                height: double.infinity,
-                gaplessPlayback: true,
-              )
-
-            else
-              const Icon(Icons.auto_fix_high_rounded, size: 48, color: Colors.white30),
-
-            if (state.previewLoading)
-              Positioned.fill(
+        // 加载中悬浮指示器
+        if (state.previewLoading)
+          Positioned(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                 child: Container(
-                  color: Colors.black38,
-                  alignment: Alignment.center,
-                  child: const SizedBox(
-                    width: 32,
-                    height: 32,
-                    child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-                  ),
-                ),
-              ),
-
-            if (state.previewError != null)
-              Positioned(
-                top: 12,
-                left: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.85),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  color: Colors.black54,
+                  child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.error_outline, size: 14, color: Colors.white),
-                      const SizedBox(width: 4),
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                      ),
+                      SizedBox(width: 14),
                       Text(
-                        '预览生成失败: ${state.previewError}',
-                        style: const TextStyle(fontSize: 10, color: Colors.white),
+                        '实时特效渲染中...',
+                        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
                       ),
                     ],
                   ),
                 ),
               ),
+            ),
+          ),
 
-            Positioned(
-              bottom: 12,
-              right: 12,
+        // 错误提示
+        if (state.previewError != null)
+          Positioned(
+            top: 80,
+            left: 20,
+            right: 20,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.black87,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.white24),
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                color: Colors.redAccent.withAlpha(220),
                 child: Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (state.previewPath != null) ...[
-                      const Icon(Icons.check_circle, size: 12, color: Colors.greenAccent),
-                      const SizedBox(width: 4),
-                      const Text(
-                        'Native 预览',
-                        style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
+                    const Icon(Icons.error_outline, size: 16, color: Colors.white),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '预览生成失败: ${state.previewError}',
+                        style: const TextStyle(fontSize: 12, color: Colors.white),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(width: 8),
-                    ],
-                    Text(
-                      '当前样式: $modeName',
-                      style: const TextStyle(fontSize: 11, color: Colors.white70),
                     ),
                   ],
                 ),
               ),
             ),
+          ),
+      ],
+    );
+  }
+
+  /// 顶部悬浮毛玻璃操作胶囊
+  Widget _buildTopFloatingBar(
+    BuildContext context,
+    EffectEditorController controller,
+    EffectEditorState state,
+  ) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        // 返回按钮
+        _buildFloatingCircleButton(
+          icon: Icons.arrow_back_rounded,
+          tooltip: '返回',
+          onTap: () {
+            final configured = controller.buildConfiguredProject();
+            context.pop(configured);
+          },
+        ),
+
+        // 中间标题胶囊
+        ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.black.withAlpha(140),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withAlpha(30)),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.palette_rounded, size: 15, color: Colors.white),
+                  SizedBox(width: 6),
+                  Text(
+                    '画面特效调节',
+                    style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        // 右侧操作组 (抽屉展开/收起 + 恢复默认)
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildFloatingCircleButton(
+              icon: Icons.tune_rounded,
+              tooltip: '展开/收起设置抽屉',
+              onTap: () {
+                final current = _drawerController.size;
+                if (current < 0.1) {
+                  _drawerController.animateTo(
+                    0.44,
+                    duration: const Duration(milliseconds: 260),
+                    curve: Curves.easeOutCubic,
+                  );
+                } else {
+                  _drawerController.animateTo(
+                    0.045,
+                    duration: const Duration(milliseconds: 260),
+                    curve: Curves.easeOutCubic,
+                  );
+                }
+              },
+            ),
+            const SizedBox(width: 8),
+            _buildFloatingCircleButton(
+              icon: Icons.restart_alt_rounded,
+              tooltip: '恢复默认参数',
+              onTap: () => _resetToDefault(controller),
+            ),
           ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFloatingCircleButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return ClipOval(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Material(
+          color: Colors.black.withAlpha(140),
+          child: InkWell(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              onTap();
+            },
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white.withAlpha(30)),
+              ),
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+          ),
         ),
       ),
     );
   }
 
-
-  Widget _buildModeChips(FillMode current, EffectEditorController controller) {
-    final modes = [
-      (FillMode.solid, '纯色遮挡', Icons.format_color_fill),
-      (FillMode.blur, '动态模糊', Icons.blur_on),
-      (FillMode.gradient, '纵向渐变', Icons.gradient),
-      (FillMode.mosaic, '像素马赛克', Icons.grid_4x4),
-    ];
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: modes.map((item) {
-        final isSelected = current == item.$1;
-        return ChoiceChip(
-          label: Row(
-            mainAxisSize: MainAxisSize.min,
+  /// 抽屉 Peek Header（精简单行标题，绝不阻挡滚动内容）
+  Widget _buildDrawerPeekHeader(EffectEditorState state, EffectEditorController controller) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 2, 16, 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
             children: [
-              Icon(item.$3, size: 16, color: isSelected ? Colors.black : Colors.white70),
+              const Icon(Icons.tune_rounded, size: 15, color: Colors.white),
               const SizedBox(width: 6),
-              Text(
-                item.$2,
+              const Text(
+                '特效参数调节',
                 style: TextStyle(
-                  color: isSelected ? Colors.black : Colors.white,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  _drawerController.animateTo(
+                    0.045,
+                    duration: const Duration(milliseconds: 260),
+                    curve: Curves.easeOutCubic,
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.keyboard_arrow_down_rounded, size: 14, color: Colors.white70),
+                      SizedBox(width: 2),
+                      Text('收起', style: TextStyle(fontSize: 10, color: Colors.white70)),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
-          selected: isSelected,
-          onSelected: (_) {
-            HapticFeedback.selectionClick();
-            controller.updateFillMode(item.$1);
-          },
-          selectedColor: Colors.white,
-          backgroundColor: const Color(0xFF1E1E24),
-          side: BorderSide(color: isSelected ? Colors.white : Colors.white24),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        );
-      }).toList(),
+          if (state.previewPath != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.greenAccent.withAlpha(30),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.greenAccent.withAlpha(80)),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_circle_rounded, size: 11, color: Colors.greenAccent),
+                  SizedBox(width: 4),
+                  Text(
+                    'Live Preview',
+                    style: TextStyle(fontSize: 10, color: Colors.greenAccent, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 
-  Widget _buildDynamicControls(
+  /// 抽屉滚动内容主体 (所有控制选项完整无缝滚动)
+  Widget _buildDrawerContent(
     BuildContext context,
     EffectEditorState state,
     EffectEditorController controller,
@@ -275,7 +399,20 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Opacity slider with step controls
+        // 1. 遮挡样式选择
+        const Text(
+          '遮挡样式选择',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: Colors.white70,
+          ),
+        ),
+        const SizedBox(height: 8),
+        _buildModeChips(effects.fillMode, controller),
+        const Divider(height: 22, color: Colors.white12),
+
+        // 2. Opacity slider with step controls
         _buildStepSlider(
           label: '遮挡不透明度',
           value: effects.opacity,
@@ -286,7 +423,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
           onChanged: (val) => controller.updateOpacity(val),
         ),
 
-        // Solid / Gradient Color Picker
+        // 3. Solid / Gradient Color Picker
         if (effects.fillMode == FillMode.solid || effects.fillMode == FillMode.gradient) ...[
           const SizedBox(height: 18),
           const Text('遮挡填充颜色', style: TextStyle(fontSize: 13, color: Colors.white70)),
@@ -294,7 +431,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
           _buildColorPalette(effects.fillColorArgb, (argb) => controller.updateFillColor(argb)),
         ],
 
-        // Border Width
+        // 4. Border Width & Border Color
         const SizedBox(height: 18),
         _buildStepSlider(
           label: '边缘描边粗细',
@@ -312,7 +449,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
           _buildColorPalette(effects.borderColorArgb, (argb) => controller.updateBorderColor(argb)),
         ],
 
-        // Blur specific controls
+        // 5. Blur / Mosaic specific controls
         if (effects.fillMode == FillMode.blur || effects.fillMode == FillMode.mosaic) ...[
           const SizedBox(height: 18),
           _buildStepSlider(
@@ -326,7 +463,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
           ),
         ],
 
-        // Skin Whiten controls
+        // 6. Skin Whiten controls
         const SizedBox(height: 18),
         _buildStepSlider(
           label: '人像美白提亮',
@@ -338,22 +475,23 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
           onChanged: (val) => controller.updateSkinWhiten(val),
         ),
 
-        // 4. Follow Crop Controls
-        const Divider(height: 36),
-        Text(
+        // 7. AI 特效区域
+        const Divider(height: 28, color: Colors.white12),
+        const Text(
           '主角专属特写镜头',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFF16161A),
+            color: const Color(0xFF1B1B22),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withAlpha(15)),
+            border: Border.all(color: Colors.white.withAlpha(20)),
           ),
           child: Column(
             children: [
@@ -391,7 +529,91 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
             ],
           ),
         ),
+        const SizedBox(height: 20),
       ],
+    );
+  }
+
+  /// 抽屉底部主操作按钮
+  Widget _buildDrawerBottomBar(
+    BuildContext context,
+    EffectEditorState state,
+    EffectEditorController controller,
+  ) {
+    return SizedBox(
+      height: 48,
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: () {
+          HapticFeedback.mediumImpact();
+          final configured = controller.buildConfiguredProject();
+          if (configured != null) {
+            context.push(
+              '/frame_preview',
+              extra: FramePreviewArgs(
+                project: configured,
+                initialPreviewPath: state.previewPath,
+              ),
+            );
+          }
+        },
+        icon: const Icon(Icons.preview_rounded, size: 18),
+        label: const Text(
+          '下一步：首帧效果确认',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModeChips(FillMode current, EffectEditorController controller) {
+    final modes = [
+      (FillMode.solid, '纯色遮挡', Icons.format_color_fill),
+      (FillMode.blur, '动态模糊', Icons.blur_on),
+      (FillMode.gradient, '纵向渐变', Icons.gradient),
+      (FillMode.mosaic, '像素马赛克', Icons.grid_4x4),
+    ];
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: modes.map((item) {
+        final isSelected = current == item.$1;
+        return ChoiceChip(
+          label: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(item.$3, size: 15, color: isSelected ? Colors.black : Colors.white70),
+              const SizedBox(width: 5),
+              Text(
+                item.$2,
+                style: TextStyle(
+                  color: isSelected ? Colors.black : Colors.white,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+          selected: isSelected,
+          onSelected: (_) {
+            HapticFeedback.selectionClick();
+            controller.updateFillMode(item.$1);
+          },
+          selectedColor: Colors.white,
+          backgroundColor: const Color(0xFF22222A),
+          side: BorderSide(color: isSelected ? Colors.white : Colors.white24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        );
+      }).toList(),
     );
   }
 
@@ -414,7 +636,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: Colors.white.withAlpha(12),
+                color: Colors.white.withAlpha(15),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
@@ -427,7 +649,6 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
         const SizedBox(height: 2),
         Row(
           children: [
-            // Minus fine-tune button
             IconButton(
               icon: const Icon(Icons.remove_circle_outline_rounded, size: 20, color: Colors.white54),
               visualDensity: VisualDensity.compact,
@@ -444,12 +665,9 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
                 value: value.clamp(min, max),
                 min: min,
                 max: max,
-                onChanged: (val) {
-                  onChanged(val);
-                },
+                onChanged: (val) => onChanged(val),
               ),
             ),
-            // Plus fine-tune button
             IconButton(
               icon: const Icon(Icons.add_circle_outline_rounded, size: 20, color: Colors.white54),
               visualDensity: VisualDensity.compact,
@@ -520,48 +738,6 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
           ),
         );
       }).toList(),
-    );
-  }
-
-  Widget _buildBottomBar(
-    BuildContext context,
-    EffectEditorState state,
-    EffectEditorController controller,
-  ) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-      decoration: const BoxDecoration(
-        color: Color(0xFF131316),
-        border: Border(top: BorderSide(color: Color(0xFF2E2E34))),
-      ),
-      child: ElevatedButton.icon(
-        onPressed: () {
-          HapticFeedback.mediumImpact();
-          final configured = controller.buildConfiguredProject();
-          if (configured != null) {
-            context.push(
-              '/frame_preview',
-              extra: FramePreviewArgs(
-                project: configured,
-                initialPreviewPath: state.previewPath,
-              ),
-            );
-          }
-        },
-        icon: const Icon(Icons.preview_rounded, size: 20),
-        label: const Text(
-          '下一步：首帧效果确认',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-      ),
     );
   }
 }

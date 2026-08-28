@@ -108,5 +108,6 @@ tools/sam2_litert/runtime_output/
 desktop/data/
 *.pte
 *.npy
+docs/session/
 
 
