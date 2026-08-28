@@ -31,8 +31,15 @@ def window_partition(x, window_size):
         x = F.pad(x, (0, 0, 0, pad_w, 0, pad_h))
     Hp, Wp = H + pad_h, W + pad_w
 
-    x = x.view(B, Hp // window_size, window_size, Wp // window_size, window_size, C)
-    windows = x.permute(0, 1, 3, 2, 4, 5).reshape(-1, window_size, window_size, C)
+    # Rank<=4 equivalent of the conventional 6D view/permute.  First group
+    # rows into window-height chunks, then group columns while keeping all
+    # intermediates 4D so LiteRT GPU never sees a rank-6 RESHAPE.
+    num_row_windows = Hp // window_size
+    num_col_windows = Wp // window_size
+    x = x.reshape(B * num_row_windows, window_size, Wp, C)
+    x = x.permute(0, 2, 1, 3)
+    x = x.reshape(B * num_row_windows * num_col_windows, window_size, window_size, C)
+    windows = x.permute(0, 2, 1, 3)
     return windows, (Hp, Wp)
 
 
@@ -50,10 +57,15 @@ def window_unpartition(windows, window_size, pad_hw, hw):
     Hp, Wp = pad_hw
     H, W = hw
     B = windows.shape[0] // (Hp * Wp // window_size // window_size)
-    x = windows.reshape(
-        B, Hp // window_size, Wp // window_size, window_size, window_size, -1
-    )
-    x = x.permute(0, 1, 3, 2, 4, 5).reshape(B, Hp, Wp, -1)
+    C = windows.shape[-1]
+    num_row_windows = Hp // window_size
+    num_col_windows = Wp // window_size
+
+    # Exact inverse of the rank<=4 partition path above.
+    x = windows.permute(0, 2, 1, 3)
+    x = x.reshape(B * num_row_windows, Wp, window_size, C)
+    x = x.permute(0, 2, 1, 3)
+    x = x.reshape(B, Hp, Wp, C)
 
     if Hp > H or Wp > W:
         x = x[:, :H, :W, :]

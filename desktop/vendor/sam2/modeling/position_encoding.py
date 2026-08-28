@@ -90,7 +90,10 @@ class PositionEmbeddingSine(nn.Module):
     def _pe(self, B, device, *cache_key):
         H, W = cache_key
         if cache_key in self.cache:
-            return self.cache[cache_key].to(device)[None].repeat(B, 1, 1, 1)
+            cached = self.cache[cache_key].to(device)[None]
+            if B == 1:
+                return cached
+            return cached.repeat(B, 1, 1, 1)
 
         y_embed = (
             torch.arange(1, H + 1, dtype=torch.float32, device=device)
@@ -111,14 +114,21 @@ class PositionEmbeddingSine(nn.Module):
         dim_t = torch.arange(self.num_pos_feats, dtype=torch.float32, device=device)
         dim_t = self.temperature ** (2 * (dim_t // 2) / self.num_pos_feats)
 
-        pos_x = x_embed[:, :, :, None] / dim_t
-        pos_y = y_embed[:, :, :, None] / dim_t
-        pos_x = torch.stack(
-            (pos_x[:, :, :, 0::2].sin(), pos_x[:, :, :, 1::2].cos()), dim=4
-        ).flatten(3)
-        pos_y = torch.stack(
-            (pos_y[:, :, :, 0::2].sin(), pos_y[:, :, :, 1::2].cos()), dim=4
-        ).flatten(3)
+        pos_x_angle = x_embed[:, :, :, None] / dim_t
+        pos_y_angle = y_embed[:, :, :, None] / dim_t
+
+        # GPU-clean equivalent of stack(..., dim=4).flatten(3).  The previous
+        # implementation created a rank-5 intermediate solely to interleave
+        # sin(even channel) / cos(odd channel).  dim_t is pairwise-equal by
+        # construction, so selecting sin/cos with a static parity mask preserves
+        # the exact channel ordering while keeping the graph rank <= 4.
+        parity = torch.arange(
+            self.num_pos_feats, dtype=torch.int64, device=device
+        ).remainder(2)
+        even_mask = (parity == 0).to(dtype=pos_x_angle.dtype).view(1, 1, 1, -1)
+        odd_mask = 1.0 - even_mask
+        pos_x = pos_x_angle.sin() * even_mask + pos_x_angle.cos() * odd_mask
+        pos_y = pos_y_angle.sin() * even_mask + pos_y_angle.cos() * odd_mask
         pos = torch.cat((pos_y, pos_x), dim=3).permute(0, 3, 1, 2)
         self.cache[cache_key] = pos[0]
         return pos

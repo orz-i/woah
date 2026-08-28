@@ -9,6 +9,7 @@ import os
 import sys
 import json
 import hashlib
+import argparse
 from pathlib import Path
 
 
@@ -37,7 +38,7 @@ def _tensor_summary(tensor_by_index, index):
         "dtype": str(dtype.__name__ if hasattr(dtype, "__name__") else dtype),
     }
 
-def analyze_tflite_model(model_path: str) -> dict:
+def analyze_tflite_model(model_path: str, allocate_tensors: bool = False) -> dict:
     if not os.path.exists(model_path):
         return {"error": f"Model file not found: {model_path}"}
 
@@ -63,11 +64,24 @@ def analyze_tflite_model(model_path: str) -> dict:
     with open(model_path, "rb") as f:
         report["sha256"] = hashlib.sha256(f.read()).hexdigest()
 
-    # Attempt analysis using tensorflow/tflite schema if available
+    # Attempt analysis using a real TFLite/LiteRT interpreter. Static graph
+    # inspection does not require allocate_tensors() or invoke(), which keeps
+    # this tool lightweight even for the ~113 MB SAM image encoder.
     try:
-        import tensorflow as tf
-        interpreter = tf.lite.Interpreter(model_path=model_path)
-        interpreter.allocate_tensors()
+        interpreter_backend = None
+        try:
+            import tensorflow as tf
+            interpreter = tf.lite.Interpreter(model_path=model_path)
+            interpreter_backend = "tensorflow.lite.Interpreter"
+        except ImportError:
+            import ai_edge_litert.interpreter as litert_interp
+            interpreter = litert_interp.Interpreter(model_path=model_path)
+            interpreter_backend = "ai_edge_litert.interpreter.Interpreter"
+
+        if allocate_tensors:
+            interpreter.allocate_tensors()
+        report["interpreter_backend"] = interpreter_backend
+        report["tensors_allocated"] = allocate_tensors
 
         input_details = interpreter.get_input_details()
         output_details = interpreter.get_output_details()
@@ -180,6 +194,22 @@ def analyze_tflite_model(model_path: str) -> dict:
     return report
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="Statically inspect LiteRT/TFLite graph operators without executing the model."
+    )
+    parser.add_argument(
+        "--model",
+        choices=["sam2_image_features", "yolo11n_seg_fp16", "sam2_init_step", "sam2_temporal_step", "all"],
+        default="all",
+        help="Analyze only one model to keep local inspection lightweight.",
+    )
+    parser.add_argument(
+        "--allocate-tensors",
+        action="store_true",
+        help="Allocate tensors before inspection. Not needed for normal static graph analysis.",
+    )
+    args = parser.parse_args()
+
     repo_root = Path(__file__).resolve().parent.parent.parent
     reports_dir = repo_root / "reports"
     reports_dir.mkdir(exist_ok=True)
@@ -191,11 +221,14 @@ def main():
         ("sam2_temporal_step", repo_root / "models" / "litert" / "sam2_temporal_step.tflite")
     ]
 
+    if args.model != "all":
+        models_to_analyze = [item for item in models_to_analyze if item[0] == args.model]
+
     summary = {}
     parsed_model_count = 0
     for name, path in models_to_analyze:
         print(f"[Analyzing] {name} at {path}...")
-        report = analyze_tflite_model(str(path))
+        report = analyze_tflite_model(str(path), allocate_tensors=args.allocate_tensors)
         if not report.get("operator_parser_available"):
             print(
                 "  -> SKIPPED report overwrite: no real TFLite operator parser is available "
@@ -212,6 +245,20 @@ def main():
         with open(out_file, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2)
         print(f"  -> Saved report to {out_file}")
+
+        blocker_file = reports_dir / f"{name}_gpu_blockers.json"
+        blocker_report = {
+            "model": report.get("file_name"),
+            "sha256": report.get("sha256"),
+            "file_size_bytes": report.get("file_size_bytes"),
+            "total_operators": report.get("total_operators"),
+            "operator_counts": report.get("operator_counts"),
+            "gpu_blocker_candidate_count": len(report.get("gpu_blocker_candidates", [])),
+            "gpu_blocker_candidates": report.get("gpu_blocker_candidates", []),
+        }
+        with open(blocker_file, "w", encoding="utf-8") as f:
+            json.dump(blocker_report, f, indent=2)
+        print(f"  -> Saved compact GPU blocker report to {blocker_file}")
         parsed_model_count += 1
         summary[name] = {
             "sha256": report.get("sha256"),
@@ -222,11 +269,13 @@ def main():
             "risk_factors": report.get("gpu_delegate_risk_factors")
         }
 
-    if parsed_model_count > 0:
+    if parsed_model_count > 0 and args.model == "all":
         summary_file = reports_dir / "litert_models_comparison_summary.json"
         with open(summary_file, "w", encoding="utf-8") as f:
             json.dump(summary, f, indent=2)
         print(f"[Done] Summary written to {summary_file}")
+    elif parsed_model_count > 0:
+        print("[Done] Single-model analysis complete; global comparison summary was not modified.")
     else:
         print("[Done] No trusted reports were overwritten because no real operator parser was available.")
 

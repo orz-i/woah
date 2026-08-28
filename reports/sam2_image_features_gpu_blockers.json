@@ -1,0 +1,6827 @@
+{
+  "model": "sam2_image_features.tflite",
+  "sha256": "6af3cb329e647ded3a889ffbd27aa75ee70855c277f4459ebd129f5b1b7de6d3",
+  "file_size_bytes": 113589436,
+  "total_operators": 941,
+  "operator_counts": {
+    "TRANSPOSE": 85,
+    "PAD": 6,
+    "CONV_2D": 7,
+    "BROADCAST_TO": 18,
+    "RESHAPE": 312,
+    "CONCATENATION": 16,
+    "GATHER_ND": 16,
+    "MUL": 101,
+    "ADD": 108,
+    "MEAN": 48,
+    "SQUARED_DIFFERENCE": 24,
+    "RSQRT": 24,
+    "SUB": 24,
+    "FULLY_CONNECTED": 42,
+    "SLICE": 46,
+    "BATCH_MATMUL": 33,
+    "SOFTMAX": 12,
+    "GELU": 12,
+    "MAX_POOL_2D": 6,
+    "RESIZE_NEAREST_NEIGHBOR": 1
+  },
+  "gpu_blocker_candidate_count": 119,
+  "gpu_blocker_candidates": [
+    {
+      "op_index": 4,
+      "opcode": "BROADCAST_TO",
+      "inputs": [
+        {
+          "index": 238,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;16",
+          "shape": [
+            256,
+            1
+          ],
+          "shape_signature": [
+            256,
+            1
+          ],
+          "rank": 2,
+          "dtype": "int32"
+        },
+        {
+          "index": 260,
+          "name": "arith.constant90",
+          "shape": [
+            2
+          ],
+          "shape_signature": [
+            2
+          ],
+          "rank": 1,
+          "dtype": "int64"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 301,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;19",
+          "shape": [
+            256,
+            256
+          ],
+          "shape_signature": [
+            256,
+            256
+          ],
+          "rank": 2,
+          "dtype": "int32"
+        }
+      ]
+    },
+    {
+      "op_index": 5,
+      "opcode": "BROADCAST_TO",
+      "inputs": [
+        {
+          "index": 237,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;15",
+          "shape": [
+            256
+          ],
+          "shape_signature": [
+            256
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        },
+        {
+          "index": 260,
+          "name": "arith.constant90",
+          "shape": [
+            2
+          ],
+          "shape_signature": [
+            2
+          ],
+          "rank": 1,
+          "dtype": "int64"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 302,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;20",
+          "shape": [
+            256,
+            256
+          ],
+          "shape_signature": [
+            256,
+            256
+          ],
+          "rank": 2,
+          "dtype": "int32"
+        }
+      ]
+    },
+    {
+      "op_index": 9,
+      "opcode": "GATHER_ND",
+      "inputs": [
+        {
+          "index": 235,
+          "name": "arith.constant71",
+          "shape": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "shape_signature": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 305,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;23",
+          "shape": [
+            256,
+            256,
+            2
+          ],
+          "shape_signature": [
+            256,
+            256,
+            2
+          ],
+          "rank": 3,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 306,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;24",
+          "shape": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "shape_signature": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 11,
+      "opcode": "BROADCAST_TO",
+      "inputs": [
+        {
+          "index": 233,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;14",
+          "shape": [
+            256
+          ],
+          "shape_signature": [
+            256
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        },
+        {
+          "index": 260,
+          "name": "arith.constant90",
+          "shape": [
+            2
+          ],
+          "shape_signature": [
+            2
+          ],
+          "rank": 1,
+          "dtype": "int64"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 308,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;26",
+          "shape": [
+            256,
+            256
+          ],
+          "shape_signature": [
+            256,
+            256
+          ],
+          "rank": 2,
+          "dtype": "int32"
+        }
+      ]
+    },
+    {
+      "op_index": 14,
+      "opcode": "GATHER_ND",
+      "inputs": [
+        {
+          "index": 235,
+          "name": "arith.constant71",
+          "shape": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "shape_signature": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 310,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;28",
+          "shape": [
+            256,
+            256,
+            2
+          ],
+          "shape_signature": [
+            256,
+            256,
+            2
+          ],
+          "rank": 3,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 311,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;29",
+          "shape": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "shape_signature": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 16,
+      "opcode": "BROADCAST_TO",
+      "inputs": [
+        {
+          "index": 232,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;13",
+          "shape": [
+            256
+          ],
+          "shape_signature": [
+            256
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        },
+        {
+          "index": 260,
+          "name": "arith.constant90",
+          "shape": [
+            2
+          ],
+          "shape_signature": [
+            2
+          ],
+          "rank": 1,
+          "dtype": "int64"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 313,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;31",
+          "shape": [
+            256,
+            256
+          ],
+          "shape_signature": [
+            256,
+            256
+          ],
+          "rank": 2,
+          "dtype": "int32"
+        }
+      ]
+    },
+    {
+      "op_index": 19,
+      "opcode": "GATHER_ND",
+      "inputs": [
+        {
+          "index": 235,
+          "name": "arith.constant71",
+          "shape": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "shape_signature": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 315,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;33",
+          "shape": [
+            256,
+            256,
+            2
+          ],
+          "shape_signature": [
+            256,
+            256,
+            2
+          ],
+          "rank": 3,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 316,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;34",
+          "shape": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "shape_signature": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 21,
+      "opcode": "BROADCAST_TO",
+      "inputs": [
+        {
+          "index": 231,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;12",
+          "shape": [
+            256
+          ],
+          "shape_signature": [
+            256
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        },
+        {
+          "index": 260,
+          "name": "arith.constant90",
+          "shape": [
+            2
+          ],
+          "shape_signature": [
+            2
+          ],
+          "rank": 1,
+          "dtype": "int64"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 318,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;36",
+          "shape": [
+            256,
+            256
+          ],
+          "shape_signature": [
+            256,
+            256
+          ],
+          "rank": 2,
+          "dtype": "int32"
+        }
+      ]
+    },
+    {
+      "op_index": 24,
+      "opcode": "GATHER_ND",
+      "inputs": [
+        {
+          "index": 235,
+          "name": "arith.constant71",
+          "shape": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "shape_signature": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 320,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;38",
+          "shape": [
+            256,
+            256,
+            2
+          ],
+          "shape_signature": [
+            256,
+            256,
+            2
+          ],
+          "rank": 3,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 321,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;39",
+          "shape": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "shape_signature": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 33,
+      "opcode": "BROADCAST_TO",
+      "inputs": [
+        {
+          "index": 230,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;11",
+          "shape": [
+            256,
+            1
+          ],
+          "shape_signature": [
+            256,
+            1
+          ],
+          "rank": 2,
+          "dtype": "int32"
+        },
+        {
+          "index": 260,
+          "name": "arith.constant90",
+          "shape": [
+            2
+          ],
+          "shape_signature": [
+            2
+          ],
+          "rank": 1,
+          "dtype": "int64"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 330,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;48",
+          "shape": [
+            256,
+            256
+          ],
+          "shape_signature": [
+            256,
+            256
+          ],
+          "rank": 2,
+          "dtype": "int32"
+        }
+      ]
+    },
+    {
+      "op_index": 36,
+      "opcode": "GATHER_ND",
+      "inputs": [
+        {
+          "index": 235,
+          "name": "arith.constant71",
+          "shape": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "shape_signature": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 332,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;50",
+          "shape": [
+            256,
+            256,
+            2
+          ],
+          "shape_signature": [
+            256,
+            256,
+            2
+          ],
+          "rank": 3,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 333,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;51",
+          "shape": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "shape_signature": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 39,
+      "opcode": "GATHER_ND",
+      "inputs": [
+        {
+          "index": 235,
+          "name": "arith.constant71",
+          "shape": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "shape_signature": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 335,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;53",
+          "shape": [
+            256,
+            256,
+            2
+          ],
+          "shape_signature": [
+            256,
+            256,
+            2
+          ],
+          "rank": 3,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 336,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;54",
+          "shape": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "shape_signature": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 42,
+      "opcode": "GATHER_ND",
+      "inputs": [
+        {
+          "index": 235,
+          "name": "arith.constant71",
+          "shape": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "shape_signature": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 338,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;56",
+          "shape": [
+            256,
+            256,
+            2
+          ],
+          "shape_signature": [
+            256,
+            256,
+            2
+          ],
+          "rank": 3,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 339,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;57",
+          "shape": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "shape_signature": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 45,
+      "opcode": "GATHER_ND",
+      "inputs": [
+        {
+          "index": 235,
+          "name": "arith.constant71",
+          "shape": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "shape_signature": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 341,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;59",
+          "shape": [
+            256,
+            256,
+            2
+          ],
+          "shape_signature": [
+            256,
+            256,
+            2
+          ],
+          "rank": 3,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 342,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;60",
+          "shape": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "shape_signature": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 54,
+      "opcode": "BROADCAST_TO",
+      "inputs": [
+        {
+          "index": 229,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;10",
+          "shape": [
+            256,
+            1
+          ],
+          "shape_signature": [
+            256,
+            1
+          ],
+          "rank": 2,
+          "dtype": "int32"
+        },
+        {
+          "index": 260,
+          "name": "arith.constant90",
+          "shape": [
+            2
+          ],
+          "shape_signature": [
+            2
+          ],
+          "rank": 1,
+          "dtype": "int64"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 351,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;69",
+          "shape": [
+            256,
+            256
+          ],
+          "shape_signature": [
+            256,
+            256
+          ],
+          "rank": 2,
+          "dtype": "int32"
+        }
+      ]
+    },
+    {
+      "op_index": 57,
+      "opcode": "GATHER_ND",
+      "inputs": [
+        {
+          "index": 235,
+          "name": "arith.constant71",
+          "shape": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "shape_signature": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 353,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;71",
+          "shape": [
+            256,
+            256,
+            2
+          ],
+          "shape_signature": [
+            256,
+            256,
+            2
+          ],
+          "rank": 3,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 354,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;72",
+          "shape": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "shape_signature": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 60,
+      "opcode": "GATHER_ND",
+      "inputs": [
+        {
+          "index": 235,
+          "name": "arith.constant71",
+          "shape": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "shape_signature": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 356,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;74",
+          "shape": [
+            256,
+            256,
+            2
+          ],
+          "shape_signature": [
+            256,
+            256,
+            2
+          ],
+          "rank": 3,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 357,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;75",
+          "shape": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "shape_signature": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 63,
+      "opcode": "GATHER_ND",
+      "inputs": [
+        {
+          "index": 235,
+          "name": "arith.constant71",
+          "shape": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "shape_signature": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 359,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;77",
+          "shape": [
+            256,
+            256,
+            2
+          ],
+          "shape_signature": [
+            256,
+            256,
+            2
+          ],
+          "rank": 3,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 360,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;78",
+          "shape": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "shape_signature": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 66,
+      "opcode": "GATHER_ND",
+      "inputs": [
+        {
+          "index": 235,
+          "name": "arith.constant71",
+          "shape": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "shape_signature": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 362,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;80",
+          "shape": [
+            256,
+            256,
+            2
+          ],
+          "shape_signature": [
+            256,
+            256,
+            2
+          ],
+          "rank": 3,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 363,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;81",
+          "shape": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "shape_signature": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 75,
+      "opcode": "BROADCAST_TO",
+      "inputs": [
+        {
+          "index": 228,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;9",
+          "shape": [
+            256,
+            1
+          ],
+          "shape_signature": [
+            256,
+            1
+          ],
+          "rank": 2,
+          "dtype": "int32"
+        },
+        {
+          "index": 260,
+          "name": "arith.constant90",
+          "shape": [
+            2
+          ],
+          "shape_signature": [
+            2
+          ],
+          "rank": 1,
+          "dtype": "int64"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 372,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;90",
+          "shape": [
+            256,
+            256
+          ],
+          "shape_signature": [
+            256,
+            256
+          ],
+          "rank": 2,
+          "dtype": "int32"
+        }
+      ]
+    },
+    {
+      "op_index": 78,
+      "opcode": "GATHER_ND",
+      "inputs": [
+        {
+          "index": 235,
+          "name": "arith.constant71",
+          "shape": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "shape_signature": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 374,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;92",
+          "shape": [
+            256,
+            256,
+            2
+          ],
+          "shape_signature": [
+            256,
+            256,
+            2
+          ],
+          "rank": 3,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 375,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;93",
+          "shape": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "shape_signature": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 81,
+      "opcode": "GATHER_ND",
+      "inputs": [
+        {
+          "index": 235,
+          "name": "arith.constant71",
+          "shape": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "shape_signature": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 377,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;95",
+          "shape": [
+            256,
+            256,
+            2
+          ],
+          "shape_signature": [
+            256,
+            256,
+            2
+          ],
+          "rank": 3,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 378,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;96",
+          "shape": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "shape_signature": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 84,
+      "opcode": "GATHER_ND",
+      "inputs": [
+        {
+          "index": 235,
+          "name": "arith.constant71",
+          "shape": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "shape_signature": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 380,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;98",
+          "shape": [
+            256,
+            256,
+            2
+          ],
+          "shape_signature": [
+            256,
+            256,
+            2
+          ],
+          "rank": 3,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 381,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;99",
+          "shape": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "shape_signature": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 87,
+      "opcode": "GATHER_ND",
+      "inputs": [
+        {
+          "index": 235,
+          "name": "arith.constant71",
+          "shape": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "shape_signature": [
+            7,
+            7,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 383,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;101",
+          "shape": [
+            256,
+            256,
+            2
+          ],
+          "shape_signature": [
+            256,
+            256,
+            2
+          ],
+          "rank": 3,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 384,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;102",
+          "shape": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "shape_signature": [
+            256,
+            256,
+            1,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 103,
+      "opcode": "BROADCAST_TO",
+      "inputs": [
+        {
+          "index": 284,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;18",
+          "shape": [
+            1,
+            1,
+            1,
+            96,
+            1,
+            8,
+            1,
+            8
+          ],
+          "shape_signature": [
+            1,
+            1,
+            1,
+            96,
+            1,
+            8,
+            1,
+            8
+          ],
+          "rank": 8,
+          "dtype": "float32"
+        },
+        {
+          "index": 259,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;17",
+          "shape": [
+            8
+          ],
+          "shape_signature": [
+            8
+          ],
+          "rank": 1,
+          "dtype": "int64"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 400,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;118",
+          "shape": [
+            1,
+            1,
+            1,
+            96,
+            32,
+            8,
+            32,
+            8
+          ],
+          "shape_signature": [
+            1,
+            1,
+            1,
+            96,
+            32,
+            8,
+            32,
+            8
+          ],
+          "rank": 8,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 104,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 400,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;118",
+          "shape": [
+            1,
+            1,
+            1,
+            96,
+            32,
+            8,
+            32,
+            8
+          ],
+          "shape_signature": [
+            1,
+            1,
+            1,
+            96,
+            32,
+            8,
+            32,
+            8
+          ],
+          "rank": 8,
+          "dtype": "float32"
+        },
+        {
+          "index": 227,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;8",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 401,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk;119",
+          "shape": [
+            1,
+            96,
+            256,
+            256
+          ],
+          "shape_signature": [
+            1,
+            96,
+            256,
+            256
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 123,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 419,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_0/torch.nn.modules.normalization.LayerNorm_norm1;14",
+          "shape": [
+            1,
+            65536,
+            96
+          ],
+          "shape_signature": [
+            1,
+            65536,
+            96
+          ],
+          "rank": 3,
+          "dtype": "float32"
+        },
+        {
+          "index": 224,
+          "name": "arith.constant67",
+          "shape": [
+            6
+          ],
+          "shape_signature": [
+            6
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 420,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_0;1",
+          "shape": [
+            1,
+            32,
+            8,
+            32,
+            8,
+            96
+          ],
+          "shape_signature": [
+            1,
+            32,
+            8,
+            32,
+            8,
+            96
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 125,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 421,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_0;2",
+          "shape": [
+            1,
+            32,
+            32,
+            8,
+            8,
+            96
+          ],
+          "shape_signature": [
+            1,
+            32,
+            32,
+            8,
+            8,
+            96
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        },
+        {
+          "index": 222,
+          "name": "arith.constant65",
+          "shape": [
+            2
+          ],
+          "shape_signature": [
+            2
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 422,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_0/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_qkv;2",
+          "shape": [
+            65536,
+            96
+          ],
+          "shape_signature": [
+            65536,
+            96
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 127,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 423,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_0/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_qkv;3",
+          "shape": [
+            65536,
+            288
+          ],
+          "shape_signature": [
+            65536,
+            288
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        },
+        {
+          "index": 257,
+          "name": "arith.constant88",
+          "shape": [
+            5
+          ],
+          "shape_signature": [
+            5
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 424,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_0/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;4",
+          "shape": [
+            1024,
+            64,
+            3,
+            1,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            64,
+            3,
+            1,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 131,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 425,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_0/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;5",
+          "shape": [
+            1024,
+            64,
+            1,
+            1,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            64,
+            1,
+            1,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 221,
+          "name": "arith.constant64",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 428,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_0/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;8",
+          "shape": [
+            1024,
+            1,
+            64,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            1,
+            64,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 132,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 426,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_0/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;6",
+          "shape": [
+            1024,
+            64,
+            1,
+            1,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            64,
+            1,
+            1,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 221,
+          "name": "arith.constant64",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 429,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_0/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;9",
+          "shape": [
+            1024,
+            1,
+            64,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            1,
+            64,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 141,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 427,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_0/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;7",
+          "shape": [
+            1024,
+            64,
+            1,
+            1,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            64,
+            1,
+            1,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 218,
+          "name": "arith.constant63",
+          "shape": [
+            3
+          ],
+          "shape_signature": [
+            3
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 438,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_0/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;18",
+          "shape": [
+            1024,
+            64,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            64,
+            96
+          ],
+          "rank": 3,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 145,
+      "opcode": "BROADCAST_TO",
+      "inputs": [
+        {
+          "index": 215,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_0/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;3",
+          "shape": [
+            96,
+            96
+          ],
+          "shape_signature": [
+            96,
+            96
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        },
+        {
+          "index": 256,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_0/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;4",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int64"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 442,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_0/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;7",
+          "shape": [
+            1024,
+            8,
+            96,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            8,
+            96,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 150,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 446,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_0/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;11",
+          "shape": [
+            1024,
+            8,
+            8,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            8,
+            8,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 211,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_0;",
+          "shape": [
+            6
+          ],
+          "shape_signature": [
+            6
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 447,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_0;3",
+          "shape": [
+            1,
+            32,
+            32,
+            8,
+            8,
+            96
+          ],
+          "shape_signature": [
+            1,
+            32,
+            32,
+            8,
+            8,
+            96
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 152,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 448,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_0;4",
+          "shape": [
+            1,
+            32,
+            8,
+            32,
+            8,
+            96
+          ],
+          "shape_signature": [
+            1,
+            32,
+            8,
+            32,
+            8,
+            96
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        },
+        {
+          "index": 225,
+          "name": "arith.constant68",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 449,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_0;5",
+          "shape": [
+            1,
+            256,
+            256,
+            96
+          ],
+          "shape_signature": [
+            1,
+            256,
+            256,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 190,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 483,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_1/torch.nn.modules.normalization.LayerNorm_norm1;14",
+          "shape": [
+            1,
+            65536,
+            96
+          ],
+          "shape_signature": [
+            1,
+            65536,
+            96
+          ],
+          "rank": 3,
+          "dtype": "float32"
+        },
+        {
+          "index": 224,
+          "name": "arith.constant67",
+          "shape": [
+            6
+          ],
+          "shape_signature": [
+            6
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 487,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_1;",
+          "shape": [
+            1,
+            32,
+            8,
+            32,
+            8,
+            96
+          ],
+          "shape_signature": [
+            1,
+            32,
+            8,
+            32,
+            8,
+            96
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 192,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 488,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_1;1",
+          "shape": [
+            1,
+            32,
+            32,
+            8,
+            8,
+            96
+          ],
+          "shape_signature": [
+            1,
+            32,
+            32,
+            8,
+            8,
+            96
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        },
+        {
+          "index": 222,
+          "name": "arith.constant65",
+          "shape": [
+            2
+          ],
+          "shape_signature": [
+            2
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 489,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_1/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_qkv;2",
+          "shape": [
+            65536,
+            96
+          ],
+          "shape_signature": [
+            65536,
+            96
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 194,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 490,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_1/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_qkv;3",
+          "shape": [
+            65536,
+            576
+          ],
+          "shape_signature": [
+            65536,
+            576
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        },
+        {
+          "index": 255,
+          "name": "arith.constant87",
+          "shape": [
+            5
+          ],
+          "shape_signature": [
+            5
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 491,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_1/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;5",
+          "shape": [
+            1024,
+            64,
+            3,
+            2,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            64,
+            3,
+            2,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 198,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 493,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_1/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;7",
+          "shape": [
+            1024,
+            64,
+            1,
+            2,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            64,
+            1,
+            2,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 208,
+          "name": "arith.constant62",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 495,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_1/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;9",
+          "shape": [
+            1024,
+            64,
+            2,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            64,
+            2,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 199,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 494,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_1/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;8",
+          "shape": [
+            1024,
+            64,
+            1,
+            2,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            64,
+            1,
+            2,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 208,
+          "name": "arith.constant62",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 496,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_1/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;10",
+          "shape": [
+            1024,
+            64,
+            2,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            64,
+            2,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 200,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 492,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_1/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;6",
+          "shape": [
+            1024,
+            64,
+            1,
+            2,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            64,
+            1,
+            2,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 207,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_1/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;4",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 497,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_1/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;11",
+          "shape": [
+            1024,
+            8,
+            8,
+            192
+          ],
+          "shape_signature": [
+            1024,
+            8,
+            8,
+            192
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 219,
+      "opcode": "BROADCAST_TO",
+      "inputs": [
+        {
+          "index": 198,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_1/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;",
+          "shape": [
+            192,
+            192
+          ],
+          "shape_signature": [
+            192,
+            192
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        },
+        {
+          "index": 254,
+          "name": "arith.constant86",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int64"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 516,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_1/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;3",
+          "shape": [
+            1024,
+            4,
+            192,
+            192
+          ],
+          "shape_signature": [
+            1024,
+            4,
+            192,
+            192
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 224,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 520,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_1/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;7",
+          "shape": [
+            1024,
+            4,
+            4,
+            192
+          ],
+          "shape_signature": [
+            1024,
+            4,
+            4,
+            192
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 194,
+          "name": "arith.constant54",
+          "shape": [
+            6
+          ],
+          "shape_signature": [
+            6
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 521,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_1;2",
+          "shape": [
+            1,
+            32,
+            32,
+            4,
+            4,
+            192
+          ],
+          "shape_signature": [
+            1,
+            32,
+            32,
+            4,
+            4,
+            192
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 226,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 522,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_1;3",
+          "shape": [
+            1,
+            32,
+            4,
+            32,
+            4,
+            192
+          ],
+          "shape_signature": [
+            1,
+            32,
+            4,
+            32,
+            4,
+            192
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        },
+        {
+          "index": 193,
+          "name": "arith.constant53",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 523,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_1;4",
+          "shape": [
+            1,
+            128,
+            128,
+            192
+          ],
+          "shape_signature": [
+            1,
+            128,
+            128,
+            192
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 261,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 557,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_2/torch.nn.modules.normalization.LayerNorm_norm1;14",
+          "shape": [
+            1,
+            16384,
+            192
+          ],
+          "shape_signature": [
+            1,
+            16384,
+            192
+          ],
+          "rank": 3,
+          "dtype": "float32"
+        },
+        {
+          "index": 189,
+          "name": "arith.constant49",
+          "shape": [
+            6
+          ],
+          "shape_signature": [
+            6
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 558,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_2;",
+          "shape": [
+            1,
+            32,
+            4,
+            32,
+            4,
+            192
+          ],
+          "shape_signature": [
+            1,
+            32,
+            4,
+            32,
+            4,
+            192
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 263,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 559,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_2;1",
+          "shape": [
+            1,
+            32,
+            32,
+            4,
+            4,
+            192
+          ],
+          "shape_signature": [
+            1,
+            32,
+            32,
+            4,
+            4,
+            192
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        },
+        {
+          "index": 191,
+          "name": "arith.constant51",
+          "shape": [
+            2
+          ],
+          "shape_signature": [
+            2
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 560,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_2/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_qkv;2",
+          "shape": [
+            16384,
+            192
+          ],
+          "shape_signature": [
+            16384,
+            192
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 265,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 561,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_2/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_qkv;3",
+          "shape": [
+            16384,
+            576
+          ],
+          "shape_signature": [
+            16384,
+            576
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        },
+        {
+          "index": 252,
+          "name": "arith.constant84",
+          "shape": [
+            5
+          ],
+          "shape_signature": [
+            5
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 562,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_2/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;3",
+          "shape": [
+            1024,
+            16,
+            3,
+            2,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            16,
+            3,
+            2,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 269,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 563,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_2/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;4",
+          "shape": [
+            1024,
+            16,
+            1,
+            2,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            16,
+            1,
+            2,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 206,
+          "name": "arith.constant61",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 566,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_2/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;7",
+          "shape": [
+            1024,
+            16,
+            2,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            16,
+            2,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 270,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 564,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_2/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;5",
+          "shape": [
+            1024,
+            16,
+            1,
+            2,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            16,
+            1,
+            2,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 206,
+          "name": "arith.constant61",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 567,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_2/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;8",
+          "shape": [
+            1024,
+            16,
+            2,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            16,
+            2,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 271,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 565,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_2/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;6",
+          "shape": [
+            1024,
+            16,
+            1,
+            2,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            16,
+            1,
+            2,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 206,
+          "name": "arith.constant61",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 568,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_2/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;9",
+          "shape": [
+            1024,
+            16,
+            2,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            16,
+            2,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 288,
+      "opcode": "BROADCAST_TO",
+      "inputs": [
+        {
+          "index": 185,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_2/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;",
+          "shape": [
+            192,
+            192
+          ],
+          "shape_signature": [
+            192,
+            192
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        },
+        {
+          "index": 254,
+          "name": "arith.constant86",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int64"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 585,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_2/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;3",
+          "shape": [
+            1024,
+            4,
+            192,
+            192
+          ],
+          "shape_signature": [
+            1024,
+            4,
+            192,
+            192
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 293,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 589,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_2/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;7",
+          "shape": [
+            1024,
+            4,
+            4,
+            192
+          ],
+          "shape_signature": [
+            1024,
+            4,
+            4,
+            192
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 194,
+          "name": "arith.constant54",
+          "shape": [
+            6
+          ],
+          "shape_signature": [
+            6
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 590,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_2;2",
+          "shape": [
+            1,
+            32,
+            32,
+            4,
+            4,
+            192
+          ],
+          "shape_signature": [
+            1,
+            32,
+            32,
+            4,
+            4,
+            192
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 295,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 591,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_2;3",
+          "shape": [
+            1,
+            32,
+            4,
+            32,
+            4,
+            192
+          ],
+          "shape_signature": [
+            1,
+            32,
+            4,
+            32,
+            4,
+            192
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        },
+        {
+          "index": 193,
+          "name": "arith.constant53",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 592,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_2;4",
+          "shape": [
+            1,
+            128,
+            128,
+            192
+          ],
+          "shape_signature": [
+            1,
+            128,
+            128,
+            192
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 333,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 626,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_3/torch.nn.modules.normalization.LayerNorm_norm1;14",
+          "shape": [
+            1,
+            16384,
+            192
+          ],
+          "shape_signature": [
+            1,
+            16384,
+            192
+          ],
+          "rank": 3,
+          "dtype": "float32"
+        },
+        {
+          "index": 189,
+          "name": "arith.constant49",
+          "shape": [
+            6
+          ],
+          "shape_signature": [
+            6
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 630,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_3;1",
+          "shape": [
+            1,
+            32,
+            4,
+            32,
+            4,
+            192
+          ],
+          "shape_signature": [
+            1,
+            32,
+            4,
+            32,
+            4,
+            192
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 335,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 631,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_3;2",
+          "shape": [
+            1,
+            32,
+            32,
+            4,
+            4,
+            192
+          ],
+          "shape_signature": [
+            1,
+            32,
+            32,
+            4,
+            4,
+            192
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        },
+        {
+          "index": 191,
+          "name": "arith.constant51",
+          "shape": [
+            2
+          ],
+          "shape_signature": [
+            2
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 632,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_3/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_qkv;2",
+          "shape": [
+            16384,
+            192
+          ],
+          "shape_signature": [
+            16384,
+            192
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 337,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 633,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_3/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_qkv;3",
+          "shape": [
+            16384,
+            1152
+          ],
+          "shape_signature": [
+            16384,
+            1152
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        },
+        {
+          "index": 251,
+          "name": "arith.constant83",
+          "shape": [
+            5
+          ],
+          "shape_signature": [
+            5
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 634,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_3/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;6",
+          "shape": [
+            1024,
+            16,
+            3,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            16,
+            3,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 341,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 636,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_3/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;8",
+          "shape": [
+            1024,
+            16,
+            1,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            16,
+            1,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 183,
+          "name": "arith.constant48",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 638,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_3/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;10",
+          "shape": [
+            1024,
+            16,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            16,
+            4,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 342,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 637,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_3/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;9",
+          "shape": [
+            1024,
+            16,
+            1,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            16,
+            1,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 183,
+          "name": "arith.constant48",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 639,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_3/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;11",
+          "shape": [
+            1024,
+            16,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            16,
+            4,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 343,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 635,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_3/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;7",
+          "shape": [
+            1024,
+            16,
+            1,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1024,
+            16,
+            1,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 182,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_3/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;5",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 640,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_3/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;12",
+          "shape": [
+            1024,
+            4,
+            4,
+            384
+          ],
+          "shape_signature": [
+            1024,
+            4,
+            4,
+            384
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 362,
+      "opcode": "BROADCAST_TO",
+      "inputs": [
+        {
+          "index": 175,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_3/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;3",
+          "shape": [
+            384,
+            384
+          ],
+          "shape_signature": [
+            384,
+            384
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        },
+        {
+          "index": 250,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_3/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;4",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int64"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 659,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_3/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;7",
+          "shape": [
+            1024,
+            2,
+            384,
+            384
+          ],
+          "shape_signature": [
+            1024,
+            2,
+            384,
+            384
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 367,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 663,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_3/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;11",
+          "shape": [
+            1024,
+            2,
+            2,
+            384
+          ],
+          "shape_signature": [
+            1024,
+            2,
+            2,
+            384
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 171,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_3;",
+          "shape": [
+            6
+          ],
+          "shape_signature": [
+            6
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 664,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_3;3",
+          "shape": [
+            1,
+            32,
+            32,
+            2,
+            2,
+            384
+          ],
+          "shape_signature": [
+            1,
+            32,
+            32,
+            2,
+            2,
+            384
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 369,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 665,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_3;4",
+          "shape": [
+            1,
+            32,
+            2,
+            32,
+            2,
+            384
+          ],
+          "shape_signature": [
+            1,
+            32,
+            2,
+            32,
+            2,
+            384
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        },
+        {
+          "index": 246,
+          "name": "arith.constant79",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 666,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_3;5",
+          "shape": [
+            1,
+            64,
+            64,
+            384
+          ],
+          "shape_signature": [
+            1,
+            64,
+            64,
+            384
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 406,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 702,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_4;",
+          "shape": [
+            1,
+            70,
+            70,
+            384
+          ],
+          "shape_signature": [
+            1,
+            70,
+            70,
+            384
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 168,
+          "name": "arith.constant44",
+          "shape": [
+            6
+          ],
+          "shape_signature": [
+            6
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 703,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_4;1",
+          "shape": [
+            1,
+            5,
+            14,
+            5,
+            14,
+            384
+          ],
+          "shape_signature": [
+            1,
+            5,
+            14,
+            5,
+            14,
+            384
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 408,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 704,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_4;2",
+          "shape": [
+            1,
+            5,
+            5,
+            14,
+            14,
+            384
+          ],
+          "shape_signature": [
+            1,
+            5,
+            5,
+            14,
+            14,
+            384
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        },
+        {
+          "index": 167,
+          "name": "arith.constant43",
+          "shape": [
+            2
+          ],
+          "shape_signature": [
+            2
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 705,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_4/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_qkv;2",
+          "shape": [
+            4900,
+            384
+          ],
+          "shape_signature": [
+            4900,
+            384
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 410,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 706,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_4/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_qkv;3",
+          "shape": [
+            4900,
+            1152
+          ],
+          "shape_signature": [
+            4900,
+            1152
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        },
+        {
+          "index": 248,
+          "name": "arith.constant81",
+          "shape": [
+            5
+          ],
+          "shape_signature": [
+            5
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 707,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_4/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;",
+          "shape": [
+            25,
+            196,
+            3,
+            4,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            3,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 414,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 708,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_4/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;1",
+          "shape": [
+            25,
+            196,
+            1,
+            4,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            1,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 166,
+          "name": "arith.constant42",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 711,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_4/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;4",
+          "shape": [
+            25,
+            196,
+            4,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            4,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 415,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 709,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_4/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;2",
+          "shape": [
+            25,
+            196,
+            1,
+            4,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            1,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 166,
+          "name": "arith.constant42",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 712,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_4/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;5",
+          "shape": [
+            25,
+            196,
+            4,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            4,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 416,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 710,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_4/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;3",
+          "shape": [
+            25,
+            196,
+            1,
+            4,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            1,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 166,
+          "name": "arith.constant42",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 713,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_4/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;6",
+          "shape": [
+            25,
+            196,
+            4,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            4,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 433,
+      "opcode": "BROADCAST_TO",
+      "inputs": [
+        {
+          "index": 160,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_4/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;",
+          "shape": [
+            384,
+            384
+          ],
+          "shape_signature": [
+            384,
+            384
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        },
+        {
+          "index": 247,
+          "name": "arith.constant80",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int64"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 730,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_4/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;3",
+          "shape": [
+            25,
+            14,
+            384,
+            384
+          ],
+          "shape_signature": [
+            25,
+            14,
+            384,
+            384
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 438,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 734,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_4/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;7",
+          "shape": [
+            25,
+            14,
+            14,
+            384
+          ],
+          "shape_signature": [
+            25,
+            14,
+            14,
+            384
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 156,
+          "name": "arith.constant33",
+          "shape": [
+            6
+          ],
+          "shape_signature": [
+            6
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 735,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_4;3",
+          "shape": [
+            1,
+            5,
+            5,
+            14,
+            14,
+            384
+          ],
+          "shape_signature": [
+            1,
+            5,
+            5,
+            14,
+            14,
+            384
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 440,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 736,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_4;4",
+          "shape": [
+            1,
+            5,
+            14,
+            5,
+            14,
+            384
+          ],
+          "shape_signature": [
+            1,
+            5,
+            14,
+            5,
+            14,
+            384
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        },
+        {
+          "index": 155,
+          "name": "arith.constant32",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 737,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_4;5",
+          "shape": [
+            1,
+            70,
+            70,
+            384
+          ],
+          "shape_signature": [
+            1,
+            70,
+            70,
+            384
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 476,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 772,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_5/torch.nn.modules.normalization.LayerNorm_norm1;;tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_5/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_qkv;1",
+          "shape": [
+            1,
+            4096,
+            1152
+          ],
+          "shape_signature": [
+            1,
+            4096,
+            1152
+          ],
+          "rank": 3,
+          "dtype": "float32"
+        },
+        {
+          "index": 245,
+          "name": "arith.constant78",
+          "shape": [
+            5
+          ],
+          "shape_signature": [
+            5
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 773,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_5/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;",
+          "shape": [
+            1,
+            4096,
+            3,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1,
+            4096,
+            3,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 480,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 774,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_5/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;1",
+          "shape": [
+            1,
+            4096,
+            1,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1,
+            4096,
+            1,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 154,
+          "name": "arith.constant31",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 777,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_5/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;4",
+          "shape": [
+            1,
+            4096,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1,
+            4096,
+            4,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 481,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 775,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_5/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;2",
+          "shape": [
+            1,
+            4096,
+            1,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1,
+            4096,
+            1,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 154,
+          "name": "arith.constant31",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 778,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_5/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;5",
+          "shape": [
+            1,
+            4096,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1,
+            4096,
+            4,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 482,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 776,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_5/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;3",
+          "shape": [
+            1,
+            4096,
+            1,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1,
+            4096,
+            1,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 154,
+          "name": "arith.constant31",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 779,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_5/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;6",
+          "shape": [
+            1,
+            4096,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1,
+            4096,
+            4,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 536,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 832,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_6;",
+          "shape": [
+            1,
+            70,
+            70,
+            384
+          ],
+          "shape_signature": [
+            1,
+            70,
+            70,
+            384
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 168,
+          "name": "arith.constant44",
+          "shape": [
+            6
+          ],
+          "shape_signature": [
+            6
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 833,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_6;1",
+          "shape": [
+            1,
+            5,
+            14,
+            5,
+            14,
+            384
+          ],
+          "shape_signature": [
+            1,
+            5,
+            14,
+            5,
+            14,
+            384
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 538,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 834,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_6;2",
+          "shape": [
+            1,
+            5,
+            5,
+            14,
+            14,
+            384
+          ],
+          "shape_signature": [
+            1,
+            5,
+            5,
+            14,
+            14,
+            384
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        },
+        {
+          "index": 167,
+          "name": "arith.constant43",
+          "shape": [
+            2
+          ],
+          "shape_signature": [
+            2
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 835,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_6/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_qkv;2",
+          "shape": [
+            4900,
+            384
+          ],
+          "shape_signature": [
+            4900,
+            384
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 540,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 836,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_6/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_qkv;3",
+          "shape": [
+            4900,
+            1152
+          ],
+          "shape_signature": [
+            4900,
+            1152
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        },
+        {
+          "index": 248,
+          "name": "arith.constant81",
+          "shape": [
+            5
+          ],
+          "shape_signature": [
+            5
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 837,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_6/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;",
+          "shape": [
+            25,
+            196,
+            3,
+            4,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            3,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 544,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 838,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_6/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;1",
+          "shape": [
+            25,
+            196,
+            1,
+            4,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            1,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 166,
+          "name": "arith.constant42",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 841,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_6/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;4",
+          "shape": [
+            25,
+            196,
+            4,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            4,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 545,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 839,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_6/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;2",
+          "shape": [
+            25,
+            196,
+            1,
+            4,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            1,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 166,
+          "name": "arith.constant42",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 842,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_6/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;5",
+          "shape": [
+            25,
+            196,
+            4,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            4,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 546,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 840,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_6/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;3",
+          "shape": [
+            25,
+            196,
+            1,
+            4,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            1,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 166,
+          "name": "arith.constant42",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 843,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_6/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;6",
+          "shape": [
+            25,
+            196,
+            4,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            4,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 563,
+      "opcode": "BROADCAST_TO",
+      "inputs": [
+        {
+          "index": 148,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_6/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;",
+          "shape": [
+            384,
+            384
+          ],
+          "shape_signature": [
+            384,
+            384
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        },
+        {
+          "index": 247,
+          "name": "arith.constant80",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int64"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 860,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_6/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;3",
+          "shape": [
+            25,
+            14,
+            384,
+            384
+          ],
+          "shape_signature": [
+            25,
+            14,
+            384,
+            384
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 568,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 864,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_6/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;7",
+          "shape": [
+            25,
+            14,
+            14,
+            384
+          ],
+          "shape_signature": [
+            25,
+            14,
+            14,
+            384
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 156,
+          "name": "arith.constant33",
+          "shape": [
+            6
+          ],
+          "shape_signature": [
+            6
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 865,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_6;3",
+          "shape": [
+            1,
+            5,
+            5,
+            14,
+            14,
+            384
+          ],
+          "shape_signature": [
+            1,
+            5,
+            5,
+            14,
+            14,
+            384
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 570,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 866,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_6;4",
+          "shape": [
+            1,
+            5,
+            14,
+            5,
+            14,
+            384
+          ],
+          "shape_signature": [
+            1,
+            5,
+            14,
+            5,
+            14,
+            384
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        },
+        {
+          "index": 155,
+          "name": "arith.constant32",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 867,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_6;5",
+          "shape": [
+            1,
+            70,
+            70,
+            384
+          ],
+          "shape_signature": [
+            1,
+            70,
+            70,
+            384
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 606,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 902,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_7/torch.nn.modules.normalization.LayerNorm_norm1;;tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_7/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_qkv;1",
+          "shape": [
+            1,
+            4096,
+            1152
+          ],
+          "shape_signature": [
+            1,
+            4096,
+            1152
+          ],
+          "rank": 3,
+          "dtype": "float32"
+        },
+        {
+          "index": 245,
+          "name": "arith.constant78",
+          "shape": [
+            5
+          ],
+          "shape_signature": [
+            5
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 903,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_7/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;",
+          "shape": [
+            1,
+            4096,
+            3,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1,
+            4096,
+            3,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 610,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 904,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_7/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;1",
+          "shape": [
+            1,
+            4096,
+            1,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1,
+            4096,
+            1,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 154,
+          "name": "arith.constant31",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 907,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_7/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;4",
+          "shape": [
+            1,
+            4096,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1,
+            4096,
+            4,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 611,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 905,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_7/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;2",
+          "shape": [
+            1,
+            4096,
+            1,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1,
+            4096,
+            1,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 154,
+          "name": "arith.constant31",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 908,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_7/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;5",
+          "shape": [
+            1,
+            4096,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1,
+            4096,
+            4,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 612,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 906,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_7/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;3",
+          "shape": [
+            1,
+            4096,
+            1,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1,
+            4096,
+            1,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 154,
+          "name": "arith.constant31",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 909,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_7/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;6",
+          "shape": [
+            1,
+            4096,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1,
+            4096,
+            4,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 666,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 962,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_8;",
+          "shape": [
+            1,
+            70,
+            70,
+            384
+          ],
+          "shape_signature": [
+            1,
+            70,
+            70,
+            384
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 168,
+          "name": "arith.constant44",
+          "shape": [
+            6
+          ],
+          "shape_signature": [
+            6
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 963,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_8;1",
+          "shape": [
+            1,
+            5,
+            14,
+            5,
+            14,
+            384
+          ],
+          "shape_signature": [
+            1,
+            5,
+            14,
+            5,
+            14,
+            384
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 668,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 964,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_8;2",
+          "shape": [
+            1,
+            5,
+            5,
+            14,
+            14,
+            384
+          ],
+          "shape_signature": [
+            1,
+            5,
+            5,
+            14,
+            14,
+            384
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        },
+        {
+          "index": 167,
+          "name": "arith.constant43",
+          "shape": [
+            2
+          ],
+          "shape_signature": [
+            2
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 965,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_8/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_qkv;2",
+          "shape": [
+            4900,
+            384
+          ],
+          "shape_signature": [
+            4900,
+            384
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 670,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 966,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_8/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_qkv;3",
+          "shape": [
+            4900,
+            1152
+          ],
+          "shape_signature": [
+            4900,
+            1152
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        },
+        {
+          "index": 248,
+          "name": "arith.constant81",
+          "shape": [
+            5
+          ],
+          "shape_signature": [
+            5
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 967,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_8/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;",
+          "shape": [
+            25,
+            196,
+            3,
+            4,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            3,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 674,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 968,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_8/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;1",
+          "shape": [
+            25,
+            196,
+            1,
+            4,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            1,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 166,
+          "name": "arith.constant42",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 971,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_8/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;4",
+          "shape": [
+            25,
+            196,
+            4,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            4,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 675,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 969,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_8/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;2",
+          "shape": [
+            25,
+            196,
+            1,
+            4,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            1,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 166,
+          "name": "arith.constant42",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 972,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_8/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;5",
+          "shape": [
+            25,
+            196,
+            4,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            4,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 676,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 970,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_8/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;3",
+          "shape": [
+            25,
+            196,
+            1,
+            4,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            1,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 166,
+          "name": "arith.constant42",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 973,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_8/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;6",
+          "shape": [
+            25,
+            196,
+            4,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            4,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 693,
+      "opcode": "BROADCAST_TO",
+      "inputs": [
+        {
+          "index": 147,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_8/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;",
+          "shape": [
+            384,
+            384
+          ],
+          "shape_signature": [
+            384,
+            384
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        },
+        {
+          "index": 247,
+          "name": "arith.constant80",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int64"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 990,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_8/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;3",
+          "shape": [
+            25,
+            14,
+            384,
+            384
+          ],
+          "shape_signature": [
+            25,
+            14,
+            384,
+            384
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 698,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 994,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_8/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;7",
+          "shape": [
+            25,
+            14,
+            14,
+            384
+          ],
+          "shape_signature": [
+            25,
+            14,
+            14,
+            384
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 156,
+          "name": "arith.constant33",
+          "shape": [
+            6
+          ],
+          "shape_signature": [
+            6
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 995,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_8;3",
+          "shape": [
+            1,
+            5,
+            5,
+            14,
+            14,
+            384
+          ],
+          "shape_signature": [
+            1,
+            5,
+            5,
+            14,
+            14,
+            384
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 700,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 996,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_8;4",
+          "shape": [
+            1,
+            5,
+            14,
+            5,
+            14,
+            384
+          ],
+          "shape_signature": [
+            1,
+            5,
+            14,
+            5,
+            14,
+            384
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        },
+        {
+          "index": 155,
+          "name": "arith.constant32",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 997,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_8;5",
+          "shape": [
+            1,
+            70,
+            70,
+            384
+          ],
+          "shape_signature": [
+            1,
+            70,
+            70,
+            384
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 736,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 1032,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_9/torch.nn.modules.normalization.LayerNorm_norm1;;tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_9/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_qkv;1",
+          "shape": [
+            1,
+            4096,
+            1152
+          ],
+          "shape_signature": [
+            1,
+            4096,
+            1152
+          ],
+          "rank": 3,
+          "dtype": "float32"
+        },
+        {
+          "index": 245,
+          "name": "arith.constant78",
+          "shape": [
+            5
+          ],
+          "shape_signature": [
+            5
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 1033,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_9/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;",
+          "shape": [
+            1,
+            4096,
+            3,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1,
+            4096,
+            3,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 740,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 1034,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_9/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;1",
+          "shape": [
+            1,
+            4096,
+            1,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1,
+            4096,
+            1,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 154,
+          "name": "arith.constant31",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 1037,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_9/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;4",
+          "shape": [
+            1,
+            4096,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1,
+            4096,
+            4,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 741,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 1035,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_9/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;2",
+          "shape": [
+            1,
+            4096,
+            1,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1,
+            4096,
+            1,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 154,
+          "name": "arith.constant31",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 1038,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_9/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;5",
+          "shape": [
+            1,
+            4096,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1,
+            4096,
+            4,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 742,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 1036,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_9/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;3",
+          "shape": [
+            1,
+            4096,
+            1,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1,
+            4096,
+            1,
+            4,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 154,
+          "name": "arith.constant31",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 1039,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_9/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;6",
+          "shape": [
+            1,
+            4096,
+            4,
+            96
+          ],
+          "shape_signature": [
+            1,
+            4096,
+            4,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 799,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 1095,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_10;",
+          "shape": [
+            1,
+            70,
+            70,
+            384
+          ],
+          "shape_signature": [
+            1,
+            70,
+            70,
+            384
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 168,
+          "name": "arith.constant44",
+          "shape": [
+            6
+          ],
+          "shape_signature": [
+            6
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 1096,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_10;1",
+          "shape": [
+            1,
+            5,
+            14,
+            5,
+            14,
+            384
+          ],
+          "shape_signature": [
+            1,
+            5,
+            14,
+            5,
+            14,
+            384
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 801,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 1097,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_10;2",
+          "shape": [
+            1,
+            5,
+            5,
+            14,
+            14,
+            384
+          ],
+          "shape_signature": [
+            1,
+            5,
+            5,
+            14,
+            14,
+            384
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        },
+        {
+          "index": 167,
+          "name": "arith.constant43",
+          "shape": [
+            2
+          ],
+          "shape_signature": [
+            2
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 1098,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_10/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_qkv;2",
+          "shape": [
+            4900,
+            384
+          ],
+          "shape_signature": [
+            4900,
+            384
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 803,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 1099,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_10/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_qkv;3",
+          "shape": [
+            4900,
+            2304
+          ],
+          "shape_signature": [
+            4900,
+            2304
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        },
+        {
+          "index": 244,
+          "name": "arith.constant77",
+          "shape": [
+            5
+          ],
+          "shape_signature": [
+            5
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 1100,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_10/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;5",
+          "shape": [
+            25,
+            196,
+            3,
+            8,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            3,
+            8,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 807,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 1102,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_10/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;7",
+          "shape": [
+            25,
+            196,
+            1,
+            8,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            1,
+            8,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 145,
+          "name": "arith.constant25",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 1104,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_10/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;9",
+          "shape": [
+            25,
+            196,
+            8,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            8,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 808,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 1103,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_10/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;8",
+          "shape": [
+            25,
+            196,
+            1,
+            8,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            1,
+            8,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 145,
+          "name": "arith.constant25",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 1105,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_10/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;10",
+          "shape": [
+            25,
+            196,
+            8,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            8,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 809,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 1101,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_10/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;6",
+          "shape": [
+            25,
+            196,
+            1,
+            8,
+            96
+          ],
+          "shape_signature": [
+            25,
+            196,
+            1,
+            8,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 144,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_10/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;4",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 1106,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_10/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;11",
+          "shape": [
+            25,
+            14,
+            14,
+            768
+          ],
+          "shape_signature": [
+            25,
+            14,
+            14,
+            768
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 828,
+      "opcode": "BROADCAST_TO",
+      "inputs": [
+        {
+          "index": 136,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_10/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;",
+          "shape": [
+            768,
+            768
+          ],
+          "shape_signature": [
+            768,
+            768
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        },
+        {
+          "index": 243,
+          "name": "arith.constant76",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int64"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 1125,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_10/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;3",
+          "shape": [
+            25,
+            7,
+            768,
+            768
+          ],
+          "shape_signature": [
+            25,
+            7,
+            768,
+            768
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 833,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 1129,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_10/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;7",
+          "shape": [
+            25,
+            7,
+            7,
+            768
+          ],
+          "shape_signature": [
+            25,
+            7,
+            7,
+            768
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 132,
+          "name": "arith.constant18",
+          "shape": [
+            6
+          ],
+          "shape_signature": [
+            6
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 1130,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_10;3",
+          "shape": [
+            1,
+            5,
+            5,
+            7,
+            7,
+            768
+          ],
+          "shape_signature": [
+            1,
+            5,
+            5,
+            7,
+            7,
+            768
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 835,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 1131,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_10;4",
+          "shape": [
+            1,
+            5,
+            7,
+            5,
+            7,
+            768
+          ],
+          "shape_signature": [
+            1,
+            5,
+            7,
+            5,
+            7,
+            768
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        },
+        {
+          "index": 131,
+          "name": "arith.constant17",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 1132,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_10;5",
+          "shape": [
+            1,
+            35,
+            35,
+            768
+          ],
+          "shape_signature": [
+            1,
+            35,
+            35,
+            768
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 874,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 1170,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_11;2",
+          "shape": [
+            1,
+            35,
+            35,
+            768
+          ],
+          "shape_signature": [
+            1,
+            35,
+            35,
+            768
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 128,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_11;1",
+          "shape": [
+            6
+          ],
+          "shape_signature": [
+            6
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 1171,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_11;3",
+          "shape": [
+            1,
+            5,
+            7,
+            5,
+            7,
+            768
+          ],
+          "shape_signature": [
+            1,
+            5,
+            7,
+            5,
+            7,
+            768
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 876,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 1172,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_11;4",
+          "shape": [
+            1,
+            5,
+            5,
+            7,
+            7,
+            768
+          ],
+          "shape_signature": [
+            1,
+            5,
+            5,
+            7,
+            7,
+            768
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        },
+        {
+          "index": 127,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_11/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_qkv;2",
+          "shape": [
+            2
+          ],
+          "shape_signature": [
+            2
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 1173,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_11/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_qkv;3",
+          "shape": [
+            1225,
+            768
+          ],
+          "shape_signature": [
+            1225,
+            768
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 878,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 1174,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_11/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_qkv;4",
+          "shape": [
+            1225,
+            2304
+          ],
+          "shape_signature": [
+            1225,
+            2304
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        },
+        {
+          "index": 240,
+          "name": "arith.constant73",
+          "shape": [
+            5
+          ],
+          "shape_signature": [
+            5
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 1175,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_11/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;3",
+          "shape": [
+            25,
+            49,
+            3,
+            8,
+            96
+          ],
+          "shape_signature": [
+            25,
+            49,
+            3,
+            8,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 882,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 1176,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_11/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;4",
+          "shape": [
+            25,
+            49,
+            1,
+            8,
+            96
+          ],
+          "shape_signature": [
+            25,
+            49,
+            1,
+            8,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 143,
+          "name": "arith.constant24",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 1179,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_11/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;7",
+          "shape": [
+            25,
+            49,
+            8,
+            96
+          ],
+          "shape_signature": [
+            25,
+            49,
+            8,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 883,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 1177,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_11/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;5",
+          "shape": [
+            25,
+            49,
+            1,
+            8,
+            96
+          ],
+          "shape_signature": [
+            25,
+            49,
+            1,
+            8,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 143,
+          "name": "arith.constant24",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 1180,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_11/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;8",
+          "shape": [
+            25,
+            49,
+            8,
+            96
+          ],
+          "shape_signature": [
+            25,
+            49,
+            8,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 884,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 1178,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_11/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;6",
+          "shape": [
+            25,
+            49,
+            1,
+            8,
+            96
+          ],
+          "shape_signature": [
+            25,
+            49,
+            1,
+            8,
+            96
+          ],
+          "rank": 5,
+          "dtype": "float32"
+        },
+        {
+          "index": 143,
+          "name": "arith.constant24",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 1181,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_11/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn;9",
+          "shape": [
+            25,
+            49,
+            8,
+            96
+          ],
+          "shape_signature": [
+            25,
+            49,
+            8,
+            96
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 901,
+      "opcode": "BROADCAST_TO",
+      "inputs": [
+        {
+          "index": 123,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_11/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;",
+          "shape": [
+            768,
+            768
+          ],
+          "shape_signature": [
+            768,
+            768
+          ],
+          "rank": 2,
+          "dtype": "float32"
+        },
+        {
+          "index": 243,
+          "name": "arith.constant76",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int64"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 1198,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_11/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;3",
+          "shape": [
+            25,
+            7,
+            768,
+            768
+          ],
+          "shape_signature": [
+            25,
+            7,
+            768,
+            768
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 906,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 1202,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_11/sam2.modeling.backbones.hieradet.MultiScaleAttention_attn/torch.nn.modules.linear.Linear_proj;7",
+          "shape": [
+            25,
+            7,
+            7,
+            768
+          ],
+          "shape_signature": [
+            25,
+            7,
+            7,
+            768
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        },
+        {
+          "index": 132,
+          "name": "arith.constant18",
+          "shape": [
+            6
+          ],
+          "shape_signature": [
+            6
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 1203,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_11;5",
+          "shape": [
+            1,
+            5,
+            5,
+            7,
+            7,
+            768
+          ],
+          "shape_signature": [
+            1,
+            5,
+            5,
+            7,
+            7,
+            768
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        }
+      ]
+    },
+    {
+      "op_index": 908,
+      "opcode": "RESHAPE",
+      "inputs": [
+        {
+          "index": 1204,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_11;6",
+          "shape": [
+            1,
+            5,
+            7,
+            5,
+            7,
+            768
+          ],
+          "shape_signature": [
+            1,
+            5,
+            7,
+            5,
+            7,
+            768
+          ],
+          "rank": 6,
+          "dtype": "float32"
+        },
+        {
+          "index": 131,
+          "name": "arith.constant17",
+          "shape": [
+            4
+          ],
+          "shape_signature": [
+            4
+          ],
+          "rank": 1,
+          "dtype": "int32"
+        }
+      ],
+      "outputs": [
+        {
+          "index": 1205,
+          "name": "tools.sam2_onnx.export.export_image_features.Sam2ImageFeaturesExporter/sam2.modeling.backbones.image_encoder.ImageEncoder_image_encoder/sam2.modeling.backbones.hieradet.Hiera_trunk/sam2.modeling.backbones.hieradet.MultiScaleBlock_11;7",
+          "shape": [
+            1,
+            35,
+            35,
+            768
+          ],
+          "shape_signature": [
+            1,
+            35,
+            35,
+            768
+          ],
+          "rank": 4,
+          "dtype": "float32"
+        }
+      ]
+    }
+  ]
+}

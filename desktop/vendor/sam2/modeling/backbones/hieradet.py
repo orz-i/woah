@@ -82,7 +82,10 @@ class MultiScaleAttention(nn.Module):
         x = x.transpose(1, 2)
         x = x.reshape(B, H, W, -1)
 
-        x = self.proj(x)
+        # Keep Linear input 2D so LiteRT lowers this to a normal fully-connected
+        # op instead of broadcasting the [C, C] weight across window/batch dims.
+        x = self.proj(x.reshape(B * H * W, self.dim_out))
+        x = x.reshape(B, H, W, self.dim_out)
 
         return x
 
@@ -230,6 +233,11 @@ class Hiera(nn.Module):
         self.pos_embed_window = nn.Parameter(
             torch.zeros(1, embed_dim, self.window_spec[0], self.window_spec[0])
         )
+        # Export-only cache populated after checkpoint loading.  Keeping this as
+        # a plain Python cache avoids changing the state_dict or normal training
+        # semantics.  For the fixed 1024x1024 LiteRT image encoder input, the
+        # corresponding trunk feature size is fixed at 256x256.
+        self._litert_export_pos_embed_cache = {}
 
         dpr = [
             x.item() for x in torch.linspace(0, drop_path_rate, depth)
@@ -276,7 +284,7 @@ class Hiera(nn.Module):
                 chkpt = torch.load(f, map_location="cpu")
             logging.info("loading Hiera", self.load_state_dict(chkpt, strict=False))
 
-    def _get_pos_embed(self, hw: Tuple[int, int]) -> torch.Tensor:
+    def _compute_pos_embed(self, hw: Tuple[int, int]) -> torch.Tensor:
         h, w = hw
         window_embed = self.pos_embed_window
         pos_embed = F.interpolate(self.pos_embed, size=(h, w), mode="bicubic")
@@ -285,6 +293,29 @@ class Hiera(nn.Module):
         window_embed_repeated = window_embed.repeat(1, 1, rep_h, rep_w)
         pos_embed = (pos_embed + window_embed_repeated).permute(0, 2, 3, 1)
         return pos_embed
+
+    @torch.no_grad()
+    def prepare_litert_export_pos_embed(self, hw: Tuple[int, int]) -> torch.Tensor:
+        """Precompute the exact fixed-resolution positional embedding for export.
+
+        LiteRT conversion of bicubic interpolation currently lowers the learned
+        7x7 positional embedding into BROADCAST_TO + GATHER_ND, and repeat/tile
+        adds another high-rank BROADCAST_TO.  Android LiteRT GPU rejects those
+        operators.  The image encoder contract is fixed-resolution, so compute
+        the exact same tensor once *after checkpoint loading* and expose it as a
+        conversion-time constant instead of changing interpolation semantics.
+        """
+        key = (int(hw[0]), int(hw[1]))
+        value = self._compute_pos_embed(key).detach()
+        self._litert_export_pos_embed_cache[key] = value
+        return value
+
+    def _get_pos_embed(self, hw: Tuple[int, int]) -> torch.Tensor:
+        key = (int(hw[0]), int(hw[1]))
+        cached = self._litert_export_pos_embed_cache.get(key)
+        if cached is not None:
+            return cached.to(device=self.pos_embed.device, dtype=self.pos_embed.dtype)
+        return self._compute_pos_embed(key)
 
     def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
         x = self.patch_embed(x)

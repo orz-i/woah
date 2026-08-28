@@ -1,10 +1,32 @@
-import litert_torch
-import ai_edge_litert
-import torch
-import ultralytics
+import importlib
+import sys
 
-print("LITERT_TORCH_VERSION:", getattr(litert_torch, "__version__", "unknown"))
-print("AI_EDGE_LITERT_VERSION:", getattr(ai_edge_litert, "__version__", "unknown"))
-print("TORCH_VERSION:", torch.__version__)
-print("ULTRALYTICS_VERSION:", ultralytics.__version__)
-print("ENV CHECK OK!")
+
+def load(name):
+    try:
+        return importlib.import_module(name), None
+    except Exception as exc:
+        return None, f"{type(exc).__name__}: {exc}"
+
+
+required = {
+    "litert_torch": "LiteRT Torch converter required to regenerate TFLite candidates",
+    "ai_edge_litert": "LiteRT interpreter required for CPU parity/static inspection",
+    "torch": "PyTorch reference/export runtime",
+    "ultralytics": "YOLO tooling",
+}
+
+failed = False
+for module_name, purpose in required.items():
+    module, error = load(module_name)
+    if module is None:
+        failed = True
+        print(f"{module_name}: MISSING ({purpose}) -> {error}")
+    else:
+        print(f"{module_name}: {getattr(module, '__version__', 'unknown')}")
+
+if failed:
+    print("ENV CHECK FAILED: restore the locked export toolchain before regenerating models.")
+    sys.exit(2)
+
+print("ENV CHECK OK")
