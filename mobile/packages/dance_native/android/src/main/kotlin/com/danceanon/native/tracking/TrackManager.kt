@@ -1004,6 +1004,7 @@ class TrackManager(
                 val isOccluded = freshlyMatchedOtherTracks.isNotEmpty()
 
                 if (isOccluded) {
+                    val wasAlreadyOccluded = track.state == TrackState.OCCLUDED
                     track.occludedFrames++
                     track.state = TrackState.OCCLUDED
                     track.occludedByTrackIds.clear()
@@ -1011,21 +1012,52 @@ class TrackManager(
                         track.occludedByTrackIds.add(other.id)
                     }
 
-                    // Anchor occluded track's motion to the primary occluder to prevent unanchored spatial drift
-                    val primaryOccluder = freshlyMatchedOtherTracks.first()
-                    val occluderDeltaX = primaryOccluder.currentPredictedBbox.centerX - primaryOccluder.lastObservedBbox.centerX
-                    val occluderDeltaY = primaryOccluder.currentPredictedBbox.centerY - primaryOccluder.lastObservedBbox.centerY
-                    val anchoredPredBox = track.lastObservedBbox.offset(occluderDeltaX, occluderDeltaY)
-                    track.currentPredictedBbox = anchoredPredBox
+                    // Occlusion motion must not be owned by an arbitrary single
+                    // foreground person.  Use a robust consensus of all fresh
+                    // overlapping tracks, then blend that group motion with this
+                    // identity's own Kalman prediction.  This keeps long
+                    // occlusions spatially bounded without making a selected
+                    // target visually follow one unselected person.
+                    val consensusDx = medianOf(
+                        freshlyMatchedOtherTracks.map {
+                            it.currentPredictedBbox.centerX - it.lastObservedBbox.centerX
+                        }
+                    )
+                    val consensusDy = medianOf(
+                        freshlyMatchedOtherTracks.map {
+                            it.currentPredictedBbox.centerY - it.lastObservedBbox.centerY
+                        }
+                    )
+                    val groupPredBox = track.lastObservedBbox.offset(consensusDx, consensusDy)
+                    val blendedPredBox = blendBboxes(predBox, groupPredBox, OCCLUSION_GROUP_MOTION_BLEND)
+                    track.currentPredictedBbox = blendedPredBox
 
-                    track.kalman.dampenVelocity(0.50f)
+                    val ownDx = predBox.centerX - track.lastObservedBbox.centerX
+                    val ownDy = predBox.centerY - track.lastObservedBbox.centerY
+                    val ownMotion = sqrt(ownDx * ownDx + ownDy * ownDy)
+                    val groupMotion = sqrt(consensusDx * consensusDx + consensusDy * consensusDy)
+                    val motionAgreement = if (ownMotion > 1e-3f && groupMotion > 1e-3f) {
+                        (ownDx * consensusDx + ownDy * consensusDy) / (ownMotion * groupMotion)
+                    } else {
+                        0f
+                    }
+                    val groupIsNearlyStatic = groupMotion < max(track.lastObservedBbox.width, track.lastObservedBbox.height) * 0.02f
+                    val motionDisagrees = groupIsNearlyStatic || motionAgreement < 0.25f
+
+                    // Preserve momentum while the identity prediction agrees with
+                    // the observed group's motion.  Only damp repeatedly when the
+                    // prediction is diverging from the group, which is the case
+                    // where long unobserved trajectories otherwise run away.
+                    if (!wasAlreadyOccluded || motionDisagrees) {
+                        track.kalman.dampenVelocity(0.50f)
+                    }
 
                     // STRICT REQUIREMENT: OCCLUDED state MUST NEVER generate rectangle fallback!
                     if (track.lastObservedMask != null) {
                         track.currentRenderMask = warpMask(
                             sourceMask = track.lastObservedMask!!,
                             prevBbox = track.lastObservedBbox,
-                            predBbox = anchoredPredBox,
+                            predBbox = blendedPredBox,
                             missedFrames = 0
                         )
                     }
@@ -1476,12 +1508,35 @@ class TrackManager(
 
     companion object {
         private const val ASSOCIATION_MASK_IOU_SAMPLE_STRIDE = 4
+        private const val OCCLUSION_GROUP_MOTION_BLEND = 0.50f
         private const val PROTECTED_GROUP_ACTIVE_MIN_BBOX_IOU = 0.35f
         private const val PROTECTED_GROUP_ACTIVE_MIN_MASK_IOU = 0.20f
         private const val PROTECTED_GROUP_REACQUIRE_MIN_BBOX_IOU = 0.45f
         private const val PROTECTED_GROUP_REACQUIRE_MIN_MASK_IOU = 0.25f
         private const val PROTECTED_RECOVERY_MIN_BBOX_IOU = 0.50f
         private const val PROTECTED_RECOVERY_MIN_MASK_IOU = 0.45f
+
+        fun medianOf(values: List<Float>): Float {
+            if (values.isEmpty()) return 0f
+            val sorted = values.sorted()
+            val mid = sorted.size / 2
+            return if (sorted.size % 2 == 1) {
+                sorted[mid]
+            } else {
+                (sorted[mid - 1] + sorted[mid]) * 0.5f
+            }
+        }
+
+        fun blendBboxes(own: FloatRect, group: FloatRect, groupWeight: Float): FloatRect {
+            val w = groupWeight.coerceIn(0f, 1f)
+            val ownWeight = 1f - w
+            return FloatRect(
+                left = own.left * ownWeight + group.left * w,
+                top = own.top * ownWeight + group.top * w,
+                right = own.right * ownWeight + group.right * w,
+                bottom = own.bottom * ownWeight + group.bottom * w
+            )
+        }
         const val LOST_WARP_MAX_FRAMES = 3
         const val LOST_MARGIN_TIER1_RATIO = 0.15f // 15% margin for frames 4..10
         const val LOST_MARGIN_TIER2_RATIO = 0.25f // 25% margin for frames > 10
