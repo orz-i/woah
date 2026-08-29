@@ -439,6 +439,7 @@ class ExportPipeline(
                     val renderTexType = com.danceanon.native.render.SourceTextureType.OES
                     val renderTexMatrix: FloatArray? = finalTexMatrix
                     var freshPrivacyClassEvidence = emptyList<com.danceanon.native.tracking.FreshPrivacyClassEvidence>()
+                    var freshSelectedCoveredTrackIds = emptySet<Int>()
                     var suppressedSelectedPrivacyTrackIds = emptySet<Int>()
                     var preferFreshPrivacyClassPrimary = false
 
@@ -705,6 +706,26 @@ class ExportPipeline(
                             } else {
                                 emptyList()
                             }
+                            val trackManagerFreshPrivacyEvidence = if (shouldInfer) {
+                                trackManager.getFreshPrivacyClassEvidence()
+                            } else {
+                                emptyList()
+                            }
+                            val temporalByDetectionIndex = temporalPrivacyEvidence.associateBy { it.detectionIndex }
+                            freshSelectedCoveredTrackIds = trackManagerFreshPrivacyEvidence.asSequence()
+                                .filter {
+                                    it.selectionClass == com.danceanon.native.tracking.PrivacySelectionClass.SELECTED &&
+                                        it.residualTrackIds.size == 1
+                                }
+                                .filter { runtimeEvidence ->
+                                    val temporal = temporalByDetectionIndex[runtimeEvidence.detectionIndex]
+                                    temporal != null &&
+                                        temporal.selectionClass == com.danceanon.native.tracking.PrivacySelectionClass.SELECTED &&
+                                        !temporal.conservativeUnknown
+                                }
+                                .map { it.residualTrackIds.first() }
+                                .filter { selectedIds.contains(it) }
+                                .toSet()
                             // QUALITY privacy composition is rooted in the initial
                             // analysis selection and current raw YOLO masks. Runtime
                             // TrackManager IDs stay diagnostic/identity state only;
@@ -785,6 +806,7 @@ class ExportPipeline(
                                 presentationTimeUs = ptsUs,
                                 textureType = renderTexType,
                                 freshPrivacyClassEvidence = freshPrivacyClassEvidence,
+                                freshSelectedCoveredTrackIds = freshSelectedCoveredTrackIds,
                                 suppressedSelectedPrivacyTrackIds = suppressedSelectedPrivacyTrackIds,
                                 preferFreshPrivacyClassPrimary = preferFreshPrivacyClassPrimary,
                                 expectedSelectedPrivacyCount = selectedIds.size

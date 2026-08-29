@@ -64,6 +64,7 @@ object PrivacyOcclusionResolver {
         foregroundFootYMarginRatio: Float = 0.05f,
         ptsUs: Long = 0L,
         freshClassEvidence: List<FreshPrivacyClassEvidence> = emptyList(),
+        freshSelectedCoveredTrackIds: Set<Int> = emptySet(),
         suppressedSelectedTrackIds: Set<Int> = emptySet(),
         preferFreshClassPrimary: Boolean = false,
         expectedSelectedCount: Int = 0
@@ -103,7 +104,7 @@ object PrivacyOcclusionResolver {
 
         if (useFreshPrimary) {
             val freshSelectedPersons = evidencePersons.filter { evidenceSelectedIds.contains(it.id) }
-            val freshSelectedSingletonResidualTrackIds = freshClassEvidence.asSequence()
+            val freshSelectedSingletonResidualTrackIds = freshSelectedCoveredTrackIds + freshClassEvidence.asSequence()
                 .filter {
                     it.selectionClass == PrivacySelectionClass.SELECTED &&
                         !it.conservativeUnknown &&

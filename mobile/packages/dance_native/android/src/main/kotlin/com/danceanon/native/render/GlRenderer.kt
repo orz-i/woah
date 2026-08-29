@@ -408,6 +408,7 @@ class GlRenderer : FrameRenderer {
         presentationTimeUs: Long,
         textureType: SourceTextureType = SourceTextureType.OES,
         freshPrivacyClassEvidence: List<com.danceanon.native.tracking.FreshPrivacyClassEvidence> = emptyList(),
+        freshSelectedCoveredTrackIds: Set<Int> = emptySet(),
         suppressedSelectedPrivacyTrackIds: Set<Int> = emptySet(),
         preferFreshPrivacyClassPrimary: Boolean = false,
         expectedSelectedPrivacyCount: Int = 0
@@ -494,6 +495,7 @@ class GlRenderer : FrameRenderer {
             selectedPersonIds = selectedPersonIds,
             ptsUs = presentationTimeUs,
             freshClassEvidence = freshPrivacyClassEvidence,
+            freshSelectedCoveredTrackIds = freshSelectedCoveredTrackIds,
             suppressedSelectedTrackIds = suppressedSelectedPrivacyTrackIds,
             preferFreshClassPrimary = preferFreshPrivacyClassPrimary,
             expectedSelectedCount = expectedSelectedPrivacyCount

@@ -360,6 +360,62 @@ class PrivacyFreshClassEvidenceTest {
     }
 
     @Test
+    fun externalFreshSelectedCoverageMetadataSuppressesDuplicateFallback() {
+        val staleDuplicateMask = rectMask(left = 5, top = 10, right = 17, bottom = 46)
+        val genuinelyMissingMask = rectMask(left = 24, top = 10, right = 36, bottom = 46)
+        val freshSelectedMask = rectMask(left = 43, top = 10, right = 55, bottom = 46)
+
+        val staleDuplicate = TrackedPerson(
+            id = 1,
+            bbox = FloatRect(50f, 100f, 170f, 460f),
+            mask = staleDuplicateMask,
+            confidence = 0.95f,
+            state = TrackState.REACQUIRING,
+            observedThisFrame = false,
+            missedFrames = 7
+        )
+        val genuinelyMissing = TrackedPerson(
+            id = 2,
+            bbox = FloatRect(240f, 100f, 360f, 460f),
+            mask = genuinelyMissingMask,
+            confidence = 0.95f,
+            state = TrackState.REACQUIRING,
+            observedThisFrame = false,
+            missedFrames = 2
+        )
+        val temporalFreshSelected = FreshPrivacyClassEvidence(
+            selectionClass = PrivacySelectionClass.SELECTED,
+            detectionIndex = 0,
+            detection = PersonDetection(
+                bbox = FloatRect(430f, 100f, 550f, 460f),
+                confidence = 0.98f,
+                mask = freshSelectedMask,
+                footY = 460f
+            ),
+            // This matches the real ExportPipeline path: temporal evidence does
+            // not carry TrackManager residual ids. Coverage metadata arrives via
+            // the dedicated side channel below.
+            residualTrackIds = emptySet()
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = listOf(staleDuplicate, genuinelyMissing),
+            selectedPersonIds = setOf(1, 2),
+            applyDilationToPrivacyTargets = false,
+            occluderErosionRadius = 0,
+            freshClassEvidence = listOf(temporalFreshSelected),
+            freshSelectedCoveredTrackIds = setOf(1),
+            preferFreshClassPrimary = true,
+            expectedSelectedCount = 2
+        )
+
+        val privacy = assertNotNull(resolved.privacyMask)
+        assertEquals(0, privacy.buffer.get(20 * 64 + 10).toInt() and 0xFF)
+        assertTrue((privacy.buffer.get(20 * 64 + 28).toInt() and 0xFF) > 0)
+        assertTrue((privacy.buffer.get(20 * 64 + 48).toInt() and 0xFF) > 0)
+    }
+
+    @Test
     fun freshPrimaryNeverUsesTrackedFallbackOnCurrentFreshUnselectedPerson() {
         val wrongFallbackMask = rectMask(left = 8, top = 10, right = 20, bottom = 46)
         val duplicateSelectedMask = rectMask(left = 43, top = 10, right = 55, bottom = 46)
