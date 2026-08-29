@@ -626,6 +626,111 @@ object PrivacyOcclusionResolver {
     }
 
     /**
+     * Safely merges independently resolved privacy groups.
+     *
+     * Each input privacyMask is already the per-target effective privacy after
+     * foreground carving. Its optional occluderMask is only the binary render
+     * guard for pixels that belonged to that group's pre-carve privacy but were
+     * approved as foreground holes. Reconstruct each group's pre-carve support,
+     * union the effective privacy separately, then rebuild one global render
+     * occluder. This guarantees that a hole approved for one selected target can
+     * never subtract privacy still owned by another selected target.
+     */
+    fun mergeResolvedMasks(parts: List<ResolvedCompositorMasks>): ResolvedCompositorMasks {
+        if (parts.isEmpty()) {
+            return ResolvedCompositorMasks(
+                privacyMask = null,
+                occluderMask = null,
+                hasPrivacy = false,
+                hasOccluder = false
+            )
+        }
+
+        for (part in parts) {
+            require(part.hasPrivacy == (part.privacyMask != null)) {
+                "Resolved privacy flag/mask mismatch"
+            }
+            require(part.hasOccluder == (part.occluderMask != null)) {
+                "Resolved occluder flag/mask mismatch"
+            }
+        }
+
+        val privacyParts = parts.filter { it.privacyMask != null }
+        if (privacyParts.isEmpty()) {
+            return ResolvedCompositorMasks(
+                privacyMask = null,
+                occluderMask = null,
+                hasPrivacy = false,
+                hasOccluder = false
+            )
+        }
+
+        val allMasks = privacyParts.flatMap { part ->
+            buildList {
+                add(requireNotNull(part.privacyMask))
+                part.occluderMask?.let(::add)
+            }
+        }
+        requireCompatibleResolvedMaskContracts(allMasks)
+
+        val effectivePrivacy = requireNotNull(
+            mergeMasks(privacyParts.map { requireNotNull(it.privacyMask) })
+        )
+        val reconstructedPreCarve = privacyParts.map { part ->
+            val privacy = requireNotNull(part.privacyMask)
+            val occluder = part.occluderMask
+            if (occluder == null) {
+                privacy
+            } else {
+                requireNotNull(mergeMasks(listOf(privacy, occluder)))
+            }
+        }
+        val mergedPreCarve = requireNotNull(mergeMasks(reconstructedPreCarve))
+        val globalOccluder = buildSafeRenderOccluderMask(
+            preCarvePrivacy = mergedPreCarve,
+            effectivePrivacy = effectivePrivacy
+        )
+
+        return ResolvedCompositorMasks(
+            privacyMask = effectivePrivacy,
+            occluderMask = globalOccluder,
+            hasPrivacy = true,
+            hasOccluder = globalOccluder != null
+        )
+    }
+
+    private fun requireCompatibleResolvedMaskContracts(masks: List<NativeMask>) {
+        if (masks.isEmpty()) return
+        val first = masks.first()
+        val expectedPixels = first.width * first.height
+        require(first.width > 0 && first.height > 0 && first.buffer.capacity() >= expectedPixels) {
+            "Invalid resolved mask buffer contract"
+        }
+
+        for (mask in masks.drop(1)) {
+            require(mask.width == first.width && mask.height == first.height) {
+                "Cannot merge resolved masks with different texture sizes: " +
+                    "${first.width}x${first.height} vs ${mask.width}x${mask.height}"
+            }
+            require(mask.originalWidth == first.originalWidth && mask.originalHeight == first.originalHeight) {
+                "Cannot merge resolved masks from different source frames"
+            }
+            require(mask.mapper == first.mapper) {
+                "Cannot merge resolved masks with different coordinate mappers"
+            }
+            require(mask.roiInProto == first.roiInProto) {
+                "Cannot merge resolved masks with different proto ROIs"
+            }
+            require(mask.samplingRect == first.samplingRect) {
+                "Cannot merge resolved masks with different sampling rects"
+            }
+            require(mask.buffer.capacity() >= expectedPixels) {
+                "Resolved mask buffer is smaller than its declared texture"
+            }
+        }
+    }
+
+    /**
      * In fresh-class-primary mode, TrackManager masks are fallback only. Keep at
      * most the number of missing selected-class detections, preferring tracks
      * that are spatially absent from the current fresh YOLO roster. Tracks that

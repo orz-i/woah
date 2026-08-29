@@ -230,6 +230,21 @@ policy. If a track appears in both lists, FULL_BODY wins, matching the original
 desktop behavior. This stage only establishes request semantics; the export and
 preview loops still do not call the face locator.
 
+### Resolved privacy group merge
+
+FULL_BODY and FACE_ONLY cannot share the current fresh-class resolver input
+directly: fresh selected YOLO evidence would expand a FACE_ONLY target back to a
+full-body mask. They are therefore designed as independently resolved privacy
+groups. `PrivacyOcclusionResolver.mergeResolvedMasks()` unions their already-carved
+effective privacy, reconstructs each group's pre-carve support from its safe render
+occluder, and then rebuilds exactly one global safe occluder. Unit coverage proves
+that a foreground hole approved for one selected target cannot carve privacy still
+owned by another selected target.
+
+`GlRenderer.render()` now accepts an optional `additionalResolvedPrivacy` value.
+When it is null (all existing callers), the original resolver path is unchanged.
+This is the compositor hook intended for FACE_ONLY export integration.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

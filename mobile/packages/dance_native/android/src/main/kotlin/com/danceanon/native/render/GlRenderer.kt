@@ -412,7 +412,8 @@ class GlRenderer : FrameRenderer {
         suppressedSelectedPrivacyTrackIds: Set<Int> = emptySet(),
         preferFreshPrivacyClassPrimary: Boolean = false,
         expectedSelectedPrivacyCount: Int = 0,
-        maxFallbackObservationAgeFrames: Int = 15
+        maxFallbackObservationAgeFrames: Int = 15,
+        additionalResolvedPrivacy: com.danceanon.native.privacy.ResolvedCompositorMasks? = null
     ) {
         GLES20.glViewport(0, 0, width, height)
         GLES20.glClearColor(0f, 0f, 0f, 1f)
@@ -491,7 +492,7 @@ class GlRenderer : FrameRenderer {
             )
         }
 
-        val resolved = com.danceanon.native.privacy.PrivacyOcclusionResolver.resolveMasks(
+        val primaryResolved = com.danceanon.native.privacy.PrivacyOcclusionResolver.resolveMasks(
             persons = persons,
             selectedPersonIds = selectedPersonIds,
             ptsUs = presentationTimeUs,
@@ -502,6 +503,13 @@ class GlRenderer : FrameRenderer {
             expectedSelectedCount = expectedSelectedPrivacyCount,
             maxFallbackObservationAgeFrames = maxFallbackObservationAgeFrames
         )
+        val resolved = if (additionalResolvedPrivacy == null) {
+            primaryResolved
+        } else {
+            com.danceanon.native.privacy.PrivacyOcclusionResolver.mergeResolvedMasks(
+                listOf(primaryResolved, additionalResolvedPrivacy)
+            )
+        }
         val hasSelected = resolved.hasPrivacy
         val hasOccluder = resolved.hasOccluder
 
