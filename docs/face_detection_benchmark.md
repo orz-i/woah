@@ -285,3 +285,28 @@ This still does not enable FACE_ONLY. The next architecture step is to adapt eac
 tracked person's effective privacy mask according to internal
 `NONE / FACE_ONLY / FULL_BODY` policy **before** the existing occlusion resolver,
 so clear unselected foreground keeps using the already-tested occluder logic.
+
+### Per-person privacy policy adapter
+
+`privacy/PersonPrivacyPolicyAdapter.kt` now proves that this policy can be expressed
+without creating a second compositor or tracker:
+
+- `NONE`: preserve the original YOLO person/mask but do not select it for privacy;
+  the person therefore remains available to the existing foreground-occluder logic.
+- `FULL_BODY`: preserve the existing tracked person and body mask unchanged.
+- `FACE_ONLY`: preserve the exact YOLO track ID, bbox, state, age, occlusion links,
+  and footY while substituting only the effective privacy mask with the generated
+  face mask.
+
+The adapter is fail-closed. If a requested FACE_ONLY mask is missing or incompatible
+with the current YOLO mask coordinate contract, it escalates that track to the
+available full-body mask for the frame. If neither a face mask nor a body mask is
+available, the adaptation is explicitly marked `readyForRender=false` with the
+unresolved track ID; a future runtime integration must stop/hold rather than render
+that privacy target transparently.
+
+Unit tests cover FACE_ONLY substitution, FULL_BODY escalation, incompatible-mask
+escalation, unresolved selected tracks, preservation of NONE persons as occlusion
+evidence, and a mixed FACE_ONLY + FULL_BODY + NONE frame passed directly through
+the existing `PrivacyOcclusionResolver`. The mixed test confirms the FACE_ONLY
+target's lower body stays clear while the FULL_BODY target remains private.
