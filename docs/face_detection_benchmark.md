@@ -218,6 +218,18 @@ MediaPipe IMAGE/CPU might invalidate the stable LiteRT YOLO runtime. It does not
 yet prove sustained mixed scheduling over a full export, which remains a later
 integration gate.
 
+### Request policy schema staging
+
+The Pigeon request schema now stages an optional `faceOnlyPersonIds` field on both
+preview and export requests. It is appended as a nullable field, so existing source
+callers do not need to provide it and retain the historical meaning of
+`selectedPersonIds` as FULL_BODY targets.
+
+`PersonPrivacyModeResolver` converts the two lists into the internal tri-state
+policy. If a track appears in both lists, FULL_BODY wins, matching the original
+desktop behavior. This stage only establishes request semantics; the export and
+preview loops still do not call the face locator.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

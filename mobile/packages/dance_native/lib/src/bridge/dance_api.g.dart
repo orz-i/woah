@@ -649,6 +649,7 @@ class PreviewRequestDto {
     required this.selectedPersonIds,
     required this.effects,
     required this.follow,
+    this.faceOnlyPersonIds,
   });
 
   String analysisCacheId;
@@ -661,6 +662,8 @@ class PreviewRequestDto {
 
   FollowConfigDto follow;
 
+  List<int>? faceOnlyPersonIds;
+
   List<Object?> _toList() {
     return <Object?>[
       analysisCacheId,
@@ -668,6 +671,7 @@ class PreviewRequestDto {
       selectedPersonIds,
       effects,
       follow,
+      faceOnlyPersonIds,
     ];
   }
 
@@ -682,6 +686,7 @@ class PreviewRequestDto {
       selectedPersonIds: (result[2]! as List<Object?>).cast<int>(),
       effects: result[3]! as EffectConfigDto,
       follow: result[4]! as FollowConfigDto,
+      faceOnlyPersonIds: (result[5] as List<Object?>?)?.cast<int>(),
     );
   }
 
@@ -694,7 +699,7 @@ class PreviewRequestDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(analysisCacheId, other.analysisCacheId) && _deepEquals(timestampMs, other.timestampMs) && _deepEquals(selectedPersonIds, other.selectedPersonIds) && _deepEquals(effects, other.effects) && _deepEquals(follow, other.follow);
+    return _deepEquals(analysisCacheId, other.analysisCacheId) && _deepEquals(timestampMs, other.timestampMs) && _deepEquals(selectedPersonIds, other.selectedPersonIds) && _deepEquals(effects, other.effects) && _deepEquals(follow, other.follow) && _deepEquals(faceOnlyPersonIds, other.faceOnlyPersonIds);
   }
 
   @override
@@ -703,7 +708,7 @@ class PreviewRequestDto {
 
   @override
   String toString() {
-    return 'PreviewRequestDto(analysisCacheId: $analysisCacheId, timestampMs: $timestampMs, selectedPersonIds: $selectedPersonIds, effects: $effects, follow: $follow)';
+    return 'PreviewRequestDto(analysisCacheId: $analysisCacheId, timestampMs: $timestampMs, selectedPersonIds: $selectedPersonIds, effects: $effects, follow: $follow, faceOnlyPersonIds: $faceOnlyPersonIds)';
   }
 }
 
@@ -776,6 +781,7 @@ class ExportRequestDto {
     required this.videoBitrate,
     required this.processingProfile,
     required this.enableLivePreview,
+    this.faceOnlyPersonIds,
   });
 
   String sourceUri;
@@ -802,6 +808,8 @@ class ExportRequestDto {
 
   bool enableLivePreview;
 
+  List<int>? faceOnlyPersonIds;
+
   List<Object?> _toList() {
     return <Object?>[
       sourceUri,
@@ -816,6 +824,7 @@ class ExportRequestDto {
       videoBitrate,
       processingProfile,
       enableLivePreview,
+      faceOnlyPersonIds,
     ];
   }
 
@@ -837,6 +846,7 @@ class ExportRequestDto {
       videoBitrate: result[9]! as int,
       processingProfile: result[10]! as String,
       enableLivePreview: result[11]! as bool,
+      faceOnlyPersonIds: (result[12] as List<Object?>?)?.cast<int>(),
     );
   }
 
@@ -849,7 +859,7 @@ class ExportRequestDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(sourceUri, other.sourceUri) && _deepEquals(analysisCacheId, other.analysisCacheId) && _deepEquals(outputFilePath, other.outputFilePath) && _deepEquals(selectedPersonIds, other.selectedPersonIds) && _deepEquals(effects, other.effects) && _deepEquals(follow, other.follow) && _deepEquals(targetWidth, other.targetWidth) && _deepEquals(targetHeight, other.targetHeight) && _deepEquals(targetFps, other.targetFps) && _deepEquals(videoBitrate, other.videoBitrate) && _deepEquals(processingProfile, other.processingProfile) && _deepEquals(enableLivePreview, other.enableLivePreview);
+    return _deepEquals(sourceUri, other.sourceUri) && _deepEquals(analysisCacheId, other.analysisCacheId) && _deepEquals(outputFilePath, other.outputFilePath) && _deepEquals(selectedPersonIds, other.selectedPersonIds) && _deepEquals(effects, other.effects) && _deepEquals(follow, other.follow) && _deepEquals(targetWidth, other.targetWidth) && _deepEquals(targetHeight, other.targetHeight) && _deepEquals(targetFps, other.targetFps) && _deepEquals(videoBitrate, other.videoBitrate) && _deepEquals(processingProfile, other.processingProfile) && _deepEquals(enableLivePreview, other.enableLivePreview) && _deepEquals(faceOnlyPersonIds, other.faceOnlyPersonIds);
   }
 
   @override
@@ -858,7 +868,7 @@ class ExportRequestDto {
 
   @override
   String toString() {
-    return 'ExportRequestDto(sourceUri: $sourceUri, analysisCacheId: $analysisCacheId, outputFilePath: $outputFilePath, selectedPersonIds: $selectedPersonIds, effects: $effects, follow: $follow, targetWidth: $targetWidth, targetHeight: $targetHeight, targetFps: $targetFps, videoBitrate: $videoBitrate, processingProfile: $processingProfile, enableLivePreview: $enableLivePreview)';
+    return 'ExportRequestDto(sourceUri: $sourceUri, analysisCacheId: $analysisCacheId, outputFilePath: $outputFilePath, selectedPersonIds: $selectedPersonIds, effects: $effects, follow: $follow, targetWidth: $targetWidth, targetHeight: $targetHeight, targetFps: $targetFps, videoBitrate: $videoBitrate, processingProfile: $processingProfile, enableLivePreview: $enableLivePreview, faceOnlyPersonIds: $faceOnlyPersonIds)';
   }
 }
 

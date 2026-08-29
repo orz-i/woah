@@ -660,6 +660,7 @@ struct PreviewRequestDto: Hashable, CustomStringConvertible {
   var selectedPersonIds: [Int64]
   var effects: EffectConfigDto
   var follow: FollowConfigDto
+  var faceOnlyPersonIds: [Int64]? = nil
 
 
   // swift-format-ignore: AlwaysUseLowerCamelCase
@@ -669,13 +670,15 @@ struct PreviewRequestDto: Hashable, CustomStringConvertible {
     let selectedPersonIds = pigeonVar_list[2] as! [Int64]
     let effects = pigeonVar_list[3] as! EffectConfigDto
     let follow = pigeonVar_list[4] as! FollowConfigDto
+    let faceOnlyPersonIds: [Int64]? = nilOrValue(pigeonVar_list[5])
 
     return PreviewRequestDto(
       analysisCacheId: analysisCacheId,
       timestampMs: timestampMs,
       selectedPersonIds: selectedPersonIds,
       effects: effects,
-      follow: follow
+      follow: follow,
+      faceOnlyPersonIds: faceOnlyPersonIds
     )
   }
   func toList() -> [Any?] {
@@ -685,13 +688,14 @@ struct PreviewRequestDto: Hashable, CustomStringConvertible {
       selectedPersonIds,
       effects,
       follow,
+      faceOnlyPersonIds,
     ]
   }
   static func == (lhs: PreviewRequestDto, rhs: PreviewRequestDto) -> Bool {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return DanceApiPigeonInternal.deepEquals(lhs.analysisCacheId, rhs.analysisCacheId) && DanceApiPigeonInternal.deepEquals(lhs.timestampMs, rhs.timestampMs) && DanceApiPigeonInternal.deepEquals(lhs.selectedPersonIds, rhs.selectedPersonIds) && DanceApiPigeonInternal.deepEquals(lhs.effects, rhs.effects) && DanceApiPigeonInternal.deepEquals(lhs.follow, rhs.follow)
+    return DanceApiPigeonInternal.deepEquals(lhs.analysisCacheId, rhs.analysisCacheId) && DanceApiPigeonInternal.deepEquals(lhs.timestampMs, rhs.timestampMs) && DanceApiPigeonInternal.deepEquals(lhs.selectedPersonIds, rhs.selectedPersonIds) && DanceApiPigeonInternal.deepEquals(lhs.effects, rhs.effects) && DanceApiPigeonInternal.deepEquals(lhs.follow, rhs.follow) && DanceApiPigeonInternal.deepEquals(lhs.faceOnlyPersonIds, rhs.faceOnlyPersonIds)
   }
 
   func hash(into hasher: inout Hasher) {
@@ -701,10 +705,11 @@ struct PreviewRequestDto: Hashable, CustomStringConvertible {
     DanceApiPigeonInternal.deepHash(value: selectedPersonIds, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: effects, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: follow, hasher: &hasher)
+    DanceApiPigeonInternal.deepHash(value: faceOnlyPersonIds, hasher: &hasher)
   }
 
   public var description: String {
-    return "PreviewRequestDto(analysisCacheId: \(String(describing: analysisCacheId)), timestampMs: \(String(describing: timestampMs)), selectedPersonIds: \(String(describing: selectedPersonIds)), effects: \(String(describing: effects)), follow: \(String(describing: follow)))"
+    return "PreviewRequestDto(analysisCacheId: \(String(describing: analysisCacheId)), timestampMs: \(String(describing: timestampMs)), selectedPersonIds: \(String(describing: selectedPersonIds)), effects: \(String(describing: effects)), follow: \(String(describing: follow)), faceOnlyPersonIds: \(String(describing: faceOnlyPersonIds)))"
   }
 }
 
@@ -767,6 +772,7 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
   var videoBitrate: Int64
   var processingProfile: String
   var enableLivePreview: Bool
+  var faceOnlyPersonIds: [Int64]? = nil
 
 
   // swift-format-ignore: AlwaysUseLowerCamelCase
@@ -783,6 +789,7 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
     let videoBitrate = pigeonVar_list[9] as! Int64
     let processingProfile = pigeonVar_list[10] as! String
     let enableLivePreview = pigeonVar_list[11] as! Bool
+    let faceOnlyPersonIds: [Int64]? = nilOrValue(pigeonVar_list[12])
 
     return ExportRequestDto(
       sourceUri: sourceUri,
@@ -796,7 +803,8 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
       targetFps: targetFps,
       videoBitrate: videoBitrate,
       processingProfile: processingProfile,
-      enableLivePreview: enableLivePreview
+      enableLivePreview: enableLivePreview,
+      faceOnlyPersonIds: faceOnlyPersonIds
     )
   }
   func toList() -> [Any?] {
@@ -813,13 +821,14 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
       videoBitrate,
       processingProfile,
       enableLivePreview,
+      faceOnlyPersonIds,
     ]
   }
   static func == (lhs: ExportRequestDto, rhs: ExportRequestDto) -> Bool {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return DanceApiPigeonInternal.deepEquals(lhs.sourceUri, rhs.sourceUri) && DanceApiPigeonInternal.deepEquals(lhs.analysisCacheId, rhs.analysisCacheId) && DanceApiPigeonInternal.deepEquals(lhs.outputFilePath, rhs.outputFilePath) && DanceApiPigeonInternal.deepEquals(lhs.selectedPersonIds, rhs.selectedPersonIds) && DanceApiPigeonInternal.deepEquals(lhs.effects, rhs.effects) && DanceApiPigeonInternal.deepEquals(lhs.follow, rhs.follow) && DanceApiPigeonInternal.deepEquals(lhs.targetWidth, rhs.targetWidth) && DanceApiPigeonInternal.deepEquals(lhs.targetHeight, rhs.targetHeight) && DanceApiPigeonInternal.deepEquals(lhs.targetFps, rhs.targetFps) && DanceApiPigeonInternal.deepEquals(lhs.videoBitrate, rhs.videoBitrate) && DanceApiPigeonInternal.deepEquals(lhs.processingProfile, rhs.processingProfile) && DanceApiPigeonInternal.deepEquals(lhs.enableLivePreview, rhs.enableLivePreview)
+    return DanceApiPigeonInternal.deepEquals(lhs.sourceUri, rhs.sourceUri) && DanceApiPigeonInternal.deepEquals(lhs.analysisCacheId, rhs.analysisCacheId) && DanceApiPigeonInternal.deepEquals(lhs.outputFilePath, rhs.outputFilePath) && DanceApiPigeonInternal.deepEquals(lhs.selectedPersonIds, rhs.selectedPersonIds) && DanceApiPigeonInternal.deepEquals(lhs.effects, rhs.effects) && DanceApiPigeonInternal.deepEquals(lhs.follow, rhs.follow) && DanceApiPigeonInternal.deepEquals(lhs.targetWidth, rhs.targetWidth) && DanceApiPigeonInternal.deepEquals(lhs.targetHeight, rhs.targetHeight) && DanceApiPigeonInternal.deepEquals(lhs.targetFps, rhs.targetFps) && DanceApiPigeonInternal.deepEquals(lhs.videoBitrate, rhs.videoBitrate) && DanceApiPigeonInternal.deepEquals(lhs.processingProfile, rhs.processingProfile) && DanceApiPigeonInternal.deepEquals(lhs.enableLivePreview, rhs.enableLivePreview) && DanceApiPigeonInternal.deepEquals(lhs.faceOnlyPersonIds, rhs.faceOnlyPersonIds)
   }
 
   func hash(into hasher: inout Hasher) {
@@ -836,10 +845,11 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
     DanceApiPigeonInternal.deepHash(value: videoBitrate, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: processingProfile, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: enableLivePreview, hasher: &hasher)
+    DanceApiPigeonInternal.deepHash(value: faceOnlyPersonIds, hasher: &hasher)
   }
 
   public var description: String {
-    return "ExportRequestDto(sourceUri: \(String(describing: sourceUri)), analysisCacheId: \(String(describing: analysisCacheId)), outputFilePath: \(String(describing: outputFilePath)), selectedPersonIds: \(String(describing: selectedPersonIds)), effects: \(String(describing: effects)), follow: \(String(describing: follow)), targetWidth: \(String(describing: targetWidth)), targetHeight: \(String(describing: targetHeight)), targetFps: \(String(describing: targetFps)), videoBitrate: \(String(describing: videoBitrate)), processingProfile: \(String(describing: processingProfile)), enableLivePreview: \(String(describing: enableLivePreview)))"
+    return "ExportRequestDto(sourceUri: \(String(describing: sourceUri)), analysisCacheId: \(String(describing: analysisCacheId)), outputFilePath: \(String(describing: outputFilePath)), selectedPersonIds: \(String(describing: selectedPersonIds)), effects: \(String(describing: effects)), follow: \(String(describing: follow)), targetWidth: \(String(describing: targetWidth)), targetHeight: \(String(describing: targetHeight)), targetFps: \(String(describing: targetFps)), videoBitrate: \(String(describing: videoBitrate)), processingProfile: \(String(describing: processingProfile)), enableLivePreview: \(String(describing: enableLivePreview)), faceOnlyPersonIds: \(String(describing: faceOnlyPersonIds)))"
   }
 }
 

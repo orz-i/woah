@@ -163,6 +163,7 @@ class PreviewRequestDto {
   final List<int> selectedPersonIds;
   final EffectConfigDto effects;
   final FollowConfigDto follow;
+  final List<int>? faceOnlyPersonIds;
 
   PreviewRequestDto({
     required this.analysisCacheId,
@@ -170,6 +171,7 @@ class PreviewRequestDto {
     required this.selectedPersonIds,
     required this.effects,
     required this.follow,
+    this.faceOnlyPersonIds,
   });
 }
 
@@ -198,6 +200,7 @@ class ExportRequestDto {
   final int videoBitrate;
   final String processingProfile;
   final bool enableLivePreview;
+  final List<int>? faceOnlyPersonIds;
 
   ExportRequestDto({
     required this.sourceUri,
@@ -212,6 +215,7 @@ class ExportRequestDto {
     required this.videoBitrate,
     required this.processingProfile,
     this.enableLivePreview = false,
+    this.faceOnlyPersonIds,
   });
 }
 
