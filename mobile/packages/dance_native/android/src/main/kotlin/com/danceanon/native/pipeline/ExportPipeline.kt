@@ -88,6 +88,19 @@ class ExportPipeline(
         val tempOutFile = File(finalOutFile.parentFile, "${finalOutFile.nameWithoutExtension}.tmp.mp4")
 
         val totalFrames = if (videoInfo.fps > 0) ((videoInfo.durationMs / 1000.0) * videoInfo.fps).toInt().coerceAtLeast(1) else 300
+        val privacyModeByTrackId = com.danceanon.native.privacy.PersonPrivacyModeResolver.resolve(
+            fullBodyPersonIds = request.selectedPersonIds.map { it.toInt() },
+            faceOnlyPersonIds = request.faceOnlyPersonIds?.map { it.toInt() }
+        )
+        val fullBodyPersonIds = privacyModeByTrackId.asSequence()
+            .filter { it.value == com.danceanon.native.privacy.PersonPrivacyMode.FULL_BODY }
+            .map { it.key }
+            .toSet()
+        val faceOnlyPersonIds = privacyModeByTrackId.asSequence()
+            .filter { it.value == com.danceanon.native.privacy.PersonPrivacyMode.FACE_ONLY }
+            .map { it.key }
+            .toSet()
+        val allPrivacyTargetIds = privacyModeByTrackId.keys.toSet()
 
         var status = JobStatusDto(
             jobId = jobId,
@@ -105,7 +118,8 @@ class ExportPipeline(
             jobId = jobId,
             fields = mapOf(
                 "profile" to request.processingProfile,
-                "selected_ids" to request.selectedPersonIds.map { it.toInt() }
+                "selected_ids" to fullBodyPersonIds.sorted(),
+                "face_only_ids" to faceOnlyPersonIds.sorted()
             )
         )
         onStatusChange(status)
@@ -172,6 +186,7 @@ class ExportPipeline(
             var livePreviewFile: java.io.File? = null
             var decoderSurface: android.view.Surface? = null
             var previewScope: kotlinx.coroutines.CoroutineScope? = null
+            var faceOnlyPrivacyProcessor: com.danceanon.native.privacy.FaceOnlyPrivacyFrameProcessor? = null
 
             try {
                 audioCopier = AudioTrackCopier(context, sourceUri)
@@ -250,7 +265,14 @@ class ExportPipeline(
                 var basePtsUs = -1L
                 var lastPresentationNs = -1L
                 val trackManager = TrackManager()
-                trackManager.setProtectedTrackIds(request.selectedPersonIds.map { it.toInt() }.toSet())
+                if (faceOnlyPersonIds.isEmpty()) {
+                    // Preserve the exact legacy identity/privacy coupling when no
+                    // FACE_ONLY policy was requested.
+                    trackManager.setProtectedTrackIds(fullBodyPersonIds)
+                } else {
+                    trackManager.setIdentityProtectedTrackIds(allPrivacyTargetIds)
+                    trackManager.setPrivacySelectedTrackIds(fullBodyPersonIds)
+                }
                 val privacyClassTemporalTracker = com.danceanon.native.privacy.PrivacyClassTemporalTracker()
                 val profile = ProcessingProfile.fromName(request.processingProfile)
                 val frameStride = profile.inferenceStride
@@ -264,6 +286,17 @@ class ExportPipeline(
                     "ExportPipeline",
                     "Pipeline Config: isSam2Mode=$isSam2Mode, profileName=${profile.name}, stride=$frameStride, inputSize=${profile.inputSize}, target=${targetWidth}x${targetHeight}"
                 )
+
+                if (faceOnlyPersonIds.isNotEmpty()) {
+                    if (isSam2Mode) {
+                        throw DanceNativeException(
+                            DanceNativeException.INVALID_ARGUMENT,
+                            "FACE_ONLY export is supported only on the stable YOLO pipeline."
+                        )
+                    }
+                    faceOnlyPrivacyProcessor =
+                        com.danceanon.native.privacy.FaceOnlyPrivacyFrameProcessor.create(context, mapper)
+                }
 
                 if (isSam2Mode) {
                     if (!com.danceanon.native.sam2.Sam2GpuCapabilityManager.isAvailable()) {
@@ -395,7 +428,7 @@ class ExportPipeline(
                     lastDecoderPtsUs = ptsUs
                     processedFrames++
 
-                    val selectedIds = request.selectedPersonIds.map { it.toInt() }.toSet()
+                    val selectedIds = fullBodyPersonIds
 
                     // Ensure OES texture is active and bound before latching frame
                     android.opengl.GLES20.glActiveTexture(android.opengl.GLES20.GL_TEXTURE0)
@@ -737,9 +770,51 @@ class ExportPipeline(
                             tracked
                         }
 
+                        val faceOnlyFrameResult = faceOnlyPrivacyProcessor?.let { processor ->
+                            profiler.recordStage("faceOnlyPrivacy") {
+                                processor.resolveFrame(
+                                    frameTexture = renderTexId,
+                                    texMatrix = finalTexMatrix,
+                                    textureType = renderTexType,
+                                    persons = trackedList,
+                                    faceOnlyTrackIds = faceOnlyPersonIds,
+                                    fullBodyTrackIds = selectedIds,
+                                    ptsUs = ptsUs
+                                )
+                            }
+                        }
+                        if (faceOnlyFrameResult != null) {
+                            if (faceOnlyFrameResult.faceInferenceMs > 0.0) {
+                                profiler.recordSample(
+                                    "faceDetectorCpu",
+                                    faceOnlyFrameResult.faceInferenceMs.toLong().coerceAtLeast(0L)
+                                )
+                            }
+                            if (!faceOnlyFrameResult.readyForRender) {
+                                com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                                    level = "CRITICAL",
+                                    component = "ExportPipeline",
+                                    event = "FACE_PRIVACY_UNRESOLVED",
+                                    fields = mapOf(
+                                        "job_id" to jobId,
+                                        "frame" to processedFrames,
+                                        "pts_us" to ptsUs,
+                                        "face_only_ids" to faceOnlyPersonIds.sorted(),
+                                        "unresolved_ids" to faceOnlyFrameResult.unresolvedTrackIds.sorted(),
+                                        "fallback_ids" to faceOnlyFrameResult.fallbackTrackIds.sorted(),
+                                        "escalated_full_body_ids" to faceOnlyFrameResult.escalatedFullBodyTrackIds.sorted()
+                                    )
+                                )
+                                throw DanceNativeException(
+                                    DanceNativeException.EXPORT_FAILED,
+                                    "FACE_ONLY privacy unresolved for track(s) ${faceOnlyFrameResult.unresolvedTrackIds.sorted()}"
+                                )
+                            }
+                        }
+
                         // Validate selected target survival with rate-limited telemetry (PHASE A & D)
                         val trackedIds = trackedList.map { it.id }.toSet()
-                        for (sId in selectedIds) {
+                        for (sId in allPrivacyTargetIds) {
                             if (!trackedIds.contains(sId)) {
                                 val streak = missingTargetStreakMap.getOrDefault(sId, 0) + 1
                                 missingTargetStreakMap[sId] = streak
@@ -810,7 +885,8 @@ class ExportPipeline(
                                 suppressedSelectedPrivacyTrackIds = suppressedSelectedPrivacyTrackIds,
                                 preferFreshPrivacyClassPrimary = preferFreshPrivacyClassPrimary,
                                 expectedSelectedPrivacyCount = selectedIds.size,
-                                maxFallbackObservationAgeFrames = trackManager.getMaxMissedFrames()
+                                maxFallbackObservationAgeFrames = trackManager.getMaxMissedFrames(),
+                                additionalResolvedPrivacy = faceOnlyFrameResult?.resolvedPrivacy
                             )
                             renderedFrameCount++
                         }
@@ -1012,7 +1088,8 @@ class ExportPipeline(
                             "target_width" to targetWidth,
                             "target_height" to targetHeight,
                             "target_fps" to targetFps,
-                            "selected_ids" to request.selectedPersonIds.map { it.toInt() },
+                            "selected_ids" to fullBodyPersonIds.sorted(),
+                            "face_only_ids" to faceOnlyPersonIds.sorted(),
                             "decoded_frames" to decodedFrameCount,
                             "latched_frames" to latchedFrameCount,
                             "rendered_frames" to renderedFrameCount,
@@ -1073,6 +1150,7 @@ class ExportPipeline(
                 try { muxer?.close() } catch (_: Throwable) {}
                 try { audioCopier?.close() } catch (_: Throwable) {}
                 try { encoder?.close() } catch (_: Throwable) {}
+                try { faceOnlyPrivacyProcessor?.close() } catch (_: Throwable) {}
                 try { glRenderer?.close() } catch (_: Throwable) {}
                 try { eglCore?.close() } catch (_: Throwable) {}
                 try {

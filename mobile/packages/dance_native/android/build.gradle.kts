@@ -74,6 +74,7 @@ android {
             // the instrumentation APK and never into the production AAR/APK.
             assets.srcDirs(
                 file("../../../../testdata/face_benchmark_frames"),
+                file("../../../../testdata/face_export_smoke"),
                 file("../../../../testdata/models/face")
             )
         }

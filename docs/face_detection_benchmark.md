@@ -269,6 +269,31 @@ tracks keep identity/geometry but their masks are removed from the secondary
 FACE_ONLY resolver, so the primary full-body target cannot be mistaken for an
 unselected occluder and carve a selected face.
 
+`ExportPipeline` now activates that processor only when the optional request
+`faceOnlyPersonIds` is non-empty. Legacy requests keep the historical
+`setProtectedTrackIds()` path and do not instantiate MediaPipe or add ROI/readback
+work. In FACE_ONLY mode, identity-protected IDs are `FULL_BODY ∪ FACE_ONLY` while
+fresh selected privacy classification remains FULL_BODY-only; the resolved
+FACE_ONLY result is merged through `GlRenderer.additionalResolvedPrivacy`.
+
+The full request-gated export path has now passed a PLK110 / Android 16 smoke test.
+The instrumentation test creates a deterministic 720x1280 AVC clip on-device,
+runs the real `ExportPipeline` with `selectedPersonIds=[]` and
+`faceOnlyPersonIds=[0]`, and decodes the output for pixel comparison. All **12/12**
+frames were decoded, latched, rendered, and encoded. The output contained a
+material new solid-red privacy region whose vertical extent stayed below 45% of
+the frame, while a reviewed lower-body patch stayed close to the input image;
+this verifies that the request reached FACE_ONLY composition rather than silently
+expanding back to FULL_BODY.
+
+The same full-pipeline run measured `faceDetectorCpu` mean **8.8 ms**, p50 **8 ms**,
+p95 **15 ms**. The complete `faceOnlyPrivacy` stage measured mean **20.8 ms**,
+p50 **14 ms**, p95/max **83 ms**. The detector itself is therefore still within
+the earlier planning range, but the integrated per-frame sidecar has a significant
+single-frame scheduling/GL outlier. Production cadence should be optimized before
+exposing FACE_ONLY in UI; do not assume one detector call per selected person on
+every output frame is the final scheduling policy.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two
