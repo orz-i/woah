@@ -103,6 +103,14 @@ object PrivacyOcclusionResolver {
 
         if (useFreshPrimary) {
             val freshSelectedPersons = evidencePersons.filter { evidenceSelectedIds.contains(it.id) }
+            val freshSelectedSingletonResidualTrackIds = freshClassEvidence.asSequence()
+                .filter {
+                    it.selectionClass == PrivacySelectionClass.SELECTED &&
+                        !it.conservativeUnknown &&
+                        it.residualTrackIds.size == 1
+                }
+                .map { it.residualTrackIds.first() }
+                .toSet()
             val expectedCount = expectedSelectedCount.coerceAtLeast(selectedPersonIds.size)
             val fallbackDeficit = (expectedCount - freshSelectedPersons.size).coerceAtLeast(0)
             val fallbackSelectedPersons = selectFreshPrimaryFallbacks(
@@ -110,6 +118,7 @@ object PrivacyOcclusionResolver {
                 selectedPersonIds = selectedPersonIds,
                 freshEvidencePersons = evidencePersons,
                 freshSelectedPersons = freshSelectedPersons,
+                freshSelectedSingletonResidualTrackIds = freshSelectedSingletonResidualTrackIds,
                 maxFallbackCount = fallbackDeficit
             )
             privacyPersons = evidencePersons + fallbackSelectedPersons
@@ -129,6 +138,7 @@ object PrivacyOcclusionResolver {
                     "fallback_states" to fallbackSelectedPersons.map { it.state.name },
                     "fallback_missed_frames" to fallbackSelectedPersons.map { it.missedFrames },
                     "fallback_observed" to fallbackSelectedPersons.map { it.observedThisFrame },
+                    "fresh_selected_singleton_residual_ids" to freshSelectedSingletonResidualTrackIds.sorted(),
                     "pts_us" to ptsUs
                 )
             )
@@ -525,6 +535,7 @@ object PrivacyOcclusionResolver {
         selectedPersonIds: Set<Int>,
         freshEvidencePersons: List<TrackedPerson>,
         freshSelectedPersons: List<TrackedPerson>,
+        freshSelectedSingletonResidualTrackIds: Set<Int>,
         maxFallbackCount: Int
     ): List<TrackedPerson> {
         if (maxFallbackCount <= 0) return emptyList()
@@ -547,6 +558,7 @@ object PrivacyOcclusionResolver {
         val candidates = persons.asSequence()
             .filter {
                 selectedPersonIds.contains(it.id) &&
+                    !freshSelectedSingletonResidualTrackIds.contains(it.id) &&
                     it.state != TrackState.REMOVED &&
                     it.mask != null
             }

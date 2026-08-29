@@ -298,6 +298,68 @@ class PrivacyFreshClassEvidenceTest {
     }
 
     @Test
+    fun singletonFreshSelectedResidualSuppressesSameTrackedFallbackAndUsesOtherMissingSlot() {
+        val staleDuplicateMask = rectMask(left = 5, top = 10, right = 17, bottom = 46)
+        val genuinelyMissingMask = rectMask(left = 24, top = 10, right = 36, bottom = 46)
+        val freshSelectedMask = rectMask(left = 43, top = 10, right = 55, bottom = 46)
+
+        val staleDuplicate = TrackedPerson(
+            id = 1,
+            bbox = FloatRect(50f, 100f, 170f, 460f),
+            mask = staleDuplicateMask,
+            confidence = 0.95f,
+            state = TrackState.REACQUIRING,
+            observedThisFrame = false,
+            missedFrames = 7
+        )
+        val genuinelyMissing = TrackedPerson(
+            id = 2,
+            bbox = FloatRect(240f, 100f, 360f, 460f),
+            mask = genuinelyMissingMask,
+            confidence = 0.95f,
+            state = TrackState.REACQUIRING,
+            observedThisFrame = false,
+            missedFrames = 2
+        )
+        val freshSelected = FreshPrivacyClassEvidence(
+            selectionClass = PrivacySelectionClass.SELECTED,
+            detectionIndex = 0,
+            detection = PersonDetection(
+                // Deliberately far from stale ID 1 geometry: the singleton
+                // residual evidence, not bbox overlap, is what proves this
+                // selected slot already has a current fresh representation.
+                bbox = FloatRect(430f, 100f, 550f, 460f),
+                confidence = 0.98f,
+                mask = freshSelectedMask,
+                footY = 460f
+            ),
+            residualTrackIds = setOf(1)
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = listOf(staleDuplicate, genuinelyMissing),
+            selectedPersonIds = setOf(1, 2),
+            applyDilationToPrivacyTargets = false,
+            occluderErosionRadius = 0,
+            freshClassEvidence = listOf(freshSelected),
+            preferFreshClassPrimary = true,
+            expectedSelectedCount = 2
+        )
+
+        val privacy = assertNotNull(resolved.privacyMask)
+        assertEquals(
+            0,
+            privacy.buffer.get(20 * 64 + 10).toInt() and 0xFF,
+            "A singleton fresh SELECTED residual for track 1 must suppress the stale duplicate fallback even when geometry has drifted"
+        )
+        assertTrue(
+            (privacy.buffer.get(20 * 64 + 28).toInt() and 0xFF) > 0,
+            "The bounded fallback slot must remain available for a different selected track that is actually missing"
+        )
+        assertTrue((privacy.buffer.get(20 * 64 + 48).toInt() and 0xFF) > 0)
+    }
+
+    @Test
     fun freshPrimaryNeverUsesTrackedFallbackOnCurrentFreshUnselectedPerson() {
         val wrongFallbackMask = rectMask(left = 8, top = 10, right = 20, bottom = 46)
         val duplicateSelectedMask = rectMask(left = 43, top = 10, right = 55, bottom = 46)
