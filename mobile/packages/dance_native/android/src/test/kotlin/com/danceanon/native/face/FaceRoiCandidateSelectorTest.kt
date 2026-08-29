@@ -52,4 +52,36 @@ class FaceRoiCandidateSelectorTest {
         )
         assertEquals(0, selected.faceIndex)
     }
+
+    @Test
+    fun `near tie around target anchor is rejected as ambiguous`() {
+        val selected = FaceRoiCandidateSelector.select(
+            faces = listOf(
+                FaceObservation(FloatRect(105f, 105f, 137f, 137f), 0.70f),
+                FaceObservation(FloatRect(119f, 111f, 151f, 143f), 0.99f)
+            ),
+            roiWidth = 256,
+            roiHeight = 256,
+            anchorX = 0.5f,
+            anchorY = 0.5f
+        )
+        assertNull(selected)
+    }
+
+    @Test
+    fun `well separated central target still wins over neighbor`() {
+        val selected = assertNotNull(
+            FaceRoiCandidateSelector.select(
+                faces = listOf(
+                    FaceObservation(FloatRect(112f, 96f, 144f, 128f), 0.50f),
+                    FaceObservation(FloatRect(184f, 80f, 216f, 112f), 0.99f)
+                ),
+                roiWidth = 256,
+                roiHeight = 256,
+                anchorX = 0.5f,
+                anchorY = 0.5f
+            )
+        )
+        assertEquals(0, selected.faceIndex)
+    }
 }

@@ -84,8 +84,10 @@ face detail by cropping from the **original source texture** before downscaling:
    the original OES texture into `InferenceFbo(256)`.
 4. Only the 256x256 ROI is read back and sent to MediaPipe IMAGE/CPU.
 5. `FaceRoiCandidateSelector` accepts only a face near the target's planned head
-   anchor (default max distance 0.22 of ROI size). Face-detector confidence alone
-   never owns identity.
+   anchor (default max distance 0.22 of ROI size). If the two closest accepted
+   faces are separated by less than 0.04 of ROI size, the observation is treated
+   as ambiguous and rejected; the caller falls back to the YOLO-derived head
+   region. Face-detector confidence alone never owns identity.
 6. No acceptable face means privacy falls back to the YOLO-derived head region;
    detector failure must never remove protection.
 
@@ -253,6 +255,19 @@ both sets and therefore preserves existing behavior. FACE_ONLY integration can
 instead protect `FULL_BODY ∪ FACE_ONLY` identities while classifying only
 FULL_BODY IDs as fresh selected privacy. This prevents fresh YOLO full-body masks
 from silently expanding FACE_ONLY targets back to full-body privacy.
+
+### Face-only frame processor
+
+`FaceOnlyPrivacyFrameProcessor` now owns the per-frame FACE_ONLY sidecar sequence:
+source ROI render/readback -> MediaPipe positional detection -> target-anchor
+selection -> detected/fallback privacy ellipse -> 160x160 face mask -> independent
+`PrivacyOcclusionResolver` pass. It reports detected, fallback, escalated, and
+unresolved track IDs plus detector time. Missing requested tracks are explicitly
+`readyForRender=false`; detector or ROI failures fall back to the YOLO head region
+rather than removing privacy. In mixed FACE_ONLY + FULL_BODY frames, FULL_BODY
+tracks keep identity/geometry but their masks are removed from the secondary
+FACE_ONLY resolver, so the primary full-body target cannot be mistaken for an
+unselected occluder and carve a selected face.
 
 ## Test fixtures and paths
 

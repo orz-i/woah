@@ -17,6 +17,7 @@ data class FaceRoiCandidateSelection(
  */
 object FaceRoiCandidateSelector {
     private const val MAX_ANCHOR_DISTANCE_RATIO = 0.22f
+    private const val MIN_ANCHOR_SEPARATION_RATIO = 0.04f
 
     fun select(
         faces: List<FaceObservation>,
@@ -24,7 +25,8 @@ object FaceRoiCandidateSelector {
         roiHeight: Int,
         anchorX: Float,
         anchorY: Float,
-        maxAnchorDistanceRatio: Float = MAX_ANCHOR_DISTANCE_RATIO
+        maxAnchorDistanceRatio: Float = MAX_ANCHOR_DISTANCE_RATIO,
+        minAnchorSeparationRatio: Float = MIN_ANCHOR_SEPARATION_RATIO
     ): FaceRoiCandidateSelection? {
         if (faces.isEmpty() || roiWidth <= 1 || roiHeight <= 1) return null
 
@@ -47,9 +49,21 @@ object FaceRoiCandidateSelector {
             }
         }
 
-        return candidates.minWithOrNull(
+        val ranked = candidates.sortedWith(
             compareBy<FaceRoiCandidateSelection> { it.anchorDistanceRatio }
                 .thenByDescending { it.face.confidence }
         )
+        val best = ranked.firstOrNull() ?: return null
+        val second = ranked.getOrNull(1)
+        if (
+            second != null &&
+            second.anchorDistanceRatio - best.anchorDistanceRatio < minAnchorSeparationRatio
+        ) {
+            // Two plausible faces are too close to the same YOLO-owned head
+            // anchor. Do not let detector confidence guess identity; the caller
+            // must fall back to the conservative YOLO head privacy region.
+            return null
+        }
+        return best
     }
 }
