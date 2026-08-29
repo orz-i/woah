@@ -116,6 +116,35 @@ The later run is the safer planning number. Until longer thermal runs exist, use
 approximately **25 ms p95 per FACE_ONLY person ROI** as the conservative PLK110
 budget rather than treating the 8 ms cold result as guaranteed performance.
 
+### OES ROI render/readback contract
+
+`FaceRoiRendererInstrumentedTest` now validates the exact GL path intended for a
+future runtime integration without touching `ExportPipeline`:
+
+- the same visual `sourceRect` rendered from a normal 2D texture and an OES
+  `SurfaceTexture` produces matching pixels on the PLK110;
+- `glReadPixels` row 0 is semantic visual top for this renderer, so the 256x256
+  RGBA buffer can be passed directly to the MediaPipe IMAGE/CPU backend without a
+  CPU row flip or channel conversion;
+- a known face ROI survived that direct OES -> FBO -> readback -> MediaPipe path
+  for **40/40 measured iterations**.
+
+The fixed 256x256 OES crop + readback cost is small compared with face inference.
+Across two PLK110 runs, p95 was approximately **0.34-1.06 ms**; the latest 60-call
+run measured mean **0.31 ms**, p50 **0.31 ms**, p95 **0.34 ms**, and max **0.40 ms**.
+
+The combined single-ROI sidecar path on the known face fixture measured:
+
+- mean: **18.67 ms**
+- p50: **19.62 ms**
+- p95: **25.10 ms**
+- max: **27.12 ms**
+- detected: **40/40**
+
+This confirms the current conservative ~25 ms p95/ROI planning budget and shows
+that the dominant cost is MediaPipe CPU inference, not the source-texture crop or
+GPU readback.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two
@@ -177,6 +206,8 @@ Initial promotion targets:
   do not run face detection on the existing full-frame YOLO 640 input.
 - Treat ~25 ms p95/ROI as the current conservative PLK110 CPU budget and measure
   sustained thermal behavior before selecting final cadence.
+- Keep the OES ROI renderer's visual-top readback contract; do not add an extra
+  CPU Y-flip/conversion stage unless a future source texture proves it necessary.
 - Add manual face ground truth before claiming detector recall. For privacy, an
   effective face-coverage miss must fall back to the YOLO-derived head region;
   detector failure must never make a face unmasked.
@@ -185,3 +216,39 @@ Initial promotion targets:
 
 Only after those measurements should the runtime design proceed to per-person
 `NONE / FACE_ONLY / FULL_BODY` policy and a multi-face R8 privacy mask.
+
+## FaceRoiRenderer coordinate proof
+
+The isolated renderer proof is now implemented in:
+
+- `render/FaceRoiRenderer.kt`
+- `render/FaceRoiRendererInstrumentedTest.kt`
+
+It has **no `ExportPipeline`, preview, renderer-compositor, Pigeon, or UI call
+site**. The test creates a deterministic 320x240 coordinate-gradient source,
+plans a source-space head crop, then renders the same visual crop into a 256x256
+`InferenceFbo` through both:
+
+1. a normal `GL_TEXTURE_2D` bitmap texture, and
+2. a real `SurfaceTexture` / `GL_TEXTURE_EXTERNAL_OES` producer surface.
+
+The first PLK110 run intentionally exposed a coordinate error: the 2D output's
+visual top sampled the source bottom (`G=230` where the coordinate gradient
+expected about `24`). This proved that a visual top-left crop cannot be passed
+directly into the existing full-frame texture matrix.
+
+The corrected contract follows `docs/coordinate_systems.md` explicitly:
+
+`screenGlY = 1 - visualY`
+
+The renderer now converts the planned visual crop to screen-GL UV first and only
+then applies the caller-provided source texture matrix. The retry passed on
+PLK110 / Android 16 for both texture types. The instrumentation test verifies:
+
+- expected source X/R and visual Y/G values at a 3x3 output sample grid,
+- visual top has smaller source Y than visual bottom (no vertical inversion),
+- OES and 2D rendered crops have mean sampled RGB absolute delta <= 5.
+
+This closes the isolated **crop/Y/texture-type coordinate proof**. It does not yet
+prove export-time scheduling, sustained multi-person cost, privacy-mask rendering,
+or fallback behavior, and therefore still does not enable FACE_ONLY in production.
