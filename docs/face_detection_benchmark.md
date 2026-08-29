@@ -245,6 +245,15 @@ owned by another selected target.
 When it is null (all existing callers), the original resolver path is unchanged.
 This is the compositor hook intended for FACE_ONLY export integration.
 
+### Track identity/privacy-class split
+
+`TrackManager` now distinguishes durable identity protection from full-body
+privacy classification. The legacy `setProtectedTrackIds()` method still updates
+both sets and therefore preserves existing behavior. FACE_ONLY integration can
+instead protect `FULL_BODY ∪ FACE_ONLY` identities while classifying only
+FULL_BODY IDs as fresh selected privacy. This prevents fresh YOLO full-body masks
+from silently expanding FACE_ONLY targets back to full-body privacy.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

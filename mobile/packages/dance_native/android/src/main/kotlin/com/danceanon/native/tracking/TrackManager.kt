@@ -148,6 +148,7 @@ class TrackManager(
     private val tracks = mutableListOf<InternalTrack>()
     private val occlusionGroups = mutableListOf<OcclusionGroup>()
     private val protectedTrackIds = mutableSetOf<Int>()
+    private val privacySelectedTrackIds = mutableSetOf<Int>()
     private val currentPrivacyClassEvidence = mutableListOf<FreshPrivacyClassEvidence>()
     private val currentPrivacySuppressedSelectedTrackIds = mutableSetOf<Int>()
     private val currentHardPrivacyClassByDetectionIndex = mutableMapOf<Int, PrivacySelectionClass>()
@@ -158,10 +159,23 @@ class TrackManager(
      * Privacy-selected identities are durable identity slots. They may stop
      * rendering after the normal LOST grace window, but must not be destroyed
      * and later re-created under a different ID while the export is running.
+     *
+     * Legacy callers use the same ID set for identity protection and privacy
+     * classification, so this method intentionally updates both sets.
      */
     fun setProtectedTrackIds(ids: Set<Int>) {
+        setIdentityProtectedTrackIds(ids)
+        setPrivacySelectedTrackIds(ids)
+    }
+
+    fun setIdentityProtectedTrackIds(ids: Set<Int>) {
         protectedTrackIds.clear()
         protectedTrackIds.addAll(ids)
+    }
+
+    fun setPrivacySelectedTrackIds(ids: Set<Int>) {
+        privacySelectedTrackIds.clear()
+        privacySelectedTrackIds.addAll(ids)
     }
 
     fun getFreshPrivacyClassEvidence(): List<FreshPrivacyClassEvidence> = currentPrivacyClassEvidence
@@ -174,7 +188,7 @@ class TrackManager(
         currentHardPrivacyClassByDetectionIndex.toMap()
 
     private fun privacyClassForTrackId(trackId: Int): PrivacySelectionClass =
-        if (protectedTrackIds.contains(trackId)) {
+        if (privacySelectedTrackIds.contains(trackId)) {
             PrivacySelectionClass.SELECTED
         } else {
             PrivacySelectionClass.UNSELECTED
@@ -810,8 +824,8 @@ class TrackManager(
 
             if (balancedResidualSet) {
                 val residualTrackIds = residualTrackIndices.map { tracks[it].id }.toSet()
-                val allSelected = residualTrackIds.all { protectedTrackIds.contains(it) }
-                val allUnselected = residualTrackIds.none { protectedTrackIds.contains(it) }
+                val allSelected = residualTrackIds.all { privacySelectedTrackIds.contains(it) }
+                val allUnselected = residualTrackIds.none { privacySelectedTrackIds.contains(it) }
                 val selectionClass = when {
                     allSelected -> PrivacySelectionClass.SELECTED
                     allUnselected -> PrivacySelectionClass.UNSELECTED
