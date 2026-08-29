@@ -38,6 +38,7 @@ object PrivacyOcclusionResolver {
     private const val YOUNG_IDENTITY_OWNERSHIP_MARGIN = 0.30f
     private const val YOUNG_IDENTITY_RAW_PROBABILITY_ADVANTAGE = 0.25f
     private const val MAX_FOOT_Y_BIAS = 0.03f
+    private const val STRONG_FRESH_FOREGROUND_FOOT_Y_RATIO = 0.10f
 
     /**
      * Resolves selected privacy targets and explicit foreground occluders into
@@ -200,6 +201,24 @@ object PrivacyOcclusionResolver {
                     val isCandFresh = cand.observedThisFrame
                     val isExplicitOccluder = target.occludedByTrackIds.contains(cand.id)
                     val hasStableIdentity = isExplicitOccluder || cand.age >= MIN_UNSELECTED_IDENTITY_AGE_FRAMES
+                    val normalizedFootYDelta = footYDelta / personMinH
+                    val useFreshDepthCore =
+                        useFreshPrimary &&
+                            evidenceSelectedIds.contains(target.id) &&
+                            target.observedThisFrame &&
+                            isCandFresh &&
+                            normalizedFootYDelta >= STRONG_FRESH_FOREGROUND_FOOT_Y_RATIO
+
+                    val freshDepthCore = if (useFreshDepthCore) {
+                        if (occluderErosionRadius > 0) {
+                            MaskPrivacyProcessor.erode(candMask, radius = occluderErosionRadius)
+                        } else {
+                            candMask
+                        }
+                    } else {
+                        null
+                    }
+                    val freshDepthCorePixels = countMaskIntersectionPixels(dilatedMask, freshDepthCore)
                     val ownershipMask = if (isCandFresh) {
                         computeUnselectedOwnershipMask(
                             selectedMask = rawMask,
@@ -214,7 +233,8 @@ object PrivacyOcclusionResolver {
                         null
                     }
                     val ownershipPixels = countMaskPixels(ownershipMask)
-                    val isStrongForeground = ownershipPixels > 0
+                    val usesFreshDepthCore = freshDepthCorePixels > 0
+                    val isStrongForeground = usesFreshDepthCore || ownershipPixels > 0
 
                     val evidence = OcclusionEvidence(
                         targetId = target.id,
@@ -227,10 +247,15 @@ object PrivacyOcclusionResolver {
                     )
 
                     if (isStrongForeground) {
-                        // Only pixels with clear unselected ownership are eligible
-                        // for subtraction. Erode that ownership region itself so a
-                        // privacy-safe halo remains around ambiguous boundaries.
-                        val occluderCore = if (occluderErosionRadius > 0 && ownershipMask != null) {
+                        // Fresh-class-primary detections can resolve depth at the
+                        // instance level even when YOLO gives both overlapping
+                        // instance masks similarly high pixel probabilities. If
+                        // the unselected instance is clearly in front by footY,
+                        // use only its eroded fresh mask core. Otherwise preserve
+                        // the older probability-margin ownership rule.
+                        val occluderCore = if (usesFreshDepthCore) {
+                            freshDepthCore ?: continue
+                        } else if (occluderErosionRadius > 0 && ownershipMask != null) {
                             MaskPrivacyProcessor.erode(ownershipMask, radius = occluderErosionRadius)
                         } else {
                             ownershipMask ?: continue
@@ -249,6 +274,9 @@ object PrivacyOcclusionResolver {
                                 "bbox_overlap" to bboxOverlapRatio,
                                 "mask_overlap" to maskOverlapRatio,
                                 "ownership_pixels" to ownershipPixels,
+                                "fresh_depth_core_pixels" to freshDepthCorePixels,
+                                "ownership_mode" to if (usesFreshDepthCore) "FRESH_DEPTH_CORE" else "PROBABILITY_MARGIN",
+                                "normalized_foot_y_delta" to normalizedFootYDelta,
                                 "explicit_occluder" to isExplicitOccluder,
                                 "candidate_age" to cand.age,
                                 "identity_stable" to hasStableIdentity,
@@ -270,6 +298,8 @@ object PrivacyOcclusionResolver {
                                 "bbox_overlap" to bboxOverlapRatio,
                                 "mask_overlap" to maskOverlapRatio,
                                 "ownership_pixels" to ownershipPixels,
+                                "fresh_depth_core_pixels" to freshDepthCorePixels,
+                                "normalized_foot_y_delta" to normalizedFootYDelta,
                                 "explicit_occluder" to isExplicitOccluder,
                                 "candidate_age" to cand.age,
                                 "identity_stable" to hasStableIdentity,
@@ -643,6 +673,19 @@ object PrivacyOcclusionResolver {
         bufB.rewind()
         val minCount = minOf(minAreaCountA, minAreaCountB)
         return if (minCount > 0) interCount.toFloat() / minCount.toFloat() else 0f
+    }
+
+    private fun countMaskIntersectionPixels(maskA: NativeMask?, maskB: NativeMask?): Int {
+        if (maskA == null || maskB == null) return 0
+        if (maskA.width != maskB.width || maskA.height != maskB.height) return 0
+        val len = minOf(maskA.width * maskA.height, maskA.buffer.capacity(), maskB.buffer.capacity())
+        var count = 0
+        for (i in 0 until len) {
+            val a = (maskA.buffer.get(i).toInt() and 0xFF) >= 128
+            val b = (maskB.buffer.get(i).toInt() and 0xFF) >= 128
+            if (a && b) count++
+        }
+        return count
     }
 
     private fun computeBBoxIntersectionArea(a: FloatRect, b: FloatRect): Float {

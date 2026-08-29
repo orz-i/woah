@@ -322,4 +322,149 @@ class PrivacyFreshClassEvidenceTest {
         assertTrue(!resolved.hasPrivacy)
         assertEquals(null, resolved.privacyMask)
     }
+
+    @Test
+    fun freshPrimaryStrongForegroundUnselectedCarvesEvenWhenInstanceProbabilitiesTie() {
+        val selectedMask = rectMask(left = 10, top = 10, right = 51, bottom = 51, value = 245)
+        val foregroundMask = rectMask(left = 10, top = 10, right = 51, bottom = 51, value = 245)
+        val evidence = listOf(
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.SELECTED,
+                detectionIndex = 0,
+                detection = PersonDetection(
+                    bbox = FloatRect(100f, 100f, 510f, 410f),
+                    confidence = 0.95f,
+                    mask = selectedMask,
+                    footY = 410f
+                ),
+                residualTrackIds = emptySet()
+            ),
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.UNSELECTED,
+                detectionIndex = 1,
+                detection = PersonDetection(
+                    bbox = FloatRect(100f, 100f, 510f, 510f),
+                    confidence = 0.95f,
+                    mask = foregroundMask,
+                    footY = 510f
+                ),
+                residualTrackIds = emptySet()
+            )
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = emptyList(),
+            selectedPersonIds = setOf(42),
+            applyDilationToPrivacyTargets = false,
+            occluderErosionRadius = 1,
+            freshClassEvidence = evidence,
+            preferFreshClassPrimary = true,
+            expectedSelectedCount = 1
+        )
+
+        val privacy = assertNotNull(resolved.privacyMask)
+        var nonZeroCount = 0
+        for (i in 0 until privacy.buffer.capacity()) {
+            if ((privacy.buffer.get(i).toInt() and 0xFF) > 0) nonZeroCount++
+        }
+        assertEquals(
+            160,
+            nonZeroCount,
+            "A clearly foreground fresh unselected instance must occlude the selected privacy core even when YOLO instance probabilities tie"
+        )
+    }
+
+    @Test
+    fun freshPrimaryBackgroundUnselectedNeverCarvesTiedSelectedMask() {
+        val selectedMask = rectMask(left = 10, top = 10, right = 51, bottom = 51, value = 245)
+        val backgroundMask = rectMask(left = 10, top = 10, right = 51, bottom = 51, value = 245)
+        val evidence = listOf(
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.SELECTED,
+                detectionIndex = 0,
+                detection = PersonDetection(
+                    bbox = FloatRect(100f, 100f, 510f, 510f),
+                    confidence = 0.95f,
+                    mask = selectedMask,
+                    footY = 510f
+                ),
+                residualTrackIds = emptySet()
+            ),
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.UNSELECTED,
+                detectionIndex = 1,
+                detection = PersonDetection(
+                    bbox = FloatRect(100f, 100f, 510f, 410f),
+                    confidence = 0.95f,
+                    mask = backgroundMask,
+                    footY = 410f
+                ),
+                residualTrackIds = emptySet()
+            )
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = emptyList(),
+            selectedPersonIds = setOf(42),
+            applyDilationToPrivacyTargets = false,
+            occluderErosionRadius = 1,
+            freshClassEvidence = evidence,
+            preferFreshClassPrimary = true,
+            expectedSelectedCount = 1
+        )
+
+        val privacy = assertNotNull(resolved.privacyMask)
+        var nonZeroCount = 0
+        for (i in 0 until privacy.buffer.capacity()) {
+            if ((privacy.buffer.get(i).toInt() and 0xFF) > 0) nonZeroCount++
+        }
+        assertEquals(1681, nonZeroCount, "Background unselected evidence must remain unable to carve selected privacy")
+    }
+
+    @Test
+    fun freshPrimaryAmbiguousDepthKeepsPrivacyWhenInstanceProbabilitiesTie() {
+        val selectedMask = rectMask(left = 10, top = 10, right = 51, bottom = 51, value = 245)
+        val ambiguousMask = rectMask(left = 10, top = 10, right = 51, bottom = 51, value = 245)
+        val evidence = listOf(
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.SELECTED,
+                detectionIndex = 0,
+                detection = PersonDetection(
+                    bbox = FloatRect(100f, 100f, 510f, 480f),
+                    confidence = 0.95f,
+                    mask = selectedMask,
+                    footY = 480f
+                ),
+                residualTrackIds = emptySet()
+            ),
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.UNSELECTED,
+                detectionIndex = 1,
+                detection = PersonDetection(
+                    bbox = FloatRect(100f, 100f, 510f, 500f),
+                    confidence = 0.95f,
+                    mask = ambiguousMask,
+                    footY = 500f
+                ),
+                residualTrackIds = emptySet()
+            )
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = emptyList(),
+            selectedPersonIds = setOf(42),
+            applyDilationToPrivacyTargets = false,
+            occluderErosionRadius = 1,
+            freshClassEvidence = evidence,
+            preferFreshClassPrimary = true,
+            expectedSelectedCount = 1
+        )
+
+        val privacy = assertNotNull(resolved.privacyMask)
+        var nonZeroCount = 0
+        for (i in 0 until privacy.buffer.capacity()) {
+            if ((privacy.buffer.get(i).toInt() and 0xFF) > 0) nonZeroCount++
+        }
+        assertEquals(1681, nonZeroCount, "Ambiguous fresh depth must remain privacy-wins")
+    }
 }
