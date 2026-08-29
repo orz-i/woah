@@ -298,6 +298,73 @@ class PrivacyFreshClassEvidenceTest {
     }
 
     @Test
+    fun freshPrimaryNeverUsesTrackedFallbackOnCurrentFreshUnselectedPerson() {
+        val wrongFallbackMask = rectMask(left = 8, top = 10, right = 20, bottom = 46)
+        val duplicateSelectedMask = rectMask(left = 43, top = 10, right = 55, bottom = 46)
+        val freshUnselectedMask = rectMask(left = 8, top = 10, right = 20, bottom = 46)
+        val freshSelectedMask = rectMask(left = 43, top = 10, right = 55, bottom = 46)
+
+        val wrongFallback = TrackedPerson(
+            id = 1,
+            bbox = FloatRect(80f, 100f, 200f, 460f),
+            mask = wrongFallbackMask,
+            confidence = 0.95f,
+            state = TrackState.REACQUIRING,
+            observedThisFrame = false
+        )
+        val duplicateSelected = TrackedPerson(
+            id = 2,
+            bbox = FloatRect(430f, 100f, 550f, 460f),
+            mask = duplicateSelectedMask,
+            confidence = 0.95f,
+            state = TrackState.REACQUIRING,
+            observedThisFrame = false
+        )
+        val evidence = listOf(
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.UNSELECTED,
+                detectionIndex = 0,
+                detection = PersonDetection(
+                    bbox = FloatRect(80f, 100f, 200f, 460f),
+                    confidence = 0.98f,
+                    mask = freshUnselectedMask,
+                    footY = 460f
+                ),
+                residualTrackIds = emptySet()
+            ),
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.SELECTED,
+                detectionIndex = 1,
+                detection = PersonDetection(
+                    bbox = FloatRect(430f, 100f, 550f, 460f),
+                    confidence = 0.98f,
+                    mask = freshSelectedMask,
+                    footY = 460f
+                ),
+                residualTrackIds = emptySet()
+            )
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = listOf(wrongFallback, duplicateSelected),
+            selectedPersonIds = setOf(1, 2),
+            applyDilationToPrivacyTargets = false,
+            occluderErosionRadius = 0,
+            freshClassEvidence = evidence,
+            preferFreshClassPrimary = true,
+            expectedSelectedCount = 2
+        )
+
+        val privacy = assertNotNull(resolved.privacyMask)
+        assertEquals(
+            0,
+            privacy.buffer.get(20 * 64 + 12).toInt() and 0xFF,
+            "A stale selected fallback must never create an extra mask on a current fresh unselected person"
+        )
+        assertTrue((privacy.buffer.get(20 * 64 + 48).toInt() and 0xFF) > 0)
+    }
+
+    @Test
     fun freshPrimaryCannotCreatePrivacyWhenUserSelectionIsEmpty() {
         val evidence = FreshPrivacyClassEvidence(
             selectionClass = PrivacySelectionClass.SELECTED,
@@ -371,6 +438,61 @@ class PrivacyFreshClassEvidenceTest {
             160,
             nonZeroCount,
             "A clearly foreground fresh unselected instance must occlude the selected privacy core even when YOLO instance probabilities tie"
+        )
+    }
+
+    @Test
+    fun freshPrimaryForegroundUsesRendererVisibleSoftMaskSupport() {
+        // 64/255 is below the resolver's historical 0.50 binary threshold but
+        // above the GL shader's 0.15 visible-effect onset. The old depth-core
+        // path therefore considered these masks non-overlapping even though the
+        // user could visibly see privacy on the foreground person.
+        val selectedMask = rectMask(left = 10, top = 10, right = 51, bottom = 51, value = 64)
+        val foregroundMask = rectMask(left = 10, top = 10, right = 51, bottom = 51, value = 64)
+        val evidence = listOf(
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.SELECTED,
+                detectionIndex = 0,
+                detection = PersonDetection(
+                    bbox = FloatRect(100f, 100f, 510f, 410f),
+                    confidence = 0.95f,
+                    mask = selectedMask,
+                    footY = 410f
+                ),
+                residualTrackIds = emptySet()
+            ),
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.UNSELECTED,
+                detectionIndex = 1,
+                detection = PersonDetection(
+                    bbox = FloatRect(100f, 100f, 510f, 510f),
+                    confidence = 0.95f,
+                    mask = foregroundMask,
+                    footY = 510f
+                ),
+                residualTrackIds = emptySet()
+            )
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = emptyList(),
+            selectedPersonIds = setOf(42),
+            applyDilationToPrivacyTargets = false,
+            occluderErosionRadius = 1,
+            freshClassEvidence = evidence,
+            preferFreshClassPrimary = true,
+            expectedSelectedCount = 1
+        )
+
+        val privacy = assertNotNull(resolved.privacyMask)
+        var nonZeroCount = 0
+        for (i in 0 until privacy.buffer.capacity()) {
+            if ((privacy.buffer.get(i).toInt() and 0xFF) > 0) nonZeroCount++
+        }
+        assertEquals(
+            160,
+            nonZeroCount,
+            "Clearly foreground unselected support must be removed across the same soft-mask range the shader visibly renders"
         )
     }
 

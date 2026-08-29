@@ -39,6 +39,10 @@ object PrivacyOcclusionResolver {
     private const val YOUNG_IDENTITY_RAW_PROBABILITY_ADVANTAGE = 0.25f
     private const val MAX_FOOT_Y_BIAS = 0.03f
     private const val STRONG_FRESH_FOREGROUND_FOOT_Y_RATIO = 0.10f
+    // GlShaders starts visibly blending privacy at smoothstep(0.15, 0.85, maskVal).
+    // Fresh foreground ownership therefore needs to cover the same visible mask
+    // support instead of only the >= 0.50 binary-analysis core.
+    private const val RENDER_VISIBLE_MASK_THRESHOLD_BYTE = 39
 
     /**
      * Resolves selected privacy targets and explicit foreground occluders into
@@ -191,7 +195,19 @@ object PrivacyOcclusionResolver {
                     if (bboxOverlapRatio < 0.10f) continue
 
                     val maskOverlapRatio = computeMaskOverlapRatio(dilatedMask, candMask)
-                    if (maskOverlapRatio <= 0.02f) continue
+                    val renderVisibleMaskOverlapRatio = if (
+                        useFreshPrimary && evidenceSelectedIds.contains(target.id)
+                    ) {
+                        computeMaskOverlapRatio(
+                            maskA = dilatedMask,
+                            maskB = candMask,
+                            thresholdA = RENDER_VISIBLE_MASK_THRESHOLD_BYTE,
+                            thresholdB = RENDER_VISIBLE_MASK_THRESHOLD_BYTE
+                        )
+                    } else {
+                        maskOverlapRatio
+                    }
+                    if (maxOf(maskOverlapRatio, renderVisibleMaskOverlapRatio) <= 0.02f) continue
 
                     // Depth evaluation
                     val footYDelta = candFootY - targetFootY // positive means cand is lower in frame / in front
@@ -210,15 +226,16 @@ object PrivacyOcclusionResolver {
                             normalizedFootYDelta >= STRONG_FRESH_FOREGROUND_FOOT_Y_RATIO
 
                     val freshDepthCore = if (useFreshDepthCore) {
-                        if (occluderErosionRadius > 0) {
-                            MaskPrivacyProcessor.erode(candMask, radius = occluderErosionRadius)
-                        } else {
-                            candMask
-                        }
+                        buildFreshDepthCore(candMask, occluderErosionRadius)
                     } else {
                         null
                     }
-                    val freshDepthCorePixels = countMaskIntersectionPixels(dilatedMask, freshDepthCore)
+                    val freshDepthCorePixels = countMaskIntersectionPixels(
+                        maskA = dilatedMask,
+                        maskB = freshDepthCore,
+                        thresholdA = RENDER_VISIBLE_MASK_THRESHOLD_BYTE,
+                        thresholdB = 128
+                    )
                     val ownershipMask = if (isCandFresh) {
                         computeUnselectedOwnershipMask(
                             selectedMask = rawMask,
@@ -273,6 +290,7 @@ object PrivacyOcclusionResolver {
                                 "threshold" to footYThreshold,
                                 "bbox_overlap" to bboxOverlapRatio,
                                 "mask_overlap" to maskOverlapRatio,
+                                "render_visible_mask_overlap" to renderVisibleMaskOverlapRatio,
                                 "ownership_pixels" to ownershipPixels,
                                 "fresh_depth_core_pixels" to freshDepthCorePixels,
                                 "ownership_mode" to if (usesFreshDepthCore) "FRESH_DEPTH_CORE" else "PROBABILITY_MARGIN",
@@ -297,6 +315,7 @@ object PrivacyOcclusionResolver {
                                 "threshold" to footYThreshold,
                                 "bbox_overlap" to bboxOverlapRatio,
                                 "mask_overlap" to maskOverlapRatio,
+                                "render_visible_mask_overlap" to renderVisibleMaskOverlapRatio,
                                 "ownership_pixels" to ownershipPixels,
                                 "fresh_depth_core_pixels" to freshDepthCorePixels,
                                 "normalized_foot_y_delta" to normalizedFootYDelta,
@@ -457,9 +476,15 @@ object PrivacyOcclusionResolver {
                     maxFreshSelectedOverlap = freshSelectedPersons.maxOfOrNull { overlapRatio(person.bbox, it.bbox) } ?: 0f
                 )
             }
-            // A track already covered by a fresh selected detection is a stale or
-            // duplicate representation, not a missing selected fallback slot.
-            .filter { it.maxFreshSelectedOverlap < 0.30f }
+            // A track already covered by any fresh detection is not spatially
+            // missing. In particular, do not let a stale selected identity land
+            // on a current fresh unselected person and create an extra privacy
+            // mask. Fresh-selected overlap still catches ordinary duplicates;
+            // all-fresh overlap also covers current unselected/unknown roster.
+            .filter {
+                it.maxFreshSelectedOverlap < 0.30f &&
+                    it.maxFreshOverlap < 0.30f
+            }
             .sortedWith(
                 compareBy<Candidate> { it.maxFreshOverlap }
                     .thenBy { if (it.person.observedThisFrame) 1 else 0 }
@@ -652,7 +677,12 @@ object PrivacyOcclusionResolver {
     /**
      * Computes the ratio of mask intersection over the smaller mask area.
      */
-    fun computeMaskOverlapRatio(maskA: NativeMask?, maskB: NativeMask?): Float {
+    fun computeMaskOverlapRatio(
+        maskA: NativeMask?,
+        maskB: NativeMask?,
+        thresholdA: Int = 128,
+        thresholdB: Int = 128
+    ): Float {
         if (maskA == null || maskB == null) return 0f
         val bufA = maskA.buffer
         val bufB = maskB.buffer
@@ -663,8 +693,8 @@ object PrivacyOcclusionResolver {
         var minAreaCountA = 0
         var minAreaCountB = 0
         for (i in 0 until len) {
-            val a = (bufA.get(i).toInt() and 0xFF) >= 128
-            val b = (bufB.get(i).toInt() and 0xFF) >= 128
+            val a = (bufA.get(i).toInt() and 0xFF) >= thresholdA
+            val b = (bufB.get(i).toInt() and 0xFF) >= thresholdB
             if (a) minAreaCountA++
             if (b) minAreaCountB++
             if (a && b) interCount++
@@ -675,14 +705,53 @@ object PrivacyOcclusionResolver {
         return if (minCount > 0) interCount.toFloat() / minCount.toFloat() else 0f
     }
 
-    private fun countMaskIntersectionPixels(maskA: NativeMask?, maskB: NativeMask?): Int {
+    private fun buildFreshDepthCore(mask: NativeMask, erosionRadius: Int): NativeMask {
+        val totalPixels = mask.width * mask.height
+        val thresholdBuffer = ByteBuffer.allocateDirect(totalPixels).order(ByteOrder.nativeOrder())
+        for (i in 0 until totalPixels) {
+            val value = mask.buffer.get(i).toInt() and 0xFF
+            thresholdBuffer.put(if (value >= RENDER_VISIBLE_MASK_THRESHOLD_BYTE) 255.toByte() else 0.toByte())
+        }
+        thresholdBuffer.rewind()
+
+        val binary = NativeMask(
+            width = mask.width,
+            height = mask.height,
+            buffer = thresholdBuffer,
+            originalWidth = mask.originalWidth,
+            originalHeight = mask.originalHeight,
+            mapper = mask.mapper,
+            roiInProto = mask.roiInProto,
+            samplingRect = mask.samplingRect
+        )
+        if (erosionRadius <= 0) return binary
+
+        val eroded = MaskPrivacyProcessor.erode(binary, radius = erosionRadius)
+        return NativeMask(
+            width = eroded.width,
+            height = eroded.height,
+            buffer = eroded.buffer,
+            originalWidth = eroded.originalWidth,
+            originalHeight = eroded.originalHeight,
+            mapper = eroded.mapper,
+            roiInProto = eroded.roiInProto,
+            samplingRect = mask.samplingRect
+        )
+    }
+
+    private fun countMaskIntersectionPixels(
+        maskA: NativeMask?,
+        maskB: NativeMask?,
+        thresholdA: Int = 128,
+        thresholdB: Int = 128
+    ): Int {
         if (maskA == null || maskB == null) return 0
         if (maskA.width != maskB.width || maskA.height != maskB.height) return 0
         val len = minOf(maskA.width * maskA.height, maskA.buffer.capacity(), maskB.buffer.capacity())
         var count = 0
         for (i in 0 until len) {
-            val a = (maskA.buffer.get(i).toInt() and 0xFF) >= 128
-            val b = (maskB.buffer.get(i).toInt() and 0xFF) >= 128
+            val a = (maskA.buffer.get(i).toInt() and 0xFF) >= thresholdA
+            val b = (maskB.buffer.get(i).toInt() and 0xFF) >= thresholdB
             if (a && b) count++
         }
         return count
