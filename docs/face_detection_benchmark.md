@@ -180,6 +180,44 @@ locator candidate. Keep the ML Kit benchmark as reproducible negative evidence,
 but do not add an RGBA-to-`InputImage` production adapter or use ML Kit tracking IDs.
 YOLO/`TrackManager` remains the only identity authority.
 
+### Dormant production locator boundary
+
+The validated MediaPipe locator has now been promoted from benchmark-only code to
+an internal production-packaged component:
+
+- `FaceLocator` exposes only positional `FaceObservation` values and inference
+  latency; it has no identity or tracking-ID field.
+- `MediaPipeFaceLocator` is fixed to CPU + stateless IMAGE mode and consumes the
+  same top-down RGBA contract already proven by the OES ROI path.
+- `FaceLocatorProvider.createOrNull()` defaults to `enabled=false`; there is no
+  current `ExportPipeline`, preview, Pigeon, or Flutter call site that opts in.
+- Gradle copies the pinned BlazeFace model into `models/face/` production assets
+  and verifies SHA-256 before compilation.
+
+This stage changes package contents but **not runtime anonymization behavior**.
+The next integration step must explicitly supply FACE_ONLY policy before the
+locator can execute during export.
+
+Verification on the connected PLK110 / Android 16 device passed using the
+production `MediaPipeFaceLocator` class and packaged production model asset on the
+reviewed distant-face ROI. `FaceLocatorProvider` also has a unit gate proving its
+default path returns `null`. The generated debug AAR contains:
+
+- `FaceLocator`, `MediaPipeFaceLocator`, and `FaceLocatorProvider` classes;
+- `assets/models/face/blaze_face_full_range.tflite` with SHA-256
+  `3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b`.
+
+A main-source call-site audit finds no caller of `FaceLocatorProvider`; therefore
+the existing full-body export path cannot instantiate this locator in the current
+revision.
+
+The PLK110 same-process coexistence smoke also passed with the sequence
+`YOLO -> MediaPipe -> YOLO`: both YOLO calls returned non-empty person detections.
+This removes the earlier instrumentation concern that simply loading/running
+MediaPipe IMAGE/CPU might invalidate the stable LiteRT YOLO runtime. It does not
+yet prove sustained mixed scheduling over a full export, which remains a later
+integration gate.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

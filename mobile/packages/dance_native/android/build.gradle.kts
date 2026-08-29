@@ -119,6 +119,9 @@ kotlin {
 
 dependencies {
     implementation("com.google.ai.edge.litert:litert:2.1.5")
+    // Face locator runtime is packaged but remains dormant until an explicit
+    // internal caller opts in. YOLO/TrackManager remains identity authority.
+    implementation("com.google.mediapipe:tasks-vision:1.0.0")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("org.json:json:20240303")
@@ -128,10 +131,43 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test:runner:1.5.2")
     androidTestImplementation("org.jetbrains.kotlin:kotlin-test")
-    // Benchmark-only dependency: face detection is not part of production yet.
-    androidTestImplementation("com.google.mediapipe:tasks-vision:1.0.0")
     // Benchmark-only bundled alternative for same-ROI A/B on real devices.
     androidTestImplementation("com.google.mlkit:face-detection:16.1.7")
+}
+
+val syncFaceDetectorAsset = tasks.register("syncFaceDetectorAsset") {
+    doLast {
+        val source = file("../../../../testdata/models/face/blaze_face_full_range.tflite")
+        if (!source.exists() || source.length() == 0L) {
+            throw GradleException("Missing face detector model fixture: ${source.absolutePath}")
+        }
+        val targetDir = file("src/main/assets/models/face")
+        val target = File(targetDir, "blaze_face_full_range.tflite")
+        targetDir.mkdirs()
+        val needsCopy = !target.exists() ||
+            target.length() != source.length() ||
+            sha256(target) != sha256(source)
+        if (needsCopy) {
+            source.copyTo(target, overwrite = true)
+        }
+    }
+}
+
+val verifyFaceDetectorAsset = tasks.register("verifyFaceDetectorAsset") {
+    dependsOn(syncFaceDetectorAsset)
+    doLast {
+        val model = file("src/main/assets/models/face/blaze_face_full_range.tflite")
+        if (!model.exists() || model.length() == 0L) {
+            throw GradleException("Missing packaged face detector model: ${model.absolutePath}")
+        }
+        val expectedSha256 = "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+        val actualSha256 = sha256(model)
+        if (actualSha256 != expectedSha256) {
+            throw GradleException(
+                "Unexpected face detector model hash: expected=$expectedSha256 actual=$actualSha256"
+            )
+        }
+    }
 }
 
 val syncLiteRtModelAssets = tasks.register("syncLiteRtModelAssets") {
@@ -211,5 +247,10 @@ val verifyNoPlayServicesLiteRt = tasks.register("verifyNoPlayServicesLiteRt") {
 }
 
 tasks.matching { it.name.startsWith("preBuild") || it.name.startsWith("compile") }.configureEach {
-    dependsOn(verifyLiteRtModelAssets, verifyNoOnnxRuntime, verifyNoPlayServicesLiteRt)
+    dependsOn(
+        verifyLiteRtModelAssets,
+        verifyFaceDetectorAsset,
+        verifyNoOnnxRuntime,
+        verifyNoPlayServicesLiteRt
+    )
 }

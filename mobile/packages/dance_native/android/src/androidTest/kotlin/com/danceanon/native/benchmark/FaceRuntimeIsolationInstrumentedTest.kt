@@ -6,6 +6,8 @@ import android.graphics.BitmapFactory
 import android.util.Log
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.danceanon.native.face.FaceLocator
+import com.danceanon.native.face.FaceLocatorProvider
 import com.danceanon.native.geometry.ModelCoordinateMapper
 import com.danceanon.native.inference.YoloLiteRtSegmenter
 import kotlinx.coroutines.runBlocking
@@ -16,6 +18,7 @@ import java.nio.ByteOrder
 import java.security.MessageDigest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * Real-device controls used to distinguish a model/runtime defect from an
@@ -90,6 +93,64 @@ class FaceRuntimeIsolationInstrumentedTest {
         }
 
         assertEquals(frames.length(), completed, "MediaPipe IMAGE-only control did not complete all fixture frames")
+    }
+
+    @Test
+    fun yoloMediaPipeYoloCoexistInSameProcess() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val frames = loadFrames(context)
+        val mapper = ModelCoordinateMapper(MODEL_SIZE, MODEL_SIZE, MODEL_SIZE, 160)
+        val yolo = YoloLiteRtSegmenter(context)
+        var faceLocator: FaceLocator? = null
+
+        try {
+            yolo.initialize()
+            val firstInfo = frames.getJSONObject(0)
+            val secondInfo = frames.getJSONObject(if (frames.length() > 1) 1 else 0)
+
+            val first = decodeFixture(context, firstInfo.getString("asset"))
+            try {
+                val before = yolo.segmentGlReadbackRgbaSync(
+                    rgbaBuffer = toBottomUpRgba(first),
+                    mapper = mapper,
+                    timestampUs = firstInfo.getLong("timestamp_ms") * 1000L
+                )
+                Log.i(
+                    TAG,
+                    "coexist_yolo_before accelerator=${yolo.effectiveAccelerator} persons=${before.persons.size}"
+                )
+                assertTrue(before.persons.isNotEmpty(), "YOLO coexistence control lost all persons before MediaPipe")
+
+                faceLocator = FaceLocatorProvider.createOrNull(context, enabled = true)
+                val face = requireNotNull(faceLocator).detectRgbaTopDown(
+                    rgba = toTopDownRgba(first),
+                    width = MODEL_SIZE,
+                    height = MODEL_SIZE
+                )
+                Log.i(TAG, "coexist_mediapipe faces=${face.observations.size} ms=${face.inferenceMs}")
+            } finally {
+                first.recycle()
+            }
+
+            val second = decodeFixture(context, secondInfo.getString("asset"))
+            try {
+                val after = yolo.segmentGlReadbackRgbaSync(
+                    rgbaBuffer = toBottomUpRgba(second),
+                    mapper = mapper,
+                    timestampUs = secondInfo.getLong("timestamp_ms") * 1000L
+                )
+                Log.i(
+                    TAG,
+                    "coexist_yolo_after accelerator=${yolo.effectiveAccelerator} persons=${after.persons.size}"
+                )
+                assertTrue(after.persons.isNotEmpty(), "YOLO coexistence control lost all persons after MediaPipe")
+            } finally {
+                second.recycle()
+            }
+        } finally {
+            faceLocator?.close()
+            yolo.close()
+        }
     }
 
     private fun loadFrames(context: Context) =
