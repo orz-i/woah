@@ -14,7 +14,7 @@ internal class MediaPipeFaceBenchmarkBackend(
     context: Context,
     minDetectionConfidence: Float = 0.35f
 ) : FaceBenchmarkBackend {
-    override val name: String = "mediapipe_blazeface_full_range_cpu"
+    override val name: String = "mediapipe_blazeface_full_range_cpu_image"
 
     private val detector: FaceDetector
 
@@ -26,7 +26,12 @@ internal class MediaPipeFaceBenchmarkBackend(
         val options = FaceDetector.FaceDetectorOptions.builder()
             .setBaseOptions(baseOptions)
             .setMinDetectionConfidence(minDetectionConfidence)
-            .setRunningMode(RunningMode.VIDEO)
+            // Identity and temporal ownership stay in YOLO/TrackManager. On the
+            // OnePlus PLK110 / Android 16 benchmark device, VIDEO mode stalled
+            // synchronously on the 11th detectForVideo() call. IMAGE mode is
+            // stateless, matches this architecture, and avoids that native graph
+            // state entirely.
+            .setRunningMode(RunningMode.IMAGE)
             .build()
         detector = FaceDetector.createFromOptions(context, options)
     }
@@ -46,7 +51,7 @@ internal class MediaPipeFaceBenchmarkBackend(
         ).build()
         return try {
             val startNs = System.nanoTime()
-            val result = detector.detectForVideo(mpImage, timestampMs)
+            val result = detector.detect(mpImage)
             val inferenceMs = (System.nanoTime() - startNs) / 1_000_000.0
             val detections = result.detections().map { detection ->
                 val rect = detection.boundingBox()

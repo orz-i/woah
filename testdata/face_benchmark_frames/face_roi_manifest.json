@@ -1,0 +1,224 @@
+{
+  "source": "testdata/expected/01_sample/frame_000000.png",
+  "source_width": 3000,
+  "source_height": 6534,
+  "roi_size": 256,
+  "entries": [
+    {
+      "asset": "face_roi_p0_tight.jpg",
+      "person_id": 0,
+      "mode": "tight",
+      "crop_source": [
+        882,
+        5210,
+        1253,
+        5581
+      ],
+      "source_person_bbox": [
+        934.8082885742188,
+        5298.90234375,
+        1199.6640625,
+        5901.21044921875
+      ],
+      "sha256": "c18e7bd3fcfa16b4737a62fd3f4610908a933caaef002ebff753941b71c1cdf9"
+    },
+    {
+      "asset": "face_roi_p0_medium.jpg",
+      "person_id": 0,
+      "mode": "medium",
+      "crop_source": [
+        829,
+        5169,
+        1306,
+        5646
+      ],
+      "source_person_bbox": [
+        934.8082885742188,
+        5298.90234375,
+        1199.6640625,
+        5901.21044921875
+      ],
+      "sha256": "16442ef0a9be2735286e1a9108af6bc002bf02c60ea73421996949e53d0bf61a"
+    },
+    {
+      "asset": "face_roi_p0_upper.jpg",
+      "person_id": 0,
+      "mode": "upper",
+      "crop_source": [
+        776,
+        5140,
+        1359,
+        5723
+      ],
+      "source_person_bbox": [
+        934.8082885742188,
+        5298.90234375,
+        1199.6640625,
+        5901.21044921875
+      ],
+      "sha256": "7f0f9e6dc059accf5586e4ea6469e7884ed61faa7299567e84938b1d3369c2dc"
+    },
+    {
+      "asset": "face_roi_p1_tight.jpg",
+      "person_id": 1,
+      "mode": "tight",
+      "crop_source": [
+        1257,
+        5283,
+        1533,
+        5560
+      ],
+      "source_person_bbox": [
+        1296.2843017578125,
+        5337.8701171875,
+        1493.913330078125,
+        5860.90869140625
+      ],
+      "sha256": "a5d724cfaf57591384991c27b86a36ee768ee4582afcc4a39a552462ac456fbe"
+    },
+    {
+      "asset": "face_roi_p1_medium.jpg",
+      "person_id": 1,
+      "mode": "medium",
+      "crop_source": [
+        1217,
+        5254,
+        1573,
+        5610
+      ],
+      "source_person_bbox": [
+        1296.2843017578125,
+        5337.8701171875,
+        1493.913330078125,
+        5860.90869140625
+      ],
+      "sha256": "89cf5ba5d3471a46baf3b60a0eddaa819e37bb2e5e571f777d4794ce8af32527"
+    },
+    {
+      "asset": "face_roi_p1_upper.jpg",
+      "person_id": 1,
+      "mode": "upper",
+      "crop_source": [
+        1160,
+        5218,
+        1630,
+        5688
+      ],
+      "source_person_bbox": [
+        1296.2843017578125,
+        5337.8701171875,
+        1493.913330078125,
+        5860.90869140625
+      ],
+      "sha256": "de089a01a9833ac58ef93e3cf51c1d6b4bda7fc1b3e8683e0a0a4385e8fe15c4"
+    },
+    {
+      "asset": "face_roi_p2_tight.jpg",
+      "person_id": 2,
+      "mode": "tight",
+      "crop_source": [
+        1388,
+        5197,
+        1749,
+        5558
+      ],
+      "source_person_bbox": [
+        1439.860595703125,
+        5274.5849609375,
+        1697.3868408203127,
+        5919.04443359375
+      ],
+      "sha256": "58ea1cef04e6fd93c132f6214df02a1b7c2b9ec3cdf1b4f1fe2e9ade79626d3d"
+    },
+    {
+      "asset": "face_roi_p2_medium.jpg",
+      "person_id": 2,
+      "mode": "medium",
+      "crop_source": [
+        1337,
+        5159,
+        1800,
+        5622
+      ],
+      "source_person_bbox": [
+        1439.860595703125,
+        5274.5849609375,
+        1697.3868408203127,
+        5919.04443359375
+      ],
+      "sha256": "168fa1982449dc48acad25440cfcfca0365dc88b423106c1159f7bdc4a62924c"
+    },
+    {
+      "asset": "face_roi_p2_upper.jpg",
+      "person_id": 2,
+      "mode": "upper",
+      "crop_source": [
+        1279,
+        5126,
+        1859,
+        5706
+      ],
+      "source_person_bbox": [
+        1439.860595703125,
+        5274.5849609375,
+        1697.3868408203127,
+        5919.04443359375
+      ],
+      "sha256": "bf3a80e0bacee41053f80254c662b28a0140e861267c4b0c9723c701a278c0cc"
+    },
+    {
+      "asset": "face_roi_p3_tight.jpg",
+      "person_id": 3,
+      "mode": "tight",
+      "crop_source": [
+        1869,
+        5206,
+        2194,
+        5531
+      ],
+      "source_person_bbox": [
+        1917.9522705078123,
+        5259.98876953125,
+        2144.95263671875,
+        5938.45361328125
+      ],
+      "sha256": "c6250e903c88d113049fd041e9485a43bd72a4e89b610c1dc7ab8cf6ddef85db"
+    },
+    {
+      "asset": "face_roi_p3_medium.jpg",
+      "person_id": 3,
+      "mode": "medium",
+      "crop_source": [
+        1811,
+        5162,
+        2252,
+        5603
+      ],
+      "source_person_bbox": [
+        1917.9522705078123,
+        5259.98876953125,
+        2144.95263671875,
+        5938.45361328125
+      ],
+      "sha256": "eaf8a923d8a3e8473e7e1358f6abea6283b179b235969e54e377ae8602fc0cb5"
+    },
+    {
+      "asset": "face_roi_p3_upper.jpg",
+      "person_id": 3,
+      "mode": "upper",
+      "crop_source": [
+        1726,
+        5104,
+        2337,
+        5715
+      ],
+      "source_person_bbox": [
+        1917.9522705078123,
+        5259.98876953125,
+        2144.95263671875,
+        5938.45361328125
+      ],
+      "sha256": "f3616cb4743846a2f61d4a7bbec0a34a37aad7b4efd5e1d790dbdffe3e9b8725"
+    }
+  ]
+}

@@ -73,7 +73,7 @@ android {
             // Benchmark-only fixtures. These directories are packaged only into
             // the instrumentation APK and never into the production AAR/APK.
             assets.srcDirs(
-                file("../../../../testdata/videos"),
+                file("../../../../testdata/face_benchmark_frames"),
                 file("../../../../testdata/models/face")
             )
         }
