@@ -37,15 +37,22 @@ class PrivacyClassTemporalTracker(
     }
 
     private val prototypes = mutableListOf<Prototype>()
+    private var rootSeeded = false
 
     fun reset() {
         prototypes.clear()
+        rootSeeded = false
     }
 
     /**
-     * Returns only temporally inferred evidence. Hard evidence is consumed as a
-     * seed/update signal but is already represented by TrackManager's fresh
-     * tracked persons or deterministic residual evidence in the render path.
+     * The first non-empty hard-class map is the immutable root selection from
+     * analysis/export initialization. Later hard maps are deliberately ignored:
+     * runtime TrackManager IDs are not privacy-class truth because an ambiguous
+     * identity can be re-created under a new unprotected ID.
+     *
+     * Returns a privacy-class decision for every current detection that has a
+     * mask. Detections whose class remains ambiguous are emitted conservatively
+     * as SELECTED for rendering, but they do not update class prototypes.
      */
     fun update(
         detections: List<PersonDetection>,
@@ -65,14 +72,20 @@ class PrivacyClassTemporalTracker(
             return emptyList()
         }
 
+        val rootClassByDetectionIndex = if (!rootSeeded && hardClassByDetectionIndex.isNotEmpty()) {
+            rootSeeded = true
+            hardClassByDetectionIndex
+        } else {
+            emptyMap()
+        }
+
         val classified = mutableMapOf<Int, PrivacySelectionClass>()
-        val inferredIndices = mutableSetOf<Int>()
         var hardSelected = 0
         var hardUnselected = 0
         var inferredSelected = 0
         var inferredUnselected = 0
 
-        for ((index, selectionClass) in hardClassByDetectionIndex) {
+        for ((index, selectionClass) in rootClassByDetectionIndex) {
             if (index !in detections.indices) continue
             classified[index] = selectionClass
             if (selectionClass == PrivacySelectionClass.SELECTED) hardSelected++ else hardUnselected++
@@ -106,21 +119,22 @@ class PrivacyClassTemporalTracker(
 
             if (inferredClass != null) {
                 classified[index] = inferredClass
-                inferredIndices.add(index)
                 if (inferredClass == PrivacySelectionClass.SELECTED) inferredSelected++ else inferredUnselected++
             }
         }
 
-        updatePrototypes(detections, classified, hardClassByDetectionIndex)
+        updatePrototypes(detections, classified, rootClassByDetectionIndex)
 
-        val inferredEvidence = inferredIndices.mapNotNull { index ->
+        val unknown = detections.size - classified.size
+        val frameEvidence = detections.indices.mapNotNull { index ->
             val detection = detections[index]
             if (detection.mask == null) return@mapNotNull null
             FreshPrivacyClassEvidence(
-                selectionClass = classified.getValue(index),
+                selectionClass = classified[index] ?: PrivacySelectionClass.SELECTED,
                 detectionIndex = index,
                 detection = detection,
-                residualTrackIds = emptySet()
+                residualTrackIds = emptySet(),
+                conservativeUnknown = !classified.containsKey(index)
             )
         }
 
@@ -130,9 +144,9 @@ class PrivacyClassTemporalTracker(
             hardUnselected = hardUnselected,
             inferredSelected = inferredSelected,
             inferredUnselected = inferredUnselected,
-            unknown = detections.size - classified.size
+            unknown = unknown
         )
-        return inferredEvidence
+        return frameEvidence
     }
 
     private fun bestClassScore(

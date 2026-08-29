@@ -194,4 +194,132 @@ class PrivacyFreshClassEvidenceTest {
         assertTrue((privacy.buffer.get(20 * 64 + 10).toInt() and 0xFF) > 0, "unmatched stale selected fallback must remain")
         assertTrue((privacy.buffer.get(20 * 64 + 50).toInt() and 0xFF) > 0, "distant fresh selected evidence must also remain")
     }
+
+    @Test
+    fun freshPrimaryIgnoresWrongTrackedSelectedMaskOnFreshUnselectedPerson() {
+        val wrongTrackedMask = rectMask(left = 6, top = 10, right = 18, bottom = 46)
+        val freshUnselectedMask = rectMask(left = 6, top = 10, right = 18, bottom = 46)
+        val freshSelectedMask = rectMask(left = 42, top = 10, right = 54, bottom = 46)
+        val wrongTrackedSelected = TrackedPerson(
+            id = 42,
+            bbox = FloatRect(60f, 100f, 180f, 460f),
+            mask = wrongTrackedMask,
+            confidence = 0.98f,
+            age = 30,
+            state = TrackState.ACTIVE,
+            observedThisFrame = true,
+            footY = 460f
+        )
+        val evidence = listOf(
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.UNSELECTED,
+                detectionIndex = 0,
+                detection = PersonDetection(
+                    bbox = FloatRect(60f, 100f, 180f, 460f),
+                    confidence = 0.98f,
+                    mask = freshUnselectedMask,
+                    footY = 460f
+                ),
+                residualTrackIds = emptySet()
+            ),
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.SELECTED,
+                detectionIndex = 1,
+                detection = PersonDetection(
+                    bbox = FloatRect(420f, 100f, 540f, 460f),
+                    confidence = 0.98f,
+                    mask = freshSelectedMask,
+                    footY = 460f
+                ),
+                residualTrackIds = emptySet()
+            )
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = listOf(wrongTrackedSelected),
+            selectedPersonIds = setOf(42),
+            applyDilationToPrivacyTargets = false,
+            occluderErosionRadius = 0,
+            freshClassEvidence = evidence,
+            preferFreshClassPrimary = true,
+            expectedSelectedCount = 1
+        )
+
+        val privacy = assertNotNull(resolved.privacyMask)
+        assertEquals(0, privacy.buffer.get(20 * 64 + 10).toInt() and 0xFF, "fresh unselected person must not inherit a wrong tracked selected mask")
+        assertTrue((privacy.buffer.get(20 * 64 + 48).toInt() and 0xFF) > 0, "fresh selected raw mask must be the primary privacy source")
+    }
+
+    @Test
+    fun freshPrimaryUsesOnlyMissingSelectedCountAsTrackedFallback() {
+        val missingMask = rectMask(left = 5, top = 10, right = 17, bottom = 46)
+        val duplicateMask = rectMask(left = 42, top = 10, right = 54, bottom = 46)
+        val freshMask = rectMask(left = 43, top = 10, right = 55, bottom = 46)
+        val missingTrack = TrackedPerson(
+            id = 1,
+            bbox = FloatRect(50f, 100f, 170f, 460f),
+            mask = missingMask,
+            confidence = 0.90f,
+            state = TrackState.REACQUIRING,
+            observedThisFrame = false
+        )
+        val duplicateTrack = TrackedPerson(
+            id = 2,
+            bbox = FloatRect(420f, 100f, 540f, 460f),
+            mask = duplicateMask,
+            confidence = 0.95f,
+            state = TrackState.REACQUIRING,
+            observedThisFrame = false
+        )
+        val freshSelected = FreshPrivacyClassEvidence(
+            selectionClass = PrivacySelectionClass.SELECTED,
+            detectionIndex = 0,
+            detection = PersonDetection(
+                bbox = FloatRect(430f, 100f, 550f, 460f),
+                confidence = 0.98f,
+                mask = freshMask
+            ),
+            residualTrackIds = emptySet()
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = listOf(missingTrack, duplicateTrack),
+            selectedPersonIds = setOf(1, 2),
+            applyDilationToPrivacyTargets = false,
+            occluderErosionRadius = 0,
+            freshClassEvidence = listOf(freshSelected),
+            preferFreshClassPrimary = true,
+            expectedSelectedCount = 2
+        )
+
+        val privacy = assertNotNull(resolved.privacyMask)
+        assertTrue((privacy.buffer.get(20 * 64 + 10).toInt() and 0xFF) > 0, "one genuinely missing selected slot must keep one bounded fallback")
+        assertTrue((privacy.buffer.get(20 * 64 + 48).toInt() and 0xFF) > 0, "fresh selected mask must cover the detected slot")
+    }
+
+    @Test
+    fun freshPrimaryCannotCreatePrivacyWhenUserSelectionIsEmpty() {
+        val evidence = FreshPrivacyClassEvidence(
+            selectionClass = PrivacySelectionClass.SELECTED,
+            detectionIndex = 0,
+            detection = PersonDetection(
+                bbox = FloatRect(100f, 100f, 220f, 460f),
+                confidence = 0.98f,
+                mask = rectMask(left = 10, top = 10, right = 22, bottom = 46)
+            ),
+            residualTrackIds = emptySet(),
+            conservativeUnknown = true
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = emptyList(),
+            selectedPersonIds = emptySet(),
+            freshClassEvidence = listOf(evidence),
+            preferFreshClassPrimary = true,
+            expectedSelectedCount = 0
+        )
+
+        assertTrue(!resolved.hasPrivacy)
+        assertEquals(null, resolved.privacyMask)
+    }
 }

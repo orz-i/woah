@@ -50,7 +50,10 @@ class PrivacyClassTemporalTrackerTest {
             ),
             ptsUs = 0L
         )
-        assertTrue(seeded.isEmpty(), "hard evidence is already represented by fresh tracked persons")
+        assertEquals(2, seeded.size)
+        assertEquals(PrivacySelectionClass.SELECTED, seeded.single { it.detectionIndex == 0 }.selectionClass)
+        assertEquals(PrivacySelectionClass.UNSELECTED, seeded.single { it.detectionIndex == 1 }.selectionClass)
+        assertTrue(seeded.none { it.conservativeUnknown })
 
         val next = listOf(
             detection(130f, 290f, 13, 29),
@@ -131,7 +134,9 @@ class PrivacyClassTemporalTrackerTest {
             mask = mergedMask
         )
         val inferred = tracker.update(listOf(merged), emptyMap(), 16_667L)
-        assertTrue(inferred.isEmpty(), "selected/unselected merged evidence must stay UNKNOWN")
+        assertEquals(1, inferred.size)
+        assertEquals(PrivacySelectionClass.SELECTED, inferred.single().selectionClass)
+        assertTrue(inferred.single().conservativeUnknown, "selected/unselected merged evidence must stay UNKNOWN internally")
     }
 
     @Test
@@ -145,7 +150,36 @@ class PrivacyClassTemporalTrackerTest {
 
         val entrant = detection(500f, 620f, 50, 62, maskTop = 2, maskBottom = 20)
         val inferred = tracker.update(listOf(entrant), emptyMap(), 16_667L)
-        assertTrue(inferred.isEmpty(), "a new far-away person must not inherit the selected class")
+        assertEquals(1, inferred.size)
+        assertTrue(inferred.single().conservativeUnknown, "a new far-away person must not inherit the selected class")
+    }
+
+    @Test
+    fun runtimeHardLabelsCannotOverwriteInitialPrivacyRoots() {
+        val tracker = PrivacyClassTemporalTracker()
+        tracker.update(
+            listOf(
+                detection(100f, 260f, 10, 26),
+                detection(380f, 540f, 38, 54)
+            ),
+            mapOf(0 to PrivacySelectionClass.SELECTED, 1 to PrivacySelectionClass.UNSELECTED),
+            0L
+        )
+
+        val next = tracker.update(
+            listOf(
+                detection(130f, 290f, 13, 29),
+                detection(350f, 510f, 35, 51)
+            ),
+            // Deliberately poisoned runtime labels. Once root selection has been
+            // established these must be ignored completely.
+            mapOf(0 to PrivacySelectionClass.UNSELECTED, 1 to PrivacySelectionClass.SELECTED),
+            16_667L
+        )
+
+        assertEquals(PrivacySelectionClass.SELECTED, next.single { it.detectionIndex == 0 }.selectionClass)
+        assertEquals(PrivacySelectionClass.UNSELECTED, next.single { it.detectionIndex == 1 }.selectionClass)
+        assertTrue(next.none { it.conservativeUnknown })
     }
 
     @Test

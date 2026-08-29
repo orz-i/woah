@@ -235,8 +235,7 @@ class TrackManagerAmbiguousReservationTest {
         assertEquals(setOf(0), evidence.single().residualTrackIds)
         assertEquals(FloatRect(120f, 100f, 220f, 300f), evidence.single().detection.bbox)
         assertEquals(setOf(0), tracker.getPrivacySuppressedSelectedTrackIds())
-        assertEquals(PrivacySelectionClass.SELECTED, tracker.getHardPrivacyClassByDetectionIndex()[0])
-        assertEquals(null, tracker.getHardPrivacyClassByDetectionIndex()[1], "young unselected identity must not become a hard temporal seed")
+        assertTrue(tracker.getHardPrivacyClassByDetectionIndex().isEmpty(), "runtime identities must not become privacy-class roots")
     }
 
     @Test
@@ -281,12 +280,11 @@ class TrackManagerAmbiguousReservationTest {
         assertEquals(setOf(1), evidence.single().residualTrackIds)
         assertEquals(FloatRect(120f, 100f, 220f, 300f), evidence.single().detection.bbox)
         assertTrue(tracker.getPrivacySuppressedSelectedTrackIds().isEmpty())
-        assertEquals(PrivacySelectionClass.SELECTED, tracker.getHardPrivacyClassByDetectionIndex()[0])
-        assertEquals(null, tracker.getHardPrivacyClassByDetectionIndex()[1], "young residual unselected identity must not become a hard temporal seed")
+        assertTrue(tracker.getHardPrivacyClassByDetectionIndex().isEmpty(), "residual/runtime identities must not become privacy-class roots")
     }
 
     @Test
-    fun testStableUnselectedExactObservationBecomesHardPrivacyClassSeed() {
+    fun testOnlyInitializationExposesHardPrivacyClassRoots() {
         tracker = TrackManager()
         tracker.setProtectedTrackIds(setOf(0))
         tracker.initializeWithAssignedIds(
@@ -296,6 +294,8 @@ class TrackManagerAmbiguousReservationTest {
             ),
             listOf(0, 1)
         )
+        assertEquals(PrivacySelectionClass.SELECTED, tracker.getHardPrivacyClassByDetectionIndex()[0])
+        assertEquals(PrivacySelectionClass.UNSELECTED, tracker.getHardPrivacyClassByDetectionIndex()[1])
 
         tracker.update(
             listOf(
@@ -304,7 +304,7 @@ class TrackManagerAmbiguousReservationTest {
             ),
             33_333L
         )
-        assertEquals(null, tracker.getHardPrivacyClassByDetectionIndex()[1])
+        assertTrue(tracker.getHardPrivacyClassByDetectionIndex().isEmpty())
 
         tracker.update(
             listOf(
@@ -313,7 +313,6 @@ class TrackManagerAmbiguousReservationTest {
             ),
             66_666L
         )
-        assertEquals(PrivacySelectionClass.SELECTED, tracker.getHardPrivacyClassByDetectionIndex()[0])
-        assertEquals(PrivacySelectionClass.UNSELECTED, tracker.getHardPrivacyClassByDetectionIndex()[1])
+        assertTrue(tracker.getHardPrivacyClassByDetectionIndex().isEmpty())
     }
 }

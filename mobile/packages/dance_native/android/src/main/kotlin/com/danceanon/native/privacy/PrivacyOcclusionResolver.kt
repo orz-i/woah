@@ -59,8 +59,19 @@ object PrivacyOcclusionResolver {
         foregroundFootYMarginRatio: Float = 0.05f,
         ptsUs: Long = 0L,
         freshClassEvidence: List<FreshPrivacyClassEvidence> = emptyList(),
-        suppressedSelectedTrackIds: Set<Int> = emptySet()
+        suppressedSelectedTrackIds: Set<Int> = emptySet(),
+        preferFreshClassPrimary: Boolean = false,
+        expectedSelectedCount: Int = 0
     ): ResolvedCompositorMasks {
+        if (selectedPersonIds.isEmpty()) {
+            return ResolvedCompositorMasks(
+                privacyMask = null,
+                occluderMask = null,
+                hasPrivacy = false,
+                hasOccluder = false
+            )
+        }
+
         val evidenceSelectedIds = mutableSetOf<Int>()
         val evidencePersons = freshClassEvidence.mapIndexedNotNull { index, evidence ->
             val mask = evidence.detection.mask ?: return@mapIndexedNotNull null
@@ -81,26 +92,60 @@ object PrivacyOcclusionResolver {
                 footY = evidence.detection.footY
             )
         }
-        val effectiveSuppressedSelectedTrackIds = suppressedSelectedTrackIds +
-            inferStaleSelectedReplacements(
+        val useFreshPrimary = preferFreshClassPrimary && evidencePersons.isNotEmpty() && selectedPersonIds.isNotEmpty()
+        val privacyPersons: List<TrackedPerson>
+        val effectiveSelectedIds: Set<Int>
+
+        if (useFreshPrimary) {
+            val freshSelectedPersons = evidencePersons.filter { evidenceSelectedIds.contains(it.id) }
+            val expectedCount = expectedSelectedCount.coerceAtLeast(selectedPersonIds.size)
+            val fallbackDeficit = (expectedCount - freshSelectedPersons.size).coerceAtLeast(0)
+            val fallbackSelectedPersons = selectFreshPrimaryFallbacks(
                 persons = persons,
                 selectedPersonIds = selectedPersonIds,
-                freshClassEvidence = freshClassEvidence,
-                alreadySuppressed = suppressedSelectedTrackIds,
-                ptsUs = ptsUs
+                freshEvidencePersons = evidencePersons,
+                freshSelectedPersons = freshSelectedPersons,
+                maxFallbackCount = fallbackDeficit
             )
+            privacyPersons = evidencePersons + fallbackSelectedPersons
+            effectiveSelectedIds = evidenceSelectedIds + fallbackSelectedPersons.map { it.id }
 
-        val privacyPersons = if (effectiveSuppressedSelectedTrackIds.isEmpty() && evidencePersons.isEmpty()) {
-            persons
+            NativeDiagnostics.event(
+                level = "INFO",
+                component = "PrivacyOcclusionResolver",
+                event = "PRIVACY_FRESH_CLASS_PRIMARY_COMPOSITION",
+                fields = mapOf(
+                    "expected_selected" to expectedCount,
+                    "fresh_selected" to freshSelectedPersons.size,
+                    "fresh_unselected" to (evidencePersons.size - freshSelectedPersons.size),
+                    "fresh_conservative_unknown" to freshClassEvidence.count { it.conservativeUnknown },
+                    "fallback_selected" to fallbackSelectedPersons.size,
+                    "fallback_ids" to fallbackSelectedPersons.map { it.id },
+                    "pts_us" to ptsUs
+                )
+            )
         } else {
-            persons.filterNot {
-                selectedPersonIds.contains(it.id) && effectiveSuppressedSelectedTrackIds.contains(it.id)
-            } + evidencePersons
-        }
-        val effectiveSelectedIds = if (evidenceSelectedIds.isEmpty()) {
-            selectedPersonIds
-        } else {
-            selectedPersonIds + evidenceSelectedIds
+            val effectiveSuppressedSelectedTrackIds = suppressedSelectedTrackIds +
+                inferStaleSelectedReplacements(
+                    persons = persons,
+                    selectedPersonIds = selectedPersonIds,
+                    freshClassEvidence = freshClassEvidence,
+                    alreadySuppressed = suppressedSelectedTrackIds,
+                    ptsUs = ptsUs
+                )
+
+            privacyPersons = if (effectiveSuppressedSelectedTrackIds.isEmpty() && evidencePersons.isEmpty()) {
+                persons
+            } else {
+                persons.filterNot {
+                    selectedPersonIds.contains(it.id) && effectiveSuppressedSelectedTrackIds.contains(it.id)
+                } + evidencePersons
+            }
+            effectiveSelectedIds = if (evidenceSelectedIds.isEmpty()) {
+                selectedPersonIds
+            } else {
+                selectedPersonIds + evidenceSelectedIds
+            }
         }
 
         val selectedPersons = privacyPersons.filter { effectiveSelectedIds.contains(it.id) && it.mask != null }
@@ -337,6 +382,64 @@ object PrivacyOcclusionResolver {
             hasPrivacy = (mergedPrivacy != null),
             hasOccluder = false
         )
+    }
+
+    /**
+     * In fresh-class-primary mode, TrackManager masks are fallback only. Keep at
+     * most the number of missing selected-class detections, preferring tracks
+     * that are spatially absent from the current fresh YOLO roster. Tracks that
+     * overlap a fresh selected mask are duplicates and are never useful fallback.
+     */
+    private fun selectFreshPrimaryFallbacks(
+        persons: List<TrackedPerson>,
+        selectedPersonIds: Set<Int>,
+        freshEvidencePersons: List<TrackedPerson>,
+        freshSelectedPersons: List<TrackedPerson>,
+        maxFallbackCount: Int
+    ): List<TrackedPerson> {
+        if (maxFallbackCount <= 0) return emptyList()
+
+        data class Candidate(
+            val person: TrackedPerson,
+            val maxFreshOverlap: Float,
+            val maxFreshSelectedOverlap: Float
+        )
+
+        fun overlapRatio(a: FloatRect, b: FloatRect): Float {
+            val inter = computeBBoxIntersectionArea(a, b)
+            val minArea = minOf(
+                (a.width * a.height).coerceAtLeast(1e-4f),
+                (b.width * b.height).coerceAtLeast(1e-4f)
+            )
+            return inter / minArea
+        }
+
+        val candidates = persons.asSequence()
+            .filter {
+                selectedPersonIds.contains(it.id) &&
+                    it.state != TrackState.REMOVED &&
+                    it.mask != null
+            }
+            .map { person ->
+                Candidate(
+                    person = person,
+                    maxFreshOverlap = freshEvidencePersons.maxOfOrNull { overlapRatio(person.bbox, it.bbox) } ?: 0f,
+                    maxFreshSelectedOverlap = freshSelectedPersons.maxOfOrNull { overlapRatio(person.bbox, it.bbox) } ?: 0f
+                )
+            }
+            // A track already covered by a fresh selected detection is a stale or
+            // duplicate representation, not a missing selected fallback slot.
+            .filter { it.maxFreshSelectedOverlap < 0.30f }
+            .sortedWith(
+                compareBy<Candidate> { it.maxFreshOverlap }
+                    .thenBy { if (it.person.observedThisFrame) 1 else 0 }
+                    .thenBy { it.person.missedFrames }
+            )
+            .take(maxFallbackCount)
+            .map { it.person }
+            .toList()
+
+        return candidates
     }
 
     /**

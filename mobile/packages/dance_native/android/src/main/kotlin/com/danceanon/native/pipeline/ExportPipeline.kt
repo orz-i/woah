@@ -440,6 +440,7 @@ class ExportPipeline(
                     val renderTexMatrix: FloatArray? = finalTexMatrix
                     var freshPrivacyClassEvidence = emptyList<com.danceanon.native.tracking.FreshPrivacyClassEvidence>()
                     var suppressedSelectedPrivacyTrackIds = emptySet<Int>()
+                    var preferFreshPrivacyClassPrimary = false
 
                         // 2. Perform Inference / Temporal Mask Tracking
                         val trackedList: List<com.danceanon.native.tracking.TrackedPerson> = if (isSam2Mode && sam2Fbo != null && sam2Renderer != null && sam2Tracker != null) {
@@ -693,16 +694,25 @@ class ExportPipeline(
                                 profiler.recordStage("privacyClassTracking") {
                                     privacyClassTemporalTracker.update(
                                         detections = detections,
-                                        hardClassByDetectionIndex = trackManager.getHardPrivacyClassByDetectionIndex(),
+                                        hardClassByDetectionIndex = if (processedFrames == 1) {
+                                            trackManager.getHardPrivacyClassByDetectionIndex()
+                                        } else {
+                                            emptyMap()
+                                        },
                                         ptsUs = ptsUs
                                     )
                                 }
                             } else {
                                 emptyList()
                             }
-                            freshPrivacyClassEvidence =
-                                trackManager.getFreshPrivacyClassEvidence() + temporalPrivacyEvidence
-                            suppressedSelectedPrivacyTrackIds = trackManager.getPrivacySuppressedSelectedTrackIds()
+                            // QUALITY privacy composition is rooted in the initial
+                            // analysis selection and current raw YOLO masks. Runtime
+                            // TrackManager IDs stay diagnostic/identity state only;
+                            // feeding them back into privacy class poisoned the
+                            // class tracker after new IDs were created in occlusion.
+                            freshPrivacyClassEvidence = temporalPrivacyEvidence
+                            suppressedSelectedPrivacyTrackIds = emptySet()
+                            preferFreshPrivacyClassPrimary = shouldInfer && temporalPrivacyEvidence.isNotEmpty()
                             tracked
                         }
 
@@ -775,7 +785,9 @@ class ExportPipeline(
                                 presentationTimeUs = ptsUs,
                                 textureType = renderTexType,
                                 freshPrivacyClassEvidence = freshPrivacyClassEvidence,
-                                suppressedSelectedPrivacyTrackIds = suppressedSelectedPrivacyTrackIds
+                                suppressedSelectedPrivacyTrackIds = suppressedSelectedPrivacyTrackIds,
+                                preferFreshPrivacyClassPrimary = preferFreshPrivacyClassPrimary,
+                                expectedSelectedPrivacyCount = selectedIds.size
                             )
                             renderedFrameCount++
                         }
