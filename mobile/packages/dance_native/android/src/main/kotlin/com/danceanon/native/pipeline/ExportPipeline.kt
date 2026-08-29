@@ -251,6 +251,7 @@ class ExportPipeline(
                 var lastPresentationNs = -1L
                 val trackManager = TrackManager()
                 trackManager.setProtectedTrackIds(request.selectedPersonIds.map { it.toInt() }.toSet())
+                val privacyClassTemporalTracker = com.danceanon.native.privacy.PrivacyClassTemporalTracker()
                 val profile = ProcessingProfile.fromName(request.processingProfile)
                 val frameStride = profile.inferenceStride
                 var lastProgressEmitTime = 0L
@@ -688,7 +689,19 @@ class ExportPipeline(
                                     trackManager.predict(ptsUs)
                                 }
                             }
-                            freshPrivacyClassEvidence = trackManager.getFreshPrivacyClassEvidence()
+                            val temporalPrivacyEvidence = if (shouldInfer) {
+                                profiler.recordStage("privacyClassTracking") {
+                                    privacyClassTemporalTracker.update(
+                                        detections = detections,
+                                        hardClassByDetectionIndex = trackManager.getHardPrivacyClassByDetectionIndex(),
+                                        ptsUs = ptsUs
+                                    )
+                                }
+                            } else {
+                                emptyList()
+                            }
+                            freshPrivacyClassEvidence =
+                                trackManager.getFreshPrivacyClassEvidence() + temporalPrivacyEvidence
                             suppressedSelectedPrivacyTrackIds = trackManager.getPrivacySuppressedSelectedTrackIds()
                             tracked
                         }

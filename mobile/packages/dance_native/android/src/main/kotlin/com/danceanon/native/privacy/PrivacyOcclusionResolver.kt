@@ -4,8 +4,10 @@ import com.danceanon.native.diagnostics.NativeDiagnostics
 import com.danceanon.native.inference.FloatRect
 import com.danceanon.native.inference.NativeMask
 import com.danceanon.native.tracking.FreshPrivacyClassEvidence
+import com.danceanon.native.tracking.HungarianSolver
 import com.danceanon.native.tracking.PrivacySelectionClass
 import com.danceanon.native.tracking.TrackState
+import com.danceanon.native.tracking.TrackManager
 import com.danceanon.native.tracking.TrackedPerson
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -79,11 +81,20 @@ object PrivacyOcclusionResolver {
                 footY = evidence.detection.footY
             )
         }
-        val privacyPersons = if (suppressedSelectedTrackIds.isEmpty() && evidencePersons.isEmpty()) {
+        val effectiveSuppressedSelectedTrackIds = suppressedSelectedTrackIds +
+            inferStaleSelectedReplacements(
+                persons = persons,
+                selectedPersonIds = selectedPersonIds,
+                freshClassEvidence = freshClassEvidence,
+                alreadySuppressed = suppressedSelectedTrackIds,
+                ptsUs = ptsUs
+            )
+
+        val privacyPersons = if (effectiveSuppressedSelectedTrackIds.isEmpty() && evidencePersons.isEmpty()) {
             persons
         } else {
             persons.filterNot {
-                selectedPersonIds.contains(it.id) && suppressedSelectedTrackIds.contains(it.id)
+                selectedPersonIds.contains(it.id) && effectiveSuppressedSelectedTrackIds.contains(it.id)
             } + evidencePersons
         }
         val effectiveSelectedIds = if (evidenceSelectedIds.isEmpty()) {
@@ -326,6 +337,90 @@ object PrivacyOcclusionResolver {
             hasPrivacy = (mergedPrivacy != null),
             hasOccluder = false
         )
+    }
+
+    /**
+     * Temporal class evidence has no exact ID by design. When one fresh selected
+     * detection has strong absolute geometry against one stale selected track,
+     * replace that stale render mask one-to-one. This removes the common
+     * "fresh mask + old ghost mask" artifact without disabling stale fallback for
+     * unmatched selected identities.
+     */
+    private fun inferStaleSelectedReplacements(
+        persons: List<TrackedPerson>,
+        selectedPersonIds: Set<Int>,
+        freshClassEvidence: List<FreshPrivacyClassEvidence>,
+        alreadySuppressed: Set<Int>,
+        ptsUs: Long
+    ): Set<Int> {
+        val temporalSelectedEvidence = freshClassEvidence.filter {
+            it.selectionClass == PrivacySelectionClass.SELECTED &&
+                it.residualTrackIds.isEmpty() &&
+                it.detection.mask != null
+        }
+        if (temporalSelectedEvidence.isEmpty()) return emptySet()
+
+        val staleSelected = persons.filter {
+            selectedPersonIds.contains(it.id) &&
+                !alreadySuppressed.contains(it.id) &&
+                !it.observedThisFrame &&
+                it.state != TrackState.REMOVED &&
+                it.mask != null
+        }
+        if (staleSelected.isEmpty()) return emptySet()
+
+        data class PairEvidence(val score: Float, val bboxIoU: Float, val maskIoU: Float, val accepted: Boolean)
+
+        val evidenceMatrix = Array(staleSelected.size) { r ->
+            Array(temporalSelectedEvidence.size) { c ->
+                val track = staleSelected[r]
+                val det = temporalSelectedEvidence[c].detection
+                val bboxIoU = TrackManager.computeBBoxIoU(track.bbox, det.bbox)
+                val maskIoU = TrackManager.computeMaskIoU(track.mask, det.mask, sampleStride = 4)
+                val dx = track.bbox.centerX - det.bbox.centerX
+                val dy = track.bbox.centerY - det.bbox.centerY
+                val distance = kotlin.math.sqrt(dx * dx + dy * dy)
+                val refDim = maxOf(track.bbox.width, track.bbox.height, det.bbox.width, det.bbox.height, 1f)
+                val distanceScore = (1f - distance / (refDim * 1.5f)).coerceIn(0f, 1f)
+                val score = (0.55f * bboxIoU + 0.35f * maskIoU + 0.10f * distanceScore).coerceIn(0f, 1f)
+                val accepted = when (track.state) {
+                    TrackState.LOST -> bboxIoU >= 0.45f || maskIoU >= 0.30f
+                    TrackState.OCCLUDED, TrackState.REACQUIRING -> bboxIoU >= 0.35f || maskIoU >= 0.20f
+                    else -> bboxIoU >= 0.30f || maskIoU >= 0.20f
+                }
+                PairEvidence(score, bboxIoU, maskIoU, accepted)
+            }
+        }
+        val costs = Array(staleSelected.size) { r ->
+            FloatArray(temporalSelectedEvidence.size) { c ->
+                val pair = evidenceMatrix[r][c]
+                if (pair.accepted) 1f - pair.score else 1f
+            }
+        }
+        val matches = HungarianSolver.match(costs, maxCostThreshold = 0.65f)
+        val suppressed = mutableSetOf<Int>()
+        for ((trackIndex, evidenceIndex) in matches.matches) {
+            val pair = evidenceMatrix[trackIndex][evidenceIndex]
+            if (!pair.accepted || pair.score < 0.35f) continue
+            val track = staleSelected[trackIndex]
+            val evidence = temporalSelectedEvidence[evidenceIndex]
+            suppressed.add(track.id)
+            NativeDiagnostics.event(
+                level = "INFO",
+                component = "PrivacyOcclusionResolver",
+                event = "PRIVACY_STALE_SELECTED_REPLACED_BY_FRESH_CLASS",
+                fields = mapOf(
+                    "track_id" to track.id,
+                    "track_state" to track.state.name,
+                    "detection_index" to evidence.detectionIndex,
+                    "score" to pair.score,
+                    "bbox_iou" to pair.bboxIoU,
+                    "mask_iou" to pair.maskIoU,
+                    "pts_us" to ptsUs
+                )
+            )
+        }
+        return suppressed
     }
 
     /**

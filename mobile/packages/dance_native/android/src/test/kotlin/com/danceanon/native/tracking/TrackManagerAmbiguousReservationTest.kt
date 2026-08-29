@@ -235,6 +235,8 @@ class TrackManagerAmbiguousReservationTest {
         assertEquals(setOf(0), evidence.single().residualTrackIds)
         assertEquals(FloatRect(120f, 100f, 220f, 300f), evidence.single().detection.bbox)
         assertEquals(setOf(0), tracker.getPrivacySuppressedSelectedTrackIds())
+        assertEquals(PrivacySelectionClass.SELECTED, tracker.getHardPrivacyClassByDetectionIndex()[0])
+        assertEquals(null, tracker.getHardPrivacyClassByDetectionIndex()[1], "young unselected identity must not become a hard temporal seed")
     }
 
     @Test
@@ -279,5 +281,39 @@ class TrackManagerAmbiguousReservationTest {
         assertEquals(setOf(1), evidence.single().residualTrackIds)
         assertEquals(FloatRect(120f, 100f, 220f, 300f), evidence.single().detection.bbox)
         assertTrue(tracker.getPrivacySuppressedSelectedTrackIds().isEmpty())
+        assertEquals(PrivacySelectionClass.SELECTED, tracker.getHardPrivacyClassByDetectionIndex()[0])
+        assertEquals(null, tracker.getHardPrivacyClassByDetectionIndex()[1], "young residual unselected identity must not become a hard temporal seed")
+    }
+
+    @Test
+    fun testStableUnselectedExactObservationBecomesHardPrivacyClassSeed() {
+        tracker = TrackManager()
+        tracker.setProtectedTrackIds(setOf(0))
+        tracker.initializeWithAssignedIds(
+            listOf(
+                PersonDetection(FloatRect(100f, 100f, 180f, 300f), 0.95f, createDummyMask()),
+                PersonDetection(FloatRect(400f, 100f, 480f, 300f), 0.95f, createDummyMask())
+            ),
+            listOf(0, 1)
+        )
+
+        tracker.update(
+            listOf(
+                PersonDetection(FloatRect(105f, 100f, 185f, 300f), 0.95f, createDummyMask()),
+                PersonDetection(FloatRect(395f, 100f, 475f, 300f), 0.95f, createDummyMask())
+            ),
+            33_333L
+        )
+        assertEquals(null, tracker.getHardPrivacyClassByDetectionIndex()[1])
+
+        tracker.update(
+            listOf(
+                PersonDetection(FloatRect(110f, 100f, 190f, 300f), 0.95f, createDummyMask()),
+                PersonDetection(FloatRect(390f, 100f, 470f, 300f), 0.95f, createDummyMask())
+            ),
+            66_666L
+        )
+        assertEquals(PrivacySelectionClass.SELECTED, tracker.getHardPrivacyClassByDetectionIndex()[0])
+        assertEquals(PrivacySelectionClass.UNSELECTED, tracker.getHardPrivacyClassByDetectionIndex()[1])
     }
 }

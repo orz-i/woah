@@ -147,6 +147,7 @@ class TrackManager(
     private val protectedTrackIds = mutableSetOf<Int>()
     private val currentPrivacyClassEvidence = mutableListOf<FreshPrivacyClassEvidence>()
     private val currentPrivacySuppressedSelectedTrackIds = mutableSetOf<Int>()
+    private val currentHardPrivacyClassByDetectionIndex = mutableMapOf<Int, PrivacySelectionClass>()
     private var nextTrackId = 0
     private var hasInitialized = false
 
@@ -164,6 +165,24 @@ class TrackManager(
 
     fun getPrivacySuppressedSelectedTrackIds(): Set<Int> = currentPrivacySuppressedSelectedTrackIds
 
+    fun getHardPrivacyClassByDetectionIndex(): Map<Int, PrivacySelectionClass> =
+        currentHardPrivacyClassByDetectionIndex.toMap()
+
+    private fun privacyClassForTrackId(trackId: Int): PrivacySelectionClass =
+        if (protectedTrackIds.contains(trackId)) {
+            PrivacySelectionClass.SELECTED
+        } else {
+            PrivacySelectionClass.UNSELECTED
+        }
+
+    private fun recordHardPrivacyClassForObservedTrack(detectionIndex: Int, track: InternalTrack) {
+        if (protectedTrackIds.contains(track.id)) {
+            currentHardPrivacyClassByDetectionIndex[detectionIndex] = PrivacySelectionClass.SELECTED
+        } else if (track.age >= PRIVACY_CLASS_UNSELECTED_HARD_MIN_AGE_FRAMES) {
+            currentHardPrivacyClassByDetectionIndex[detectionIndex] = PrivacySelectionClass.UNSELECTED
+        }
+    }
+
     override fun initialize(detections: List<PersonDetection>): List<TrackedPerson> {
         val defaultIds = detections.indices.toList()
         return initializeWithAssignedIds(detections, defaultIds)
@@ -177,6 +196,7 @@ class TrackManager(
         occlusionGroups.clear()
         currentPrivacyClassEvidence.clear()
         currentPrivacySuppressedSelectedTrackIds.clear()
+        currentHardPrivacyClassByDetectionIndex.clear()
         nextTrackId = 0
         for ((index, det) in detections.withIndex()) {
             val trackId = if (index < assignedIds.size) assignedIds[index] else nextTrackId
@@ -193,6 +213,7 @@ class TrackManager(
                 currentObservedFootY = det.footY
             )
             tracks.add(track)
+            currentHardPrivacyClassByDetectionIndex[index] = privacyClassForTrackId(trackId)
             nextTrackId = maxOf(nextTrackId, trackId + 1)
         }
         hasInitialized = true
@@ -343,6 +364,7 @@ class TrackManager(
 
         currentPrivacyClassEvidence.clear()
         currentPrivacySuppressedSelectedTrackIds.clear()
+        currentHardPrivacyClassByDetectionIndex.clear()
 
         if (detections.isEmpty()) {
             return predict(timestampUs)
@@ -695,6 +717,7 @@ class TrackManager(
                 track.currentObservedFootY = det.footY
                 track.lastObservedFootY = det.footY
                 track.kalman.update(det.bbox, timestampUs)
+                recordHardPrivacyClassForObservedTrack(dIdx, track)
 
                 NativeDiagnostics.event(
                     level = "INFO",
@@ -800,6 +823,11 @@ class TrackManager(
 
                 if (selectionClass != null && residualDetectionIndices.all { detections[it].mask != null }) {
                     for (dIdx in residualDetectionIndices) {
+                        if (selectionClass == PrivacySelectionClass.SELECTED ||
+                            residualTrackIndices.all { tracks[it].age >= PRIVACY_CLASS_UNSELECTED_HARD_MIN_AGE_FRAMES }
+                        ) {
+                            currentHardPrivacyClassByDetectionIndex[dIdx] = selectionClass
+                        }
                         currentPrivacyClassEvidence.add(
                             FreshPrivacyClassEvidence(
                                 selectionClass = selectionClass,
@@ -1034,6 +1062,7 @@ class TrackManager(
                 track.currentObservedFootY = det.footY
                 track.lastObservedFootY = det.footY
                 track.kalman.update(det.bbox, timestampUs)
+                recordHardPrivacyClassForObservedTrack(dIdx, track)
 
                 NativeDiagnostics.event(
                     level = "INFO",
@@ -1437,6 +1466,7 @@ class TrackManager(
                 bestTrack.currentObservedFootY = det.footY
                 bestTrack.lastObservedFootY = det.footY
                 bestTrack.kalman.update(det.bbox, timestampUs)
+                recordHardPrivacyClassForObservedTrack(detIndex, bestTrack)
                 reclaimedTrackIds.add(bestTrack.id)
                 NativeDiagnostics.event(
                     level = "INFO",
@@ -1510,6 +1540,7 @@ class TrackManager(
     private fun predictInternal(timestampUs: Long, countAsDetectionMiss: Boolean): List<TrackedPerson> {
         currentPrivacyClassEvidence.clear()
         currentPrivacySuppressedSelectedTrackIds.clear()
+        currentHardPrivacyClassByDetectionIndex.clear()
 
         // A prediction-only frame is not a fresh person observation. Keeping the
         // previous frame's flag set would let a later association treat a
@@ -1627,12 +1658,14 @@ class TrackManager(
         protectedTrackIds.clear()
         currentPrivacyClassEvidence.clear()
         currentPrivacySuppressedSelectedTrackIds.clear()
+        currentHardPrivacyClassByDetectionIndex.clear()
         nextTrackId = 0
         hasInitialized = false
     }
 
     companion object {
         private const val ASSOCIATION_MASK_IOU_SAMPLE_STRIDE = 4
+        private const val PRIVACY_CLASS_UNSELECTED_HARD_MIN_AGE_FRAMES = 3
         private const val OCCLUSION_GROUP_MOTION_BLEND = 0.50f
         private const val PROTECTED_GROUP_ACTIVE_MIN_BBOX_IOU = 0.35f
         private const val PROTECTED_GROUP_ACTIVE_MIN_MASK_IOU = 0.20f
