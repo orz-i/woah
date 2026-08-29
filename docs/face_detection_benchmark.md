@@ -145,6 +145,41 @@ This confirms the current conservative ~25 ms p95/ROI planning budget and shows
 that the dominant cost is MediaPipe CPU inference, not the source-texture crop or
 GPU readback.
 
+### Bundled ML Kit same-ROI A/B
+
+The bundled Android ML Kit face detector (`com.google.mlkit:face-detection:16.1.7`)
+was also run on the exact same twelve reviewed 256x256 ROI fixtures on PLK110 /
+Android 16. The dependency remains `androidTestImplementation` only. Both FAST and
+ACCURATE modes disabled landmarks, contours, classification, and tracking, and used
+an intentionally permissive `minFaceSize=0.05` so small distant target faces were
+not rejected by configuration alone.
+
+Results:
+
+| Backend | Upper ROI any face | Upper target selected | p50 across runs | p95 across runs |
+| --- | ---: | ---: | ---: | ---: |
+| MediaPipe BlazeFace full-range IMAGE/CPU | **4/4** | **4/4** | ~18-20 ms sustained | ~25 ms sustained |
+| ML Kit bundled FAST | 1/4 | 1/4 | 10.14-13.17 ms | 11.00-16.27 ms |
+| ML Kit bundled ACCURATE | 2/4 | 1/4 | 15.68-30.90 ms | 19.13-35.20 ms |
+
+Two ML Kit runs at different device thermal/background states produced materially
+different latency but the **same target-coverage result**. In the later run FAST
+measured mean 12.72 ms / p50 13.17 ms / p95 16.27 ms, while ACCURATE measured
+mean 30.76 ms / p50 30.90 ms / p95 35.20 ms. This reinforces that detector choice
+should be based on privacy-target coverage first, not the best single latency run.
+
+In ACCURATE mode one additional upper ROI produced only a neighboring face. The
+existing anchor ownership gate correctly rejected that detection instead of
+assigning it to the target person. ML Kit therefore does not improve target-face
+coverage on the reviewed distant-dancer fixture even with the smaller 0.05 minimum
+face size; its speed advantage is not useful when the privacy target is usually
+missed.
+
+**Decision:** retain MediaPipe BlazeFace full-range IMAGE/CPU as the current face
+locator candidate. Keep the ML Kit benchmark as reproducible negative evidence,
+but do not add an RGBA-to-`InputImage` production adapter or use ML Kit tracking IDs.
+YOLO/`TrackManager` remains the only identity authority.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two
@@ -169,6 +204,9 @@ The source-resolution ROI fixtures and their hashes are recorded in
 MediaPipe IMAGE-only controls. `FaceRoiBenchmarkInstrumentedTest` is the current
 promotion-oriented benchmark and writes `face_roi_benchmark.json` plus a
 `FACE_ROI_BENCHMARK_REPORT=` log line.
+
+`MlKitFaceRoiBenchmarkInstrumentedTest` is the benchmark-only Android alternative
+used for the same-ROI FAST/ACCURATE comparison. It is not a production backend.
 
 The ROI report includes:
 

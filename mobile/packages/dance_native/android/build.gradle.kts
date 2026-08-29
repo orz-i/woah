@@ -130,6 +130,8 @@ dependencies {
     androidTestImplementation("org.jetbrains.kotlin:kotlin-test")
     // Benchmark-only dependency: face detection is not part of production yet.
     androidTestImplementation("com.google.mediapipe:tasks-vision:1.0.0")
+    // Benchmark-only bundled alternative for same-ROI A/B on real devices.
+    androidTestImplementation("com.google.mlkit:face-detection:16.1.7")
 }
 
 val syncLiteRtModelAssets = tasks.register("syncLiteRtModelAssets") {
