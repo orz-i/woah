@@ -294,6 +294,24 @@ single-frame scheduling/GL outlier. Production cadence should be optimized befor
 exposing FACE_ONLY in UI; do not assume one detector call per selected person on
 every output frame is the final scheduling policy.
 
+The processor therefore caps MediaPipe work to **one detector call per output
+frame** and a per-track detector interval of **66 ms** (about 15 Hz for one target
+in a 30 fps video). Between trusted detections it reprojects the padded face
+ellipse through the current YOLO-owned person bbox for at most 150 ms / two stale
+observation frames. A real detector miss, ambiguity, LOST track, or expired cache
+immediately falls back to the conservative YOLO head ellipse. With multiple
+FACE_ONLY targets, uncached/oldest tracks are serviced first so acquisition is
+staggered instead of multiplying synchronous ROI readbacks in one frame.
+
+Two repeated 30 fps device runs with slow-stage diagnostics localized the large
+`facePrivacyResolve` sample to `pts=0` in both cases (about 64 ms and 85 ms).
+Later frames stayed below the 20 ms slow-log threshold. The first frame also had
+secondary unselected mask evidence, so a proposed no-occluder shortcut did not
+apply to the real smoke path and was removed rather than carrying an unproven
+special case. The remaining high sample is therefore treated as a cold first-use
+cost until a longer dynamic benchmark shows otherwise, not as evidence of a
+steady-state face-mask algorithm bottleneck.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

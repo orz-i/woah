@@ -790,6 +790,24 @@ class ExportPipeline(
                                     faceOnlyFrameResult.faceInferenceMs.toLong().coerceAtLeast(0L)
                                 )
                             }
+                            if (faceOnlyFrameResult.roiReadbackMs > 0.0) {
+                                profiler.recordSample(
+                                    "faceRoiReadback",
+                                    faceOnlyFrameResult.roiReadbackMs.toLong().coerceAtLeast(0L)
+                                )
+                            }
+                            if (faceOnlyFrameResult.maskBuildMs > 0.0) {
+                                profiler.recordSample(
+                                    "faceMaskBuild",
+                                    faceOnlyFrameResult.maskBuildMs.toLong().coerceAtLeast(0L)
+                                )
+                            }
+                            if (faceOnlyFrameResult.privacyResolveMs > 0.0) {
+                                profiler.recordSample(
+                                    "facePrivacyResolve",
+                                    faceOnlyFrameResult.privacyResolveMs.toLong().coerceAtLeast(0L)
+                                )
+                            }
                             if (!faceOnlyFrameResult.readyForRender) {
                                 com.danceanon.native.diagnostics.NativeDiagnostics.event(
                                     level = "CRITICAL",

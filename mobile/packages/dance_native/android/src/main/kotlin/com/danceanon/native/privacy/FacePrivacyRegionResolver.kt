@@ -7,6 +7,7 @@ import kotlin.math.max
 
 enum class FacePrivacyRegionSource {
     DETECTED_FACE,
+    PREDICTED_FACE,
     YOLO_HEAD_FALLBACK
 }
 

@@ -49,6 +49,92 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
     }
 
     @Test
+    fun detectorIsThrottledAndTrustedFaceMovesWithCurrentPersonBox() {
+        val locator = CountingLocator(
+            listOf(FaceObservation(FloatRect(104f, 96f, 152f, 144f), 0.9f))
+        )
+        withProcessor(locator) { processor, texture, mapper ->
+            val first = person(5, FloatRect(200f, 40f, 400f, 350f))
+            val frame0 = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(first),
+                faceOnlyTrackIds = setOf(5),
+                ptsUs = 0L
+            )
+            assertEquals(1, frame0.detectorCallCount)
+            assertEquals(setOf(5), frame0.detectedTrackIds)
+
+            val moved = first.copy(
+                bbox = FloatRect(220f, 40f, 420f, 350f),
+                footY = 350f
+            )
+            val frame1 = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(moved),
+                faceOnlyTrackIds = setOf(5),
+                ptsUs = 33_333L
+            )
+            assertEquals(0, frame1.detectorCallCount)
+            assertEquals(setOf(5), frame1.predictedTrackIds)
+            assertEquals(1, locator.calls)
+            val predictedMask = assertNotNull(frame1.resolvedPrivacy?.privacyMask)
+            assertTrue(pixelAtSource(predictedMask, mapper, moved.bbox.centerX, 90f) > 0)
+
+            val frame2 = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(moved),
+                faceOnlyTrackIds = setOf(5),
+                ptsUs = 66_666L
+            )
+            assertEquals(1, frame2.detectorCallCount)
+            assertEquals(2, locator.calls)
+        }
+    }
+
+    @Test
+    fun multipleFaceOnlyTracksShareOneDetectorCallPerFrame() {
+        val locator = CountingLocator(
+            listOf(FaceObservation(FloatRect(104f, 96f, 152f, 144f), 0.9f))
+        )
+        withProcessor(locator) { processor, texture, _ ->
+            val persons = listOf(
+                person(1, FloatRect(80f, 30f, 260f, 340f)),
+                person(2, FloatRect(360f, 30f, 540f, 340f))
+            )
+            val first = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = persons,
+                faceOnlyTrackIds = setOf(1, 2),
+                ptsUs = 0L
+            )
+            assertEquals(1, first.detectorCallCount)
+            assertEquals(1, first.detectedTrackIds.size)
+            assertEquals(1, first.fallbackTrackIds.size)
+
+            val second = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = persons,
+                faceOnlyTrackIds = setOf(1, 2),
+                ptsUs = 33_333L
+            )
+            assertEquals(1, second.detectorCallCount)
+            assertEquals(2, locator.calls)
+            assertTrue(second.predictedTrackIds.isNotEmpty())
+            assertTrue(second.detectedTrackIds.isNotEmpty())
+        }
+    }
+
+    @Test
     fun fullBodyTargetCannotActAsSecondaryOccluderAgainstFaceOnlyTarget() {
         withProcessor(FixedLocator(emptyList())) { processor, texture, mapper ->
             val faceOnly = person(1, FloatRect(180f, 30f, 360f, 340f)).copy(
@@ -209,6 +295,18 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
     private class FixedLocator(private val observations: List<FaceObservation>) : FaceLocator {
         override fun detectRgbaTopDown(rgba: ByteBuffer, width: Int, height: Int): FaceLocatorResult =
             FaceLocatorResult(observations = observations, inferenceMs = 1.0)
+
+        override fun close() = Unit
+    }
+
+    private class CountingLocator(private val observations: List<FaceObservation>) : FaceLocator {
+        var calls: Int = 0
+            private set
+
+        override fun detectRgbaTopDown(rgba: ByteBuffer, width: Int, height: Int): FaceLocatorResult {
+            calls++
+            return FaceLocatorResult(observations = observations, inferenceMs = 1.0)
+        }
 
         override fun close() = Unit
     }

@@ -300,10 +300,10 @@ class FaceOnlyExportPipelineInstrumentedTest {
             "bd3bf77fedb9fb85ab57faba66a99ef0afff11dc101d4784685efbc496d899d8"
         private const val FRAME_W = 720
         private const val FRAME_H = 1280
-        private const val FPS = 10
-        private const val INPUT_FRAMES = 12
-        private const val FRAME_DURATION_NS = 100_000_000L
-        private const val VERIFY_TIME_US = 500_000L
+        private const val FPS = 30
+        private const val INPUT_FRAMES = 18
+        private const val FRAME_DURATION_NS = 33_333_333L
+        private const val VERIFY_TIME_US = 300_000L
         private const val LOWER_X = 337
         private const val LOWER_Y = 900
         private const val SAMPLE_RADIUS = 12
