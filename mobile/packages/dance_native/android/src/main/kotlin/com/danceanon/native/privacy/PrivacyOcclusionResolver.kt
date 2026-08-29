@@ -199,9 +199,16 @@ object PrivacyOcclusionResolver {
 
                     if (bboxOverlapRatio < 0.10f) continue
 
+                    val isFreshSelectedTarget =
+                        useFreshPrimary && evidenceSelectedIds.contains(target.id)
+                    val isTrackedFallbackTarget =
+                        useFreshPrimary &&
+                            selectedPersonIds.contains(target.id) &&
+                            !target.observedThisFrame
+
                     val maskOverlapRatio = computeMaskOverlapRatio(dilatedMask, candMask)
                     val renderVisibleMaskOverlapRatio = if (
-                        useFreshPrimary && evidenceSelectedIds.contains(target.id)
+                        isFreshSelectedTarget || isTrackedFallbackTarget
                     ) {
                         computeMaskOverlapRatio(
                             maskA = dilatedMask,
@@ -225,8 +232,7 @@ object PrivacyOcclusionResolver {
                     val normalizedFootYDelta = footYDelta / personMinH
                     val useFreshDepthCore =
                         useFreshPrimary &&
-                            evidenceSelectedIds.contains(target.id) &&
-                            target.observedThisFrame &&
+                            (isFreshSelectedTarget || isTrackedFallbackTarget) &&
                             isCandFresh &&
                             normalizedFootYDelta >= STRONG_FRESH_FOREGROUND_FOOT_Y_RATIO
 
@@ -298,7 +304,12 @@ object PrivacyOcclusionResolver {
                                 "render_visible_mask_overlap" to renderVisibleMaskOverlapRatio,
                                 "ownership_pixels" to ownershipPixels,
                                 "fresh_depth_core_pixels" to freshDepthCorePixels,
-                                "ownership_mode" to if (usesFreshDepthCore) "FRESH_DEPTH_CORE" else "PROBABILITY_MARGIN",
+                                "ownership_mode" to when {
+                                    usesFreshDepthCore && isTrackedFallbackTarget -> "FRESH_DEPTH_CORE_FALLBACK"
+                                    usesFreshDepthCore -> "FRESH_DEPTH_CORE"
+                                    else -> "PROBABILITY_MARGIN"
+                                },
+                                "tracked_fallback_target" to isTrackedFallbackTarget,
                                 "normalized_foot_y_delta" to normalizedFootYDelta,
                                 "explicit_occluder" to isExplicitOccluder,
                                 "candidate_age" to cand.age,

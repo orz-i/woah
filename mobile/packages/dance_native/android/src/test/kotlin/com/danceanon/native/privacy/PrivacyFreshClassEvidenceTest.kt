@@ -653,4 +653,126 @@ class PrivacyFreshClassEvidenceTest {
         assertTrue(!resolved.hasOccluder, "The middle unselected person is behind another selected target, so global render carving is forbidden")
         assertEquals(null, resolved.occluderMask)
     }
+
+    @Test
+    fun freshPrimaryForegroundUnselectedCarvesTrackedSelectedFallback() {
+        val fallbackMask = rectMask(left = 10, top = 10, right = 31, bottom = 51, value = 64)
+        val freshSelectedMask = rectMask(left = 43, top = 10, right = 55, bottom = 51, value = 245)
+        val foregroundUnselectedMask = rectMask(left = 26, top = 10, right = 41, bottom = 51, value = 64)
+
+        val fallbackSelected = TrackedPerson(
+            id = 1,
+            bbox = FloatRect(100f, 100f, 300f, 400f),
+            mask = fallbackMask,
+            confidence = 0.95f,
+            age = 30,
+            state = TrackState.REACQUIRING,
+            observedThisFrame = false,
+            missedFrames = 5,
+            footY = 400f
+        )
+        val evidence = listOf(
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.SELECTED,
+                detectionIndex = 0,
+                detection = PersonDetection(
+                    bbox = FloatRect(430f, 100f, 550f, 460f),
+                    confidence = 0.95f,
+                    mask = freshSelectedMask,
+                    footY = 460f
+                ),
+                residualTrackIds = emptySet()
+            ),
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.UNSELECTED,
+                detectionIndex = 1,
+                detection = PersonDetection(
+                    bbox = FloatRect(260f, 100f, 380f, 460f),
+                    confidence = 0.95f,
+                    mask = foregroundUnselectedMask,
+                    footY = 460f
+                ),
+                residualTrackIds = emptySet()
+            )
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = listOf(fallbackSelected),
+            selectedPersonIds = setOf(1, 2),
+            applyDilationToPrivacyTargets = false,
+            occluderErosionRadius = 1,
+            freshClassEvidence = evidence,
+            preferFreshClassPrimary = true,
+            expectedSelectedCount = 2
+        )
+
+        val privacy = assertNotNull(resolved.privacyMask)
+        assertEquals(
+            0,
+            privacy.buffer.get(20 * 64 + 28).toInt() and 0xFF,
+            "A clear fresh foreground unselected core must carve a stale selected fallback instead of being covered by it"
+        )
+        assertTrue((privacy.buffer.get(20 * 64 + 15).toInt() and 0xFF) > 0, "fallback privacy outside the foreground core must remain")
+        assertTrue((privacy.buffer.get(20 * 64 + 48).toInt() and 0xFF) > 0, "the independently fresh selected target must remain anonymized")
+        assertTrue(resolved.hasOccluder)
+    }
+
+    @Test
+    fun trackedSelectedFallbackKeepsPrivacyWhenFreshDepthIsAmbiguous() {
+        val fallbackMask = rectMask(left = 10, top = 10, right = 31, bottom = 51, value = 64)
+        val freshSelectedMask = rectMask(left = 43, top = 10, right = 55, bottom = 51, value = 245)
+        val ambiguousUnselectedMask = rectMask(left = 26, top = 10, right = 41, bottom = 51, value = 64)
+
+        val fallbackSelected = TrackedPerson(
+            id = 1,
+            bbox = FloatRect(100f, 100f, 300f, 400f),
+            mask = fallbackMask,
+            confidence = 0.95f,
+            age = 30,
+            state = TrackState.REACQUIRING,
+            observedThisFrame = false,
+            missedFrames = 5,
+            footY = 400f
+        )
+        val evidence = listOf(
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.SELECTED,
+                detectionIndex = 0,
+                detection = PersonDetection(
+                    bbox = FloatRect(430f, 100f, 550f, 460f),
+                    confidence = 0.95f,
+                    mask = freshSelectedMask,
+                    footY = 460f
+                ),
+                residualTrackIds = emptySet()
+            ),
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.UNSELECTED,
+                detectionIndex = 1,
+                detection = PersonDetection(
+                    bbox = FloatRect(264f, 100f, 384f, 420f),
+                    confidence = 0.95f,
+                    mask = ambiguousUnselectedMask,
+                    footY = 420f
+                ),
+                residualTrackIds = emptySet()
+            )
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = listOf(fallbackSelected),
+            selectedPersonIds = setOf(1, 2),
+            applyDilationToPrivacyTargets = false,
+            occluderErosionRadius = 1,
+            freshClassEvidence = evidence,
+            preferFreshClassPrimary = true,
+            expectedSelectedCount = 2
+        )
+
+        val privacy = assertNotNull(resolved.privacyMask)
+        assertTrue(
+            (privacy.buffer.get(20 * 64 + 28).toInt() and 0xFF) > 0,
+            "A stale selected fallback must remain privacy-wins when fresh foreground depth is not clearly separated"
+        )
+    }
 }
