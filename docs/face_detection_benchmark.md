@@ -252,3 +252,36 @@ PLK110 / Android 16 for both texture types. The instrumentation test verifies:
 This closes the isolated **crop/Y/texture-type coordinate proof**. It does not yet
 prove export-time scheduling, sustained multi-person cost, privacy-mask rendering,
 or fallback behavior, and therefore still does not enable FACE_ONLY in production.
+
+## Face privacy mask output proof
+
+The privacy output layer is now isolated and testable without changing production
+call sites:
+
+- `privacy/FacePrivacyRegionResolver.kt` converts an accepted ROI-local face into
+  a conservatively expanded source-space ellipse.
+- If the detector has no accepted target candidate (miss or ambiguity), it
+  immediately emits a YOLO-bbox-derived head ellipse instead of returning a
+  transparent region.
+- `privacy/FacePrivacyMaskBuilder.kt` rasterizes one or more source-space ellipses
+  into a binary 0/255 **160x160 YOLO-proto-compatible `NativeMask`**.
+- Multiple FACE_ONLY regions use pixelwise union; combining with a full-body
+  privacy mask is allowed only when texture dimensions, source frame dimensions,
+  and `samplingRect` contracts match exactly.
+
+Unit coverage verifies detected-face expansion, detector-miss fallback, visual-top
+letterbox mapping, multi-face union, frame-edge clipping, compatible body+face
+union, and fail-closed rejection of incompatible mask contracts.
+
+`FacePrivacyMaskCompositorInstrumentedTest` then feeds such a face mask through the
+**unchanged production `GlRenderer` / `PrivacyOcclusionResolver` path** on PLK110.
+The test renders both a detector-owned face ellipse and a fallback head ellipse,
+checks that both centers receive the solid privacy effect, and verifies that their
+vertically mirrored lower-body points remain untouched. This proves that the
+existing single `uMaskTexture` path can carry FACE_ONLY regions; no additional
+shader sampler or `uStickerRect` privacy path is required.
+
+This still does not enable FACE_ONLY. The next architecture step is to adapt each
+tracked person's effective privacy mask according to internal
+`NONE / FACE_ONLY / FULL_BODY` policy **before** the existing occlusion resolver,
+so clear unselected foreground keeps using the already-tested occluder logic.
