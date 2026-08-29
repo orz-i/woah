@@ -126,6 +126,9 @@ object PrivacyOcclusionResolver {
                     "fresh_conservative_unknown" to freshClassEvidence.count { it.conservativeUnknown },
                     "fallback_selected" to fallbackSelectedPersons.size,
                     "fallback_ids" to fallbackSelectedPersons.map { it.id },
+                    "fallback_states" to fallbackSelectedPersons.map { it.state.name },
+                    "fallback_missed_frames" to fallbackSelectedPersons.map { it.missedFrames },
+                    "fallback_observed" to fallbackSelectedPersons.map { it.observedThisFrame },
                     "pts_us" to ptsUs
                 )
             )
@@ -164,6 +167,7 @@ object PrivacyOcclusionResolver {
         }
 
         val unselectedPersons = privacyPersons.filter { !effectiveSelectedIds.contains(it.id) && it.mask != null }
+        val preCarveSelectedMasks = mutableListOf<NativeMask>()
         val effectiveSelectedMasks = mutableListOf<NativeMask>()
 
         for (target in selectedPersons) {
@@ -173,6 +177,7 @@ object PrivacyOcclusionResolver {
             } else {
                 rawMask
             }
+            preCarveSelectedMasks.add(dilatedMask)
 
             val acceptedOccluderCores = mutableListOf<NativeMask>()
 
@@ -423,13 +428,78 @@ object PrivacyOcclusionResolver {
             effectiveSelectedMasks.add(effectiveMask)
         }
 
+        val mergedPreCarvePrivacy = mergeMasks(preCarveSelectedMasks)
         val mergedPrivacy = mergeMasks(effectiveSelectedMasks)
+        val renderOccluder = buildSafeRenderOccluderMask(
+            preCarvePrivacy = mergedPreCarvePrivacy,
+            effectivePrivacy = mergedPrivacy
+        )
+
+        val renderOccluderPixels = countMaskPixels(renderOccluder)
+        if (renderOccluderPixels > 0) {
+            NativeDiagnostics.event(
+                level = "INFO",
+                component = "PrivacyOcclusionResolver",
+                event = "PRIVACY_RENDER_OCCLUDER_COMPOSED",
+                fields = mapOf(
+                    "pixels" to renderOccluderPixels,
+                    "pts_us" to ptsUs
+                )
+            )
+        }
 
         return ResolvedCompositorMasks(
             privacyMask = mergedPrivacy,
-            occluderMask = null,
+            occluderMask = renderOccluder,
             hasPrivacy = (mergedPrivacy != null),
-            hasOccluder = false
+            hasOccluder = (renderOccluder != null)
+        )
+    }
+
+    /**
+     * The per-target resolver has already made the privacy decision before this
+     * function runs. Build a second, binary render-time occluder only where the
+     * merged pre-carve privacy was visibly present and the merged effective
+     * privacy is now exactly zero. If any other selected target still owns a
+     * pixel, merged effective privacy is non-zero and that pixel can never enter
+     * this occluder. The GL shader can therefore use this mask solely to prevent
+     * bilinear sampling from bleeding neighboring privacy texels back into an
+     * already-approved foreground hole; it cannot create a new privacy hole.
+     */
+    private fun buildSafeRenderOccluderMask(
+        preCarvePrivacy: NativeMask?,
+        effectivePrivacy: NativeMask?
+    ): NativeMask? {
+        if (preCarvePrivacy == null || effectivePrivacy == null) return null
+        if (preCarvePrivacy.width != effectivePrivacy.width || preCarvePrivacy.height != effectivePrivacy.height) return null
+
+        val totalPixels = preCarvePrivacy.width * preCarvePrivacy.height
+        if (preCarvePrivacy.buffer.capacity() < totalPixels || effectivePrivacy.buffer.capacity() < totalPixels) return null
+
+        val out = ByteArray(totalPixels)
+        var count = 0
+        for (i in 0 until totalPixels) {
+            val before = preCarvePrivacy.buffer.get(i).toInt() and 0xFF
+            val after = effectivePrivacy.buffer.get(i).toInt() and 0xFF
+            if (before >= RENDER_VISIBLE_MASK_THRESHOLD_BYTE && after == 0) {
+                out[i] = 255.toByte()
+                count++
+            }
+        }
+        if (count == 0) return null
+
+        val buffer = ByteBuffer.allocateDirect(totalPixels).order(ByteOrder.nativeOrder())
+        buffer.put(out)
+        buffer.rewind()
+        return NativeMask(
+            width = preCarvePrivacy.width,
+            height = preCarvePrivacy.height,
+            buffer = buffer,
+            originalWidth = preCarvePrivacy.originalWidth,
+            originalHeight = preCarvePrivacy.originalHeight,
+            mapper = preCarvePrivacy.mapper,
+            roiInProto = preCarvePrivacy.roiInProto,
+            samplingRect = preCarvePrivacy.samplingRect
         )
     }
 

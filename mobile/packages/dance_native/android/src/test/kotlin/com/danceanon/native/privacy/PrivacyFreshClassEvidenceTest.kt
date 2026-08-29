@@ -494,6 +494,9 @@ class PrivacyFreshClassEvidenceTest {
             nonZeroCount,
             "Clearly foreground unselected support must be removed across the same soft-mask range the shader visibly renders"
         )
+        assertTrue(resolved.hasOccluder, "An already-approved foreground hole should be reinforced at render sampling time")
+        val renderOccluder = assertNotNull(resolved.occluderMask)
+        assertTrue((renderOccluder.buffer.get(20 * 64 + 20).toInt() and 0xFF) > 0)
     }
 
     @Test
@@ -541,6 +544,8 @@ class PrivacyFreshClassEvidenceTest {
             if ((privacy.buffer.get(i).toInt() and 0xFF) > 0) nonZeroCount++
         }
         assertEquals(1681, nonZeroCount, "Background unselected evidence must remain unable to carve selected privacy")
+        assertTrue(!resolved.hasOccluder)
+        assertEquals(null, resolved.occluderMask)
     }
 
     @Test
@@ -588,5 +593,64 @@ class PrivacyFreshClassEvidenceTest {
             if ((privacy.buffer.get(i).toInt() and 0xFF) > 0) nonZeroCount++
         }
         assertEquals(1681, nonZeroCount, "Ambiguous fresh depth must remain privacy-wins")
+        assertTrue(!resolved.hasOccluder)
+        assertEquals(null, resolved.occluderMask)
+    }
+
+    @Test
+    fun renderOccluderNeverOverridesAnotherSelectedTarget() {
+        val selectedBehindMask = rectMask(left = 10, top = 10, right = 51, bottom = 51, value = 245)
+        val selectedForegroundMask = rectMask(left = 10, top = 10, right = 51, bottom = 51, value = 245)
+        val unselectedMiddleMask = rectMask(left = 10, top = 10, right = 51, bottom = 51, value = 245)
+        val evidence = listOf(
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.SELECTED,
+                detectionIndex = 0,
+                detection = PersonDetection(
+                    bbox = FloatRect(100f, 100f, 510f, 300f),
+                    confidence = 0.95f,
+                    mask = selectedBehindMask,
+                    footY = 300f
+                ),
+                residualTrackIds = emptySet()
+            ),
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.SELECTED,
+                detectionIndex = 1,
+                detection = PersonDetection(
+                    bbox = FloatRect(100f, 100f, 510f, 500f),
+                    confidence = 0.95f,
+                    mask = selectedForegroundMask,
+                    footY = 500f
+                ),
+                residualTrackIds = emptySet()
+            ),
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.UNSELECTED,
+                detectionIndex = 2,
+                detection = PersonDetection(
+                    bbox = FloatRect(100f, 100f, 510f, 400f),
+                    confidence = 0.95f,
+                    mask = unselectedMiddleMask,
+                    footY = 400f
+                ),
+                residualTrackIds = emptySet()
+            )
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = emptyList(),
+            selectedPersonIds = setOf(41, 42),
+            applyDilationToPrivacyTargets = false,
+            occluderErosionRadius = 1,
+            freshClassEvidence = evidence,
+            preferFreshClassPrimary = true,
+            expectedSelectedCount = 2
+        )
+
+        val privacy = assertNotNull(resolved.privacyMask)
+        assertTrue((privacy.buffer.get(20 * 64 + 20).toInt() and 0xFF) > 0)
+        assertTrue(!resolved.hasOccluder, "The middle unselected person is behind another selected target, so global render carving is forbidden")
+        assertEquals(null, resolved.occluderMask)
     }
 }
