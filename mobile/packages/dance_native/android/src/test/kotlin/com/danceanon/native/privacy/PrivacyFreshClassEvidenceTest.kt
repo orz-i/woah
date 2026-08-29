@@ -778,6 +778,63 @@ class PrivacyFreshClassEvidenceTest {
     }
 
     @Test
+    fun freshPrimaryTinyDepthCoreCanCarveWhenCurrentGeometryIsStrong() {
+        val selectedMask = rectMask(left = 10, top = 10, right = 20, bottom = 16, value = 245)
+        // The full foreground instance is large, but only its eroded left edge
+        // touches the selected mask, leaving a tiny 6 px current intersection.
+        val foregroundMask = rectMask(left = 18, top = 5, right = 51, bottom = 25, value = 245)
+        val evidence = listOf(
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.SELECTED,
+                detectionIndex = 0,
+                detection = PersonDetection(
+                    bbox = FloatRect(100f, 100f, 500f, 400f),
+                    confidence = 0.95f,
+                    mask = selectedMask,
+                    footY = 400f
+                ),
+                residualTrackIds = emptySet()
+            ),
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.UNSELECTED,
+                detectionIndex = 1,
+                detection = PersonDetection(
+                    // 80 px horizontal overlap over the selected 400x300 bbox
+                    // gives 0.20 bbox overlap, while footY delta 37.5 / 300
+                    // gives normalized depth evidence 0.125. Device frames
+                    // 189-190 showed this exact strong-geometry / tiny-core shape.
+                    bbox = FloatRect(420f, 100f, 820f, 437.5f),
+                    confidence = 0.95f,
+                    mask = foregroundMask,
+                    footY = 437.5f
+                ),
+                residualTrackIds = emptySet()
+            )
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = emptyList(),
+            selectedPersonIds = setOf(42),
+            applyDilationToPrivacyTargets = false,
+            occluderErosionRadius = 1,
+            freshClassEvidence = evidence,
+            preferFreshClassPrimary = true,
+            expectedSelectedCount = 1
+        )
+
+        val privacy = assertNotNull(resolved.privacyMask)
+        var nonZeroCount = 0
+        for (i in 0 until privacy.buffer.capacity()) {
+            if ((privacy.buffer.get(i).toInt() and 0xFF) > 0) nonZeroCount++
+        }
+        assertTrue(
+            nonZeroCount < 60,
+            "A tiny current depth core may remain visible when both bbox overlap and current footY depth evidence are substantially stronger than the unstable boundary cases"
+        )
+        assertTrue(resolved.hasOccluder)
+    }
+
+    @Test
     fun freshPrimaryForegroundUsesRendererVisibleSoftMaskSupport() {
         // 64/255 is below the resolver's historical 0.50 binary threshold but
         // above the GL shader's 0.15 visible-effect onset. The old depth-core

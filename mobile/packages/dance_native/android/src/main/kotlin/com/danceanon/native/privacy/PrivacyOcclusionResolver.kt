@@ -50,6 +50,14 @@ object PrivacyOcclusionResolver {
     // probability-margin ownership has meaningful support; otherwise privacy wins.
     private const val MIN_ROBUST_FRESH_DEPTH_CORE_PIXELS = 9
     private const val MIN_TINY_CORE_OWNERSHIP_PIXELS = 12
+    // In the post-fix device trace, the only remaining short carve interruption
+    // had substantially stronger current geometry than the intentionally
+    // suppressed boundary cluster: bbox overlap 0.17-0.20 and normalized footY
+    // delta 0.125-0.130. Allow a tiny current core in that narrow fresh-selected
+    // case without carrying any prior-frame carve state.
+    private const val MIN_TINY_CORE_STRONG_BBOX_OVERLAP_RATIO = 0.15f
+    private const val MIN_TINY_CORE_STRONG_FOOT_Y_RATIO = 0.12f
+    private const val MIN_TINY_CORE_STRONG_TOTAL_CORE_PIXELS = 128
     // GlShaders starts visibly blending privacy at smoothstep(0.15, 0.85, maskVal).
     // Fresh foreground ownership therefore needs to cover the same visible mask
     // support instead of only the >= 0.50 binary-analysis core.
@@ -316,10 +324,17 @@ object PrivacyOcclusionResolver {
                         null
                     }
                     val ownershipPixels = countMaskPixels(ownershipMask)
+                    val tinyFreshDepthCoreHasStrongCurrentGeometry =
+                        isFreshSelectedTarget &&
+                            isCandFresh &&
+                            bboxOverlapRatio >= MIN_TINY_CORE_STRONG_BBOX_OVERLAP_RATIO &&
+                            normalizedFootYDelta >= MIN_TINY_CORE_STRONG_FOOT_Y_RATIO &&
+                            freshDepthCoreTotalPixels >= MIN_TINY_CORE_STRONG_TOTAL_CORE_PIXELS
                     val suppressUnstableTinyFreshDepthCore =
                         useFreshDepthCore &&
                             freshDepthCorePixels in 1 until MIN_ROBUST_FRESH_DEPTH_CORE_PIXELS &&
-                            ownershipPixels < MIN_TINY_CORE_OWNERSHIP_PIXELS
+                            ownershipPixels < MIN_TINY_CORE_OWNERSHIP_PIXELS &&
+                            !tinyFreshDepthCoreHasStrongCurrentGeometry
                     val usesFreshDepthCore = freshDepthCorePixels > 0 && !suppressUnstableTinyFreshDepthCore
                     val isStrongForeground =
                         !suppressUnstableTinyFreshDepthCore &&
@@ -377,6 +392,8 @@ object PrivacyOcclusionResolver {
                         "fresh_depth_core_eligible" to useFreshDepthCore,
                         "bbox_overlap_relaxed_for_fresh_depth" to
                             (bboxOverlapRatio < MIN_BBOX_OVERLAP_RATIO && relaxedFreshDepthBbox),
+                        "tiny_fresh_depth_core_supported_by_geometry" to
+                            tinyFreshDepthCoreHasStrongCurrentGeometry,
                         "tiny_fresh_depth_core_suppressed" to suppressUnstableTinyFreshDepthCore,
                         "carve" to isStrongForeground,
                         "ownership_mode" to when {
