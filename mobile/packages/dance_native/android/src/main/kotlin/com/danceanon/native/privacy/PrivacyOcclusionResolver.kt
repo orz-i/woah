@@ -39,20 +39,21 @@ object PrivacyOcclusionResolver {
     private const val YOUNG_IDENTITY_RAW_PROBABILITY_ADVANTAGE = 0.25f
     private const val MAX_FOOT_Y_BIAS = 0.03f
     private const val STRONG_FRESH_FOREGROUND_FOOT_Y_RATIO = 0.10f
+    private const val MIN_BBOX_OVERLAP_RATIO = 0.10f
+    // Fresh-selected/current-fresh depth decisions also have current soft-mask
+    // overlap and eroded-core evidence. Allow those stronger pixel signals to
+    // survive small one-frame YOLO bbox contractions without weakening tracked
+    // fallback or generic ownership geometry gates.
+    private const val MIN_FRESH_DEPTH_BBOX_OVERLAP_RATIO = 0.03f
+    // A handful of 4-8 px eroded-core contacts were observed toggling on/off at
+    // person boundaries. Such tiny contacts may still carve when the independent
+    // probability-margin ownership has meaningful support; otherwise privacy wins.
+    private const val MIN_ROBUST_FRESH_DEPTH_CORE_PIXELS = 9
+    private const val MIN_TINY_CORE_OWNERSHIP_PIXELS = 12
     // GlShaders starts visibly blending privacy at smoothstep(0.15, 0.85, maskVal).
     // Fresh foreground ownership therefore needs to cover the same visible mask
     // support instead of only the >= 0.50 binary-analysis core.
     private const val RENDER_VISIBLE_MASK_THRESHOLD_BYTE = 39
-
-    private data class MaskSupportStats(
-        val pixels: Int,
-        val left: Int,
-        val top: Int,
-        val rightExclusive: Int,
-        val bottomExclusive: Int,
-        val centroidX: Float,
-        val centroidY: Float
-    )
 
     /**
      * Resolves selected privacy targets and explicit foreground occluders into
@@ -117,57 +118,6 @@ object PrivacyOcclusionResolver {
             }
         }.toMap()
         val useFreshPrimary = preferFreshClassPrimary && evidencePersons.isNotEmpty() && selectedPersonIds.isNotEmpty()
-        val freshVisibleSupportByPersonId = if (useFreshPrimary) {
-            freshEvidenceByPersonId.mapValues { (_, evidence) ->
-                computeMaskSupportStats(evidence.detection.mask, RENDER_VISIBLE_MASK_THRESHOLD_BYTE)
-            }
-        } else {
-            emptyMap()
-        }
-
-        if (useFreshPrimary) {
-            for ((personId, evidence) in freshEvidenceByPersonId) {
-                val detection = evidence.detection
-                val mask = detection.mask ?: continue
-                val support = freshVisibleSupportByPersonId[personId]
-                NativeDiagnostics.event(
-                    level = "INFO",
-                    component = "PrivacyOcclusionResolver",
-                    event = "FRESH_PRIVACY_MASK_GEOMETRY",
-                    fields = mapOf(
-                        "synthetic_person_id" to personId,
-                        "detection_index" to evidence.detectionIndex,
-                        "privacy_class" to evidence.selectionClass.name,
-                        "conservative_unknown" to evidence.conservativeUnknown,
-                        "residual_track_ids" to evidence.residualTrackIds.sorted(),
-                        "confidence" to detection.confidence,
-                        "foot_y" to detection.footY,
-                        "bbox_left" to detection.bbox.left,
-                        "bbox_top" to detection.bbox.top,
-                        "bbox_right" to detection.bbox.right,
-                        "bbox_bottom" to detection.bbox.bottom,
-                        "visible_support_pixels" to support?.pixels,
-                        "visible_support_left_proto" to support?.left,
-                        "visible_support_top_proto" to support?.top,
-                        "visible_support_right_proto" to support?.rightExclusive,
-                        "visible_support_bottom_proto" to support?.bottomExclusive,
-                        "visible_support_centroid_x_proto" to support?.centroidX,
-                        "visible_support_centroid_y_proto" to support?.centroidY,
-                        "mask_width" to mask.width,
-                        "mask_height" to mask.height,
-                        "roi_proto_left" to mask.roiInProto?.left,
-                        "roi_proto_top" to mask.roiInProto?.top,
-                        "roi_proto_right" to mask.roiInProto?.right,
-                        "roi_proto_bottom" to mask.roiInProto?.bottom,
-                        "sampling_left" to mask.samplingRect?.left,
-                        "sampling_top" to mask.samplingRect?.top,
-                        "sampling_right" to mask.samplingRect?.right,
-                        "sampling_bottom" to mask.samplingRect?.bottom,
-                        "pts_us" to ptsUs
-                    )
-                )
-            }
-        }
         val privacyPersons: List<TrackedPerson>
         val effectiveSelectedIds: Set<Int>
 
@@ -272,17 +222,6 @@ object PrivacyOcclusionResolver {
             }
             preCarveSelectedMasks.add(dilatedMask)
             val targetFreshEvidence = freshEvidenceByPersonId[target.id]
-            val targetVisibleSupport = if (useFreshPrimary) {
-                freshVisibleSupportByPersonId[target.id]
-                    ?: computeMaskSupportStats(rawMask, RENDER_VISIBLE_MASK_THRESHOLD_BYTE)
-            } else {
-                null
-            }
-            val targetDilatedVisibleSupport = if (useFreshPrimary) {
-                computeMaskSupportStats(dilatedMask, RENDER_VISIBLE_MASK_THRESHOLD_BYTE)
-            } else {
-                null
-            }
 
             val acceptedOccluderCores = mutableListOf<NativeMask>()
 
@@ -302,14 +241,39 @@ object PrivacyOcclusionResolver {
                     val minBboxArea = minOf(targetArea, candArea)
                     val bboxOverlapRatio = if (minBboxArea > 0f) interArea / minBboxArea else 0f
 
-                    if (bboxOverlapRatio < 0.10f) continue
-
                     val isFreshSelectedTarget =
                         useFreshPrimary && evidenceSelectedIds.contains(target.id)
                     val isTrackedFallbackTarget =
                         useFreshPrimary &&
                             selectedPersonIds.contains(target.id) &&
                             !target.observedThisFrame
+
+                    // Depth evaluation is intentionally computed before the bbox
+                    // prefilter. The device trace showed fresh YOLO bbox overlap
+                    // briefly falling 0.1018 -> 0.0991 -> 0.1034 and, separately,
+                    // 0.491 -> 0.0367 -> 0.425 while the privacy classes and
+                    // current fresh masks remained stable. For an exact current
+                    // fresh selected/unselected pair, let mask/core evidence be
+                    // the stronger geometry signal in this narrow low-bbox band.
+                    val footYDelta = candFootY - targetFootY // positive means cand is lower in frame / in front
+                    val personMinH = minOf(targetBbox.height, candBbox.height).coerceAtLeast(10f)
+                    val footYThreshold = personMinH * foregroundFootYMarginRatio
+                    val isCandFresh = cand.observedThisFrame
+                    val isExplicitOccluder = target.occludedByTrackIds.contains(cand.id)
+                    val hasStableIdentity = isExplicitOccluder || cand.age >= MIN_UNSELECTED_IDENTITY_AGE_FRAMES
+                    val normalizedFootYDelta = footYDelta / personMinH
+                    val useFreshDepthCore =
+                        useFreshPrimary &&
+                            (isFreshSelectedTarget || isTrackedFallbackTarget) &&
+                            isCandFresh &&
+                            normalizedFootYDelta >= STRONG_FRESH_FOREGROUND_FOOT_Y_RATIO
+                    val relaxedFreshDepthBbox =
+                        isFreshSelectedTarget &&
+                            isCandFresh &&
+                            normalizedFootYDelta >= STRONG_FRESH_FOREGROUND_FOOT_Y_RATIO &&
+                            bboxOverlapRatio >= MIN_FRESH_DEPTH_BBOX_OVERLAP_RATIO
+
+                    if (bboxOverlapRatio < MIN_BBOX_OVERLAP_RATIO && !relaxedFreshDepthBbox) continue
 
                     val maskOverlapRatio = computeMaskOverlapRatio(dilatedMask, candMask)
                     val renderVisibleMaskOverlapRatio = if (
@@ -325,21 +289,6 @@ object PrivacyOcclusionResolver {
                         maskOverlapRatio
                     }
                     if (maxOf(maskOverlapRatio, renderVisibleMaskOverlapRatio) <= 0.02f) continue
-
-                    // Depth evaluation
-                    val footYDelta = candFootY - targetFootY // positive means cand is lower in frame / in front
-                    val personMinH = minOf(targetBbox.height, candBbox.height).coerceAtLeast(10f)
-                    val footYThreshold = personMinH * foregroundFootYMarginRatio
-
-                    val isCandFresh = cand.observedThisFrame
-                    val isExplicitOccluder = target.occludedByTrackIds.contains(cand.id)
-                    val hasStableIdentity = isExplicitOccluder || cand.age >= MIN_UNSELECTED_IDENTITY_AGE_FRAMES
-                    val normalizedFootYDelta = footYDelta / personMinH
-                    val useFreshDepthCore =
-                        useFreshPrimary &&
-                            (isFreshSelectedTarget || isTrackedFallbackTarget) &&
-                            isCandFresh &&
-                            normalizedFootYDelta >= STRONG_FRESH_FOREGROUND_FOOT_Y_RATIO
 
                     val freshDepthCore = if (useFreshDepthCore) {
                         buildFreshDepthCore(candMask, occluderErosionRadius)
@@ -367,15 +316,15 @@ object PrivacyOcclusionResolver {
                         null
                     }
                     val ownershipPixels = countMaskPixels(ownershipMask)
-                    val usesFreshDepthCore = freshDepthCorePixels > 0
-                    val isStrongForeground = usesFreshDepthCore || ownershipPixels > 0
+                    val suppressUnstableTinyFreshDepthCore =
+                        useFreshDepthCore &&
+                            freshDepthCorePixels in 1 until MIN_ROBUST_FRESH_DEPTH_CORE_PIXELS &&
+                            ownershipPixels < MIN_TINY_CORE_OWNERSHIP_PIXELS
+                    val usesFreshDepthCore = freshDepthCorePixels > 0 && !suppressUnstableTinyFreshDepthCore
+                    val isStrongForeground =
+                        !suppressUnstableTinyFreshDepthCore &&
+                            (usesFreshDepthCore || ownershipPixels > 0)
                     val candidateFreshEvidence = freshEvidenceByPersonId[cand.id]
-                    val candidateVisibleSupport = if (useFreshPrimary) {
-                        freshVisibleSupportByPersonId[cand.id]
-                            ?: computeMaskSupportStats(candMask, RENDER_VISIBLE_MASK_THRESHOLD_BYTE)
-                    } else {
-                        null
-                    }
                     val decisionFields = mapOf(
                         "target_id" to target.id,
                         "candidate_id" to cand.id,
@@ -395,21 +344,6 @@ object PrivacyOcclusionResolver {
                         "candidate_bbox_top" to candBbox.top,
                         "candidate_bbox_right" to candBbox.right,
                         "candidate_bbox_bottom" to candBbox.bottom,
-                        "target_visible_support_pixels" to targetVisibleSupport?.pixels,
-                        "target_visible_support_left_proto" to targetVisibleSupport?.left,
-                        "target_visible_support_top_proto" to targetVisibleSupport?.top,
-                        "target_visible_support_right_proto" to targetVisibleSupport?.rightExclusive,
-                        "target_visible_support_bottom_proto" to targetVisibleSupport?.bottomExclusive,
-                        "target_visible_support_centroid_x_proto" to targetVisibleSupport?.centroidX,
-                        "target_visible_support_centroid_y_proto" to targetVisibleSupport?.centroidY,
-                        "target_dilated_visible_support_pixels" to targetDilatedVisibleSupport?.pixels,
-                        "candidate_visible_support_pixels" to candidateVisibleSupport?.pixels,
-                        "candidate_visible_support_left_proto" to candidateVisibleSupport?.left,
-                        "candidate_visible_support_top_proto" to candidateVisibleSupport?.top,
-                        "candidate_visible_support_right_proto" to candidateVisibleSupport?.rightExclusive,
-                        "candidate_visible_support_bottom_proto" to candidateVisibleSupport?.bottomExclusive,
-                        "candidate_visible_support_centroid_x_proto" to candidateVisibleSupport?.centroidX,
-                        "candidate_visible_support_centroid_y_proto" to candidateVisibleSupport?.centroidY,
                         "target_mask_width" to rawMask.width,
                         "target_mask_height" to rawMask.height,
                         "candidate_mask_width" to candMask.width,
@@ -441,8 +375,12 @@ object PrivacyOcclusionResolver {
                         "fresh_depth_core_pixels" to freshDepthCorePixels,
                         "fresh_depth_core_total_pixels" to freshDepthCoreTotalPixels,
                         "fresh_depth_core_eligible" to useFreshDepthCore,
+                        "bbox_overlap_relaxed_for_fresh_depth" to
+                            (bboxOverlapRatio < MIN_BBOX_OVERLAP_RATIO && relaxedFreshDepthBbox),
+                        "tiny_fresh_depth_core_suppressed" to suppressUnstableTinyFreshDepthCore,
                         "carve" to isStrongForeground,
                         "ownership_mode" to when {
+                            suppressUnstableTinyFreshDepthCore -> "TINY_FRESH_DEPTH_CORE_SUPPRESSED"
                             usesFreshDepthCore && isTrackedFallbackTarget -> "FRESH_DEPTH_CORE_FALLBACK"
                             usesFreshDepthCore -> "FRESH_DEPTH_CORE"
                             ownershipPixels > 0 -> "PROBABILITY_MARGIN"
@@ -996,45 +934,6 @@ object PrivacyOcclusionResolver {
             if (a && b) count++
         }
         return count
-    }
-
-    private fun computeMaskSupportStats(mask: NativeMask?, threshold: Int): MaskSupportStats? {
-        if (mask == null) return null
-        val width = mask.width
-        val height = mask.height
-        if (width <= 0 || height <= 0) return null
-        val len = minOf(width * height, mask.buffer.capacity())
-        var count = 0
-        var minX = width
-        var minY = height
-        var maxX = -1
-        var maxY = -1
-        var sumX = 0L
-        var sumY = 0L
-
-        for (i in 0 until len) {
-            if ((mask.buffer.get(i).toInt() and 0xFF) < threshold) continue
-            val x = i % width
-            val y = i / width
-            count++
-            minX = minOf(minX, x)
-            minY = minOf(minY, y)
-            maxX = maxOf(maxX, x)
-            maxY = maxOf(maxY, y)
-            sumX += x.toLong()
-            sumY += y.toLong()
-        }
-        if (count == 0) return null
-
-        return MaskSupportStats(
-            pixels = count,
-            left = minX,
-            top = minY,
-            rightExclusive = maxX + 1,
-            bottomExclusive = maxY + 1,
-            centroidX = sumX.toFloat() / count.toFloat(),
-            centroidY = sumY.toFloat() / count.toFloat()
-        )
     }
 
     private fun computeBBoxIntersectionArea(a: FloatRect, b: FloatRect): Float {

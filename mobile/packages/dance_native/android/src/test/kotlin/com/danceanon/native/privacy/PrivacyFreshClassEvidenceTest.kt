@@ -622,6 +622,162 @@ class PrivacyFreshClassEvidenceTest {
     }
 
     @Test
+    fun freshPrimaryStrongForegroundCanUseMaskEvidenceWhenFreshBboxOverlapIsJustBelowLegacyGate() {
+        val selectedMask = rectMask(left = 10, top = 10, right = 51, bottom = 51, value = 245)
+        val foregroundMask = rectMask(left = 10, top = 10, right = 51, bottom = 51, value = 245)
+        val evidence = listOf(
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.SELECTED,
+                detectionIndex = 0,
+                detection = PersonDetection(
+                    bbox = FloatRect(100f, 100f, 500f, 400f),
+                    confidence = 0.95f,
+                    mask = selectedMask,
+                    footY = 400f
+                ),
+                residualTrackIds = emptySet()
+            ),
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.UNSELECTED,
+                detectionIndex = 1,
+                detection = PersonDetection(
+                    // 20 px overlap over the 400x300 selected bbox => 0.05
+                    // min-area overlap, below the historical 0.10 bbox gate.
+                    bbox = FloatRect(480f, 100f, 880f, 500f),
+                    confidence = 0.95f,
+                    mask = foregroundMask,
+                    footY = 500f
+                ),
+                residualTrackIds = emptySet()
+            )
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = emptyList(),
+            selectedPersonIds = setOf(42),
+            applyDilationToPrivacyTargets = false,
+            occluderErosionRadius = 1,
+            freshClassEvidence = evidence,
+            preferFreshClassPrimary = true,
+            expectedSelectedCount = 1
+        )
+
+        val privacy = assertNotNull(resolved.privacyMask)
+        var nonZeroCount = 0
+        for (i in 0 until privacy.buffer.capacity()) {
+            if ((privacy.buffer.get(i).toInt() and 0xFF) > 0) nonZeroCount++
+        }
+        assertEquals(
+            160,
+            nonZeroCount,
+            "Fresh current-frame mask/depth evidence should not flicker off solely because bbox overlap jitters just below 0.10"
+        )
+    }
+
+    @Test
+    fun freshPrimaryTinyDepthCoreWithoutIndependentOwnershipKeepsPrivacy() {
+        val selectedMask = rectMask(left = 10, top = 10, right = 20, bottom = 16, value = 245)
+        val foregroundMask = rectMask(left = 18, top = 10, right = 30, bottom = 16, value = 245)
+        val evidence = listOf(
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.SELECTED,
+                detectionIndex = 0,
+                detection = PersonDetection(
+                    bbox = FloatRect(100f, 100f, 500f, 400f),
+                    confidence = 0.95f,
+                    mask = selectedMask,
+                    footY = 400f
+                ),
+                residualTrackIds = emptySet()
+            ),
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.UNSELECTED,
+                detectionIndex = 1,
+                detection = PersonDetection(
+                    bbox = FloatRect(100f, 100f, 500f, 500f),
+                    confidence = 0.95f,
+                    mask = foregroundMask,
+                    footY = 500f
+                ),
+                residualTrackIds = emptySet()
+            )
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = emptyList(),
+            selectedPersonIds = setOf(42),
+            applyDilationToPrivacyTargets = false,
+            occluderErosionRadius = 1,
+            freshClassEvidence = evidence,
+            preferFreshClassPrimary = true,
+            expectedSelectedCount = 1
+        )
+
+        val privacy = assertNotNull(resolved.privacyMask)
+        var nonZeroCount = 0
+        for (i in 0 until privacy.buffer.capacity()) {
+            if ((privacy.buffer.get(i).toInt() and 0xFF) > 0) nonZeroCount++
+        }
+        assertEquals(
+            60,
+            nonZeroCount,
+            "A tiny eroded depth-core intersection with tied instance probabilities must stay privacy-wins instead of opening an unstable hole"
+        )
+        assertTrue(!resolved.hasOccluder)
+    }
+
+    @Test
+    fun freshPrimaryTinyDepthCoreCanCarveWhenIndependentOwnershipIsStrong() {
+        val selectedMask = rectMask(left = 10, top = 10, right = 20, bottom = 16, value = 128)
+        val foregroundMask = rectMask(left = 18, top = 10, right = 30, bottom = 16, value = 255)
+        val evidence = listOf(
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.SELECTED,
+                detectionIndex = 0,
+                detection = PersonDetection(
+                    bbox = FloatRect(100f, 100f, 500f, 400f),
+                    confidence = 0.95f,
+                    mask = selectedMask,
+                    footY = 400f
+                ),
+                residualTrackIds = emptySet()
+            ),
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.UNSELECTED,
+                detectionIndex = 1,
+                detection = PersonDetection(
+                    bbox = FloatRect(100f, 100f, 500f, 500f),
+                    confidence = 0.95f,
+                    mask = foregroundMask,
+                    footY = 500f
+                ),
+                residualTrackIds = emptySet()
+            )
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = emptyList(),
+            selectedPersonIds = setOf(42),
+            applyDilationToPrivacyTargets = false,
+            occluderErosionRadius = 1,
+            freshClassEvidence = evidence,
+            preferFreshClassPrimary = true,
+            expectedSelectedCount = 1
+        )
+
+        val privacy = assertNotNull(resolved.privacyMask)
+        var nonZeroCount = 0
+        for (i in 0 until privacy.buffer.capacity()) {
+            if ((privacy.buffer.get(i).toInt() and 0xFF) > 0) nonZeroCount++
+        }
+        assertTrue(
+            nonZeroCount < 60,
+            "Independent soft ownership should keep a genuinely supported small foreground carve available"
+        )
+        assertTrue(resolved.hasOccluder)
+    }
+
+    @Test
     fun freshPrimaryForegroundUsesRendererVisibleSoftMaskSupport() {
         // 64/255 is below the resolver's historical 0.50 binary threshold but
         // above the GL shader's 0.15 visible-effect onset. The old depth-core
@@ -895,6 +1051,68 @@ class PrivacyFreshClassEvidenceTest {
         assertTrue((privacy.buffer.get(20 * 64 + 15).toInt() and 0xFF) > 0, "fallback privacy outside the foreground core must remain")
         assertTrue((privacy.buffer.get(20 * 64 + 48).toInt() and 0xFF) > 0, "the independently fresh selected target must remain anonymized")
         assertTrue(resolved.hasOccluder)
+    }
+
+    @Test
+    fun trackedSelectedFallbackDoesNotUseRelaxedFreshBboxGate() {
+        val fallbackMask = rectMask(left = 10, top = 10, right = 31, bottom = 51, value = 64)
+        val freshSelectedMask = rectMask(left = 43, top = 10, right = 55, bottom = 51, value = 245)
+        val foregroundUnselectedMask = rectMask(left = 26, top = 10, right = 41, bottom = 51, value = 64)
+
+        val fallbackSelected = TrackedPerson(
+            id = 1,
+            bbox = FloatRect(100f, 100f, 300f, 400f),
+            mask = fallbackMask,
+            confidence = 0.95f,
+            age = 30,
+            state = TrackState.REACQUIRING,
+            observedThisFrame = false,
+            missedFrames = 5,
+            footY = 400f
+        )
+        val evidence = listOf(
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.SELECTED,
+                detectionIndex = 0,
+                detection = PersonDetection(
+                    bbox = FloatRect(430f, 100f, 550f, 460f),
+                    confidence = 0.95f,
+                    mask = freshSelectedMask,
+                    footY = 460f
+                ),
+                residualTrackIds = emptySet()
+            ),
+            FreshPrivacyClassEvidence(
+                selectionClass = PrivacySelectionClass.UNSELECTED,
+                detectionIndex = 1,
+                detection = PersonDetection(
+                    // Strong depth and overlapping masks, but only ~0.07 bbox
+                    // overlap with the stale fallback. The relaxed bbox path is
+                    // intentionally fresh-selected-only.
+                    bbox = FloatRect(290f, 100f, 410f, 460f),
+                    confidence = 0.95f,
+                    mask = foregroundUnselectedMask,
+                    footY = 460f
+                ),
+                residualTrackIds = emptySet()
+            )
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = listOf(fallbackSelected),
+            selectedPersonIds = setOf(1, 2),
+            applyDilationToPrivacyTargets = false,
+            occluderErosionRadius = 1,
+            freshClassEvidence = evidence,
+            preferFreshClassPrimary = true,
+            expectedSelectedCount = 2
+        )
+
+        val privacy = assertNotNull(resolved.privacyMask)
+        assertTrue(
+            (privacy.buffer.get(20 * 64 + 28).toInt() and 0xFF) > 0,
+            "Tracked fallback privacy must keep the original 0.10 bbox safety gate"
+        )
     }
 
     @Test
