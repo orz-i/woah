@@ -98,6 +98,28 @@ class TrackManagerTest {
     }
 
     @Test
+    fun framesSinceLastObservationTracksAbsoluteFreshnessAcrossStateCounters() {
+        val tracker = TrackManager(TrackingConfig(maxMissedFrames = 10))
+        val box = FloatRect(100f, 100f, 200f, 300f)
+        val initial = tracker.initialize(listOf(PersonDetection(box, 0.95f, createTestMask())))
+        assertEquals(0, initial.single().framesSinceLastObservation)
+
+        val dtUs = 33333L
+        val predicted1 = tracker.update(emptyList(), dtUs)
+        assertEquals(1, predicted1.single().framesSinceLastObservation)
+
+        val predicted2 = tracker.update(emptyList(), 2 * dtUs)
+        assertEquals(2, predicted2.single().framesSinceLastObservation)
+
+        val recovered = tracker.update(
+            listOf(PersonDetection(FloatRect(102f, 100f, 202f, 300f), 0.96f, createTestMask())),
+            3 * dtUs
+        )
+        assertEquals(0, recovered.single().framesSinceLastObservation)
+        assertEquals(TrackState.ACTIVE, recovered.single().state)
+    }
+
+    @Test
     fun testNewPersonEntersAndOldLeaves() {
         val tracker = TrackManager(TrackingConfig(maxMissedFrames = 5))
 

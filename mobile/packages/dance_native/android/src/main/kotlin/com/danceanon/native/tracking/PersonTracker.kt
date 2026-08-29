@@ -19,6 +19,7 @@ data class TrackedPerson(
     var mask: NativeMask?,
     var confidence: Float,
     var missedFrames: Int = 0,
+    var framesSinceLastObservation: Int = 0,
     var age: Int = 1,
     var state: TrackState = TrackState.NEW,
     var occludedByTrackIds: Set<Int> = emptySet(),

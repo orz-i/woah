@@ -83,6 +83,7 @@ class InternalTrack(
     var lostFrames: Int = 0,
     var occludedFrames: Int = 0,
     var reacquireFrames: Int = 0,
+    var framesSinceLastObservation: Int = 0,
     val occludedByTrackIds: MutableSet<Int> = mutableSetOf(),
     var occlusionMotionBbox: FloatRect? = null,
     var age: Int = 1,
@@ -130,6 +131,7 @@ class InternalTrack(
             mask = currentRenderMask,
             confidence = confidence,
             missedFrames = missedFrames,
+            framesSinceLastObservation = framesSinceLastObservation,
             age = age,
             state = state,
             occludedByTrackIds = occludedByTrackIds.toSet(),
@@ -163,6 +165,8 @@ class TrackManager(
     }
 
     fun getFreshPrivacyClassEvidence(): List<FreshPrivacyClassEvidence> = currentPrivacyClassEvidence
+
+    fun getMaxMissedFrames(): Int = config.maxMissedFrames
 
     fun getPrivacySuppressedSelectedTrackIds(): Set<Int> = currentPrivacySuppressedSelectedTrackIds
 
@@ -365,6 +369,7 @@ class TrackManager(
 
         // Reset per-frame observation state
         for (t in tracks) {
+            t.framesSinceLastObservation = (t.framesSinceLastObservation + 1).coerceAtMost(Int.MAX_VALUE)
             t.observedOnPreviousFrame = t.observedThisFrame
             t.observedThisFrame = false
             t.hasFreshObservedMotion = false
@@ -707,6 +712,7 @@ class TrackManager(
                 track.occlusionMotionBbox = null
                 track.state = TrackState.ACTIVE
                 track.observedThisFrame = true
+                track.framesSinceLastObservation = 0
                 track.currentObservedFootY = det.footY
                 track.lastObservedFootY = det.footY
                 track.kalman.update(det.bbox, timestampUs)
@@ -1045,6 +1051,7 @@ class TrackManager(
                 track.occlusionMotionBbox = null
                 track.state = TrackState.ACTIVE
                 track.observedThisFrame = true
+                track.framesSinceLastObservation = 0
                 track.currentObservedFootY = det.footY
                 track.lastObservedFootY = det.footY
                 track.kalman.update(det.bbox, timestampUs)
@@ -1447,6 +1454,7 @@ class TrackManager(
                 bestTrack.occlusionMotionBbox = null
                 bestTrack.state = TrackState.ACTIVE
                 bestTrack.observedThisFrame = true
+                bestTrack.framesSinceLastObservation = 0
                 bestTrack.currentObservedFootY = det.footY
                 bestTrack.lastObservedFootY = det.footY
                 bestTrack.kalman.update(det.bbox, timestampUs)
@@ -1529,6 +1537,7 @@ class TrackManager(
         // previous frame's flag set would let a later association treat a
         // multi-frame displacement as one-frame fresh group motion.
         for (track in tracks) {
+            track.framesSinceLastObservation = (track.framesSinceLastObservation + 1).coerceAtMost(Int.MAX_VALUE)
             track.observedOnPreviousFrame = false
             track.observedThisFrame = false
             track.hasFreshObservedMotion = false

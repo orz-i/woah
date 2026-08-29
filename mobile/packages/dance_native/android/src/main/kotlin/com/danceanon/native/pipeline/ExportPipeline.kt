@@ -809,7 +809,8 @@ class ExportPipeline(
                                 freshSelectedCoveredTrackIds = freshSelectedCoveredTrackIds,
                                 suppressedSelectedPrivacyTrackIds = suppressedSelectedPrivacyTrackIds,
                                 preferFreshPrivacyClassPrimary = preferFreshPrivacyClassPrimary,
-                                expectedSelectedPrivacyCount = selectedIds.size
+                                expectedSelectedPrivacyCount = selectedIds.size,
+                                maxFallbackObservationAgeFrames = trackManager.getMaxMissedFrames()
                             )
                             renderedFrameCount++
                         }

@@ -67,7 +67,8 @@ object PrivacyOcclusionResolver {
         freshSelectedCoveredTrackIds: Set<Int> = emptySet(),
         suppressedSelectedTrackIds: Set<Int> = emptySet(),
         preferFreshClassPrimary: Boolean = false,
-        expectedSelectedCount: Int = 0
+        expectedSelectedCount: Int = 0,
+        maxFallbackObservationAgeFrames: Int = 15
     ): ResolvedCompositorMasks {
         if (selectedPersonIds.isEmpty()) {
             return ResolvedCompositorMasks(
@@ -120,6 +121,7 @@ object PrivacyOcclusionResolver {
                 freshEvidencePersons = evidencePersons,
                 freshSelectedPersons = freshSelectedPersons,
                 freshSelectedSingletonResidualTrackIds = freshSelectedSingletonResidualTrackIds,
+                maxFallbackObservationAgeFrames = maxFallbackObservationAgeFrames,
                 maxFallbackCount = fallbackDeficit
             )
             privacyPersons = evidencePersons + fallbackSelectedPersons
@@ -138,8 +140,20 @@ object PrivacyOcclusionResolver {
                     "fallback_ids" to fallbackSelectedPersons.map { it.id },
                     "fallback_states" to fallbackSelectedPersons.map { it.state.name },
                     "fallback_missed_frames" to fallbackSelectedPersons.map { it.missedFrames },
+                    "fallback_observation_age_frames" to fallbackSelectedPersons.map { it.framesSinceLastObservation },
                     "fallback_observed" to fallbackSelectedPersons.map { it.observedThisFrame },
                     "fresh_selected_singleton_residual_ids" to freshSelectedSingletonResidualTrackIds.sorted(),
+                    "stale_selected_track_ids" to persons.asSequence()
+                        .filter {
+                            selectedPersonIds.contains(it.id) &&
+                                it.state != TrackState.REMOVED &&
+                                it.mask != null &&
+                                it.framesSinceLastObservation > maxFallbackObservationAgeFrames
+                        }
+                        .map { it.id }
+                        .distinct()
+                        .sorted()
+                        .toList(),
                     "pts_us" to ptsUs
                 )
             )
@@ -537,6 +551,7 @@ object PrivacyOcclusionResolver {
         freshEvidencePersons: List<TrackedPerson>,
         freshSelectedPersons: List<TrackedPerson>,
         freshSelectedSingletonResidualTrackIds: Set<Int>,
+        maxFallbackObservationAgeFrames: Int,
         maxFallbackCount: Int
     ): List<TrackedPerson> {
         if (maxFallbackCount <= 0) return emptyList()
@@ -561,7 +576,8 @@ object PrivacyOcclusionResolver {
                 selectedPersonIds.contains(it.id) &&
                     !freshSelectedSingletonResidualTrackIds.contains(it.id) &&
                     it.state != TrackState.REMOVED &&
-                    it.mask != null
+                    it.mask != null &&
+                    it.framesSinceLastObservation <= maxFallbackObservationAgeFrames
             }
             .map { person ->
                 Candidate(

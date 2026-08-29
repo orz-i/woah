@@ -411,7 +411,8 @@ class GlRenderer : FrameRenderer {
         freshSelectedCoveredTrackIds: Set<Int> = emptySet(),
         suppressedSelectedPrivacyTrackIds: Set<Int> = emptySet(),
         preferFreshPrivacyClassPrimary: Boolean = false,
-        expectedSelectedPrivacyCount: Int = 0
+        expectedSelectedPrivacyCount: Int = 0,
+        maxFallbackObservationAgeFrames: Int = 15
     ) {
         GLES20.glViewport(0, 0, width, height)
         GLES20.glClearColor(0f, 0f, 0f, 1f)
@@ -498,7 +499,8 @@ class GlRenderer : FrameRenderer {
             freshSelectedCoveredTrackIds = freshSelectedCoveredTrackIds,
             suppressedSelectedTrackIds = suppressedSelectedPrivacyTrackIds,
             preferFreshClassPrimary = preferFreshPrivacyClassPrimary,
-            expectedSelectedCount = expectedSelectedPrivacyCount
+            expectedSelectedCount = expectedSelectedPrivacyCount,
+            maxFallbackObservationAgeFrames = maxFallbackObservationAgeFrames
         )
         val hasSelected = resolved.hasPrivacy
         val hasOccluder = resolved.hasOccluder

@@ -298,6 +298,68 @@ class PrivacyFreshClassEvidenceTest {
     }
 
     @Test
+    fun freshPrimaryRejectsFallbackOlderThanAbsoluteObservationWindowEvenWhenStateCounterReset() {
+        val staleMask = rectMask(left = 5, top = 10, right = 17, bottom = 46)
+        val recentMask = rectMask(left = 24, top = 10, right = 36, bottom = 46)
+        val freshMask = rectMask(left = 43, top = 10, right = 55, bottom = 46)
+
+        val staleSelected = TrackedPerson(
+            id = 1,
+            bbox = FloatRect(50f, 100f, 170f, 460f),
+            mask = staleMask,
+            confidence = 0.95f,
+            missedFrames = 1,
+            framesSinceLastObservation = 200,
+            state = TrackState.REACQUIRING,
+            observedThisFrame = false
+        )
+        val recentSelected = TrackedPerson(
+            id = 2,
+            bbox = FloatRect(240f, 100f, 360f, 460f),
+            mask = recentMask,
+            confidence = 0.95f,
+            missedFrames = 2,
+            framesSinceLastObservation = 2,
+            state = TrackState.REACQUIRING,
+            observedThisFrame = false
+        )
+        val freshSelected = FreshPrivacyClassEvidence(
+            selectionClass = PrivacySelectionClass.SELECTED,
+            detectionIndex = 0,
+            detection = PersonDetection(
+                bbox = FloatRect(430f, 100f, 550f, 460f),
+                confidence = 0.98f,
+                mask = freshMask,
+                footY = 460f
+            ),
+            residualTrackIds = emptySet()
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = listOf(staleSelected, recentSelected),
+            selectedPersonIds = setOf(1, 2),
+            applyDilationToPrivacyTargets = false,
+            occluderErosionRadius = 0,
+            freshClassEvidence = listOf(freshSelected),
+            preferFreshClassPrimary = true,
+            expectedSelectedCount = 2,
+            maxFallbackObservationAgeFrames = 15
+        )
+
+        val privacy = assertNotNull(resolved.privacyMask)
+        assertEquals(
+            0,
+            privacy.buffer.get(20 * 64 + 10).toInt() and 0xFF,
+            "A state-counter reset must not make a hundreds-of-frames stale selected mask eligible as fresh-primary fallback"
+        )
+        assertTrue(
+            (privacy.buffer.get(20 * 64 + 28).toInt() and 0xFF) > 0,
+            "The bounded fallback slot must remain available to a recently observed selected track"
+        )
+        assertTrue((privacy.buffer.get(20 * 64 + 48).toInt() and 0xFF) > 0)
+    }
+
+    @Test
     fun singletonFreshSelectedResidualSuppressesSameTrackedFallbackAndUsesOtherMissingSlot() {
         val staleDuplicateMask = rectMask(left = 5, top = 10, right = 17, bottom = 46)
         val genuinelyMissingMask = rectMask(left = 24, top = 10, right = 36, bottom = 46)
