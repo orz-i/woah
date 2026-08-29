@@ -70,6 +70,12 @@ android {
         }
         getByName("androidTest") {
             java.srcDirs("src/androidTest/kotlin")
+            // Benchmark-only fixtures. These directories are packaged only into
+            // the instrumentation APK and never into the production AAR/APK.
+            assets.srcDirs(
+                file("../../../../testdata/videos"),
+                file("../../../../testdata/models/face")
+            )
         }
     }
 
@@ -122,6 +128,8 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test:runner:1.5.2")
     androidTestImplementation("org.jetbrains.kotlin:kotlin-test")
+    // Benchmark-only dependency: face detection is not part of production yet.
+    androidTestImplementation("com.google.mediapipe:tasks-vision:1.0.0")
 }
 
 val syncLiteRtModelAssets = tasks.register("syncLiteRtModelAssets") {

@@ -39,6 +39,13 @@ htmlcov/
 *.data
 models/
 
+# Benchmark-only face model fixture. Keep production model ignores intact while
+# allowing this small, source-pinned Apache-2.0 test asset to survive clean checkout.
+!testdata/models/
+!testdata/models/face/
+!testdata/models/face/blaze_face_full_range.tflite
+!testdata/models/face/README.md
+
 
 # --- Flutter & Dart ---
 .dart_tool/
