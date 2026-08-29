@@ -44,6 +44,16 @@ object PrivacyOcclusionResolver {
     // support instead of only the >= 0.50 binary-analysis core.
     private const val RENDER_VISIBLE_MASK_THRESHOLD_BYTE = 39
 
+    private data class MaskSupportStats(
+        val pixels: Int,
+        val left: Int,
+        val top: Int,
+        val rightExclusive: Int,
+        val bottomExclusive: Int,
+        val centroidX: Float,
+        val centroidY: Float
+    )
+
     /**
      * Resolves selected privacy targets and explicit foreground occluders into
      * an effective, hole-free privacy mask.
@@ -99,7 +109,65 @@ object PrivacyOcclusionResolver {
                 footY = evidence.detection.footY
             )
         }
+        val freshEvidenceByPersonId = freshClassEvidence.mapIndexedNotNull { index, evidence ->
+            if (evidence.detection.mask == null) {
+                null
+            } else {
+                (Int.MIN_VALUE + index) to evidence
+            }
+        }.toMap()
         val useFreshPrimary = preferFreshClassPrimary && evidencePersons.isNotEmpty() && selectedPersonIds.isNotEmpty()
+        val freshVisibleSupportByPersonId = if (useFreshPrimary) {
+            freshEvidenceByPersonId.mapValues { (_, evidence) ->
+                computeMaskSupportStats(evidence.detection.mask, RENDER_VISIBLE_MASK_THRESHOLD_BYTE)
+            }
+        } else {
+            emptyMap()
+        }
+
+        if (useFreshPrimary) {
+            for ((personId, evidence) in freshEvidenceByPersonId) {
+                val detection = evidence.detection
+                val mask = detection.mask ?: continue
+                val support = freshVisibleSupportByPersonId[personId]
+                NativeDiagnostics.event(
+                    level = "INFO",
+                    component = "PrivacyOcclusionResolver",
+                    event = "FRESH_PRIVACY_MASK_GEOMETRY",
+                    fields = mapOf(
+                        "synthetic_person_id" to personId,
+                        "detection_index" to evidence.detectionIndex,
+                        "privacy_class" to evidence.selectionClass.name,
+                        "conservative_unknown" to evidence.conservativeUnknown,
+                        "residual_track_ids" to evidence.residualTrackIds.sorted(),
+                        "confidence" to detection.confidence,
+                        "foot_y" to detection.footY,
+                        "bbox_left" to detection.bbox.left,
+                        "bbox_top" to detection.bbox.top,
+                        "bbox_right" to detection.bbox.right,
+                        "bbox_bottom" to detection.bbox.bottom,
+                        "visible_support_pixels" to support?.pixels,
+                        "visible_support_left_proto" to support?.left,
+                        "visible_support_top_proto" to support?.top,
+                        "visible_support_right_proto" to support?.rightExclusive,
+                        "visible_support_bottom_proto" to support?.bottomExclusive,
+                        "visible_support_centroid_x_proto" to support?.centroidX,
+                        "visible_support_centroid_y_proto" to support?.centroidY,
+                        "mask_width" to mask.width,
+                        "mask_height" to mask.height,
+                        "roi_proto_left" to mask.roiInProto?.left,
+                        "roi_proto_top" to mask.roiInProto?.top,
+                        "roi_proto_right" to mask.roiInProto?.right,
+                        "roi_proto_bottom" to mask.roiInProto?.bottom,
+                        "sampling_left" to mask.samplingRect?.left,
+                        "sampling_top" to mask.samplingRect?.top,
+                        "sampling_right" to mask.samplingRect?.right,
+                        "sampling_bottom" to mask.samplingRect?.bottom,
+                        "pts_us" to ptsUs
+                    )
+                )
+            }
+        }
         val privacyPersons: List<TrackedPerson>
         val effectiveSelectedIds: Set<Int>
 
@@ -203,6 +271,18 @@ object PrivacyOcclusionResolver {
                 rawMask
             }
             preCarveSelectedMasks.add(dilatedMask)
+            val targetFreshEvidence = freshEvidenceByPersonId[target.id]
+            val targetVisibleSupport = if (useFreshPrimary) {
+                freshVisibleSupportByPersonId[target.id]
+                    ?: computeMaskSupportStats(rawMask, RENDER_VISIBLE_MASK_THRESHOLD_BYTE)
+            } else {
+                null
+            }
+            val targetDilatedVisibleSupport = if (useFreshPrimary) {
+                computeMaskSupportStats(dilatedMask, RENDER_VISIBLE_MASK_THRESHOLD_BYTE)
+            } else {
+                null
+            }
 
             val acceptedOccluderCores = mutableListOf<NativeMask>()
 
@@ -272,6 +352,7 @@ object PrivacyOcclusionResolver {
                         thresholdA = RENDER_VISIBLE_MASK_THRESHOLD_BYTE,
                         thresholdB = 128
                     )
+                    val freshDepthCoreTotalPixels = countMaskPixels(freshDepthCore)
                     val ownershipMask = if (isCandFresh) {
                         computeUnselectedOwnershipMask(
                             selectedMask = rawMask,
@@ -288,6 +369,94 @@ object PrivacyOcclusionResolver {
                     val ownershipPixels = countMaskPixels(ownershipMask)
                     val usesFreshDepthCore = freshDepthCorePixels > 0
                     val isStrongForeground = usesFreshDepthCore || ownershipPixels > 0
+                    val candidateFreshEvidence = freshEvidenceByPersonId[cand.id]
+                    val candidateVisibleSupport = if (useFreshPrimary) {
+                        freshVisibleSupportByPersonId[cand.id]
+                            ?: computeMaskSupportStats(candMask, RENDER_VISIBLE_MASK_THRESHOLD_BYTE)
+                    } else {
+                        null
+                    }
+                    val decisionFields = mapOf(
+                        "target_id" to target.id,
+                        "candidate_id" to cand.id,
+                        "target_detection_index" to targetFreshEvidence?.detectionIndex,
+                        "target_privacy_class" to targetFreshEvidence?.selectionClass?.name,
+                        "target_conservative_unknown" to targetFreshEvidence?.conservativeUnknown,
+                        "target_residual_track_ids" to targetFreshEvidence?.residualTrackIds?.sorted(),
+                        "candidate_detection_index" to candidateFreshEvidence?.detectionIndex,
+                        "candidate_privacy_class" to candidateFreshEvidence?.selectionClass?.name,
+                        "candidate_conservative_unknown" to candidateFreshEvidence?.conservativeUnknown,
+                        "candidate_residual_track_ids" to candidateFreshEvidence?.residualTrackIds?.sorted(),
+                        "target_bbox_left" to targetBbox.left,
+                        "target_bbox_top" to targetBbox.top,
+                        "target_bbox_right" to targetBbox.right,
+                        "target_bbox_bottom" to targetBbox.bottom,
+                        "candidate_bbox_left" to candBbox.left,
+                        "candidate_bbox_top" to candBbox.top,
+                        "candidate_bbox_right" to candBbox.right,
+                        "candidate_bbox_bottom" to candBbox.bottom,
+                        "target_visible_support_pixels" to targetVisibleSupport?.pixels,
+                        "target_visible_support_left_proto" to targetVisibleSupport?.left,
+                        "target_visible_support_top_proto" to targetVisibleSupport?.top,
+                        "target_visible_support_right_proto" to targetVisibleSupport?.rightExclusive,
+                        "target_visible_support_bottom_proto" to targetVisibleSupport?.bottomExclusive,
+                        "target_visible_support_centroid_x_proto" to targetVisibleSupport?.centroidX,
+                        "target_visible_support_centroid_y_proto" to targetVisibleSupport?.centroidY,
+                        "target_dilated_visible_support_pixels" to targetDilatedVisibleSupport?.pixels,
+                        "candidate_visible_support_pixels" to candidateVisibleSupport?.pixels,
+                        "candidate_visible_support_left_proto" to candidateVisibleSupport?.left,
+                        "candidate_visible_support_top_proto" to candidateVisibleSupport?.top,
+                        "candidate_visible_support_right_proto" to candidateVisibleSupport?.rightExclusive,
+                        "candidate_visible_support_bottom_proto" to candidateVisibleSupport?.bottomExclusive,
+                        "candidate_visible_support_centroid_x_proto" to candidateVisibleSupport?.centroidX,
+                        "candidate_visible_support_centroid_y_proto" to candidateVisibleSupport?.centroidY,
+                        "target_mask_width" to rawMask.width,
+                        "target_mask_height" to rawMask.height,
+                        "candidate_mask_width" to candMask.width,
+                        "candidate_mask_height" to candMask.height,
+                        "target_roi_proto_left" to rawMask.roiInProto?.left,
+                        "target_roi_proto_top" to rawMask.roiInProto?.top,
+                        "target_roi_proto_right" to rawMask.roiInProto?.right,
+                        "target_roi_proto_bottom" to rawMask.roiInProto?.bottom,
+                        "candidate_roi_proto_left" to candMask.roiInProto?.left,
+                        "candidate_roi_proto_top" to candMask.roiInProto?.top,
+                        "candidate_roi_proto_right" to candMask.roiInProto?.right,
+                        "candidate_roi_proto_bottom" to candMask.roiInProto?.bottom,
+                        "target_sampling_left" to rawMask.samplingRect?.left,
+                        "target_sampling_top" to rawMask.samplingRect?.top,
+                        "target_sampling_right" to rawMask.samplingRect?.right,
+                        "target_sampling_bottom" to rawMask.samplingRect?.bottom,
+                        "candidate_sampling_left" to candMask.samplingRect?.left,
+                        "candidate_sampling_top" to candMask.samplingRect?.top,
+                        "candidate_sampling_right" to candMask.samplingRect?.right,
+                        "candidate_sampling_bottom" to candMask.samplingRect?.bottom,
+                        "target_confidence" to target.confidence,
+                        "candidate_confidence" to cand.confidence,
+                        "foot_y_delta" to footYDelta,
+                        "threshold" to footYThreshold,
+                        "bbox_overlap" to bboxOverlapRatio,
+                        "mask_overlap" to maskOverlapRatio,
+                        "render_visible_mask_overlap" to renderVisibleMaskOverlapRatio,
+                        "ownership_pixels" to ownershipPixels,
+                        "fresh_depth_core_pixels" to freshDepthCorePixels,
+                        "fresh_depth_core_total_pixels" to freshDepthCoreTotalPixels,
+                        "fresh_depth_core_eligible" to useFreshDepthCore,
+                        "carve" to isStrongForeground,
+                        "ownership_mode" to when {
+                            usesFreshDepthCore && isTrackedFallbackTarget -> "FRESH_DEPTH_CORE_FALLBACK"
+                            usesFreshDepthCore -> "FRESH_DEPTH_CORE"
+                            ownershipPixels > 0 -> "PROBABILITY_MARGIN"
+                            else -> "NONE"
+                        },
+                        "tracked_fallback_target" to isTrackedFallbackTarget,
+                        "fresh_selected_target" to isFreshSelectedTarget,
+                        "normalized_foot_y_delta" to normalizedFootYDelta,
+                        "explicit_occluder" to isExplicitOccluder,
+                        "candidate_age" to cand.age,
+                        "identity_stable" to hasStableIdentity,
+                        "target_state" to target.state.name,
+                        "pts_us" to ptsUs
+                    )
 
                     val evidence = OcclusionEvidence(
                         targetId = target.id,
@@ -319,29 +488,7 @@ object PrivacyOcclusionResolver {
                             level = "INFO",
                             component = "PrivacyOcclusionResolver",
                             event = "FOREGROUND_OCCLUDER_ACCEPTED",
-                            fields = mapOf(
-                                "target_id" to target.id,
-                                "occluder_id" to cand.id,
-                                "foot_y_delta" to footYDelta,
-                                "threshold" to footYThreshold,
-                                "bbox_overlap" to bboxOverlapRatio,
-                                "mask_overlap" to maskOverlapRatio,
-                                "render_visible_mask_overlap" to renderVisibleMaskOverlapRatio,
-                                "ownership_pixels" to ownershipPixels,
-                                "fresh_depth_core_pixels" to freshDepthCorePixels,
-                                "ownership_mode" to when {
-                                    usesFreshDepthCore && isTrackedFallbackTarget -> "FRESH_DEPTH_CORE_FALLBACK"
-                                    usesFreshDepthCore -> "FRESH_DEPTH_CORE"
-                                    else -> "PROBABILITY_MARGIN"
-                                },
-                                "tracked_fallback_target" to isTrackedFallbackTarget,
-                                "normalized_foot_y_delta" to normalizedFootYDelta,
-                                "explicit_occluder" to isExplicitOccluder,
-                                "candidate_age" to cand.age,
-                                "identity_stable" to hasStableIdentity,
-                                "target_state" to target.state.name,
-                                "pts_us" to ptsUs
-                            )
+                            fields = decisionFields + ("occluder_id" to cand.id)
                         )
                     } else {
                         // Ambiguous depth or candidate is background: PRIVACY WINS
@@ -349,23 +496,7 @@ object PrivacyOcclusionResolver {
                             level = "INFO",
                             component = "PrivacyOcclusionResolver",
                             event = "FOREGROUND_OCCLUDER_REJECTED_AMBIGUOUS",
-                            fields = mapOf(
-                                "target_id" to target.id,
-                                "candidate_id" to cand.id,
-                                "foot_y_delta" to footYDelta,
-                                "threshold" to footYThreshold,
-                                "bbox_overlap" to bboxOverlapRatio,
-                                "mask_overlap" to maskOverlapRatio,
-                                "render_visible_mask_overlap" to renderVisibleMaskOverlapRatio,
-                                "ownership_pixels" to ownershipPixels,
-                                "fresh_depth_core_pixels" to freshDepthCorePixels,
-                                "normalized_foot_y_delta" to normalizedFootYDelta,
-                                "explicit_occluder" to isExplicitOccluder,
-                                "candidate_age" to cand.age,
-                                "identity_stable" to hasStableIdentity,
-                                "target_state" to target.state.name,
-                                "pts_us" to ptsUs
-                            )
+                            fields = decisionFields
                         )
                     }
                 }
@@ -865,6 +996,45 @@ object PrivacyOcclusionResolver {
             if (a && b) count++
         }
         return count
+    }
+
+    private fun computeMaskSupportStats(mask: NativeMask?, threshold: Int): MaskSupportStats? {
+        if (mask == null) return null
+        val width = mask.width
+        val height = mask.height
+        if (width <= 0 || height <= 0) return null
+        val len = minOf(width * height, mask.buffer.capacity())
+        var count = 0
+        var minX = width
+        var minY = height
+        var maxX = -1
+        var maxY = -1
+        var sumX = 0L
+        var sumY = 0L
+
+        for (i in 0 until len) {
+            if ((mask.buffer.get(i).toInt() and 0xFF) < threshold) continue
+            val x = i % width
+            val y = i / width
+            count++
+            minX = minOf(minX, x)
+            minY = minOf(minY, y)
+            maxX = maxOf(maxX, x)
+            maxY = maxOf(maxY, y)
+            sumX += x.toLong()
+            sumY += y.toLong()
+        }
+        if (count == 0) return null
+
+        return MaskSupportStats(
+            pixels = count,
+            left = minX,
+            top = minY,
+            rightExclusive = maxX + 1,
+            bottomExclusive = maxY + 1,
+            centroidX = sumX.toFloat() / count.toFloat(),
+            centroidY = sumY.toFloat() / count.toFloat()
+        )
     }
 
     private fun computeBBoxIntersectionArea(a: FloatRect, b: FloatRect): Float {
