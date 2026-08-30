@@ -48,6 +48,66 @@ class LostTrackPrivacySafetyTest {
     }
 
     @Test
+    fun testFastProtectedFrameEdgeExitStopsRenderingImmediately() {
+        val tracker = TrackManager(TrackingConfig(maxMissedFrames = 15))
+        tracker.setProtectedTrackIds(setOf(42))
+        tracker.setPrivacyOffscreenDormancyEnabled(true)
+
+        val firstBox = FloatRect(1020f, 560f, 1210f, 960f)
+        tracker.initializeWithAssignedIds(
+            listOf(PersonDetection(firstBox, 0.95f, createSyntheticMask(fillBox = firstBox))),
+            listOf(42)
+        )
+
+        val edgeBox = FloatRect(1018f, 655f, 1210f, 1055f)
+        tracker.update(
+            listOf(PersonDetection(edgeBox, 0.95f, createSyntheticMask(fillBox = edgeBox))),
+            33_333L
+        )
+
+        val afterExit = tracker.update(emptyList(), 66_666L)
+        val selected = assertNotNull(afterExit.find { it.id == 42 })
+        assertEquals(TrackState.LOST, selected.state)
+        assertEquals(null, selected.mask, "fast outward frame-edge exit must not leave a stale full-body mask")
+        assertTrue(
+            selected.missedFrames > tracker.getMaxMissedFrames(),
+            "offscreen dormant identity should bypass the normal visible LOST render window"
+        )
+
+        val returnBox = FloatRect(1005f, 620f, 1200f, 1035f)
+        val recovered = tracker.update(
+            listOf(PersonDetection(returnBox, 0.96f, createSyntheticMask(fillBox = returnBox))),
+            99_999L
+        )
+        val returnedSelected = assertNotNull(recovered.find { it.id == 42 })
+        assertEquals(TrackState.ACTIVE, returnedSelected.state)
+        assertTrue(returnedSelected.observedThisFrame)
+        assertNotNull(returnedSelected.mask, "strong same-edge re-entry must restore the original selected identity")
+    }
+
+    @Test
+    fun testFastFrameEdgeExitKeepsLegacyLostMaskWhenDormancyPolicyDisabled() {
+        val tracker = TrackManager(TrackingConfig(maxMissedFrames = 15))
+        tracker.setProtectedTrackIds(setOf(42))
+
+        val firstBox = FloatRect(1020f, 560f, 1210f, 960f)
+        tracker.initializeWithAssignedIds(
+            listOf(PersonDetection(firstBox, 0.95f, createSyntheticMask(fillBox = firstBox))),
+            listOf(42)
+        )
+        val edgeBox = FloatRect(1018f, 655f, 1210f, 1055f)
+        tracker.update(
+            listOf(PersonDetection(edgeBox, 0.95f, createSyntheticMask(fillBox = edgeBox))),
+            33_333L
+        )
+
+        val afterMiss = tracker.update(emptyList(), 66_666L)
+        val selected = assertNotNull(afterMiss.find { it.id == 42 })
+        assertNotNull(selected.mask, "legacy full-body path must keep its existing LOST grace when policy is disabled")
+        assertTrue(selected.missedFrames <= tracker.getMaxMissedFrames())
+    }
+
+    @Test
     fun testProtectedSelectedIdentitySurvivesRemovalWindowAndReacquiresOriginalId() {
         val tracker = TrackManager(TrackingConfig(maxMissedFrames = 15))
         tracker.setProtectedTrackIds(setOf(42))

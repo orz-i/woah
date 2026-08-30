@@ -55,7 +55,7 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
     }
 
     @Test
-    fun detectorIsThrottledAndTrustedFaceMovesWithCurrentPersonBox() {
+    fun detectorIsThrottledAt60FpsAndTrustedFaceMovesWithCurrentPersonBox() {
         val locator = CountingLocator(
             listOf(FaceObservation(FloatRect(104f, 96f, 152f, 144f), 0.9f))
         )
@@ -82,7 +82,7 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
                 textureType = SourceTextureType.TEXTURE_2D,
                 persons = listOf(moved),
                 faceOnlyTrackIds = setOf(5),
-                ptsUs = 33_333L
+                ptsUs = 16_666L
             )
             assertEquals(0, frame1.detectorCallCount)
             assertEquals(setOf(5), frame1.predictedTrackIds)
@@ -105,7 +105,7 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
                 textureType = SourceTextureType.TEXTURE_2D,
                 persons = listOf(moved),
                 faceOnlyTrackIds = setOf(5),
-                ptsUs = 66_666L
+                ptsUs = 33_333L
             )
             assertEquals(1, frame2.detectorCallCount)
             assertEquals(2, locator.calls)
@@ -197,7 +197,7 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
                 textureType = SourceTextureType.TEXTURE_2D,
                 persons = persons,
                 faceOnlyTrackIds = ids,
-                ptsUs = 33_333L
+                ptsUs = 16_666L
             )
             assertEquals(0, second.detectorCallCount)
             assertEquals(5, locator.calls)
@@ -206,7 +206,7 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
     }
 
     @Test
-    fun reacquiringUnobservedFaceOnlyTrackUsesTrustedPredictionWithoutDetector() {
+    fun reacquiringUnobservedFaceOnlyTrackUsesTightTrustedLocalDetectorRoi() {
         val locator = CountingLocator(
             listOf(FaceObservation(FloatRect(104f, 96f, 152f, 144f), 0.9f))
         )
@@ -236,13 +236,64 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
                 faceOnlyTrackIds = setOf(21),
                 ptsUs = 33_333L
             )
-            assertEquals(0, result.detectorCallCount)
-            assertEquals(setOf(21), result.predictedTrackIds)
-            assertEquals(1, locator.calls)
+            assertEquals(1, result.detectorCallCount)
+            assertEquals(setOf(21), result.detectedTrackIds)
+            assertEquals(2, locator.calls)
             assertTrue(
                 result.stickerPlacements.single().sourceRect.centerX >
                     initial.stickerPlacements.single().sourceRect.centerX + 25f,
-                "trusted prediction must follow bounded person translation during reacquire"
+                "trusted local face refresh must follow the translated head during reacquire"
+            )
+        }
+    }
+
+    @Test
+    fun trustedLocalFaceRefreshTracksHeadMotionInsideStablePersonBox() {
+        val locator = SequencedLocator(
+            listOf(
+                listOf(FaceObservation(FloatRect(104f, 96f, 152f, 144f), 0.9f)),
+                // Deliberately much larger local detector box. Local refresh is
+                // allowed to move the face center, but must not feed this size
+                // back into sticker/ROI scale.
+                listOf(FaceObservation(FloatRect(112f, 72f, 208f, 168f), 0.9f))
+            )
+        )
+        withProcessor(locator) { processor, texture, _ ->
+            val target = person(31, FloatRect(220f, 40f, 420f, 350f))
+            val first = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(target),
+                faceOnlyTrackIds = setOf(31),
+                ptsUs = 0L
+            )
+            val firstCenterX = first.stickerPlacements.single().sourceRect.centerX
+            val firstWidth = first.stickerPlacements.single().sourceRect.width
+            val firstHeight = first.stickerPlacements.single().sourceRect.height
+
+            val second = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(target),
+                faceOnlyTrackIds = setOf(31),
+                ptsUs = 33_333L
+            )
+            assertEquals(1, second.detectorCallCount)
+            assertEquals(setOf(31), second.detectedTrackIds)
+            assertTrue(
+                second.stickerPlacements.single().sourceRect.centerX > firstCenterX + 5f,
+                "local detector refresh must follow head motion even when the person bbox is unchanged"
+            )
+            val secondRect = second.stickerPlacements.single().sourceRect
+            assertTrue(
+                secondRect.width <= firstWidth * 1.15f,
+                "local detector size noise must not inflate sticker width: first=$firstWidth second=${secondRect.width}"
+            )
+            assertTrue(
+                secondRect.height <= firstHeight * 1.15f,
+                "local detector size noise must not inflate sticker height: first=$firstHeight second=${secondRect.height}"
             )
         }
     }

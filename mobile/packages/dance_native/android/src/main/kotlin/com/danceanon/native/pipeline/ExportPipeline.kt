@@ -273,6 +273,7 @@ class ExportPipeline(
                 } else {
                     trackManager.setIdentityProtectedTrackIds(allPrivacyTargetIds)
                     trackManager.setPrivacySelectedTrackIds(fullBodyPersonIds)
+                    trackManager.setPrivacyOffscreenDormancyEnabled(fullBodyPersonIds.isNotEmpty())
                 }
                 val privacyClassTemporalTracker = com.danceanon.native.privacy.PrivacyClassTemporalTracker()
                 val profile = ProcessingProfile.fromName(request.processingProfile)

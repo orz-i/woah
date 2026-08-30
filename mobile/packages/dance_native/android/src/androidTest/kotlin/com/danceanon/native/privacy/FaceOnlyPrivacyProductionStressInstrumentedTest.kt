@@ -60,6 +60,7 @@ class FaceOnlyPrivacyProductionStressInstrumentedTest {
         var predictedFrames = 0
         var fallbackFrames = 0
         var detectorCalls = 0
+        var detectorRejectedCalls = 0
         var unresolvedFrames = 0
         val detectorTimes = mutableListOf<Double>()
         val nativeHeapBefore = Debug.getNativeHeapAllocatedSize()
@@ -95,6 +96,7 @@ class FaceOnlyPrivacyProductionStressInstrumentedTest {
                 if (TARGET_ID in result.predictedTrackIds) predictedFrames++
                 if (TARGET_ID in result.fallbackTrackIds) fallbackFrames++
                 detectorCalls += result.detectorCallCount
+                detectorRejectedCalls += result.detectorRejectedCallCount
                 if (result.faceInferenceMs > 0.0) detectorTimes += result.faceInferenceMs
                 assertTrue(result.readyForRender, "FACE_ONLY stress frame $frameIndex was unresolved")
                 if (frameIndex % 25 == 0) {
@@ -126,7 +128,8 @@ class FaceOnlyPrivacyProductionStressInstrumentedTest {
         val p95 = if (sorted.isEmpty()) 0.0 else sorted[((sorted.size - 1) * 0.95).roundToInt()]
         Log.i(
             TAG,
-            "frames=$FRAMES detector_calls=$detectorCalls detected=$detectedFrames predicted=$predictedFrames " +
+            "frames=$FRAMES detector_calls=$detectorCalls rejected=$detectorRejectedCalls " +
+                "detected=$detectedFrames predicted=$predictedFrames " +
                 "fallback=$fallbackFrames unresolved=$unresolvedFrames detector_p95_ms=$p95 " +
                 "native_heap_before=$nativeHeapBefore native_heap_after=$nativeHeapAfter " +
                 "pss_before_kb=$pssBeforeKb pss_after_kb=$pssAfterKb"
@@ -134,9 +137,12 @@ class FaceOnlyPrivacyProductionStressInstrumentedTest {
 
         assertEquals(0, unresolvedFrames)
         assertEquals(0, fallbackFrames)
-        assertEquals(FRAMES / 2, detectorCalls)
-        assertEquals(FRAMES / 2, detectedFrames)
-        assertEquals(FRAMES / 2, predictedFrames)
+        assertEquals(0, detectorRejectedCalls)
+        // The production cadence is now ~30 Hz (33 ms). This stress fixture is
+        // also 30 fps, so every frame should receive a trusted local refresh.
+        assertEquals(FRAMES, detectorCalls)
+        assertEquals(FRAMES, detectedFrames)
+        assertEquals(0, predictedFrames)
         assertTrue(p95 <= 40.0, "Production MediaPipe detector p95 unexpectedly high: $p95 ms")
     }
 

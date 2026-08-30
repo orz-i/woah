@@ -96,7 +96,8 @@ class InternalTrack(
     var currentObservedFootY: Float? = null,
     var lastReliableObservedMotionDx: Float = 0f,
     var lastReliableObservedMotionDy: Float = 0f,
-    var lastReliableObservedMotionTimestampUs: Long = Long.MIN_VALUE
+    var lastReliableObservedMotionTimestampUs: Long = Long.MIN_VALUE,
+    var offscreenDormant: Boolean = false
 ) {
     init {
         kalman.init(lastObservedBbox)
@@ -139,6 +140,7 @@ class InternalTrack(
             footY = currentObservedFootY ?: lastObservedFootY
         )
     }
+
 }
 
 class TrackManager(
@@ -154,6 +156,75 @@ class TrackManager(
     private val currentHardPrivacyClassByDetectionIndex = mutableMapOf<Int, PrivacySelectionClass>()
     private var nextTrackId = 0
     private var hasInitialized = false
+    private var privacyOffscreenDormancyEnabled = false
+
+    private fun isLikelyProtectedOffscreenExit(track: InternalTrack): Boolean {
+        // Offscreen dormancy is a FULL_BODY privacy-render policy. FACE_ONLY IDs
+        // are identity-protected too, but their separate face fallback/sticker
+        // lifecycle must not be altered by this full-body exit shortcut.
+        if (!privacyOffscreenDormancyEnabled ||
+            !privacySelectedTrackIds.contains(track.id) ||
+            track.offscreenDormant
+        ) return false
+        val mask = track.lastObservedMask ?: return false
+        val frameWidth = mask.originalWidth.toFloat().coerceAtLeast(2f)
+        val frameHeight = mask.originalHeight.toFloat().coerceAtLeast(2f)
+        val observed = track.lastObservedBbox
+        val dx = track.lastReliableObservedMotionDx
+        val dy = track.lastReliableObservedMotionDy
+        val minHorizontalSpeed = max(4f, observed.width * OFFSCREEN_EXIT_MIN_STEP_RATIO)
+        val minVerticalSpeed = max(4f, observed.height * OFFSCREEN_EXIT_MIN_STEP_RATIO)
+
+        val leftExit =
+            observed.left <= frameWidth * OFFSCREEN_EXIT_EDGE_RATIO &&
+                dx <= -minHorizontalSpeed
+        val rightExit =
+            observed.right >= frameWidth * (1f - OFFSCREEN_EXIT_EDGE_RATIO) &&
+                dx >= minHorizontalSpeed
+        val topExit =
+            observed.top <= frameHeight * OFFSCREEN_EXIT_EDGE_RATIO &&
+                dy <= -minVerticalSpeed
+        val bottomExit =
+            observed.bottom >= frameHeight * (1f - OFFSCREEN_EXIT_EDGE_RATIO) &&
+                dy >= minVerticalSpeed
+        return leftExit || rightExit || topExit || bottomExit
+    }
+
+    private fun markProtectedOffscreenDormant(track: InternalTrack, timestampUs: Long) {
+        track.offscreenDormant = true
+        track.state = TrackState.LOST
+        track.lostFrames = config.maxMissedFrames + 1
+        track.reacquireFrames = 0
+        track.occludedFrames = 0
+        track.currentRenderMask = null
+        track.occludedByTrackIds.clear()
+        track.occlusionMotionBbox = null
+        occlusionGroups.forEach { group -> group.trackIds.remove(track.id) }
+        occlusionGroups.removeAll { it.trackIds.size < 2 }
+        NativeDiagnostics.event(
+            level = "INFO",
+            component = "TrackManager",
+            event = "PROTECTED_OFFSCREEN_DORMANT",
+            fields = mapOf(
+                "track_id" to track.id,
+                "last_bbox" to listOf(
+                    track.lastObservedBbox.left,
+                    track.lastObservedBbox.top,
+                    track.lastObservedBbox.right,
+                    track.lastObservedBbox.bottom
+                ),
+                "predicted_bbox" to listOf(
+                    track.currentPredictedBbox.left,
+                    track.currentPredictedBbox.top,
+                    track.currentPredictedBbox.right,
+                    track.currentPredictedBbox.bottom
+                ),
+                "motion_dx" to track.lastReliableObservedMotionDx,
+                "motion_dy" to track.lastReliableObservedMotionDy,
+                "pts_us" to timestampUs
+            )
+        )
+    }
 
     /**
      * Privacy-selected identities are durable identity slots. They may stop
@@ -176,6 +247,10 @@ class TrackManager(
     fun setPrivacySelectedTrackIds(ids: Set<Int>) {
         privacySelectedTrackIds.clear()
         privacySelectedTrackIds.addAll(ids)
+    }
+
+    fun setPrivacyOffscreenDormancyEnabled(enabled: Boolean) {
+        privacyOffscreenDormancyEnabled = enabled
     }
 
     fun getFreshPrivacyClassEvidence(): List<FreshPrivacyClassEvidence> = currentPrivacyClassEvidence
@@ -249,7 +324,9 @@ class TrackManager(
     private fun updateOcclusionGroups(predictedTracks: List<InternalTrack>, timestampUs: Long) {
         // 1. Build adjacency graph of current spatial overlaps based on predicted boxes
         val overlapAdj = mutableMapOf<Int, MutableSet<Int>>()
-        val validTracks = predictedTracks.filter { it.state != TrackState.REMOVED }
+        val validTracks = predictedTracks.filter {
+            it.state != TrackState.REMOVED && !it.offscreenDormant
+        }
         for (t in validTracks) {
             overlapAdj[t.id] = mutableSetOf()
         }
@@ -432,7 +509,11 @@ class TrackManager(
             pred
         }
 
-        val sceneMotion = SceneMotionEstimator.estimateSceneMotion(tracks, detections, config)
+        val sceneMotion = SceneMotionEstimator.estimateSceneMotion(
+            tracks.filter { !it.offscreenDormant },
+            detections,
+            config
+        )
         if (sceneMotion.inlierCount > 0 || sceneMotion.confidence > 0f) {
             NativeDiagnostics.event(
                 level = "INFO",
@@ -740,6 +821,7 @@ class TrackManager(
                 track.occludedByTrackIds.clear()
                 track.occlusionMotionBbox = null
                 track.state = TrackState.ACTIVE
+                track.offscreenDormant = false
                 track.observedThisFrame = true
                 track.framesSinceLastObservation = 0
                 track.currentObservedFootY = det.footY
@@ -1096,6 +1178,7 @@ class TrackManager(
                 track.occludedByTrackIds.clear()
                 track.occlusionMotionBbox = null
                 track.state = TrackState.ACTIVE
+                track.offscreenDormant = false
                 track.observedThisFrame = true
                 track.framesSinceLastObservation = 0
                 track.currentObservedFootY = det.footY
@@ -1148,6 +1231,15 @@ class TrackManager(
             if (!matchedTrackIndices.contains(i)) {
                 val track = tracks[i]
                 val predBox = track.currentPredictedBbox
+
+                if (track.offscreenDormant) {
+                    track.currentRenderMask = null
+                    continue
+                }
+                if (isLikelyProtectedOffscreenExit(track)) {
+                    markProtectedOffscreenDormant(track, timestampUs)
+                    continue
+                }
 
                 // Check overlap with tracks that received fresh observations this frame
                 val freshlyMatchedOtherTracks = tracks.filter { other ->
@@ -1507,6 +1599,7 @@ class TrackManager(
                 bestTrack.occludedByTrackIds.clear()
                 bestTrack.occlusionMotionBbox = null
                 bestTrack.state = TrackState.ACTIVE
+                bestTrack.offscreenDormant = false
                 bestTrack.observedThisFrame = true
                 bestTrack.framesSinceLastObservation = 0
                 bestTrack.currentObservedFootY = det.footY
@@ -1601,6 +1694,17 @@ class TrackManager(
         val activeOrLost = tracks.map { track ->
             val predBox = track.kalman.predict(timestampUs)
             track.currentPredictedBbox = predBox
+
+            if (track.offscreenDormant) {
+                track.state = TrackState.LOST
+                track.currentRenderMask = null
+                track.lostFrames = max(track.lostFrames, config.maxMissedFrames + 1)
+                return@map track.toTrackedPerson()
+            }
+            if (countAsDetectionMiss && isLikelyProtectedOffscreenExit(track)) {
+                markProtectedOffscreenDormant(track, timestampUs)
+                return@map track.toTrackedPerson()
+            }
 
             if (countAsDetectionMiss) {
                 val inOcclusionGroup = occlusionGroups.any { it.trackIds.contains(track.id) }
@@ -1720,6 +1824,7 @@ class TrackManager(
         currentHardPrivacyClassByDetectionIndex.clear()
         nextTrackId = 0
         hasInitialized = false
+        privacyOffscreenDormancyEnabled = false
     }
 
     companion object {
@@ -1734,6 +1839,8 @@ class TrackManager(
         private const val PROTECTED_UNOBSERVED_MAX_CENTER_TRAVEL_RATIO = 0.30f
         private const val PROTECTED_UNOBSERVED_MIN_SCALE = 0.82f
         private const val PROTECTED_UNOBSERVED_MAX_SCALE = 1.18f
+        private const val OFFSCREEN_EXIT_EDGE_RATIO = 0.06f
+        private const val OFFSCREEN_EXIT_MIN_STEP_RATIO = 0.03f
 
         fun boundPredictionAroundAnchor(
             anchor: FloatRect,

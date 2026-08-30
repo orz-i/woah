@@ -3,6 +3,7 @@ package com.danceanon.native.privacy
 import android.content.Context
 import android.util.Log
 import com.danceanon.native.face.FaceHeadRoiPlanner
+import com.danceanon.native.face.FaceHeadRoiPlan
 import com.danceanon.native.face.FaceLocator
 import com.danceanon.native.face.FaceLocatorProvider
 import com.danceanon.native.face.FaceRoiCandidateSelector
@@ -113,6 +114,53 @@ class FaceOnlyPrivacyFrameProcessor(
     private val cachedFaceByTrackId = mutableMapOf<Int, CachedFaceGeometry>()
     private val lastDetectorAttemptPtsUsByTrackId = mutableMapOf<Int, Long>()
 
+    private fun planCachedFaceLocalRoi(
+        cached: CachedFaceGeometry,
+        personBbox: FloatRect,
+        ptsUs: Long
+    ): FaceHeadRoiPlan? {
+        val ageUs = ptsUs - cached.lastTrustedPtsUs
+        if (ageUs !in 0L..MAX_PREDICTED_FACE_AGE_US) return null
+        val projected = cached.project(personBbox, ageUs) ?: return null
+        val frameWidth = mapper.srcWidth.toFloat()
+        val frameHeight = mapper.srcHeight.toFloat()
+        if (frameWidth <= 1f || frameHeight <= 1f) return null
+
+        val faceDiameter = maxOf(projected.radiusX, projected.radiusY) * 2f
+        val requestedSide = maxOf(LOCAL_FACE_ROI_MIN_SIDE_PX, faceDiameter * LOCAL_FACE_ROI_DIAMETER_FACTOR)
+        val side = minOf(requestedSide, minOf(frameWidth, frameHeight)).coerceAtLeast(2f)
+        val maxLeft = (frameWidth - side).coerceAtLeast(0f)
+        val maxTop = (frameHeight - side).coerceAtLeast(0f)
+        val left = (projected.centerX - side * 0.5f).coerceIn(0f, maxLeft)
+        val top = (projected.centerY - side * 0.5f).coerceIn(0f, maxTop)
+        val rect = FloatRect(left, top, left + side, top + side)
+        return FaceHeadRoiPlan(
+            sourceRect = rect,
+            anchorX = ((projected.centerX - rect.left) / side).coerceIn(0f, 1f),
+            anchorY = ((projected.centerY - rect.top) / side).coerceIn(0f, 1f),
+            outputSize = FACE_ROI_SIZE
+        )
+    }
+
+    private fun preserveTrustedSizeForLocalDetection(
+        detected: FacePrivacyEllipse,
+        cached: CachedFaceGeometry,
+        personBbox: FloatRect
+    ): FacePrivacyEllipse {
+        if (detected.source != FacePrivacyRegionSource.DETECTED_FACE) return detected
+        val projectedReference = cached.project(personBbox, ageUs = 0L) ?: return detected
+        // Once identity-local face tracking is established, the small ROI exists
+        // to refresh *position*. Letting the detector's local-box extent redefine
+        // ROI scale creates a feedback loop (ROI -> larger local face box -> larger
+        // ROI) and was visible as ~1.40x sticker-height pumping on device. Preserve
+        // the previously trusted source-space size, adjusted only by the bounded
+        // person-scale projection, while accepting the detector's new center.
+        return detected.copy(
+            radiusX = projectedReference.radiusX,
+            radiusY = projectedReference.radiusY
+        )
+    }
+
     fun resolveFrame(
         frameTexture: Int,
         texMatrix: FloatArray,
@@ -158,22 +206,41 @@ class FaceOnlyPrivacyFrameProcessor(
         lastDetectorAttemptPtsUsByTrackId.keys.retainAll(activeFaceOnlyTrackIds)
         temporalStabilizer.retainTracks(activeFaceOnlyTrackIds)
 
-        val detectorCandidates = activeFaceOnlyTrackIds.asSequence()
+        val detectorPlanByTrackId = linkedMapOf<Int, FaceHeadRoiPlan>()
+        val localDetectorTrackIds = linkedSetOf<Int>()
+        activeFaceOnlyTrackIds.sorted().forEach { trackId ->
+            val person = personsById[trackId] ?: return@forEach
+            if (person.state == TrackState.LOST || person.state == TrackState.REMOVED) return@forEach
+            val cached = cachedFaceByTrackId[trackId]
+            val localPlan = cached?.let { planCachedFaceLocalRoi(it, person.bbox, ptsUs) }
+            val plan = localPlan ?: if (person.observedThisFrame && person.state == TrackState.ACTIVE) {
+                FaceHeadRoiPlanner.plan(
+                    personBbox = person.bbox,
+                    frameWidth = mapper.srcWidth,
+                    frameHeight = mapper.srcHeight
+                )
+            } else {
+                null
+            }
+            if (plan != null) {
+                detectorPlanByTrackId[trackId] = plan
+                if (localPlan != null) localDetectorTrackIds += trackId
+            }
+        }
+
+        val detectorCandidates = detectorPlanByTrackId.keys.asSequence()
             .filter { trackId ->
-                val person = personsById[trackId] ?: return@filter false
-                // Detector observations are positional evidence only.  During
-                // REACQUIRING/OCCLUDED/unobserved states the person bbox is not a
-                // trustworthy identity anchor; running the detector there caused
-                // hundreds of neighboring-face rejections in the real 5-person
-                // clip and occasionally pulled privacy toward another dancer.
-                if (!person.observedThisFrame || person.state != TrackState.ACTIVE) return@filter false
                 val lastAttemptPtsUs = lastDetectorAttemptPtsUsByTrackId[trackId]
                 lastAttemptPtsUs == null ||
                     ptsUs < lastAttemptPtsUs ||
                     ptsUs - lastAttemptPtsUs >= detectorIntervalUs
             }
             .sortedWith(
-                compareBy<Int> { if (lastDetectorAttemptPtsUsByTrackId.containsKey(it)) 1 else 0 }
+                compareBy<Int> {
+                    val person = personsById[it]
+                    if (localDetectorTrackIds.contains(it) && person?.observedThisFrame == false) 0 else 1
+                }
+                    .thenBy { if (lastDetectorAttemptPtsUsByTrackId.containsKey(it)) 1 else 0 }
                     .thenBy { if (cachedFaceByTrackId.containsKey(it)) 1 else 0 }
                     .thenBy { lastDetectorAttemptPtsUsByTrackId[it] ?: Long.MIN_VALUE }
                     .thenBy { it }
@@ -213,11 +280,7 @@ class FaceOnlyPrivacyFrameProcessor(
             val person = personsById[trackId] ?: continue
             if (person.state == TrackState.REMOVED) continue
 
-            val plan = FaceHeadRoiPlanner.plan(
-                personBbox = person.bbox,
-                frameWidth = mapper.srcWidth,
-                frameHeight = mapper.srcHeight
-            )
+            val plan = detectorPlanByTrackId[trackId]
 
             var region: FacePrivacyEllipse? = null
             if (dueDetectorTrackIds.contains(trackId) && plan != null) {
@@ -260,11 +323,24 @@ class FaceOnlyPrivacyFrameProcessor(
                         detectorRejectedTrackIds += trackId
                     }
                     region = if (selectedFace != null) {
-                        FacePrivacyRegionResolver.resolve(
+                        val detectedRegion = FacePrivacyRegionResolver.resolve(
                             personBbox = person.bbox,
                             roiPlan = plan,
                             selectedFace = selectedFace
                         )
+                        if (
+                            detectedRegion != null &&
+                            localDetectorTrackIds.contains(trackId) &&
+                            cachedBeforeAttempt != null
+                        ) {
+                            preserveTrustedSizeForLocalDetection(
+                                detected = detectedRegion,
+                                cached = cachedBeforeAttempt,
+                                personBbox = person.bbox
+                            )
+                        } else {
+                            detectedRegion
+                        }
                     } else {
                         val cacheAgeUs = cachedBeforeAttempt?.let { ptsUs - it.lastTrustedPtsUs }
                         if (
@@ -430,7 +506,7 @@ class FaceOnlyPrivacyFrameProcessor(
     companion object {
         private const val TAG = "FaceOnlyPrivacy"
         const val FACE_ROI_SIZE = 256
-        const val DEFAULT_DETECTOR_INTERVAL_US = 66_000L
+        const val DEFAULT_DETECTOR_INTERVAL_US = 33_000L
         const val DEFAULT_MAX_DETECTOR_CALLS_PER_FRAME = 2
         private const val INITIAL_ACQUISITION_MAX_CALLS = 8
         private const val MAX_PREDICTED_FACE_AGE_US = 150_000L
@@ -438,6 +514,8 @@ class FaceOnlyPrivacyFrameProcessor(
         private const val MIN_PREDICTED_FACE_SCALE = 0.88f
         private const val MAX_PREDICTED_FACE_SCALE = 1.12f
         private const val MAX_PREDICTED_AGE_EXPANSION = 0.10f
+        private const val LOCAL_FACE_ROI_MIN_SIDE_PX = 72f
+        private const val LOCAL_FACE_ROI_DIAMETER_FACTOR = 2.8f
         private const val SLOW_STAGE_LOG_THRESHOLD_MS = 20.0
 
         fun create(context: Context, mapper: ModelCoordinateMapper): FaceOnlyPrivacyFrameProcessor {

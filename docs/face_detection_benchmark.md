@@ -679,7 +679,104 @@ Export diagnostics now also aggregate `face_detector_rejected_calls_by_track_id`
 and record whether the conservative mixed FULL_BODY occluder policy is enabled,
 so the next real-video bundle can directly show whether the previous 423 rejected
 calls and target-4 carve instability were reduced.
-the same real dance video is retested.
+
+### Fourth real-video correction: offscreen dormancy and identity-local face refresh
+
+The next real-video bundle came from commit
+`e356c1779d695608d96e38936af095494ff43dea` on the same 751-frame / 60 fps
+one-FULL_BODY plus five-FACE_ONLY clip. The prior identity tightening worked as
+intended: detector rejections fell from **423 to 8**, and FACE_ONLY sticker width
+maxima fell to approximately **65.5 / 100.9 / 125.6 / 76.5 / 67.7 px** for IDs
+1/2/3/5/6. However the user still reported two distinct defects: the selected
+FULL_BODY subject was a fast irrelevant passer who exited the frame but left a
+residual mask that interfered with the remaining scene, while FACE_ONLY stickers
+still lagged head motion during body actions.
+
+The face telemetry explains the follow defect. The safer scheduler produced only
+**387 detector calls**, **377 DETECTED**, **1,238 PREDICTED**, and **2,140
+FALLBACK** track-frames. Per-track calls were only 58/46/27/126/130 for IDs
+1/2/3/5/6. In other words, removing broad detector work from unobserved person
+boxes eliminated false neighboring-face evidence but also left too much motion to
+body-box prediction, which cannot follow a head moving inside a comparatively
+stable torso/person bbox.
+
+FACE_ONLY therefore now uses a two-stage detector geometry:
+
+- first acquisition still uses the YOLO-owned source head ROI and may burst across
+  all never-attempted FACE_ONLY IDs;
+- after a trusted face exists, a **small identity-local ROI** is centered on the
+  projected recent face, with side length at least 72 source pixels and otherwise
+  about 2.8x the trusted face diameter;
+- this local ROI may refresh a recently trusted face during short
+  REACQUIRING/OCCLUDED intervals, because identity is constrained jointly by the
+  YOLO track and the recent face location instead of by a broad predicted person
+  head box;
+- detector cadence is raised to about **30 Hz (33 ms)**, still capped at two
+  steady-state ROI calls per output frame, so a five-person 60 fps export can
+  refresh local head motion much more frequently;
+- local detector results update the face **center** but do not directly redefine
+  face size. The previous source-space trusted size, adjusted only by the bounded
+  person-scale projection, is retained. This prevents a local-ROI feedback loop
+  where detector box extent changes the next ROI size and then inflates the
+  sticker again.
+
+The first device Export run with local ROIs confirmed the position path but caught
+exactly that size-feedback failure: the dynamic sticker-height ratio reached
+**1.399** (heights 228/313/319/298/279/283/312) against the existing <=1.35
+gate. After local detections were changed to center-only measurements for size
+purposes, the same Export **3/3** regression passed again. A dedicated processor
+test now deliberately doubles the local detector box extent while moving its
+center and requires the sticker to move without growing more than 15%.
+
+The FULL_BODY residue had a different cause. In the diagnostic trace selected
+track 4 was still identity-protected after leaving view. Its final accepted boxes
+moved rapidly downward with bottom edges approximately **975.9 -> 997.0 ->
+1022.2 -> 1049.1 px** in a 1080 px frame. Once detections stopped, the normal
+protected lifecycle could retain rendering through the REACQUIRING grace and LOST
+window. Track 4 accumulated **31 association ambiguities, 11 reacquire starts, 9
+reacquire timeouts, 6 protected-retained-LOST events**, and all 10 recorded
+privacy coverage drops. Keeping that no-longer-visible protected slot in
+occlusion-group and scene-motion calculations could also perturb nearby FACE_ONLY
+identity geometry.
+
+Mixed-mode FULL_BODY tracking therefore adds an opt-in **offscreen dormant** state:
+
+- it is enabled only for mixed-mode FULL_BODY privacy targets; the historical
+  FULL_BODY-only pipeline is unchanged;
+- when the last reliable bbox is within 6% of a frame edge, reliable observed
+  motion is clearly outward (at least 3% of the relevant bbox dimension per
+  frame), and that protected target is then unmatched, the first missed frame
+  immediately stops rendering its full-body mask;
+- the identity record is retained as LOST/dormant rather than destroyed, so a
+  strong later recovery can restore the same selected ID;
+- dormant tracks are removed from occlusion groups and excluded from scene-motion
+  estimation, preventing an offscreen stale selected person from continuing to
+  steer visible FACE_ONLY tracks;
+- a `PROTECTED_OFFSCREEN_DORMANT` diagnostic event records the ID, last bbox,
+  predicted bbox, outward motion, and PTS so the next real-video bundle can show
+  whether this path fired.
+
+Regression coverage explicitly proves that an outward fast protected edge exit
+clears the render mask on the first missed frame, that strong re-entry restores
+the original identity, and that the same sequence retains the historical LOST
+mask when the mixed-mode dormancy policy is disabled.
+
+PLK110 / Android 16 verification for this correction:
+
+- focused offscreen/crossing/recovery JVM tests: **all passed**;
+- `FaceOnlyPrivacyFrameProcessorInstrumentedTest`: **9/9**;
+- Preview FACE_ONLY/mixed acceptance: **1/1**;
+- Export static/dynamic/mixed acceptance: **3/3** after the local-size feedback
+  gate caught and corrected the initial 1.399 ratio;
+- foreground production stress: **300/300 frames** at the new 33 ms cadence,
+  with the stress contract requiring 300 detector calls, 300 DETECTED frames,
+  0 PREDICTED, 0 FALLBACK, and 0 rejected calls;
+- complete `dance_native` JVM unit suite: **all passed**;
+- Flutter tests: **14/14**; `flutter analyze`: **0 issues**.
+
+This revision remains a candidate until the same real clip confirms both that the
+fast irrelevant FULL_BODY target disappears without residue and that FACE_ONLY
+stickers remain attached during articulated head/body motion.
 
 ## Test fixtures and paths
 
