@@ -99,10 +99,10 @@ class FaceOnlyExportPipelineInstrumentedTest {
                 assertEquals(inputFrame.width, outputFrame.width)
                 assertEquals(inputFrame.height, outputFrame.height)
 
-                val privacyDelta = changedRedPrivacyStats(inputFrame, outputFrame)
+                val privacyDelta = changedStickerStats(inputFrame, outputFrame)
                 assertTrue(
-                    privacyDelta.count >= 800,
-                    "Expected a material FACE_ONLY privacy region; stats=$privacyDelta"
+                    privacyDelta.count >= 350,
+                    "Expected a material FACE_ONLY sticker region; stats=$privacyDelta"
                 )
                 assertTrue(
                     privacyDelta.height <= (FRAME_H * 0.45).toInt(),
@@ -120,6 +120,11 @@ class FaceOnlyExportPipelineInstrumentedTest {
                     lowerBodyDelta <= 45.0,
                     "FACE_ONLY unexpectedly altered lower body: mean RGB delta=$lowerBodyDelta"
                 )
+                val residualRed = changedRedPrivacyStats(inputFrame, outputFrame)
+                assertTrue(
+                    residualRed.count <= 180,
+                    "FACE_ONLY export still exposed the solid-color privacy block under the sticker: $residualRed"
+                )
 
             } finally {
                 inputFrame.recycle()
@@ -130,6 +135,58 @@ class FaceOnlyExportPipelineInstrumentedTest {
             input.delete()
             output.delete()
         }
+    }
+
+    private fun changedStickerStats(input: Bitmap, output: Bitmap): PrivacyDeltaStats {
+        return changedStickerStatsInRect(
+            input,
+            output,
+            left = 0,
+            top = 0,
+            rightExclusive = output.width,
+            bottomExclusive = output.height
+        )
+    }
+
+    private fun changedStickerStatsInRect(
+        input: Bitmap,
+        output: Bitmap,
+        left: Int,
+        top: Int,
+        rightExclusive: Int,
+        bottomExclusive: Int
+    ): PrivacyDeltaStats {
+        var count = 0
+        var minX = output.width
+        var minY = output.height
+        var maxX = -1
+        var maxY = -1
+        val safeLeft = left.coerceIn(0, output.width)
+        val safeTop = top.coerceIn(0, output.height)
+        val safeRight = rightExclusive.coerceIn(safeLeft, output.width)
+        val safeBottom = bottomExclusive.coerceIn(safeTop, output.height)
+        for (y in safeTop until safeBottom) {
+            for (x in safeLeft until safeRight) {
+                val before = input.getPixel(x, y)
+                val after = output.getPixel(x, y)
+                val r = Color.red(after)
+                val g = Color.green(after)
+                val b = Color.blue(after)
+                val stickerYellow = r >= 170 && g >= 120 && b <= 120 && r - b >= 70 && g - b >= 35
+                val changed =
+                    abs(Color.red(before) - r) +
+                        abs(Color.green(before) - g) +
+                        abs(Color.blue(before) - b) >= 90
+                if (stickerYellow && changed) {
+                    count++
+                    if (x < minX) minX = x
+                    if (x > maxX) maxX = x
+                    if (y < minY) minY = y
+                    if (y > maxY) maxY = y
+                }
+            }
+        }
+        return PrivacyDeltaStats(count, minX, minY, maxX, maxY)
     }
 
     @Test
@@ -183,7 +240,7 @@ class FaceOnlyExportPipelineInstrumentedTest {
             val inputFrame = decodeVideoFrame(input, VERIFY_TIME_US)
             val outputFrame = decodeVideoFrame(output, VERIFY_TIME_US)
             try {
-                val targetPrivacy = changedRedPrivacyStatsInRect(
+                val targetPrivacy = changedStickerStatsInRect(
                     inputFrame,
                     outputFrame,
                     left = 180,
@@ -200,8 +257,8 @@ class FaceOnlyExportPipelineInstrumentedTest {
                     bottomExclusive = outputFrame.height
                 )
                 assertTrue(
-                    targetPrivacy.count >= 700,
-                    "Mixed Export lost FACE_ONLY target privacy: $targetPrivacy"
+                    targetPrivacy.count >= 300,
+                    "Mixed Export lost FACE_ONLY target sticker: $targetPrivacy"
                 )
                 assertTrue(
                     secondaryPrivacy.count >= 300,
@@ -293,6 +350,8 @@ class FaceOnlyExportPipelineInstrumentedTest {
                 var firstExpectedX: Double? = null
                 var firstExpectedY: Double? = null
                 val observedCentersX = mutableListOf<Double>()
+                val observedStickerWidths = mutableListOf<Int>()
+                val observedStickerHeights = mutableListOf<Int>()
 
                 sampleFrames.forEach { frame ->
                     val timeUs = frame.index * DYNAMIC_FRAME_DURATION_US
@@ -303,10 +362,10 @@ class FaceOnlyExportPipelineInstrumentedTest {
                         outputRetriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST)
                     )
                     try {
-                        val privacy = changedRedPrivacyStats(inputFrame, outputFrame)
+                        val privacy = changedStickerStats(inputFrame, outputFrame)
                         assertTrue(
-                            privacy.count >= 700,
-                            "Dynamic frame ${frame.index} lost FACE_ONLY privacy: $privacy"
+                            privacy.count >= 300,
+                            "Dynamic frame ${frame.index} lost FACE_ONLY sticker: $privacy"
                         )
                         assertTrue(
                             privacy.height <= (FRAME_H * 0.45).toInt(),
@@ -315,6 +374,8 @@ class FaceOnlyExportPipelineInstrumentedTest {
                         val centerX = (privacy.minX + privacy.maxX) * 0.5
                         val centerY = (privacy.minY + privacy.maxY) * 0.5
                         observedCentersX += centerX
+                        observedStickerWidths += privacy.width
+                        observedStickerHeights += privacy.height
 
                         if (firstPrivacyCenterX == null) {
                             firstPrivacyCenterX = centerX
@@ -345,6 +406,18 @@ class FaceOnlyExportPipelineInstrumentedTest {
                 assertTrue(
                     observedSpanX >= DYNAMIC_MIN_OBSERVED_X_SPAN_PX,
                     "FACE_ONLY privacy did not visibly follow horizontal motion: span=$observedSpanX"
+                )
+                val widthRatio = observedStickerWidths.maxOrNull()!!.toDouble() /
+                    observedStickerWidths.minOrNull()!!.coerceAtLeast(1)
+                val heightRatio = observedStickerHeights.maxOrNull()!!.toDouble() /
+                    observedStickerHeights.minOrNull()!!.coerceAtLeast(1)
+                assertTrue(
+                    widthRatio <= DYNAMIC_MAX_STICKER_SIZE_RATIO,
+                    "FACE_ONLY sticker width still pumps across motion frames: ratio=$widthRatio widths=$observedStickerWidths"
+                )
+                assertTrue(
+                    heightRatio <= DYNAMIC_MAX_STICKER_SIZE_RATIO,
+                    "FACE_ONLY sticker height still pumps across motion frames: ratio=$heightRatio heights=$observedStickerHeights"
                 )
             } finally {
                 inputRetriever.release()
@@ -590,6 +663,7 @@ class FaceOnlyExportPipelineInstrumentedTest {
         private const val DYNAMIC_FRAME_COUNT = 18
         private const val DYNAMIC_MOTION_TOLERANCE_PX = 75.0
         private const val DYNAMIC_MIN_OBSERVED_X_SPAN_PX = 55.0
+        private const val DYNAMIC_MAX_STICKER_SIZE_RATIO = 1.35
         // The reviewed real dancer is the second left-to-right raw YOLO person
         // on frame 0 of this fixture. TrackManager initialization therefore
         // assigns it ID 1 when no analysis cache is supplied.

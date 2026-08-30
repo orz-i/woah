@@ -4,8 +4,13 @@
 
 - SAM2: **BLOCKED**. Do not advance or unhide it.
 - YOLO: the only stable person detection/segmentation and identity baseline.
-- Production anonymization: unchanged full-body path.
-- Face detector: instrumentation benchmark only; no preview/export runtime call site exists.
+- FULL_BODY production behavior remains on the existing YOLO/TrackManager compositor path.
+- Android FACE_ONLY is now production-wired for Preview and Export behind explicit
+  per-person policy. MediaPipe remains positional evidence only; it never owns identity.
+- FACE_ONLY currently renders the stabilized head privacy region as an opaque built-in
+  sticker instead of reusing the FULL_BODY fill color/effect.
+- iOS native Preview/Export remains unsupported; current FACE_ONLY processing validation
+  is Android-only.
 
 ## Goal
 
@@ -433,6 +438,67 @@ exclusion plus `buildConfiguredProject()` persistence. The final app verificatio
 passed all Flutter tests, `flutter analyze` with zero issues, and
 `flutter build apk --debug` successfully produced the integrated Android debug
 APK.
+
+### FACE_ONLY temporal stabilization and sticker rendering
+
+Real-video validation with five simultaneous FACE_ONLY targets exposed a visual
+size discontinuity between precise face detections and the conservative YOLO-head
+fallback. The diagnostic export covered 751 frames and reported 369 detected,
+1107 predicted, and 2279 fallback track-frames, so the visible "large/small"
+oscillation was primarily a geometry-state transition problem rather than a
+renderer stall or a need to relax detector/anchor thresholds.
+
+`FacePrivacyTemporalStabilizer` now owns a per-track display/privacy geometry
+state. Trusted detections update the state with bounded center/scale movement;
+recovery from a larger fallback shrinks gradually instead of snapping. During a
+detector miss or ambiguity, precise detector location evidence is still discarded
+immediately, but fallback keeps the recent trusted size as a lower bound while
+re-centering on the current YOLO-owned head position. This preserves fail-closed
+privacy without reusing a stale face position.
+
+FACE_ONLY rendering now uses a sticker-only overlay rather than the selected
+FULL_BODY fill effect. The native processor emits `FaceStickerPlacement` records
+from the stabilized ellipses. `GlRenderer` draws one overlay per FACE_ONLY track
+after the primary compositor, using the same effective letterbox mask sampling
+rect as the privacy compositor so foreground occluder carving remains intact.
+The overlay shader uses visual source-space coordinates before the OES/bitmap
+texture matrix; this avoids the vertical-coordinate mismatch that occurs on the
+2D preview path.
+
+The sticker pass consumes both halves of the resolved FACE_ONLY compositor result:
+the privacy mask supplies sticker support and the separate foreground occluder mask
+is applied as `privacyAlpha *= (1 - occluderAlpha)`. This matches the existing main
+privacy compositor contract, so hands/arms or other accepted foreground occluders
+can remain visually in front of the face sticker instead of being painted over.
+
+The built-in fallback sticker is the existing generated sunglasses-face bitmap.
+The texture cache now distinguishes the initial transparent 1x1 placeholder from
+an actually loaded default `null` sticker asset; otherwise `ensureStickerTexture`
+could incorrectly return the transparent placeholder forever. Within the resolved
+FACE_ONLY privacy mask the sticker pass is forced opaque, so transparent pixels in
+a future custom sticker cannot create a privacy hole. FULL_BODY targets continue
+to use the configured fill effect independently.
+
+PLK110 / Android 16 acceptance after this change:
+
+- temporal stabilizer unit tests: **5/5** passed;
+- sticker renderer/unit tests plus Android-test compilation passed;
+- `FaceOnlyPrivacyFrameProcessorInstrumentedTest`: **7/7** passed;
+- Preview FACE_ONLY sticker acceptance passed with privacy-mask clipping enabled,
+  no material residual solid-red block, FULL_BODY conflict priority, fail-closed
+  missing-ID behavior, and two simultaneous FACE_ONLY targets each receiving an
+  independent sticker;
+- Export FACE_ONLY acceptance: **3/3** passed for static, dynamic affine, and
+  mixed FULL_BODY + FACE_ONLY output;
+- dynamic sticker width and height peak/min ratios are hard-gated at **<= 1.35**;
+- sticker shader unit coverage explicitly requires resolved foreground-occluder
+  sampling/carving;
+- the final Preview regression passed **1/1** and Export regression passed **3/3**
+  on PLK110 after the occluder-carve integration;
+- the foreground-host production stress test again completed **300/300 frames**.
+
+This HEAD remains a candidate build pending user validation on real dance videos;
+the historical user-validated rollback baseline is unchanged.
 
 ## Test fixtures and paths
 

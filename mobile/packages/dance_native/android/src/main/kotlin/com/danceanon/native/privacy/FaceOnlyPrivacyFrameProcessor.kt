@@ -9,6 +9,7 @@ import com.danceanon.native.face.FaceRoiCandidateSelector
 import com.danceanon.native.geometry.ModelCoordinateMapper
 import com.danceanon.native.inference.NativeMask
 import com.danceanon.native.render.FaceRoiRenderer
+import com.danceanon.native.render.FaceStickerPlacement
 import com.danceanon.native.render.InferenceFbo
 import com.danceanon.native.render.SourceTextureType
 import com.danceanon.native.tracking.TrackState
@@ -29,7 +30,8 @@ data class FaceOnlyPrivacyFrameResult(
     val detectorRejectedCallCount: Int,
     val roiReadbackMs: Double,
     val maskBuildMs: Double,
-    val privacyResolveMs: Double
+    val privacyResolveMs: Double,
+    val stickerPlacements: List<FaceStickerPlacement>
 )
 
 /**
@@ -42,6 +44,7 @@ class FaceOnlyPrivacyFrameProcessor(
     private val mapper: ModelCoordinateMapper,
     private val roiRenderer: FaceRoiRenderer = FaceRoiRenderer(),
     private val roiFbo: InferenceFbo = InferenceFbo(FACE_ROI_SIZE),
+    private val temporalStabilizer: FacePrivacyTemporalStabilizer = FacePrivacyTemporalStabilizer(),
     private val detectorIntervalUs: Long = DEFAULT_DETECTOR_INTERVAL_US,
     private val maxDetectorCallsPerFrame: Int = DEFAULT_MAX_DETECTOR_CALLS_PER_FRAME
 ) : AutoCloseable {
@@ -110,7 +113,8 @@ class FaceOnlyPrivacyFrameProcessor(
                 detectorRejectedCallCount = 0,
                 roiReadbackMs = 0.0,
                 maskBuildMs = 0.0,
-                privacyResolveMs = 0.0
+                privacyResolveMs = 0.0,
+                stickerPlacements = emptyList()
             )
         }
 
@@ -125,6 +129,7 @@ class FaceOnlyPrivacyFrameProcessor(
         }
         cachedFaceByTrackId.keys.retainAll(activeFaceOnlyTrackIds)
         lastDetectorAttemptPtsUsByTrackId.keys.retainAll(activeFaceOnlyTrackIds)
+        temporalStabilizer.retainTracks(activeFaceOnlyTrackIds)
 
         val dueDetectorTrackIds = activeFaceOnlyTrackIds.asSequence()
             .filter { trackId ->
@@ -154,6 +159,7 @@ class FaceOnlyPrivacyFrameProcessor(
         var detectorRejectedCallCount = 0
         var roiReadbackMs = 0.0
         var maskBuildMs = 0.0
+        val stickerPlacements = mutableListOf<FaceStickerPlacement>()
 
         for (trackId in faceOnlyTrackIds.sorted()) {
             val person = personsById[trackId] ?: continue
@@ -243,6 +249,12 @@ class FaceOnlyPrivacyFrameProcessor(
                 }
             }
             if (region != null) {
+                region = temporalStabilizer.stabilize(
+                    trackId = trackId,
+                    rawRegion = region,
+                    personBbox = person.bbox,
+                    ptsUs = ptsUs
+                )
                 val maskStartNs = System.nanoTime()
                 val builtMask = FacePrivacyMaskBuilder.build(listOf(region), mapper)
                 maskBuildMs += (System.nanoTime() - maskStartNs) / 1_000_000.0
@@ -254,6 +266,12 @@ class FaceOnlyPrivacyFrameProcessor(
                     FacePrivacyRegionSource.PREDICTED_FACE -> predicted += trackId
                     FacePrivacyRegionSource.YOLO_HEAD_FALLBACK -> fallback += trackId
                 }
+                FaceStickerPlacement.from(
+                    trackId = trackId,
+                    region = region,
+                    sourceWidth = mapper.srcWidth,
+                    sourceHeight = mapper.srcHeight
+                )?.let(stickerPlacements::add)
             }
         }
 
@@ -316,7 +334,8 @@ class FaceOnlyPrivacyFrameProcessor(
             detectorRejectedCallCount = detectorRejectedCallCount,
             roiReadbackMs = roiReadbackMs,
             maskBuildMs = maskBuildMs,
-            privacyResolveMs = privacyResolveMs
+            privacyResolveMs = privacyResolveMs,
+            stickerPlacements = stickerPlacements
         )
     }
 

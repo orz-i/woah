@@ -12,6 +12,7 @@ uniform vec4 uOccluderCropRect;
 varying vec2 vOesTexCoord;
 varying vec2 vMaskTexCoord;
 varying vec2 vOccluderTexCoord;
+varying vec2 vVisualContentCoord;
 
 void main() {
     gl_Position = aPosition;
@@ -23,6 +24,10 @@ void main() {
     vec4 transformed = uTexMatrix * vec4(contentUv, 0.0, 1.0);
     float invW = 1.0 / (transformed.w != 0.0 ? transformed.w : 1.0);
     vOesTexCoord = transformed.xy * invW;
+    // Source-space visual coordinates: X grows left->right, Y grows top->bottom.
+    // FACE_ONLY geometry is expressed in this convention and must not be
+    // compared against the texture-transformed OES/Bitmap coordinates.
+    vVisualContentCoord = vec2(contentUv.x, 1.0 - contentUv.y);
     vMaskTexCoord = vec2(
         mix(uMaskCropRect.x, uMaskCropRect.z, contentUv.x),
         mix(uMaskCropRect.y, uMaskCropRect.w, 1.0 - contentUv.y)
@@ -39,6 +44,7 @@ void main() {
 varying vec2 vOesTexCoord;
 varying vec2 vMaskTexCoord;
 varying vec2 vOccluderTexCoord;
+varying vec2 vVisualContentCoord;
 
 uniform sampler2D uMaskTexture;
 uniform sampler2D uOccluderTexture;
@@ -228,6 +234,74 @@ $SHADER_BODY
 
     // Backward compatibility
     val FRAGMENT_SHADER = FRAGMENT_SHADER_OES
+
+    /**
+     * Transparent sticker-only pass drawn after the main privacy compositor.
+     * It uses the same source/crop and mask coordinates as the main program so
+     * multiple FACE_ONLY stickers stay aligned with OES/2D content and are
+     * clipped by the already-resolved privacy mask around foreground occluders.
+     */
+    val STICKER_OVERLAY_FRAGMENT_SHADER = """
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+varying vec2 vOesTexCoord;
+varying vec2 vMaskTexCoord;
+varying vec2 vOccluderTexCoord;
+varying vec2 vVisualContentCoord;
+
+uniform sampler2D uMaskTexture;
+uniform sampler2D uOccluderTexture;
+uniform sampler2D uStickerTexture;
+uniform int uHasMask;
+uniform int uHasOccluder;
+uniform vec4 uStickerRect;
+
+void main() {
+    vec2 uv = vVisualContentCoord;
+    if (uv.x < uStickerRect.x || uv.x > uStickerRect.z ||
+        uv.y < uStickerRect.y || uv.y > uStickerRect.w) {
+        discard;
+    }
+
+    vec2 stickerUv = vec2(
+        (uv.x - uStickerRect.x) / max(0.0001, uStickerRect.z - uStickerRect.x),
+        (uv.y - uStickerRect.y) / max(0.0001, uStickerRect.w - uStickerRect.y)
+    );
+    vec4 stickerColor = texture2D(uStickerTexture, stickerUv);
+
+    float privacyAlpha = 1.0;
+    if (uHasMask == 1) {
+        if (vMaskTexCoord.x < 0.0 || vMaskTexCoord.x > 1.0 ||
+            vMaskTexCoord.y < 0.0 || vMaskTexCoord.y > 1.0) {
+            discard;
+        }
+        privacyAlpha = smoothstep(0.05, 0.35, texture2D(uMaskTexture, vMaskTexCoord).r);
+    }
+
+    if (uHasOccluder == 1 &&
+        vOccluderTexCoord.x >= 0.0 && vOccluderTexCoord.x <= 1.0 &&
+        vOccluderTexCoord.y >= 0.0 && vOccluderTexCoord.y <= 1.0) {
+        float occluderAlpha = smoothstep(
+            0.05,
+            0.35,
+            texture2D(uOccluderTexture, vOccluderTexCoord).r
+        );
+        privacyAlpha *= (1.0 - occluderAlpha);
+    }
+
+    if (privacyAlpha <= 0.001) {
+        discard;
+    }
+    // Privacy sticker pixels must never become transparent because an asset has
+    // transparent padding/holes. Blend transparent texels toward the default
+    // sticker yellow while keeping opaque artwork (glasses/smile) intact.
+    vec3 safeStickerRgb = mix(vec3(1.0, 0.80, 0.10), stickerColor.rgb, stickerColor.a);
+    gl_FragColor = vec4(safeStickerRgb, privacyAlpha);
+}
+""".trim()
 }
 
 

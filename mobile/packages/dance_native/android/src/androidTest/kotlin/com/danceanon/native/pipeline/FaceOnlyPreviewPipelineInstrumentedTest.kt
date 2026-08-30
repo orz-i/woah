@@ -48,6 +48,7 @@ class FaceOnlyPreviewPipelineInstrumentedTest {
         var baselineBitmap: Bitmap? = null
         var faceBitmap: Bitmap? = null
         var mixedBitmap: Bitmap? = null
+        var multiFaceBitmap: Bitmap? = null
         var conflictBitmap: Bitmap? = null
         try {
             createAvcFixture(sourceBitmap, input)
@@ -66,8 +67,8 @@ class FaceOnlyPreviewPipelineInstrumentedTest {
             assertEquals(baselineBitmap.width, faceBitmap.width)
             assertEquals(baselineBitmap.height, faceBitmap.height)
 
-            val privacyDelta = changedRedPrivacyStats(baselineBitmap, faceBitmap)
-            assertTrue(privacyDelta.count >= 800, "Expected visible FACE_ONLY preview privacy: $privacyDelta")
+            val privacyDelta = changedStickerStats(baselineBitmap, faceBitmap)
+            assertTrue(privacyDelta.count >= 350, "Expected visible FACE_ONLY preview sticker: $privacyDelta")
             assertTrue(
                 privacyDelta.height <= (faceBitmap.height * 0.45).toInt(),
                 "Preview FACE_ONLY expanded too far vertically: $privacyDelta"
@@ -83,6 +84,11 @@ class FaceOnlyPreviewPipelineInstrumentedTest {
                 lowerBodyDelta <= 45.0,
                 "Preview FACE_ONLY unexpectedly altered lower body: mean RGB delta=$lowerBodyDelta"
             )
+            val residualRed = changedRedPrivacyStats(baselineBitmap, faceBitmap)
+            assertTrue(
+                residualRed.count <= 120,
+                "FACE_ONLY preview still exposed the solid-color privacy block under the sticker: $residualRed"
+            )
 
             val mixed = pipeline.renderPreview(
                 previewRequest(
@@ -92,7 +98,7 @@ class FaceOnlyPreviewPipelineInstrumentedTest {
                 )
             )
             mixedBitmap = assertNotNull(BitmapFactory.decodeFile(mixed.thumbnailPath))
-            val mixedTargetPrivacy = changedRedPrivacyStatsInRect(
+            val mixedTargetPrivacy = changedStickerStatsInRect(
                 baselineBitmap,
                 mixedBitmap,
                 left = 180,
@@ -109,8 +115,8 @@ class FaceOnlyPreviewPipelineInstrumentedTest {
                 bottomExclusive = mixedBitmap.height
             )
             assertTrue(
-                mixedTargetPrivacy.count >= 700,
-                "Mixed Preview lost FACE_ONLY target privacy: $mixedTargetPrivacy"
+                mixedTargetPrivacy.count >= 300,
+                "Mixed Preview lost FACE_ONLY target sticker: $mixedTargetPrivacy"
             )
             assertTrue(
                 mixedSecondaryPrivacy.count >= 300,
@@ -127,6 +133,32 @@ class FaceOnlyPreviewPipelineInstrumentedTest {
                 mixedLowerBodyDelta <= 45.0,
                 "Mixed Preview expanded FACE_ONLY target to FULL_BODY: mean RGB delta=$mixedLowerBodyDelta"
             )
+
+            val multiFace = pipeline.renderPreview(
+                previewRequest(
+                    cacheId = cacheId,
+                    faceOnlyIds = listOf(SECONDARY_PERSON_ID, TARGET_PERSON_ID)
+                )
+            )
+            multiFaceBitmap = assertNotNull(BitmapFactory.decodeFile(multiFace.thumbnailPath))
+            val leftSticker = changedStickerStatsInRect(
+                baselineBitmap,
+                multiFaceBitmap,
+                left = 0,
+                top = 0,
+                rightExclusive = 180,
+                bottomExclusive = multiFaceBitmap.height
+            )
+            val targetSticker = changedStickerStatsInRect(
+                baselineBitmap,
+                multiFaceBitmap,
+                left = 180,
+                top = 120,
+                rightExclusive = 560,
+                bottomExclusive = 820
+            )
+            assertTrue(leftSticker.count >= 120, "Second FACE_ONLY target did not receive its own sticker: $leftSticker")
+            assertTrue(targetSticker.count >= 300, "Primary FACE_ONLY target lost its sticker in multi-person mode: $targetSticker")
 
             val conflict = pipeline.renderPreview(
                 previewRequest(
@@ -165,6 +197,7 @@ class FaceOnlyPreviewPipelineInstrumentedTest {
             baselineBitmap?.recycle()
             faceBitmap?.recycle()
             mixedBitmap?.recycle()
+            multiFaceBitmap?.recycle()
             conflictBitmap?.recycle()
             sourceBitmap.recycle()
             pipeline.clearForAnalysis(cacheId)
@@ -173,6 +206,58 @@ class FaceOnlyPreviewPipelineInstrumentedTest {
             input.delete()
         }
         Unit
+    }
+
+    private fun changedStickerStats(input: Bitmap, output: Bitmap): PrivacyDeltaStats {
+        return changedStickerStatsInRect(
+            input,
+            output,
+            left = 0,
+            top = 0,
+            rightExclusive = output.width,
+            bottomExclusive = output.height
+        )
+    }
+
+    private fun changedStickerStatsInRect(
+        input: Bitmap,
+        output: Bitmap,
+        left: Int,
+        top: Int,
+        rightExclusive: Int,
+        bottomExclusive: Int
+    ): PrivacyDeltaStats {
+        var count = 0
+        var minX = output.width
+        var minY = output.height
+        var maxX = -1
+        var maxY = -1
+        val safeLeft = left.coerceIn(0, output.width)
+        val safeTop = top.coerceIn(0, output.height)
+        val safeRight = rightExclusive.coerceIn(safeLeft, output.width)
+        val safeBottom = bottomExclusive.coerceIn(safeTop, output.height)
+        for (y in safeTop until safeBottom) {
+            for (x in safeLeft until safeRight) {
+                val before = input.getPixel(x, y)
+                val after = output.getPixel(x, y)
+                val r = Color.red(after)
+                val g = Color.green(after)
+                val b = Color.blue(after)
+                val stickerYellow = r >= 170 && g >= 120 && b <= 120 && r - b >= 70 && g - b >= 35
+                val changed =
+                    abs(Color.red(before) - r) +
+                        abs(Color.green(before) - g) +
+                        abs(Color.blue(before) - b) >= 90
+                if (stickerYellow && changed) {
+                    count++
+                    if (x < minX) minX = x
+                    if (x > maxX) maxX = x
+                    if (y < minY) minY = y
+                    if (y > maxY) maxY = y
+                }
+            }
+        }
+        return PrivacyDeltaStats(count, minX, minY, maxX, maxY)
     }
 
     private fun previewRequest(

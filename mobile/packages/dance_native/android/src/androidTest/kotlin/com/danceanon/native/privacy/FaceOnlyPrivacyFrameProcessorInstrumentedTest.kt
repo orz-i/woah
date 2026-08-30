@@ -42,6 +42,8 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
             assertTrue(result.readyForRender)
             assertEquals(setOf(7), result.detectedTrackIds)
             assertTrue(result.fallbackTrackIds.isEmpty())
+            assertEquals(1, result.stickerPlacements.size)
+            assertEquals(7, result.stickerPlacements.single().trackId)
             val mask = assertNotNull(result.resolvedPrivacy?.privacyMask)
             assertTrue(pixelAtSource(mask, mapper, 320f, 90f) > 0)
             assertEquals(0, pixelAtSource(mask, mapper, 320f, 300f))
@@ -94,6 +96,45 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
             )
             assertEquals(1, frame2.detectorCallCount)
             assertEquals(2, locator.calls)
+            assertEquals(1, frame2.stickerPlacements.size)
+        }
+    }
+
+    @Test
+    fun detectorMissAfterTrustedFaceUsesStableFallbackStickerSize() {
+        val locator = SequencedLocator(
+            listOf(
+                listOf(FaceObservation(FloatRect(104f, 96f, 152f, 144f), 0.9f)),
+                emptyList()
+            )
+        )
+        withProcessor(locator) { processor, texture, _ ->
+            val target = person(12, FloatRect(220f, 40f, 420f, 350f))
+            val detected = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(target),
+                faceOnlyTrackIds = setOf(12),
+                ptsUs = 0L
+            )
+            val detectedRect = detected.stickerPlacements.single().sourceRect
+
+            val fallback = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(target),
+                faceOnlyTrackIds = setOf(12),
+                ptsUs = 66_666L
+            )
+            assertEquals(setOf(12), fallback.fallbackTrackIds)
+            val fallbackRect = fallback.stickerPlacements.single().sourceRect
+            assertTrue(
+                fallbackRect.width <= detectedRect.width * 1.75f,
+                "fallback sticker jumped too large: detected=${detectedRect.width} fallback=${fallbackRect.width}"
+            )
+            assertTrue(fallbackRect.width > detectedRect.width)
         }
     }
 
@@ -295,6 +336,18 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
     private class FixedLocator(private val observations: List<FaceObservation>) : FaceLocator {
         override fun detectRgbaTopDown(rgba: ByteBuffer, width: Int, height: Int): FaceLocatorResult =
             FaceLocatorResult(observations = observations, inferenceMs = 1.0)
+
+        override fun close() = Unit
+    }
+
+    private class SequencedLocator(private val sequence: List<List<FaceObservation>>) : FaceLocator {
+        private var index = 0
+
+        override fun detectRgbaTopDown(rgba: ByteBuffer, width: Int, height: Int): FaceLocatorResult {
+            val observations = sequence[index.coerceAtMost(sequence.lastIndex)]
+            index++
+            return FaceLocatorResult(observations = observations, inferenceMs = 1.0)
+        }
 
         override fun close() = Unit
     }

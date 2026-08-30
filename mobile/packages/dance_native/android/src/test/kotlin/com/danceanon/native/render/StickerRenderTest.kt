@@ -63,6 +63,41 @@ class StickerRenderTest {
         assertTrue(tex2dSource.contains("uHasSticker"), "2D Fragment shader must declare uHasSticker")
         assertTrue(tex2dSource.contains("uStickerTexture"), "2D Fragment shader must declare uStickerTexture")
         assertTrue(tex2dSource.contains("uStickerRect"), "2D Fragment shader must declare uStickerRect")
+
+        val overlay = GlShaders.STICKER_OVERLAY_FRAGMENT_SHADER
+        assertTrue(overlay.contains("uStickerTexture"))
+        assertTrue(overlay.contains("uStickerRect"))
+        assertTrue(overlay.contains("uMaskTexture"))
+        assertTrue(overlay.contains("uOccluderTexture"), "Sticker overlay must sample resolved occluders")
+        assertTrue(overlay.contains("uHasOccluder"), "Sticker overlay must gate occluder sampling")
+        assertTrue(
+            overlay.contains("privacyAlpha *= (1.0 - occluderAlpha)"),
+            "Sticker overlay must carve foreground occluders from FACE_ONLY privacy"
+        )
+        assertTrue(overlay.contains("discard"), "overlay shader must remain transparent outside sticker regions")
+    }
+
+    @Test
+    fun faceStickerPlacementCoversPrivacyEllipseWithOverscan() {
+        val placement = assertNotNull(
+            FaceStickerPlacement.from(
+                trackId = 3,
+                region = com.danceanon.native.privacy.FacePrivacyEllipse(
+                    centerX = 400f,
+                    centerY = 250f,
+                    radiusX = 70f,
+                    radiusY = 90f,
+                    source = com.danceanon.native.privacy.FacePrivacyRegionSource.DETECTED_FACE
+                ),
+                sourceWidth = 1920,
+                sourceHeight = 1080
+            )
+        )
+        assertEquals(3, placement.trackId)
+        assertTrue(placement.sourceRect.width > 180f)
+        assertTrue(placement.sourceRect.height > 180f)
+        assertTrue(placement.sourceRect.left < 330f)
+        assertTrue(placement.sourceRect.right > 470f)
     }
 
     @Test

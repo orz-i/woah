@@ -918,7 +918,8 @@ class ExportPipeline(
                                 preferFreshPrivacyClassPrimary = preferFreshPrivacyClassPrimary,
                                 expectedSelectedPrivacyCount = selectedIds.size,
                                 maxFallbackObservationAgeFrames = trackManager.getMaxMissedFrames(),
-                                additionalResolvedPrivacy = faceOnlyFrameResult?.resolvedPrivacy
+                                additionalResolvedPrivacy = faceOnlyFrameResult?.resolvedPrivacy,
+                                faceStickerPlacements = faceOnlyFrameResult?.stickerPlacements.orEmpty()
                             )
                             renderedFrameCount++
                         }

@@ -47,6 +47,7 @@ class GlRenderer : FrameRenderer {
 
     private var oesProgram: ProgramLocations? = null
     private var texture2DProgram: ProgramLocations? = null
+    private var stickerOverlayProgram: ProgramLocations? = null
 
     private var vertexBuffer: FloatBuffer? = null
     private var width = 0
@@ -55,6 +56,7 @@ class GlRenderer : FrameRenderer {
     private var occluderTextureId = 0
     private var stickerTextureId = 0
     private var loadedStickerAssetId: String? = null
+    private var stickerTextureLoaded = false
     private var captureBuffer: ByteBuffer? = null
     private var mergedMaskBuffer: ByteBuffer? = null
     private var mergedMaskCapacity = 0
@@ -83,6 +85,26 @@ class GlRenderer : FrameRenderer {
             SourceTextureType.TEXTURE_2D -> bitmapTextureMatrix
             SourceTextureType.OES -> identityMatrix
         }
+    }
+
+    private fun defaultLetterboxSamplingRect(
+        sourceWidth: Int,
+        sourceHeight: Int
+    ): com.danceanon.native.inference.FloatRect {
+        val maxDim = maxOf(sourceWidth, sourceHeight).coerceAtLeast(1)
+        val downW = sourceWidth * 640f / maxDim
+        val downH = sourceHeight * 640f / maxDim
+        val letterScale = minOf(640f / downW, 640f / downH)
+        val scaledW = downW * letterScale
+        val scaledH = downH * letterScale
+        val padLeft = (640f - scaledW) / 2f
+        val padTop = (640f - scaledH) / 2f
+        return com.danceanon.native.inference.FloatRect(
+            left = padLeft / 640f,
+            top = padTop / 640f,
+            right = (padLeft + scaledW) / 640f,
+            bottom = (padTop + scaledH) / 640f
+        )
     }
 
     companion object {
@@ -161,6 +183,7 @@ class GlRenderer : FrameRenderer {
 
         oesProgram = buildProgram(GlShaders.FRAGMENT_SHADER_OES)
         texture2DProgram = buildProgram(GlShaders.FRAGMENT_SHADER_2D)
+        stickerOverlayProgram = buildProgram(GlShaders.STICKER_OVERLAY_FRAGMENT_SHADER)
         checkGlError("buildPrograms")
 
 
@@ -214,7 +237,7 @@ class GlRenderer : FrameRenderer {
     }
 
     private fun ensureStickerTexture(assetId: String?): Int {
-        if (stickerTextureId != 0 && loadedStickerAssetId == assetId) {
+        if (stickerTextureId != 0 && stickerTextureLoaded && loadedStickerAssetId == assetId) {
             return stickerTextureId
         }
 
@@ -262,6 +285,7 @@ class GlRenderer : FrameRenderer {
         }
 
         loadedStickerAssetId = assetId
+        stickerTextureLoaded = true
         return stickerTextureId
     }
 
@@ -413,7 +437,8 @@ class GlRenderer : FrameRenderer {
         preferFreshPrivacyClassPrimary: Boolean = false,
         expectedSelectedPrivacyCount: Int = 0,
         maxFallbackObservationAgeFrames: Int = 15,
-        additionalResolvedPrivacy: com.danceanon.native.privacy.ResolvedCompositorMasks? = null
+        additionalResolvedPrivacy: com.danceanon.native.privacy.ResolvedCompositorMasks? = null,
+        faceStickerPlacements: List<FaceStickerPlacement> = emptyList()
     ) {
         GLES20.glViewport(0, 0, width, height)
         GLES20.glClearColor(0f, 0f, 0f, 1f)
@@ -503,78 +528,48 @@ class GlRenderer : FrameRenderer {
             expectedSelectedCount = expectedSelectedPrivacyCount,
             maxFallbackObservationAgeFrames = maxFallbackObservationAgeFrames
         )
-        val resolved = if (additionalResolvedPrivacy == null) {
+        val mergedResolved = if (additionalResolvedPrivacy == null) {
             primaryResolved
         } else {
             com.danceanon.native.privacy.PrivacyOcclusionResolver.mergeResolvedMasks(
                 listOf(primaryResolved, additionalResolvedPrivacy)
             )
         }
+        val renderFacePrivacyAsSticker =
+            faceStickerPlacements.isNotEmpty() && additionalResolvedPrivacy?.privacyMask != null
+        // FACE_ONLY is visually rendered by the privacy-sticker pass. Keep the
+        // secondary face mask out of the main fill compositor so the sticker
+        // replaces the solid/blur/mosaic block instead of being layered on it.
+        // If the face mask is unexpectedly missing we fall back to the merged
+        // compositor path, preserving fail-closed privacy behavior.
+        val resolved = if (renderFacePrivacyAsSticker) primaryResolved else mergedResolved
         val hasSelected = resolved.hasPrivacy
         val hasOccluder = resolved.hasOccluder
 
         // Mask sampling rect for privacyMask
         val privacySamplingRect = resolved.privacyMask?.samplingRect
-        if (privacySamplingRect != null) {
-            if (prog.uMaskCropRectLoc >= 0) {
-                GLES20.glUniform4f(
-                    prog.uMaskCropRectLoc,
-                    privacySamplingRect.left,
-                    privacySamplingRect.top,
-                    privacySamplingRect.right,
-                    privacySamplingRect.bottom
-                )
-            }
-        } else {
-            val maxDim = maxOf(width, height).coerceAtLeast(1)
-            val downW = (width * 640f / maxDim)
-            val downH = (height * 640f / maxDim)
-            val letterScale = minOf(640f / downW, 640f / downH)
-            val scaledW = downW * letterScale
-            val scaledH = downH * letterScale
-            val padLeft = (640f - scaledW) / 2f
-            val padTop = (640f - scaledH) / 2f
-            if (prog.uMaskCropRectLoc >= 0) {
-                GLES20.glUniform4f(
-                    prog.uMaskCropRectLoc,
-                    padLeft / 640f,
-                    padTop / 640f,
-                    (padLeft + scaledW) / 640f,
-                    (padTop + scaledH) / 640f
-                )
-            }
+            ?: defaultLetterboxSamplingRect(width, height)
+        if (prog.uMaskCropRectLoc >= 0) {
+            GLES20.glUniform4f(
+                prog.uMaskCropRectLoc,
+                privacySamplingRect.left,
+                privacySamplingRect.top,
+                privacySamplingRect.right,
+                privacySamplingRect.bottom
+            )
         }
 
         // Mask sampling rect for occluderMask
         val occluderSamplingRect = resolved.occluderMask?.samplingRect
-        if (occluderSamplingRect != null) {
-            if (prog.uOccluderCropRectLoc >= 0) {
-                GLES20.glUniform4f(
-                    prog.uOccluderCropRectLoc,
-                    occluderSamplingRect.left,
-                    occluderSamplingRect.top,
-                    occluderSamplingRect.right,
-                    occluderSamplingRect.bottom
-                )
-            }
-        } else {
-            val maxDim = maxOf(width, height).coerceAtLeast(1)
-            val downW = (width * 640f / maxDim)
-            val downH = (height * 640f / maxDim)
-            val letterScale = minOf(640f / downW, 640f / downH)
-            val scaledW = downW * letterScale
-            val scaledH = downH * letterScale
-            val padLeft = (640f - scaledW) / 2f
-            val padTop = (640f - scaledH) / 2f
-            if (prog.uOccluderCropRectLoc >= 0) {
-                GLES20.glUniform4f(
-                    prog.uOccluderCropRectLoc,
-                    padLeft / 640f,
-                    padTop / 640f,
-                    (padLeft + scaledW) / 640f,
-                    (padTop + scaledH) / 640f
-                )
-            }
+            ?: defaultLetterboxSamplingRect(width, height)
+        if (prog.uOccluderCropRectLoc >= 0) {
+            GLES20.glUniform4f(
+                prog.uOccluderCropRectLoc,
+                occluderSamplingRect.left,
+                occluderSamplingRect.top,
+                occluderSamplingRect.right,
+                occluderSamplingRect.bottom
+            )
         }
 
         if (prog.uHasMaskLoc >= 0) GLES20.glUniform1i(prog.uHasMaskLoc, if (hasSelected) 1 else 0)
@@ -657,7 +652,113 @@ class GlRenderer : FrameRenderer {
         }
 
         drawQuad(prog)
+        if (renderFacePrivacyAsSticker) {
+            renderFaceStickerOverlays(
+                placements = faceStickerPlacements,
+                textureMatrix = matrix,
+                cropRect = cropRect,
+                stickerPrivacy = requireNotNull(additionalResolvedPrivacy)
+            )
+        }
         checkGlError("render")
+    }
+
+    private fun renderFaceStickerOverlays(
+        placements: List<FaceStickerPlacement>,
+        textureMatrix: FloatArray,
+        cropRect: com.danceanon.native.inference.FloatRect,
+        stickerPrivacy: com.danceanon.native.privacy.ResolvedCompositorMasks
+    ) {
+        val prog = stickerOverlayProgram ?: return
+        if (placements.isEmpty()) return
+        val privacyMask = stickerPrivacy.privacyMask ?: return
+
+        // FACE_ONLY always uses the built-in opaque privacy sticker. Arbitrary
+        // effect assets are not trusted as privacy surfaces because they may
+        // contain transparent holes.
+        val stickerTexId = ensureStickerTexture(null)
+        GLES20.glUseProgram(prog.programId)
+        if (prog.uTexMatrixLoc >= 0) {
+            GLES20.glUniformMatrix4fv(prog.uTexMatrixLoc, 1, false, textureMatrix, 0)
+        }
+        if (prog.uCropRectLoc >= 0) {
+            GLES20.glUniform4f(prog.uCropRectLoc, cropRect.left, cropRect.top, cropRect.right, cropRect.bottom)
+        }
+        val maskRect = privacyMask.samplingRect
+            ?: defaultLetterboxSamplingRect(privacyMask.originalWidth, privacyMask.originalHeight)
+        if (prog.uMaskCropRectLoc >= 0) {
+            GLES20.glUniform4f(prog.uMaskCropRectLoc, maskRect.left, maskRect.top, maskRect.right, maskRect.bottom)
+        }
+        val stickerOccluder = stickerPrivacy.occluderMask
+        val occluderRect = stickerOccluder?.samplingRect
+            ?: defaultLetterboxSamplingRect(privacyMask.originalWidth, privacyMask.originalHeight)
+        if (prog.uOccluderCropRectLoc >= 0) {
+            GLES20.glUniform4f(
+                prog.uOccluderCropRectLoc,
+                occluderRect.left,
+                occluderRect.top,
+                occluderRect.right,
+                occluderRect.bottom
+            )
+        }
+        if (prog.uHasMaskLoc >= 0) GLES20.glUniform1i(prog.uHasMaskLoc, 1)
+        if (prog.uHasOccluderLoc >= 0) {
+            GLES20.glUniform1i(prog.uHasOccluderLoc, if (stickerOccluder != null) 1 else 0)
+        }
+
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE1)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, maskTextureId)
+        GLES20.glPixelStorei(GLES20.GL_UNPACK_ALIGNMENT, 1)
+        privacyMask.buffer.rewind()
+        GLES20.glTexImage2D(
+            GLES20.GL_TEXTURE_2D, 0, GLES20.GL_LUMINANCE,
+            privacyMask.width, privacyMask.height, 0,
+            GLES20.GL_LUMINANCE, GLES20.GL_UNSIGNED_BYTE, privacyMask.buffer
+        )
+        if (prog.uMaskTextureLoc >= 0) GLES20.glUniform1i(prog.uMaskTextureLoc, 1)
+
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE2)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, occluderTextureId)
+        if (stickerOccluder != null) {
+            GLES20.glPixelStorei(GLES20.GL_UNPACK_ALIGNMENT, 1)
+            stickerOccluder.buffer.rewind()
+            GLES20.glTexImage2D(
+                GLES20.GL_TEXTURE_2D, 0, GLES20.GL_LUMINANCE,
+                stickerOccluder.width, stickerOccluder.height, 0,
+                GLES20.GL_LUMINANCE, GLES20.GL_UNSIGNED_BYTE, stickerOccluder.buffer
+            )
+        }
+        if (prog.uOccluderTextureLoc >= 0) GLES20.glUniform1i(prog.uOccluderTextureLoc, 2)
+
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE3)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, stickerTexId)
+        if (prog.uStickerTextureLoc >= 0) GLES20.glUniform1i(prog.uStickerTextureLoc, 3)
+
+        GLES20.glEnable(GLES20.GL_BLEND)
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
+        try {
+            val scale = 1.0f
+            placements.sortedBy { it.trackId }.forEach { placement ->
+                val refW = placement.sourceWidth.coerceAtLeast(1).toFloat()
+                val refH = placement.sourceHeight.coerceAtLeast(1).toFloat()
+                val rect = placement.sourceRect
+                val cx = rect.centerX / refW
+                val cy = rect.centerY / refH
+                val halfW = (rect.width * 0.5f / refW) * scale
+                val halfH = (rect.height * 0.5f / refH) * scale
+                val left = (cx - halfW).coerceIn(0f, 1f)
+                val right = (cx + halfW).coerceIn(0f, 1f)
+                val top = (cy - halfH).coerceIn(0f, 1f)
+                val bottom = (cy + halfH).coerceIn(0f, 1f)
+                if (right - left <= 0.001f || bottom - top <= 0.001f) return@forEach
+                if (prog.uStickerRectLoc >= 0) {
+                    GLES20.glUniform4f(prog.uStickerRectLoc, left, top, right, bottom)
+                }
+                drawQuad(prog)
+            }
+        } finally {
+            GLES20.glDisable(GLES20.GL_BLEND)
+        }
     }
 
     override fun render(
@@ -724,6 +825,13 @@ class GlRenderer : FrameRenderer {
         }
         texture2DProgram = null
 
+        stickerOverlayProgram?.let {
+            if (it.programId != 0) {
+                GLES20.glDeleteProgram(it.programId)
+            }
+        }
+        stickerOverlayProgram = null
+
         if (maskTextureId != 0) {
             val textures = intArrayOf(maskTextureId)
             GLES20.glDeleteTextures(1, textures, 0)
@@ -741,6 +849,7 @@ class GlRenderer : FrameRenderer {
             GLES20.glDeleteTextures(1, textures, 0)
             stickerTextureId = 0
             loadedStickerAssetId = null
+            stickerTextureLoaded = false
         }
 
         captureBuffer = null

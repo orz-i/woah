@@ -288,7 +288,8 @@ class PreviewPipeline(
                 presentationTimeUs = request.timestampMs * 1000L,
                 textureType = SourceTextureType.TEXTURE_2D,
                 expectedSelectedPrivacyCount = fullBodyPersonIds.size,
-                additionalResolvedPrivacy = faceOnlyFrameResult?.resolvedPrivacy
+                additionalResolvedPrivacy = faceOnlyFrameResult?.resolvedPrivacy,
+                faceStickerPlacements = faceOnlyFrameResult?.stickerPlacements.orEmpty()
             )
 
             renderedBitmap = glRenderer.captureRenderedFrame()
