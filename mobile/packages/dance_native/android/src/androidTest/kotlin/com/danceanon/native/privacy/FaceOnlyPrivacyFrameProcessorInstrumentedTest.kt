@@ -114,7 +114,7 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
     }
 
     @Test
-    fun detectorMissAfterTrustedFaceUsesStableFallbackStickerSize() {
+    fun detectorMissAfterTrustedFaceKeepsShortLivedTrustedPrediction() {
         val locator = SequencedLocator(
             listOf(
                 listOf(FaceObservation(FloatRect(104f, 96f, 152f, 144f), 0.9f)),
@@ -133,7 +133,7 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
             )
             val detectedRect = detected.stickerPlacements.single().sourceRect
 
-            val fallback = processor.resolveFrame(
+            val predicted = processor.resolveFrame(
                 frameTexture = texture,
                 texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
                 textureType = SourceTextureType.TEXTURE_2D,
@@ -141,59 +141,89 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
                 faceOnlyTrackIds = setOf(12),
                 ptsUs = 66_666L
             )
-            assertEquals(setOf(12), fallback.fallbackTrackIds)
-            val fallbackRect = fallback.stickerPlacements.single().sourceRect
+            assertEquals(setOf(12), predicted.predictedTrackIds)
+            assertTrue(predicted.fallbackTrackIds.isEmpty())
+            val predictedRect = predicted.stickerPlacements.single().sourceRect
             assertTrue(
-                fallbackRect.width <= detectedRect.width * 1.75f,
-                "fallback sticker jumped too large: detected=${detectedRect.width} fallback=${fallbackRect.width}"
+                predictedRect.width <= detectedRect.width * 1.20f,
+                "detector miss must not inflate trusted face: detected=${detectedRect.width} predicted=${predictedRect.width}"
             )
-            assertTrue(fallbackRect.width > detectedRect.width)
+            assertTrue(predictedRect.width >= detectedRect.width)
         }
     }
 
     @Test
-    fun multipleFaceOnlyTracksUseTwoCallBudgetInsteadOfStarvingOneTarget() {
+    fun startupAcquisitionCoversAllFaceOnlyTracksBeforeSteadyStateBudget() {
         val locator = CountingLocator(
             listOf(FaceObservation(FloatRect(104f, 96f, 152f, 144f), 0.9f))
         )
         withProcessor(locator) { processor, texture, _ ->
             val persons = listOf(
                 person(1, FloatRect(80f, 30f, 260f, 340f)),
-                person(2, FloatRect(360f, 30f, 540f, 340f))
+                person(2, FloatRect(190f, 30f, 370f, 340f)),
+                person(3, FloatRect(300f, 30f, 480f, 340f)),
+                person(5, FloatRect(410f, 30f, 590f, 340f)),
+                person(6, FloatRect(460f, 30f, 640f, 340f))
             )
+            val ids = setOf(1, 2, 3, 5, 6)
             val first = processor.resolveFrame(
                 frameTexture = texture,
                 texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
                 textureType = SourceTextureType.TEXTURE_2D,
                 persons = persons,
-                faceOnlyTrackIds = setOf(1, 2),
+                faceOnlyTrackIds = ids,
                 ptsUs = 0L
             )
-            assertEquals(2, first.detectorCallCount)
-            assertEquals(2, first.detectedTrackIds.size)
-            assertTrue(first.fallbackTrackIds.isEmpty())
+            assertEquals(5, first.detectorCallCount)
+            assertEquals(ids, first.detectorCalledTrackIds)
+            assertEquals(5, locator.calls)
+            // The synthetic locator returns the same ROI-local face position for
+            // every target, so edge-shifted right-side ROI anchors may reject it.
+            // What matters for startup is that no ID is starved waiting for the
+            // steady-state 2-call budget, and rejected bootstrap fallback stays
+            // face-sized instead of head/shoulder-sized.
+            first.stickerPlacements
+                .filter { first.fallbackTrackIds.contains(it.trackId) }
+                .forEach { placement ->
+                    assertTrue(
+                        placement.sourceRect.width <= 100f,
+                        "bootstrap fallback too large for id=${placement.trackId}: ${placement.sourceRect.width}"
+                    )
+                }
 
             val second = processor.resolveFrame(
                 frameTexture = texture,
                 texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
                 textureType = SourceTextureType.TEXTURE_2D,
                 persons = persons,
-                faceOnlyTrackIds = setOf(1, 2),
+                faceOnlyTrackIds = ids,
                 ptsUs = 33_333L
             )
             assertEquals(0, second.detectorCallCount)
-            assertEquals(2, locator.calls)
-            assertEquals(setOf(1, 2), second.predictedTrackIds)
+            assertEquals(5, locator.calls)
+            assertTrue(second.predictedTrackIds.containsAll(first.detectedTrackIds))
         }
     }
 
     @Test
-    fun reacquiringUnobservedFaceOnlyTrackStillGetsUrgentDetectorRefresh() {
+    fun reacquiringUnobservedFaceOnlyTrackUsesTrustedPredictionWithoutDetector() {
         val locator = CountingLocator(
             listOf(FaceObservation(FloatRect(104f, 96f, 152f, 144f), 0.9f))
         )
         withProcessor(locator) { processor, texture, _ ->
-            val target = person(21, FloatRect(220f, 40f, 420f, 350f)).copy(
+            val observed = person(21, FloatRect(220f, 40f, 420f, 350f))
+            val initial = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(observed),
+                faceOnlyTrackIds = setOf(21),
+                ptsUs = 0L
+            )
+            assertEquals(setOf(21), initial.detectedTrackIds)
+
+            val target = observed.copy(
+                bbox = FloatRect(250f, 40f, 450f, 350f),
                 state = TrackState.REACQUIRING,
                 observedThisFrame = false,
                 framesSinceLastObservation = 4
@@ -206,9 +236,14 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
                 faceOnlyTrackIds = setOf(21),
                 ptsUs = 33_333L
             )
-            assertEquals(1, result.detectorCallCount)
-            assertEquals(setOf(21), result.detectedTrackIds)
+            assertEquals(0, result.detectorCallCount)
+            assertEquals(setOf(21), result.predictedTrackIds)
             assertEquals(1, locator.calls)
+            assertTrue(
+                result.stickerPlacements.single().sourceRect.centerX >
+                    initial.stickerPlacements.single().sourceRect.centerX + 25f,
+                "trusted prediction must follow bounded person translation during reacquire"
+            )
         }
     }
 

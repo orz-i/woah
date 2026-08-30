@@ -3,19 +3,23 @@ package com.danceanon.native.privacy
 import com.danceanon.native.inference.FloatRect
 import kotlin.math.exp
 import kotlin.math.max
+import kotlin.math.sqrt
 
 /**
  * Smooths FACE_ONLY geometry without carrying stale detector identity evidence.
  *
- * Detector misses still use the current YOLO-owned head center. Only the last
- * trusted *size ratios* are retained so fallback can stay conservative without
- * abruptly jumping to the much larger generic head ellipse.
+ * Detector misses still use the current YOLO-owned head center. The last trusted
+ * face size is retained in source pixels and may scale only within a narrow
+ * short-term range. This prevents an occlusion/merge-expanded person bbox from
+ * turning a normal face sticker into a head-and-shoulders sticker.
  */
 class FacePrivacyTemporalStabilizer {
     private data class State(
         val output: FacePrivacyEllipse,
-        val detectedRadiusXRatio: Float?,
-        val detectedRadiusYRatio: Float?,
+        val detectedRadiusX: Float?,
+        val detectedRadiusY: Float?,
+        val detectedPersonWidth: Float?,
+        val detectedPersonHeight: Float?,
         val lastPtsUs: Long
     )
 
@@ -34,39 +38,46 @@ class FacePrivacyTemporalStabilizer {
         if (personBbox.width <= 1f || personBbox.height <= 1f) return rawRegion
 
         val previous = stateByTrackId[trackId]
-        val detectedRadiusXRatio = updateDetectedRatio(
-            previous?.detectedRadiusXRatio,
+        val detectedRadiusX = updateDetectedReference(
+            previous?.detectedRadiusX,
             if (rawRegion.source == FacePrivacyRegionSource.DETECTED_FACE) {
-                rawRegion.radiusX / personBbox.width
+                rawRegion.radiusX
             } else null
         )
-        val detectedRadiusYRatio = updateDetectedRatio(
-            previous?.detectedRadiusYRatio,
+        val detectedRadiusY = updateDetectedReference(
+            previous?.detectedRadiusY,
             if (rawRegion.source == FacePrivacyRegionSource.DETECTED_FACE) {
-                rawRegion.radiusY / personBbox.height
+                rawRegion.radiusY
             } else null
+        )
+        val detectedPersonWidth = updateDetectedReference(
+            previous?.detectedPersonWidth,
+            if (rawRegion.source == FacePrivacyRegionSource.DETECTED_FACE) personBbox.width else null
+        )
+        val detectedPersonHeight = updateDetectedReference(
+            previous?.detectedPersonHeight,
+            if (rawRegion.source == FacePrivacyRegionSource.DETECTED_FACE) personBbox.height else null
         )
 
         val target = if (
             rawRegion.source == FacePrivacyRegionSource.YOLO_HEAD_FALLBACK &&
-            detectedRadiusXRatio != null && detectedRadiusYRatio != null
+            detectedRadiusX != null && detectedRadiusY != null &&
+            detectedPersonWidth != null && detectedPersonHeight != null
         ) {
-            val referenceRadiusX = detectedRadiusXRatio * personBbox.width * FALLBACK_REFERENCE_EXPANSION
-            val referenceRadiusY = detectedRadiusYRatio * personBbox.height * FALLBACK_REFERENCE_EXPANSION
+            val widthRatio = (personBbox.width / detectedPersonWidth.coerceAtLeast(1f)).coerceAtLeast(0.1f)
+            val heightRatio = (personBbox.height / detectedPersonHeight.coerceAtLeast(1f)).coerceAtLeast(0.1f)
+            val boundedScale = sqrt(widthRatio * heightRatio)
+                .coerceIn(FALLBACK_MIN_TRUSTED_SCALE, FALLBACK_MAX_TRUSTED_SCALE)
+            val referenceRadiusX = detectedRadiusX * boundedScale * FALLBACK_REFERENCE_EXPANSION
+            val referenceRadiusY = detectedRadiusY * boundedScale * FALLBACK_REFERENCE_EXPANSION
             rawRegion.copy(
                 radiusX = max(
                     referenceRadiusX,
-                    max(
-                        personBbox.width * FALLBACK_MIN_RADIUS_X_FROM_WIDTH,
-                        personBbox.height * FALLBACK_MIN_RADIUS_X_FROM_HEIGHT
-                    )
+                    detectedRadiusX * FALLBACK_MIN_TRUSTED_EXPANSION
                 ).coerceAtMost(rawRegion.radiusX),
                 radiusY = max(
                     referenceRadiusY,
-                    max(
-                        personBbox.width * FALLBACK_MIN_RADIUS_Y_FROM_WIDTH,
-                        personBbox.height * FALLBACK_MIN_RADIUS_Y_FROM_HEIGHT
-                    )
+                    detectedRadiusY * FALLBACK_MIN_TRUSTED_EXPANSION
                 ).coerceAtMost(rawRegion.radiusY)
             )
         } else {
@@ -109,14 +120,16 @@ class FacePrivacyTemporalStabilizer {
 
         stateByTrackId[trackId] = State(
             output = output,
-            detectedRadiusXRatio = detectedRadiusXRatio,
-            detectedRadiusYRatio = detectedRadiusYRatio,
+            detectedRadiusX = detectedRadiusX,
+            detectedRadiusY = detectedRadiusY,
+            detectedPersonWidth = detectedPersonWidth,
+            detectedPersonHeight = detectedPersonHeight,
             lastPtsUs = ptsUs
         )
         return output
     }
 
-    private fun updateDetectedRatio(previous: Float?, observed: Float?): Float? {
+    private fun updateDetectedReference(previous: Float?, observed: Float?): Float? {
         if (observed == null || !observed.isFinite() || observed <= 0f) return previous
         return if (previous == null) observed else lerp(previous, observed, DETECTED_REFERENCE_ALPHA)
     }
@@ -127,11 +140,10 @@ class FacePrivacyTemporalStabilizer {
     private fun lerp(a: Float, b: Float, alpha: Float): Float = a + (b - a) * alpha
 
     companion object {
-        private const val FALLBACK_REFERENCE_EXPANSION = 1.45f
-        private const val FALLBACK_MIN_RADIUS_X_FROM_WIDTH = 0.26f
-        private const val FALLBACK_MIN_RADIUS_X_FROM_HEIGHT = 0.055f
-        private const val FALLBACK_MIN_RADIUS_Y_FROM_WIDTH = 0.30f
-        private const val FALLBACK_MIN_RADIUS_Y_FROM_HEIGHT = 0.075f
+        private const val FALLBACK_REFERENCE_EXPANSION = 1.24f
+        private const val FALLBACK_MIN_TRUSTED_EXPANSION = 1.10f
+        private const val FALLBACK_MIN_TRUSTED_SCALE = 0.90f
+        private const val FALLBACK_MAX_TRUSTED_SCALE = 1.12f
 
         private const val DETECTED_REFERENCE_ALPHA = 0.25f
         private const val PRIVACY_TARGET_FLOOR = 0.90f

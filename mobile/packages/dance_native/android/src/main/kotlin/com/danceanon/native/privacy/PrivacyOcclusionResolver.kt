@@ -87,7 +87,8 @@ object PrivacyOcclusionResolver {
         suppressedSelectedTrackIds: Set<Int> = emptySet(),
         preferFreshClassPrimary: Boolean = false,
         expectedSelectedCount: Int = 0,
-        maxFallbackObservationAgeFrames: Int = 15
+        maxFallbackObservationAgeFrames: Int = 15,
+        conservativeUnobservedOccluderPolicy: Boolean = false
     ): ResolvedCompositorMasks {
         if (selectedPersonIds.isEmpty()) {
             return ResolvedCompositorMasks(
@@ -269,6 +270,15 @@ object PrivacyOcclusionResolver {
                     val isCandFresh = cand.observedThisFrame
                     val isExplicitOccluder = target.occludedByTrackIds.contains(cand.id)
                     val hasStableIdentity = isExplicitOccluder || cand.age >= MIN_UNSELECTED_IDENTITY_AGE_FRAMES
+                    val stateAllowsCarve = !conservativeUnobservedOccluderPolicy || when (target.state) {
+                        TrackState.ACTIVE, TrackState.NEW -> true
+                        // In mixed per-person privacy, an unobserved FULL_BODY
+                        // target may be geometrically stale. Only a TrackManager-
+                        // confirmed current occluder may carve while OCCLUDED;
+                        // REACQUIRING/LOST always resolve privacy-first.
+                        TrackState.OCCLUDED -> isExplicitOccluder
+                        TrackState.REACQUIRING, TrackState.LOST, TrackState.REMOVED -> false
+                    }
                     val normalizedFootYDelta = footYDelta / personMinH
                     val useFreshDepthCore =
                         useFreshPrimary &&
@@ -337,6 +347,7 @@ object PrivacyOcclusionResolver {
                             !tinyFreshDepthCoreHasStrongCurrentGeometry
                     val usesFreshDepthCore = freshDepthCorePixels > 0 && !suppressUnstableTinyFreshDepthCore
                     val isStrongForeground =
+                        stateAllowsCarve &&
                         !suppressUnstableTinyFreshDepthCore &&
                             (usesFreshDepthCore || ownershipPixels > 0)
                     val candidateFreshEvidence = freshEvidenceByPersonId[cand.id]
@@ -409,6 +420,8 @@ object PrivacyOcclusionResolver {
                         "explicit_occluder" to isExplicitOccluder,
                         "candidate_age" to cand.age,
                         "identity_stable" to hasStableIdentity,
+                        "state_allows_carve" to stateAllowsCarve,
+                        "conservative_unobserved_occluder_policy" to conservativeUnobservedOccluderPolicy,
                         "target_state" to target.state.name,
                         "pts_us" to ptsUs
                     )

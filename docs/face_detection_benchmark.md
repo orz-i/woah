@@ -595,10 +595,90 @@ Local verification after these corrections:
 - Flutter app tests: **14/14 passed**;
 - `flutter analyze`: **0 issues**.
 
-PLK110 instrumentation for this exact revision is still pending because ADB
-disconnected before the connected-device run (`adb devices -l` returned an empty
-device list). The code must not be promoted to a user-stable baseline until the
-processor, Preview, mixed Export, and long-running device gates are repeated and
+That candidate was subsequently verified after PLK110 reconnected: processor,
+Preview, mixed Export, 300-frame stress, full native unit tests, Flutter tests,
+and `flutter analyze` all passed. The same real dance video nevertheless still
+showed a large right-side startup face sticker plus intermittent drifting face
+and full-body privacy, so device fixture success alone was not treated as user
+validation.
+
+### Third real-video correction: acquisition, prediction bounds, and mixed carve
+
+The next complete real-video bundle came from commit
+`2dcebfb231c4e5b4018da8c4b41d9729bc5a8741` using the same one-FULL_BODY plus
+five-FACE_ONLY 751-frame / 60 fps clip. Detector throughput improved substantially:
+**1,322 detector calls**, **860 DETECTED**, **1,177 PREDICTED**, and **1,718
+FALLBACK** track-frames. However the more aggressive scheduling also produced
+**423 non-empty detector calls rejected by the YOLO-owned face-anchor gate**, up
+from 7 in the earlier mixed run. This is strong evidence that running face
+detection from REACQUIRING/OCCLUDED/unobserved predicted person boxes was adding
+ambiguous neighboring-face evidence rather than solving identity motion.
+
+The new per-track diagnostics also confirmed that face size could still become
+far too large: sticker width maxima were approximately **97.7 / 173.0 / 177.8 /
+240.4 / 187.3 px** for FACE_ONLY IDs 1/2/3/5/6 respectively. The trusted face
+cache was stored as ratios of the *current* person bbox, so an occlusion/group
+bbox expansion could inflate a previously normal face. The right-side startup
+artifact had a separate cause: with only two detector calls per frame, later IDs
+could render a generic YOLO-head fallback while waiting for their first ROI turn.
+
+The FACE_ONLY sidecar is therefore revised as follows:
+
+- all never-attempted ACTIVE FACE_ONLY IDs receive a one-time acquisition burst
+  on the first available frame (up to eight ROIs), while steady-state scheduling
+  remains capped at two calls per output frame;
+- face detection is now allowed only for **freshly observed ACTIVE** TrackManager
+  identities. REACQUIRING, OCCLUDED, LOST, and temporarily unobserved identities
+  never use a predicted bbox to make a new face association;
+- a detector miss/anchor rejection no longer discards a still-fresh trusted face
+  immediately. For at most 150 ms it uses short-lived `PREDICTED_FACE` geometry;
+- trusted face cache geometry is stored in **absolute source pixels** together
+  with the trusted person bbox. Short-term prediction may scale only within
+  **0.88x..1.12x**, with at most 10% age expansion, rather than inheriting an
+  arbitrarily enlarged current person bbox;
+- temporal fallback after a trusted face also uses absolute trusted face size,
+  bounded to 0.90x..1.12x person-scale change and only 1.24x conservative
+  expansion;
+- the no-history bootstrap YOLO-head fallback is independently tightened to a
+  face/head-sized region so a right-edge first-frame detector rejection cannot
+  create a head-and-shoulders sticker.
+
+The same diagnostic showed that FULL_BODY ID 4 still had **30 association
+ambiguities, 11 reacquire starts, and 9 reacquire timeouts**. Its privacy resolver
+also accepted roughly **199 foreground-occluder carves**, while all 10 recorded
+`PRIVACY_COVERAGE_DROP` events belonged to target 4. Two additional protections
+therefore apply to all identity-protected privacy targets and specifically to the
+mixed primary compositor:
+
+- while a protected identity is unobserved/REACQUIRING/LOST, its predicted bbox
+  is bounded around the latest reliable/occlusion-motion anchor: center travel is
+  capped at 0.30 of the anchor reference dimension and bbox scale at
+  **0.82x..1.18x**. Stale Kalman motion can no longer carry a full-body or face
+  privacy mask across neighboring dancers;
+- mixed FULL_BODY + FACE_ONLY primary composition enables a conservative
+  unobserved-occluder policy. ACTIVE targets retain normal depth carving;
+  OCCLUDED targets may be carved only by a TrackManager-explicit occluder;
+  REACQUIRING/LOST targets are privacy-first and reject all external carving.
+  Pure FULL_BODY behavior and the FACE_ONLY secondary sticker occluder path keep
+  their historical policies.
+
+Regression coverage now includes a five-target startup acquisition test, a
+detector-miss trusted-prediction size cap, rejection of detector calls from an
+unobserved REACQUIRING target, merged-bbox face-size bounding, protected
+unobserved bbox travel/scale bounding, and mixed-mode explicit-vs-unconfirmed
+occluder controls. On PLK110 / Android 16 this revision passes:
+
+- `FaceOnlyPrivacyFrameProcessorInstrumentedTest`: **8/8**;
+- Preview FACE_ONLY/mixed acceptance: **1/1**;
+- Export static/dynamic/mixed acceptance: **3/3**;
+- foreground production stress: **300/300 frames**;
+- complete `dance_native` JVM unit suite: **all passed**;
+- Flutter tests: **14/14**, `flutter analyze`: **0 issues**.
+
+Export diagnostics now also aggregate `face_detector_rejected_calls_by_track_id`
+and record whether the conservative mixed FULL_BODY occluder policy is enabled,
+so the next real-video bundle can directly show whether the previous 423 rejected
+calls and target-4 carve instability were reduced.
 the same real dance video is retested.
 
 ## Test fixtures and paths

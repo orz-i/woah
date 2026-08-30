@@ -336,6 +336,7 @@ class ExportPipeline(
                 var facePredictedTrackFrameCount = 0L
                 var faceFallbackTrackFrameCount = 0L
                 val faceDetectorCallsByTrackId = mutableMapOf<Int, Long>()
+                val faceDetectorRejectedCallsByTrackId = mutableMapOf<Int, Long>()
                 val faceDetectedFramesByTrackId = mutableMapOf<Int, Long>()
                 val facePredictedFramesByTrackId = mutableMapOf<Int, Long>()
                 val faceFallbackFramesByTrackId = mutableMapOf<Int, Long>()
@@ -821,6 +822,10 @@ class ExportPipeline(
                             faceOnlyFrameResult.detectorCalledTrackIds.forEach { trackId ->
                                 faceDetectorCallsByTrackId[trackId] = faceDetectorCallsByTrackId.getOrDefault(trackId, 0L) + 1L
                             }
+                            faceOnlyFrameResult.detectorRejectedTrackIds.forEach { trackId ->
+                                faceDetectorRejectedCallsByTrackId[trackId] =
+                                    faceDetectorRejectedCallsByTrackId.getOrDefault(trackId, 0L) + 1L
+                            }
                             faceOnlyFrameResult.detectedTrackIds.forEach { trackId ->
                                 faceDetectedFramesByTrackId[trackId] = faceDetectedFramesByTrackId.getOrDefault(trackId, 0L) + 1L
                             }
@@ -959,6 +964,8 @@ class ExportPipeline(
                                 preferFreshPrivacyClassPrimary = preferFreshPrivacyClassPrimary,
                                 expectedSelectedPrivacyCount = selectedIds.size,
                                 maxFallbackObservationAgeFrames = trackManager.getMaxMissedFrames(),
+                                conservativePrimaryUnobservedOccluderPolicy =
+                                    faceOnlyPersonIds.isNotEmpty() && selectedIds.isNotEmpty(),
                                 additionalResolvedPrivacy = faceOnlyFrameResult?.resolvedPrivacy,
                                 faceStickerPlacements = faceOnlyFrameResult?.stickerPlacements.orEmpty()
                             )
@@ -1080,6 +1087,7 @@ class ExportPipeline(
                             "predictedTrackFrames=$facePredictedTrackFrameCount fallbackTrackFrames=$faceFallbackTrackFrameCount " +
                             "observations=$faceDetectorObservationCount zeroObservationCalls=$faceDetectorZeroObservationCallCount " +
                             "rejectedCalls=$faceDetectorRejectedCallCount callsByTrack=$faceDetectorCallsByTrackId " +
+                            "rejectedByTrack=$faceDetectorRejectedCallsByTrackId " +
                             "detectedByTrack=$faceDetectedFramesByTrackId predictedByTrack=$facePredictedFramesByTrackId " +
                             "fallbackByTrack=$faceFallbackFramesByTrackId"
                     )
@@ -1187,6 +1195,7 @@ class ExportPipeline(
                             "face_predicted_track_frames" to facePredictedTrackFrameCount,
                             "face_fallback_track_frames" to faceFallbackTrackFrameCount,
                             "face_detector_calls_by_track_id" to faceDetectorCallsByTrackId.toSortedMap().mapKeys { it.key.toString() },
+                            "face_detector_rejected_calls_by_track_id" to faceDetectorRejectedCallsByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_detected_frames_by_track_id" to faceDetectedFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_predicted_frames_by_track_id" to facePredictedFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_fallback_frames_by_track_id" to faceFallbackFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
@@ -1195,6 +1204,8 @@ class ExportPipeline(
                             "face_sticker_min_height_by_track_id" to faceStickerMinHeightByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_sticker_max_height_by_track_id" to faceStickerMaxHeightByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "fresh_full_body_class_primary_enabled" to allowFreshFullBodyClassPrimary,
+                            "conservative_mixed_full_body_occluder_policy_enabled" to
+                                (faceOnlyPersonIds.isNotEmpty() && fullBodyPersonIds.isNotEmpty()),
                             "surface_wait_timeout_count" to surfaceWaitTimeoutCount,
                             "duplicate_surface_timestamp_count" to duplicateSurfaceTimestampCount,
                             "non_monotonic_surface_timestamp_count" to nonMonotonicSurfaceTimestampCount,

@@ -1,5 +1,6 @@
 package com.danceanon.native.tracking
 
+import com.danceanon.native.inference.FloatRect
 import com.danceanon.native.inference.NativeMask
 import java.nio.ByteBuffer
 import kotlin.test.Test
@@ -104,5 +105,23 @@ class TrackManagerSampledMaskIoUTest {
                 maskIoU = 0.20f
             )
         )
+    }
+
+    @Test
+    fun protectedUnobservedPredictionIsBoundedAroundReliableAnchor() {
+        val anchor = FloatRect(100f, 100f, 200f, 400f)
+        val runawayPrediction = FloatRect(500f, 0f, 800f, 700f)
+
+        val bounded = TrackManager.boundPredictionAroundAnchor(anchor, runawayPrediction)
+        val maxTravel = maxOf(anchor.width, anchor.height) * 0.30f
+        val dx = bounded.centerX - anchor.centerX
+        val dy = bounded.centerY - anchor.centerY
+        val travel = kotlin.math.sqrt(dx * dx + dy * dy)
+
+        assertTrue(travel <= maxTravel + 0.01f)
+        assertTrue(bounded.width <= anchor.width * 1.18f + 0.01f)
+        assertTrue(bounded.height <= anchor.height * 1.18f + 0.01f)
+        assertTrue(bounded.width >= anchor.width * 0.82f - 0.01f)
+        assertTrue(bounded.height >= anchor.height * 0.82f - 0.01f)
     }
 }

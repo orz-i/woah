@@ -20,8 +20,36 @@ class FacePrivacyTemporalStabilizerTest {
         assertEquals(FacePrivacyRegionSource.YOLO_HEAD_FALLBACK, fallback.source)
         assertTrue(fallback.radiusX < genericFallback.radiusX * 0.85f, "fallback X remained too close to generic head size")
         assertTrue(fallback.radiusY < genericFallback.radiusY * 0.85f, "fallback Y remained too close to generic head size")
-        assertTrue(fallback.radiusX >= 54f, "fallback must remain larger than trusted face")
-        assertTrue(fallback.radiusY >= 66f, "fallback must remain larger than trusted face")
+        assertTrue(fallback.radiusX > detected.radiusX, "fallback must remain larger than trusted face")
+        assertTrue(fallback.radiusY > detected.radiusY, "fallback must remain larger than trusted face")
+        assertTrue(fallback.radiusX <= detected.radiusX * 1.40f)
+        assertTrue(fallback.radiusY <= detected.radiusY * 1.40f)
+    }
+
+    @Test
+    fun `trusted face size does not explode when current person bbox expands`() {
+        val stabilizer = FacePrivacyTemporalStabilizer()
+        val detected = FacePrivacyEllipse(200f, 170f, 45f, 55f, FacePrivacyRegionSource.DETECTED_FACE)
+        stabilizer.stabilize(1, detected, person, 0L)
+
+        val mergedPerson = FloatRect(40f, 80f, 440f, 780f)
+        val genericFallback = FacePrivacyEllipse(
+            240f,
+            178f,
+            220f,
+            260f,
+            FacePrivacyRegionSource.YOLO_HEAD_FALLBACK
+        )
+        val fallback = stabilizer.stabilize(1, genericFallback, mergedPerson, 33_333L)
+
+        assertTrue(
+            fallback.radiusX <= detected.radiusX * 1.45f,
+            "merged person bbox must not double trusted face width: ${fallback.radiusX}"
+        )
+        assertTrue(
+            fallback.radiusY <= detected.radiusY * 1.45f,
+            "merged person bbox must not double trusted face height: ${fallback.radiusY}"
+        )
     }
 
     @Test

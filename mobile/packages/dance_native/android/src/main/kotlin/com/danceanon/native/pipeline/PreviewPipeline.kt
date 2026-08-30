@@ -288,6 +288,8 @@ class PreviewPipeline(
                 presentationTimeUs = request.timestampMs * 1000L,
                 textureType = SourceTextureType.TEXTURE_2D,
                 expectedSelectedPrivacyCount = fullBodyPersonIds.size,
+                conservativePrimaryUnobservedOccluderPolicy =
+                    faceOnlyPersonIds.isNotEmpty() && fullBodyPersonIds.isNotEmpty(),
                 additionalResolvedPrivacy = faceOnlyFrameResult?.resolvedPrivacy,
                 faceStickerPlacements = faceOnlyFrameResult?.stickerPlacements.orEmpty()
             )

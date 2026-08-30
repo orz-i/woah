@@ -52,7 +52,8 @@ class PrivacyOccludedStrongForegroundTest {
             persons = listOf(occludedTarget, explicitOccluder),
             selectedPersonIds = setOf(0),
             applyDilationToPrivacyTargets = false,
-            occluderErosionRadius = 1
+            occluderErosionRadius = 1,
+            conservativeUnobservedOccluderPolicy = true
         )
 
         assertTrue(resolved.hasPrivacy)
@@ -65,5 +66,46 @@ class PrivacyOccludedStrongForegroundTest {
         }
         // Subtracted eroded core (1521px) from 1681px -> 160px safety halo remains
         assertEquals(160, nonZeroCount)
+    }
+
+    @Test
+    fun conservativeMixedPolicyRejectsUnconfirmedOccluderWhileTargetIsOccluded() {
+        val occludedTarget = TrackedPerson(
+            id = 0,
+            bbox = FloatRect(100f, 100f, 200f, 300f),
+            mask = createRectMask(64, 10..50, 10..50, value = 140),
+            confidence = 0.95f,
+            state = TrackState.OCCLUDED,
+            observedThisFrame = false,
+            occludedByTrackIds = emptySet(),
+            footY = 300f
+        )
+        val nearbyFreshPerson = TrackedPerson(
+            id = 1,
+            bbox = FloatRect(100f, 100f, 200f, 350f),
+            mask = createRectMask(64, 10..50, 10..50, value = 255),
+            confidence = 0.95f,
+            state = TrackState.ACTIVE,
+            observedThisFrame = true,
+            age = 30,
+            footY = 350f
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = listOf(occludedTarget, nearbyFreshPerson),
+            selectedPersonIds = setOf(0),
+            applyDilationToPrivacyTargets = false,
+            occluderErosionRadius = 1,
+            conservativeUnobservedOccluderPolicy = true
+        )
+
+        val privacyMask = resolved.privacyMask
+        assertNotNull(privacyMask)
+        val pBuf = privacyMask!!.buffer
+        var nonZeroCount = 0
+        for (i in 0 until pBuf.capacity()) {
+            if ((pBuf.get(i).toInt() and 0xFF) > 0) nonZeroCount++
+        }
+        assertEquals(1681, nonZeroCount, "unconfirmed neighbor must not reshape mixed FULL_BODY privacy")
     }
 }

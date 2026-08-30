@@ -7,6 +7,7 @@ import com.danceanon.native.face.FaceLocator
 import com.danceanon.native.face.FaceLocatorProvider
 import com.danceanon.native.face.FaceRoiCandidateSelector
 import com.danceanon.native.geometry.ModelCoordinateMapper
+import com.danceanon.native.inference.FloatRect
 import com.danceanon.native.inference.NativeMask
 import com.danceanon.native.render.FaceRoiRenderer
 import com.danceanon.native.render.FaceStickerPlacement
@@ -14,6 +15,7 @@ import com.danceanon.native.render.InferenceFbo
 import com.danceanon.native.render.SourceTextureType
 import com.danceanon.native.tracking.TrackState
 import com.danceanon.native.tracking.TrackedPerson
+import kotlin.math.sqrt
 
 data class FaceOnlyPrivacyFrameResult(
     val resolvedPrivacy: ResolvedCompositorMasks?,
@@ -29,6 +31,7 @@ data class FaceOnlyPrivacyFrameResult(
     val detectorZeroObservationCallCount: Int,
     val detectorRejectedCallCount: Int,
     val detectorCalledTrackIds: Set<Int>,
+    val detectorRejectedTrackIds: Set<Int>,
     val roiReadbackMs: Double,
     val maskBuildMs: Double,
     val privacyResolveMs: Double,
@@ -51,19 +54,39 @@ class FaceOnlyPrivacyFrameProcessor(
 ) : AutoCloseable {
 
     private data class CachedFaceGeometry(
-        val centerXRatio: Float,
-        val centerYRatio: Float,
-        val radiusXRatio: Float,
-        val radiusYRatio: Float,
+        val centerX: Float,
+        val centerY: Float,
+        val radiusX: Float,
+        val radiusY: Float,
+        val trustedPersonBbox: FloatRect,
         val lastTrustedPtsUs: Long
     ) {
-        fun project(personBbox: com.danceanon.native.inference.FloatRect): FacePrivacyEllipse? {
+        fun project(personBbox: FloatRect, ageUs: Long): FacePrivacyEllipse? {
             if (personBbox.width <= 1f || personBbox.height <= 1f) return null
+
+            // Follow short-term body translation, but do not let an occlusion/
+            // merge-expanded person bbox blow the trusted face size up.  Face
+            // scale cannot legitimately double within the <=150 ms cache window.
+            val widthRatio = (personBbox.width / trustedPersonBbox.width.coerceAtLeast(1f))
+                .coerceAtLeast(0.1f)
+            val heightRatio = (personBbox.height / trustedPersonBbox.height.coerceAtLeast(1f))
+                .coerceAtLeast(0.1f)
+            val bboxScale = sqrt(widthRatio * heightRatio)
+                .coerceIn(MIN_PREDICTED_FACE_SCALE, MAX_PREDICTED_FACE_SCALE)
+            val ageExpansion = (
+                1f + (ageUs.coerceIn(0L, MAX_PREDICTED_FACE_AGE_US).toFloat() /
+                    MAX_PREDICTED_FACE_AGE_US.toFloat()) * MAX_PREDICTED_AGE_EXPANSION
+                )
+
+            val centerDx = personBbox.centerX - trustedPersonBbox.centerX
+            // Vertical head motion is more stable against pose/bbox-height
+            // changes when anchored to the top edge instead of bbox center.
+            val centerDy = personBbox.top - trustedPersonBbox.top
             return FacePrivacyEllipse(
-                centerX = personBbox.left + centerXRatio * personBbox.width,
-                centerY = personBbox.top + centerYRatio * personBbox.height,
-                radiusX = (radiusXRatio * personBbox.width).coerceAtLeast(1f),
-                radiusY = (radiusYRatio * personBbox.height).coerceAtLeast(1f),
+                centerX = centerX + centerDx,
+                centerY = centerY + centerDy,
+                radiusX = (radiusX * bboxScale * ageExpansion).coerceAtLeast(1f),
+                radiusY = (radiusY * bboxScale * ageExpansion).coerceAtLeast(1f),
                 source = FacePrivacyRegionSource.PREDICTED_FACE
             )
         }
@@ -71,15 +94,16 @@ class FaceOnlyPrivacyFrameProcessor(
         companion object {
             fun from(
                 region: FacePrivacyEllipse,
-                personBbox: com.danceanon.native.inference.FloatRect,
+                personBbox: FloatRect,
                 ptsUs: Long
             ): CachedFaceGeometry? {
                 if (personBbox.width <= 1f || personBbox.height <= 1f) return null
                 return CachedFaceGeometry(
-                    centerXRatio = (region.centerX - personBbox.left) / personBbox.width,
-                    centerYRatio = (region.centerY - personBbox.top) / personBbox.height,
-                    radiusXRatio = region.radiusX / personBbox.width,
-                    radiusYRatio = region.radiusY / personBbox.height,
+                    centerX = region.centerX,
+                    centerY = region.centerY,
+                    radiusX = region.radiusX,
+                    radiusY = region.radiusY,
+                    trustedPersonBbox = personBbox,
                     lastTrustedPtsUs = ptsUs
                 )
             }
@@ -113,6 +137,7 @@ class FaceOnlyPrivacyFrameProcessor(
                 detectorZeroObservationCallCount = 0,
                 detectorRejectedCallCount = 0,
                 detectorCalledTrackIds = emptySet(),
+                detectorRejectedTrackIds = emptySet(),
                 roiReadbackMs = 0.0,
                 maskBuildMs = 0.0,
                 privacyResolveMs = 0.0,
@@ -133,35 +158,41 @@ class FaceOnlyPrivacyFrameProcessor(
         lastDetectorAttemptPtsUsByTrackId.keys.retainAll(activeFaceOnlyTrackIds)
         temporalStabilizer.retainTracks(activeFaceOnlyTrackIds)
 
-        val dueDetectorTrackIds = activeFaceOnlyTrackIds.asSequence()
+        val detectorCandidates = activeFaceOnlyTrackIds.asSequence()
             .filter { trackId ->
                 val person = personsById[trackId] ?: return@filter false
-                // LOST has no sufficiently trustworthy current person geometry.
-                // REACQUIRING/OCCLUDED and temporarily-unobserved tracks still
-                // have TrackManager-owned predicted boxes and are exactly the
-                // tracks that need an urgent positional refresh.
-                if (person.state == TrackState.LOST || person.state == TrackState.REMOVED) return@filter false
+                // Detector observations are positional evidence only.  During
+                // REACQUIRING/OCCLUDED/unobserved states the person bbox is not a
+                // trustworthy identity anchor; running the detector there caused
+                // hundreds of neighboring-face rejections in the real 5-person
+                // clip and occasionally pulled privacy toward another dancer.
+                if (!person.observedThisFrame || person.state != TrackState.ACTIVE) return@filter false
                 val lastAttemptPtsUs = lastDetectorAttemptPtsUsByTrackId[trackId]
-                val urgent = !person.observedThisFrame ||
-                    person.state == TrackState.REACQUIRING ||
-                    person.state == TrackState.OCCLUDED ||
-                    !cachedFaceByTrackId.containsKey(trackId)
-                val requiredIntervalUs = if (urgent) URGENT_DETECTOR_INTERVAL_US else detectorIntervalUs
                 lastAttemptPtsUs == null ||
                     ptsUs < lastAttemptPtsUs ||
-                    ptsUs - lastAttemptPtsUs >= requiredIntervalUs
+                    ptsUs - lastAttemptPtsUs >= detectorIntervalUs
             }
             .sortedWith(
-                compareBy<Int> {
-                    val person = personsById[it]
-                    if (person != null && (!person.observedThisFrame || person.state != TrackState.ACTIVE)) 0 else 1
-                }
+                compareBy<Int> { if (lastDetectorAttemptPtsUsByTrackId.containsKey(it)) 1 else 0 }
                     .thenBy { if (cachedFaceByTrackId.containsKey(it)) 1 else 0 }
                     .thenBy { lastDetectorAttemptPtsUsByTrackId[it] ?: Long.MIN_VALUE }
                     .thenBy { it }
             )
-            .take(maxDetectorCallsPerFrame.coerceAtLeast(1))
-            .toSet()
+            .toList()
+        val unattemptedCount = detectorCandidates.count { !lastDetectorAttemptPtsUsByTrackId.containsKey(it) }
+        val detectorBudget = if (unattemptedCount > 0) {
+            // Offline export/preview can afford a one-time acquisition burst.
+            // This prevents right-side/later IDs from rendering several startup
+            // frames with the generic YOLO-head fallback while waiting for a
+            // round-robin 2-call budget.
+            maxOf(
+                maxDetectorCallsPerFrame.coerceAtLeast(1),
+                minOf(unattemptedCount, INITIAL_ACQUISITION_MAX_CALLS)
+            )
+        } else {
+            maxDetectorCallsPerFrame.coerceAtLeast(1)
+        }
+        val dueDetectorTrackIds = detectorCandidates.take(detectorBudget).toSet()
 
         val faceMasks = linkedMapOf<Int, NativeMask>()
         val detected = linkedSetOf<Int>()
@@ -173,6 +204,7 @@ class FaceOnlyPrivacyFrameProcessor(
         var detectorZeroObservationCallCount = 0
         var detectorRejectedCallCount = 0
         val detectorCalledTrackIds = linkedSetOf<Int>()
+        val detectorRejectedTrackIds = linkedSetOf<Int>()
         var roiReadbackMs = 0.0
         var maskBuildMs = 0.0
         val stickerPlacements = mutableListOf<FaceStickerPlacement>()
@@ -190,6 +222,7 @@ class FaceOnlyPrivacyFrameProcessor(
             var region: FacePrivacyEllipse? = null
             if (dueDetectorTrackIds.contains(trackId) && plan != null) {
                 lastDetectorAttemptPtsUsByTrackId[trackId] = ptsUs
+                val cachedBeforeAttempt = cachedFaceByTrackId[trackId]
                 try {
                     val roiStartNs = System.nanoTime()
                     roiRenderer.renderToFbo(
@@ -224,25 +257,49 @@ class FaceOnlyPrivacyFrameProcessor(
                     )
                     if (locatorResult.observations.isNotEmpty() && selectedFace == null) {
                         detectorRejectedCallCount++
+                        detectorRejectedTrackIds += trackId
                     }
-                    region = FacePrivacyRegionResolver.resolve(
-                        personBbox = person.bbox,
-                        roiPlan = plan,
-                        selectedFace = selectedFace
-                    )
-                    if (region?.source == FacePrivacyRegionSource.DETECTED_FACE) {
+                    region = if (selectedFace != null) {
+                        FacePrivacyRegionResolver.resolve(
+                            personBbox = person.bbox,
+                            roiPlan = plan,
+                            selectedFace = selectedFace
+                        )
+                    } else {
+                        val cacheAgeUs = cachedBeforeAttempt?.let { ptsUs - it.lastTrustedPtsUs }
+                        if (
+                            cachedBeforeAttempt != null && cacheAgeUs != null &&
+                            cacheAgeUs in 0L..MAX_PREDICTED_FACE_AGE_US
+                        ) {
+                            cachedBeforeAttempt.project(person.bbox, cacheAgeUs)
+                        } else {
+                            FacePrivacyRegionResolver.resolve(
+                                personBbox = person.bbox,
+                                roiPlan = null,
+                                selectedFace = null
+                            )
+                        }
+                    }
+                    if (selectedFace != null && region?.source == FacePrivacyRegionSource.DETECTED_FACE) {
                         CachedFaceGeometry.from(region, person.bbox, ptsUs)?.let { cached ->
                             cachedFaceByTrackId[trackId] = cached
                         }
-                    } else {
-                        // An explicit detector miss/ambiguity invalidates the
-                        // previous precise face location immediately. Do not
-                        // carry stale detector evidence through a failed check.
-                        cachedFaceByTrackId.remove(trackId)
                     }
                 } catch (t: Throwable) {
                     Log.w(TAG, "Face ROI detection failed for track=$trackId; using head fallback", t)
-                    cachedFaceByTrackId.remove(trackId)
+                    val cacheAgeUs = cachedBeforeAttempt?.let { ptsUs - it.lastTrustedPtsUs }
+                    region = if (
+                        cachedBeforeAttempt != null && cacheAgeUs != null &&
+                        cacheAgeUs in 0L..MAX_PREDICTED_FACE_AGE_US
+                    ) {
+                        cachedBeforeAttempt.project(person.bbox, cacheAgeUs)
+                    } else {
+                        FacePrivacyRegionResolver.resolve(
+                            personBbox = person.bbox,
+                            roiPlan = null,
+                            selectedFace = null
+                        )
+                    }
                 }
             }
 
@@ -256,7 +313,7 @@ class FaceOnlyPrivacyFrameProcessor(
                     person.framesSinceLastObservation <= MAX_PREDICTED_OBSERVATION_AGE_FRAMES &&
                     person.state != TrackState.LOST
                 region = if (cacheUsable) {
-                    cached.project(person.bbox)
+                    cached.project(person.bbox, cacheAgeUs)
                 } else {
                     FacePrivacyRegionResolver.resolve(
                         personBbox = person.bbox,
@@ -350,6 +407,7 @@ class FaceOnlyPrivacyFrameProcessor(
             detectorZeroObservationCallCount = detectorZeroObservationCallCount,
             detectorRejectedCallCount = detectorRejectedCallCount,
             detectorCalledTrackIds = detectorCalledTrackIds,
+            detectorRejectedTrackIds = detectorRejectedTrackIds,
             roiReadbackMs = roiReadbackMs,
             maskBuildMs = maskBuildMs,
             privacyResolveMs = privacyResolveMs,
@@ -374,9 +432,12 @@ class FaceOnlyPrivacyFrameProcessor(
         const val FACE_ROI_SIZE = 256
         const val DEFAULT_DETECTOR_INTERVAL_US = 66_000L
         const val DEFAULT_MAX_DETECTOR_CALLS_PER_FRAME = 2
-        private const val URGENT_DETECTOR_INTERVAL_US = 33_000L
+        private const val INITIAL_ACQUISITION_MAX_CALLS = 8
         private const val MAX_PREDICTED_FACE_AGE_US = 150_000L
         private const val MAX_PREDICTED_OBSERVATION_AGE_FRAMES = 6
+        private const val MIN_PREDICTED_FACE_SCALE = 0.88f
+        private const val MAX_PREDICTED_FACE_SCALE = 1.12f
+        private const val MAX_PREDICTED_AGE_EXPANSION = 0.10f
         private const val SLOW_STAGE_LOG_THRESHOLD_MS = 20.0
 
         fun create(context: Context, mapper: ModelCoordinateMapper): FaceOnlyPrivacyFrameProcessor {

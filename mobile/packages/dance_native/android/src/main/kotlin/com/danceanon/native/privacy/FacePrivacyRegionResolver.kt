@@ -38,10 +38,15 @@ object FacePrivacyRegionResolver {
     private const val DETECTED_CENTER_Y_SHIFT = -0.04f
 
     private const val FALLBACK_CENTER_Y_RATIO = 0.14f
-    private const val FALLBACK_RADIUS_X_FROM_WIDTH = 0.34f
-    private const val FALLBACK_RADIUS_X_FROM_HEIGHT = 0.065f
-    private const val FALLBACK_RADIUS_Y_FROM_WIDTH = 0.39f
-    private const val FALLBACK_RADIUS_Y_FROM_HEIGHT = 0.090f
+    // Before the first trusted face observation this is the only available
+    // privacy geometry. Keep it large enough to cover the upper-face/head zone,
+    // but do not render most of the person's shoulder width as a face sticker.
+    // Once a trusted face exists, FacePrivacyTemporalStabilizer supplies the
+    // tighter absolute-size fallback instead of depending on these ratios.
+    private const val FALLBACK_RADIUS_X_FROM_WIDTH = 0.22f
+    private const val FALLBACK_RADIUS_X_FROM_HEIGHT = 0.045f
+    private const val FALLBACK_RADIUS_Y_FROM_WIDTH = 0.26f
+    private const val FALLBACK_RADIUS_Y_FROM_HEIGHT = 0.060f
 
     fun resolve(
         personBbox: FloatRect,

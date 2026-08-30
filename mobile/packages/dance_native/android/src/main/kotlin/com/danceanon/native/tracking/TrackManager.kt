@@ -187,6 +187,21 @@ class TrackManager(
     fun getHardPrivacyClassByDetectionIndex(): Map<Int, PrivacySelectionClass> =
         currentHardPrivacyClassByDetectionIndex.toMap()
 
+    private fun boundProtectedUnobservedPrediction(
+        track: InternalTrack,
+        predictedBbox: FloatRect
+    ): FloatRect {
+        if (!protectedTrackIds.contains(track.id)) return predictedBbox
+        val anchor = track.occlusionMotionBbox ?: track.lastObservedBbox
+        return boundPredictionAroundAnchor(
+            anchor = anchor,
+            predicted = predictedBbox,
+            maxCenterTravelRatio = PROTECTED_UNOBSERVED_MAX_CENTER_TRAVEL_RATIO,
+            minScale = PROTECTED_UNOBSERVED_MIN_SCALE,
+            maxScale = PROTECTED_UNOBSERVED_MAX_SCALE
+        )
+    }
+
     private fun privacyClassForTrackId(trackId: Int): PrivacySelectionClass =
         if (privacySelectedTrackIds.contains(trackId)) {
             PrivacySelectionClass.SELECTED
@@ -1250,11 +1265,13 @@ class TrackManager(
                         track.lostFrames = 0
                         track.reacquireFrames = 1
                         track.occludedByTrackIds.clear()
+                        val boundedPredBox = boundProtectedUnobservedPrediction(track, predBox)
+                        track.currentPredictedBbox = boundedPredBox
                         if (track.lastObservedMask != null) {
                             track.currentRenderMask = warpMask(
                                 sourceMask = track.lastObservedMask!!,
                                 prevBbox = track.lastObservedBbox,
-                                predBbox = predBox,
+                                predBbox = boundedPredBox,
                                 missedFrames = 0
                             )
                         }
@@ -1271,12 +1288,14 @@ class TrackManager(
                     } else {
                         track.reacquireFrames++
                         track.occludedByTrackIds.clear()
+                        val boundedPredBox = boundProtectedUnobservedPrediction(track, predBox)
+                        track.currentPredictedBbox = boundedPredBox
                         if (track.reacquireFrames <= config.postOcclusionGraceFrames) {
                             if (track.lastObservedMask != null) {
                                 track.currentRenderMask = warpMask(
                                     sourceMask = track.lastObservedMask!!,
                                     prevBbox = track.lastObservedBbox,
-                                    predBbox = predBox,
+                                    predBbox = boundedPredBox,
                                     missedFrames = 0
                                 )
                             }
@@ -1289,7 +1308,7 @@ class TrackManager(
                                 track.currentRenderMask = updateLostMask(
                                     canonicalMask = track.lastObservedMask!!,
                                     observedBbox = track.lastObservedBbox,
-                                    predBbox = predBox,
+                                    predBbox = boundedPredBox,
                                     missedFrames = track.lostFrames
                                 )
                             }
@@ -1311,11 +1330,13 @@ class TrackManager(
                             track.lostFrames = 1
                             track.occludedByTrackIds.clear()
                             track.occlusionMotionBbox = null
+                            val boundedPredBox = boundProtectedUnobservedPrediction(track, predBox)
+                            track.currentPredictedBbox = boundedPredBox
                             if (track.lastObservedMask != null) {
                                 track.currentRenderMask = updateLostMask(
                                     canonicalMask = track.lastObservedMask!!,
                                     observedBbox = track.lastObservedBbox,
-                                    predBbox = predBox,
+                                    predBbox = boundedPredBox,
                                     missedFrames = track.lostFrames
                                 )
                             }
@@ -1323,6 +1344,8 @@ class TrackManager(
                         TrackState.LOST -> {
                             track.lostFrames++
                             track.occludedByTrackIds.clear()
+                            val boundedPredBox = boundProtectedUnobservedPrediction(track, predBox)
+                            track.currentPredictedBbox = boundedPredBox
                             if (track.lostFrames > config.maxMissedFrames) {
                                 if (protectedTrackIds.contains(track.id)) {
                                     // Preserve only identity evidence. A very stale
@@ -1359,7 +1382,7 @@ class TrackManager(
                                     track.currentRenderMask = updateLostMask(
                                         canonicalMask = track.lastObservedMask!!,
                                         observedBbox = track.lastObservedBbox,
-                                        predBbox = predBox,
+                                        predBbox = boundedPredBox,
                                         missedFrames = track.lostFrames
                                     )
                                 }
@@ -1607,12 +1630,14 @@ class TrackManager(
                 } else if (track.state == TrackState.REACQUIRING) {
                     track.reacquireFrames++
                     track.kalman.dampenVelocity(0.70f)
+                    val boundedPredBox = boundProtectedUnobservedPrediction(track, predBox)
+                    track.currentPredictedBbox = boundedPredBox
                     if (track.reacquireFrames <= config.postOcclusionGraceFrames) {
                         if (track.lastObservedMask != null) {
                             track.currentRenderMask = warpMask(
                                 sourceMask = track.lastObservedMask!!,
                                 prevBbox = track.lastObservedBbox,
-                                predBbox = predBox,
+                                predBbox = boundedPredBox,
                                 missedFrames = 0
                             )
                         }
@@ -1625,7 +1650,7 @@ class TrackManager(
                             track.currentRenderMask = updateLostMask(
                                 canonicalMask = track.lastObservedMask!!,
                                 observedBbox = track.lastObservedBbox,
-                                predBbox = predBox,
+                                predBbox = boundedPredBox,
                                 missedFrames = track.lostFrames
                             )
                         }
@@ -1634,11 +1659,13 @@ class TrackManager(
                     track.state = TrackState.LOST
                     track.lostFrames++
                     track.occlusionMotionBbox = null
+                    val boundedPredBox = boundProtectedUnobservedPrediction(track, predBox)
+                    track.currentPredictedBbox = boundedPredBox
                     if (track.lastObservedMask != null) {
                         track.currentRenderMask = updateLostMask(
                             canonicalMask = track.lastObservedMask!!,
                             observedBbox = track.lastObservedBbox,
-                            predBbox = predBox,
+                            predBbox = boundedPredBox,
                             missedFrames = track.lostFrames
                         )
                     }
@@ -1658,10 +1685,19 @@ class TrackManager(
                 ) {
                     track.currentRenderMask = null
                 } else if (track.lastObservedMask != null) {
+                    val boundedPredBox = if (
+                        protectedTrackIds.contains(track.id) &&
+                        (track.state == TrackState.REACQUIRING || track.state == TrackState.LOST)
+                    ) {
+                        boundProtectedUnobservedPrediction(track, predBox)
+                    } else {
+                        predBox
+                    }
+                    track.currentPredictedBbox = boundedPredBox
                     track.currentRenderMask = warpMask(
                         sourceMask = track.lastObservedMask!!,
                         prevBbox = track.lastObservedBbox,
-                        predBbox = predBox,
+                        predBbox = boundedPredBox,
                         missedFrames = 0
                     )
                 }
@@ -1695,6 +1731,42 @@ class TrackManager(
         private const val PROTECTED_GROUP_REACQUIRE_MIN_MASK_IOU = 0.25f
         private const val PROTECTED_RECOVERY_MIN_BBOX_IOU = 0.50f
         private const val PROTECTED_RECOVERY_MIN_MASK_IOU = 0.45f
+        private const val PROTECTED_UNOBSERVED_MAX_CENTER_TRAVEL_RATIO = 0.30f
+        private const val PROTECTED_UNOBSERVED_MIN_SCALE = 0.82f
+        private const val PROTECTED_UNOBSERVED_MAX_SCALE = 1.18f
+
+        fun boundPredictionAroundAnchor(
+            anchor: FloatRect,
+            predicted: FloatRect,
+            maxCenterTravelRatio: Float = PROTECTED_UNOBSERVED_MAX_CENTER_TRAVEL_RATIO,
+            minScale: Float = PROTECTED_UNOBSERVED_MIN_SCALE,
+            maxScale: Float = PROTECTED_UNOBSERVED_MAX_SCALE
+        ): FloatRect {
+            val anchorWidth = anchor.width.coerceAtLeast(1f)
+            val anchorHeight = anchor.height.coerceAtLeast(1f)
+            val refDim = max(anchorWidth, anchorHeight)
+            val maxTravel = refDim * maxCenterTravelRatio.coerceAtLeast(0f)
+            val dx = predicted.centerX - anchor.centerX
+            val dy = predicted.centerY - anchor.centerY
+            val distance = sqrt(dx * dx + dy * dy)
+            val travelScale = if (distance > maxTravel && distance > 1e-4f) {
+                maxTravel / distance
+            } else {
+                1f
+            }
+            val centerX = anchor.centerX + dx * travelScale
+            val centerY = anchor.centerY + dy * travelScale
+            val safeMinScale = minScale.coerceAtLeast(0.1f)
+            val safeMaxScale = max(maxScale, safeMinScale)
+            val width = predicted.width.coerceIn(anchorWidth * safeMinScale, anchorWidth * safeMaxScale)
+            val height = predicted.height.coerceIn(anchorHeight * safeMinScale, anchorHeight * safeMaxScale)
+            return FloatRect(
+                left = centerX - width * 0.5f,
+                top = centerY - height * 0.5f,
+                right = centerX + width * 0.5f,
+                bottom = centerY + height * 0.5f
+            )
+        }
 
         fun medianOf(values: List<Float>): Float {
             if (values.isEmpty()) return 0f

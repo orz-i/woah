@@ -437,6 +437,7 @@ class GlRenderer : FrameRenderer {
         preferFreshPrivacyClassPrimary: Boolean = false,
         expectedSelectedPrivacyCount: Int = 0,
         maxFallbackObservationAgeFrames: Int = 15,
+        conservativePrimaryUnobservedOccluderPolicy: Boolean = false,
         additionalResolvedPrivacy: com.danceanon.native.privacy.ResolvedCompositorMasks? = null,
         faceStickerPlacements: List<FaceStickerPlacement> = emptyList()
     ) {
@@ -526,7 +527,8 @@ class GlRenderer : FrameRenderer {
             suppressedSelectedTrackIds = suppressedSelectedPrivacyTrackIds,
             preferFreshClassPrimary = preferFreshPrivacyClassPrimary,
             expectedSelectedCount = expectedSelectedPrivacyCount,
-            maxFallbackObservationAgeFrames = maxFallbackObservationAgeFrames
+            maxFallbackObservationAgeFrames = maxFallbackObservationAgeFrames,
+            conservativeUnobservedOccluderPolicy = conservativePrimaryUnobservedOccluderPolicy
         )
         val mergedResolved = if (additionalResolvedPrivacy == null) {
             primaryResolved
