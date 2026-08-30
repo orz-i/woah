@@ -80,7 +80,7 @@ class FaceOnlyExportPipelineInstrumentedTest {
                         videoBitrate = 4_000_000L,
                         processingProfile = "quality",
                         enableLivePreview = false,
-                        faceOnlyPersonIds = listOf(0L)
+                        faceOnlyPersonIds = listOf(TARGET_PERSON_ID)
                     ),
                     isCancelled = AtomicBoolean(false),
                     onStatusChange = { finalStatus.set(it) }
@@ -173,7 +173,7 @@ class FaceOnlyExportPipelineInstrumentedTest {
                         videoBitrate = 4_000_000L,
                         processingProfile = "quality",
                         enableLivePreview = false,
-                        faceOnlyPersonIds = listOf(0L)
+                        faceOnlyPersonIds = listOf(TARGET_PERSON_ID)
                     ),
                     isCancelled = AtomicBoolean(false),
                     onStatusChange = { finalStatus.set(it) }
@@ -471,6 +471,10 @@ class FaceOnlyExportPipelineInstrumentedTest {
         private const val DYNAMIC_FRAME_COUNT = 18
         private const val DYNAMIC_MOTION_TOLERANCE_PX = 75.0
         private const val DYNAMIC_MIN_OBSERVED_X_SPAN_PX = 55.0
+        // The reviewed real dancer is the second left-to-right raw YOLO person
+        // on frame 0 of this fixture. TrackManager initialization therefore
+        // assigns it ID 1 when no analysis cache is supplied.
+        private const val TARGET_PERSON_ID = 1L
         private const val VERIFY_TIME_US = 300_000L
         private const val LOWER_X = 337
         private const val LOWER_Y = 900

@@ -286,13 +286,14 @@ the frame, while a reviewed lower-body patch stayed close to the input image;
 this verifies that the request reached FACE_ONLY composition rather than silently
 expanding back to FULL_BODY.
 
-The same full-pipeline run measured `faceDetectorCpu` mean **8.8 ms**, p50 **8 ms**,
-p95 **15 ms**. The complete `faceOnlyPrivacy` stage measured mean **20.8 ms**,
-p50 **14 ms**, p95/max **83 ms**. The detector itself is therefore still within
-the earlier planning range, but the integrated per-frame sidecar has a significant
-single-frame scheduling/GL outlier. Production cadence should be optimized before
-exposing FACE_ONLY in UI; do not assume one detector call per selected person on
-every output frame is the final scheduling policy.
+The first version of this export smoke hardcoded FACE_ONLY ID 0 without an
+analysis cache. That turned out to be a test-fixture identity bug rather than a
+face-detector quality result: production YOLO detections are sorted left-to-right,
+and `TrackManager.initialize()` assigns IDs in that order. On this crop the
+reviewed dancer is the **second** raw detection on frame 0 (centers approximately
+75 px and 323 px; reviewed dancer IoU ~0.88 at index 1). All quality numbers below
+therefore use the corrected target track ID 1; the earlier low-coverage ID-0 run
+must not be used to tune MediaPipe confidence or the anchor gate.
 
 The processor therefore caps MediaPipe work to **one detector call per output
 frame** and a per-track detector interval of **66 ms** (about 15 Hz for one target
@@ -303,14 +304,15 @@ immediately falls back to the conservative YOLO head ellipse. With multiple
 FACE_ONLY targets, uncached/oldest tracks are serviced first so acquisition is
 staggered instead of multiplying synchronous ROI readbacks in one frame.
 
-Two repeated 30 fps device runs with slow-stage diagnostics localized the large
-`facePrivacyResolve` sample to `pts=0` in both cases (about 64 ms and 85 ms).
-Later frames stayed below the 20 ms slow-log threshold. The first frame also had
-secondary unselected mask evidence, so a proposed no-occluder shortcut did not
-apply to the real smoke path and was removed rather than carrying an unproven
-special case. The remaining high sample is therefore treated as a cold first-use
-cost until a longer dynamic benchmark shows otherwise, not as evidence of a
-steady-state face-mask algorithm bottleneck.
+With the corrected target ID, the 30 fps static smoke completed 18/18 frames with
+**9 DETECTED / 9 PREDICTED / 0 FALLBACK**, 9/9 detector calls containing an
+accepted target, and no zero-result or rejected calls. `faceDetectorCpu` p95 was
+about **13 ms** and the full `faceOnlyPrivacy` p95 about **29 ms** on PLK110. The
+dynamic motion smoke also completed 18/18 with **9 DETECTED / 9 PREDICTED /
+0 FALLBACK**; all 9 detector calls accepted the target, with detector p95 about
+**16 ms**. Its complete FACE_ONLY stage still showed an occasional first-use
+outlier (p95 ~79 ms), so cold-path timing remains a performance item, but it is no
+longer a localization-coverage blocker.
 
 For dynamic validation, a separate androidTest-only fixture derives 18 frames
 from the reviewed real-person crop using deterministic affine motion (horizontal
@@ -324,16 +326,21 @@ detector calls, and nonempty detector results rejected by the YOLO-owned anchor
 gate, so low DETECTED coverage can be attributed before changing model or gate
 thresholds.
 
-On PLK110 / Android 16 with the production MediaPipe confidence threshold kept at
-0.35, the dynamic test passed end-to-end across all 18 output frames. The face
-sidecar made 8 detector calls and produced 6 raw observations: 2 calls returned no
-face and 3 nonempty calls were rejected by the person-owned anchor gate. The
-resulting frame mix was **3 DETECTED / 3 PREDICTED / 12 YOLO_HEAD_FALLBACK**.
-Diagnostic runs showed the rejected candidates were far from the target anchor
-(roughly 0.67-0.73 of the 256 ROI size), so lowering detector confidence or
-loosening the anchor gate would trade identity safety for apparent recall. The
-current conclusion is to keep the strict gate/fail-closed fallback and treat
-detector precision coverage, not privacy continuity, as the next quality problem.
+Two additional androidTest-only controls isolate the corrected result. First,
+ground-truth affine person boxes bypass YOLO/TrackManager and run production
+MediaPipe 0.35 plus the production anchor selector over four ROI scales. Current
+1.00x, 0.80x, and 1.20x all selected the target on **18/18** frames; an overly
+tight 0.65x crop fell to **10/18**. There is therefore no evidence to change the
+current production ROI scale.
+
+Second, production raw YOLO was compared with the same affine ground-truth boxes
+before TrackManager. A correct raw person detection was available on **15/18**
+frames. On normal detected frames bbox IoU p50 was ~**0.84**, derived head-anchor
+error p50 ~**0.020 ROI** and p95 ~**0.030 ROI**, far inside the 0.22 face-candidate
+gate. Frame 0 specifically confirmed the reviewed target is raw detection index 1.
+The remaining raw-detection misses are a YOLO/tracking robustness case, not a
+reason to loosen face identity association. Current decision: keep MediaPipe 0.35,
+the existing ROI geometry, strict anchor gate, and fail-closed YOLO-head fallback.
 
 ## Test fixtures and paths
 
