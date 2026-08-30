@@ -45,7 +45,11 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
             assertEquals(1, result.stickerPlacements.size)
             assertEquals(7, result.stickerPlacements.single().trackId)
             val mask = assertNotNull(result.resolvedPrivacy?.privacyMask)
-            assertTrue(pixelAtSource(mask, mapper, 320f, 90f) > 0)
+            val stickerRect = result.stickerPlacements.single().sourceRect
+            assertTrue(
+                pixelAtSource(mask, mapper, stickerRect.centerX, stickerRect.centerY) > 0,
+                "resolved privacy must cover the detected/sticker face center"
+            )
             assertEquals(0, pixelAtSource(mask, mapper, 320f, 300f))
         }
     }
@@ -84,7 +88,16 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
             assertEquals(setOf(5), frame1.predictedTrackIds)
             assertEquals(1, locator.calls)
             val predictedMask = assertNotNull(frame1.resolvedPrivacy?.privacyMask)
-            assertTrue(pixelAtSource(predictedMask, mapper, moved.bbox.centerX, 90f) > 0)
+            val detectedCenterX = frame0.stickerPlacements.single().sourceRect.centerX
+            val predictedRect = frame1.stickerPlacements.single().sourceRect
+            assertTrue(
+                predictedRect.centerX >= detectedCenterX + 18f,
+                "predicted face center must follow the current person-box translation"
+            )
+            assertTrue(
+                pixelAtSource(predictedMask, mapper, predictedRect.centerX, predictedRect.centerY) > 0,
+                "predicted privacy must cover the translated face center"
+            )
 
             val frame2 = processor.resolveFrame(
                 frameTexture = texture,

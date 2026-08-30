@@ -576,6 +576,17 @@ FACE_ONLY track ID**. This makes future five-person bundles able to expose an
 individual starved or unstable target directly rather than relying only on
 aggregate counts.
 
+After the PLK110 reconnected, the second-round moving/mixed candidate completed
+its device gates. `FaceOnlyPrivacyFrameProcessorInstrumentedTest` passed **8/8**,
+including the two-call detector budget and urgent refresh of an unobserved
+REACQUIRING FACE_ONLY track. Two legacy assertions initially sampled fixed pixels
+above the newly tightened detector ellipse; they were replaced with contract-level
+checks that the resolved mask covers the actual sticker/privacy center and that a
+predicted center follows the translated person geometry. Preview passed **1/1**,
+Export passed **3/3** including mixed FULL_BODY + FACE_ONLY, and the foreground
+production stress completed **300/300 frames**. The higher detector budget did not
+introduce a long-running stall in this regression.
+
 Local verification after these corrections:
 
 - focused FACE_ONLY geometry/stabilizer/identity tests: **17/17 passed**;
