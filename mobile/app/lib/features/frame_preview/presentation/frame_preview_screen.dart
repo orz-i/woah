@@ -105,6 +105,7 @@ class _FramePreviewScreenState extends ConsumerState<FramePreviewScreen> {
         analysisCacheId: cacheId,
         timestampMs: 0,
         selectedPersonIds: widget.project.selectedPersonIds.toList(),
+        faceOnlyPersonIds: widget.project.faceOnlyPersonIds.toList(),
         effects: widget.project.effects,
         follow: widget.project.follow,
       );
@@ -444,7 +445,7 @@ class _FramePreviewScreenState extends ConsumerState<FramePreviewScreen> {
               const Icon(Icons.verified_user_rounded, size: 16, color: Colors.greenAccent),
               const SizedBox(width: 6),
               Text(
-                '选中保护目标: ${project.selectedPersonIds.length} 人',
+                '选中保护目标: ${project.privacyTargetIds.length} 人',
                 style: const TextStyle(
                   fontSize: 13,
                   color: Colors.white,

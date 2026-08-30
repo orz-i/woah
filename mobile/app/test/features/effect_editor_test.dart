@@ -92,6 +92,7 @@ class _FakeNativeRepository implements NativeProcessingRepository {
     required String analysisCacheId,
     required int timestampMs,
     required List<int> selectedPersonIds,
+    List<int> faceOnlyPersonIds = const [],
     required EffectConfig effects,
     FollowConfig follow = const FollowConfig(),
   }) async {

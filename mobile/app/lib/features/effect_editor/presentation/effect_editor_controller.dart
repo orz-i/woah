@@ -151,6 +151,7 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
           analysisCacheId: cacheId,
           timestampMs: 0,
           selectedPersonIds: currentProj.selectedPersonIds.toList(),
+          faceOnlyPersonIds: currentProj.faceOnlyPersonIds.toList(),
           effects: state.effects,
           follow: currentProj.follow,
         );

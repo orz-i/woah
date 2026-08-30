@@ -2,6 +2,17 @@ import 'video_info.dart';
 import 'person_track.dart';
 import 'effects.dart';
 
+/// Effective per-person privacy mode used by project/UI policy.
+///
+/// [selectedPersonIds] remains the persisted legacy FULL_BODY set. The optional
+/// FACE_ONLY set is additive, and FULL_BODY always wins when an ID is present in
+/// both sets so old projects and old selection flows remain deterministic.
+enum PersonPrivacyMode {
+  none,
+  faceOnly,
+  fullBody,
+}
+
 /// Top-level project state representing a user editing session
 class DanceProject {
   final String id;
@@ -10,6 +21,7 @@ class DanceProject {
 
   final List<PersonTrack> persons;
   final Set<int> selectedPersonIds;
+  final Set<int> faceOnlyPersonIds;
 
   final EffectConfig effects;
   final FollowConfig follow;
@@ -27,6 +39,7 @@ class DanceProject {
     required this.videoInfo,
     this.persons = const [],
     this.selectedPersonIds = const {},
+    this.faceOnlyPersonIds = const {},
     this.effects = const EffectConfig(),
     this.follow = const FollowConfig(),
     this.crop,
@@ -41,6 +54,7 @@ class DanceProject {
         'videoInfo': videoInfo.toJson(),
         'persons': persons.map((p) => p.toJson()).toList(),
         'selectedPersonIds': selectedPersonIds.toList(),
+        'faceOnlyPersonIds': faceOnlyPersonIds.toList(),
         'effects': effects.toJson(),
         'follow': follow.toJson(),
         'crop': crop?.toJson(),
@@ -58,6 +72,10 @@ class DanceProject {
                 .toList() ??
             const [],
         selectedPersonIds: (json['selectedPersonIds'] as List<dynamic>?)
+                ?.map((e) => e as int)
+                .toSet() ??
+            const {},
+        faceOnlyPersonIds: (json['faceOnlyPersonIds'] as List<dynamic>?)
                 ?.map((e) => e as int)
                 .toSet() ??
             const {},
@@ -81,6 +99,7 @@ class DanceProject {
     VideoInfo? videoInfo,
     List<PersonTrack>? persons,
     Set<int>? selectedPersonIds,
+    Set<int>? faceOnlyPersonIds,
     EffectConfig? effects,
     FollowConfig? follow,
     CropConfig? crop,
@@ -94,6 +113,7 @@ class DanceProject {
       videoInfo: videoInfo ?? this.videoInfo,
       persons: persons ?? this.persons,
       selectedPersonIds: selectedPersonIds ?? this.selectedPersonIds,
+      faceOnlyPersonIds: faceOnlyPersonIds ?? this.faceOnlyPersonIds,
       effects: effects ?? this.effects,
       follow: follow ?? this.follow,
       crop: crop ?? this.crop,
@@ -102,4 +122,18 @@ class DanceProject {
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
+
+  /// Returns the effective mode for [personId]. FULL_BODY intentionally wins a
+  /// conflict to match the native resolver and the original desktop behavior.
+  PersonPrivacyMode privacyModeForPerson(int personId) {
+    if (selectedPersonIds.contains(personId)) return PersonPrivacyMode.fullBody;
+    if (faceOnlyPersonIds.contains(personId)) return PersonPrivacyMode.faceOnly;
+    return PersonPrivacyMode.none;
+  }
+
+  /// All people receiving any privacy treatment, independent of mode.
+  Set<int> get privacyTargetIds => {
+        ...faceOnlyPersonIds,
+        ...selectedPersonIds,
+      };
 }

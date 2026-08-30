@@ -74,6 +74,7 @@ class ExportController extends StateNotifier<ExportState> {
         analysisCacheId: project.analysisCacheId ?? '',
         outputFilePath: outputPath,
         selectedPersonIds: project.selectedPersonIds.toList(),
+        faceOnlyPersonIds: project.faceOnlyPersonIds.toList(),
         effects: project.effects,
         follow: project.follow,
         targetWidth: project.videoInfo.width,

@@ -50,6 +50,7 @@ class DanceNativeClient implements DanceProcessingEvents {
     required String analysisCacheId,
     required int timestampMs,
     required List<int> selectedPersonIds,
+    List<int> faceOnlyPersonIds = const [],
     required EffectConfig effects,
     FollowConfig follow = const FollowConfig(),
   }) {
@@ -59,6 +60,7 @@ class DanceNativeClient implements DanceProcessingEvents {
       selectedPersonIds: selectedPersonIds,
       effects: effects.toDto(),
       follow: follow.toDto(),
+      faceOnlyPersonIds: faceOnlyPersonIds,
     ));
   }
 
@@ -68,6 +70,7 @@ class DanceNativeClient implements DanceProcessingEvents {
     required String analysisCacheId,
     required String outputFilePath,
     required List<int> selectedPersonIds,
+    List<int> faceOnlyPersonIds = const [],
     required EffectConfig effects,
     FollowConfig follow = const FollowConfig(),
     int targetWidth = 1920,
@@ -90,6 +93,7 @@ class DanceNativeClient implements DanceProcessingEvents {
       videoBitrate: videoBitrate,
       processingProfile: processingProfile,
       enableLivePreview: enableLivePreview,
+      faceOnlyPersonIds: faceOnlyPersonIds,
     ));
   }
 

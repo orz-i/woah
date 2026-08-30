@@ -204,7 +204,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                           Expanded(
                             child: _buildMetricTile(
                               '处理人物数',
-                              '${project?.selectedPersonIds.length ?? 0} 位人物',
+                              '${project?.privacyTargetIds.length ?? 0} 位人物',
                               Icons.person_rounded,
                             ),
                           ),
