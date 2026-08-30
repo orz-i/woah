@@ -176,6 +176,57 @@ class LostTrackPrivacySafetyTest {
         assertTrue(!selected.observedThisFrame)
     }
 
+    @Test
+    fun testMixedModeLongLostSelectedTombstoneDoesNotReviveMaskInsideNewOcclusionGroup() {
+        val tracker = TrackManager(TrackingConfig(maxMissedFrames = 3))
+        tracker.setIdentityProtectedTrackIds(setOf(42))
+        tracker.setPrivacySelectedTrackIds(setOf(42))
+        tracker.setPrivacyOffscreenDormancyEnabled(true)
+
+        val initialBox = FloatRect(700f, 300f, 900f, 800f)
+        tracker.initializeWithAssignedIds(
+            listOf(PersonDetection(initialBox, 0.95f, createSyntheticMask(fillBox = initialBox))),
+            listOf(42)
+        )
+
+        var pts = 33_333L
+        repeat(4) {
+            tracker.update(emptyList(), pts)
+            pts += 33_333L
+        }
+        val tombstone = assertNotNull(tracker.predictWithoutObservation(pts).find { it.id == 42 })
+        assertEquals(TrackState.LOST, tombstone.state)
+        assertEquals(null, tombstone.mask)
+
+        // This nearby person has only weak identity evidence for the old selected
+        // slot, so ordinary protected recovery correctly creates a new identity.
+        // On the following frame the new track spatially overlaps the retained
+        // selected tombstone. The tombstone must stay out of occlusion-group
+        // ownership; otherwise merely being in that group changes it to
+        // REACQUIRING and resurrects its stale full-body mask before any identity
+        // commit has succeeded (the exact 71c6e57 real-video failure).
+        val weakBox = FloatRect(610f, 360f, 850f, 850f)
+        val weakMask = createSyntheticMask(fillBox = FloatRect(600f, 100f, 690f, 260f))
+        tracker.update(
+            listOf(PersonDetection(weakBox, 0.95f, weakMask)),
+            pts + 33_333L
+        )
+        val afterOverlap = tracker.update(
+            listOf(PersonDetection(weakBox, 0.95f, weakMask)),
+            pts + 66_666L
+        )
+
+        val selected = assertNotNull(afterOverlap.find { it.id == 42 })
+        assertEquals(TrackState.LOST, selected.state)
+        assertEquals(
+            null,
+            selected.mask,
+            "long-lost mixed-mode FULL_BODY tombstone must not revive stale privacy inside a new occlusion group"
+        )
+        assertTrue(!selected.observedThisFrame)
+        assertTrue(afterOverlap.any { it.id != 42 && it.observedThisFrame })
+    }
+
     private fun computeMaskCenter(mask: NativeMask): Pair<Float, Float> {
         val buf = mask.buffer
         buf.rewind()

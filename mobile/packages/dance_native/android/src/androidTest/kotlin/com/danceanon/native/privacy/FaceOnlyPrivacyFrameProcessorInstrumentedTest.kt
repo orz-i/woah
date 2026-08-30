@@ -248,6 +248,60 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
     }
 
     @Test
+    fun recentLostFaceOnlyTrackKeepsTightLocalRefreshButDoesNotBecomeIndependentTracker() {
+        val locator = CountingLocator(
+            listOf(FaceObservation(FloatRect(104f, 96f, 152f, 144f), 0.9f))
+        )
+        withProcessor(locator) { processor, texture, _ ->
+            val observed = person(27, FloatRect(220f, 40f, 420f, 350f))
+            val initial = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(observed),
+                faceOnlyTrackIds = setOf(27),
+                ptsUs = 0L
+            )
+            assertEquals(setOf(27), initial.detectedTrackIds)
+
+            val brieflyLost = observed.copy(
+                bbox = FloatRect(236f, 40f, 436f, 350f),
+                state = TrackState.LOST,
+                observedThisFrame = false,
+                framesSinceLastObservation = 8
+            )
+            val refreshed = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(brieflyLost),
+                faceOnlyTrackIds = setOf(27),
+                ptsUs = 33_333L
+            )
+            assertEquals(1, refreshed.detectorCallCount)
+            assertEquals(setOf(27), refreshed.detectedTrackIds)
+            assertEquals(2, locator.calls)
+
+            val longLost = brieflyLost.copy(framesSinceLastObservation = 31)
+            val stopped = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(longLost),
+                faceOnlyTrackIds = setOf(27),
+                ptsUs = 66_666L
+            )
+            assertEquals(0, stopped.detectorCallCount)
+            assertEquals(2, locator.calls)
+            assertEquals(
+                setOf(27),
+                stopped.fallbackTrackIds,
+                "identity-local face refresh must stop after the bounded YOLO-unobserved window"
+            )
+        }
+    }
+
+    @Test
     fun trustedLocalFaceRefreshTracksHeadMotionInsideStablePersonBox() {
         val locator = SequencedLocator(
             listOf(
@@ -294,6 +348,21 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
             assertTrue(
                 secondRect.height <= firstHeight * 1.15f,
                 "local detector size noise must not inflate sticker height: first=$firstHeight second=${secondRect.height}"
+            )
+
+            val third = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(target),
+                faceOnlyTrackIds = setOf(31),
+                ptsUs = 49_999L
+            )
+            assertEquals(0, third.detectorCallCount)
+            assertEquals(setOf(31), third.predictedTrackIds)
+            assertTrue(
+                third.stickerPlacements.single().sourceRect.centerX > secondRect.centerX + 0.5f,
+                "between detector refreshes, bounded face-relative velocity must continue recent head motion"
             )
         }
     }

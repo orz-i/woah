@@ -60,7 +60,9 @@ class FaceOnlyPrivacyFrameProcessor(
         val radiusX: Float,
         val radiusY: Float,
         val trustedPersonBbox: FloatRect,
-        val lastTrustedPtsUs: Long
+        val lastTrustedPtsUs: Long,
+        val relativeVelocityXPerUs: Float = 0f,
+        val relativeVelocityYPerUs: Float = 0f
     ) {
         fun project(personBbox: FloatRect, ageUs: Long): FacePrivacyEllipse? {
             if (personBbox.width <= 1f || personBbox.height <= 1f) return null
@@ -83,9 +85,20 @@ class FaceOnlyPrivacyFrameProcessor(
             // Vertical head motion is more stable against pose/bbox-height
             // changes when anchored to the top edge instead of bbox center.
             val centerDy = personBbox.top - trustedPersonBbox.top
+            val velocityAgeUs = ageUs.coerceIn(0L, MAX_FACE_VELOCITY_EXTRAPOLATION_US)
+            var relativeDx = relativeVelocityXPerUs * velocityAgeUs.toFloat()
+            var relativeDy = relativeVelocityYPerUs * velocityAgeUs.toFloat()
+            val relativeTravel = sqrt(relativeDx * relativeDx + relativeDy * relativeDy)
+            val maxRelativeTravel =
+                maxOf(radiusX, radiusY) * 2f * MAX_FACE_VELOCITY_TRAVEL_DIAMETERS
+            if (relativeTravel > maxRelativeTravel && relativeTravel > 1e-3f) {
+                val scale = maxRelativeTravel / relativeTravel
+                relativeDx *= scale
+                relativeDy *= scale
+            }
             return FacePrivacyEllipse(
-                centerX = centerX + centerDx,
-                centerY = centerY + centerDy,
+                centerX = centerX + centerDx + relativeDx,
+                centerY = centerY + centerDy + relativeDy,
                 radiusX = (radiusX * bboxScale * ageExpansion).coerceAtLeast(1f),
                 radiusY = (radiusY * bboxScale * ageExpansion).coerceAtLeast(1f),
                 source = FacePrivacyRegionSource.PREDICTED_FACE
@@ -96,16 +109,44 @@ class FaceOnlyPrivacyFrameProcessor(
             fun from(
                 region: FacePrivacyEllipse,
                 personBbox: FloatRect,
-                ptsUs: Long
+                ptsUs: Long,
+                previous: CachedFaceGeometry? = null
             ): CachedFaceGeometry? {
                 if (personBbox.width <= 1f || personBbox.height <= 1f) return null
+                var velocityXPerUs = 0f
+                var velocityYPerUs = 0f
+                if (previous != null && ptsUs > previous.lastTrustedPtsUs) {
+                    val previousAtCurrentPersonBox = previous.project(personBbox, ageUs = 0L)
+                    if (previousAtCurrentPersonBox != null) {
+                        val dtUs = (ptsUs - previous.lastTrustedPtsUs).toFloat().coerceAtLeast(1f)
+                        var rawVelocityX = (region.centerX - previousAtCurrentPersonBox.centerX) / dtUs
+                        var rawVelocityY = (region.centerY - previousAtCurrentPersonBox.centerY) / dtUs
+                        val rawSpeed = sqrt(rawVelocityX * rawVelocityX + rawVelocityY * rawVelocityY)
+                        val faceDiameter = maxOf(region.radiusX, region.radiusY) * 2f
+                        val maxSpeedPerUs =
+                            faceDiameter * MAX_FACE_RELATIVE_SPEED_DIAMETERS_PER_SECOND / 1_000_000f
+                        if (rawSpeed > maxSpeedPerUs && rawSpeed > 1e-9f) {
+                            val scale = maxSpeedPerUs / rawSpeed
+                            rawVelocityX *= scale
+                            rawVelocityY *= scale
+                        }
+                        velocityXPerUs =
+                            previous.relativeVelocityXPerUs * (1f - FACE_VELOCITY_UPDATE_ALPHA) +
+                                rawVelocityX * FACE_VELOCITY_UPDATE_ALPHA
+                        velocityYPerUs =
+                            previous.relativeVelocityYPerUs * (1f - FACE_VELOCITY_UPDATE_ALPHA) +
+                                rawVelocityY * FACE_VELOCITY_UPDATE_ALPHA
+                    }
+                }
                 return CachedFaceGeometry(
                     centerX = region.centerX,
                     centerY = region.centerY,
                     radiusX = region.radiusX,
                     radiusY = region.radiusY,
                     trustedPersonBbox = personBbox,
-                    lastTrustedPtsUs = ptsUs
+                    lastTrustedPtsUs = ptsUs,
+                    relativeVelocityXPerUs = velocityXPerUs,
+                    relativeVelocityYPerUs = velocityYPerUs
                 )
             }
         }
@@ -120,7 +161,7 @@ class FaceOnlyPrivacyFrameProcessor(
         ptsUs: Long
     ): FaceHeadRoiPlan? {
         val ageUs = ptsUs - cached.lastTrustedPtsUs
-        if (ageUs !in 0L..MAX_PREDICTED_FACE_AGE_US) return null
+        if (ageUs !in 0L..MAX_LOCAL_FACE_REFRESH_AGE_US) return null
         val projected = cached.project(personBbox, ageUs) ?: return null
         val frameWidth = mapper.srcWidth.toFloat()
         val frameHeight = mapper.srcHeight.toFloat()
@@ -210,9 +251,16 @@ class FaceOnlyPrivacyFrameProcessor(
         val localDetectorTrackIds = linkedSetOf<Int>()
         activeFaceOnlyTrackIds.sorted().forEach { trackId ->
             val person = personsById[trackId] ?: return@forEach
-            if (person.state == TrackState.LOST || person.state == TrackState.REMOVED) return@forEach
+            if (person.state == TrackState.REMOVED) return@forEach
             val cached = cachedFaceByTrackId[trackId]
-            val localPlan = cached?.let { planCachedFaceLocalRoi(it, person.bbox, ptsUs) }
+            val canUseIdentityLocalRoi =
+                person.observedThisFrame ||
+                    person.framesSinceLastObservation <= MAX_LOCAL_FACE_UNOBSERVED_FRAMES
+            val localPlan = if (canUseIdentityLocalRoi) {
+                cached?.let { planCachedFaceLocalRoi(it, person.bbox, ptsUs) }
+            } else {
+                null
+            }
             val plan = localPlan ?: if (person.observedThisFrame && person.state == TrackState.ACTIVE) {
                 FaceHeadRoiPlanner.plan(
                     personBbox = person.bbox,
@@ -357,7 +405,19 @@ class FaceOnlyPrivacyFrameProcessor(
                         }
                     }
                     if (selectedFace != null && region?.source == FacePrivacyRegionSource.DETECTED_FACE) {
-                        CachedFaceGeometry.from(region, person.bbox, ptsUs)?.let { cached ->
+                        CachedFaceGeometry.from(
+                            region = region,
+                            personBbox = person.bbox,
+                            ptsUs = ptsUs,
+                            // Velocity continuity is valid only when this call was
+                            // planned from the recent identity-local face cache.
+                            // A broad YOLO-head reacquisition after cache expiry
+                            // resets relative motion instead of deriving velocity
+                            // across a stale multi-hundred-ms gap.
+                            previous = cachedBeforeAttempt?.takeIf {
+                                localDetectorTrackIds.contains(trackId)
+                            }
+                        )?.let { cached ->
                             cachedFaceByTrackId[trackId] = cached
                         }
                     }
@@ -386,8 +446,7 @@ class FaceOnlyPrivacyFrameProcessor(
                     cacheAgeUs != null &&
                     cacheAgeUs >= 0L &&
                     cacheAgeUs <= MAX_PREDICTED_FACE_AGE_US &&
-                    person.framesSinceLastObservation <= MAX_PREDICTED_OBSERVATION_AGE_FRAMES &&
-                    person.state != TrackState.LOST
+                    person.framesSinceLastObservation <= MAX_LOCAL_FACE_UNOBSERVED_FRAMES
                 region = if (cacheUsable) {
                     cached.project(person.bbox, cacheAgeUs)
                 } else {
@@ -510,10 +569,15 @@ class FaceOnlyPrivacyFrameProcessor(
         const val DEFAULT_MAX_DETECTOR_CALLS_PER_FRAME = 2
         private const val INITIAL_ACQUISITION_MAX_CALLS = 8
         private const val MAX_PREDICTED_FACE_AGE_US = 150_000L
-        private const val MAX_PREDICTED_OBSERVATION_AGE_FRAMES = 6
+        private const val MAX_LOCAL_FACE_REFRESH_AGE_US = 500_000L
+        private const val MAX_LOCAL_FACE_UNOBSERVED_FRAMES = 30
         private const val MIN_PREDICTED_FACE_SCALE = 0.88f
         private const val MAX_PREDICTED_FACE_SCALE = 1.12f
         private const val MAX_PREDICTED_AGE_EXPANSION = 0.10f
+        private const val MAX_FACE_VELOCITY_EXTRAPOLATION_US = 100_000L
+        private const val MAX_FACE_VELOCITY_TRAVEL_DIAMETERS = 0.75f
+        private const val MAX_FACE_RELATIVE_SPEED_DIAMETERS_PER_SECOND = 10f
+        private const val FACE_VELOCITY_UPDATE_ALPHA = 0.65f
         private const val LOCAL_FACE_ROI_MIN_SIDE_PX = 72f
         private const val LOCAL_FACE_ROI_DIAMETER_FACTOR = 2.8f
         private const val SLOW_STAGE_LOG_THRESHOLD_MS = 20.0

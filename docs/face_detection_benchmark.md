@@ -778,6 +778,72 @@ This revision remains a candidate until the same real clip confirms both that th
 fast irrelevant FULL_BODY target disappears without residue and that FACE_ONLY
 stickers remain attached during articulated head/body motion.
 
+### Fifth real-video correction: keep long-LOST body tombstones inert and bridge face-local motion
+
+The next 751-frame real-video export came from commit
+`71c6e57a8f97b9fcd486d246907d183dfa80f897`. It confirmed that the previous
+offscreen-edge path was too narrow: `PROTECTED_OFFSCREEN_DORMANT` fired only once,
+near the end of the clip, while the user still saw an unrelated FULL_BODY mask
+appear earlier. The trace exposed a separate long-absence resurrection path.
+
+Selected FULL_BODY id 4 had no reliable assignment commit from approximately
+**0.100 s to 10.725 s**. At 10.675 s the retained protected LOST slot was pulled
+into REACQUIRING by overlap/group logic, and at 10.725 s it committed to a nearby
+detection with only **bbox IoU 0.458 / mask IoU 0.20**. Those values are below the
+strict protected LOST recovery rule (bbox >= 0.50 or mask >= 0.45), but changing
+the slot from LOST to REACQUIRING first also changed which identity-evidence gate
+was used. Worse, that transition could reconstruct `currentRenderMask` from the
+old canonical segmentation before any identity commit succeeded. This directly
+explains a stale selected full-body mask reappearing on an unrelated person.
+
+Mixed mode now treats a protected FULL_BODY slot that is past the visible LOST
+window and has no current render mask as an identity-only tombstone. Such a slot:
+
+- remains LOST until the existing strict LOST recovery path proves identity;
+- is excluded from occlusion groups and scene-motion estimation;
+- cannot be converted to OCCLUDED/REACQUIRING merely because a fresh neighboring
+  person overlaps its stale predicted/last-observed geometry;
+- cannot revive its previous full-body mask before strict recovery succeeds.
+
+The policy remains gated by mixed-mode offscreen dormancy, so historical
+FULL_BODY-only LOST behavior is unchanged. A regression reproduces the retained
+selected tombstone plus weak nearby entrant and requires the selected ID to remain
+LOST with a null mask. The focused LOST/privacy suite passes **14/14**.
+
+The same bundle also showed that FACE_ONLY follow was still detector-starved in
+exactly the difficult identity periods. Across five FACE_ONLY IDs and 751 output
+frames, the export produced **1,130 detector calls, 1,048 DETECTED, 887 PREDICTED,
+and 1,820 FALLBACK track-frames**. Calls were highly uneven: IDs 1/2/3/5/6 received
+123/289/62/358/298 calls respectively. ID 3 had only 104 reliable TrackManager
+assignment commits while accumulating 137 association ambiguities and 23
+reacquire starts. The current processor completely stopped local face detection
+in LOST, then quickly fell back to body-box head geometry, so articulated head
+motion could visibly outrun the sticker even though the face detector itself was
+healthy.
+
+FACE_ONLY therefore keeps the detector budget unchanged but uses it differently:
+
+- a recently trusted face may continue using only its small identity-local ROI
+  through short YOLO-unobserved/LOST intervals;
+- this bridge is bounded to **30 unobserved output frames** and never opens the
+  broad YOLO-head acquisition ROI while LOST; after the bound it stops and falls
+  back conservatively, so face localization cannot become an independent identity
+  tracker;
+- accepted consecutive local detections estimate bounded face-relative velocity
+  after subtracting current person-box translation;
+- between ~30 Hz detector refreshes, that velocity is extrapolated for at most
+  100 ms and at most 0.75 face diameters, letting 60 fps output frames continue
+  recent head motion instead of freezing to the torso/person bbox;
+- broad reacquisition after cache expiry resets relative velocity rather than
+  deriving motion across a stale gap.
+
+No extra steady-state detector calls per frame were added because the 71c6e57
+bundle already measured face-detector CPU p95 near **47 ms** and FACE_ONLY privacy
+p95 near **113 ms**. Local verification after this correction passes the complete
+`dance_native` JVM unit suite and compiles all Android instrumentation tests. The
+device is intentionally disconnected; real-video visual acceptance remains a
+manual follow-up.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

@@ -158,6 +158,21 @@ class TrackManager(
     private var hasInitialized = false
     private var privacyOffscreenDormancyEnabled = false
 
+    private fun isDormantMixedFullBodyIdentity(track: InternalTrack): Boolean {
+        // In mixed FULL_BODY + FACE_ONLY mode, a protected FULL_BODY identity is
+        // intentionally retained after its visible LOST mask expires so a later
+        // strong recovery can keep the user's selected ID.  That tombstone must
+        // not participate in occlusion groups or scene-motion estimation while
+        // it has no renderable privacy evidence.  Otherwise an unrelated person
+        // crossing the stale predicted box can pull the tombstone into
+        // REACQUIRING and revive an old full-body mask before identity is proven.
+        return privacyOffscreenDormancyEnabled &&
+            privacySelectedTrackIds.contains(track.id) &&
+            track.state == TrackState.LOST &&
+            track.lostFrames > config.maxMissedFrames &&
+            track.currentRenderMask == null
+    }
+
     private fun isLikelyProtectedOffscreenExit(track: InternalTrack): Boolean {
         // Offscreen dormancy is a FULL_BODY privacy-render policy. FACE_ONLY IDs
         // are identity-protected too, but their separate face fallback/sticker
@@ -325,7 +340,9 @@ class TrackManager(
         // 1. Build adjacency graph of current spatial overlaps based on predicted boxes
         val overlapAdj = mutableMapOf<Int, MutableSet<Int>>()
         val validTracks = predictedTracks.filter {
-            it.state != TrackState.REMOVED && !it.offscreenDormant
+            it.state != TrackState.REMOVED &&
+                !it.offscreenDormant &&
+                !isDormantMixedFullBodyIdentity(it)
         }
         for (t in validTracks) {
             overlapAdj[t.id] = mutableSetOf()
@@ -439,7 +456,12 @@ class TrackManager(
 
         // 5. Purge exhausted or dead groups
         val groupsToRemove = occlusionGroups.filter { group ->
-            val aliveTracks = predictedTracks.filter { group.trackIds.contains(it.id) && it.state != TrackState.REMOVED }
+            val aliveTracks = predictedTracks.filter {
+                group.trackIds.contains(it.id) &&
+                    it.state != TrackState.REMOVED &&
+                    !it.offscreenDormant &&
+                    !isDormantMixedFullBodyIdentity(it)
+            }
             val isExhausted = (group.state == OcclusionGroupState.REACQUIRING && group.reacquireFrames > config.postOcclusionGraceFrames)
             aliveTracks.size < 2 || isExhausted
         }
@@ -510,7 +532,9 @@ class TrackManager(
         }
 
         val sceneMotion = SceneMotionEstimator.estimateSceneMotion(
-            tracks.filter { !it.offscreenDormant },
+            tracks.filter {
+                !it.offscreenDormant && !isDormantMixedFullBodyIdentity(it)
+            },
             detections,
             config
         )
@@ -1234,6 +1258,17 @@ class TrackManager(
 
                 if (track.offscreenDormant) {
                     track.currentRenderMask = null
+                    continue
+                }
+                if (isDormantMixedFullBodyIdentity(track)) {
+                    // A long-lost mixed-mode FULL_BODY slot is identity evidence
+                    // only. Do not let a freshly observed neighboring person turn
+                    // it into OCCLUDED/REACQUIRING and implicitly restore the old
+                    // segmentation mask before strict LOST recovery succeeds.
+                    track.state = TrackState.LOST
+                    track.currentRenderMask = null
+                    track.occludedByTrackIds.clear()
+                    track.occlusionMotionBbox = null
                     continue
                 }
                 if (isLikelyProtectedOffscreenExit(track)) {
