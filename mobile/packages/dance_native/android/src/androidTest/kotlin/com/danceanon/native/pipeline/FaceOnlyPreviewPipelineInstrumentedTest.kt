@@ -47,6 +47,8 @@ class FaceOnlyPreviewPipelineInstrumentedTest {
         val pipeline = PreviewPipeline(context, segmenter, cache)
         var baselineBitmap: Bitmap? = null
         var faceBitmap: Bitmap? = null
+        var mixedBitmap: Bitmap? = null
+        var conflictBitmap: Bitmap? = null
         try {
             createAvcFixture(sourceBitmap, input)
             assertTrue(input.exists() && input.length() > 0L, "Preview AVC fixture was not created")
@@ -82,6 +84,70 @@ class FaceOnlyPreviewPipelineInstrumentedTest {
                 "Preview FACE_ONLY unexpectedly altered lower body: mean RGB delta=$lowerBodyDelta"
             )
 
+            val mixed = pipeline.renderPreview(
+                previewRequest(
+                    cacheId = cacheId,
+                    faceOnlyIds = listOf(TARGET_PERSON_ID),
+                    fullBodyIds = listOf(SECONDARY_PERSON_ID)
+                )
+            )
+            mixedBitmap = assertNotNull(BitmapFactory.decodeFile(mixed.thumbnailPath))
+            val mixedTargetPrivacy = changedRedPrivacyStatsInRect(
+                baselineBitmap,
+                mixedBitmap,
+                left = 180,
+                top = 120,
+                rightExclusive = 560,
+                bottomExclusive = 820
+            )
+            val mixedSecondaryPrivacy = changedRedPrivacyStatsInRect(
+                baselineBitmap,
+                mixedBitmap,
+                left = 0,
+                top = 0,
+                rightExclusive = 180,
+                bottomExclusive = mixedBitmap.height
+            )
+            assertTrue(
+                mixedTargetPrivacy.count >= 700,
+                "Mixed Preview lost FACE_ONLY target privacy: $mixedTargetPrivacy"
+            )
+            assertTrue(
+                mixedSecondaryPrivacy.count >= 300,
+                "Mixed Preview lost independent FULL_BODY privacy for ID 0: $mixedSecondaryPrivacy"
+            )
+            val mixedLowerBodyDelta = meanRgbDelta(
+                baselineBitmap,
+                mixedBitmap,
+                LOWER_X,
+                LOWER_Y,
+                SAMPLE_RADIUS
+            )
+            assertTrue(
+                mixedLowerBodyDelta <= 45.0,
+                "Mixed Preview expanded FACE_ONLY target to FULL_BODY: mean RGB delta=$mixedLowerBodyDelta"
+            )
+
+            val conflict = pipeline.renderPreview(
+                previewRequest(
+                    cacheId = cacheId,
+                    faceOnlyIds = listOf(TARGET_PERSON_ID),
+                    fullBodyIds = listOf(TARGET_PERSON_ID)
+                )
+            )
+            conflictBitmap = assertNotNull(BitmapFactory.decodeFile(conflict.thumbnailPath))
+            val conflictLowerBodyDelta = meanRgbDelta(
+                baselineBitmap,
+                conflictBitmap,
+                LOWER_X,
+                LOWER_Y,
+                SAMPLE_RADIUS
+            )
+            assertTrue(
+                conflictLowerBodyDelta >= 80.0,
+                "FULL_BODY did not win request conflict for target ID 1: mean RGB delta=$conflictLowerBodyDelta"
+            )
+
             var failedClosed = false
             try {
                 pipeline.renderPreview(
@@ -98,6 +164,8 @@ class FaceOnlyPreviewPipelineInstrumentedTest {
         } finally {
             baselineBitmap?.recycle()
             faceBitmap?.recycle()
+            mixedBitmap?.recycle()
+            conflictBitmap?.recycle()
             sourceBitmap.recycle()
             pipeline.clearForAnalysis(cacheId)
             segmenter.close()
@@ -107,10 +175,14 @@ class FaceOnlyPreviewPipelineInstrumentedTest {
         Unit
     }
 
-    private fun previewRequest(cacheId: String, faceOnlyIds: List<Long>?) = PreviewRequestDto(
+    private fun previewRequest(
+        cacheId: String,
+        faceOnlyIds: List<Long>?,
+        fullBodyIds: List<Long> = emptyList()
+    ) = PreviewRequestDto(
         analysisCacheId = cacheId,
         timestampMs = 0L,
-        selectedPersonIds = emptyList(),
+        selectedPersonIds = fullBodyIds,
         effects = solidRedEffects(),
         follow = disabledFollow(),
         faceOnlyPersonIds = faceOnlyIds
@@ -183,13 +255,35 @@ class FaceOnlyPreviewPipelineInstrumentedTest {
     }
 
     private fun changedRedPrivacyStats(input: Bitmap, output: Bitmap): PrivacyDeltaStats {
+        return changedRedPrivacyStatsInRect(
+            input,
+            output,
+            left = 0,
+            top = 0,
+            rightExclusive = output.width,
+            bottomExclusive = output.height
+        )
+    }
+
+    private fun changedRedPrivacyStatsInRect(
+        input: Bitmap,
+        output: Bitmap,
+        left: Int,
+        top: Int,
+        rightExclusive: Int,
+        bottomExclusive: Int
+    ): PrivacyDeltaStats {
         var count = 0
         var minX = output.width
         var minY = output.height
         var maxX = -1
         var maxY = -1
-        for (y in 0 until output.height) {
-            for (x in 0 until output.width) {
+        val xStart = left.coerceIn(0, output.width)
+        val xEnd = rightExclusive.coerceIn(xStart, output.width)
+        val yStart = top.coerceIn(0, output.height)
+        val yEnd = bottomExclusive.coerceIn(yStart, output.height)
+        for (y in yStart until yEnd) {
+            for (x in xStart until xEnd) {
                 val before = input.getPixel(x, y)
                 val after = output.getPixel(x, y)
                 val r = Color.red(after)
@@ -256,6 +350,7 @@ class FaceOnlyPreviewPipelineInstrumentedTest {
     companion object {
         private const val SOURCE_ASSET = "person3_frame.jpg"
         private const val TARGET_PERSON_ID = 1L
+        private const val SECONDARY_PERSON_ID = 0L
         private const val FRAME_W = 720
         private const val FRAME_H = 1280
         private const val FPS = 10

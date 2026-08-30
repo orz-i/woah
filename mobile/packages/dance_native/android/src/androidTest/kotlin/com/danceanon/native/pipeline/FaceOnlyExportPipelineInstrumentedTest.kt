@@ -133,6 +133,103 @@ class FaceOnlyExportPipelineInstrumentedTest {
     }
 
     @Test
+    fun mixedFullBodyAndFaceOnlyTargetsRemainIndependent() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        assertEquals(EXPECTED_SOURCE_SHA256, sha256Asset(context, SOURCE_ASSET))
+
+        val root = File(context.getExternalFilesDir(null) ?: context.filesDir, "face_mixed_smoke").apply {
+            mkdirs()
+        }
+        val input = File(root, "input_mixed_avc.mp4")
+        val output = File(root, "output_mixed_privacy.mp4")
+        input.delete()
+        output.delete()
+
+        val sourceBitmap = decodeAsset(context, SOURCE_ASSET)
+        try {
+            createAvcFixture(sourceBitmap, input)
+            val segmenter = YoloLiteRtSegmenter(context)
+            val finalStatus = AtomicReference<JobStatusDto?>()
+            try {
+                ExportPipeline(context, segmenter).execute(
+                    jobId = "mixed_privacy_smoke",
+                    sourceUri = input.absolutePath,
+                    request = ExportRequestDto(
+                        sourceUri = input.absolutePath,
+                        analysisCacheId = "",
+                        outputFilePath = output.absolutePath,
+                        selectedPersonIds = listOf(SECONDARY_PERSON_ID),
+                        effects = solidRedEffects(),
+                        follow = disabledFollow(),
+                        targetWidth = FRAME_W.toLong(),
+                        targetHeight = FRAME_H.toLong(),
+                        targetFps = FPS.toDouble(),
+                        videoBitrate = 4_000_000L,
+                        processingProfile = "quality",
+                        enableLivePreview = false,
+                        faceOnlyPersonIds = listOf(TARGET_PERSON_ID)
+                    ),
+                    isCancelled = AtomicBoolean(false),
+                    onStatusChange = { finalStatus.set(it) }
+                )
+            } finally {
+                segmenter.close()
+            }
+
+            val status = assertNotNull(finalStatus.get())
+            assertEquals("completed", status.state, "Mixed export did not complete: ${status.errorMessage}")
+            assertTrue(output.exists() && output.length() > 0L, "Mixed privacy output was not produced")
+
+            val inputFrame = decodeVideoFrame(input, VERIFY_TIME_US)
+            val outputFrame = decodeVideoFrame(output, VERIFY_TIME_US)
+            try {
+                val targetPrivacy = changedRedPrivacyStatsInRect(
+                    inputFrame,
+                    outputFrame,
+                    left = 180,
+                    top = 120,
+                    rightExclusive = 560,
+                    bottomExclusive = 820
+                )
+                val secondaryPrivacy = changedRedPrivacyStatsInRect(
+                    inputFrame,
+                    outputFrame,
+                    left = 0,
+                    top = 0,
+                    rightExclusive = 180,
+                    bottomExclusive = outputFrame.height
+                )
+                assertTrue(
+                    targetPrivacy.count >= 700,
+                    "Mixed Export lost FACE_ONLY target privacy: $targetPrivacy"
+                )
+                assertTrue(
+                    secondaryPrivacy.count >= 300,
+                    "Mixed Export lost independent FULL_BODY privacy for ID 0: $secondaryPrivacy"
+                )
+                val targetLowerBodyDelta = meanRgbDelta(
+                    inputFrame,
+                    outputFrame,
+                    LOWER_X,
+                    LOWER_Y,
+                    SAMPLE_RADIUS
+                )
+                assertTrue(
+                    targetLowerBodyDelta <= 45.0,
+                    "Mixed Export expanded FACE_ONLY target to FULL_BODY: mean RGB delta=$targetLowerBodyDelta"
+                )
+            } finally {
+                inputFrame.recycle()
+                outputFrame.recycle()
+            }
+        } finally {
+            sourceBitmap.recycle()
+            input.delete()
+            output.delete()
+        }
+    }
+
+    @Test
     fun faceOnlyPrivacyFollowsDeterministicAffineDanceMotion() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val meta = loadDynamicFrameMeta(context)
@@ -347,13 +444,35 @@ class FaceOnlyExportPipelineInstrumentedTest {
     }
 
     private fun changedRedPrivacyStats(input: Bitmap, output: Bitmap): PrivacyDeltaStats {
+        return changedRedPrivacyStatsInRect(
+            input,
+            output,
+            left = 0,
+            top = 0,
+            rightExclusive = output.width,
+            bottomExclusive = output.height
+        )
+    }
+
+    private fun changedRedPrivacyStatsInRect(
+        input: Bitmap,
+        output: Bitmap,
+        left: Int,
+        top: Int,
+        rightExclusive: Int,
+        bottomExclusive: Int
+    ): PrivacyDeltaStats {
         var count = 0
         var minX = output.width
         var minY = output.height
         var maxX = -1
         var maxY = -1
-        for (y in 0 until output.height) {
-            for (x in 0 until output.width) {
+        val xStart = left.coerceIn(0, output.width)
+        val xEnd = rightExclusive.coerceIn(xStart, output.width)
+        val yStart = top.coerceIn(0, output.height)
+        val yEnd = bottomExclusive.coerceIn(yStart, output.height)
+        for (y in yStart until yEnd) {
+            for (x in xStart until xEnd) {
                 val before = input.getPixel(x, y)
                 val after = output.getPixel(x, y)
                 val r = Color.red(after)
@@ -475,6 +594,7 @@ class FaceOnlyExportPipelineInstrumentedTest {
         // on frame 0 of this fixture. TrackManager initialization therefore
         // assigns it ID 1 when no analysis cache is supplied.
         private const val TARGET_PERSON_ID = 1L
+        private const val SECONDARY_PERSON_ID = 0L
         private const val VERIFY_TIME_US = 300_000L
         private const val LOWER_X = 337
         private const val LOWER_Y = 900
