@@ -100,6 +100,54 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
     );
   }
 
+  Widget _buildPrivacyModeButton({
+    required String label,
+    required IconData icon,
+    required bool selected,
+    required VoidCallback onTap,
+    Color selectedColor = Colors.white,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected
+                ? selectedColor
+                : const Color(0xFF1B1B20).withAlpha(225),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: selected ? selectedColor : Colors.white24,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: selected ? Colors.black : Colors.white70,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: selected ? Colors.black : Colors.white70,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   /// 全屏主舞台内容
   Widget _buildStageContent(
     BuildContext context,
@@ -189,9 +237,23 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
       },
       itemBuilder: (context, index) {
         final person = persons[index];
-        final isSelected = state.selectedPersonIds.contains(person.id);
+        final privacyMode = state.privacyModeForPerson(person.id);
+        final isFullBody = privacyMode == PersonPrivacyMode.fullBody;
+        final isFaceOnly = privacyMode == PersonPrivacyMode.faceOnly;
+        final isProtected = privacyMode != PersonPrivacyMode.none;
         final hasThumb = person.thumbnailPath.isNotEmpty && File(person.thumbnailPath).existsSync();
         final confPercent = (person.confidence * 100).toInt();
+        final activeColor = isFaceOnly ? const Color(0xFF9ED0FF) : Colors.white;
+        final statusLabel = switch (privacyMode) {
+          PersonPrivacyMode.none => '未保护',
+          PersonPrivacyMode.faceOnly => '仅人脸',
+          PersonPrivacyMode.fullBody => '全身保护',
+        };
+        final statusIcon = switch (privacyMode) {
+          PersonPrivacyMode.none => Icons.radio_button_unchecked_rounded,
+          PersonPrivacyMode.faceOnly => Icons.face_retouching_natural_rounded,
+          PersonPrivacyMode.fullBody => Icons.shield_rounded,
+        };
 
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
@@ -206,7 +268,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
               // 1. 人物大图完整居中展示
               Center(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 70, 24, 140),
+                  padding: const EdgeInsets.fromLTRB(24, 70, 24, 225),
                   child: hasThumb
                       ? Image.file(
                           File(person.thumbnailPath),
@@ -219,7 +281,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
 
               // 2. 底部集成式状态指示胶囊 (图标 + 人物信息，点击即翻转，顶部零杂乱)
               Positioned(
-                bottom: 108,
+                bottom: 160,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(22),
                   child: BackdropFilter(
@@ -228,18 +290,18 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
-                        color: isSelected
-                            ? Colors.white
+                        color: isProtected
+                            ? activeColor
                             : const Color(0xFF1B1B20).withAlpha(220),
                         borderRadius: BorderRadius.circular(22),
                         border: Border.all(
-                          color: isSelected ? Colors.white : Colors.white24,
+                          color: isProtected ? activeColor : Colors.white24,
                           width: 1.2,
                         ),
                         boxShadow: [
-                          if (isSelected)
+                          if (isProtected)
                             BoxShadow(
-                              color: Colors.white.withAlpha(60),
+                              color: activeColor.withAlpha(60),
                               blurRadius: 16,
                               spreadRadius: 1,
                             ),
@@ -250,15 +312,15 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
                         children: [
                           // 仅纯图标状态
                           Icon(
-                            isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                            statusIcon,
                             size: 18,
-                            color: isSelected ? Colors.black : Colors.white60,
+                            color: isProtected ? Colors.black : Colors.white60,
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            '人物 ${person.id}   •   $confPercent%   •   第 ${index + 1}/${persons.length} 位',
+                            '人物 ${person.id}   •   $statusLabel   •   $confPercent%   •   第 ${index + 1}/${persons.length} 位',
                             style: TextStyle(
-                              color: isSelected ? Colors.black : Colors.white,
+                              color: isProtected ? Colors.black : Colors.white,
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                               letterSpacing: 0.2,
@@ -268,6 +330,43 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
                       ),
                     ),
                   ),
+                ),
+              ),
+
+              // 3. 显式隐私模式选择。整页点击仍保持历史“全身选择”行为；
+              // FACE_ONLY 必须通过明确按钮选择，避免隐式三态循环误操作。
+              Positioned(
+                bottom: 112,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildPrivacyModeButton(
+                      label: '全身',
+                      icon: Icons.shield_rounded,
+                      selected: isFullBody,
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        controller.setPrivacyMode(
+                          person.id,
+                          isFullBody ? PersonPrivacyMode.none : PersonPrivacyMode.fullBody,
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 10),
+                    _buildPrivacyModeButton(
+                      label: '仅人脸',
+                      icon: Icons.face_retouching_natural_rounded,
+                      selected: isFaceOnly,
+                      selectedColor: const Color(0xFF9ED0FF),
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        controller.setPrivacyMode(
+                          person.id,
+                          isFaceOnly ? PersonPrivacyMode.none : PersonPrivacyMode.faceOnly,
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -283,9 +382,11 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
     PersonSelectionState state,
     PersonSelectionController controller,
   ) {
-    final selectedCount = state.selectedPersonIds.length;
+    final selectedCount = state.privacyTargetIds.length;
     final totalCount = state.persons.length;
-    final allSelected = selectedCount == totalCount && totalCount > 0;
+    final allSelected = state.selectedPersonIds.length == totalCount &&
+        state.faceOnlyPersonIds.isEmpty &&
+        totalCount > 0;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
@@ -315,7 +416,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
 
               // 标题与计数
               Text(
-                totalCount > 0 ? '已选择 $selectedCount / $totalCount 位' : '选择保护人物',
+                totalCount > 0 ? '已保护 $selectedCount / $totalCount 位' : '选择保护人物',
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -366,7 +467,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
     PersonSelectionController controller,
   ) {
     final totalCount = state.persons.length;
-    final selectedCount = state.selectedPersonIds.length;
+    final selectedCount = state.privacyTargetIds.length;
     final hasSelection = selectedCount > 0;
 
     return Column(
@@ -380,7 +481,8 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(totalCount, (index) {
                 final isCurrent = index == _currentPage;
-                final isSelected = state.selectedPersonIds.contains(state.persons[index].id);
+                final mode = state.privacyModeForPerson(state.persons[index].id);
+                final isSelected = mode != PersonPrivacyMode.none;
                 return GestureDetector(
                   onTap: () => _scrollToPage(index, totalCount),
                   child: AnimatedContainer(
@@ -391,7 +493,9 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
                     decoration: BoxDecoration(
                       color: isCurrent
                           ? Colors.white
-                          : (isSelected ? Colors.white.withAlpha(120) : Colors.white24),
+                          : (mode == PersonPrivacyMode.faceOnly
+                              ? const Color(0xFF9ED0FF).withAlpha(150)
+                              : (isSelected ? Colors.white.withAlpha(120) : Colors.white24)),
                       borderRadius: BorderRadius.circular(3),
                     ),
                   ),

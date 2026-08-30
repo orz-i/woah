@@ -375,11 +375,11 @@ under a test setup that is not artificially suspended by the device OS.
 ### Preview integration
 
 `PreviewRequestDto.faceOnlyPersonIds` is now consumed by the native
-`PreviewPipeline`, but Flutter UI still does not set or expose the field. Preview
-resolves the same FULL_BODY-wins tri-state policy as Export. When the face-only
-set is empty, Preview keeps the original renderer path and does not create a face
-sidecar. When FACE_ONLY is requested, the already-stable analysis/preview person
-IDs remain authoritative; the uploaded bitmap texture is cropped with
+`PreviewPipeline`. Preview resolves the same FULL_BODY-wins tri-state policy as
+Export. When the face-only set is empty, Preview keeps the original renderer path
+and does not create a face sidecar. When FACE_ONLY is requested, the
+already-stable analysis/preview person IDs remain authoritative; the uploaded
+bitmap texture is cropped with
 `FaceOnlyPrivacyFrameProcessor` using the existing YOLO mask mapper and the bitmap
 texture matrix, then merged through `GlRenderer.additionalResolvedPrivacy`.
 
@@ -388,9 +388,51 @@ an unselected baseline frame was rendered first, then FACE_ONLY ID 1 produced a
 material local red privacy region while the reviewed lower-body patch remained
 close to the baseline. A subsequent request for nonexistent FACE_ONLY ID 999
 raised a native render error instead of returning an unprotected preview. The
-existing static and dynamic FACE_ONLY Export device tests remained 2/2 passing
-after the Preview change. No `faceOnlyPersonIds` usage exists in `mobile/app/lib`,
-so this remains an internal native capability rather than a user-visible mode.
+existing static and dynamic FACE_ONLY Export device tests remained passing after
+the Preview change.
+
+Before exposing the mode in Flutter, mixed-mode acceptance was added on PLK110:
+
+- Preview verified FULL_BODY ID 0 and FACE_ONLY ID 1 in the same frame while the
+  FACE_ONLY target's reviewed lower-body patch remained unmodified;
+- Preview also verified that a request containing the same ID in both sets uses
+  FULL_BODY, matching the native/domain conflict rule;
+- Export then passed all **3/3** end-to-end tests, including an independent
+  FULL_BODY ID 0 + FACE_ONLY ID 1 mixed export.
+
+### Flutter project model and user-visible selection
+
+Flutter now persists `DanceProject.faceOnlyPersonIds` in addition to the legacy
+`selectedPersonIds` FULL_BODY set. Missing `faceOnlyPersonIds` in older project
+JSON defaults to an empty set, so existing projects retain historical behavior.
+`DanceProject.privacyModeForPerson()` is the canonical Dart-side resolver and,
+like native, gives FULL_BODY priority when an ID is present in both sets.
+`privacyTargetIds` is the union used by result/preview counts.
+
+`DanceNativeClient`, `NativeProcessingRepository`, Effect Editor preview, Frame
+Preview, and Export now pass the face-only set through to the existing Pigeon
+request field. The person-selection state maintains mutually exclusive FULL_BODY
+and FACE_ONLY sets and saves `PersonTrack.selected` only as the legacy FULL_BODY
+mirror.
+
+The person-selection screen now exposes two explicit controls for each person:
+
+- **全身** -> FULL_BODY;
+- **仅人脸** -> FACE_ONLY.
+
+Tapping the large person card preserves the previous behavior and toggles
+FULL_BODY, rather than implicitly cycling three states. Tapping the active mode
+again clears that person's privacy mode. `全选` intentionally converts every
+person to FULL_BODY and clears FACE_ONLY; `清空` clears both sets. Header, page
+indicators, action count, preview summary, and export result counts treat either
+privacy mode as a protected person.
+
+The dedicated Flutter widget/controller regression starts from a persisted
+FACE_ONLY project and verifies FACE_ONLY -> FULL_BODY -> FACE_ONLY mutual
+exclusion plus `buildConfiguredProject()` persistence. The final app verification
+passed all Flutter tests, `flutter analyze` with zero issues, and
+`flutter build apk --debug` successfully produced the integrated Android debug
+APK.
 
 ## Test fixtures and paths
 
