@@ -34,6 +34,7 @@ data class FaceOnlyPrivacyFrameResult(
     val detectorCalledTrackIds: Set<Int>,
     val detectorRejectedTrackIds: Set<Int>,
     val bodyMaskGuidedTrackIds: Set<Int>,
+    val positionClampedTrackIds: Set<Int>,
     val roiReadbackMs: Double,
     val maskBuildMs: Double,
     val privacyResolveMs: Double,
@@ -235,6 +236,7 @@ class FaceOnlyPrivacyFrameProcessor(
                 detectorCalledTrackIds = emptySet(),
                 detectorRejectedTrackIds = emptySet(),
                 bodyMaskGuidedTrackIds = emptySet(),
+                positionClampedTrackIds = emptySet(),
                 roiReadbackMs = 0.0,
                 maskBuildMs = 0.0,
                 privacyResolveMs = 0.0,
@@ -329,6 +331,7 @@ class FaceOnlyPrivacyFrameProcessor(
         val detectorCalledTrackIds = linkedSetOf<Int>()
         val detectorRejectedTrackIds = linkedSetOf<Int>()
         val bodyMaskGuidedTrackIds = linkedSetOf<Int>()
+        val positionClampedTrackIds = linkedSetOf<Int>()
         var roiReadbackMs = 0.0
         var maskBuildMs = 0.0
         val stickerPlacements = mutableListOf<FaceStickerPlacement>()
@@ -427,12 +430,20 @@ class FaceOnlyPrivacyFrameProcessor(
                 }?.region
             }
             if (region != null) {
+                val rawCenterX = region.centerX
+                val rawCenterY = region.centerY
                 region = temporalStabilizer.stabilize(
                     trackId = trackId,
                     rawRegion = region,
                     personBbox = person.bbox,
                     ptsUs = ptsUs
                 )
+                if (
+                    kotlin.math.abs(region.centerX - rawCenterX) > POSITION_CLAMP_DIAGNOSTIC_EPSILON_PX ||
+                    kotlin.math.abs(region.centerY - rawCenterY) > POSITION_CLAMP_DIAGNOSTIC_EPSILON_PX
+                ) {
+                    positionClampedTrackIds += trackId
+                }
                 val maskStartNs = System.nanoTime()
                 val builtMask = FacePrivacyMaskBuilder.build(listOf(region), mapper)
                 maskBuildMs += (System.nanoTime() - maskStartNs) / 1_000_000.0
@@ -513,6 +524,7 @@ class FaceOnlyPrivacyFrameProcessor(
             detectorCalledTrackIds = detectorCalledTrackIds,
             detectorRejectedTrackIds = detectorRejectedTrackIds,
             bodyMaskGuidedTrackIds = bodyMaskGuidedTrackIds,
+            positionClampedTrackIds = positionClampedTrackIds,
             roiReadbackMs = roiReadbackMs,
             maskBuildMs = maskBuildMs,
             privacyResolveMs = privacyResolveMs,
@@ -546,6 +558,7 @@ class FaceOnlyPrivacyFrameProcessor(
         private const val MAX_PREDICTED_AGE_EXPANSION = 0.10f
         private const val LOCAL_FACE_ROI_MIN_SIDE_PX = 72f
         private const val LOCAL_FACE_ROI_DIAMETER_FACTOR = 2.8f
+        private const val POSITION_CLAMP_DIAGNOSTIC_EPSILON_PX = 0.25f
         private const val SLOW_STAGE_LOG_THRESHOLD_MS = 20.0
 
         fun create(context: Context, mapper: ModelCoordinateMapper): FaceOnlyPrivacyFrameProcessor {

@@ -20,6 +20,7 @@ class FacePrivacyTemporalStabilizer {
         val detectedRadiusY: Float?,
         val detectedPersonWidth: Float?,
         val detectedPersonHeight: Float?,
+        val personBbox: FloatRect,
         val lastPtsUs: Long
     )
 
@@ -105,13 +106,35 @@ class FacePrivacyTemporalStabilizer {
             val smoothedRadiusX = lerp(previous.output.radiusX, target.radiusX, sizeAlpha)
             val smoothedRadiusY = lerp(previous.output.radiusY, target.radiusY, sizeAlpha)
 
-            // Position is privacy-critical and must follow the newest detector /
-            // YOLO-owned head geometry immediately. Only size is stabilized.
-            // Center smoothing looked pleasant on static fixtures but created a
-            // visible trailing sticker on fast 60 fps dance motion.
+            // Follow whole-person translation immediately, but bound only the
+            // *residual* face motion relative to that translation. Real-video
+            // telemetry showed 90-197 px one-frame sticker jumps while reliable
+            // person-box center motion stayed much smaller. Those jumps are not
+            // plausible articulated head motion at 60 fps; they come from
+            // DETECTED/PREDICTED/FALLBACK geometry switches or a bad local face
+            // candidate. A simple center low-pass caused trailing in earlier
+            // tests, so do not smooth normal motion: clamp only an implausible
+            // residual and preserve the direction of the newest evidence.
+            val rawDtSeconds = (ptsUs - previous.lastPtsUs).coerceAtLeast(0L) / 1_000_000.0
+            val personDx = personBbox.centerX - previous.personBbox.centerX
+            val personDy = personBbox.top - previous.personBbox.top
+            val expectedCenterX = previous.output.centerX + personDx
+            val expectedCenterY = previous.output.centerY + personDy
+            val residualDx = target.centerX - expectedCenterX
+            val residualDy = target.centerY - expectedCenterY
+            val residualDistance = sqrt(residualDx * residualDx + residualDy * residualDy)
+            val referenceRadius = max(
+                max(previous.output.radiusX, previous.output.radiusY),
+                max(target.radiusX, target.radiusY)
+            )
+            val maxResidualStep = max(POSITION_MIN_RESIDUAL_STEP_PX, referenceRadius * POSITION_MAX_RADIUS_STEP)
+            val clampPosition = rawDtSeconds <= POSITION_GATE_MAX_DT_SECONDS &&
+                residualDistance > maxResidualStep && residualDistance > 1e-3f
+            val centerScale = if (clampPosition) maxResidualStep / residualDistance else 1f
+
             FacePrivacyEllipse(
-                centerX = target.centerX,
-                centerY = target.centerY,
+                centerX = if (clampPosition) expectedCenterX + residualDx * centerScale else target.centerX,
+                centerY = if (clampPosition) expectedCenterY + residualDy * centerScale else target.centerY,
                 radiusX = max(smoothedRadiusX, target.radiusX * PRIVACY_TARGET_FLOOR),
                 radiusY = max(smoothedRadiusY, target.radiusY * PRIVACY_TARGET_FLOOR),
                 source = target.source
@@ -124,6 +147,7 @@ class FacePrivacyTemporalStabilizer {
             detectedRadiusY = detectedRadiusY,
             detectedPersonWidth = detectedPersonWidth,
             detectedPersonHeight = detectedPersonHeight,
+            personBbox = personBbox,
             lastPtsUs = ptsUs
         )
         return output
@@ -147,6 +171,9 @@ class FacePrivacyTemporalStabilizer {
 
         private const val DETECTED_REFERENCE_ALPHA = 0.25f
         private const val PRIVACY_TARGET_FLOOR = 0.90f
+        private const val POSITION_MIN_RESIDUAL_STEP_PX = 10f
+        private const val POSITION_MAX_RADIUS_STEP = 0.80f
+        private const val POSITION_GATE_MAX_DT_SECONDS = 0.10
         private const val MIN_DT_SECONDS = 1.0 / 120.0
         private const val MAX_DT_SECONDS = 0.25
         private const val DETECTED_GROW_TIME_CONSTANT_SECONDS = 0.075

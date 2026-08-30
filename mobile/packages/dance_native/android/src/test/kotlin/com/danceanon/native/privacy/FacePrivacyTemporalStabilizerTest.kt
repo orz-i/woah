@@ -89,6 +89,37 @@ class FacePrivacyTemporalStabilizerTest {
     }
 
     @Test
+    fun `implausible one frame face jump is bounded relative to stable person motion`() {
+        val stabilizer = FacePrivacyTemporalStabilizer()
+        val first = FacePrivacyEllipse(200f, 170f, 45f, 55f, FacePrivacyRegionSource.DETECTED_FACE)
+        stabilizer.stabilize(11, first, person, 0L)
+
+        val badSwitch = FacePrivacyEllipse(380f, 170f, 45f, 55f, FacePrivacyRegionSource.DETECTED_FACE)
+        val output = stabilizer.stabilize(11, badSwitch, person, 16_666L)
+
+        assertTrue(output.centerX > first.centerX, "bounded output should still move toward newest evidence")
+        assertTrue(
+            output.centerX < 260f,
+            "180 px one-frame residual must be clamped to a face-scale step, got ${output.centerX}"
+        )
+        assertEquals(first.centerY, output.centerY)
+    }
+
+    @Test
+    fun `whole person translation is not slowed by relative face jump gate`() {
+        val stabilizer = FacePrivacyTemporalStabilizer()
+        val first = FacePrivacyEllipse(180f, 170f, 45f, 55f, FacePrivacyRegionSource.DETECTED_FACE)
+        stabilizer.stabilize(12, first, person, 0L)
+
+        val movedPerson = FloatRect(220f, 100f, 420f, 700f)
+        val translated = FacePrivacyEllipse(300f, 170f, 45f, 55f, FacePrivacyRegionSource.PREDICTED_FACE)
+        val output = stabilizer.stabilize(12, translated, movedPerson, 16_666L)
+
+        assertEquals(translated.centerX, output.centerX)
+        assertEquals(translated.centerY, output.centerY)
+    }
+
+    @Test
     fun `fallback without trusted detection keeps original conservative geometry`() {
         val stabilizer = FacePrivacyTemporalStabilizer()
         val rawFallback = FacePrivacyEllipse(200f, 184f, 110f, 130f, FacePrivacyRegionSource.YOLO_HEAD_FALLBACK)

@@ -974,6 +974,52 @@ Export diagnostics additionally record `face_sticker_max_center_step_by_track_id
 so the next real bundle can quantify any remaining abrupt face motion instead of
 inferring drift from size ranges alone.
 
+### Eighth real-video correction: clamp only non-physical face motion relative to the person
+
+The next 751-frame manual bundle is from
+`141d139bfc077859278657e52adf4fd6b0aa5229`. It validates the mixed FULL_BODY
+stale-mask fix and isolates the remaining FACE_ONLY defect more sharply.
+
+FULL_BODY id 4 had only four reliable commits, ending at **0.100066 s**. The new
+mixed-mode render policy fired exactly as designed at **0.150100 s** with
+`MIXED_FULL_BODY_STALE_MASK_SUPPRESSED` after the third real miss. No later id-4
+assignment commit succeeded. Subsequent weak group candidates remained ambiguous
+and failed protected identity evidence, so this bundle provides positive evidence
+that the old id-4 full-body segmentation is no longer being resurrected after the
+suppression point. The threshold is therefore not tightened again.
+
+FACE_ONLY metrics are roughly stable rather than materially better or worse:
+
+- detector calls: **997**;
+- rejected calls: **65**;
+- DETECTED / PREDICTED / FALLBACK track-frames: **853 / 1,008 / 1,894**;
+- body-mask-guided track-frames: **447**, down from 810 after the narrow-run gate;
+- detector CPU p95: about **46 ms** and total FACE_ONLY privacy p95: about
+  **112 ms**.
+
+The new center-step metric reveals the remaining visual failure directly. Maximum
+one-output-frame sticker-center movement for IDs 1/2/3/5/6 was approximately
+**197 / 100 / 90 / 106 / 112 px**. Reliable person detection-bbox center jumps
+were substantially smaller, so the extra motion is introduced by face geometry
+switching rather than by whole-person tracking. At 60 fps, a 90-197 px residual
+head jump is not physically plausible for these roughly 29-119 px stickers.
+
+`FacePrivacyTemporalStabilizer` now separates whole-person translation from
+face-relative motion. Current person-box translation is applied immediately, so a
+fast dancer moving across the frame is not smoothed or delayed. Only the residual
+face displacement after subtracting that person motion is gated. If a DETECTED /
+PREDICTED / FALLBACK switch asks for an implausible residual within 100 ms, the
+center still moves toward the newest evidence but is limited to a face-scale step.
+Normal residual movement passes through unchanged. This is a jump gate rather
+than the earlier generic center low-pass that caused visible trailing.
+
+The next export summary additionally reports
+`face_position_clamped_track_frames` and
+`face_position_clamped_frames_by_track_id`. Acceptance should therefore check
+both that the 90-197 px maxima collapse materially and that the clamp count is
+concentrated on the visually problematic source-transition periods rather than
+ordinary motion.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

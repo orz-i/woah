@@ -337,12 +337,14 @@ class ExportPipeline(
                 var facePredictedTrackFrameCount = 0L
                 var faceFallbackTrackFrameCount = 0L
                 var faceBodyMaskGuidedTrackFrameCount = 0L
+                var facePositionClampedTrackFrameCount = 0L
                 val faceDetectorCallsByTrackId = mutableMapOf<Int, Long>()
                 val faceDetectorRejectedCallsByTrackId = mutableMapOf<Int, Long>()
                 val faceDetectedFramesByTrackId = mutableMapOf<Int, Long>()
                 val facePredictedFramesByTrackId = mutableMapOf<Int, Long>()
                 val faceFallbackFramesByTrackId = mutableMapOf<Int, Long>()
                 val faceBodyMaskGuidedFramesByTrackId = mutableMapOf<Int, Long>()
+                val facePositionClampedFramesByTrackId = mutableMapOf<Int, Long>()
                 val faceStickerMinWidthByTrackId = mutableMapOf<Int, Float>()
                 val faceStickerMaxWidthByTrackId = mutableMapOf<Int, Float>()
                 val faceStickerMinHeightByTrackId = mutableMapOf<Int, Float>()
@@ -825,6 +827,7 @@ class ExportPipeline(
                             facePredictedTrackFrameCount += faceOnlyFrameResult.predictedTrackIds.size
                             faceFallbackTrackFrameCount += faceOnlyFrameResult.fallbackTrackIds.size
                             faceBodyMaskGuidedTrackFrameCount += faceOnlyFrameResult.bodyMaskGuidedTrackIds.size
+                            facePositionClampedTrackFrameCount += faceOnlyFrameResult.positionClampedTrackIds.size
                             faceOnlyFrameResult.detectorCalledTrackIds.forEach { trackId ->
                                 faceDetectorCallsByTrackId[trackId] = faceDetectorCallsByTrackId.getOrDefault(trackId, 0L) + 1L
                             }
@@ -844,6 +847,10 @@ class ExportPipeline(
                             faceOnlyFrameResult.bodyMaskGuidedTrackIds.forEach { trackId ->
                                 faceBodyMaskGuidedFramesByTrackId[trackId] =
                                     faceBodyMaskGuidedFramesByTrackId.getOrDefault(trackId, 0L) + 1L
+                            }
+                            faceOnlyFrameResult.positionClampedTrackIds.forEach { trackId ->
+                                facePositionClampedFramesByTrackId[trackId] =
+                                    facePositionClampedFramesByTrackId.getOrDefault(trackId, 0L) + 1L
                             }
                             faceOnlyFrameResult.stickerPlacements.forEach { placement ->
                                 val trackId = placement.trackId
@@ -1217,12 +1224,14 @@ class ExportPipeline(
                             "face_predicted_track_frames" to facePredictedTrackFrameCount,
                             "face_fallback_track_frames" to faceFallbackTrackFrameCount,
                             "face_body_mask_guided_track_frames" to faceBodyMaskGuidedTrackFrameCount,
+                            "face_position_clamped_track_frames" to facePositionClampedTrackFrameCount,
                             "face_detector_calls_by_track_id" to faceDetectorCallsByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_detector_rejected_calls_by_track_id" to faceDetectorRejectedCallsByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_detected_frames_by_track_id" to faceDetectedFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_predicted_frames_by_track_id" to facePredictedFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_fallback_frames_by_track_id" to faceFallbackFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_body_mask_guided_frames_by_track_id" to faceBodyMaskGuidedFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
+                            "face_position_clamped_frames_by_track_id" to facePositionClampedFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_sticker_min_width_by_track_id" to faceStickerMinWidthByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_sticker_max_width_by_track_id" to faceStickerMaxWidthByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_sticker_min_height_by_track_id" to faceStickerMinHeightByTrackId.toSortedMap().mapKeys { it.key.toString() },
