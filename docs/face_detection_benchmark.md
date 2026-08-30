@@ -844,6 +844,71 @@ p95 near **113 ms**. Local verification after this correction passes the complet
 device is intentionally disconnected; real-video visual acceptance remains a
 manual follow-up.
 
+### Sixth real-video correction: use the validated person mask as face fallback geometry
+
+The next user-reviewed real-video bundle came from commit
+`20b0a8c301b68f89d02dba217c160a14c8755c91`. The stale FULL_BODY resurrection
+fix remained separate, but FACE_ONLY localization was still visibly inaccurate.
+The telemetry showed that the velocity bridge did not solve the dominant problem
+and in fact made the identity-local ROI easier to drift away from the face:
+
+- 751 output frames / five FACE_ONLY IDs = 3,755 target track-frames;
+- **979 detector calls**, only **736 DETECTED** track-frames;
+- **938 PREDICTED** and **2,081 FALLBACK** track-frames;
+- **144 detector rejections**, concentrated on IDs 2/5/6 at 31/52/46;
+- detector calls by ID 1/2/3/5/6 were 139/150/65/315/310, while detected frames
+  were only 109/105/39/237/246;
+- current sustained timings were face detector p95 about **43 ms** and total
+  FACE_ONLY privacy p95 about **102 ms**.
+
+The important architectural observation is that the already-stable YOLO person
+segmentation remains available on every `TrackedPerson` before FACE_ONLY policy
+substitutes the rendered face mask. Earlier real-video acceptance had already
+shown that this full-person mask follows the selected person accurately. FACE_ONLY
+can therefore reuse that existing per-ID segmentation as **local position
+evidence** without ever rendering it as a full-body privacy effect.
+
+The fallback order is now:
+
+1. accepted MediaPipe face detection;
+2. for non-detected frames, current same-ID YOLO person mask locally refines the
+   recent face/head seed;
+3. only when the person mask is unavailable/not freshly observed does geometry
+   remain on the conservative bbox-derived head fallback.
+
+`BodyMaskFaceHeadEstimator` searches only a small upper-body window around the
+existing face seed. It computes a weighted centroid of current person-mask pixels,
+with distance-to-seed weighting and bounded per-frame correction. This lets an
+articulated head move inside an otherwise stable person bbox while preventing a
+raised arm or distant body part from stealing the face center. The body mask is
+used only as geometry evidence; FACE_ONLY still renders only the face ellipse /
+sticker. YOLO/TrackManager remains the sole identity authority.
+
+The previous face-relative velocity extrapolation is removed from ROI planning and
+fallback. Without current pixel evidence, detector history no longer moves the ROI
+by itself. When a fresh body mask exists, the same mask-guided center is also used
+to recenter the next small identity-local detector ROI, directly addressing the
+20b0a8c rise to 144 rejected detections.
+
+MediaPipe BlazeFace's six detector keypoints are now retained as positional
+evidence rather than discarded. The central eye/nose/mouth features drive
+candidate anchor distance and contribute most of the detected privacy center;
+the detector bbox remains the scale prior. Backends/test observations without
+keypoints keep the previously validated bbox-only placement exactly.
+
+Export diagnostics add `face_body_mask_guided_track_frames` and
+`face_body_mask_guided_frames_by_track_id`, so the next manual real-video bundle
+can directly show whether the 2,081 previous non-detected/fallback frames are now
+being steered by the accurate same-person segmentation instead of bbox geometry.
+
+Local verification for this correction includes the complete `dance_native` JVM
+suite and successful Android instrumentation compilation. New pure tests verify
+that a shifted head silhouette moves the fallback, a distant raised arm does not
+steal it, missing mask mapping fails safe, profile-like detector boxes can be
+localized by central face keypoints, and keypoints move privacy placement away
+from a pose-skewed bbox center. Connected-device execution remains intentionally
+manual.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

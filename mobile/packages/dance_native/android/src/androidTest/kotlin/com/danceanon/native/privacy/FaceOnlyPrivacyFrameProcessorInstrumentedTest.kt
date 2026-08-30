@@ -361,8 +361,52 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
             assertEquals(0, third.detectorCallCount)
             assertEquals(setOf(31), third.predictedTrackIds)
             assertTrue(
-                third.stickerPlacements.single().sourceRect.centerX > secondRect.centerX + 0.5f,
-                "between detector refreshes, bounded face-relative velocity must continue recent head motion"
+                kotlin.math.abs(third.stickerPlacements.single().sourceRect.centerX - secondRect.centerX) < 0.5f,
+                "without current pixel evidence, detector history must not self-propagate the ROI away from the last trusted face"
+            )
+        }
+    }
+
+    @Test
+    fun currentBodyMaskGuidesThrottledFaceFrameInsideStablePersonBox() {
+        val locator = CountingLocator(
+            listOf(FaceObservation(FloatRect(104f, 96f, 152f, 144f), 0.9f))
+        )
+        withProcessor(locator) { processor, texture, mapper ->
+            val bbox = FloatRect(220f, 40f, 420f, 350f)
+            val initialPerson = person(41, bbox)
+            val initial = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(initialPerson),
+                faceOnlyTrackIds = setOf(41),
+                ptsUs = 0L
+            )
+            val initialCenterX = initial.stickerPlacements.single().sourceRect.centerX
+
+            val articulated = initialPerson.copy(
+                // Same person bbox, but current accurate body segmentation has
+                // the head silhouette shifted to the right relative to torso.
+                mask = sourceRectsMask(
+                    mapper,
+                    FloatRect(350f, 80f, 395f, 145f),
+                    FloatRect(265f, 140f, 375f, 345f)
+                )
+            )
+            val guided = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(articulated),
+                faceOnlyTrackIds = setOf(41),
+                ptsUs = 16_666L
+            )
+            assertEquals(0, guided.detectorCallCount)
+            assertEquals(setOf(41), guided.bodyMaskGuidedTrackIds)
+            assertTrue(
+                guided.stickerPlacements.single().sourceRect.centerX > initialCenterX + 3f,
+                "accurate current body mask should move FACE_ONLY fallback with articulated head pixels"
             )
         }
     }
@@ -501,17 +545,27 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
     private fun sourceRectMask(
         mapper: ModelCoordinateMapper,
         rect: FloatRect
+    ): com.danceanon.native.inference.NativeMask = sourceRectsMask(mapper, rect)
+
+    private fun sourceRectsMask(
+        mapper: ModelCoordinateMapper,
+        vararg rects: FloatRect
     ): com.danceanon.native.inference.NativeMask {
         val width = mapper.protoSize
         val height = mapper.protoSize
         val buffer = ByteBuffer.allocateDirect(width * height)
-        val left = mapper.sourceToProtoX(rect.left).roundToInt().coerceIn(0, width - 1)
-        val right = mapper.sourceToProtoX(rect.right).roundToInt().coerceIn(0, width - 1)
-        val top = mapper.sourceToProtoY(rect.top).roundToInt().coerceIn(0, height - 1)
-        val bottom = mapper.sourceToProtoY(rect.bottom).roundToInt().coerceIn(0, height - 1)
+        val protoRects = rects.map { rect ->
+            intArrayOf(
+                mapper.sourceToProtoX(rect.left).roundToInt().coerceIn(0, width - 1),
+                mapper.sourceToProtoY(rect.top).roundToInt().coerceIn(0, height - 1),
+                mapper.sourceToProtoX(rect.right).roundToInt().coerceIn(0, width - 1),
+                mapper.sourceToProtoY(rect.bottom).roundToInt().coerceIn(0, height - 1)
+            )
+        }
         for (y in 0 until height) {
             for (x in 0 until width) {
-                buffer.put(if (x in left..right && y in top..bottom) 255.toByte() else 0)
+                val inside = protoRects.any { rect -> x in rect[0]..rect[2] && y in rect[1]..rect[3] }
+                buffer.put(if (inside) 255.toByte() else 0)
             }
         }
         buffer.rewind()

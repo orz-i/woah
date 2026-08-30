@@ -84,4 +84,41 @@ class FaceRoiCandidateSelectorTest {
         )
         assertEquals(0, selected.faceIndex)
     }
+
+    @Test
+    fun `central facial keypoints rescue profile bbox whose box center is off anchor`() {
+        val profileFace = FaceObservation(
+            bbox = FloatRect(145f, 85f, 235f, 155f),
+            confidence = 0.9f,
+            keypoints = listOf(
+                FacePoint(148f, 105f),
+                FacePoint(156f, 105f),
+                FacePoint(151f, 116f),
+                FacePoint(153f, 128f),
+                FacePoint(180f, 112f),
+                FacePoint(220f, 112f)
+            )
+        )
+
+        assertNull(
+            FaceRoiCandidateSelector.select(
+                faces = listOf(profileFace.copy(keypoints = emptyList())),
+                roiWidth = 256,
+                roiHeight = 256,
+                anchorX = 0.5f,
+                anchorY = 0.5f
+            )
+        )
+
+        val selected = assertNotNull(
+            FaceRoiCandidateSelector.select(
+                faces = listOf(profileFace),
+                roiWidth = 256,
+                roiHeight = 256,
+                anchorX = 0.5f,
+                anchorY = 0.5f
+            )
+        )
+        assertEquals(0, selected.faceIndex)
+    }
 }

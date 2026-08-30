@@ -33,6 +33,7 @@ data class FaceOnlyPrivacyFrameResult(
     val detectorRejectedCallCount: Int,
     val detectorCalledTrackIds: Set<Int>,
     val detectorRejectedTrackIds: Set<Int>,
+    val bodyMaskGuidedTrackIds: Set<Int>,
     val roiReadbackMs: Double,
     val maskBuildMs: Double,
     val privacyResolveMs: Double,
@@ -60,9 +61,7 @@ class FaceOnlyPrivacyFrameProcessor(
         val radiusX: Float,
         val radiusY: Float,
         val trustedPersonBbox: FloatRect,
-        val lastTrustedPtsUs: Long,
-        val relativeVelocityXPerUs: Float = 0f,
-        val relativeVelocityYPerUs: Float = 0f
+        val lastTrustedPtsUs: Long
     ) {
         fun project(personBbox: FloatRect, ageUs: Long): FacePrivacyEllipse? {
             if (personBbox.width <= 1f || personBbox.height <= 1f) return null
@@ -85,20 +84,9 @@ class FaceOnlyPrivacyFrameProcessor(
             // Vertical head motion is more stable against pose/bbox-height
             // changes when anchored to the top edge instead of bbox center.
             val centerDy = personBbox.top - trustedPersonBbox.top
-            val velocityAgeUs = ageUs.coerceIn(0L, MAX_FACE_VELOCITY_EXTRAPOLATION_US)
-            var relativeDx = relativeVelocityXPerUs * velocityAgeUs.toFloat()
-            var relativeDy = relativeVelocityYPerUs * velocityAgeUs.toFloat()
-            val relativeTravel = sqrt(relativeDx * relativeDx + relativeDy * relativeDy)
-            val maxRelativeTravel =
-                maxOf(radiusX, radiusY) * 2f * MAX_FACE_VELOCITY_TRAVEL_DIAMETERS
-            if (relativeTravel > maxRelativeTravel && relativeTravel > 1e-3f) {
-                val scale = maxRelativeTravel / relativeTravel
-                relativeDx *= scale
-                relativeDy *= scale
-            }
             return FacePrivacyEllipse(
-                centerX = centerX + centerDx + relativeDx,
-                centerY = centerY + centerDy + relativeDy,
+                centerX = centerX + centerDx,
+                centerY = centerY + centerDy,
                 radiusX = (radiusX * bboxScale * ageExpansion).coerceAtLeast(1f),
                 radiusY = (radiusY * bboxScale * ageExpansion).coerceAtLeast(1f),
                 source = FacePrivacyRegionSource.PREDICTED_FACE
@@ -109,44 +97,16 @@ class FaceOnlyPrivacyFrameProcessor(
             fun from(
                 region: FacePrivacyEllipse,
                 personBbox: FloatRect,
-                ptsUs: Long,
-                previous: CachedFaceGeometry? = null
+                ptsUs: Long
             ): CachedFaceGeometry? {
                 if (personBbox.width <= 1f || personBbox.height <= 1f) return null
-                var velocityXPerUs = 0f
-                var velocityYPerUs = 0f
-                if (previous != null && ptsUs > previous.lastTrustedPtsUs) {
-                    val previousAtCurrentPersonBox = previous.project(personBbox, ageUs = 0L)
-                    if (previousAtCurrentPersonBox != null) {
-                        val dtUs = (ptsUs - previous.lastTrustedPtsUs).toFloat().coerceAtLeast(1f)
-                        var rawVelocityX = (region.centerX - previousAtCurrentPersonBox.centerX) / dtUs
-                        var rawVelocityY = (region.centerY - previousAtCurrentPersonBox.centerY) / dtUs
-                        val rawSpeed = sqrt(rawVelocityX * rawVelocityX + rawVelocityY * rawVelocityY)
-                        val faceDiameter = maxOf(region.radiusX, region.radiusY) * 2f
-                        val maxSpeedPerUs =
-                            faceDiameter * MAX_FACE_RELATIVE_SPEED_DIAMETERS_PER_SECOND / 1_000_000f
-                        if (rawSpeed > maxSpeedPerUs && rawSpeed > 1e-9f) {
-                            val scale = maxSpeedPerUs / rawSpeed
-                            rawVelocityX *= scale
-                            rawVelocityY *= scale
-                        }
-                        velocityXPerUs =
-                            previous.relativeVelocityXPerUs * (1f - FACE_VELOCITY_UPDATE_ALPHA) +
-                                rawVelocityX * FACE_VELOCITY_UPDATE_ALPHA
-                        velocityYPerUs =
-                            previous.relativeVelocityYPerUs * (1f - FACE_VELOCITY_UPDATE_ALPHA) +
-                                rawVelocityY * FACE_VELOCITY_UPDATE_ALPHA
-                    }
-                }
                 return CachedFaceGeometry(
                     centerX = region.centerX,
                     centerY = region.centerY,
                     radiusX = region.radiusX,
                     radiusY = region.radiusY,
                     trustedPersonBbox = personBbox,
-                    lastTrustedPtsUs = ptsUs,
-                    relativeVelocityXPerUs = velocityXPerUs,
-                    relativeVelocityYPerUs = velocityYPerUs
+                    lastTrustedPtsUs = ptsUs
                 )
             }
         }
@@ -157,12 +117,13 @@ class FaceOnlyPrivacyFrameProcessor(
 
     private fun planCachedFaceLocalRoi(
         cached: CachedFaceGeometry,
-        personBbox: FloatRect,
+        person: TrackedPerson,
         ptsUs: Long
     ): FaceHeadRoiPlan? {
         val ageUs = ptsUs - cached.lastTrustedPtsUs
         if (ageUs !in 0L..MAX_LOCAL_FACE_REFRESH_AGE_US) return null
-        val projected = cached.project(personBbox, ageUs) ?: return null
+        val rawProjected = cached.project(person.bbox, ageUs) ?: return null
+        val projected = refineWithCurrentBodyMask(person, rawProjected) ?: rawProjected
         val frameWidth = mapper.srcWidth.toFloat()
         val frameHeight = mapper.srcHeight.toFloat()
         if (frameWidth <= 1f || frameHeight <= 1f) return null
@@ -180,6 +141,53 @@ class FaceOnlyPrivacyFrameProcessor(
             anchorX = ((projected.centerX - rect.left) / side).coerceIn(0f, 1f),
             anchorY = ((projected.centerY - rect.top) / side).coerceIn(0f, 1f),
             outputSize = FACE_ROI_SIZE
+        )
+    }
+
+    private fun refineWithCurrentBodyMask(
+        person: TrackedPerson,
+        region: FacePrivacyEllipse
+    ): FacePrivacyEllipse? {
+        if (!person.observedThisFrame || person.mask == null) return null
+        val estimate = BodyMaskFaceHeadEstimator.estimate(
+            mask = person.mask,
+            personBbox = person.bbox,
+            seedCenterX = region.centerX,
+            seedCenterY = region.centerY,
+            seedRadiusX = region.radiusX,
+            seedRadiusY = region.radiusY
+        ) ?: return null
+        return region.copy(centerX = estimate.x, centerY = estimate.y)
+    }
+
+    private data class FallbackGeometry(
+        val region: FacePrivacyEllipse,
+        val bodyMaskGuided: Boolean
+    )
+
+    private fun resolveFallbackGeometry(
+        person: TrackedPerson,
+        cached: CachedFaceGeometry?,
+        ptsUs: Long
+    ): FallbackGeometry? {
+        val cacheAgeUs = cached?.let { ptsUs - it.lastTrustedPtsUs }
+        val base = if (
+            cached != null && cacheAgeUs != null &&
+            cacheAgeUs in 0L..MAX_PREDICTED_FACE_AGE_US &&
+            person.framesSinceLastObservation <= MAX_LOCAL_FACE_UNOBSERVED_FRAMES
+        ) {
+            cached.project(person.bbox, cacheAgeUs)
+        } else {
+            FacePrivacyRegionResolver.resolve(
+                personBbox = person.bbox,
+                roiPlan = null,
+                selectedFace = null
+            )
+        } ?: return null
+        val refined = refineWithCurrentBodyMask(person, base)
+        return FallbackGeometry(
+            region = refined ?: base,
+            bodyMaskGuided = refined != null
         )
     }
 
@@ -227,6 +235,7 @@ class FaceOnlyPrivacyFrameProcessor(
                 detectorRejectedCallCount = 0,
                 detectorCalledTrackIds = emptySet(),
                 detectorRejectedTrackIds = emptySet(),
+                bodyMaskGuidedTrackIds = emptySet(),
                 roiReadbackMs = 0.0,
                 maskBuildMs = 0.0,
                 privacyResolveMs = 0.0,
@@ -257,7 +266,7 @@ class FaceOnlyPrivacyFrameProcessor(
                 person.observedThisFrame ||
                     person.framesSinceLastObservation <= MAX_LOCAL_FACE_UNOBSERVED_FRAMES
             val localPlan = if (canUseIdentityLocalRoi) {
-                cached?.let { planCachedFaceLocalRoi(it, person.bbox, ptsUs) }
+                cached?.let { planCachedFaceLocalRoi(it, person, ptsUs) }
             } else {
                 null
             }
@@ -320,6 +329,7 @@ class FaceOnlyPrivacyFrameProcessor(
         var detectorRejectedCallCount = 0
         val detectorCalledTrackIds = linkedSetOf<Int>()
         val detectorRejectedTrackIds = linkedSetOf<Int>()
+        val bodyMaskGuidedTrackIds = linkedSetOf<Int>()
         var roiReadbackMs = 0.0
         var maskBuildMs = 0.0
         val stickerPlacements = mutableListOf<FaceStickerPlacement>()
@@ -390,72 +400,32 @@ class FaceOnlyPrivacyFrameProcessor(
                             detectedRegion
                         }
                     } else {
-                        val cacheAgeUs = cachedBeforeAttempt?.let { ptsUs - it.lastTrustedPtsUs }
-                        if (
-                            cachedBeforeAttempt != null && cacheAgeUs != null &&
-                            cacheAgeUs in 0L..MAX_PREDICTED_FACE_AGE_US
-                        ) {
-                            cachedBeforeAttempt.project(person.bbox, cacheAgeUs)
-                        } else {
-                            FacePrivacyRegionResolver.resolve(
-                                personBbox = person.bbox,
-                                roiPlan = null,
-                                selectedFace = null
-                            )
-                        }
+                        resolveFallbackGeometry(person, cachedBeforeAttempt, ptsUs)?.also { fallbackGeometry ->
+                            if (fallbackGeometry.bodyMaskGuided) bodyMaskGuidedTrackIds += trackId
+                        }?.region
                     }
                     if (selectedFace != null && region?.source == FacePrivacyRegionSource.DETECTED_FACE) {
                         CachedFaceGeometry.from(
                             region = region,
                             personBbox = person.bbox,
-                            ptsUs = ptsUs,
-                            // Velocity continuity is valid only when this call was
-                            // planned from the recent identity-local face cache.
-                            // A broad YOLO-head reacquisition after cache expiry
-                            // resets relative motion instead of deriving velocity
-                            // across a stale multi-hundred-ms gap.
-                            previous = cachedBeforeAttempt?.takeIf {
-                                localDetectorTrackIds.contains(trackId)
-                            }
+                            ptsUs = ptsUs
                         )?.let { cached ->
                             cachedFaceByTrackId[trackId] = cached
                         }
                     }
                 } catch (t: Throwable) {
                     Log.w(TAG, "Face ROI detection failed for track=$trackId; using head fallback", t)
-                    val cacheAgeUs = cachedBeforeAttempt?.let { ptsUs - it.lastTrustedPtsUs }
-                    region = if (
-                        cachedBeforeAttempt != null && cacheAgeUs != null &&
-                        cacheAgeUs in 0L..MAX_PREDICTED_FACE_AGE_US
-                    ) {
-                        cachedBeforeAttempt.project(person.bbox, cacheAgeUs)
-                    } else {
-                        FacePrivacyRegionResolver.resolve(
-                            personBbox = person.bbox,
-                            roiPlan = null,
-                            selectedFace = null
-                        )
-                    }
+                    region = resolveFallbackGeometry(person, cachedBeforeAttempt, ptsUs)?.also { fallbackGeometry ->
+                        if (fallbackGeometry.bodyMaskGuided) bodyMaskGuidedTrackIds += trackId
+                    }?.region
                 }
             }
 
             if (region == null) {
                 val cached = cachedFaceByTrackId[trackId]
-                val cacheAgeUs = cached?.let { ptsUs - it.lastTrustedPtsUs }
-                val cacheUsable = cached != null &&
-                    cacheAgeUs != null &&
-                    cacheAgeUs >= 0L &&
-                    cacheAgeUs <= MAX_PREDICTED_FACE_AGE_US &&
-                    person.framesSinceLastObservation <= MAX_LOCAL_FACE_UNOBSERVED_FRAMES
-                region = if (cacheUsable) {
-                    cached.project(person.bbox, cacheAgeUs)
-                } else {
-                    FacePrivacyRegionResolver.resolve(
-                        personBbox = person.bbox,
-                        roiPlan = null,
-                        selectedFace = null
-                    )
-                }
+                region = resolveFallbackGeometry(person, cached, ptsUs)?.also { fallbackGeometry ->
+                    if (fallbackGeometry.bodyMaskGuided) bodyMaskGuidedTrackIds += trackId
+                }?.region
             }
             if (region != null) {
                 region = temporalStabilizer.stabilize(
@@ -543,6 +513,7 @@ class FaceOnlyPrivacyFrameProcessor(
             detectorRejectedCallCount = detectorRejectedCallCount,
             detectorCalledTrackIds = detectorCalledTrackIds,
             detectorRejectedTrackIds = detectorRejectedTrackIds,
+            bodyMaskGuidedTrackIds = bodyMaskGuidedTrackIds,
             roiReadbackMs = roiReadbackMs,
             maskBuildMs = maskBuildMs,
             privacyResolveMs = privacyResolveMs,
@@ -574,10 +545,6 @@ class FaceOnlyPrivacyFrameProcessor(
         private const val MIN_PREDICTED_FACE_SCALE = 0.88f
         private const val MAX_PREDICTED_FACE_SCALE = 1.12f
         private const val MAX_PREDICTED_AGE_EXPANSION = 0.10f
-        private const val MAX_FACE_VELOCITY_EXTRAPOLATION_US = 100_000L
-        private const val MAX_FACE_VELOCITY_TRAVEL_DIAMETERS = 0.75f
-        private const val MAX_FACE_RELATIVE_SPEED_DIAMETERS_PER_SECOND = 10f
-        private const val FACE_VELOCITY_UPDATE_ALPHA = 0.65f
         private const val LOCAL_FACE_ROI_MIN_SIDE_PX = 72f
         private const val LOCAL_FACE_ROI_DIAMETER_FACTOR = 2.8f
         private const val SLOW_STAGE_LOG_THRESHOLD_MS = 20.0

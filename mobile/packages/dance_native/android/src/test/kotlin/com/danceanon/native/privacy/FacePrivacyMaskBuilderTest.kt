@@ -54,6 +54,44 @@ class FacePrivacyMaskBuilderTest {
     }
 
     @Test
+    fun `detected facial keypoints move privacy center away from pose-skewed bbox center`() {
+        val person = FloatRect(100f, 50f, 500f, 750f)
+        val roi = FaceHeadRoiPlan(
+            sourceRect = FloatRect(0f, 0f, 400f, 400f),
+            anchorX = 0.52f,
+            anchorY = 0.44f,
+            outputSize = 256
+        )
+        val observation = FaceObservation(
+            bbox = FloatRect(120f, 80f, 200f, 150f),
+            confidence = 0.9f,
+            keypoints = listOf(
+                com.danceanon.native.face.FacePoint(126f, 100f),
+                com.danceanon.native.face.FacePoint(136f, 100f),
+                com.danceanon.native.face.FacePoint(130f, 112f),
+                com.danceanon.native.face.FacePoint(132f, 124f),
+                com.danceanon.native.face.FacePoint(155f, 108f),
+                com.danceanon.native.face.FacePoint(190f, 108f)
+            )
+        )
+        val selection = assertNotNull(
+            com.danceanon.native.face.FaceRoiCandidateSelector.select(
+                faces = listOf(observation),
+                roiWidth = 256,
+                roiHeight = 256,
+                anchorX = roi.anchorX,
+                anchorY = roi.anchorY
+            )
+        )
+        val region = assertNotNull(FacePrivacyRegionResolver.resolve(person, roi, selection))
+        val bboxCenterSourceX = ((120f + 200f) * 0.5f / 256f) * 400f
+        assertTrue(
+            region.centerX < bboxCenterSourceX - 10f,
+            "central facial features should pull sticker center away from the pose-skewed bbox center"
+        )
+    }
+
+    @Test
     fun `detector miss or ambiguity falls back to nonzero yolo head region`() {
         val person = FloatRect(300f, 100f, 500f, 900f)
         val region = assertNotNull(

@@ -14,7 +14,38 @@ import kotlin.math.sqrt
  */
 data class FaceObservation(
     val bbox: FloatRect,
-    val confidence: Float
+    val confidence: Float,
+    val keypoints: List<FacePoint> = emptyList()
+) {
+    /**
+     * BlazeFace full-range emits six approximate points in this order:
+     * left eye, right eye, nose tip, mouth, left tragion, right tragion.
+     *
+     * The detector bbox is useful for scale, but its axis-aligned center moves
+     * noticeably with yaw/pose.  Use the central facial features as the
+     * localization anchor when available so identity gating and sticker
+     * placement follow the actual face rather than bbox shape changes.
+     */
+    fun localizationCenter(): FacePoint {
+        if (keypoints.size < 4) {
+            return FacePoint(bbox.centerX, bbox.centerY)
+        }
+        val leftEye = keypoints[0]
+        val rightEye = keypoints[1]
+        val nose = keypoints[2]
+        val mouth = keypoints[3]
+        val eyeMidX = (leftEye.x + rightEye.x) * 0.5f
+        val eyeMidY = (leftEye.y + rightEye.y) * 0.5f
+        return FacePoint(
+            x = (eyeMidX + nose.x + mouth.x) / 3f,
+            y = (eyeMidY + nose.y + mouth.y) / 3f
+        )
+    }
+}
+
+data class FacePoint(
+    val x: Float,
+    val y: Float
 )
 
 data class FacePersonMatch(

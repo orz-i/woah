@@ -35,8 +35,9 @@ object FaceRoiCandidateSelector {
         val reference = minOf(roiWidth, roiHeight).toFloat().coerceAtLeast(1f)
 
         val candidates = faces.mapIndexedNotNull { index, face ->
-            val dx = face.bbox.centerX - anchorPxX
-            val dy = face.bbox.centerY - anchorPxY
+            val localizationCenter = face.localizationCenter()
+            val dx = localizationCenter.x - anchorPxX
+            val dy = localizationCenter.y - anchorPxY
             val distanceRatio = sqrt(dx * dx + dy * dy) / reference
             if (distanceRatio > maxAnchorDistanceRatio) {
                 null

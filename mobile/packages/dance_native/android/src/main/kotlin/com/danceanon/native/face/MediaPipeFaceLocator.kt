@@ -72,7 +72,13 @@ class MediaPipeFaceLocator(
                             rect.right,
                             rect.bottom
                         ),
-                        confidence = detection.categories().firstOrNull()?.score() ?: 0f
+                        confidence = detection.categories().firstOrNull()?.score() ?: 0f,
+                        keypoints = detection.keypoints().orElse(emptyList()).map { keypoint ->
+                            FacePoint(
+                                x = keypoint.x() * width.toFloat(),
+                                y = keypoint.y() * height.toFloat()
+                            )
+                        }
                     )
                 },
                 inferenceMs = inferenceMs

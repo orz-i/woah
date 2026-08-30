@@ -36,6 +36,7 @@ object FacePrivacyRegionResolver {
     private const val DETECTED_RADIUS_X_FACTOR = 0.66f
     private const val DETECTED_RADIUS_Y_FACTOR = 0.74f
     private const val DETECTED_CENTER_Y_SHIFT = -0.04f
+    private const val DETECTED_KEYPOINT_CENTER_WEIGHT = 0.72f
 
     private const val FALLBACK_CENTER_Y_RATIO = 0.14f
     // Before the first trusted face observation this is the only available
@@ -83,9 +84,33 @@ object FacePrivacyRegionResolver {
         val faceWidth = (right - left).coerceAtLeast(1f)
         val faceHeight = (bottom - top).coerceAtLeast(1f)
 
+        val bboxCenterX = (left + right) * 0.5f
+        val bboxCenterY = (top + bottom) * 0.5f + faceHeight * DETECTED_CENTER_Y_SHIFT
+        val hasCentralKeypoints = selectedFace.face.keypoints.size >= 4
+        val centerX: Float
+        val centerY: Float
+        if (hasCentralKeypoints) {
+            val localFeatureCenter = selectedFace.face.localizationCenter()
+            val featureCenterX = sourceX(localFeatureCenter.x)
+            val featureCenterY = sourceY(localFeatureCenter.y)
+            // Keep bbox geometry as a stabilizing prior for tiny/distant faces,
+            // but let detector facial features dominate center placement. This
+            // is much less sensitive to yaw/profile changes than the axis-aligned
+            // bbox center alone.
+            centerX = bboxCenterX * (1f - DETECTED_KEYPOINT_CENTER_WEIGHT) +
+                featureCenterX * DETECTED_KEYPOINT_CENTER_WEIGHT
+            centerY = bboxCenterY * (1f - DETECTED_KEYPOINT_CENTER_WEIGHT) +
+                featureCenterY * DETECTED_KEYPOINT_CENTER_WEIGHT
+        } else {
+            // Synthetic/tests and any backend without keypoints preserve the
+            // previously validated bbox-only placement exactly.
+            centerX = bboxCenterX
+            centerY = bboxCenterY
+        }
+
         return FacePrivacyEllipse(
-            centerX = (left + right) * 0.5f,
-            centerY = (top + bottom) * 0.5f + faceHeight * DETECTED_CENTER_Y_SHIFT,
+            centerX = centerX,
+            centerY = centerY,
             radiusX = faceWidth * DETECTED_RADIUS_X_FACTOR,
             radiusY = faceHeight * DETECTED_RADIUS_Y_FACTOR,
             source = FacePrivacyRegionSource.DETECTED_FACE
