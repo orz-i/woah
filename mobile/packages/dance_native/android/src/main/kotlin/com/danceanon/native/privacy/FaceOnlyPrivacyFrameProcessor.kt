@@ -28,6 +28,7 @@ data class FaceOnlyPrivacyFrameResult(
     val detectorObservationCount: Int,
     val detectorZeroObservationCallCount: Int,
     val detectorRejectedCallCount: Int,
+    val detectorCalledTrackIds: Set<Int>,
     val roiReadbackMs: Double,
     val maskBuildMs: Double,
     val privacyResolveMs: Double,
@@ -111,6 +112,7 @@ class FaceOnlyPrivacyFrameProcessor(
                 detectorObservationCount = 0,
                 detectorZeroObservationCallCount = 0,
                 detectorRejectedCallCount = 0,
+                detectorCalledTrackIds = emptySet(),
                 roiReadbackMs = 0.0,
                 maskBuildMs = 0.0,
                 privacyResolveMs = 0.0,
@@ -134,14 +136,27 @@ class FaceOnlyPrivacyFrameProcessor(
         val dueDetectorTrackIds = activeFaceOnlyTrackIds.asSequence()
             .filter { trackId ->
                 val person = personsById[trackId] ?: return@filter false
-                if (!person.observedThisFrame || person.state == TrackState.LOST) return@filter false
+                // LOST has no sufficiently trustworthy current person geometry.
+                // REACQUIRING/OCCLUDED and temporarily-unobserved tracks still
+                // have TrackManager-owned predicted boxes and are exactly the
+                // tracks that need an urgent positional refresh.
+                if (person.state == TrackState.LOST || person.state == TrackState.REMOVED) return@filter false
                 val lastAttemptPtsUs = lastDetectorAttemptPtsUsByTrackId[trackId]
+                val urgent = !person.observedThisFrame ||
+                    person.state == TrackState.REACQUIRING ||
+                    person.state == TrackState.OCCLUDED ||
+                    !cachedFaceByTrackId.containsKey(trackId)
+                val requiredIntervalUs = if (urgent) URGENT_DETECTOR_INTERVAL_US else detectorIntervalUs
                 lastAttemptPtsUs == null ||
                     ptsUs < lastAttemptPtsUs ||
-                    ptsUs - lastAttemptPtsUs >= detectorIntervalUs
+                    ptsUs - lastAttemptPtsUs >= requiredIntervalUs
             }
             .sortedWith(
-                compareBy<Int> { if (cachedFaceByTrackId.containsKey(it)) 1 else 0 }
+                compareBy<Int> {
+                    val person = personsById[it]
+                    if (person != null && (!person.observedThisFrame || person.state != TrackState.ACTIVE)) 0 else 1
+                }
+                    .thenBy { if (cachedFaceByTrackId.containsKey(it)) 1 else 0 }
                     .thenBy { lastDetectorAttemptPtsUsByTrackId[it] ?: Long.MIN_VALUE }
                     .thenBy { it }
             )
@@ -157,6 +172,7 @@ class FaceOnlyPrivacyFrameProcessor(
         var detectorObservationCount = 0
         var detectorZeroObservationCallCount = 0
         var detectorRejectedCallCount = 0
+        val detectorCalledTrackIds = linkedSetOf<Int>()
         var roiReadbackMs = 0.0
         var maskBuildMs = 0.0
         val stickerPlacements = mutableListOf<FaceStickerPlacement>()
@@ -193,6 +209,7 @@ class FaceOnlyPrivacyFrameProcessor(
                         height = FACE_ROI_SIZE
                     )
                     detectorCallCount++
+                    detectorCalledTrackIds += trackId
                     inferenceMs += locatorResult.inferenceMs
                     detectorObservationCount += locatorResult.observations.size
                     if (locatorResult.observations.isEmpty()) {
@@ -332,6 +349,7 @@ class FaceOnlyPrivacyFrameProcessor(
             detectorObservationCount = detectorObservationCount,
             detectorZeroObservationCallCount = detectorZeroObservationCallCount,
             detectorRejectedCallCount = detectorRejectedCallCount,
+            detectorCalledTrackIds = detectorCalledTrackIds,
             roiReadbackMs = roiReadbackMs,
             maskBuildMs = maskBuildMs,
             privacyResolveMs = privacyResolveMs,
@@ -355,9 +373,10 @@ class FaceOnlyPrivacyFrameProcessor(
         private const val TAG = "FaceOnlyPrivacy"
         const val FACE_ROI_SIZE = 256
         const val DEFAULT_DETECTOR_INTERVAL_US = 66_000L
-        const val DEFAULT_MAX_DETECTOR_CALLS_PER_FRAME = 1
+        const val DEFAULT_MAX_DETECTOR_CALLS_PER_FRAME = 2
+        private const val URGENT_DETECTOR_INTERVAL_US = 33_000L
         private const val MAX_PREDICTED_FACE_AGE_US = 150_000L
-        private const val MAX_PREDICTED_OBSERVATION_AGE_FRAMES = 2
+        private const val MAX_PREDICTED_OBSERVATION_AGE_FRAMES = 6
         private const val SLOW_STAGE_LOG_THRESHOLD_MS = 20.0
 
         fun create(context: Context, mapper: ModelCoordinateMapper): FaceOnlyPrivacyFrameProcessor {

@@ -42,6 +42,14 @@ class FacePrivacyMaskBuilderTest {
         val rawFaceHeight = (144f - 80f) / 256f * 400f
         assertTrue(region.radiusX * 2f > rawFaceWidth)
         assertTrue(region.radiusY * 2f > rawFaceHeight)
+        assertTrue(
+            region.radiusX * 2f <= rawFaceWidth * 1.35f,
+            "detected FACE_ONLY width should stay close to the actual face box"
+        )
+        assertTrue(
+            region.radiusY * 2f <= rawFaceHeight * 1.50f,
+            "detected FACE_ONLY height should stay close to the actual face box"
+        )
         assertTrue(region.centerY < 200f + ((80f + 144f) * 0.5f / 256f) * 400f)
     }
 
@@ -60,6 +68,8 @@ class FacePrivacyMaskBuilderTest {
         assertEquals(person.centerX, region.centerX)
         assertTrue(region.centerY > person.top && region.centerY < person.centerY)
         assertTrue(region.radiusX > 0f && region.radiusY > 0f)
+        assertTrue(region.radiusX * 2f <= person.width * 0.75f)
+        assertTrue(region.radiusY * 2f <= person.width * 0.85f)
     }
 
     @Test

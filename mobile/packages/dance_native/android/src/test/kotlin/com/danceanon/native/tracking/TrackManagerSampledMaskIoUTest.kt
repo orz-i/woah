@@ -89,5 +89,20 @@ class TrackManagerSampledMaskIoUTest {
                 maskIoU = 0.35f
             )
         )
+        assertTrue(
+            !TrackManager.isProtectedGroupIdentityEvidenceSufficient(
+                TrackState.LOST,
+                bboxIoU = 0.458f,
+                maskIoU = 0.20f
+            ),
+            "LOST protected identity must use strict recovery evidence"
+        )
+        assertTrue(
+            TrackManager.isProtectedGroupIdentityEvidenceSufficient(
+                TrackState.LOST,
+                bboxIoU = 0.51f,
+                maskIoU = 0.20f
+            )
+        )
     }
 }

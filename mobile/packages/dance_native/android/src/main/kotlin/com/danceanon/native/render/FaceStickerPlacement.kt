@@ -37,7 +37,7 @@ data class FaceStickerPlacement(
             )
         }
 
-        private const val DEFAULT_OVERSCAN = 1.08f
+        private const val DEFAULT_OVERSCAN = 1.02f
         private const val MIN_HALF_DIM_PX = 8f
     }
 }

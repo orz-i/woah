@@ -939,10 +939,22 @@ class TrackManager(
                 val hasAmbiguousGeometry =
                     (rowMargin < config.associationAmbiguityMargin && rowHasConfusableAlternative) ||
                     (colMargin < config.associationAmbiguityMargin && colHasConfusableAlternative)
+                val candidateBBoxIoU = computeBBoxIoU(track.currentPredictedBbox, det.bbox)
+                val candidateMaskIoU = computePredictedMaskIoU(track, det.mask)
+                val protectedIdentityEvidenceOk = if (protectedTrackIds.contains(track.id)) {
+                    isProtectedGroupIdentityEvidenceSufficient(
+                        track.state,
+                        candidateBBoxIoU,
+                        candidateMaskIoU
+                    )
+                } else {
+                    true
+                }
                 val isCommitValid = assignedScore >= config.minMatchScore &&
                     assignedScore >= rowBest - epsilon &&
                     assignedScore >= colBest - epsilon &&
-                    !hasAmbiguousGeometry
+                    !hasAmbiguousGeometry &&
+                    protectedIdentityEvidenceOk
 
                 if (!isCommitValid) {
                     globalAmbiguousTrackIndices.add(tIdx)
@@ -1036,6 +1048,11 @@ class TrackManager(
                             "col_margin" to colMargin,
                             "row_confusable_geometry" to rowHasConfusableAlternative,
                             "col_confusable_geometry" to colHasConfusableAlternative,
+                            "bbox_iou" to candidateBBoxIoU,
+                            "mask_iou" to candidateMaskIoU,
+                            "identity_protected" to protectedTrackIds.contains(track.id),
+                            "privacy_selected" to privacySelectedTrackIds.contains(track.id),
+                            "protected_identity_evidence_ok" to protectedIdentityEvidenceOk,
                             "reserved_detection_indices" to reservedGlobalDetectionIndices.toList(),
                             "required_margin" to config.associationAmbiguityMargin,
                             "pts_us" to timestampUs
@@ -1050,8 +1067,8 @@ class TrackManager(
                 val prevState = track.state
                 val associationPredictedBbox = track.currentPredictedBbox
                 val associationLastObservedBbox = track.lastObservedBbox
-                val associationBBoxIoU = computeBBoxIoU(associationPredictedBbox, det.bbox)
-                val associationMaskIoU = computePredictedMaskIoU(track, det.mask)
+                val associationBBoxIoU = candidateBBoxIoU
+                val associationMaskIoU = candidateMaskIoU
                 recordReliableObservedMotion(track, det)
                 track.lastObservedBbox = det.bbox
                 track.lastObservedMask = det.mask ?: track.lastObservedMask
@@ -1710,6 +1727,15 @@ class TrackManager(
             maskIoU: Float
         ): Boolean {
             return when (state) {
+                // Once a protected identity has timed out to LOST, group/global
+                // association must not become an easier recovery path than the
+                // dedicated LOST recovery stage. A real mixed-video failure had
+                // FULL_BODY id=4 commit from LOST at bboxIoU=0.458/maskIoU=0.20,
+                // which passed the former ACTIVE fallback threshold despite
+                // being too weak for ordinary protected recovery.
+                TrackState.LOST ->
+                    bboxIoU >= PROTECTED_RECOVERY_MIN_BBOX_IOU ||
+                        maskIoU >= PROTECTED_RECOVERY_MIN_MASK_IOU
                 TrackState.OCCLUDED, TrackState.REACQUIRING ->
                     bboxIoU >= PROTECTED_GROUP_REACQUIRE_MIN_BBOX_IOU ||
                         maskIoU >= PROTECTED_GROUP_REACQUIRE_MIN_MASK_IOU

@@ -500,6 +500,96 @@ PLK110 / Android 16 acceptance after this change:
 This HEAD remains a candidate build pending user validation on real dance videos;
 the historical user-validated rollback baseline is unchanged.
 
+### Five-person motion follow and mixed-mode correction
+
+The first real-video retest of the sticker build used one FULL_BODY target
+(`selected_ids=[4]`) together with five FACE_ONLY targets
+(`face_only_ids=[1,2,3,5,6]`) over 751 frames at 1920x1080/60 fps. The user
+reported three remaining defects: the sticker was much larger than the face,
+moving faces could outrun the sticker and become exposed, and mixed mode could
+place a full-body mask on the wrong dancer.
+
+The diagnostic bundle confirmed that the moving-face issue was not a renderer
+stall. Across 3,755 FACE_ONLY track-frames it reported **381 DETECTED / 1,148
+PREDICTED / 2,226 FALLBACK**, so only about 10.1% of per-person frames had a fresh
+face detection while about 59.3% were using fallback. The old scheduler allowed
+only one face ROI call per output frame and skipped detector work whenever a track
+was temporarily unobserved, including the exact REACQUIRING intervals where
+position needed refreshing most.
+
+The follow-up implementation therefore changes the FACE_ONLY scheduler and
+geometry rather than loosening the detector ownership gate:
+
+- the default face-detector budget is raised from one to **two ROI calls per
+  output frame**;
+- ACTIVE cached tracks keep the 66 ms cadence, while uncached, OCCLUDED,
+  REACQUIRING, or temporarily unobserved tracks are treated as urgent with a
+  **33 ms** retry interval;
+- REACQUIRING/OCCLUDED tracks may use the current TrackManager-predicted bbox for
+  a detector ROI; only LOST/REMOVED tracks are excluded;
+- the precise-cache observation-age allowance rises from two to six frames but
+  remains hard-capped by the existing 150 ms wall-clock age;
+- temporal stabilization no longer delays the face **center** at all. The newest
+  detected/predicted/YOLO-owned head center is used immediately, while only size
+  is smoothed. This removes the visual trailing introduced by center EMA at 60 fps.
+
+The sticker-size issue was also traced to geometry rather than PNG dimensions.
+The previous detected ellipse used the full detected face width/height as inputs
+to radius multipliers of 0.90/1.05, producing roughly 1.8x face width and 2.1x
+face height before sticker overscan. Detected radii are now 0.66/0.74 with a
+smaller vertical shift, fallback head geometry is materially tighter, and visual
+sticker overscan is reduced from 1.08 to **1.02**. Unit gates now cap detected
+privacy width at 1.35x the raw detector face width, detected height at 1.50x, and
+the no-history fallback diameter at conservative head-scale bounds rather than
+the previous oversized head-and-shoulders footprint.
+
+The same bundle showed substantial identity ambiguity during the mixed export:
+503 association-ambiguity events, 108 reacquire starts, and 51 reacquire timeouts.
+The selected FULL_BODY track 4 itself had 26 ambiguity events, 10 reacquire starts,
+and 10 reacquire timeouts. In addition, the main QUALITY compositor was still
+allowed to use temporal raw-detection privacy classes that deliberately carry no
+exact person ID. That is useful in the historical FULL_BODY-only pipeline but is
+unsafe in an explicit mixed-mode policy because a SELECTED temporal class can
+land on a nearby FACE_ONLY dancer.
+
+For mixed FULL_BODY + FACE_ONLY export, temporal fresh-class evidence is therefore
+disabled as a FULL_BODY primary source. The main full-body compositor follows the
+exact TrackManager-owned user-selected ID only; pure FULL_BODY exports retain the
+legacy fresh-class behavior unchanged. Global Hungarian assignment now also
+applies the same absolute bbox/mask evidence gate already used for protected
+occlusion-group commits, so a unique but weak detection cannot silently take over
+a protected selected identity. A new unit case specifically proves that a
+protected selected track rejects a globally unique bbox-IoU 0.25 candidate even
+when its bbox-only Hungarian score exceeds the ordinary minimum.
+
+A second audit of FULL_BODY id 4 found one additional concrete recovery loophole:
+of 92 group-assignment commits in the failing export, the only commit from
+`LOST` used bbox IoU **0.458** and mask IoU **0.20**. The group helper previously
+treated `LOST` like ACTIVE, so that edge was accepted even though the dedicated
+protected LOST-recovery path requires bbox IoU 0.50 or mask IoU 0.45. `LOST` now
+uses those same strict recovery thresholds in group/global association as well;
+focused crossing/recovery tests confirm normal strong reacquisition still works.
+
+The next diagnostic summary additionally records detector calls,
+DETECTED/PREDICTED/FALLBACK frame counts, and sticker min/max width/height **per
+FACE_ONLY track ID**. This makes future five-person bundles able to expose an
+individual starved or unstable target directly rather than relying only on
+aggregate counts.
+
+Local verification after these corrections:
+
+- focused FACE_ONLY geometry/stabilizer/identity tests: **17/17 passed**;
+- complete `dance_native` JVM unit suite: **all passed**;
+- Android instrumentation sources compile successfully;
+- Flutter app tests: **14/14 passed**;
+- `flutter analyze`: **0 issues**.
+
+PLK110 instrumentation for this exact revision is still pending because ADB
+disconnected before the connected-device run (`adb devices -l` returned an empty
+device list). The code must not be promoted to a user-stable baseline until the
+processor, Preview, mixed Export, and long-running device gates are repeated and
+the same real dance video is retested.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

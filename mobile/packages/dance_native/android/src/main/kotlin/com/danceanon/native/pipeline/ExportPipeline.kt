@@ -265,6 +265,7 @@ class ExportPipeline(
                 var basePtsUs = -1L
                 var lastPresentationNs = -1L
                 val trackManager = TrackManager()
+                val allowFreshFullBodyClassPrimary = faceOnlyPersonIds.isEmpty()
                 if (faceOnlyPersonIds.isEmpty()) {
                     // Preserve the exact legacy identity/privacy coupling when no
                     // FACE_ONLY policy was requested.
@@ -334,6 +335,14 @@ class ExportPipeline(
                 var faceDetectedTrackFrameCount = 0L
                 var facePredictedTrackFrameCount = 0L
                 var faceFallbackTrackFrameCount = 0L
+                val faceDetectorCallsByTrackId = mutableMapOf<Int, Long>()
+                val faceDetectedFramesByTrackId = mutableMapOf<Int, Long>()
+                val facePredictedFramesByTrackId = mutableMapOf<Int, Long>()
+                val faceFallbackFramesByTrackId = mutableMapOf<Int, Long>()
+                val faceStickerMinWidthByTrackId = mutableMapOf<Int, Float>()
+                val faceStickerMaxWidthByTrackId = mutableMapOf<Int, Float>()
+                val faceStickerMinHeightByTrackId = mutableMapOf<Int, Float>()
+                val faceStickerMaxHeightByTrackId = mutableMapOf<Int, Float>()
 
                 // SurfaceTexture Timing & Diagnostics Metrics (PHASE E)
                 var surfaceWaitTimeoutCount = 0L
@@ -731,7 +740,7 @@ class ExportPipeline(
                                     trackManager.predict(ptsUs)
                                 }
                             }
-                            val temporalPrivacyEvidence = if (shouldInfer) {
+                            val temporalPrivacyEvidence = if (shouldInfer && allowFreshFullBodyClassPrimary) {
                                 profiler.recordStage("privacyClassTracking") {
                                     privacyClassTemporalTracker.update(
                                         detections = detections,
@@ -746,7 +755,7 @@ class ExportPipeline(
                             } else {
                                 emptyList()
                             }
-                            val trackManagerFreshPrivacyEvidence = if (shouldInfer) {
+                            val trackManagerFreshPrivacyEvidence = if (shouldInfer && allowFreshFullBodyClassPrimary) {
                                 trackManager.getFreshPrivacyClassEvidence()
                             } else {
                                 emptyList()
@@ -766,14 +775,25 @@ class ExportPipeline(
                                 .map { it.residualTrackIds.first() }
                                 .filter { selectedIds.contains(it) }
                                 .toSet()
-                            // QUALITY privacy composition is rooted in the initial
-                            // analysis selection and current raw YOLO masks. Runtime
-                            // TrackManager IDs stay diagnostic/identity state only;
-                            // feeding them back into privacy class poisoned the
-                            // class tracker after new IDs were created in occlusion.
-                            freshPrivacyClassEvidence = temporalPrivacyEvidence
-                            suppressedSelectedPrivacyTrackIds = emptySet()
-                            preferFreshPrivacyClassPrimary = shouldInfer && temporalPrivacyEvidence.isNotEmpty()
+                            if (allowFreshFullBodyClassPrimary) {
+                                // Legacy/full-body-only QUALITY composition may
+                                // use temporal raw-detection privacy classes.
+                                freshPrivacyClassEvidence = temporalPrivacyEvidence
+                                suppressedSelectedPrivacyTrackIds = emptySet()
+                                preferFreshPrivacyClassPrimary = shouldInfer && temporalPrivacyEvidence.isNotEmpty()
+                            } else {
+                                // Mixed FULL_BODY + FACE_ONLY has explicit
+                                // per-person modes. A temporal class has no exact
+                                // identity and may jump to a nearby FACE_ONLY
+                                // dancer during crossings, creating a wrong
+                                // full-body mask. In mixed mode the FULL_BODY
+                                // compositor therefore follows only the
+                                // TrackManager-owned selected ID.
+                                freshPrivacyClassEvidence = emptyList()
+                                freshSelectedCoveredTrackIds = emptySet()
+                                suppressedSelectedPrivacyTrackIds = emptySet()
+                                preferFreshPrivacyClassPrimary = false
+                            }
                             tracked
                         }
 
@@ -798,6 +818,27 @@ class ExportPipeline(
                             faceDetectedTrackFrameCount += faceOnlyFrameResult.detectedTrackIds.size
                             facePredictedTrackFrameCount += faceOnlyFrameResult.predictedTrackIds.size
                             faceFallbackTrackFrameCount += faceOnlyFrameResult.fallbackTrackIds.size
+                            faceOnlyFrameResult.detectorCalledTrackIds.forEach { trackId ->
+                                faceDetectorCallsByTrackId[trackId] = faceDetectorCallsByTrackId.getOrDefault(trackId, 0L) + 1L
+                            }
+                            faceOnlyFrameResult.detectedTrackIds.forEach { trackId ->
+                                faceDetectedFramesByTrackId[trackId] = faceDetectedFramesByTrackId.getOrDefault(trackId, 0L) + 1L
+                            }
+                            faceOnlyFrameResult.predictedTrackIds.forEach { trackId ->
+                                facePredictedFramesByTrackId[trackId] = facePredictedFramesByTrackId.getOrDefault(trackId, 0L) + 1L
+                            }
+                            faceOnlyFrameResult.fallbackTrackIds.forEach { trackId ->
+                                faceFallbackFramesByTrackId[trackId] = faceFallbackFramesByTrackId.getOrDefault(trackId, 0L) + 1L
+                            }
+                            faceOnlyFrameResult.stickerPlacements.forEach { placement ->
+                                val trackId = placement.trackId
+                                val width = placement.sourceRect.width
+                                val height = placement.sourceRect.height
+                                faceStickerMinWidthByTrackId[trackId] = minOf(faceStickerMinWidthByTrackId[trackId] ?: width, width)
+                                faceStickerMaxWidthByTrackId[trackId] = maxOf(faceStickerMaxWidthByTrackId[trackId] ?: width, width)
+                                faceStickerMinHeightByTrackId[trackId] = minOf(faceStickerMinHeightByTrackId[trackId] ?: height, height)
+                                faceStickerMaxHeightByTrackId[trackId] = maxOf(faceStickerMaxHeightByTrackId[trackId] ?: height, height)
+                            }
                             if (faceOnlyFrameResult.faceInferenceMs > 0.0) {
                                 profiler.recordSample(
                                     "faceDetectorCpu",
@@ -1038,7 +1079,9 @@ class ExportPipeline(
                         "[FaceOnly Telemetry] detectorCalls=$faceDetectorCallCount detectedTrackFrames=$faceDetectedTrackFrameCount " +
                             "predictedTrackFrames=$facePredictedTrackFrameCount fallbackTrackFrames=$faceFallbackTrackFrameCount " +
                             "observations=$faceDetectorObservationCount zeroObservationCalls=$faceDetectorZeroObservationCallCount " +
-                            "rejectedCalls=$faceDetectorRejectedCallCount"
+                            "rejectedCalls=$faceDetectorRejectedCallCount callsByTrack=$faceDetectorCallsByTrackId " +
+                            "detectedByTrack=$faceDetectedFramesByTrackId predictedByTrack=$facePredictedFramesByTrackId " +
+                            "fallbackByTrack=$faceFallbackFramesByTrackId"
                     )
                 }
 
@@ -1143,6 +1186,15 @@ class ExportPipeline(
                             "face_detected_track_frames" to faceDetectedTrackFrameCount,
                             "face_predicted_track_frames" to facePredictedTrackFrameCount,
                             "face_fallback_track_frames" to faceFallbackTrackFrameCount,
+                            "face_detector_calls_by_track_id" to faceDetectorCallsByTrackId.toSortedMap().mapKeys { it.key.toString() },
+                            "face_detected_frames_by_track_id" to faceDetectedFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
+                            "face_predicted_frames_by_track_id" to facePredictedFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
+                            "face_fallback_frames_by_track_id" to faceFallbackFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
+                            "face_sticker_min_width_by_track_id" to faceStickerMinWidthByTrackId.toSortedMap().mapKeys { it.key.toString() },
+                            "face_sticker_max_width_by_track_id" to faceStickerMaxWidthByTrackId.toSortedMap().mapKeys { it.key.toString() },
+                            "face_sticker_min_height_by_track_id" to faceStickerMinHeightByTrackId.toSortedMap().mapKeys { it.key.toString() },
+                            "face_sticker_max_height_by_track_id" to faceStickerMaxHeightByTrackId.toSortedMap().mapKeys { it.key.toString() },
+                            "fresh_full_body_class_primary_enabled" to allowFreshFullBodyClassPrimary,
                             "surface_wait_timeout_count" to surfaceWaitTimeoutCount,
                             "duplicate_surface_timestamp_count" to duplicateSurfaceTimestampCount,
                             "non_monotonic_surface_timestamp_count" to nonMonotonicSurfaceTimestampCount,

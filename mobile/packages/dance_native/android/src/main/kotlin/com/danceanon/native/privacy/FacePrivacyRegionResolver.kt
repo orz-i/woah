@@ -28,15 +28,20 @@ data class FacePrivacyEllipse(
  * head ellipse rather than disappearing.
  */
 object FacePrivacyRegionResolver {
-    private const val DETECTED_RADIUS_X_FACTOR = 0.90f
-    private const val DETECTED_RADIUS_Y_FACTOR = 1.05f
-    private const val DETECTED_CENTER_Y_SHIFT = -0.08f
+    // These factors multiply the detector's full face width/height, then become
+    // ellipse radii. The previous 0.90/1.05 values therefore rendered roughly
+    // 1.8x face width and 2.1x face height, which was visibly oversized once the
+    // mask itself became the sticker surface. Keep a conservative margin without
+    // turning a detected face into a head-and-shoulders sticker.
+    private const val DETECTED_RADIUS_X_FACTOR = 0.66f
+    private const val DETECTED_RADIUS_Y_FACTOR = 0.74f
+    private const val DETECTED_CENTER_Y_SHIFT = -0.04f
 
     private const val FALLBACK_CENTER_Y_RATIO = 0.14f
-    private const val FALLBACK_RADIUS_X_FROM_WIDTH = 0.55f
-    private const val FALLBACK_RADIUS_X_FROM_HEIGHT = 0.10f
-    private const val FALLBACK_RADIUS_Y_FROM_WIDTH = 0.65f
-    private const val FALLBACK_RADIUS_Y_FROM_HEIGHT = 0.14f
+    private const val FALLBACK_RADIUS_X_FROM_WIDTH = 0.34f
+    private const val FALLBACK_RADIUS_X_FROM_HEIGHT = 0.065f
+    private const val FALLBACK_RADIUS_Y_FROM_WIDTH = 0.39f
+    private const val FALLBACK_RADIUS_Y_FROM_HEIGHT = 0.090f
 
     fun resolve(
         personBbox: FloatRect,

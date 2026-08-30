@@ -56,8 +56,8 @@ class FacePrivacyTemporalStabilizerTest {
         val rawFallback = FacePrivacyEllipse(320f, 184f, 110f, 130f, FacePrivacyRegionSource.YOLO_HEAD_FALLBACK)
         val output = stabilizer.stabilize(4, rawFallback, movedPerson, 33_333L)
 
-        assertTrue(output.centerX >= rawFallback.centerX - movedPerson.width * 0.08f - 0.1f)
-        assertTrue(output.centerX > 250f, "fallback center must follow current person geometry")
+        assertEquals(rawFallback.centerX, output.centerX)
+        assertEquals(rawFallback.centerY, output.centerY)
     }
 
     @Test

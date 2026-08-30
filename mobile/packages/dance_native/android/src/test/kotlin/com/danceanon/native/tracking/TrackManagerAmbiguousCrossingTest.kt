@@ -93,4 +93,42 @@ class TrackManagerAmbiguousCrossingTest {
             "global near-ties must defer identity commitment before an occlusion group has formed"
         )
     }
+
+    @Test
+    fun testProtectedGlobalCommitRequiresAbsoluteIdentityEvidence() {
+        tracker = TrackManager(
+            TrackingConfig(
+                minMatchScore = 0.20f,
+                bboxIouWeight = 1.0f,
+                maskIouWeight = 0.0f,
+                motionWeight = 0.0f,
+                directionWeight = 0.0f,
+                associationAmbiguityMargin = 0.05f
+            )
+        )
+        tracker.setIdentityProtectedTrackIds(setOf(7))
+        tracker.setPrivacySelectedTrackIds(setOf(7))
+        tracker.initializeWithAssignedIds(
+            detections = listOf(
+                PersonDetection(FloatRect(100f, 100f, 200f, 300f), 0.95f, createDummyMask())
+            ),
+            assignedIds = listOf(7)
+        )
+
+        // IoU is 0.25: enough for the bbox-only global score (>= 0.20), but
+        // below the protected ACTIVE absolute-evidence gate (0.35). With only
+        // one row/column there is no near-tie ambiguity to save us; the global
+        // protected gate must defer rather than transferring the selected ID.
+        val tracks = tracker.update(
+            listOf(PersonDetection(FloatRect(160f, 100f, 260f, 300f), 0.95f, mask = null)),
+            timestampUs = 33_333L
+        )
+        val protected = tracks.single { it.id == 7 }
+        assertEquals(TrackState.REACQUIRING, protected.state)
+        assertTrue(!protected.observedThisFrame)
+        assertTrue(
+            protected.bbox.centerX < 200f,
+            "weak global candidate must not take over the protected FULL_BODY identity"
+        )
+    }
 }

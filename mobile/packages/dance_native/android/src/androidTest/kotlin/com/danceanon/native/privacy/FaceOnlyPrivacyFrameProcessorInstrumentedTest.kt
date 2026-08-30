@@ -139,7 +139,7 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
     }
 
     @Test
-    fun multipleFaceOnlyTracksShareOneDetectorCallPerFrame() {
+    fun multipleFaceOnlyTracksUseTwoCallBudgetInsteadOfStarvingOneTarget() {
         val locator = CountingLocator(
             listOf(FaceObservation(FloatRect(104f, 96f, 152f, 144f), 0.9f))
         )
@@ -156,9 +156,9 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
                 faceOnlyTrackIds = setOf(1, 2),
                 ptsUs = 0L
             )
-            assertEquals(1, first.detectorCallCount)
-            assertEquals(1, first.detectedTrackIds.size)
-            assertEquals(1, first.fallbackTrackIds.size)
+            assertEquals(2, first.detectorCallCount)
+            assertEquals(2, first.detectedTrackIds.size)
+            assertTrue(first.fallbackTrackIds.isEmpty())
 
             val second = processor.resolveFrame(
                 frameTexture = texture,
@@ -168,10 +168,34 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
                 faceOnlyTrackIds = setOf(1, 2),
                 ptsUs = 33_333L
             )
-            assertEquals(1, second.detectorCallCount)
+            assertEquals(0, second.detectorCallCount)
             assertEquals(2, locator.calls)
-            assertTrue(second.predictedTrackIds.isNotEmpty())
-            assertTrue(second.detectedTrackIds.isNotEmpty())
+            assertEquals(setOf(1, 2), second.predictedTrackIds)
+        }
+    }
+
+    @Test
+    fun reacquiringUnobservedFaceOnlyTrackStillGetsUrgentDetectorRefresh() {
+        val locator = CountingLocator(
+            listOf(FaceObservation(FloatRect(104f, 96f, 152f, 144f), 0.9f))
+        )
+        withProcessor(locator) { processor, texture, _ ->
+            val target = person(21, FloatRect(220f, 40f, 420f, 350f)).copy(
+                state = TrackState.REACQUIRING,
+                observedThisFrame = false,
+                framesSinceLastObservation = 4
+            )
+            val result = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(target),
+                faceOnlyTrackIds = setOf(21),
+                ptsUs = 33_333L
+            )
+            assertEquals(1, result.detectorCallCount)
+            assertEquals(setOf(21), result.detectedTrackIds)
+            assertEquals(1, locator.calls)
         }
     }
 

@@ -1,7 +1,6 @@
 package com.danceanon.native.privacy
 
 import com.danceanon.native.inference.FloatRect
-import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.max
 
@@ -79,7 +78,6 @@ class FacePrivacyTemporalStabilizer {
         } else {
             val dtSeconds = ((ptsUs - previous.lastPtsUs) / 1_000_000.0)
                 .coerceIn(MIN_DT_SECONDS, MAX_DT_SECONDS)
-            val centerAlpha = alpha(dtSeconds, CENTER_TIME_CONSTANT_SECONDS)
             val sizeTau = when (target.source) {
                 FacePrivacyRegionSource.DETECTED_FACE -> {
                     if (target.radiusX < previous.output.radiusX || target.radiusY < previous.output.radiusY) {
@@ -93,22 +91,16 @@ class FacePrivacyTemporalStabilizer {
             }
             val sizeAlpha = alpha(dtSeconds, sizeTau)
 
-            var centerX = lerp(previous.output.centerX, target.centerX, centerAlpha)
-            var centerY = lerp(previous.output.centerY, target.centerY, centerAlpha)
-            val maxLagX = max(MIN_CENTER_LAG_PX, personBbox.width * MAX_CENTER_LAG_PERSON_RATIO)
-            val maxLagY = max(MIN_CENTER_LAG_PX, personBbox.height * MAX_CENTER_LAG_PERSON_RATIO)
-            centerX = clampLag(centerX, target.centerX, maxLagX)
-            centerY = clampLag(centerY, target.centerY, maxLagY)
-
             val smoothedRadiusX = lerp(previous.output.radiusX, target.radiusX, sizeAlpha)
             val smoothedRadiusY = lerp(previous.output.radiusY, target.radiusY, sizeAlpha)
 
-            // Never lag so far behind a new conservative target that privacy can
-            // visibly open. The 90% floor still removes most of the abrupt size
-            // jump between detected and generic fallback geometry.
+            // Position is privacy-critical and must follow the newest detector /
+            // YOLO-owned head geometry immediately. Only size is stabilized.
+            // Center smoothing looked pleasant on static fixtures but created a
+            // visible trailing sticker on fast 60 fps dance motion.
             FacePrivacyEllipse(
-                centerX = centerX,
-                centerY = centerY,
+                centerX = target.centerX,
+                centerY = target.centerY,
                 radiusX = max(smoothedRadiusX, target.radiusX * PRIVACY_TARGET_FLOOR),
                 radiusY = max(smoothedRadiusY, target.radiusY * PRIVACY_TARGET_FLOOR),
                 source = target.source
@@ -134,27 +126,17 @@ class FacePrivacyTemporalStabilizer {
 
     private fun lerp(a: Float, b: Float, alpha: Float): Float = a + (b - a) * alpha
 
-    private fun clampLag(value: Float, target: Float, maxLag: Float): Float {
-        val delta = target - value
-        if (abs(delta) <= maxLag) return value
-        return target - if (delta > 0f) maxLag else -maxLag
-    }
-
     companion object {
         private const val FALLBACK_REFERENCE_EXPANSION = 1.45f
-        private const val FALLBACK_MIN_RADIUS_X_FROM_WIDTH = 0.30f
-        private const val FALLBACK_MIN_RADIUS_X_FROM_HEIGHT = 0.07f
-        private const val FALLBACK_MIN_RADIUS_Y_FROM_WIDTH = 0.36f
-        private const val FALLBACK_MIN_RADIUS_Y_FROM_HEIGHT = 0.10f
+        private const val FALLBACK_MIN_RADIUS_X_FROM_WIDTH = 0.26f
+        private const val FALLBACK_MIN_RADIUS_X_FROM_HEIGHT = 0.055f
+        private const val FALLBACK_MIN_RADIUS_Y_FROM_WIDTH = 0.30f
+        private const val FALLBACK_MIN_RADIUS_Y_FROM_HEIGHT = 0.075f
 
         private const val DETECTED_REFERENCE_ALPHA = 0.25f
         private const val PRIVACY_TARGET_FLOOR = 0.90f
-        private const val MAX_CENTER_LAG_PERSON_RATIO = 0.08f
-        private const val MIN_CENTER_LAG_PX = 6f
-
         private const val MIN_DT_SECONDS = 1.0 / 120.0
         private const val MAX_DT_SECONDS = 0.25
-        private const val CENTER_TIME_CONSTANT_SECONDS = 0.055
         private const val DETECTED_GROW_TIME_CONSTANT_SECONDS = 0.075
         private const val DETECTED_SHRINK_TIME_CONSTANT_SECONDS = 0.24
         private const val PREDICTED_SIZE_TIME_CONSTANT_SECONDS = 0.15
