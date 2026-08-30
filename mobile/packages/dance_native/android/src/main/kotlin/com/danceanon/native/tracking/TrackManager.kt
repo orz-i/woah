@@ -173,6 +173,39 @@ class TrackManager(
             track.currentRenderMask == null
     }
 
+    private fun suppressStaleMixedFullBodyMaskIfNeeded(track: InternalTrack, timestampUs: Long) {
+        if (!privacyOffscreenDormancyEnabled ||
+            !privacySelectedTrackIds.contains(track.id) ||
+            track.observedThisFrame ||
+            track.framesSinceLastObservation < MIXED_FULL_BODY_MAX_RENDER_MISS_FRAMES ||
+            track.currentRenderMask == null
+        ) {
+            return
+        }
+
+        // The real mixed clip repeatedly showed a selected FULL_BODY identity
+        // with no fresh observation but a warped canonical mask still visible
+        // through OCCLUDED/REACQUIRING grace. In mixed mode that stale body mask
+        // is particularly destructive because it can cover unrelated FACE_ONLY
+        // people. Preserve the identity state and all recovery evidence, but stop
+        // rendering the old segmentation after a very short real detection miss.
+        // FULL_BODY-only callers never enable this mixed-mode policy.
+        track.currentRenderMask = null
+        if (track.framesSinceLastObservation == MIXED_FULL_BODY_MAX_RENDER_MISS_FRAMES) {
+            NativeDiagnostics.event(
+                level = "INFO",
+                component = "TrackManager",
+                event = "MIXED_FULL_BODY_STALE_MASK_SUPPRESSED",
+                fields = mapOf(
+                    "track_id" to track.id,
+                    "state" to track.state.name,
+                    "frames_since_last_observation" to track.framesSinceLastObservation,
+                    "pts_us" to timestampUs
+                )
+            )
+        }
+    }
+
     private fun isLikelyProtectedOffscreenExit(track: InternalTrack): Boolean {
         // Offscreen dormancy is a FULL_BODY privacy-render policy. FACE_ONLY IDs
         // are identity-protected too, but their separate face fallback/sticker
@@ -1518,6 +1551,8 @@ class TrackManager(
                         TrackState.REMOVED, TrackState.OCCLUDED, TrackState.REACQUIRING -> {}
                     }
                 }
+
+                suppressStaleMixedFullBodyMaskIfNeeded(track, timestampUs)
             }
         }
 
@@ -1842,6 +1877,10 @@ class TrackManager(
                 }
             }
 
+            if (countAsDetectionMiss) {
+                suppressStaleMixedFullBodyMaskIfNeeded(track, timestampUs)
+            }
+
             track.toTrackedPerson()
         }.filter { it.state != TrackState.REMOVED }
 
@@ -1876,6 +1915,7 @@ class TrackManager(
         private const val PROTECTED_UNOBSERVED_MAX_SCALE = 1.18f
         private const val OFFSCREEN_EXIT_EDGE_RATIO = 0.06f
         private const val OFFSCREEN_EXIT_MIN_STEP_RATIO = 0.03f
+        private const val MIXED_FULL_BODY_MAX_RENDER_MISS_FRAMES = 3
 
         fun boundPredictionAroundAnchor(
             anchor: FloatRect,

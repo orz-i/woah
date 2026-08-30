@@ -20,10 +20,13 @@ import kotlin.math.min
  */
 object BodyMaskFaceHeadEstimator {
     private const val MASK_THRESHOLD = 96
-    private const val MIN_SUPPORT_PIXELS = 3
+    private const val MIN_SUPPORT_ROWS = 2
     private const val PERSON_SIDE_MARGIN_RATIO = 0.08f
     private const val PERSON_TOP_MARGIN_RATIO = 0.10f
     private const val PERSON_HEAD_MAX_Y_RATIO = 0.42f
+    private const val MIN_RUN_WIDTH_RATIO = 0.30f
+    private const val MAX_RUN_WIDTH_RATIO = 1.75f
+    private const val MAX_RUN_CENTER_DISTANCE_RATIO = 1.05f
 
     fun estimate(
         mask: NativeMask?,
@@ -71,52 +74,78 @@ object BodyMaskFaceHeadEstimator {
 
         val seedProtoX = mapper.sourceToProtoX(seedCenterX)
         val seedProtoY = mapper.sourceToProtoY(seedCenterY)
-        val radiusProtoX = max(
-            abs(mapper.sourceToProtoX(seedCenterX + searchHalfWidth) - seedProtoX),
-            1f
+        val expectedRunWidth = max(
+            abs(mapper.sourceToProtoX(seedCenterX + seedRadiusX * 0.70f) -
+                mapper.sourceToProtoX(seedCenterX - seedRadiusX * 0.70f)),
+            2f
         )
-        val radiusProtoY = max(
-            abs(mapper.sourceToProtoY(seedCenterY + searchHalfHeight) - seedProtoY),
-            1f
+        val expectedHeadHalfHeight = max(
+            abs(mapper.sourceToProtoY(seedCenterY + seedRadiusY * 0.72f) - seedProtoY),
+            2f
         )
 
+        // A full-person mask has no head/hand semantics. A weighted centroid of
+        // all upper-body pixels therefore drifts toward shoulders or a nearby arm.
+        // Instead, examine each scanline and keep only a *head-like narrow run*
+        // nearest the trusted face seed. Wide shoulder/arm unions fail the run
+        // width gate and contribute nothing. This uses the stable body mask as a
+        // local motion cue rather than pretending its centroid is a face center.
         var weightedX = 0.0
         var weightedY = 0.0
         var weightSum = 0.0
-        var supportPixels = 0
+        var supportRows = 0
         for (y in minY..maxY) {
-            for (x in minX..maxX) {
-                val value = mask.buffer.get(y * mask.width + x).toInt() and 0xFF
-                if (value < MASK_THRESHOLD) continue
-                val dx = ((x + 0.5f) - seedProtoX) / radiusProtoX
-                val dy = ((y + 0.5f) - seedProtoY) / radiusProtoY
-                val distanceSq = dx * dx + dy * dy
-                if (distanceSq > 1.45f) continue
+            var bestCenterX: Float? = null
+            var bestWidth = 0f
+            var bestDistance = Float.POSITIVE_INFINITY
+            var x = minX
+            while (x <= maxX) {
+                while (x <= maxX && (mask.buffer.get(y * mask.width + x).toInt() and 0xFF) < MASK_THRESHOLD) {
+                    x++
+                }
+                if (x > maxX) break
+                val runStart = x
+                while (x <= maxX && (mask.buffer.get(y * mask.width + x).toInt() and 0xFF) >= MASK_THRESHOLD) {
+                    x++
+                }
+                val runEndExclusive = x
+                val runWidth = (runEndExclusive - runStart).toFloat()
+                val widthRatio = runWidth / expectedRunWidth
+                if (widthRatio !in MIN_RUN_WIDTH_RATIO..MAX_RUN_WIDTH_RATIO) continue
 
-                // Keep the seed as a prior, but let strong current mask support
-                // move the estimate. A rational weight is cheaper than exp() on
-                // this hot path and avoids snapping to distant arm pixels.
-                val proximityWeight = 1f / (1f + 2.25f * distanceSq)
-                val maskWeight = value / 255f
-                val weight = (proximityWeight * maskWeight).toDouble()
-                weightedX += (x + 0.5) * weight
-                weightedY += (y + 0.5) * weight
-                weightSum += weight
-                supportPixels++
+                val runCenterX = (runStart + runEndExclusive) * 0.5f
+                val centerDistance = abs(runCenterX - seedProtoX) / expectedRunWidth
+                if (centerDistance > MAX_RUN_CENTER_DISTANCE_RATIO) continue
+                if (centerDistance < bestDistance) {
+                    bestDistance = centerDistance
+                    bestCenterX = runCenterX
+                    bestWidth = runWidth
+                }
             }
+
+            val rowCenterX = bestCenterX ?: continue
+            val yDistance = abs((y + 0.5f) - seedProtoY) / expectedHeadHalfHeight
+            if (yDistance > 1.75f) continue
+            val widthError = abs(bestWidth - expectedRunWidth) / expectedRunWidth
+            val rowWeight = 1f / (1f + bestDistance * 2.2f + yDistance * 0.55f + widthError * 0.75f)
+            weightedX += rowCenterX * rowWeight
+            weightedY += (y + 0.5) * rowWeight
+            weightSum += rowWeight
+            supportRows++
         }
-        if (supportPixels < MIN_SUPPORT_PIXELS || weightSum <= 0.25) return null
+        if (supportRows < MIN_SUPPORT_ROWS || weightSum <= 0.50) return null
 
         val centerProtoX = (weightedX / weightSum).toFloat()
         val centerProtoY = (weightedY / weightSum).toFloat()
         val centerSourceX = protoToSourceX(centerProtoX, mask, mapper.modelInputSize)
         val centerSourceY = protoToSourceY(centerProtoY, mask, mapper.modelInputSize)
 
-        // A single 160x160 mask pixel represents many source pixels. Clamp the
-        // per-frame correction so coarse proto quantization cannot create sticker
-        // jumps, while still allowing meaningful articulated head motion.
-        val maxShiftX = max(seedRadiusX * 1.35f, personBbox.width * 0.20f)
-        val maxShiftY = max(seedRadiusY * 1.20f, personBbox.height * 0.10f)
+        // A single 160x160 mask pixel represents many source pixels. Keep the
+        // correction deliberately smaller than the old centroid path. If the
+        // silhouette cannot make a local, head-like case, holding the trusted
+        // face is safer than following a body-mask feature.
+        val maxShiftX = max(seedRadiusX * 0.80f, personBbox.width * 0.10f)
+        val maxShiftY = max(seedRadiusY * 0.70f, personBbox.height * 0.055f)
         return FacePoint(
             x = centerSourceX.coerceIn(seedCenterX - maxShiftX, seedCenterX + maxShiftX),
             y = centerSourceY.coerceIn(seedCenterY - maxShiftY, seedCenterY + maxShiftY)

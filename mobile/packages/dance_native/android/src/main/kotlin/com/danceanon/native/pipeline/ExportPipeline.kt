@@ -347,6 +347,8 @@ class ExportPipeline(
                 val faceStickerMaxWidthByTrackId = mutableMapOf<Int, Float>()
                 val faceStickerMinHeightByTrackId = mutableMapOf<Int, Float>()
                 val faceStickerMaxHeightByTrackId = mutableMapOf<Int, Float>()
+                val faceStickerLastCenterByTrackId = mutableMapOf<Int, Pair<Float, Float>>()
+                val faceStickerMaxCenterStepByTrackId = mutableMapOf<Int, Float>()
 
                 // SurfaceTexture Timing & Diagnostics Metrics (PHASE E)
                 var surfaceWaitTimeoutCount = 0L
@@ -847,10 +849,22 @@ class ExportPipeline(
                                 val trackId = placement.trackId
                                 val width = placement.sourceRect.width
                                 val height = placement.sourceRect.height
+                                val centerX = placement.sourceRect.centerX
+                                val centerY = placement.sourceRect.centerY
                                 faceStickerMinWidthByTrackId[trackId] = minOf(faceStickerMinWidthByTrackId[trackId] ?: width, width)
                                 faceStickerMaxWidthByTrackId[trackId] = maxOf(faceStickerMaxWidthByTrackId[trackId] ?: width, width)
                                 faceStickerMinHeightByTrackId[trackId] = minOf(faceStickerMinHeightByTrackId[trackId] ?: height, height)
                                 faceStickerMaxHeightByTrackId[trackId] = maxOf(faceStickerMaxHeightByTrackId[trackId] ?: height, height)
+                                faceStickerLastCenterByTrackId[trackId]?.let { previous ->
+                                    val dx = centerX - previous.first
+                                    val dy = centerY - previous.second
+                                    val step = sqrt(dx * dx + dy * dy)
+                                    faceStickerMaxCenterStepByTrackId[trackId] = maxOf(
+                                        faceStickerMaxCenterStepByTrackId[trackId] ?: 0f,
+                                        step
+                                    )
+                                }
+                                faceStickerLastCenterByTrackId[trackId] = centerX to centerY
                             }
                             if (faceOnlyFrameResult.faceInferenceMs > 0.0) {
                                 profiler.recordSample(
@@ -1213,6 +1227,7 @@ class ExportPipeline(
                             "face_sticker_max_width_by_track_id" to faceStickerMaxWidthByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_sticker_min_height_by_track_id" to faceStickerMinHeightByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_sticker_max_height_by_track_id" to faceStickerMaxHeightByTrackId.toSortedMap().mapKeys { it.key.toString() },
+                            "face_sticker_max_center_step_by_track_id" to faceStickerMaxCenterStepByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "fresh_full_body_class_primary_enabled" to allowFreshFullBodyClassPrimary,
                             "conservative_mixed_full_body_occluder_policy_enabled" to
                                 (faceOnlyPersonIds.isNotEmpty() && fullBodyPersonIds.isNotEmpty()),

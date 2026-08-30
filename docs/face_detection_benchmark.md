@@ -909,6 +909,71 @@ localized by central face keypoints, and keypoints move privacy placement away
 from a pose-skewed bbox center. Connected-device execution remains intentionally
 manual.
 
+### Seventh real-video correction: body mask is a motion constraint, not a face centroid
+
+The next 751-frame real-video bundle came from
+`3eee279ed0a3d47a18408c96c1857dc8c31a2f63`. Detector-side metrics improved, but
+the user still saw both a stray FULL_BODY mask and visible FACE_ONLY drift:
+
+- detector rejections fell from 144 to **54**;
+- DETECTED track-frames rose from 736 to **847**;
+- PREDICTED track-frames were **1,004** and FALLBACK remained high at **1,904**;
+- body-mask guidance ran on **810** track-frames;
+- IDs 1/2/3 still spent **502 / 456 / 637** frames in fallback despite the
+  detector/keypoint improvements;
+- FACE_ONLY p95 dropped to about **62 ms** and detector p95 to about **40 ms**, so
+  the remaining visual error is not explained by a new processing stall.
+
+This disproves the assumption that a local centroid of an accurate full-person
+segmentation is itself a reliable face observation. The person mask is stable for
+identity/pixel ownership but has no semantic distinction between head, shoulders,
+hair, hands, or arms. When those pixels enter the local search window, centroid
+guidance can visibly pull the FACE_ONLY sticker even though the full-body mask is
+correct.
+
+The body-mask path is therefore narrowed again:
+
+- the person mask no longer recenters the identity-local **detector ROI** at all;
+  detector ROI geometry stays anchored to the last accepted face plus bounded
+  person-box translation, so an imperfect body estimate cannot recursively steer
+  future detector observations;
+- on non-detected output frames the body mask is still allowed to provide motion
+  evidence, but `BodyMaskFaceHeadEstimator` now scans horizontal mask runs and
+  accepts only narrow, head-like runs close to the trusted face seed;
+- wide unions caused by shoulders or an arm crossing the face window are rejected
+  instead of contributing to an absolute upper-body centroid;
+- per-frame mask correction bounds are tightened. If the stable body silhouette
+  cannot make a local head-like case, holding the trusted face seed is preferred
+  over following another body feature.
+
+The FULL_BODY interference in this bundle is also more specific than an offscreen
+exit. Selected id 4 had reliable assignment commits only through about **0.100 s**,
+then remained unobserved through OCCLUDED/REACQUIRING/LOST handling.
+`PROTECTED_OFFSCREEN_DORMANT` fired **0 times**, so the edge-exit shortcut could not
+help. The old canonical segmentation could still be warped and rendered during
+the OCCLUDED/REACQUIRING grace even though no new id-4 observation had validated
+those pixels.
+
+Mixed mode now separates identity retention from mask retention more aggressively:
+
+- a selected FULL_BODY identity may still remain OCCLUDED/REACQUIRING/LOST and
+  later recover the same ID;
+- but after **three consecutive real detection misses** its old full-body render
+  mask is cleared, regardless of which unobserved state is carrying the identity;
+- `MIXED_FULL_BODY_STALE_MASK_SUPPRESSED` records the first suppression frame;
+- the policy is enabled only by the existing mixed-mode dormancy flag, so
+  FULL_BODY-only tracking keeps the historical LOST/occlusion mask behavior.
+
+Focused regressions prove both sides: mixed FULL_BODY clears the stale mask on the
+third real miss without removing the protected identity, while the same three-miss
+sequence in FULL_BODY-only mode still retains its legacy mask. Body-mask tests now
+also cover an arm crossing through the local face window and require wide arm /
+shoulder rows not to steal the face estimate.
+
+Export diagnostics additionally record `face_sticker_max_center_step_by_track_id`
+so the next real bundle can quantify any remaining abrupt face motion instead of
+inferring drift from size ranges alone.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

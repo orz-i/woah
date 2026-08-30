@@ -122,8 +122,7 @@ class FaceOnlyPrivacyFrameProcessor(
     ): FaceHeadRoiPlan? {
         val ageUs = ptsUs - cached.lastTrustedPtsUs
         if (ageUs !in 0L..MAX_LOCAL_FACE_REFRESH_AGE_US) return null
-        val rawProjected = cached.project(person.bbox, ageUs) ?: return null
-        val projected = refineWithCurrentBodyMask(person, rawProjected) ?: rawProjected
+        val projected = cached.project(person.bbox, ageUs) ?: return null
         val frameWidth = mapper.srcWidth.toFloat()
         val frameHeight = mapper.srcHeight.toFloat()
         if (frameWidth <= 1f || frameHeight <= 1f) return null

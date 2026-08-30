@@ -108,6 +108,55 @@ class LostTrackPrivacySafetyTest {
     }
 
     @Test
+    fun testMixedModeSelectedMaskStopsAfterThreeRealMissesButIdentitySurvives() {
+        val tracker = TrackManager(TrackingConfig(maxMissedFrames = 15))
+        tracker.setIdentityProtectedTrackIds(setOf(42))
+        tracker.setPrivacySelectedTrackIds(setOf(42))
+        tracker.setPrivacyOffscreenDormancyEnabled(true)
+
+        val box = FloatRect(700f, 300f, 900f, 800f)
+        tracker.initializeWithAssignedIds(
+            listOf(PersonDetection(box, 0.95f, createSyntheticMask(fillBox = box))),
+            listOf(42)
+        )
+
+        val miss1 = assertNotNull(tracker.update(emptyList(), 33_333L).find { it.id == 42 })
+        assertNotNull(miss1.mask)
+        val miss2 = assertNotNull(tracker.update(emptyList(), 66_666L).find { it.id == 42 })
+        assertNotNull(miss2.mask)
+        val miss3 = assertNotNull(tracker.update(emptyList(), 99_999L).find { it.id == 42 })
+        assertEquals(
+            null,
+            miss3.mask,
+            "mixed-mode FULL_BODY must stop rendering stale segmentation after three real misses"
+        )
+        assertTrue(
+            miss3.state != TrackState.REMOVED,
+            "mask suppression must preserve the protected identity slot for strict recovery"
+        )
+    }
+
+    @Test
+    fun testFullBodyOnlyKeepsHistoricalMaskAcrossSameThreeMisses() {
+        val tracker = TrackManager(TrackingConfig(maxMissedFrames = 15))
+        tracker.setProtectedTrackIds(setOf(42))
+
+        val box = FloatRect(700f, 300f, 900f, 800f)
+        tracker.initializeWithAssignedIds(
+            listOf(PersonDetection(box, 0.95f, createSyntheticMask(fillBox = box))),
+            listOf(42)
+        )
+
+        tracker.update(emptyList(), 33_333L)
+        tracker.update(emptyList(), 66_666L)
+        val miss3 = assertNotNull(tracker.update(emptyList(), 99_999L).find { it.id == 42 })
+        assertNotNull(
+            miss3.mask,
+            "FULL_BODY-only path must retain its historical LOST privacy behavior"
+        )
+    }
+
+    @Test
     fun testProtectedSelectedIdentitySurvivesRemovalWindowAndReacquiresOriginalId() {
         val tracker = TrackManager(TrackingConfig(maxMissedFrames = 15))
         tracker.setProtectedTrackIds(setOf(42))

@@ -58,6 +58,35 @@ class BodyMaskFaceHeadEstimatorTest {
     }
 
     @Test
+    fun `arm crossing local head window cannot turn body silhouette into face centroid`() {
+        val person = FloatRect(120f, 60f, 500f, 600f)
+        val mask = maskOf(
+            FloatRect(275f, 105f, 335f, 180f), // real head
+            FloatRect(225f, 175f, 390f, 590f), // shoulders / torso
+            FloatRect(185f, 112f, 390f, 145f)  // arm crossing through the head window
+        )
+
+        val estimate = assertNotNull(
+            BodyMaskFaceHeadEstimator.estimate(
+                mask = mask,
+                personBbox = person,
+                seedCenterX = 303f,
+                seedCenterY = 145f,
+                seedRadiusX = 45f,
+                seedRadiusY = 55f
+            )
+        )
+        assertTrue(
+            estimate.x in 275f..340f,
+            "wide arm union must be rejected in favor of narrow head-like rows: $estimate"
+        )
+        assertTrue(
+            estimate.y < 190f,
+            "wide shoulder/torso rows must not pull FACE_ONLY placement downward: $estimate"
+        )
+    }
+
+    @Test
     fun `missing mapper refuses mask geometry instead of guessing letterbox`() {
         val buf = ByteBuffer.allocateDirect(160 * 160)
         val mask = NativeMask(160, 160, buf, 640, 640, mapper = null)
