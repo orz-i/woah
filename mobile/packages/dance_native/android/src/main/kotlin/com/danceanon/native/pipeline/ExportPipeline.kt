@@ -327,6 +327,13 @@ class ExportPipeline(
                 var lastDecoderPtsUs = -1L
                 var lastEncoderPtsUs = -1L
                 var emptyFrameStreak = 0
+                var faceDetectorCallCount = 0L
+                var faceDetectorObservationCount = 0L
+                var faceDetectorZeroObservationCallCount = 0L
+                var faceDetectorRejectedCallCount = 0L
+                var faceDetectedTrackFrameCount = 0L
+                var facePredictedTrackFrameCount = 0L
+                var faceFallbackTrackFrameCount = 0L
 
                 // SurfaceTexture Timing & Diagnostics Metrics (PHASE E)
                 var surfaceWaitTimeoutCount = 0L
@@ -784,6 +791,13 @@ class ExportPipeline(
                             }
                         }
                         if (faceOnlyFrameResult != null) {
+                            faceDetectorCallCount += faceOnlyFrameResult.detectorCallCount
+                            faceDetectorObservationCount += faceOnlyFrameResult.detectorObservationCount
+                            faceDetectorZeroObservationCallCount += faceOnlyFrameResult.detectorZeroObservationCallCount
+                            faceDetectorRejectedCallCount += faceOnlyFrameResult.detectorRejectedCallCount
+                            faceDetectedTrackFrameCount += faceOnlyFrameResult.detectedTrackIds.size
+                            facePredictedTrackFrameCount += faceOnlyFrameResult.predictedTrackIds.size
+                            faceFallbackTrackFrameCount += faceOnlyFrameResult.fallbackTrackIds.size
                             if (faceOnlyFrameResult.faceInferenceMs > 0.0) {
                                 profiler.recordSample(
                                     "faceDetectorCpu",
@@ -1017,6 +1031,15 @@ class ExportPipeline(
                     "ExportPipeline",
                     "[Pipeline Telemetry] decoded=$decodedFrameCount, latched=$latchedFrameCount, rendered=$renderedFrameCount, encoded=$encodedFrameCount, lastDecPts=${lastDecoderPtsUs}us, lastEncPts=${lastEncoderPtsUs}us"
                 )
+                if (faceOnlyPersonIds.isNotEmpty()) {
+                    android.util.Log.i(
+                        "ExportPipeline",
+                        "[FaceOnly Telemetry] detectorCalls=$faceDetectorCallCount detectedTrackFrames=$faceDetectedTrackFrameCount " +
+                            "predictedTrackFrames=$facePredictedTrackFrameCount fallbackTrackFrames=$faceFallbackTrackFrameCount " +
+                            "observations=$faceDetectorObservationCount zeroObservationCalls=$faceDetectorZeroObservationCallCount " +
+                            "rejectedCalls=$faceDetectorRejectedCallCount"
+                    )
+                }
 
 
 
@@ -1112,6 +1135,13 @@ class ExportPipeline(
                             "latched_frames" to latchedFrameCount,
                             "rendered_frames" to renderedFrameCount,
                             "encoded_frames" to encodedFrameCount,
+                            "face_detector_call_count" to faceDetectorCallCount,
+                            "face_detector_observation_count" to faceDetectorObservationCount,
+                            "face_detector_zero_observation_call_count" to faceDetectorZeroObservationCallCount,
+                            "face_detector_rejected_call_count" to faceDetectorRejectedCallCount,
+                            "face_detected_track_frames" to faceDetectedTrackFrameCount,
+                            "face_predicted_track_frames" to facePredictedTrackFrameCount,
+                            "face_fallback_track_frames" to faceFallbackTrackFrameCount,
                             "surface_wait_timeout_count" to surfaceWaitTimeoutCount,
                             "duplicate_surface_timestamp_count" to duplicateSurfaceTimestampCount,
                             "non_monotonic_surface_timestamp_count" to nonMonotonicSurfaceTimestampCount,

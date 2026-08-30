@@ -312,6 +312,29 @@ special case. The remaining high sample is therefore treated as a cold first-use
 cost until a longer dynamic benchmark shows otherwise, not as evidence of a
 steady-state face-mask algorithm bottleneck.
 
+For dynamic validation, a separate androidTest-only fixture derives 18 frames
+from the reviewed real-person crop using deterministic affine motion (horizontal
+translation, vertical translation, mild scale, and mild rotation). The manifest
+stores each frame hash plus the transformed reference head point. The device test
+encodes those frames to AVC, runs the real 30 fps FACE_ONLY export, and checks
+multiple decoded output frames for nonzero local privacy, non-full-body vertical
+extent, and privacy-region motion consistent with the known affine displacement.
+The export summary additionally separates raw detector observations, zero-result
+detector calls, and nonempty detector results rejected by the YOLO-owned anchor
+gate, so low DETECTED coverage can be attributed before changing model or gate
+thresholds.
+
+On PLK110 / Android 16 with the production MediaPipe confidence threshold kept at
+0.35, the dynamic test passed end-to-end across all 18 output frames. The face
+sidecar made 8 detector calls and produced 6 raw observations: 2 calls returned no
+face and 3 nonempty calls were rejected by the person-owned anchor gate. The
+resulting frame mix was **3 DETECTED / 3 PREDICTED / 12 YOLO_HEAD_FALLBACK**.
+Diagnostic runs showed the rejected candidates were far from the target anchor
+(roughly 0.67-0.73 of the 256 ROI size), so lowering detector confidence or
+loosening the anchor gate would trade identity safety for apparent recall. The
+current conclusion is to keep the strict gate/fail-closed fallback and treat
+detector precision coverage, not privacy continuity, as the next quality problem.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

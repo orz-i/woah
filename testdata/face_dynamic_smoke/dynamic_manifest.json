@@ -1,0 +1,139 @@
+{
+  "source_asset": "person3_frame.jpg",
+  "source_sha256": "bd3bf77fedb9fb85ab57faba66a99ef0afff11dc101d4784685efbc496d899d8",
+  "width": 720,
+  "height": 1280,
+  "fps": 30,
+  "base_head": [
+    337.0,
+    415.0
+  ],
+  "frames": [
+    {
+      "index": 0,
+      "asset": "dynamic_frame_000.jpg",
+      "head_x": 326.201,
+      "head_y": 408.621,
+      "sha256": "54e8df177aa0e707ab4be18ab4c22afc468031c23f954d2e3b7dd7439970eec4"
+    },
+    {
+      "index": 1,
+      "asset": "dynamic_frame_001.jpg",
+      "head_x": 347.011,
+      "head_y": 436.464,
+      "sha256": "4c04bf6ae160652714b3eb1bed9c1f42244233870057c3ab3c670be3091d0698"
+    },
+    {
+      "index": 2,
+      "asset": "dynamic_frame_002.jpg",
+      "head_x": 366.563,
+      "head_y": 452.141,
+      "sha256": "0177dc5984bad9426cfb115824b294ddaf5df9227a692ffdcddc7bb22c0ed531"
+    },
+    {
+      "index": 3,
+      "asset": "dynamic_frame_003.jpg",
+      "head_x": 382.687,
+      "head_y": 447.946,
+      "sha256": "a88a19cdc6190ebabf5a10110cd105b5759cd2cff2e4cce17d55a50f663bfeb7"
+    },
+    {
+      "index": 4,
+      "asset": "dynamic_frame_004.jpg",
+      "head_x": 393.5,
+      "head_y": 425.879,
+      "sha256": "08296f792ac42c750eb0a2ac2c353d2e79612a2087f63d54e6d79b78ad76bc3b"
+    },
+    {
+      "index": 5,
+      "asset": "dynamic_frame_005.jpg",
+      "head_x": 397.636,
+      "head_y": 396.72,
+      "sha256": "bad8b70b95c95142bc6188beafc06b51928fdcc7408b3368635d01eb9ac2566e"
+    },
+    {
+      "index": 6,
+      "asset": "dynamic_frame_006.jpg",
+      "head_x": 394.442,
+      "head_y": 374.927,
+      "sha256": "bf5948402491b13fca054a91b6052afc56f1e1b947fb284e0dbdb9ef7b961627"
+    },
+    {
+      "index": 7,
+      "asset": "dynamic_frame_007.jpg",
+      "head_x": 384.111,
+      "head_y": 371.756,
+      "sha256": "72a0b29d7a6f66119d09657caa7186a28941fb7030a21064bb813e0460ebecbc"
+    },
+    {
+      "index": 8,
+      "asset": "dynamic_frame_008.jpg",
+      "head_x": 367.722,
+      "head_y": 389.851,
+      "sha256": "68c835ffd455b1c9c40ddd33d0c40c74c144183d194d58dcf718664aa172d5a9"
+    },
+    {
+      "index": 9,
+      "asset": "dynamic_frame_009.jpg",
+      "head_x": 347.183,
+      "head_y": 421.866,
+      "sha256": "fb87ac3a3714dddce62b6788122c912514bee82bac77aac93bfbe44bf82deb13"
+    },
+    {
+      "index": 10,
+      "asset": "dynamic_frame_010.jpg",
+      "head_x": 325.055,
+      "head_y": 453.785,
+      "sha256": "1b92ef681944913982662958dc5fc708aed6a59f033e65b566195291ef255696"
+    },
+    {
+      "index": 11,
+      "asset": "dynamic_frame_011.jpg",
+      "head_x": 304.224,
+      "head_y": 471.383,
+      "sha256": "02d0dee235aab45990c9b946a188b8e95bfc254b01738470b93020cbd0db7d8f"
+    },
+    {
+      "index": 12,
+      "asset": "dynamic_frame_012.jpg",
+      "head_x": 287.458,
+      "head_y": 466.795,
+      "sha256": "9f371b68de93b7ac82cb4da1678188984c0733a43e1e4ba60a03243ed128e56e"
+    },
+    {
+      "index": 13,
+      "asset": "dynamic_frame_013.jpg",
+      "head_x": 276.936,
+      "head_y": 442.135,
+      "sha256": "10fdad81d35bb9877362aa230583deca57c4bf3109cdd37e64028c8f45cf853c"
+    },
+    {
+      "index": 14,
+      "asset": "dynamic_frame_014.jpg",
+      "head_x": 273.889,
+      "head_y": 408.49,
+      "sha256": "ddae74f3b6fa58414264027ed6b194d18945e0aa5f0fdad0807ecd7f6ca65a21"
+    },
+    {
+      "index": 15,
+      "asset": "dynamic_frame_015.jpg",
+      "head_x": 278.462,
+      "head_y": 380.783,
+      "sha256": "ffb98fd41ecc5ba6291c43126dc0cfbc9272fc06d23374a12fec6af5a3eb2c76"
+    },
+    {
+      "index": 16,
+      "asset": "dynamic_frame_016.jpg",
+      "head_x": 289.821,
+      "head_y": 370.918,
+      "sha256": "8175f3c094f38ecbffd9b7ddac21c1506d939e6dae6cca6dc4da07b2c9b89201"
+    },
+    {
+      "index": 17,
+      "asset": "dynamic_frame_017.jpg",
+      "head_x": 306.4,
+      "head_y": 382.353,
+      "sha256": "b7eaba0b5f35a22d260d0d7776c3333c6a9522f79ee5ecb7bccab03dae97f715"
+    }
+  ]
+}

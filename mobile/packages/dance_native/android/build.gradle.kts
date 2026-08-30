@@ -75,6 +75,7 @@ android {
             assets.srcDirs(
                 file("../../../../testdata/face_benchmark_frames"),
                 file("../../../../testdata/face_export_smoke"),
+                file("../../../../testdata/face_dynamic_smoke"),
                 file("../../../../testdata/models/face")
             )
         }

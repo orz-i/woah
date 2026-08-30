@@ -21,6 +21,7 @@ import com.danceanon.native.render.GlRenderer
 import com.danceanon.native.render.RenderCoordinateConvention
 import com.danceanon.native.render.SourceTextureType
 import kotlinx.coroutines.runBlocking
+import org.json.JSONObject
 import org.junit.runner.RunWith
 import java.io.File
 import java.security.MessageDigest
@@ -131,7 +132,140 @@ class FaceOnlyExportPipelineInstrumentedTest {
         }
     }
 
+    @Test
+    fun faceOnlyPrivacyFollowsDeterministicAffineDanceMotion() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val meta = loadDynamicFrameMeta(context)
+        assertEquals(DYNAMIC_FRAME_COUNT, meta.size)
+
+        val frames = meta.map { frame ->
+            assertEquals(frame.sha256, sha256Asset(context, frame.asset))
+            decodeAsset(context, frame.asset)
+        }
+        val root = File(context.getExternalFilesDir(null) ?: context.filesDir, "face_dynamic_smoke").apply {
+            mkdirs()
+        }
+        val input = File(root, "input_dynamic_avc.mp4")
+        val output = File(root, "output_dynamic_face_only.mp4")
+        input.delete()
+        output.delete()
+
+        try {
+            createAvcFixture(frames, input)
+            assertTrue(input.exists() && input.length() > 0L, "Dynamic AVC input fixture was not created")
+
+            val segmenter = YoloLiteRtSegmenter(context)
+            val finalStatus = AtomicReference<JobStatusDto?>()
+            try {
+                ExportPipeline(context, segmenter).execute(
+                    jobId = "face_only_dynamic_smoke",
+                    sourceUri = input.absolutePath,
+                    request = ExportRequestDto(
+                        sourceUri = input.absolutePath,
+                        analysisCacheId = "",
+                        outputFilePath = output.absolutePath,
+                        selectedPersonIds = emptyList(),
+                        effects = solidRedEffects(),
+                        follow = disabledFollow(),
+                        targetWidth = FRAME_W.toLong(),
+                        targetHeight = FRAME_H.toLong(),
+                        targetFps = FPS.toDouble(),
+                        videoBitrate = 4_000_000L,
+                        processingProfile = "quality",
+                        enableLivePreview = false,
+                        faceOnlyPersonIds = listOf(0L)
+                    ),
+                    isCancelled = AtomicBoolean(false),
+                    onStatusChange = { finalStatus.set(it) }
+                )
+            } finally {
+                segmenter.close()
+            }
+
+            val status = assertNotNull(finalStatus.get())
+            assertEquals("completed", status.state, "Dynamic export did not complete: ${status.errorMessage}")
+
+            val inputRetriever = MediaMetadataRetriever()
+            val outputRetriever = MediaMetadataRetriever()
+            try {
+                inputRetriever.setDataSource(input.absolutePath)
+                outputRetriever.setDataSource(output.absolutePath)
+                val sampleFrames = meta.filter { it.index % 3 == 0 || it.index == DYNAMIC_FRAME_COUNT - 1 }
+                var firstPrivacyCenterX: Double? = null
+                var firstPrivacyCenterY: Double? = null
+                var firstExpectedX: Double? = null
+                var firstExpectedY: Double? = null
+                val observedCentersX = mutableListOf<Double>()
+
+                sampleFrames.forEach { frame ->
+                    val timeUs = frame.index * DYNAMIC_FRAME_DURATION_US
+                    val inputFrame = assertNotNull(
+                        inputRetriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST)
+                    )
+                    val outputFrame = assertNotNull(
+                        outputRetriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST)
+                    )
+                    try {
+                        val privacy = changedRedPrivacyStats(inputFrame, outputFrame)
+                        assertTrue(
+                            privacy.count >= 700,
+                            "Dynamic frame ${frame.index} lost FACE_ONLY privacy: $privacy"
+                        )
+                        assertTrue(
+                            privacy.height <= (FRAME_H * 0.45).toInt(),
+                            "Dynamic frame ${frame.index} expanded toward FULL_BODY: $privacy"
+                        )
+                        val centerX = (privacy.minX + privacy.maxX) * 0.5
+                        val centerY = (privacy.minY + privacy.maxY) * 0.5
+                        observedCentersX += centerX
+
+                        if (firstPrivacyCenterX == null) {
+                            firstPrivacyCenterX = centerX
+                            firstPrivacyCenterY = centerY
+                            firstExpectedX = frame.headX
+                            firstExpectedY = frame.headY
+                        } else {
+                            val actualDx = centerX - firstPrivacyCenterX!!
+                            val actualDy = centerY - firstPrivacyCenterY!!
+                            val expectedDx = frame.headX - firstExpectedX!!
+                            val expectedDy = frame.headY - firstExpectedY!!
+                            assertTrue(
+                                abs(actualDx - expectedDx) <= DYNAMIC_MOTION_TOLERANCE_PX,
+                                "Dynamic frame ${frame.index} privacy X motion diverged: actual=$actualDx expected=$expectedDx"
+                            )
+                            assertTrue(
+                                abs(actualDy - expectedDy) <= DYNAMIC_MOTION_TOLERANCE_PX,
+                                "Dynamic frame ${frame.index} privacy Y motion diverged: actual=$actualDy expected=$expectedDy"
+                            )
+                        }
+                    } finally {
+                        inputFrame.recycle()
+                        outputFrame.recycle()
+                    }
+                }
+
+                val observedSpanX = observedCentersX.maxOrNull()!! - observedCentersX.minOrNull()!!
+                assertTrue(
+                    observedSpanX >= DYNAMIC_MIN_OBSERVED_X_SPAN_PX,
+                    "FACE_ONLY privacy did not visibly follow horizontal motion: span=$observedSpanX"
+                )
+            } finally {
+                inputRetriever.release()
+                outputRetriever.release()
+            }
+        } finally {
+            frames.forEach { it.recycle() }
+            input.delete()
+            output.delete()
+        }
+    }
+
     private fun createAvcFixture(bitmap: Bitmap, output: File) {
+        createAvcFixture(List(INPUT_FRAMES) { bitmap }, output)
+    }
+
+    private fun createAvcFixture(frames: List<Bitmap>, output: File) {
+        require(frames.isNotEmpty())
         val encoder = VideoEncoder(
             width = FRAME_W,
             height = FRAME_H,
@@ -145,22 +279,24 @@ class FaceOnlyExportPipelineInstrumentedTest {
         val eglSurface = egl.createWindowSurface(inputSurface)
         egl.makeCurrent(eglSurface)
         val renderer = GlRenderer().apply { initialize(FRAME_W, FRAME_H) }
-        var texture = 0
         try {
-            texture = create2dTexture(bitmap)
-            repeat(INPUT_FRAMES) { index ->
-                renderer.renderBase(
-                    frameTexture = texture,
-                    texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
-                    textureType = SourceTextureType.TEXTURE_2D
-                )
-                egl.setPresentationTime(eglSurface, index * FRAME_DURATION_NS)
-                assertTrue(egl.swapBuffers(eglSurface), "Input fixture swap failed at frame=$index")
-                encoder.drainEncoder(muxer, endOfStream = false)
+            frames.forEachIndexed { index, frame ->
+                val texture = create2dTexture(frame)
+                try {
+                    renderer.renderBase(
+                        frameTexture = texture,
+                        texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                        textureType = SourceTextureType.TEXTURE_2D
+                    )
+                    egl.setPresentationTime(eglSurface, index * FRAME_DURATION_NS)
+                    assertTrue(egl.swapBuffers(eglSurface), "Input fixture swap failed at frame=$index")
+                    encoder.drainEncoder(muxer, endOfStream = false)
+                } finally {
+                    GLES20.glDeleteTextures(1, intArrayOf(texture), 0)
+                }
             }
             encoder.drainEncoder(muxer, endOfStream = true)
         } finally {
-            if (texture != 0) GLES20.glDeleteTextures(1, intArrayOf(texture), 0)
             renderer.close()
             egl.releaseSurface(eglSurface)
             egl.close()
@@ -270,6 +406,33 @@ class FaceOnlyExportPipelineInstrumentedTest {
         return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
+    private data class DynamicFrameMeta(
+        val index: Int,
+        val asset: String,
+        val headX: Double,
+        val headY: Double,
+        val sha256: String
+    )
+
+    private fun loadDynamicFrameMeta(context: Context): List<DynamicFrameMeta> {
+        val json = context.assets.open(DYNAMIC_MANIFEST_ASSET).bufferedReader().use { it.readText() }
+        val root = JSONObject(json)
+        assertEquals(FRAME_W, root.getInt("width"))
+        assertEquals(FRAME_H, root.getInt("height"))
+        assertEquals(FPS, root.getInt("fps"))
+        val frames = root.getJSONArray("frames")
+        return (0 until frames.length()).map { i ->
+            val frame = frames.getJSONObject(i)
+            DynamicFrameMeta(
+                index = frame.getInt("index"),
+                asset = frame.getString("asset"),
+                headX = frame.getDouble("head_x"),
+                headY = frame.getDouble("head_y"),
+                sha256 = frame.getString("sha256")
+            )
+        }
+    }
+
     private fun solidRedEffects() = EffectConfigDto(
         fillMode = "solid",
         fillColorArgb = 0xFFFF0000L,
@@ -296,6 +459,7 @@ class FaceOnlyExportPipelineInstrumentedTest {
 
     companion object {
         private const val SOURCE_ASSET = "person3_frame.jpg"
+        private const val DYNAMIC_MANIFEST_ASSET = "dynamic_manifest.json"
         private const val EXPECTED_SOURCE_SHA256 =
             "bd3bf77fedb9fb85ab57faba66a99ef0afff11dc101d4784685efbc496d899d8"
         private const val FRAME_W = 720
@@ -303,6 +467,10 @@ class FaceOnlyExportPipelineInstrumentedTest {
         private const val FPS = 30
         private const val INPUT_FRAMES = 18
         private const val FRAME_DURATION_NS = 33_333_333L
+        private const val DYNAMIC_FRAME_DURATION_US = 33_333L
+        private const val DYNAMIC_FRAME_COUNT = 18
+        private const val DYNAMIC_MOTION_TOLERANCE_PX = 75.0
+        private const val DYNAMIC_MIN_OBSERVED_X_SPAN_PX = 55.0
         private const val VERIFY_TIME_US = 300_000L
         private const val LOWER_X = 337
         private const val LOWER_Y = 900

@@ -24,6 +24,9 @@ data class FaceOnlyPrivacyFrameResult(
     val escalatedFullBodyTrackIds: Set<Int>,
     val faceInferenceMs: Double,
     val detectorCallCount: Int,
+    val detectorObservationCount: Int,
+    val detectorZeroObservationCallCount: Int,
+    val detectorRejectedCallCount: Int,
     val roiReadbackMs: Double,
     val maskBuildMs: Double,
     val privacyResolveMs: Double
@@ -102,6 +105,9 @@ class FaceOnlyPrivacyFrameProcessor(
                 escalatedFullBodyTrackIds = emptySet(),
                 faceInferenceMs = 0.0,
                 detectorCallCount = 0,
+                detectorObservationCount = 0,
+                detectorZeroObservationCallCount = 0,
+                detectorRejectedCallCount = 0,
                 roiReadbackMs = 0.0,
                 maskBuildMs = 0.0,
                 privacyResolveMs = 0.0
@@ -143,6 +149,9 @@ class FaceOnlyPrivacyFrameProcessor(
         val fallback = linkedSetOf<Int>()
         var inferenceMs = 0.0
         var detectorCallCount = 0
+        var detectorObservationCount = 0
+        var detectorZeroObservationCallCount = 0
+        var detectorRejectedCallCount = 0
         var roiReadbackMs = 0.0
         var maskBuildMs = 0.0
 
@@ -179,6 +188,10 @@ class FaceOnlyPrivacyFrameProcessor(
                     )
                     detectorCallCount++
                     inferenceMs += locatorResult.inferenceMs
+                    detectorObservationCount += locatorResult.observations.size
+                    if (locatorResult.observations.isEmpty()) {
+                        detectorZeroObservationCallCount++
+                    }
                     val selectedFace = FaceRoiCandidateSelector.select(
                         faces = locatorResult.observations,
                         roiWidth = FACE_ROI_SIZE,
@@ -186,6 +199,9 @@ class FaceOnlyPrivacyFrameProcessor(
                         anchorX = plan.anchorX,
                         anchorY = plan.anchorY
                     )
+                    if (locatorResult.observations.isNotEmpty() && selectedFace == null) {
+                        detectorRejectedCallCount++
+                    }
                     region = FacePrivacyRegionResolver.resolve(
                         personBbox = person.bbox,
                         roiPlan = plan,
@@ -295,6 +311,9 @@ class FaceOnlyPrivacyFrameProcessor(
             escalatedFullBodyTrackIds = adaptation.escalatedFullBodyTrackIds,
             faceInferenceMs = inferenceMs,
             detectorCallCount = detectorCallCount,
+            detectorObservationCount = detectorObservationCount,
+            detectorZeroObservationCallCount = detectorZeroObservationCallCount,
+            detectorRejectedCallCount = detectorRejectedCallCount,
             roiReadbackMs = roiReadbackMs,
             maskBuildMs = maskBuildMs,
             privacyResolveMs = privacyResolveMs
