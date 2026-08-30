@@ -342,6 +342,36 @@ The remaining raw-detection misses are a YOLO/tracking robustness case, not a
 reason to loosen face identity association. Current decision: keep MediaPipe 0.35,
 the existing ROI geometry, strict anchor gate, and fail-closed YOLO-head fallback.
 
+### Long-running PLK110 stability and ColorOS test-process freezing
+
+Long-running instrumentation initially appeared to stall after roughly 5 seconds
+of repeated FACE_ONLY work. Per-frame logs first made this look like a detector or
+direct-buffer lifetime problem because the final visible frame varied between
+runs. Device system logs later showed the real trigger: ColorOS
+`OplusHansManager` froze `com.danceanon.dance_native.test` when the instrumentation
+process had no foreground Activity. A run that stopped after `frame_start=272`,
+for example, was followed immediately by a Hans `freeze uid` entry for the test
+package.
+
+The stable regression therefore uses an **androidTest-only foreground host
+Activity** for the duration of the stress test. This Activity is declared only in
+`src/androidTest/AndroidManifest.xml`; it is not packaged into the production AAR
+or app behavior. With the host Activity active, the unchanged production
+`FaceOnlyPrivacyFrameProcessor` completed **300/300 frames** on PLK110 / Android
+16 with:
+
+- **150 DETECTED / 150 PREDICTED / 0 FALLBACK / 0 unresolved** frames;
+- exactly **150 MediaPipe detector calls** at the existing 66 ms cadence;
+- detector p95 approximately **18.22 ms** on the final verification run;
+- native heap allocation decreasing from about **37.4 MB to 16.2 MB** across the
+  measured interval, and PSS decreasing from about **109.5 MB to 94.5 MB**.
+
+The run reached `frame 299`, `loop_done`, processor close, and foreground-host
+close successfully. Hans did not freeze the dance-native test process while it
+owned the foreground Activity. Therefore the experimental direct-buffer pooling
+change was **not retained**: the original production implementation is stable
+under a test setup that is not artificially suspended by the device OS.
+
 ### Preview integration
 
 `PreviewRequestDto.faceOnlyPersonIds` is now consumed by the native
