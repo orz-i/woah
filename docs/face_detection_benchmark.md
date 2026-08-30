@@ -342,6 +342,26 @@ The remaining raw-detection misses are a YOLO/tracking robustness case, not a
 reason to loosen face identity association. Current decision: keep MediaPipe 0.35,
 the existing ROI geometry, strict anchor gate, and fail-closed YOLO-head fallback.
 
+### Preview integration
+
+`PreviewRequestDto.faceOnlyPersonIds` is now consumed by the native
+`PreviewPipeline`, but Flutter UI still does not set or expose the field. Preview
+resolves the same FULL_BODY-wins tri-state policy as Export. When the face-only
+set is empty, Preview keeps the original renderer path and does not create a face
+sidecar. When FACE_ONLY is requested, the already-stable analysis/preview person
+IDs remain authoritative; the uploaded bitmap texture is cropped with
+`FaceOnlyPrivacyFrameProcessor` using the existing YOLO mask mapper and the bitmap
+texture matrix, then merged through `GlRenderer.additionalResolvedPrivacy`.
+
+The PLK110 / Android 16 preview smoke passed end-to-end using the reviewed dancer:
+an unselected baseline frame was rendered first, then FACE_ONLY ID 1 produced a
+material local red privacy region while the reviewed lower-body patch remained
+close to the baseline. A subsequent request for nonexistent FACE_ONLY ID 999
+raised a native render error instead of returning an unprotected preview. The
+existing static and dynamic FACE_ONLY Export device tests remained 2/2 passing
+after the Preview change. No `faceOnlyPersonIds` usage exists in `mobile/app/lib`,
+so this remains an internal native capability rather than a user-visible mode.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

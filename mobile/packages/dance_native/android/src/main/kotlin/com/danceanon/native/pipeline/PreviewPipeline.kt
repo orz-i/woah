@@ -13,8 +13,13 @@ import com.danceanon.native.bridge.PreviewRequestDto
 import com.danceanon.native.inference.FloatRect
 import com.danceanon.native.inference.YoloLiteRtSegmenter
 import com.danceanon.native.media.VideoProbe
+import com.danceanon.native.privacy.FaceOnlyPrivacyFrameProcessor
+import com.danceanon.native.privacy.PersonPrivacyMode
+import com.danceanon.native.privacy.PersonPrivacyModeResolver
 import com.danceanon.native.render.EglCore
 import com.danceanon.native.render.GlRenderer
+import com.danceanon.native.render.RenderCoordinateConvention
+import com.danceanon.native.render.SourceTextureType
 import com.danceanon.native.storage.CacheManager
 import com.danceanon.native.tracking.HungarianSolver
 import com.danceanon.native.tracking.TrackManager
@@ -51,7 +56,9 @@ class PreviewPipeline(
             stage = "PREVIEW",
             fields = mapOf(
                 "timestamp_ms" to request.timestampMs,
-                "analysis_cache_id_present" to request.analysisCacheId.isNotEmpty()
+                "analysis_cache_id_present" to request.analysisCacheId.isNotEmpty(),
+                "selected_ids" to request.selectedPersonIds.map { it.toInt() },
+                "face_only_ids" to request.faceOnlyPersonIds.orEmpty().map { it.toInt() }
             )
         )
         if (request.timestampMs != 0L) {
@@ -196,8 +203,23 @@ class PreviewPipeline(
         }
 
         // 4. Offscreen GL Rendering with EGL Core
-        val previewWidth = minOf(rotatedBitmap.width, 1280)
-        val previewHeight = (previewWidth * (rotatedBitmap.height.toFloat() / rotatedBitmap.width)).toInt().coerceAtLeast(1)
+        val sourceFrameWidth = rotatedBitmap.width
+        val sourceFrameHeight = rotatedBitmap.height
+        val previewWidth = minOf(sourceFrameWidth, 1280)
+        val previewHeight = (previewWidth * (sourceFrameHeight.toFloat() / sourceFrameWidth)).toInt().coerceAtLeast(1)
+
+        val privacyModeByTrackId = PersonPrivacyModeResolver.resolve(
+            fullBodyPersonIds = request.selectedPersonIds.map { it.toInt() },
+            faceOnlyPersonIds = request.faceOnlyPersonIds?.map { it.toInt() }
+        )
+        val fullBodyPersonIds = privacyModeByTrackId.asSequence()
+            .filter { it.value == PersonPrivacyMode.FULL_BODY }
+            .map { it.key }
+            .toSet()
+        val faceOnlyPersonIds = privacyModeByTrackId.asSequence()
+            .filter { it.value == PersonPrivacyMode.FACE_ONLY }
+            .map { it.key }
+            .toSet()
 
         val eglCore = EglCore()
         val eglSurface = eglCore.createOffscreenSurface(previewWidth, previewHeight)
@@ -218,27 +240,66 @@ class PreviewPipeline(
         GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, rotatedBitmap, 0)
         rotatedBitmap.recycle()
 
-        val selectedIds = request.selectedPersonIds.map { it.toInt() }.toSet()
+        var faceOnlyPrivacyProcessor: FaceOnlyPrivacyFrameProcessor? = null
+        val renderedBitmap: Bitmap
+        try {
+            val faceOnlyFrameResult = if (faceOnlyPersonIds.isNotEmpty()) {
+                val referenceMask = trackedPersons.firstNotNullOfOrNull { it.mask }
+                val faceMapper = referenceMask?.mapper?.also { mapper ->
+                    require(mapper.srcWidth == sourceFrameWidth && mapper.srcHeight == sourceFrameHeight) {
+                        "Preview face mapper source mismatch: ${mapper.srcWidth}x${mapper.srcHeight} vs ${sourceFrameWidth}x${sourceFrameHeight}"
+                    }
+                } ?: com.danceanon.native.geometry.ModelCoordinateMapper(
+                    srcWidth = sourceFrameWidth,
+                    srcHeight = sourceFrameHeight,
+                    modelInputSize = 640,
+                    protoSize = referenceMask?.width ?: 160
+                )
 
-        glRenderer.render(
-            frameTexture = frameTextureId,
-            texMatrix = null,
-            persons = trackedPersons,
-            selectedPersonIds = selectedIds,
-            effects = request.effects,
-            follow = request.follow,
-            presentationTimeUs = request.timestampMs * 1000L,
-            textureType = com.danceanon.native.render.SourceTextureType.TEXTURE_2D
-        )
+                val processor = FaceOnlyPrivacyFrameProcessor.create(context, faceMapper)
+                faceOnlyPrivacyProcessor = processor
+                processor.resolveFrame(
+                    frameTexture = frameTextureId,
+                    texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                    textureType = SourceTextureType.TEXTURE_2D,
+                    persons = trackedPersons,
+                    faceOnlyTrackIds = faceOnlyPersonIds,
+                    fullBodyTrackIds = fullBodyPersonIds,
+                    ptsUs = request.timestampMs * 1000L
+                ).also { result ->
+                    if (!result.readyForRender) {
+                        throw DanceNativeException(
+                            DanceNativeException.RENDER_FAILED,
+                            "FACE_ONLY preview privacy unresolved for track(s) ${result.unresolvedTrackIds.sorted()}"
+                        )
+                    }
+                }
+            } else {
+                null
+            }
 
-        val renderedBitmap = glRenderer.captureRenderedFrame()
-            ?: throw DanceNativeException(DanceNativeException.RENDER_FAILED, "Failed to capture rendered preview frame")
+            glRenderer.render(
+                frameTexture = frameTextureId,
+                texMatrix = null,
+                persons = trackedPersons,
+                selectedPersonIds = fullBodyPersonIds,
+                effects = request.effects,
+                follow = request.follow,
+                presentationTimeUs = request.timestampMs * 1000L,
+                textureType = SourceTextureType.TEXTURE_2D,
+                expectedSelectedPrivacyCount = fullBodyPersonIds.size,
+                additionalResolvedPrivacy = faceOnlyFrameResult?.resolvedPrivacy
+            )
 
-        // Cleanup GL
-        GLES20.glDeleteTextures(1, frameTextures, 0)
-        glRenderer.close()
-        eglCore.releaseSurface(eglSurface)
-        eglCore.close()
+            renderedBitmap = glRenderer.captureRenderedFrame()
+                ?: throw DanceNativeException(DanceNativeException.RENDER_FAILED, "Failed to capture rendered preview frame")
+        } finally {
+            try { faceOnlyPrivacyProcessor?.close() } catch (_: Throwable) {}
+            GLES20.glDeleteTextures(1, frameTextures, 0)
+            glRenderer.close()
+            eglCore.releaseSurface(eglSurface)
+            eglCore.close()
+        }
 
         // 5. Save preview file with unique timestamp nonce to prevent Flutter image caching
         try {
