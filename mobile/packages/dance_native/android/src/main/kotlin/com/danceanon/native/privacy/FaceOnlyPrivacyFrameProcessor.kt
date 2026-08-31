@@ -167,6 +167,16 @@ class FaceOnlyPrivacyFrameProcessor(
         )
     }
 
+    private fun planOcclusionReacquireRoi(trackId: Int, ptsUs: Long): FaceHeadRoiPlan? {
+        val projected = pixelMotionTracker.currentRoiRegion(trackId, ptsUs)
+            ?: occlusionHoldByTrackId[trackId]?.region
+            ?: return null
+        return planLocalRoiAround(
+            projected = projected,
+            diameterFactor = OCCLUSION_REACQUIRE_ROI_DIAMETER_FACTOR
+        )
+    }
+
     private fun projectDormantAnchorForProbe(
         cached: CachedFaceGeometry,
         personBbox: FloatRect
@@ -193,13 +203,16 @@ class FaceOnlyPrivacyFrameProcessor(
         return planLocalRoiAround(projected)
     }
 
-    private fun planLocalRoiAround(projected: FacePrivacyEllipse): FaceHeadRoiPlan? {
+    private fun planLocalRoiAround(
+        projected: FacePrivacyEllipse,
+        diameterFactor: Float = LOCAL_FACE_ROI_DIAMETER_FACTOR
+    ): FaceHeadRoiPlan? {
         val frameWidth = mapper.srcWidth.toFloat()
         val frameHeight = mapper.srcHeight.toFloat()
         if (frameWidth <= 1f || frameHeight <= 1f) return null
 
         val faceDiameter = maxOf(projected.radiusX, projected.radiusY) * 2f
-        val requestedSide = maxOf(LOCAL_FACE_ROI_MIN_SIDE_PX, faceDiameter * LOCAL_FACE_ROI_DIAMETER_FACTOR)
+        val requestedSide = maxOf(LOCAL_FACE_ROI_MIN_SIDE_PX, faceDiameter * diameterFactor)
         val side = minOf(requestedSide, minOf(frameWidth, frameHeight)).coerceAtLeast(2f)
         val maxLeft = (frameWidth - side).coerceAtLeast(0f)
         val maxTop = (frameHeight - side).coerceAtLeast(0f)
@@ -699,6 +712,8 @@ class FaceOnlyPrivacyFrameProcessor(
             var region: FacePrivacyEllipse? = null
             var trustedCurrentPixelCenter = false
             var roiRgba: ByteBuffer? = null
+            var detectorSeedRgba: ByteBuffer? = null
+            var detectorSeedPlan: FaceHeadRoiPlan? = null
             var pixelRejectReason: FacePixelMotionTracker.RoiRejectReason? = null
             val hasRoiPixelState = pixelMotionTracker.hasUsableRoiState(trackId, ptsUs)
             if (plan != null && (hasRoiPixelState || dueDetectorTrackIds.contains(trackId))) {
@@ -753,18 +768,7 @@ class FaceOnlyPrivacyFrameProcessor(
             val appearanceOcclusionReject =
                 FaceOcclusionBridgePolicy.isAppearanceOcclusionReject(pixelRejectReason)
             val normalDetectorDue = dueDetectorTrackIds.contains(trackId)
-            val forceOcclusionReacquire =
-                appearanceOcclusionReject &&
-                    !normalDetectorDue &&
-                    roiRgba != null &&
-                    extraOcclusionDetectorCalls < MAX_OCCLUSION_REACQUIRE_EXTRA_CALLS_PER_FRAME
-            if (forceOcclusionReacquire) {
-                extraOcclusionDetectorCalls++
-            }
-            val shouldCallDetector = normalDetectorDue || forceOcclusionReacquire
-            if (shouldCallDetector && appearanceOcclusionReject) {
-                occlusionReacquireDetectorTrackIds += trackId
-            }
+            val shouldCallDetector = normalDetectorDue
 
             if (shouldCallDetector && plan != null && roiRgba != null) {
                 lastDetectorAttemptPtsUsByTrackId[trackId] = ptsUs
@@ -790,6 +794,15 @@ class FaceOnlyPrivacyFrameProcessor(
                             anchorX = plan.anchorX,
                             anchorY = plan.anchorY,
                             maxAnchorDistanceRatio = DORMANT_REACTIVATION_MAX_ANCHOR_DISTANCE_RATIO
+                        )
+                    } else if (renderMode == FaceOnlyRenderMode.DORMANT && appearanceOcclusionReject) {
+                        FaceRoiCandidateSelector.select(
+                            faces = locatorResult.observations,
+                            roiWidth = FACE_ROI_SIZE,
+                            roiHeight = FACE_ROI_SIZE,
+                            anchorX = plan.anchorX,
+                            anchorY = plan.anchorY,
+                            maxAnchorDistanceRatio = OCCLUSION_REACQUIRE_MAX_ANCHOR_DISTANCE_RATIO
                         )
                     } else {
                         FaceRoiCandidateSelector.select(
@@ -835,6 +848,11 @@ class FaceOnlyPrivacyFrameProcessor(
                         // detector position gate remains active; only a verified
                         // current-pixel match bypasses that residual clamp.
                         trustedCurrentPixelCenter = false
+                        detectorSeedRgba = roiRgba
+                        detectorSeedPlan = plan
+                        if (renderMode == FaceOnlyRenderMode.DORMANT) {
+                            dormantReactivatedTrackIds += trackId
+                        }
                     }
                 } catch (t: Throwable) {
                     if (isDormantProbe) {
@@ -845,7 +863,87 @@ class FaceOnlyPrivacyFrameProcessor(
                 }
             }
 
-            if (region == null && appearanceOcclusionReject) {
+            val needsExpandedOcclusionReacquire =
+                region == null &&
+                    renderMode == FaceOnlyRenderMode.DORMANT &&
+                    appearanceOcclusionReject &&
+                    extraOcclusionDetectorCalls < MAX_OCCLUSION_REACQUIRE_EXTRA_CALLS_PER_FRAME
+            if (needsExpandedOcclusionReacquire) {
+                val reacquirePlan = planOcclusionReacquireRoi(trackId, ptsUs)
+                if (reacquirePlan != null) {
+                    extraOcclusionDetectorCalls++
+                    occlusionReacquireDetectorTrackIds += trackId
+                    val roiStartNs = System.nanoTime()
+                    roiRenderer.renderToFbo(
+                        textureId = frameTexture,
+                        texMatrix = texMatrix,
+                        sourceRect = reacquirePlan.sourceRect,
+                        sourceWidth = mapper.srcWidth,
+                        sourceHeight = mapper.srcHeight,
+                        fbo = roiFbo,
+                        textureType = textureType
+                    )
+                    val reacquireRgba = roiFbo.readRgbaPixels()
+                    roiReadbackMs += (System.nanoTime() - roiStartNs) / 1_000_000.0
+                    lastDetectorAttemptPtsUsByTrackId[trackId] = ptsUs
+                    try {
+                        val locatorResult = locator.detectRgbaTopDown(
+                            rgba = reacquireRgba,
+                            width = FACE_ROI_SIZE,
+                            height = FACE_ROI_SIZE
+                        )
+                        detectorCallCount++
+                        detectorCalledTrackIds += trackId
+                        inferenceMs += locatorResult.inferenceMs
+                        detectorObservationCount += locatorResult.observations.size
+                        if (locatorResult.observations.isEmpty()) {
+                            detectorZeroObservationCallCount++
+                        }
+                        val selectedFace = FaceRoiCandidateSelector.select(
+                            faces = locatorResult.observations,
+                            roiWidth = FACE_ROI_SIZE,
+                            roiHeight = FACE_ROI_SIZE,
+                            anchorX = reacquirePlan.anchorX,
+                            anchorY = reacquirePlan.anchorY,
+                            maxAnchorDistanceRatio = OCCLUSION_REACQUIRE_MAX_ANCHOR_DISTANCE_RATIO
+                        )
+                        if (locatorResult.observations.isNotEmpty() && selectedFace == null) {
+                            detectorRejectedCallCount++
+                            detectorRejectedTrackIds += trackId
+                        }
+                        if (selectedFace != null) {
+                            val detectedRegion = FacePrivacyRegionResolver.resolve(
+                                personBbox = person.bbox,
+                                roiPlan = reacquirePlan,
+                                selectedFace = selectedFace
+                            )
+                            val cachedBeforeAttempt = cachedFaceByTrackId[trackId]
+                            region = if (detectedRegion != null && cachedBeforeAttempt != null) {
+                                preserveHiddenTrustedSizeForDormantReactivation(
+                                    detected = detectedRegion,
+                                    cached = cachedBeforeAttempt
+                                )
+                            } else {
+                                detectedRegion
+                            }
+                            if (region != null) {
+                                trustedCurrentPixelCenter = false
+                                detectorSeedRgba = reacquireRgba
+                                detectorSeedPlan = reacquirePlan
+                                dormantReactivatedTrackIds += trackId
+                            }
+                        }
+                    } catch (t: Throwable) {
+                        Log.w(TAG, "Expanded occlusion face reacquire failed for track=$trackId", t)
+                    }
+                }
+            }
+
+            if (
+                region == null &&
+                renderMode == FaceOnlyRenderMode.DORMANT &&
+                appearanceOcclusionReject
+            ) {
                 resolveOcclusionHold(trackId, person, ptsUs)?.let { held ->
                     region = held
                     occlusionHoldTrackIds += trackId
@@ -916,11 +1014,13 @@ class FaceOnlyPrivacyFrameProcessor(
                             lastTrustedPtsUs = ptsUs
                         )
                     }
-                    if (roiRgba != null && plan != null) {
+                    val seedRgba = detectorSeedRgba ?: roiRgba
+                    val seedPlan = detectorSeedPlan ?: plan
+                    if (seedRgba != null && seedPlan != null) {
                         pixelMotionTracker.seedRoi(
                             trackId = trackId,
-                            rgbaTopDown = requireNotNull(roiRgba),
-                            roiPlan = plan,
+                            rgbaTopDown = requireNotNull(seedRgba),
+                            roiPlan = seedPlan,
                             detected = FacePrivacyEllipse(
                                 centerX = region.centerX,
                                 centerY = region.centerY,
@@ -957,6 +1057,7 @@ class FaceOnlyPrivacyFrameProcessor(
             addAll(baseRenderableFaceOnlyTrackIds)
             addAll(dormantReactivatedTrackIds)
             addAll(dormantPixelMotionBridgeTrackIds)
+            addAll(occlusionHoldTrackIds)
         }
         val dormantSuppressedTrackIds = activeFaceOnlyTrackIds
             .filterTo(linkedSetOf()) { !renderableFaceOnlyTrackIds.contains(it) }
@@ -1096,10 +1197,12 @@ class FaceOnlyPrivacyFrameProcessor(
         private const val MAX_PREDICTED_AGE_EXPANSION = 0.10f
         private const val LOCAL_FACE_ROI_MIN_SIDE_PX = 72f
         private const val LOCAL_FACE_ROI_DIAMETER_FACTOR = 2.8f
+        private const val OCCLUSION_REACQUIRE_ROI_DIAMETER_FACTOR = 4.2f
+        private const val OCCLUSION_REACQUIRE_MAX_ANCHOR_DISTANCE_RATIO = 0.16f
         private const val DORMANT_REACTIVATION_MAX_ANCHOR_DISTANCE_RATIO = 0.10f
         private const val BODY_COMPENSATION_MAX_SIZE_EXPANSION = 0.18f
         private const val POSITION_CLAMP_DIAGNOSTIC_EPSILON_PX = 0.25f
-        private const val MAX_OCCLUSION_REACQUIRE_EXTRA_CALLS_PER_FRAME = 2
+        private const val MAX_OCCLUSION_REACQUIRE_EXTRA_CALLS_PER_FRAME = 1
         private const val SLOW_STAGE_LOG_THRESHOLD_MS = 20.0
 
         fun create(context: Context, mapper: ModelCoordinateMapper): FaceOnlyPrivacyFrameProcessor {

@@ -1737,6 +1737,39 @@ selected manually. This prevents an approximately 50% exterior candidate from
 becoming FULL_BODY merely because the previous fresh-project default selected
 every detected person.
 
+### Twenty-sixth correction: short occlusion recovery must be dormant-only and widen reacquisition, not detector cadence
+
+The first real-video export from
+`2a86d4d2b4aa776ab2e3b90fe9f93eea9f085f5e` showed that the initial short
+occlusion bridge was too broad. It fired an occlusion-reacquire detector on
+**212 track-frames** out of only **224 pixel rejects**, so almost every
+LOW_CORRELATION/AMBIGUOUS_PEAK event paid for an extra detector even when the
+track was still ACTIVE/BODY_COMPENSATED and the historical fallback would have
+kept privacy renderable. Dormant suppression improved only **50 -> 45**
+track-frames (ID1 **21 -> 14**, ID2 **1 -> 2**, ID3 **28 -> 29**), while total
+`faceOnlyPrivacy` regressed from about **68.6 ms to 137.0 ms**. Device-wide CPU
+contention/thermal pressure was visible as YOLO inference also rising from about
+**49.7 ms to 91.1 ms**.
+
+The failure reasons remained appearance-driven: final dormant suppression was
+**20 LOW_CORRELATION / 23 AMBIGUOUS_PEAK / 2 EVIDENCE_GAP_EXPIRED**. Therefore the
+100 ms hold itself is retained, but recovery is narrowed to frames where the
+provisional FACE lifecycle is actually DORMANT. ACTIVE/BODY_COMPENSATED pixel
+rejects no longer trigger an extra detector or occlusion hold. If a normal
+scheduled detector is already due, it runs first. Only if the face is still
+unresolved does the processor perform at most **one** extra detector call for the
+whole frame, using a wider local ROI centered on the last trusted pixel/hold
+anchor. The ordinary local ROI remains `2.8 * face diameter`; the occlusion
+reacquire ROI uses `4.2 * face diameter` with a conservative 0.16 anchor-distance
+gate. A successful expanded detection seeds the pixel tracker from that actual
+expanded ROI rather than from the failed narrow crop.
+
+The earlier implementation also generated held sticker geometry without adding
+the held DORMANT ID back to `renderableFaceOnlyTrackIds`. The corrected compositor
+now includes `occlusionHoldTrackIds`, so the secondary FACE mask and dormant
+suppression telemetry reflect the visible 100 ms privacy hold rather than counting
+the held face as suppressed.
+
 ### Twenty-sixth correction: temporary hand/foreground occlusion is an appearance failure, not a motion-gate failure
 
 The first real-device run from
