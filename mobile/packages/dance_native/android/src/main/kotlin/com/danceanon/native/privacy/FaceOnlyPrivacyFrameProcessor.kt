@@ -35,6 +35,7 @@ data class FaceOnlyPrivacyFrameResult(
     val detectorRejectedTrackIds: Set<Int>,
     val bodyMaskGuidedTrackIds: Set<Int>,
     val positionClampedTrackIds: Set<Int>,
+    val dormantSuppressedTrackIds: Set<Int>,
     val roiReadbackMs: Double,
     val maskBuildMs: Double,
     val privacyResolveMs: Double,
@@ -115,6 +116,7 @@ class FaceOnlyPrivacyFrameProcessor(
 
     private val cachedFaceByTrackId = mutableMapOf<Int, CachedFaceGeometry>()
     private val lastDetectorAttemptPtsUsByTrackId = mutableMapOf<Int, Long>()
+    private val lastObservedPtsUsByTrackId = mutableMapOf<Int, Long>()
 
     private fun planCachedFaceLocalRoi(
         cached: CachedFaceGeometry,
@@ -237,6 +239,7 @@ class FaceOnlyPrivacyFrameProcessor(
                 detectorRejectedTrackIds = emptySet(),
                 bodyMaskGuidedTrackIds = emptySet(),
                 positionClampedTrackIds = emptySet(),
+                dormantSuppressedTrackIds = emptySet(),
                 roiReadbackMs = 0.0,
                 maskBuildMs = 0.0,
                 privacyResolveMs = 0.0,
@@ -253,13 +256,35 @@ class FaceOnlyPrivacyFrameProcessor(
             val person = personsById[id]
             person != null && person.state != TrackState.REMOVED
         }
-        cachedFaceByTrackId.keys.retainAll(activeFaceOnlyTrackIds)
-        lastDetectorAttemptPtsUsByTrackId.keys.retainAll(activeFaceOnlyTrackIds)
-        temporalStabilizer.retainTracks(activeFaceOnlyTrackIds)
+        lastObservedPtsUsByTrackId.keys.retainAll(activeFaceOnlyTrackIds)
+        activeFaceOnlyTrackIds.forEach { trackId ->
+            val person = personsById[trackId] ?: return@forEach
+            if (person.observedThisFrame) {
+                lastObservedPtsUsByTrackId[trackId] = ptsUs
+            }
+        }
+        val renderableFaceOnlyTrackIds = activeFaceOnlyTrackIds.filterTo(linkedSetOf()) { trackId ->
+            val person = personsById[trackId] ?: return@filterTo false
+            FaceOnlyDormancyPolicy.shouldRender(
+                observedThisFrame = person.observedThisFrame,
+                lastObservedPtsUs = lastObservedPtsUsByTrackId[trackId],
+                ptsUs = ptsUs
+            )
+        }
+        val dormantSuppressedTrackIds = activeFaceOnlyTrackIds
+            .filterTo(linkedSetOf()) { !renderableFaceOnlyTrackIds.contains(it) }
+
+        // Once YOLO has been absent beyond the short privacy bridge, retain only
+        // TrackManager identity. Drop the face-local state so a seconds-old face
+        // anchor cannot resume drifting or seed the next detector ROI. Reacquire
+        // starts from the fresh same-ID person observation instead.
+        cachedFaceByTrackId.keys.retainAll(renderableFaceOnlyTrackIds)
+        lastDetectorAttemptPtsUsByTrackId.keys.retainAll(renderableFaceOnlyTrackIds)
+        temporalStabilizer.retainTracks(renderableFaceOnlyTrackIds)
 
         val detectorPlanByTrackId = linkedMapOf<Int, FaceHeadRoiPlan>()
         val localDetectorTrackIds = linkedSetOf<Int>()
-        activeFaceOnlyTrackIds.sorted().forEach { trackId ->
+        renderableFaceOnlyTrackIds.sorted().forEach { trackId ->
             val person = personsById[trackId] ?: return@forEach
             if (person.state == TrackState.REMOVED) return@forEach
             val cached = cachedFaceByTrackId[trackId]
@@ -336,7 +361,7 @@ class FaceOnlyPrivacyFrameProcessor(
         var maskBuildMs = 0.0
         val stickerPlacements = mutableListOf<FaceStickerPlacement>()
 
-        for (trackId in faceOnlyTrackIds.sorted()) {
+        for (trackId in renderableFaceOnlyTrackIds.sorted()) {
             val person = personsById[trackId] ?: continue
             if (person.state == TrackState.REMOVED) continue
 
@@ -478,12 +503,19 @@ class FaceOnlyPrivacyFrameProcessor(
         // resolver or they could carve a selected face during overlap. Preserve
         // identity/geometry here but remove only their secondary-pass mask.
         val secondaryPersons = persons.map { person ->
-            if (fullBodyTrackIds.contains(person.id)) person.copy(mask = null) else person
+            if (
+                fullBodyTrackIds.contains(person.id) ||
+                dormantSuppressedTrackIds.contains(person.id)
+            ) {
+                person.copy(mask = null)
+            } else {
+                person
+            }
         }
         val privacyResolveStartNs = System.nanoTime()
         val adaptation = PersonPrivacyPolicyAdapter.adapt(
             persons = secondaryPersons,
-            modeByTrackId = faceOnlyTrackIds.associateWith { PersonPrivacyMode.FACE_ONLY },
+            modeByTrackId = renderableFaceOnlyTrackIds.associateWith { PersonPrivacyMode.FACE_ONLY },
             faceMaskByTrackId = faceMasks
         )
         val unresolved = linkedSetOf<Int>().apply {
@@ -512,6 +544,7 @@ class FaceOnlyPrivacyFrameProcessor(
                     "detector_calls=$detectorCallCount roi_ms=$roiReadbackMs detector_ms=$inferenceMs " +
                     "mask_ms=$maskBuildMs detected=${detected.sorted()} predicted=${predicted.sorted()} " +
                     "fallback=${fallback.sorted()} escalated=${adaptation.escalatedFullBodyTrackIds.sorted()} " +
+                    "dormant=${dormantSuppressedTrackIds.sorted()} " +
                     "selected=${adaptation.selectedPersonIds.sorted()} unresolved=${unresolved.sorted()} " +
                     "secondary_occluder=$hasSecondaryOccluderEvidence"
             )
@@ -519,7 +552,8 @@ class FaceOnlyPrivacyFrameProcessor(
 
         return FaceOnlyPrivacyFrameResult(
             resolvedPrivacy = resolved,
-            readyForRender = unresolved.isEmpty() && resolved?.hasPrivacy == true,
+            readyForRender = unresolved.isEmpty() &&
+                (adaptation.selectedPersonIds.isEmpty() || resolved?.hasPrivacy == true),
             unresolvedTrackIds = unresolved,
             detectedTrackIds = detected,
             predictedTrackIds = predicted,
@@ -534,6 +568,7 @@ class FaceOnlyPrivacyFrameProcessor(
             detectorRejectedTrackIds = detectorRejectedTrackIds,
             bodyMaskGuidedTrackIds = bodyMaskGuidedTrackIds,
             positionClampedTrackIds = positionClampedTrackIds,
+            dormantSuppressedTrackIds = dormantSuppressedTrackIds,
             roiReadbackMs = roiReadbackMs,
             maskBuildMs = maskBuildMs,
             privacyResolveMs = privacyResolveMs,

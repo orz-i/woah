@@ -1124,6 +1124,42 @@ FULL_BODY id 4 remains unchanged: stale-mask suppression still fires at pts
 150100 after the third real miss, and the latest bundle again contains only four
 successful id-4 assignment commits ending at pts 100066.
 
+### Twelfth real-video correction: a retained identity must not render a stale face for seconds
+
+The next complete 751-frame export is from
+`a9eb7906f2d54fde6fa340be5e0494a4d917eec8`. Four-edge box-motion consensus
+continues to improve the actively observed people: ID 6's maximum consecutive
+sticker-center step drops from about **81.9 px to 49.2 px**, and ID 2 drops to
+about **63.1 px**. IDs 1/3/5 remain roughly **78.9 / 73.2 / 59.6 px**, however,
+and the user still reports other face stickers drifting.
+
+The remaining telemetry shows that those cases are dominated by a different
+lifecycle problem rather than another choice of bbox edge. ID 1 has no successful
+YOLO observation from roughly **1.20 s through 9.41 s** (an **8.21 s** gap), while
+ID 3 has an approximately **8.09 s** gap. ID 2 contains multiple long gaps of
+about **2.80 s, 3.99 s, and 1.77 s**. Despite those missing identity observations,
+FACE_ONLY continued producing per-frame generic/predicted fallback geometry;
+ID 1/2/3 therefore accumulated **478 / 448 / 615 fallback frames**. An opaque
+sticker following a protected TrackManager tombstone for many seconds is the
+visual "floating face" failure and no four-edge translation estimator can make
+that stale geometry correct.
+
+FACE_ONLY now separates identity retention from render retention, matching the
+principle already validated for mixed FULL_BODY. A short **150 ms** YOLO-miss
+window still bridges ordinary detector/tracker dropouts. Beyond that age the
+protected identity remains available for same-ID reacquisition, but FACE_ONLY
+stops detector ROI work, drops cached face/temporal state, and emits neither a
+face mask nor a sticker until YOLO observes the same identity again. Dormant
+FACE_ONLY tracks are also removed from the secondary privacy selection and their
+stale body masks are nulled in that secondary pass, so intentionally suppressing
+the stale sticker cannot trigger `PersonPrivacyPolicyAdapter`'s fail-closed
+FULL_BODY escalation or carve another active face privacy mask.
+
+Export summaries add `face_dormant_suppressed_track_frames` and
+`face_dormant_suppressed_frames_by_track_id`. On the next real bundle these counts
+should concentrate on the multi-second ID-1/2/3 observation gaps, while active
+observed dancers continue using the four-edge `PersonBboxMotionEstimator`.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two
