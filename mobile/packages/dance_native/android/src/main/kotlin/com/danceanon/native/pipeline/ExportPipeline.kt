@@ -723,6 +723,11 @@ class ExportPipeline(
                                 val seg = profiler.recordStage("yoloCpuInference") {
                                     segmenter.segmentGlReadbackRgbaSync(rgbaBuffer, mapper, ptsUs, colOrder = RgbaColOrder.LEFT_TO_RIGHT)
                                 }
+                                // Historical compatibility: this metric name predates the
+                                // LiteRT GPU path and is misleading. Preserve it unchanged
+                                // for existing diagnostics, and expose a correctly named
+                                // canonical alias from the segmenter's own whole-call timer.
+                                profiler.recordSample("yoloPipelineTotal", seg.inferenceTimeMs)
                                 for ((stage, elapsedMs) in seg.stageTimingsMs) {
                                     profiler.recordSample(stage, elapsedMs)
                                 }

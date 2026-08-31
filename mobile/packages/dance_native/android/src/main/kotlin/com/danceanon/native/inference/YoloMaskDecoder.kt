@@ -38,6 +38,44 @@ data class RawCandidate(
     }
 }
 
+/** FloatArray-backed equivalent of [NhwcBufferProtoView]. */
+class NhwcArrayProtoView(
+    private val values: FloatArray,
+    private val channels: Int = 32,
+    private val protoSize: Int = 160
+) : ProtoTensorView {
+    override fun getDotProduct(px: Int, py: Int, coeffs: FloatArray): Float {
+        var sum = 0f
+        val pixelOffset = (py * protoSize + px) * channels
+        for (c in 0 until channels) {
+            sum += coeffs[c] * values[pixelOffset + c]
+        }
+        return sum
+    }
+}
+
+/**
+ * FloatArray-backed equivalent of [NchwBufferProtoView]. LiteRT output tensors
+ * are already materialized as FloatArray by TensorBuffer.readFloat(); keeping
+ * the proto in that representation avoids millions of absolute FloatBuffer.get
+ * calls in the per-pixel mask dot-product hot loop.
+ */
+class NchwArrayProtoView(
+    private val values: FloatArray,
+    private val channels: Int = 32,
+    private val protoSize: Int = 160
+) : ProtoTensorView {
+    private val protoPixels = protoSize * protoSize
+    override fun getDotProduct(px: Int, py: Int, coeffs: FloatArray): Float {
+        var sum = 0f
+        val pixelOffset = py * protoSize + px
+        for (c in 0 until channels) {
+            sum += coeffs[c] * values[c * protoPixels + pixelOffset]
+        }
+        return sum
+    }
+}
+
 interface ProtoTensorView {
     fun getDotProduct(px: Int, py: Int, coeffs: FloatArray): Float
 }

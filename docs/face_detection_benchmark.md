@@ -1938,6 +1938,45 @@ behavior change. The next real-device export should use those fields to decide
 whether any partial-specific motion gate needs adjustment. Until then the current
 0.78/0.05 partial gates and primary 0.68/0.03 gates stay frozen.
 
+### Thirtieth correction: partial FACE motion is not the large-step source; optimize YOLO CPU-side mask decode without changing semantics
+
+The follow-up real-device export from
+`bbba97e4c5d35a2d7ebf552f548daa786ab2488b` validates the new motion telemetry.
+The aggregate ID2 sticker step is **50.40 px**, but the largest step on a frame
+actually produced by the partial-occlusion matcher is only **5.64 px**. ID6 is
+similar: **69.92 px** aggregate versus **24.94 px** partial-specific. ID3 partial
+motion is **20.50 px** while final suppression remains only three frames. The
+partial matcher therefore is not the cause of the previously suspicious ID2/ID6
+maxima; keep its 0.78/0.05 gates and current motion limits frozen.
+
+The same diagnostic again confirms that YOLO requested **GPU**, actually ran with
+effective accelerator **GPU**, and had no GPU fallback reason. The historical
+`yoloCpuInference` profiler label measures the whole host-side YOLO call and must
+not be interpreted as the neural network running on CPU. In this run the internal
+breakdown is approximately **52.8 ms yoloDecode**, **15.6 ms preprocess**, **8.3 ms
+output read**, and only **0.06 ms yoloLiteRtRun** enqueue time. GPU completion and
+read synchronization can contribute to output-read cost, but the largest explicit
+CPU-side surface is still mask/NMS decode.
+
+Inspection shows that LiteRT `TensorBuffer.readFloat()` already materializes both
+YOLO outputs as `FloatArray`. Production then wrapped those arrays in `FloatBuffer`,
+and each mask pixel performed 32 absolute `FloatBuffer.get(index)` calls while
+forming the prototype dot product. The optimized path keeps the existing arrays and
+uses direct array indexing for both NCHW and NHWC prototype layouts. Candidate
+thresholds, coordinates, sigmoid arithmetic, 0.50 bbox/mask-aware NMS thresholds,
+mask bytes, sorting, and TrackManager inputs are unchanged. The old FloatBuffer path
+remains available as a compatibility/reference path.
+
+Unit parity checks verify both NCHW/NHWC prototype decoders produce byte-identical
+masks between array-backed and buffer-backed views, and an end-to-end adapter test
+verifies identical PersonDetection bbox/confidence/footY and 160x160 mask bytes for
+the production array path versus the compatibility buffer path. Export profiling
+also adds `yoloPipelineTotal` as the correctly named whole-call metric while
+retaining the historical `yoloCpuInference` field for comparison. Real-device
+acceptance is behavior parity plus a material reduction in `yoloDecode`; if decode
+remains dominant, instrument mask-aware NMS versus final kept-mask materialization
+before changing any quality logic.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

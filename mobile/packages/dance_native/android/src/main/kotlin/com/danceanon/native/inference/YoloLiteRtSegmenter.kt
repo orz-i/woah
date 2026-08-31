@@ -153,13 +153,10 @@ class YoloLiteRtSegmenter(
             val out1Floats = outputBufs[1].readFloat()
             stageTimings["yoloOutputRead"] = (System.nanoTime() - outputReadStartNs) / 1_000_000
 
-            val out0Buf = java.nio.FloatBuffer.wrap(out0Floats)
-            val out1Buf = java.nio.FloatBuffer.wrap(out1Floats)
-
             val decodeStartNs = System.nanoTime()
             val parsed = adapter.parseDetections(
-                output0Buffer = out0Buf,
-                output1Buffer = out1Buf,
+                output0 = out0Floats,
+                output1 = out1Floats,
                 preprocess = preprocess,
                 confThreshold = 0.25f,
                 iouThreshold = 0.50f

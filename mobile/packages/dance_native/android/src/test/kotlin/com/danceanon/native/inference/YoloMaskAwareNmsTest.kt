@@ -1,10 +1,68 @@
 package com.danceanon.native.inference
 
+import java.nio.FloatBuffer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class YoloMaskAwareNmsTest {
+
+    @Test
+    fun arrayBackedProtoViewsMatchBufferBackedMaskBytesExactly() {
+        val protoSize = 8
+        val channels = 4
+        val coeffs = floatArrayOf(0.75f, -0.25f, 0.5f, 0.125f)
+        val nchw = FloatArray(channels * protoSize * protoSize) { index ->
+            ((index * 37 % 101) - 50) / 17f
+        }
+        val nhwc = FloatArray(channels * protoSize * protoSize)
+        for (y in 0 until protoSize) {
+            for (x in 0 until protoSize) {
+                val pixel = y * protoSize + x
+                for (c in 0 until channels) {
+                    nhwc[pixel * channels + c] = nchw[c * protoSize * protoSize + pixel]
+                }
+            }
+        }
+
+        val candidate = RawCandidate(
+            x1 = 80f,
+            y1 = 80f,
+            x2 = 560f,
+            y2 = 560f,
+            confidence = 0.9f,
+            maskCoeffs = coeffs
+        )
+
+        val nchwBufferMask = YoloMaskDecoder.decodeCandidateMask(
+            candidate,
+            NchwBufferProtoView(FloatBuffer.wrap(nchw), channels, protoSize),
+            inputSize = 640,
+            protoSize = protoSize
+        )
+        val nchwArrayMask = YoloMaskDecoder.decodeCandidateMask(
+            candidate,
+            NchwArrayProtoView(nchw, channels, protoSize),
+            inputSize = 640,
+            protoSize = protoSize
+        )
+        val nhwcBufferMask = YoloMaskDecoder.decodeCandidateMask(
+            candidate,
+            NhwcBufferProtoView(FloatBuffer.wrap(nhwc), channels, protoSize),
+            inputSize = 640,
+            protoSize = protoSize
+        )
+        val nhwcArrayMask = YoloMaskDecoder.decodeCandidateMask(
+            candidate,
+            NhwcArrayProtoView(nhwc, channels, protoSize),
+            inputSize = 640,
+            protoSize = protoSize
+        )
+
+        assertTrue(nchwBufferMask.contentEquals(nchwArrayMask))
+        assertTrue(nchwBufferMask.contentEquals(nhwcBufferMask))
+        assertTrue(nchwBufferMask.contentEquals(nhwcArrayMask))
+    }
 
     private fun createSyntheticMask(width: Int = 160, height: Int = 160, activeRect: Pair<IntRange, IntRange>): ByteArray {
         val mask = ByteArray(width * height)

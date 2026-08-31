@@ -46,18 +46,65 @@ class YoloLiteRtTensorAdapter(
         confThreshold: Float = 0.25f,
         iouThreshold: Float = 0.50f
     ): List<PersonDetection> {
+        val candidates = collectCandidates(
+            preprocess = preprocess,
+            confThreshold = confThreshold,
+            getOutput0 = output0Buffer::get
+        )
+
+        val protoView: ProtoTensorView = if (!isOut1Nhwc) {
+            NchwBufferProtoView(output1Buffer, PROTO_CHANNELS, PROTO_SIZE)
+        } else {
+            NhwcBufferProtoView(output1Buffer, PROTO_CHANNELS, PROTO_SIZE)
+        }
+        return finishDetections(candidates, protoView, preprocess, iouThreshold)
+    }
+
+    /**
+     * Production fast path. LiteRT TensorBuffer.readFloat() already returns
+     * FloatArray, so keeping both outputs as arrays avoids wrapping them in
+     * FloatBuffer and then performing absolute FloatBuffer.get() calls in the
+     * mask-decoder hot loop. Geometry/NMS/mask arithmetic is otherwise shared
+     * with the compatibility FloatBuffer path above.
+     */
+    fun parseDetections(
+        output0: FloatArray,
+        output1: FloatArray,
+        preprocess: PreprocessResult,
+        confThreshold: Float = 0.25f,
+        iouThreshold: Float = 0.50f
+    ): List<PersonDetection> {
+        val candidates = collectCandidates(
+            preprocess = preprocess,
+            confThreshold = confThreshold,
+            getOutput0 = { index -> output0[index] }
+        )
+
+        val protoView: ProtoTensorView = if (!isOut1Nhwc) {
+            NchwArrayProtoView(output1, PROTO_CHANNELS, PROTO_SIZE)
+        } else {
+            NhwcArrayProtoView(output1, PROTO_CHANNELS, PROTO_SIZE)
+        }
+        return finishDetections(candidates, protoView, preprocess, iouThreshold)
+    }
+
+    private inline fun collectCandidates(
+        preprocess: PreprocessResult,
+        confThreshold: Float,
+        getOutput0: (Int) -> Float
+    ): MutableList<RawCandidate> {
         val candidates = mutableListOf<RawCandidate>()
         val inputSize = preprocess.inputSize.toFloat()
 
         if (!isOut0Transposed) {
             // [1, 116, 8400] layout
             for (i in 0 until ANCHOR_COUNT) {
-                val conf = output0Buffer.get(4 * ANCHOR_COUNT + i)
+                val conf = getOutput0(4 * ANCHOR_COUNT + i)
                 if (conf >= confThreshold) {
-                    var cx = output0Buffer.get(0 * ANCHOR_COUNT + i)
-                    var cy = output0Buffer.get(1 * ANCHOR_COUNT + i)
-                    var w = output0Buffer.get(2 * ANCHOR_COUNT + i)
-                    var h = output0Buffer.get(3 * ANCHOR_COUNT + i)
+                    var cx = getOutput0(0 * ANCHOR_COUNT + i)
+                    var cy = getOutput0(1 * ANCHOR_COUNT + i)
+                    var w = getOutput0(2 * ANCHOR_COUNT + i)
+                    var h = getOutput0(3 * ANCHOR_COUNT + i)
 
                     // LiteRT exported models output coordinates normalized in [0, 1]
                     if (cx <= 2.0f && w <= 2.0f) {
@@ -73,7 +120,7 @@ class YoloLiteRtTensorAdapter(
                     val y2 = cy + h / 2f
 
                     val coeffs = FloatArray(PROTO_CHANNELS) { k ->
-                        output0Buffer.get((84 + k) * ANCHOR_COUNT + i)
+                        getOutput0((84 + k) * ANCHOR_COUNT + i)
                     }
 
                     candidates.add(
@@ -92,12 +139,12 @@ class YoloLiteRtTensorAdapter(
             // [1, 8400, 116] layout
             for (i in 0 until ANCHOR_COUNT) {
                 val anchorOffset = i * ATTR_COUNT
-                val conf = output0Buffer.get(anchorOffset + 4)
+                val conf = getOutput0(anchorOffset + 4)
                 if (conf >= confThreshold) {
-                    var cx = output0Buffer.get(anchorOffset + 0)
-                    var cy = output0Buffer.get(anchorOffset + 1)
-                    var w = output0Buffer.get(anchorOffset + 2)
-                    var h = output0Buffer.get(anchorOffset + 3)
+                    var cx = getOutput0(anchorOffset + 0)
+                    var cy = getOutput0(anchorOffset + 1)
+                    var w = getOutput0(anchorOffset + 2)
+                    var h = getOutput0(anchorOffset + 3)
 
                     if (cx <= 2.0f && w <= 2.0f) {
                         cx *= inputSize
@@ -112,7 +159,7 @@ class YoloLiteRtTensorAdapter(
                     val y2 = cy + h / 2f
 
                     val coeffs = FloatArray(PROTO_CHANNELS) { k ->
-                        output0Buffer.get(anchorOffset + 84 + k)
+                        getOutput0(anchorOffset + 84 + k)
                     }
 
                     candidates.add(
@@ -128,14 +175,16 @@ class YoloLiteRtTensorAdapter(
                 }
             }
         }
+        return candidates
+    }
 
+    private fun finishDetections(
+        candidates: List<RawCandidate>,
+        protoView: ProtoTensorView,
+        preprocess: PreprocessResult,
+        iouThreshold: Float
+    ): List<PersonDetection> {
         // 2. Perform Mask-Aware Non-Maximum Suppression (NMS)
-        val protoView: ProtoTensorView = if (!isOut1Nhwc) {
-            NchwBufferProtoView(output1Buffer, PROTO_CHANNELS, PROTO_SIZE)
-        } else {
-            NhwcBufferProtoView(output1Buffer, PROTO_CHANNELS, PROTO_SIZE)
-        }
-
         val (kept, maskCache) = YoloMaskDecoder.maskAwareNms(
             candidates = candidates,
             protoView = protoView,
