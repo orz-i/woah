@@ -95,57 +95,30 @@ class NchwArrayProtoView(
         val x2 = (kotlin.math.ceil((cand.x2 / inputSize) * protoSize).toInt() + margin).coerceIn(0, protoSize)
         val y2 = (kotlin.math.ceil((cand.y2 / inputSize) * protoSize).toInt() + margin).coerceIn(0, protoSize)
 
-        // Fold the explicit bbox clear into channel 0 while preserving the
-        // reference arithmetic exactly: each pixel is first assigned +0f and
-        // then receives the c=0 product before c=1..31 are accumulated.
-        if (channels > 0) {
-            val coeff0 = cand.maskCoeffs[0]
-            var py = y1
-            while (py < y2) {
-                val rowStart = py * protoSize + x1
-                val rowEnd = py * protoSize + x2
-                var pixelIndex = rowStart
-                var protoIndex = rowStart
-                while (pixelIndex < rowEnd) {
-                    scratch[pixelIndex] = 0f
-                    scratch[pixelIndex] += coeff0 * values[protoIndex]
-                    pixelIndex++
-                    protoIndex++
-                }
-                py++
-            }
+        for (py in y1 until y2) {
+            java.util.Arrays.fill(scratch, py * protoSize + x1, py * protoSize + x2, 0f)
         }
 
-        var c = 1
-        while (c < channels) {
+        for (c in 0 until channels) {
             val coeff = cand.maskCoeffs[c]
             val channelBase = c * protoPixels
-            var py = y1
-            while (py < y2) {
-                val rowStart = py * protoSize + x1
-                val rowEnd = py * protoSize + x2
-                var pixelIndex = rowStart
-                var protoIndex = channelBase + rowStart
-                while (pixelIndex < rowEnd) {
-                    scratch[pixelIndex] += coeff * values[protoIndex]
-                    pixelIndex++
-                    protoIndex++
+            for (py in y1 until y2) {
+                val pixelRow = py * protoSize
+                val protoRow = channelBase + pixelRow
+                for (px in x1 until x2) {
+                    val pixelIndex = pixelRow + px
+                    scratch[pixelIndex] += coeff * values[protoRow + px]
                 }
-                py++
             }
-            c++
         }
 
-        var py = y1
-        while (py < y2) {
-            var pixelIndex = py * protoSize + x1
-            val rowEnd = py * protoSize + x2
-            while (pixelIndex < rowEnd) {
-                val prob = 1.0f / (1.0f + kotlin.math.exp(-scratch[pixelIndex]))
-                maskBytes[pixelIndex] = (prob * 255f).toInt().coerceIn(0, 255).toByte()
-                pixelIndex++
+        for (py in y1 until y2) {
+            val rowOffset = py * protoSize
+            for (px in x1 until x2) {
+                maskBytes[rowOffset + px] = YoloMaskDecoder.maskByteFromLogitFast(
+                    scratch[rowOffset + px]
+                )
             }
-            py++
         }
         return maskBytes
     }
@@ -203,6 +176,16 @@ object YoloMaskDecoder {
     const val DEFAULT_PROTO_SIZE = 160
     const val DEFAULT_INPUT_SIZE = 640
     const val DEFAULT_MASK_IOU_THRESHOLD = 0.50f
+
+    internal const val MIN_NONZERO_MASK_LOGIT = -5.537334f
+
+    internal fun maskByteFromLogitFast(logit: Float): Byte {
+        // Historical formula produces byte 0 for every representable Float
+        // below this boundary; NaN also remains byte 0 through this predicate.
+        if (!(logit >= MIN_NONZERO_MASK_LOGIT)) return 0
+        val prob = 1.0f / (1.0f + kotlin.math.exp(-logit))
+        return (prob * 255f).toInt().coerceIn(0, 255).toByte()
+    }
 
     data class ProtoSupportRect(
         val x1: Int,
