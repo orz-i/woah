@@ -2095,6 +2095,32 @@ candidates) and requires the bounded IoU value to equal the historical full
 160x160 scan exactly. Confidence/NMS thresholds, mask bytes, TrackManager inputs,
 FACE/FULL_BODY logic, and all quality gates remain unchanged.
 
+### Thirty-fourth correction: bounded mask-IoU scanning removes the secondary NMS cost; reduce only JVM loop overhead in mask decode
+
+The real-device mixed export from
+`4a1e5bccc8abfd440a79ab2496f16b12f525a880` validates the candidate-support
+bounded IoU optimization. FACE/FULL_BODY behavior remains exactly on the locked
+baseline (FULL_BODY ID4; FACE_ONLY IDs 1/2/3/5/6; dormant suppression **3**;
+partial-occlusion pixel rescue **92**; pixel-motion accepted/rejected **3499/182**;
+evidence-gap reacquire **0**; sticker max widths and center-step maxima unchanged).
+The YOLO performance result is material: `yoloMaskIouScan` falls from about
+**5.46 ms** to **0.0013 ms**, `yoloMaskAwareNms` from about **17.73 ms** to
+**11.45 ms**, `yoloDecode` from about **17.97 ms** to **11.65 ms**, and
+`yoloPipelineTotal` from about **30.38 ms** to **24.11 ms**. `yoloMaskDecode`
+remains the only material decode hotspot at about **11.12 ms**; output read remains
+about **8.28 ms** and preprocess about **1.29 ms**.
+
+The next experiment stays inside the byte-exact NCHW candidate-mask decoder. It
+does not change channel order or mask math. Instead, the explicit bbox clear pass
+is folded into channel 0 while still performing `+0f + c0*value`, and the
+channel/spatial/sigmoid loops use contiguous `while` indices rather than repeatedly
+recomputing row-plus-column addresses in Kotlin ranges. Channels 1..31 are still
+accumulated in strict ascending order for every pixel. Existing random and boundary
+candidate tests compare the optimized result byte-for-byte with the old per-pixel
+reference, while adapter parity continues to compare final bbox, confidence and
+160x160 mask bytes. Real-device acceptance must be based on a lower
+`yoloMaskDecode`/`yoloDecode` total, not on code-shape assumptions.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two
