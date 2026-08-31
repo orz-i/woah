@@ -1322,6 +1322,61 @@ Export diagnostics additionally record
 next real-video bundle can therefore distinguish single-hit probes filtered by the
 new gate from confirmed dormant recoveries without weakening identity semantics.
 
+### Eighteenth real-video correction: motion opens a face probe, never a dormant sticker
+
+The complete `6644760da2ffe02b369c65324c70f9a644b4954c` export disproves the
+two-motion-sample confirmation as a sufficient safety boundary. It records 66
+pending track-frames and reduces dormant reactivation from 20 to **15 events**, but
+dormant suppression rises only modestly from 1,256 to **1,322** track-frames and
+the worst consecutive center jumps remain severe: IDs 1/2/3/5/6 are about
+**114.8 / 60.0 / 110.9 / 90.5 / 73.7 px**. In particular, ID1 and ID3 are
+essentially unchanged from the one-sample build. Repeated motion-only evidence can
+therefore be internally consistent while still describing the wrong ambiguous body
+candidate; a second body sample is not independent face-localization evidence.
+
+The same bundle exposes a second regression introduced when dormant face anchors
+started surviving. Maximum sticker widths are approximately **156.5 / 139.2 /
+187.2 / 256.4 / 213.2 px** for IDs 1/2/3/5/6. Before dormant anchors could
+reactivate, the comparable five-person build was about **121.0 / 170.3 / 130.0 /
+102.6 / 100.7 px**. ID5 and ID6 therefore reach roughly **2.50x / 2.12x** their
+previous maxima. This is not a PNG/render-scale issue: the hidden detected-face
+radius is being reintroduced through geometry that may apply bounded current-body
+scale, cache-age expansion, and body-compensation expansion after the temporal
+stabilizer state has deliberately been cleared for dormancy. Repeated dormant /
+local-refresh cycles can then preserve an enlarged trusted size.
+
+Dormant recovery is therefore changed from a body-motion confirmation gate to a
+detector-confirmed probe:
+
+- current-frame `ProtectedTrackMotionEvidence` for an already-dormant FACE_ONLY
+  identity may open an **identity-local face-detector probe only**; it does not
+  make the track renderable;
+- the probe ROI translates the hidden detected-face anchor with the current body
+  geometry but keeps the hidden source-space face radius unchanged. It does not
+  apply stale person-bbox scale or age expansion to ROI size;
+- detector miss, detector ambiguity, or detector failure keeps the track dormant.
+  There is no predicted/head/body-mask fallback sticker on a dormant probe;
+- only an accepted face detector candidate inside that identity-local ROI may
+  reactivate FACE_ONLY. The accepted center is current pixel evidence, while its
+  rendered/cached radius is forced to the hidden trusted source-space radius so a
+  large local detector extent cannot inflate the sticker;
+- if exact YOLO ownership returns while the identity is dormant, the old hidden
+  anchor is discarded instead. Face acquisition restarts from the **current exact
+  person bbox**, so an old local ROI or old body-scale reference cannot contaminate
+  the new trusted face;
+- recent bbox bridging cannot independently start a dormant probe. TrackManager
+  identity commit thresholds, the motion-only overlap gate, the 800 ms ordinary
+  compensation limit, FULL_BODY behavior, and the no-generic-center-smoothing
+  rule remain unchanged.
+
+New export diagnostics separate this boundary explicitly:
+`face_dormant_reactivation_probe_track_frames`,
+`face_dormant_reactivated_by_face_detection_events`,
+`face_dormant_exact_reacquired_track_frames`, and per-track variants. The export
+also records reactivation-frame sticker max width/height per track, making the next
+real-video bundle able to prove whether any remaining size peak is created on the
+reactivation frame or later in the ordinary local-refresh path.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

@@ -10,9 +10,11 @@ import com.danceanon.native.face.FaceLocatorResult
 import com.danceanon.native.face.FaceObservation
 import com.danceanon.native.geometry.ModelCoordinateMapper
 import com.danceanon.native.inference.FloatRect
+import com.danceanon.native.inference.PersonDetection
 import com.danceanon.native.render.EglCore
 import com.danceanon.native.render.RenderCoordinateConvention
 import com.danceanon.native.render.SourceTextureType
+import com.danceanon.native.tracking.ProtectedTrackMotionEvidence
 import com.danceanon.native.tracking.TrackState
 import com.danceanon.native.tracking.TrackedPerson
 import org.junit.runner.RunWith
@@ -363,6 +365,153 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
             assertTrue(
                 kotlin.math.abs(third.stickerPlacements.single().sourceRect.centerX - secondRect.centerX) < 0.5f,
                 "without current pixel evidence, detector history must not self-propagate the ROI away from the last trusted face"
+            )
+        }
+    }
+
+    @Test
+    fun dormantFreshMotionOnlyOpensProbeAndDetectorMissKeepsStickerSuppressed() {
+        val locator = SequencedLocator(
+            listOf(
+                listOf(FaceObservation(FloatRect(104f, 96f, 152f, 144f), 0.9f)),
+                emptyList()
+            )
+        )
+        withProcessor(locator) { processor, texture, mapper ->
+            val observed = person(51, FloatRect(220f, 40f, 420f, 350f))
+            val initial = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(observed),
+                faceOnlyTrackIds = setOf(51),
+                ptsUs = 0L
+            )
+            assertEquals(setOf(51), initial.detectedTrackIds)
+
+            val lost = observed.copy(
+                state = TrackState.LOST,
+                observedThisFrame = false,
+                framesSinceLastObservation = 60,
+                mask = null
+            )
+            val dormant = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(lost),
+                faceOnlyTrackIds = setOf(51),
+                ptsUs = 900_000L
+            )
+            assertEquals(setOf(51), dormant.dormantSuppressedTrackIds)
+            assertTrue(dormant.stickerPlacements.isEmpty())
+
+            val motionBbox = FloatRect(160f, 20f, 480f, 360f)
+            val motionMask = sourceRectMask(mapper, motionBbox)
+            val probe = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(lost),
+                faceOnlyTrackIds = setOf(51),
+                protectedMotionEvidence = listOf(
+                    ProtectedTrackMotionEvidence(
+                        trackId = 51,
+                        detectionIndex = 0,
+                        detection = PersonDetection(
+                            bbox = motionBbox,
+                            confidence = 0.90f,
+                            mask = motionMask
+                        ),
+                        assignedScore = 0.30f,
+                        bboxIou = 0.30f,
+                        maskIou = 0.10f,
+                        timestampUs = 916_666L
+                    )
+                ),
+                ptsUs = 916_666L
+            )
+
+            assertEquals(setOf(51), probe.dormantReactivationProbeTrackIds)
+            assertTrue(probe.dormantReactivatedTrackIds.isEmpty())
+            assertEquals(setOf(51), probe.dormantSuppressedTrackIds)
+            assertTrue(probe.stickerPlacements.isEmpty(), "detector miss must not render dormant fallback")
+        }
+    }
+
+    @Test
+    fun dormantFaceDetectorHitReactivatesWithoutScalingHiddenTrustedSize() {
+        val locator = SequencedLocator(
+            listOf(
+                listOf(FaceObservation(FloatRect(104f, 96f, 152f, 144f), 0.9f)),
+                // Deliberately huge detector extent on reactivation. It may move
+                // center, but must not overwrite the hidden trusted source size.
+                listOf(FaceObservation(FloatRect(64f, 56f, 208f, 200f), 0.9f))
+            )
+        )
+        withProcessor(locator) { processor, texture, mapper ->
+            val observed = person(52, FloatRect(220f, 40f, 420f, 350f))
+            val initial = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(observed),
+                faceOnlyTrackIds = setOf(52),
+                ptsUs = 0L
+            )
+            val initialWidth = initial.stickerPlacements.single().sourceRect.width
+
+            val lost = observed.copy(
+                state = TrackState.LOST,
+                observedThisFrame = false,
+                framesSinceLastObservation = 60,
+                mask = null
+            )
+            val dormant = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(lost),
+                faceOnlyTrackIds = setOf(52),
+                ptsUs = 900_000L
+            )
+            assertTrue(dormant.stickerPlacements.isEmpty())
+
+            // Symmetric body-box expansion would previously scale the hidden
+            // face before it was rendered/cached again.
+            val expandedBbox = FloatRect(120f, 10f, 520f, 360f)
+            val expandedMask = sourceRectMask(mapper, expandedBbox)
+            val reactivated = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(lost),
+                faceOnlyTrackIds = setOf(52),
+                protectedMotionEvidence = listOf(
+                    ProtectedTrackMotionEvidence(
+                        trackId = 52,
+                        detectionIndex = 0,
+                        detection = PersonDetection(
+                            bbox = expandedBbox,
+                            confidence = 0.90f,
+                            mask = expandedMask
+                        ),
+                        assignedScore = 0.32f,
+                        bboxIou = 0.30f,
+                        maskIou = 0.10f,
+                        timestampUs = 916_666L
+                    )
+                ),
+                ptsUs = 916_666L
+            )
+
+            assertEquals(setOf(52), reactivated.dormantReactivationProbeTrackIds)
+            assertEquals(setOf(52), reactivated.dormantReactivatedTrackIds)
+            assertEquals(setOf(52), reactivated.detectedTrackIds)
+            val reactivatedWidth = reactivated.stickerPlacements.single().sourceRect.width
+            assertTrue(
+                kotlin.math.abs(reactivatedWidth - initialWidth) <= 0.5f,
+                "dormant reactivation must preserve trusted face size: initial=$initialWidth reactivated=$reactivatedWidth"
             )
         }
     }
