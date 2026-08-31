@@ -72,12 +72,18 @@ class YoloLiteRtTensorAdapter(
         output1: FloatArray,
         preprocess: PreprocessResult,
         confThreshold: Float = 0.25f,
-        iouThreshold: Float = 0.50f
+        iouThreshold: Float = 0.50f,
+        stageTimingsMs: MutableMap<String, Long>? = null
     ): List<PersonDetection> {
+        val candidateStartNs = System.nanoTime()
         val candidates = collectCandidates(
             preprocess = preprocess,
             confThreshold = confThreshold,
             getOutput0 = { index -> output0[index] }
+        )
+        stageTimingsMs?.set(
+            "yoloCandidateScan",
+            (System.nanoTime() - candidateStartNs) / 1_000_000
         )
 
         val protoView: ProtoTensorView = if (!isOut1Nhwc) {
@@ -85,7 +91,13 @@ class YoloLiteRtTensorAdapter(
         } else {
             NhwcArrayProtoView(output1, PROTO_CHANNELS, PROTO_SIZE)
         }
-        return finishDetections(candidates, protoView, preprocess, iouThreshold)
+        return finishDetections(
+            candidates = candidates,
+            protoView = protoView,
+            preprocess = preprocess,
+            iouThreshold = iouThreshold,
+            stageTimingsMs = stageTimingsMs
+        )
     }
 
     private inline fun collectCandidates(
@@ -182,9 +194,11 @@ class YoloLiteRtTensorAdapter(
         candidates: List<RawCandidate>,
         protoView: ProtoTensorView,
         preprocess: PreprocessResult,
-        iouThreshold: Float
+        iouThreshold: Float,
+        stageTimingsMs: MutableMap<String, Long>? = null
     ): List<PersonDetection> {
         // 2. Perform Mask-Aware Non-Maximum Suppression (NMS)
+        val nmsStartNs = System.nanoTime()
         val (kept, maskCache) = YoloMaskDecoder.maskAwareNms(
             candidates = candidates,
             protoView = protoView,
@@ -193,8 +207,13 @@ class YoloLiteRtTensorAdapter(
             inputSize = preprocess.inputSize,
             protoSize = PROTO_SIZE
         )
+        stageTimingsMs?.set(
+            "yoloMaskAwareNms",
+            (System.nanoTime() - nmsStartNs) / 1_000_000
+        )
 
         // 3. Process kept detections
+        val materializeStartNs = System.nanoTime()
         val detections = ArrayList<PersonDetection>(kept.size)
         val mapper = ModelCoordinateMapper(
             srcWidth = preprocess.srcWidth,
@@ -238,6 +257,10 @@ class YoloLiteRtTensorAdapter(
         }
 
         detections.sortBy { it.bbox.centerX }
+        stageTimingsMs?.set(
+            "yoloMaskMaterialize",
+            (System.nanoTime() - materializeStartNs) / 1_000_000
+        )
         return detections
     }
 }

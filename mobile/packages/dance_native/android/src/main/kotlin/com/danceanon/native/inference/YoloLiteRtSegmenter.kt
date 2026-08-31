@@ -160,7 +160,8 @@ class YoloLiteRtSegmenter(
                 output1 = out1Floats,
                 preprocess = preprocess,
                 confThreshold = 0.25f,
-                iouThreshold = 0.50f
+                iouThreshold = 0.50f,
+                stageTimingsMs = stageTimings
             )
             stageTimings["yoloDecode"] = (System.nanoTime() - decodeStartNs) / 1_000_000
             parsed

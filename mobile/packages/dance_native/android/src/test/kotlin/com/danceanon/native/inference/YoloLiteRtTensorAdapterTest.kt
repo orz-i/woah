@@ -81,4 +81,40 @@ class YoloLiteRtTensorAdapterTest {
         duplicate.rewind()
         return ByteArray(duplicate.remaining()).also(duplicate::get)
     }
+
+    @Test
+    fun `array production path exposes decode substage telemetry`() {
+        val adapter = YoloLiteRtTensorAdapter(
+            output0Shape = listOf(1, YoloLiteRtTensorAdapter.ATTR_COUNT, YoloLiteRtTensorAdapter.ANCHOR_COUNT),
+            output1Shape = listOf(1, YoloLiteRtTensorAdapter.PROTO_CHANNELS, YoloLiteRtTensorAdapter.PROTO_SIZE, YoloLiteRtTensorAdapter.PROTO_SIZE)
+        )
+        val output0 = FloatArray(YoloLiteRtTensorAdapter.ATTR_COUNT * YoloLiteRtTensorAdapter.ANCHOR_COUNT)
+        val output1 = FloatArray(
+            YoloLiteRtTensorAdapter.PROTO_CHANNELS *
+                YoloLiteRtTensorAdapter.PROTO_SIZE *
+                YoloLiteRtTensorAdapter.PROTO_SIZE
+        )
+        val preprocess = PreprocessResult(
+            floatBuffer = FloatBuffer.allocate(0),
+            byteBuffer = ByteBuffer.allocate(0),
+            scale = 1f,
+            padLeft = 0f,
+            padTop = 0f,
+            srcWidth = 640,
+            srcHeight = 640,
+            inputSize = 640
+        )
+        val timings = linkedMapOf<String, Long>()
+
+        adapter.parseDetections(
+            output0 = output0,
+            output1 = output1,
+            preprocess = preprocess,
+            stageTimingsMs = timings
+        )
+
+        assertTrue(timings.containsKey("yoloCandidateScan"))
+        assertTrue(timings.containsKey("yoloMaskAwareNms"))
+        assertTrue(timings.containsKey("yoloMaskMaterialize"))
+    }
 }

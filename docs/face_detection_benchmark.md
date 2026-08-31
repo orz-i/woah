@@ -2007,6 +2007,33 @@ orientation handling and each normalized float remain unchanged. Unit coverage
 compares materialized versus non-materialized production tensors for every row/column
 orientation and keeps all existing orientation tests intact.
 
+### Thirty-second correction: preprocessing optimization validated; split the remaining decode cost before more changes
+
+The real-device export from
+`9b22e374c265beee1563a66234174334976e269f` keeps the intended mixed policy and
+the established FACE quality counters unchanged: FULL_BODY ID4, FACE_ONLY
+IDs 1/2/3/5/6, **3 dormant-suppressed track-frames** (all ID3; 2
+LOW_CORRELATION + 1 AMBIGUOUS_PEAK), and **92 partial-occlusion pixel-motion
+track-frames**. YOLO again reports requested/effective accelerator GPU with no
+fallback.
+
+The preprocessing fast path is materially effective on the same 751-frame 60 fps
+quality export. `yoloPreprocess` falls from about **15.55 ms to 1.40 ms** while
+`yoloDecode` stays at about **19.86 ms** and `yoloOutputRead` stays at about
+**8.33 ms**. `yoloPipelineTotal` is about **32.35 ms**. Tracking remains about
+**55.39 ms**, supporting a like-for-like runtime comparison rather than a broad
+device-frequency swing. The production path therefore keeps the bulk RGBA read,
+reused IntArray workspace, and non-materialized FloatBuffer behavior.
+
+The 8.3 ms output-read block transfers both full GPU outputs to CPU (roughly 7.2 MB
+of float tensors per inference). The current CPU mask-aware NMS and mask pipeline
+consume those values, so deleting that synchronization without redesigning the
+postprocessor is not a behavior-equivalent optimization. Before changing mask
+semantics or backend topology, the remaining ~19.9 ms decode cost is now split into
+three behavior-neutral telemetry stages: `yoloCandidateScan`, `yoloMaskAwareNms`,
+and `yoloMaskMaterialize`. The next real-device export should use those fields to
+select the next CPU optimization target.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two
