@@ -4,6 +4,7 @@ import com.danceanon.native.face.FaceHeadRoiPlan
 import com.danceanon.native.geometry.ModelCoordinateMapper
 import com.danceanon.native.inference.FloatRect
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
@@ -58,6 +59,7 @@ internal class FacePixelMotionTracker(
         val detectorCenterYSource: Float,
         val detectorPersonBbox: FloatRect,
         val detectorSeedPtsUs: Long,
+        val patchHalfExtentLocal: Int,
         val searchRadiusLocal: Int,
         val correlationWorkspace: FloatArray,
         var centerXSource: Float,
@@ -171,6 +173,7 @@ internal class FacePixelMotionTracker(
             detectorCenterYSource = detected.centerY,
             detectorPersonBbox = personBbox,
             detectorSeedPtsUs = ptsUs,
+            patchHalfExtentLocal = patchHalfExtent,
             searchRadiusLocal = searchRadius,
             correlationWorkspace = FloatArray((searchRadius * 2 + 1) * (searchRadius * 2 + 1)),
             centerXSource = detected.centerX,
@@ -325,26 +328,24 @@ internal class FacePixelMotionTracker(
         centerX: Int,
         centerY: Int
     ): Float? {
+        val halfExtent = state.patchHalfExtentLocal
+        if (
+            centerX - halfExtent < 0 || centerX + halfExtent >= size ||
+            centerY - halfExtent < 0 || centerY + halfExtent >= size
+        ) return null
+
         var sum = 0f
         for (i in state.template.indices) {
-            val value = roiGrayAt(
-                gray,
-                size,
-                centerX + state.sampleDx[i],
-                centerY + state.sampleDy[i]
-            ) ?: return null
+            val index = (centerY + state.sampleDy[i]) * size + centerX + state.sampleDx[i]
+            val value = (gray[index].toInt() and 0xFF).toFloat()
             sum += value
         }
         val mean = sum / state.template.size.coerceAtLeast(1)
         var covariance = 0f
         var candidateNormSq = 0f
         for (i in state.template.indices) {
-            val value = roiGrayAt(
-                gray,
-                size,
-                centerX + state.sampleDx[i],
-                centerY + state.sampleDy[i]
-            ) ?: return null
+            val index = (centerY + state.sampleDy[i]) * size + centerX + state.sampleDx[i]
+            val value = (gray[index].toInt() and 0xFF).toFloat()
             val centered = value - mean
             covariance += state.template[i] * centered
             candidateNormSq += centered * centered
@@ -370,13 +371,22 @@ internal class FacePixelMotionTracker(
         if (roiGrayWorkspace.size != totalPixels) {
             roiGrayWorkspace = ByteArray(totalPixels)
         }
-        var srcOffset = 0
-        for (i in 0 until totalPixels) {
-            val r = rgbaTopDown.get(srcOffset).toInt() and 0xFF
-            val g = rgbaTopDown.get(srcOffset + 1).toInt() and 0xFF
-            val b = rgbaTopDown.get(srcOffset + 2).toInt() and 0xFF
-            roiGrayWorkspace[i] = ((77 * r + 150 * g + 29 * b) ushr 8).toByte()
-            srcOffset += RGBA_STRIDE
+        val previousOrder = rgbaTopDown.order()
+        rgbaTopDown.order(ByteOrder.LITTLE_ENDIAN)
+        try {
+            var srcOffset = 0
+            for (i in 0 until totalPixels) {
+                // RGBA bytes read as a little-endian Int become 0xAABBGGRR.
+                // One direct-buffer getInt replaces three absolute byte gets.
+                val rgba = rgbaTopDown.getInt(srcOffset)
+                val r = rgba and 0xFF
+                val g = (rgba ushr 8) and 0xFF
+                val b = (rgba ushr 16) and 0xFF
+                roiGrayWorkspace[i] = ((77 * r + 150 * g + 29 * b) ushr 8).toByte()
+                srcOffset += RGBA_STRIDE
+            }
+        } finally {
+            rgbaTopDown.order(previousOrder)
         }
         return roiGrayWorkspace
     }

@@ -1660,6 +1660,46 @@ acceptance must evaluate both sides: IDs 1-3 need a material drop in suppression
 and rejection, while center-step/reacquisition behavior must not regress into
 cross-person drift.
 
+### Twenty-fourth correction: SOURCE_ROI_256 clears the main coverage blocker; optimize it without changing gates
+
+The first complete real-video export from
+`bbb1d4d8d2205f1539155b8971f156b11a0d0e32` materially changed the acceptance
+result. On the same 1920x1080/60 fps, 751-frame mixed fixture:
+
+- dormant suppression fell from **1,296 to 50 track-frames**;
+- dormant pixel bridge rose from **265 to 1,207 track-frames**;
+- pixel accepted/rejected changed from **1,065/519 to 3,344/258**;
+- ID1 suppression fell **415 -> 21**, ID2 **313 -> 1**, ID3 **554 -> 28**;
+- ID1/2/3 maximum sticker center jumps fell from about
+  **192/166/78 px to 40/38/27 px**;
+- ID1/2 sticker maximum widths also normalized from about **94/155 px to
+  70/81 px**, while the previously stable ID3 maximum remained about 119 px.
+
+This confirms that the source-resolution ROI was the missing image scale for the
+distant faces and that the remaining 150 ms evidence-gap policy was not the main
+coverage blocker. The user also reported a visually obvious improvement.
+
+The same export exposed the next blocker: CPU cost. `facePixelMotionCpu` averaged
+about **73.3 ms/frame** and total `faceOnlyPrivacy` about **144.4 ms/frame**.
+`faceRoiReadback` averaged about 9.8 ms and `facePrivacyResolve` about 33.1 ms, so
+the NCC implementation itself is the largest immediately actionable cost.
+
+The first performance pass is intentionally output-equivalent and does **not**
+change the 4 px coarse step, 1 px refinement, 0.68 correlation threshold, 0.03
+uniqueness gap, motion/body gates, or the 150/800 ms lifecycle bounds:
+
+- ROI RGBA-to-luminance conversion now uses one little-endian `getInt` per pixel
+  instead of three direct-buffer byte reads, matching the established YOLO
+  preprocessor optimization pattern;
+- once a candidate center is known to contain the fixed sample patch, both NCC
+  passes index the reusable gray `ByteArray` directly instead of repeating 81
+  nullable coordinate/bounds helper calls per pass.
+
+The existing ROI translation, ambiguity, evidence-gap, and detector-seed-age unit
+tests remain the semantic regression gate. Real-device acceptance for this pass is
+performance-first: SOURCE_ROI_256 quality metrics should remain near the bbb1d4d8
+baseline while `facePixelMotionCpu` drops materially from 73.3 ms.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two
