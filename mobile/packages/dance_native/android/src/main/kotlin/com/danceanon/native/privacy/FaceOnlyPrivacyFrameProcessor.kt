@@ -39,6 +39,7 @@ data class FaceOnlyPrivacyFrameResult(
     val bodyCompensatedTrackIds: Set<Int>,
     val freshBodyMotionTrackIds: Set<Int>,
     val recentBodyMotionBridgeTrackIds: Set<Int>,
+    val dormantReactivationPendingTrackIds: Set<Int>,
     val dormantReactivatedTrackIds: Set<Int>,
     val dormantSuppressedTrackIds: Set<Int>,
     val roiReadbackMs: Double,
@@ -130,6 +131,7 @@ class FaceOnlyPrivacyFrameProcessor(
     )
     private val recentBodyMotionByTrackId = mutableMapOf<Int, RecentBodyMotionGeometry>()
     private val dormantFaceOnlyTrackIds = mutableSetOf<Int>()
+    private val dormantReactivationGate = FaceOnlyDormantReactivationGate()
 
     private fun planCachedFaceLocalRoi(
         cached: CachedFaceGeometry,
@@ -300,6 +302,7 @@ class FaceOnlyPrivacyFrameProcessor(
                 bodyCompensatedTrackIds = emptySet(),
                 freshBodyMotionTrackIds = emptySet(),
                 recentBodyMotionBridgeTrackIds = emptySet(),
+                dormantReactivationPendingTrackIds = emptySet(),
                 dormantReactivatedTrackIds = emptySet(),
                 dormantSuppressedTrackIds = emptySet(),
                 roiReadbackMs = 0.0,
@@ -378,14 +381,33 @@ class FaceOnlyPrivacyFrameProcessor(
                 recentBodyMotionByTrackId.remove(trackId)
             }
         }
+        val observedFaceOnlyTrackIds = activeFaceOnlyTrackIds.filterTo(linkedSetOf()) { trackId ->
+            personsById[trackId]?.observedThisFrame == true
+        }
+        val dormantReactivationDecision = dormantReactivationGate.update(
+            activeTrackIds = activeFaceOnlyTrackIds,
+            dormantTrackIds = dormantFaceOnlyTrackIds,
+            observedTrackIds = observedFaceOnlyTrackIds,
+            freshMotionTrackIds = freshBodyMotionTrackIds,
+            ptsUs = ptsUs
+        )
+        val usableBodyMotionByTrackId = activeFaceOnlyTrackIds.associateWith { trackId ->
+            val hasFreshOrRecentBodyMotion =
+                freshMotionEvidenceByTrackId.containsKey(trackId) ||
+                    recentBodyMotionBridgeTrackIds.contains(trackId)
+            if (dormantFaceOnlyTrackIds.contains(trackId)) {
+                dormantReactivationDecision.confirmedTrackIds.contains(trackId)
+            } else {
+                hasFreshOrRecentBodyMotion
+            }
+        }
         val renderModeByTrackId = activeFaceOnlyTrackIds.associateWith { trackId ->
             val person = personsById[trackId] ?: return@associateWith FaceOnlyRenderMode.DORMANT
             val geometryPerson = geometryPersonByTrackId.getValue(trackId)
             val cachedFace = cachedFaceByTrackId[trackId]
             val cachedFaceAgeUs = cachedFace?.let { ptsUs - it.lastTrustedPtsUs }
-            val hasFreshBodyMotion =
-                freshMotionEvidenceByTrackId.containsKey(trackId) ||
-                    recentBodyMotionBridgeTrackIds.contains(trackId)
+            val wasDormant = dormantFaceOnlyTrackIds.contains(trackId)
+            val hasFreshBodyMotion = usableBodyMotionByTrackId.getValue(trackId)
             val hasUsableTrustedFace = if (hasFreshBodyMotion) {
                 cachedFace != null
             } else {
@@ -397,7 +419,8 @@ class FaceOnlyPrivacyFrameProcessor(
                 lastObservedPtsUs = lastObservedPtsUsByTrackId[trackId],
                 ptsUs = ptsUs,
                 hasTrustedFace = hasUsableTrustedFace,
-                hasBodyMask = geometryPerson.mask != null,
+                hasBodyMask = geometryPerson.mask != null &&
+                    !(wasDormant && freshMotionEvidenceByTrackId.containsKey(trackId) && !hasFreshBodyMotion),
                 hasFreshBodyMotionEvidence = hasFreshBodyMotion
             )
         }
@@ -409,7 +432,7 @@ class FaceOnlyPrivacyFrameProcessor(
             .filterValues { it == FaceOnlyRenderMode.BODY_MASK_COMPENSATED }
             .keys
             .toCollection(linkedSetOf())
-        val dormantReactivatedTrackIds = freshBodyMotionTrackIds
+        val dormantReactivatedTrackIds = dormantReactivationDecision.confirmedTrackIds
             .filterTo(linkedSetOf()) { trackId ->
                 dormantFaceOnlyTrackIds.contains(trackId) &&
                     bodyCompensatedTrackIds.contains(trackId)
@@ -439,9 +462,7 @@ class FaceOnlyPrivacyFrameProcessor(
             if (person.state == TrackState.REMOVED) return@forEach
             val cached = cachedFaceByTrackId[trackId]
             val renderMode = renderModeByTrackId[trackId] ?: FaceOnlyRenderMode.DORMANT
-            val hasFreshBodyMotion =
-                freshMotionEvidenceByTrackId.containsKey(trackId) ||
-                    recentBodyMotionBridgeTrackIds.contains(trackId)
+            val hasFreshBodyMotion = usableBodyMotionByTrackId[trackId] == true
             val canUseIdentityLocalRoi = renderMode != FaceOnlyRenderMode.DORMANT && cached != null
             val localPlan = if (canUseIdentityLocalRoi) {
                 planCachedFaceLocalRoi(
@@ -523,9 +544,7 @@ class FaceOnlyPrivacyFrameProcessor(
             val person = geometryPersonByTrackId[trackId] ?: trackedPerson
             if (person.state == TrackState.REMOVED) continue
             val renderMode = renderModeByTrackId[trackId] ?: FaceOnlyRenderMode.DORMANT
-            val hasFreshBodyMotion =
-                freshMotionEvidenceByTrackId.containsKey(trackId) ||
-                    recentBodyMotionBridgeTrackIds.contains(trackId)
+            val hasFreshBodyMotion = usableBodyMotionByTrackId[trackId] == true
 
             val plan = detectorPlanByTrackId[trackId]
 
@@ -752,6 +771,7 @@ class FaceOnlyPrivacyFrameProcessor(
             bodyCompensatedTrackIds = bodyCompensatedTrackIds,
             freshBodyMotionTrackIds = freshBodyMotionTrackIds.intersect(bodyCompensatedTrackIds),
             recentBodyMotionBridgeTrackIds = recentBodyMotionBridgeTrackIds.intersect(bodyCompensatedTrackIds),
+            dormantReactivationPendingTrackIds = dormantReactivationDecision.pendingTrackIds.intersect(dormantSuppressedTrackIds),
             dormantReactivatedTrackIds = dormantReactivatedTrackIds,
             dormantSuppressedTrackIds = dormantSuppressedTrackIds,
             roiReadbackMs = roiReadbackMs,

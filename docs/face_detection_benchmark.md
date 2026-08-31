@@ -1285,6 +1285,43 @@ next device run can verify that fresh ambiguity evidence is now rescuing previou
 dormant IDs rather than merely replacing geometry inside the original 800 ms
 window.
 
+### Seventeenth real-video correction: confirm dormant reactivation before rendering
+
+The first complete export from `2ae9d22255344121ebf668c1d3fdf247f15d6a58`
+proves that preserving the hidden detected-face anchor fixed the dead reactivation
+path. On the same five-FACE_ONLY clip, fresh motion rose from **48 to 241**
+track-frames, recent-body bridging from **58 to 184**, body compensation from
+**414 to 795**, and dormant suppression fell from **1,637 to 1,256**. The new
+counter recorded **20 dormant reactivations**: IDs 1/2/3/5/6 = 3/6/7/3/1.
+
+That coverage gain exposed the next boundary. Maximum consecutive sticker-center
+steps increased to approximately **114.5 / 94.0 / 109.0 / 94.3 / 94.1 px** for
+IDs 1/2/3/5/6, versus about **86.9 / 67.4 / 95.9 / 50.4 / 40.0 px** in the
+previous build. Replaying the association diagnostics also shows that several
+reactivations start from a single isolated motion-only hit: for multiple IDs the
+next qualifying fresh sample does not arrive for hundreds of milliseconds or
+more. The processor previously rendered immediately on that first hit.
+
+Dormant reactivation now therefore uses a narrow confirmation state:
+
+- the first current-frame `ProtectedTrackMotionEvidence` sample for a dormant
+  FACE_ONLY ID is held as a non-rendering probe;
+- a second independently-qualified fresh sample for the same protected ID must
+  arrive within the existing **150 ms** recent-body bridge window before the
+  hidden face anchor may return to `BODY_MASK_COMPENSATED`;
+- recent bbox bridging by itself cannot confirm reactivation, and no old
+  segmentation mask is retained;
+- an exact YOLO observation cancels the pending probe immediately and returns to
+  the normal direct path;
+- TrackManager identity gates, the motion-only overlap gate, the 800 ms stale
+  limit, and FULL_BODY behavior remain unchanged; no generic face-center smoothing
+  is added.
+
+Export diagnostics additionally record
+`face_dormant_reactivation_pending_track_frames` and a per-track breakdown. The
+next real-video bundle can therefore distinguish single-hit probes filtered by the
+new gate from confirmed dormant recoveries without weakening identity semantics.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two
