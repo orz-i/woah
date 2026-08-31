@@ -1977,6 +1977,36 @@ acceptance is behavior parity plus a material reduction in `yoloDecode`; if deco
 remains dominant, instrument mask-aware NMS versus final kept-mask materialization
 before changing any quality logic.
 
+### Thirty-first correction: array-backed YOLO decode succeeds; remove avoidable preprocess copies next
+
+The real-device export from
+`db38f1862124d8ff8f221296e54c1e059574fa14` validates the array-backed YOLO mask
+decode optimization under essentially the same device slow-state as the immediately
+preceding `bbba97e` export. Mixed privacy behavior is unchanged: FULL_BODY ID4,
+FACE_ONLY IDs 1/2/3/5/6, **3 dormant-suppressed track-frames**, and **92 partial-
+occlusion pixel-motion track-frames** with the same per-track counts. The optimization
+therefore did not trade privacy quality for speed.
+
+The performance change is large and isolated to decode: `yoloDecode` falls from
+about **52.83 ms to 19.98 ms** (roughly **-62%**) while `yoloPreprocess` stays at
+about **15.55 ms**, `yoloOutputRead` stays at about **8.32 ms**, and tracking stays
+in the same slow-state range (**55.46 -> 56.76 ms**). Total YOLO pipeline time falls
+from about **79.10 ms to 46.13 ms** (roughly **-42%**). GPU remains requested and
+effective with no fallback. The historical `yoloCpuInference` key is retained only
+for continuity; `yoloPipelineTotal` is the correctly named equivalent aggregate.
+
+The next behavior-equivalent optimization targets preprocessing. The export hot path
+already writes `PreprocessorWorkspace.floatArray` directly to LiteRT, but the old
+preprocessor still copied all **1,228,800 floats (~4.9 MB)** into a direct
+`FloatBuffer` every frame solely to preserve the legacy `PreprocessResult` contract.
+Production now skips that unused materialization while default/test callers keep it.
+In addition, the 640x640 direct RGBA buffer is bulk-read once into a reusable
+`IntArray`; NCHW normalization then uses plain array indexing instead of about
+409,600 indexed direct `ByteBuffer.getInt` calls. Top/bottom and left/right
+orientation handling and each normalized float remain unchanged. Unit coverage
+compares materialized versus non-materialized production tensors for every row/column
+orientation and keeps all existing orientation tests intact.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

@@ -33,6 +33,7 @@ data class PreprocessResult(
 
 class PreprocessorWorkspace(val inputSize: Int = 640) {
     val numPixels = inputSize * inputSize
+    val rgbaIntArray = IntArray(numPixels)
     val floatArray = FloatArray(1 * 3 * numPixels)
     val byteBuffer: ByteBuffer = ByteBuffer.allocateDirect(1 * 3 * numPixels * 4).apply {
         order(ByteOrder.nativeOrder())
@@ -49,7 +50,8 @@ object YoloPreprocessor {
         mapper: ModelCoordinateMapper,
         workspace: PreprocessorWorkspace,
         rowOrder: RgbaRowOrder = RgbaRowOrder.TOP_TO_BOTTOM,
-        colOrder: RgbaColOrder = RgbaColOrder.LEFT_TO_RIGHT
+        colOrder: RgbaColOrder = RgbaColOrder.LEFT_TO_RIGHT,
+        materializeFloatBuffer: Boolean = true
     ): PreprocessResult {
         val expectedBytes = workspace.inputSize * workspace.inputSize * 4
         require(rgbaBuffer.capacity() >= expectedBytes) {
@@ -58,6 +60,7 @@ object YoloPreprocessor {
 
         val inputSize = workspace.inputSize
         val numPixels = workspace.numPixels
+        val rgbaInts = workspace.rgbaIntArray
         val inputFloats = workspace.floatArray
         val floatBuffer = workspace.floatBuffer
         val byteBuffer = workspace.byteBuffer
@@ -68,45 +71,51 @@ object YoloPreprocessor {
         val gOffset = numPixels
         val bOffset = 2 * numPixels
 
-        val previousOrder = rgbaBuffer.order()
-        rgbaBuffer.order(ByteOrder.LITTLE_ENDIAN)
-        try {
-            for (dstY in 0 until inputSize) {
-                val srcY = when (rowOrder) {
-                    RgbaRowOrder.TOP_TO_BOTTOM -> dstY
-                    RgbaRowOrder.BOTTOM_TO_TOP -> inputSize - 1 - dstY
-                }
+        // glReadPixels gives us a direct RGBA ByteBuffer. Pull it into one
+        // reusable IntArray with a single bulk native copy, then keep the hot
+        // normalization loop on ordinary arrays. This preserves the exact
+        // 0xAABBGGRR little-endian interpretation while avoiding ~409k indexed
+        // direct-buffer getInt calls per frame.
+        val rgbaView = rgbaBuffer.duplicate().apply {
+            position(0)
+            order(ByteOrder.LITTLE_ENDIAN)
+        }.asIntBuffer()
+        rgbaView.get(rgbaInts, 0, numPixels)
 
-                val srcRowOffset = srcY * inputSize * 4
-                val dstRowOffset = dstY * inputSize
-                var srcByteOffset = when (colOrder) {
-                    RgbaColOrder.LEFT_TO_RIGHT -> srcRowOffset
-                    RgbaColOrder.RIGHT_TO_LEFT -> srcRowOffset + (inputSize - 1) * 4
-                }
-                val srcStep = if (colOrder == RgbaColOrder.LEFT_TO_RIGHT) 4 else -4
-
-                for (dstX in 0 until inputSize) {
-                    // RGBA bytes read as a little-endian Int become 0xAABBGGRR.
-                    // One absolute getInt replaces three direct-buffer byte gets.
-                    val rgba = rgbaBuffer.getInt(srcByteOffset)
-                    val dstPixelIndex = dstRowOffset + dstX
-                    inputFloats[rOffset + dstPixelIndex] = (rgba and 0xFF) * INV_255
-                    inputFloats[gOffset + dstPixelIndex] = ((rgba ushr 8) and 0xFF) * INV_255
-                    inputFloats[bOffset + dstPixelIndex] = ((rgba ushr 16) and 0xFF) * INV_255
-                    srcByteOffset += srcStep
-                }
+        for (dstY in 0 until inputSize) {
+            val srcY = when (rowOrder) {
+                RgbaRowOrder.TOP_TO_BOTTOM -> dstY
+                RgbaRowOrder.BOTTOM_TO_TOP -> inputSize - 1 - dstY
             }
-        } finally {
-            rgbaBuffer.order(previousOrder)
+
+            val srcRowOffset = srcY * inputSize
+            val dstRowOffset = dstY * inputSize
+            var srcPixelIndex = when (colOrder) {
+                RgbaColOrder.LEFT_TO_RIGHT -> srcRowOffset
+                RgbaColOrder.RIGHT_TO_LEFT -> srcRowOffset + inputSize - 1
+            }
+            val srcStep = if (colOrder == RgbaColOrder.LEFT_TO_RIGHT) 1 else -1
+
+            for (dstX in 0 until inputSize) {
+                val rgba = rgbaInts[srcPixelIndex]
+                val dstPixelIndex = dstRowOffset + dstX
+                inputFloats[rOffset + dstPixelIndex] = (rgba and 0xFF) * INV_255
+                inputFloats[gOffset + dstPixelIndex] = ((rgba ushr 8) and 0xFF) * INV_255
+                inputFloats[bOffset + dstPixelIndex] = ((rgba ushr 16) and 0xFF) * INV_255
+                srcPixelIndex += srcStep
+            }
         }
 
         // Preserve the existing PreprocessResult FloatBuffer contract for
         // tests/alternate callers using one bulk native copy instead of 1.2M
-        // absolute FloatBuffer.put calls. The LiteRT hot path writes floatArray
-        // directly and does not copy this buffer back into another FloatArray.
-        floatBuffer.put(inputFloats)
-        floatBuffer.position(0)
-        byteBuffer.position(0)
+        // absolute FloatBuffer.put calls. The LiteRT export hot path writes
+        // floatArray directly, so it explicitly skips this otherwise-unused
+        // ~4.9 MB materialization per frame.
+        if (materializeFloatBuffer) {
+            floatBuffer.put(inputFloats)
+            floatBuffer.position(0)
+            byteBuffer.position(0)
+        }
 
 
         return PreprocessResult(

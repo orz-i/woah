@@ -261,6 +261,57 @@ class YoloPreprocessorOrientationTest {
             assertEquals(workspace.floatArray[bOffset + i], floatBuffer.get(bOffset + i))
         }
     }
+
+    @Test
+    fun productionNonMaterializedPathMatchesMaterializedFloatArrayForAllOrientations() {
+        val inputSize = 8
+        val numPixels = inputSize * inputSize
+        val mapper = ModelCoordinateMapper(
+            srcWidth = inputSize,
+            srcHeight = inputSize,
+            modelInputSize = inputSize,
+            protoSize = inputSize
+        )
+        val buffer = ByteBuffer.allocateDirect(numPixels * 4).order(ByteOrder.BIG_ENDIAN)
+        for (i in 0 until numPixels) {
+            buffer.put(((i * 13) and 0xFF).toByte())
+            buffer.put(((255 - i * 7) and 0xFF).toByte())
+            buffer.put(((i * 29 + 11) and 0xFF).toByte())
+            buffer.put(255.toByte())
+        }
+        buffer.rewind()
+
+        for (rowOrder in RgbaRowOrder.entries) {
+            for (colOrder in com.danceanon.native.inference.RgbaColOrder.entries) {
+                val materializedWorkspace = PreprocessorWorkspace(inputSize)
+                val productionWorkspace = PreprocessorWorkspace(inputSize)
+                YoloPreprocessor.processRgbaBuffer(
+                    rgbaBuffer = buffer,
+                    mapper = mapper,
+                    workspace = materializedWorkspace,
+                    rowOrder = rowOrder,
+                    colOrder = colOrder,
+                    materializeFloatBuffer = true
+                )
+                YoloPreprocessor.processRgbaBuffer(
+                    rgbaBuffer = buffer,
+                    mapper = mapper,
+                    workspace = productionWorkspace,
+                    rowOrder = rowOrder,
+                    colOrder = colOrder,
+                    materializeFloatBuffer = false
+                )
+                for (i in 0 until numPixels * 3) {
+                    assertEquals(
+                        materializedWorkspace.floatArray[i],
+                        productionWorkspace.floatArray[i],
+                        "row=$rowOrder col=$colOrder index=$i"
+                    )
+                }
+                assertEquals(ByteOrder.BIG_ENDIAN, buffer.order())
+            }
+        }
+    }
 }
 
 

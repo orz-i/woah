@@ -123,7 +123,8 @@ class YoloLiteRtSegmenter(
             mapper = mapper,
             workspace = workspace,
             rowOrder = rowOrder,
-            colOrder = colOrder
+            colOrder = colOrder,
+            materializeFloatBuffer = false
         )
         stageTimings["yoloPreprocess"] = (System.nanoTime() - preprocessStartNs) / 1_000_000
 
