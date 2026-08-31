@@ -17,6 +17,7 @@ import com.danceanon.native.render.SourceTextureType
 import com.danceanon.native.tracking.ProtectedTrackMotionEvidence
 import com.danceanon.native.tracking.TrackState
 import com.danceanon.native.tracking.TrackedPerson
+import java.nio.ByteBuffer
 import kotlin.math.sqrt
 
 data class FaceOnlyPrivacyFrameResult(
@@ -44,6 +45,9 @@ data class FaceOnlyPrivacyFrameResult(
     val dormantReactivatedTrackIds: Set<Int>,
     val dormantExactReacquiredTrackIds: Set<Int>,
     val dormantSuppressedTrackIds: Set<Int>,
+    val pixelMotionTrackIds: Set<Int>,
+    val pixelMotionRejectedTrackIds: Set<Int>,
+    val pixelMotionMs: Double,
     val roiReadbackMs: Double,
     val maskBuildMs: Double,
     val privacyResolveMs: Double,
@@ -64,6 +68,8 @@ class FaceOnlyPrivacyFrameProcessor(
     private val detectorIntervalUs: Long = DEFAULT_DETECTOR_INTERVAL_US,
     private val maxDetectorCallsPerFrame: Int = DEFAULT_MAX_DETECTOR_CALLS_PER_FRAME
 ) : AutoCloseable {
+
+    private val pixelMotionTracker = FacePixelMotionTracker()
 
     private data class CachedFaceGeometry(
         val centerX: Float,
@@ -326,6 +332,7 @@ class FaceOnlyPrivacyFrameProcessor(
         faceOnlyTrackIds: Set<Int>,
         fullBodyTrackIds: Set<Int> = emptySet(),
         protectedMotionEvidence: List<ProtectedTrackMotionEvidence> = emptyList(),
+        yoloRgbaBottomUp: ByteBuffer? = null,
         ptsUs: Long
     ): FaceOnlyPrivacyFrameResult {
         if (faceOnlyTrackIds.isEmpty()) {
@@ -354,6 +361,9 @@ class FaceOnlyPrivacyFrameProcessor(
                 dormantReactivatedTrackIds = emptySet(),
                 dormantExactReacquiredTrackIds = emptySet(),
                 dormantSuppressedTrackIds = emptySet(),
+                pixelMotionTrackIds = emptySet(),
+                pixelMotionRejectedTrackIds = emptySet(),
+                pixelMotionMs = 0.0,
                 roiReadbackMs = 0.0,
                 maskBuildMs = 0.0,
                 privacyResolveMs = 0.0,
@@ -436,6 +446,7 @@ class FaceOnlyPrivacyFrameProcessor(
                     // from the current exact person bbox instead.
                     cachedFaceByTrackId.remove(trackId)
                     lastDetectorAttemptPtsUsByTrackId.remove(trackId)
+                    pixelMotionTracker.remove(trackId)
                     dormantExactReacquiredTrackIds += trackId
                 }
             }
@@ -518,6 +529,7 @@ class FaceOnlyPrivacyFrameProcessor(
         cachedFaceByTrackId.keys.retainAll(activeFaceOnlyTrackIds)
         lastDetectorAttemptPtsUsByTrackId.keys.retainAll(processingFaceOnlyTrackIds)
         temporalStabilizer.retainTracks(baseRenderableFaceOnlyTrackIds)
+        pixelMotionTracker.retainTracks(baseRenderableFaceOnlyTrackIds)
 
         val detectorPlanByTrackId = linkedMapOf<Int, FaceHeadRoiPlan>()
         val localDetectorTrackIds = linkedSetOf<Int>()
@@ -606,6 +618,9 @@ class FaceOnlyPrivacyFrameProcessor(
         val bodyMaskGuidedTrackIds = linkedSetOf<Int>()
         val positionClampedTrackIds = linkedSetOf<Int>()
         val dormantReactivatedTrackIds = linkedSetOf<Int>()
+        val pixelMotionTrackIds = linkedSetOf<Int>()
+        val pixelMotionRejectedTrackIds = linkedSetOf<Int>()
+        var pixelMotionMs = 0.0
         var roiReadbackMs = 0.0
         var maskBuildMs = 0.0
         val stickerPlacements = mutableListOf<FaceStickerPlacement>()
@@ -698,35 +713,50 @@ class FaceOnlyPrivacyFrameProcessor(
                         } else {
                             detectedRegion
                         }
-                    } else if (isDormantProbe) {
-                        null
                     } else {
-                        resolveFallbackGeometry(
-                            person,
-                            cachedBeforeAttempt,
-                            ptsUs,
-                            renderMode,
-                            hasFreshBodyMotion
-                        )?.also { fallbackGeometry ->
-                            if (fallbackGeometry.bodyMaskGuided) bodyMaskGuidedTrackIds += trackId
-                        }?.region
+                        // Do not immediately commit a body-derived fallback on a
+                        // detector miss. A short-lived template seeded only by a
+                        // real detected face may still match current-frame pixels
+                        // below. If that also fails, the unchanged fail-closed
+                        // fallback path runs afterwards.
+                        null
                     }
                 } catch (t: Throwable) {
                     if (isDormantProbe) {
                         Log.w(TAG, "Dormant face reactivation probe failed for track=$trackId; keeping dormant", t)
                         region = null
                     } else {
-                        Log.w(TAG, "Face ROI detection failed for track=$trackId; using head fallback", t)
-                        region = resolveFallbackGeometry(
-                            person,
-                            cachedBeforeAttempt,
-                            ptsUs,
-                            renderMode,
-                            hasFreshBodyMotion
-                        )?.also { fallbackGeometry ->
-                            if (fallbackGeometry.bodyMaskGuided) bodyMaskGuidedTrackIds += trackId
-                        }?.region
+                        Log.w(TAG, "Face ROI detection failed for track=$trackId; trying pixel bridge before fallback", t)
+                        region = null
                     }
+                }
+            }
+
+            var trustedCurrentPixelCenter = false
+            if (
+                region == null &&
+                !isDormantProbe &&
+                yoloRgbaBottomUp != null &&
+                pixelMotionTracker.hasUsableState(trackId, ptsUs)
+            ) {
+                val pixelMotionStartNs = System.nanoTime()
+                val pixelMatch = try {
+                    pixelMotionTracker.match(
+                        trackId = trackId,
+                        rgbaBottomUp = yoloRgbaBottomUp,
+                        mapper = mapper,
+                        ptsUs = ptsUs,
+                        personBbox = person.bbox
+                    )
+                } finally {
+                    pixelMotionMs += (System.nanoTime() - pixelMotionStartNs) / 1_000_000.0
+                }
+                if (pixelMatch != null) {
+                    region = pixelMatch.region
+                    trustedCurrentPixelCenter = true
+                    pixelMotionTrackIds += trackId
+                } else {
+                    pixelMotionRejectedTrackIds += trackId
                 }
             }
 
@@ -752,7 +782,8 @@ class FaceOnlyPrivacyFrameProcessor(
                     rawRegion = region,
                     personBbox = person.bbox,
                     personObservedThisFrame = person.observedThisFrame,
-                    ptsUs = ptsUs
+                    ptsUs = ptsUs,
+                    trustedCurrentPixelCenter = trustedCurrentPixelCenter
                 )
                 if (
                     kotlin.math.abs(region.centerX - rawCenterX) > POSITION_CLAMP_DIAGNOSTIC_EPSILON_PX ||
@@ -780,6 +811,21 @@ class FaceOnlyPrivacyFrameProcessor(
                             radiusY = trustedDetectedRadiusY ?: region.radiusY,
                             trustedPersonBbox = person.bbox,
                             lastTrustedPtsUs = ptsUs
+                        )
+                    }
+                    if (yoloRgbaBottomUp != null) {
+                        pixelMotionTracker.seed(
+                            trackId = trackId,
+                            rgbaBottomUp = yoloRgbaBottomUp,
+                            mapper = mapper,
+                            detected = FacePrivacyEllipse(
+                                centerX = region.centerX,
+                                centerY = region.centerY,
+                                radiusX = trustedDetectedRadiusX ?: region.radiusX,
+                                radiusY = trustedDetectedRadiusY ?: region.radiusY,
+                                source = FacePrivacyRegionSource.DETECTED_FACE
+                            ),
+                            ptsUs = ptsUs
                         )
                     }
                 }
@@ -894,6 +940,9 @@ class FaceOnlyPrivacyFrameProcessor(
             dormantReactivatedTrackIds = dormantReactivatedTrackIds,
             dormantExactReacquiredTrackIds = dormantExactReacquiredTrackIds,
             dormantSuppressedTrackIds = dormantSuppressedTrackIds,
+            pixelMotionTrackIds = pixelMotionTrackIds,
+            pixelMotionRejectedTrackIds = pixelMotionRejectedTrackIds,
+            pixelMotionMs = pixelMotionMs,
             roiReadbackMs = roiReadbackMs,
             maskBuildMs = maskBuildMs,
             privacyResolveMs = privacyResolveMs,

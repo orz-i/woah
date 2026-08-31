@@ -1477,6 +1477,59 @@ should first compare `renderEffects` against the 26.03 ms baseline; only if tota
 throughput remains materially below the user-validated baseline should that second
 23.75 ms stage be optimized independently without changing its semantics.
 
+### Twenty-first correction: stop using body geometry as the primary inter-frame face tracker
+
+After the size-ratchet and long-distance dormant-probe fixes, the same production
+clip became substantially safer numerically, but the user still judged FACE_ONLY
+unusable. That is the important acceptance signal: further tuning of dormant/body
+motion gates cannot solve the core fast-dance localization problem. YOLO person
+bboxes are an identity/whole-body signal; they are not a sufficiently precise
+per-frame head-motion signal when arms, torso coverage, crossings, and motion blur
+change the segmentation shape.
+
+QUALITY export already performs one 640x640 OpenGL RGBA readback per frame for
+YOLO. FACE_ONLY now reuses that exact current-frame buffer for a short-lived
+face-local appearance tracker, so this change adds **no new GPU readback and no
+OpenCV/native runtime dependency**:
+
+- only a real `DETECTED_FACE` can seed/refresh a per-track appearance template;
+- a 9x9 luminance sample grid is matched by normalized correlation inside a small
+  face-relative search window in the existing YOLO model coordinate space;
+- the template remains fixed until the next real face detection, preventing
+  match-to-match template drift;
+- the winning correlation peak must pass an absolute correlation gate and be
+  separated from other spatially distinct peaks; repeated/lookalike peaks fail
+  closed instead of guessing identity;
+- current YOLO person geometry is only a broad upper-body search boundary. It no
+  longer supplies the accepted face displacement;
+- a successful pixel match moves **center only**. Trusted face radius is preserved,
+  so this path cannot reintroduce sticker-size pumping;
+- pixel tracking expires **150 ms after the last real face detection**. It cannot
+  become a long-lived independent tracker and is deleted on dormant/exact-reacquire
+  state boundaries;
+- detector miss/error now tries this current-pixel bridge before the existing
+  body/head fallback. If pixel matching also fails, fail-closed behavior is
+  unchanged;
+- high-confidence/unique current-pixel motion bypasses only the temporal
+  stabilizer's residual **position** clamp. Detector, body fallback, and all other
+  geometry sources retain the existing position gate; size stabilization remains
+  active for every source.
+
+Candidate matching performs no per-candidate heap allocation. Correlation is
+computed in two direct sampling passes to avoid adding GC pressure to the export
+hot path. Unit coverage verifies known translation recovery with unchanged face
+size, rejection of two equal lookalike peaks, 150 ms expiry, and immediate use of
+trusted current-pixel centers by the temporal stabilizer.
+
+New export diagnostics are `face_pixel_motion_track_frames`,
+`face_pixel_motion_rejected_track_frames`, their per-track variants, and the
+`facePixelMotionCpu` profiler stage. The next real-video acceptance should compare
+these against DETECTED/PREDICTED/FALLBACK, dormant suppression, consecutive center
+step, and total FACE_ONLY cost. The intended success condition is not merely more
+`PREDICTED` frames: pixel-motion frames must replace body-derived fallback/dropout
+while consecutive center steps stay bounded and CPU cost remains small relative to
+face detection.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

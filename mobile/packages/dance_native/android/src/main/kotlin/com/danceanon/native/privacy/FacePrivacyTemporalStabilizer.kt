@@ -36,7 +36,8 @@ class FacePrivacyTemporalStabilizer {
         rawRegion: FacePrivacyEllipse,
         personBbox: FloatRect,
         ptsUs: Long,
-        personObservedThisFrame: Boolean = true
+        personObservedThisFrame: Boolean = true,
+        trustedCurrentPixelCenter: Boolean = false
     ): FacePrivacyEllipse {
         if (personBbox.width <= 1f || personBbox.height <= 1f) return rawRegion
 
@@ -152,7 +153,8 @@ class FacePrivacyTemporalStabilizer {
             val residualDy = target.centerY - expectedCenterY
             val residualDistance = sqrt(residualDx * residualDx + residualDy * residualDy)
             val maxResidualStep = max(POSITION_MIN_RESIDUAL_STEP_PX, referenceRadius * POSITION_MAX_RADIUS_STEP)
-            val clampPosition = rawDtSeconds <= POSITION_GATE_MAX_DT_SECONDS &&
+            val clampPosition = !trustedCurrentPixelCenter &&
+                rawDtSeconds <= POSITION_GATE_MAX_DT_SECONDS &&
                 residualDistance > maxResidualStep && residualDistance > 1e-3f
             val centerScale = if (clampPosition) maxResidualStep / residualDistance else 1f
 

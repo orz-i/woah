@@ -32,6 +32,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.nio.ByteBuffer
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.max
@@ -346,6 +347,8 @@ class ExportPipeline(
                 var faceDormantReactivatedEventCount = 0L
                 var faceDormantExactReacquiredTrackFrameCount = 0L
                 var faceDormantSuppressedTrackFrameCount = 0L
+                var facePixelMotionTrackFrameCount = 0L
+                var facePixelMotionRejectedTrackFrameCount = 0L
                 val faceDetectorCallsByTrackId = mutableMapOf<Int, Long>()
                 val faceDetectorRejectedCallsByTrackId = mutableMapOf<Int, Long>()
                 val faceDetectedFramesByTrackId = mutableMapOf<Int, Long>()
@@ -361,6 +364,8 @@ class ExportPipeline(
                 val faceDormantReactivatedEventsByTrackId = mutableMapOf<Int, Long>()
                 val faceDormantExactReacquiredFramesByTrackId = mutableMapOf<Int, Long>()
                 val faceDormantSuppressedFramesByTrackId = mutableMapOf<Int, Long>()
+                val facePixelMotionFramesByTrackId = mutableMapOf<Int, Long>()
+                val facePixelMotionRejectedFramesByTrackId = mutableMapOf<Int, Long>()
                 val faceDormantReactivationStickerMaxWidthByTrackId = mutableMapOf<Int, Float>()
                 val faceDormantReactivationStickerMaxHeightByTrackId = mutableMapOf<Int, Float>()
                 val faceStickerMinWidthByTrackId = mutableMapOf<Int, Float>()
@@ -519,6 +524,7 @@ class ExportPipeline(
                     var freshSelectedCoveredTrackIds = emptySet<Int>()
                     var suppressedSelectedPrivacyTrackIds = emptySet<Int>()
                     var preferFreshPrivacyClassPrimary = false
+                    var yoloRgbaBottomUp: ByteBuffer? = null
 
                         // 2. Perform Inference / Temporal Mask Tracking
                         val trackedList: List<com.danceanon.native.tracking.TrackedPerson> = if (isSam2Mode && sam2Fbo != null && sam2Renderer != null && sam2Tracker != null) {
@@ -690,6 +696,7 @@ class ExportPipeline(
                                 val rgbaBuffer = profiler.recordStage("readback640") {
                                     inferenceFbo.readRgbaPixels()
                                 }
+                                yoloRgbaBottomUp = rgbaBuffer
                                 val seg = profiler.recordStage("yoloCpuInference") {
                                     segmenter.segmentGlReadbackRgbaSync(rgbaBuffer, mapper, ptsUs, colOrder = RgbaColOrder.LEFT_TO_RIGHT)
                                 }
@@ -836,6 +843,7 @@ class ExportPipeline(
                                     faceOnlyTrackIds = faceOnlyPersonIds,
                                     fullBodyTrackIds = selectedIds,
                                     protectedMotionEvidence = protectedMotionEvidence,
+                                    yoloRgbaBottomUp = yoloRgbaBottomUp,
                                     ptsUs = ptsUs
                                 )
                             }
@@ -861,6 +869,8 @@ class ExportPipeline(
                             faceDormantExactReacquiredTrackFrameCount +=
                                 faceOnlyFrameResult.dormantExactReacquiredTrackIds.size
                             faceDormantSuppressedTrackFrameCount += faceOnlyFrameResult.dormantSuppressedTrackIds.size
+                            facePixelMotionTrackFrameCount += faceOnlyFrameResult.pixelMotionTrackIds.size
+                            facePixelMotionRejectedTrackFrameCount += faceOnlyFrameResult.pixelMotionRejectedTrackIds.size
                             faceOnlyFrameResult.detectorCalledTrackIds.forEach { trackId ->
                                 faceDetectorCallsByTrackId[trackId] = faceDetectorCallsByTrackId.getOrDefault(trackId, 0L) + 1L
                             }
@@ -917,6 +927,14 @@ class ExportPipeline(
                                 faceDormantSuppressedFramesByTrackId[trackId] =
                                     faceDormantSuppressedFramesByTrackId.getOrDefault(trackId, 0L) + 1L
                             }
+                            faceOnlyFrameResult.pixelMotionTrackIds.forEach { trackId ->
+                                facePixelMotionFramesByTrackId[trackId] =
+                                    facePixelMotionFramesByTrackId.getOrDefault(trackId, 0L) + 1L
+                            }
+                            faceOnlyFrameResult.pixelMotionRejectedTrackIds.forEach { trackId ->
+                                facePixelMotionRejectedFramesByTrackId[trackId] =
+                                    facePixelMotionRejectedFramesByTrackId.getOrDefault(trackId, 0L) + 1L
+                            }
                             faceOnlyFrameResult.stickerPlacements.forEach { placement ->
                                 val trackId = placement.trackId
                                 val width = placement.sourceRect.width
@@ -959,6 +977,12 @@ class ExportPipeline(
                                 profiler.recordSample(
                                     "faceDetectorCpu",
                                     faceOnlyFrameResult.faceInferenceMs.toLong().coerceAtLeast(0L)
+                                )
+                            }
+                            if (faceOnlyFrameResult.pixelMotionMs > 0.0) {
+                                profiler.recordSample(
+                                    "facePixelMotionCpu",
+                                    faceOnlyFrameResult.pixelMotionMs.toLong().coerceAtLeast(0L)
                                 )
                             }
                             if (faceOnlyFrameResult.roiReadbackMs > 0.0) {
@@ -1315,6 +1339,8 @@ class ExportPipeline(
                             "face_dormant_reactivated_by_face_detection_events" to faceDormantReactivatedEventCount,
                             "face_dormant_exact_reacquired_track_frames" to faceDormantExactReacquiredTrackFrameCount,
                             "face_dormant_suppressed_track_frames" to faceDormantSuppressedTrackFrameCount,
+                            "face_pixel_motion_track_frames" to facePixelMotionTrackFrameCount,
+                            "face_pixel_motion_rejected_track_frames" to facePixelMotionRejectedTrackFrameCount,
                             "face_detector_calls_by_track_id" to faceDetectorCallsByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_detector_rejected_calls_by_track_id" to faceDetectorRejectedCallsByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_detected_frames_by_track_id" to faceDetectedFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
@@ -1330,6 +1356,8 @@ class ExportPipeline(
                             "face_dormant_reactivated_by_face_detection_events_by_track_id" to faceDormantReactivatedEventsByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_dormant_exact_reacquired_frames_by_track_id" to faceDormantExactReacquiredFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_dormant_suppressed_frames_by_track_id" to faceDormantSuppressedFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
+                            "face_pixel_motion_frames_by_track_id" to facePixelMotionFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
+                            "face_pixel_motion_rejected_frames_by_track_id" to facePixelMotionRejectedFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_dormant_reactivation_sticker_max_width_by_track_id" to faceDormantReactivationStickerMaxWidthByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_dormant_reactivation_sticker_max_height_by_track_id" to faceDormantReactivationStickerMaxHeightByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_sticker_min_width_by_track_id" to faceStickerMinWidthByTrackId.toSortedMap().mapKeys { it.key.toString() },

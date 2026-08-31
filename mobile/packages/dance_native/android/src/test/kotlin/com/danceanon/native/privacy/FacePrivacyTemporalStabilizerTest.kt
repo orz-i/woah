@@ -27,6 +27,27 @@ class FacePrivacyTemporalStabilizerTest {
     }
 
     @Test
+    fun `trusted current pixel center is not slowed by residual position gate`() {
+        val stabilizer = FacePrivacyTemporalStabilizer()
+        val person = FloatRect(100f, 100f, 300f, 700f)
+        val first = FacePrivacyEllipse(180f, 170f, 35f, 42f, FacePrivacyRegionSource.DETECTED_FACE)
+        stabilizer.stabilize(71, first, person, 0L)
+
+        val pixelMatched = FacePrivacyEllipse(230f, 145f, 35f, 42f, FacePrivacyRegionSource.PREDICTED_FACE)
+        val output = stabilizer.stabilize(
+            trackId = 71,
+            rawRegion = pixelMatched,
+            personBbox = person,
+            ptsUs = 16_666L,
+            personObservedThisFrame = true,
+            trustedCurrentPixelCenter = true
+        )
+
+        assertEquals(pixelMatched.centerX, output.centerX)
+        assertEquals(pixelMatched.centerY, output.centerY)
+    }
+
+    @Test
     fun `observed bbox bottom jump with stable top is not trusted as person translation`() {
         val stabilizer = FacePrivacyTemporalStabilizer()
         val first = FacePrivacyEllipse(200f, 170f, 45f, 55f, FacePrivacyRegionSource.DETECTED_FACE)
