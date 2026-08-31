@@ -1,50 +1,103 @@
 package com.danceanon.native.privacy
 
 import kotlin.test.Test
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import kotlin.test.assertEquals
 
 class FaceOnlyDormancyPolicyTest {
     @Test
-    fun `fresh observation always renders`() {
-        assertTrue(
-            FaceOnlyDormancyPolicy.shouldRender(
+    fun `fresh observation always uses direct face mode`() {
+        assertEquals(
+            FaceOnlyRenderMode.DIRECT,
+            FaceOnlyDormancyPolicy.resolveMode(
                 observedThisFrame = true,
                 lastObservedPtsUs = null,
-                ptsUs = 1_000_000L
+                ptsUs = 1_000_000L,
+                hasTrustedFace = false,
+                hasBodyMask = false
             )
         )
     }
 
     @Test
-    fun `short YOLO miss keeps face privacy bridge`() {
-        assertTrue(
-            FaceOnlyDormancyPolicy.shouldRender(
+    fun `short YOLO miss keeps direct privacy bridge`() {
+        assertEquals(
+            FaceOnlyRenderMode.DIRECT,
+            FaceOnlyDormancyPolicy.resolveMode(
                 observedThisFrame = false,
                 lastObservedPtsUs = 1_000_000L,
-                ptsUs = 1_100_000L
+                ptsUs = 1_100_000L,
+                hasTrustedFace = true,
+                hasBodyMask = false
             )
         )
     }
 
     @Test
-    fun `long unobserved identity stops rendering stale face`() {
-        assertFalse(
-            FaceOnlyDormancyPolicy.shouldRender(
+    fun `medium miss uses full body mask compensation when face history exists`() {
+        assertEquals(
+            FaceOnlyRenderMode.BODY_MASK_COMPENSATED,
+            FaceOnlyDormancyPolicy.resolveMode(
                 observedThisFrame = false,
                 lastObservedPtsUs = 1_000_000L,
-                ptsUs = 1_150_001L
+                ptsUs = 1_500_000L,
+                hasTrustedFace = true,
+                hasBodyMask = true
+            )
+        )
+    }
+
+    @Test
+    fun `medium miss without body mask becomes dormant instead of guessing`() {
+        assertEquals(
+            FaceOnlyRenderMode.DORMANT,
+            FaceOnlyDormancyPolicy.resolveMode(
+                observedThisFrame = false,
+                lastObservedPtsUs = 1_000_000L,
+                ptsUs = 1_500_000L,
+                hasTrustedFace = true,
+                hasBodyMask = false
+            )
+        )
+    }
+
+    @Test
+    fun `medium miss without trusted face becomes dormant`() {
+        assertEquals(
+            FaceOnlyRenderMode.DORMANT,
+            FaceOnlyDormancyPolicy.resolveMode(
+                observedThisFrame = false,
+                lastObservedPtsUs = 1_000_000L,
+                ptsUs = 1_500_000L,
+                hasTrustedFace = false,
+                hasBodyMask = true
+            )
+        )
+    }
+
+    @Test
+    fun `long unobserved identity stops rendering despite retained body mask`() {
+        assertEquals(
+            FaceOnlyRenderMode.DORMANT,
+            FaceOnlyDormancyPolicy.resolveMode(
+                observedThisFrame = false,
+                lastObservedPtsUs = 1_000_000L,
+                ptsUs = 1_800_001L,
+                hasTrustedFace = true,
+                hasBodyMask = true
             )
         )
     }
 
     @Test
     fun `missing observation history does not invent face geometry`() {
-        assertFalse(
-            FaceOnlyDormancyPolicy.shouldRender(
+        assertEquals(
+            FaceOnlyRenderMode.DORMANT,
+            FaceOnlyDormancyPolicy.resolveMode(
                 observedThisFrame = false,
                 lastObservedPtsUs = null,
-                ptsUs = 1_000_000L
+                ptsUs = 1_000_000L,
+                hasTrustedFace = true,
+                hasBodyMask = true
             )
         )
     }

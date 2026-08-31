@@ -1,5 +1,11 @@
 package com.danceanon.native.privacy
 
+enum class FaceOnlyRenderMode {
+    DIRECT,
+    BODY_MASK_COMPENSATED,
+    DORMANT
+}
+
 /**
  * FACE_ONLY render-lifecycle policy for a YOLO-owned identity.
  *
@@ -10,16 +16,31 @@ package com.danceanon.native.privacy
  * one-frame detector dropout does not flicker privacy.
  */
 object FaceOnlyDormancyPolicy {
-    const val MAX_UNOBSERVED_RENDER_AGE_US = 150_000L
+    const val MAX_DIRECT_UNOBSERVED_AGE_US = 150_000L
+    const val MAX_BODY_COMPENSATION_AGE_US = 800_000L
 
-    fun shouldRender(
+    fun resolveMode(
         observedThisFrame: Boolean,
         lastObservedPtsUs: Long?,
-        ptsUs: Long
-    ): Boolean {
-        if (observedThisFrame) return true
-        val lastObserved = lastObservedPtsUs ?: return false
+        ptsUs: Long,
+        hasTrustedFace: Boolean,
+        hasBodyMask: Boolean
+    ): FaceOnlyRenderMode {
+        if (observedThisFrame) return FaceOnlyRenderMode.DIRECT
+        val lastObserved = lastObservedPtsUs ?: return FaceOnlyRenderMode.DORMANT
         val ageUs = ptsUs - lastObserved
-        return ageUs in 0L..MAX_UNOBSERVED_RENDER_AGE_US
+        if (ageUs !in 0L..MAX_BODY_COMPENSATION_AGE_US) return FaceOnlyRenderMode.DORMANT
+        if (ageUs <= MAX_DIRECT_UNOBSERVED_AGE_US) return FaceOnlyRenderMode.DIRECT
+
+        // Medium-duration dance-motion gaps are common even while the full-body
+        // segmentation/track geometry is still useful. Keep the last trusted
+        // face alive only when both pieces of evidence exist. The body mask may
+        // move the face geometry, but it never becomes identity evidence and the
+        // hard upper age bound prevents the former multi-second floating sticker.
+        return if (hasTrustedFace && hasBodyMask) {
+            FaceOnlyRenderMode.BODY_MASK_COMPENSATED
+        } else {
+            FaceOnlyRenderMode.DORMANT
+        }
     }
 }

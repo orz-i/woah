@@ -1160,6 +1160,34 @@ Export summaries add `face_dormant_suppressed_track_frames` and
 should concentrate on the multi-second ID-1/2/3 observation gaps, while active
 observed dancers continue using the four-edge `PersonBboxMotionEstimator`.
 
+### Thirteenth real-video correction: bridge fast motion with the stable body mask before dormancy
+
+The first real export from `509b5e891201837083c28a3be96d64d2b5966141`
+validates the stale-face cutoff but shows that a hard 150 ms boundary is too
+aggressive for dance motion. Drift is now controlled: the maximum *consecutive*
+sticker-center steps for IDs 1/2/3/5/6 are only about **31 / 40 / 45 / 46 / 36
+px**, and 851 detector calls produce only 11 rejected calls. The cost is visible
+dropout: **2,051 FACE_ONLY track-frames** are dormant-suppressed (IDs 1/2/3/5/6 =
+499/517/648/184/203).
+
+The runtime therefore uses a three-stage FACE_ONLY lifecycle rather than simply
+raising the stale timeout. Up to 150 ms after the last exact YOLO observation the
+existing direct bridge is unchanged. From 150 ms through **800 ms**, a track may
+enter `BODY_MASK_COMPENSATED` only when it still has both a trusted face cache and
+a TrackManager full-body render mask. In that window the stable full-body mask is
+allowed to nudge the cached face through the already-constrained narrow head-run
+estimator, while four-edge body translation and the temporal residual gate remain
+active. Sticker size expands gradually by at most 18% to preserve privacy under
+motion blur. The face detector keeps attempting the identity-local ROI and
+immediately reanchors on success.
+
+If the body mask disappears, no trusted face exists, or the exact YOLO gap exceeds
+800 ms, the identity becomes dormant exactly as in 509b5e8. Thus body segmentation
+is a bounded motion compensator, never a new identity authority, and the former
+multi-second floating-face failure remains impossible. New diagnostics report
+`face_body_compensated_track_frames` and
+`face_body_compensated_frames_by_track_id` separately from true dormancy.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

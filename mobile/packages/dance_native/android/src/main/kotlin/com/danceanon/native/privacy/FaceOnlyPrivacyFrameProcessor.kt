@@ -35,6 +35,7 @@ data class FaceOnlyPrivacyFrameResult(
     val detectorRejectedTrackIds: Set<Int>,
     val bodyMaskGuidedTrackIds: Set<Int>,
     val positionClampedTrackIds: Set<Int>,
+    val bodyCompensatedTrackIds: Set<Int>,
     val dormantSuppressedTrackIds: Set<Int>,
     val roiReadbackMs: Double,
     val maskBuildMs: Double,
@@ -148,9 +149,10 @@ class FaceOnlyPrivacyFrameProcessor(
 
     private fun refineWithCurrentBodyMask(
         person: TrackedPerson,
-        region: FacePrivacyEllipse
+        region: FacePrivacyEllipse,
+        allowUnobservedMask: Boolean = false
     ): FacePrivacyEllipse? {
-        if (!person.observedThisFrame || person.mask == null) return null
+        if ((!person.observedThisFrame && !allowUnobservedMask) || person.mask == null) return null
         val estimate = BodyMaskFaceHeadEstimator.estimate(
             mask = person.mask,
             personBbox = person.bbox,
@@ -170,13 +172,20 @@ class FaceOnlyPrivacyFrameProcessor(
     private fun resolveFallbackGeometry(
         person: TrackedPerson,
         cached: CachedFaceGeometry?,
-        ptsUs: Long
+        ptsUs: Long,
+        renderMode: FaceOnlyRenderMode
     ): FallbackGeometry? {
         val cacheAgeUs = cached?.let { ptsUs - it.lastTrustedPtsUs }
+        val maxCacheAgeUs = if (renderMode == FaceOnlyRenderMode.BODY_MASK_COMPENSATED) {
+            FaceOnlyDormancyPolicy.MAX_BODY_COMPENSATION_AGE_US
+        } else {
+            MAX_PREDICTED_FACE_AGE_US
+        }
         val base = if (
             cached != null && cacheAgeUs != null &&
-            cacheAgeUs in 0L..MAX_PREDICTED_FACE_AGE_US &&
-            person.framesSinceLastObservation <= MAX_LOCAL_FACE_UNOBSERVED_FRAMES
+            cacheAgeUs in 0L..maxCacheAgeUs &&
+            (renderMode == FaceOnlyRenderMode.BODY_MASK_COMPENSATED ||
+                person.framesSinceLastObservation <= MAX_LOCAL_FACE_UNOBSERVED_FRAMES)
         ) {
             cached.project(person.bbox, cacheAgeUs)
         } else {
@@ -186,9 +195,31 @@ class FaceOnlyPrivacyFrameProcessor(
                 selectedFace = null
             )
         } ?: return null
-        val refined = refineWithCurrentBodyMask(person, base)
+        val allowUnobservedBodyMask = renderMode == FaceOnlyRenderMode.BODY_MASK_COMPENSATED
+        val refined = refineWithCurrentBodyMask(
+            person = person,
+            region = base,
+            allowUnobservedMask = allowUnobservedBodyMask
+        )
+        val compensated = if (
+            renderMode == FaceOnlyRenderMode.BODY_MASK_COMPENSATED &&
+            cacheAgeUs != null
+        ) {
+            val compensationProgress = (
+                (cacheAgeUs - FaceOnlyDormancyPolicy.MAX_DIRECT_UNOBSERVED_AGE_US).coerceAtLeast(0L).toFloat() /
+                    (FaceOnlyDormancyPolicy.MAX_BODY_COMPENSATION_AGE_US -
+                        FaceOnlyDormancyPolicy.MAX_DIRECT_UNOBSERVED_AGE_US).toFloat()
+                ).coerceIn(0f, 1f)
+            val expansion = 1f + compensationProgress * BODY_COMPENSATION_MAX_SIZE_EXPANSION
+            (refined ?: base).copy(
+                radiusX = (refined ?: base).radiusX * expansion,
+                radiusY = (refined ?: base).radiusY * expansion
+            )
+        } else {
+            refined ?: base
+        }
         return FallbackGeometry(
-            region = refined ?: base,
+            region = compensated,
             bodyMaskGuided = refined != null
         )
     }
@@ -239,6 +270,7 @@ class FaceOnlyPrivacyFrameProcessor(
                 detectorRejectedTrackIds = emptySet(),
                 bodyMaskGuidedTrackIds = emptySet(),
                 positionClampedTrackIds = emptySet(),
+                bodyCompensatedTrackIds = emptySet(),
                 dormantSuppressedTrackIds = emptySet(),
                 roiReadbackMs = 0.0,
                 maskBuildMs = 0.0,
@@ -263,14 +295,29 @@ class FaceOnlyPrivacyFrameProcessor(
                 lastObservedPtsUsByTrackId[trackId] = ptsUs
             }
         }
-        val renderableFaceOnlyTrackIds = activeFaceOnlyTrackIds.filterTo(linkedSetOf()) { trackId ->
-            val person = personsById[trackId] ?: return@filterTo false
-            FaceOnlyDormancyPolicy.shouldRender(
+        val renderModeByTrackId = activeFaceOnlyTrackIds.associateWith { trackId ->
+            val person = personsById[trackId] ?: return@associateWith FaceOnlyRenderMode.DORMANT
+            val cachedFace = cachedFaceByTrackId[trackId]
+            val cachedFaceAgeUs = cachedFace?.let { ptsUs - it.lastTrustedPtsUs }
+            val hasFreshTrustedFace = cachedFace != null &&
+                cachedFaceAgeUs != null &&
+                cachedFaceAgeUs in 0L..FaceOnlyDormancyPolicy.MAX_BODY_COMPENSATION_AGE_US
+            FaceOnlyDormancyPolicy.resolveMode(
                 observedThisFrame = person.observedThisFrame,
                 lastObservedPtsUs = lastObservedPtsUsByTrackId[trackId],
-                ptsUs = ptsUs
+                ptsUs = ptsUs,
+                hasTrustedFace = hasFreshTrustedFace,
+                hasBodyMask = person.mask != null
             )
         }
+        val renderableFaceOnlyTrackIds = renderModeByTrackId
+            .filterValues { it != FaceOnlyRenderMode.DORMANT }
+            .keys
+            .toCollection(linkedSetOf())
+        val bodyCompensatedTrackIds = renderModeByTrackId
+            .filterValues { it == FaceOnlyRenderMode.BODY_MASK_COMPENSATED }
+            .keys
+            .toCollection(linkedSetOf())
         val dormantSuppressedTrackIds = activeFaceOnlyTrackIds
             .filterTo(linkedSetOf()) { !renderableFaceOnlyTrackIds.contains(it) }
 
@@ -288,11 +335,10 @@ class FaceOnlyPrivacyFrameProcessor(
             val person = personsById[trackId] ?: return@forEach
             if (person.state == TrackState.REMOVED) return@forEach
             val cached = cachedFaceByTrackId[trackId]
-            val canUseIdentityLocalRoi =
-                person.observedThisFrame ||
-                    person.framesSinceLastObservation <= MAX_LOCAL_FACE_UNOBSERVED_FRAMES
+            val renderMode = renderModeByTrackId[trackId] ?: FaceOnlyRenderMode.DORMANT
+            val canUseIdentityLocalRoi = renderMode != FaceOnlyRenderMode.DORMANT && cached != null
             val localPlan = if (canUseIdentityLocalRoi) {
-                cached?.let { planCachedFaceLocalRoi(it, person, ptsUs) }
+                planCachedFaceLocalRoi(cached, person, ptsUs)
             } else {
                 null
             }
@@ -364,6 +410,7 @@ class FaceOnlyPrivacyFrameProcessor(
         for (trackId in renderableFaceOnlyTrackIds.sorted()) {
             val person = personsById[trackId] ?: continue
             if (person.state == TrackState.REMOVED) continue
+            val renderMode = renderModeByTrackId[trackId] ?: FaceOnlyRenderMode.DORMANT
 
             val plan = detectorPlanByTrackId[trackId]
 
@@ -427,13 +474,13 @@ class FaceOnlyPrivacyFrameProcessor(
                             detectedRegion
                         }
                     } else {
-                        resolveFallbackGeometry(person, cachedBeforeAttempt, ptsUs)?.also { fallbackGeometry ->
+                        resolveFallbackGeometry(person, cachedBeforeAttempt, ptsUs, renderMode)?.also { fallbackGeometry ->
                             if (fallbackGeometry.bodyMaskGuided) bodyMaskGuidedTrackIds += trackId
                         }?.region
                     }
                 } catch (t: Throwable) {
                     Log.w(TAG, "Face ROI detection failed for track=$trackId; using head fallback", t)
-                    region = resolveFallbackGeometry(person, cachedBeforeAttempt, ptsUs)?.also { fallbackGeometry ->
+                    region = resolveFallbackGeometry(person, cachedBeforeAttempt, ptsUs, renderMode)?.also { fallbackGeometry ->
                         if (fallbackGeometry.bodyMaskGuided) bodyMaskGuidedTrackIds += trackId
                     }?.region
                 }
@@ -441,7 +488,7 @@ class FaceOnlyPrivacyFrameProcessor(
 
             if (region == null) {
                 val cached = cachedFaceByTrackId[trackId]
-                region = resolveFallbackGeometry(person, cached, ptsUs)?.also { fallbackGeometry ->
+                region = resolveFallbackGeometry(person, cached, ptsUs, renderMode)?.also { fallbackGeometry ->
                     if (fallbackGeometry.bodyMaskGuided) bodyMaskGuidedTrackIds += trackId
                 }?.region
             }
@@ -544,6 +591,7 @@ class FaceOnlyPrivacyFrameProcessor(
                     "detector_calls=$detectorCallCount roi_ms=$roiReadbackMs detector_ms=$inferenceMs " +
                     "mask_ms=$maskBuildMs detected=${detected.sorted()} predicted=${predicted.sorted()} " +
                     "fallback=${fallback.sorted()} escalated=${adaptation.escalatedFullBodyTrackIds.sorted()} " +
+                    "body_compensated=${bodyCompensatedTrackIds.sorted()} " +
                     "dormant=${dormantSuppressedTrackIds.sorted()} " +
                     "selected=${adaptation.selectedPersonIds.sorted()} unresolved=${unresolved.sorted()} " +
                     "secondary_occluder=$hasSecondaryOccluderEvidence"
@@ -568,6 +616,7 @@ class FaceOnlyPrivacyFrameProcessor(
             detectorRejectedTrackIds = detectorRejectedTrackIds,
             bodyMaskGuidedTrackIds = bodyMaskGuidedTrackIds,
             positionClampedTrackIds = positionClampedTrackIds,
+            bodyCompensatedTrackIds = bodyCompensatedTrackIds,
             dormantSuppressedTrackIds = dormantSuppressedTrackIds,
             roiReadbackMs = roiReadbackMs,
             maskBuildMs = maskBuildMs,
@@ -595,13 +644,14 @@ class FaceOnlyPrivacyFrameProcessor(
         const val DEFAULT_MAX_DETECTOR_CALLS_PER_FRAME = 2
         private const val INITIAL_ACQUISITION_MAX_CALLS = 8
         private const val MAX_PREDICTED_FACE_AGE_US = 150_000L
-        private const val MAX_LOCAL_FACE_REFRESH_AGE_US = 500_000L
+        private const val MAX_LOCAL_FACE_REFRESH_AGE_US = FaceOnlyDormancyPolicy.MAX_BODY_COMPENSATION_AGE_US
         private const val MAX_LOCAL_FACE_UNOBSERVED_FRAMES = 30
         private const val MIN_PREDICTED_FACE_SCALE = 0.88f
         private const val MAX_PREDICTED_FACE_SCALE = 1.12f
         private const val MAX_PREDICTED_AGE_EXPANSION = 0.10f
         private const val LOCAL_FACE_ROI_MIN_SIDE_PX = 72f
         private const val LOCAL_FACE_ROI_DIAMETER_FACTOR = 2.8f
+        private const val BODY_COMPENSATION_MAX_SIZE_EXPANSION = 0.18f
         private const val POSITION_CLAMP_DIAGNOSTIC_EPSILON_PX = 0.25f
         private const val SLOW_STAGE_LOG_THRESHOLD_MS = 20.0
 
