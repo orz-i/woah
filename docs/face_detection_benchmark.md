@@ -1020,6 +1020,45 @@ both that the 90-197 px maxima collapse materially and that the clamp count is
 concentrated on the visually problematic source-transition periods rather than
 ordinary motion.
 
+### Ninth real-video correction: do not let a clamped bad detection poison the next ROI
+
+The next manual bundle contains a controlled before/after export on the same
+751-frame clip and inference sequence. Although the manifest still names
+`141d139bfc077859278657e52adf4fd6b0aa5229`, the later export was built from the
+working tree immediately before commit `860da63e0b97e8578f52847776182c1e4da3f1f1`;
+the presence of `face_position_clamped_*` fields confirms that the position gate
+is active. Detector/fallback counts are byte-for-byte comparable between the two
+exports: 997 calls, 65 rejections, 853 DETECTED, 1,008 PREDICTED, 1,894 FALLBACK,
+and 447 body-mask-guided track-frames.
+
+The gate activated on **351** track-frames. It reduced the recorded maximum
+placement-to-placement jump for IDs 2 and 3 from about **100/90 px** to
+**68/60 px**, proving that the residual-motion gate is acting on real source
+transitions. IDs 1/5/6 still retained old maxima around 197/106/112 px. Two
+remaining implementation details explain why a render-only gate was incomplete:
+
+- `CachedFaceGeometry` was committed from the raw accepted detector region before
+  `FacePrivacyTemporalStabilizer` applied the position gate. A bad-but-owned face
+  candidate could therefore be visually clamped on one frame while immediately
+  moving the next identity-local detector ROI to the raw bad center. The
+  stabilized DETECTED center is now the only center allowed to become the trusted
+  face cache.
+- whole-person translation was exempt from the residual gate even when the person
+  bbox itself was only an unobserved TrackManager prediction. Reliable same-clip
+  detection commits show consecutive person-center movement far below the largest
+  sticker jumps. Full person translation therefore remains immediate only across
+  consecutive observed frames; during unobserved/reacquiring transitions the
+  person component also receives a generous face-scale step bound before the
+  residual face gate is applied.
+
+The old `face_sticker_max_center_step_by_track_id` statistic can also bridge a gap
+where `FaceStickerPlacement.from()` returned null because a sticker was fully out
+of frame, then count the next in-frame placement as though it were adjacent.
+Exports now additionally report
+`face_sticker_max_consecutive_center_step_by_track_id`, which only compares
+placements from consecutive output frame numbers. Future visual acceptance should
+prefer that metric when deciding whether a visible one-frame drift remains.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

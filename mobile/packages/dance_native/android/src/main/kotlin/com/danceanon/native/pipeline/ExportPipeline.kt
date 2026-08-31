@@ -350,7 +350,9 @@ class ExportPipeline(
                 val faceStickerMinHeightByTrackId = mutableMapOf<Int, Float>()
                 val faceStickerMaxHeightByTrackId = mutableMapOf<Int, Float>()
                 val faceStickerLastCenterByTrackId = mutableMapOf<Int, Pair<Float, Float>>()
+                val faceStickerLastPlacementFrameByTrackId = mutableMapOf<Int, Int>()
                 val faceStickerMaxCenterStepByTrackId = mutableMapOf<Int, Float>()
+                val faceStickerMaxConsecutiveCenterStepByTrackId = mutableMapOf<Int, Float>()
 
                 // SurfaceTexture Timing & Diagnostics Metrics (PHASE E)
                 var surfaceWaitTimeoutCount = 0L
@@ -870,8 +872,15 @@ class ExportPipeline(
                                         faceStickerMaxCenterStepByTrackId[trackId] ?: 0f,
                                         step
                                     )
+                                    if (faceStickerLastPlacementFrameByTrackId[trackId] == processedFrames - 1) {
+                                        faceStickerMaxConsecutiveCenterStepByTrackId[trackId] = maxOf(
+                                            faceStickerMaxConsecutiveCenterStepByTrackId[trackId] ?: 0f,
+                                            step
+                                        )
+                                    }
                                 }
                                 faceStickerLastCenterByTrackId[trackId] = centerX to centerY
+                                faceStickerLastPlacementFrameByTrackId[trackId] = processedFrames
                             }
                             if (faceOnlyFrameResult.faceInferenceMs > 0.0) {
                                 profiler.recordSample(
@@ -1237,6 +1246,7 @@ class ExportPipeline(
                             "face_sticker_min_height_by_track_id" to faceStickerMinHeightByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_sticker_max_height_by_track_id" to faceStickerMaxHeightByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_sticker_max_center_step_by_track_id" to faceStickerMaxCenterStepByTrackId.toSortedMap().mapKeys { it.key.toString() },
+                            "face_sticker_max_consecutive_center_step_by_track_id" to faceStickerMaxConsecutiveCenterStepByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "fresh_full_body_class_primary_enabled" to allowFreshFullBodyClassPrimary,
                             "conservative_mixed_full_body_occluder_policy_enabled" to
                                 (faceOnlyPersonIds.isNotEmpty() && fullBodyPersonIds.isNotEmpty()),

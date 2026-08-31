@@ -406,15 +406,6 @@ class FaceOnlyPrivacyFrameProcessor(
                             if (fallbackGeometry.bodyMaskGuided) bodyMaskGuidedTrackIds += trackId
                         }?.region
                     }
-                    if (selectedFace != null && region?.source == FacePrivacyRegionSource.DETECTED_FACE) {
-                        CachedFaceGeometry.from(
-                            region = region,
-                            personBbox = person.bbox,
-                            ptsUs = ptsUs
-                        )?.let { cached ->
-                            cachedFaceByTrackId[trackId] = cached
-                        }
-                    }
                 } catch (t: Throwable) {
                     Log.w(TAG, "Face ROI detection failed for track=$trackId; using head fallback", t)
                     region = resolveFallbackGeometry(person, cachedBeforeAttempt, ptsUs)?.also { fallbackGeometry ->
@@ -436,6 +427,7 @@ class FaceOnlyPrivacyFrameProcessor(
                     trackId = trackId,
                     rawRegion = region,
                     personBbox = person.bbox,
+                    personObservedThisFrame = person.observedThisFrame,
                     ptsUs = ptsUs
                 )
                 if (
@@ -443,6 +435,23 @@ class FaceOnlyPrivacyFrameProcessor(
                     kotlin.math.abs(region.centerY - rawCenterY) > POSITION_CLAMP_DIAGNOSTIC_EPSILON_PX
                 ) {
                     positionClampedTrackIds += trackId
+                }
+                if (region.source == FacePrivacyRegionSource.DETECTED_FACE) {
+                    // Commit only the post-gate center. A detector observation can
+                    // be close enough to the broad/local ROI anchor to pass
+                    // ownership yet still be a non-physical one-frame jump. If
+                    // the raw center were cached before the temporal position
+                    // gate, the next detector ROI would immediately move to that
+                    // bad location and defeat the visual clamp on the following
+                    // frame. The stabilized detected center becomes the trusted
+                    // ROI seed instead.
+                    CachedFaceGeometry.from(
+                        region = region,
+                        personBbox = person.bbox,
+                        ptsUs = ptsUs
+                    )?.let { cached ->
+                        cachedFaceByTrackId[trackId] = cached
+                    }
                 }
                 val maskStartNs = System.nanoTime()
                 val builtMask = FacePrivacyMaskBuilder.build(listOf(region), mapper)

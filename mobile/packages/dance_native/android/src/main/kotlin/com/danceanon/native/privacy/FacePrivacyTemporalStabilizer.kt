@@ -21,6 +21,7 @@ class FacePrivacyTemporalStabilizer {
         val detectedPersonWidth: Float?,
         val detectedPersonHeight: Float?,
         val personBbox: FloatRect,
+        val personObservedThisFrame: Boolean,
         val lastPtsUs: Long
     )
 
@@ -34,7 +35,8 @@ class FacePrivacyTemporalStabilizer {
         trackId: Int,
         rawRegion: FacePrivacyEllipse,
         personBbox: FloatRect,
-        ptsUs: Long
+        ptsUs: Long,
+        personObservedThisFrame: Boolean = true
     ): FacePrivacyEllipse {
         if (personBbox.width <= 1f || personBbox.height <= 1f) return rawRegion
 
@@ -116,17 +118,35 @@ class FacePrivacyTemporalStabilizer {
             // tests, so do not smooth normal motion: clamp only an implausible
             // residual and preserve the direction of the newest evidence.
             val rawDtSeconds = (ptsUs - previous.lastPtsUs).coerceAtLeast(0L) / 1_000_000.0
-            val personDx = personBbox.centerX - previous.personBbox.centerX
-            val personDy = personBbox.top - previous.personBbox.top
+            val rawPersonDx = personBbox.centerX - previous.personBbox.centerX
+            val rawPersonDy = personBbox.top - previous.personBbox.top
+            val rawPersonStep = sqrt(rawPersonDx * rawPersonDx + rawPersonDy * rawPersonDy)
+            val referenceRadius = max(
+                max(previous.output.radiusX, previous.output.radiusY),
+                max(target.radiusX, target.radiusY)
+            )
+            val trustWholePersonStep = personObservedThisFrame && previous.personObservedThisFrame
+            val maxUnobservedPersonStep = max(
+                POSITION_MIN_UNOBSERVED_PERSON_STEP_PX,
+                referenceRadius * POSITION_MAX_UNOBSERVED_PERSON_RADIUS_STEP
+            )
+            val personStepScale = if (
+                !trustWholePersonStep &&
+                rawDtSeconds <= POSITION_GATE_MAX_DT_SECONDS &&
+                rawPersonStep > maxUnobservedPersonStep &&
+                rawPersonStep > 1e-3f
+            ) {
+                maxUnobservedPersonStep / rawPersonStep
+            } else {
+                1f
+            }
+            val personDx = rawPersonDx * personStepScale
+            val personDy = rawPersonDy * personStepScale
             val expectedCenterX = previous.output.centerX + personDx
             val expectedCenterY = previous.output.centerY + personDy
             val residualDx = target.centerX - expectedCenterX
             val residualDy = target.centerY - expectedCenterY
             val residualDistance = sqrt(residualDx * residualDx + residualDy * residualDy)
-            val referenceRadius = max(
-                max(previous.output.radiusX, previous.output.radiusY),
-                max(target.radiusX, target.radiusY)
-            )
             val maxResidualStep = max(POSITION_MIN_RESIDUAL_STEP_PX, referenceRadius * POSITION_MAX_RADIUS_STEP)
             val clampPosition = rawDtSeconds <= POSITION_GATE_MAX_DT_SECONDS &&
                 residualDistance > maxResidualStep && residualDistance > 1e-3f
@@ -148,6 +168,7 @@ class FacePrivacyTemporalStabilizer {
             detectedPersonWidth = detectedPersonWidth,
             detectedPersonHeight = detectedPersonHeight,
             personBbox = personBbox,
+            personObservedThisFrame = personObservedThisFrame,
             lastPtsUs = ptsUs
         )
         return output
@@ -173,6 +194,8 @@ class FacePrivacyTemporalStabilizer {
         private const val PRIVACY_TARGET_FLOOR = 0.90f
         private const val POSITION_MIN_RESIDUAL_STEP_PX = 10f
         private const val POSITION_MAX_RADIUS_STEP = 0.80f
+        private const val POSITION_MIN_UNOBSERVED_PERSON_STEP_PX = 12f
+        private const val POSITION_MAX_UNOBSERVED_PERSON_RADIUS_STEP = 0.65f
         private const val POSITION_GATE_MAX_DT_SECONDS = 0.10
         private const val MIN_DT_SECONDS = 1.0 / 120.0
         private const val MAX_DT_SECONDS = 0.25

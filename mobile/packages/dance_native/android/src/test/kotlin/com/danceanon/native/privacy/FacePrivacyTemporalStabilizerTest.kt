@@ -120,6 +120,29 @@ class FacePrivacyTemporalStabilizerTest {
     }
 
     @Test
+    fun `unobserved tracker jump cannot bypass face position gate as whole person motion`() {
+        val stabilizer = FacePrivacyTemporalStabilizer()
+        val first = FacePrivacyEllipse(180f, 170f, 45f, 55f, FacePrivacyRegionSource.DETECTED_FACE)
+        stabilizer.stabilize(13, first, person, 0L)
+
+        val predictedJump = FloatRect(280f, 100f, 480f, 700f)
+        val raw = FacePrivacyEllipse(360f, 170f, 45f, 55f, FacePrivacyRegionSource.PREDICTED_FACE)
+        val output = stabilizer.stabilize(
+            trackId = 13,
+            rawRegion = raw,
+            personBbox = predictedJump,
+            ptsUs = 16_666L,
+            personObservedThisFrame = false
+        )
+
+        assertTrue(output.centerX > first.centerX)
+        assertTrue(
+            output.centerX < 300f,
+            "unobserved bbox prediction must not make a 180 px face jump look like trusted whole-person motion: ${output.centerX}"
+        )
+    }
+
+    @Test
     fun `fallback without trusted detection keeps original conservative geometry`() {
         val stabilizer = FacePrivacyTemporalStabilizer()
         val rawFallback = FacePrivacyEllipse(200f, 184f, 110f, 130f, FacePrivacyRegionSource.YOLO_HEAD_FALLBACK)
