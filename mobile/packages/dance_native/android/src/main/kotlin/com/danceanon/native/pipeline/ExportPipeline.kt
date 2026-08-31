@@ -341,6 +341,7 @@ class ExportPipeline(
                 var faceBodyCompensatedTrackFrameCount = 0L
                 var faceFreshBodyMotionTrackFrameCount = 0L
                 var faceRecentBodyMotionBridgeTrackFrameCount = 0L
+                var faceDormantReactivatedEventCount = 0L
                 var faceDormantSuppressedTrackFrameCount = 0L
                 val faceDetectorCallsByTrackId = mutableMapOf<Int, Long>()
                 val faceDetectorRejectedCallsByTrackId = mutableMapOf<Int, Long>()
@@ -352,6 +353,7 @@ class ExportPipeline(
                 val faceBodyCompensatedFramesByTrackId = mutableMapOf<Int, Long>()
                 val faceFreshBodyMotionFramesByTrackId = mutableMapOf<Int, Long>()
                 val faceRecentBodyMotionBridgeFramesByTrackId = mutableMapOf<Int, Long>()
+                val faceDormantReactivatedEventsByTrackId = mutableMapOf<Int, Long>()
                 val faceDormantSuppressedFramesByTrackId = mutableMapOf<Int, Long>()
                 val faceStickerMinWidthByTrackId = mutableMapOf<Int, Float>()
                 val faceStickerMaxWidthByTrackId = mutableMapOf<Int, Float>()
@@ -843,6 +845,7 @@ class ExportPipeline(
                             faceBodyCompensatedTrackFrameCount += faceOnlyFrameResult.bodyCompensatedTrackIds.size
                             faceFreshBodyMotionTrackFrameCount += faceOnlyFrameResult.freshBodyMotionTrackIds.size
                             faceRecentBodyMotionBridgeTrackFrameCount += faceOnlyFrameResult.recentBodyMotionBridgeTrackIds.size
+                            faceDormantReactivatedEventCount += faceOnlyFrameResult.dormantReactivatedTrackIds.size
                             faceDormantSuppressedTrackFrameCount += faceOnlyFrameResult.dormantSuppressedTrackIds.size
                             faceOnlyFrameResult.detectorCalledTrackIds.forEach { trackId ->
                                 faceDetectorCallsByTrackId[trackId] = faceDetectorCallsByTrackId.getOrDefault(trackId, 0L) + 1L
@@ -879,6 +882,10 @@ class ExportPipeline(
                             faceOnlyFrameResult.recentBodyMotionBridgeTrackIds.forEach { trackId ->
                                 faceRecentBodyMotionBridgeFramesByTrackId[trackId] =
                                     faceRecentBodyMotionBridgeFramesByTrackId.getOrDefault(trackId, 0L) + 1L
+                            }
+                            faceOnlyFrameResult.dormantReactivatedTrackIds.forEach { trackId ->
+                                faceDormantReactivatedEventsByTrackId[trackId] =
+                                    faceDormantReactivatedEventsByTrackId.getOrDefault(trackId, 0L) + 1L
                             }
                             faceOnlyFrameResult.dormantSuppressedTrackIds.forEach { trackId ->
                                 faceDormantSuppressedFramesByTrackId[trackId] =
@@ -1267,6 +1274,7 @@ class ExportPipeline(
                             "face_body_compensated_track_frames" to faceBodyCompensatedTrackFrameCount,
                             "face_fresh_body_motion_track_frames" to faceFreshBodyMotionTrackFrameCount,
                             "face_recent_body_motion_bridge_track_frames" to faceRecentBodyMotionBridgeTrackFrameCount,
+                            "face_dormant_reactivated_by_fresh_motion_events" to faceDormantReactivatedEventCount,
                             "face_dormant_suppressed_track_frames" to faceDormantSuppressedTrackFrameCount,
                             "face_detector_calls_by_track_id" to faceDetectorCallsByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_detector_rejected_calls_by_track_id" to faceDetectorRejectedCallsByTrackId.toSortedMap().mapKeys { it.key.toString() },
@@ -1278,6 +1286,7 @@ class ExportPipeline(
                             "face_body_compensated_frames_by_track_id" to faceBodyCompensatedFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_fresh_body_motion_frames_by_track_id" to faceFreshBodyMotionFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_recent_body_motion_bridge_frames_by_track_id" to faceRecentBodyMotionBridgeFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
+                            "face_dormant_reactivated_by_fresh_motion_events_by_track_id" to faceDormantReactivatedEventsByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_dormant_suppressed_frames_by_track_id" to faceDormantSuppressedFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_sticker_min_width_by_track_id" to faceStickerMinWidthByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_sticker_max_width_by_track_id" to faceStickerMaxWidthByTrackId.toSortedMap().mapKeys { it.key.toString() },

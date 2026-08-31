@@ -39,6 +39,7 @@ data class FaceOnlyPrivacyFrameResult(
     val bodyCompensatedTrackIds: Set<Int>,
     val freshBodyMotionTrackIds: Set<Int>,
     val recentBodyMotionBridgeTrackIds: Set<Int>,
+    val dormantReactivatedTrackIds: Set<Int>,
     val dormantSuppressedTrackIds: Set<Int>,
     val roiReadbackMs: Double,
     val maskBuildMs: Double,
@@ -128,6 +129,7 @@ class FaceOnlyPrivacyFrameProcessor(
         val ptsUs: Long
     )
     private val recentBodyMotionByTrackId = mutableMapOf<Int, RecentBodyMotionGeometry>()
+    private val dormantFaceOnlyTrackIds = mutableSetOf<Int>()
 
     private fun planCachedFaceLocalRoi(
         cached: CachedFaceGeometry,
@@ -298,6 +300,7 @@ class FaceOnlyPrivacyFrameProcessor(
                 bodyCompensatedTrackIds = emptySet(),
                 freshBodyMotionTrackIds = emptySet(),
                 recentBodyMotionBridgeTrackIds = emptySet(),
+                dormantReactivatedTrackIds = emptySet(),
                 dormantSuppressedTrackIds = emptySet(),
                 roiReadbackMs = 0.0,
                 maskBuildMs = 0.0,
@@ -406,14 +409,25 @@ class FaceOnlyPrivacyFrameProcessor(
             .filterValues { it == FaceOnlyRenderMode.BODY_MASK_COMPENSATED }
             .keys
             .toCollection(linkedSetOf())
+        val dormantReactivatedTrackIds = freshBodyMotionTrackIds
+            .filterTo(linkedSetOf()) { trackId ->
+                dormantFaceOnlyTrackIds.contains(trackId) &&
+                    bodyCompensatedTrackIds.contains(trackId)
+            }
         val dormantSuppressedTrackIds = activeFaceOnlyTrackIds
             .filterTo(linkedSetOf()) { !renderableFaceOnlyTrackIds.contains(it) }
+        dormantFaceOnlyTrackIds.retainAll(activeFaceOnlyTrackIds)
+        dormantFaceOnlyTrackIds.removeAll(renderableFaceOnlyTrackIds)
+        dormantFaceOnlyTrackIds.addAll(dormantSuppressedTrackIds)
 
-        // Once YOLO has been absent beyond the short privacy bridge, retain only
-        // TrackManager identity. Drop the face-local state so a seconds-old face
-        // anchor cannot resume drifting or seed the next detector ROI. Reacquire
-        // starts from the fresh same-ID person observation instead.
-        cachedFaceByTrackId.keys.retainAll(renderableFaceOnlyTrackIds)
+        // Dormancy stops rendering and temporal extrapolation, but it must not
+        // destroy the last *detected* face anchor. Fresh current-frame body
+        // motion evidence may later arrive while strict identity commit remains
+        // ambiguous; keeping this hidden anchor lets that fresh evidence resume
+        // FACE_ONLY without rendering stale geometry in the intervening frames.
+        // The anchor is removed only when the protected FACE_ONLY identity itself
+        // is no longer active/selected.
+        cachedFaceByTrackId.keys.retainAll(activeFaceOnlyTrackIds)
         lastDetectorAttemptPtsUsByTrackId.keys.retainAll(renderableFaceOnlyTrackIds)
         temporalStabilizer.retainTracks(renderableFaceOnlyTrackIds)
 
@@ -738,6 +752,7 @@ class FaceOnlyPrivacyFrameProcessor(
             bodyCompensatedTrackIds = bodyCompensatedTrackIds,
             freshBodyMotionTrackIds = freshBodyMotionTrackIds.intersect(bodyCompensatedTrackIds),
             recentBodyMotionBridgeTrackIds = recentBodyMotionBridgeTrackIds.intersect(bodyCompensatedTrackIds),
+            dormantReactivatedTrackIds = dormantReactivatedTrackIds,
             dormantSuppressedTrackIds = dormantSuppressedTrackIds,
             roiReadbackMs = roiReadbackMs,
             maskBuildMs = maskBuildMs,

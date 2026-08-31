@@ -1259,6 +1259,32 @@ Diagnostics add `face_recent_body_motion_bridge_track_frames` and
 `face_recent_body_motion_bridge_frames_by_track_id` so fresh current-frame body
 evidence and short temporal bridging can be evaluated separately on device.
 
+### Sixteenth real-video correction: dormancy must hide, not erase, the trusted face anchor
+
+The first complete export containing the relaxed motion-only gate still reports
+**1,637 dormant track-frames**, exactly matching the earlier five-person body-mask
+bridge run. Fresh ambiguous body motion rises to 48 frames and the new 150 ms
+recent-body bridge contributes another 58, but total body-compensated frames remain
+stuck at **414**. This proves the new evidence is arriving only while the face is
+already renderable; it cannot recover a track after dormancy.
+
+The processor was deleting `cachedFaceByTrackId` as soon as a FACE_ONLY track
+entered dormant state. That cache contains the last post-gate *detected* face
+anchor, not a continuously extrapolated stale sticker. Once deleted, a later fresh
+ambiguous YOLO body detection has no trusted face anchor to move, so the policy's
+"fresh body motion may bridge beyond 800 ms" path can never actually reactivate.
+
+Dormancy now clears render/temporal state exactly as before but retains the hidden
+detected-face anchor for as long as the protected FACE_ONLY identity remains
+active. No sticker is drawn from this anchor during dormant frames. A current-frame
+fresh body-motion detection may reactivate it; the 150 ms recent-body bridge can
+then maintain continuity between fresh detections. The cache is removed when the
+FACE_ONLY identity itself is removed or deselected. Diagnostics add
+`face_dormant_reactivated_by_fresh_motion_events` and a per-track breakdown so the
+next device run can verify that fresh ambiguity evidence is now rescuing previously
+dormant IDs rather than merely replacing geometry inside the original 800 ms
+window.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two
