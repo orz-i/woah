@@ -38,6 +38,7 @@ data class FaceOnlyPrivacyFrameResult(
     val positionClampedTrackIds: Set<Int>,
     val bodyCompensatedTrackIds: Set<Int>,
     val freshBodyMotionTrackIds: Set<Int>,
+    val recentBodyMotionBridgeTrackIds: Set<Int>,
     val dormantSuppressedTrackIds: Set<Int>,
     val roiReadbackMs: Double,
     val maskBuildMs: Double,
@@ -120,6 +121,13 @@ class FaceOnlyPrivacyFrameProcessor(
     private val cachedFaceByTrackId = mutableMapOf<Int, CachedFaceGeometry>()
     private val lastDetectorAttemptPtsUsByTrackId = mutableMapOf<Int, Long>()
     private val lastObservedPtsUsByTrackId = mutableMapOf<Int, Long>()
+    private data class RecentBodyMotionGeometry(
+        val bbox: FloatRect,
+        val confidence: Float,
+        val footY: Float,
+        val ptsUs: Long
+    )
+    private val recentBodyMotionByTrackId = mutableMapOf<Int, RecentBodyMotionGeometry>()
 
     private fun planCachedFaceLocalRoi(
         cached: CachedFaceGeometry,
@@ -289,6 +297,7 @@ class FaceOnlyPrivacyFrameProcessor(
                 positionClampedTrackIds = emptySet(),
                 bodyCompensatedTrackIds = emptySet(),
                 freshBodyMotionTrackIds = emptySet(),
+                recentBodyMotionBridgeTrackIds = emptySet(),
                 dormantSuppressedTrackIds = emptySet(),
                 roiReadbackMs = 0.0,
                 maskBuildMs = 0.0,
@@ -313,9 +322,27 @@ class FaceOnlyPrivacyFrameProcessor(
             }
             .associateBy { it.trackId }
         val freshBodyMotionTrackIds = freshMotionEvidenceByTrackId.keys.toCollection(linkedSetOf())
+        recentBodyMotionByTrackId.keys.retainAll(activeFaceOnlyTrackIds)
+        freshMotionEvidenceByTrackId.forEach { (trackId, evidence) ->
+            recentBodyMotionByTrackId[trackId] = RecentBodyMotionGeometry(
+                bbox = evidence.detection.bbox,
+                confidence = evidence.detection.confidence,
+                footY = evidence.detection.footY,
+                ptsUs = ptsUs
+            )
+        }
+        val recentBodyMotionBridgeTrackIds = linkedSetOf<Int>()
         val geometryPersonByTrackId = activeFaceOnlyTrackIds.associateWith { trackId ->
             val person = personsById.getValue(trackId)
             val evidence = if (!person.observedThisFrame) freshMotionEvidenceByTrackId[trackId] else null
+            val recent = if (!person.observedThisFrame && evidence == null) {
+                recentBodyMotionByTrackId[trackId]?.takeIf { cached ->
+                    val ageUs = ptsUs - cached.ptsUs
+                    ageUs in 0L..FaceOnlyDormancyPolicy.MAX_DIRECT_UNOBSERVED_AGE_US
+                }
+            } else {
+                null
+            }
             if (evidence?.detection?.mask != null) {
                 person.copy(
                     bbox = evidence.detection.bbox,
@@ -323,6 +350,15 @@ class FaceOnlyPrivacyFrameProcessor(
                     confidence = evidence.detection.confidence,
                     observedThisFrame = false,
                     footY = evidence.detection.footY
+                )
+            } else if (recent != null) {
+                recentBodyMotionBridgeTrackIds += trackId
+                person.copy(
+                    bbox = recent.bbox,
+                    mask = null,
+                    confidence = recent.confidence,
+                    observedThisFrame = false,
+                    footY = recent.footY
                 )
             } else {
                 person
@@ -333,6 +369,10 @@ class FaceOnlyPrivacyFrameProcessor(
             val person = personsById[trackId] ?: return@forEach
             if (person.observedThisFrame) {
                 lastObservedPtsUsByTrackId[trackId] = ptsUs
+                // Exact YOLO ownership supersedes any ambiguity-only body bbox.
+                // Do not let a pre-reacquisition bridge geometry leak into a
+                // later miss after identity has already been re-established.
+                recentBodyMotionByTrackId.remove(trackId)
             }
         }
         val renderModeByTrackId = activeFaceOnlyTrackIds.associateWith { trackId ->
@@ -340,7 +380,9 @@ class FaceOnlyPrivacyFrameProcessor(
             val geometryPerson = geometryPersonByTrackId.getValue(trackId)
             val cachedFace = cachedFaceByTrackId[trackId]
             val cachedFaceAgeUs = cachedFace?.let { ptsUs - it.lastTrustedPtsUs }
-            val hasFreshBodyMotion = freshMotionEvidenceByTrackId.containsKey(trackId)
+            val hasFreshBodyMotion =
+                freshMotionEvidenceByTrackId.containsKey(trackId) ||
+                    recentBodyMotionBridgeTrackIds.contains(trackId)
             val hasUsableTrustedFace = if (hasFreshBodyMotion) {
                 cachedFace != null
             } else {
@@ -383,7 +425,9 @@ class FaceOnlyPrivacyFrameProcessor(
             if (person.state == TrackState.REMOVED) return@forEach
             val cached = cachedFaceByTrackId[trackId]
             val renderMode = renderModeByTrackId[trackId] ?: FaceOnlyRenderMode.DORMANT
-            val hasFreshBodyMotion = freshMotionEvidenceByTrackId.containsKey(trackId)
+            val hasFreshBodyMotion =
+                freshMotionEvidenceByTrackId.containsKey(trackId) ||
+                    recentBodyMotionBridgeTrackIds.contains(trackId)
             val canUseIdentityLocalRoi = renderMode != FaceOnlyRenderMode.DORMANT && cached != null
             val localPlan = if (canUseIdentityLocalRoi) {
                 planCachedFaceLocalRoi(
@@ -465,7 +509,9 @@ class FaceOnlyPrivacyFrameProcessor(
             val person = geometryPersonByTrackId[trackId] ?: trackedPerson
             if (person.state == TrackState.REMOVED) continue
             val renderMode = renderModeByTrackId[trackId] ?: FaceOnlyRenderMode.DORMANT
-            val hasFreshBodyMotion = freshMotionEvidenceByTrackId.containsKey(trackId)
+            val hasFreshBodyMotion =
+                freshMotionEvidenceByTrackId.containsKey(trackId) ||
+                    recentBodyMotionBridgeTrackIds.contains(trackId)
 
             val plan = detectorPlanByTrackId[trackId]
 
@@ -691,6 +737,7 @@ class FaceOnlyPrivacyFrameProcessor(
             positionClampedTrackIds = positionClampedTrackIds,
             bodyCompensatedTrackIds = bodyCompensatedTrackIds,
             freshBodyMotionTrackIds = freshBodyMotionTrackIds.intersect(bodyCompensatedTrackIds),
+            recentBodyMotionBridgeTrackIds = recentBodyMotionBridgeTrackIds.intersect(bodyCompensatedTrackIds),
             dormantSuppressedTrackIds = dormantSuppressedTrackIds,
             roiReadbackMs = roiReadbackMs,
             maskBuildMs = maskBuildMs,

@@ -141,4 +141,31 @@ class TrackManagerAmbiguousCrossingTest {
             "weak global candidate must not take over the protected FULL_BODY identity"
         )
     }
+
+    @Test
+    fun `motion evidence gate is looser than protected identity commit gate`() {
+        assertTrue(
+            TrackManager.isProtectedMotionEvidenceSufficient(
+                bboxIoU = 0.24f,
+                maskIoU = 0.07f
+            )
+        )
+        assertTrue(
+            !TrackManager.isProtectedGroupIdentityEvidenceSufficient(
+                state = TrackState.REACQUIRING,
+                bboxIoU = 0.24f,
+                maskIoU = 0.07f
+            )
+        )
+    }
+
+    @Test
+    fun `motion evidence still rejects spatially unrelated candidate`() {
+        assertTrue(
+            !TrackManager.isProtectedMotionEvidenceSufficient(
+                bboxIoU = 0.10f,
+                maskIoU = 0.04f
+            )
+        )
+    }
 }

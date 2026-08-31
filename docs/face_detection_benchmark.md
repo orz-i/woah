@@ -1224,6 +1224,41 @@ back to the existing dormancy policy. Diagnostics add
 `face_fresh_body_motion_frames_by_track_id` so the next real-video bundle can
 separate rescue from stale prediction.
 
+### Fifteenth real-video correction: motion-only evidence must not reuse the identity gate
+
+The next complete export is from
+`43e31db85fdc35b20acb148929e6ea6373ea238f`. This run selects IDs 1-6 as
+FACE_ONLY. The first uncommitted-body path remains visually controlled but is far
+too sparse: only **36 track-frames** use `face_fresh_body_motion` (ID 2 = 11,
+ID 5 = 25), while **2,213 track-frames** are dormant-suppressed. Excluding newly
+FACE_ONLY ID 4 for a like-for-like comparison with the previous five-person run,
+dormant frames are about **1,618 vs 1,637**, so coverage barely changes.
+Consecutive sticker-center maxima remain approximately **47 / 60 / 56 / 47 / 47 /
+41 px** for IDs 1-6, confirming that dropout, not renewed large drift, is now the
+dominant failure.
+
+The reason is visible directly in the association telemetry. ID 1 has 65 group
+`ASSOCIATION_AMBIGUOUS` events and ID 3 has 135, but the protected identity
+absolute-evidence gate is false on every event for both IDs. Median bbox IoU is
+only about **0.21 / 0.24** and median mask IoU about **0.074 / 0.071**, while a
+protected REACQUIRING identity commit deliberately requires bbox IoU >= 0.45 or
+mask IoU >= 0.25. That gate is appropriate for transferring identity, but much
+too strict for read-only motion that never updates identity state.
+
+Motion-only evidence now uses a separate gate: bbox IoU >= **0.20** or mask IoU
+>= **0.08**. The assigned detection must still be the column-best match, must meet
+the ordinary minimum association score, and must lie within two configured
+ambiguity margins of the row-best. The identity commit gate itself is unchanged.
+Replaying the latest group ambiguity telemetry against this rule yields roughly
+35/65 eligible ID-1 events and 84/135 eligible ID-3 events instead of zero.
+
+Fresh motion evidence can also be intermittent. FACE_ONLY therefore retains only
+the most recent body **bbox** for the same 150 ms short bridge already used for
+direct misses. It deliberately does not retain the prior segmentation buffer.
+Diagnostics add `face_recent_body_motion_bridge_track_frames` and
+`face_recent_body_motion_bridge_frames_by_track_id` so fresh current-frame body
+evidence and short temporal bridging can be evaluated separately on device.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

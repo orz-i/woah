@@ -850,8 +850,9 @@ class TrackManager(
                         protectedTrackIds.contains(track.id) &&
                             !privacySelectedTrackIds.contains(track.id) &&
                             det.mask != null &&
-                            isScoreValid && isRowTop && isColTop &&
-                            protectedIdentityEvidenceOk
+                            isScoreValid && isColTop &&
+                            assignedScore >= rowBest - config.associationAmbiguityMargin * 2f &&
+                            isProtectedMotionEvidenceSufficient(candidateBBoxIoU, candidateMaskIoU)
                     if (motionEvidenceEligible) {
                         currentProtectedTrackMotionEvidence[track.id] = ProtectedTrackMotionEvidence(
                             trackId = track.id,
@@ -1156,9 +1157,9 @@ class TrackManager(
                             !privacySelectedTrackIds.contains(track.id) &&
                             det.mask != null &&
                             assignedScore >= config.minMatchScore &&
-                            assignedScore >= rowBest - epsilon &&
                             assignedScore >= colBest - epsilon &&
-                            protectedIdentityEvidenceOk &&
+                            assignedScore >= rowBest - config.associationAmbiguityMargin * 2f &&
+                            isProtectedMotionEvidenceSufficient(candidateBBoxIoU, candidateMaskIoU) &&
                             hasAmbiguousGeometry
                     if (motionEvidenceEligible) {
                         currentProtectedTrackMotionEvidence[track.id] = ProtectedTrackMotionEvidence(
@@ -1972,6 +1973,8 @@ class TrackManager(
         private const val PROTECTED_GROUP_REACQUIRE_MIN_MASK_IOU = 0.25f
         private const val PROTECTED_RECOVERY_MIN_BBOX_IOU = 0.50f
         private const val PROTECTED_RECOVERY_MIN_MASK_IOU = 0.45f
+        private const val PROTECTED_MOTION_MIN_BBOX_IOU = 0.20f
+        private const val PROTECTED_MOTION_MIN_MASK_IOU = 0.08f
         private const val PROTECTED_UNOBSERVED_MAX_CENTER_TRAVEL_RATIO = 0.30f
         private const val PROTECTED_UNOBSERVED_MIN_SCALE = 0.82f
         private const val PROTECTED_UNOBSERVED_MAX_SCALE = 1.18f
@@ -2060,6 +2063,13 @@ class TrackManager(
                         maskIoU >= PROTECTED_GROUP_ACTIVE_MIN_MASK_IOU
             }
         }
+
+        fun isProtectedMotionEvidenceSufficient(
+            bboxIoU: Float,
+            maskIoU: Float
+        ): Boolean =
+            bboxIoU >= PROTECTED_MOTION_MIN_BBOX_IOU ||
+                maskIoU >= PROTECTED_MOTION_MIN_MASK_IOU
 
         fun computeBBoxIntersectionArea(boxA: FloatRect, boxB: FloatRect): Float {
             val interX1 = max(boxA.left, boxB.left)
