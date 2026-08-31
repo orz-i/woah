@@ -1907,6 +1907,37 @@ resolver **33.7 ms**, and YOLO CPU inference **77.2 ms**, all lower than the pri
 slow-state run despite the extra 11 detector calls. Performance optimization should
 remain separate from the coverage change until thermal/CPU-state telemetry exists.
 
+### Twenty-ninth correction: partial-occlusion pixel evidence removes the evidence-gap failures; attribute the remaining motion before changing gates
+
+The real-video export from
+`ca444fe7166b13cbe92b822f6e3e6a278657e9b3` keeps the intended mixed policy:
+FULL_BODY ID4 and FACE_ONLY IDs 1/2/3/5/6. The partial-occlusion matcher is exercised
+on **92 track-frames** (ID1 40, ID2 4, ID3 5, ID5 21, ID6 22). Final dormant
+suppression falls from **14 to 3 track-frames**, all on ID3, and the previous
+**11 EVIDENCE_GAP_EXPIRED** failures disappear completely. The remaining three are
+only **2 LOW_CORRELATION + 1 AMBIGUOUS_PEAK**. Evidence-gap detector reacquisition
+does not run at all in this export because current-pixel evidence now survives those
+short partial occlusions instead of expiring first.
+
+The same run improves the major timing surfaces rather than regressing them:
+`faceOnlyPrivacy` is about **72.0 ms**, `facePixelMotionCpu` **12.3 ms**,
+`facePrivacyResolve` **15.3 ms**, ROI readback **3.25 ms**, YOLO CPU inference
+**50.6 ms**, and tracking **34.8 ms**. The face-detector aggregate is slower in this
+particular run, reinforcing that device/runtime timing varies independently across
+stages and should not be inferred from a single detector-call count.
+
+Sticker size remains conservative, but the aggregate maximum consecutive center
+step rises on ID2 (about **37.9 -> 50.4 px**) and ID6 (about **51.1 -> 69.9 px**)
+relative to the prior correct mixed export. The existing summary cannot attribute
+those maxima to the partial matcher versus detector recovery or another source.
+Do not tighten or loosen partial matching based on that aggregate alone. Export
+telemetry therefore additionally records
+`face_partial_occlusion_max_center_step_by_track_id` and
+`face_partial_occlusion_max_consecutive_center_step_by_track_id`, with no runtime
+behavior change. The next real-device export should use those fields to decide
+whether any partial-specific motion gate needs adjustment. Until then the current
+0.78/0.05 partial gates and primary 0.68/0.03 gates stay frozen.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two
