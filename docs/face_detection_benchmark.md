@@ -1737,6 +1737,51 @@ selected manually. This prevents an approximately 50% exterior candidate from
 becoming FULL_BODY merely because the previous fresh-project default selected
 every detected person.
 
+### Twenty-sixth correction: temporary hand/foreground occlusion is an appearance failure, not a motion-gate failure
+
+The first real-device run from
+`b8645932ca1c74cb80d64f4ca3c1092a10fd5344` made the remaining FACE dropout
+mechanism explicit. The user observed that stickers most often disappeared after
+a dancer's own hand or a foreground dancer briefly covered the face, then recovered
+too slowly after the face became visible again. Aggregate reject telemetry agrees:
+
+- all ROI pixel rejects: **176 LOW_CORRELATION + 82 AMBIGUOUS_PEAK = 258**;
+- final dormant suppression: **23 LOW_CORRELATION + 22 AMBIGUOUS_PEAK + 5
+  EVIDENCE_GAP_EXPIRED = 50**;
+- there were **no** `STEP_TOO_LARGE`, `BODY_ANCHOR_RESIDUAL`, or
+  `DETECTOR_SEED_EXPIRED` suppressions.
+
+This means the stable 0.68 correlation/0.03 uniqueness gates are doing their job:
+hand/foreground pixels temporarily replace facial appearance, so the immutable
+face template either loses correlation or sees multiple plausible peaks. The fix
+must therefore improve *recovery latency* rather than globally loosen matching or
+extend the 150/800 ms lifetimes.
+
+The occlusion-specific bridge is deliberately narrow:
+
+- only `LOW_CORRELATION` and `AMBIGUOUS_PEAK` trigger it;
+- the already-rendered 256x256 ROI is immediately reused for a face-detector
+  reacquire in the same output frame, bypassing only the normal round-robin wait;
+- at most two additional occlusion-reacquire detector calls are allowed per frame;
+- if the detector still cannot see through the hand/foreground object, the last
+  detector/pixel-trusted face ellipse may remain renderable for at most **100 ms**
+  (about six 60-fps frame intervals);
+- observed-person coherent bbox translation may move that held ellipse; an
+  unobserved person keeps the hold center fixed;
+- the hold never refreshes the appearance template, never renews pixel evidence,
+  never commits TrackManager identity, and cannot survive evidence/seed expiry;
+- all non-appearance reject reasons remain fail-closed.
+
+New summary metrics are `face_occlusion_hold_track_frames`,
+`face_occlusion_reacquire_detector_track_frames`, their per-track variants, and
+`face_occlusion_hold_max_age_us=100000`. Acceptance is a material reduction from
+the current 50 dormant-suppressed track-frames without reintroducing center drift;
+detector-call cost should rise only on actual appearance-reject frames.
+
+This b864 run also confirmed the performance improvements: `facePixelMotionCpu`
+averaged about **10.8 ms**, `facePrivacyResolve` **15.1 ms**, `faceRoiReadback`
+**2.94 ms**, and total `faceOnlyPrivacy` **68.6 ms** on the same 751-frame fixture.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

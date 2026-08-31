@@ -20,6 +20,7 @@ import com.danceanon.native.media.Mp4Muxer
 import com.danceanon.native.media.VideoDecoder
 import com.danceanon.native.media.VideoEncoder
 import com.danceanon.native.media.VideoProbe
+import com.danceanon.native.privacy.FaceOcclusionBridgePolicy
 import com.danceanon.native.privacy.FacePixelMotionTracker
 import com.danceanon.native.render.EglCore
 import com.danceanon.native.render.GlRenderer
@@ -350,6 +351,8 @@ class ExportPipeline(
                 var faceDormantPixelMotionBridgeTrackFrameCount = 0L
                 var facePixelMotionTrackFrameCount = 0L
                 var facePixelMotionRejectedTrackFrameCount = 0L
+                var faceOcclusionHoldTrackFrameCount = 0L
+                var faceOcclusionReacquireDetectorTrackFrameCount = 0L
                 val faceDetectorCallsByTrackId = mutableMapOf<Int, Long>()
                 val faceDetectorRejectedCallsByTrackId = mutableMapOf<Int, Long>()
                 val faceDetectedFramesByTrackId = mutableMapOf<Int, Long>()
@@ -368,6 +371,8 @@ class ExportPipeline(
                 val faceDormantPixelMotionBridgeFramesByTrackId = mutableMapOf<Int, Long>()
                 val facePixelMotionFramesByTrackId = mutableMapOf<Int, Long>()
                 val facePixelMotionRejectedFramesByTrackId = mutableMapOf<Int, Long>()
+                val faceOcclusionHoldFramesByTrackId = mutableMapOf<Int, Long>()
+                val faceOcclusionReacquireDetectorFramesByTrackId = mutableMapOf<Int, Long>()
                 val facePixelMotionRejectReasonCounts = mutableMapOf<String, Long>()
                 val facePixelMotionRejectReasonsByTrackId = mutableMapOf<Int, MutableMap<String, Long>>()
                 val faceDormantSuppressionReasonCounts = mutableMapOf<String, Long>()
@@ -876,6 +881,9 @@ class ExportPipeline(
                                 faceOnlyFrameResult.dormantPixelMotionBridgeTrackIds.size
                             facePixelMotionTrackFrameCount += faceOnlyFrameResult.pixelMotionTrackIds.size
                             facePixelMotionRejectedTrackFrameCount += faceOnlyFrameResult.pixelMotionRejectedTrackIds.size
+                            faceOcclusionHoldTrackFrameCount += faceOnlyFrameResult.occlusionHoldTrackIds.size
+                            faceOcclusionReacquireDetectorTrackFrameCount +=
+                                faceOnlyFrameResult.occlusionReacquireDetectorTrackIds.size
                             faceOnlyFrameResult.detectorCalledTrackIds.forEach { trackId ->
                                 faceDetectorCallsByTrackId[trackId] = faceDetectorCallsByTrackId.getOrDefault(trackId, 0L) + 1L
                             }
@@ -943,6 +951,14 @@ class ExportPipeline(
                             faceOnlyFrameResult.pixelMotionRejectedTrackIds.forEach { trackId ->
                                 facePixelMotionRejectedFramesByTrackId[trackId] =
                                     facePixelMotionRejectedFramesByTrackId.getOrDefault(trackId, 0L) + 1L
+                            }
+                            faceOnlyFrameResult.occlusionHoldTrackIds.forEach { trackId ->
+                                faceOcclusionHoldFramesByTrackId[trackId] =
+                                    faceOcclusionHoldFramesByTrackId.getOrDefault(trackId, 0L) + 1L
+                            }
+                            faceOnlyFrameResult.occlusionReacquireDetectorTrackIds.forEach { trackId ->
+                                faceOcclusionReacquireDetectorFramesByTrackId[trackId] =
+                                    faceOcclusionReacquireDetectorFramesByTrackId.getOrDefault(trackId, 0L) + 1L
                             }
                             faceOnlyFrameResult.pixelMotionRejectReasonByTrackId.forEach { (trackId, reason) ->
                                 facePixelMotionRejectReasonCounts[reason] =
@@ -1363,6 +1379,9 @@ class ExportPipeline(
                             "face_dormant_pixel_motion_bridge_track_frames" to faceDormantPixelMotionBridgeTrackFrameCount,
                             "face_pixel_motion_track_frames" to facePixelMotionTrackFrameCount,
                             "face_pixel_motion_rejected_track_frames" to facePixelMotionRejectedTrackFrameCount,
+                            "face_occlusion_hold_track_frames" to faceOcclusionHoldTrackFrameCount,
+                            "face_occlusion_reacquire_detector_track_frames" to faceOcclusionReacquireDetectorTrackFrameCount,
+                            "face_occlusion_hold_max_age_us" to FaceOcclusionBridgePolicy.MAX_HOLD_AGE_US,
                             "face_pixel_motion_backend" to "SOURCE_ROI_256",
                             "face_pixel_motion_evidence_gap_us" to FacePixelMotionTracker.ROI_MAX_EVIDENCE_GAP_US,
                             "face_pixel_motion_detector_seed_max_age_us" to FacePixelMotionTracker.ROI_MAX_DETECTOR_SEED_AGE_US,
@@ -1384,6 +1403,8 @@ class ExportPipeline(
                             "face_dormant_pixel_motion_bridge_frames_by_track_id" to faceDormantPixelMotionBridgeFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_pixel_motion_frames_by_track_id" to facePixelMotionFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_pixel_motion_rejected_frames_by_track_id" to facePixelMotionRejectedFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
+                            "face_occlusion_hold_frames_by_track_id" to faceOcclusionHoldFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
+                            "face_occlusion_reacquire_detector_frames_by_track_id" to faceOcclusionReacquireDetectorFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_pixel_motion_reject_reasons" to facePixelMotionRejectReasonCounts.toSortedMap(),
                             "face_pixel_motion_reject_reasons_by_track_id" to facePixelMotionRejectReasonsByTrackId
                                 .toSortedMap()
