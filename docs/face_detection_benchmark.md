@@ -2063,6 +2063,38 @@ end-to-end adapter parity. New behavior-neutral timings split the NMS body into
 candidate by total `yoloMaskAwareNms`/`yoloDecode`, not by an internal substage in
 isolation.
 
+### Thirty-third correction: candidate-local NCHW decode is a real net win; bound mask-IoU scans to known nonzero support
+
+The real-device mixed export from
+`125eb0a07c8cc03e61be4fd6e93a5669f9a917f2` keeps the established privacy output
+unchanged: FULL_BODY ID4, FACE_ONLY IDs 1/2/3/5/6, dormant suppression **3**
+(ID3 only: 2 LOW_CORRELATION + 1 AMBIGUOUS_PEAK), partial-occlusion pixel rescue
+**92**, pixel-motion accepted/rejected **3499/182**, occlusion hold **18**, and
+occlusion reacquire **37**. Sticker geometry and the partial-specific center-step
+telemetry are also unchanged, so the optimization remains quality-neutral.
+
+Unlike the rejected whole-proto transpose, candidate-local channel-major NCHW
+decode produces a real net performance improvement. Relative to the validated
+`3449dd` baseline, `yoloMaskAwareNms` falls from about **19.56 ms** to
+**17.73 ms** (-9.4%), `yoloDecode` from about **19.80 ms** to **17.97 ms** (-9.2%),
+and `yoloPipelineTotal` from about **32.34 ms** to **30.38 ms** (-6.1%). The other
+major YOLO stages remain stable (`yoloPreprocess` about **1.35 ms** and
+`yoloOutputRead` about **8.29 ms**). The new NMS substage attribution shows about
+**11.53 ms** in `yoloMaskDecode` and **5.46 ms** in `yoloMaskIouScan`; mask decode
+is still the largest component, but the IoU scan is now a substantial isolated
+low-risk target.
+
+Each real proto-backed candidate mask is guaranteed zero outside the exact
+candidate bbox support plus the existing one-proto-pixel margin. The next
+behavior-equivalent optimization therefore leaves synthetic/fallback masks on the
+historical full scan, while real proto NMS computes mask IoU only inside the
+bounding rectangle covering the two candidates' known supports. Pixels skipped by
+this optimization are provably zero in both masks and cannot affect intersection or
+union. Unit coverage decodes real random NCHW masks (including clipped/edge
+candidates) and requires the bounded IoU value to equal the historical full
+160x160 scan exactly. Confidence/NMS thresholds, mask bytes, TrackManager inputs,
+FACE/FULL_BODY logic, and all quality gates remain unchanged.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

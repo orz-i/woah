@@ -176,6 +176,27 @@ object YoloMaskDecoder {
     const val DEFAULT_INPUT_SIZE = 640
     const val DEFAULT_MASK_IOU_THRESHOLD = 0.50f
 
+    data class ProtoSupportRect(
+        val x1: Int,
+        val y1: Int,
+        val x2: Int,
+        val y2: Int
+    )
+
+    fun candidateProtoSupportRect(
+        cand: RawCandidate,
+        inputSize: Int = DEFAULT_INPUT_SIZE,
+        protoSize: Int = DEFAULT_PROTO_SIZE
+    ): ProtoSupportRect {
+        val margin = 1
+        return ProtoSupportRect(
+            x1 = (kotlin.math.floor((cand.x1 / inputSize) * protoSize).toInt() - margin).coerceIn(0, protoSize),
+            y1 = (kotlin.math.floor((cand.y1 / inputSize) * protoSize).toInt() - margin).coerceIn(0, protoSize),
+            x2 = (kotlin.math.ceil((cand.x2 / inputSize) * protoSize).toInt() + margin).coerceIn(0, protoSize),
+            y2 = (kotlin.math.ceil((cand.y2 / inputSize) * protoSize).toInt() + margin).coerceIn(0, protoSize)
+        )
+    }
+
     fun decodeCandidateMask(
         cand: RawCandidate,
         protoView: ProtoTensorView?,
@@ -239,10 +260,46 @@ object YoloMaskDecoder {
         var union = 0
         val len = minOf(maskA.size, maskB.size)
         for (i in 0 until len) {
-            val a = (maskA[i] != 0.toByte())
-            val b = (maskB[i] != 0.toByte())
-            if (a && b) intersection++
-            if (a || b) union++
+            val a = maskA[i].toInt()
+            val b = maskB[i].toInt()
+            if (a != 0 && b != 0) intersection++
+            if ((a or b) != 0) union++
+        }
+        return if (union == 0) 0f else intersection.toFloat() / union.toFloat()
+    }
+
+    fun calculateMaskIoUWithinCandidateSupport(
+        maskA: ByteArray,
+        maskB: ByteArray,
+        candA: RawCandidate,
+        candB: RawCandidate,
+        inputSize: Int = DEFAULT_INPUT_SIZE,
+        protoSize: Int = DEFAULT_PROTO_SIZE
+    ): Float {
+        val requiredSize = protoSize * protoSize
+        if (maskA.size < requiredSize || maskB.size < requiredSize) {
+            return calculateMaskIoU(maskA, maskB)
+        }
+
+        val supportA = candidateProtoSupportRect(candA, inputSize, protoSize)
+        val supportB = candidateProtoSupportRect(candB, inputSize, protoSize)
+        val x1 = minOf(supportA.x1, supportB.x1)
+        val y1 = minOf(supportA.y1, supportB.y1)
+        val x2 = maxOf(supportA.x2, supportB.x2)
+        val y2 = maxOf(supportA.y2, supportB.y2)
+
+        var intersection = 0
+        var union = 0
+        for (py in y1 until y2) {
+            var index = py * protoSize + x1
+            val rowEnd = py * protoSize + x2
+            while (index < rowEnd) {
+                val a = maskA[index].toInt()
+                val b = maskB[index].toInt()
+                if (a != 0 && b != 0) intersection++
+                if ((a or b) != 0) union++
+                index++
+            }
         }
         return if (union == 0) 0f else intersection.toFloat() / union.toFloat()
     }
@@ -309,7 +366,22 @@ object YoloMaskDecoder {
                     val maskCurrent = cache.getMask(current)
                     val maskNext = cache.getMask(next)
                     val iouStartNs = System.nanoTime()
-                    val maskIoU = calculateMaskIoU(maskCurrent, maskNext)
+                    val maskIoU = if (
+                        protoView != null &&
+                        current.syntheticMask == null &&
+                        next.syntheticMask == null
+                    ) {
+                        calculateMaskIoUWithinCandidateSupport(
+                            maskA = maskCurrent,
+                            maskB = maskNext,
+                            candA = current,
+                            candB = next,
+                            inputSize = inputSize,
+                            protoSize = protoSize
+                        )
+                    } else {
+                        calculateMaskIoU(maskCurrent, maskNext)
+                    }
                     if (timings != null) {
                         timings.maskIouNs += System.nanoTime() - iouStartNs
                     }

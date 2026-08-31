@@ -9,6 +9,34 @@ import kotlin.random.Random
 class YoloMaskAwareNmsTest {
 
     @Test
+    fun boundedCandidateSupportMaskIouMatchesFullScanExactly() {
+        val protoSize = 160
+        val channels = 32
+        val random = Random(20260831)
+        val proto = FloatArray(channels * protoSize * protoSize) { random.nextFloat() * 2f - 1f }
+        val view = NchwArrayProtoView(proto, channels, protoSize)
+        val candidates = listOf(
+            RawCandidate(0f, 0f, 640f, 640f, 0.95f, FloatArray(channels) { random.nextFloat() * 2f - 1f }),
+            RawCandidate(40f, 20f, 590f, 620f, 0.90f, FloatArray(channels) { random.nextFloat() * 2f - 1f }),
+            RawCandidate(155.5f, 81.25f, 505.75f, 571.5f, 0.85f, FloatArray(channels) { random.nextFloat() * 2f - 1f }),
+            RawCandidate(500f, 420f, 680f, 700f, 0.80f, FloatArray(channels) { random.nextFloat() * 2f - 1f })
+        )
+        val masks = candidates.map { candidate ->
+            YoloMaskDecoder.decodeCandidateMask(candidate, view, 640, protoSize)
+        }
+
+        for (a in candidates.indices) {
+            for (b in a + 1 until candidates.size) {
+                val full = YoloMaskDecoder.calculateMaskIoU(masks[a], masks[b])
+                val bounded = YoloMaskDecoder.calculateMaskIoUWithinCandidateSupport(
+                    masks[a], masks[b], candidates[a], candidates[b], 640, protoSize
+                )
+                assertEquals(full, bounded, "bounded support IoU must equal full 160x160 scan")
+            }
+        }
+    }
+
+    @Test
     fun channelMajorNchwDecodeMatchesPerPixelReferenceAcrossCandidateBounds() {
         val protoSize = 160
         val channels = 32
