@@ -56,34 +56,31 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
         }
     }
 
-    private fun modelPixelFrame(centerX: Int, centerY: Int): ByteBuffer {
-        val buffer = ByteBuffer.allocateDirect(640 * 640 * 4)
-        for (visualY in 0 until 640) {
-            for (x in 0 until 640) {
-                setModelVisualPixel(buffer, x, visualY, 24, 24, 24)
-            }
-        }
-        for (dy in -14..14) {
-            for (dx in -14..14) {
+    private fun sourcePixelBitmap(centerX: Int, centerY: Int): Bitmap {
+        val bitmap = Bitmap.createBitmap(FRAME_W, FRAME_H, Bitmap.Config.ARGB_8888)
+        bitmap.eraseColor(Color.rgb(24, 24, 24))
+        for (dy in -30..30) {
+            for (dx in -30..30) {
                 val x = centerX + dx
                 val y = centerY + dy
-                if (x !in 0 until 640 || y !in 0 until 640) continue
+                if (x !in 0 until FRAME_W || y !in 0 until FRAME_H) continue
                 val r = (80 + (dx * 17 + dy * 7 + dx * dy * 3)).and(0xFF)
                 val g = (60 + (dx * 5 - dy * 19 + dx * dx)).and(0xFF)
                 val b = (40 + (dy * 13 - dx * 11 + dy * dy)).and(0xFF)
-                setModelVisualPixel(buffer, x, y, r, g, b)
+                bitmap.setPixel(x, y, Color.rgb(r, g, b))
             }
         }
-        return buffer
+        return bitmap
     }
 
-    private fun setModelVisualPixel(buffer: ByteBuffer, x: Int, visualY: Int, r: Int, g: Int, b: Int) {
-        val bufferY = 639 - visualY
-        val offset = (bufferY * 640 + x) * 4
-        buffer.put(offset, r.toByte())
-        buffer.put(offset + 1, g.toByte())
-        buffer.put(offset + 2, b.toByte())
-        buffer.put(offset + 3, 255.toByte())
+    private fun uploadSourceTexture(textureId: Int, centerX: Int, centerY: Int) {
+        val bitmap = sourcePixelBitmap(centerX, centerY)
+        try {
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId)
+            GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0)
+        } finally {
+            bitmap.recycle()
+        }
     }
 
     @Test
@@ -99,6 +96,11 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
         )
         withProcessor(locator) { processor, texture, mapper ->
             val observed = person(61, FloatRect(220f, 40f, 420f, 350f))
+            // The synthetic locator maps this face to roughly (320,166) in the
+            // 640x360 source frame. Put a real high-frequency source patch there
+            // so the processor can seed its 256x256 ROI tracker from the same
+            // pixels that MediaPipe sees.
+            uploadSourceTexture(texture, 320, 166)
 
             // First acquire the real detector-owned source-space face center.
             val initial = processor.resolveFrame(
@@ -110,19 +112,17 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
                 ptsUs = 0L
             )
             val initialRect = initial.stickerPlacements.single().sourceRect
-            val initialModelX = mapper.sourceToModelX(initialRect.centerX).roundToInt()
-            val initialModelY = mapper.sourceToModelY(initialRect.centerY).roundToInt()
+            val initialSourceX = initialRect.centerX.roundToInt()
+            val initialSourceY = initialRect.centerY.roundToInt()
 
-            // A second detector hit with the existing YOLO readback seeds the
-            // immutable pixel template for this TrackManager-owned identity.
-            val seedFrame = modelPixelFrame(initialModelX, initialModelY)
+            // A second detector hit refreshes the detector-owned ROI template.
+            uploadSourceTexture(texture, initialSourceX, initialSourceY)
             val seeded = processor.resolveFrame(
                 frameTexture = texture,
                 texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
                 textureType = SourceTextureType.TEXTURE_2D,
                 persons = listOf(observed),
                 faceOnlyTrackIds = setOf(61),
-                yoloRgbaBottomUp = seedFrame,
                 ptsUs = 33_333L
             )
             assertEquals(setOf(61), seeded.detectedTrackIds)
@@ -135,15 +135,14 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
             )
 
             // While still inside the direct YOLO-miss window, detector failure
-            // is bridged by current pixels and renews the pixel evidence lease.
-            val moved1 = modelPixelFrame(initialModelX + 7, initialModelY - 4)
+            // is bridged by the high-resolution source ROI and renews evidence.
+            uploadSourceTexture(texture, initialSourceX + 12, initialSourceY - 7)
             val directPixel = processor.resolveFrame(
                 frameTexture = texture,
                 texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
                 textureType = SourceTextureType.TEXTURE_2D,
                 persons = listOf(lost),
                 faceOnlyTrackIds = setOf(61),
-                yoloRgbaBottomUp = moved1,
                 ptsUs = 100_000L
             )
             assertEquals(setOf(61), directPixel.pixelMotionTrackIds)
@@ -152,14 +151,13 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
             // YOLO ownership is now old enough that the legacy lifecycle would
             // become DORMANT. Current high-correlation face pixels must keep the
             // sticker renderable without committing any new TrackManager ID.
-            val moved2 = modelPixelFrame(initialModelX + 14, initialModelY - 7)
+            uploadSourceTexture(texture, initialSourceX + 24, initialSourceY - 12)
             val dormantBridge = processor.resolveFrame(
                 frameTexture = texture,
                 texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
                 textureType = SourceTextureType.TEXTURE_2D,
                 persons = listOf(lost),
                 faceOnlyTrackIds = setOf(61),
-                yoloRgbaBottomUp = moved2,
                 ptsUs = 200_000L
             )
             assertEquals(setOf(61), dormantBridge.dormantPixelMotionBridgeTrackIds)
@@ -175,7 +173,6 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
                 textureType = SourceTextureType.TEXTURE_2D,
                 persons = listOf(lost),
                 faceOnlyTrackIds = setOf(61),
-                yoloRgbaBottomUp = modelPixelFrame(initialModelX + 18, initialModelY - 8),
                 ptsUs = 351_001L
             )
             assertEquals(setOf(61), afterGap.dormantSuppressedTrackIds)

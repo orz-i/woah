@@ -333,7 +333,6 @@ class FaceOnlyPrivacyFrameProcessor(
         faceOnlyTrackIds: Set<Int>,
         fullBodyTrackIds: Set<Int> = emptySet(),
         protectedMotionEvidence: List<ProtectedTrackMotionEvidence> = emptyList(),
-        yoloRgbaBottomUp: ByteBuffer? = null,
         ptsUs: Long
     ): FaceOnlyPrivacyFrameResult {
         if (faceOnlyTrackIds.isEmpty()) {
@@ -486,42 +485,12 @@ class FaceOnlyPrivacyFrameProcessor(
                 hasFreshBodyMotionEvidence = hasFreshBodyMotion
             )
         }
-        val dormantPixelMotionMatchByTrackId = linkedMapOf<Int, FacePixelMotionTracker.Match>()
-        val dormantPixelMotionRejectedTrackIds = linkedSetOf<Int>()
-        var dormantPixelMotionMs = 0.0
-        if (yoloRgbaBottomUp != null) {
-            renderModeByTrackId.forEach { (trackId, renderMode) ->
-                if (renderMode != FaceOnlyRenderMode.DORMANT) return@forEach
-                if (!pixelMotionTracker.hasUsableState(trackId, ptsUs)) return@forEach
-                val pixelStartNs = System.nanoTime()
-                val match = try {
-                    // A dormant TrackManager bbox may be stale or ambiguity-
-                    // displaced. Identity-local pixel continuity is already
-                    // spatially bounded around the previous face center, so do
-                    // not let that stale body box veto current face pixels.
-                    pixelMotionTracker.match(
-                        trackId = trackId,
-                        rgbaBottomUp = yoloRgbaBottomUp,
-                        mapper = mapper,
-                        ptsUs = ptsUs,
-                        personBbox = null
-                    )
-                } finally {
-                    dormantPixelMotionMs += (System.nanoTime() - pixelStartNs) / 1_000_000.0
-                }
-                if (match != null) {
-                    dormantPixelMotionMatchByTrackId[trackId] = match
-                } else {
-                    dormantPixelMotionRejectedTrackIds += trackId
-                }
-            }
-        }
-        val dormantPixelMotionBridgeTrackIds = dormantPixelMotionMatchByTrackId.keys.toCollection(linkedSetOf())
+        val roiPixelMotionCandidateTrackIds = activeFaceOnlyTrackIds
+            .filterTo(linkedSetOf()) { pixelMotionTracker.hasUsableRoiState(it, ptsUs) }
         val baseRenderableFaceOnlyTrackIds = renderModeByTrackId
             .filterValues { it != FaceOnlyRenderMode.DORMANT }
             .keys
             .toCollection(linkedSetOf())
-            .apply { addAll(dormantPixelMotionBridgeTrackIds) }
         val bodyCompensatedTrackIds = renderModeByTrackId
             .filterValues { it == FaceOnlyRenderMode.BODY_MASK_COMPENSATED }
             .keys
@@ -555,6 +524,11 @@ class FaceOnlyPrivacyFrameProcessor(
         val processingFaceOnlyTrackIds = linkedSetOf<Int>().apply {
             addAll(baseRenderableFaceOnlyTrackIds)
             addAll(dormantReactivationProbeTrackIds)
+            // A detector-seeded 256x256 ROI tracklet may prove current face
+            // pixels even after the body lifecycle provisionally says DORMANT.
+            // Inclusion here only permits a current-pixel probe; it does not
+            // make the track renderable until matchRoi succeeds below.
+            addAll(roiPixelMotionCandidateTrackIds)
         }
 
         // Dormancy stops rendering and temporal extrapolation, but it must not
@@ -568,6 +542,7 @@ class FaceOnlyPrivacyFrameProcessor(
         cachedFaceByTrackId.keys.retainAll(activeFaceOnlyTrackIds)
         lastDetectorAttemptPtsUsByTrackId.keys.retainAll(processingFaceOnlyTrackIds)
         temporalStabilizer.retainTracks(baseRenderableFaceOnlyTrackIds)
+        pixelMotionTracker.retainRoiTracks(activeFaceOnlyTrackIds)
 
         val detectorPlanByTrackId = linkedMapOf<Int, FaceHeadRoiPlan>()
         val localDetectorTrackIds = linkedSetOf<Int>()
@@ -579,12 +554,12 @@ class FaceOnlyPrivacyFrameProcessor(
             val renderMode = renderModeByTrackId[trackId] ?: FaceOnlyRenderMode.DORMANT
             val isDormantProbe = dormantReactivationProbeTrackIds.contains(trackId)
             val hasFreshBodyMotion = hasFreshOrRecentBodyMotionByTrackId[trackId] == true
-            val dormantPixelMatch = dormantPixelMotionMatchByTrackId[trackId]
-            val localPlan = if (dormantPixelMatch != null) {
-                // Current face pixels are stronger localization evidence than a
-                // stale body projection. Center the local face refresh exactly
-                // where the immutable detector-seeded template matched.
-                planLocalRoiAround(dormantPixelMatch.region)
+            val roiTrackRegion = pixelMotionTracker.currentRoiRegion(trackId, ptsUs)
+            val localPlan = if (roiTrackRegion != null) {
+                // Always center the next high-resolution crop on the last
+                // current-pixel face center. The tracker itself has a separate
+                // detector-seed hard age and per-frame anti-drift gates.
+                planLocalRoiAround(roiTrackRegion)
             } else if (isDormantProbe && cached != null) {
                 planDormantReactivationLocalRoi(
                     cached = cached,
@@ -662,9 +637,11 @@ class FaceOnlyPrivacyFrameProcessor(
         val bodyMaskGuidedTrackIds = linkedSetOf<Int>()
         val positionClampedTrackIds = linkedSetOf<Int>()
         val dormantReactivatedTrackIds = linkedSetOf<Int>()
-        val pixelMotionTrackIds = dormantPixelMotionBridgeTrackIds.toCollection(linkedSetOf())
-        val pixelMotionRejectedTrackIds = dormantPixelMotionRejectedTrackIds.toCollection(linkedSetOf())
-        var pixelMotionMs = dormantPixelMotionMs
+        val dormantPixelMotionBridgeTrackIds = linkedSetOf<Int>()
+        val dormantPixelMotionRejectedTrackIds = linkedSetOf<Int>()
+        val pixelMotionTrackIds = linkedSetOf<Int>()
+        val pixelMotionRejectedTrackIds = linkedSetOf<Int>()
+        var pixelMotionMs = 0.0
         var roiReadbackMs = 0.0
         var maskBuildMs = 0.0
         val stickerPlacements = mutableListOf<FaceStickerPlacement>()
@@ -680,24 +657,59 @@ class FaceOnlyPrivacyFrameProcessor(
             val plan = detectorPlanByTrackId[trackId]
 
             var region: FacePrivacyEllipse? = null
-            if (dueDetectorTrackIds.contains(trackId) && plan != null) {
+            var trustedCurrentPixelCenter = false
+            var roiRgba: ByteBuffer? = null
+            val hasRoiPixelState = pixelMotionTracker.hasUsableRoiState(trackId, ptsUs)
+            if (plan != null && (hasRoiPixelState || dueDetectorTrackIds.contains(trackId))) {
+                val roiStartNs = System.nanoTime()
+                roiRenderer.renderToFbo(
+                    textureId = frameTexture,
+                    texMatrix = texMatrix,
+                    sourceRect = plan.sourceRect,
+                    sourceWidth = mapper.srcWidth,
+                    sourceHeight = mapper.srcHeight,
+                    fbo = roiFbo,
+                    textureType = textureType
+                )
+                roiRgba = roiFbo.readRgbaPixels()
+                roiReadbackMs += (System.nanoTime() - roiStartNs) / 1_000_000.0
+
+                if (hasRoiPixelState) {
+                    val pixelMotionStartNs = System.nanoTime()
+                    val pixelMatch = try {
+                        pixelMotionTracker.matchRoi(
+                            trackId = trackId,
+                            rgbaTopDown = requireNotNull(roiRgba),
+                            roiPlan = plan,
+                            personBbox = person.bbox,
+                            personObservedThisFrame = trackedPerson.observedThisFrame,
+                            ptsUs = ptsUs
+                        )
+                    } finally {
+                        pixelMotionMs += (System.nanoTime() - pixelMotionStartNs) / 1_000_000.0
+                    }
+                    if (pixelMatch != null) {
+                        region = pixelMatch.region
+                        trustedCurrentPixelCenter = true
+                        pixelMotionTrackIds += trackId
+                        if (renderMode == FaceOnlyRenderMode.DORMANT) {
+                            dormantPixelMotionBridgeTrackIds += trackId
+                        }
+                    } else {
+                        pixelMotionRejectedTrackIds += trackId
+                        if (renderMode == FaceOnlyRenderMode.DORMANT) {
+                            dormantPixelMotionRejectedTrackIds += trackId
+                        }
+                    }
+                }
+            }
+
+            if (dueDetectorTrackIds.contains(trackId) && plan != null && roiRgba != null) {
                 lastDetectorAttemptPtsUsByTrackId[trackId] = ptsUs
                 val cachedBeforeAttempt = cachedFaceByTrackId[trackId]
                 try {
-                    val roiStartNs = System.nanoTime()
-                    roiRenderer.renderToFbo(
-                        textureId = frameTexture,
-                        texMatrix = texMatrix,
-                        sourceRect = plan.sourceRect,
-                        sourceWidth = mapper.srcWidth,
-                        sourceHeight = mapper.srcHeight,
-                        fbo = roiFbo,
-                        textureType = textureType
-                    )
-                    val rgba = roiFbo.readRgbaPixels()
-                    roiReadbackMs += (System.nanoTime() - roiStartNs) / 1_000_000.0
                     val locatorResult = locator.detectRgbaTopDown(
-                        rgba = rgba,
+                        rgba = requireNotNull(roiRgba),
                         width = FACE_ROI_SIZE,
                         height = FACE_ROI_SIZE
                     )
@@ -730,13 +742,13 @@ class FaceOnlyPrivacyFrameProcessor(
                         detectorRejectedCallCount++
                         detectorRejectedTrackIds += trackId
                     }
-                    region = if (selectedFace != null) {
+                    if (selectedFace != null) {
                         val detectedRegion = FacePrivacyRegionResolver.resolve(
                             personBbox = person.bbox,
                             roiPlan = plan,
                             selectedFace = selectedFace
                         )
-                        if (
+                        region = if (
                             detectedRegion != null &&
                             isDormantProbe &&
                             cachedBeforeAttempt != null
@@ -757,59 +769,25 @@ class FaceOnlyPrivacyFrameProcessor(
                         } else {
                             detectedRegion
                         }
-                    } else {
-                        // Do not immediately commit a body-derived fallback on a
-                        // detector miss. A short-lived template seeded only by a
-                        // real detected face may still match current-frame pixels
-                        // below. If that also fails, the unchanged fail-closed
-                        // fallback path runs afterwards.
-                        null
+                        // A real detector hit supersedes the pixel center. The
+                        // detector position gate remains active; only a verified
+                        // current-pixel match bypasses that residual clamp.
+                        trustedCurrentPixelCenter = false
                     }
                 } catch (t: Throwable) {
                     if (isDormantProbe) {
-                        Log.w(TAG, "Dormant face reactivation probe failed for track=$trackId; keeping dormant", t)
-                        region = null
+                        Log.w(TAG, "Dormant face reactivation probe failed for track=$trackId; keeping pixel result if available", t)
                     } else {
-                        Log.w(TAG, "Face ROI detection failed for track=$trackId; trying pixel bridge before fallback", t)
-                        region = null
+                        Log.w(TAG, "Face ROI detection failed for track=$trackId; keeping ROI pixel result before fallback", t)
                     }
                 }
             }
 
-            var trustedCurrentPixelCenter = false
-            val dormantPixelMatch = dormantPixelMotionMatchByTrackId[trackId]
-            if (region == null && dormantPixelMatch != null) {
-                region = dormantPixelMatch.region
-                trustedCurrentPixelCenter = true
-            }
             if (
                 region == null &&
                 !isDormantProbe &&
-                yoloRgbaBottomUp != null &&
-                pixelMotionTracker.hasUsableState(trackId, ptsUs)
+                renderMode != FaceOnlyRenderMode.DORMANT
             ) {
-                val pixelMotionStartNs = System.nanoTime()
-                val pixelMatch = try {
-                    pixelMotionTracker.match(
-                        trackId = trackId,
-                        rgbaBottomUp = yoloRgbaBottomUp,
-                        mapper = mapper,
-                        ptsUs = ptsUs,
-                        personBbox = person.bbox
-                    )
-                } finally {
-                    pixelMotionMs += (System.nanoTime() - pixelMotionStartNs) / 1_000_000.0
-                }
-                if (pixelMatch != null) {
-                    region = pixelMatch.region
-                    trustedCurrentPixelCenter = true
-                    pixelMotionTrackIds += trackId
-                } else {
-                    pixelMotionRejectedTrackIds += trackId
-                }
-            }
-
-            if (region == null && !isDormantProbe) {
                 val cached = cachedFaceByTrackId[trackId]
                 region = resolveFallbackGeometry(
                     person,
@@ -862,11 +840,11 @@ class FaceOnlyPrivacyFrameProcessor(
                             lastTrustedPtsUs = ptsUs
                         )
                     }
-                    if (yoloRgbaBottomUp != null) {
-                        pixelMotionTracker.seed(
+                    if (roiRgba != null && plan != null) {
+                        pixelMotionTracker.seedRoi(
                             trackId = trackId,
-                            rgbaBottomUp = yoloRgbaBottomUp,
-                            mapper = mapper,
+                            rgbaTopDown = requireNotNull(roiRgba),
+                            roiPlan = plan,
                             detected = FacePrivacyEllipse(
                                 centerX = region.centerX,
                                 centerY = region.centerY,
@@ -874,6 +852,7 @@ class FaceOnlyPrivacyFrameProcessor(
                                 radiusY = trustedDetectedRadiusY ?: region.radiusY,
                                 source = FacePrivacyRegionSource.DETECTED_FACE
                             ),
+                            personBbox = person.bbox,
                             ptsUs = ptsUs
                         )
                     }
@@ -901,6 +880,7 @@ class FaceOnlyPrivacyFrameProcessor(
         val renderableFaceOnlyTrackIds = linkedSetOf<Int>().apply {
             addAll(baseRenderableFaceOnlyTrackIds)
             addAll(dormantReactivatedTrackIds)
+            addAll(dormantPixelMotionBridgeTrackIds)
         }
         val dormantSuppressedTrackIds = activeFaceOnlyTrackIds
             .filterTo(linkedSetOf()) { !renderableFaceOnlyTrackIds.contains(it) }

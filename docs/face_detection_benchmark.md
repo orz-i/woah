@@ -1593,6 +1593,73 @@ be nontrivial, and `facePixelMotionCpu` must fall materially from the c069
 template-localization approach itself is disproven rather than merely misplaced in
 the lifecycle.
 
+### Twenty-third correction: move pixel tracking to the source-resolution face ROI
+
+The next real-video export from commit
+`0981e333c0fbea4fee27a6d23f0c00583fe03938` showed that evidence-first dormancy
+ordering helped but did not make FACE_ONLY usable. At 1920x1080/60 fps over 751
+frames, dormant suppression fell from **1,598 to 1,296 track-frames** and the new
+`face_dormant_pixel_motion_bridge_track_frames` metric recorded **265** rescued
+track-frames. However pixel-motion rejection rose from **93 to 519** once the
+matcher was allowed to attempt the difficult dormant frames.
+
+The failure is strongly track/scale dependent. Dormant suppression for IDs
+1/2/3/5/6 was **415 / 313 / 554 / 13 / 1**, or roughly **55% / 42% / 74% / 2% /
+0%** of the video. Pixel accepted/rejected counts were **118/101, 165/155,
+51/85, 282/154, 449/24**. The near-complete coverage of the larger/closer IDs 5
+and 6 alongside repeated failure of IDs 1-3 shows that the 640x640 full-frame
+buffer is the wrong image scale for distant faces. Their source-space stickers are
+only tens of pixels wide; after whole-frame 1920->640 reduction, the actual facial
+appearance template is often only a low-teens-pixel signal.
+
+The 150 ms value is also clarified here. At 60 fps one frame interval is about
+16.67 ms, so 150 ms is approximately **nine frame intervals** (about ten displayed
+frame positions if the anchor frame itself is counted). It is an elapsed-PTS
+evidence-gap limit, not a nine-frame sticker hold. A failed current-pixel match can
+still leave a provisionally dormant frame suppressed immediately. Extending that
+gap would only keep an old template eligible for future retries longer and can
+increase wrong reacquisition/drift risk; it does not make failed intermediate
+frames private.
+
+Production inter-frame face localization is therefore moved off the YOLO 640
+buffer and onto the existing **256x256 face ROI rendered directly from source
+resolution**:
+
+- each detector-seeded face tracklet keeps a fixed appearance template in local
+  ROI coordinates; pixel matches never update that template;
+- every output frame with a usable tracklet renders one source-resolution local
+  ROI and performs the pixel match there;
+- if MediaPipe is due on the same frame it reuses that exact ROI readback, so the
+  tracker does not add a second local crop/readback;
+- a successful current-pixel match may rescue a provisional DORMANT frame, but it
+  never commits or modifies TrackManager identity;
+- a real detector hit supersedes the pixel center and is the only event that
+  refreshes appearance;
+- the current-pixel evidence-gap limit remains **150 ms**;
+- a separate **800 ms hard age from the last real detector seed** prevents a fixed
+  template from renewing indefinitely through a chain of merely plausible pixel
+  matches;
+- per-frame source-space motion is capped at `max(12 px, 0.80 face diameter)`;
+  when the TrackManager person is currently observed, an additional broad
+  detector-seed/body-translation residual gate limits accumulated drift;
+- the final correlation and unique-peak gates remain mandatory after refinement.
+
+During pure-unit development this ROI path exposed an additional small-face bug in
+the coarse-to-fine search. The four-pixel coarse grid was incorrectly required to
+pass the final correlation threshold before one-pixel refinement. High-frequency
+small-face texture can score only about 0.48 one pixel away while the true refined
+peak is near 1.0, so the premature test rejected exactly the distant faces this
+path targets. The coarse pass now only locates a candidate basin; the unchanged
+final confidence and uniqueness thresholds run after one-pixel refinement.
+
+Diagnostics now self-identify this backend with
+`face_pixel_motion_backend=SOURCE_ROI_256`, plus
+`face_pixel_motion_evidence_gap_us=150000` and
+`face_pixel_motion_detector_seed_max_age_us=800000`. The next real-video
+acceptance must evaluate both sides: IDs 1-3 need a material drop in suppression
+and rejection, while center-step/reacquisition behavior must not regress into
+cross-person drift.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

@@ -20,6 +20,7 @@ import com.danceanon.native.media.Mp4Muxer
 import com.danceanon.native.media.VideoDecoder
 import com.danceanon.native.media.VideoEncoder
 import com.danceanon.native.media.VideoProbe
+import com.danceanon.native.privacy.FacePixelMotionTracker
 import com.danceanon.native.render.EglCore
 import com.danceanon.native.render.GlRenderer
 import com.danceanon.native.storage.CacheManager
@@ -32,7 +33,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.nio.ByteBuffer
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.max
@@ -526,7 +526,6 @@ class ExportPipeline(
                     var freshSelectedCoveredTrackIds = emptySet<Int>()
                     var suppressedSelectedPrivacyTrackIds = emptySet<Int>()
                     var preferFreshPrivacyClassPrimary = false
-                    var yoloRgbaBottomUp: ByteBuffer? = null
 
                         // 2. Perform Inference / Temporal Mask Tracking
                         val trackedList: List<com.danceanon.native.tracking.TrackedPerson> = if (isSam2Mode && sam2Fbo != null && sam2Renderer != null && sam2Tracker != null) {
@@ -698,7 +697,6 @@ class ExportPipeline(
                                 val rgbaBuffer = profiler.recordStage("readback640") {
                                     inferenceFbo.readRgbaPixels()
                                 }
-                                yoloRgbaBottomUp = rgbaBuffer
                                 val seg = profiler.recordStage("yoloCpuInference") {
                                     segmenter.segmentGlReadbackRgbaSync(rgbaBuffer, mapper, ptsUs, colOrder = RgbaColOrder.LEFT_TO_RIGHT)
                                 }
@@ -845,7 +843,6 @@ class ExportPipeline(
                                     faceOnlyTrackIds = faceOnlyPersonIds,
                                     fullBodyTrackIds = selectedIds,
                                     protectedMotionEvidence = protectedMotionEvidence,
-                                    yoloRgbaBottomUp = yoloRgbaBottomUp,
                                     ptsUs = ptsUs
                                 )
                             }
@@ -1350,6 +1347,9 @@ class ExportPipeline(
                             "face_dormant_pixel_motion_bridge_track_frames" to faceDormantPixelMotionBridgeTrackFrameCount,
                             "face_pixel_motion_track_frames" to facePixelMotionTrackFrameCount,
                             "face_pixel_motion_rejected_track_frames" to facePixelMotionRejectedTrackFrameCount,
+                            "face_pixel_motion_backend" to "SOURCE_ROI_256",
+                            "face_pixel_motion_evidence_gap_us" to FacePixelMotionTracker.ROI_MAX_EVIDENCE_GAP_US,
+                            "face_pixel_motion_detector_seed_max_age_us" to FacePixelMotionTracker.ROI_MAX_DETECTOR_SEED_AGE_US,
                             "face_detector_calls_by_track_id" to faceDetectorCallsByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_detector_rejected_calls_by_track_id" to faceDetectorRejectedCallsByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_detected_frames_by_track_id" to faceDetectedFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
