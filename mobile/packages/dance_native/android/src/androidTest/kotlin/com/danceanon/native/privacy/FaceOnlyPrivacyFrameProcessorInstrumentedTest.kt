@@ -57,6 +57,128 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
     }
 
     @Test
+    fun dormantProbeRejectsLargeAmbiguousBodyTranslationBeforeFaceDetection() {
+        val locator = CountingLocator(
+            listOf(FaceObservation(FloatRect(104f, 96f, 152f, 144f), 0.9f))
+        )
+        withProcessor(locator) { processor, texture, mapper ->
+            val observed = person(53, FloatRect(220f, 40f, 420f, 350f))
+            processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(observed),
+                faceOnlyTrackIds = setOf(53),
+                ptsUs = 0L
+            )
+            assertEquals(1, locator.calls)
+
+            val lost = observed.copy(
+                state = TrackState.LOST,
+                observedThisFrame = false,
+                framesSinceLastObservation = 60,
+                mask = null
+            )
+            processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(lost),
+                faceOnlyTrackIds = setOf(53),
+                ptsUs = 900_000L
+            )
+
+            val farBbox = FloatRect(380f, 40f, 580f, 350f)
+            val farMask = sourceRectMask(mapper, farBbox)
+            val rejected = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(lost),
+                faceOnlyTrackIds = setOf(53),
+                protectedMotionEvidence = listOf(
+                    ProtectedTrackMotionEvidence(
+                        trackId = 53,
+                        detectionIndex = 0,
+                        detection = PersonDetection(
+                            bbox = farBbox,
+                            confidence = 0.90f,
+                            mask = farMask
+                        ),
+                        assignedScore = 0.30f,
+                        bboxIou = 0.30f,
+                        maskIou = 0.10f,
+                        timestampUs = 916_666L
+                    )
+                ),
+                ptsUs = 916_666L
+            )
+
+            assertEquals(setOf(53), rejected.dormantProbeMotionRejectedTrackIds)
+            assertTrue(rejected.dormantReactivationProbeTrackIds.isEmpty())
+            assertTrue(rejected.dormantReactivatedTrackIds.isEmpty())
+            assertEquals(setOf(53), rejected.dormantSuppressedTrackIds)
+            assertTrue(rejected.stickerPlacements.isEmpty())
+            assertEquals(1, locator.calls, "rejected long-distance motion must not call face detector")
+        }
+    }
+
+    @Test
+    fun localRefreshPersonBboxShapeChangeCannotRatchetTrustedFaceSize() {
+        val locator = SequencedLocator(
+            listOf(
+                listOf(FaceObservation(FloatRect(104f, 96f, 152f, 144f), 0.9f)),
+                listOf(FaceObservation(FloatRect(72f, 72f, 200f, 200f), 0.9f)),
+                listOf(FaceObservation(FloatRect(72f, 72f, 200f, 200f), 0.9f))
+            )
+        )
+        withProcessor(locator) { processor, texture, _ ->
+            val original = person(32, FloatRect(220f, 40f, 420f, 350f))
+            val first = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(original),
+                faceOnlyTrackIds = setOf(32),
+                ptsUs = 0L
+            )
+            val firstWidth = first.stickerPlacements.single().sourceRect.width
+
+            val widened = original.copy(
+                bbox = FloatRect(140f, 40f, 500f, 350f),
+                footY = 350f
+            )
+            val second = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(widened),
+                faceOnlyTrackIds = setOf(32),
+                ptsUs = 33_333L
+            )
+            val secondWidth = second.stickerPlacements.single().sourceRect.width
+            assertTrue(
+                kotlin.math.abs(secondWidth - firstWidth) <= 0.5f,
+                "person bbox shape must not scale local trusted face: first=$firstWidth second=$secondWidth"
+            )
+
+            val third = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(original),
+                faceOnlyTrackIds = setOf(32),
+                ptsUs = 66_666L
+            )
+            val thirdWidth = third.stickerPlacements.single().sourceRect.width
+            assertTrue(
+                kotlin.math.abs(thirdWidth - firstWidth) <= 0.5f,
+                "repeated bbox shape changes must not ratchet cached face size: first=$firstWidth third=$thirdWidth"
+            )
+        }
+    }
+
+    @Test
     fun detectorIsThrottledAt60FpsAndTrustedFaceMovesWithCurrentPersonBox() {
         val locator = CountingLocator(
             listOf(FaceObservation(FloatRect(104f, 96f, 152f, 144f), 0.9f))

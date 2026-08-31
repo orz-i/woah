@@ -1377,6 +1377,73 @@ also records reactivation-frame sticker max width/height per track, making the n
 real-video bundle able to prove whether any remaining size peak is created on the
 reactivation frame or later in the ordinary local-refresh path.
 
+### Nineteenth real-video correction: stop local size ratcheting and long-distance dormant probes
+
+The complete `54380accb902eedbd55ae193a4900e66f6204573` export confirms that
+detector-confirmed dormant reactivation materially improves the previous severe
+size regression, but does not fully close it. Maximum sticker widths for IDs
+1/2/3/5/6 fall from approximately **156.5 / 139.2 / 187.2 / 256.4 / 213.2 px**
+to **104.5 / 108.6 / 162.5 / 199.3 / 107.9 px**. ID6 is essentially restored
+and ID1/ID2 improve strongly, while ID3 and especially ID5 remain too large.
+
+The new reactivation-only size telemetry isolates the remaining source. Dormant
+reactivation frames themselves peak at about **70.1 / 88.0 / 155.4 / 171.8 px**
+for IDs 1/2/3/5. Because the reactivation path now copies the hidden trusted
+source-space radius exactly, those large ID3/ID5 values prove that the hidden
+trusted radius was already inflated *before* dormancy. The overall ID5 maximum of
+199.3 px is only about 16% above its 171.8 px hidden/reacquired size, matching the
+bounded body-compensation expansion rather than a new reactivation-scale bug.
+
+Reliable TrackManager assignment geometry explains how this can happen without a
+real camera zoom. In the same export, accepted person bbox widths vary by roughly
+**2.0x for ID3** and **3.2x for ID5** while their bbox heights vary only about
+1.3x and 1.8x. Occlusion and segmentation-shape changes therefore dominate person
+bbox width. The local face-refresh path was still calling
+`cached.project(currentPersonBbox)` and writing the resulting bounded per-frame
+person scale back into the trusted face cache. A ±12% per-refresh bound does not
+prevent cumulative ratcheting when many local refreshes repeatedly see one-sided
+bbox shape changes. The temporal stabilizer could also render an expanded
+body-compensated size and the old cache write then stored that stabilized radius
+as a new DETECTED trusted size.
+
+Local refresh is therefore tightened without changing detector identity semantics:
+
+- once a local face anchor exists, detector refresh updates **center only** and
+  keeps the cached source-space radius exactly; current person bbox dimensions no
+  longer redefine trusted face size;
+- a DETECTED cache write keeps the **post-position-gate center** but stores the
+  detector/local trusted radius from *before* temporal size smoothing. A temporary
+  predicted/body-compensated render expansion can no longer become the next
+  trusted detected size;
+- exact YOLO reacquisition still discards a dormant anchor and performs a new
+  broad current-person acquisition, which is the explicit path allowed to reset
+  absolute face size.
+
+Center continuity also remains incomplete in the `54380acc` bundle. Maximum
+consecutive sticker-center steps for IDs 1/2/3/5/6 are approximately
+**76.1 / 57.1 / 120.0 / 98.9 / 42.5 px**. Dormant face detection is especially
+suspicious for ID3: all **7/7** dormant probes accepted a face, yet ID3 retains the
+largest 120 px consecutive jump. Current ambiguous body geometry can therefore
+move the hidden anchor too far before the local face detector is queried; a nearby
+wrong face may then legitimately satisfy the ordinary local selector around that
+already-wrong anchor.
+
+Dormant probes now add two stricter safety boundaries:
+
+- if fresh ambiguous body motion would translate the hidden face anchor by more
+  than **half of its trusted face diameter** (with a small 24 px floor), the probe
+  is rejected before face inference. Large-distance recovery must wait for exact
+  YOLO identity instead of using motion-only evidence;
+- an accepted dormant probe uses a dedicated face-anchor distance ratio of
+  **0.10** instead of the ordinary local selector's 0.22. Normal active local
+  refresh keeps its existing ownership rule.
+
+Diagnostics add `face_dormant_probe_motion_rejected_track_frames` and the
+per-track variant so the next real-video export can quantify how many ambiguous
+long-distance probes were prevented. Mixed FULL_BODY stale-mask suppression is
+unchanged and remains validated in this export at `pts_us=150100` after three real
+misses for selected ID4.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

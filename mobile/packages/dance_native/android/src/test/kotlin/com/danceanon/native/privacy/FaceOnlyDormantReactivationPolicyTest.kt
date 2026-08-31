@@ -63,4 +63,24 @@ class FaceOnlyDormantReactivationPolicyTest {
         assertEquals(oversizedDetection.centerX, preserved.centerX)
         assertEquals(oversizedDetection.centerY, preserved.centerY)
     }
+
+    @Test
+    fun `dormant probe rejects body translation larger than half trusted face diameter`() {
+        assertTrue(
+            FaceOnlyDormantReactivationPolicy.isProbeTranslationSafe(
+                dx = 30f,
+                dy = 0f,
+                trustedRadiusX = 40f,
+                trustedRadiusY = 40f
+            )
+        )
+        assertFalse(
+            FaceOnlyDormantReactivationPolicy.isProbeTranslationSafe(
+                dx = 45f,
+                dy = 0f,
+                trustedRadiusX = 40f,
+                trustedRadiusY = 40f
+            )
+        )
+    }
 }

@@ -40,6 +40,7 @@ data class FaceOnlyPrivacyFrameResult(
     val freshBodyMotionTrackIds: Set<Int>,
     val recentBodyMotionBridgeTrackIds: Set<Int>,
     val dormantReactivationProbeTrackIds: Set<Int>,
+    val dormantProbeMotionRejectedTrackIds: Set<Int>,
     val dormantReactivatedTrackIds: Set<Int>,
     val dormantExactReacquiredTrackIds: Set<Int>,
     val dormantSuppressedTrackIds: Set<Int>,
@@ -285,20 +286,20 @@ class FaceOnlyPrivacyFrameProcessor(
 
     private fun preserveTrustedSizeForLocalDetection(
         detected: FacePrivacyEllipse,
-        cached: CachedFaceGeometry,
-        personBbox: FloatRect
+        cached: CachedFaceGeometry
     ): FacePrivacyEllipse {
         if (detected.source != FacePrivacyRegionSource.DETECTED_FACE) return detected
-        val projectedReference = cached.project(personBbox, ageUs = 0L) ?: return detected
         // Once identity-local face tracking is established, the small ROI exists
         // to refresh *position*. Letting the detector's local-box extent redefine
         // ROI scale creates a feedback loop (ROI -> larger local face box -> larger
-        // ROI) and was visible as ~1.40x sticker-height pumping on device. Preserve
-        // the previously trusted source-space size, adjusted only by the bounded
-        // person-scale projection, while accepting the detector's new center.
+        // ROI) and was visible as sticker-height pumping on device. Real-video
+        // telemetry also shows person bbox width can change 2-3x from segmentation
+        // shape/occlusion without equivalent face scale. Do not feed that bbox
+        // shape change into the trusted face radius; preserve exact source-space
+        // size and accept only the detector's current center.
         return detected.copy(
-            radiusX = projectedReference.radiusX,
-            radiusY = projectedReference.radiusY
+            radiusX = cached.radiusX.coerceAtLeast(1f),
+            radiusY = cached.radiusY.coerceAtLeast(1f)
         )
     }
 
@@ -349,6 +350,7 @@ class FaceOnlyPrivacyFrameProcessor(
                 freshBodyMotionTrackIds = emptySet(),
                 recentBodyMotionBridgeTrackIds = emptySet(),
                 dormantReactivationProbeTrackIds = emptySet(),
+                dormantProbeMotionRejectedTrackIds = emptySet(),
                 dormantReactivatedTrackIds = emptySet(),
                 dormantExactReacquiredTrackIds = emptySet(),
                 dormantSuppressedTrackIds = emptySet(),
@@ -474,7 +476,7 @@ class FaceOnlyPrivacyFrameProcessor(
             .filterValues { it == FaceOnlyRenderMode.BODY_MASK_COMPENSATED }
             .keys
             .toCollection(linkedSetOf())
-        val dormantReactivationProbeTrackIds = activeFaceOnlyTrackIds
+        val dormantReactivationProbeCandidates = activeFaceOnlyTrackIds
             .filterTo(linkedSetOf()) { trackId ->
                 FaceOnlyDormantReactivationPolicy.shouldProbe(
                     wasDormant = dormantBeforeFrame.contains(trackId),
@@ -483,6 +485,23 @@ class FaceOnlyPrivacyFrameProcessor(
                     hasTrustedFace = cachedFaceByTrackId.containsKey(trackId)
                 )
             }
+        val dormantProbeMotionRejectedTrackIds = dormantReactivationProbeCandidates
+            .filterTo(linkedSetOf()) { trackId ->
+                val cached = cachedFaceByTrackId[trackId] ?: return@filterTo true
+                val person = geometryPersonByTrackId[trackId] ?: return@filterTo true
+                val translation = PersonBboxMotionEstimator.estimate(
+                    previous = cached.trustedPersonBbox,
+                    current = person.bbox
+                )
+                !FaceOnlyDormantReactivationPolicy.isProbeTranslationSafe(
+                    dx = translation.dx,
+                    dy = translation.dy,
+                    trustedRadiusX = cached.radiusX,
+                    trustedRadiusY = cached.radiusY
+                )
+            }
+        val dormantReactivationProbeTrackIds = dormantReactivationProbeCandidates
+            .filterTo(linkedSetOf()) { !dormantProbeMotionRejectedTrackIds.contains(it) }
         val processingFaceOnlyTrackIds = linkedSetOf<Int>().apply {
             addAll(baseRenderableFaceOnlyTrackIds)
             addAll(dormantReactivationProbeTrackIds)
@@ -630,13 +649,24 @@ class FaceOnlyPrivacyFrameProcessor(
                     if (locatorResult.observations.isEmpty()) {
                         detectorZeroObservationCallCount++
                     }
-                    val selectedFace = FaceRoiCandidateSelector.select(
-                        faces = locatorResult.observations,
-                        roiWidth = FACE_ROI_SIZE,
-                        roiHeight = FACE_ROI_SIZE,
-                        anchorX = plan.anchorX,
-                        anchorY = plan.anchorY
-                    )
+                    val selectedFace = if (isDormantProbe) {
+                        FaceRoiCandidateSelector.select(
+                            faces = locatorResult.observations,
+                            roiWidth = FACE_ROI_SIZE,
+                            roiHeight = FACE_ROI_SIZE,
+                            anchorX = plan.anchorX,
+                            anchorY = plan.anchorY,
+                            maxAnchorDistanceRatio = DORMANT_REACTIVATION_MAX_ANCHOR_DISTANCE_RATIO
+                        )
+                    } else {
+                        FaceRoiCandidateSelector.select(
+                            faces = locatorResult.observations,
+                            roiWidth = FACE_ROI_SIZE,
+                            roiHeight = FACE_ROI_SIZE,
+                            anchorX = plan.anchorX,
+                            anchorY = plan.anchorY
+                        )
+                    }
                     if (locatorResult.observations.isNotEmpty() && selectedFace == null) {
                         detectorRejectedCallCount++
                         detectorRejectedTrackIds += trackId
@@ -663,8 +693,7 @@ class FaceOnlyPrivacyFrameProcessor(
                         ) {
                             preserveTrustedSizeForLocalDetection(
                                 detected = detectedRegion,
-                                cached = cachedBeforeAttempt,
-                                personBbox = person.bbox
+                                cached = cachedBeforeAttempt
                             )
                         } else {
                             detectedRegion
@@ -714,6 +743,8 @@ class FaceOnlyPrivacyFrameProcessor(
                 }?.region
             }
             if (region != null) {
+                val trustedDetectedRadiusX = if (region.source == FacePrivacyRegionSource.DETECTED_FACE) region.radiusX else null
+                val trustedDetectedRadiusY = if (region.source == FacePrivacyRegionSource.DETECTED_FACE) region.radiusY else null
                 val rawCenterX = region.centerX
                 val rawCenterY = region.centerY
                 region = temporalStabilizer.stabilize(
@@ -741,12 +772,15 @@ class FaceOnlyPrivacyFrameProcessor(
                     // bad location and defeat the visual clamp on the following
                     // frame. The stabilized detected center becomes the trusted
                     // ROI seed instead.
-                    CachedFaceGeometry.from(
-                        region = region,
-                        personBbox = person.bbox,
-                        ptsUs = ptsUs
-                    )?.let { cached ->
-                        cachedFaceByTrackId[trackId] = cached
+                    if (person.bbox.width > 1f && person.bbox.height > 1f) {
+                        cachedFaceByTrackId[trackId] = CachedFaceGeometry(
+                            centerX = region.centerX,
+                            centerY = region.centerY,
+                            radiusX = trustedDetectedRadiusX ?: region.radiusX,
+                            radiusY = trustedDetectedRadiusY ?: region.radiusY,
+                            trustedPersonBbox = person.bbox,
+                            lastTrustedPtsUs = ptsUs
+                        )
                     }
                 }
                 val maskStartNs = System.nanoTime()
@@ -856,6 +890,7 @@ class FaceOnlyPrivacyFrameProcessor(
             ),
             recentBodyMotionBridgeTrackIds = recentBodyMotionBridgeTrackIds.intersect(bodyCompensatedTrackIds),
             dormantReactivationProbeTrackIds = dormantReactivationProbeTrackIds,
+            dormantProbeMotionRejectedTrackIds = dormantProbeMotionRejectedTrackIds,
             dormantReactivatedTrackIds = dormantReactivatedTrackIds,
             dormantExactReacquiredTrackIds = dormantExactReacquiredTrackIds,
             dormantSuppressedTrackIds = dormantSuppressedTrackIds,
@@ -892,6 +927,7 @@ class FaceOnlyPrivacyFrameProcessor(
         private const val MAX_PREDICTED_AGE_EXPANSION = 0.10f
         private const val LOCAL_FACE_ROI_MIN_SIDE_PX = 72f
         private const val LOCAL_FACE_ROI_DIAMETER_FACTOR = 2.8f
+        private const val DORMANT_REACTIVATION_MAX_ANCHOR_DISTANCE_RATIO = 0.10f
         private const val BODY_COMPENSATION_MAX_SIZE_EXPANSION = 0.18f
         private const val POSITION_CLAMP_DIAGNOSTIC_EPSILON_PX = 0.25f
         private const val SLOW_STAGE_LOG_THRESHOLD_MS = 20.0

@@ -1,5 +1,8 @@
 package com.danceanon.native.privacy
 
+import kotlin.math.max
+import kotlin.math.sqrt
+
 /**
  * Safety boundary for reactivating a dormant FACE_ONLY identity.
  *
@@ -31,5 +34,19 @@ internal object FaceOnlyDormantReactivationPolicy {
             radiusX = trustedRadiusX.coerceAtLeast(1f),
             radiusY = trustedRadiusY.coerceAtLeast(1f)
         )
+    }
+
+    fun isProbeTranslationSafe(
+        dx: Float,
+        dy: Float,
+        trustedRadiusX: Float,
+        trustedRadiusY: Float,
+        minTranslationPx: Float = 24f,
+        maxFaceDiameterTranslation: Float = 0.50f
+    ): Boolean {
+        if (!dx.isFinite() || !dy.isFinite()) return false
+        val trustedDiameter = max(trustedRadiusX, trustedRadiusY).coerceAtLeast(1f) * 2f
+        val maxTranslation = max(minTranslationPx, trustedDiameter * maxFaceDiameterTranslation)
+        return sqrt(dx * dx + dy * dy) <= maxTranslation
     }
 }
