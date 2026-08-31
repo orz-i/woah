@@ -1059,6 +1059,38 @@ Exports now additionally report
 placements from consecutive output frame numbers. Future visual acceptance should
 prefer that metric when deciding whether a visible one-frame drift remains.
 
+### Tenth real-video correction: person-box top is not a stable face-motion anchor
+
+The next complete 751-frame export is from
+`74b6a3e949136e983d226f0bb353070b315070b2`. The post-gate cache correction is
+strongly validated by the real clip:
+
+- detector rejections fell from **65 to 35**;
+- DETECTED track-frames rose from **853 to 928**;
+- FALLBACK track-frames fell from **1,894 to 1,814**;
+- position-clamped track-frames fell from **351 to 65** instead of repeatedly
+  fighting the same poisoned ROI state;
+- maximum *consecutive* sticker-center steps for IDs 1/2/3/5/6 were about
+  **78 / 68 / 74 / 67 / 92 px**, substantially below the earlier
+  **197 / 100 / 90 / 106 / 112 px** maxima.
+
+The remaining ID-6 peak exposes a separate geometry assumption. Consecutive
+accepted YOLO observations at 60 fps changed that same person's bbox top from
+about **380.5 px to 479.1 px** in one frame (roughly **98.6 px**), while the bbox
+bottom changed only about **2.7 px** and the Kalman prediction stayed near the
+same location. This is detector-box shape/upper-body coverage jitter, not a
+physical 99 px vertical translation of the person. IDs 2/3/5 show the same
+pattern at smaller magnitude: their largest top-edge jumps are much larger than
+their corresponding bottom-edge motion.
+
+Both short-term face projection and the temporal position gate therefore stop
+using person-bbox `top` as the vertical whole-person motion anchor. Horizontal
+translation still follows bbox center X immediately, while vertical body
+translation follows the bbox **bottom/foot edge**. Actual head motion remains
+owned by accepted face evidence and the bounded residual path. This prevents a
+YOLO upper-silhouette height change from moving the face detector ROI or sticker
+as though the entire dancer jumped vertically.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

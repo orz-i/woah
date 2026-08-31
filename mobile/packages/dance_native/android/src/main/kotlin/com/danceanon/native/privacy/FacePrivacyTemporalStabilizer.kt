@@ -119,7 +119,13 @@ class FacePrivacyTemporalStabilizer {
             // residual and preserve the direction of the newest evidence.
             val rawDtSeconds = (ptsUs - previous.lastPtsUs).coerceAtLeast(0L) / 1_000_000.0
             val rawPersonDx = personBbox.centerX - previous.personBbox.centerX
-            val rawPersonDy = personBbox.top - previous.personBbox.top
+            // Whole-person vertical translation follows the foot/lower edge,
+            // not the person-box top. YOLO segmentation boxes can abruptly lose
+            // or regain upper-body coverage while the person is still correctly
+            // identified, producing large top-edge jumps that are not physical
+            // body motion. The bottom edge is far less sensitive to that shape
+            // change and leaves real head-relative motion to the face evidence.
+            val rawPersonDy = personBbox.bottom - previous.personBbox.bottom
             val rawPersonStep = sqrt(rawPersonDx * rawPersonDx + rawPersonDy * rawPersonDy)
             val referenceRadius = max(
                 max(previous.output.radiusX, previous.output.radiusY),

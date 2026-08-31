@@ -120,6 +120,32 @@ class FacePrivacyTemporalStabilizerTest {
     }
 
     @Test
+    fun `observed bbox top jump with stable feet is not trusted as person translation`() {
+        val stabilizer = FacePrivacyTemporalStabilizer()
+        val first = FacePrivacyEllipse(200f, 170f, 45f, 55f, FacePrivacyRegionSource.DETECTED_FACE)
+        stabilizer.stabilize(14, first, person, 0L)
+
+        // Same lower edge / feet, but the detector suddenly loses 100 px of the
+        // upper silhouette. A top-edge-based body anchor would treat this as a
+        // +100 px person translation and bypass the residual face gate.
+        val topJitteredPerson = FloatRect(100f, 200f, 300f, 700f)
+        val topProjectedFace = FacePrivacyEllipse(200f, 270f, 45f, 55f, FacePrivacyRegionSource.PREDICTED_FACE)
+        val output = stabilizer.stabilize(
+            trackId = 14,
+            rawRegion = topProjectedFace,
+            personBbox = topJitteredPerson,
+            ptsUs = 16_666L,
+            personObservedThisFrame = true
+        )
+
+        assertTrue(output.centerY > first.centerY)
+        assertTrue(
+            output.centerY < 230f,
+            "bbox top-edge jitter must be treated as residual face motion, got ${output.centerY}"
+        )
+    }
+
+    @Test
     fun `unobserved tracker jump cannot bypass face position gate as whole person motion`() {
         val stabilizer = FacePrivacyTemporalStabilizer()
         val first = FacePrivacyEllipse(180f, 170f, 45f, 55f, FacePrivacyRegionSource.DETECTED_FACE)

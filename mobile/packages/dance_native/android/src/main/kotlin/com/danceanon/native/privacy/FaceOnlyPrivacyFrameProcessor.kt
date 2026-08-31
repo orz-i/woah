@@ -82,9 +82,14 @@ class FaceOnlyPrivacyFrameProcessor(
                 )
 
             val centerDx = personBbox.centerX - trustedPersonBbox.centerX
-            // Vertical head motion is more stable against pose/bbox-height
-            // changes when anchored to the top edge instead of bbox center.
-            val centerDy = personBbox.top - trustedPersonBbox.top
+            // Use the lower-body/foot edge as the vertical whole-person motion
+            // anchor. Real-video YOLO boxes can change their top edge by nearly
+            // 100 px in one 60 fps frame when upper-body coverage changes while
+            // the feet remain stable. Treating that top-edge change as body
+            // translation moves the face ROI with a detector-box shape change.
+            // Bottom-edge motion is substantially more stable for this purpose;
+            // articulated head motion is supplied by the face detector itself.
+            val centerDy = personBbox.bottom - trustedPersonBbox.bottom
             return FacePrivacyEllipse(
                 centerX = centerX + centerDx,
                 centerY = centerY + centerDy,
