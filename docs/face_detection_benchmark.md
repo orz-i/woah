@@ -1815,6 +1815,45 @@ This b864 run also confirmed the performance improvements: `facePixelMotionCpu`
 averaged about **10.8 ms**, `facePrivacyResolve` **15.1 ms**, `faceRoiReadback`
 **2.94 ms**, and total `faceOnlyPrivacy` **68.6 ms** on the same 751-frame fixture.
 
+### Twenty-seventh correction: widened dormant reacquisition works; expired pixel evidence needs fresh detector-only recovery
+
+The first real-video export from
+`2d344f3ff74b312f80a8ed2454cdde7dacdab45c` validates the dormant-only widened
+reacquisition direction. On the same 751-frame 1920x1080/60 fixture, final dormant
+suppression fell from **45 to 14 track-frames**. IDs 1/2/5/6 reached zero final
+suppression; the remaining 14 frames are all ID3. Expanded occlusion detector work
+also fell from **212 to 30 track-frames**, confirming that limiting the extra
+detector to genuinely DORMANT privacy failures removed the previous broad cadence
+mistake.
+
+The remaining ID3 failure mechanism changed materially. Final suppression is now
+only **1 LOW_CORRELATION + 2 AMBIGUOUS_PEAK + 11 EVIDENCE_GAP_EXPIRED**. In other
+words, the 4.2-diameter detector ROI resolves most of the hand/foreground appearance
+failures, but after an occlusion lasts long enough for the independent 150 ms pixel
+evidence lease to expire, that DORMANT identity stops entering the normal ROI
+processing set and therefore loses the opportunity to obtain fresh detector
+evidence.
+
+The 150 ms lease remains unchanged. Instead, a DORMANT track whose pixel state is
+`EVIDENCE_GAP_EXPIRED` may enter a detector-only reacquisition path while its last
+real detector anchor is still within the existing **800 ms hard detector-seed age**.
+That path starts directly with the same widened 4.2-diameter ROI. It does not run
+NCC, does not render a held face, does not renew stale pixel evidence, and does not
+commit TrackManager identity. Only a new accepted detector observation makes the
+face renderable and re-seeds the local pixel tracker. If no fresh face is found,
+the frame remains fail-closed.
+
+Performance from this real-device run must be interpreted separately from the
+quality result. Despite expanded reacquisition dropping 212 -> 30 frames,
+`faceOnlyPrivacy` remained about **134.3 ms**, `facePixelMotionCpu` **33.6 ms**,
+`facePrivacyResolve` **45.8 ms**, `faceRoiReadback` **11.6 ms**, and YOLO CPU
+inference about **92.9 ms**. The previous run with 212 reacquisition frames showed
+nearly the same slow-state timings, while an earlier run on the same code family
+was materially faster across multiple CPU-heavy stages. The current evidence
+therefore does not support blaming the remaining slow state on the now-small
+reacquisition count; thermal/CPU-frequency or other device-wide runtime state
+needs separate telemetry before another performance-specific algorithm change.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

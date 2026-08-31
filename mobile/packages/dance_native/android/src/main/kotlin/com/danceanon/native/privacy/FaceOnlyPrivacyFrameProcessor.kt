@@ -170,6 +170,15 @@ class FaceOnlyPrivacyFrameProcessor(
     private fun planOcclusionReacquireRoi(trackId: Int, ptsUs: Long): FaceHeadRoiPlan? {
         val projected = pixelMotionTracker.currentRoiRegion(trackId, ptsUs)
             ?: occlusionHoldByTrackId[trackId]?.region
+            ?: cachedFaceByTrackId[trackId]?.let { cached ->
+                FacePrivacyEllipse(
+                    centerX = cached.centerX,
+                    centerY = cached.centerY,
+                    radiusX = cached.radiusX,
+                    radiusY = cached.radiusY,
+                    source = FacePrivacyRegionSource.PREDICTED_FACE
+                )
+            }
             ?: return null
         return planLocalRoiAround(
             projected = projected,
@@ -535,6 +544,18 @@ class FaceOnlyPrivacyFrameProcessor(
             .filterValues { it == FacePixelMotionTracker.RoiStateStatus.USABLE }
             .keys
             .toCollection(linkedSetOf())
+        val evidenceGapDetectorReacquireTrackIds = activeFaceOnlyTrackIds
+            .filterTo(linkedSetOf()) { trackId ->
+                if (roiPixelStateStatusByTrackId[trackId] != FacePixelMotionTracker.RoiStateStatus.EVIDENCE_GAP_EXPIRED) {
+                    return@filterTo false
+                }
+                if (renderModeByTrackId[trackId] != FaceOnlyRenderMode.DORMANT) {
+                    return@filterTo false
+                }
+                val cached = cachedFaceByTrackId[trackId] ?: return@filterTo false
+                val detectorAnchorAgeUs = ptsUs - cached.lastTrustedPtsUs
+                detectorAnchorAgeUs in 0L..FacePixelMotionTracker.ROI_MAX_DETECTOR_SEED_AGE_US
+            }
         val baseRenderableFaceOnlyTrackIds = renderModeByTrackId
             .filterValues { it != FaceOnlyRenderMode.DORMANT }
             .keys
@@ -577,6 +598,12 @@ class FaceOnlyPrivacyFrameProcessor(
             // Inclusion here only permits a current-pixel probe; it does not
             // make the track renderable until matchRoi succeeds below.
             addAll(roiPixelMotionCandidateTrackIds)
+            // A short occlusion can outlive the 150 ms pixel-evidence lease.
+            // Do not extend that lease or render stale pixels. Keep the DORMANT
+            // identity in processing only while the last real detector anchor is
+            // still within the independent 800 ms hard age so a fresh detector
+            // result can re-seed the local tracker.
+            addAll(evidenceGapDetectorReacquireTrackIds)
         }
 
         // Dormancy stops rendering and temporal extrapolation, but it must not
@@ -609,6 +636,11 @@ class FaceOnlyPrivacyFrameProcessor(
                 // current-pixel face center. The tracker itself has a separate
                 // detector-seed hard age and per-frame anti-drift gates.
                 planLocalRoiAround(roiTrackRegion)
+            } else if (evidenceGapDetectorReacquireTrackIds.contains(trackId)) {
+                // Pixel evidence is already expired, so reacquisition must come
+                // from a fresh detector observation. Start directly with the
+                // wider occlusion ROI instead of retrying the stale NCC tracklet.
+                planOcclusionReacquireRoi(trackId, ptsUs)
             } else if (isDormantProbe && cached != null) {
                 planDormantReactivationLocalRoi(
                     cached = cached,
@@ -767,6 +799,7 @@ class FaceOnlyPrivacyFrameProcessor(
 
             val appearanceOcclusionReject =
                 FaceOcclusionBridgePolicy.isAppearanceOcclusionReject(pixelRejectReason)
+            val evidenceGapDetectorReacquire = evidenceGapDetectorReacquireTrackIds.contains(trackId)
             val normalDetectorDue = dueDetectorTrackIds.contains(trackId)
             val shouldCallDetector = normalDetectorDue
 
@@ -866,7 +899,10 @@ class FaceOnlyPrivacyFrameProcessor(
             val needsExpandedOcclusionReacquire =
                 region == null &&
                     renderMode == FaceOnlyRenderMode.DORMANT &&
-                    appearanceOcclusionReject &&
+                    (
+                        appearanceOcclusionReject ||
+                            (evidenceGapDetectorReacquire && !normalDetectorDue)
+                        ) &&
                     extraOcclusionDetectorCalls < MAX_OCCLUSION_REACQUIRE_EXTRA_CALLS_PER_FRAME
             if (needsExpandedOcclusionReacquire) {
                 val reacquirePlan = planOcclusionReacquireRoi(trackId, ptsUs)
