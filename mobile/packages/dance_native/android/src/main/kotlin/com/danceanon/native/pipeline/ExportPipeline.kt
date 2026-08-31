@@ -339,6 +339,7 @@ class ExportPipeline(
                 var faceBodyMaskGuidedTrackFrameCount = 0L
                 var facePositionClampedTrackFrameCount = 0L
                 var faceBodyCompensatedTrackFrameCount = 0L
+                var faceFreshBodyMotionTrackFrameCount = 0L
                 var faceDormantSuppressedTrackFrameCount = 0L
                 val faceDetectorCallsByTrackId = mutableMapOf<Int, Long>()
                 val faceDetectorRejectedCallsByTrackId = mutableMapOf<Int, Long>()
@@ -348,6 +349,7 @@ class ExportPipeline(
                 val faceBodyMaskGuidedFramesByTrackId = mutableMapOf<Int, Long>()
                 val facePositionClampedFramesByTrackId = mutableMapOf<Int, Long>()
                 val faceBodyCompensatedFramesByTrackId = mutableMapOf<Int, Long>()
+                val faceFreshBodyMotionFramesByTrackId = mutableMapOf<Int, Long>()
                 val faceDormantSuppressedFramesByTrackId = mutableMapOf<Int, Long>()
                 val faceStickerMinWidthByTrackId = mutableMapOf<Int, Float>()
                 val faceStickerMaxWidthByTrackId = mutableMapOf<Int, Float>()
@@ -812,6 +814,7 @@ class ExportPipeline(
                         }
 
                         val faceOnlyFrameResult = faceOnlyPrivacyProcessor?.let { processor ->
+                            val protectedMotionEvidence = trackManager.getFreshProtectedTrackMotionEvidence()
                             profiler.recordStage("faceOnlyPrivacy") {
                                 processor.resolveFrame(
                                     frameTexture = renderTexId,
@@ -820,6 +823,7 @@ class ExportPipeline(
                                     persons = trackedList,
                                     faceOnlyTrackIds = faceOnlyPersonIds,
                                     fullBodyTrackIds = selectedIds,
+                                    protectedMotionEvidence = protectedMotionEvidence,
                                     ptsUs = ptsUs
                                 )
                             }
@@ -835,6 +839,7 @@ class ExportPipeline(
                             faceBodyMaskGuidedTrackFrameCount += faceOnlyFrameResult.bodyMaskGuidedTrackIds.size
                             facePositionClampedTrackFrameCount += faceOnlyFrameResult.positionClampedTrackIds.size
                             faceBodyCompensatedTrackFrameCount += faceOnlyFrameResult.bodyCompensatedTrackIds.size
+                            faceFreshBodyMotionTrackFrameCount += faceOnlyFrameResult.freshBodyMotionTrackIds.size
                             faceDormantSuppressedTrackFrameCount += faceOnlyFrameResult.dormantSuppressedTrackIds.size
                             faceOnlyFrameResult.detectorCalledTrackIds.forEach { trackId ->
                                 faceDetectorCallsByTrackId[trackId] = faceDetectorCallsByTrackId.getOrDefault(trackId, 0L) + 1L
@@ -863,6 +868,10 @@ class ExportPipeline(
                             faceOnlyFrameResult.bodyCompensatedTrackIds.forEach { trackId ->
                                 faceBodyCompensatedFramesByTrackId[trackId] =
                                     faceBodyCompensatedFramesByTrackId.getOrDefault(trackId, 0L) + 1L
+                            }
+                            faceOnlyFrameResult.freshBodyMotionTrackIds.forEach { trackId ->
+                                faceFreshBodyMotionFramesByTrackId[trackId] =
+                                    faceFreshBodyMotionFramesByTrackId.getOrDefault(trackId, 0L) + 1L
                             }
                             faceOnlyFrameResult.dormantSuppressedTrackIds.forEach { trackId ->
                                 faceDormantSuppressedFramesByTrackId[trackId] =
@@ -1249,6 +1258,7 @@ class ExportPipeline(
                             "face_body_mask_guided_track_frames" to faceBodyMaskGuidedTrackFrameCount,
                             "face_position_clamped_track_frames" to facePositionClampedTrackFrameCount,
                             "face_body_compensated_track_frames" to faceBodyCompensatedTrackFrameCount,
+                            "face_fresh_body_motion_track_frames" to faceFreshBodyMotionTrackFrameCount,
                             "face_dormant_suppressed_track_frames" to faceDormantSuppressedTrackFrameCount,
                             "face_detector_calls_by_track_id" to faceDetectorCallsByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_detector_rejected_calls_by_track_id" to faceDetectorRejectedCallsByTrackId.toSortedMap().mapKeys { it.key.toString() },
@@ -1258,6 +1268,7 @@ class ExportPipeline(
                             "face_body_mask_guided_frames_by_track_id" to faceBodyMaskGuidedFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_position_clamped_frames_by_track_id" to facePositionClampedFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_body_compensated_frames_by_track_id" to faceBodyCompensatedFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
+                            "face_fresh_body_motion_frames_by_track_id" to faceFreshBodyMotionFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_dormant_suppressed_frames_by_track_id" to faceDormantSuppressedFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_sticker_min_width_by_track_id" to faceStickerMinWidthByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_sticker_max_width_by_track_id" to faceStickerMaxWidthByTrackId.toSortedMap().mapKeys { it.key.toString() },

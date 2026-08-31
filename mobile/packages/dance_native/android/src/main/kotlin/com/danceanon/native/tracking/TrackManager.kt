@@ -64,6 +64,23 @@ data class FreshPrivacyClassEvidence(
 )
 
 /**
+ * Current-frame YOLO geometry that is strong enough to move a protected
+ * FACE_ONLY render anchor, but intentionally not strong enough to commit track
+ * identity. This is emitted only for reciprocal-best protected candidates where
+ * absolute bbox/mask evidence passes and identity commitment was deferred by an
+ * ambiguity margin. Consumers must treat it as motion-only evidence.
+ */
+data class ProtectedTrackMotionEvidence(
+    val trackId: Int,
+    val detectionIndex: Int,
+    val detection: PersonDetection,
+    val assignedScore: Float,
+    val bboxIou: Float,
+    val maskIou: Float,
+    val timestampUs: Long
+)
+
+/**
  * Internal tracking representation enforcing strict separation between:
  * 1. Canonical observed segmentation (lastObservedMask, lastObservedBbox)
  * 2. Predicted motion state (currentPredictedBbox)
@@ -152,6 +169,7 @@ class TrackManager(
     private val protectedTrackIds = mutableSetOf<Int>()
     private val privacySelectedTrackIds = mutableSetOf<Int>()
     private val currentPrivacyClassEvidence = mutableListOf<FreshPrivacyClassEvidence>()
+    private val currentProtectedTrackMotionEvidence = mutableMapOf<Int, ProtectedTrackMotionEvidence>()
     private val currentPrivacySuppressedSelectedTrackIds = mutableSetOf<Int>()
     private val currentHardPrivacyClassByDetectionIndex = mutableMapOf<Int, PrivacySelectionClass>()
     private var nextTrackId = 0
@@ -303,6 +321,9 @@ class TrackManager(
 
     fun getFreshPrivacyClassEvidence(): List<FreshPrivacyClassEvidence> = currentPrivacyClassEvidence
 
+    fun getFreshProtectedTrackMotionEvidence(): List<ProtectedTrackMotionEvidence> =
+        currentProtectedTrackMotionEvidence.values.toList()
+
     fun getMaxMissedFrames(): Int = config.maxMissedFrames
 
     fun getPrivacySuppressedSelectedTrackIds(): Set<Int> = currentPrivacySuppressedSelectedTrackIds
@@ -344,6 +365,7 @@ class TrackManager(
         tracks.clear()
         occlusionGroups.clear()
         currentPrivacyClassEvidence.clear()
+        currentProtectedTrackMotionEvidence.clear()
         currentPrivacySuppressedSelectedTrackIds.clear()
         currentHardPrivacyClassByDetectionIndex.clear()
         nextTrackId = 0
@@ -521,6 +543,7 @@ class TrackManager(
         }
 
         currentPrivacyClassEvidence.clear()
+        currentProtectedTrackMotionEvidence.clear()
         currentPrivacySuppressedSelectedTrackIds.clear()
         currentHardPrivacyClassByDetectionIndex.clear()
 
@@ -823,6 +846,23 @@ class TrackManager(
                     hasRowSeparation && hasColSeparation && protectedIdentityEvidenceOk
 
                 if (!isReciprocalBest) {
+                    val motionEvidenceEligible =
+                        protectedTrackIds.contains(track.id) &&
+                            !privacySelectedTrackIds.contains(track.id) &&
+                            det.mask != null &&
+                            isScoreValid && isRowTop && isColTop &&
+                            protectedIdentityEvidenceOk
+                    if (motionEvidenceEligible) {
+                        currentProtectedTrackMotionEvidence[track.id] = ProtectedTrackMotionEvidence(
+                            trackId = track.id,
+                            detectionIndex = dIdx,
+                            detection = det,
+                            assignedScore = assignedScore,
+                            bboxIou = candidateBBoxIoU,
+                            maskIou = candidateMaskIoU,
+                            timestampUs = timestampUs
+                        )
+                    }
                     NativeDiagnostics.event(
                         level = "WARN",
                         component = "TrackManager",
@@ -1111,6 +1151,26 @@ class TrackManager(
                     protectedIdentityEvidenceOk
 
                 if (!isCommitValid) {
+                    val motionEvidenceEligible =
+                        protectedTrackIds.contains(track.id) &&
+                            !privacySelectedTrackIds.contains(track.id) &&
+                            det.mask != null &&
+                            assignedScore >= config.minMatchScore &&
+                            assignedScore >= rowBest - epsilon &&
+                            assignedScore >= colBest - epsilon &&
+                            protectedIdentityEvidenceOk &&
+                            hasAmbiguousGeometry
+                    if (motionEvidenceEligible) {
+                        currentProtectedTrackMotionEvidence[track.id] = ProtectedTrackMotionEvidence(
+                            trackId = track.id,
+                            detectionIndex = dIdx,
+                            detection = det,
+                            assignedScore = assignedScore,
+                            bboxIou = candidateBBoxIoU,
+                            maskIou = candidateMaskIoU,
+                            timestampUs = timestampUs
+                        )
+                    }
                     globalAmbiguousTrackIndices.add(tIdx)
                     reservedGlobalDetectionIndices.add(dIdx)
                     val confusableDetectionIndices = mutableSetOf(dIdx)
@@ -1747,6 +1807,7 @@ class TrackManager(
 
     private fun predictInternal(timestampUs: Long, countAsDetectionMiss: Boolean): List<TrackedPerson> {
         currentPrivacyClassEvidence.clear()
+        currentProtectedTrackMotionEvidence.clear()
         currentPrivacySuppressedSelectedTrackIds.clear()
         currentHardPrivacyClassByDetectionIndex.clear()
 
@@ -1894,6 +1955,7 @@ class TrackManager(
         occlusionGroups.clear()
         protectedTrackIds.clear()
         currentPrivacyClassEvidence.clear()
+        currentProtectedTrackMotionEvidence.clear()
         currentPrivacySuppressedSelectedTrackIds.clear()
         currentHardPrivacyClassByDetectionIndex.clear()
         nextTrackId = 0

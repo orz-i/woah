@@ -1188,6 +1188,42 @@ multi-second floating-face failure remains impossible. New diagnostics report
 `face_body_compensated_track_frames` and
 `face_body_compensated_frames_by_track_id` separately from true dormancy.
 
+### Fourteenth real-video correction: use uncommitted fresh YOLO geometry as motion-only evidence
+
+The first real export from `c8b824aeaed97e2f29feafd4cf81f681c31e4d26`
+shows that the bounded body-mask bridge is safe but still too dependent on the
+TrackManager-owned render mask. Compared with the previous hard-dormancy export,
+body compensation rescues **414** track-frames, but **1,637** track-frames remain
+dormant. Per FACE_ONLY ID, body-compensated / dormant frames are roughly
+**55/444, 116/401, 54/594, 129/55, 60/143** for IDs 1/2/3/5/6. The result matches
+the user's report: ID 5 benefits strongly, while IDs 1 and 3 still disappear for
+long stretches.
+
+Those stretches are not empty YOLO frames. The same trace contains hundreds of
+strict-association deferrals for FACE_ONLY identities: `ASSOCIATION_AMBIGUOUS`
+counts for IDs 1/2/3/5/6 are about **65 / 81 / 178 / 72 / 5**, and their
+occlusion groups reserve many current-frame detections rather than committing an
+identity. TrackManager therefore often has fresh segmentation geometry but
+correctly refuses to reset identity state because the second-best margin is too
+small.
+
+TrackManager now exposes a read-only `ProtectedTrackMotionEvidence` only when an
+uncommitted protected FACE_ONLY candidate is still reciprocal-best in both
+directions, passes the protected absolute bbox/mask gate, has a current mask, and
+fails identity commit because ambiguity remains. Export/preview may use that
+current detection's bbox/mask to move an already-trusted face anchor and refresh
+the face ROI, but the evidence never calls Kalman update, never changes
+`observedThisFrame`, never resets LOST/REACQUIRING counters, and never changes
+privacy identity. FULL_BODY-selected tracks are explicitly excluded.
+
+Unlike the stale 800 ms fallback, this path may remain active beyond 800 ms only
+while qualifying current-frame body evidence continues to arrive. A frame that
+lacks both trusted TrackManager body geometry and fresh motion-only evidence falls
+back to the existing dormancy policy. Diagnostics add
+`face_fresh_body_motion_track_frames` and
+`face_fresh_body_motion_frames_by_track_id` so the next real-video bundle can
+separate rescue from stale prediction.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

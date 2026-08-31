@@ -24,13 +24,25 @@ object FaceOnlyDormancyPolicy {
         lastObservedPtsUs: Long?,
         ptsUs: Long,
         hasTrustedFace: Boolean,
-        hasBodyMask: Boolean
+        hasBodyMask: Boolean,
+        hasFreshBodyMotionEvidence: Boolean = false
     ): FaceOnlyRenderMode {
         if (observedThisFrame) return FaceOnlyRenderMode.DIRECT
         val lastObserved = lastObservedPtsUs ?: return FaceOnlyRenderMode.DORMANT
         val ageUs = ptsUs - lastObserved
-        if (ageUs !in 0L..MAX_BODY_COMPENSATION_AGE_US) return FaceOnlyRenderMode.DORMANT
+        if (ageUs < 0L) return FaceOnlyRenderMode.DORMANT
         if (ageUs <= MAX_DIRECT_UNOBSERVED_AGE_US) return FaceOnlyRenderMode.DIRECT
+
+        // A current-frame reciprocal-best YOLO detection can keep supplying body
+        // motion even when strict identity commitment is intentionally deferred.
+        // This is not stale prediction: the segmentation is fresh this frame and
+        // is allowed to move only an already-trusted face anchor. Identity state
+        // remains untouched inside TrackManager.
+        if (hasTrustedFace && hasFreshBodyMotionEvidence) {
+            return FaceOnlyRenderMode.BODY_MASK_COMPENSATED
+        }
+
+        if (ageUs > MAX_BODY_COMPENSATION_AGE_US) return FaceOnlyRenderMode.DORMANT
 
         // Medium-duration dance-motion gaps are common even while the full-body
         // segmentation/track geometry is still useful. Keep the last trusted

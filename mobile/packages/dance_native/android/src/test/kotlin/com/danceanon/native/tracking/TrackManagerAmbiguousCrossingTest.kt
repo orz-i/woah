@@ -36,6 +36,7 @@ class TrackManagerAmbiguousCrossingTest {
 
     @Test
     fun testAmbiguousOverlapDefersCommitWithoutSwapping() {
+        tracker.setIdentityProtectedTrackIds(setOf(0, 1))
         // Frame 1: Two persons side by side
         val det1 = PersonDetection(bbox = FloatRect(190f, 100f, 250f, 300f), confidence = 0.9f, mask = createDummyMask())
         val det2 = PersonDetection(bbox = FloatRect(210f, 100f, 270f, 300f), confidence = 0.9f, mask = createDummyMask())
@@ -52,6 +53,15 @@ class TrackManagerAmbiguousCrossingTest {
         for (t in tracks) {
             assertTrue(t.mask != null, "Mask must not be null during ambiguous overlap")
         }
+        val motionEvidence = tracker.getFreshProtectedTrackMotionEvidence()
+        assertTrue(
+            motionEvidence.isNotEmpty(),
+            "reciprocal-best protected ambiguity should expose motion-only evidence"
+        )
+        assertTrue(
+            motionEvidence.all { it.trackId in setOf(0, 1) && it.detection.mask != null },
+            "motion-only evidence must remain attached to protected FACE_ONLY candidates"
+        )
     }
 
     @Test

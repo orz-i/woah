@@ -13,7 +13,8 @@ class FaceOnlyDormancyPolicyTest {
                 lastObservedPtsUs = null,
                 ptsUs = 1_000_000L,
                 hasTrustedFace = false,
-                hasBodyMask = false
+                hasBodyMask = false,
+                hasFreshBodyMotionEvidence = false
             )
         )
     }
@@ -27,7 +28,8 @@ class FaceOnlyDormancyPolicyTest {
                 lastObservedPtsUs = 1_000_000L,
                 ptsUs = 1_100_000L,
                 hasTrustedFace = true,
-                hasBodyMask = false
+                hasBodyMask = false,
+                hasFreshBodyMotionEvidence = false
             )
         )
     }
@@ -41,7 +43,8 @@ class FaceOnlyDormancyPolicyTest {
                 lastObservedPtsUs = 1_000_000L,
                 ptsUs = 1_500_000L,
                 hasTrustedFace = true,
-                hasBodyMask = true
+                hasBodyMask = true,
+                hasFreshBodyMotionEvidence = false
             )
         )
     }
@@ -55,7 +58,8 @@ class FaceOnlyDormancyPolicyTest {
                 lastObservedPtsUs = 1_000_000L,
                 ptsUs = 1_500_000L,
                 hasTrustedFace = true,
-                hasBodyMask = false
+                hasBodyMask = false,
+                hasFreshBodyMotionEvidence = false
             )
         )
     }
@@ -69,7 +73,8 @@ class FaceOnlyDormancyPolicyTest {
                 lastObservedPtsUs = 1_000_000L,
                 ptsUs = 1_500_000L,
                 hasTrustedFace = false,
-                hasBodyMask = true
+                hasBodyMask = true,
+                hasFreshBodyMotionEvidence = false
             )
         )
     }
@@ -83,7 +88,8 @@ class FaceOnlyDormancyPolicyTest {
                 lastObservedPtsUs = 1_000_000L,
                 ptsUs = 1_800_001L,
                 hasTrustedFace = true,
-                hasBodyMask = true
+                hasBodyMask = true,
+                hasFreshBodyMotionEvidence = false
             )
         )
     }
@@ -97,7 +103,38 @@ class FaceOnlyDormancyPolicyTest {
                 lastObservedPtsUs = null,
                 ptsUs = 1_000_000L,
                 hasTrustedFace = true,
-                hasBodyMask = true
+                hasBodyMask = true,
+                hasFreshBodyMotionEvidence = true
+            )
+        )
+    }
+
+    @Test
+    fun `fresh ambiguous body motion can bridge beyond stale timeout without identity commit`() {
+        assertEquals(
+            FaceOnlyRenderMode.BODY_MASK_COMPENSATED,
+            FaceOnlyDormancyPolicy.resolveMode(
+                observedThisFrame = false,
+                lastObservedPtsUs = 1_000_000L,
+                ptsUs = 4_000_000L,
+                hasTrustedFace = true,
+                hasBodyMask = false,
+                hasFreshBodyMotionEvidence = true
+            )
+        )
+    }
+
+    @Test
+    fun `fresh body motion never invents a face without trusted face history`() {
+        assertEquals(
+            FaceOnlyRenderMode.DORMANT,
+            FaceOnlyDormancyPolicy.resolveMode(
+                observedThisFrame = false,
+                lastObservedPtsUs = 1_000_000L,
+                ptsUs = 4_000_000L,
+                hasTrustedFace = false,
+                hasBodyMask = false,
+                hasFreshBodyMotionEvidence = true
             )
         )
     }

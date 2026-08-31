@@ -14,6 +14,7 @@ import com.danceanon.native.render.FaceRoiRenderer
 import com.danceanon.native.render.FaceStickerPlacement
 import com.danceanon.native.render.InferenceFbo
 import com.danceanon.native.render.SourceTextureType
+import com.danceanon.native.tracking.ProtectedTrackMotionEvidence
 import com.danceanon.native.tracking.TrackState
 import com.danceanon.native.tracking.TrackedPerson
 import kotlin.math.sqrt
@@ -36,6 +37,7 @@ data class FaceOnlyPrivacyFrameResult(
     val bodyMaskGuidedTrackIds: Set<Int>,
     val positionClampedTrackIds: Set<Int>,
     val bodyCompensatedTrackIds: Set<Int>,
+    val freshBodyMotionTrackIds: Set<Int>,
     val dormantSuppressedTrackIds: Set<Int>,
     val roiReadbackMs: Double,
     val maskBuildMs: Double,
@@ -122,11 +124,16 @@ class FaceOnlyPrivacyFrameProcessor(
     private fun planCachedFaceLocalRoi(
         cached: CachedFaceGeometry,
         person: TrackedPerson,
-        ptsUs: Long
+        ptsUs: Long,
+        allowFreshBodyMotion: Boolean = false
     ): FaceHeadRoiPlan? {
         val ageUs = ptsUs - cached.lastTrustedPtsUs
-        if (ageUs !in 0L..MAX_LOCAL_FACE_REFRESH_AGE_US) return null
-        val projected = cached.project(person.bbox, ageUs) ?: return null
+        if (ageUs < 0L) return null
+        if (ageUs > MAX_LOCAL_FACE_REFRESH_AGE_US && !allowFreshBodyMotion) return null
+        val projected = cached.project(
+            person.bbox,
+            ageUs.coerceAtMost(MAX_LOCAL_FACE_REFRESH_AGE_US)
+        ) ?: return null
         val frameWidth = mapper.srcWidth.toFloat()
         val frameHeight = mapper.srcHeight.toFloat()
         if (frameWidth <= 1f || frameHeight <= 1f) return null
@@ -173,10 +180,16 @@ class FaceOnlyPrivacyFrameProcessor(
         person: TrackedPerson,
         cached: CachedFaceGeometry?,
         ptsUs: Long,
-        renderMode: FaceOnlyRenderMode
+        renderMode: FaceOnlyRenderMode,
+        hasFreshBodyMotion: Boolean = false
     ): FallbackGeometry? {
         val cacheAgeUs = cached?.let { ptsUs - it.lastTrustedPtsUs }
-        val maxCacheAgeUs = if (renderMode == FaceOnlyRenderMode.BODY_MASK_COMPENSATED) {
+        val maxCacheAgeUs = if (
+            renderMode == FaceOnlyRenderMode.BODY_MASK_COMPENSATED &&
+            hasFreshBodyMotion
+        ) {
+            Long.MAX_VALUE
+        } else if (renderMode == FaceOnlyRenderMode.BODY_MASK_COMPENSATED) {
             FaceOnlyDormancyPolicy.MAX_BODY_COMPENSATION_AGE_US
         } else {
             MAX_PREDICTED_FACE_AGE_US
@@ -187,7 +200,10 @@ class FaceOnlyPrivacyFrameProcessor(
             (renderMode == FaceOnlyRenderMode.BODY_MASK_COMPENSATED ||
                 person.framesSinceLastObservation <= MAX_LOCAL_FACE_UNOBSERVED_FRAMES)
         ) {
-            cached.project(person.bbox, cacheAgeUs)
+            cached.project(
+                person.bbox,
+                cacheAgeUs.coerceAtMost(FaceOnlyDormancyPolicy.MAX_BODY_COMPENSATION_AGE_US)
+            )
         } else {
             FacePrivacyRegionResolver.resolve(
                 personBbox = person.bbox,
@@ -250,6 +266,7 @@ class FaceOnlyPrivacyFrameProcessor(
         persons: List<TrackedPerson>,
         faceOnlyTrackIds: Set<Int>,
         fullBodyTrackIds: Set<Int> = emptySet(),
+        protectedMotionEvidence: List<ProtectedTrackMotionEvidence> = emptyList(),
         ptsUs: Long
     ): FaceOnlyPrivacyFrameResult {
         if (faceOnlyTrackIds.isEmpty()) {
@@ -271,6 +288,7 @@ class FaceOnlyPrivacyFrameProcessor(
                 bodyMaskGuidedTrackIds = emptySet(),
                 positionClampedTrackIds = emptySet(),
                 bodyCompensatedTrackIds = emptySet(),
+                freshBodyMotionTrackIds = emptySet(),
                 dormantSuppressedTrackIds = emptySet(),
                 roiReadbackMs = 0.0,
                 maskBuildMs = 0.0,
@@ -288,6 +306,28 @@ class FaceOnlyPrivacyFrameProcessor(
             val person = personsById[id]
             person != null && person.state != TrackState.REMOVED
         }
+        val freshMotionEvidenceByTrackId = protectedMotionEvidence.asSequence()
+            .filter { evidence ->
+                evidence.timestampUs == ptsUs &&
+                    activeFaceOnlyTrackIds.contains(evidence.trackId)
+            }
+            .associateBy { it.trackId }
+        val freshBodyMotionTrackIds = freshMotionEvidenceByTrackId.keys.toCollection(linkedSetOf())
+        val geometryPersonByTrackId = activeFaceOnlyTrackIds.associateWith { trackId ->
+            val person = personsById.getValue(trackId)
+            val evidence = if (!person.observedThisFrame) freshMotionEvidenceByTrackId[trackId] else null
+            if (evidence?.detection?.mask != null) {
+                person.copy(
+                    bbox = evidence.detection.bbox,
+                    mask = evidence.detection.mask,
+                    confidence = evidence.detection.confidence,
+                    observedThisFrame = false,
+                    footY = evidence.detection.footY
+                )
+            } else {
+                person
+            }
+        }
         lastObservedPtsUsByTrackId.keys.retainAll(activeFaceOnlyTrackIds)
         activeFaceOnlyTrackIds.forEach { trackId ->
             val person = personsById[trackId] ?: return@forEach
@@ -297,17 +337,23 @@ class FaceOnlyPrivacyFrameProcessor(
         }
         val renderModeByTrackId = activeFaceOnlyTrackIds.associateWith { trackId ->
             val person = personsById[trackId] ?: return@associateWith FaceOnlyRenderMode.DORMANT
+            val geometryPerson = geometryPersonByTrackId.getValue(trackId)
             val cachedFace = cachedFaceByTrackId[trackId]
             val cachedFaceAgeUs = cachedFace?.let { ptsUs - it.lastTrustedPtsUs }
-            val hasFreshTrustedFace = cachedFace != null &&
-                cachedFaceAgeUs != null &&
-                cachedFaceAgeUs in 0L..FaceOnlyDormancyPolicy.MAX_BODY_COMPENSATION_AGE_US
+            val hasFreshBodyMotion = freshMotionEvidenceByTrackId.containsKey(trackId)
+            val hasUsableTrustedFace = if (hasFreshBodyMotion) {
+                cachedFace != null
+            } else {
+                cachedFace != null && cachedFaceAgeUs != null &&
+                    cachedFaceAgeUs in 0L..FaceOnlyDormancyPolicy.MAX_BODY_COMPENSATION_AGE_US
+            }
             FaceOnlyDormancyPolicy.resolveMode(
                 observedThisFrame = person.observedThisFrame,
                 lastObservedPtsUs = lastObservedPtsUsByTrackId[trackId],
                 ptsUs = ptsUs,
-                hasTrustedFace = hasFreshTrustedFace,
-                hasBodyMask = person.mask != null
+                hasTrustedFace = hasUsableTrustedFace,
+                hasBodyMask = geometryPerson.mask != null,
+                hasFreshBodyMotionEvidence = hasFreshBodyMotion
             )
         }
         val renderableFaceOnlyTrackIds = renderModeByTrackId
@@ -332,19 +378,26 @@ class FaceOnlyPrivacyFrameProcessor(
         val detectorPlanByTrackId = linkedMapOf<Int, FaceHeadRoiPlan>()
         val localDetectorTrackIds = linkedSetOf<Int>()
         renderableFaceOnlyTrackIds.sorted().forEach { trackId ->
-            val person = personsById[trackId] ?: return@forEach
+            val trackedPerson = personsById[trackId] ?: return@forEach
+            val person = geometryPersonByTrackId[trackId] ?: trackedPerson
             if (person.state == TrackState.REMOVED) return@forEach
             val cached = cachedFaceByTrackId[trackId]
             val renderMode = renderModeByTrackId[trackId] ?: FaceOnlyRenderMode.DORMANT
+            val hasFreshBodyMotion = freshMotionEvidenceByTrackId.containsKey(trackId)
             val canUseIdentityLocalRoi = renderMode != FaceOnlyRenderMode.DORMANT && cached != null
             val localPlan = if (canUseIdentityLocalRoi) {
-                planCachedFaceLocalRoi(cached, person, ptsUs)
+                planCachedFaceLocalRoi(
+                    cached = cached,
+                    person = person,
+                    ptsUs = ptsUs,
+                    allowFreshBodyMotion = hasFreshBodyMotion
+                )
             } else {
                 null
             }
-            val plan = localPlan ?: if (person.observedThisFrame && person.state == TrackState.ACTIVE) {
+            val plan = localPlan ?: if (trackedPerson.observedThisFrame && trackedPerson.state == TrackState.ACTIVE) {
                 FaceHeadRoiPlanner.plan(
-                    personBbox = person.bbox,
+                    personBbox = trackedPerson.bbox,
                     frameWidth = mapper.srcWidth,
                     frameHeight = mapper.srcHeight
                 )
@@ -408,9 +461,11 @@ class FaceOnlyPrivacyFrameProcessor(
         val stickerPlacements = mutableListOf<FaceStickerPlacement>()
 
         for (trackId in renderableFaceOnlyTrackIds.sorted()) {
-            val person = personsById[trackId] ?: continue
+            val trackedPerson = personsById[trackId] ?: continue
+            val person = geometryPersonByTrackId[trackId] ?: trackedPerson
             if (person.state == TrackState.REMOVED) continue
             val renderMode = renderModeByTrackId[trackId] ?: FaceOnlyRenderMode.DORMANT
+            val hasFreshBodyMotion = freshMotionEvidenceByTrackId.containsKey(trackId)
 
             val plan = detectorPlanByTrackId[trackId]
 
@@ -474,13 +529,25 @@ class FaceOnlyPrivacyFrameProcessor(
                             detectedRegion
                         }
                     } else {
-                        resolveFallbackGeometry(person, cachedBeforeAttempt, ptsUs, renderMode)?.also { fallbackGeometry ->
+                        resolveFallbackGeometry(
+                            person,
+                            cachedBeforeAttempt,
+                            ptsUs,
+                            renderMode,
+                            hasFreshBodyMotion
+                        )?.also { fallbackGeometry ->
                             if (fallbackGeometry.bodyMaskGuided) bodyMaskGuidedTrackIds += trackId
                         }?.region
                     }
                 } catch (t: Throwable) {
                     Log.w(TAG, "Face ROI detection failed for track=$trackId; using head fallback", t)
-                    region = resolveFallbackGeometry(person, cachedBeforeAttempt, ptsUs, renderMode)?.also { fallbackGeometry ->
+                    region = resolveFallbackGeometry(
+                        person,
+                        cachedBeforeAttempt,
+                        ptsUs,
+                        renderMode,
+                        hasFreshBodyMotion
+                    )?.also { fallbackGeometry ->
                         if (fallbackGeometry.bodyMaskGuided) bodyMaskGuidedTrackIds += trackId
                     }?.region
                 }
@@ -488,7 +555,13 @@ class FaceOnlyPrivacyFrameProcessor(
 
             if (region == null) {
                 val cached = cachedFaceByTrackId[trackId]
-                region = resolveFallbackGeometry(person, cached, ptsUs, renderMode)?.also { fallbackGeometry ->
+                region = resolveFallbackGeometry(
+                    person,
+                    cached,
+                    ptsUs,
+                    renderMode,
+                    hasFreshBodyMotion
+                )?.also { fallbackGeometry ->
                     if (fallbackGeometry.bodyMaskGuided) bodyMaskGuidedTrackIds += trackId
                 }?.region
             }
@@ -617,6 +690,7 @@ class FaceOnlyPrivacyFrameProcessor(
             bodyMaskGuidedTrackIds = bodyMaskGuidedTrackIds,
             positionClampedTrackIds = positionClampedTrackIds,
             bodyCompensatedTrackIds = bodyCompensatedTrackIds,
+            freshBodyMotionTrackIds = freshBodyMotionTrackIds.intersect(bodyCompensatedTrackIds),
             dormantSuppressedTrackIds = dormantSuppressedTrackIds,
             roiReadbackMs = roiReadbackMs,
             maskBuildMs = maskBuildMs,
