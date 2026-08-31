@@ -219,6 +219,41 @@ object PrivacyOcclusionResolver {
         }
 
         val unselectedPersons = privacyPersons.filter { !effectiveSelectedIds.contains(it.id) && it.mask != null }
+
+        // Fast path for the common FULL_BODY-only "all visible masks are selected"
+        // case. With no unselected masks there is no possible foreground carve,
+        // so every target's effective mask is exactly its dilated raw mask and the
+        // render occluder is necessarily empty. Grayscale dilation is a max filter
+        // and mergeMasks() is pixelwise max, therefore:
+        //
+        //   union(dilate(A), dilate(B), ...) == dilate(union(A, B, ...))
+        //
+        // The old path dilated every selected 160x160 mask separately. Selecting
+        // six FULL_BODY people made renderEffects spend ~26 ms/frame here on the
+        // real 1080p/60 clip. Merge first and run the identical dilation once.
+        // Keep per-target raw-mask geometry telemetry because it is independent of
+        // occluder carving and remains useful for detecting segmentation collapse.
+        if (unselectedPersons.isEmpty() && selectedPersons.size > 1) {
+            selectedPersons.forEach { target ->
+                val rawMask = target.mask ?: return@forEach
+                recordSelectedMaskGeometryHealth(target, rawMask, ptsUs)
+            }
+            val rawUnion = mergeMasks(selectedPersons.mapNotNull { it.mask })
+            val mergedPrivacy = if (
+                rawUnion != null && applyDilationToPrivacyTargets && dilationRadius > 0
+            ) {
+                MaskPrivacyProcessor.dilate(rawUnion, radius = dilationRadius)
+            } else {
+                rawUnion
+            }
+            return ResolvedCompositorMasks(
+                privacyMask = mergedPrivacy,
+                occluderMask = null,
+                hasPrivacy = mergedPrivacy != null,
+                hasOccluder = false
+            )
+        }
+
         val preCarveSelectedMasks = mutableListOf<NativeMask>()
         val effectiveSelectedMasks = mutableListOf<NativeMask>()
 
@@ -490,41 +525,7 @@ object PrivacyOcclusionResolver {
             // portion of the person's bbox. NativeMask carries the mapper needed
             // to compare source-space bbox geometry with proto-space mask pixels
             // without mixing coordinate systems.
-            val mapper = rawMask.mapper
-            val bboxProtoArea = if (mapper != null) {
-                val protoLeft = mapper.sourceToProtoX(target.bbox.left)
-                val protoTop = mapper.sourceToProtoY(target.bbox.top)
-                val protoRight = mapper.sourceToProtoX(target.bbox.right)
-                val protoBottom = mapper.sourceToProtoY(target.bbox.bottom)
-                ((protoRight - protoLeft).coerceAtLeast(0f) *
-                    (protoBottom - protoTop).coerceAtLeast(0f)).coerceAtLeast(1f)
-            } else {
-                0f
-            }
-            val maskBboxFillRatio = if (bboxProtoArea > 0f) {
-                rawArea.toFloat() / bboxProtoArea
-            } else {
-                -1f
-            }
-
-            if (maskBboxFillRatio >= 0f && maskBboxFillRatio < 0.12f) {
-                NativeDiagnostics.event(
-                    level = "WARN",
-                    component = "PrivacyOcclusionResolver",
-                    event = "SELECTED_MASK_LOW_BBOX_OCCUPANCY",
-                    fields = mapOf(
-                        "target_id" to target.id,
-                        "state" to target.state.name,
-                        "observed_this_frame" to target.observedThisFrame,
-                        "mask_bbox_fill_ratio" to maskBboxFillRatio,
-                        "raw_area" to rawArea,
-                        "bbox_proto_area" to bboxProtoArea,
-                        "mask_width" to rawMask.width,
-                        "mask_height" to rawMask.height,
-                        "pts_us" to ptsUs
-                    )
-                )
-            }
+            recordSelectedMaskGeometryHealth(target, rawMask, ptsUs, rawArea)
 
             if (coverageRatio < 0.65f) {
                 NativeDiagnostics.event(
@@ -589,6 +590,44 @@ object PrivacyOcclusionResolver {
             hasPrivacy = (mergedPrivacy != null),
             hasOccluder = (renderOccluder != null)
         )
+    }
+
+    private fun recordSelectedMaskGeometryHealth(
+        target: TrackedPerson,
+        rawMask: NativeMask,
+        ptsUs: Long,
+        knownRawArea: Int? = null
+    ) {
+        val mapper = rawMask.mapper ?: return
+        val rawArea = knownRawArea ?: countMaskPixels(rawMask)
+        val protoLeft = mapper.sourceToProtoX(target.bbox.left)
+        val protoTop = mapper.sourceToProtoY(target.bbox.top)
+        val protoRight = mapper.sourceToProtoX(target.bbox.right)
+        val protoBottom = mapper.sourceToProtoY(target.bbox.bottom)
+        val bboxProtoArea = (
+            (protoRight - protoLeft).coerceAtLeast(0f) *
+                (protoBottom - protoTop).coerceAtLeast(0f)
+            ).coerceAtLeast(1f)
+        val maskBboxFillRatio = rawArea.toFloat() / bboxProtoArea
+
+        if (maskBboxFillRatio < 0.12f) {
+            NativeDiagnostics.event(
+                level = "WARN",
+                component = "PrivacyOcclusionResolver",
+                event = "SELECTED_MASK_LOW_BBOX_OCCUPANCY",
+                fields = mapOf(
+                    "target_id" to target.id,
+                    "state" to target.state.name,
+                    "observed_this_frame" to target.observedThisFrame,
+                    "mask_bbox_fill_ratio" to maskBboxFillRatio,
+                    "raw_area" to rawArea,
+                    "bbox_proto_area" to bboxProtoArea,
+                    "mask_width" to rawMask.width,
+                    "mask_height" to rawMask.height,
+                    "pts_us" to ptsUs
+                )
+            )
+        }
     }
 
     /**

@@ -1444,6 +1444,39 @@ long-distance probes were prevented. Mixed FULL_BODY stale-mask suppression is
 unchanged and remains validated in this export at `pts_us=150100` after three real
 misses for selected ID4.
 
+### FULL_BODY-only performance audit: collapse redundant selected-mask dilation
+
+The same `cc3aca9987ebe23591d684acf59cbd5320465000` diagnostic bundle contains a
+separate QUALITY export with all six people selected as FULL_BODY and no FACE_ONLY
+targets (`selected_ids=[1,2,3,4,5,6]`, `face_only_ids=[]`). This proves the user's
+reported pure-FULL_BODY slowdown is not caused by MediaPipe or the FACE_ONLY
+sidecar: `faceOnlyPrivacy` is absent entirely. The two dominant additional CPU
+stages are `privacyClassTracking` at about **23.75 ms/frame** and `renderEffects`
+at about **26.03 ms/frame**. The latter is much larger than the roughly 1.8 ms
+mixed-mode render stage because the primary resolver currently dilates every
+selected 160x160 FULL_BODY mask independently before unioning them.
+
+The resolver now uses a mathematically equivalent fast path only when the current
+effective privacy set has **no unselected mask at all**. In that case no foreground
+carve is possible, each target's pre-carve and effective masks are identical, and
+the render occluder must be empty. Since both grayscale dilation and `mergeMasks`
+are max operations, the following are pixel-identical:
+
+`union(dilate(A), dilate(B), ...) == dilate(union(A, B, ...))`
+
+The fast path therefore unions raw selected masks first and performs one dilation
+instead of N dilations. Per-target low-bbox-occupancy health telemetry is retained.
+Any frame containing a fresh/tracked unselected or conservative-unknown mask still
+runs the complete historical per-target carve resolver. A unit regression compares
+the fast-path output against the old per-target-dilation order pixel-for-pixel.
+
+`privacyClassTracking` remains enabled in FULL_BODY-only mode because it owns the
+historical selection-class continuity used during ambiguous crossings. It should
+not be disabled merely for speed. The next FULL_BODY-only real-video diagnostic
+should first compare `renderEffects` against the 26.03 ms baseline; only if total
+throughput remains materially below the user-validated baseline should that second
+23.75 ms stage be optimized independently without changing its semantics.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

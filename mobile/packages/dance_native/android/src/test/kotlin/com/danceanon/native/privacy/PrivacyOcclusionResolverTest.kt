@@ -163,6 +163,56 @@ class PrivacyOcclusionResolverTest {
     }
 
     @Test
+    fun allSelectedFastPathMatchesPerTargetDilationThenUnionPixelForPixel() {
+        val maskA = createBinaryMask(10, 10, 1..3, 2..5)
+        val maskB = createBinaryMask(10, 10, 5..7, 4..7)
+        val personA = TrackedPerson(
+            id = 0,
+            bbox = FloatRect(10f, 20f, 30f, 50f),
+            mask = maskA,
+            confidence = 0.9f,
+            state = TrackState.ACTIVE
+        )
+        val personB = TrackedPerson(
+            id = 1,
+            bbox = FloatRect(50f, 40f, 70f, 70f),
+            mask = maskB,
+            confidence = 0.9f,
+            state = TrackState.ACTIVE
+        )
+
+        val actual = assertNotNull(
+            PrivacyOcclusionResolver.resolveMasks(
+                persons = listOf(personA, personB),
+                selectedPersonIds = setOf(0, 1),
+                applyDilationToPrivacyTargets = true,
+                dilationRadius = 1
+            ).privacyMask
+        )
+
+        // This is the historical semantic order used before the fast path:
+        // dilate each selected mask independently and then union the results.
+        val expected = assertNotNull(
+            PrivacyOcclusionResolver.mergeMasks(
+                listOf(
+                    MaskPrivacyProcessor.dilate(maskA, radius = 1),
+                    MaskPrivacyProcessor.dilate(maskB, radius = 1)
+                )
+            )
+        )
+
+        for (y in 0 until actual.height) {
+            for (x in 0 until actual.width) {
+                assertEquals(
+                    getPixel(expected, x, y),
+                    getPixel(actual, x, y),
+                    "fast path must preserve exact privacy pixel at ($x,$y)"
+                )
+            }
+        }
+    }
+
+    @Test
     fun testCase4_MultiTargetIsolationOccluderDoesNotAffectUnrelatedTarget() {
         // Selected Person A is OCCLUDED by B
         val maskA = createBinaryMask(10, 10, 1..3, 1..3)
