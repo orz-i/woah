@@ -12,6 +12,8 @@ final personSelectionControllerProvider = StateNotifierProvider.autoDispose<
 });
 
 class PersonSelectionController extends StateNotifier<PersonSelectionState> {
+  static const double defaultAutoSelectionMinConfidence = 0.55;
+
   final NativeProcessingRepository _repository;
 
   PersonSelectionController(this._repository)
@@ -38,7 +40,10 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
           project.selectedPersonIds.isNotEmpty || project.faceOnlyPersonIds.isNotEmpty;
       final defaultSelected = hasStoredPrivacyModes
           ? project.selectedPersonIds.intersection(personIds)
-          : personIds;
+          : persons
+              .where((person) => person.confidence >= defaultAutoSelectionMinConfidence)
+              .map((person) => person.id)
+              .toSet();
       final defaultFaceOnly = hasStoredPrivacyModes
           ? project.faceOnlyPersonIds
               .intersection(personIds)

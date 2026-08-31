@@ -48,6 +48,8 @@ data class FaceOnlyPrivacyFrameResult(
     val dormantPixelMotionBridgeTrackIds: Set<Int>,
     val pixelMotionTrackIds: Set<Int>,
     val pixelMotionRejectedTrackIds: Set<Int>,
+    val pixelMotionRejectReasonByTrackId: Map<Int, String>,
+    val dormantSuppressionReasonByTrackId: Map<Int, String>,
     val pixelMotionMs: Double,
     val roiReadbackMs: Double,
     val maskBuildMs: Double,
@@ -364,6 +366,8 @@ class FaceOnlyPrivacyFrameProcessor(
                 dormantPixelMotionBridgeTrackIds = emptySet(),
                 pixelMotionTrackIds = emptySet(),
                 pixelMotionRejectedTrackIds = emptySet(),
+                pixelMotionRejectReasonByTrackId = emptyMap(),
+                dormantSuppressionReasonByTrackId = emptyMap(),
                 pixelMotionMs = 0.0,
                 roiReadbackMs = 0.0,
                 maskBuildMs = 0.0,
@@ -485,8 +489,13 @@ class FaceOnlyPrivacyFrameProcessor(
                 hasFreshBodyMotionEvidence = hasFreshBodyMotion
             )
         }
-        val roiPixelMotionCandidateTrackIds = activeFaceOnlyTrackIds
-            .filterTo(linkedSetOf()) { pixelMotionTracker.hasUsableRoiState(it, ptsUs) }
+        val roiPixelStateStatusByTrackId = activeFaceOnlyTrackIds.associateWith { trackId ->
+            pixelMotionTracker.roiStateStatus(trackId, ptsUs)
+        }
+        val roiPixelMotionCandidateTrackIds = roiPixelStateStatusByTrackId
+            .filterValues { it == FacePixelMotionTracker.RoiStateStatus.USABLE }
+            .keys
+            .toCollection(linkedSetOf())
         val baseRenderableFaceOnlyTrackIds = renderModeByTrackId
             .filterValues { it != FaceOnlyRenderMode.DORMANT }
             .keys
@@ -641,6 +650,7 @@ class FaceOnlyPrivacyFrameProcessor(
         val dormantPixelMotionRejectedTrackIds = linkedSetOf<Int>()
         val pixelMotionTrackIds = linkedSetOf<Int>()
         val pixelMotionRejectedTrackIds = linkedSetOf<Int>()
+        val pixelMotionRejectReasonByTrackId = linkedMapOf<Int, String>()
         var pixelMotionMs = 0.0
         var roiReadbackMs = 0.0
         var maskBuildMs = 0.0
@@ -676,8 +686,8 @@ class FaceOnlyPrivacyFrameProcessor(
 
                 if (hasRoiPixelState) {
                     val pixelMotionStartNs = System.nanoTime()
-                    val pixelMatch = try {
-                        pixelMotionTracker.matchRoi(
+                    val pixelOutcome = try {
+                        pixelMotionTracker.matchRoiDetailed(
                             trackId = trackId,
                             rgbaTopDown = requireNotNull(roiRgba),
                             roiPlan = plan,
@@ -688,6 +698,7 @@ class FaceOnlyPrivacyFrameProcessor(
                     } finally {
                         pixelMotionMs += (System.nanoTime() - pixelMotionStartNs) / 1_000_000.0
                     }
+                    val pixelMatch = pixelOutcome.match
                     if (pixelMatch != null) {
                         region = pixelMatch.region
                         trustedCurrentPixelCenter = true
@@ -697,6 +708,9 @@ class FaceOnlyPrivacyFrameProcessor(
                         }
                     } else {
                         pixelMotionRejectedTrackIds += trackId
+                        pixelOutcome.rejectReason?.let { reason ->
+                            pixelMotionRejectReasonByTrackId[trackId] = reason.name
+                        }
                         if (renderMode == FaceOnlyRenderMode.DORMANT) {
                             dormantPixelMotionRejectedTrackIds += trackId
                         }
@@ -884,6 +898,16 @@ class FaceOnlyPrivacyFrameProcessor(
         }
         val dormantSuppressedTrackIds = activeFaceOnlyTrackIds
             .filterTo(linkedSetOf()) { !renderableFaceOnlyTrackIds.contains(it) }
+        val dormantSuppressionReasonByTrackId = dormantSuppressedTrackIds.associateWith { trackId ->
+            pixelMotionRejectReasonByTrackId[trackId] ?: when (roiPixelStateStatusByTrackId[trackId]) {
+                FacePixelMotionTracker.RoiStateStatus.MISSING -> "NO_PIXEL_STATE"
+                FacePixelMotionTracker.RoiStateStatus.EVIDENCE_GAP_EXPIRED -> "EVIDENCE_GAP_EXPIRED"
+                FacePixelMotionTracker.RoiStateStatus.DETECTOR_SEED_EXPIRED -> "DETECTOR_SEED_EXPIRED"
+                FacePixelMotionTracker.RoiStateStatus.INVALID_TIME -> "INVALID_TIME"
+                FacePixelMotionTracker.RoiStateStatus.USABLE -> "ROI_PLAN_UNAVAILABLE"
+                null -> "NO_PIXEL_STATE"
+            }
+        }
         dormantFaceOnlyTrackIds.retainAll(activeFaceOnlyTrackIds)
         dormantFaceOnlyTrackIds.removeAll(renderableFaceOnlyTrackIds)
         dormantFaceOnlyTrackIds.addAll(dormantSuppressedTrackIds)
@@ -972,6 +996,8 @@ class FaceOnlyPrivacyFrameProcessor(
             dormantPixelMotionBridgeTrackIds = dormantPixelMotionBridgeTrackIds,
             pixelMotionTrackIds = pixelMotionTrackIds,
             pixelMotionRejectedTrackIds = pixelMotionRejectedTrackIds,
+            pixelMotionRejectReasonByTrackId = pixelMotionRejectReasonByTrackId,
+            dormantSuppressionReasonByTrackId = dormantSuppressionReasonByTrackId,
             pixelMotionMs = pixelMotionMs,
             roiReadbackMs = roiReadbackMs,
             maskBuildMs = maskBuildMs,

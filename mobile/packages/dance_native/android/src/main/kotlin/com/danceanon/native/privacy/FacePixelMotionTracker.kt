@@ -26,12 +26,38 @@ internal class FacePixelMotionTracker(
     private val minCorrelation: Float = DEFAULT_MIN_CORRELATION,
     private val minUniquenessGap: Float = DEFAULT_MIN_UNIQUENESS_GAP
 ) {
+    enum class RoiStateStatus {
+        MISSING,
+        USABLE,
+        EVIDENCE_GAP_EXPIRED,
+        DETECTOR_SEED_EXPIRED,
+        INVALID_TIME
+    }
+
+    enum class RoiRejectReason {
+        NO_STATE,
+        EVIDENCE_GAP_EXPIRED,
+        DETECTOR_SEED_EXPIRED,
+        INVALID_TIME,
+        INVALID_INPUT,
+        NO_CANDIDATE,
+        LOW_CORRELATION,
+        AMBIGUOUS_PEAK,
+        STEP_TOO_LARGE,
+        BODY_ANCHOR_RESIDUAL
+    }
+
     data class Match(
         val region: FacePrivacyEllipse,
         val correlation: Float,
         val uniquenessGap: Float,
         val modelDx: Int,
         val modelDy: Int
+    )
+
+    data class RoiMatchOutcome(
+        val match: Match?,
+        val rejectReason: RoiRejectReason? = null
     )
 
     private data class State(
@@ -90,13 +116,18 @@ internal class FacePixelMotionTracker(
         roiStateByTrackId.remove(trackId)
     }
 
-    fun hasUsableRoiState(trackId: Int, ptsUs: Long): Boolean {
-        val state = roiStateByTrackId[trackId] ?: return false
+    fun roiStateStatus(trackId: Int, ptsUs: Long): RoiStateStatus {
+        val state = roiStateByTrackId[trackId] ?: return RoiStateStatus.MISSING
         val evidenceGapUs = ptsUs - state.lastEvidencePtsUs
         val detectorAgeUs = ptsUs - state.detectorSeedPtsUs
-        return evidenceGapUs in 0L..ROI_MAX_EVIDENCE_GAP_US &&
-            detectorAgeUs in 0L..ROI_MAX_DETECTOR_SEED_AGE_US
+        if (evidenceGapUs < 0L || detectorAgeUs < 0L) return RoiStateStatus.INVALID_TIME
+        if (evidenceGapUs > ROI_MAX_EVIDENCE_GAP_US) return RoiStateStatus.EVIDENCE_GAP_EXPIRED
+        if (detectorAgeUs > ROI_MAX_DETECTOR_SEED_AGE_US) return RoiStateStatus.DETECTOR_SEED_EXPIRED
+        return RoiStateStatus.USABLE
     }
+
+    fun hasUsableRoiState(trackId: Int, ptsUs: Long): Boolean =
+        roiStateStatus(trackId, ptsUs) == RoiStateStatus.USABLE
 
     fun currentRoiRegion(trackId: Int, ptsUs: Long): FacePrivacyEllipse? {
         if (!hasUsableRoiState(trackId, ptsUs)) return null
@@ -190,20 +221,50 @@ internal class FacePixelMotionTracker(
         personBbox: FloatRect,
         personObservedThisFrame: Boolean,
         ptsUs: Long
-    ): Match? {
-        val state = roiStateByTrackId[trackId] ?: return null
-        val evidenceGapUs = ptsUs - state.lastEvidencePtsUs
-        val detectorAgeUs = ptsUs - state.detectorSeedPtsUs
-        if (
-            evidenceGapUs !in 0L..ROI_MAX_EVIDENCE_GAP_US ||
-            detectorAgeUs !in 0L..ROI_MAX_DETECTOR_SEED_AGE_US
-        ) {
-            roiStateByTrackId.remove(trackId)
-            return null
+    ): Match? = matchRoiDetailed(
+        trackId = trackId,
+        rgbaTopDown = rgbaTopDown,
+        roiPlan = roiPlan,
+        personBbox = personBbox,
+        personObservedThisFrame = personObservedThisFrame,
+        ptsUs = ptsUs
+    ).match
+
+    fun matchRoiDetailed(
+        trackId: Int,
+        rgbaTopDown: ByteBuffer,
+        roiPlan: FaceHeadRoiPlan,
+        personBbox: FloatRect,
+        personObservedThisFrame: Boolean,
+        ptsUs: Long
+    ): RoiMatchOutcome {
+        val state = roiStateByTrackId[trackId]
+            ?: return RoiMatchOutcome(match = null, rejectReason = RoiRejectReason.NO_STATE)
+        when (roiStateStatus(trackId, ptsUs)) {
+            RoiStateStatus.USABLE -> Unit
+            RoiStateStatus.EVIDENCE_GAP_EXPIRED -> {
+                roiStateByTrackId.remove(trackId)
+                return RoiMatchOutcome(null, RoiRejectReason.EVIDENCE_GAP_EXPIRED)
+            }
+            RoiStateStatus.DETECTOR_SEED_EXPIRED -> {
+                roiStateByTrackId.remove(trackId)
+                return RoiMatchOutcome(null, RoiRejectReason.DETECTOR_SEED_EXPIRED)
+            }
+            RoiStateStatus.INVALID_TIME -> {
+                roiStateByTrackId.remove(trackId)
+                return RoiMatchOutcome(null, RoiRejectReason.INVALID_TIME)
+            }
+            RoiStateStatus.MISSING -> return RoiMatchOutcome(null, RoiRejectReason.NO_STATE)
         }
 
         val size = roiPlan.outputSize
-        if (size <= 1 || rgbaTopDown.capacity() < size * size * RGBA_STRIDE) return null
+        if (size <= 1 || rgbaTopDown.capacity() < size * size * RGBA_STRIDE) {
+            return RoiMatchOutcome(null, RoiRejectReason.INVALID_INPUT)
+        }
+        if (roiPlan.sourceRect.width <= 1f || roiPlan.sourceRect.height <= 1f) {
+            return RoiMatchOutcome(null, RoiRejectReason.INVALID_INPUT)
+        }
+
         val gray = ensureRoiGray(rgbaTopDown, size)
         val baseX = sourceToRoiX(roiPlan, state.centerXSource).roundToInt()
         val baseY = sourceToRoiY(roiPlan, state.centerYSource).roundToInt()
@@ -246,12 +307,9 @@ internal class FacePixelMotionTracker(
             }
             coarseDy += ROI_COARSE_STEP
         }
-        // The coarse grid is only a basin locator. A high-frequency small face
-        // can have a weak score one pixel away from the true peak, so applying
-        // the final correlation threshold here would reject exactly the distant
-        // faces this ROI path is meant to preserve. Refine first, then apply the
-        // unchanged final confidence/uniqueness gates below.
-        if (bestCorr <= INVALID_CORRELATION) return null
+        if (bestCorr <= INVALID_CORRELATION) {
+            return RoiMatchOutcome(null, RoiRejectReason.NO_CANDIDATE)
+        }
 
         val coarseBestDx = bestDx
         val coarseBestDy = bestDy
@@ -260,7 +318,9 @@ internal class FacePixelMotionTracker(
                 consider(refineDx, refineDy)
             }
         }
-        if (bestCorr < ROI_MIN_CORRELATION) return null
+        if (bestCorr < ROI_MIN_CORRELATION) {
+            return RoiMatchOutcome(null, RoiRejectReason.LOW_CORRELATION)
+        }
 
         var secondCorr = -1f
         var workspaceIndex = 0
@@ -278,7 +338,9 @@ internal class FacePixelMotionTracker(
             }
         }
         val uniquenessGap = bestCorr - secondCorr.coerceAtLeast(-1f)
-        if (secondCorr >= -0.5f && uniquenessGap < ROI_MIN_UNIQUENESS_GAP) return null
+        if (secondCorr >= -0.5f && uniquenessGap < ROI_MIN_UNIQUENESS_GAP) {
+            return RoiMatchOutcome(null, RoiRejectReason.AMBIGUOUS_PEAK)
+        }
 
         val newCenterX = roiToSourceX(roiPlan, (baseX + bestDx).toFloat())
         val newCenterY = roiToSourceY(roiPlan, (baseY + bestDy).toFloat())
@@ -287,7 +349,9 @@ internal class FacePixelMotionTracker(
         val step = sqrt(stepDx * stepDx + stepDy * stepDy)
         val faceDiameter = max(state.radiusXSource, state.radiusYSource) * 2f
         val maxStep = max(12f, faceDiameter * ROI_MAX_FACE_DIAMETER_STEP)
-        if (step > maxStep) return null
+        if (step > maxStep) {
+            return RoiMatchOutcome(null, RoiRejectReason.STEP_TOO_LARGE)
+        }
 
         if (personObservedThisFrame) {
             val bodyTranslation = PersonBboxMotionEstimator.estimate(
@@ -300,24 +364,28 @@ internal class FacePixelMotionTracker(
             val residualDy = newCenterY - expectedY
             val residual = sqrt(residualDx * residualDx + residualDy * residualDy)
             val maxResidual = max(24f, faceDiameter * ROI_MAX_BODY_ANCHOR_RESIDUAL_DIAMETERS)
-            if (residual > maxResidual) return null
+            if (residual > maxResidual) {
+                return RoiMatchOutcome(null, RoiRejectReason.BODY_ANCHOR_RESIDUAL)
+            }
         }
 
         state.centerXSource = newCenterX
         state.centerYSource = newCenterY
         state.lastEvidencePtsUs = ptsUs
-        return Match(
-            region = FacePrivacyEllipse(
-                centerX = newCenterX,
-                centerY = newCenterY,
-                radiusX = state.radiusXSource,
-                radiusY = state.radiusYSource,
-                source = FacePrivacyRegionSource.PREDICTED_FACE
-            ),
-            correlation = bestCorr,
-            uniquenessGap = uniquenessGap,
-            modelDx = bestDx,
-            modelDy = bestDy
+        return RoiMatchOutcome(
+            match = Match(
+                region = FacePrivacyEllipse(
+                    centerX = newCenterX,
+                    centerY = newCenterY,
+                    radiusX = state.radiusXSource,
+                    radiusY = state.radiusYSource,
+                    source = FacePrivacyRegionSource.PREDICTED_FACE
+                ),
+                correlation = bestCorr,
+                uniquenessGap = uniquenessGap,
+                modelDx = bestDx,
+                modelDy = bestDy
+            )
         )
     }
 

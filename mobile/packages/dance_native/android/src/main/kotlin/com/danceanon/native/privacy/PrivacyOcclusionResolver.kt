@@ -220,8 +220,23 @@ object PrivacyOcclusionResolver {
 
         val unselectedPersons = privacyPersons.filter { !effectiveSelectedIds.contains(it.id) && it.mask != null }
 
+        val noPotentialUnselectedBboxOccluder =
+            freshClassEvidence.isEmpty() &&
+                unselectedPersons.isNotEmpty() &&
+                selectedPersons.none { target ->
+                    val targetArea = (target.bbox.width * target.bbox.height).coerceAtLeast(1e-4f)
+                    unselectedPersons.any { cand ->
+                        val candArea = (cand.bbox.width * cand.bbox.height).coerceAtLeast(1e-4f)
+                        val interArea = computeBBoxIntersectionArea(target.bbox, cand.bbox)
+                        val minBboxArea = minOf(targetArea, candArea)
+                        minBboxArea > 0f && interArea / minBboxArea >= MIN_BBOX_OVERLAP_RATIO
+                    }
+                }
+
         // Fast path for the common FULL_BODY-only "all visible masks are selected"
-        // case. With no unselected masks there is no possible foreground carve,
+        // case and the FACE_ONLY case where every unselected bbox is provably
+        // below the same overlap gate used by the slow path. With no possible
+        // unselected carve,
         // so every target's effective mask is exactly its dilated raw mask and the
         // render occluder is necessarily empty. Grayscale dilation is a max filter
         // and mergeMasks() is pixelwise max, therefore:
@@ -233,7 +248,7 @@ object PrivacyOcclusionResolver {
         // real 1080p/60 clip. Merge first and run the identical dilation once.
         // Keep per-target raw-mask geometry telemetry because it is independent of
         // occluder carving and remains useful for detecting segmentation collapse.
-        if (unselectedPersons.isEmpty() && selectedPersons.size > 1) {
+        if ((unselectedPersons.isEmpty() || noPotentialUnselectedBboxOccluder) && selectedPersons.size > 1) {
             selectedPersons.forEach { target ->
                 val rawMask = target.mask ?: return@forEach
                 recordSelectedMaskGeometryHealth(target, rawMask, ptsUs)

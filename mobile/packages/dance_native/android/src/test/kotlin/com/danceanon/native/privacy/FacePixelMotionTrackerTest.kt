@@ -134,16 +134,16 @@ class FacePixelMotionTrackerTest {
             pts += 16_666L
         }
         val expiredPts = FacePixelMotionTracker.ROI_MAX_DETECTOR_SEED_AGE_US + 16_666L
-        assertNull(
-            tracker.matchRoi(
-                trackId = 22,
-                rgbaTopDown = roiFrameWithPatch(plan, 240f, 180f),
-                roiPlan = plan,
-                personBbox = FloatRect(180f, 100f, 300f, 500f),
-                personObservedThisFrame = true,
-                ptsUs = expiredPts
-            )
+        val expired = tracker.matchRoiDetailed(
+            trackId = 22,
+            rgbaTopDown = roiFrameWithPatch(plan, 240f, 180f),
+            roiPlan = plan,
+            personBbox = FloatRect(180f, 100f, 300f, 500f),
+            personObservedThisFrame = true,
+            ptsUs = expiredPts
         )
+        assertNull(expired.match)
+        assertEquals(FacePixelMotionTracker.RoiRejectReason.DETECTOR_SEED_EXPIRED, expired.rejectReason)
     }
 
     @Test

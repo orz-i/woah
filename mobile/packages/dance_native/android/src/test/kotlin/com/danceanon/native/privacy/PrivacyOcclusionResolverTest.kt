@@ -86,6 +86,60 @@ class PrivacyOcclusionResolverTest {
     }
 
     @Test
+    fun bboxDisjointUnselectedMaskMatchesNoOccluderSelectedUnionPixelForPixel() {
+        val maskA = createBinaryMask(10, 10, 1..3, 2..5)
+        val maskB = createBinaryMask(10, 10, 5..7, 4..7)
+        // Deliberately give the distant unselected person a mask that overlaps
+        // selected proto pixels. The historical resolver must still ignore it
+        // because its source bbox fails the mandatory overlap prefilter.
+        val distantMask = createBinaryMask(10, 10, 0..9, 0..9)
+        val personA = TrackedPerson(
+            id = 0,
+            bbox = FloatRect(10f, 20f, 30f, 50f),
+            mask = maskA,
+            confidence = 0.9f,
+            state = TrackState.ACTIVE
+        )
+        val personB = TrackedPerson(
+            id = 1,
+            bbox = FloatRect(50f, 40f, 70f, 70f),
+            mask = maskB,
+            confidence = 0.9f,
+            state = TrackState.ACTIVE
+        )
+        val distant = TrackedPerson(
+            id = 9,
+            bbox = FloatRect(80f, 5f, 95f, 18f),
+            mask = distantMask,
+            confidence = 0.8f,
+            state = TrackState.ACTIVE
+        )
+
+        val actual = assertNotNull(
+            PrivacyOcclusionResolver.resolveMasks(
+                persons = listOf(personA, personB, distant),
+                selectedPersonIds = setOf(0, 1),
+                applyDilationToPrivacyTargets = true,
+                dilationRadius = 1
+            ).privacyMask
+        )
+        val expected = assertNotNull(
+            PrivacyOcclusionResolver.mergeMasks(
+                listOf(
+                    MaskPrivacyProcessor.dilate(maskA, radius = 1),
+                    MaskPrivacyProcessor.dilate(maskB, radius = 1)
+                )
+            )
+        )
+
+        for (y in 0 until actual.height) {
+            for (x in 0 until actual.width) {
+                assertEquals(getPixel(expected, x, y), getPixel(actual, x, y))
+            }
+        }
+    }
+
+    @Test
     fun testCase2_OccludedSelectedTargetCarvedOnlyByExplicitOccluder() {
         // Selected Person A is OCCLUDED by B: covers (x: 2..7, y: 2..7)
         val maskA = createBinaryMask(10, 10, 2..7, 2..7)

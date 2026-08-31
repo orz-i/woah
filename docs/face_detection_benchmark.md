@@ -1700,6 +1700,43 @@ tests remain the semantic regression gate. Real-device acceptance for this pass 
 performance-first: SOURCE_ROI_256 quality metrics should remain near the bbb1d4d8
 baseline while `facePixelMotionCpu` drops materially from 73.3 ms.
 
+### Twenty-fifth correction: preserve ROI quality, expose the remaining 50 failures, and stop auto-selecting weak people
+
+The next real-video export from
+`3d9bd1a4658df0e82d4442cc99eea3ac73725729` confirmed that the first ROI hot-path
+optimization was behavior-equivalent. Every recorded FACE quality/coverage field
+matched the bbb1d4d8 run, including **50 dormant-suppressed track-frames**,
+**1,207 dormant pixel bridges**, and **3,344/258 pixel accepted/rejected**. At the
+same time `facePixelMotionCpu` fell from about **73.3 ms to 27.8 ms** and total
+`faceOnlyPrivacy` from about **144.4 ms to 99.3 ms**. `facePrivacyResolve` remained
+about 33 ms and therefore becomes a separate optimization target.
+
+The remaining FACE failures are now diagnosed without changing any matcher gate.
+`FacePixelMotionTracker` reports one bounded reason for a failed ROI attempt:
+`NO_STATE`, `EVIDENCE_GAP_EXPIRED`, `DETECTOR_SEED_EXPIRED`, `INVALID_TIME`,
+`INVALID_INPUT`, `NO_CANDIDATE`, `LOW_CORRELATION`, `AMBIGUOUS_PEAK`,
+`STEP_TOO_LARGE`, or `BODY_ANCHOR_RESIDUAL`. Export summaries aggregate both all
+pixel-rejection reasons and final dormant-suppression reasons globally and by
+track ID. This is aggregate telemetry only; there is no new per-frame diagnostic
+I/O in the hot path.
+
+`facePrivacyResolve` also extends the existing union-then-dilate fast path to a
+strictly equivalent case: when fresh-class evidence is absent and every unselected
+person bbox is below the same 0.10 overlap prefilter already used by the slow path,
+no unselected candidate can reach carving logic. Multiple selected masks can then
+be unioned first and dilated once. Any possible bbox overlap continues through the
+historical per-target resolver unchanged.
+
+Separately, the production YOLO confidence threshold remains **0.25**. The reviewed
+fixture contains a low-confidence exterior person around 0.40-0.62 while protected
+people can also transiently fall below 0.50, so raising the global YOLO threshold
+would be unsafe. The fresh-project selection UI instead keeps analysis candidates
+visible but auto-selects FULL_BODY only when initial confidence is at least
+**0.55**. Persisted user choices always win, and a weak candidate can still be
+selected manually. This prevents an approximately 50% exterior candidate from
+becoming FULL_BODY merely because the previous fresh-project default selected
+every detected person.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

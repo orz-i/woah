@@ -368,6 +368,10 @@ class ExportPipeline(
                 val faceDormantPixelMotionBridgeFramesByTrackId = mutableMapOf<Int, Long>()
                 val facePixelMotionFramesByTrackId = mutableMapOf<Int, Long>()
                 val facePixelMotionRejectedFramesByTrackId = mutableMapOf<Int, Long>()
+                val facePixelMotionRejectReasonCounts = mutableMapOf<String, Long>()
+                val facePixelMotionRejectReasonsByTrackId = mutableMapOf<Int, MutableMap<String, Long>>()
+                val faceDormantSuppressionReasonCounts = mutableMapOf<String, Long>()
+                val faceDormantSuppressionReasonsByTrackId = mutableMapOf<Int, MutableMap<String, Long>>()
                 val faceDormantReactivationStickerMaxWidthByTrackId = mutableMapOf<Int, Float>()
                 val faceDormantReactivationStickerMaxHeightByTrackId = mutableMapOf<Int, Float>()
                 val faceStickerMinWidthByTrackId = mutableMapOf<Int, Float>()
@@ -940,6 +944,18 @@ class ExportPipeline(
                                 facePixelMotionRejectedFramesByTrackId[trackId] =
                                     facePixelMotionRejectedFramesByTrackId.getOrDefault(trackId, 0L) + 1L
                             }
+                            faceOnlyFrameResult.pixelMotionRejectReasonByTrackId.forEach { (trackId, reason) ->
+                                facePixelMotionRejectReasonCounts[reason] =
+                                    facePixelMotionRejectReasonCounts.getOrDefault(reason, 0L) + 1L
+                                val perTrack = facePixelMotionRejectReasonsByTrackId.getOrPut(trackId) { mutableMapOf() }
+                                perTrack[reason] = perTrack.getOrDefault(reason, 0L) + 1L
+                            }
+                            faceOnlyFrameResult.dormantSuppressionReasonByTrackId.forEach { (trackId, reason) ->
+                                faceDormantSuppressionReasonCounts[reason] =
+                                    faceDormantSuppressionReasonCounts.getOrDefault(reason, 0L) + 1L
+                                val perTrack = faceDormantSuppressionReasonsByTrackId.getOrPut(trackId) { mutableMapOf() }
+                                perTrack[reason] = perTrack.getOrDefault(reason, 0L) + 1L
+                            }
                             faceOnlyFrameResult.stickerPlacements.forEach { placement ->
                                 val trackId = placement.trackId
                                 val width = placement.sourceRect.width
@@ -1368,6 +1384,16 @@ class ExportPipeline(
                             "face_dormant_pixel_motion_bridge_frames_by_track_id" to faceDormantPixelMotionBridgeFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_pixel_motion_frames_by_track_id" to facePixelMotionFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_pixel_motion_rejected_frames_by_track_id" to facePixelMotionRejectedFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
+                            "face_pixel_motion_reject_reasons" to facePixelMotionRejectReasonCounts.toSortedMap(),
+                            "face_pixel_motion_reject_reasons_by_track_id" to facePixelMotionRejectReasonsByTrackId
+                                .toSortedMap()
+                                .mapKeys { it.key.toString() }
+                                .mapValues { (_, reasons) -> reasons.toSortedMap() },
+                            "face_dormant_suppression_reasons" to faceDormantSuppressionReasonCounts.toSortedMap(),
+                            "face_dormant_suppression_reasons_by_track_id" to faceDormantSuppressionReasonsByTrackId
+                                .toSortedMap()
+                                .mapKeys { it.key.toString() }
+                                .mapValues { (_, reasons) -> reasons.toSortedMap() },
                             "face_dormant_reactivation_sticker_max_width_by_track_id" to faceDormantReactivationStickerMaxWidthByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_dormant_reactivation_sticker_max_height_by_track_id" to faceDormantReactivationStickerMaxHeightByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_sticker_min_width_by_track_id" to faceStickerMinWidthByTrackId.toSortedMap().mapKeys { it.key.toString() },

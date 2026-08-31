@@ -8,6 +8,40 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('fresh analysis keeps weak candidate visible but not auto selected', () async {
+    final now = DateTime.utc(2026, 8, 31);
+    final project = DanceProject(
+      id: 'weak-candidate-default',
+      sourceUri: 'file:///weak-candidate.mp4',
+      videoInfo: const VideoInfo(
+        codedWidth: 720,
+        codedHeight: 1280,
+        displayWidth: 720,
+        displayHeight: 1280,
+        fps: 60,
+        durationMs: 1000,
+        rotation: 0,
+        videoCodec: 'h264',
+        hasAudio: false,
+      ),
+      createdAt: now,
+      updatedAt: now,
+    );
+    final controller = PersonSelectionController(
+      _FakePersonSelectionRepository(confidences: const [0.92, 0.50]),
+    );
+    addTearDown(controller.dispose);
+
+    await controller.analyzeProject(project);
+
+    expect(controller.state.persons.map((p) => p.id).toSet(), equals({0, 1}));
+    expect(controller.state.selectedPersonIds, equals({0}));
+    expect(controller.state.privacyModeForPerson(1), PersonPrivacyMode.none);
+
+    controller.setPrivacyMode(1, PersonPrivacyMode.fullBody);
+    expect(controller.state.selectedPersonIds, equals({0, 1}));
+  });
+
   testWidgets('person selection keeps FULL_BODY and FACE_ONLY mutually exclusive',
       (tester) async {
     tester.view.physicalSize = const Size(720, 1280);
@@ -79,6 +113,10 @@ void main() {
 }
 
 class _FakePersonSelectionRepository implements NativeProcessingRepository {
+  final List<double> confidences;
+
+  _FakePersonSelectionRepository({this.confidences = const [0.94, 0.91]});
+
   @override
   Future<AnalyzeResultDto> analyzeVideo({
     required String videoUri,
@@ -106,7 +144,7 @@ class _FakePersonSelectionRepository implements NativeProcessingRepository {
           x2: 0.35,
           y2: 0.9,
           thumbnailPath: '',
-          confidence: 0.94,
+          confidence: confidences[0],
         ),
         DetectedPersonDto(
           id: 1,
@@ -115,7 +153,7 @@ class _FakePersonSelectionRepository implements NativeProcessingRepository {
           x2: 0.85,
           y2: 0.9,
           thumbnailPath: '',
-          confidence: 0.91,
+          confidence: confidences[1],
         ),
       ],
     );

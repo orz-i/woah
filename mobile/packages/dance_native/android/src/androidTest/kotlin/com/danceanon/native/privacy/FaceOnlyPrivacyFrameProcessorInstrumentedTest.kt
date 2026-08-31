@@ -176,6 +176,7 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
                 ptsUs = 351_001L
             )
             assertEquals(setOf(61), afterGap.dormantSuppressedTrackIds)
+            assertEquals("EVIDENCE_GAP_EXPIRED", afterGap.dormantSuppressionReasonByTrackId[61])
             assertTrue(afterGap.dormantPixelMotionBridgeTrackIds.isEmpty())
             assertTrue(afterGap.stickerPlacements.isEmpty())
         }
