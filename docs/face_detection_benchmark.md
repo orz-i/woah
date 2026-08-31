@@ -2034,31 +2034,34 @@ three behavior-neutral telemetry stages: `yoloCandidateScan`, `yoloMaskAwareNms`
 and `yoloMaskMaterialize`. The next real-device export should use those fields to
 select the next CPU optimization target.
 
-### Thirty-second correction: mask-aware NMS owns essentially all remaining decode time; improve proto cache locality without changing mask math
+### Thirty-second correction: full-proto NCHW->pixel-major transpose has no net gain; keep decode local to candidate support
 
-The real-device mixed export from
-`3449dd764538def2e265fe69a3566beab4675a51` keeps the expected FACE quality
-baseline while resolving the remaining YOLO decode attribution. `yoloDecode` is
-about **19.80 ms**, of which `yoloCandidateScan` is only **0.009 ms**,
-`yoloMaskAwareNms` is **19.56 ms**, and `yoloMaskMaterialize` is only
-**0.003 ms**. Thus essentially all remaining decode cost is inside mask-aware NMS;
-candidate collection and final `NativeMask` wrapping are not useful optimization
-targets. The same run keeps `yoloPreprocess` near **1.33 ms** and
-`yoloOutputRead` near **8.40 ms**.
+The real-video export from
+`33de9f3633df7f0b4b5afee918205c622c65ccf5` keeps the same mixed privacy result
+exactly (FULL_BODY ID4; FACE_ONLY IDs 1/2/3/5/6; dormant suppression 3, partial
+occlusion pixel rescue 92, pixel-motion/reject/occlusion counts unchanged), so the
+experiment is quality-neutral. Its performance result is nevertheless negative:
+`yoloMaskAwareNms` falls from about **19.56 ms** to **18.68 ms**, but the new
+`yoloProtoTranspose` costs about **1.06 ms**. The combined cost is therefore about
+**19.73 ms**, slightly worse than the original **19.56 ms**. `yoloDecode` also rises
+from about **19.80 ms** to **20.26 ms**, and `yoloPipelineTotal` from about
+**32.34 ms** to **32.72 ms**. Tracking and face-detector timings remain essentially
+unchanged, and the diagnostic bundle contains the preceding same-video summaries,
+so this is not supported as a device-state explanation. The full-proto transpose
+must not remain in production merely because the isolated NMS number is lower.
 
-The production YOLO proto tensor is fixed NCHW `[1, 32, 160, 160]`. The NMS mask
-decoder consumes all 32 channels for each spatial proto pixel, so direct NCHW array
-access jumps among 32 channel planes separated by about 100 KB and has poor cache
-locality. The next behavior-equivalent optimization therefore copies the 3.3 MB
-proto tensor once per frame into one reusable pixel-major scratch array and decodes
-through the existing NHWC array view. This changes only memory layout: channel
-accumulation order remains `0..31`, sigmoid/mask bytes, bbox/mask IoU thresholds,
-mask-aware NMS decisions, TrackManager inputs, and FACE/FULL_BODY behavior remain
-unchanged. `yoloProtoTranspose` is recorded separately so real-device acceptance
-requires `yoloProtoTranspose + yoloMaskAwareNms` to beat the previous **19.56 ms**
-NMS cost rather than merely moving time between profiler buckets. Existing
-FloatBuffer-vs-array adapter parity verifies final bbox/confidence/160x160 mask bytes
-exactly across the old NCHW direct path and the new pixel-major production path.
+The replacement experiment returns to the validated NCHW array path and only
+changes access order inside an actually requested candidate mask. For NCHW output,
+each candidate bbox support is accumulated channel-major into one reusable
+160x160 float scratch buffer. Every output pixel still receives channel products
+in the exact **0..31** order used by the reference per-pixel dot product, preserving
+the floating-point accumulation order, sigmoid, mask bytes, mask-aware NMS gates,
+and TrackManager input. Unit coverage compares multiple random/boundary candidate
+masks byte-for-byte against the old NCHW per-pixel reference and keeps the existing
+end-to-end adapter parity. New behavior-neutral timings split the NMS body into
+`yoloMaskDecode` and `yoloMaskIouScan`; the next real-device export should judge the
+candidate by total `yoloMaskAwareNms`/`yoloDecode`, not by an internal substage in
+isolation.
 
 ## Test fixtures and paths
 

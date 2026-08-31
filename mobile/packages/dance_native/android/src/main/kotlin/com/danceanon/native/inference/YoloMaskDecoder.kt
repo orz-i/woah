@@ -66,6 +66,7 @@ class NchwArrayProtoView(
     private val protoSize: Int = 160
 ) : ProtoTensorView {
     private val protoPixels = protoSize * protoSize
+
     override fun getDotProduct(px: Int, py: Int, coeffs: FloatArray): Float {
         var sum = 0f
         val pixelOffset = py * protoSize + px
@@ -73,6 +74,52 @@ class NchwArrayProtoView(
             sum += coeffs[c] * values[c * protoPixels + pixelOffset]
         }
         return sum
+    }
+
+    /**
+     * Decode only the candidate support while reading each NCHW channel plane
+     * sequentially. Every pixel still accumulates channels in the exact 0..31
+     * order used by [getDotProduct], but avoids bouncing between 32 distant
+     * channel planes for every individual pixel.
+     */
+    fun decodeCandidateMask(
+        cand: RawCandidate,
+        inputSize: Int,
+        scratch: FloatArray
+    ): ByteArray {
+        require(scratch.size >= protoPixels)
+        val maskBytes = ByteArray(protoPixels)
+        val margin = 1
+        val x1 = (kotlin.math.floor((cand.x1 / inputSize) * protoSize).toInt() - margin).coerceIn(0, protoSize)
+        val y1 = (kotlin.math.floor((cand.y1 / inputSize) * protoSize).toInt() - margin).coerceIn(0, protoSize)
+        val x2 = (kotlin.math.ceil((cand.x2 / inputSize) * protoSize).toInt() + margin).coerceIn(0, protoSize)
+        val y2 = (kotlin.math.ceil((cand.y2 / inputSize) * protoSize).toInt() + margin).coerceIn(0, protoSize)
+
+        for (py in y1 until y2) {
+            java.util.Arrays.fill(scratch, py * protoSize + x1, py * protoSize + x2, 0f)
+        }
+
+        for (c in 0 until channels) {
+            val coeff = cand.maskCoeffs[c]
+            val channelBase = c * protoPixels
+            for (py in y1 until y2) {
+                val pixelRow = py * protoSize
+                val protoRow = channelBase + pixelRow
+                for (px in x1 until x2) {
+                    val pixelIndex = pixelRow + px
+                    scratch[pixelIndex] += coeff * values[protoRow + px]
+                }
+            }
+        }
+
+        for (py in y1 until y2) {
+            val rowOffset = py * protoSize
+            for (px in x1 until x2) {
+                val prob = 1.0f / (1.0f + kotlin.math.exp(-scratch[rowOffset + px]))
+                maskBytes[rowOffset + px] = (prob * 255f).toInt().coerceIn(0, 255).toByte()
+            }
+        }
+        return maskBytes
     }
 }
 
@@ -203,21 +250,37 @@ object YoloMaskDecoder {
     class CandidateMaskCache(
         private val protoView: ProtoTensorView?,
         private val inputSize: Int = DEFAULT_INPUT_SIZE,
-        private val protoSize: Int = DEFAULT_PROTO_SIZE
+        private val protoSize: Int = DEFAULT_PROTO_SIZE,
+        private val timings: MaskAwareNmsTimings? = null
     ) {
         // Candidates are immutable objects created once per frame and the NMS/
         // final decode paths reuse the same instances. Identity keys avoid
         // hashing all 32 mask coefficients on every cache lookup.
         private val cache = IdentityHashMap<RawCandidate, ByteArray>()
+        private val nchwScratch = FloatArray(protoSize * protoSize)
 
         fun getMask(cand: RawCandidate): ByteArray {
             val cached = cache[cand]
             if (cached != null) return cached
-            return decodeCandidateMask(cand, protoView, inputSize, protoSize).also {
+            val startNs = System.nanoTime()
+            val decoded = if (cand.syntheticMask == null && protoView is NchwArrayProtoView) {
+                protoView.decodeCandidateMask(cand, inputSize, nchwScratch)
+            } else {
+                decodeCandidateMask(cand, protoView, inputSize, protoSize)
+            }
+            if (timings != null) {
+                timings.maskDecodeNs += System.nanoTime() - startNs
+            }
+            return decoded.also {
                 cache[cand] = it
             }
         }
     }
+
+    data class MaskAwareNmsTimings(
+        var maskDecodeNs: Long = 0L,
+        var maskIouNs: Long = 0L
+    )
 
     fun maskAwareNms(
         candidates: List<RawCandidate>,
@@ -225,12 +288,13 @@ object YoloMaskDecoder {
         bboxIouThreshold: Float = 0.50f,
         maskIouThreshold: Float = DEFAULT_MASK_IOU_THRESHOLD,
         inputSize: Int = DEFAULT_INPUT_SIZE,
-        protoSize: Int = DEFAULT_PROTO_SIZE
+        protoSize: Int = DEFAULT_PROTO_SIZE,
+        timings: MaskAwareNmsTimings? = null
     ): Pair<List<RawCandidate>, CandidateMaskCache> {
         val sorted = candidates.sortedByDescending { it.confidence }
         val selected = ArrayList<RawCandidate>(sorted.size)
         val suppressed = BooleanArray(sorted.size)
-        val cache = CandidateMaskCache(protoView, inputSize, protoSize)
+        val cache = CandidateMaskCache(protoView, inputSize, protoSize, timings)
 
         for (i in sorted.indices) {
             if (suppressed[i]) continue
@@ -244,7 +308,11 @@ object YoloMaskDecoder {
                 if (bboxIoU > bboxIouThreshold) {
                     val maskCurrent = cache.getMask(current)
                     val maskNext = cache.getMask(next)
+                    val iouStartNs = System.nanoTime()
                     val maskIoU = calculateMaskIoU(maskCurrent, maskNext)
+                    if (timings != null) {
+                        timings.maskIouNs += System.nanoTime() - iouStartNs
+                    }
 
                     if (maskIoU >= maskIouThreshold) {
                         // High mask overlap: duplicate detection -> suppress

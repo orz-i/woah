@@ -39,18 +39,6 @@ class YoloLiteRtTensorAdapter(
         } else false
     }
 
-    // Production model output is NCHW [1, 32, 160, 160]. Mask decoding walks
-    // spatial pixels and consumes all 32 channels for each pixel, so direct
-    // NCHW access jumps between channel planes roughly 100 KB apart. Reuse one
-    // pixel-major scratch array to make those 32-value dot products contiguous.
-    // Values are copied without arithmetic and channel accumulation order stays
-    // exactly c=0..31, preserving mask bytes/NMS semantics.
-    private val pixelMajorProtoScratch: FloatArray? = if (!isOut1Nhwc) {
-        FloatArray(PROTO_CHANNELS * PROTO_SIZE * PROTO_SIZE)
-    } else {
-        null
-    }
-
     fun parseDetections(
         output0Buffer: FloatBuffer,
         output1Buffer: FloatBuffer,
@@ -98,18 +86,11 @@ class YoloLiteRtTensorAdapter(
             (System.nanoTime() - candidateStartNs) / 1_000_000
         )
 
-        val protoPrepareStartNs = System.nanoTime()
         val protoView: ProtoTensorView = if (!isOut1Nhwc) {
-            val scratch = requireNotNull(pixelMajorProtoScratch)
-            transposeNchwProtoToPixelMajor(output1, scratch)
-            NhwcArrayProtoView(scratch, PROTO_CHANNELS, PROTO_SIZE)
+            NchwArrayProtoView(output1, PROTO_CHANNELS, PROTO_SIZE)
         } else {
             NhwcArrayProtoView(output1, PROTO_CHANNELS, PROTO_SIZE)
         }
-        stageTimingsMs?.set(
-            "yoloProtoTranspose",
-            (System.nanoTime() - protoPrepareStartNs) / 1_000_000
-        )
         return finishDetections(
             candidates = candidates,
             protoView = protoView,
@@ -117,22 +98,6 @@ class YoloLiteRtTensorAdapter(
             iouThreshold = iouThreshold,
             stageTimingsMs = stageTimingsMs
         )
-    }
-
-    private fun transposeNchwProtoToPixelMajor(source: FloatArray, destination: FloatArray) {
-        val protoPixels = PROTO_SIZE * PROTO_SIZE
-        val requiredSize = PROTO_CHANNELS * protoPixels
-        require(source.size >= requiredSize) {
-            "YOLO proto tensor too small: ${source.size} < $requiredSize"
-        }
-        require(destination.size >= requiredSize)
-
-        for (pixel in 0 until protoPixels) {
-            val dstBase = pixel * PROTO_CHANNELS
-            for (channel in 0 until PROTO_CHANNELS) {
-                destination[dstBase + channel] = source[channel * protoPixels + pixel]
-            }
-        }
     }
 
     private inline fun collectCandidates(
@@ -234,18 +199,22 @@ class YoloLiteRtTensorAdapter(
     ): List<PersonDetection> {
         // 2. Perform Mask-Aware Non-Maximum Suppression (NMS)
         val nmsStartNs = System.nanoTime()
+        val nmsTimings = YoloMaskDecoder.MaskAwareNmsTimings()
         val (kept, maskCache) = YoloMaskDecoder.maskAwareNms(
             candidates = candidates,
             protoView = protoView,
             bboxIouThreshold = iouThreshold,
             maskIouThreshold = YoloMaskDecoder.DEFAULT_MASK_IOU_THRESHOLD,
             inputSize = preprocess.inputSize,
-            protoSize = PROTO_SIZE
+            protoSize = PROTO_SIZE,
+            timings = nmsTimings
         )
         stageTimingsMs?.set(
             "yoloMaskAwareNms",
             (System.nanoTime() - nmsStartNs) / 1_000_000
         )
+        stageTimingsMs?.set("yoloMaskDecode", nmsTimings.maskDecodeNs / 1_000_000)
+        stageTimingsMs?.set("yoloMaskIouScan", nmsTimings.maskIouNs / 1_000_000)
 
         // 3. Process kept detections
         val materializeStartNs = System.nanoTime()

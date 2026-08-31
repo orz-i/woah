@@ -4,8 +4,30 @@ import java.nio.FloatBuffer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.random.Random
 
 class YoloMaskAwareNmsTest {
+
+    @Test
+    fun channelMajorNchwDecodeMatchesPerPixelReferenceAcrossCandidateBounds() {
+        val protoSize = 160
+        val channels = 32
+        val random = Random(20260831)
+        val proto = FloatArray(channels * protoSize * protoSize) { random.nextFloat() * 2f - 1f }
+        val view = NchwArrayProtoView(proto, channels, protoSize)
+        val scratch = FloatArray(protoSize * protoSize)
+        val candidates = listOf(
+            RawCandidate(0f, 0f, 640f, 640f, 0.9f, FloatArray(channels) { random.nextFloat() * 2f - 1f }),
+            RawCandidate(97.5f, 31.25f, 412.75f, 601.5f, 0.8f, FloatArray(channels) { random.nextFloat() * 2f - 1f }),
+            RawCandidate(610f, 590f, 680f, 700f, 0.7f, FloatArray(channels) { random.nextFloat() * 2f - 1f })
+        )
+
+        for (candidate in candidates) {
+            val reference = YoloMaskDecoder.decodeCandidateMask(candidate, view, 640, protoSize)
+            val optimized = view.decodeCandidateMask(candidate, 640, scratch)
+            assertTrue(reference.contentEquals(optimized), "channel-major NCHW decode must be byte-exact")
+        }
+    }
 
     @Test
     fun arrayBackedProtoViewsMatchBufferBackedMaskBytesExactly() {
