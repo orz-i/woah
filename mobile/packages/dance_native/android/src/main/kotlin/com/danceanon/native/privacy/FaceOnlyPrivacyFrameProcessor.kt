@@ -81,18 +81,13 @@ class FaceOnlyPrivacyFrameProcessor(
                     MAX_PREDICTED_FACE_AGE_US.toFloat()) * MAX_PREDICTED_AGE_EXPANSION
                 )
 
-            val centerDx = personBbox.centerX - trustedPersonBbox.centerX
-            // Use the lower-body/foot edge as the vertical whole-person motion
-            // anchor. Real-video YOLO boxes can change their top edge by nearly
-            // 100 px in one 60 fps frame when upper-body coverage changes while
-            // the feet remain stable. Treating that top-edge change as body
-            // translation moves the face ROI with a detector-box shape change.
-            // Bottom-edge motion is substantially more stable for this purpose;
-            // articulated head motion is supplied by the face detector itself.
-            val centerDy = personBbox.bottom - trustedPersonBbox.bottom
+            val personTranslation = PersonBboxMotionEstimator.estimate(
+                previous = trustedPersonBbox,
+                current = personBbox
+            )
             return FacePrivacyEllipse(
-                centerX = centerX + centerDx,
-                centerY = centerY + centerDy,
+                centerX = centerX + personTranslation.dx,
+                centerY = centerY + personTranslation.dy,
                 radiusX = (radiusX * bboxScale * ageExpansion).coerceAtLeast(1f),
                 radiusY = (radiusY * bboxScale * ageExpansion).coerceAtLeast(1f),
                 source = FacePrivacyRegionSource.PREDICTED_FACE

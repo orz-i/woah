@@ -27,6 +27,32 @@ class FacePrivacyTemporalStabilizerTest {
     }
 
     @Test
+    fun `observed bbox bottom jump with stable top is not trusted as person translation`() {
+        val stabilizer = FacePrivacyTemporalStabilizer()
+        val first = FacePrivacyEllipse(200f, 170f, 45f, 55f, FacePrivacyRegionSource.DETECTED_FACE)
+        stabilizer.stabilize(15, first, person, 0L)
+
+        // Mirrors the real dfd91d6 clip failure: the lower edge can jump by
+        // ~58 px while the upper edge stays nearly fixed. A foot-only anchor
+        // would incorrectly exempt that detector-box shape change as body motion.
+        val bottomJitteredPerson = FloatRect(100f, 100f, 300f, 758f)
+        val bottomProjectedFace = FacePrivacyEllipse(200f, 228f, 45f, 55f, FacePrivacyRegionSource.PREDICTED_FACE)
+        val output = stabilizer.stabilize(
+            trackId = 15,
+            rawRegion = bottomProjectedFace,
+            personBbox = bottomJitteredPerson,
+            ptsUs = 16_666L,
+            personObservedThisFrame = true
+        )
+
+        assertTrue(output.centerY > first.centerY)
+        assertTrue(
+            output.centerY < 225f,
+            "bbox bottom-edge jitter must be treated as residual face motion, got ${output.centerY}"
+        )
+    }
+
+    @Test
     fun `trusted face size does not explode when current person bbox expands`() {
         val stabilizer = FacePrivacyTemporalStabilizer()
         val detected = FacePrivacyEllipse(200f, 170f, 45f, 55f, FacePrivacyRegionSource.DETECTED_FACE)

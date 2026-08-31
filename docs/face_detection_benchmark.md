@@ -1091,6 +1091,39 @@ owned by accepted face evidence and the bounded residual path. This prevents a
 YOLO upper-silhouette height change from moving the face detector ROI or sticker
 as though the entire dancer jumped vertically.
 
+### Eleventh real-video correction: opposite box edges must agree on body motion
+
+The next complete 751-frame export is from
+`dfd91d6daed7b72087ed51dcec967e5f1591d8a5`. The foot-edge change improves the
+remaining largest visible transitions, but also disproves the stronger assumption
+that the lower edge is always stable:
+
+- maximum consecutive sticker-center steps for IDs 1/2/3/5/6 are about
+  **78.3 / 67.8 / 72.9 / 59.2 / 81.9 px**;
+- ID 6 improves from about **92.4 to 81.9 px** and ID 5 from **67.4 to 59.2 px**;
+- detector calls/rejections are **1000 / 47**, with **914 DETECTED**, **1019
+  PREDICTED**, **1822 FALLBACK**, and **79** position-clamped track-frames;
+- FACE_ONLY p95 is about **71 ms** and detector CPU p95 about **51 ms**, so the
+  remaining motion is not explained by a processing stall.
+
+The accepted YOLO boxes show both forms of one-sided shape jitter. ID 6 still has
+the previously observed ~99 px top-edge jump with only ~3 px bottom motion, but it
+also has consecutive observations where the **bottom edge jumps ~58 px while the
+top moves almost 0 px**. A permanently selected top or bottom anchor therefore
+cannot distinguish physical translation from changing segmentation-box extent.
+
+`PersonBboxMotionEstimator` now estimates short-term body translation from both
+opposite edges on each axis. When left/right or top/bottom move by approximately
+the same amount, their average is accepted as whole-person translation. When the
+edges disagree beyond a bounded fraction of the box dimension, the quieter edge
+is used and the larger edge change is treated as box-shape jitter. The same rule
+feeds both `CachedFaceGeometry.project()` and `FacePrivacyTemporalStabilizer`, so
+ROI prediction and rendered sticker motion share one body-motion definition.
+
+FULL_BODY id 4 remains unchanged: stale-mask suppression still fires at pts
+150100 after the third real miss, and the latest bundle again contains only four
+successful id-4 assignment commits ending at pts 100066.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two
