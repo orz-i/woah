@@ -47,11 +47,17 @@ data class FaceOnlyPrivacyFrameResult(
     val dormantSuppressedTrackIds: Set<Int>,
     val dormantPixelMotionBridgeTrackIds: Set<Int>,
     val pixelMotionTrackIds: Set<Int>,
+    val partialOcclusionPixelMotionTrackIds: Set<Int>,
     val pixelMotionRejectedTrackIds: Set<Int>,
     val pixelMotionRejectReasonByTrackId: Map<Int, String>,
     val dormantSuppressionReasonByTrackId: Map<Int, String>,
     val occlusionHoldTrackIds: Set<Int>,
     val occlusionReacquireDetectorTrackIds: Set<Int>,
+    val appearanceReacquireDetectorTrackIds: Set<Int>,
+    val evidenceGapReacquireDetectorTrackIds: Set<Int>,
+    val evidenceGapReacquireDetectorSuccessTrackIds: Set<Int>,
+    val evidenceGapReacquireDetectorZeroObservationTrackIds: Set<Int>,
+    val evidenceGapReacquireDetectorRejectedTrackIds: Set<Int>,
     val pixelMotionMs: Double,
     val roiReadbackMs: Double,
     val maskBuildMs: Double,
@@ -410,11 +416,17 @@ class FaceOnlyPrivacyFrameProcessor(
                 dormantSuppressedTrackIds = emptySet(),
                 dormantPixelMotionBridgeTrackIds = emptySet(),
                 pixelMotionTrackIds = emptySet(),
+                partialOcclusionPixelMotionTrackIds = emptySet(),
                 pixelMotionRejectedTrackIds = emptySet(),
                 pixelMotionRejectReasonByTrackId = emptyMap(),
                 dormantSuppressionReasonByTrackId = emptyMap(),
                 occlusionHoldTrackIds = emptySet(),
                 occlusionReacquireDetectorTrackIds = emptySet(),
+                appearanceReacquireDetectorTrackIds = emptySet(),
+                evidenceGapReacquireDetectorTrackIds = emptySet(),
+                evidenceGapReacquireDetectorSuccessTrackIds = emptySet(),
+                evidenceGapReacquireDetectorZeroObservationTrackIds = emptySet(),
+                evidenceGapReacquireDetectorRejectedTrackIds = emptySet(),
                 pixelMotionMs = 0.0,
                 roiReadbackMs = 0.0,
                 maskBuildMs = 0.0,
@@ -721,10 +733,16 @@ class FaceOnlyPrivacyFrameProcessor(
         val dormantPixelMotionBridgeTrackIds = linkedSetOf<Int>()
         val dormantPixelMotionRejectedTrackIds = linkedSetOf<Int>()
         val pixelMotionTrackIds = linkedSetOf<Int>()
+        val partialOcclusionPixelMotionTrackIds = linkedSetOf<Int>()
         val pixelMotionRejectedTrackIds = linkedSetOf<Int>()
         val pixelMotionRejectReasonByTrackId = linkedMapOf<Int, String>()
         val occlusionHoldTrackIds = linkedSetOf<Int>()
         val occlusionReacquireDetectorTrackIds = linkedSetOf<Int>()
+        val appearanceReacquireDetectorTrackIds = linkedSetOf<Int>()
+        val evidenceGapReacquireDetectorTrackIds = linkedSetOf<Int>()
+        val evidenceGapReacquireDetectorSuccessTrackIds = linkedSetOf<Int>()
+        val evidenceGapReacquireDetectorZeroObservationTrackIds = linkedSetOf<Int>()
+        val evidenceGapReacquireDetectorRejectedTrackIds = linkedSetOf<Int>()
         var extraOcclusionDetectorCalls = 0
         var pixelMotionMs = 0.0
         var roiReadbackMs = 0.0
@@ -781,6 +799,9 @@ class FaceOnlyPrivacyFrameProcessor(
                         region = pixelMatch.region
                         trustedCurrentPixelCenter = true
                         pixelMotionTrackIds += trackId
+                        if (pixelMatch.partialOcclusion) {
+                            partialOcclusionPixelMotionTrackIds += trackId
+                        }
                         if (renderMode == FaceOnlyRenderMode.DORMANT) {
                             dormantPixelMotionBridgeTrackIds += trackId
                         }
@@ -804,6 +825,13 @@ class FaceOnlyPrivacyFrameProcessor(
             val shouldCallDetector = normalDetectorDue
 
             if (shouldCallDetector && plan != null && roiRgba != null) {
+                if (renderMode == FaceOnlyRenderMode.DORMANT) {
+                    if (evidenceGapDetectorReacquire) {
+                        evidenceGapReacquireDetectorTrackIds += trackId
+                    } else if (appearanceOcclusionReject) {
+                        appearanceReacquireDetectorTrackIds += trackId
+                    }
+                }
                 lastDetectorAttemptPtsUsByTrackId[trackId] = ptsUs
                 val cachedBeforeAttempt = cachedFaceByTrackId[trackId]
                 try {
@@ -818,6 +846,9 @@ class FaceOnlyPrivacyFrameProcessor(
                     detectorObservationCount += locatorResult.observations.size
                     if (locatorResult.observations.isEmpty()) {
                         detectorZeroObservationCallCount++
+                        if (evidenceGapDetectorReacquire) {
+                            evidenceGapReacquireDetectorZeroObservationTrackIds += trackId
+                        }
                     }
                     val selectedFace = if (isDormantProbe) {
                         FaceRoiCandidateSelector.select(
@@ -849,6 +880,9 @@ class FaceOnlyPrivacyFrameProcessor(
                     if (locatorResult.observations.isNotEmpty() && selectedFace == null) {
                         detectorRejectedCallCount++
                         detectorRejectedTrackIds += trackId
+                        if (evidenceGapDetectorReacquire) {
+                            evidenceGapReacquireDetectorRejectedTrackIds += trackId
+                        }
                     }
                     if (selectedFace != null) {
                         val detectedRegion = FacePrivacyRegionResolver.resolve(
@@ -886,6 +920,9 @@ class FaceOnlyPrivacyFrameProcessor(
                         if (renderMode == FaceOnlyRenderMode.DORMANT) {
                             dormantReactivatedTrackIds += trackId
                         }
+                        if (evidenceGapDetectorReacquire && region != null) {
+                            evidenceGapReacquireDetectorSuccessTrackIds += trackId
+                        }
                     }
                 } catch (t: Throwable) {
                     if (isDormantProbe) {
@@ -909,6 +946,11 @@ class FaceOnlyPrivacyFrameProcessor(
                 if (reacquirePlan != null) {
                     extraOcclusionDetectorCalls++
                     occlusionReacquireDetectorTrackIds += trackId
+                    if (evidenceGapDetectorReacquire) {
+                        evidenceGapReacquireDetectorTrackIds += trackId
+                    } else if (appearanceOcclusionReject) {
+                        appearanceReacquireDetectorTrackIds += trackId
+                    }
                     val roiStartNs = System.nanoTime()
                     roiRenderer.renderToFbo(
                         textureId = frameTexture,
@@ -934,6 +976,9 @@ class FaceOnlyPrivacyFrameProcessor(
                         detectorObservationCount += locatorResult.observations.size
                         if (locatorResult.observations.isEmpty()) {
                             detectorZeroObservationCallCount++
+                            if (evidenceGapDetectorReacquire) {
+                                evidenceGapReacquireDetectorZeroObservationTrackIds += trackId
+                            }
                         }
                         val selectedFace = FaceRoiCandidateSelector.select(
                             faces = locatorResult.observations,
@@ -946,6 +991,9 @@ class FaceOnlyPrivacyFrameProcessor(
                         if (locatorResult.observations.isNotEmpty() && selectedFace == null) {
                             detectorRejectedCallCount++
                             detectorRejectedTrackIds += trackId
+                            if (evidenceGapDetectorReacquire) {
+                                evidenceGapReacquireDetectorRejectedTrackIds += trackId
+                            }
                         }
                         if (selectedFace != null) {
                             val detectedRegion = FacePrivacyRegionResolver.resolve(
@@ -967,6 +1015,9 @@ class FaceOnlyPrivacyFrameProcessor(
                                 detectorSeedRgba = reacquireRgba
                                 detectorSeedPlan = reacquirePlan
                                 dormantReactivatedTrackIds += trackId
+                                if (evidenceGapDetectorReacquire) {
+                                    evidenceGapReacquireDetectorSuccessTrackIds += trackId
+                                }
                             }
                         }
                     } catch (t: Throwable) {
@@ -1194,11 +1245,17 @@ class FaceOnlyPrivacyFrameProcessor(
             dormantSuppressedTrackIds = dormantSuppressedTrackIds,
             dormantPixelMotionBridgeTrackIds = dormantPixelMotionBridgeTrackIds,
             pixelMotionTrackIds = pixelMotionTrackIds,
+            partialOcclusionPixelMotionTrackIds = partialOcclusionPixelMotionTrackIds,
             pixelMotionRejectedTrackIds = pixelMotionRejectedTrackIds,
             pixelMotionRejectReasonByTrackId = pixelMotionRejectReasonByTrackId,
             dormantSuppressionReasonByTrackId = dormantSuppressionReasonByTrackId,
             occlusionHoldTrackIds = occlusionHoldTrackIds,
             occlusionReacquireDetectorTrackIds = occlusionReacquireDetectorTrackIds,
+            appearanceReacquireDetectorTrackIds = appearanceReacquireDetectorTrackIds,
+            evidenceGapReacquireDetectorTrackIds = evidenceGapReacquireDetectorTrackIds,
+            evidenceGapReacquireDetectorSuccessTrackIds = evidenceGapReacquireDetectorSuccessTrackIds,
+            evidenceGapReacquireDetectorZeroObservationTrackIds = evidenceGapReacquireDetectorZeroObservationTrackIds,
+            evidenceGapReacquireDetectorRejectedTrackIds = evidenceGapReacquireDetectorRejectedTrackIds,
             pixelMotionMs = pixelMotionMs,
             roiReadbackMs = roiReadbackMs,
             maskBuildMs = maskBuildMs,

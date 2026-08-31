@@ -97,6 +97,98 @@ class FacePixelMotionTrackerTest {
     }
 
     @Test
+    fun `roi partial occlusion keeps current pixel evidence from two agreeing quadrants`() {
+        val tracker = FacePixelMotionTracker()
+        val plan = FaceHeadRoiPlan(
+            sourceRect = FloatRect(140f, 80f, 340f, 280f),
+            anchorX = 0.5f,
+            anchorY = 0.5f,
+            outputSize = 256
+        )
+        val detected = FacePrivacyEllipse(
+            centerX = 240f,
+            centerY = 180f,
+            radiusX = 14f,
+            radiusY = 16f,
+            source = FacePrivacyRegionSource.DETECTED_FACE
+        )
+        assertTrue(
+            tracker.seedRoi(
+                trackId = 31,
+                rgbaTopDown = roiFrameWithPatch(plan, 240f, 180f),
+                roiPlan = plan,
+                detected = detected,
+                personBbox = FloatRect(180f, 100f, 300f, 500f),
+                ptsUs = 0L
+            )
+        )
+
+        val occluded = roiFrameWithPatch(plan, 252f, 173f)
+        occludeRoiRightSide(
+            buffer = occluded,
+            plan = plan,
+            sourceCenterX = 252f,
+            sourceCenterY = 173f
+        )
+        val outcome = tracker.matchRoiDetailed(
+            trackId = 31,
+            rgbaTopDown = occluded,
+            roiPlan = plan,
+            personBbox = FloatRect(180f, 100f, 300f, 500f),
+            personObservedThisFrame = false,
+            ptsUs = 16_666L
+        )
+        val match = assertNotNull(outcome.match)
+        assertTrue(match.partialOcclusion)
+        assertTrue(abs(match.region.centerX - 252f) <= 2f)
+        assertTrue(abs(match.region.centerY - 173f) <= 2f)
+        assertEquals(14f, match.region.radiusX)
+        assertEquals(16f, match.region.radiusY)
+    }
+
+    @Test
+    fun `roi partial occlusion fallback still rejects repeated lookalike peaks`() {
+        val tracker = FacePixelMotionTracker()
+        val plan = FaceHeadRoiPlan(
+            sourceRect = FloatRect(140f, 80f, 340f, 280f),
+            anchorX = 0.5f,
+            anchorY = 0.5f,
+            outputSize = 256
+        )
+        val detected = FacePrivacyEllipse(240f, 180f, 14f, 16f, FacePrivacyRegionSource.DETECTED_FACE)
+        assertTrue(
+            tracker.seedRoi(
+                trackId = 32,
+                rgbaTopDown = roiFrameWithPatch(plan, 240f, 180f),
+                roiPlan = plan,
+                detected = detected,
+                personBbox = FloatRect(180f, 100f, 300f, 500f),
+                ptsUs = 0L
+            )
+        )
+
+        val ambiguous = blankRoiFrame(plan.outputSize).also { frame ->
+            drawRoiPatch(frame, plan, 224f, 180f)
+            drawRoiPatch(frame, plan, 256f, 180f)
+            occludeRoiRightSide(frame, plan, 224f, 180f)
+            occludeRoiRightSide(frame, plan, 256f, 180f)
+        }
+        val outcome = tracker.matchRoiDetailed(
+            trackId = 32,
+            rgbaTopDown = ambiguous,
+            roiPlan = plan,
+            personBbox = FloatRect(180f, 100f, 300f, 500f),
+            personObservedThisFrame = false,
+            ptsUs = 16_666L
+        )
+        assertNull(outcome.match)
+        assertTrue(
+            outcome.rejectReason == FacePixelMotionTracker.RoiRejectReason.LOW_CORRELATION ||
+                outcome.rejectReason == FacePixelMotionTracker.RoiRejectReason.AMBIGUOUS_PEAK
+        )
+    }
+
+    @Test
     fun `roi tracker cannot renew forever without a detector refresh`() {
         val tracker = FacePixelMotionTracker()
         val plan = FaceHeadRoiPlan(
@@ -218,7 +310,12 @@ class FacePixelMotionTrackerTest {
     }
 
     private fun roiFrameWithPatch(plan: FaceHeadRoiPlan, sourceCenterX: Float, sourceCenterY: Float): ByteBuffer {
-        val size = plan.outputSize
+        val buffer = blankRoiFrame(plan.outputSize)
+        drawRoiPatch(buffer, plan, sourceCenterX, sourceCenterY)
+        return buffer
+    }
+
+    private fun blankRoiFrame(size: Int): ByteBuffer {
         val buffer = ByteBuffer.allocateDirect(size * size * 4)
         for (i in 0 until size * size) {
             val offset = i * 4
@@ -227,6 +324,16 @@ class FacePixelMotionTrackerTest {
             buffer.put(offset + 2, 24)
             buffer.put(offset + 3, 255.toByte())
         }
+        return buffer
+    }
+
+    private fun drawRoiPatch(
+        buffer: ByteBuffer,
+        plan: FaceHeadRoiPlan,
+        sourceCenterX: Float,
+        sourceCenterY: Float
+    ) {
+        val size = plan.outputSize
         val localX = (((sourceCenterX - plan.sourceRect.left) / plan.sourceRect.width) * size).roundToInt()
         val localY = (((sourceCenterY - plan.sourceRect.top) / plan.sourceRect.height) * size).roundToInt()
         for (dy in -18..18) {
@@ -244,7 +351,29 @@ class FacePixelMotionTrackerTest {
                 buffer.put(offset + 3, 255.toByte())
             }
         }
-        return buffer
+    }
+
+    private fun occludeRoiRightSide(
+        buffer: ByteBuffer,
+        plan: FaceHeadRoiPlan,
+        sourceCenterX: Float,
+        sourceCenterY: Float
+    ) {
+        val size = plan.outputSize
+        val localX = (((sourceCenterX - plan.sourceRect.left) / plan.sourceRect.width) * size).roundToInt()
+        val localY = (((sourceCenterY - plan.sourceRect.top) / plan.sourceRect.height) * size).roundToInt()
+        for (dy in -22..22) {
+            for (dx in -1..22) {
+                val x = localX + dx
+                val y = localY + dy
+                if (x !in 0 until size || y !in 0 until size) continue
+                val offset = (y * size + x) * 4
+                buffer.put(offset, 188.toByte())
+                buffer.put(offset + 1, 142.toByte())
+                buffer.put(offset + 2, 116.toByte())
+                buffer.put(offset + 3, 255.toByte())
+            }
+        }
     }
 
     private fun blankFrame(): ByteBuffer {

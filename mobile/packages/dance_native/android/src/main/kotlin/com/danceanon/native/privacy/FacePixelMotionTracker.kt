@@ -52,7 +52,8 @@ internal class FacePixelMotionTracker(
         val correlation: Float,
         val uniquenessGap: Float,
         val modelDx: Int,
-        val modelDy: Int
+        val modelDy: Int,
+        val partialOcclusion: Boolean = false
     )
 
     data class RoiMatchOutcome(
@@ -91,6 +92,13 @@ internal class FacePixelMotionTracker(
         var centerXSource: Float,
         var centerYSource: Float,
         var lastEvidencePtsUs: Long
+    )
+
+    private data class PartialOcclusionCandidate(
+        val dx: Int,
+        val dy: Int,
+        val correlation: Float,
+        val uniquenessGap: Float
     )
 
     private val stateByTrackId = mutableMapOf<Int, State>()
@@ -318,37 +326,68 @@ internal class FacePixelMotionTracker(
                 consider(refineDx, refineDy)
             }
         }
-        if (bestCorr < ROI_MIN_CORRELATION) {
-            return RoiMatchOutcome(null, RoiRejectReason.LOW_CORRELATION)
-        }
+        var selectedBestDx = bestDx
+        var selectedBestDy = bestDy
+        var selectedBestCorr = bestCorr
+        var selectedUniquenessGap = Float.POSITIVE_INFINITY
+        var partialOcclusion = false
+        var primaryRejectReason: RoiRejectReason? = null
 
-        var secondCorr = -1f
-        var workspaceIndex = 0
-        for (scanDy in -radius..radius) {
-            for (scanDx in -radius..radius) {
-                val corr = state.correlationWorkspace[workspaceIndex++]
-                if (corr <= INVALID_CORRELATION) continue
-                if (
-                    max(
-                        kotlin.math.abs(scanDx - bestDx),
-                        kotlin.math.abs(scanDy - bestDy)
-                    ) <= ROI_PEAK_NEIGHBORHOOD_RADIUS
-                ) continue
-                if (corr > secondCorr) secondCorr = corr
+        if (bestCorr < ROI_MIN_CORRELATION) {
+            primaryRejectReason = RoiRejectReason.LOW_CORRELATION
+        } else {
+            var secondCorr = -1f
+            var workspaceIndex = 0
+            for (scanDy in -radius..radius) {
+                for (scanDx in -radius..radius) {
+                    val corr = state.correlationWorkspace[workspaceIndex++]
+                    if (corr <= INVALID_CORRELATION) continue
+                    if (
+                        max(
+                            kotlin.math.abs(scanDx - bestDx),
+                            kotlin.math.abs(scanDy - bestDy)
+                        ) <= ROI_PEAK_NEIGHBORHOOD_RADIUS
+                    ) continue
+                    if (corr > secondCorr) secondCorr = corr
+                }
+            }
+            selectedUniquenessGap = bestCorr - secondCorr.coerceAtLeast(-1f)
+            if (secondCorr >= -0.5f && selectedUniquenessGap < ROI_MIN_UNIQUENESS_GAP) {
+                primaryRejectReason = RoiRejectReason.AMBIGUOUS_PEAK
             }
         }
-        val uniquenessGap = bestCorr - secondCorr.coerceAtLeast(-1f)
-        if (secondCorr >= -0.5f && uniquenessGap < ROI_MIN_UNIQUENESS_GAP) {
-            return RoiMatchOutcome(null, RoiRejectReason.AMBIGUOUS_PEAK)
+
+        if (primaryRejectReason != null) {
+            val partial = findPartialOcclusionCandidate(
+                gray = gray,
+                size = size,
+                state = state,
+                baseX = baseX,
+                baseY = baseY,
+                radius = radius,
+                roiPlan = roiPlan,
+                personBbox = personBbox,
+                personObservedThisFrame = personObservedThisFrame
+            ) ?: return RoiMatchOutcome(null, primaryRejectReason)
+            selectedBestDx = partial.dx
+            selectedBestDy = partial.dy
+            selectedBestCorr = partial.correlation
+            selectedUniquenessGap = partial.uniquenessGap
+            partialOcclusion = true
         }
 
-        val newCenterX = roiToSourceX(roiPlan, (baseX + bestDx).toFloat())
-        val newCenterY = roiToSourceY(roiPlan, (baseY + bestDy).toFloat())
+        val newCenterX = roiToSourceX(roiPlan, (baseX + selectedBestDx).toFloat())
+        val newCenterY = roiToSourceY(roiPlan, (baseY + selectedBestDy).toFloat())
         val stepDx = newCenterX - state.centerXSource
         val stepDy = newCenterY - state.centerYSource
         val step = sqrt(stepDx * stepDx + stepDy * stepDy)
         val faceDiameter = max(state.radiusXSource, state.radiusYSource) * 2f
-        val maxStep = max(12f, faceDiameter * ROI_MAX_FACE_DIAMETER_STEP)
+        val stepRatio = if (partialOcclusion && !personObservedThisFrame) {
+            ROI_PARTIAL_MAX_FACE_DIAMETER_STEP_UNOBSERVED
+        } else {
+            ROI_MAX_FACE_DIAMETER_STEP
+        }
+        val maxStep = max(12f, faceDiameter * stepRatio)
         if (step > maxStep) {
             return RoiMatchOutcome(null, RoiRejectReason.STEP_TOO_LARGE)
         }
@@ -381,12 +420,223 @@ internal class FacePixelMotionTracker(
                     radiusY = state.radiusYSource,
                     source = FacePrivacyRegionSource.PREDICTED_FACE
                 ),
-                correlation = bestCorr,
-                uniquenessGap = uniquenessGap,
-                modelDx = bestDx,
-                modelDy = bestDy
+                correlation = selectedBestCorr,
+                uniquenessGap = selectedUniquenessGap,
+                modelDx = selectedBestDx,
+                modelDy = selectedBestDy,
+                partialOcclusion = partialOcclusion
             )
         )
+    }
+
+    private fun findPartialOcclusionCandidate(
+        gray: ByteArray,
+        size: Int,
+        state: RoiState,
+        baseX: Int,
+        baseY: Int,
+        radius: Int,
+        roiPlan: FaceHeadRoiPlan,
+        personBbox: FloatRect,
+        personObservedThisFrame: Boolean
+    ): PartialOcclusionCandidate? {
+        val partialRadius = minOf(radius, ROI_PARTIAL_MAX_SEARCH_RADIUS)
+        java.util.Arrays.fill(state.correlationWorkspace, INVALID_CORRELATION)
+        var bestScore = INVALID_CORRELATION
+        var bestDx = 0
+        var bestDy = 0
+
+        fun consider(dx: Int, dy: Int) {
+            if (dx !in -partialRadius..partialRadius || dy !in -partialRadius..partialRadius) return
+            val sourceX = roiToSourceX(roiPlan, (baseX + dx).toFloat())
+            val sourceY = roiToSourceY(roiPlan, (baseY + dy).toFloat())
+            if (
+                personObservedThisFrame &&
+                !candidateInsideObservedPersonHeadGate(sourceX, sourceY, personBbox)
+            ) return
+            val score = roiPartialOcclusionScoreAt(
+                gray = gray,
+                size = size,
+                state = state,
+                centerX = baseX + dx,
+                centerY = baseY + dy
+            ) ?: return
+            val index = (dy + radius) * (radius * 2 + 1) + (dx + radius)
+            state.correlationWorkspace[index] = score
+            if (score > bestScore) {
+                bestScore = score
+                bestDx = dx
+                bestDy = dy
+            }
+        }
+
+        var coarseDy = -partialRadius
+        while (coarseDy <= partialRadius) {
+            var coarseDx = -partialRadius
+            while (coarseDx <= partialRadius) {
+                consider(coarseDx, coarseDy)
+                coarseDx += ROI_PARTIAL_COARSE_STEP
+            }
+            coarseDy += ROI_PARTIAL_COARSE_STEP
+        }
+        if (bestScore <= INVALID_CORRELATION) return null
+
+        val coarseBestDx = bestDx
+        val coarseBestDy = bestDy
+        for (refineDy in (coarseBestDy - ROI_PARTIAL_COARSE_STEP)..(coarseBestDy + ROI_PARTIAL_COARSE_STEP)) {
+            for (refineDx in (coarseBestDx - ROI_PARTIAL_COARSE_STEP)..(coarseBestDx + ROI_PARTIAL_COARSE_STEP)) {
+                consider(refineDx, refineDy)
+            }
+        }
+        if (bestScore < ROI_PARTIAL_MIN_BLOCK_CORRELATION) return null
+
+        // Coarse sampling can under-score a high-frequency peak by one pixel.
+        // Refine the strongest *other* basin as well, otherwise two identical
+        // faces could appear unique merely because only the winning basin got
+        // 1 px refinement. This is a bounded second-peak verification, not an
+        // exhaustive full-resolution search.
+        var verificationSeedScore = INVALID_CORRELATION
+        var verificationSeedDx = 0
+        var verificationSeedDy = 0
+        var verificationWorkspaceIndex = 0
+        for (scanDy in -radius..radius) {
+            for (scanDx in -radius..radius) {
+                val score = state.correlationWorkspace[verificationWorkspaceIndex++]
+                if (score <= INVALID_CORRELATION) continue
+                if (
+                    max(
+                        kotlin.math.abs(scanDx - bestDx),
+                        kotlin.math.abs(scanDy - bestDy)
+                    ) <= ROI_PARTIAL_VERIFY_SEED_SEPARATION
+                ) continue
+                if (score > verificationSeedScore) {
+                    verificationSeedScore = score
+                    verificationSeedDx = scanDx
+                    verificationSeedDy = scanDy
+                }
+            }
+        }
+        if (verificationSeedScore > INVALID_CORRELATION) {
+            for (refineDy in (verificationSeedDy - ROI_PARTIAL_COARSE_STEP)..(verificationSeedDy + ROI_PARTIAL_COARSE_STEP)) {
+                for (refineDx in (verificationSeedDx - ROI_PARTIAL_COARSE_STEP)..(verificationSeedDx + ROI_PARTIAL_COARSE_STEP)) {
+                    consider(refineDx, refineDy)
+                }
+            }
+        }
+
+        var secondScore = INVALID_CORRELATION
+        var workspaceIndex = 0
+        for (scanDy in -radius..radius) {
+            for (scanDx in -radius..radius) {
+                val score = state.correlationWorkspace[workspaceIndex++]
+                if (score <= INVALID_CORRELATION) continue
+                if (
+                    max(
+                        kotlin.math.abs(scanDx - bestDx),
+                        kotlin.math.abs(scanDy - bestDy)
+                    ) <= ROI_PEAK_NEIGHBORHOOD_RADIUS
+                ) continue
+                if (score > secondScore) secondScore = score
+            }
+        }
+        val uniquenessGap = bestScore - secondScore.coerceAtLeast(-1f)
+        if (
+            secondScore >= -0.5f &&
+            uniquenessGap < ROI_PARTIAL_MIN_UNIQUENESS_GAP
+        ) return null
+
+        return PartialOcclusionCandidate(
+            dx = bestDx,
+            dy = bestDy,
+            correlation = bestScore,
+            uniquenessGap = uniquenessGap
+        )
+    }
+
+    /**
+     * Conservative partial-occlusion score over four overlapping 5x5 quadrants
+     * of the immutable detector-seeded 9x9 template. A hand can corrupt one side
+     * of the face while two independent quadrants remain current. The second-best
+     * quadrant correlation is the score, so one accidental matching patch is not
+     * enough to renew pixel evidence.
+     */
+    private fun roiPartialOcclusionScoreAt(
+        gray: ByteArray,
+        size: Int,
+        state: RoiState,
+        centerX: Int,
+        centerY: Int
+    ): Float? {
+        val halfExtent = state.patchHalfExtentLocal
+        if (
+            centerX - halfExtent < 0 || centerX + halfExtent >= size ||
+            centerY - halfExtent < 0 || centerY + halfExtent >= size
+        ) return null
+
+        val blockScores = FloatArray(ROI_PARTIAL_BLOCK_COUNT) { INVALID_CORRELATION }
+        for (block in 0 until ROI_PARTIAL_BLOCK_COUNT) {
+            val rowMin = if (block >= 2) ROI_PARTIAL_BLOCK_SPLIT else 0
+            val rowMax = if (block >= 2) SAMPLE_GRID - 1 else ROI_PARTIAL_BLOCK_SPLIT
+            val colMin = if (block % 2 == 1) ROI_PARTIAL_BLOCK_SPLIT else 0
+            val colMax = if (block % 2 == 1) SAMPLE_GRID - 1 else ROI_PARTIAL_BLOCK_SPLIT
+
+            var templateSum = 0f
+            var candidateSum = 0f
+            var count = 0
+            for (gy in rowMin..rowMax) {
+                for (gx in colMin..colMax) {
+                    val sampleIndex = gy * SAMPLE_GRID + gx
+                    val index = (centerY + state.sampleDy[sampleIndex]) * size +
+                        centerX + state.sampleDx[sampleIndex]
+                    templateSum += state.template[sampleIndex]
+                    candidateSum += (gray[index].toInt() and 0xFF).toFloat()
+                    count++
+                }
+            }
+            if (count <= 1) continue
+            val templateMean = templateSum / count
+            val candidateMean = candidateSum / count
+            var covariance = 0f
+            var templateNormSq = 0f
+            var candidateNormSq = 0f
+            for (gy in rowMin..rowMax) {
+                for (gx in colMin..colMax) {
+                    val sampleIndex = gy * SAMPLE_GRID + gx
+                    val index = (centerY + state.sampleDy[sampleIndex]) * size +
+                        centerX + state.sampleDx[sampleIndex]
+                    val templateCentered = state.template[sampleIndex] - templateMean
+                    val candidateCentered =
+                        (gray[index].toInt() and 0xFF).toFloat() - candidateMean
+                    covariance += templateCentered * candidateCentered
+                    templateNormSq += templateCentered * templateCentered
+                    candidateNormSq += candidateCentered * candidateCentered
+                }
+            }
+            if (
+                templateNormSq < ROI_PARTIAL_MIN_TEMPLATE_NORM_SQ ||
+                candidateNormSq < ROI_PARTIAL_MIN_CANDIDATE_NORM_SQ
+            ) continue
+            blockScores[block] = (
+                covariance / sqrt(templateNormSq * candidateNormSq)
+                ).coerceIn(-1f, 1f)
+        }
+
+        var highest = INVALID_CORRELATION
+        var secondHighest = INVALID_CORRELATION
+        for (score in blockScores) {
+            if (score > highest) {
+                secondHighest = highest
+                highest = score
+            } else if (score > secondHighest) {
+                secondHighest = score
+            }
+        }
+        // As with the primary ROI matcher, the coarse grid is only a basin
+        // locator. High-frequency distant-face texture can score weakly one
+        // pixel away from the true peak, so the strict 0.78 block threshold is
+        // enforced by findPartialOcclusionCandidate only after 1 px refinement.
+        if (secondHighest <= INVALID_CORRELATION) return null
+        return secondHighest
     }
 
     private fun roiCorrelationAt(
@@ -776,6 +1026,17 @@ internal class FacePixelMotionTracker(
         private const val ROI_MIN_CANDIDATE_NORM_SQ = 1_500f
         private const val ROI_MIN_CORRELATION = 0.68f
         private const val ROI_MIN_UNIQUENESS_GAP = 0.03f
+        private const val ROI_PARTIAL_BLOCK_COUNT = 4
+        private const val ROI_PARTIAL_BLOCK_SPLIT = SAMPLE_GRID / 2
+        private const val ROI_PARTIAL_COARSE_STEP = 2
+        private const val ROI_PARTIAL_MAX_SEARCH_RADIUS = 32
+        private const val ROI_PARTIAL_VERIFY_SEED_SEPARATION =
+            ROI_PEAK_NEIGHBORHOOD_RADIUS + ROI_PARTIAL_COARSE_STEP
+        private const val ROI_PARTIAL_MIN_BLOCK_CORRELATION = 0.78f
+        private const val ROI_PARTIAL_MIN_UNIQUENESS_GAP = 0.05f
+        private const val ROI_PARTIAL_MIN_TEMPLATE_NORM_SQ = 350f
+        private const val ROI_PARTIAL_MIN_CANDIDATE_NORM_SQ = 300f
+        private const val ROI_PARTIAL_MAX_FACE_DIAMETER_STEP_UNOBSERVED = 0.55f
         private const val ROI_MAX_FACE_DIAMETER_STEP = 0.80f
         private const val ROI_MAX_BODY_ANCHOR_RESIDUAL_DIAMETERS = 1.35f
     }

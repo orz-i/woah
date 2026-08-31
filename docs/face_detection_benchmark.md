@@ -1854,6 +1854,59 @@ therefore does not support blaming the remaining slow state on the now-small
 reacquisition count; thermal/CPU-frequency or other device-wide runtime state
 needs separate telemetry before another performance-specific algorithm change.
 
+### Twenty-eighth correction: detector-only gap recovery is firing but cannot see through the occlusion; preserve partial current-pixel evidence instead
+
+The next correct mixed-mode real-video export from
+`1f8072e6e5568090241cf3f28e71815c329ffaa7` keeps FULL_BODY ID4 and FACE_ONLY
+IDs 1/2/3/5/6. Final dormant suppression remains **14 track-frames**, all on ID3,
+with the same **11 EVIDENCE_GAP_EXPIRED + 2 AMBIGUOUS_PEAK + 1 LOW_CORRELATION**
+breakdown. The new gap detector-only branch therefore did not reduce the remaining
+coverage gap.
+
+The detector delta explains why. Relative to the prior mixed run, this build made
+exactly **11 additional face-detector calls**: **10 returned zero observations**
+and the remaining call returned an observation that failed the target selector;
+there were **zero successful gap-reacquisition detector hits**. The gap branch is
+therefore executing as designed. It is not missing its trigger, and its widened ROI
+already prefers the last successful pixel/detector hold center before falling back
+to the older detector seed. Continuing to lengthen the 150 ms lease, add detector
+cadence, or blindly enlarge the ROI is not supported by this evidence.
+
+The next recovery layer instead keeps *current pixel evidence* alive through
+partial facial occlusion without changing the primary SOURCE_ROI_256 matcher. The
+existing 9x9 full-face NCC still runs first with the same 4 px coarse search, 1 px
+refinement, **0.68 correlation**, **0.03 uniqueness**, 150 ms evidence gap, 800 ms
+detector-seed cap, source-step gate, and observed-body residual gate. Only a primary
+`LOW_CORRELATION` or `AMBIGUOUS_PEAK` result may enter the secondary matcher.
+
+The secondary matcher uses four overlapping 5x5 quadrants of the immutable
+detector-seeded 9x9 appearance template. A candidate's robust score is the
+**second-highest** quadrant correlation, so a single hand/background patch cannot
+renew evidence. It requires a stricter **0.78** block correlation and **0.05**
+uniqueness, uses a bounded 32 px ROI search with a 2 px coarse grid plus 1 px
+refinement, and tightens unobserved/DORMANT source motion to **0.55 face diameter**.
+The strongest spatially separate second basin is also refined before uniqueness is
+accepted, preventing two nearby lookalike faces from becoming falsely unique merely
+because only one coarse basin received sub-pixel refinement. No appearance template
+adaptation, identity commitment, or radius change is introduced.
+
+Unit coverage now includes both sides of the safety contract: a synthetic right-half
+face occlusion can preserve current-pixel localization from two agreeing visible
+quadrants, while two independent identical partially occluded candidates are still
+rejected as ambiguous. Export telemetry adds
+`face_partial_occlusion_pixel_motion_track_frames` and its per-track form, plus
+separate evidence-gap detector attempt/success/zero-observation/rejected counters.
+Real-device acceptance must show that partial-pixel rescue is actually exercised
+and that ID3 `EVIDENCE_GAP_EXPIRED` suppression falls without a center-drift or CPU
+regression.
+
+This `1f8072` mixed run also shows material device-level timing variability rather
+than a monotonic algorithm cost trend: `faceOnlyPrivacy` was about **101.3 ms**,
+`facePixelMotionCpu` **28.3 ms**, face detector **18.8 ms**, ROI readback **13.5 ms**,
+resolver **33.7 ms**, and YOLO CPU inference **77.2 ms**, all lower than the prior
+slow-state run despite the extra 11 detector calls. Performance optimization should
+remain separate from the coverage change until thermal/CPU-state telemetry exists.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two
