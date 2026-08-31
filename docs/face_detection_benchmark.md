@@ -2034,6 +2034,32 @@ three behavior-neutral telemetry stages: `yoloCandidateScan`, `yoloMaskAwareNms`
 and `yoloMaskMaterialize`. The next real-device export should use those fields to
 select the next CPU optimization target.
 
+### Thirty-second correction: mask-aware NMS owns essentially all remaining decode time; improve proto cache locality without changing mask math
+
+The real-device mixed export from
+`3449dd764538def2e265fe69a3566beab4675a51` keeps the expected FACE quality
+baseline while resolving the remaining YOLO decode attribution. `yoloDecode` is
+about **19.80 ms**, of which `yoloCandidateScan` is only **0.009 ms**,
+`yoloMaskAwareNms` is **19.56 ms**, and `yoloMaskMaterialize` is only
+**0.003 ms**. Thus essentially all remaining decode cost is inside mask-aware NMS;
+candidate collection and final `NativeMask` wrapping are not useful optimization
+targets. The same run keeps `yoloPreprocess` near **1.33 ms** and
+`yoloOutputRead` near **8.40 ms**.
+
+The production YOLO proto tensor is fixed NCHW `[1, 32, 160, 160]`. The NMS mask
+decoder consumes all 32 channels for each spatial proto pixel, so direct NCHW array
+access jumps among 32 channel planes separated by about 100 KB and has poor cache
+locality. The next behavior-equivalent optimization therefore copies the 3.3 MB
+proto tensor once per frame into one reusable pixel-major scratch array and decodes
+through the existing NHWC array view. This changes only memory layout: channel
+accumulation order remains `0..31`, sigmoid/mask bytes, bbox/mask IoU thresholds,
+mask-aware NMS decisions, TrackManager inputs, and FACE/FULL_BODY behavior remain
+unchanged. `yoloProtoTranspose` is recorded separately so real-device acceptance
+requires `yoloProtoTranspose + yoloMaskAwareNms` to beat the previous **19.56 ms**
+NMS cost rather than merely moving time between profiler buckets. Existing
+FloatBuffer-vs-array adapter parity verifies final bbox/confidence/160x160 mask bytes
+exactly across the old NCHW direct path and the new pixel-major production path.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two
