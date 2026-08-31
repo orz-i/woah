@@ -347,6 +347,7 @@ class ExportPipeline(
                 var faceDormantReactivatedEventCount = 0L
                 var faceDormantExactReacquiredTrackFrameCount = 0L
                 var faceDormantSuppressedTrackFrameCount = 0L
+                var faceDormantPixelMotionBridgeTrackFrameCount = 0L
                 var facePixelMotionTrackFrameCount = 0L
                 var facePixelMotionRejectedTrackFrameCount = 0L
                 val faceDetectorCallsByTrackId = mutableMapOf<Int, Long>()
@@ -364,6 +365,7 @@ class ExportPipeline(
                 val faceDormantReactivatedEventsByTrackId = mutableMapOf<Int, Long>()
                 val faceDormantExactReacquiredFramesByTrackId = mutableMapOf<Int, Long>()
                 val faceDormantSuppressedFramesByTrackId = mutableMapOf<Int, Long>()
+                val faceDormantPixelMotionBridgeFramesByTrackId = mutableMapOf<Int, Long>()
                 val facePixelMotionFramesByTrackId = mutableMapOf<Int, Long>()
                 val facePixelMotionRejectedFramesByTrackId = mutableMapOf<Int, Long>()
                 val faceDormantReactivationStickerMaxWidthByTrackId = mutableMapOf<Int, Float>()
@@ -869,6 +871,8 @@ class ExportPipeline(
                             faceDormantExactReacquiredTrackFrameCount +=
                                 faceOnlyFrameResult.dormantExactReacquiredTrackIds.size
                             faceDormantSuppressedTrackFrameCount += faceOnlyFrameResult.dormantSuppressedTrackIds.size
+                            faceDormantPixelMotionBridgeTrackFrameCount +=
+                                faceOnlyFrameResult.dormantPixelMotionBridgeTrackIds.size
                             facePixelMotionTrackFrameCount += faceOnlyFrameResult.pixelMotionTrackIds.size
                             facePixelMotionRejectedTrackFrameCount += faceOnlyFrameResult.pixelMotionRejectedTrackIds.size
                             faceOnlyFrameResult.detectorCalledTrackIds.forEach { trackId ->
@@ -926,6 +930,10 @@ class ExportPipeline(
                             faceOnlyFrameResult.dormantSuppressedTrackIds.forEach { trackId ->
                                 faceDormantSuppressedFramesByTrackId[trackId] =
                                     faceDormantSuppressedFramesByTrackId.getOrDefault(trackId, 0L) + 1L
+                            }
+                            faceOnlyFrameResult.dormantPixelMotionBridgeTrackIds.forEach { trackId ->
+                                faceDormantPixelMotionBridgeFramesByTrackId[trackId] =
+                                    faceDormantPixelMotionBridgeFramesByTrackId.getOrDefault(trackId, 0L) + 1L
                             }
                             faceOnlyFrameResult.pixelMotionTrackIds.forEach { trackId ->
                                 facePixelMotionFramesByTrackId[trackId] =
@@ -1339,6 +1347,7 @@ class ExportPipeline(
                             "face_dormant_reactivated_by_face_detection_events" to faceDormantReactivatedEventCount,
                             "face_dormant_exact_reacquired_track_frames" to faceDormantExactReacquiredTrackFrameCount,
                             "face_dormant_suppressed_track_frames" to faceDormantSuppressedTrackFrameCount,
+                            "face_dormant_pixel_motion_bridge_track_frames" to faceDormantPixelMotionBridgeTrackFrameCount,
                             "face_pixel_motion_track_frames" to facePixelMotionTrackFrameCount,
                             "face_pixel_motion_rejected_track_frames" to facePixelMotionRejectedTrackFrameCount,
                             "face_detector_calls_by_track_id" to faceDetectorCallsByTrackId.toSortedMap().mapKeys { it.key.toString() },
@@ -1356,6 +1365,7 @@ class ExportPipeline(
                             "face_dormant_reactivated_by_face_detection_events_by_track_id" to faceDormantReactivatedEventsByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_dormant_exact_reacquired_frames_by_track_id" to faceDormantExactReacquiredFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_dormant_suppressed_frames_by_track_id" to faceDormantSuppressedFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
+                            "face_dormant_pixel_motion_bridge_frames_by_track_id" to faceDormantPixelMotionBridgeFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_pixel_motion_frames_by_track_id" to facePixelMotionFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_pixel_motion_rejected_frames_by_track_id" to facePixelMotionRejectedFramesByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_dormant_reactivation_sticker_max_width_by_track_id" to faceDormantReactivationStickerMaxWidthByTrackId.toSortedMap().mapKeys { it.key.toString() },

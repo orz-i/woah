@@ -56,6 +56,134 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
         }
     }
 
+    private fun modelPixelFrame(centerX: Int, centerY: Int): ByteBuffer {
+        val buffer = ByteBuffer.allocateDirect(640 * 640 * 4)
+        for (visualY in 0 until 640) {
+            for (x in 0 until 640) {
+                setModelVisualPixel(buffer, x, visualY, 24, 24, 24)
+            }
+        }
+        for (dy in -14..14) {
+            for (dx in -14..14) {
+                val x = centerX + dx
+                val y = centerY + dy
+                if (x !in 0 until 640 || y !in 0 until 640) continue
+                val r = (80 + (dx * 17 + dy * 7 + dx * dy * 3)).and(0xFF)
+                val g = (60 + (dx * 5 - dy * 19 + dx * dx)).and(0xFF)
+                val b = (40 + (dy * 13 - dx * 11 + dy * dy)).and(0xFF)
+                setModelVisualPixel(buffer, x, y, r, g, b)
+            }
+        }
+        return buffer
+    }
+
+    private fun setModelVisualPixel(buffer: ByteBuffer, x: Int, visualY: Int, r: Int, g: Int, b: Int) {
+        val bufferY = 639 - visualY
+        val offset = (bufferY * 640 + x) * 4
+        buffer.put(offset, r.toByte())
+        buffer.put(offset + 1, g.toByte())
+        buffer.put(offset + 2, b.toByte())
+        buffer.put(offset + 3, 255.toByte())
+    }
+
+    @Test
+    fun currentPixelEvidenceKeepsDormantFaceRenderableUntilEvidenceActuallyBreaks() {
+        val face = FaceObservation(FloatRect(104f, 96f, 152f, 144f), 0.9f)
+        val locator = SequencedLocator(
+            listOf(
+                listOf(face),
+                listOf(face),
+                emptyList(),
+                emptyList()
+            )
+        )
+        withProcessor(locator) { processor, texture, mapper ->
+            val observed = person(61, FloatRect(220f, 40f, 420f, 350f))
+
+            // First acquire the real detector-owned source-space face center.
+            val initial = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(observed),
+                faceOnlyTrackIds = setOf(61),
+                ptsUs = 0L
+            )
+            val initialRect = initial.stickerPlacements.single().sourceRect
+            val initialModelX = mapper.sourceToModelX(initialRect.centerX).roundToInt()
+            val initialModelY = mapper.sourceToModelY(initialRect.centerY).roundToInt()
+
+            // A second detector hit with the existing YOLO readback seeds the
+            // immutable pixel template for this TrackManager-owned identity.
+            val seedFrame = modelPixelFrame(initialModelX, initialModelY)
+            val seeded = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(observed),
+                faceOnlyTrackIds = setOf(61),
+                yoloRgbaBottomUp = seedFrame,
+                ptsUs = 33_333L
+            )
+            assertEquals(setOf(61), seeded.detectedTrackIds)
+
+            val lost = observed.copy(
+                state = TrackState.LOST,
+                observedThisFrame = false,
+                framesSinceLastObservation = 30,
+                mask = null
+            )
+
+            // While still inside the direct YOLO-miss window, detector failure
+            // is bridged by current pixels and renews the pixel evidence lease.
+            val moved1 = modelPixelFrame(initialModelX + 7, initialModelY - 4)
+            val directPixel = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(lost),
+                faceOnlyTrackIds = setOf(61),
+                yoloRgbaBottomUp = moved1,
+                ptsUs = 100_000L
+            )
+            assertEquals(setOf(61), directPixel.pixelMotionTrackIds)
+            assertTrue(directPixel.stickerPlacements.isNotEmpty())
+
+            // YOLO ownership is now old enough that the legacy lifecycle would
+            // become DORMANT. Current high-correlation face pixels must keep the
+            // sticker renderable without committing any new TrackManager ID.
+            val moved2 = modelPixelFrame(initialModelX + 14, initialModelY - 7)
+            val dormantBridge = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(lost),
+                faceOnlyTrackIds = setOf(61),
+                yoloRgbaBottomUp = moved2,
+                ptsUs = 200_000L
+            )
+            assertEquals(setOf(61), dormantBridge.dormantPixelMotionBridgeTrackIds)
+            assertEquals(setOf(61), dormantBridge.pixelMotionTrackIds)
+            assertTrue(dormantBridge.dormantSuppressedTrackIds.isEmpty())
+            assertTrue(dormantBridge.stickerPlacements.isNotEmpty())
+
+            // No successful current pixel evidence for >150 ms invalidates the
+            // tracklet; fail-closed dormancy must return immediately.
+            val afterGap = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(lost),
+                faceOnlyTrackIds = setOf(61),
+                yoloRgbaBottomUp = modelPixelFrame(initialModelX + 18, initialModelY - 8),
+                ptsUs = 351_001L
+            )
+            assertEquals(setOf(61), afterGap.dormantSuppressedTrackIds)
+            assertTrue(afterGap.dormantPixelMotionBridgeTrackIds.isEmpty())
+            assertTrue(afterGap.stickerPlacements.isEmpty())
+        }
+    }
+
     @Test
     fun dormantProbeRejectsLargeAmbiguousBodyTranslationBeforeFaceDetection() {
         val locator = CountingLocator(

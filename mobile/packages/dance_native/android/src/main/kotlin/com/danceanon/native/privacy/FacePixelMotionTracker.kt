@@ -20,7 +20,7 @@ import kotlin.math.sqrt
  * are bottom-to-top. All matching is performed in model coordinates.
  */
 internal class FacePixelMotionTracker(
-    private val maxSeedAgeUs: Long = DEFAULT_MAX_SEED_AGE_US,
+    private val maxEvidenceGapUs: Long = DEFAULT_MAX_EVIDENCE_GAP_US,
     private val minCorrelation: Float = DEFAULT_MIN_CORRELATION,
     private val minUniquenessGap: Float = DEFAULT_MIN_UNIQUENESS_GAP
 ) {
@@ -41,7 +41,6 @@ internal class FacePixelMotionTracker(
         val radiusYSource: Float,
         val searchRadiusModel: Int,
         val correlationWorkspace: FloatArray,
-        val seedPtsUs: Long,
         var centerModelX: Float,
         var centerModelY: Float,
         var lastPtsUs: Long
@@ -62,8 +61,8 @@ internal class FacePixelMotionTracker(
 
     fun hasUsableState(trackId: Int, ptsUs: Long): Boolean {
         val state = stateByTrackId[trackId] ?: return false
-        val ageUs = ptsUs - state.seedPtsUs
-        return ageUs in 0L..maxSeedAgeUs
+        val evidenceGapUs = ptsUs - state.lastPtsUs
+        return evidenceGapUs in 0L..maxEvidenceGapUs
     }
 
     fun seed(
@@ -112,7 +111,6 @@ internal class FacePixelMotionTracker(
             radiusYSource = detected.radiusY,
             searchRadiusModel = searchRadius,
             correlationWorkspace = FloatArray((searchRadius * 2 + 1) * (searchRadius * 2 + 1)),
-            seedPtsUs = ptsUs,
             centerModelX = centerX,
             centerModelY = centerY,
             lastPtsUs = ptsUs
@@ -128,8 +126,8 @@ internal class FacePixelMotionTracker(
         personBbox: FloatRect? = null
     ): Match? {
         val state = stateByTrackId[trackId] ?: return null
-        val ageUs = ptsUs - state.seedPtsUs
-        if (ageUs !in 0L..maxSeedAgeUs || ptsUs < state.lastPtsUs) {
+        val evidenceGapUs = ptsUs - state.lastPtsUs
+        if (evidenceGapUs !in 0L..maxEvidenceGapUs || ptsUs < state.lastPtsUs) {
             stateByTrackId.remove(trackId)
             return null
         }
@@ -144,8 +142,11 @@ internal class FacePixelMotionTracker(
         var bestDy = 0
         var workspaceIndex = 0
 
-        for (dy in -state.searchRadiusModel..state.searchRadiusModel) {
-            for (dx in -state.searchRadiusModel..state.searchRadiusModel) {
+        // Coarse-to-fine search keeps the same local motion envelope while
+        // avoiding a full 41x41 NCC scan for every face on every frame. The
+        // winning coarse peak is refined at one-pixel resolution below.
+        for (dy in -state.searchRadiusModel..state.searchRadiusModel step COARSE_SEARCH_STEP) {
+            for (dx in -state.searchRadiusModel..state.searchRadiusModel step COARSE_SEARCH_STEP) {
                 val candidateX = baseX + dx
                 val candidateY = baseY + dy
                 val corr = if (candidateInsidePersonHeadGate(candidateX, candidateY, mapper, personBbox)) {
@@ -164,13 +165,31 @@ internal class FacePixelMotionTracker(
         }
         if (bestCorr < minCorrelation) return null
 
+        val coarseBestDx = bestDx
+        val coarseBestDy = bestDy
+        for (dy in (coarseBestDy - COARSE_SEARCH_STEP)..(coarseBestDy + COARSE_SEARCH_STEP)) {
+            if (dy !in -state.searchRadiusModel..state.searchRadiusModel) continue
+            for (dx in (coarseBestDx - COARSE_SEARCH_STEP)..(coarseBestDx + COARSE_SEARCH_STEP)) {
+                if (dx !in -state.searchRadiusModel..state.searchRadiusModel) continue
+                val candidateX = baseX + dx
+                val candidateY = baseY + dy
+                if (!candidateInsidePersonHeadGate(candidateX, candidateY, mapper, personBbox)) continue
+                val corr = correlationAt(gray, mapper.modelInputSize, state, candidateX, candidateY) ?: continue
+                if (corr > bestCorr) {
+                    bestCorr = corr
+                    bestDx = dx
+                    bestDy = dy
+                }
+            }
+        }
+
         // Adjacent one-pixel candidates naturally form one correlation peak. The
         // uniqueness check compares the winning peak with the strongest spatially
         // separate peak instead of rejecting normal subpixel plateaus.
         var secondCorr = -1f
         workspaceIndex = 0
-        for (dy in -state.searchRadiusModel..state.searchRadiusModel) {
-            for (dx in -state.searchRadiusModel..state.searchRadiusModel) {
+        for (dy in -state.searchRadiusModel..state.searchRadiusModel step COARSE_SEARCH_STEP) {
+            for (dx in -state.searchRadiusModel..state.searchRadiusModel step COARSE_SEARCH_STEP) {
                 val corr = state.correlationWorkspace[workspaceIndex++]
                 if (max(kotlin.math.abs(dx - bestDx), kotlin.math.abs(dy - bestDy)) <= PEAK_NEIGHBORHOOD_RADIUS) {
                     continue
@@ -311,6 +330,7 @@ internal class FacePixelMotionTracker(
         private const val MAX_PATCH_HALF_EXTENT = 12
         private const val MIN_SEARCH_RADIUS = 6
         private const val MAX_SEARCH_RADIUS = 20
+        private const val COARSE_SEARCH_STEP = 2
         private const val PEAK_NEIGHBORHOOD_RADIUS = 2
         private const val MIN_TEMPLATE_NORM_SQ = 1_500f
         private const val MIN_CANDIDATE_NORM_SQ = 1_000f
@@ -318,7 +338,10 @@ internal class FacePixelMotionTracker(
         private const val PERSON_TOP_MARGIN_RATIO = 0.15f
         private const val PERSON_HEAD_BOTTOM_RATIO = 0.58f
 
-        const val DEFAULT_MAX_SEED_AGE_US = 150_000L
+        // This is a gap between *current pixel evidence* samples, not a total
+        // lifetime from the detector seed. Continuous high-correlation current
+        // pixels renew the localization lease; a real evidence gap expires it.
+        const val DEFAULT_MAX_EVIDENCE_GAP_US = 150_000L
         private const val DEFAULT_MIN_CORRELATION = 0.72f
         private const val DEFAULT_MIN_UNIQUENESS_GAP = 0.035f
     }

@@ -1530,6 +1530,69 @@ step, and total FACE_ONLY cost. The intended success condition is not merely mor
 while consecutive center steps stay bounded and CPU cost remains small relative to
 face detection.
 
+### Twenty-second correction: current face pixels must outrank body dormancy
+
+The first complete real-video export from commit
+`c069199f8d6f187edb05f2f7c6f00bc4aaa9e5cb` disproved the original lifecycle
+placement of the pixel tracker. The matcher itself was active and selective:
+
+- **985** pixel-motion track-frames were accepted versus **93** rejected;
+- accepted/rejected by IDs 1/2/3/5/6 were approximately
+  **118/33, 145/7, 83/15, 345/12, 294/26**;
+- nevertheless total dormant suppression remained **1,598 track-frames**, exactly
+  the dominant visible dropout source, with IDs 1/2/3/5/6 contributing
+  **444 / 401 / 557 / 53 / 143** dormant frames;
+- DETECTED/PREDICTED/FALLBACK were **938 / 1,158 / 61**, so pixel tracking mostly
+  replaced geometry inside frames that were already renderable instead of adding
+  privacy coverage;
+- `facePixelMotionCpu` averaged about **31.4 ms** on the frames where it ran and
+  raised total `faceOnlyPrivacy` average cost to about **68.2 ms**. That cost is
+  too high to simply enable the original exhaustive matcher on every dormant ID.
+
+The root cause is lifecycle ordering, not a low matcher hit rate. The processor
+previously resolved body/YOLO dormancy first, excluded dormant IDs from processing,
+and then called `pixelMotionTracker.retainTracks(baseRenderableFaceOnlyTrackIds)`.
+Entering dormancy therefore deleted the exact current-pixel evidence source that
+was intended to compensate for unreliable fast-dance body/face detections.
+
+The corrected ordering is evidence-first:
+
+- pixel state is retained for every still-active selected FACE_ONLY TrackManager
+  identity, independent of whether the body lifecycle provisionally says DORMANT;
+- only provisionally dormant IDs with a usable detector-seeded template perform
+  an early current-frame pixel match;
+- a high-correlation, unique local match adds that ID back to the renderable set
+  for the current frame **without committing or modifying TrackManager identity**;
+- the dormant body bbox is not used as a veto for that early match. Spatial safety
+  comes from the face-local search radius, immutable detector-seeded appearance,
+  and unique-peak gate;
+- the accepted pixel center becomes the local face-detector ROI anchor, giving the
+  detector a chance to refresh appearance even while YOLO ownership is temporarily
+  unobserved;
+- pixel evidence now expires after a **150 ms gap since the last successful
+  current-pixel/detector evidence**, rather than 150 ms since the original detector
+  seed. Continuous current pixels renew the localization lease; a real evidence
+  gap still returns immediately to fail-closed dormancy;
+- the appearance template remains immutable between real detector hits, so this is
+  not match-to-match template adaptation and cannot silently learn a neighboring
+  face during a crossing.
+
+The NCC search is also changed from exhaustive one-pixel scanning to a two-pixel
+coarse pass followed by a one-pixel refinement around the winning peak. The local
+motion envelope, correlation threshold, unique-peak requirement, and final
+one-pixel center resolution remain unchanged while candidate evaluation drops by
+roughly 3-4x for large search windows.
+
+New export diagnostics distinguish the actual coverage effect:
+`face_dormant_pixel_motion_bridge_track_frames` and its per-track variant count
+frames that the body lifecycle would have suppressed but current face pixels made
+renderable. The next real-video acceptance is therefore explicit: dormant
+suppression must materially fall from **1,598**, dormant pixel bridge counts must
+be nontrivial, and `facePixelMotionCpu` must fall materially from the c069
+**31.4 ms** baseline. If coverage does not improve under those conditions, the
+template-localization approach itself is disproven rather than merely misplaced in
+the lifecycle.
+
 ## Test fixtures and paths
 
 For the full-frame control, each committed 640x640 JPEG can be presented to two

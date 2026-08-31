@@ -66,23 +66,48 @@ class FacePixelMotionTrackerTest {
     }
 
     @Test
-    fun `pixel motion never survives beyond short detector seed age`() {
-        val tracker = FacePixelMotionTracker(maxSeedAgeUs = 150_000L)
+    fun `continuous current pixel evidence renews the tracklet but a real gap expires it`() {
+        val tracker = FacePixelMotionTracker(maxEvidenceGapUs = 150_000L)
         val first = frameWithPatch(240, 180)
         val detected = FacePrivacyEllipse(240f, 180f, 18f, 20f, FacePrivacyRegionSource.DETECTED_FACE)
         assertTrue(tracker.seed(5, first, mapper, detected, 0L))
 
-        val moved = frameWithPatch(244, 181)
-        assertNull(
+        val moved1 = frameWithPatch(244, 181)
+        assertNotNull(
             tracker.match(
                 trackId = 5,
-                rgbaBottomUp = moved,
+                rgbaBottomUp = moved1,
                 mapper = mapper,
-                ptsUs = 150_001L,
+                ptsUs = 140_000L,
                 personBbox = FloatRect(160f, 100f, 340f, 420f)
             )
         )
-        assertTrue(!tracker.hasUsableState(5, 150_001L))
+
+        // The detector seed is now 280 ms old, but current pixel evidence has
+        // remained continuous, so the immutable detector-seeded template may
+        // keep localizing the same face.
+        val moved2 = frameWithPatch(248, 182)
+        assertNotNull(
+            tracker.match(
+                trackId = 5,
+                rgbaBottomUp = moved2,
+                mapper = mapper,
+                ptsUs = 280_000L,
+                personBbox = FloatRect(160f, 100f, 340f, 420f)
+            )
+        )
+
+        val afterGap = frameWithPatch(252, 183)
+        assertNull(
+            tracker.match(
+                trackId = 5,
+                rgbaBottomUp = afterGap,
+                mapper = mapper,
+                ptsUs = 430_001L,
+                personBbox = FloatRect(160f, 100f, 340f, 420f)
+            )
+        )
+        assertTrue(!tracker.hasUsableState(5, 430_001L))
     }
 
     private fun frameWithPatch(centerX: Int, centerY: Int): ByteBuffer = blankFrame().also {
