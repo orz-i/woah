@@ -790,6 +790,7 @@ class TrackManager(
         val reservedGroupTrackIndices = mutableSetOf<Int>()
         val reservedGroupDetectionIndices = mutableSetOf<Int>()
         val reservedGroupOwnerTrackIdsByDetectionIndex = mutableMapOf<Int, MutableSet<Int>>()
+        val reservedGroupOwnerGroupsByDetectionIndex = mutableMapOf<Int, MutableSet<Set<Int>>>()
         val reservedGlobalDetectionIndices = mutableSetOf<Int>()
         val globalAmbiguousTrackIndices = mutableSetOf<Int>()
 
@@ -945,6 +946,9 @@ class TrackManager(
                     reservedGroupOwnerTrackIdsByDetectionIndex
                         .getOrPut(dIdx) { mutableSetOf() }
                         .addAll(group.trackIds)
+                    reservedGroupOwnerGroupsByDetectionIndex
+                        .getOrPut(dIdx) { mutableSetOf() }
+                        .add(group.trackIds.toSet())
                     continue
                 }
 
@@ -1043,6 +1047,9 @@ class TrackManager(
                         reservedGroupOwnerTrackIdsByDetectionIndex
                             .getOrPut(dIdx) { mutableSetOf() }
                             .addAll(group.trackIds)
+                        reservedGroupOwnerGroupsByDetectionIndex
+                            .getOrPut(dIdx) { mutableSetOf() }
+                            .add(group.trackIds.toSet())
                         reservedThisGroup.add(dIdx)
                         NativeDiagnostics.event(
                             level = "INFO",
@@ -1159,6 +1166,7 @@ class TrackManager(
                     if (!reservedGroupDetectionIndices.contains(dIdx)) continue
 
                     val reservationOwnerTrackIds = reservedGroupOwnerTrackIdsByDetectionIndex[dIdx].orEmpty()
+                    val reservationOwnerGroups = reservedGroupOwnerGroupsByDetectionIndex[dIdx].orEmpty()
                     if (reservationOwnerTrackIds.contains(track.id)) continue
 
                     val det = detections[dIdx]
@@ -1225,8 +1233,15 @@ class TrackManager(
                     val faceOnlyIdentityProtected =
                         protectedTrackIds.contains(track.id) &&
                             !privacySelectedTrackIds.contains(track.id)
+                    val multiGroupReservation = reservationOwnerGroups.size >= 2
 
-                    if (wouldStrictGlobalCommit && faceOnlyIdentityProtected) {
+                    if (
+                        isStrictFaceOnlyReservationRescueEligible(
+                            wouldStrictGlobalCommit = wouldStrictGlobalCommit,
+                            faceOnlyIdentityProtected = faceOnlyIdentityProtected,
+                            reservationOwnerGroupCount = reservationOwnerGroups.size
+                        )
+                    ) {
                         strictFaceOnlyRescueDetectionIndices.add(dIdx)
                         NativeDiagnostics.event(
                             level = "INFO",
@@ -1236,6 +1251,10 @@ class TrackManager(
                                 "track_id" to track.id,
                                 "det_index" to dIdx,
                                 "reservation_owner_track_ids" to reservationOwnerTrackIds.toList().sorted(),
+                                "reservation_owner_group_count" to reservationOwnerGroups.size,
+                                "reservation_owner_groups" to reservationOwnerGroups
+                                    .map { it.toList().sorted() }
+                                    .sortedBy { it.joinToString(",") },
                                 "assigned_score" to assignedScore,
                                 "bbox_iou" to candidateBBoxIoU,
                                 "mask_iou" to candidateMaskIoU,
@@ -1269,6 +1288,7 @@ class TrackManager(
                                 "mask_iou" to candidateMaskIoU,
                                 "identity_protected" to protectedTrackIds.contains(track.id),
                                 "privacy_selected" to privacySelectedTrackIds.contains(track.id),
+                                "multi_group_reservation" to multiGroupReservation,
                                 "protected_identity_evidence_ok" to protectedIdentityEvidenceOk,
                                 "hungarian_selected" to hungarianSelected,
                                 "would_strict_global_commit" to wouldStrictGlobalCommit,
@@ -1299,13 +1319,17 @@ class TrackManager(
         }
 
         // Group reservation remains the default isolation boundary. A reserved
-        // detection is exposed to the real Global Hungarian only when the
+        // detection is exposed to the real Global Hungarian only when at least
+        // two independent occlusion groups simultaneously quarantine it and the
         // counterfactual full candidate set already proves a strict, unique
-        // commit to a FACE_ONLY identity-protected track outside the owning
-        // group. FULL_BODY privacy-selected tracks and ordinary tracks never use
-        // this escape. Keep the detection in reservedGroupDetectionIndices so a
-        // failed real Global commit still cannot fall through to recovery or
-        // new-track creation in the same frame.
+        // commit to a FACE_ONLY identity-protected track outside all owners.
+        // A single owning group keeps the original isolation semantics. This
+        // prevents ordinary neighboring-group detections from broadly escaping
+        // reservation while still resolving the multi-group quarantine seen at
+        // the cross-device topology fork. FULL_BODY privacy-selected tracks and
+        // ordinary tracks never use this escape. Keep the detection in
+        // reservedGroupDetectionIndices so a failed real Global commit still
+        // cannot fall through to recovery or new-track creation in the same frame.
         val remainingDetectionIndices = detections.indices.filter { dIdx ->
             !matchedDetectionIndices.contains(dIdx) &&
                 (
@@ -2229,6 +2253,15 @@ class TrackManager(
         private const val GROUP_RESERVATION_MIN_EDGE_PENETRATION_PX = 1.0f
         private const val GROUP_RESERVATION_MIN_EDGE_PENETRATION_RATIO = 0.01f
         private const val OCCLUSION_OVERLAP_EDGE_TELEMETRY_MARGIN = 0.10f
+
+        internal fun isStrictFaceOnlyReservationRescueEligible(
+            wouldStrictGlobalCommit: Boolean,
+            faceOnlyIdentityProtected: Boolean,
+            reservationOwnerGroupCount: Int
+        ): Boolean =
+            wouldStrictGlobalCommit &&
+                faceOnlyIdentityProtected &&
+                reservationOwnerGroupCount >= 2
 
         fun boundPredictionAroundAnchor(
             anchor: FloatRect,

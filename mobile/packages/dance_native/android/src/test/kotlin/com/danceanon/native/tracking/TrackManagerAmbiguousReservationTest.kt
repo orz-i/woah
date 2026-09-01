@@ -240,7 +240,7 @@ class TrackManagerAmbiguousReservationTest {
     }
 
     @Test
-    fun testStrictFaceOnlyIdentityCanConsumeDetectionReservedByNeighborGroup() {
+    fun testStrictFaceOnlyIdentityDoesNotEscapeSingleNeighborGroupReservation() {
         tracker = TrackManager(
             TrackingConfig(
                 minMatchScore = 0.20f,
@@ -273,10 +273,89 @@ class TrackManagerAmbiguousReservationTest {
         )
 
         val target = tracks.single { it.id == 2 }
-        assertTrue(target.observedThisFrame, "strict FACE_ONLY identity must not be hidden by a neighboring group reservation")
+        assertTrue(!target.observedThisFrame, "a single neighboring group must retain the original reservation isolation")
+        assertTrue(target.state != TrackState.ACTIVE)
+        assertEquals(setOf(2, 3, 4), tracks.map { it.id }.toSet())
+    }
+
+    @Test
+    fun testStrictFaceOnlyReservationEscapeRequiresMultipleOwnerGroups() {
+        assertTrue(
+            TrackManager.isStrictFaceOnlyReservationRescueEligible(
+                wouldStrictGlobalCommit = true,
+                faceOnlyIdentityProtected = true,
+                reservationOwnerGroupCount = 2
+            )
+        )
+        assertTrue(
+            !TrackManager.isStrictFaceOnlyReservationRescueEligible(
+                wouldStrictGlobalCommit = true,
+                faceOnlyIdentityProtected = true,
+                reservationOwnerGroupCount = 1
+            )
+        )
+        assertTrue(
+            !TrackManager.isStrictFaceOnlyReservationRescueEligible(
+                wouldStrictGlobalCommit = false,
+                faceOnlyIdentityProtected = true,
+                reservationOwnerGroupCount = 2
+            )
+        )
+        assertTrue(
+            !TrackManager.isStrictFaceOnlyReservationRescueEligible(
+                wouldStrictGlobalCommit = true,
+                faceOnlyIdentityProtected = false,
+                reservationOwnerGroupCount = 2
+            )
+        )
+    }
+
+    @Test
+    fun testStrictFaceOnlyIdentityCanEscapeTwoIndependentGroupReservations() {
+        tracker = TrackManager(
+            TrackingConfig(
+                minMatchScore = 0.20f,
+                bboxIouWeight = 1.0f,
+                maskIouWeight = 0.0f,
+                motionWeight = 0.0f,
+                directionWeight = 0.0f,
+                associationAmbiguityMargin = 0.05f
+            )
+        )
+        tracker.setIdentityProtectedTrackIds(setOf(2))
+        tracker.setPrivacySelectedTrackIds(emptySet())
+        tracker.initializeWithAssignedIds(
+            listOf(
+                // Left overlap group.
+                PersonDetection(FloatRect(0f, 100f, 100f, 300f), 0.95f),
+                PersonDetection(FloatRect(20f, 100f, 120f, 300f), 0.95f),
+                // FACE_ONLY target sits between the two groups but does not
+                // overlap either enough to join their topology.
+                PersonDetection(FloatRect(100f, 100f, 200f, 300f), 0.95f),
+                // Right overlap group.
+                PersonDetection(FloatRect(180f, 100f, 280f, 300f), 0.95f),
+                PersonDetection(FloatRect(200f, 100f, 300f, 300f), 0.95f)
+            ),
+            listOf(0, 1, 2, 3, 4)
+        )
+
+        val targetDetection = PersonDetection(FloatRect(80f, 100f, 220f, 300f), 0.95f)
+        val tracks = tracker.update(
+            detections = listOf(
+                PersonDetection(FloatRect(0f, 100f, 100f, 300f), 0.95f),
+                PersonDetection(FloatRect(20f, 100f, 120f, 300f), 0.95f),
+                targetDetection,
+                PersonDetection(FloatRect(180f, 100f, 280f, 300f), 0.95f),
+                PersonDetection(FloatRect(200f, 100f, 300f, 300f), 0.95f)
+            ),
+            timestampUs = 33_333L
+        )
+
+        val target = tracks.single { it.id == 2 }
+        assertTrue(target.observedThisFrame, "strict FACE_ONLY target must escape simultaneous quarantine by two independent groups")
         assertEquals(TrackState.ACTIVE, target.state)
         assertEquals(targetDetection.bbox, target.bbox)
-        assertEquals(setOf(2, 3, 4), tracks.map { it.id }.toSet())
+        assertEquals(setOf(0, 1, 2, 3, 4), tracks.map { it.id }.toSet())
     }
 
     @Test
