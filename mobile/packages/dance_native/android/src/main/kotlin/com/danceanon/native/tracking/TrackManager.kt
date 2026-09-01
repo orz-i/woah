@@ -2516,7 +2516,7 @@ class TrackManager(
             winnerMaskIoU: Float?
         ): Boolean =
             groupTrackCount == 2 &&
-                trackState == TrackState.OCCLUDED &&
+                (trackState == TrackState.OCCLUDED || trackState == TrackState.REACQUIRING) &&
                 identityProtected &&
                 !privacySelected &&
                 bestScore >= minMatchScore &&

@@ -201,7 +201,7 @@ class TrackManagerAmbiguousCrossingTest {
             "larger groups keep their existing group-first semantics"
         )
         assertTrue(
-            !TrackManager.isProtectedFaceOnlyTwoTrackMaskOwnershipConflict(
+            TrackManager.isProtectedFaceOnlyTwoTrackMaskOwnershipConflict(
                 groupTrackCount = 2,
                 trackState = TrackState.REACQUIRING,
                 identityProtected = true,
@@ -213,7 +213,7 @@ class TrackManagerAmbiguousCrossingTest {
                 winnerIdentityProtected = false,
                 winnerMaskIoU = 0.49f
             ),
-            "the rule must not pull REACQUIRING identities back into another state"
+            "REACQUIRING must also reject an ordinary winner whose current mask ownership is weaker"
         )
         assertTrue(
             !TrackManager.isProtectedFaceOnlyTwoTrackMaskOwnershipConflict(
@@ -310,5 +310,20 @@ class TrackManagerAmbiguousCrossingTest {
         assertTrue(protected.occludedByTrackIds.isEmpty())
         assertEquals(TrackState.ACTIVE, ordinary.state)
         assertTrue(ordinary.observedThisFrame, "the ordinary winner's identity commit must remain unchanged")
+
+        // Repeat the same conflict after the protected identity has already moved
+        // to REACQUIRING. The ordinary identity may still commit, but it still
+        // cannot become definitive occlusion evidence for the protected identity.
+        val reacquiringConflict = tracker.update(
+            listOf(PersonDetection(FloatRect(150f, 100f, 250f, 300f), 0.95f, createDummyMask())),
+            timestampUs = 99_999L
+        )
+        val protectedStillReacquiring = reacquiringConflict.single { it.id == 0 }
+        val ordinaryStillActive = reacquiringConflict.single { it.id == 1 }
+        assertEquals(TrackState.REACQUIRING, protectedStillReacquiring.state)
+        assertTrue(!protectedStillReacquiring.observedThisFrame)
+        assertTrue(protectedStillReacquiring.occludedByTrackIds.isEmpty())
+        assertEquals(TrackState.ACTIVE, ordinaryStillActive.state)
+        assertTrue(ordinaryStillActive.observedThisFrame)
     }
 }
