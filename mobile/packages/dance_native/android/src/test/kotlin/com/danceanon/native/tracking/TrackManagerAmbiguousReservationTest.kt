@@ -240,6 +240,84 @@ class TrackManagerAmbiguousReservationTest {
     }
 
     @Test
+    fun testStrictFaceOnlyIdentityCanConsumeDetectionReservedByNeighborGroup() {
+        tracker = TrackManager(
+            TrackingConfig(
+                minMatchScore = 0.20f,
+                bboxIouWeight = 1.0f,
+                maskIouWeight = 0.0f,
+                motionWeight = 0.0f,
+                directionWeight = 0.0f,
+                associationAmbiguityMargin = 0.05f
+            )
+        )
+        tracker.setIdentityProtectedTrackIds(setOf(2))
+        tracker.setPrivacySelectedTrackIds(emptySet())
+        tracker.initializeWithAssignedIds(
+            listOf(
+                PersonDetection(FloatRect(0f, 100f, 100f, 300f), 0.95f),
+                PersonDetection(FloatRect(80f, 100f, 180f, 300f), 0.95f),
+                PersonDetection(FloatRect(120f, 100f, 220f, 300f), 0.95f)
+            ),
+            listOf(2, 3, 4)
+        )
+
+        val targetDetection = PersonDetection(FloatRect(5f, 100f, 105f, 300f), 0.95f)
+        val tracks = tracker.update(
+            detections = listOf(
+                targetDetection,
+                PersonDetection(FloatRect(85f, 100f, 185f, 300f), 0.95f),
+                PersonDetection(FloatRect(125f, 100f, 225f, 300f), 0.95f)
+            ),
+            timestampUs = 33_333L
+        )
+
+        val target = tracks.single { it.id == 2 }
+        assertTrue(target.observedThisFrame, "strict FACE_ONLY identity must not be hidden by a neighboring group reservation")
+        assertEquals(TrackState.ACTIVE, target.state)
+        assertEquals(targetDetection.bbox, target.bbox)
+        assertEquals(setOf(2, 3, 4), tracks.map { it.id }.toSet())
+    }
+
+    @Test
+    fun testFullBodyIdentityDoesNotUseFaceOnlyReservationEscape() {
+        tracker = TrackManager(
+            TrackingConfig(
+                minMatchScore = 0.20f,
+                bboxIouWeight = 1.0f,
+                maskIouWeight = 0.0f,
+                motionWeight = 0.0f,
+                directionWeight = 0.0f,
+                associationAmbiguityMargin = 0.05f
+            )
+        )
+        tracker.setIdentityProtectedTrackIds(setOf(2))
+        tracker.setPrivacySelectedTrackIds(setOf(2))
+        tracker.initializeWithAssignedIds(
+            listOf(
+                PersonDetection(FloatRect(0f, 100f, 100f, 300f), 0.95f),
+                PersonDetection(FloatRect(80f, 100f, 180f, 300f), 0.95f),
+                PersonDetection(FloatRect(120f, 100f, 220f, 300f), 0.95f)
+            ),
+            listOf(2, 3, 4)
+        )
+
+        val tracks = tracker.update(
+            detections = listOf(
+                PersonDetection(FloatRect(5f, 100f, 105f, 300f), 0.95f),
+                PersonDetection(FloatRect(85f, 100f, 185f, 300f), 0.95f),
+                PersonDetection(FloatRect(125f, 100f, 225f, 300f), 0.95f)
+            ),
+            timestampUs = 33_333L
+        )
+
+        val target = tracks.single { it.id == 2 }
+        assertTrue(!target.observedThisFrame, "FULL_BODY identity must retain the existing group-reservation isolation behavior")
+        assertTrue(target.state != TrackState.ACTIVE)
+        assertEquals(setOf(2, 3, 4), tracks.map { it.id }.toSet())
+    }
+
+    @Test
     fun testBalancedResidualSelectedDetectionBecomesFreshPrivacyEvidenceWithoutIdentityCommit() {
         tracker = TrackManager(
             TrackingConfig(

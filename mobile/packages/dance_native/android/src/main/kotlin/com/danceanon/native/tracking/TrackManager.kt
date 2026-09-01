@@ -1121,9 +1121,7 @@ class TrackManager(
                 !reservedGroupTrackIndices.contains(it) &&
                 (tracks[it].state == TrackState.ACTIVE || tracks[it].state == TrackState.NEW)
         }
-        val remainingDetectionIndices = detections.indices.filter {
-            !matchedDetectionIndices.contains(it) && !reservedGroupDetectionIndices.contains(it)
-        }
+        val strictFaceOnlyRescueDetectionIndices = mutableSetOf<Int>()
 
         // Behavior-neutral shadow Global probe. Evaluate the exact counterfactual
         // where group-reserved detections are visible to the same non-group
@@ -1224,6 +1222,29 @@ class TrackManager(
                         assignedScore >= colBest - epsilon &&
                         !hasAmbiguousGeometry &&
                         protectedIdentityEvidenceOk
+                    val faceOnlyIdentityProtected =
+                        protectedTrackIds.contains(track.id) &&
+                            !privacySelectedTrackIds.contains(track.id)
+
+                    if (wouldStrictGlobalCommit && faceOnlyIdentityProtected) {
+                        strictFaceOnlyRescueDetectionIndices.add(dIdx)
+                        NativeDiagnostics.event(
+                            level = "INFO",
+                            component = "TrackManager",
+                            event = "GROUP_RESERVED_STRICT_RESCUE_ELIGIBLE",
+                            fields = mapOf(
+                                "track_id" to track.id,
+                                "det_index" to dIdx,
+                                "reservation_owner_track_ids" to reservationOwnerTrackIds.toList().sorted(),
+                                "assigned_score" to assignedScore,
+                                "bbox_iou" to candidateBBoxIoU,
+                                "mask_iou" to candidateMaskIoU,
+                                "row_margin" to rowMargin,
+                                "col_margin" to colMargin,
+                                "pts_us" to timestampUs
+                            )
+                        )
+                    }
 
                     if (protectedTrackIds.contains(track.id) || wouldStrictGlobalCommit) {
                         NativeDiagnostics.event(
@@ -1275,6 +1296,22 @@ class TrackManager(
                     }
                 }
             }
+        }
+
+        // Group reservation remains the default isolation boundary. A reserved
+        // detection is exposed to the real Global Hungarian only when the
+        // counterfactual full candidate set already proves a strict, unique
+        // commit to a FACE_ONLY identity-protected track outside the owning
+        // group. FULL_BODY privacy-selected tracks and ordinary tracks never use
+        // this escape. Keep the detection in reservedGroupDetectionIndices so a
+        // failed real Global commit still cannot fall through to recovery or
+        // new-track creation in the same frame.
+        val remainingDetectionIndices = detections.indices.filter { dIdx ->
+            !matchedDetectionIndices.contains(dIdx) &&
+                (
+                    !reservedGroupDetectionIndices.contains(dIdx) ||
+                        strictFaceOnlyRescueDetectionIndices.contains(dIdx)
+                    )
         }
 
         if (remainingTrackIndices.isNotEmpty() && remainingDetectionIndices.isNotEmpty()) {
