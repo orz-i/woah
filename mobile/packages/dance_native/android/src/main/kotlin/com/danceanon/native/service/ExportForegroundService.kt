@@ -43,6 +43,14 @@ class ExportForegroundService : Service() {
         const val EXTRA_JOB_ID = "extra_job_id"
         const val EXTRA_PROGRESS = "extra_progress"
 
+        internal fun foregroundServiceTypeForSdk(sdkInt: Int): Int {
+            return if (sdkInt >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROCESSING
+            } else {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            }
+        }
+
         fun start(context: Context, jobId: String) {
             val intent = Intent(context, ExportForegroundService::class.java).apply {
                 action = ACTION_START
@@ -93,11 +101,7 @@ class ExportForegroundService : Service() {
                 val jobId = intent.getStringExtra(EXTRA_JOB_ID) ?: ""
                 val notification = buildNotification("Preparing video export...", 0)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    val fgsType = if (Build.VERSION.SDK_INT >= 34) {
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROCESSING
-                    } else {
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-                    }
+                    val fgsType = foregroundServiceTypeForSdk(Build.VERSION.SDK_INT)
                     startForeground(NOTIFICATION_ID, notification, fgsType)
                 } else {
                     startForeground(NOTIFICATION_ID, notification)
