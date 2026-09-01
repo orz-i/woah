@@ -171,6 +171,9 @@ class TrackManager(
     private val currentPrivacyClassEvidence = mutableListOf<FreshPrivacyClassEvidence>()
     private val currentStrictUnselectedPrivacyEvidence = mutableListOf<FreshPrivacyClassEvidence>()
     private val currentProtectedTrackMotionEvidence = mutableMapOf<Int, ProtectedTrackMotionEvidence>()
+    private val currentProtectedNearTieOcclusionHoldTrackIds = mutableSetOf<Int>()
+    private val currentProtectedNearTieOcclusionHeldTrackIds = mutableSetOf<Int>()
+    private val previousProtectedNearTieOcclusionHeldTrackIds = mutableSetOf<Int>()
     private val currentPrivacySuppressedSelectedTrackIds = mutableSetOf<Int>()
     private val currentHardPrivacyClassByDetectionIndex = mutableMapOf<Int, PrivacySelectionClass>()
     private var nextTrackId = 0
@@ -371,6 +374,9 @@ class TrackManager(
         currentPrivacyClassEvidence.clear()
         currentStrictUnselectedPrivacyEvidence.clear()
         currentProtectedTrackMotionEvidence.clear()
+        currentProtectedNearTieOcclusionHoldTrackIds.clear()
+        currentProtectedNearTieOcclusionHeldTrackIds.clear()
+        previousProtectedNearTieOcclusionHeldTrackIds.clear()
         currentPrivacySuppressedSelectedTrackIds.clear()
         currentHardPrivacyClassByDetectionIndex.clear()
         nextTrackId = 0
@@ -599,12 +605,18 @@ class TrackManager(
         currentPrivacyClassEvidence.clear()
         currentStrictUnselectedPrivacyEvidence.clear()
         currentProtectedTrackMotionEvidence.clear()
+        previousProtectedNearTieOcclusionHeldTrackIds.clear()
+        previousProtectedNearTieOcclusionHeldTrackIds.addAll(currentProtectedNearTieOcclusionHeldTrackIds)
+        currentProtectedNearTieOcclusionHeldTrackIds.clear()
+        currentProtectedNearTieOcclusionHoldTrackIds.clear()
         currentPrivacySuppressedSelectedTrackIds.clear()
         currentHardPrivacyClassByDetectionIndex.clear()
 
         if (detections.isEmpty()) {
             return predict(timestampUs)
         }
+
+        val stateAtFrameStartByTrackId = tracks.associate { it.id to it.state }
 
         // Reset per-frame observation state
         for (t in tracks) {
@@ -854,12 +866,11 @@ class TrackManager(
             val maxCost = (1.0f - config.minMatchScore).coerceIn(0.1f, 0.90f)
             val matchResult = HungarianSolver.match(groupCostMatrix, maxCostThreshold = maxCost)
 
-            // Behavior-neutral diagnostics for the case that never reaches the
-            // reciprocal-best checks below: Hungarian may leave an entire group
-            // row unmatched. This is especially important when an unprotected
-            // neighbor (for example an occluder) controls the state of a protected
-            // identity in the same group. Emit only for groups that contain at
-            // least one protected identity to keep trace volume bounded.
+            // Inspect group rows that Hungarian left unmatched. The detailed event
+            // remains diagnostic, while the narrow FACE_ONLY branch below can also
+            // preserve an already-OCCLUDED protected state for exactly one frame
+            // when the row loses the same detection by only the existing ambiguity
+            // margin. No identity assignment is changed here.
             if (groupTrackIndices.any { protectedTrackIds.contains(tracks[it].id) }) {
                 val matchedColByRow = matchResult.matches.associate { it.first to it.second }
                 for (r in groupTrackIndices.indices) {
@@ -879,6 +890,45 @@ class TrackManager(
                     val bestColMargin = bestColSecondBest?.let { bestScore - it } ?: Float.POSITIVE_INFINITY
                     val bestBBoxIoU = computeBBoxIoU(track.currentPredictedBbox, bestDetection.bbox)
                     val bestMaskIoU = computePredictedMaskIoU(track, bestDetection.mask)
+                    val winningPairForBestCol = matchResult.matches.firstOrNull { it.second == bestCol }
+                    val winningScore = winningPairForBestCol?.let { pair -> scoreMatrix[pair.first][pair.second] }
+                    val protectedIdentityEvidenceOk = if (protectedTrackIds.contains(track.id)) {
+                        isProtectedGroupIdentityEvidenceSufficient(track.state, bestBBoxIoU, bestMaskIoU)
+                    } else {
+                        false
+                    }
+                    val nearTieOcclusionHoldEligible = isProtectedFaceOnlyNearTieOcclusionHoldEligible(
+                        frameStartState = stateAtFrameStartByTrackId[track.id] ?: track.state,
+                        identityProtected = protectedTrackIds.contains(track.id),
+                        privacySelected = privacySelectedTrackIds.contains(track.id),
+                        bestScore = bestScore,
+                        winningScore = winningScore,
+                        protectedIdentityEvidenceOk = protectedIdentityEvidenceOk,
+                        heldOnPreviousFrame = previousProtectedNearTieOcclusionHeldTrackIds.contains(track.id),
+                        minMatchScore = config.minMatchScore,
+                        ambiguityMargin = config.associationAmbiguityMargin
+                    )
+                    if (nearTieOcclusionHoldEligible && winningPairForBestCol != null && winningScore != null) {
+                        currentProtectedNearTieOcclusionHoldTrackIds.add(track.id)
+                        NativeDiagnostics.event(
+                            level = "INFO",
+                            component = "TrackManager",
+                            event = "PROTECTED_GROUP_NEAR_TIE_OCCLUSION_HOLD_EVIDENCE",
+                            fields = mapOf(
+                                "group_id" to group.trackIds.toList().sorted(),
+                                "track_id" to track.id,
+                                "best_det_index" to bestDetectionIndex,
+                                "best_score" to bestScore,
+                                "winner_track_id" to tracks[groupTrackIndices[winningPairForBestCol.first]].id,
+                                "winner_score" to winningScore,
+                                "score_gap" to (winningScore - bestScore),
+                                "bbox_iou" to bestBBoxIoU,
+                                "mask_iou" to bestMaskIoU,
+                                "required_margin" to config.associationAmbiguityMargin,
+                                "pts_us" to timestampUs
+                            )
+                        )
+                    }
 
                     NativeDiagnostics.event(
                         level = "INFO",
@@ -1811,6 +1861,9 @@ class TrackManager(
                 val inActiveGroup = occlusionGroups.any { it.trackIds.contains(track.id) && it.state == OcclusionGroupState.ACTIVE_OVERLAP }
                 val inReacquiringGroup = occlusionGroups.any { it.trackIds.contains(track.id) && it.state == OcclusionGroupState.REACQUIRING }
                 val isOccluded = freshlyMatchedOtherTracks.isNotEmpty()
+                val holdProtectedNearTieOcclusion =
+                    currentProtectedNearTieOcclusionHoldTrackIds.contains(track.id) &&
+                        !isOccluded
 
                 if (isOccluded) {
                     val wasAlreadyOccluded = track.state == TrackState.OCCLUDED
@@ -1876,6 +1929,36 @@ class TrackManager(
                             missedFrames = 0
                         )
                     }
+                } else if (holdProtectedNearTieOcclusion) {
+                    // The group has current geometry that strongly supports this
+                    // FACE_ONLY identity, but Hungarian assigned the same detection
+                    // to another row by less than the existing ambiguity margin.
+                    // Preserve only the pre-existing OCCLUDED state for this frame:
+                    // do not commit either identity, do not name an occluder, and do
+                    // not synthesize motion from the ambiguous winning row.
+                    track.state = TrackState.OCCLUDED
+                    track.occludedFrames++
+                    track.reacquireFrames = 0
+                    track.lostFrames = 0
+                    track.occludedByTrackIds.clear()
+                    currentProtectedNearTieOcclusionHeldTrackIds.add(track.id)
+                    if (track.lastObservedMask != null) {
+                        track.currentRenderMask = warpMask(
+                            sourceMask = track.lastObservedMask!!,
+                            prevBbox = track.lastObservedBbox,
+                            predBbox = track.currentPredictedBbox,
+                            missedFrames = 0
+                        )
+                    }
+                    NativeDiagnostics.event(
+                        level = "INFO",
+                        component = "TrackManager",
+                        event = "PROTECTED_GROUP_NEAR_TIE_OCCLUSION_HELD",
+                        fields = mapOf(
+                            "track_id" to track.id,
+                            "pts_us" to timestampUs
+                        )
+                    )
                 } else if (
                     inActiveGroup || inReacquiringGroup || globalAmbiguousTrackIndices.contains(i) ||
                     track.state == TrackState.OCCLUDED || track.state == TrackState.REACQUIRING
@@ -2232,6 +2315,9 @@ class TrackManager(
         currentPrivacyClassEvidence.clear()
         currentStrictUnselectedPrivacyEvidence.clear()
         currentProtectedTrackMotionEvidence.clear()
+        currentProtectedNearTieOcclusionHoldTrackIds.clear()
+        currentProtectedNearTieOcclusionHeldTrackIds.clear()
+        previousProtectedNearTieOcclusionHeldTrackIds.clear()
         currentPrivacySuppressedSelectedTrackIds.clear()
         currentHardPrivacyClassByDetectionIndex.clear()
 
@@ -2381,6 +2467,9 @@ class TrackManager(
         currentPrivacyClassEvidence.clear()
         currentStrictUnselectedPrivacyEvidence.clear()
         currentProtectedTrackMotionEvidence.clear()
+        currentProtectedNearTieOcclusionHoldTrackIds.clear()
+        currentProtectedNearTieOcclusionHeldTrackIds.clear()
+        previousProtectedNearTieOcclusionHeldTrackIds.clear()
         currentPrivacySuppressedSelectedTrackIds.clear()
         currentHardPrivacyClassByDetectionIndex.clear()
         nextTrackId = 0
@@ -2429,6 +2518,31 @@ class TrackManager(
                 trackState == TrackState.LOST &&
                 predictionAnchorIoU >= overlapThreshold &&
                 anchorFreshOverlapRatio >= overlapThreshold
+
+        internal fun isProtectedFaceOnlyNearTieOcclusionHoldEligible(
+            frameStartState: TrackState,
+            identityProtected: Boolean,
+            privacySelected: Boolean,
+            bestScore: Float,
+            winningScore: Float?,
+            protectedIdentityEvidenceOk: Boolean,
+            heldOnPreviousFrame: Boolean,
+            minMatchScore: Float,
+            ambiguityMargin: Float
+        ): Boolean {
+            if (frameStartState != TrackState.OCCLUDED ||
+                !identityProtected ||
+                privacySelected ||
+                !protectedIdentityEvidenceOk ||
+                heldOnPreviousFrame ||
+                bestScore < minMatchScore ||
+                winningScore == null ||
+                winningScore < bestScore
+            ) {
+                return false
+            }
+            return (winningScore - bestScore) <= ambiguityMargin
+        }
 
         fun boundPredictionAroundAnchor(
             anchor: FloatRect,

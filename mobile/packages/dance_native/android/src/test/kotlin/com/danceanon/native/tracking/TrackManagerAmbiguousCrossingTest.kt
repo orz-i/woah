@@ -168,4 +168,163 @@ class TrackManagerAmbiguousCrossingTest {
             )
         )
     }
+
+    @Test
+    fun `face only protected occlusion hold requires an existing occluded near tie`() {
+        assertTrue(
+            TrackManager.isProtectedFaceOnlyNearTieOcclusionHoldEligible(
+                frameStartState = TrackState.OCCLUDED,
+                identityProtected = true,
+                privacySelected = false,
+                bestScore = 0.6005f,
+                winningScore = 0.6119f,
+                protectedIdentityEvidenceOk = true,
+                heldOnPreviousFrame = false,
+                minMatchScore = 0.20f,
+                ambiguityMargin = 0.05f
+            )
+        )
+        assertTrue(
+            !TrackManager.isProtectedFaceOnlyNearTieOcclusionHoldEligible(
+                frameStartState = TrackState.OCCLUDED,
+                identityProtected = true,
+                privacySelected = false,
+                bestScore = 0.60f,
+                winningScore = 0.67f,
+                protectedIdentityEvidenceOk = true,
+                heldOnPreviousFrame = false,
+                minMatchScore = 0.20f,
+                ambiguityMargin = 0.05f
+            ),
+            "a clearly separated winner is not an identity near tie"
+        )
+        assertTrue(
+            !TrackManager.isProtectedFaceOnlyNearTieOcclusionHoldEligible(
+                frameStartState = TrackState.REACQUIRING,
+                identityProtected = true,
+                privacySelected = false,
+                bestScore = 0.60f,
+                winningScore = 0.61f,
+                protectedIdentityEvidenceOk = true,
+                heldOnPreviousFrame = false,
+                minMatchScore = 0.20f,
+                ambiguityMargin = 0.05f
+            ),
+            "the hold must never pull REACQUIRING back into OCCLUDED"
+        )
+        assertTrue(
+            !TrackManager.isProtectedFaceOnlyNearTieOcclusionHoldEligible(
+                frameStartState = TrackState.OCCLUDED,
+                identityProtected = true,
+                privacySelected = true,
+                bestScore = 0.60f,
+                winningScore = 0.61f,
+                protectedIdentityEvidenceOk = true,
+                heldOnPreviousFrame = false,
+                minMatchScore = 0.20f,
+                ambiguityMargin = 0.05f
+            ),
+            "FULL_BODY identities must remain outside the FACE_ONLY state hold"
+        )
+        assertTrue(
+            !TrackManager.isProtectedFaceOnlyNearTieOcclusionHoldEligible(
+                frameStartState = TrackState.OCCLUDED,
+                identityProtected = true,
+                privacySelected = false,
+                bestScore = 0.60f,
+                winningScore = 0.61f,
+                protectedIdentityEvidenceOk = false,
+                heldOnPreviousFrame = false,
+                minMatchScore = 0.20f,
+                ambiguityMargin = 0.05f
+            )
+        )
+        assertTrue(
+            !TrackManager.isProtectedFaceOnlyNearTieOcclusionHoldEligible(
+                frameStartState = TrackState.OCCLUDED,
+                identityProtected = true,
+                privacySelected = false,
+                bestScore = 0.60f,
+                winningScore = 0.61f,
+                protectedIdentityEvidenceOk = true,
+                heldOnPreviousFrame = true,
+                minMatchScore = 0.20f,
+                ambiguityMargin = 0.05f
+            ),
+            "a near-tie hold may bridge only one consecutive frame"
+        )
+    }
+
+    @Test
+    fun `protected face occluded track holds state when group winner is a near tie`() {
+        tracker = TrackManager(
+            TrackingConfig(
+                minMatchScore = 0.20f,
+                bboxIouWeight = 1.0f,
+                maskIouWeight = 0.0f,
+                motionWeight = 0.0f,
+                directionWeight = 0.0f,
+                associationAmbiguityMargin = 0.05f,
+                occlusionOverlapRatio = 0.30f
+            )
+        )
+        tracker.setIdentityProtectedTrackIds(setOf(0))
+        tracker.setPrivacySelectedTrackIds(emptySet())
+
+        tracker.initializeWithAssignedIds(
+            detections = listOf(
+                PersonDetection(FloatRect(100f, 100f, 200f, 300f), 0.95f, createDummyMask()),
+                PersonDetection(FloatRect(160f, 100f, 260f, 300f), 0.95f, createDummyMask())
+            ),
+            assignedIds = listOf(0, 1)
+        )
+
+        // First make protected id=0 genuinely OCCLUDED by a fresh committed id=1.
+        val occludedFrame = tracker.update(
+            listOf(PersonDetection(FloatRect(160f, 100f, 260f, 300f), 0.95f, createDummyMask())),
+            timestampUs = 33_333L
+        )
+        val protectedOccluded = occludedFrame.single { it.id == 0 }
+        assertEquals(TrackState.OCCLUDED, protectedOccluded.state)
+        assertTrue(!protectedOccluded.observedThisFrame)
+
+        // This single detection is slightly better for id=1, but id=0 is within
+        // the existing 0.05 ambiguity margin and still has strong absolute bbox
+        // evidence. Hungarian selects id=1, then reciprocal-best rejects that
+        // identity commit because the protected row is a real column competitor.
+        val nearTieFrame = tracker.update(
+            listOf(PersonDetection(FloatRect(132f, 100f, 232f, 300f), 0.95f, createDummyMask())),
+            timestampUs = 66_666L
+        )
+        val protectedHeld = nearTieFrame.single { it.id == 0 }
+        assertEquals(
+            TrackState.OCCLUDED,
+            protectedHeld.state,
+            "ambiguous group ownership should preserve the existing FACE_ONLY occlusion state for one frame"
+        )
+        assertTrue(!protectedHeld.observedThisFrame, "state hold must not become an identity observation")
+        assertTrue(
+            protectedHeld.occludedByTrackIds.isEmpty(),
+            "an uncommitted near-tie winner must not be named as an explicit occluder"
+        )
+        assertTrue(
+            nearTieFrame.none { it.observedThisFrame },
+            "near-tie state hold must not force either group identity to commit"
+        )
+
+        // Repeating the same ambiguity on the next frame must not pin the track
+        // in OCCLUDED indefinitely. After the one-frame bridge, normal group
+        // ambiguity semantics resume and transition it to REACQUIRING.
+        val repeatedNearTieFrame = tracker.update(
+            listOf(PersonDetection(FloatRect(132f, 100f, 232f, 300f), 0.95f, createDummyMask())),
+            timestampUs = 99_999L
+        )
+        val protectedAfterBridge = repeatedNearTieFrame.single { it.id == 0 }
+        assertEquals(
+            TrackState.REACQUIRING,
+            protectedAfterBridge.state,
+            "the bridge must not repeat on consecutive ambiguous frames"
+        )
+        assertTrue(!protectedAfterBridge.observedThisFrame)
+    }
 }
