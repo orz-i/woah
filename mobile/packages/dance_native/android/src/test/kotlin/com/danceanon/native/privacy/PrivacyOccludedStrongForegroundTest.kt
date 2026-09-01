@@ -108,4 +108,47 @@ class PrivacyOccludedStrongForegroundTest {
         }
         assertEquals(1681, nonZeroCount, "unconfirmed neighbor must not reshape mixed FULL_BODY privacy")
     }
+
+    @Test
+    fun conservativeMixedPolicyUsesFreshExplicitOccluderCoreWithStrongDepth() {
+        val occludedTarget = TrackedPerson(
+            id = 0,
+            bbox = FloatRect(100f, 100f, 200f, 300f),
+            mask = createRectMask(64, 10..50, 10..50, value = 255),
+            confidence = 0.95f,
+            state = TrackState.OCCLUDED,
+            observedThisFrame = false,
+            occludedByTrackIds = setOf(1),
+            footY = 300f
+        )
+        val explicitFreshOccluder = TrackedPerson(
+            id = 1,
+            bbox = FloatRect(100f, 100f, 200f, 350f),
+            mask = createRectMask(64, 10..50, 10..50, value = 255),
+            confidence = 0.95f,
+            state = TrackState.ACTIVE,
+            observedThisFrame = true,
+            footY = 350f
+        )
+
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = listOf(occludedTarget, explicitFreshOccluder),
+            selectedPersonIds = setOf(0),
+            applyDilationToPrivacyTargets = false,
+            occluderErosionRadius = 1,
+            conservativeUnobservedOccluderPolicy = true
+        )
+
+        assertNotNull(resolved.privacyMask)
+        val privacyMask = resolved.privacyMask!!
+        var nonZeroCount = 0
+        for (i in 0 until privacyMask.buffer.capacity()) {
+            if ((privacyMask.buffer.get(i).toInt() and 0xFF) > 0) nonZeroCount++
+        }
+        assertEquals(
+            160,
+            nonZeroCount,
+            "fresh explicit foreground depth may carve only the eroded current occluder core"
+        )
+    }
 }

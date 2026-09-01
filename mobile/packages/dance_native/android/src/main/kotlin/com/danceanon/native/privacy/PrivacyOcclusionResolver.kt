@@ -330,11 +330,19 @@ object PrivacyOcclusionResolver {
                         TrackState.REACQUIRING, TrackState.LOST, TrackState.REMOVED -> false
                     }
                     val normalizedFootYDelta = footYDelta / personMinH
-                    val useFreshDepthCore =
+                    val useFreshPrimaryDepthCore =
                         useFreshPrimary &&
                             (isFreshSelectedTarget || isTrackedFallbackTarget) &&
                             isCandFresh &&
                             normalizedFootYDelta >= STRONG_FRESH_FOREGROUND_FOOT_Y_RATIO
+                    val useMixedExplicitFreshDepthCore =
+                        conservativeUnobservedOccluderPolicy &&
+                            target.state == TrackState.OCCLUDED &&
+                            isExplicitOccluder &&
+                            isCandFresh &&
+                            normalizedFootYDelta >= STRONG_FRESH_FOREGROUND_FOOT_Y_RATIO
+                    val useFreshDepthCore =
+                        useFreshPrimaryDepthCore || useMixedExplicitFreshDepthCore
                     val relaxedFreshDepthBbox =
                         isFreshSelectedTarget &&
                             isCandFresh &&
@@ -451,6 +459,7 @@ object PrivacyOcclusionResolver {
                         "fresh_depth_core_pixels" to freshDepthCorePixels,
                         "fresh_depth_core_total_pixels" to freshDepthCoreTotalPixels,
                         "fresh_depth_core_eligible" to useFreshDepthCore,
+                        "mixed_explicit_fresh_depth_core_eligible" to useMixedExplicitFreshDepthCore,
                         "bbox_overlap_relaxed_for_fresh_depth" to
                             (bboxOverlapRatio < MIN_BBOX_OVERLAP_RATIO && relaxedFreshDepthBbox),
                         "tiny_fresh_depth_core_supported_by_geometry" to
@@ -459,6 +468,7 @@ object PrivacyOcclusionResolver {
                         "carve" to isStrongForeground,
                         "ownership_mode" to when {
                             suppressUnstableTinyFreshDepthCore -> "TINY_FRESH_DEPTH_CORE_SUPPRESSED"
+                            usesFreshDepthCore && useMixedExplicitFreshDepthCore -> "FRESH_EXPLICIT_OCCLUDER_CORE"
                             usesFreshDepthCore && isTrackedFallbackTarget -> "FRESH_DEPTH_CORE_FALLBACK"
                             usesFreshDepthCore -> "FRESH_DEPTH_CORE"
                             ownershipPixels > 0 -> "PROBABILITY_MARGIN"
