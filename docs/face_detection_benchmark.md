@@ -2095,48 +2095,36 @@ candidates) and requires the bounded IoU value to equal the historical full
 160x160 scan exactly. Confidence/NMS thresholds, mask bytes, TrackManager inputs,
 FACE/FULL_BODY logic, and all quality gates remain unchanged.
 
-### Thirty-fourth correction: bounded IoU is stable; micro loop/zero-exp variants are not proven, switch NMS to compact logits and defer soft-mask materialization
+### Thirty-fourth correction: bounded IoU is validated; index-only mask-loop rewrite is noise, skip only provably zero sigmoid work
 
 The real-device mixed export from
-`4a1e5bccc8abfd440a79ab2496f16b12f525a880` validates the candidate-support
-bounded IoU optimization. FACE/FULL_BODY behavior remains exactly on the locked
-baseline (FULL_BODY ID4; FACE_ONLY IDs 1/2/3/5/6; dormant suppression **3**;
-partial-occlusion pixel rescue **92**; pixel-motion accepted/rejected **3499/182**;
-evidence-gap reacquire **0**; sticker max widths and center-step maxima unchanged).
-The YOLO performance result is material: `yoloMaskIouScan` falls from about
-**5.46 ms** to **0.0013 ms**, `yoloMaskAwareNms` from about **17.73 ms** to
-**11.45 ms**, `yoloDecode` from about **17.97 ms** to **11.65 ms**, and
-`yoloPipelineTotal` from about **30.38 ms** to **24.11 ms**. `yoloMaskDecode`
-remains the only material decode hotspot at about **11.12 ms**; output read remains
-about **8.28 ms** and preprocess about **1.29 ms**.
+`4a1e5bccc8abfd440a79ab2496f16b12f525a880` validates the bounded mask-IoU
+optimization with no FACE or geometry change. Relative to the preceding
+candidate-local NCHW run, `yoloMaskIouScan` falls from about **5.46 ms** to
+effectively zero, `yoloMaskAwareNms` from about **17.73 ms** to **11.45 ms**,
+`yoloDecode` from about **17.97 ms** to **11.65 ms**, and `yoloPipelineTotal`
+from about **30.38 ms** to **24.11 ms**. `yoloMaskDecode` remains about
+**11.12 ms** and is now the only material CPU decode block; `yoloOutputRead`
+remains about **8.28 ms**.
 
-Two subsequent same-video experiments do not justify retaining JVM-level
-micro-optimizations. The loop/index rewrite in
-`7a30889fa7dcc7ca9d866ff2463035ec89eeb060` changes `yoloMaskDecode` only from
-about **11.1185 ms** to **11.1172 ms**. The zero-exp experiment in
-`0eaa7f7860b2a030a763097e12060ed3457ade7d` also provides no measurable win:
-`yoloMaskDecode` is about **11.237 ms** with the same **11/15 ms** p50/p95 as the
-validated baseline. That run is in a slightly slower whole-device state
-(`yoloOutputRead` about **8.89 ms**, preprocess about **1.75 ms**), so the small
-average increase is not attributed to the optimization itself; the important
-result is simply that there is no positive evidence to keep it. FACE/FULL_BODY
-counts and geometry remain exactly on the locked baseline in all runs.
+The subsequent same-video export from
+`7a30889fa7dcc7ca9d866ff2463035ec89eeb060` shows that rewriting the existing
+channel-major mask loop with `while`/incremented indices has no measurable net
+benefit: `yoloMaskDecode` changes only from **11.1185 ms** to **11.1172 ms**,
+while whole `yoloDecode` varies from **11.65 ms** to **11.83 ms**. That loop-only
+change is therefore removed rather than retained as unproven complexity.
 
-The replacement experiment changes representation, not mask math. Production NCHW
-NMS now accumulates each candidate's logits only inside its known proto support and
-caches that compact FloatArray. NMS binary overlap uses the exact minimum Float
-logit whose historical `(sigmoid(logit) * 255).toInt()` byte is nonzero, so
-suppressed duplicate candidates do not need full 160x160 ByteArrays or soft-mask
-sigmoid materialization. Only candidates that survive NMS are expanded to the full
-160x160 soft mask expected by TrackManager and rendering. Channel accumulation
-order remains 0..31 and final soft-mask bytes still use the unchanged historical
-sigmoid formula. FloatBuffer/synthetic/fallback paths retain the historical full
-mask implementation. Focused parity requires compact-logit IoU to equal historical
-byte-mask IoU, old FloatBuffer NMS and new Array NMS to keep the same candidates,
-and every kept final mask to match byte-for-byte. Telemetry preserves comparable
-`yoloMaskDecode` total and adds `yoloMaskLogitDecode` plus
-`yoloMaskSoftMaterialize`; real-device acceptance remains based on total
-`yoloDecode`/`yoloPipelineTotal`, not on moving work between substages.
+The replacement optimization keeps the validated channel-major arithmetic and the
+historical generic per-pixel decoder as an independent reference. The historical
+soft-mask byte formula is `(sigmoid(logit) * 255).toInt()`. For Float inputs, every
+representable value below **-5.537334f** produces byte zero. The production NCHW
+fast path therefore writes zero directly below that exact discrete boundary and
+skips `exp()` only for those provably-zero pixels; all other pixels still execute
+the historical sigmoid formula. Boundary-neighbor coverage, special Float values,
+20,000 random Float bit patterns, random proto/bbox mask parity, and adapter
+end-to-end parity require byte-exact equality with the unchanged reference path.
+No YOLO threshold, mask/NMS semantic, TrackManager input, FACE/FULL_BODY policy, or
+privacy quality gate changes.
 
 ## Test fixtures and paths
 

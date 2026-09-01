@@ -89,66 +89,38 @@ class NchwArrayProtoView(
     ): ByteArray {
         require(scratch.size >= protoPixels)
         val maskBytes = ByteArray(protoPixels)
-        val support = YoloMaskDecoder.candidateProtoSupportRect(cand, inputSize, protoSize)
+        val margin = 1
+        val x1 = (kotlin.math.floor((cand.x1 / inputSize) * protoSize).toInt() - margin).coerceIn(0, protoSize)
+        val y1 = (kotlin.math.floor((cand.y1 / inputSize) * protoSize).toInt() - margin).coerceIn(0, protoSize)
+        val x2 = (kotlin.math.ceil((cand.x2 / inputSize) * protoSize).toInt() + margin).coerceIn(0, protoSize)
+        val y2 = (kotlin.math.ceil((cand.y2 / inputSize) * protoSize).toInt() + margin).coerceIn(0, protoSize)
 
-        for (py in support.y1 until support.y2) {
-            java.util.Arrays.fill(scratch, py * protoSize + support.x1, py * protoSize + support.x2, 0f)
+        for (py in y1 until y2) {
+            java.util.Arrays.fill(scratch, py * protoSize + x1, py * protoSize + x2, 0f)
         }
 
         for (c in 0 until channels) {
             val coeff = cand.maskCoeffs[c]
             val channelBase = c * protoPixels
-            for (py in support.y1 until support.y2) {
+            for (py in y1 until y2) {
                 val pixelRow = py * protoSize
                 val protoRow = channelBase + pixelRow
-                for (px in support.x1 until support.x2) {
+                for (px in x1 until x2) {
                     val pixelIndex = pixelRow + px
-                    val protoIndex = protoRow + px
-                    scratch[pixelIndex] += coeff * values[protoIndex]
+                    scratch[pixelIndex] += coeff * values[protoRow + px]
                 }
             }
         }
 
-        for (py in support.y1 until support.y2) {
+        for (py in y1 until y2) {
             val rowOffset = py * protoSize
-            for (px in support.x1 until support.x2) {
-                val prob = 1.0f / (1.0f + kotlin.math.exp(-scratch[rowOffset + px]))
-                maskBytes[rowOffset + px] = (prob * 255f).toInt().coerceIn(0, 255).toByte()
+            for (px in x1 until x2) {
+                maskBytes[rowOffset + px] = YoloMaskDecoder.maskByteFromLogitFast(
+                    scratch[rowOffset + px]
+                )
             }
         }
         return maskBytes
-    }
-
-    /**
-     * Production NMS representation. Keep only logits inside the candidate's
-     * known proto support so duplicate candidates do not allocate/materialize
-     * a full 160x160 soft mask before NMS decides whether they survive.
-     * Channel accumulation order remains exactly 0..31 for every pixel.
-     */
-    fun decodeCandidateLogits(
-        cand: RawCandidate,
-        inputSize: Int
-    ): YoloMaskDecoder.CompactMaskLogits {
-        val support = YoloMaskDecoder.candidateProtoSupportRect(cand, inputSize, protoSize)
-        val width = support.x2 - support.x1
-        val height = support.y2 - support.y1
-        val logits = FloatArray(width * height)
-
-        for (c in 0 until channels) {
-            val coeff = cand.maskCoeffs[c]
-            val channelBase = c * protoPixels
-            for (py in support.y1 until support.y2) {
-                var srcIndex = channelBase + py * protoSize + support.x1
-                var dstIndex = (py - support.y1) * width
-                val dstEnd = dstIndex + width
-                while (dstIndex < dstEnd) {
-                    logits[dstIndex] += coeff * values[srcIndex]
-                    dstIndex++
-                    srcIndex++
-                }
-            }
-        }
-        return YoloMaskDecoder.CompactMaskLogits(support, logits)
     }
 }
 
@@ -204,7 +176,16 @@ object YoloMaskDecoder {
     const val DEFAULT_PROTO_SIZE = 160
     const val DEFAULT_INPUT_SIZE = 640
     const val DEFAULT_MASK_IOU_THRESHOLD = 0.50f
+
     internal const val MIN_NONZERO_MASK_LOGIT = -5.537334f
+
+    internal fun maskByteFromLogitFast(logit: Float): Byte {
+        // Historical formula produces byte 0 for every representable Float
+        // below this boundary; NaN also remains byte 0 through this predicate.
+        if (!(logit >= MIN_NONZERO_MASK_LOGIT)) return 0
+        val prob = 1.0f / (1.0f + kotlin.math.exp(-logit))
+        return (prob * 255f).toInt().coerceIn(0, 255).toByte()
+    }
 
     data class ProtoSupportRect(
         val x1: Int,
@@ -212,14 +193,6 @@ object YoloMaskDecoder {
         val x2: Int,
         val y2: Int
     )
-
-    data class CompactMaskLogits(
-        val support: ProtoSupportRect,
-        val logits: FloatArray
-    ) {
-        val width: Int get() = support.x2 - support.x1
-        val height: Int get() = support.y2 - support.y1
-    }
 
     fun candidateProtoSupportRect(
         cand: RawCandidate,
@@ -306,56 +279,6 @@ object YoloMaskDecoder {
         return if (union == 0) 0f else intersection.toFloat() / union.toFloat()
     }
 
-    fun calculateCompactLogitMaskIoU(a: CompactMaskLogits, b: CompactMaskLogits): Float {
-        val x1 = minOf(a.support.x1, b.support.x1)
-        val y1 = minOf(a.support.y1, b.support.y1)
-        val x2 = maxOf(a.support.x2, b.support.x2)
-        val y2 = maxOf(a.support.y2, b.support.y2)
-        var intersection = 0
-        var union = 0
-
-        for (py in y1 until y2) {
-            val aRow = if (py >= a.support.y1 && py < a.support.y2) {
-                (py - a.support.y1) * a.width
-            } else {
-                -1
-            }
-            val bRow = if (py >= b.support.y1 && py < b.support.y2) {
-                (py - b.support.y1) * b.width
-            } else {
-                -1
-            }
-            for (px in x1 until x2) {
-                val activeA = aRow >= 0 && px >= a.support.x1 && px < a.support.x2 &&
-                    a.logits[aRow + px - a.support.x1] >= MIN_NONZERO_MASK_LOGIT
-                val activeB = bRow >= 0 && px >= b.support.x1 && px < b.support.x2 &&
-                    b.logits[bRow + px - b.support.x1] >= MIN_NONZERO_MASK_LOGIT
-                if (activeA && activeB) intersection++
-                if (activeA || activeB) union++
-            }
-        }
-        return if (union == 0) 0f else intersection.toFloat() / union.toFloat()
-    }
-
-    fun materializeCompactMask(
-        compact: CompactMaskLogits,
-        protoSize: Int = DEFAULT_PROTO_SIZE
-    ): ByteArray {
-        val maskBytes = ByteArray(protoSize * protoSize)
-        var srcIndex = 0
-        for (py in compact.support.y1 until compact.support.y2) {
-            var dstIndex = py * protoSize + compact.support.x1
-            val rowEnd = dstIndex + compact.width
-            while (dstIndex < rowEnd) {
-                val prob = 1.0f / (1.0f + kotlin.math.exp(-compact.logits[srcIndex]))
-                maskBytes[dstIndex] = (prob * 255f).toInt().coerceIn(0, 255).toByte()
-                srcIndex++
-                dstIndex++
-            }
-        }
-        return maskBytes
-    }
-
     fun calculateMaskIoUWithinCandidateSupport(
         maskA: ByteArray,
         maskB: ByteArray,
@@ -402,40 +325,17 @@ object YoloMaskDecoder {
         // final decode paths reuse the same instances. Identity keys avoid
         // hashing all 32 mask coefficients on every cache lookup.
         private val cache = IdentityHashMap<RawCandidate, ByteArray>()
-        private val compactCache = IdentityHashMap<RawCandidate, CompactMaskLogits>()
-
-        private fun getCompactLogits(cand: RawCandidate): CompactMaskLogits? {
-            if (cand.syntheticMask != null || protoView !is NchwArrayProtoView) return null
-            val cached = compactCache[cand]
-            if (cached != null) return cached
-            val startNs = System.nanoTime()
-            val decoded = protoView.decodeCandidateLogits(cand, inputSize)
-            val elapsedNs = System.nanoTime() - startNs
-            if (timings != null) {
-                timings.maskDecodeNs += elapsedNs
-                timings.maskLogitDecodeNs += elapsedNs
-            }
-            compactCache[cand] = decoded
-            return decoded
-        }
+        private val nchwScratch = FloatArray(protoSize * protoSize)
 
         fun getMask(cand: RawCandidate): ByteArray {
             val cached = cache[cand]
             if (cached != null) return cached
-            val compact = getCompactLogits(cand)
-            if (compact != null) {
-                val startNs = System.nanoTime()
-                val materialized = materializeCompactMask(compact, protoSize)
-                val elapsedNs = System.nanoTime() - startNs
-                if (timings != null) {
-                    timings.maskDecodeNs += elapsedNs
-                    timings.maskSoftMaterializeNs += elapsedNs
-                }
-                cache[cand] = materialized
-                return materialized
-            }
             val startNs = System.nanoTime()
-            val decoded = decodeCandidateMask(cand, protoView, inputSize, protoSize)
+            val decoded = if (cand.syntheticMask == null && protoView is NchwArrayProtoView) {
+                protoView.decodeCandidateMask(cand, inputSize, nchwScratch)
+            } else {
+                decodeCandidateMask(cand, protoView, inputSize, protoSize)
+            }
             if (timings != null) {
                 timings.maskDecodeNs += System.nanoTime() - startNs
             }
@@ -443,33 +343,10 @@ object YoloMaskDecoder {
                 cache[cand] = it
             }
         }
-
-        fun calculateCandidateMaskIoU(a: RawCandidate, b: RawCandidate): Float {
-            val compactA = getCompactLogits(a)
-            val compactB = getCompactLogits(b)
-            val startNs = System.nanoTime()
-            val result = if (compactA != null && compactB != null) {
-                calculateCompactLogitMaskIoU(compactA, compactB)
-            } else {
-                val maskA = getMask(a)
-                val maskB = getMask(b)
-                if (protoView != null && a.syntheticMask == null && b.syntheticMask == null) {
-                    calculateMaskIoUWithinCandidateSupport(maskA, maskB, a, b, inputSize, protoSize)
-                } else {
-                    calculateMaskIoU(maskA, maskB)
-                }
-            }
-            if (timings != null) {
-                timings.maskIouNs += System.nanoTime() - startNs
-            }
-            return result
-        }
     }
 
     data class MaskAwareNmsTimings(
         var maskDecodeNs: Long = 0L,
-        var maskLogitDecodeNs: Long = 0L,
-        var maskSoftMaterializeNs: Long = 0L,
         var maskIouNs: Long = 0L
     )
 
@@ -497,7 +374,28 @@ object YoloMaskDecoder {
                 val next = sorted[j]
                 val bboxIoU = calculateBboxIoU(current, next)
                 if (bboxIoU > bboxIouThreshold) {
-                    val maskIoU = cache.calculateCandidateMaskIoU(current, next)
+                    val maskCurrent = cache.getMask(current)
+                    val maskNext = cache.getMask(next)
+                    val iouStartNs = System.nanoTime()
+                    val maskIoU = if (
+                        protoView != null &&
+                        current.syntheticMask == null &&
+                        next.syntheticMask == null
+                    ) {
+                        calculateMaskIoUWithinCandidateSupport(
+                            maskA = maskCurrent,
+                            maskB = maskNext,
+                            candA = current,
+                            candB = next,
+                            inputSize = inputSize,
+                            protoSize = protoSize
+                        )
+                    } else {
+                        calculateMaskIoU(maskCurrent, maskNext)
+                    }
+                    if (timings != null) {
+                        timings.maskIouNs += System.nanoTime() - iouStartNs
+                    }
 
                     if (maskIoU >= maskIouThreshold) {
                         // High mask overlap: duplicate detection -> suppress
