@@ -413,6 +413,41 @@ class TrackManager(
                     trackB.currentPredictedBbox.width * trackB.currentPredictedBbox.height
                 )
                 val overlapRatio = if (minArea > 0f) interArea / minArea else 0f
+                val previouslySameGroup = occlusionGroups.any { group ->
+                    group.trackIds.contains(trackA.id) && group.trackIds.contains(trackB.id)
+                }
+                if (
+                    abs(overlapRatio - config.occlusionOverlapRatio) <= OCCLUSION_OVERLAP_EDGE_TELEMETRY_MARGIN ||
+                    (previouslySameGroup && overlapRatio < config.occlusionOverlapRatio)
+                ) {
+                    NativeDiagnostics.event(
+                        level = "INFO",
+                        component = "TrackManager",
+                        event = "OCCLUSION_PAIR_OVERLAP_EDGE",
+                        fields = mapOf(
+                            "track_a_id" to trackA.id,
+                            "track_b_id" to trackB.id,
+                            "overlap_ratio" to overlapRatio,
+                            "threshold" to config.occlusionOverlapRatio,
+                            "intersection_area" to interArea,
+                            "min_area" to minArea,
+                            "previously_same_group" to previouslySameGroup,
+                            "track_a_predicted_bbox" to listOf(
+                                trackA.currentPredictedBbox.left,
+                                trackA.currentPredictedBbox.top,
+                                trackA.currentPredictedBbox.right,
+                                trackA.currentPredictedBbox.bottom
+                            ),
+                            "track_b_predicted_bbox" to listOf(
+                                trackB.currentPredictedBbox.left,
+                                trackB.currentPredictedBbox.top,
+                                trackB.currentPredictedBbox.right,
+                                trackB.currentPredictedBbox.bottom
+                            ),
+                            "pts_us" to timestampUs
+                        )
+                    )
+                }
                 if (overlapRatio >= config.occlusionOverlapRatio) {
                     overlapAdj[trackA.id]?.add(trackB.id)
                     overlapAdj[trackB.id]?.add(trackA.id)
@@ -453,6 +488,20 @@ class TrackManager(
             }
             if (existingIdx != null) {
                 val existing = occlusionGroups[existingIdx]
+                val previousTrackIds = existing.trackIds.toSet()
+                if (previousTrackIds != comp) {
+                    NativeDiagnostics.event(
+                        level = "INFO",
+                        component = "TrackManager",
+                        event = "OCCLUSION_GROUP_MEMBERSHIP_CHANGE",
+                        fields = mapOf(
+                            "previous_track_ids" to previousTrackIds.toList().sorted(),
+                            "new_track_ids" to comp.toList().sorted(),
+                            "group_started_at_us" to existing.startedAtUs,
+                            "pts_us" to timestampUs
+                        )
+                    )
+                }
                 existing.trackIds.clear()
                 existing.trackIds.addAll(comp)
                 existing.lastOverlapTimestampUs = timestampUs
@@ -1983,6 +2032,7 @@ class TrackManager(
         private const val MIXED_FULL_BODY_MAX_RENDER_MISS_FRAMES = 3
         private const val GROUP_RESERVATION_MIN_EDGE_PENETRATION_PX = 1.0f
         private const val GROUP_RESERVATION_MIN_EDGE_PENETRATION_RATIO = 0.01f
+        private const val OCCLUSION_OVERLAP_EDGE_TELEMETRY_MARGIN = 0.10f
 
         fun boundPredictionAroundAnchor(
             anchor: FloatRect,
