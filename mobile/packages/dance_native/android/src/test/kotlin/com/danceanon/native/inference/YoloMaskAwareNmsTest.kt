@@ -9,19 +9,18 @@ import kotlin.random.Random
 class YoloMaskAwareNmsTest {
 
     @Test
-    fun maskZeroFastPathMatchesHistoricalByteFormulaAcrossBoundaryAndRandomFloatBits() {
-        fun reference(logit: Float): Byte {
+    fun compactLogitNonzeroThresholdMatchesHistoricalMaskByteFormula() {
+        fun historicalIsNonzero(logit: Float): Boolean {
             val prob = 1.0f / (1.0f + kotlin.math.exp(-logit))
-            return (prob * 255f).toInt().coerceIn(0, 255).toByte()
+            return (prob * 255f).toInt().coerceIn(0, 255) != 0
         }
 
         val boundary = YoloMaskDecoder.MIN_NONZERO_MASK_LOGIT
         val boundaryBits = boundary.toRawBits()
         for (delta in -4096..4096) {
             val value = Float.fromBits(boundaryBits + delta)
-            assertEquals(reference(value), YoloMaskDecoder.maskByteFromLogitFast(value))
+            assertEquals(historicalIsNonzero(value), value >= boundary)
         }
-
         val specialValues = floatArrayOf(
             Float.NEGATIVE_INFINITY,
             -Float.MAX_VALUE,
@@ -35,14 +34,80 @@ class YoloMaskAwareNmsTest {
             Float.POSITIVE_INFINITY,
             Float.NaN
         )
-        for (value in specialValues) {
-            assertEquals(reference(value), YoloMaskDecoder.maskByteFromLogitFast(value))
+        specialValues.forEach { value ->
+            assertEquals(historicalIsNonzero(value), value >= boundary)
         }
-
-        val random = Random(0x5A17C0DE)
+        val random = Random(0x4E4D534B)
         repeat(20_000) {
             val value = Float.fromBits(random.nextInt())
-            assertEquals(reference(value), YoloMaskDecoder.maskByteFromLogitFast(value))
+            assertEquals(historicalIsNonzero(value), value >= boundary)
+        }
+    }
+
+    @Test
+    fun compactLogitCacheMaterializesReferenceMaskAndIouExactly() {
+        val protoSize = 160
+        val channels = 32
+        val random = Random(20260901)
+        val proto = FloatArray(channels * protoSize * protoSize) { random.nextFloat() * 4f - 2f }
+        val view = NchwArrayProtoView(proto, channels, protoSize)
+        val cache = YoloMaskDecoder.CandidateMaskCache(view, 640, protoSize)
+        val candidates = listOf(
+            RawCandidate(0f, 0f, 640f, 640f, 0.95f, FloatArray(channels) { random.nextFloat() * 2f - 1f }),
+            RawCandidate(90f, 45f, 510f, 600f, 0.90f, FloatArray(channels) { random.nextFloat() * 2f - 1f }),
+            RawCandidate(125f, 70f, 535f, 615f, 0.85f, FloatArray(channels) { random.nextFloat() * 2f - 1f }),
+            RawCandidate(590f, 540f, 700f, 690f, 0.80f, FloatArray(channels) { random.nextFloat() * 2f - 1f })
+        )
+        val referenceMasks = candidates.map { candidate ->
+            YoloMaskDecoder.decodeCandidateMask(candidate, view, 640, protoSize)
+        }
+
+        candidates.forEachIndexed { index, candidate ->
+            assertTrue(
+                referenceMasks[index].contentEquals(cache.getMask(candidate)),
+                "compact-logit materialization must match historical full mask bytes"
+            )
+        }
+        for (a in candidates.indices) {
+            for (b in a + 1 until candidates.size) {
+                val reference = YoloMaskDecoder.calculateMaskIoU(referenceMasks[a], referenceMasks[b])
+                val compact = cache.calculateCandidateMaskIoU(candidates[a], candidates[b])
+                assertEquals(reference, compact, "compact-logit IoU must equal historical byte-mask IoU")
+            }
+        }
+    }
+
+    @Test
+    fun compactLogitNmsMatchesBufferReferenceKeptCandidatesAndMasksExactly() {
+        val protoSize = 160
+        val channels = 32
+        val random = Random(0x4D41534B)
+        val proto = FloatArray(channels * protoSize * protoSize) { random.nextFloat() * 3f - 1.5f }
+        val candidates = listOf(
+            RawCandidate(120f, 80f, 430f, 590f, 0.95f, FloatArray(channels) { random.nextFloat() * 2f - 1f }),
+            RawCandidate(125f, 85f, 435f, 595f, 0.90f, FloatArray(channels) { random.nextFloat() * 2f - 1f }),
+            RawCandidate(135f, 90f, 445f, 600f, 0.85f, FloatArray(channels) { random.nextFloat() * 2f - 1f }),
+            RawCandidate(430f, 90f, 610f, 590f, 0.80f, FloatArray(channels) { random.nextFloat() * 2f - 1f })
+        )
+        val (referenceKept, referenceCache) = YoloMaskDecoder.maskAwareNms(
+            candidates,
+            NchwBufferProtoView(FloatBuffer.wrap(proto), channels, protoSize),
+            inputSize = 640,
+            protoSize = protoSize
+        )
+        val (optimizedKept, optimizedCache) = YoloMaskDecoder.maskAwareNms(
+            candidates,
+            NchwArrayProtoView(proto, channels, protoSize),
+            inputSize = 640,
+            protoSize = protoSize
+        )
+
+        assertEquals(referenceKept, optimizedKept)
+        optimizedKept.forEachIndexed { index, candidate ->
+            assertTrue(
+                referenceCache.getMask(referenceKept[index]).contentEquals(optimizedCache.getMask(candidate)),
+                "kept candidate soft mask must remain byte-exact"
+            )
         }
     }
 

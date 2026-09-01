@@ -116,6 +116,8 @@ class YoloLiteRtTensorAdapterTest {
         assertTrue(timings.containsKey("yoloCandidateScan"))
         assertTrue(timings.containsKey("yoloMaskAwareNms"))
         assertTrue(timings.containsKey("yoloMaskDecode"))
+        assertTrue(timings.containsKey("yoloMaskLogitDecode"))
+        assertTrue(timings.containsKey("yoloMaskSoftMaterialize"))
         assertTrue(timings.containsKey("yoloMaskIouScan"))
         assertTrue(timings.containsKey("yoloMaskMaterialize"))
     }

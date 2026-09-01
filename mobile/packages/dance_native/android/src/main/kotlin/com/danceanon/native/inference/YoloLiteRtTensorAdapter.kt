@@ -213,8 +213,6 @@ class YoloLiteRtTensorAdapter(
             "yoloMaskAwareNms",
             (System.nanoTime() - nmsStartNs) / 1_000_000
         )
-        stageTimingsMs?.set("yoloMaskDecode", nmsTimings.maskDecodeNs / 1_000_000)
-        stageTimingsMs?.set("yoloMaskIouScan", nmsTimings.maskIouNs / 1_000_000)
 
         // 3. Process kept detections
         val materializeStartNs = System.nanoTime()
@@ -261,6 +259,10 @@ class YoloLiteRtTensorAdapter(
         }
 
         detections.sortBy { it.bbox.centerX }
+        stageTimingsMs?.set("yoloMaskDecode", nmsTimings.maskDecodeNs / 1_000_000)
+        stageTimingsMs?.set("yoloMaskLogitDecode", nmsTimings.maskLogitDecodeNs / 1_000_000)
+        stageTimingsMs?.set("yoloMaskSoftMaterialize", nmsTimings.maskSoftMaterializeNs / 1_000_000)
+        stageTimingsMs?.set("yoloMaskIouScan", nmsTimings.maskIouNs / 1_000_000)
         stageTimingsMs?.set(
             "yoloMaskMaterialize",
             (System.nanoTime() - materializeStartNs) / 1_000_000
