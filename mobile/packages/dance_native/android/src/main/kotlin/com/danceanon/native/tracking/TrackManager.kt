@@ -166,7 +166,6 @@ class TrackManager(
 
     private val tracks = mutableListOf<InternalTrack>()
     private val occlusionGroups = mutableListOf<OcclusionGroup>()
-    private val previousOcclusionOverlapEdges = mutableSetOf<Long>()
     private val protectedTrackIds = mutableSetOf<Int>()
     private val privacySelectedTrackIds = mutableSetOf<Int>()
     private val currentPrivacyClassEvidence = mutableListOf<FreshPrivacyClassEvidence>()
@@ -365,7 +364,6 @@ class TrackManager(
     ): List<TrackedPerson> {
         tracks.clear()
         occlusionGroups.clear()
-        previousOcclusionOverlapEdges.clear()
         currentPrivacyClassEvidence.clear()
         currentProtectedTrackMotionEvidence.clear()
         currentPrivacySuppressedSelectedTrackIds.clear()
@@ -396,7 +394,6 @@ class TrackManager(
     private fun updateOcclusionGroups(predictedTracks: List<InternalTrack>, timestampUs: Long) {
         // 1. Build adjacency graph of current spatial overlaps based on predicted boxes
         val overlapAdj = mutableMapOf<Int, MutableSet<Int>>()
-        val currentOcclusionOverlapEdges = mutableSetOf<Long>()
         val validTracks = predictedTracks.filter {
             it.state != TrackState.REMOVED &&
                 !it.offscreenDormant &&
@@ -416,8 +413,6 @@ class TrackManager(
                     trackB.currentPredictedBbox.width * trackB.currentPredictedBbox.height
                 )
                 val overlapRatio = if (minArea > 0f) interArea / minArea else 0f
-                val pairKey = occlusionTrackPairKey(trackA.id, trackB.id)
-                val previouslyDirectOverlapEdge = previousOcclusionOverlapEdges.contains(pairKey)
                 val previouslySameGroup = occlusionGroups.any { group ->
                     group.trackIds.contains(trackA.id) && group.trackIds.contains(trackB.id)
                 }
@@ -437,12 +432,6 @@ class TrackManager(
                             "intersection_area" to interArea,
                             "min_area" to minArea,
                             "previously_same_group" to previouslySameGroup,
-                            "previously_direct_overlap_edge" to previouslyDirectOverlapEdge,
-                            "effective_threshold" to if (previouslyDirectOverlapEdge) {
-                                occlusionOverlapExitThreshold(config.occlusionOverlapRatio)
-                            } else {
-                                config.occlusionOverlapRatio
-                            },
                             "track_a_predicted_bbox" to listOf(
                                 trackA.currentPredictedBbox.left,
                                 trackA.currentPredictedBbox.top,
@@ -459,21 +448,12 @@ class TrackManager(
                         )
                     )
                 }
-                if (
-                    shouldConnectOcclusionPair(
-                        overlapRatio = overlapRatio,
-                        enterThreshold = config.occlusionOverlapRatio,
-                        previouslyDirectOverlapEdge = previouslyDirectOverlapEdge
-                    )
-                ) {
+                if (overlapRatio >= config.occlusionOverlapRatio) {
                     overlapAdj[trackA.id]?.add(trackB.id)
                     overlapAdj[trackB.id]?.add(trackA.id)
-                    currentOcclusionOverlapEdges.add(pairKey)
                 }
             }
         }
-        previousOcclusionOverlapEdges.clear()
-        previousOcclusionOverlapEdges.addAll(currentOcclusionOverlapEdges)
 
         // 2. Find connected components on overlap graph (size >= 2)
         val visited = mutableSetOf<Int>()
@@ -809,6 +789,7 @@ class TrackManager(
         // 3. PHASE B: OCCLUSION / REACQUIRING GROUP-FIRST ASSOCIATION WITH RESERVATION ISOLATION
         val reservedGroupTrackIndices = mutableSetOf<Int>()
         val reservedGroupDetectionIndices = mutableSetOf<Int>()
+        val reservedGroupOwnerTrackIdsByDetectionIndex = mutableMapOf<Int, MutableSet<Int>>()
         val reservedGlobalDetectionIndices = mutableSetOf<Int>()
         val globalAmbiguousTrackIndices = mutableSetOf<Int>()
 
@@ -961,6 +942,9 @@ class TrackManager(
                     }
                     reservedGroupTrackIndices.add(tIdx)
                     reservedGroupDetectionIndices.add(dIdx)
+                    reservedGroupOwnerTrackIdsByDetectionIndex
+                        .getOrPut(dIdx) { mutableSetOf() }
+                        .addAll(group.trackIds)
                     continue
                 }
 
@@ -1056,6 +1040,9 @@ class TrackManager(
                     }
                     if (overlapsGroupMember) {
                         reservedGroupDetectionIndices.add(dIdx)
+                        reservedGroupOwnerTrackIdsByDetectionIndex
+                            .getOrPut(dIdx) { mutableSetOf() }
+                            .addAll(group.trackIds)
                         reservedThisGroup.add(dIdx)
                         NativeDiagnostics.event(
                             level = "INFO",
@@ -1410,6 +1397,154 @@ class TrackManager(
                         )
                     )
                 }
+            }
+        }
+
+        // Behavior-neutral probe: after ordinary Global Hungarian has consumed
+        // every currently eligible non-group detection, evaluate the detections
+        // that remained quarantined by occlusion-group ownership against the
+        // still-unmatched non-group ACTIVE/NEW tracks. This does NOT commit or
+        // unreserve anything. It records whether the existing strict Global
+        // identity gates would have accepted a reserved detection if group
+        // reservation had not hidden it. This directly diagnoses topology-edge
+        // cases without changing the occlusion threshold or association policy.
+        val reservedRescueTrackIndices = tracks.indices.filter { idx ->
+            !matchedTrackIndices.contains(idx) &&
+                !reservedGroupTrackIndices.contains(idx) &&
+                (tracks[idx].state == TrackState.ACTIVE || tracks[idx].state == TrackState.NEW)
+        }
+        val reservedRescueDetectionIndices = reservedGroupDetectionIndices.filter { dIdx ->
+            !matchedDetectionIndices.contains(dIdx)
+        }
+        if (reservedRescueTrackIndices.isNotEmpty() && reservedRescueDetectionIndices.isNotEmpty()) {
+            val rescueScoreMatrix = Array(reservedRescueTrackIndices.size) { r ->
+                val track = tracks[reservedRescueTrackIndices[r]]
+                FloatArray(reservedRescueDetectionIndices.size) { c ->
+                    computeMatchScore(track, detections[reservedRescueDetectionIndices[c]])
+                }
+            }
+            val rescueCostMatrix = Array(reservedRescueTrackIndices.size) { r ->
+                FloatArray(reservedRescueDetectionIndices.size) { c ->
+                    (1.0f - rescueScoreMatrix[r][c]).coerceIn(0f, 1f)
+                }
+            }
+            val rescueMaxCost = (1.0f - config.minMatchScore).coerceIn(0.1f, 0.90f)
+            val rescueMatches = HungarianSolver.match(rescueCostMatrix, maxCostThreshold = rescueMaxCost)
+
+            for (match in rescueMatches.matches) {
+                val row = match.first
+                val col = match.second
+                val tIdx = reservedRescueTrackIndices[row]
+                val dIdx = reservedRescueDetectionIndices[col]
+                val track = tracks[tIdx]
+                val det = detections[dIdx]
+                val assignedScore = rescueScoreMatrix[row][col]
+                val rowBest = rescueScoreMatrix[row].maxOrNull() ?: 0f
+                val colBest = rescueScoreMatrix.indices.maxOfOrNull { r -> rescueScoreMatrix[r][col] } ?: 0f
+                val rowSecondBest = rescueScoreMatrix[row]
+                    .indices
+                    .filter { it != col }
+                    .map { rescueScoreMatrix[row][it] }
+                    .maxOrNull()
+                val colSecondBest = rescueScoreMatrix.indices
+                    .filter { it != row }
+                    .map { rescueScoreMatrix[it][col] }
+                    .maxOrNull()
+                val epsilon = 1e-6f
+                val rowMargin = rowSecondBest?.let { assignedScore - it } ?: Float.POSITIVE_INFINITY
+                val colMargin = colSecondBest?.let { assignedScore - it } ?: Float.POSITIVE_INFINITY
+                val rowHasConfusableAlternative = reservedRescueDetectionIndices.indices.any { altCol ->
+                    if (altCol == col) return@any false
+                    val altScore = rescueScoreMatrix[row][altCol]
+                    if ((rowBest - altScore) > config.associationAmbiguityMargin) return@any false
+                    val altDet = detections[reservedRescueDetectionIndices[altCol]]
+                    val inter = computeBBoxIntersectionArea(det.bbox, altDet.bbox)
+                    val minArea = minOf(
+                        det.bbox.width * det.bbox.height,
+                        altDet.bbox.width * altDet.bbox.height
+                    ).coerceAtLeast(1e-4f)
+                    (inter / minArea) >= 0.10f
+                }
+                val colHasConfusableAlternative = reservedRescueTrackIndices.indices.any { altRow ->
+                    if (altRow == row) return@any false
+                    val altScore = rescueScoreMatrix[altRow][col]
+                    if ((colBest - altScore) > config.associationAmbiguityMargin) return@any false
+                    val altTrack = tracks[reservedRescueTrackIndices[altRow]]
+                    val inter = computeBBoxIntersectionArea(track.currentPredictedBbox, altTrack.currentPredictedBbox)
+                    val minArea = minOf(
+                        track.currentPredictedBbox.width * track.currentPredictedBbox.height,
+                        altTrack.currentPredictedBbox.width * altTrack.currentPredictedBbox.height
+                    ).coerceAtLeast(1e-4f)
+                    (inter / minArea) >= 0.10f
+                }
+                val hasAmbiguousGeometry =
+                    (rowMargin < config.associationAmbiguityMargin && rowHasConfusableAlternative) ||
+                    (colMargin < config.associationAmbiguityMargin && colHasConfusableAlternative)
+                val candidateBBoxIoU = computeBBoxIoU(track.currentPredictedBbox, det.bbox)
+                val candidateMaskIoU = computePredictedMaskIoU(track, det.mask)
+                val protectedIdentityEvidenceOk = if (protectedTrackIds.contains(track.id)) {
+                    isProtectedGroupIdentityEvidenceSufficient(
+                        track.state,
+                        candidateBBoxIoU,
+                        candidateMaskIoU
+                    )
+                } else {
+                    true
+                }
+                val wouldStrictGlobalCommit = assignedScore >= config.minMatchScore &&
+                    assignedScore >= rowBest - epsilon &&
+                    assignedScore >= colBest - epsilon &&
+                    !hasAmbiguousGeometry &&
+                    protectedIdentityEvidenceOk
+
+                NativeDiagnostics.event(
+                    level = "INFO",
+                    component = "TrackManager",
+                    event = "GROUP_RESERVED_STRICT_RESCUE_PROBE",
+                    fields = mapOf(
+                        "track_id" to track.id,
+                        "det_index" to dIdx,
+                        "reservation_owner_track_ids" to reservedGroupOwnerTrackIdsByDetectionIndex[dIdx]
+                            .orEmpty()
+                            .toList()
+                            .sorted(),
+                        "assigned_score" to assignedScore,
+                        "row_best" to rowBest,
+                        "col_best" to colBest,
+                        "row_second_best" to rowSecondBest,
+                        "col_second_best" to colSecondBest,
+                        "row_margin" to rowMargin,
+                        "col_margin" to colMargin,
+                        "row_confusable_geometry" to rowHasConfusableAlternative,
+                        "col_confusable_geometry" to colHasConfusableAlternative,
+                        "bbox_iou" to candidateBBoxIoU,
+                        "mask_iou" to candidateMaskIoU,
+                        "identity_protected" to protectedTrackIds.contains(track.id),
+                        "privacy_selected" to privacySelectedTrackIds.contains(track.id),
+                        "protected_identity_evidence_ok" to protectedIdentityEvidenceOk,
+                        "global_ambiguous_track" to globalAmbiguousTrackIndices.contains(tIdx),
+                        "would_strict_global_commit" to wouldStrictGlobalCommit,
+                        "track_predicted_bbox" to listOf(
+                            track.currentPredictedBbox.left,
+                            track.currentPredictedBbox.top,
+                            track.currentPredictedBbox.right,
+                            track.currentPredictedBbox.bottom
+                        ),
+                        "track_last_observed_bbox" to listOf(
+                            track.lastObservedBbox.left,
+                            track.lastObservedBbox.top,
+                            track.lastObservedBbox.right,
+                            track.lastObservedBbox.bottom
+                        ),
+                        "detection_bbox" to listOf(
+                            det.bbox.left,
+                            det.bbox.top,
+                            det.bbox.right,
+                            det.bbox.bottom
+                        ),
+                        "pts_us" to timestampUs
+                    )
+                )
             }
         }
 
@@ -2023,7 +2158,6 @@ class TrackManager(
     override fun reset() {
         tracks.clear()
         occlusionGroups.clear()
-        previousOcclusionOverlapEdges.clear()
         protectedTrackIds.clear()
         currentPrivacyClassEvidence.clear()
         currentProtectedTrackMotionEvidence.clear()
@@ -2053,30 +2187,7 @@ class TrackManager(
         private const val MIXED_FULL_BODY_MAX_RENDER_MISS_FRAMES = 3
         private const val GROUP_RESERVATION_MIN_EDGE_PENETRATION_PX = 1.0f
         private const val GROUP_RESERVATION_MIN_EDGE_PENETRATION_RATIO = 0.01f
-        private const val OCCLUSION_OVERLAP_EXIT_HYSTERESIS = 0.01f
         private const val OCCLUSION_OVERLAP_EDGE_TELEMETRY_MARGIN = 0.10f
-
-        internal fun occlusionOverlapExitThreshold(enterThreshold: Float): Float =
-            (enterThreshold - OCCLUSION_OVERLAP_EXIT_HYSTERESIS).coerceAtLeast(0f)
-
-        internal fun shouldConnectOcclusionPair(
-            overlapRatio: Float,
-            enterThreshold: Float,
-            previouslyDirectOverlapEdge: Boolean
-        ): Boolean {
-            val threshold = if (previouslyDirectOverlapEdge) {
-                occlusionOverlapExitThreshold(enterThreshold)
-            } else {
-                enterThreshold
-            }
-            return overlapRatio >= threshold
-        }
-
-        private fun occlusionTrackPairKey(trackAId: Int, trackBId: Int): Long {
-            val low = minOf(trackAId, trackBId).toLong() and 0xffffffffL
-            val high = maxOf(trackAId, trackBId).toLong() and 0xffffffffL
-            return (low shl 32) or high
-        }
 
         fun boundPredictionAroundAnchor(
             anchor: FloatRect,
