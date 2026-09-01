@@ -166,6 +166,7 @@ class TrackManager(
 
     private val tracks = mutableListOf<InternalTrack>()
     private val occlusionGroups = mutableListOf<OcclusionGroup>()
+    private val previousOcclusionOverlapEdges = mutableSetOf<Long>()
     private val protectedTrackIds = mutableSetOf<Int>()
     private val privacySelectedTrackIds = mutableSetOf<Int>()
     private val currentPrivacyClassEvidence = mutableListOf<FreshPrivacyClassEvidence>()
@@ -364,6 +365,7 @@ class TrackManager(
     ): List<TrackedPerson> {
         tracks.clear()
         occlusionGroups.clear()
+        previousOcclusionOverlapEdges.clear()
         currentPrivacyClassEvidence.clear()
         currentProtectedTrackMotionEvidence.clear()
         currentPrivacySuppressedSelectedTrackIds.clear()
@@ -394,6 +396,7 @@ class TrackManager(
     private fun updateOcclusionGroups(predictedTracks: List<InternalTrack>, timestampUs: Long) {
         // 1. Build adjacency graph of current spatial overlaps based on predicted boxes
         val overlapAdj = mutableMapOf<Int, MutableSet<Int>>()
+        val currentOcclusionOverlapEdges = mutableSetOf<Long>()
         val validTracks = predictedTracks.filter {
             it.state != TrackState.REMOVED &&
                 !it.offscreenDormant &&
@@ -413,6 +416,8 @@ class TrackManager(
                     trackB.currentPredictedBbox.width * trackB.currentPredictedBbox.height
                 )
                 val overlapRatio = if (minArea > 0f) interArea / minArea else 0f
+                val pairKey = occlusionTrackPairKey(trackA.id, trackB.id)
+                val previouslyDirectOverlapEdge = previousOcclusionOverlapEdges.contains(pairKey)
                 val previouslySameGroup = occlusionGroups.any { group ->
                     group.trackIds.contains(trackA.id) && group.trackIds.contains(trackB.id)
                 }
@@ -432,6 +437,12 @@ class TrackManager(
                             "intersection_area" to interArea,
                             "min_area" to minArea,
                             "previously_same_group" to previouslySameGroup,
+                            "previously_direct_overlap_edge" to previouslyDirectOverlapEdge,
+                            "effective_threshold" to if (previouslyDirectOverlapEdge) {
+                                occlusionOverlapExitThreshold(config.occlusionOverlapRatio)
+                            } else {
+                                config.occlusionOverlapRatio
+                            },
                             "track_a_predicted_bbox" to listOf(
                                 trackA.currentPredictedBbox.left,
                                 trackA.currentPredictedBbox.top,
@@ -448,12 +459,21 @@ class TrackManager(
                         )
                     )
                 }
-                if (overlapRatio >= config.occlusionOverlapRatio) {
+                if (
+                    shouldConnectOcclusionPair(
+                        overlapRatio = overlapRatio,
+                        enterThreshold = config.occlusionOverlapRatio,
+                        previouslyDirectOverlapEdge = previouslyDirectOverlapEdge
+                    )
+                ) {
                     overlapAdj[trackA.id]?.add(trackB.id)
                     overlapAdj[trackB.id]?.add(trackA.id)
+                    currentOcclusionOverlapEdges.add(pairKey)
                 }
             }
         }
+        previousOcclusionOverlapEdges.clear()
+        previousOcclusionOverlapEdges.addAll(currentOcclusionOverlapEdges)
 
         // 2. Find connected components on overlap graph (size >= 2)
         val visited = mutableSetOf<Int>()
@@ -2003,6 +2023,7 @@ class TrackManager(
     override fun reset() {
         tracks.clear()
         occlusionGroups.clear()
+        previousOcclusionOverlapEdges.clear()
         protectedTrackIds.clear()
         currentPrivacyClassEvidence.clear()
         currentProtectedTrackMotionEvidence.clear()
@@ -2032,7 +2053,30 @@ class TrackManager(
         private const val MIXED_FULL_BODY_MAX_RENDER_MISS_FRAMES = 3
         private const val GROUP_RESERVATION_MIN_EDGE_PENETRATION_PX = 1.0f
         private const val GROUP_RESERVATION_MIN_EDGE_PENETRATION_RATIO = 0.01f
+        private const val OCCLUSION_OVERLAP_EXIT_HYSTERESIS = 0.01f
         private const val OCCLUSION_OVERLAP_EDGE_TELEMETRY_MARGIN = 0.10f
+
+        internal fun occlusionOverlapExitThreshold(enterThreshold: Float): Float =
+            (enterThreshold - OCCLUSION_OVERLAP_EXIT_HYSTERESIS).coerceAtLeast(0f)
+
+        internal fun shouldConnectOcclusionPair(
+            overlapRatio: Float,
+            enterThreshold: Float,
+            previouslyDirectOverlapEdge: Boolean
+        ): Boolean {
+            val threshold = if (previouslyDirectOverlapEdge) {
+                occlusionOverlapExitThreshold(enterThreshold)
+            } else {
+                enterThreshold
+            }
+            return overlapRatio >= threshold
+        }
+
+        private fun occlusionTrackPairKey(trackAId: Int, trackBId: Int): Long {
+            val low = minOf(trackAId, trackBId).toLong() and 0xffffffffL
+            val high = maxOf(trackAId, trackBId).toLong() and 0xffffffffL
+            return (low shl 32) or high
+        }
 
         fun boundPredictionAroundAnchor(
             anchor: FloatRect,
