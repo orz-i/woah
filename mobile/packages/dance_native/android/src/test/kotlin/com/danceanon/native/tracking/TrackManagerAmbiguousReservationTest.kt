@@ -255,19 +255,19 @@ class TrackManagerAmbiguousReservationTest {
         tracker.setPrivacySelectedTrackIds(emptySet())
         tracker.initializeWithAssignedIds(
             listOf(
-                PersonDetection(FloatRect(0f, 100f, 100f, 300f), 0.95f),
-                PersonDetection(FloatRect(80f, 100f, 180f, 300f), 0.95f),
-                PersonDetection(FloatRect(120f, 100f, 220f, 300f), 0.95f)
+                PersonDetection(FloatRect(0f, 100f, 100f, 300f), 0.95f, createDummyMask()),
+                PersonDetection(FloatRect(80f, 100f, 180f, 300f), 0.95f, createDummyMask()),
+                PersonDetection(FloatRect(120f, 100f, 220f, 300f), 0.95f, createDummyMask())
             ),
             listOf(2, 3, 4)
         )
 
-        val targetDetection = PersonDetection(FloatRect(5f, 100f, 105f, 300f), 0.95f)
+        val targetDetection = PersonDetection(FloatRect(5f, 100f, 105f, 300f), 0.95f, createDummyMask())
         val tracks = tracker.update(
             detections = listOf(
                 targetDetection,
-                PersonDetection(FloatRect(85f, 100f, 185f, 300f), 0.95f),
-                PersonDetection(FloatRect(125f, 100f, 225f, 300f), 0.95f)
+                PersonDetection(FloatRect(85f, 100f, 185f, 300f), 0.95f, createDummyMask()),
+                PersonDetection(FloatRect(125f, 100f, 225f, 300f), 0.95f, createDummyMask())
             ),
             timestampUs = 33_333L
         )
@@ -276,6 +276,12 @@ class TrackManagerAmbiguousReservationTest {
         assertTrue(!target.observedThisFrame, "a single neighboring group must retain the original reservation isolation")
         assertTrue(target.state != TrackState.ACTIVE)
         assertEquals(setOf(2, 3, 4), tracks.map { it.id }.toSet())
+
+        val strictPrivacyEvidence = tracker.getFreshStrictUnselectedPrivacyEvidence()
+        assertEquals(1, strictPrivacyEvidence.size)
+        assertEquals(PrivacySelectionClass.UNSELECTED, strictPrivacyEvidence.single().selectionClass)
+        assertEquals(setOf(2), strictPrivacyEvidence.single().residualTrackIds)
+        assertEquals(targetDetection.bbox, strictPrivacyEvidence.single().detection.bbox)
     }
 
     @Test
@@ -374,18 +380,18 @@ class TrackManagerAmbiguousReservationTest {
         tracker.setPrivacySelectedTrackIds(setOf(2))
         tracker.initializeWithAssignedIds(
             listOf(
-                PersonDetection(FloatRect(0f, 100f, 100f, 300f), 0.95f),
-                PersonDetection(FloatRect(80f, 100f, 180f, 300f), 0.95f),
-                PersonDetection(FloatRect(120f, 100f, 220f, 300f), 0.95f)
+                PersonDetection(FloatRect(0f, 100f, 100f, 300f), 0.95f, createDummyMask()),
+                PersonDetection(FloatRect(80f, 100f, 180f, 300f), 0.95f, createDummyMask()),
+                PersonDetection(FloatRect(120f, 100f, 220f, 300f), 0.95f, createDummyMask())
             ),
             listOf(2, 3, 4)
         )
 
         val tracks = tracker.update(
             detections = listOf(
-                PersonDetection(FloatRect(5f, 100f, 105f, 300f), 0.95f),
-                PersonDetection(FloatRect(85f, 100f, 185f, 300f), 0.95f),
-                PersonDetection(FloatRect(125f, 100f, 225f, 300f), 0.95f)
+                PersonDetection(FloatRect(5f, 100f, 105f, 300f), 0.95f, createDummyMask()),
+                PersonDetection(FloatRect(85f, 100f, 185f, 300f), 0.95f, createDummyMask()),
+                PersonDetection(FloatRect(125f, 100f, 225f, 300f), 0.95f, createDummyMask())
             ),
             timestampUs = 33_333L
         )
@@ -394,6 +400,10 @@ class TrackManagerAmbiguousReservationTest {
         assertTrue(!target.observedThisFrame, "FULL_BODY identity must retain the existing group-reservation isolation behavior")
         assertTrue(target.state != TrackState.ACTIVE)
         assertEquals(setOf(2, 3, 4), tracks.map { it.id }.toSet())
+        assertTrue(
+            tracker.getFreshStrictUnselectedPrivacyEvidence().isEmpty(),
+            "FULL_BODY identities must never be exported as fresh UNSELECTED compositor evidence"
+        )
     }
 
     @Test

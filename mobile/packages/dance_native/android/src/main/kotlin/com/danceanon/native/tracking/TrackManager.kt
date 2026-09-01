@@ -169,6 +169,7 @@ class TrackManager(
     private val protectedTrackIds = mutableSetOf<Int>()
     private val privacySelectedTrackIds = mutableSetOf<Int>()
     private val currentPrivacyClassEvidence = mutableListOf<FreshPrivacyClassEvidence>()
+    private val currentStrictUnselectedPrivacyEvidence = mutableListOf<FreshPrivacyClassEvidence>()
     private val currentProtectedTrackMotionEvidence = mutableMapOf<Int, ProtectedTrackMotionEvidence>()
     private val currentPrivacySuppressedSelectedTrackIds = mutableSetOf<Int>()
     private val currentHardPrivacyClassByDetectionIndex = mutableMapOf<Int, PrivacySelectionClass>()
@@ -321,6 +322,9 @@ class TrackManager(
 
     fun getFreshPrivacyClassEvidence(): List<FreshPrivacyClassEvidence> = currentPrivacyClassEvidence
 
+    fun getFreshStrictUnselectedPrivacyEvidence(): List<FreshPrivacyClassEvidence> =
+        currentStrictUnselectedPrivacyEvidence
+
     fun getFreshProtectedTrackMotionEvidence(): List<ProtectedTrackMotionEvidence> =
         currentProtectedTrackMotionEvidence.values.toList()
 
@@ -365,6 +369,7 @@ class TrackManager(
         tracks.clear()
         occlusionGroups.clear()
         currentPrivacyClassEvidence.clear()
+        currentStrictUnselectedPrivacyEvidence.clear()
         currentProtectedTrackMotionEvidence.clear()
         currentPrivacySuppressedSelectedTrackIds.clear()
         currentHardPrivacyClassByDetectionIndex.clear()
@@ -592,6 +597,7 @@ class TrackManager(
         }
 
         currentPrivacyClassEvidence.clear()
+        currentStrictUnselectedPrivacyEvidence.clear()
         currentProtectedTrackMotionEvidence.clear()
         currentPrivacySuppressedSelectedTrackIds.clear()
         currentHardPrivacyClassByDetectionIndex.clear()
@@ -1234,6 +1240,43 @@ class TrackManager(
                         protectedTrackIds.contains(track.id) &&
                             !privacySelectedTrackIds.contains(track.id)
                     val multiGroupReservation = reservationOwnerGroups.size >= 2
+
+                    // Rendering-only ownership evidence. A group-reserved YOLO
+                    // detection can be known to belong to a FACE_ONLY identity
+                    // even when reservation policy intentionally refuses to
+                    // commit that identity. Expose that fresh mask only as an
+                    // UNSELECTED compositor occluder; do not match the track,
+                    // unreserve the detection, or alter any TrackManager state.
+                    if (
+                        wouldStrictGlobalCommit &&
+                        faceOnlyIdentityProtected &&
+                        det.mask != null &&
+                        currentStrictUnselectedPrivacyEvidence.none { it.detectionIndex == dIdx }
+                    ) {
+                        currentStrictUnselectedPrivacyEvidence.add(
+                            FreshPrivacyClassEvidence(
+                                selectionClass = PrivacySelectionClass.UNSELECTED,
+                                detectionIndex = dIdx,
+                                detection = det,
+                                residualTrackIds = setOf(track.id)
+                            )
+                        )
+                        NativeDiagnostics.event(
+                            level = "INFO",
+                            component = "TrackManager",
+                            event = "GROUP_RESERVED_STRICT_UNSELECTED_PRIVACY_EVIDENCE",
+                            fields = mapOf(
+                                "track_id" to track.id,
+                                "det_index" to dIdx,
+                                "reservation_owner_track_ids" to reservationOwnerTrackIds.toList().sorted(),
+                                "reservation_owner_group_count" to reservationOwnerGroups.size,
+                                "assigned_score" to assignedScore,
+                                "bbox_iou" to candidateBBoxIoU,
+                                "mask_iou" to candidateMaskIoU,
+                                "pts_us" to timestampUs
+                            )
+                        )
+                    }
 
                     if (
                         isStrictFaceOnlyReservationRescueEligible(
@@ -2077,6 +2120,7 @@ class TrackManager(
 
     private fun predictInternal(timestampUs: Long, countAsDetectionMiss: Boolean): List<TrackedPerson> {
         currentPrivacyClassEvidence.clear()
+        currentStrictUnselectedPrivacyEvidence.clear()
         currentProtectedTrackMotionEvidence.clear()
         currentPrivacySuppressedSelectedTrackIds.clear()
         currentHardPrivacyClassByDetectionIndex.clear()
@@ -2225,6 +2269,7 @@ class TrackManager(
         occlusionGroups.clear()
         protectedTrackIds.clear()
         currentPrivacyClassEvidence.clear()
+        currentStrictUnselectedPrivacyEvidence.clear()
         currentProtectedTrackMotionEvidence.clear()
         currentPrivacySuppressedSelectedTrackIds.clear()
         currentHardPrivacyClassByDetectionIndex.clear()

@@ -823,6 +823,15 @@ class ExportPipeline(
                             } else {
                                 emptyList()
                             }
+                            val strictMixedUnselectedPrivacyEvidence = if (
+                                shouldInfer &&
+                                !allowFreshFullBodyClassPrimary &&
+                                selectedIds.isNotEmpty()
+                            ) {
+                                trackManager.getFreshStrictUnselectedPrivacyEvidence()
+                            } else {
+                                emptyList()
+                            }
                             val temporalByDetectionIndex = temporalPrivacyEvidence.associateBy { it.detectionIndex }
                             freshSelectedCoveredTrackIds = trackManagerFreshPrivacyEvidence.asSequence()
                                 .filter {
@@ -849,10 +858,13 @@ class ExportPipeline(
                                 // per-person modes. A temporal class has no exact
                                 // identity and may jump to a nearby FACE_ONLY
                                 // dancer during crossings, creating a wrong
-                                // full-body mask. In mixed mode the FULL_BODY
-                                // compositor therefore follows only the
-                                // TrackManager-owned selected ID.
-                                freshPrivacyClassEvidence = emptyList()
+                                // full-body mask. Keep selected privacy anchored
+                                // only to the TrackManager-owned FULL_BODY ID, but
+                                // allow strict current-frame FACE_ONLY ownership
+                                // evidence to act as UNSELECTED occluders. This
+                                // carves fresh foreground people out of a stale
+                                // FULL_BODY mask without committing their IDs.
+                                freshPrivacyClassEvidence = strictMixedUnselectedPrivacyEvidence
                                 freshSelectedCoveredTrackIds = emptySet()
                                 suppressedSelectedPrivacyTrackIds = emptySet()
                                 preferFreshPrivacyClassPrimary = false
