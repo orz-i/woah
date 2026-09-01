@@ -194,6 +194,52 @@ class TrackManagerAmbiguousReservationTest {
     }
 
     @Test
+    fun testSubpixelGroupBoundaryGrazeDoesNotStealIndependentDetection() {
+        val tracker = TrackManager(
+            TrackingConfig(
+                minMatchScore = 0.20f,
+                bboxIouWeight = 1.0f,
+                maskIouWeight = 0.0f,
+                motionWeight = 0.0f,
+                directionWeight = 0.0f
+            )
+        )
+
+        val initial = tracker.initializeWithAssignedIds(
+            listOf(
+                // Independent identity immediately to the left of an overlap group.
+                PersonDetection(FloatRect(0f, 100f, 100f, 300f), 0.95f),
+                PersonDetection(FloatRect(100.5f, 100f, 200.5f, 300f), 0.95f),
+                PersonDetection(FloatRect(140.5f, 100f, 240.5f, 300f), 0.95f)
+            ),
+            listOf(2, 3, 4)
+        )
+        assertEquals(setOf(2, 3, 4), initial.map { it.id }.toSet())
+
+        val independentDetection = PersonDetection(
+            // Only a 0.75 px horizontal edge graze against track 3. This is
+            // intentionally below the group-ownership tolerance and models the
+            // cross-device first-fork geometry seen at pts_us=16677.
+            FloatRect(0f, 100f, 101.25f, 300f),
+            0.95f
+        )
+        val tracks = tracker.update(
+            detections = listOf(
+                independentDetection,
+                PersonDetection(FloatRect(100.5f, 100f, 200.5f, 300f), 0.95f),
+                PersonDetection(FloatRect(140.5f, 100f, 240.5f, 300f), 0.95f)
+            ),
+            timestampUs = 16_677L
+        )
+
+        val independent = tracks.single { it.id == 2 }
+        assertTrue(independent.observedThisFrame, "edge graze must not reserve the independent detection")
+        assertEquals(TrackState.ACTIVE, independent.state)
+        assertEquals(independentDetection.bbox, independent.bbox)
+        assertEquals(setOf(2, 3, 4), tracks.map { it.id }.toSet())
+    }
+
+    @Test
     fun testBalancedResidualSelectedDetectionBecomesFreshPrivacyEvidenceWithoutIdentityCommit() {
         tracker = TrackManager(
             TrackingConfig(

@@ -982,8 +982,8 @@ class TrackManager(
                     val detBox = detections[dIdx].bbox
                     val overlapsGroupMember = groupTrackIndices.any { tIdx ->
                         val groupTrack = tracks[tIdx]
-                        computeBBoxIntersectionArea(groupTrack.currentPredictedBbox, detBox) > 0f ||
-                            computeBBoxIntersectionArea(groupTrack.lastObservedBbox, detBox) > 0f
+                        hasMeaningfulGroupReservationOverlap(groupTrack.currentPredictedBbox, detBox) ||
+                            hasMeaningfulGroupReservationOverlap(groupTrack.lastObservedBbox, detBox)
                     }
                     if (overlapsGroupMember) {
                         reservedGroupDetectionIndices.add(dIdx)
@@ -1981,6 +1981,8 @@ class TrackManager(
         private const val OFFSCREEN_EXIT_EDGE_RATIO = 0.06f
         private const val OFFSCREEN_EXIT_MIN_STEP_RATIO = 0.03f
         private const val MIXED_FULL_BODY_MAX_RENDER_MISS_FRAMES = 3
+        private const val GROUP_RESERVATION_MIN_EDGE_PENETRATION_PX = 1.0f
+        private const val GROUP_RESERVATION_MIN_EDGE_PENETRATION_RATIO = 0.01f
 
         fun boundPredictionAroundAnchor(
             anchor: FloatRect,
@@ -2080,6 +2082,31 @@ class TrackManager(
             val interW = max(0f, interX2 - interX1)
             val interH = max(0f, interY2 - interY1)
             return interW * interH
+        }
+
+        private fun hasMeaningfulGroupReservationOverlap(boxA: FloatRect, boxB: FloatRect): Boolean {
+            val interW = min(boxA.right, boxB.right) - max(boxA.left, boxB.left)
+            val interH = min(boxA.bottom, boxB.bottom) - max(boxA.top, boxB.top)
+            if (interW <= 0f || interH <= 0f) return false
+
+            // Group reservation exists to keep real fragments / duplicate detections
+            // inside an occlusion group from leaking into Global Hungarian. A mere
+            // edge graze must not claim ownership: the same 1080p frame diverged
+            // across devices when one bbox edge differed by sub-pixel amounts and
+            // the old `intersectionArea > 0` boolean flipped. Require a tiny but
+            // meaningful penetration on both axes while leaving all identity,
+            // motion, and occlusion-group commit gates unchanged.
+            val minWidth = min(boxA.width, boxB.width).coerceAtLeast(1f)
+            val minHeight = min(boxA.height, boxB.height).coerceAtLeast(1f)
+            val requiredW = max(
+                GROUP_RESERVATION_MIN_EDGE_PENETRATION_PX,
+                minWidth * GROUP_RESERVATION_MIN_EDGE_PENETRATION_RATIO
+            )
+            val requiredH = max(
+                GROUP_RESERVATION_MIN_EDGE_PENETRATION_PX,
+                minHeight * GROUP_RESERVATION_MIN_EDGE_PENETRATION_RATIO
+            )
+            return interW >= requiredW && interH >= requiredH
         }
 
         fun computeBBoxIoU(boxA: FloatRect, boxB: FloatRect): Float {

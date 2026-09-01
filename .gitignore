@@ -101,6 +101,7 @@ debug/
 input/
 output/
 uploads/
+logs/
 testdata/*.mp4
 *.log
 *.tmp
