@@ -170,93 +170,100 @@ class TrackManagerAmbiguousCrossingTest {
     }
 
     @Test
-    fun `face only protected occlusion hold requires an existing occluded near tie`() {
+    fun `two track uncertain occluder requires face only protected mask ownership`() {
         assertTrue(
-            TrackManager.isProtectedFaceOnlyNearTieOcclusionHoldEligible(
-                frameStartState = TrackState.OCCLUDED,
+            TrackManager.isProtectedFaceOnlyTwoTrackMaskOwnershipConflict(
+                groupTrackCount = 2,
+                trackState = TrackState.OCCLUDED,
                 identityProtected = true,
                 privacySelected = false,
-                bestScore = 0.6005f,
-                winningScore = 0.6119f,
-                protectedIdentityEvidenceOk = true,
-                heldOnPreviousFrame = false,
+                bestScore = 0.61f,
                 minMatchScore = 0.20f,
-                ambiguityMargin = 0.05f
+                protectedIdentityEvidenceOk = true,
+                protectedMaskIoU = 0.52f,
+                winnerIdentityProtected = false,
+                winnerMaskIoU = 0.49f
             )
         )
         assertTrue(
-            !TrackManager.isProtectedFaceOnlyNearTieOcclusionHoldEligible(
-                frameStartState = TrackState.OCCLUDED,
+            !TrackManager.isProtectedFaceOnlyTwoTrackMaskOwnershipConflict(
+                groupTrackCount = 3,
+                trackState = TrackState.OCCLUDED,
                 identityProtected = true,
                 privacySelected = false,
-                bestScore = 0.60f,
-                winningScore = 0.67f,
-                protectedIdentityEvidenceOk = true,
-                heldOnPreviousFrame = false,
+                bestScore = 0.61f,
                 minMatchScore = 0.20f,
-                ambiguityMargin = 0.05f
+                protectedIdentityEvidenceOk = true,
+                protectedMaskIoU = 0.52f,
+                winnerIdentityProtected = false,
+                winnerMaskIoU = 0.49f
             ),
-            "a clearly separated winner is not an identity near tie"
+            "larger groups keep their existing group-first semantics"
         )
         assertTrue(
-            !TrackManager.isProtectedFaceOnlyNearTieOcclusionHoldEligible(
-                frameStartState = TrackState.REACQUIRING,
+            !TrackManager.isProtectedFaceOnlyTwoTrackMaskOwnershipConflict(
+                groupTrackCount = 2,
+                trackState = TrackState.REACQUIRING,
                 identityProtected = true,
                 privacySelected = false,
-                bestScore = 0.60f,
-                winningScore = 0.61f,
-                protectedIdentityEvidenceOk = true,
-                heldOnPreviousFrame = false,
+                bestScore = 0.61f,
                 minMatchScore = 0.20f,
-                ambiguityMargin = 0.05f
+                protectedIdentityEvidenceOk = true,
+                protectedMaskIoU = 0.52f,
+                winnerIdentityProtected = false,
+                winnerMaskIoU = 0.49f
             ),
-            "the hold must never pull REACQUIRING back into OCCLUDED"
+            "the rule must not pull REACQUIRING identities back into another state"
         )
         assertTrue(
-            !TrackManager.isProtectedFaceOnlyNearTieOcclusionHoldEligible(
-                frameStartState = TrackState.OCCLUDED,
+            !TrackManager.isProtectedFaceOnlyTwoTrackMaskOwnershipConflict(
+                groupTrackCount = 2,
+                trackState = TrackState.OCCLUDED,
                 identityProtected = true,
                 privacySelected = true,
-                bestScore = 0.60f,
-                winningScore = 0.61f,
-                protectedIdentityEvidenceOk = true,
-                heldOnPreviousFrame = false,
+                bestScore = 0.61f,
                 minMatchScore = 0.20f,
-                ambiguityMargin = 0.05f
+                protectedIdentityEvidenceOk = true,
+                protectedMaskIoU = 0.52f,
+                winnerIdentityProtected = false,
+                winnerMaskIoU = 0.49f
             ),
-            "FULL_BODY identities must remain outside the FACE_ONLY state hold"
+            "FULL_BODY identities are excluded"
         )
         assertTrue(
-            !TrackManager.isProtectedFaceOnlyNearTieOcclusionHoldEligible(
-                frameStartState = TrackState.OCCLUDED,
+            !TrackManager.isProtectedFaceOnlyTwoTrackMaskOwnershipConflict(
+                groupTrackCount = 2,
+                trackState = TrackState.OCCLUDED,
                 identityProtected = true,
                 privacySelected = false,
-                bestScore = 0.60f,
-                winningScore = 0.61f,
-                protectedIdentityEvidenceOk = false,
-                heldOnPreviousFrame = false,
+                bestScore = 0.61f,
                 minMatchScore = 0.20f,
-                ambiguityMargin = 0.05f
-            )
+                protectedIdentityEvidenceOk = true,
+                protectedMaskIoU = 0.40f,
+                winnerIdentityProtected = false,
+                winnerMaskIoU = 0.49f
+            ),
+            "a winner with stronger current mask ownership remains a valid occluder"
         )
         assertTrue(
-            !TrackManager.isProtectedFaceOnlyNearTieOcclusionHoldEligible(
-                frameStartState = TrackState.OCCLUDED,
+            !TrackManager.isProtectedFaceOnlyTwoTrackMaskOwnershipConflict(
+                groupTrackCount = 2,
+                trackState = TrackState.OCCLUDED,
                 identityProtected = true,
                 privacySelected = false,
-                bestScore = 0.60f,
-                winningScore = 0.61f,
-                protectedIdentityEvidenceOk = true,
-                heldOnPreviousFrame = true,
+                bestScore = 0.61f,
                 minMatchScore = 0.20f,
-                ambiguityMargin = 0.05f
+                protectedIdentityEvidenceOk = true,
+                protectedMaskIoU = 0.52f,
+                winnerIdentityProtected = true,
+                winnerMaskIoU = 0.49f
             ),
-            "a near-tie hold may bridge only one consecutive frame"
+            "protected-vs-protected ambiguity is not treated as an ordinary occluder conflict"
         )
     }
 
     @Test
-    fun `protected face occluded track holds state when group winner is a near tie`() {
+    fun `unprotected two track winner does not become definitive occluder when protected mask ownership is equal`() {
         tracker = TrackManager(
             TrackingConfig(
                 minMatchScore = 0.20f,
@@ -270,7 +277,6 @@ class TrackManagerAmbiguousCrossingTest {
         )
         tracker.setIdentityProtectedTrackIds(setOf(0))
         tracker.setPrivacySelectedTrackIds(emptySet())
-
         tracker.initializeWithAssignedIds(
             detections = listOf(
                 PersonDetection(FloatRect(100f, 100f, 200f, 300f), 0.95f, createDummyMask()),
@@ -279,52 +285,30 @@ class TrackManagerAmbiguousCrossingTest {
             assignedIds = listOf(0, 1)
         )
 
-        // First make protected id=0 genuinely OCCLUDED by a fresh committed id=1.
-        val occludedFrame = tracker.update(
+        // The ordinary identity is freshly observed while the protected identity
+        // is hidden behind the same two-track overlap group.
+        val occluded = tracker.update(
             listOf(PersonDetection(FloatRect(160f, 100f, 260f, 300f), 0.95f, createDummyMask())),
             timestampUs = 33_333L
         )
-        val protectedOccluded = occludedFrame.single { it.id == 0 }
+        val protectedOccluded = occluded.single { it.id == 0 }
         assertEquals(TrackState.OCCLUDED, protectedOccluded.state)
         assertTrue(!protectedOccluded.observedThisFrame)
 
-        // This single detection is slightly better for id=1, but id=0 is within
-        // the existing 0.05 ambiguity margin and still has strong absolute bbox
-        // evidence. Hungarian selects id=1, then reciprocal-best rejects that
-        // identity commit because the protected row is a real column competitor.
-        val nearTieFrame = tracker.update(
-            listOf(PersonDetection(FloatRect(132f, 100f, 232f, 300f), 0.95f, createDummyMask())),
+        // The next detection is still a much better bbox match for id=1, so id=1
+        // must remain free to commit. But both tracks retain the same current mask
+        // ownership evidence; that detection therefore cannot simultaneously prove
+        // that id=1 is a *different* person occluding protected id=0.
+        val conflicted = tracker.update(
+            listOf(PersonDetection(FloatRect(150f, 100f, 250f, 300f), 0.95f, createDummyMask())),
             timestampUs = 66_666L
         )
-        val protectedHeld = nearTieFrame.single { it.id == 0 }
-        assertEquals(
-            TrackState.OCCLUDED,
-            protectedHeld.state,
-            "ambiguous group ownership should preserve the existing FACE_ONLY occlusion state for one frame"
-        )
-        assertTrue(!protectedHeld.observedThisFrame, "state hold must not become an identity observation")
-        assertTrue(
-            protectedHeld.occludedByTrackIds.isEmpty(),
-            "an uncommitted near-tie winner must not be named as an explicit occluder"
-        )
-        assertTrue(
-            nearTieFrame.none { it.observedThisFrame },
-            "near-tie state hold must not force either group identity to commit"
-        )
-
-        // Repeating the same ambiguity on the next frame must not pin the track
-        // in OCCLUDED indefinitely. After the one-frame bridge, normal group
-        // ambiguity semantics resume and transition it to REACQUIRING.
-        val repeatedNearTieFrame = tracker.update(
-            listOf(PersonDetection(FloatRect(132f, 100f, 232f, 300f), 0.95f, createDummyMask())),
-            timestampUs = 99_999L
-        )
-        val protectedAfterBridge = repeatedNearTieFrame.single { it.id == 0 }
-        assertEquals(
-            TrackState.REACQUIRING,
-            protectedAfterBridge.state,
-            "the bridge must not repeat on consecutive ambiguous frames"
-        )
-        assertTrue(!protectedAfterBridge.observedThisFrame)
+        val protected = conflicted.single { it.id == 0 }
+        val ordinary = conflicted.single { it.id == 1 }
+        assertEquals(TrackState.REACQUIRING, protected.state)
+        assertTrue(!protected.observedThisFrame)
+        assertTrue(protected.occludedByTrackIds.isEmpty())
+        assertEquals(TrackState.ACTIVE, ordinary.state)
+        assertTrue(ordinary.observedThisFrame, "the ordinary winner's identity commit must remain unchanged")
     }
 }
