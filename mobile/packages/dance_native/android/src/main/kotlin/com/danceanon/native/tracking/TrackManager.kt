@@ -1694,7 +1694,39 @@ class TrackManager(
                         val ratio = if (minArea > 0f) interArea / minArea else 0f
                         val wasOccludedByOther = track.occludedByTrackIds.contains(other.id)
                         val otherNearLastObserved = computeBBoxIoU(track.lastObservedBbox, other.currentPredictedBbox) >= config.occlusionOverlapRatio
-                        ratio >= config.occlusionOverlapRatio || (wasOccludedByOther && otherNearLastObserved)
+                        val anchorInterArea = computeBBoxIntersectionArea(track.lastObservedBbox, other.currentPredictedBbox)
+                        val anchorMinArea = minOf(
+                            track.lastObservedBbox.width * track.lastObservedBbox.height,
+                            other.currentPredictedBbox.width * other.currentPredictedBbox.height
+                        )
+                        val anchorFreshOverlapRatio = if (anchorMinArea > 0f) anchorInterArea / anchorMinArea else 0f
+                        val predictionAnchorIoU = computeBBoxIoU(predBox, track.lastObservedBbox)
+                        val protectedLostAnchorOcclusion = isProtectedLostAnchorOcclusionSupported(
+                            trackState = track.state,
+                            identityProtected = protectedTrackIds.contains(track.id),
+                            predictionAnchorIoU = predictionAnchorIoU,
+                            anchorFreshOverlapRatio = anchorFreshOverlapRatio,
+                            overlapThreshold = config.occlusionOverlapRatio
+                        )
+                        if (protectedLostAnchorOcclusion && ratio < config.occlusionOverlapRatio) {
+                            NativeDiagnostics.event(
+                                level = "INFO",
+                                component = "TrackManager",
+                                event = "PROTECTED_LOST_ANCHOR_OCCLUSION_CONFIRMED",
+                                fields = mapOf(
+                                    "track_id" to track.id,
+                                    "occluder_track_id" to other.id,
+                                    "current_overlap_ratio" to ratio,
+                                    "anchor_fresh_overlap_ratio" to anchorFreshOverlapRatio,
+                                    "prediction_anchor_iou" to predictionAnchorIoU,
+                                    "threshold" to config.occlusionOverlapRatio,
+                                    "pts_us" to timestampUs
+                                )
+                            )
+                        }
+                        ratio >= config.occlusionOverlapRatio ||
+                            (wasOccludedByOther && otherNearLastObserved) ||
+                            protectedLostAnchorOcclusion
                     }
                 }
 
@@ -2307,6 +2339,18 @@ class TrackManager(
             wouldStrictGlobalCommit &&
                 faceOnlyIdentityProtected &&
                 reservationOwnerGroupCount >= 2
+
+        internal fun isProtectedLostAnchorOcclusionSupported(
+            trackState: TrackState,
+            identityProtected: Boolean,
+            predictionAnchorIoU: Float,
+            anchorFreshOverlapRatio: Float,
+            overlapThreshold: Float
+        ): Boolean =
+            identityProtected &&
+                trackState == TrackState.LOST &&
+                predictionAnchorIoU >= overlapThreshold &&
+                anchorFreshOverlapRatio >= overlapThreshold
 
         fun boundPredictionAroundAnchor(
             anchor: FloatRect,

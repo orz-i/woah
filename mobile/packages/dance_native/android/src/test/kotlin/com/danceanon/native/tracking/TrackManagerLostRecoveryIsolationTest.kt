@@ -19,6 +19,47 @@ class TrackManagerLostRecoveryIsolationTest {
     }
 
     @Test
+    fun protectedLostAnchorOcclusionRequiresCurrentPredictionToRemainNearAnchor() {
+        assertTrue(
+            TrackManager.isProtectedLostAnchorOcclusionSupported(
+                trackState = TrackState.LOST,
+                identityProtected = true,
+                predictionAnchorIoU = 0.80f,
+                anchorFreshOverlapRatio = 0.41f,
+                overlapThreshold = 0.30f
+            )
+        )
+        assertTrue(
+            !TrackManager.isProtectedLostAnchorOcclusionSupported(
+                trackState = TrackState.LOST,
+                identityProtected = true,
+                predictionAnchorIoU = 0.29f,
+                anchorFreshOverlapRatio = 0.90f,
+                overlapThreshold = 0.30f
+            ),
+            "a stale last-observed anchor must not revive a LOST identity after its prediction has moved away"
+        )
+        assertTrue(
+            !TrackManager.isProtectedLostAnchorOcclusionSupported(
+                trackState = TrackState.ACTIVE,
+                identityProtected = true,
+                predictionAnchorIoU = 0.80f,
+                anchorFreshOverlapRatio = 0.41f,
+                overlapThreshold = 0.30f
+            )
+        )
+        assertTrue(
+            !TrackManager.isProtectedLostAnchorOcclusionSupported(
+                trackState = TrackState.LOST,
+                identityProtected = false,
+                predictionAnchorIoU = 0.80f,
+                anchorFreshOverlapRatio = 0.41f,
+                overlapThreshold = 0.30f
+            )
+        )
+    }
+
+    @Test
     fun testLostTrackIsNotGloballyReboundToPersonAtStaleLastObservedPosition() {
         val tracker = TrackManager(TrackingConfig())
         val mask = solidMask()
