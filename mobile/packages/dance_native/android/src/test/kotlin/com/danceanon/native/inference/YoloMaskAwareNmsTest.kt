@@ -9,44 +9,6 @@ import kotlin.random.Random
 class YoloMaskAwareNmsTest {
 
     @Test
-    fun maskZeroFastPathMatchesHistoricalByteFormulaAcrossBoundaryAndRandomFloatBits() {
-        fun reference(logit: Float): Byte {
-            val prob = 1.0f / (1.0f + kotlin.math.exp(-logit))
-            return (prob * 255f).toInt().coerceIn(0, 255).toByte()
-        }
-
-        val boundary = YoloMaskDecoder.MIN_NONZERO_MASK_LOGIT
-        val boundaryBits = boundary.toRawBits()
-        for (delta in -4096..4096) {
-            val value = Float.fromBits(boundaryBits + delta)
-            assertEquals(reference(value), YoloMaskDecoder.maskByteFromLogitFast(value))
-        }
-
-        val specialValues = floatArrayOf(
-            Float.NEGATIVE_INFINITY,
-            -Float.MAX_VALUE,
-            -20f,
-            java.lang.Math.nextDown(boundary),
-            boundary,
-            java.lang.Math.nextUp(boundary),
-            0f,
-            20f,
-            Float.MAX_VALUE,
-            Float.POSITIVE_INFINITY,
-            Float.NaN
-        )
-        for (value in specialValues) {
-            assertEquals(reference(value), YoloMaskDecoder.maskByteFromLogitFast(value))
-        }
-
-        val random = Random(0x5A17C0DE)
-        repeat(20_000) {
-            val value = Float.fromBits(random.nextInt())
-            assertEquals(reference(value), YoloMaskDecoder.maskByteFromLogitFast(value))
-        }
-    }
-
-    @Test
     fun boundedCandidateSupportMaskIouMatchesFullScanExactly() {
         val protoSize = 160
         val channels = 32

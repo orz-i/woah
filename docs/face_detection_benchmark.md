@@ -2095,36 +2095,31 @@ candidates) and requires the bounded IoU value to equal the historical full
 160x160 scan exactly. Confidence/NMS thresholds, mask bytes, TrackManager inputs,
 FACE/FULL_BODY logic, and all quality gates remain unchanged.
 
-### Thirty-fourth correction: bounded IoU is validated; index-only mask-loop rewrite is noise, skip only provably zero sigmoid work
+### Thirty-fourth correction: bounded mask-IoU scanning removes the secondary NMS cost; reduce only JVM loop overhead in mask decode
 
 The real-device mixed export from
-`4a1e5bccc8abfd440a79ab2496f16b12f525a880` validates the bounded mask-IoU
-optimization with no FACE or geometry change. Relative to the preceding
-candidate-local NCHW run, `yoloMaskIouScan` falls from about **5.46 ms** to
-effectively zero, `yoloMaskAwareNms` from about **17.73 ms** to **11.45 ms**,
-`yoloDecode` from about **17.97 ms** to **11.65 ms**, and `yoloPipelineTotal`
-from about **30.38 ms** to **24.11 ms**. `yoloMaskDecode` remains about
-**11.12 ms** and is now the only material CPU decode block; `yoloOutputRead`
-remains about **8.28 ms**.
+`4a1e5bccc8abfd440a79ab2496f16b12f525a880` validates the candidate-support
+bounded IoU optimization. FACE/FULL_BODY behavior remains exactly on the locked
+baseline (FULL_BODY ID4; FACE_ONLY IDs 1/2/3/5/6; dormant suppression **3**;
+partial-occlusion pixel rescue **92**; pixel-motion accepted/rejected **3499/182**;
+evidence-gap reacquire **0**; sticker max widths and center-step maxima unchanged).
+The YOLO performance result is material: `yoloMaskIouScan` falls from about
+**5.46 ms** to **0.0013 ms**, `yoloMaskAwareNms` from about **17.73 ms** to
+**11.45 ms**, `yoloDecode` from about **17.97 ms** to **11.65 ms**, and
+`yoloPipelineTotal` from about **30.38 ms** to **24.11 ms**. `yoloMaskDecode`
+remains the only material decode hotspot at about **11.12 ms**; output read remains
+about **8.28 ms** and preprocess about **1.29 ms**.
 
-The subsequent same-video export from
-`7a30889fa7dcc7ca9d866ff2463035ec89eeb060` shows that rewriting the existing
-channel-major mask loop with `while`/incremented indices has no measurable net
-benefit: `yoloMaskDecode` changes only from **11.1185 ms** to **11.1172 ms**,
-while whole `yoloDecode` varies from **11.65 ms** to **11.83 ms**. That loop-only
-change is therefore removed rather than retained as unproven complexity.
-
-The replacement optimization keeps the validated channel-major arithmetic and the
-historical generic per-pixel decoder as an independent reference. The historical
-soft-mask byte formula is `(sigmoid(logit) * 255).toInt()`. For Float inputs, every
-representable value below **-5.537334f** produces byte zero. The production NCHW
-fast path therefore writes zero directly below that exact discrete boundary and
-skips `exp()` only for those provably-zero pixels; all other pixels still execute
-the historical sigmoid formula. Boundary-neighbor coverage, special Float values,
-20,000 random Float bit patterns, random proto/bbox mask parity, and adapter
-end-to-end parity require byte-exact equality with the unchanged reference path.
-No YOLO threshold, mask/NMS semantic, TrackManager input, FACE/FULL_BODY policy, or
-privacy quality gate changes.
+The next experiment stays inside the byte-exact NCHW candidate-mask decoder. It
+does not change channel order or mask math. Instead, the explicit bbox clear pass
+is folded into channel 0 while still performing `+0f + c0*value`, and the
+channel/spatial/sigmoid loops use contiguous `while` indices rather than repeatedly
+recomputing row-plus-column addresses in Kotlin ranges. Channels 1..31 are still
+accumulated in strict ascending order for every pixel. Existing random and boundary
+candidate tests compare the optimized result byte-for-byte with the old per-pixel
+reference, while adapter parity continues to compare final bbox, confidence and
+160x160 mask bytes. Real-device acceptance must be based on a lower
+`yoloMaskDecode`/`yoloDecode` total, not on code-shape assumptions.
 
 ## Test fixtures and paths
 
