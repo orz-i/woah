@@ -1125,6 +1125,158 @@ class TrackManager(
             !matchedDetectionIndices.contains(it) && !reservedGroupDetectionIndices.contains(it)
         }
 
+        // Behavior-neutral shadow Global probe. Evaluate the exact counterfactual
+        // where group-reserved detections are visible to the same non-group
+        // ACTIVE/NEW tracks that are about to enter Global Hungarian. The real
+        // association below still uses remainingDetectionIndices, so this probe
+        // cannot commit, unreserve, create, or mutate any identity.
+        val shadowGlobalDetectionIndices = detections.indices.filter {
+            !matchedDetectionIndices.contains(it)
+        }
+        if (
+            remainingTrackIndices.isNotEmpty() &&
+            reservedGroupDetectionIndices.isNotEmpty() &&
+            shadowGlobalDetectionIndices.isNotEmpty()
+        ) {
+            val shadowScoreMatrix = Array(remainingTrackIndices.size) { r ->
+                val track = tracks[remainingTrackIndices[r]]
+                FloatArray(shadowGlobalDetectionIndices.size) { c ->
+                    computeMatchScore(track, detections[shadowGlobalDetectionIndices[c]])
+                }
+            }
+            val shadowCostMatrix = Array(remainingTrackIndices.size) { r ->
+                FloatArray(shadowGlobalDetectionIndices.size) { c ->
+                    (1.0f - shadowScoreMatrix[r][c]).coerceIn(0f, 1f)
+                }
+            }
+            val shadowMaxCost = (1.0f - config.minMatchScore).coerceIn(0.1f, 0.90f)
+            val shadowMatches = HungarianSolver.match(shadowCostMatrix, maxCostThreshold = shadowMaxCost)
+            val shadowSelectedPairs = shadowMatches.matches.toSet()
+
+            for (row in remainingTrackIndices.indices) {
+                val tIdx = remainingTrackIndices[row]
+                val track = tracks[tIdx]
+                for (col in shadowGlobalDetectionIndices.indices) {
+                    val dIdx = shadowGlobalDetectionIndices[col]
+                    if (!reservedGroupDetectionIndices.contains(dIdx)) continue
+
+                    val reservationOwnerTrackIds = reservedGroupOwnerTrackIdsByDetectionIndex[dIdx].orEmpty()
+                    if (reservationOwnerTrackIds.contains(track.id)) continue
+
+                    val det = detections[dIdx]
+                    val assignedScore = shadowScoreMatrix[row][col]
+                    val rowBest = shadowScoreMatrix[row].maxOrNull() ?: 0f
+                    val colBest = shadowScoreMatrix.indices.maxOfOrNull { r -> shadowScoreMatrix[r][col] } ?: 0f
+                    val rowSecondBest = shadowScoreMatrix[row]
+                        .indices
+                        .filter { it != col }
+                        .map { shadowScoreMatrix[row][it] }
+                        .maxOrNull()
+                    val colSecondBest = shadowScoreMatrix.indices
+                        .filter { it != row }
+                        .map { shadowScoreMatrix[it][col] }
+                        .maxOrNull()
+                    val epsilon = 1e-6f
+                    val rowMargin = rowSecondBest?.let { assignedScore - it } ?: Float.POSITIVE_INFINITY
+                    val colMargin = colSecondBest?.let { assignedScore - it } ?: Float.POSITIVE_INFINITY
+                    val rowHasConfusableAlternative = shadowGlobalDetectionIndices.indices.any { altCol ->
+                        if (altCol == col) return@any false
+                        val altScore = shadowScoreMatrix[row][altCol]
+                        if ((rowBest - altScore) > config.associationAmbiguityMargin) return@any false
+                        val altDet = detections[shadowGlobalDetectionIndices[altCol]]
+                        val inter = computeBBoxIntersectionArea(det.bbox, altDet.bbox)
+                        val minArea = minOf(
+                            det.bbox.width * det.bbox.height,
+                            altDet.bbox.width * altDet.bbox.height
+                        ).coerceAtLeast(1e-4f)
+                        (inter / minArea) >= 0.10f
+                    }
+                    val colHasConfusableAlternative = remainingTrackIndices.indices.any { altRow ->
+                        if (altRow == row) return@any false
+                        val altScore = shadowScoreMatrix[altRow][col]
+                        if ((colBest - altScore) > config.associationAmbiguityMargin) return@any false
+                        val altTrack = tracks[remainingTrackIndices[altRow]]
+                        val inter = computeBBoxIntersectionArea(track.currentPredictedBbox, altTrack.currentPredictedBbox)
+                        val minArea = minOf(
+                            track.currentPredictedBbox.width * track.currentPredictedBbox.height,
+                            altTrack.currentPredictedBbox.width * altTrack.currentPredictedBbox.height
+                        ).coerceAtLeast(1e-4f)
+                        (inter / minArea) >= 0.10f
+                    }
+                    val hasAmbiguousGeometry =
+                        (rowMargin < config.associationAmbiguityMargin && rowHasConfusableAlternative) ||
+                        (colMargin < config.associationAmbiguityMargin && colHasConfusableAlternative)
+                    val candidateBBoxIoU = computeBBoxIoU(track.currentPredictedBbox, det.bbox)
+                    val candidateMaskIoU = computePredictedMaskIoU(track, det.mask)
+                    val protectedIdentityEvidenceOk = if (protectedTrackIds.contains(track.id)) {
+                        isProtectedGroupIdentityEvidenceSufficient(
+                            track.state,
+                            candidateBBoxIoU,
+                            candidateMaskIoU
+                        )
+                    } else {
+                        true
+                    }
+                    val hungarianSelected = shadowSelectedPairs.contains(row to col)
+                    val wouldStrictGlobalCommit = hungarianSelected &&
+                        assignedScore >= config.minMatchScore &&
+                        assignedScore >= rowBest - epsilon &&
+                        assignedScore >= colBest - epsilon &&
+                        !hasAmbiguousGeometry &&
+                        protectedIdentityEvidenceOk
+
+                    if (protectedTrackIds.contains(track.id) || wouldStrictGlobalCommit) {
+                        NativeDiagnostics.event(
+                            level = "INFO",
+                            component = "TrackManager",
+                            event = "GROUP_RESERVED_STRICT_RESCUE_CANDIDATE",
+                            fields = mapOf(
+                                "track_id" to track.id,
+                                "track_state" to track.state.name,
+                                "det_index" to dIdx,
+                                "reservation_owner_track_ids" to reservationOwnerTrackIds.toList().sorted(),
+                                "assigned_score" to assignedScore,
+                                "row_best" to rowBest,
+                                "col_best" to colBest,
+                                "row_second_best" to rowSecondBest,
+                                "col_second_best" to colSecondBest,
+                                "row_margin" to rowMargin,
+                                "col_margin" to colMargin,
+                                "row_confusable_geometry" to rowHasConfusableAlternative,
+                                "col_confusable_geometry" to colHasConfusableAlternative,
+                                "bbox_iou" to candidateBBoxIoU,
+                                "mask_iou" to candidateMaskIoU,
+                                "identity_protected" to protectedTrackIds.contains(track.id),
+                                "privacy_selected" to privacySelectedTrackIds.contains(track.id),
+                                "protected_identity_evidence_ok" to protectedIdentityEvidenceOk,
+                                "hungarian_selected" to hungarianSelected,
+                                "would_strict_global_commit" to wouldStrictGlobalCommit,
+                                "track_predicted_bbox" to listOf(
+                                    track.currentPredictedBbox.left,
+                                    track.currentPredictedBbox.top,
+                                    track.currentPredictedBbox.right,
+                                    track.currentPredictedBbox.bottom
+                                ),
+                                "track_last_observed_bbox" to listOf(
+                                    track.lastObservedBbox.left,
+                                    track.lastObservedBbox.top,
+                                    track.lastObservedBbox.right,
+                                    track.lastObservedBbox.bottom
+                                ),
+                                "detection_bbox" to listOf(
+                                    det.bbox.left,
+                                    det.bbox.top,
+                                    det.bbox.right,
+                                    det.bbox.bottom
+                                ),
+                                "pts_us" to timestampUs
+                            )
+                        )
+                    }
+                }
+            }
+        }
+
         if (remainingTrackIndices.isNotEmpty() && remainingDetectionIndices.isNotEmpty()) {
             val scoreMatrix = Array(remainingTrackIndices.size) { r ->
                 val track = tracks[remainingTrackIndices[r]]
@@ -1397,154 +1549,6 @@ class TrackManager(
                         )
                     )
                 }
-            }
-        }
-
-        // Behavior-neutral probe: after ordinary Global Hungarian has consumed
-        // every currently eligible non-group detection, evaluate the detections
-        // that remained quarantined by occlusion-group ownership against the
-        // still-unmatched non-group ACTIVE/NEW tracks. This does NOT commit or
-        // unreserve anything. It records whether the existing strict Global
-        // identity gates would have accepted a reserved detection if group
-        // reservation had not hidden it. This directly diagnoses topology-edge
-        // cases without changing the occlusion threshold or association policy.
-        val reservedRescueTrackIndices = tracks.indices.filter { idx ->
-            !matchedTrackIndices.contains(idx) &&
-                !reservedGroupTrackIndices.contains(idx) &&
-                (tracks[idx].state == TrackState.ACTIVE || tracks[idx].state == TrackState.NEW)
-        }
-        val reservedRescueDetectionIndices = reservedGroupDetectionIndices.filter { dIdx ->
-            !matchedDetectionIndices.contains(dIdx)
-        }
-        if (reservedRescueTrackIndices.isNotEmpty() && reservedRescueDetectionIndices.isNotEmpty()) {
-            val rescueScoreMatrix = Array(reservedRescueTrackIndices.size) { r ->
-                val track = tracks[reservedRescueTrackIndices[r]]
-                FloatArray(reservedRescueDetectionIndices.size) { c ->
-                    computeMatchScore(track, detections[reservedRescueDetectionIndices[c]])
-                }
-            }
-            val rescueCostMatrix = Array(reservedRescueTrackIndices.size) { r ->
-                FloatArray(reservedRescueDetectionIndices.size) { c ->
-                    (1.0f - rescueScoreMatrix[r][c]).coerceIn(0f, 1f)
-                }
-            }
-            val rescueMaxCost = (1.0f - config.minMatchScore).coerceIn(0.1f, 0.90f)
-            val rescueMatches = HungarianSolver.match(rescueCostMatrix, maxCostThreshold = rescueMaxCost)
-
-            for (match in rescueMatches.matches) {
-                val row = match.first
-                val col = match.second
-                val tIdx = reservedRescueTrackIndices[row]
-                val dIdx = reservedRescueDetectionIndices[col]
-                val track = tracks[tIdx]
-                val det = detections[dIdx]
-                val assignedScore = rescueScoreMatrix[row][col]
-                val rowBest = rescueScoreMatrix[row].maxOrNull() ?: 0f
-                val colBest = rescueScoreMatrix.indices.maxOfOrNull { r -> rescueScoreMatrix[r][col] } ?: 0f
-                val rowSecondBest = rescueScoreMatrix[row]
-                    .indices
-                    .filter { it != col }
-                    .map { rescueScoreMatrix[row][it] }
-                    .maxOrNull()
-                val colSecondBest = rescueScoreMatrix.indices
-                    .filter { it != row }
-                    .map { rescueScoreMatrix[it][col] }
-                    .maxOrNull()
-                val epsilon = 1e-6f
-                val rowMargin = rowSecondBest?.let { assignedScore - it } ?: Float.POSITIVE_INFINITY
-                val colMargin = colSecondBest?.let { assignedScore - it } ?: Float.POSITIVE_INFINITY
-                val rowHasConfusableAlternative = reservedRescueDetectionIndices.indices.any { altCol ->
-                    if (altCol == col) return@any false
-                    val altScore = rescueScoreMatrix[row][altCol]
-                    if ((rowBest - altScore) > config.associationAmbiguityMargin) return@any false
-                    val altDet = detections[reservedRescueDetectionIndices[altCol]]
-                    val inter = computeBBoxIntersectionArea(det.bbox, altDet.bbox)
-                    val minArea = minOf(
-                        det.bbox.width * det.bbox.height,
-                        altDet.bbox.width * altDet.bbox.height
-                    ).coerceAtLeast(1e-4f)
-                    (inter / minArea) >= 0.10f
-                }
-                val colHasConfusableAlternative = reservedRescueTrackIndices.indices.any { altRow ->
-                    if (altRow == row) return@any false
-                    val altScore = rescueScoreMatrix[altRow][col]
-                    if ((colBest - altScore) > config.associationAmbiguityMargin) return@any false
-                    val altTrack = tracks[reservedRescueTrackIndices[altRow]]
-                    val inter = computeBBoxIntersectionArea(track.currentPredictedBbox, altTrack.currentPredictedBbox)
-                    val minArea = minOf(
-                        track.currentPredictedBbox.width * track.currentPredictedBbox.height,
-                        altTrack.currentPredictedBbox.width * altTrack.currentPredictedBbox.height
-                    ).coerceAtLeast(1e-4f)
-                    (inter / minArea) >= 0.10f
-                }
-                val hasAmbiguousGeometry =
-                    (rowMargin < config.associationAmbiguityMargin && rowHasConfusableAlternative) ||
-                    (colMargin < config.associationAmbiguityMargin && colHasConfusableAlternative)
-                val candidateBBoxIoU = computeBBoxIoU(track.currentPredictedBbox, det.bbox)
-                val candidateMaskIoU = computePredictedMaskIoU(track, det.mask)
-                val protectedIdentityEvidenceOk = if (protectedTrackIds.contains(track.id)) {
-                    isProtectedGroupIdentityEvidenceSufficient(
-                        track.state,
-                        candidateBBoxIoU,
-                        candidateMaskIoU
-                    )
-                } else {
-                    true
-                }
-                val wouldStrictGlobalCommit = assignedScore >= config.minMatchScore &&
-                    assignedScore >= rowBest - epsilon &&
-                    assignedScore >= colBest - epsilon &&
-                    !hasAmbiguousGeometry &&
-                    protectedIdentityEvidenceOk
-
-                NativeDiagnostics.event(
-                    level = "INFO",
-                    component = "TrackManager",
-                    event = "GROUP_RESERVED_STRICT_RESCUE_PROBE",
-                    fields = mapOf(
-                        "track_id" to track.id,
-                        "det_index" to dIdx,
-                        "reservation_owner_track_ids" to reservedGroupOwnerTrackIdsByDetectionIndex[dIdx]
-                            .orEmpty()
-                            .toList()
-                            .sorted(),
-                        "assigned_score" to assignedScore,
-                        "row_best" to rowBest,
-                        "col_best" to colBest,
-                        "row_second_best" to rowSecondBest,
-                        "col_second_best" to colSecondBest,
-                        "row_margin" to rowMargin,
-                        "col_margin" to colMargin,
-                        "row_confusable_geometry" to rowHasConfusableAlternative,
-                        "col_confusable_geometry" to colHasConfusableAlternative,
-                        "bbox_iou" to candidateBBoxIoU,
-                        "mask_iou" to candidateMaskIoU,
-                        "identity_protected" to protectedTrackIds.contains(track.id),
-                        "privacy_selected" to privacySelectedTrackIds.contains(track.id),
-                        "protected_identity_evidence_ok" to protectedIdentityEvidenceOk,
-                        "global_ambiguous_track" to globalAmbiguousTrackIndices.contains(tIdx),
-                        "would_strict_global_commit" to wouldStrictGlobalCommit,
-                        "track_predicted_bbox" to listOf(
-                            track.currentPredictedBbox.left,
-                            track.currentPredictedBbox.top,
-                            track.currentPredictedBbox.right,
-                            track.currentPredictedBbox.bottom
-                        ),
-                        "track_last_observed_bbox" to listOf(
-                            track.lastObservedBbox.left,
-                            track.lastObservedBbox.top,
-                            track.lastObservedBbox.right,
-                            track.lastObservedBbox.bottom
-                        ),
-                        "detection_bbox" to listOf(
-                            det.bbox.left,
-                            det.bbox.top,
-                            det.bbox.right,
-                            det.bbox.bottom
-                        ),
-                        "pts_us" to timestampUs
-                    )
-                )
             }
         }
 
