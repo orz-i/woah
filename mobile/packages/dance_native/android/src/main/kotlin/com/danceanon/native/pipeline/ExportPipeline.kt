@@ -232,6 +232,11 @@ class ExportPipeline(
                 val inferenceRenderer = com.danceanon.native.render.InferenceRenderer()
                 val mapper = com.danceanon.native.geometry.ModelCoordinateMapper(targetWidth, targetHeight, 640)
                 val profiler = com.danceanon.native.profiler.PipelineProfiler()
+                val inferencePixelDiagnostics = com.danceanon.native.diagnostics.InferencePixelDiagnostics(
+                    jobId = jobId,
+                    width = inferenceFbo.size,
+                    height = inferenceFbo.size
+                )
 
                 val frameAvailableSequence = java.util.concurrent.atomic.AtomicLong(0L)
                 val consumedFrameSequence = java.util.concurrent.atomic.AtomicLong(0L)
@@ -729,6 +734,37 @@ class ExportPipeline(
                                 val rgbaBuffer = profiler.recordStage("readback640") {
                                     inferenceFbo.readRgbaPixels()
                                 }
+                                inferencePixelDiagnostics.maybeCapture(
+                                    rgbaBuffer = rgbaBuffer,
+                                    ptsUs = ptsUs,
+                                    surfaceTransform = finalTexMatrix,
+                                    decoderFormatFields = decoder.videoFormat?.let { format ->
+                                        buildMap<String, Any?> {
+                                            put("decoder_name", decoder.codecName)
+                                            put("decoder_mime", format.getString(android.media.MediaFormat.KEY_MIME))
+                                            put("gl_vendor", android.opengl.GLES20.glGetString(android.opengl.GLES20.GL_VENDOR))
+                                            put("gl_renderer", android.opengl.GLES20.glGetString(android.opengl.GLES20.GL_RENDERER))
+                                            put("gl_version", android.opengl.GLES20.glGetString(android.opengl.GLES20.GL_VERSION))
+                                            if (format.containsKey(android.media.MediaFormat.KEY_WIDTH)) {
+                                                put("decoder_width", format.getInteger(android.media.MediaFormat.KEY_WIDTH))
+                                            }
+                                            if (format.containsKey(android.media.MediaFormat.KEY_HEIGHT)) {
+                                                put("decoder_height", format.getInteger(android.media.MediaFormat.KEY_HEIGHT))
+                                            }
+                                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                                                if (format.containsKey(android.media.MediaFormat.KEY_COLOR_STANDARD)) {
+                                                    put("decoder_color_standard", format.getInteger(android.media.MediaFormat.KEY_COLOR_STANDARD))
+                                                }
+                                                if (format.containsKey(android.media.MediaFormat.KEY_COLOR_RANGE)) {
+                                                    put("decoder_color_range", format.getInteger(android.media.MediaFormat.KEY_COLOR_RANGE))
+                                                }
+                                                if (format.containsKey(android.media.MediaFormat.KEY_COLOR_TRANSFER)) {
+                                                    put("decoder_color_transfer", format.getInteger(android.media.MediaFormat.KEY_COLOR_TRANSFER))
+                                                }
+                                            }
+                                        }
+                                    }.orEmpty()
+                                )
                                 val seg = profiler.recordStage("yoloCpuInference") {
                                     segmenter.segmentGlReadbackRgbaSync(rgbaBuffer, mapper, ptsUs, colOrder = RgbaColOrder.LEFT_TO_RIGHT)
                                 }

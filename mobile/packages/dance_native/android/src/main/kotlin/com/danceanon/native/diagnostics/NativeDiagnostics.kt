@@ -174,6 +174,28 @@ object NativeDiagnostics {
     fun getCurrentLogFile(): File? = currentLogFile
 
     /**
+     * Writes a bounded diagnostic artifact on the existing diagnostics writer thread.
+     * The caller owns any hot-path copy needed to produce [bytes]; filesystem I/O stays off
+     * the render/inference thread. Artifacts are included by createConsistentSnapshot().
+     */
+    fun writeArtifactAsync(fileName: String, bytes: ByteArray) {
+        val diagDir = diagnosticsDir ?: return
+        val safeName = fileName.replace(Regex("[^A-Za-z0-9._-]"), "_")
+        if (safeName.isBlank()) return
+        writerExecutor.submit {
+            try {
+                val target = File(diagDir, safeName)
+                FileOutputStream(target).use { fos ->
+                    fos.write(bytes)
+                    fos.flush()
+                }
+            } catch (t: Throwable) {
+                Log.w(TAG, "Failed to write diagnostic artifact $safeName: ${t.message}")
+            }
+        }
+    }
+
+    /**
      * Non-blocking structured JSONL log event.
      * Guaranteed never to block the calling thread (even for CRITICAL level).
      */

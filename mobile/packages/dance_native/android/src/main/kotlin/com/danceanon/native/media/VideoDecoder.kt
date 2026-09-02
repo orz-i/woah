@@ -20,6 +20,8 @@ class VideoDecoder(
         private set
     var videoFormat: MediaFormat? = null
         private set
+    var codecName: String? = null
+        private set
     var durationUs: Long = 0L
         private set
 
@@ -54,6 +56,7 @@ class VideoDecoder(
 
         val mime = videoFormat!!.getString(MediaFormat.KEY_MIME) ?: "video/avc"
         val decoder = MediaCodec.createDecoderByType(mime)
+        codecName = decoder.name
         if (outputSurface != null) {
             // Ensure format does not carry conflicting raw pixel format when rendering to surface
             videoFormat!!.removeKey(MediaFormat.KEY_COLOR_FORMAT)
@@ -181,5 +184,6 @@ class VideoDecoder(
             extractor.release()
         } catch (_: Exception) {}
         codec = null
+        codecName = null
     }
 }
