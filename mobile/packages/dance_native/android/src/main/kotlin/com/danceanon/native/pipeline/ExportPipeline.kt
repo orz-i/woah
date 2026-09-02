@@ -16,6 +16,7 @@ import com.danceanon.native.inference.RgbaRowOrder
 import com.danceanon.native.inference.YoloLiteRtSegmenter
 import com.danceanon.native.jobs.JobManager
 import com.danceanon.native.media.AudioTrackCopier
+import com.danceanon.native.media.CanonicalYuvInferenceDecoder
 import com.danceanon.native.media.Mp4Muxer
 import com.danceanon.native.media.VideoDecoder
 import com.danceanon.native.media.VideoEncoder
@@ -180,6 +181,8 @@ class ExportPipeline(
             var glRenderer: GlRenderer? = null
             var surfaceTexture: SurfaceTexture? = null
             var decoder: VideoDecoder? = null
+            var canonicalInferenceDecoder: CanonicalYuvInferenceDecoder? = null
+            var canonicalInferenceFallbackReason: String? = null
             var encoder: VideoEncoder? = null
             var muxer: Mp4Muxer? = null
             var audioCopier: AudioTrackCopier? = null
@@ -296,6 +299,45 @@ class ExportPipeline(
                 val frameStride = profile.inferenceStride
                 var lastProgressEmitTime = 0L
                 val isSam2Mode = profile.useSam2
+
+                // Cross-device validation path: keep rendering on the historical Surface decoder,
+                // but feed YOLO from an independent CPU-readable YUV decoder. This bypasses the
+                // device-specific SurfaceTexture/OES YUV->RGB conversion without touching tracking.
+                if (com.danceanon.dance_native.BuildConfig.DEBUG && !isSam2Mode) {
+                    try {
+                        canonicalInferenceDecoder = CanonicalYuvInferenceDecoder(
+                            context = context,
+                            sourceUri = sourceUri,
+                            rotationDegrees = videoInfo.rotation.toInt(),
+                            modelInputSize = inferenceFbo.size
+                        ).also { it.prepare() }
+                        com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                            level = "INFO",
+                            component = "ExportPipeline",
+                            event = "CANONICAL_YUV_INFERENCE_ACTIVE",
+                            fields = buildMap {
+                                put("job_id", jobId)
+                                put("codec_name", canonicalInferenceDecoder?.runtimeInfo?.codecName)
+                                put("color_standard", canonicalInferenceDecoder?.runtimeInfo?.colorStandard)
+                                put("color_range", canonicalInferenceDecoder?.runtimeInfo?.colorRange)
+                                put("color_transfer", canonicalInferenceDecoder?.runtimeInfo?.colorTransfer)
+                            }
+                        )
+                    } catch (t: Throwable) {
+                        canonicalInferenceFallbackReason = "${t.javaClass.simpleName}:${t.message ?: "unknown"}"
+                        try { canonicalInferenceDecoder?.close() } catch (_: Throwable) {}
+                        canonicalInferenceDecoder = null
+                        com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                            level = "WARN",
+                            component = "ExportPipeline",
+                            event = "CANONICAL_YUV_INFERENCE_FALLBACK",
+                            fields = mapOf(
+                                "job_id" to jobId,
+                                "reason" to canonicalInferenceFallbackReason
+                            )
+                        )
+                    }
+                }
                 var sam2Fbo: com.danceanon.native.sam2.Sam2InputFbo? = null
                 var sam2Renderer: com.danceanon.native.sam2.Sam2InputRenderer? = null
                 var sam2Tracker: com.danceanon.native.sam2.ISam2VideoTracker? = null
@@ -733,12 +775,40 @@ class ExportPipeline(
                             // Standard YOLO pipeline
                             val shouldInfer = (processedFrames == 1) || (processedFrames % frameStride == 0)
                             val detections = if (shouldInfer) {
-                                profiler.recordStage("fboLetterbox") {
-                                    inferenceRenderer.renderToFbo(renderTexId, finalTexMatrix, mapper, inferenceFbo, renderTexType)
-                                }
-                                val debugSize = inferenceFbo.size
-                                val rgbaBuffer = profiler.recordStage("readback640") {
-                                    inferenceFbo.readRgbaPixels()
+                                var usedCanonicalInput = false
+                                val canonicalDecoder = canonicalInferenceDecoder
+                                val canonicalRgba = if (canonicalDecoder != null) {
+                                    try {
+                                        profiler.recordStage("canonicalYuvToRgba") {
+                                            canonicalDecoder.decodeRgbaAtPts(ptsUs, mapper)
+                                        }.also {
+                                            usedCanonicalInput = true
+                                        }
+                                    } catch (t: Throwable) {
+                                        canonicalInferenceFallbackReason =
+                                            "${t.javaClass.simpleName}:${t.message ?: "unknown"}"
+                                        try { canonicalDecoder.close() } catch (_: Throwable) {}
+                                        canonicalInferenceDecoder = null
+                                        com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                                            level = "WARN",
+                                            component = "ExportPipeline",
+                                            event = "CANONICAL_YUV_INFERENCE_FALLBACK",
+                                            fields = mapOf(
+                                                "job_id" to jobId,
+                                                "pts_us" to ptsUs,
+                                                "reason" to canonicalInferenceFallbackReason
+                                            )
+                                        )
+                                        null
+                                    }
+                                } else null
+                                val rgbaBuffer = canonicalRgba ?: run {
+                                    profiler.recordStage("fboLetterbox") {
+                                        inferenceRenderer.renderToFbo(renderTexId, finalTexMatrix, mapper, inferenceFbo, renderTexType)
+                                    }
+                                    profiler.recordStage("readback640") {
+                                        inferenceFbo.readRgbaPixels()
+                                    }
                                 }
                                 inferencePixelDiagnostics.maybeCapture(
                                     rgbaBuffer = rgbaBuffer,
@@ -746,6 +816,10 @@ class ExportPipeline(
                                     surfaceTransform = finalTexMatrix,
                                     decoderFormatFields = decoder.videoFormat?.let { format ->
                                         buildMap<String, Any?> {
+                                            put(
+                                                "inference_input_path",
+                                                if (usedCanonicalInput) "CANONICAL_YUV_CPU" else "SURFACE_OES_RGBA"
+                                            )
                                             put("decoder_name", decoder.codecName)
                                             put("decoder_mime", format.getString(android.media.MediaFormat.KEY_MIME))
                                             put("gl_vendor", android.opengl.GLES20.glGetString(android.opengl.GLES20.GL_VENDOR))
@@ -1565,6 +1639,12 @@ class ExportPipeline(
                             "yolo_requested_accelerator" to yoloRequestedAccelerator,
                             "yolo_effective_accelerator" to yoloEffectiveAccelerator.name,
                             "yolo_gpu_fallback_reason" to yoloFallbackReason,
+                            "yolo_inference_input_path" to if (canonicalInferenceDecoder != null) {
+                                "CANONICAL_YUV_CPU"
+                            } else {
+                                "SURFACE_OES_RGBA"
+                            },
+                            "canonical_yuv_fallback_reason" to canonicalInferenceFallbackReason,
                             "state" to "completed"
                         )
                     )
@@ -1602,6 +1682,7 @@ class ExportPipeline(
                 pipelineException = e
             } finally {
                 try { previewScope?.cancel() } catch (_: Throwable) {}
+                try { canonicalInferenceDecoder?.close() } catch (_: Throwable) {}
                 try { decoder?.close() } catch (_: Throwable) {}
                 // Run the independent CPU-readable decoder probe only after the production
                 // decoder is fully closed. This keeps the diagnostic from warming, occupying,

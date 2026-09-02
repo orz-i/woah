@@ -31,7 +31,13 @@ class Capture:
 def load_captures(bundle: Path) -> dict[int, Capture]:
     captures: dict[int, Capture] = {}
     with zipfile.ZipFile(bundle) as zf:
+        current_job_id = None
+        if "manifest.json" in zf.namelist():
+            manifest = json.loads(zf.read("manifest.json"))
+            current_job_id = manifest.get("pipeline_lifecycle_job_id")
         for name in zf.namelist():
+            if current_job_id and current_job_id not in name:
+                continue
             match = CAPTURE_RE.search(name)
             if not match:
                 continue

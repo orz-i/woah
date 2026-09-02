@@ -36,9 +36,15 @@ def stats(values: list[float]) -> dict[str, float]:
 
 def read_bundle(path: Path):
     z = zipfile.ZipFile(path)
+    current_job_id = None
+    if "manifest.json" in z.namelist():
+        manifest = json.loads(z.read("manifest.json"))
+        current_job_id = manifest.get("pipeline_lifecycle_job_id")
     yuv: dict[int, bytes] = {}
     tensors: dict[tuple[int, str], bytes] = {}
     for name in z.namelist():
+        if current_job_id and current_job_id not in name:
+            continue
         m = YUV_RE.search(name)
         if m:
             yuv[int(m.group(1))] = z.read(name)
@@ -46,7 +52,7 @@ def read_bundle(path: Path):
         m = TENSOR_RE.search(name)
         if m:
             tensors[(int(m.group(1)), m.group(2))] = z.read(name)
-    return z, yuv, tensors
+    return z, current_job_id, yuv, tensors
 
 
 def compare_bytes(a: bytes, b: bytes) -> dict[str, object]:
@@ -82,14 +88,16 @@ def main() -> int:
         return 2
 
     a_path, b_path = Path(sys.argv[1]), Path(sys.argv[2])
-    za, a_yuv, a_tensors = read_bundle(a_path)
-    zb, b_yuv, b_tensors = read_bundle(b_path)
+    za, a_job_id, a_yuv, a_tensors = read_bundle(a_path)
+    zb, b_job_id, b_yuv, b_tensors = read_bundle(b_path)
     try:
         yuv_pts = sorted(set(a_yuv) & set(b_yuv))
         tensor_keys = sorted(set(a_tensors) & set(b_tensors))
         result = {
             "bundle_a": str(a_path),
             "bundle_b": str(b_path),
+            "job_id_a": a_job_id,
+            "job_id_b": b_job_id,
             "yuv": [
                 {"pts_us": pts, **compare_bytes(a_yuv[pts], b_yuv[pts])}
                 for pts in yuv_pts

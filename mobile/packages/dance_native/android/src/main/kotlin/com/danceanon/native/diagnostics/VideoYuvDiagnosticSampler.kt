@@ -14,8 +14,9 @@ import java.util.Locale
  * Debug-only CPU-readable decoder probe used to locate cross-device divergence before OES RGB.
  *
  * A short independent decoder run samples canonical visible Y/U/V coordinates from YUV_420_888
- * images. It never feeds production inference or rendering and is closed before the real export
- * decoder is created, so it cannot become an identity or privacy input.
+ * images after the production export resources have been released. It never feeds production
+ * inference or rendering, so it cannot become an identity or privacy input or prewarm the decoder
+ * path being measured.
  */
 object VideoYuvDiagnosticSampler {
     private const val MAX_PTS_US = 450_000L
