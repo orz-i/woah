@@ -76,6 +76,8 @@ class YoloTensorDiagnostics(
 
         private fun detectionSignature(detections: List<PersonDetection>): List<Map<String, Any?>> =
             detections.mapIndexed { index, detection ->
+                val maskBuffer = detection.mask?.buffer
+                val associationMask = maskBuffer?.let(::associationMaskSummary)
                 mapOf(
                     "index" to index,
                     "confidence_q1e4" to (detection.confidence * 10_000f).roundToInt(),
@@ -87,9 +89,56 @@ class YoloTensorDiagnostics(
                     ),
                     "mask_width" to detection.mask?.width,
                     "mask_height" to detection.mask?.height,
-                    "mask_sha256" to detection.mask?.buffer?.let(::sha256)
+                    "mask_sha256" to maskBuffer?.let(::sha256),
+                    "mask_assoc_binary_sha256" to associationMask?.sha256,
+                    "mask_assoc_foreground_pixels" to associationMask?.foregroundPixels,
+                    "mask_assoc_near_threshold_pixels" to associationMask?.nearThresholdPixels
                 )
             }
+
+        internal data class AssociationMaskSummary(
+            val sha256: String,
+            val foregroundPixels: Int,
+            val nearThresholdPixels: Int
+        )
+
+        /**
+         * Mirrors TrackManager's association-mask semantics exactly: a mask byte is foreground
+         * only when its unsigned value is > 128. The source buffer is duplicated so diagnostics
+         * cannot change the live mask position or contents.
+         */
+        internal fun associationMaskSummary(buffer: ByteBuffer): AssociationMaskSummary {
+            val digest = MessageDigest.getInstance("SHA-256")
+            val duplicate = buffer.duplicate().apply { rewind() }
+            val binaryChunk = ByteArray(4096)
+            var foregroundPixels = 0
+            var nearThresholdPixels = 0
+
+            while (duplicate.hasRemaining()) {
+                val count = minOf(binaryChunk.size, duplicate.remaining())
+                for (i in 0 until count) {
+                    val value = duplicate.get().toInt() and 0xff
+                    if (value > 128) {
+                        binaryChunk[i] = 0xff.toByte()
+                        foregroundPixels++
+                    } else {
+                        binaryChunk[i] = 0
+                    }
+                    if (value in 127..130) {
+                        nearThresholdPixels++
+                    }
+                }
+                digest.update(binaryChunk, 0, count)
+            }
+
+            return AssociationMaskSummary(
+                sha256 = digest.digest().joinToString("") {
+                    "%02x".format(Locale.US, it.toInt() and 0xff)
+                },
+                foregroundPixels = foregroundPixels,
+                nearThresholdPixels = nearThresholdPixels
+            )
+        }
 
         private fun sha256(buffer: ByteBuffer): String {
             val digest = MessageDigest.getInstance("SHA-256")
