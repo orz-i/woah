@@ -40,6 +40,20 @@ def _detection_signature(detections: list[dict]) -> tuple:
     )
 
 
+def _track_identity_signature(tracks: list[dict]) -> tuple:
+    return tuple(
+        (
+            t.get("id"),
+            t.get("state"),
+            t.get("observed_this_frame"),
+            t.get("frames_since_last_observation"),
+            t.get("missed_frames"),
+            tuple(t.get("occluded_by_track_ids", [])),
+        )
+        for t in tracks
+    )
+
+
 def _track_signature(tracks: list[dict]) -> tuple:
     return tuple(
         (
@@ -64,6 +78,8 @@ def read_bundle(path: Path) -> dict:
         detections = {"cpu_probe": {}, "cpu_mt2_probe": {}, "cpu_mt4_probe": {}}
         shadow_raw: dict[int, tuple] = {}
         shadow_stabilized: dict[int, tuple] = {}
+        shadow_cadence_full: dict[int, dict[int, tuple]] = {}
+        shadow_cadence_identity: dict[int, dict[int, tuple]] = {}
         shadow_disabled: list[dict] = []
 
         for name in z.namelist():
@@ -93,8 +109,21 @@ def read_bundle(path: Path) -> dict:
                     if fields.get("job_id") != job_id:
                         continue
                     pts = int(fields["pts_us"])
-                    shadow_raw[pts] = _track_signature(fields.get("raw_tracks", []))
-                    shadow_stabilized[pts] = _track_signature(fields.get("stabilized_tracks", []))
+                    tracks_by_cadence = fields.get("tracks_by_cadence")
+                    if isinstance(tracks_by_cadence, dict):
+                        for cadence_text, tracks in tracks_by_cadence.items():
+                            try:
+                                cadence = int(cadence_text)
+                            except (TypeError, ValueError):
+                                continue
+                            if not isinstance(tracks, list):
+                                continue
+                            shadow_cadence_full.setdefault(cadence, {})[pts] = _track_signature(tracks)
+                            shadow_cadence_identity.setdefault(cadence, {})[pts] = _track_identity_signature(tracks)
+                    else:
+                        # Backward-compatible parsing for the earlier raw/stabilized shadow format.
+                        shadow_raw[pts] = _track_signature(fields.get("raw_tracks", []))
+                        shadow_stabilized[pts] = _track_signature(fields.get("stabilized_tracks", []))
                 elif event_name == "YOLO_CPU_MT4_TRACK_SHADOW_DISABLED":
                     if fields.get("job_id") == job_id:
                         shadow_disabled.append(fields)
@@ -131,6 +160,8 @@ def read_bundle(path: Path) -> dict:
             "detections": detections,
             "shadow_raw": shadow_raw,
             "shadow_stabilized": shadow_stabilized,
+            "shadow_cadence_full": shadow_cadence_full,
+            "shadow_cadence_identity": shadow_cadence_identity,
             "shadow_disabled": shadow_disabled,
         }
 
@@ -166,9 +197,24 @@ def main() -> int:
                 "manifest_excluded_historical": b["manifest_excluded_historical"],
                 "timings": b["timings"],
                 "frame_counts": {k: len(v) for k, v in b["detections"].items()},
-                "shadow_frame_count": len(b["shadow_raw"]),
+                "shadow_frame_count": max(
+                    len(b["shadow_raw"]),
+                    len(b["shadow_cadence_identity"].get(1, {})),
+                ),
+                "shadow_cadence_frame_counts": {
+                    str(cadence): len(frames)
+                    for cadence, frames in sorted(b["shadow_cadence_identity"].items())
+                },
                 "shadow_disabled": b["shadow_disabled"],
                 "raw_vs_stabilized_shadow": compare_map(b["shadow_raw"], b["shadow_stabilized"]),
+                "cadence_vs_1_identity": {
+                    str(cadence): compare_map(
+                        b["shadow_cadence_identity"].get(1, {}),
+                        frames,
+                    )
+                    for cadence, frames in sorted(b["shadow_cadence_identity"].items())
+                    if cadence != 1
+                },
             }
             for b in bundles
         ],
@@ -178,6 +224,9 @@ def main() -> int:
     for i in range(len(bundles)):
         for j in range(i + 1, len(bundles)):
             a, b = bundles[i], bundles[j]
+            common_cadences = sorted(
+                set(a["shadow_cadence_identity"]) & set(b["shadow_cadence_identity"])
+            )
             result["pairs"].append(
                 {
                     "a": a["device"],
@@ -189,6 +238,19 @@ def main() -> int:
                     "cpu_4t_shadow_stabilized": compare_map(
                         a["shadow_stabilized"], b["shadow_stabilized"]
                     ),
+                    "cpu_4t_shadow_cadences": {
+                        str(cadence): {
+                            "identity": compare_map(
+                                a["shadow_cadence_identity"][cadence],
+                                b["shadow_cadence_identity"][cadence],
+                            ),
+                            "full": compare_map(
+                                a["shadow_cadence_full"][cadence],
+                                b["shadow_cadence_full"][cadence],
+                            ),
+                        }
+                        for cadence in common_cadences
+                    },
                 }
             )
 

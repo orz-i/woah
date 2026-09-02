@@ -1,6 +1,5 @@
 package com.danceanon.native.diagnostics
 
-import com.danceanon.native.inference.FloatRect
 import com.danceanon.native.inference.PersonDetection
 import com.danceanon.native.tracking.HungarianSolver
 import com.danceanon.native.tracking.TrackManager
@@ -10,25 +9,29 @@ import kotlin.math.roundToInt
 /**
  * Debug-only shadow tracking matrix for cross-device validation.
  *
- * Both trackers consume the deterministic CPU-MT detector output and never feed rendering,
- * privacy, selection, or production TrackManager state. The raw tracker answers whether the
- * tiny remaining CPU geometry differences actually amplify into identity topology changes. The
- * stabilized tracker answers the same question after a deterministic 0.25px bbox/foot-Y grid.
+ * All shadow trackers consume the same deterministic CPU-MT detector output and never feed
+ * rendering, privacy, selection, or production TrackManager state. They differ only in how often
+ * detections are committed (cadence 1/2/3/4/6), so one export can determine the cheapest identity
+ * anchor cadence that preserves the full-cadence tracking topology.
  */
 internal class CrossDeviceTrackingDiagnostics(
     private val jobId: String,
     fullBodyPersonIds: Set<Int>,
     faceOnlyPersonIds: Set<Int>,
-    private val bboxGridPx: Float = DEFAULT_BBOX_GRID_PX
+    private val cadences: IntArray = DEFAULT_CADENCES
 ) {
-    private val rawTracker = TrackManager(diagnosticsEnabled = false)
-    private val stabilizedTracker = TrackManager(diagnosticsEnabled = false)
+    private val trackersByCadence = cadences.associateWith {
+        TrackManager(diagnosticsEnabled = false)
+    }
     private var initialized = false
+    private var inferenceOrdinal = 0
     private var disabledReason: String? = null
 
     init {
-        configureTracker(rawTracker, fullBodyPersonIds, faceOnlyPersonIds)
-        configureTracker(stabilizedTracker, fullBodyPersonIds, faceOnlyPersonIds)
+        require(cadences.isNotEmpty() && cadences.all { it > 0 })
+        trackersByCadence.values.forEach {
+            configureTracker(it, fullBodyPersonIds, faceOnlyPersonIds)
+        }
     }
 
     fun recordFrame(
@@ -41,8 +44,7 @@ internal class CrossDeviceTrackingDiagnostics(
         if (!com.danceanon.dance_native.BuildConfig.DEBUG || disabledReason != null) return
 
         try {
-            val rawTracked: List<TrackedPerson>
-            val stabilizedTracked: List<TrackedPerson>
+            val trackedByCadence: Map<Int, List<TrackedPerson>>
             if (!initialized) {
                 val prodDetections = productionDetections ?: return disable("MISSING_PRODUCTION_FIRST_FRAME")
                 val prodTracked = productionTracked ?: return disable("MISSING_PRODUCTION_TRACKS_FIRST_FRAME")
@@ -53,26 +55,26 @@ internal class CrossDeviceTrackingDiagnostics(
                     cpuDetections = cpuDetections
                 ) ?: return disable("CPU_MT4_FIRST_FRAME_ID_MAP_FAILED")
 
-                rawTracked = rawTracker.initializeWithAssignedIds(cpuDetections, assignedIds)
-                stabilizedTracked = stabilizedTracker.initializeWithAssignedIds(
-                    stabilizeDetections(cpuDetections, bboxGridPx),
-                    assignedIds
-                )
+                trackedByCadence = trackersByCadence.mapValues { (_, tracker) ->
+                    tracker.initializeWithAssignedIds(cpuDetections, assignedIds)
+                }
                 initialized = true
+                inferenceOrdinal = 0
             } else if (!shouldInfer) {
-                rawTracked = rawTracker.predictWithoutObservation(ptsUs)
-                stabilizedTracked = stabilizedTracker.predictWithoutObservation(ptsUs)
+                trackedByCadence = trackersByCadence.mapValues { (_, tracker) ->
+                    tracker.predictWithoutObservation(ptsUs)
+                }
             } else {
                 val cpuDetections = cpuMt4Detections ?: return disable("MISSING_CPU_MT4_INFERENCE_FRAME")
-                if (cpuDetections.isEmpty()) {
-                    rawTracked = rawTracker.predict(ptsUs)
-                    stabilizedTracked = stabilizedTracker.predict(ptsUs)
-                } else {
-                    rawTracked = rawTracker.update(cpuDetections, ptsUs)
-                    stabilizedTracked = stabilizedTracker.update(
-                        stabilizeDetections(cpuDetections, bboxGridPx),
-                        ptsUs
-                    )
+                inferenceOrdinal++
+                trackedByCadence = trackersByCadence.mapValues { (cadence, tracker) ->
+                    if (!shouldObserve(inferenceOrdinal, cadence)) {
+                        tracker.predictWithoutObservation(ptsUs)
+                    } else if (cpuDetections.isEmpty()) {
+                        tracker.predict(ptsUs)
+                    } else {
+                        tracker.update(cpuDetections, ptsUs)
+                    }
                 }
             }
 
@@ -84,9 +86,11 @@ internal class CrossDeviceTrackingDiagnostics(
                     "job_id" to jobId,
                     "pts_us" to ptsUs,
                     "should_infer" to shouldInfer,
-                    "bbox_grid_px" to bboxGridPx,
-                    "raw_tracks" to trackSignature(rawTracked),
-                    "stabilized_tracks" to trackSignature(stabilizedTracked)
+                    "cpu_inference_ordinal" to inferenceOrdinal,
+                    "tracks_by_cadence" to trackedByCadence
+                        .toSortedMap()
+                        .mapKeys { it.key.toString() }
+                        .mapValues { (_, tracks) -> trackSignature(tracks) }
                 )
             )
         } catch (t: Throwable) {
@@ -109,26 +113,12 @@ internal class CrossDeviceTrackingDiagnostics(
     }
 
     companion object {
-        internal const val DEFAULT_BBOX_GRID_PX = 0.25f
+        internal val DEFAULT_CADENCES = intArrayOf(1, 2, 3, 4, 6)
 
-        internal fun stabilizeDetections(
-            detections: List<PersonDetection>,
-            gridPx: Float = DEFAULT_BBOX_GRID_PX
-        ): List<PersonDetection> {
-            require(gridPx > 0f)
-            return detections.map { detection ->
-                val bbox = detection.bbox
-                val stableBbox = FloatRect(
-                    left = quantize(bbox.left, gridPx),
-                    top = quantize(bbox.top, gridPx),
-                    right = quantize(bbox.right, gridPx),
-                    bottom = quantize(bbox.bottom, gridPx)
-                )
-                detection.copy(
-                    bbox = stableBbox,
-                    footY = quantize(detection.footY, gridPx)
-                )
-            }
+        internal fun shouldObserve(inferenceOrdinal: Int, cadence: Int): Boolean {
+            require(inferenceOrdinal >= 0)
+            require(cadence > 0)
+            return inferenceOrdinal % cadence == 0
         }
 
         internal fun mapProductionIdsToCpuDetections(
@@ -194,8 +184,5 @@ internal class CrossDeviceTrackingDiagnostics(
                 tracker.setPrivacyOffscreenDormancyEnabled(fullBodyPersonIds.isNotEmpty())
             }
         }
-
-        private fun quantize(value: Float, gridPx: Float): Float =
-            (value / gridPx).roundToInt() * gridPx
     }
 }

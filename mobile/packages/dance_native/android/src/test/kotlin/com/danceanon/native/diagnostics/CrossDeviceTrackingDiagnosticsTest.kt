@@ -6,25 +6,18 @@ import com.danceanon.native.tracking.TrackState
 import com.danceanon.native.tracking.TrackedPerson
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class CrossDeviceTrackingDiagnosticsTest {
 
     @Test
-    fun quarterPixelStabilizationQuantizesBboxAndFootYWithoutChangingIdentityEvidence() {
-        val detection = PersonDetection(
-            bbox = FloatRect(10.12f, 20.13f, 30.36f, 40.37f),
-            confidence = 0.8123f,
-            mask = null,
-            footY = 40.37f
-        )
-
-        val stable = CrossDeviceTrackingDiagnostics.stabilizeDetections(listOf(detection)).single()
-
-        assertEquals(FloatRect(10.0f, 20.25f, 30.25f, 40.25f), stable.bbox)
-        assertEquals(40.25f, stable.footY)
-        assertEquals(detection.confidence, stable.confidence)
-        assertNull(stable.mask)
+    fun cadenceObservationScheduleKeepsFirstAnchorAndRequestedStride() {
+        assertTrue(CrossDeviceTrackingDiagnostics.shouldObserve(0, 6))
+        assertTrue(CrossDeviceTrackingDiagnostics.shouldObserve(2, 2))
+        assertTrue(CrossDeviceTrackingDiagnostics.shouldObserve(3, 3))
+        assertFalse(CrossDeviceTrackingDiagnostics.shouldObserve(3, 2))
+        assertTrue(CrossDeviceTrackingDiagnostics.shouldObserve(6, 6))
     }
 
     @Test
