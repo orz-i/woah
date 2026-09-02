@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
 import com.danceanon.native.bridge.DanceNativeException
+import com.danceanon.native.diagnostics.NativeDiagnostics
 import com.danceanon.native.litert.LiteRtAccelerator
 import com.danceanon.native.litert.LiteRtModelRunner
 import com.danceanon.native.litert.LiteRtRunnerPolicy
@@ -116,6 +117,9 @@ class YoloLiteRtSegmenter(
         val startTime = System.currentTimeMillis()
         val stageTimings = linkedMapOf<String, Long>()
 
+        val rgbaSampleExactHash = YoloFrameFingerprint.sampledByteHash(rgbaBuffer)
+        val rgbaSampleQ4Hash = YoloFrameFingerprint.sampledByteHash(rgbaBuffer, shiftRight = 4)
+
         // 1. Preprocess directly into reusable workspace FloatBuffer
         val preprocessStartNs = System.nanoTime()
         val preprocess = YoloPreprocessor.processRgbaBuffer(
@@ -127,6 +131,7 @@ class YoloLiteRtSegmenter(
             materializeFloatBuffer = false
         )
         stageTimings["yoloPreprocess"] = (System.nanoTime() - preprocessStartNs) / 1_000_000
+        val preprocessQ8Hash = YoloFrameFingerprint.sampledFloatHash(workspace.floatArray, scale = 255.0)
 
         // 2. Write input buffer and run inference
         val detections = try {
@@ -154,6 +159,11 @@ class YoloLiteRtSegmenter(
             val out1Floats = outputBufs[1].readFloat()
             stageTimings["yoloOutputRead"] = (System.nanoTime() - outputReadStartNs) / 1_000_000
 
+            val out0Q1e2Hash = YoloFrameFingerprint.sampledFloatHash(out0Floats, scale = 100.0)
+            val out0Q1e3Hash = YoloFrameFingerprint.sampledFloatHash(out0Floats, scale = 1_000.0)
+            val out1Q1e2Hash = YoloFrameFingerprint.sampledFloatHash(out1Floats, scale = 100.0)
+            val out1Q1e3Hash = YoloFrameFingerprint.sampledFloatHash(out1Floats, scale = 1_000.0)
+
             val decodeStartNs = System.nanoTime()
             val parsed = adapter.parseDetections(
                 output0 = out0Floats,
@@ -164,6 +174,29 @@ class YoloLiteRtSegmenter(
                 stageTimingsMs = stageTimings
             )
             stageTimings["yoloDecode"] = (System.nanoTime() - decodeStartNs) / 1_000_000
+
+            NativeDiagnostics.event(
+                level = "INFO",
+                component = "YoloLiteRtSegmenter",
+                event = "YOLO_FRAME_FINGERPRINT",
+                fields = mapOf(
+                    "pts_us" to timestampUs,
+                    "requested_accelerator" to requestedAccelerator.name,
+                    "effective_accelerator" to modelRunner.effectiveAccelerator.name,
+                    "rgba_capacity" to rgbaBuffer.capacity(),
+                    "rgba_sample_exact_hash" to rgbaSampleExactHash,
+                    "rgba_sample_q4_hash" to rgbaSampleQ4Hash,
+                    "preprocess_q8_sample_hash" to preprocessQ8Hash,
+                    "output0_count" to out0Floats.size,
+                    "output1_count" to out1Floats.size,
+                    "output0_q1e2_sample_hash" to out0Q1e2Hash,
+                    "output0_q1e3_sample_hash" to out0Q1e3Hash,
+                    "output1_q1e2_sample_hash" to out1Q1e2Hash,
+                    "output1_q1e3_sample_hash" to out1Q1e3Hash,
+                    "detection_count" to parsed.size,
+                    "detections" to YoloFrameFingerprint.detectionSignature(parsed)
+                )
+            )
             parsed
         } catch (e: DanceNativeException) {
             throw e
