@@ -240,6 +240,49 @@ class TrackManagerAmbiguousReservationTest {
     }
 
     @Test
+    fun ambiguousHungarianDetectionSupportsNeighborReservationWithoutIdentityCommit() {
+        val tracker = TrackManager(
+            TrackingConfig(
+                minMatchScore = 0.20f,
+                bboxIouWeight = 1.0f,
+                maskIouWeight = 0.0f,
+                motionWeight = 0.0f,
+                directionWeight = 0.0f,
+                associationAmbiguityMargin = 0.05f
+            )
+        )
+
+        val initial = tracker.initializeWithAssignedIds(
+            listOf(
+                PersonDetection(FloatRect(100f, 100f, 200f, 300f), 0.95f),
+                PersonDetection(FloatRect(120f, 100f, 220f, 300f), 0.95f)
+            ),
+            listOf(3, 4)
+        )
+        assertEquals(setOf(3, 4), initial.map { it.id }.toSet())
+
+        // det0 is an equal-score Hungarian candidate for both group tracks, so
+        // identity commitment must remain ambiguous. det1 only grazes the old
+        // group boundary by 0.5 px, but overlaps det0 by 10.5 px. The current
+        // ambiguous detection therefore proves that det1 is still inside this
+        // frame's group ownership support even though no identity was committed.
+        val tracks = tracker.update(
+            detections = listOf(
+                PersonDetection(FloatRect(90f, 100f, 230f, 300f), 0.95f),
+                PersonDetection(FloatRect(219.5f, 100f, 319.5f, 300f), 0.80f)
+            ),
+            timestampUs = 33_333L
+        )
+
+        assertEquals(
+            setOf(3, 4),
+            tracks.map { it.id }.toSet(),
+            "a detection overlapping ambiguous current group support must remain quarantined instead of minting a new identity"
+        )
+        assertTrue(tracks.none { it.observedThisFrame }, "ambiguous group evidence must not force an identity commit")
+    }
+
+    @Test
     fun testStrictFaceOnlyIdentityDoesNotEscapeSingleNeighborGroupReservation() {
         tracker = TrackManager(
             TrackingConfig(

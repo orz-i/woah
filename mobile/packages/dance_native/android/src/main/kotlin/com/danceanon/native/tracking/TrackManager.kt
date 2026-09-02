@@ -1172,7 +1172,15 @@ class TrackManager(
                         hasMeaningfulGroupReservationOverlap(groupTrack.currentPredictedBbox, detBox) ||
                             hasMeaningfulGroupReservationOverlap(groupTrack.lastObservedBbox, detBox)
                     }
-                    if (overlapsGroupMember) {
+                    val ambiguousHungarianSupport = matchResult.matches.firstOrNull { pair ->
+                        pair.second != c &&
+                            !matchedGroupCols.contains(pair.second) &&
+                            hasMeaningfulGroupReservationOverlap(
+                                detections[candidateDetectionIndices[pair.second]].bbox,
+                                detBox
+                            )
+                    }
+                    if (overlapsGroupMember || ambiguousHungarianSupport != null) {
                         reservedGroupDetectionIndices.add(dIdx)
                         reservedGroupOwnerTrackIdsByDetectionIndex
                             .getOrPut(dIdx) { mutableSetOf() }
@@ -1189,6 +1197,14 @@ class TrackManager(
                                 "group_id" to group.trackIds.toList(),
                                 "det_index" to dIdx,
                                 "reason" to "UNCOMMITTED_OVERLAP",
+                                "support_source" to if (overlapsGroupMember) {
+                                    "TRACK_GEOMETRY"
+                                } else {
+                                    "AMBIGUOUS_HUNGARIAN_DETECTION"
+                                },
+                                "support_det_index" to ambiguousHungarianSupport?.let { pair ->
+                                    candidateDetectionIndices[pair.second]
+                                },
                                 "pts_us" to timestampUs
                             )
                         )
@@ -1814,6 +1830,8 @@ class TrackManager(
                 // state test; any other independently matched occluder still counts.
                 val uncertainOccluderTrackIds =
                     currentUncertainOccluderTrackIdsByProtectedTrackId[track.id].orEmpty()
+                val globallyUncertainOccluderTrackIds =
+                    currentUncertainOccluderTrackIdsByProtectedTrackId.values.flatten().toSet()
                 val matchedUncertainOccluderTrackIds = uncertainOccluderTrackIds.filter { otherId ->
                     val otherIndex = tracks.indexOfFirst { it.id == otherId }
                     otherIndex >= 0 && matchedTrackIndices.contains(otherIndex)
@@ -1850,13 +1868,40 @@ class TrackManager(
                         )
                         val anchorFreshOverlapRatio = if (anchorMinArea > 0f) anchorInterArea / anchorMinArea else 0f
                         val predictionAnchorIoU = computeBBoxIoU(predBox, track.lastObservedBbox)
+                        val anchorOccluderReliable = !globallyUncertainOccluderTrackIds.contains(other.id)
                         val protectedLostAnchorOcclusion = isProtectedLostAnchorOcclusionSupported(
                             trackState = track.state,
                             identityProtected = protectedTrackIds.contains(track.id),
                             predictionAnchorIoU = predictionAnchorIoU,
                             anchorFreshOverlapRatio = anchorFreshOverlapRatio,
-                            overlapThreshold = config.occlusionOverlapRatio
+                            overlapThreshold = config.occlusionOverlapRatio,
+                            occluderReliable = anchorOccluderReliable
                         )
+                        if (!anchorOccluderReliable &&
+                            isProtectedLostAnchorOcclusionSupported(
+                                trackState = track.state,
+                                identityProtected = protectedTrackIds.contains(track.id),
+                                predictionAnchorIoU = predictionAnchorIoU,
+                                anchorFreshOverlapRatio = anchorFreshOverlapRatio,
+                                overlapThreshold = config.occlusionOverlapRatio,
+                                occluderReliable = true
+                            )
+                        ) {
+                            NativeDiagnostics.event(
+                                level = "INFO",
+                                component = "TrackManager",
+                                event = "PROTECTED_LOST_ANCHOR_OCCLUSION_REJECTED_UNCERTAIN_OCCLUDER",
+                                fields = mapOf(
+                                    "track_id" to track.id,
+                                    "occluder_track_id" to other.id,
+                                    "current_overlap_ratio" to ratio,
+                                    "anchor_fresh_overlap_ratio" to anchorFreshOverlapRatio,
+                                    "prediction_anchor_iou" to predictionAnchorIoU,
+                                    "threshold" to config.occlusionOverlapRatio,
+                                    "pts_us" to timestampUs
+                                )
+                            )
+                        }
                         if (protectedLostAnchorOcclusion && ratio < config.occlusionOverlapRatio) {
                             NativeDiagnostics.event(
                                 level = "INFO",
@@ -2496,10 +2541,12 @@ class TrackManager(
             identityProtected: Boolean,
             predictionAnchorIoU: Float,
             anchorFreshOverlapRatio: Float,
-            overlapThreshold: Float
+            overlapThreshold: Float,
+            occluderReliable: Boolean = true
         ): Boolean =
             identityProtected &&
                 trackState == TrackState.LOST &&
+                occluderReliable &&
                 predictionAnchorIoU >= overlapThreshold &&
                 anchorFreshOverlapRatio >= overlapThreshold
 

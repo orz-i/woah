@@ -57,6 +57,17 @@ class TrackManagerLostRecoveryIsolationTest {
                 overlapThreshold = 0.30f
             )
         )
+        assertTrue(
+            !TrackManager.isProtectedLostAnchorOcclusionSupported(
+                trackState = TrackState.LOST,
+                identityProtected = true,
+                predictionAnchorIoU = 0.80f,
+                anchorFreshOverlapRatio = 0.41f,
+                overlapThreshold = 0.30f,
+                occluderReliable = false
+            ),
+            "an ordinary winner disputed by another protected identity must not anchor-confirm a LOST identity"
+        )
     }
 
     @Test
