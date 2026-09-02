@@ -137,6 +137,8 @@ class ExportPipeline(
         val yoloFallbackReason = yoloRuntimeInfo?.fallbackReason
         var cpuDeterminismProbeSegmenter: YoloLiteRtSegmenter? = null
         var cpuDeterminismProbeFallbackReason: String? = null
+        var cpuMt2ProbeSegmenter: YoloLiteRtSegmenter? = null
+        var cpuMt2ProbeFallbackReason: String? = null
         var cpuMt4ProbeSegmenter: YoloLiteRtSegmenter? = null
         var cpuMt4ProbeFallbackReason: String? = null
         if (com.danceanon.dance_native.BuildConfig.DEBUG) {
@@ -173,12 +175,50 @@ class ExportPipeline(
             }
 
             try {
+                cpuMt2ProbeSegmenter = YoloLiteRtSegmenter(
+                    context = context,
+                    requestedAccelerator = com.danceanon.native.litert.LiteRtAccelerator.CPU,
+                    cpuNumThreads = CPU_MT2_PROBE_THREADS,
+                    diagnosticArtifactMaxPtsUs = -1L,
+                    diagnosticSignatureMaxPtsUs = CPU_SINGLE_THREAD_REFERENCE_MAX_PTS_US
+                ).also { it.initialize() }
+                val cpuMt2Info = cpuMt2ProbeSegmenter?.runtimeInfo
+                com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                    level = "INFO",
+                    component = "ExportPipeline",
+                    event = "YOLO_CPU_MT2_PROBE_ACTIVE",
+                    fields = mapOf(
+                        "job_id" to jobId,
+                        "threads" to CPU_MT2_PROBE_THREADS,
+                        "signature_max_pts_us" to CPU_SINGLE_THREAD_REFERENCE_MAX_PTS_US,
+                        "effective_accelerator" to cpuMt2ProbeSegmenter?.effectiveAccelerator?.name,
+                        "compile_ms" to cpuMt2Info?.compileMs,
+                        "warmup_ms" to cpuMt2Info?.warmupMs
+                    )
+                )
+            } catch (t: Throwable) {
+                cpuMt2ProbeFallbackReason = "${t.javaClass.simpleName}:${t.message ?: "unknown"}"
+                try { cpuMt2ProbeSegmenter?.close() } catch (_: Throwable) {}
+                cpuMt2ProbeSegmenter = null
+                com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                    level = "WARN",
+                    component = "ExportPipeline",
+                    event = "YOLO_CPU_MT2_PROBE_UNAVAILABLE",
+                    fields = mapOf(
+                        "job_id" to jobId,
+                        "threads" to CPU_MT2_PROBE_THREADS,
+                        "reason" to cpuMt2ProbeFallbackReason
+                    )
+                )
+            }
+
+            try {
                 cpuMt4ProbeSegmenter = YoloLiteRtSegmenter(
                     context = context,
                     requestedAccelerator = com.danceanon.native.litert.LiteRtAccelerator.CPU,
                     cpuNumThreads = CPU_MT_PROBE_THREADS,
                     diagnosticArtifactMaxPtsUs = CPU_SINGLE_THREAD_REFERENCE_MAX_PTS_US,
-                    diagnosticSignatureMaxPtsUs = CROSS_DEVICE_VALIDATION_MAX_PTS_US
+                    diagnosticSignatureMaxPtsUs = Long.MAX_VALUE
                 ).also { it.initialize() }
                 val cpuMtInfo = cpuMt4ProbeSegmenter?.runtimeInfo
                 com.danceanon.native.diagnostics.NativeDiagnostics.event(
@@ -188,7 +228,7 @@ class ExportPipeline(
                     fields = mapOf(
                         "job_id" to jobId,
                         "threads" to CPU_MT_PROBE_THREADS,
-                        "signature_max_pts_us" to CROSS_DEVICE_VALIDATION_MAX_PTS_US,
+                        "signature_scope" to "FULL_EXPORT",
                         "effective_accelerator" to cpuMt4ProbeSegmenter?.effectiveAccelerator?.name,
                         "compile_ms" to cpuMtInfo?.compileMs,
                         "warmup_ms" to cpuMtInfo?.warmupMs
@@ -375,6 +415,17 @@ class ExportPipeline(
                 val frameStride = profile.inferenceStride
                 var lastProgressEmitTime = 0L
                 val isSam2Mode = profile.useSam2
+                val crossDeviceTrackingDiagnostics = if (
+                    com.danceanon.dance_native.BuildConfig.DEBUG && !isSam2Mode
+                ) {
+                    com.danceanon.native.diagnostics.CrossDeviceTrackingDiagnostics(
+                        jobId = jobId,
+                        fullBodyPersonIds = fullBodyPersonIds,
+                        faceOnlyPersonIds = faceOnlyPersonIds
+                    )
+                } else {
+                    null
+                }
 
                 // Cross-device validation path: keep rendering on the historical Surface decoder,
                 // but feed YOLO from an independent CPU-readable YUV decoder. This bypasses the
@@ -850,23 +901,9 @@ class ExportPipeline(
 
                             // Standard YOLO pipeline
                             val shouldInfer = (processedFrames == 1) || (processedFrames % frameStride == 0)
+                            var cpuMt4DetectionsForShadow: List<com.danceanon.native.inference.PersonDetection>? = null
                             val detections = if (shouldInfer) {
                                 var usedCanonicalInput = false
-                                if (ptsUs > CROSS_DEVICE_VALIDATION_MAX_PTS_US && canonicalInferenceDecoder != null) {
-                                    try { canonicalInferenceDecoder?.close() } catch (_: Throwable) {}
-                                    canonicalInferenceDecoder = null
-                                    canonicalValidationWindowCompleted = true
-                                    com.danceanon.native.diagnostics.NativeDiagnostics.event(
-                                        level = "INFO",
-                                        component = "ExportPipeline",
-                                        event = "CANONICAL_YUV_VALIDATION_WINDOW_COMPLETE",
-                                        fields = mapOf(
-                                            "job_id" to jobId,
-                                            "max_pts_us" to CROSS_DEVICE_VALIDATION_MAX_PTS_US,
-                                            "first_oes_pts_us" to ptsUs
-                                        )
-                                    )
-                                }
                                 val canonicalDecoder = canonicalInferenceDecoder
                                 val canonicalRgba = if (canonicalDecoder != null) {
                                     try {
@@ -978,40 +1015,74 @@ class ExportPipeline(
                                             )
                                         }
                                     }
-                                }
-                                if (ptsUs <= CROSS_DEVICE_VALIDATION_MAX_PTS_US) {
-                                    val cpuMt4Probe = cpuMt4ProbeSegmenter
-                                    if (cpuMt4Probe != null) {
+
+                                    val cpuMt2Probe = cpuMt2ProbeSegmenter
+                                    if (cpuMt2Probe != null) {
                                         try {
-                                            val cpuMt4Seg = profiler.recordStage("yoloCpuMt4Probe") {
-                                                cpuMt4Probe.segmentGlReadbackRgbaSync(
+                                            val cpuMt2Seg = profiler.recordStage("yoloCpuMt2Probe") {
+                                                cpuMt2Probe.segmentGlReadbackRgbaSync(
                                                     rgbaBuffer,
                                                     mapper,
                                                     ptsUs,
                                                     colOrder = RgbaColOrder.LEFT_TO_RIGHT,
-                                                    diagnosticJobId = "${jobId}_cpu_mt4_probe"
+                                                    diagnosticJobId = "${jobId}_cpu_mt2_probe"
                                                 )
                                             }
-                                            for ((stage, elapsedMs) in cpuMt4Seg.stageTimingsMs) {
-                                                profiler.recordSample("yoloCpuMt4Probe_${stage}", elapsedMs)
+                                            for ((stage, elapsedMs) in cpuMt2Seg.stageTimingsMs) {
+                                                profiler.recordSample("yoloCpuMt2Probe_${stage}", elapsedMs)
                                             }
                                         } catch (t: Throwable) {
-                                            cpuMt4ProbeFallbackReason =
+                                            cpuMt2ProbeFallbackReason =
                                                 "${t.javaClass.simpleName}:${t.message ?: "unknown"}"
-                                            try { cpuMt4Probe.close() } catch (_: Throwable) {}
-                                            cpuMt4ProbeSegmenter = null
+                                            try { cpuMt2Probe.close() } catch (_: Throwable) {}
+                                            cpuMt2ProbeSegmenter = null
                                             com.danceanon.native.diagnostics.NativeDiagnostics.event(
                                                 level = "WARN",
                                                 component = "ExportPipeline",
-                                                event = "YOLO_CPU_MT4_PROBE_FAILED",
+                                                event = "YOLO_CPU_MT2_PROBE_FAILED",
                                                 fields = mapOf(
                                                     "job_id" to jobId,
-                                                    "threads" to CPU_MT_PROBE_THREADS,
+                                                    "threads" to CPU_MT2_PROBE_THREADS,
                                                     "pts_us" to ptsUs,
-                                                    "reason" to cpuMt4ProbeFallbackReason
+                                                    "reason" to cpuMt2ProbeFallbackReason
                                                 )
                                             )
                                         }
+                                    }
+                                }
+
+                                val cpuMt4Probe = cpuMt4ProbeSegmenter
+                                if (cpuMt4Probe != null) {
+                                    try {
+                                        val cpuMt4Seg = profiler.recordStage("yoloCpuMt4Probe") {
+                                            cpuMt4Probe.segmentGlReadbackRgbaSync(
+                                                rgbaBuffer,
+                                                mapper,
+                                                ptsUs,
+                                                colOrder = RgbaColOrder.LEFT_TO_RIGHT,
+                                                diagnosticJobId = "${jobId}_cpu_mt4_probe"
+                                            )
+                                        }
+                                        cpuMt4DetectionsForShadow = cpuMt4Seg.persons
+                                        for ((stage, elapsedMs) in cpuMt4Seg.stageTimingsMs) {
+                                            profiler.recordSample("yoloCpuMt4Probe_${stage}", elapsedMs)
+                                        }
+                                    } catch (t: Throwable) {
+                                        cpuMt4ProbeFallbackReason =
+                                            "${t.javaClass.simpleName}:${t.message ?: "unknown"}"
+                                        try { cpuMt4Probe.close() } catch (_: Throwable) {}
+                                        cpuMt4ProbeSegmenter = null
+                                        com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                                            level = "WARN",
+                                            component = "ExportPipeline",
+                                            event = "YOLO_CPU_MT4_PROBE_FAILED",
+                                            fields = mapOf(
+                                                "job_id" to jobId,
+                                                "threads" to CPU_MT_PROBE_THREADS,
+                                                "pts_us" to ptsUs,
+                                                "reason" to cpuMt4ProbeFallbackReason
+                                            )
+                                        )
                                     }
                                 }
                                 // Historical compatibility: this metric name predates the
@@ -1094,6 +1165,13 @@ class ExportPipeline(
                                     trackManager.predict(ptsUs)
                                 }
                             }
+                            crossDeviceTrackingDiagnostics?.recordFrame(
+                                ptsUs = ptsUs,
+                                shouldInfer = shouldInfer,
+                                productionDetections = if (processedFrames == 1) detections else null,
+                                productionTracked = if (processedFrames == 1) tracked else null,
+                                cpuMt4Detections = cpuMt4DetectionsForShadow
+                            )
                             val temporalPrivacyEvidence = if (shouldInfer && allowFreshFullBodyClassPrimary) {
                                 profiler.recordStage("privacyClassTracking") {
                                     privacyClassTemporalTracker.update(
@@ -1806,13 +1884,17 @@ class ExportPipeline(
                             } else {
                                 "SURFACE_OES_RGBA"
                             },
-                            "canonical_yuv_validation_window_us" to CROSS_DEVICE_VALIDATION_MAX_PTS_US,
+                            "canonical_yuv_validation_scope" to "FULL_EXPORT_DEBUG",
+                            "canonical_yuv_validation_window_us" to -1L,
                             "canonical_yuv_validation_window_completed" to canonicalValidationWindowCompleted,
                             "canonical_yuv_fallback_reason" to canonicalInferenceFallbackReason,
                             "cpu_single_thread_reference_window_us" to CPU_SINGLE_THREAD_REFERENCE_MAX_PTS_US,
                             "cpu_determinism_probe_fallback_reason" to cpuDeterminismProbeFallbackReason,
+                            "cpu_mt2_probe_threads" to CPU_MT2_PROBE_THREADS,
+                            "cpu_mt2_probe_fallback_reason" to cpuMt2ProbeFallbackReason,
                             "cpu_mt4_probe_threads" to CPU_MT_PROBE_THREADS,
-                            "cpu_mt4_signature_window_us" to CROSS_DEVICE_VALIDATION_MAX_PTS_US,
+                            "cpu_mt4_signature_scope" to "FULL_EXPORT",
+                            "cpu_mt4_shadow_bbox_grid_px" to com.danceanon.native.diagnostics.CrossDeviceTrackingDiagnostics.DEFAULT_BBOX_GRID_PX,
                             "cpu_mt4_probe_fallback_reason" to cpuMt4ProbeFallbackReason,
                             "state" to "completed"
                         )
@@ -1852,6 +1934,7 @@ class ExportPipeline(
             } finally {
                 try { previewScope?.cancel() } catch (_: Throwable) {}
                 try { cpuDeterminismProbeSegmenter?.close() } catch (_: Throwable) {}
+                try { cpuMt2ProbeSegmenter?.close() } catch (_: Throwable) {}
                 try { cpuMt4ProbeSegmenter?.close() } catch (_: Throwable) {}
                 try { canonicalInferenceDecoder?.close() } catch (_: Throwable) {}
                 try { decoder?.close() } catch (_: Throwable) {}
@@ -1925,9 +2008,9 @@ class ExportPipeline(
     }
 
     companion object {
+        private const val CPU_MT2_PROBE_THREADS = 2
         private const val CPU_MT_PROBE_THREADS = 4
         private const val CPU_SINGLE_THREAD_REFERENCE_MAX_PTS_US = 450_000L
-        private const val CROSS_DEVICE_VALIDATION_MAX_PTS_US = 5_000_000L
 
         internal fun shouldUseFreshFullBodyClassPrimary(
             fullBodyPersonIds: Set<Int>,

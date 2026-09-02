@@ -161,7 +161,8 @@ class InternalTrack(
 }
 
 class TrackManager(
-    val config: TrackingConfig = TrackingConfig()
+    val config: TrackingConfig = TrackingConfig(),
+    private val diagnosticsEnabled: Boolean = true
 ) : PersonTracker {
 
     private val tracks = mutableListOf<InternalTrack>()
@@ -176,6 +177,23 @@ class TrackManager(
     private var nextTrackId = 0
     private var hasInitialized = false
     private var privacyOffscreenDormancyEnabled = false
+
+    private fun diagnosticEvent(
+        level: String,
+        component: String,
+        event: String,
+        fields: Map<String, Any?> = emptyMap(),
+        throwable: Throwable? = null
+    ) {
+        if (!diagnosticsEnabled) return
+        NativeDiagnostics.event(
+            level = level,
+            component = component,
+            event = event,
+            fields = fields,
+            throwable = throwable
+        )
+    }
 
     private fun isDormantMixedFullBodyIdentity(track: InternalTrack): Boolean {
         // In mixed FULL_BODY + FACE_ONLY mode, a protected FULL_BODY identity is
@@ -212,7 +230,7 @@ class TrackManager(
         // FULL_BODY-only callers never enable this mixed-mode policy.
         track.currentRenderMask = null
         if (track.framesSinceLastObservation == MIXED_FULL_BODY_MAX_RENDER_MISS_FRAMES) {
-            NativeDiagnostics.event(
+            diagnosticEvent(
                 level = "INFO",
                 component = "TrackManager",
                 event = "MIXED_FULL_BODY_STALE_MASK_SUPPRESSED",
@@ -269,7 +287,7 @@ class TrackManager(
         track.occlusionMotionBbox = null
         occlusionGroups.forEach { group -> group.trackIds.remove(track.id) }
         occlusionGroups.removeAll { it.trackIds.size < 2 }
-        NativeDiagnostics.event(
+        diagnosticEvent(
             level = "INFO",
             component = "TrackManager",
             event = "PROTECTED_OFFSCREEN_DORMANT",
@@ -423,7 +441,7 @@ class TrackManager(
                     abs(overlapRatio - config.occlusionOverlapRatio) <= OCCLUSION_OVERLAP_EDGE_TELEMETRY_MARGIN ||
                     (previouslySameGroup && overlapRatio < config.occlusionOverlapRatio)
                 ) {
-                    NativeDiagnostics.event(
+                    diagnosticEvent(
                         level = "INFO",
                         component = "TrackManager",
                         event = "OCCLUSION_PAIR_OVERLAP_EDGE",
@@ -493,7 +511,7 @@ class TrackManager(
                 val existing = occlusionGroups[existingIdx]
                 val previousTrackIds = existing.trackIds.toSet()
                 if (previousTrackIds != comp) {
-                    NativeDiagnostics.event(
+                    diagnosticEvent(
                         level = "INFO",
                         component = "TrackManager",
                         event = "OCCLUSION_GROUP_MEMBERSHIP_CHANGE",
@@ -521,7 +539,7 @@ class TrackManager(
                 )
                 occlusionGroups.add(newGroup)
                 matchedGroupIndices.add(occlusionGroups.size - 1)
-                NativeDiagnostics.event(
+                diagnosticEvent(
                     level = "INFO",
                     component = "TrackManager",
                     event = "OCCLUSION_GROUP_CREATE",
@@ -544,7 +562,7 @@ class TrackManager(
                     for (tId in group.trackIds) {
                         predictedTracks.find { it.id == tId }?.occludedByTrackIds?.clear()
                     }
-                    NativeDiagnostics.event(
+                    diagnosticEvent(
                         level = "INFO",
                         component = "TrackManager",
                         event = "OCCLUSION_GROUP_REACQUIRE_START",
@@ -573,7 +591,7 @@ class TrackManager(
             aliveTracks.size < 2 || isExhausted
         }
         for (group in groupsToRemove) {
-            NativeDiagnostics.event(
+            diagnosticEvent(
                 level = "INFO",
                 component = "TrackManager",
                 event = "OCCLUSION_GROUP_END",
@@ -648,7 +666,7 @@ class TrackManager(
             config
         )
         if (sceneMotion.inlierCount > 0 || sceneMotion.confidence > 0f) {
-            NativeDiagnostics.event(
+            diagnosticEvent(
                 level = "INFO",
                 component = "TrackManager",
                 event = "SCENE_MOTION_ESTIMATED",
@@ -908,7 +926,7 @@ class TrackManager(
                         currentUncertainOccluderTrackIdsByProtectedTrackId
                             .getOrPut(track.id) { mutableSetOf() }
                             .add(confirmedWinnerTrack.id)
-                        NativeDiagnostics.event(
+                        diagnosticEvent(
                             level = "INFO",
                             component = "TrackManager",
                             event = "PROTECTED_GROUP_UNCERTAIN_OCCLUDER_EVIDENCE",
@@ -997,7 +1015,7 @@ class TrackManager(
                             timestampUs = timestampUs
                         )
                     }
-                    NativeDiagnostics.event(
+                    diagnosticEvent(
                         level = "WARN",
                         component = "TrackManager",
                         event = "ASSOCIATION_AMBIGUOUS",
@@ -1064,7 +1082,7 @@ class TrackManager(
                 track.currentObservedFootY = det.footY
                 track.lastObservedFootY = det.footY
                 track.kalman.update(det.bbox, timestampUs)
-                NativeDiagnostics.event(
+                diagnosticEvent(
                     level = "INFO",
                     component = "TrackManager",
                     event = "GROUP_ASSIGNMENT_COMMIT",
@@ -1096,7 +1114,7 @@ class TrackManager(
                 )
 
                 if (prevState == TrackState.OCCLUDED || prevState == TrackState.REACQUIRING) {
-                    NativeDiagnostics.event(
+                    diagnosticEvent(
                         level = "INFO",
                         component = "TrackManager",
                         event = if (prevState == TrackState.REACQUIRING) "REACQUIRE_SUCCESS" else "OCCLUSION_END",
@@ -1138,7 +1156,7 @@ class TrackManager(
                             .getOrPut(dIdx) { mutableSetOf() }
                             .add(group.trackIds.toSet())
                         reservedThisGroup.add(dIdx)
-                        NativeDiagnostics.event(
+                        diagnosticEvent(
                             level = "INFO",
                             component = "TrackManager",
                             event = "GROUP_DETECTION_RESERVED",
@@ -1203,7 +1221,7 @@ class TrackManager(
                     if (selectionClass == PrivacySelectionClass.SELECTED) {
                         currentPrivacySuppressedSelectedTrackIds.addAll(residualTrackIds)
                     }
-                    NativeDiagnostics.event(
+                    diagnosticEvent(
                         level = "INFO",
                         component = "TrackManager",
                         event = "PRIVACY_CLASS_EVIDENCE_INFERRED",
@@ -1343,7 +1361,7 @@ class TrackManager(
                         )
                     ) {
                         strictFaceOnlyRescueDetectionIndices.add(dIdx)
-                        NativeDiagnostics.event(
+                        diagnosticEvent(
                             level = "INFO",
                             component = "TrackManager",
                             event = "GROUP_RESERVED_STRICT_RESCUE_ELIGIBLE",
@@ -1366,7 +1384,7 @@ class TrackManager(
                     }
 
                     if (protectedTrackIds.contains(track.id) || wouldStrictGlobalCommit) {
-                        NativeDiagnostics.event(
+                        diagnosticEvent(
                             level = "INFO",
                             component = "TrackManager",
                             event = "GROUP_RESERVED_STRICT_RESCUE_CANDIDATE",
@@ -1603,7 +1621,7 @@ class TrackManager(
                                     reacquireFrames = 1
                                 )
                             )
-                            NativeDiagnostics.event(
+                            diagnosticEvent(
                                 level = "INFO",
                                 component = "TrackManager",
                                 event = "OCCLUSION_GROUP_CREATE",
@@ -1616,7 +1634,7 @@ class TrackManager(
                         }
                     }
 
-                    NativeDiagnostics.event(
+                    diagnosticEvent(
                         level = "WARN",
                         component = "TrackManager",
                         event = "GLOBAL_ASSOCIATION_AMBIGUOUS",
@@ -1671,7 +1689,7 @@ class TrackManager(
                 track.currentObservedFootY = det.footY
                 track.lastObservedFootY = det.footY
                 track.kalman.update(det.bbox, timestampUs)
-                NativeDiagnostics.event(
+                diagnosticEvent(
                     level = "INFO",
                     component = "TrackManager",
                     event = "GLOBAL_ASSIGNMENT_COMMIT",
@@ -1700,7 +1718,7 @@ class TrackManager(
                 )
 
                 if (prevState == TrackState.OCCLUDED || prevState == TrackState.REACQUIRING) {
-                    NativeDiagnostics.event(
+                    diagnosticEvent(
                         level = "INFO",
                         component = "TrackManager",
                         event = if (prevState == TrackState.REACQUIRING) "REACQUIRE_SUCCESS" else "OCCLUSION_END",
@@ -1754,7 +1772,7 @@ class TrackManager(
                     otherIndex >= 0 && matchedTrackIndices.contains(otherIndex)
                 }
                 if (matchedUncertainOccluderTrackIds.isNotEmpty()) {
-                    NativeDiagnostics.event(
+                    diagnosticEvent(
                         level = "INFO",
                         component = "TrackManager",
                         event = "PROTECTED_GROUP_UNCERTAIN_OCCLUDER_IGNORED",
@@ -1810,7 +1828,7 @@ class TrackManager(
                                 occluderReliable = true
                             )
                         ) {
-                            NativeDiagnostics.event(
+                            diagnosticEvent(
                                 level = "INFO",
                                 component = "TrackManager",
                                 event = "PROTECTED_LOST_ANCHOR_OCCLUSION_REJECTED_UNCERTAIN_OCCLUDER",
@@ -1826,7 +1844,7 @@ class TrackManager(
                             )
                         }
                         if (protectedLostAnchorOcclusion && ratio < config.occlusionOverlapRatio) {
-                            NativeDiagnostics.event(
+                            diagnosticEvent(
                                 level = "INFO",
                                 component = "TrackManager",
                                 event = "PROTECTED_LOST_ANCHOR_OCCLUSION_CONFIRMED",
@@ -1845,7 +1863,7 @@ class TrackManager(
                             ratio >= config.occlusionOverlapRatio ||
                                 (wasOccludedByOther && otherNearLastObserved)
                         if (globallyUncertainForLostProtected && currentOrPriorOcclusion) {
-                            NativeDiagnostics.event(
+                            diagnosticEvent(
                                 level = "INFO",
                                 component = "TrackManager",
                                 event = "PROTECTED_LOST_OCCLUSION_REJECTED_UNCERTAIN_OCCLUDER",
@@ -1954,7 +1972,7 @@ class TrackManager(
                                 missedFrames = 0
                             )
                         }
-                        NativeDiagnostics.event(
+                        diagnosticEvent(
                             level = "INFO",
                             component = "TrackManager",
                             event = "REACQUIRE_START",
@@ -1975,7 +1993,7 @@ class TrackManager(
                                 missedFrames = 0
                             )
                         }
-                        NativeDiagnostics.event(
+                        diagnosticEvent(
                             level = "INFO",
                             component = "TrackManager",
                             event = "REACQUIRE_START",
@@ -2012,7 +2030,7 @@ class TrackManager(
                                     missedFrames = track.lostFrames
                                 )
                             }
-                            NativeDiagnostics.event(
+                            diagnosticEvent(
                                 level = "WARN",
                                 component = "TrackManager",
                                 event = "REACQUIRE_TIMEOUT",
@@ -2053,7 +2071,7 @@ class TrackManager(
                                     // foreground pixels while the target is absent.
                                     track.currentRenderMask = null
                                     if (track.lostFrames == config.maxMissedFrames + 1) {
-                                        NativeDiagnostics.event(
+                                        diagnosticEvent(
                                             level = "WARN",
                                             component = "TrackManager",
                                             event = "PROTECTED_TRACK_RETAINED_LOST",
@@ -2066,7 +2084,7 @@ class TrackManager(
                                     }
                                 } else {
                                     track.state = TrackState.REMOVED
-                                    NativeDiagnostics.event(
+                                    diagnosticEvent(
                                         level = "WARN",
                                         component = "TrackManager",
                                         event = "TRACK_REMOVED",
@@ -2118,7 +2136,7 @@ class TrackManager(
 
                 if (plausiblyOwnedByUnresolvedIdentity) {
                     reservedGlobalDetectionIndices.add(c)
-                    NativeDiagnostics.event(
+                    diagnosticEvent(
                         level = "INFO",
                         component = "TrackManager",
                         event = "UNRESOLVED_IDENTITY_DETECTION_RESERVED",
@@ -2216,7 +2234,7 @@ class TrackManager(
                 bestTrack.lastObservedFootY = det.footY
                 bestTrack.kalman.update(det.bbox, timestampUs)
                 reclaimedTrackIds.add(bestTrack.id)
-                NativeDiagnostics.event(
+                diagnosticEvent(
                     level = "INFO",
                     component = "TrackManager",
                     event = "ORDINARY_RECOVERY_COMMIT",
@@ -2257,7 +2275,7 @@ class TrackManager(
                     currentObservedFootY = det.footY
                 )
                 tracks.add(newTrack)
-                NativeDiagnostics.event(
+                diagnosticEvent(
                     level = "INFO",
                     component = "TrackManager",
                     event = "NEW_TRACK_CREATED",
