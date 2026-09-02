@@ -2,6 +2,7 @@ package com.danceanon.native.diagnostics
 
 import com.danceanon.native.inference.PersonDetection
 import com.danceanon.native.tracking.HungarianSolver
+import com.danceanon.native.tracking.MotionBridgeMeasurementMode
 import com.danceanon.native.tracking.TrackManager
 import com.danceanon.native.tracking.TrackedPerson
 import kotlin.math.roundToInt
@@ -9,18 +10,30 @@ import kotlin.math.roundToInt
 /**
  * Debug-only shadow tracking matrix for cross-device validation.
  *
- * All shadow trackers consume the same deterministic CPU-MT detector output and never feed
- * rendering, privacy, selection, or production TrackManager state. They differ only in how often
- * detections are committed (cadence 1/2/3/4/6), so one export can determine the cheapest identity
- * anchor cadence that preserves the full-cadence tracking topology.
+ * The cadence-1 baseline consumes deterministic CPU detections every inference frame. Hybrid
+ * trackers consume deterministic CPU detections only on anchor frames and use production
+ * detections strictly as motion-only Kalman bridges between anchors. The bridge cannot create,
+ * remove, swap, or commit identities. This lets one export test multiple anchor cadences and two
+ * geometry bridge measurements without changing the production tracker or renderer.
  */
 internal class CrossDeviceTrackingDiagnostics(
     private val jobId: String,
     fullBodyPersonIds: Set<Int>,
     faceOnlyPersonIds: Set<Int>,
-    private val cadences: IntArray = DEFAULT_CADENCES
+    private val cadences: IntArray = DEFAULT_HYBRID_CADENCES
 ) {
-    private val trackersByCadence = cadences.associateWith {
+    private data class HybridConfig(
+        val cadence: Int,
+        val mode: MotionBridgeMeasurementMode
+    ) {
+        val key: String = "${mode.name.lowercase()}_c$cadence"
+    }
+
+    private val cpuFullTracker = TrackManager(diagnosticsEnabled = false)
+    private val hybridConfigs = cadences.flatMap { cadence ->
+        DEFAULT_BRIDGE_MODES.map { mode -> HybridConfig(cadence, mode) }
+    }
+    private val hybridTrackers = hybridConfigs.associateWith {
         TrackManager(diagnosticsEnabled = false)
     }
     private var initialized = false
@@ -29,7 +42,8 @@ internal class CrossDeviceTrackingDiagnostics(
 
     init {
         require(cadences.isNotEmpty() && cadences.all { it > 0 })
-        trackersByCadence.values.forEach {
+        configureTracker(cpuFullTracker, fullBodyPersonIds, faceOnlyPersonIds)
+        hybridTrackers.values.forEach {
             configureTracker(it, fullBodyPersonIds, faceOnlyPersonIds)
         }
     }
@@ -44,7 +58,8 @@ internal class CrossDeviceTrackingDiagnostics(
         if (!com.danceanon.dance_native.BuildConfig.DEBUG || disabledReason != null) return
 
         try {
-            val trackedByCadence: Map<Int, List<TrackedPerson>>
+            val cpuFullTracked: List<TrackedPerson>
+            val hybridTracked: Map<HybridConfig, List<TrackedPerson>>
             if (!initialized) {
                 val prodDetections = productionDetections ?: return disable("MISSING_PRODUCTION_FIRST_FRAME")
                 val prodTracked = productionTracked ?: return disable("MISSING_PRODUCTION_TRACKS_FIRST_FRAME")
@@ -55,25 +70,41 @@ internal class CrossDeviceTrackingDiagnostics(
                     cpuDetections = cpuDetections
                 ) ?: return disable("CPU_MT4_FIRST_FRAME_ID_MAP_FAILED")
 
-                trackedByCadence = trackersByCadence.mapValues { (_, tracker) ->
+                cpuFullTracked = cpuFullTracker.initializeWithAssignedIds(cpuDetections, assignedIds)
+                hybridTracked = hybridTrackers.mapValues { (_, tracker) ->
                     tracker.initializeWithAssignedIds(cpuDetections, assignedIds)
                 }
                 initialized = true
                 inferenceOrdinal = 0
             } else if (!shouldInfer) {
-                trackedByCadence = trackersByCadence.mapValues { (_, tracker) ->
+                cpuFullTracked = cpuFullTracker.predictWithoutObservation(ptsUs)
+                hybridTracked = hybridTrackers.mapValues { (_, tracker) ->
                     tracker.predictWithoutObservation(ptsUs)
                 }
             } else {
                 val cpuDetections = cpuMt4Detections ?: return disable("MISSING_CPU_MT4_INFERENCE_FRAME")
+                val bridgeDetections = productionDetections ?: return disable("MISSING_PRODUCTION_INFERENCE_FRAME")
                 inferenceOrdinal++
-                trackedByCadence = trackersByCadence.mapValues { (cadence, tracker) ->
-                    if (!shouldObserve(inferenceOrdinal, cadence)) {
-                        tracker.predictWithoutObservation(ptsUs)
-                    } else if (cpuDetections.isEmpty()) {
-                        tracker.predict(ptsUs)
+
+                cpuFullTracked = if (cpuDetections.isEmpty()) {
+                    cpuFullTracker.predict(ptsUs)
+                } else {
+                    cpuFullTracker.update(cpuDetections, ptsUs)
+                }
+
+                hybridTracked = hybridTrackers.mapValues { (config, tracker) ->
+                    if (shouldObserve(inferenceOrdinal, config.cadence)) {
+                        if (cpuDetections.isEmpty()) {
+                            tracker.predict(ptsUs)
+                        } else {
+                            tracker.update(cpuDetections, ptsUs)
+                        }
                     } else {
-                        tracker.update(cpuDetections, ptsUs)
+                        tracker.bridgeMotionOnly(
+                            detections = bridgeDetections,
+                            timestampUs = ptsUs,
+                            measurementMode = config.mode
+                        )
                     }
                 }
             }
@@ -87,10 +118,11 @@ internal class CrossDeviceTrackingDiagnostics(
                     "pts_us" to ptsUs,
                     "should_infer" to shouldInfer,
                     "cpu_inference_ordinal" to inferenceOrdinal,
-                    "tracks_by_cadence" to trackedByCadence
-                        .toSortedMap()
-                        .mapKeys { it.key.toString() }
-                        .mapValues { (_, tracks) -> trackSignature(tracks) }
+                    "cpu_full_tracks" to trackSignature(cpuFullTracked),
+                    "hybrid_tracks" to hybridTracked
+                        .entries
+                        .sortedBy { it.key.key }
+                        .associate { (config, tracks) -> config.key to trackSignature(tracks) }
                 )
             )
         } catch (t: Throwable) {
@@ -113,7 +145,11 @@ internal class CrossDeviceTrackingDiagnostics(
     }
 
     companion object {
-        internal val DEFAULT_CADENCES = intArrayOf(1, 2, 3, 4, 6)
+        internal val DEFAULT_HYBRID_CADENCES = intArrayOf(2, 3, 4, 6)
+        internal val DEFAULT_BRIDGE_MODES = listOf(
+            MotionBridgeMeasurementMode.FULL_BBOX,
+            MotionBridgeMeasurementMode.CENTER_TRANSLATION
+        )
 
         internal fun shouldObserve(inferenceOrdinal: Int, cadence: Int): Boolean {
             require(inferenceOrdinal >= 0)

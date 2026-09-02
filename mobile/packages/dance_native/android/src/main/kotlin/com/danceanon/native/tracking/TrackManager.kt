@@ -49,6 +49,11 @@ enum class PrivacySelectionClass {
     UNSELECTED
 }
 
+internal enum class MotionBridgeMeasurementMode {
+    FULL_BBOX,
+    CENTER_TRANSLATION
+}
+
 /**
  * Fresh YOLO evidence whose privacy class is known even though its exact track
  * identity is intentionally left unresolved. This is only emitted for balanced
@@ -2295,8 +2300,123 @@ class TrackManager(
         return tracks.map { it.toTrackedPerson() }
     }
 
+    private fun motionBridgeScore(predicted: FloatRect, detection: FloatRect): Float {
+        val bboxIou = computeBBoxIoU(predicted, detection)
+        val refDim = max(max(predicted.width, predicted.height), 1f)
+        val dx = detection.centerX - predicted.centerX
+        val dy = detection.centerY - predicted.centerY
+        val centerDistance = sqrt(dx * dx + dy * dy)
+        val centerScore = (1f - centerDistance / (refDim * MOTION_BRIDGE_CENTER_DISTANCE_SCALE))
+            .coerceIn(0f, 1f)
+        return MOTION_BRIDGE_BBOX_IOU_WEIGHT * bboxIou +
+            (1f - MOTION_BRIDGE_BBOX_IOU_WEIGHT) * centerScore
+    }
+
+    private fun finiteSecondBest(value: Float): Float =
+        if (value.isFinite()) value else 0f
+
     fun predictWithoutObservation(timestampUs: Long): List<TrackedPerson> {
         return predictInternal(timestampUs, countAsDetectionMiss = false)
+    }
+
+    /**
+     * Debug/validation-only motion bridge for a future deterministic-CPU identity architecture.
+     *
+     * This path deliberately does not create tracks, remove tracks, commit identity matches,
+     * refresh canonical masks, or mark a track as freshly observed. It first advances the normal
+     * prediction-only state, then uses only strong reciprocal geometry matches to nudge each
+     * existing Kalman motion estimate. A later deterministic CPU observation remains the only
+     * path that can commit identity state through [update].
+     */
+    internal fun bridgeMotionOnly(
+        detections: List<PersonDetection>,
+        timestampUs: Long,
+        measurementMode: MotionBridgeMeasurementMode
+    ): List<TrackedPerson> {
+        predictInternal(timestampUs, countAsDetectionMiss = false)
+        if (detections.isEmpty() || tracks.isEmpty()) {
+            return tracks.map { it.toTrackedPerson() }
+        }
+
+        val eligibleTracks = tracks.filter {
+            it.state != TrackState.REMOVED &&
+                !it.offscreenDormant &&
+                !isDormantMixedFullBodyIdentity(it)
+        }
+        if (eligibleTracks.isEmpty()) {
+            return tracks.map { it.toTrackedPerson() }
+        }
+
+        val scores = Array(eligibleTracks.size) { trackIndex ->
+            val track = eligibleTracks[trackIndex]
+            FloatArray(detections.size) { detectionIndex ->
+                motionBridgeScore(track.currentPredictedBbox, detections[detectionIndex].bbox)
+            }
+        }
+
+        val rowBestDetection = IntArray(eligibleTracks.size) { -1 }
+        val rowBestScore = FloatArray(eligibleTracks.size) { Float.NEGATIVE_INFINITY }
+        val rowSecondScore = FloatArray(eligibleTracks.size) { Float.NEGATIVE_INFINITY }
+        for (trackIndex in eligibleTracks.indices) {
+            for (detectionIndex in detections.indices) {
+                val score = scores[trackIndex][detectionIndex]
+                if (score > rowBestScore[trackIndex]) {
+                    rowSecondScore[trackIndex] = rowBestScore[trackIndex]
+                    rowBestScore[trackIndex] = score
+                    rowBestDetection[trackIndex] = detectionIndex
+                } else if (score > rowSecondScore[trackIndex]) {
+                    rowSecondScore[trackIndex] = score
+                }
+            }
+        }
+
+        val columnBestTrack = IntArray(detections.size) { -1 }
+        val columnBestScore = FloatArray(detections.size) { Float.NEGATIVE_INFINITY }
+        val columnSecondScore = FloatArray(detections.size) { Float.NEGATIVE_INFINITY }
+        for (detectionIndex in detections.indices) {
+            for (trackIndex in eligibleTracks.indices) {
+                val score = scores[trackIndex][detectionIndex]
+                if (score > columnBestScore[detectionIndex]) {
+                    columnSecondScore[detectionIndex] = columnBestScore[detectionIndex]
+                    columnBestScore[detectionIndex] = score
+                    columnBestTrack[detectionIndex] = trackIndex
+                } else if (score > columnSecondScore[detectionIndex]) {
+                    columnSecondScore[detectionIndex] = score
+                }
+            }
+        }
+
+        for (trackIndex in eligibleTracks.indices) {
+            val detectionIndex = rowBestDetection[trackIndex]
+            if (detectionIndex !in detections.indices) continue
+            if (columnBestTrack[detectionIndex] != trackIndex) continue
+
+            val assignedScore = rowBestScore[trackIndex]
+            val rowMargin = assignedScore - finiteSecondBest(rowSecondScore[trackIndex])
+            val columnMargin = assignedScore - finiteSecondBest(columnSecondScore[detectionIndex])
+            if (assignedScore < MOTION_BRIDGE_MIN_SCORE ||
+                rowMargin < MOTION_BRIDGE_MIN_MARGIN ||
+                columnMargin < MOTION_BRIDGE_MIN_MARGIN
+            ) {
+                continue
+            }
+
+            val track = eligibleTracks[trackIndex]
+            val detection = detections[detectionIndex]
+            val measurement = when (measurementMode) {
+                MotionBridgeMeasurementMode.FULL_BBOX -> detection.bbox
+                MotionBridgeMeasurementMode.CENTER_TRANSLATION -> {
+                    val predicted = track.currentPredictedBbox
+                    val dx = detection.bbox.centerX - predicted.centerX
+                    val dy = detection.bbox.centerY - predicted.centerY
+                    predicted.offset(dx, dy)
+                }
+            }
+            track.kalman.update(measurement, timestampUs)
+            track.currentPredictedBbox = measurement
+        }
+
+        return tracks.map { it.toTrackedPerson() }
     }
 
     override fun predict(timestampUs: Long): List<TrackedPerson> {
@@ -2465,6 +2585,10 @@ class TrackManager(
 
     companion object {
         private const val ASSOCIATION_MASK_IOU_SAMPLE_STRIDE = 4
+        private const val MOTION_BRIDGE_BBOX_IOU_WEIGHT = 0.75f
+        private const val MOTION_BRIDGE_CENTER_DISTANCE_SCALE = 1.25f
+        private const val MOTION_BRIDGE_MIN_SCORE = 0.20f
+        private const val MOTION_BRIDGE_MIN_MARGIN = 0.05f
         private const val OCCLUSION_GROUP_MOTION_BLEND = 0.50f
         private const val PROTECTED_GROUP_ACTIVE_MIN_BBOX_IOU = 0.35f
         private const val PROTECTED_GROUP_ACTIVE_MIN_MASK_IOU = 0.20f

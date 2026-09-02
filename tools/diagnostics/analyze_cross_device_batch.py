@@ -54,6 +54,14 @@ def _track_identity_signature(tracks: list[dict]) -> tuple:
     )
 
 
+def _track_id_set_signature_from_identity(identity_signature: tuple) -> tuple:
+    return tuple(item[0] for item in identity_signature)
+
+
+def _track_state_signature_from_identity(identity_signature: tuple) -> tuple:
+    return tuple((item[0], item[1], item[5]) for item in identity_signature)
+
+
 def _track_signature(tracks: list[dict]) -> tuple:
     return tuple(
         (
@@ -80,6 +88,11 @@ def read_bundle(path: Path) -> dict:
         shadow_stabilized: dict[int, tuple] = {}
         shadow_cadence_full: dict[int, dict[int, tuple]] = {}
         shadow_cadence_identity: dict[int, dict[int, tuple]] = {}
+        shadow_cpu_full: dict[int, tuple] = {}
+        shadow_cpu_identity: dict[int, tuple] = {}
+        shadow_hybrid_full: dict[str, dict[int, tuple]] = {}
+        shadow_hybrid_identity: dict[str, dict[int, tuple]] = {}
+        shadow_inference_ordinal: dict[int, int] = {}
         shadow_disabled: list[dict] = []
 
         for name in z.namelist():
@@ -109,8 +122,19 @@ def read_bundle(path: Path) -> dict:
                     if fields.get("job_id") != job_id:
                         continue
                     pts = int(fields["pts_us"])
+                    shadow_inference_ordinal[pts] = int(fields.get("cpu_inference_ordinal", 0))
+                    cpu_full_tracks = fields.get("cpu_full_tracks")
+                    hybrid_tracks = fields.get("hybrid_tracks")
                     tracks_by_cadence = fields.get("tracks_by_cadence")
-                    if isinstance(tracks_by_cadence, dict):
+                    if isinstance(cpu_full_tracks, list) and isinstance(hybrid_tracks, dict):
+                        shadow_cpu_full[pts] = _track_signature(cpu_full_tracks)
+                        shadow_cpu_identity[pts] = _track_identity_signature(cpu_full_tracks)
+                        for hybrid_key, tracks in hybrid_tracks.items():
+                            if not isinstance(hybrid_key, str) or not isinstance(tracks, list):
+                                continue
+                            shadow_hybrid_full.setdefault(hybrid_key, {})[pts] = _track_signature(tracks)
+                            shadow_hybrid_identity.setdefault(hybrid_key, {})[pts] = _track_identity_signature(tracks)
+                    elif isinstance(tracks_by_cadence, dict):
                         for cadence_text, tracks in tracks_by_cadence.items():
                             try:
                                 cadence = int(cadence_text)
@@ -162,6 +186,11 @@ def read_bundle(path: Path) -> dict:
             "shadow_stabilized": shadow_stabilized,
             "shadow_cadence_full": shadow_cadence_full,
             "shadow_cadence_identity": shadow_cadence_identity,
+            "shadow_cpu_full": shadow_cpu_full,
+            "shadow_cpu_identity": shadow_cpu_identity,
+            "shadow_hybrid_full": shadow_hybrid_full,
+            "shadow_hybrid_identity": shadow_hybrid_identity,
+            "shadow_inference_ordinal": shadow_inference_ordinal,
             "shadow_disabled": shadow_disabled,
         }
 
@@ -178,6 +207,53 @@ def compare_map(a: dict[int, tuple], b: dict[int, tuple]) -> dict:
         "different_frames": len(diffs),
         "first_different_pts_us": diffs[0] if diffs else None,
     }
+
+
+def transform_map(values: dict[int, tuple], transform) -> dict[int, tuple]:
+    return {pts: transform(signature) for pts, signature in values.items()}
+
+
+def parse_hybrid_cadence(key: str) -> int | None:
+    marker = "_c"
+    if marker not in key:
+        return None
+    try:
+        return int(key.rsplit(marker, 1)[1])
+    except ValueError:
+        return None
+
+
+def filter_anchor_frames(values: dict[int, tuple], ordinals: dict[int, int], cadence: int) -> dict[int, tuple]:
+    return {
+        pts: signature
+        for pts, signature in values.items()
+        if ordinals.get(pts, 0) == 0 or ordinals.get(pts, 0) % cadence == 0
+    }
+
+
+def compare_hybrid_to_cpu_full(bundle: dict, key: str) -> dict:
+    cadence = parse_hybrid_cadence(key)
+    cpu_identity = bundle["shadow_cpu_identity"]
+    hybrid_identity = bundle["shadow_hybrid_identity"].get(key, {})
+    cpu_ids = transform_map(cpu_identity, _track_id_set_signature_from_identity)
+    hybrid_ids = transform_map(hybrid_identity, _track_id_set_signature_from_identity)
+    cpu_state = transform_map(cpu_identity, _track_state_signature_from_identity)
+    hybrid_state = transform_map(hybrid_identity, _track_state_signature_from_identity)
+    result = {
+        "identity_all": compare_map(cpu_identity, hybrid_identity),
+        "id_set_all": compare_map(cpu_ids, hybrid_ids),
+        "state_topology_all": compare_map(cpu_state, hybrid_state),
+    }
+    if cadence is not None:
+        result["id_set_anchor"] = compare_map(
+            filter_anchor_frames(cpu_ids, bundle["shadow_inference_ordinal"], cadence),
+            filter_anchor_frames(hybrid_ids, bundle["shadow_inference_ordinal"], cadence),
+        )
+        result["state_topology_anchor"] = compare_map(
+            filter_anchor_frames(cpu_state, bundle["shadow_inference_ordinal"], cadence),
+            filter_anchor_frames(hybrid_state, bundle["shadow_inference_ordinal"], cadence),
+        )
+    return result
 
 
 def main() -> int:
@@ -200,6 +276,7 @@ def main() -> int:
                 "shadow_frame_count": max(
                     len(b["shadow_raw"]),
                     len(b["shadow_cadence_identity"].get(1, {})),
+                    len(b["shadow_cpu_identity"]),
                 ),
                 "shadow_cadence_frame_counts": {
                     str(cadence): len(frames)
@@ -215,6 +292,14 @@ def main() -> int:
                     for cadence, frames in sorted(b["shadow_cadence_identity"].items())
                     if cadence != 1
                 },
+                "hybrid_frame_counts": {
+                    key: len(frames)
+                    for key, frames in sorted(b["shadow_hybrid_identity"].items())
+                },
+                "hybrid_vs_cpu_full": {
+                    key: compare_hybrid_to_cpu_full(b, key)
+                    for key in sorted(b["shadow_hybrid_identity"])
+                },
             }
             for b in bundles
         ],
@@ -226,6 +311,9 @@ def main() -> int:
             a, b = bundles[i], bundles[j]
             common_cadences = sorted(
                 set(a["shadow_cadence_identity"]) & set(b["shadow_cadence_identity"])
+            )
+            common_hybrids = sorted(
+                set(a["shadow_hybrid_identity"]) & set(b["shadow_hybrid_identity"])
             )
             result["pairs"].append(
                 {
@@ -250,6 +338,19 @@ def main() -> int:
                             ),
                         }
                         for cadence in common_cadences
+                    },
+                    "cpu_4t_shadow_hybrids": {
+                        key: {
+                            "identity": compare_map(
+                                a["shadow_hybrid_identity"][key],
+                                b["shadow_hybrid_identity"][key],
+                            ),
+                            "full": compare_map(
+                                a["shadow_hybrid_full"][key],
+                                b["shadow_hybrid_full"][key],
+                            ),
+                        }
+                        for key in common_hybrids
                     },
                 }
             )
