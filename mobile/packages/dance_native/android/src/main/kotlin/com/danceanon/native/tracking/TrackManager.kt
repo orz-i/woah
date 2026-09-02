@@ -179,17 +179,18 @@ class TrackManager(
 
     private fun isDormantMixedFullBodyIdentity(track: InternalTrack): Boolean {
         // In mixed FULL_BODY + FACE_ONLY mode, a protected FULL_BODY identity is
-        // intentionally retained after its visible LOST mask expires so a later
-        // strong recovery can keep the user's selected ID.  That tombstone must
-        // not participate in occlusion groups or scene-motion estimation while
-        // it has no renderable privacy evidence.  Otherwise an unrelated person
-        // crossing the stale predicted box can pull the tombstone into
-        // REACQUIRING and revive an old full-body mask before identity is proven.
+        // intentionally retained after its visible mask expires so a later
+        // strict LOST recovery can keep the user's selected ID.  Observation age
+        // is the authority here, not LOST/reacquire counters: nearby people can
+        // repeatedly push an unobserved slot through OCCLUDED/REACQUIRING and
+        // reset those state counters even though the selected person has been
+        // absent for seconds.  Once real observation age exceeds the normal
+        // removal window, keep the slot out of group/global association until a
+        // strict LOST recovery succeeds.
         return privacyOffscreenDormancyEnabled &&
             privacySelectedTrackIds.contains(track.id) &&
-            track.state == TrackState.LOST &&
-            track.lostFrames > config.maxMissedFrames &&
-            track.currentRenderMask == null
+            !track.observedThisFrame &&
+            track.framesSinceLastObservation > config.maxMissedFrames
     }
 
     private fun suppressStaleMixedFullBodyMaskIfNeeded(track: InternalTrack, timestampUs: Long) {
@@ -1224,6 +1225,7 @@ class TrackManager(
         val remainingTrackIndices = tracks.indices.filter {
             !matchedTrackIndices.contains(it) &&
                 !reservedGroupTrackIndices.contains(it) &&
+                !isDormantMixedFullBodyIdentity(tracks[it]) &&
                 (tracks[it].state == TrackState.ACTIVE || tracks[it].state == TrackState.NEW)
         }
         val strictFaceOnlyRescueDetectionIndices = mutableSetOf<Int>()

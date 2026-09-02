@@ -276,6 +276,50 @@ class LostTrackPrivacySafetyTest {
         assertTrue(afterOverlap.any { it.id != 42 && it.observedThisFrame })
     }
 
+    @Test
+    fun mixedModeObservationAgeWinsOverRepeatedOcclusionStateResets() {
+        val tracker = TrackManager(
+            TrackingConfig(
+                maxMissedFrames = 3,
+                occlusionOverlapRatio = 0.30f
+            )
+        )
+        tracker.setIdentityProtectedTrackIds(setOf(42))
+        tracker.setPrivacySelectedTrackIds(setOf(42))
+        tracker.setPrivacyOffscreenDormancyEnabled(true)
+
+        val selectedBox = FloatRect(700f, 300f, 900f, 800f)
+        val neighborBox = FloatRect(820f, 300f, 1020f, 800f)
+        tracker.initializeWithAssignedIds(
+            listOf(
+                PersonDetection(selectedBox, 0.95f, createSyntheticMask(fillBox = selectedBox)),
+                PersonDetection(neighborBox, 0.95f, createSyntheticMask(fillBox = neighborBox))
+            ),
+            listOf(42, 7)
+        )
+
+        var pts = 33_333L
+        var tracks = emptyList<TrackedPerson>()
+        repeat(6) {
+            // Only the neighboring person remains visible. Its bbox overlaps the
+            // stale selected bbox enough to keep producing occlusion evidence.
+            // State/lost counters may churn, but absolute observation age for 42
+            // must eventually make it a non-participating mixed-mode tombstone.
+            tracks = tracker.update(
+                listOf(PersonDetection(neighborBox, 0.95f, createSyntheticMask(fillBox = neighborBox))),
+                pts
+            )
+            pts += 33_333L
+        }
+
+        val selected = assertNotNull(tracks.find { it.id == 42 })
+        assertEquals(TrackState.LOST, selected.state)
+        assertEquals(null, selected.mask)
+        assertTrue(!selected.observedThisFrame)
+        assertTrue(selected.framesSinceLastObservation > 3)
+        assertTrue(tracks.any { it.id == 7 && it.observedThisFrame })
+    }
+
     private fun computeMaskCenter(mask: NativeMask): Pair<Float, Float> {
         val buf = mask.buffer
         buf.rewind()
