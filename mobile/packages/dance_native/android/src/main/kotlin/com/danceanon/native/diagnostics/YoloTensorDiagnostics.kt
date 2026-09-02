@@ -3,6 +3,8 @@ package com.danceanon.native.diagnostics
 import com.danceanon.native.inference.PersonDetection
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.security.MessageDigest
+import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
@@ -82,9 +84,26 @@ class YoloTensorDiagnostics(
                         (detection.bbox.top * 16f).roundToInt(),
                         (detection.bbox.right * 16f).roundToInt(),
                         (detection.bbox.bottom * 16f).roundToInt()
-                    )
+                    ),
+                    "mask_width" to detection.mask?.width,
+                    "mask_height" to detection.mask?.height,
+                    "mask_sha256" to detection.mask?.buffer?.let(::sha256)
                 )
             }
+
+        private fun sha256(buffer: ByteBuffer): String {
+            val digest = MessageDigest.getInstance("SHA-256")
+            val duplicate = buffer.duplicate().apply { rewind() }
+            val chunk = ByteArray(4096)
+            while (duplicate.hasRemaining()) {
+                val count = minOf(chunk.size, duplicate.remaining())
+                duplicate.get(chunk, 0, count)
+                digest.update(chunk, 0, count)
+            }
+            return digest.digest().joinToString("") {
+                "%02x".format(Locale.US, it.toInt() and 0xff)
+            }
+        }
 
         private fun sampleIndex(sample: Int, samples: Int, size: Int): Int {
             if (samples <= 1 || size <= 1) return 0
