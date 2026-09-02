@@ -71,6 +71,48 @@ class TrackManagerLostRecoveryIsolationTest {
     }
 
     @Test
+    fun globallyUncertainOccluderIsIgnoredOnlyForProtectedLostTrack() {
+        assertTrue(
+            TrackManager.shouldIgnoreGloballyUncertainOccluderForLostProtected(
+                trackState = TrackState.LOST,
+                identityProtected = true,
+                occluderGloballyUncertain = true
+            )
+        )
+        assertTrue(
+            !TrackManager.shouldIgnoreGloballyUncertainOccluderForLostProtected(
+                trackState = TrackState.REACQUIRING,
+                identityProtected = true,
+                occluderGloballyUncertain = true
+            ),
+            "existing REACQUIRING occlusion semantics must remain unchanged"
+        )
+        assertTrue(
+            !TrackManager.shouldIgnoreGloballyUncertainOccluderForLostProtected(
+                trackState = TrackState.OCCLUDED,
+                identityProtected = true,
+                occluderGloballyUncertain = true
+            ),
+            "existing OCCLUDED tracks must continue to use normal fresh occluders"
+        )
+        assertTrue(
+            !TrackManager.shouldIgnoreGloballyUncertainOccluderForLostProtected(
+                trackState = TrackState.LOST,
+                identityProtected = false,
+                occluderGloballyUncertain = true
+            )
+        )
+        assertTrue(
+            !TrackManager.shouldIgnoreGloballyUncertainOccluderForLostProtected(
+                trackState = TrackState.LOST,
+                identityProtected = true,
+                occluderGloballyUncertain = false
+            ),
+            "a reliable ordinary occluder may still support protected LOST occlusion"
+        )
+    }
+
+    @Test
     fun testLostTrackIsNotGloballyReboundToPersonAtStaleLastObservedPosition() {
         val tracker = TrackManager(TrackingConfig())
         val mask = solidMask()
