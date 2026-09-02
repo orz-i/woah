@@ -51,18 +51,28 @@ object DiagnosticBundleExporter {
         val zipFileName = "woah_diag_${timeStamp}_${sessionId}.zip"
         val tempZipFile = File(exportDir, zipFileName)
 
-        // 2. Generate manifest.json inside snapshot directory
-        val filesToZip = mutableListOf<File>()
-        filesToZip.addAll(stagedFiles.filter { it.isFile && it.length() > 0L })
-        val perJobPipelineSummaries = filesToZip.filter {
-            it.name.startsWith("pipeline_summary_") && it.name.endsWith(".json")
-        }
-        val lifecycleFile = filesToZip.firstOrNull { it.name == "pipeline_lifecycle.json" }
+        // 2. Resolve the current lifecycle before selecting bundle contents. The diagnostics
+        // directory intentionally retains some historical process/session state, but a bundle
+        // must describe exactly one current session/export. Older per-job artifacts can be very
+        // large (RGBA/tensor/YUV captures) and must not leak into later bundles.
+        val lifecycleFile = stagedFiles.firstOrNull { it.name == "pipeline_lifecycle.json" }
         val lifecycleJson = lifecycleFile?.let {
             try { JSONObject(it.readText(Charsets.UTF_8)) } catch (_: Throwable) { null }
         }
         val lifecycleStage = lifecycleJson?.optString("stage")?.takeIf { it.isNotBlank() } ?: "UNKNOWN"
         val lifecycleJobId = lifecycleJson?.optString("job_id")?.takeIf { it.isNotBlank() && it != "null" }
+
+        val filesToZip = stagedFiles.filter {
+            it.isFile &&
+                it.length() > 0L &&
+                shouldIncludeSnapshotFile(it.name, sessionId, lifecycleJobId)
+        }.toMutableList()
+        val excludedSnapshotFileCount = stagedFiles.count {
+            it.isFile && it.length() > 0L && !shouldIncludeSnapshotFile(it.name, sessionId, lifecycleJobId)
+        }
+        val perJobPipelineSummaries = filesToZip.filter {
+            it.name.startsWith("pipeline_summary_") && it.name.endsWith(".json")
+        }
         val matchingSummaryExists = if (lifecycleJobId != null) {
             perJobPipelineSummaries.any { it.name == "pipeline_summary_${lifecycleJobId}.json" }
         } else {
@@ -89,6 +99,7 @@ object DiagnosticBundleExporter {
             put("diagnostic_scope", diagnosticScope)
             put("pipeline_lifecycle_stage", lifecycleStage)
             put("pipeline_lifecycle_job_id", lifecycleJobId ?: JSONObject.NULL)
+            put("snapshot_files_excluded_as_historical", excludedSnapshotFileCount)
             put(
                 "pipeline_summary_files",
                 JSONArray().apply { perJobPipelineSummaries.forEach { put(it.name) } }
@@ -228,6 +239,45 @@ object DiagnosticBundleExporter {
             "publicUri" to (publicUriStr ?: fallbackUri)
         )
     }
+
+    internal fun shouldIncludeSnapshotFile(
+        fileName: String,
+        sessionId: String,
+        lifecycleJobId: String?
+    ): Boolean {
+        if (fileName.startsWith("session_") && fileName.endsWith(".jsonl")) {
+            return fileName.startsWith("session_${sessionId}_")
+        }
+
+        if (fileName.startsWith("pipeline_summary_") && fileName.endsWith(".json")) {
+            return lifecycleJobId != null && fileName == "pipeline_summary_${safeId(lifecycleJobId)}.json"
+        }
+
+        if (fileName.startsWith("yolo_tensor_")) {
+            return lifecycleJobId != null && fileName.startsWith("yolo_tensor_${safeId(lifecycleJobId)}_")
+        }
+        if (fileName.startsWith("inference_rgba_")) {
+            return lifecycleJobId != null && fileName.startsWith("inference_rgba_${safeId(lifecycleJobId)}_")
+        }
+        if (fileName.startsWith("decoder_yuv_")) {
+            return lifecycleJobId != null && fileName.startsWith("decoder_yuv_${safeId(lifecycleJobId)}_")
+        }
+
+        return fileName in SHARED_SNAPSHOT_FILES
+    }
+
+    private fun safeId(value: String): String =
+        value.replace(Regex("[^A-Za-z0-9._-]"), "_")
+
+    private val SHARED_SNAPSHOT_FILES = setOf(
+        "process_exit.json",
+        "device.json",
+        "sam_gpu_native_log.txt",
+        "capabilities.json",
+        "last_breadcrumb.json",
+        "pipeline_summary.json",
+        "pipeline_lifecycle.json"
+    )
 
     fun shareBundle(
         context: Context,
