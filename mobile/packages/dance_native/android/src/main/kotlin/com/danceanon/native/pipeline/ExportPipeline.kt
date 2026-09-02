@@ -267,11 +267,16 @@ class ExportPipeline(
                 var basePtsUs = -1L
                 var lastPresentationNs = -1L
                 val trackManager = TrackManager()
-                // FULL_BODY rendering must keep the user-validated legacy QUALITY
-                // primary regardless of whether FACE_ONLY stickers are requested
-                // in the same export. FACE_ONLY is an overlay policy, not a reason
-                // to replace the FULL_BODY class/occluder compositor.
-                val allowFreshFullBodyClassPrimary = fullBodyPersonIds.isNotEmpty()
+                // Temporal fresh-class evidence has no exact person ID. It is safe
+                // only for the historical FULL_BODY-only compositor. In mixed mode
+                // it can label nearby FACE_ONLY detections as SELECTED and turn
+                // several dancers into FULL_BODY masks, so keep the primary rooted
+                // in the exact TrackManager-selected ID and render FACE_ONLY only as
+                // the independent sticker overlay below.
+                val allowFreshFullBodyClassPrimary = shouldUseFreshFullBodyClassPrimary(
+                    fullBodyPersonIds = fullBodyPersonIds,
+                    faceOnlyPersonIds = faceOnlyPersonIds
+                )
                 if (faceOnlyPersonIds.isEmpty()) {
                     // Preserve the exact legacy identity/privacy coupling when no
                     // FACE_ONLY policy was requested.
@@ -843,16 +848,14 @@ class ExportPipeline(
                                 .filter { selectedIds.contains(it) }
                                 .toSet()
                             if (allowFreshFullBodyClassPrimary) {
-                                // Preserve the legacy FULL_BODY QUALITY primary in
-                                // both FULL_BODY-only and mixed exports. Current raw
-                                // YOLO class evidence remains the primary rendered
-                                // body mask; FACE_ONLY privacy is merged later as a
-                                // separate sticker overlay.
+                                // Historical FULL_BODY-only QUALITY composition.
                                 freshPrivacyClassEvidence = temporalPrivacyEvidence
                                 suppressedSelectedPrivacyTrackIds = emptySet()
                                 preferFreshPrivacyClassPrimary = shouldInfer && temporalPrivacyEvidence.isNotEmpty()
                             } else {
-                                // FACE_ONLY-only export has no primary body mask.
+                                // Mixed / FACE_ONLY-only composition: never let
+                                // non-identity temporal class evidence become the
+                                // FULL_BODY primary.
                                 freshPrivacyClassEvidence = emptyList()
                                 freshSelectedCoveredTrackIds = emptySet()
                                 suppressedSelectedPrivacyTrackIds = emptySet()
@@ -1605,6 +1608,13 @@ class ExportPipeline(
             }
         }
         return nonBlackPixels == 0
+    }
+
+    companion object {
+        internal fun shouldUseFreshFullBodyClassPrimary(
+            fullBodyPersonIds: Set<Int>,
+            faceOnlyPersonIds: Set<Int>
+        ): Boolean = fullBodyPersonIds.isNotEmpty() && faceOnlyPersonIds.isEmpty()
     }
 }
 
