@@ -24,6 +24,7 @@ class YoloLiteRtSegmenter(
     private var tensorAdapter: YoloLiteRtTensorAdapter? = null
     private val workspace = PreprocessorWorkspace(640)
     private val reusableInputFloats = FloatArray(1 * 3 * 640 * 640)
+    private val tensorDiagnosticsByJobId = mutableMapOf<String, com.danceanon.native.diagnostics.YoloTensorDiagnostics>()
 
     val runtimeInfo: LiteRtRuntimeInfo?
         get() = runner?.runtimeInfo
@@ -86,14 +87,16 @@ class YoloLiteRtSegmenter(
         rgbaBuffer: ByteBuffer,
         mapper: com.danceanon.native.geometry.ModelCoordinateMapper,
         timestampUs: Long = 0,
-        colOrder: RgbaColOrder = RgbaColOrder.LEFT_TO_RIGHT
+        colOrder: RgbaColOrder = RgbaColOrder.LEFT_TO_RIGHT,
+        diagnosticJobId: String? = null
     ): SegmentationFrame {
         return segmentRgbaSync(
             rgbaBuffer = rgbaBuffer,
             mapper = mapper,
             timestampUs = timestampUs,
             rowOrder = RgbaRowOrder.BOTTOM_TO_TOP,
-            colOrder = colOrder
+            colOrder = colOrder,
+            diagnosticJobId = diagnosticJobId
         )
     }
 
@@ -102,7 +105,8 @@ class YoloLiteRtSegmenter(
         mapper: com.danceanon.native.geometry.ModelCoordinateMapper,
         timestampUs: Long = 0,
         rowOrder: RgbaRowOrder = RgbaRowOrder.TOP_TO_BOTTOM,
-        colOrder: RgbaColOrder = RgbaColOrder.LEFT_TO_RIGHT
+        colOrder: RgbaColOrder = RgbaColOrder.LEFT_TO_RIGHT,
+        diagnosticJobId: String? = null
     ): SegmentationFrame {
         val modelRunner = runner ?: throw DanceNativeException(
             DanceNativeException.MODEL_INIT_FAILED,
@@ -164,6 +168,19 @@ class YoloLiteRtSegmenter(
                 stageTimingsMs = stageTimings
             )
             stageTimings["yoloDecode"] = (System.nanoTime() - decodeStartNs) / 1_000_000
+            if (diagnosticJobId != null) {
+                tensorDiagnosticsByJobId
+                    .getOrPut(diagnosticJobId) {
+                        com.danceanon.native.diagnostics.YoloTensorDiagnostics(diagnosticJobId)
+                    }
+                    .maybeCapture(
+                        ptsUs = timestampUs,
+                        input = workspace.floatArray,
+                        output0 = out0Floats,
+                        output1 = out1Floats,
+                        detections = parsed
+                    )
+            }
             parsed
         } catch (e: DanceNativeException) {
             throw e

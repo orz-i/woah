@@ -571,7 +571,13 @@ class ExportPipeline(
                                 val initialPersons = profiler.recordStage("yoloAnchor") {
                                     inferenceRenderer.renderToFbo(renderTexId, finalTexMatrix, mapper, inferenceFbo, renderTexType)
                                     val yoloRgbaBuffer = inferenceFbo.readRgbaPixels()
-                                    val seg = segmenter.segmentGlReadbackRgbaSync(yoloRgbaBuffer, mapper, ptsUs, colOrder = RgbaColOrder.LEFT_TO_RIGHT)
+                                    val seg = segmenter.segmentGlReadbackRgbaSync(
+                                        yoloRgbaBuffer,
+                                        mapper,
+                                        ptsUs,
+                                        colOrder = RgbaColOrder.LEFT_TO_RIGHT,
+                                        diagnosticJobId = jobId
+                                    )
                                     seg.persons.sortedBy { it.bbox.centerX }
                                 }
 
@@ -766,7 +772,13 @@ class ExportPipeline(
                                     }.orEmpty()
                                 )
                                 val seg = profiler.recordStage("yoloCpuInference") {
-                                    segmenter.segmentGlReadbackRgbaSync(rgbaBuffer, mapper, ptsUs, colOrder = RgbaColOrder.LEFT_TO_RIGHT)
+                                    segmenter.segmentGlReadbackRgbaSync(
+                                        rgbaBuffer,
+                                        mapper,
+                                        ptsUs,
+                                        colOrder = RgbaColOrder.LEFT_TO_RIGHT,
+                                        diagnosticJobId = jobId
+                                    )
                                 }
                                 // Historical compatibility: this metric name predates the
                                 // LiteRT GPU path and is misleading. Preserve it unchanged
@@ -1591,6 +1603,20 @@ class ExportPipeline(
             } finally {
                 try { previewScope?.cancel() } catch (_: Throwable) {}
                 try { decoder?.close() } catch (_: Throwable) {}
+                // Run the independent CPU-readable decoder probe only after the production
+                // decoder is fully closed. This keeps the diagnostic from warming, occupying,
+                // or otherwise perturbing the decoder/OES path whose behavior we are measuring.
+                if (
+                    com.danceanon.dance_native.BuildConfig.DEBUG &&
+                    pipelineException == null &&
+                    !isCancelled.get()
+                ) {
+                    com.danceanon.native.diagnostics.VideoYuvDiagnosticSampler.capture(
+                        context = context,
+                        sourceUri = sourceUri,
+                        jobId = jobId
+                    )
+                }
                 try { decoderSurface?.release() } catch (_: Throwable) {}
                 try { frameReader?.close() } catch (_: Throwable) {}
                 try { surfaceTexture?.release() } catch (_: Throwable) {}
