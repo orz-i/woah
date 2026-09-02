@@ -176,7 +176,9 @@ class ExportPipeline(
                 cpuMt4ProbeSegmenter = YoloLiteRtSegmenter(
                     context = context,
                     requestedAccelerator = com.danceanon.native.litert.LiteRtAccelerator.CPU,
-                    cpuNumThreads = CPU_MT_PROBE_THREADS
+                    cpuNumThreads = CPU_MT_PROBE_THREADS,
+                    diagnosticArtifactMaxPtsUs = CPU_SINGLE_THREAD_REFERENCE_MAX_PTS_US,
+                    diagnosticSignatureMaxPtsUs = CROSS_DEVICE_VALIDATION_MAX_PTS_US
                 ).also { it.initialize() }
                 val cpuMtInfo = cpuMt4ProbeSegmenter?.runtimeInfo
                 com.danceanon.native.diagnostics.NativeDiagnostics.event(
@@ -186,6 +188,7 @@ class ExportPipeline(
                     fields = mapOf(
                         "job_id" to jobId,
                         "threads" to CPU_MT_PROBE_THREADS,
+                        "signature_max_pts_us" to CROSS_DEVICE_VALIDATION_MAX_PTS_US,
                         "effective_accelerator" to cpuMt4ProbeSegmenter?.effectiveAccelerator?.name,
                         "compile_ms" to cpuMtInfo?.compileMs,
                         "warmup_ms" to cpuMtInfo?.warmupMs
@@ -942,7 +945,7 @@ class ExportPipeline(
                                         diagnosticJobId = jobId
                                     )
                                 }
-                                if (ptsUs <= CROSS_DEVICE_VALIDATION_MAX_PTS_US) {
+                                if (ptsUs <= CPU_SINGLE_THREAD_REFERENCE_MAX_PTS_US) {
                                     val cpuProbe = cpuDeterminismProbeSegmenter
                                     if (cpuProbe != null) {
                                         try {
@@ -975,6 +978,8 @@ class ExportPipeline(
                                             )
                                         }
                                     }
+                                }
+                                if (ptsUs <= CROSS_DEVICE_VALIDATION_MAX_PTS_US) {
                                     val cpuMt4Probe = cpuMt4ProbeSegmenter
                                     if (cpuMt4Probe != null) {
                                         try {
@@ -1804,8 +1809,10 @@ class ExportPipeline(
                             "canonical_yuv_validation_window_us" to CROSS_DEVICE_VALIDATION_MAX_PTS_US,
                             "canonical_yuv_validation_window_completed" to canonicalValidationWindowCompleted,
                             "canonical_yuv_fallback_reason" to canonicalInferenceFallbackReason,
+                            "cpu_single_thread_reference_window_us" to CPU_SINGLE_THREAD_REFERENCE_MAX_PTS_US,
                             "cpu_determinism_probe_fallback_reason" to cpuDeterminismProbeFallbackReason,
                             "cpu_mt4_probe_threads" to CPU_MT_PROBE_THREADS,
+                            "cpu_mt4_signature_window_us" to CROSS_DEVICE_VALIDATION_MAX_PTS_US,
                             "cpu_mt4_probe_fallback_reason" to cpuMt4ProbeFallbackReason,
                             "state" to "completed"
                         )
@@ -1919,7 +1926,8 @@ class ExportPipeline(
 
     companion object {
         private const val CPU_MT_PROBE_THREADS = 4
-        private const val CROSS_DEVICE_VALIDATION_MAX_PTS_US = 450_000L
+        private const val CPU_SINGLE_THREAD_REFERENCE_MAX_PTS_US = 450_000L
+        private const val CROSS_DEVICE_VALIDATION_MAX_PTS_US = 5_000_000L
 
         internal fun shouldUseFreshFullBodyClassPrimary(
             fullBodyPersonIds: Set<Int>,

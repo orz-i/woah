@@ -18,7 +18,9 @@ class YoloLiteRtSegmenter(
     private val modelFile: File? = null,
     private val assetPath: String = DEFAULT_ASSET_PATH,
     private val requestedAccelerator: LiteRtAccelerator = LiteRtAccelerator.GPU,
-    private val cpuNumThreads: Int? = null
+    private val cpuNumThreads: Int? = null,
+    private val diagnosticArtifactMaxPtsUs: Long = 450_000L,
+    private val diagnosticSignatureMaxPtsUs: Long = diagnosticArtifactMaxPtsUs
 ) : Segmenter {
 
     private var runner: LiteRtModelRunner? = null
@@ -174,7 +176,11 @@ class YoloLiteRtSegmenter(
             if (diagnosticJobId != null) {
                 tensorDiagnosticsByJobId
                     .getOrPut(diagnosticJobId) {
-                        com.danceanon.native.diagnostics.YoloTensorDiagnostics(diagnosticJobId)
+                        com.danceanon.native.diagnostics.YoloTensorDiagnostics(
+                            jobId = diagnosticJobId,
+                            artifactMaxPtsUs = diagnosticArtifactMaxPtsUs,
+                            signatureMaxPtsUs = diagnosticSignatureMaxPtsUs
+                        )
                     }
                     .maybeCapture(
                         ptsUs = timestampUs,

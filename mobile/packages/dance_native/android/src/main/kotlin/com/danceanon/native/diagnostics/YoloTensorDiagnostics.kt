@@ -15,7 +15,8 @@ import kotlin.math.roundToInt
  */
 class YoloTensorDiagnostics(
     private val jobId: String,
-    private val maxPtsUs: Long = 450_000L,
+    private val artifactMaxPtsUs: Long = 450_000L,
+    private val signatureMaxPtsUs: Long = artifactMaxPtsUs,
     private val maxSamplesPerTensor: Int = 4096
 ) {
     private val capturedPts = mutableSetOf<Long>()
@@ -28,8 +29,23 @@ class YoloTensorDiagnostics(
         output1: FloatArray,
         detections: List<PersonDetection>
     ) {
-        if (!com.danceanon.dance_native.BuildConfig.DEBUG || ptsUs < 0L || ptsUs > maxPtsUs) return
+        if (!com.danceanon.dance_native.BuildConfig.DEBUG || ptsUs < 0L || ptsUs > signatureMaxPtsUs) return
         if (!capturedPts.add(ptsUs)) return
+
+        if (ptsUs > artifactMaxPtsUs) {
+            NativeDiagnostics.event(
+                level = "INFO",
+                component = "YoloTensorDiagnostics",
+                event = "YOLO_DETECTION_SIGNATURE_CAPTURED",
+                fields = mapOf(
+                    "job_id" to jobId,
+                    "pts_us" to ptsUs,
+                    "detection_count" to detections.size,
+                    "detections" to associationDetectionSignature(detections)
+                )
+            )
+            return
+        }
 
         val inputArtifact = artifactName(ptsUs, "input")
         val output0Artifact = artifactName(ptsUs, "output0")
@@ -90,6 +106,26 @@ class YoloTensorDiagnostics(
                     "mask_width" to detection.mask?.width,
                     "mask_height" to detection.mask?.height,
                     "mask_sha256" to maskBuffer?.let(::sha256),
+                    "mask_assoc_binary_sha256" to associationMask?.sha256,
+                    "mask_assoc_foreground_pixels" to associationMask?.foregroundPixels,
+                    "mask_assoc_near_threshold_pixels" to associationMask?.nearThresholdPixels
+                )
+            }
+
+        private fun associationDetectionSignature(detections: List<PersonDetection>): List<Map<String, Any?>> =
+            detections.mapIndexed { index, detection ->
+                val associationMask = detection.mask?.buffer?.let(::associationMaskSummary)
+                mapOf(
+                    "index" to index,
+                    "confidence_q1e4" to (detection.confidence * 10_000f).roundToInt(),
+                    "bbox_q0_0625px" to listOf(
+                        (detection.bbox.left * 16f).roundToInt(),
+                        (detection.bbox.top * 16f).roundToInt(),
+                        (detection.bbox.right * 16f).roundToInt(),
+                        (detection.bbox.bottom * 16f).roundToInt()
+                    ),
+                    "mask_width" to detection.mask?.width,
+                    "mask_height" to detection.mask?.height,
                     "mask_assoc_binary_sha256" to associationMask?.sha256,
                     "mask_assoc_foreground_pixels" to associationMask?.foregroundPixels,
                     "mask_assoc_near_threshold_pixels" to associationMask?.nearThresholdPixels
