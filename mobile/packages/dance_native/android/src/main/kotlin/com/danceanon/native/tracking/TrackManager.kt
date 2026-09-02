@@ -169,7 +169,6 @@ class TrackManager(
     private val protectedTrackIds = mutableSetOf<Int>()
     private val privacySelectedTrackIds = mutableSetOf<Int>()
     private val currentPrivacyClassEvidence = mutableListOf<FreshPrivacyClassEvidence>()
-    private val currentStrictUnselectedPrivacyEvidence = mutableListOf<FreshPrivacyClassEvidence>()
     private val currentProtectedTrackMotionEvidence = mutableMapOf<Int, ProtectedTrackMotionEvidence>()
     private val currentUncertainOccluderTrackIdsByProtectedTrackId = mutableMapOf<Int, MutableSet<Int>>()
     private val currentPrivacySuppressedSelectedTrackIds = mutableSetOf<Int>()
@@ -323,9 +322,6 @@ class TrackManager(
 
     fun getFreshPrivacyClassEvidence(): List<FreshPrivacyClassEvidence> = currentPrivacyClassEvidence
 
-    fun getFreshStrictUnselectedPrivacyEvidence(): List<FreshPrivacyClassEvidence> =
-        currentStrictUnselectedPrivacyEvidence
-
     fun getFreshProtectedTrackMotionEvidence(): List<ProtectedTrackMotionEvidence> =
         currentProtectedTrackMotionEvidence.values.toList()
 
@@ -370,7 +366,6 @@ class TrackManager(
         tracks.clear()
         occlusionGroups.clear()
         currentPrivacyClassEvidence.clear()
-        currentStrictUnselectedPrivacyEvidence.clear()
         currentProtectedTrackMotionEvidence.clear()
         currentUncertainOccluderTrackIdsByProtectedTrackId.clear()
         currentPrivacySuppressedSelectedTrackIds.clear()
@@ -599,7 +594,6 @@ class TrackManager(
         }
 
         currentPrivacyClassEvidence.clear()
-        currentStrictUnselectedPrivacyEvidence.clear()
         currentProtectedTrackMotionEvidence.clear()
         currentUncertainOccluderTrackIdsByProtectedTrackId.clear()
         currentPrivacySuppressedSelectedTrackIds.clear()
@@ -886,12 +880,6 @@ class TrackManager(
                     val bestDetectionIndex = candidateDetectionIndices[bestCol]
                     val bestDetection = detections[bestDetectionIndex]
                     val bestScore = scoreMatrix[r][bestCol]
-                    val bestColScores = groupTrackIndices.indices.map { row -> scoreMatrix[row][bestCol] }
-                    val bestColBest = bestColScores.maxOrNull() ?: 0f
-                    val bestColSecondBest = bestColScores
-                        .filterIndexed { row, _ -> row != r }
-                        .maxOrNull()
-                    val bestColMargin = bestColSecondBest?.let { bestScore - it } ?: Float.POSITIVE_INFINITY
                     val bestBBoxIoU = computeBBoxIoU(track.currentPredictedBbox, bestDetection.bbox)
                     val bestMaskIoU = computePredictedMaskIoU(track, bestDetection.mask)
                     val winningPairForBestCol = matchResult.matches.firstOrNull { it.second == bestCol }
@@ -938,55 +926,6 @@ class TrackManager(
                         )
                     }
 
-                    NativeDiagnostics.event(
-                        level = "INFO",
-                        component = "TrackManager",
-                        event = "GROUP_ASSIGNMENT_NO_HUNGARIAN_MATCH",
-                        fields = mapOf(
-                            "group_id" to group.trackIds.toList().sorted(),
-                            "track_id" to track.id,
-                            "track_state" to track.state.name,
-                            "best_det_index" to bestDetectionIndex,
-                            "best_score" to bestScore,
-                            "best_col_best" to bestColBest,
-                            "best_col_second_best" to bestColSecondBest,
-                            "best_col_margin" to bestColMargin,
-                            "best_bbox_iou" to bestBBoxIoU,
-                            "best_mask_iou" to bestMaskIoU,
-                            "identity_protected" to protectedTrackIds.contains(track.id),
-                            "privacy_selected" to privacySelectedTrackIds.contains(track.id),
-                            "track_count" to groupTrackIndices.size,
-                            "candidate_count" to candidateDetectionIndices.size,
-                            "min_score" to config.minMatchScore,
-                            "max_cost" to maxCost,
-                            "hungarian_pairs" to matchResult.matches.map { pair ->
-                                mapOf(
-                                    "track_id" to tracks[groupTrackIndices[pair.first]].id,
-                                    "det_index" to candidateDetectionIndices[pair.second],
-                                    "score" to scoreMatrix[pair.first][pair.second]
-                                )
-                            },
-                            "track_predicted_bbox" to listOf(
-                                track.currentPredictedBbox.left,
-                                track.currentPredictedBbox.top,
-                                track.currentPredictedBbox.right,
-                                track.currentPredictedBbox.bottom
-                            ),
-                            "track_last_observed_bbox" to listOf(
-                                track.lastObservedBbox.left,
-                                track.lastObservedBbox.top,
-                                track.lastObservedBbox.right,
-                                track.lastObservedBbox.bottom
-                            ),
-                            "best_detection_bbox" to listOf(
-                                bestDetection.bbox.left,
-                                bestDetection.bbox.top,
-                                bestDetection.bbox.right,
-                                bestDetection.bbox.bottom
-                            ),
-                            "pts_us" to timestampUs
-                        )
-                    )
                 }
             }
 
@@ -1393,43 +1332,6 @@ class TrackManager(
                         protectedTrackIds.contains(track.id) &&
                             !privacySelectedTrackIds.contains(track.id)
                     val multiGroupReservation = reservationOwnerGroups.size >= 2
-
-                    // Rendering-only ownership evidence. A group-reserved YOLO
-                    // detection can be known to belong to a FACE_ONLY identity
-                    // even when reservation policy intentionally refuses to
-                    // commit that identity. Expose that fresh mask only as an
-                    // UNSELECTED compositor occluder; do not match the track,
-                    // unreserve the detection, or alter any TrackManager state.
-                    if (
-                        wouldStrictGlobalCommit &&
-                        faceOnlyIdentityProtected &&
-                        det.mask != null &&
-                        currentStrictUnselectedPrivacyEvidence.none { it.detectionIndex == dIdx }
-                    ) {
-                        currentStrictUnselectedPrivacyEvidence.add(
-                            FreshPrivacyClassEvidence(
-                                selectionClass = PrivacySelectionClass.UNSELECTED,
-                                detectionIndex = dIdx,
-                                detection = det,
-                                residualTrackIds = setOf(track.id)
-                            )
-                        )
-                        NativeDiagnostics.event(
-                            level = "INFO",
-                            component = "TrackManager",
-                            event = "GROUP_RESERVED_STRICT_UNSELECTED_PRIVACY_EVIDENCE",
-                            fields = mapOf(
-                                "track_id" to track.id,
-                                "det_index" to dIdx,
-                                "reservation_owner_track_ids" to reservationOwnerTrackIds.toList().sorted(),
-                                "reservation_owner_group_count" to reservationOwnerGroups.size,
-                                "assigned_score" to assignedScore,
-                                "bbox_iou" to candidateBBoxIoU,
-                                "mask_iou" to candidateMaskIoU,
-                                "pts_us" to timestampUs
-                            )
-                        )
-                    }
 
                     if (
                         isStrictFaceOnlyReservationRescueEligible(
@@ -2383,7 +2285,6 @@ class TrackManager(
 
     private fun predictInternal(timestampUs: Long, countAsDetectionMiss: Boolean): List<TrackedPerson> {
         currentPrivacyClassEvidence.clear()
-        currentStrictUnselectedPrivacyEvidence.clear()
         currentProtectedTrackMotionEvidence.clear()
         currentUncertainOccluderTrackIdsByProtectedTrackId.clear()
         currentPrivacySuppressedSelectedTrackIds.clear()
@@ -2533,7 +2434,6 @@ class TrackManager(
         occlusionGroups.clear()
         protectedTrackIds.clear()
         currentPrivacyClassEvidence.clear()
-        currentStrictUnselectedPrivacyEvidence.clear()
         currentProtectedTrackMotionEvidence.clear()
         currentUncertainOccluderTrackIdsByProtectedTrackId.clear()
         currentPrivacySuppressedSelectedTrackIds.clear()

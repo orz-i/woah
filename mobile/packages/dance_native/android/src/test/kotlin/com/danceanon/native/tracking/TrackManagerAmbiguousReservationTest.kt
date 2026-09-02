@@ -365,12 +365,6 @@ class TrackManagerAmbiguousReservationTest {
         assertTrue(!target.observedThisFrame, "a single neighboring group must retain the original reservation isolation")
         assertTrue(target.state != TrackState.ACTIVE)
         assertEquals(setOf(2, 3, 4), tracks.map { it.id }.toSet())
-
-        val strictPrivacyEvidence = tracker.getFreshStrictUnselectedPrivacyEvidence()
-        assertEquals(1, strictPrivacyEvidence.size)
-        assertEquals(PrivacySelectionClass.UNSELECTED, strictPrivacyEvidence.single().selectionClass)
-        assertEquals(setOf(2), strictPrivacyEvidence.single().residualTrackIds)
-        assertEquals(targetDetection.bbox, strictPrivacyEvidence.single().detection.bbox)
     }
 
     @Test
@@ -489,10 +483,6 @@ class TrackManagerAmbiguousReservationTest {
         assertTrue(!target.observedThisFrame, "FULL_BODY identity must retain the existing group-reservation isolation behavior")
         assertTrue(target.state != TrackState.ACTIVE)
         assertEquals(setOf(2, 3, 4), tracks.map { it.id }.toSet())
-        assertTrue(
-            tracker.getFreshStrictUnselectedPrivacyEvidence().isEmpty(),
-            "FULL_BODY identities must never be exported as fresh UNSELECTED compositor evidence"
-        )
     }
 
     @Test

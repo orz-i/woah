@@ -267,7 +267,11 @@ class ExportPipeline(
                 var basePtsUs = -1L
                 var lastPresentationNs = -1L
                 val trackManager = TrackManager()
-                val allowFreshFullBodyClassPrimary = faceOnlyPersonIds.isEmpty()
+                // FULL_BODY rendering must keep the user-validated legacy QUALITY
+                // primary regardless of whether FACE_ONLY stickers are requested
+                // in the same export. FACE_ONLY is an overlay policy, not a reason
+                // to replace the FULL_BODY class/occluder compositor.
+                val allowFreshFullBodyClassPrimary = fullBodyPersonIds.isNotEmpty()
                 if (faceOnlyPersonIds.isEmpty()) {
                     // Preserve the exact legacy identity/privacy coupling when no
                     // FACE_ONLY policy was requested.
@@ -823,15 +827,6 @@ class ExportPipeline(
                             } else {
                                 emptyList()
                             }
-                            val strictMixedUnselectedPrivacyEvidence = if (
-                                shouldInfer &&
-                                !allowFreshFullBodyClassPrimary &&
-                                selectedIds.isNotEmpty()
-                            ) {
-                                trackManager.getFreshStrictUnselectedPrivacyEvidence()
-                            } else {
-                                emptyList()
-                            }
                             val temporalByDetectionIndex = temporalPrivacyEvidence.associateBy { it.detectionIndex }
                             freshSelectedCoveredTrackIds = trackManagerFreshPrivacyEvidence.asSequence()
                                 .filter {
@@ -848,23 +843,17 @@ class ExportPipeline(
                                 .filter { selectedIds.contains(it) }
                                 .toSet()
                             if (allowFreshFullBodyClassPrimary) {
-                                // Legacy/full-body-only QUALITY composition may
-                                // use temporal raw-detection privacy classes.
+                                // Preserve the legacy FULL_BODY QUALITY primary in
+                                // both FULL_BODY-only and mixed exports. Current raw
+                                // YOLO class evidence remains the primary rendered
+                                // body mask; FACE_ONLY privacy is merged later as a
+                                // separate sticker overlay.
                                 freshPrivacyClassEvidence = temporalPrivacyEvidence
                                 suppressedSelectedPrivacyTrackIds = emptySet()
                                 preferFreshPrivacyClassPrimary = shouldInfer && temporalPrivacyEvidence.isNotEmpty()
                             } else {
-                                // Mixed FULL_BODY + FACE_ONLY has explicit
-                                // per-person modes. A temporal class has no exact
-                                // identity and may jump to a nearby FACE_ONLY
-                                // dancer during crossings, creating a wrong
-                                // full-body mask. Keep selected privacy anchored
-                                // only to the TrackManager-owned FULL_BODY ID, but
-                                // allow strict current-frame FACE_ONLY ownership
-                                // evidence to act as UNSELECTED occluders. This
-                                // carves fresh foreground people out of a stale
-                                // FULL_BODY mask without committing their IDs.
-                                freshPrivacyClassEvidence = strictMixedUnselectedPrivacyEvidence
+                                // FACE_ONLY-only export has no primary body mask.
+                                freshPrivacyClassEvidence = emptyList()
                                 freshSelectedCoveredTrackIds = emptySet()
                                 suppressedSelectedPrivacyTrackIds = emptySet()
                                 preferFreshPrivacyClassPrimary = false
@@ -1215,8 +1204,6 @@ class ExportPipeline(
                                 preferFreshPrivacyClassPrimary = preferFreshPrivacyClassPrimary,
                                 expectedSelectedPrivacyCount = selectedIds.size,
                                 maxFallbackObservationAgeFrames = trackManager.getMaxMissedFrames(),
-                                conservativePrimaryUnobservedOccluderPolicy =
-                                    faceOnlyPersonIds.isNotEmpty() && selectedIds.isNotEmpty(),
                                 additionalResolvedPrivacy = faceOnlyFrameResult?.resolvedPrivacy,
                                 faceStickerPlacements = faceOnlyFrameResult?.stickerPlacements.orEmpty()
                             )
@@ -1517,8 +1504,7 @@ class ExportPipeline(
                             "face_partial_occlusion_max_center_step_by_track_id" to facePartialOcclusionMaxCenterStepByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_partial_occlusion_max_consecutive_center_step_by_track_id" to facePartialOcclusionMaxConsecutiveCenterStepByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "fresh_full_body_class_primary_enabled" to allowFreshFullBodyClassPrimary,
-                            "conservative_mixed_full_body_occluder_policy_enabled" to
-                                (faceOnlyPersonIds.isNotEmpty() && fullBodyPersonIds.isNotEmpty()),
+                            "conservative_mixed_full_body_occluder_policy_enabled" to false,
                             "surface_wait_timeout_count" to surfaceWaitTimeoutCount,
                             "duplicate_surface_timestamp_count" to duplicateSurfaceTimestampCount,
                             "non_monotonic_surface_timestamp_count" to nonMonotonicSurfaceTimestampCount,
