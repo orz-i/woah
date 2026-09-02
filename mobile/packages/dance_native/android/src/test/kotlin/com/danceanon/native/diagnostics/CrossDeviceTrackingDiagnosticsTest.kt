@@ -2,8 +2,6 @@ package com.danceanon.native.diagnostics
 
 import com.danceanon.native.inference.FloatRect
 import com.danceanon.native.inference.PersonDetection
-import com.danceanon.native.tracking.MotionBridgeMeasurementMode
-import com.danceanon.native.tracking.TrackManager
 import com.danceanon.native.tracking.TrackState
 import com.danceanon.native.tracking.TrackedPerson
 import kotlin.test.Test
@@ -14,12 +12,37 @@ import kotlin.test.assertTrue
 class CrossDeviceTrackingDiagnosticsTest {
 
     @Test
-    fun cadenceObservationScheduleKeepsFirstAnchorAndRequestedStride() {
-        assertTrue(CrossDeviceTrackingDiagnostics.shouldObserve(0, 6))
-        assertTrue(CrossDeviceTrackingDiagnostics.shouldObserve(2, 2))
-        assertTrue(CrossDeviceTrackingDiagnostics.shouldObserve(3, 3))
-        assertFalse(CrossDeviceTrackingDiagnostics.shouldObserve(3, 2))
-        assertTrue(CrossDeviceTrackingDiagnostics.shouldObserve(6, 6))
+    fun adaptiveSchedulerSkipsStableSeparatedGpuFrameWithoutGivingGpuIdentityAuthority() {
+        val config = CrossDeviceTrackingDiagnostics.AdaptiveConfig(
+            key = "test",
+            maxGap = 4,
+            maxMotionRatio = 0.20f,
+            overlapTrigger = 0.15f
+        )
+        val previous = listOf(
+            PersonDetection(FloatRect(0f, 0f, 100f, 200f), 0.9f),
+            PersonDetection(FloatRect(300f, 0f, 400f, 200f), 0.8f)
+        )
+        val current = listOf(
+            previous[0].copy(bbox = FloatRect(4f, 1f, 104f, 201f)),
+            previous[1].copy(bbox = FloatRect(304f, 2f, 404f, 202f))
+        )
+        val tracks = listOf(
+            TrackedPerson(7, previous[0].bbox, null, 0.9f, state = TrackState.ACTIVE),
+            TrackedPerson(3, previous[1].bbox, null, 0.8f, state = TrackState.ACTIVE)
+        )
+
+        val decision = CrossDeviceTrackingDiagnostics.decideCpuAnchor(
+            config = config,
+            inferenceOrdinal = 1,
+            lastCpuOrdinal = 0,
+            previousGpuDetections = previous,
+            gpuDetections = current,
+            previousTracks = tracks
+        )
+
+        assertFalse(decision.useCpu)
+        assertEquals("SAFE_GPU_SCHEDULER_ONLY", decision.reason)
     }
 
     @Test
@@ -48,48 +71,45 @@ class CrossDeviceTrackingDiagnosticsTest {
     }
 
     @Test
-    fun motionBridgeMovesPredictionWithoutCommittingIdentityObservation() {
-        val tracker = TrackManager(diagnosticsEnabled = false)
-        val initial = listOf(
+    fun adaptiveSchedulerForcesCpuOnGapOverlapAndUnstableTrackState() {
+        val config = CrossDeviceTrackingDiagnostics.AdaptiveConfig(
+            key = "test",
+            maxGap = 3,
+            maxMotionRatio = 0.20f,
+            overlapTrigger = 0.10f
+        )
+        val separated = listOf(
             PersonDetection(FloatRect(0f, 0f, 100f, 200f), 0.9f),
             PersonDetection(FloatRect(300f, 0f, 400f, 200f), 0.8f)
         )
-        tracker.initializeWithAssignedIds(initial, listOf(7, 3))
+        val activeTracks = listOf(
+            TrackedPerson(7, separated[0].bbox, null, 0.9f, state = TrackState.ACTIVE),
+            TrackedPerson(3, separated[1].bbox, null, 0.8f, state = TrackState.ACTIVE)
+        )
 
-        val bridged = tracker.bridgeMotionOnly(
-            detections = listOf(
-                initial[0].copy(bbox = FloatRect(12f, 4f, 112f, 204f)),
-                initial[1].copy(bbox = FloatRect(310f, 6f, 410f, 206f))
-            ),
-            timestampUs = 16_677L,
-            measurementMode = MotionBridgeMeasurementMode.FULL_BBOX
-        ).associateBy { it.id }
+        val gapDecision = CrossDeviceTrackingDiagnostics.decideCpuAnchor(
+            config, 3, 0, separated, separated, activeTracks
+        )
+        assertTrue(gapDecision.useCpu)
+        assertEquals("MAX_GAP", gapDecision.reason)
 
-        assertEquals(setOf(3, 7), bridged.keys)
-        assertFalse(bridged.getValue(7).observedThisFrame)
-        assertEquals(1, bridged.getValue(7).framesSinceLastObservation)
-        assertEquals(FloatRect(12f, 4f, 112f, 204f), bridged.getValue(7).bbox)
-    }
+        val overlapping = listOf(
+            separated[0],
+            separated[1].copy(bbox = FloatRect(80f, 0f, 180f, 200f))
+        )
+        val overlapDecision = CrossDeviceTrackingDiagnostics.decideCpuAnchor(
+            config, 1, 0, separated, overlapping, activeTracks
+        )
+        assertTrue(overlapDecision.useCpu)
+        assertEquals("PERSON_OVERLAP", overlapDecision.reason)
 
-    @Test
-    fun centerTranslationBridgePreservesPredictedBoxSize() {
-        val tracker = TrackManager(diagnosticsEnabled = false)
-        val initial = PersonDetection(FloatRect(0f, 0f, 100f, 200f), 0.9f)
-        tracker.initializeWithAssignedIds(listOf(initial), listOf(5))
-
-        val bridged = tracker.bridgeMotionOnly(
-            detections = listOf(
-                initial.copy(bbox = FloatRect(20f, 10f, 140f, 250f))
-            ),
-            timestampUs = 16_677L,
-            measurementMode = MotionBridgeMeasurementMode.CENTER_TRANSLATION
-        ).single()
-
-        assertEquals(100f, bridged.bbox.width)
-        assertEquals(200f, bridged.bbox.height)
-        assertEquals(80f, bridged.bbox.centerX)
-        assertEquals(130f, bridged.bbox.centerY)
-        assertEquals(5, bridged.id)
-        assertFalse(bridged.observedThisFrame)
+        val unstableTracks = activeTracks.toMutableList().apply {
+            this[0] = this[0].copy(state = TrackState.OCCLUDED)
+        }
+        val stateDecision = CrossDeviceTrackingDiagnostics.decideCpuAnchor(
+            config, 1, 0, separated, separated, unstableTracks
+        )
+        assertTrue(stateDecision.useCpu)
+        assertEquals("NON_ACTIVE_TRACK", stateDecision.reason)
     }
 }

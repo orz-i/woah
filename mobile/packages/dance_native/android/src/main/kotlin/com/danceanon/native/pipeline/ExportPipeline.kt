@@ -1747,8 +1747,7 @@ class ExportPipeline(
                             "canonical_yuv_fallback_reason" to canonicalInferenceFallbackReason,
                             "cpu_mt4_probe_threads" to CPU_MT_PROBE_THREADS,
                             "cpu_mt4_signature_scope" to "FULL_EXPORT",
-                            "cpu_mt4_shadow_hybrid_cadences" to com.danceanon.native.diagnostics.CrossDeviceTrackingDiagnostics.DEFAULT_HYBRID_CADENCES.toList(),
-                            "cpu_mt4_shadow_bridge_modes" to com.danceanon.native.diagnostics.CrossDeviceTrackingDiagnostics.DEFAULT_BRIDGE_MODES.map { it.name },
+                            "cpu_mt4_shadow_adaptive_schedules" to com.danceanon.native.diagnostics.CrossDeviceTrackingDiagnostics.DEFAULT_ADAPTIVE_CONFIGS.map { it.key },
                             "cpu_mt4_probe_fallback_reason" to cpuMt4ProbeFallbackReason,
                             "state" to "completed"
                         )

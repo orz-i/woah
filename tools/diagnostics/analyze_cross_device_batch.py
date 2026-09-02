@@ -92,7 +92,12 @@ def read_bundle(path: Path) -> dict:
         shadow_cpu_identity: dict[int, tuple] = {}
         shadow_hybrid_full: dict[str, dict[int, tuple]] = {}
         shadow_hybrid_identity: dict[str, dict[int, tuple]] = {}
+        shadow_adaptive_full: dict[str, dict[int, tuple]] = {}
+        shadow_adaptive_identity: dict[str, dict[int, tuple]] = {}
+        shadow_adaptive_sources: dict[str, dict[int, str]] = {}
+        shadow_adaptive_reasons: dict[str, dict[int, str]] = {}
         shadow_inference_ordinal: dict[int, int] = {}
+        shadow_should_infer: dict[int, bool] = {}
         shadow_disabled: list[dict] = []
 
         for name in z.namelist():
@@ -123,10 +128,30 @@ def read_bundle(path: Path) -> dict:
                         continue
                     pts = int(fields["pts_us"])
                     shadow_inference_ordinal[pts] = int(fields.get("cpu_inference_ordinal", 0))
+                    shadow_should_infer[pts] = bool(fields.get("should_infer", False))
                     cpu_full_tracks = fields.get("cpu_full_tracks")
+                    adaptive_tracks = fields.get("adaptive_tracks")
+                    adaptive_sources = fields.get("adaptive_sources")
+                    adaptive_reasons = fields.get("adaptive_reasons")
                     hybrid_tracks = fields.get("hybrid_tracks")
                     tracks_by_cadence = fields.get("tracks_by_cadence")
-                    if isinstance(cpu_full_tracks, list) and isinstance(hybrid_tracks, dict):
+                    if isinstance(cpu_full_tracks, list) and isinstance(adaptive_tracks, dict):
+                        shadow_cpu_full[pts] = _track_signature(cpu_full_tracks)
+                        shadow_cpu_identity[pts] = _track_identity_signature(cpu_full_tracks)
+                        for adaptive_key, tracks in adaptive_tracks.items():
+                            if not isinstance(adaptive_key, str) or not isinstance(tracks, list):
+                                continue
+                            shadow_adaptive_full.setdefault(adaptive_key, {})[pts] = _track_signature(tracks)
+                            shadow_adaptive_identity.setdefault(adaptive_key, {})[pts] = _track_identity_signature(tracks)
+                            if isinstance(adaptive_sources, dict):
+                                source = adaptive_sources.get(adaptive_key)
+                                if isinstance(source, str):
+                                    shadow_adaptive_sources.setdefault(adaptive_key, {})[pts] = source
+                            if isinstance(adaptive_reasons, dict):
+                                reason = adaptive_reasons.get(adaptive_key)
+                                if isinstance(reason, str):
+                                    shadow_adaptive_reasons.setdefault(adaptive_key, {})[pts] = reason
+                    elif isinstance(cpu_full_tracks, list) and isinstance(hybrid_tracks, dict):
                         shadow_cpu_full[pts] = _track_signature(cpu_full_tracks)
                         shadow_cpu_identity[pts] = _track_identity_signature(cpu_full_tracks)
                         for hybrid_key, tracks in hybrid_tracks.items():
@@ -190,7 +215,12 @@ def read_bundle(path: Path) -> dict:
             "shadow_cpu_identity": shadow_cpu_identity,
             "shadow_hybrid_full": shadow_hybrid_full,
             "shadow_hybrid_identity": shadow_hybrid_identity,
+            "shadow_adaptive_full": shadow_adaptive_full,
+            "shadow_adaptive_identity": shadow_adaptive_identity,
+            "shadow_adaptive_sources": shadow_adaptive_sources,
+            "shadow_adaptive_reasons": shadow_adaptive_reasons,
             "shadow_inference_ordinal": shadow_inference_ordinal,
+            "shadow_should_infer": shadow_should_infer,
             "shadow_disabled": shadow_disabled,
         }
 
@@ -256,6 +286,36 @@ def compare_hybrid_to_cpu_full(bundle: dict, key: str) -> dict:
     return result
 
 
+def compare_adaptive_to_cpu_full(bundle: dict, key: str) -> dict:
+    cpu_identity = bundle["shadow_cpu_identity"]
+    adaptive_identity = bundle["shadow_adaptive_identity"].get(key, {})
+    cpu_ids = transform_map(cpu_identity, _track_id_set_signature_from_identity)
+    adaptive_ids = transform_map(adaptive_identity, _track_id_set_signature_from_identity)
+    cpu_state = transform_map(cpu_identity, _track_state_signature_from_identity)
+    adaptive_state = transform_map(adaptive_identity, _track_state_signature_from_identity)
+    inference_pts = {
+        pts for pts, should_infer in bundle["shadow_should_infer"].items() if should_infer
+    }
+    sources = bundle["shadow_adaptive_sources"].get(key, {})
+    cpu_anchor_count = sum(1 for pts in inference_pts if sources.get(pts) == "CPU")
+    predict_count = sum(1 for pts in inference_pts if sources.get(pts) == "PREDICT")
+    reason_counts: dict[str, int] = {}
+    for pts in inference_pts:
+        reason = bundle["shadow_adaptive_reasons"].get(key, {}).get(pts)
+        if reason is not None:
+            reason_counts[reason] = reason_counts.get(reason, 0) + 1
+    return {
+        "identity_all": compare_map(cpu_identity, adaptive_identity),
+        "id_set_all": compare_map(cpu_ids, adaptive_ids),
+        "state_topology_all": compare_map(cpu_state, adaptive_state),
+        "inference_frames": len(inference_pts),
+        "cpu_anchor_frames": cpu_anchor_count,
+        "predict_frames": predict_count,
+        "cpu_anchor_ratio": (cpu_anchor_count / len(inference_pts)) if inference_pts else None,
+        "reason_counts": dict(sorted(reason_counts.items())),
+    }
+
+
 def main() -> int:
     if len(sys.argv) < 3:
         print("usage: analyze_cross_device_batch.py <bundle1.zip> <bundle2.zip> [bundle3.zip ...]", file=sys.stderr)
@@ -300,6 +360,14 @@ def main() -> int:
                     key: compare_hybrid_to_cpu_full(b, key)
                     for key in sorted(b["shadow_hybrid_identity"])
                 },
+                "adaptive_frame_counts": {
+                    key: len(frames)
+                    for key, frames in sorted(b["shadow_adaptive_identity"].items())
+                },
+                "adaptive_vs_cpu_full": {
+                    key: compare_adaptive_to_cpu_full(b, key)
+                    for key in sorted(b["shadow_adaptive_identity"])
+                },
             }
             for b in bundles
         ],
@@ -314,6 +382,9 @@ def main() -> int:
             )
             common_hybrids = sorted(
                 set(a["shadow_hybrid_identity"]) & set(b["shadow_hybrid_identity"])
+            )
+            common_adaptive = sorted(
+                set(a["shadow_adaptive_identity"]) & set(b["shadow_adaptive_identity"])
             )
             result["pairs"].append(
                 {
@@ -351,6 +422,19 @@ def main() -> int:
                             ),
                         }
                         for key in common_hybrids
+                    },
+                    "cpu_4t_shadow_adaptive": {
+                        key: {
+                            "identity": compare_map(
+                                a["shadow_adaptive_identity"][key],
+                                b["shadow_adaptive_identity"][key],
+                            ),
+                            "full": compare_map(
+                                a["shadow_adaptive_full"][key],
+                                b["shadow_adaptive_full"][key],
+                            ),
+                        }
+                        for key in common_adaptive
                     },
                 }
             )

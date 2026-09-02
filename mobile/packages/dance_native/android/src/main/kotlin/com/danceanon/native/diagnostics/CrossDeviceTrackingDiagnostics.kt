@@ -2,48 +2,51 @@ package com.danceanon.native.diagnostics
 
 import com.danceanon.native.inference.PersonDetection
 import com.danceanon.native.tracking.HungarianSolver
-import com.danceanon.native.tracking.MotionBridgeMeasurementMode
 import com.danceanon.native.tracking.TrackManager
+import com.danceanon.native.tracking.TrackState
 import com.danceanon.native.tracking.TrackedPerson
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 /**
  * Debug-only shadow tracking matrix for cross-device validation.
  *
- * The cadence-1 baseline consumes deterministic CPU detections every inference frame. Hybrid
- * trackers consume deterministic CPU detections only on anchor frames and use production
- * detections strictly as motion-only Kalman bridges between anchors. The bridge cannot create,
- * remove, swap, or commit identities. This lets one export test multiple anchor cadences and two
- * geometry bridge measurements without changing the production tracker or renderer.
+ * The full baseline consumes deterministic CPU detections every inference frame. Adaptive
+ * trackers use production detections only as a scheduler signal: motion, overlap, confidence, and
+ * detection-count changes decide whether the deterministic CPU path must run on this frame. GPU
+ * detections are never passed into TrackManager, so they cannot create, remove, swap, or commit an
+ * identity. Multiple schedules are evaluated from one export to measure CPU savings and parity.
  */
 internal class CrossDeviceTrackingDiagnostics(
     private val jobId: String,
     fullBodyPersonIds: Set<Int>,
     faceOnlyPersonIds: Set<Int>,
-    private val cadences: IntArray = DEFAULT_HYBRID_CADENCES
+    private val adaptiveConfigs: List<AdaptiveConfig> = DEFAULT_ADAPTIVE_CONFIGS
 ) {
-    private data class HybridConfig(
-        val cadence: Int,
-        val mode: MotionBridgeMeasurementMode
-    ) {
-        val key: String = "${mode.name.lowercase()}_c$cadence"
-    }
+    internal data class AdaptiveConfig(
+        val key: String,
+        val maxGap: Int,
+        val maxMotionRatio: Float,
+        val overlapTrigger: Float
+    )
+
+    internal data class AdaptiveDecision(val useCpu: Boolean, val reason: String)
 
     private val cpuFullTracker = TrackManager(diagnosticsEnabled = false)
-    private val hybridConfigs = cadences.flatMap { cadence ->
-        DEFAULT_BRIDGE_MODES.map { mode -> HybridConfig(cadence, mode) }
-    }
-    private val hybridTrackers = hybridConfigs.associateWith {
+    private val adaptiveTrackers = adaptiveConfigs.associateWith {
         TrackManager(diagnosticsEnabled = false)
     }
+    private val lastCpuOrdinalByConfig = adaptiveConfigs.associateWith { 0 }.toMutableMap()
     private var initialized = false
     private var inferenceOrdinal = 0
+    private var previousProductionDetections: List<PersonDetection>? = null
+    private var lastAdaptiveTracked: Map<AdaptiveConfig, List<TrackedPerson>> = emptyMap()
     private var disabledReason: String? = null
 
     init {
-        require(cadences.isNotEmpty() && cadences.all { it > 0 })
+        require(adaptiveConfigs.isNotEmpty())
         configureTracker(cpuFullTracker, fullBodyPersonIds, faceOnlyPersonIds)
-        hybridTrackers.values.forEach {
+        adaptiveTrackers.values.forEach {
             configureTracker(it, fullBodyPersonIds, faceOnlyPersonIds)
         }
     }
@@ -59,7 +62,9 @@ internal class CrossDeviceTrackingDiagnostics(
 
         try {
             val cpuFullTracked: List<TrackedPerson>
-            val hybridTracked: Map<HybridConfig, List<TrackedPerson>>
+            val adaptiveTracked: Map<AdaptiveConfig, List<TrackedPerson>>
+            val adaptiveSources = linkedMapOf<String, String>()
+            val adaptiveReasons = linkedMapOf<String, String>()
             if (!initialized) {
                 val prodDetections = productionDetections ?: return disable("MISSING_PRODUCTION_FIRST_FRAME")
                 val prodTracked = productionTracked ?: return disable("MISSING_PRODUCTION_TRACKS_FIRST_FRAME")
@@ -71,19 +76,24 @@ internal class CrossDeviceTrackingDiagnostics(
                 ) ?: return disable("CPU_MT4_FIRST_FRAME_ID_MAP_FAILED")
 
                 cpuFullTracked = cpuFullTracker.initializeWithAssignedIds(cpuDetections, assignedIds)
-                hybridTracked = hybridTrackers.mapValues { (_, tracker) ->
+                adaptiveTracked = adaptiveTrackers.mapValues { (config, tracker) ->
+                    adaptiveSources[config.key] = "CPU"
+                    adaptiveReasons[config.key] = "INITIALIZE"
                     tracker.initializeWithAssignedIds(cpuDetections, assignedIds)
                 }
                 initialized = true
                 inferenceOrdinal = 0
+                previousProductionDetections = prodDetections
             } else if (!shouldInfer) {
                 cpuFullTracked = cpuFullTracker.predictWithoutObservation(ptsUs)
-                hybridTracked = hybridTrackers.mapValues { (_, tracker) ->
+                adaptiveTracked = adaptiveTrackers.mapValues { (config, tracker) ->
+                    adaptiveSources[config.key] = "PREDICT"
+                    adaptiveReasons[config.key] = "NO_INFERENCE_FRAME"
                     tracker.predictWithoutObservation(ptsUs)
                 }
             } else {
                 val cpuDetections = cpuMt4Detections ?: return disable("MISSING_CPU_MT4_INFERENCE_FRAME")
-                val bridgeDetections = productionDetections ?: return disable("MISSING_PRODUCTION_INFERENCE_FRAME")
+                val gpuDetections = productionDetections ?: return disable("MISSING_PRODUCTION_INFERENCE_FRAME")
                 inferenceOrdinal++
 
                 cpuFullTracked = if (cpuDetections.isEmpty()) {
@@ -92,22 +102,32 @@ internal class CrossDeviceTrackingDiagnostics(
                     cpuFullTracker.update(cpuDetections, ptsUs)
                 }
 
-                hybridTracked = hybridTrackers.mapValues { (config, tracker) ->
-                    if (shouldObserve(inferenceOrdinal, config.cadence)) {
+                adaptiveTracked = adaptiveTrackers.mapValues { (config, tracker) ->
+                    val decision = decideCpuAnchor(
+                        config = config,
+                        inferenceOrdinal = inferenceOrdinal,
+                        lastCpuOrdinal = lastCpuOrdinalByConfig.getValue(config),
+                        previousGpuDetections = previousProductionDetections,
+                        gpuDetections = gpuDetections,
+                        previousTracks = lastAdaptiveTracked[config].orEmpty()
+                    )
+                    adaptiveReasons[config.key] = decision.reason
+                    if (decision.useCpu) {
+                        lastCpuOrdinalByConfig[config] = inferenceOrdinal
+                        adaptiveSources[config.key] = "CPU"
                         if (cpuDetections.isEmpty()) {
                             tracker.predict(ptsUs)
                         } else {
                             tracker.update(cpuDetections, ptsUs)
                         }
                     } else {
-                        tracker.bridgeMotionOnly(
-                            detections = bridgeDetections,
-                            timestampUs = ptsUs,
-                            measurementMode = config.mode
-                        )
+                        adaptiveSources[config.key] = "PREDICT"
+                        tracker.predictWithoutObservation(ptsUs)
                     }
                 }
+                previousProductionDetections = gpuDetections
             }
+            lastAdaptiveTracked = adaptiveTracked
 
             NativeDiagnostics.event(
                 level = "INFO",
@@ -119,10 +139,12 @@ internal class CrossDeviceTrackingDiagnostics(
                     "should_infer" to shouldInfer,
                     "cpu_inference_ordinal" to inferenceOrdinal,
                     "cpu_full_tracks" to trackSignature(cpuFullTracked),
-                    "hybrid_tracks" to hybridTracked
+                    "adaptive_tracks" to adaptiveTracked
                         .entries
                         .sortedBy { it.key.key }
-                        .associate { (config, tracks) -> config.key to trackSignature(tracks) }
+                        .associate { (config, tracks) -> config.key to trackSignature(tracks) },
+                    "adaptive_sources" to adaptiveSources,
+                    "adaptive_reasons" to adaptiveReasons
                 )
             )
         } catch (t: Throwable) {
@@ -145,16 +167,87 @@ internal class CrossDeviceTrackingDiagnostics(
     }
 
     companion object {
-        internal val DEFAULT_HYBRID_CADENCES = intArrayOf(2, 3, 4, 6)
-        internal val DEFAULT_BRIDGE_MODES = listOf(
-            MotionBridgeMeasurementMode.FULL_BBOX,
-            MotionBridgeMeasurementMode.CENTER_TRANSLATION
+        internal val DEFAULT_ADAPTIVE_CONFIGS = listOf(
+            AdaptiveConfig("dense", maxGap = 2, maxMotionRatio = 0.08f, overlapTrigger = 0.05f),
+            AdaptiveConfig("safe", maxGap = 3, maxMotionRatio = 0.12f, overlapTrigger = 0.10f),
+            AdaptiveConfig("balanced", maxGap = 4, maxMotionRatio = 0.18f, overlapTrigger = 0.15f),
+            AdaptiveConfig("aggressive", maxGap = 6, maxMotionRatio = 0.25f, overlapTrigger = 0.20f),
+            AdaptiveConfig("sparse", maxGap = 8, maxMotionRatio = 0.35f, overlapTrigger = 0.25f)
         )
 
-        internal fun shouldObserve(inferenceOrdinal: Int, cadence: Int): Boolean {
-            require(inferenceOrdinal >= 0)
-            require(cadence > 0)
-            return inferenceOrdinal % cadence == 0
+        internal fun decideCpuAnchor(
+            config: AdaptiveConfig,
+            inferenceOrdinal: Int,
+            lastCpuOrdinal: Int,
+            previousGpuDetections: List<PersonDetection>?,
+            gpuDetections: List<PersonDetection>,
+            previousTracks: List<TrackedPerson>
+        ): AdaptiveDecision {
+            if (inferenceOrdinal - lastCpuOrdinal >= config.maxGap) {
+                return AdaptiveDecision(true, "MAX_GAP")
+            }
+            val previous = previousGpuDetections ?: return AdaptiveDecision(true, "NO_PREVIOUS_GPU")
+            if (previousTracks.any { it.state != TrackState.ACTIVE && it.state != TrackState.NEW }) {
+                return AdaptiveDecision(true, "NON_ACTIVE_TRACK")
+            }
+            if (previous.size != gpuDetections.size) {
+                return AdaptiveDecision(true, "DETECTION_COUNT_CHANGE")
+            }
+            if (previous.isEmpty() || gpuDetections.isEmpty()) {
+                return AdaptiveDecision(true, "EMPTY_DETECTIONS")
+            }
+            if (gpuDetections.any { it.confidence < SAFE_GPU_CONFIDENCE }) {
+                return AdaptiveDecision(true, "LOW_GPU_CONFIDENCE")
+            }
+            if (
+                maxPairwiseOverlap(previous) >= config.overlapTrigger ||
+                maxPairwiseOverlap(gpuDetections) >= config.overlapTrigger
+            ) {
+                return AdaptiveDecision(true, "PERSON_OVERLAP")
+            }
+
+            val costs = Array(previous.size) { previousIndex ->
+                FloatArray(gpuDetections.size) { currentIndex ->
+                    1f - TrackManager.computeBBoxIoU(
+                        previous[previousIndex].bbox,
+                        gpuDetections[currentIndex].bbox
+                    )
+                }
+            }
+            val matches = HungarianSolver.match(costs, maxCostThreshold = 0.95f).matches
+            if (matches.size != gpuDetections.size) {
+                return AdaptiveDecision(true, "GPU_GEOMETRY_UNSTABLE")
+            }
+            for ((previousIndex, currentIndex) in matches) {
+                val before = previous[previousIndex].bbox
+                val after = gpuDetections[currentIndex].bbox
+                val dx = after.centerX - before.centerX
+                val dy = after.centerY - before.centerY
+                val refDim = maxOf(before.width, before.height, 1f)
+                val motionRatio = sqrt(dx * dx + dy * dy) / refDim
+                if (motionRatio >= config.maxMotionRatio) {
+                    return AdaptiveDecision(true, "GPU_MOTION")
+                }
+            }
+            return AdaptiveDecision(false, "SAFE_GPU_SCHEDULER_ONLY")
+        }
+
+        private const val SAFE_GPU_CONFIDENCE = 0.35f
+
+        private fun maxPairwiseOverlap(detections: List<PersonDetection>): Float {
+            var maxOverlap = 0f
+            for (i in detections.indices) {
+                val a = detections[i].bbox
+                for (j in i + 1 until detections.size) {
+                    val b = detections[j].bbox
+                    val intersection = TrackManager.computeBBoxIntersectionArea(a, b)
+                    val minArea = minOf(a.width * a.height, b.width * b.height)
+                    if (minArea > 0f) {
+                        maxOverlap = maxOf(maxOverlap, intersection / minArea)
+                    }
+                }
+            }
+            return maxOverlap
         }
 
         internal fun mapProductionIdsToCpuDetections(
