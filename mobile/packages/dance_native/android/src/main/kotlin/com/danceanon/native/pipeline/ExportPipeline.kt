@@ -909,7 +909,7 @@ class ExportPipeline(
                                     val cpuProbe = cpuDeterminismProbeSegmenter
                                     if (cpuProbe != null) {
                                         try {
-                                            profiler.recordStage("yoloCpuDeterminismProbe") {
+                                            val cpuProbeSeg = profiler.recordStage("yoloCpuDeterminismProbe") {
                                                 cpuProbe.segmentGlReadbackRgbaSync(
                                                     rgbaBuffer,
                                                     mapper,
@@ -917,6 +917,9 @@ class ExportPipeline(
                                                     colOrder = RgbaColOrder.LEFT_TO_RIGHT,
                                                     diagnosticJobId = "${jobId}_cpu_probe"
                                                 )
+                                            }
+                                            for ((stage, elapsedMs) in cpuProbeSeg.stageTimingsMs) {
+                                                profiler.recordSample("yoloCpuProbe_${stage}", elapsedMs)
                                             }
                                         } catch (t: Throwable) {
                                             cpuDeterminismProbeFallbackReason =
