@@ -833,6 +833,18 @@ class TrackManager(
                 computeBBoxIntersectionArea(groupEnvelope, detections[dIdx].bbox) > 0f
             }
 
+            // Reservation ownership must be based on the geometry that entered
+            // this group's association step, not on track boxes mutated by an
+            // earlier successful commit in the same loop. Otherwise the same
+            // detections can be quarantined on one device and leak to Global /
+            // ordinary recovery on another solely because a near-threshold
+            // identity commit happened first. Keep an immutable per-frame group
+            // snapshot and combine it with Hungarian-assigned detections below.
+            val reservationTrackGeometry = groupTrackIndices.flatMap { tIdx ->
+                val groupTrack = tracks[tIdx]
+                listOf(groupTrack.currentPredictedBbox, groupTrack.lastObservedBbox)
+            }
+
             // Reserve group tracks to isolate from Global Hungarian unless successfully matched
             for (tIdx in groupTrackIndices) {
                 reservedGroupTrackIndices.add(tIdx)
@@ -1167,20 +1179,17 @@ class TrackManager(
                 if (!matchedGroupCols.contains(c)) {
                     val dIdx = candidateDetectionIndices[c]
                     val detBox = detections[dIdx].bbox
-                    val overlapsGroupMember = groupTrackIndices.any { tIdx ->
-                        val groupTrack = tracks[tIdx]
-                        hasMeaningfulGroupReservationOverlap(groupTrack.currentPredictedBbox, detBox) ||
-                            hasMeaningfulGroupReservationOverlap(groupTrack.lastObservedBbox, detBox)
+                    val overlapsGroupMember = reservationTrackGeometry.any { supportBox ->
+                        hasMeaningfulGroupReservationOverlap(supportBox, detBox)
                     }
-                    val ambiguousHungarianSupport = matchResult.matches.firstOrNull { pair ->
+                    val hungarianDetectionSupport = matchResult.matches.firstOrNull { pair ->
                         pair.second != c &&
-                            !matchedGroupCols.contains(pair.second) &&
                             hasMeaningfulGroupReservationOverlap(
                                 detections[candidateDetectionIndices[pair.second]].bbox,
                                 detBox
                             )
                     }
-                    if (overlapsGroupMember || ambiguousHungarianSupport != null) {
+                    if (overlapsGroupMember || hungarianDetectionSupport != null) {
                         reservedGroupDetectionIndices.add(dIdx)
                         reservedGroupOwnerTrackIdsByDetectionIndex
                             .getOrPut(dIdx) { mutableSetOf() }
@@ -1199,10 +1208,14 @@ class TrackManager(
                                 "reason" to "UNCOMMITTED_OVERLAP",
                                 "support_source" to if (overlapsGroupMember) {
                                     "TRACK_GEOMETRY"
+                                } else if (hungarianDetectionSupport != null &&
+                                    matchedGroupCols.contains(hungarianDetectionSupport.second)
+                                ) {
+                                    "COMMITTED_HUNGARIAN_DETECTION"
                                 } else {
                                     "AMBIGUOUS_HUNGARIAN_DETECTION"
                                 },
-                                "support_det_index" to ambiguousHungarianSupport?.let { pair ->
+                                "support_det_index" to hungarianDetectionSupport?.let { pair ->
                                     candidateDetectionIndices[pair.second]
                                 },
                                 "pts_us" to timestampUs

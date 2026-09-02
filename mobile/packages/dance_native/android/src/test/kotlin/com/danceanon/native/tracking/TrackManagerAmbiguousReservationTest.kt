@@ -283,6 +283,52 @@ class TrackManagerAmbiguousReservationTest {
     }
 
     @Test
+    fun committedGroupMatchDoesNotEraseAssociationTimeReservationGeometry() {
+        val tracker = TrackManager(
+            TrackingConfig(
+                minMatchScore = 0.20f,
+                bboxIouWeight = 1.0f,
+                maskIouWeight = 0.0f,
+                motionWeight = 0.0f,
+                directionWeight = 0.0f,
+                associationAmbiguityMargin = 0.05f,
+                occlusionOverlapRatio = 0.30f
+            )
+        )
+
+        val initial = tracker.initializeWithAssignedIds(
+            listOf(
+                PersonDetection(FloatRect(100f, 100f, 200f, 300f), 0.95f),
+                PersonDetection(FloatRect(170f, 100f, 270f, 300f), 0.95f)
+            ),
+            listOf(3, 4)
+        )
+        assertEquals(setOf(3, 4), initial.map { it.id }.toSet())
+
+        // id=4 has a valid reciprocal-best move to det0. That successful commit
+        // moves its live bbox to the right. det1 overlaps id=4's association-time
+        // geometry by 15 px, but no longer overlaps the committed det0 or either
+        // track after mutation. Reservation must still use the immutable geometry
+        // that entered group association so det1 cannot leak out and mint a new ID.
+        val tracks = tracker.update(
+            detections = listOf(
+                PersonDetection(FloatRect(225f, 100f, 325f, 300f), 0.95f),
+                PersonDetection(FloatRect(205f, 100f, 220f, 300f), 0.80f)
+            ),
+            timestampUs = 33_333L
+        )
+
+        assertEquals(
+            setOf(3, 4),
+            tracks.map { it.id }.toSet(),
+            "same-frame group commit must not erase reservation ownership from association-time geometry"
+        )
+        val moved = tracks.single { it.id == 4 }
+        assertTrue(moved.observedThisFrame, "the valid group winner must still commit normally")
+        assertEquals(FloatRect(225f, 100f, 325f, 300f), moved.bbox)
+    }
+
+    @Test
     fun testStrictFaceOnlyIdentityDoesNotEscapeSingleNeighborGroupReservation() {
         tracker = TrackManager(
             TrackingConfig(
