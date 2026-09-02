@@ -12,7 +12,13 @@ final personSelectionControllerProvider = StateNotifierProvider.autoDispose<
 });
 
 class PersonSelectionController extends StateNotifier<PersonSelectionState> {
-  static const double defaultAutoSelectionMinConfidence = 0.55;
+  /// Selection-screen-only gate for the first-frame YOLO result.
+  ///
+  /// Native analysis metadata deliberately keeps every detector result so export
+  /// ID binding, TrackManager and compositor runtime behavior remain unchanged.
+  /// This threshold only decides which first-frame people are offered to the user
+  /// as selectable privacy targets.
+  static const double selectionCandidateMinConfidence = 0.55;
 
   final NativeProcessingRepository _repository;
 
@@ -34,16 +40,26 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
         modelProfile: 'balanced',
       );
 
-      final persons = result.persons.map((dto) => dto.toDomain()).toList();
+      final analyzedPersons = result.persons.map((dto) => dto.toDomain()).toList();
+      final persons = analyzedPersons
+          .where((person) => person.confidence >= selectionCandidateMinConfidence)
+          .toList();
+      final excludedPersons = analyzedPersons
+          .where((person) => person.confidence < selectionCandidateMinConfidence)
+          .toList();
+      if (excludedPersons.isNotEmpty) {
+        AppLogger.d(
+          'PersonSelectionController',
+          'Excluded low-confidence first-frame selection candidates: '
+              '${excludedPersons.map((person) => '${person.id}:${person.confidence.toStringAsFixed(3)}').join(', ')}',
+        );
+      }
       final personIds = persons.map((p) => p.id).toSet();
       final hasStoredPrivacyModes =
           project.selectedPersonIds.isNotEmpty || project.faceOnlyPersonIds.isNotEmpty;
       final defaultSelected = hasStoredPrivacyModes
           ? project.selectedPersonIds.intersection(personIds)
-          : persons
-              .where((person) => person.confidence >= defaultAutoSelectionMinConfidence)
-              .map((person) => person.id)
-              .toSet();
+          : personIds;
       final defaultFaceOnly = hasStoredPrivacyModes
           ? project.faceOnlyPersonIds
               .intersection(personIds)
@@ -81,6 +97,9 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
   /// mutually exclusive in controller state; FULL_BODY conflict handling still
   /// exists at the domain/native boundary as an additional safety net.
   void setPrivacyMode(int id, PersonPrivacyMode mode) {
+    if (!state.persons.any((person) => person.id == id)) {
+      return;
+    }
     final fullBody = Set<int>.from(state.selectedPersonIds)..remove(id);
     final faceOnly = Set<int>.from(state.faceOnlyPersonIds)..remove(id);
     switch (mode) {

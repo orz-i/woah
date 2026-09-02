@@ -8,7 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('fresh analysis keeps weak candidate visible but not auto selected', () async {
+  test('fresh analysis excludes weak candidate from selectable targets', () async {
     final now = DateTime.utc(2026, 8, 31);
     final project = DanceProject(
       id: 'weak-candidate-default',
@@ -34,12 +34,44 @@ void main() {
 
     await controller.analyzeProject(project);
 
-    expect(controller.state.persons.map((p) => p.id).toSet(), equals({0, 1}));
+    expect(controller.state.persons.map((p) => p.id).toSet(), equals({0}));
     expect(controller.state.selectedPersonIds, equals({0}));
     expect(controller.state.privacyModeForPerson(1), PersonPrivacyMode.none);
 
     controller.setPrivacyMode(1, PersonPrivacyMode.fullBody);
-    expect(controller.state.selectedPersonIds, equals({0, 1}));
+    expect(controller.state.selectedPersonIds, equals({0}));
+  });
+
+  test('stored privacy mode cannot revive excluded weak first-frame candidate', () async {
+    final now = DateTime.utc(2026, 8, 31);
+    final project = DanceProject(
+      id: 'weak-stored-selection',
+      sourceUri: 'file:///weak-stored-selection.mp4',
+      videoInfo: const VideoInfo(
+        codedWidth: 720,
+        codedHeight: 1280,
+        displayWidth: 720,
+        displayHeight: 1280,
+        fps: 60,
+        durationMs: 1000,
+        rotation: 0,
+        videoCodec: 'h264',
+        hasAudio: false,
+      ),
+      selectedPersonIds: const {1},
+      createdAt: now,
+      updatedAt: now,
+    );
+    final controller = PersonSelectionController(
+      _FakePersonSelectionRepository(confidences: const [0.92, 0.50]),
+    );
+    addTearDown(controller.dispose);
+
+    await controller.analyzeProject(project);
+
+    expect(controller.state.persons.map((p) => p.id).toSet(), equals({0}));
+    expect(controller.state.selectedPersonIds, isEmpty);
+    expect(controller.state.faceOnlyPersonIds, isEmpty);
   });
 
   testWidgets('person selection keeps FULL_BODY and FACE_ONLY mutually exclusive',
