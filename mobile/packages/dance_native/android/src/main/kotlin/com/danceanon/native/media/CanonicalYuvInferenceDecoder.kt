@@ -44,6 +44,7 @@ class CanonicalYuvInferenceDecoder(
     private val rgbaBuffer = ByteBuffer.allocateDirect(modelInputSize * modelInputSize * 4).apply {
         order(ByteOrder.nativeOrder())
     }
+    private val conversionWorkspace = CanonicalYuvToRgba.Workspace(modelInputSize)
 
     var runtimeInfo: RuntimeInfo? = null
         private set
@@ -128,7 +129,8 @@ class CanonicalYuvInferenceDecoder(
                                 mapper = mapper,
                                 rotationDegrees = rotationDegrees,
                                 colorStandard = colorInt(outputFormat, MediaFormat.KEY_COLOR_STANDARD),
-                                colorRange = colorInt(outputFormat, MediaFormat.KEY_COLOR_RANGE)
+                                colorRange = colorInt(outputFormat, MediaFormat.KEY_COLOR_RANGE),
+                                workspace = conversionWorkspace
                             )
                             return rgbaBuffer
                         }
@@ -191,79 +193,247 @@ class CanonicalYuvInferenceDecoder(
 internal object CanonicalYuvToRgba {
     private const val FP = 256
 
+    internal class Workspace(val modelInputSize: Int) {
+        internal val rgbaInts = IntArray(modelInputSize * modelInputSize)
+        internal var yBytes = ByteArray(0)
+        internal var uBytes = ByteArray(0)
+        internal var vBytes = ByteArray(0)
+        internal var planKey: PlanKey? = null
+        internal var plan: SamplingPlan? = null
+    }
+
+    internal data class PlaneSnapshot(
+        val bytes: ByteArray,
+        val length: Int,
+        val rowStride: Int,
+        val pixelStride: Int
+    )
+
+    internal data class AxisSamples(
+        val i0: IntArray,
+        val i1: IntArray,
+        val w1: IntArray
+    )
+
+    internal data class PlanKey(
+        val imageWidth: Int,
+        val imageHeight: Int,
+        val cropLeft: Int,
+        val cropTop: Int,
+        val cropRight: Int,
+        val cropBottom: Int,
+        val modelInputSize: Int,
+        val scaledWBits: Int,
+        val scaledHBits: Int,
+        val padLeftBits: Int,
+        val padTopBits: Int,
+        val rotation: Int
+    )
+
+    internal data class SamplingPlan(
+        val validX: BooleanArray,
+        val validY: BooleanArray,
+        val lumaX: AxisSamples,
+        val lumaY: AxisSamples,
+        val uvX: AxisSamples,
+        val uvY: AxisSamples,
+        val swapAxes: Boolean
+    )
+
     fun convert(
         image: Image,
         output: ByteBuffer,
         mapper: ModelCoordinateMapper,
         rotationDegrees: Int,
         colorStandard: Int?,
-        colorRange: Int?
+        colorRange: Int?,
+        workspace: Workspace = Workspace(mapper.modelInputSize)
     ) {
         require(image.planes.size >= 3) { "Expected YUV_420_888 image" }
         require(output.capacity() >= mapper.modelInputSize * mapper.modelInputSize * 4)
+        require(workspace.modelInputSize == mapper.modelInputSize)
 
         val crop = image.cropRect
+        val rotation = ((rotationDegrees % 360) + 360) % 360
+        val size = mapper.modelInputSize
+        val planKey = PlanKey(
+            imageWidth = image.width,
+            imageHeight = image.height,
+            cropLeft = crop.left,
+            cropTop = crop.top,
+            cropRight = crop.right,
+            cropBottom = crop.bottom,
+            modelInputSize = size,
+            scaledWBits = mapper.scaledW.toBits(),
+            scaledHBits = mapper.scaledH.toBits(),
+            padLeftBits = mapper.padLeft.toBits(),
+            padTopBits = mapper.padTop.toBits(),
+            rotation = rotation
+        )
+        val plan = if (workspace.planKey == planKey) {
+            workspace.plan ?: error("Canonical YUV sampling plan missing")
+        } else {
+            buildSamplingPlan(image.width, image.height, crop, mapper, rotation).also {
+                workspace.planKey = planKey
+                workspace.plan = it
+            }
+        }
+
+        val yPlane = snapshotPlane(image.planes[0], workspace, 0)
+        val uPlane = snapshotPlane(image.planes[1], workspace, 1)
+        val vPlane = snapshotPlane(image.planes[2], workspace, 2)
+        val rgbaInts = workspace.rgbaInts
+
+        for (bufferY in 0 until size) {
+            // glReadPixels contract is bottom-up; YoloPreprocessor flips it back to model top-down.
+            val modelY = size - 1 - bufferY
+            val dstRow = bufferY * size
+            for (modelX in 0 until size) {
+                val dstIndex = dstRow + modelX
+                if (!plan.validX[modelX] || !plan.validY[modelY]) {
+                    rgbaInts[dstIndex] = rgbaLittleEndianInt(0x727272)
+                    continue
+                }
+                val xIndex = if (plan.swapAxes) modelY else modelX
+                val yIndex = if (plan.swapAxes) modelX else modelY
+                val y8 = sampleSnapshot(yPlane, plan.lumaX, xIndex, plan.lumaY, yIndex)
+                val u8 = sampleSnapshot(uPlane, plan.uvX, xIndex, plan.uvY, yIndex)
+                val v8 = sampleSnapshot(vPlane, plan.uvX, xIndex, plan.uvY, yIndex)
+                rgbaInts[dstIndex] = rgbaLittleEndianInt(
+                    yuvToRgb(y8, u8, v8, colorStandard, colorRange)
+                )
+            }
+        }
+
+        output.clear()
+        output.duplicate().apply {
+            position(0)
+            order(ByteOrder.LITTLE_ENDIAN)
+        }.asIntBuffer().put(rgbaInts, 0, rgbaInts.size)
+        output.rewind()
+    }
+
+    private fun buildSamplingPlan(
+        imageWidth: Int,
+        imageHeight: Int,
+        crop: android.graphics.Rect,
+        mapper: ModelCoordinateMapper,
+        rotation: Int
+    ): SamplingPlan {
+        val size = mapper.modelInputSize
         val cropW = crop.width()
         val cropH = crop.height()
-        val rotation = ((rotationDegrees % 360) + 360) % 360
-        val displayW = if (rotation == 90 || rotation == 270) cropH else cropW
-        val displayH = if (rotation == 90 || rotation == 270) cropW else cropH
-        val size = mapper.modelInputSize
+        val swapAxes = rotation == 90 || rotation == 270
+        val displayW = if (swapAxes) cropH else cropW
+        val displayH = if (swapAxes) cropW else cropH
         val left = mapper.padLeft.toDouble()
         val top = mapper.padTop.toDouble()
         val right = (mapper.padLeft + mapper.scaledW).toDouble()
         val bottom = (mapper.padTop + mapper.scaledH).toDouble()
+        val validX = BooleanArray(size)
+        val validY = BooleanArray(size)
+        val displayX = DoubleArray(size)
+        val displayY = DoubleArray(size)
 
-        output.clear()
-        for (bufferY in 0 until size) {
-            // glReadPixels contract is bottom-up; YoloPreprocessor flips it back to model top-down.
-            val modelY = size - 1 - bufferY
-            val cy = modelY + 0.5
-            for (modelX in 0 until size) {
-                val cx = modelX + 0.5
-                if (cx < left || cx >= right || cy < top || cy >= bottom) {
-                    putRgba(output, 114, 114, 114)
-                    continue
-                }
-
-                val u = ((cx - left) / mapper.scaledW.toDouble()).coerceIn(0.0, 1.0)
-                val v = ((cy - top) / mapper.scaledH.toDouble()).coerceIn(0.0, 1.0)
-                val dx = u * displayW - 0.5
-                val dy = v * displayH - 0.5
-                val sourceX: Double
-                val sourceY: Double
-                when (rotation) {
-                    90 -> {
-                        sourceX = dy
-                        sourceY = cropH - 1.0 - dx
-                    }
-                    180 -> {
-                        sourceX = cropW - 1.0 - dx
-                        sourceY = cropH - 1.0 - dy
-                    }
-                    270 -> {
-                        sourceX = cropW - 1.0 - dy
-                        sourceY = dx
-                    }
-                    else -> {
-                        sourceX = dx
-                        sourceY = dy
-                    }
-                }
-                val sx = (sourceX + crop.left).coerceIn(crop.left.toDouble(), (crop.right - 1).toDouble())
-                val sy = (sourceY + crop.top).coerceIn(crop.top.toDouble(), (crop.bottom - 1).toDouble())
-
-                val y = samplePlane(image.planes[0], sx, sy, image.width, image.height)
-                val uvX = sx * 0.5
-                val uvY = sy * 0.5
-                val uvWidth = (image.width + 1) / 2
-                val uvHeight = (image.height + 1) / 2
-                val u8 = samplePlane(image.planes[1], uvX, uvY, uvWidth, uvHeight)
-                val v8 = samplePlane(image.planes[2], uvX, uvY, uvWidth, uvHeight)
-                putPackedRgb(output, yuvToRgb(y, u8, v8, colorStandard, colorRange))
-            }
+        for (i in 0 until size) {
+            val c = i + 0.5
+            validX[i] = c >= left && c < right
+            validY[i] = c >= top && c < bottom
+            displayX[i] = (((c - left) / mapper.scaledW.toDouble()).coerceIn(0.0, 1.0) * displayW) - 0.5
+            displayY[i] = (((c - top) / mapper.scaledH.toDouble()).coerceIn(0.0, 1.0) * displayH) - 0.5
         }
-        output.rewind()
+
+        val sourceX = DoubleArray(size)
+        val sourceY = DoubleArray(size)
+        for (i in 0 until size) {
+            sourceX[i] = when (rotation) {
+                90 -> displayY[i] + crop.left
+                180 -> crop.right - 1.0 - displayX[i]
+                270 -> crop.right - 1.0 - displayY[i]
+                else -> displayX[i] + crop.left
+            }.coerceIn(crop.left.toDouble(), (crop.right - 1).toDouble())
+            sourceY[i] = when (rotation) {
+                90 -> crop.bottom - 1.0 - displayX[i]
+                180 -> crop.bottom - 1.0 - displayY[i]
+                270 -> displayX[i] + crop.top
+                else -> displayY[i] + crop.top
+            }.coerceIn(crop.top.toDouble(), (crop.bottom - 1).toDouble())
+        }
+
+        val lumaX = axisSamples(sourceX, imageWidth)
+        val lumaY = axisSamples(sourceY, imageHeight)
+        val uvWidth = (imageWidth + 1) / 2
+        val uvHeight = (imageHeight + 1) / 2
+        val uvX = axisSamples(DoubleArray(size) { sourceX[it] * 0.5 }, uvWidth)
+        val uvY = axisSamples(DoubleArray(size) { sourceY[it] * 0.5 }, uvHeight)
+        return SamplingPlan(validX, validY, lumaX, lumaY, uvX, uvY, swapAxes)
+    }
+
+    private fun axisSamples(coords: DoubleArray, dimension: Int): AxisSamples {
+        val i0 = IntArray(coords.size)
+        val i1 = IntArray(coords.size)
+        val w1 = IntArray(coords.size)
+        val maxIndex = (dimension - 1).coerceAtLeast(0)
+        for (i in coords.indices) {
+            val c = coords[i].coerceIn(0.0, maxIndex.toDouble())
+            val base = floor(c).toInt()
+            i0[i] = base
+            i1[i] = (base + 1).coerceAtMost(maxIndex)
+            w1[i] = ((c - base) * FP).roundToInt().coerceIn(0, FP)
+        }
+        return AxisSamples(i0, i1, w1)
+    }
+
+    private fun snapshotPlane(plane: Image.Plane, workspace: Workspace, slot: Int): PlaneSnapshot {
+        val duplicate = plane.buffer.duplicate()
+        val length = duplicate.remaining()
+        val target = when (slot) {
+            0 -> ensureCapacity(workspace.yBytes, length).also { workspace.yBytes = it }
+            1 -> ensureCapacity(workspace.uBytes, length).also { workspace.uBytes = it }
+            else -> ensureCapacity(workspace.vBytes, length).also { workspace.vBytes = it }
+        }
+        duplicate.get(target, 0, length)
+        return PlaneSnapshot(target, length, plane.rowStride, plane.pixelStride)
+    }
+
+    private fun ensureCapacity(bytes: ByteArray, required: Int): ByteArray =
+        if (bytes.size >= required) bytes else ByteArray(required)
+
+    internal fun sampleSnapshot(
+        plane: PlaneSnapshot,
+        x: AxisSamples,
+        xIndex: Int,
+        y: AxisSamples,
+        yIndex: Int
+    ): Int {
+        val fx = x.w1[xIndex]
+        val fy = y.w1[yIndex]
+        val row0 = y.i0[yIndex] * plane.rowStride
+        val row1 = y.i1[yIndex] * plane.rowStride
+        val col0 = x.i0[xIndex] * plane.pixelStride
+        val col1 = x.i1[xIndex] * plane.pixelStride
+        val p00 = planeByte(plane, row0 + col0)
+        if (fx == 0 && fy == 0) return p00
+        val p10 = planeByte(plane, row0 + col1)
+        val p01 = planeByte(plane, row1 + col0)
+        val p11 = planeByte(plane, row1 + col1)
+        val top = p00 * (FP - fx) + p10 * fx
+        val bottom = p01 * (FP - fx) + p11 * fx
+        return (top * (FP - fy) + bottom * fy + (FP * FP / 2)) / (FP * FP)
+    }
+
+    private fun planeByte(plane: PlaneSnapshot, index: Int): Int {
+        if (index < 0 || index >= plane.length) {
+            error("YUV plane index out of bounds: index=$index length=${plane.length}")
+        }
+        return plane.bytes[index].toInt() and 0xFF
+    }
+
+    internal fun rgbaLittleEndianInt(rgb: Int): Int {
+        val r = (rgb ushr 16) and 0xFF
+        val g = (rgb ushr 8) and 0xFF
+        val b = rgb and 0xFF
+        return (0xFF shl 24) or (b shl 16) or (g shl 8) or r
     }
 
     internal fun inverseRotate(
@@ -277,41 +447,6 @@ internal object CanonicalYuvToRgba {
         180 -> (sourceW - 1.0 - dx) to (sourceH - 1.0 - dy)
         270 -> (sourceW - 1.0 - dy) to dx
         else -> dx to dy
-    }
-
-    private fun samplePlane(
-        plane: Image.Plane,
-        x: Double,
-        y: Double,
-        width: Int,
-        height: Int
-    ): Int {
-        val clampedX = x.coerceIn(0.0, (width - 1).coerceAtLeast(0).toDouble())
-        val clampedY = y.coerceIn(0.0, (height - 1).coerceAtLeast(0).toDouble())
-        val x0 = floor(clampedX).toInt()
-        val y0 = floor(clampedY).toInt()
-        val x1 = (x0 + 1).coerceAtMost(width - 1)
-        val y1 = (y0 + 1).coerceAtMost(height - 1)
-        val fx = ((clampedX - x0) * FP).roundToInt().coerceIn(0, FP)
-        val fy = ((clampedY - y0) * FP).roundToInt().coerceIn(0, FP)
-
-        if (fx == 0 && fy == 0) return planeByte(plane, x0, y0)
-        val p00 = planeByte(plane, x0, y0)
-        val p10 = planeByte(plane, x1, y0)
-        val p01 = planeByte(plane, x0, y1)
-        val p11 = planeByte(plane, x1, y1)
-        val top = p00 * (FP - fx) + p10 * fx
-        val bottom = p01 * (FP - fx) + p11 * fx
-        return (top * (FP - fy) + bottom * fy + (FP * FP / 2)) / (FP * FP)
-    }
-
-    private fun planeByte(plane: Image.Plane, x: Int, y: Int): Int {
-        val buffer = plane.buffer
-        val index = buffer.position() + y * plane.rowStride + x * plane.pixelStride
-        if (index < buffer.position() || index >= buffer.limit()) {
-            error("YUV plane index out of bounds: x=$x y=$y index=$index limit=${buffer.limit()}")
-        }
-        return buffer.get(index).toInt() and 0xFF
     }
 
     internal fun yuvToRgb(
@@ -374,17 +509,4 @@ internal object CanonicalYuvToRgba {
             b.coerceIn(0, 255)
     }
 
-    private fun putPackedRgb(output: ByteBuffer, rgb: Int) {
-        output.put(((rgb ushr 16) and 0xFF).toByte())
-        output.put(((rgb ushr 8) and 0xFF).toByte())
-        output.put((rgb and 0xFF).toByte())
-        output.put(0xFF.toByte())
-    }
-
-    private fun putRgba(output: ByteBuffer, r: Int, g: Int, b: Int) {
-        output.put(r.toByte())
-        output.put(g.toByte())
-        output.put(b.toByte())
-        output.put(0xFF.toByte())
-    }
 }
