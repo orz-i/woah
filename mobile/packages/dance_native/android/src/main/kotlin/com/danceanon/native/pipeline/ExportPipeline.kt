@@ -135,6 +135,41 @@ class ExportPipeline(
         val yoloEffectiveAccelerator = segmenter.effectiveAccelerator
         val yoloRequestedAccelerator = yoloRuntimeInfo?.requestedAccelerator?.name ?: "GPU"
         val yoloFallbackReason = yoloRuntimeInfo?.fallbackReason
+        var cpuDeterminismProbeSegmenter: YoloLiteRtSegmenter? = null
+        var cpuDeterminismProbeFallbackReason: String? = null
+        if (com.danceanon.dance_native.BuildConfig.DEBUG) {
+            try {
+                cpuDeterminismProbeSegmenter = YoloLiteRtSegmenter(
+                    context = context,
+                    requestedAccelerator = com.danceanon.native.litert.LiteRtAccelerator.CPU
+                ).also { it.initialize() }
+                val cpuInfo = cpuDeterminismProbeSegmenter?.runtimeInfo
+                com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                    level = "INFO",
+                    component = "ExportPipeline",
+                    event = "YOLO_CPU_DETERMINISM_PROBE_ACTIVE",
+                    fields = mapOf(
+                        "job_id" to jobId,
+                        "effective_accelerator" to cpuDeterminismProbeSegmenter?.effectiveAccelerator?.name,
+                        "compile_ms" to cpuInfo?.compileMs,
+                        "warmup_ms" to cpuInfo?.warmupMs
+                    )
+                )
+            } catch (t: Throwable) {
+                cpuDeterminismProbeFallbackReason = "${t.javaClass.simpleName}:${t.message ?: "unknown"}"
+                try { cpuDeterminismProbeSegmenter?.close() } catch (_: Throwable) {}
+                cpuDeterminismProbeSegmenter = null
+                com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                    level = "WARN",
+                    component = "ExportPipeline",
+                    event = "YOLO_CPU_DETERMINISM_PROBE_UNAVAILABLE",
+                    fields = mapOf(
+                        "job_id" to jobId,
+                        "reason" to cpuDeterminismProbeFallbackReason
+                    )
+                )
+            }
+        }
         com.danceanon.native.diagnostics.NativeDiagnostics.recordPipelineLifecycle(
             stage = "PREPARING",
             jobId = jobId,
@@ -183,6 +218,7 @@ class ExportPipeline(
             var decoder: VideoDecoder? = null
             var canonicalInferenceDecoder: CanonicalYuvInferenceDecoder? = null
             var canonicalInferenceFallbackReason: String? = null
+            var canonicalValidationWindowCompleted = false
             var encoder: VideoEncoder? = null
             var muxer: Mp4Muxer? = null
             var audioCopier: AudioTrackCopier? = null
@@ -776,6 +812,21 @@ class ExportPipeline(
                             val shouldInfer = (processedFrames == 1) || (processedFrames % frameStride == 0)
                             val detections = if (shouldInfer) {
                                 var usedCanonicalInput = false
+                                if (ptsUs > CROSS_DEVICE_VALIDATION_MAX_PTS_US && canonicalInferenceDecoder != null) {
+                                    try { canonicalInferenceDecoder?.close() } catch (_: Throwable) {}
+                                    canonicalInferenceDecoder = null
+                                    canonicalValidationWindowCompleted = true
+                                    com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                                        level = "INFO",
+                                        component = "ExportPipeline",
+                                        event = "CANONICAL_YUV_VALIDATION_WINDOW_COMPLETE",
+                                        fields = mapOf(
+                                            "job_id" to jobId,
+                                            "max_pts_us" to CROSS_DEVICE_VALIDATION_MAX_PTS_US,
+                                            "first_oes_pts_us" to ptsUs
+                                        )
+                                    )
+                                }
                                 val canonicalDecoder = canonicalInferenceDecoder
                                 val canonicalRgba = if (canonicalDecoder != null) {
                                     try {
@@ -853,6 +904,37 @@ class ExportPipeline(
                                         colOrder = RgbaColOrder.LEFT_TO_RIGHT,
                                         diagnosticJobId = jobId
                                     )
+                                }
+                                if (ptsUs <= CROSS_DEVICE_VALIDATION_MAX_PTS_US) {
+                                    val cpuProbe = cpuDeterminismProbeSegmenter
+                                    if (cpuProbe != null) {
+                                        try {
+                                            profiler.recordStage("yoloCpuDeterminismProbe") {
+                                                cpuProbe.segmentGlReadbackRgbaSync(
+                                                    rgbaBuffer,
+                                                    mapper,
+                                                    ptsUs,
+                                                    colOrder = RgbaColOrder.LEFT_TO_RIGHT,
+                                                    diagnosticJobId = "${jobId}_cpu_probe"
+                                                )
+                                            }
+                                        } catch (t: Throwable) {
+                                            cpuDeterminismProbeFallbackReason =
+                                                "${t.javaClass.simpleName}:${t.message ?: "unknown"}"
+                                            try { cpuProbe.close() } catch (_: Throwable) {}
+                                            cpuDeterminismProbeSegmenter = null
+                                            com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                                                level = "WARN",
+                                                component = "ExportPipeline",
+                                                event = "YOLO_CPU_DETERMINISM_PROBE_FAILED",
+                                                fields = mapOf(
+                                                    "job_id" to jobId,
+                                                    "pts_us" to ptsUs,
+                                                    "reason" to cpuDeterminismProbeFallbackReason
+                                                )
+                                            )
+                                        }
+                                    }
                                 }
                                 // Historical compatibility: this metric name predates the
                                 // LiteRT GPU path and is misleading. Preserve it unchanged
@@ -1639,12 +1721,17 @@ class ExportPipeline(
                             "yolo_requested_accelerator" to yoloRequestedAccelerator,
                             "yolo_effective_accelerator" to yoloEffectiveAccelerator.name,
                             "yolo_gpu_fallback_reason" to yoloFallbackReason,
-                            "yolo_inference_input_path" to if (canonicalInferenceDecoder != null) {
+                            "yolo_inference_input_path" to if (canonicalValidationWindowCompleted) {
+                                "CANONICAL_YUV_CPU_THEN_SURFACE_OES_RGBA"
+                            } else if (canonicalInferenceDecoder != null) {
                                 "CANONICAL_YUV_CPU"
                             } else {
                                 "SURFACE_OES_RGBA"
                             },
+                            "canonical_yuv_validation_window_us" to CROSS_DEVICE_VALIDATION_MAX_PTS_US,
+                            "canonical_yuv_validation_window_completed" to canonicalValidationWindowCompleted,
                             "canonical_yuv_fallback_reason" to canonicalInferenceFallbackReason,
+                            "cpu_determinism_probe_fallback_reason" to cpuDeterminismProbeFallbackReason,
                             "state" to "completed"
                         )
                     )
@@ -1682,6 +1769,7 @@ class ExportPipeline(
                 pipelineException = e
             } finally {
                 try { previewScope?.cancel() } catch (_: Throwable) {}
+                try { cpuDeterminismProbeSegmenter?.close() } catch (_: Throwable) {}
                 try { canonicalInferenceDecoder?.close() } catch (_: Throwable) {}
                 try { decoder?.close() } catch (_: Throwable) {}
                 // Run the independent CPU-readable decoder probe only after the production
@@ -1754,6 +1842,8 @@ class ExportPipeline(
     }
 
     companion object {
+        private const val CROSS_DEVICE_VALIDATION_MAX_PTS_US = 450_000L
+
         internal fun shouldUseFreshFullBodyClassPrimary(
             fullBodyPersonIds: Set<Int>,
             faceOnlyPersonIds: Set<Int>

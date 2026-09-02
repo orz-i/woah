@@ -41,7 +41,7 @@ def read_bundle(path: Path):
         manifest = json.loads(z.read("manifest.json"))
         current_job_id = manifest.get("pipeline_lifecycle_job_id")
     yuv: dict[int, bytes] = {}
-    tensors: dict[tuple[int, str], bytes] = {}
+    tensors: dict[tuple[str, int, str], bytes] = {}
     for name in z.namelist():
         if current_job_id and current_job_id not in name:
             continue
@@ -51,7 +51,8 @@ def read_bundle(path: Path):
             continue
         m = TENSOR_RE.search(name)
         if m:
-            tensors[(int(m.group(1)), m.group(2))] = z.read(name)
+            backend = "cpu_probe" if current_job_id and f"{current_job_id}_cpu_probe_" in name else "gpu"
+            tensors[(backend, int(m.group(1)), m.group(2))] = z.read(name)
     return z, current_job_id, yuv, tensors
 
 
@@ -104,11 +105,15 @@ def main() -> int:
             ],
             "tensors": [
                 {
+                    "backend": backend,
                     "pts_us": pts,
                     "tensor": tensor,
-                    **compare_floats(a_tensors[(pts, tensor)], b_tensors[(pts, tensor)]),
+                    **compare_floats(
+                        a_tensors[(backend, pts, tensor)],
+                        b_tensors[(backend, pts, tensor)],
+                    ),
                 }
-                for pts, tensor in tensor_keys
+                for backend, pts, tensor in tensor_keys
             ],
         }
         print(json.dumps(result, indent=2))
