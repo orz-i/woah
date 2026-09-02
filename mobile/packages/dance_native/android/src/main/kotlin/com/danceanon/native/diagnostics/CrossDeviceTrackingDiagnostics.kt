@@ -30,16 +30,46 @@ internal class CrossDeviceTrackingDiagnostics(
         val overlapTrigger: Float
     )
 
-    internal data class AdaptiveDecision(val useCpu: Boolean, val reason: String)
+    internal data class AdaptiveMetrics(
+        val protectedTrackCount: Int,
+        val missingProtectedTrackCount: Int,
+        val nonActiveProtectedTrackCount: Int,
+        val minLocalCandidateCount: Int,
+        val maxLocalCandidateCount: Int,
+        val duplicateCandidateOwnership: Boolean,
+        val minMatchedConfidence: Float?,
+        val maxMatchedMotionRatio: Float,
+        val maxMatchedOverlapRatio: Float,
+        val maxGapReached: Boolean
+    ) {
+        fun asFields(): Map<String, Any?> = mapOf(
+            "protected_track_count" to protectedTrackCount,
+            "missing_protected_track_count" to missingProtectedTrackCount,
+            "non_active_protected_track_count" to nonActiveProtectedTrackCount,
+            "min_local_candidate_count" to minLocalCandidateCount,
+            "max_local_candidate_count" to maxLocalCandidateCount,
+            "duplicate_candidate_ownership" to duplicateCandidateOwnership,
+            "min_matched_confidence_q1e4" to minMatchedConfidence?.let { (it * 10_000f).roundToInt() },
+            "max_matched_motion_ratio_q1e4" to (maxMatchedMotionRatio * 10_000f).roundToInt(),
+            "max_matched_overlap_ratio_q1e4" to (maxMatchedOverlapRatio * 10_000f).roundToInt(),
+            "max_gap_reached" to maxGapReached
+        )
+    }
+
+    internal data class AdaptiveDecision(
+        val useCpu: Boolean,
+        val reason: String,
+        val metrics: AdaptiveMetrics
+    )
 
     private val cpuFullTracker = TrackManager(diagnosticsEnabled = false)
+    private val identityProtectedTrackIds = (fullBodyPersonIds + faceOnlyPersonIds).toSortedSet()
     private val adaptiveTrackers = adaptiveConfigs.associateWith {
         TrackManager(diagnosticsEnabled = false)
     }
     private val lastCpuOrdinalByConfig = adaptiveConfigs.associateWith { 0 }.toMutableMap()
     private var initialized = false
     private var inferenceOrdinal = 0
-    private var previousProductionDetections: List<PersonDetection>? = null
     private var lastAdaptiveTracked: Map<AdaptiveConfig, List<TrackedPerson>> = emptyMap()
     private var disabledReason: String? = null
 
@@ -65,6 +95,7 @@ internal class CrossDeviceTrackingDiagnostics(
             val adaptiveTracked: Map<AdaptiveConfig, List<TrackedPerson>>
             val adaptiveSources = linkedMapOf<String, String>()
             val adaptiveReasons = linkedMapOf<String, String>()
+            val adaptiveMetrics = linkedMapOf<String, Map<String, Any?>>()
             if (!initialized) {
                 val prodDetections = productionDetections ?: return disable("MISSING_PRODUCTION_FIRST_FRAME")
                 val prodTracked = productionTracked ?: return disable("MISSING_PRODUCTION_TRACKS_FIRST_FRAME")
@@ -83,7 +114,6 @@ internal class CrossDeviceTrackingDiagnostics(
                 }
                 initialized = true
                 inferenceOrdinal = 0
-                previousProductionDetections = prodDetections
             } else if (!shouldInfer) {
                 cpuFullTracked = cpuFullTracker.predictWithoutObservation(ptsUs)
                 adaptiveTracked = adaptiveTrackers.mapValues { (config, tracker) ->
@@ -107,11 +137,12 @@ internal class CrossDeviceTrackingDiagnostics(
                         config = config,
                         inferenceOrdinal = inferenceOrdinal,
                         lastCpuOrdinal = lastCpuOrdinalByConfig.getValue(config),
-                        previousGpuDetections = previousProductionDetections,
                         gpuDetections = gpuDetections,
-                        previousTracks = lastAdaptiveTracked[config].orEmpty()
+                        previousTracks = lastAdaptiveTracked[config].orEmpty(),
+                        identityProtectedTrackIds = identityProtectedTrackIds
                     )
                     adaptiveReasons[config.key] = decision.reason
+                    adaptiveMetrics[config.key] = decision.metrics.asFields()
                     if (decision.useCpu) {
                         lastCpuOrdinalByConfig[config] = inferenceOrdinal
                         adaptiveSources[config.key] = "CPU"
@@ -125,7 +156,6 @@ internal class CrossDeviceTrackingDiagnostics(
                         tracker.predictWithoutObservation(ptsUs)
                     }
                 }
-                previousProductionDetections = gpuDetections
             }
             lastAdaptiveTracked = adaptiveTracked
 
@@ -138,13 +168,15 @@ internal class CrossDeviceTrackingDiagnostics(
                     "pts_us" to ptsUs,
                     "should_infer" to shouldInfer,
                     "cpu_inference_ordinal" to inferenceOrdinal,
+                    "identity_protected_track_ids" to identityProtectedTrackIds.toList(),
                     "cpu_full_tracks" to trackSignature(cpuFullTracked),
                     "adaptive_tracks" to adaptiveTracked
                         .entries
                         .sortedBy { it.key.key }
                         .associate { (config, tracks) -> config.key to trackSignature(tracks) },
                     "adaptive_sources" to adaptiveSources,
-                    "adaptive_reasons" to adaptiveReasons
+                    "adaptive_reasons" to adaptiveReasons,
+                    "adaptive_metrics" to adaptiveMetrics
                 )
             )
         } catch (t: Throwable) {
@@ -179,76 +211,122 @@ internal class CrossDeviceTrackingDiagnostics(
             config: AdaptiveConfig,
             inferenceOrdinal: Int,
             lastCpuOrdinal: Int,
-            previousGpuDetections: List<PersonDetection>?,
             gpuDetections: List<PersonDetection>,
-            previousTracks: List<TrackedPerson>
+            previousTracks: List<TrackedPerson>,
+            identityProtectedTrackIds: Set<Int>
         ): AdaptiveDecision {
-            if (inferenceOrdinal - lastCpuOrdinal >= config.maxGap) {
-                return AdaptiveDecision(true, "MAX_GAP")
-            }
-            val previous = previousGpuDetections ?: return AdaptiveDecision(true, "NO_PREVIOUS_GPU")
-            if (previousTracks.any { it.state != TrackState.ACTIVE && it.state != TrackState.NEW }) {
-                return AdaptiveDecision(true, "NON_ACTIVE_TRACK")
-            }
-            if (previous.size != gpuDetections.size) {
-                return AdaptiveDecision(true, "DETECTION_COUNT_CHANGE")
-            }
-            if (previous.isEmpty() || gpuDetections.isEmpty()) {
-                return AdaptiveDecision(true, "EMPTY_DETECTIONS")
-            }
-            if (gpuDetections.any { it.confidence < SAFE_GPU_CONFIDENCE }) {
-                return AdaptiveDecision(true, "LOW_GPU_CONFIDENCE")
-            }
-            if (
-                maxPairwiseOverlap(previous) >= config.overlapTrigger ||
-                maxPairwiseOverlap(gpuDetections) >= config.overlapTrigger
-            ) {
-                return AdaptiveDecision(true, "PERSON_OVERLAP")
+            val protectedTracks = previousTracks.filter { identityProtectedTrackIds.contains(it.id) }
+            val missingProtectedTrackCount =
+                (identityProtectedTrackIds.size - protectedTracks.map { it.id }.toSet().size).coerceAtLeast(0)
+            val nonActiveProtectedTrackCount = protectedTracks.count {
+                it.state != TrackState.ACTIVE && it.state != TrackState.NEW
             }
 
-            val costs = Array(previous.size) { previousIndex ->
-                FloatArray(gpuDetections.size) { currentIndex ->
-                    1f - TrackManager.computeBBoxIoU(
-                        previous[previousIndex].bbox,
-                        gpuDetections[currentIndex].bbox
+            val candidateIndicesByTrack = mutableListOf<List<Int>>()
+            var minMatchedConfidence: Float? = null
+            var maxMatchedMotionRatio = 0f
+            var maxMatchedOverlapRatio = 0f
+            for (track in protectedTracks) {
+                val searchBox = expandBbox(track.bbox, LOCAL_GPU_SEARCH_EXPANSION_RATIO)
+                val candidateIndices = gpuDetections.indices.filter { detectionIndex ->
+                    bboxIntersectionArea(searchBox, gpuDetections[detectionIndex].bbox) > 0f
+                }
+                candidateIndicesByTrack.add(candidateIndices)
+                if (candidateIndices.size != 1) continue
+
+                val candidateIndex = candidateIndices.single()
+                val candidate = gpuDetections[candidateIndex]
+                minMatchedConfidence = minOf(minMatchedConfidence ?: candidate.confidence, candidate.confidence)
+                val dx = candidate.bbox.centerX - track.bbox.centerX
+                val dy = candidate.bbox.centerY - track.bbox.centerY
+                val refDim = maxOf(track.bbox.width, track.bbox.height, 1f)
+                maxMatchedMotionRatio = maxOf(
+                    maxMatchedMotionRatio,
+                    sqrt(dx * dx + dy * dy) / refDim
+                )
+                for (otherIndex in gpuDetections.indices) {
+                    if (otherIndex == candidateIndex) continue
+                    val other = gpuDetections[otherIndex]
+                    val minArea = minOf(
+                        candidate.bbox.width * candidate.bbox.height,
+                        other.bbox.width * other.bbox.height
+                    )
+                    if (minArea <= 0f) continue
+                    maxMatchedOverlapRatio = maxOf(
+                        maxMatchedOverlapRatio,
+                        bboxIntersectionArea(candidate.bbox, other.bbox) / minArea
                     )
                 }
             }
-            val matches = HungarianSolver.match(costs, maxCostThreshold = 0.95f).matches
-            if (matches.size != gpuDetections.size) {
-                return AdaptiveDecision(true, "GPU_GEOMETRY_UNSTABLE")
+
+            val localCandidateCounts = candidateIndicesByTrack.map { it.size }
+            val minLocalCandidateCount = localCandidateCounts.minOrNull() ?: 0
+            val maxLocalCandidateCount = localCandidateCounts.maxOrNull() ?: 0
+            val uniquelyOwnedCandidateIndices = candidateIndicesByTrack
+                .filter { it.size == 1 }
+                .map { it.single() }
+            val duplicateCandidateOwnership =
+                uniquelyOwnedCandidateIndices.size != uniquelyOwnedCandidateIndices.toSet().size
+            val maxGapReached = inferenceOrdinal - lastCpuOrdinal >= config.maxGap
+            val metrics = AdaptiveMetrics(
+                protectedTrackCount = protectedTracks.size,
+                missingProtectedTrackCount = missingProtectedTrackCount,
+                nonActiveProtectedTrackCount = nonActiveProtectedTrackCount,
+                minLocalCandidateCount = minLocalCandidateCount,
+                maxLocalCandidateCount = maxLocalCandidateCount,
+                duplicateCandidateOwnership = duplicateCandidateOwnership,
+                minMatchedConfidence = minMatchedConfidence,
+                maxMatchedMotionRatio = maxMatchedMotionRatio,
+                maxMatchedOverlapRatio = maxMatchedOverlapRatio,
+                maxGapReached = maxGapReached
+            )
+
+            fun cpu(reason: String) = AdaptiveDecision(true, reason, metrics)
+            if (maxGapReached) {
+                return cpu("MAX_GAP")
             }
-            for ((previousIndex, currentIndex) in matches) {
-                val before = previous[previousIndex].bbox
-                val after = gpuDetections[currentIndex].bbox
-                val dx = after.centerX - before.centerX
-                val dy = after.centerY - before.centerY
-                val refDim = maxOf(before.width, before.height, 1f)
-                val motionRatio = sqrt(dx * dx + dy * dy) / refDim
-                if (motionRatio >= config.maxMotionRatio) {
-                    return AdaptiveDecision(true, "GPU_MOTION")
-                }
+            if (identityProtectedTrackIds.isEmpty()) {
+                return cpu("NO_IDENTITY_PROTECTED_TRACKS")
             }
-            return AdaptiveDecision(false, "SAFE_GPU_SCHEDULER_ONLY")
+            if (missingProtectedTrackCount > 0) {
+                return cpu("PROTECTED_TRACK_MISSING")
+            }
+            if (nonActiveProtectedTrackCount > 0) {
+                return cpu("PROTECTED_NON_ACTIVE")
+            }
+            if (localCandidateCounts.any { it != 1 }) {
+                return cpu("PROTECTED_GPU_CANDIDATE_COUNT")
+            }
+            if (duplicateCandidateOwnership) {
+                return cpu("PROTECTED_GPU_OWNERSHIP_AMBIGUOUS")
+            }
+            if ((minMatchedConfidence ?: 0f) < SAFE_GPU_CONFIDENCE) {
+                return cpu("PROTECTED_LOW_GPU_CONFIDENCE")
+            }
+            if (maxMatchedOverlapRatio >= config.overlapTrigger) {
+                return cpu("PROTECTED_PERSON_OVERLAP")
+            }
+            if (maxMatchedMotionRatio >= config.maxMotionRatio) {
+                return cpu("PROTECTED_GPU_MOTION")
+            }
+            return AdaptiveDecision(false, "SAFE_GPU_SCHEDULER_ONLY", metrics)
         }
 
         private const val SAFE_GPU_CONFIDENCE = 0.35f
+        private const val LOCAL_GPU_SEARCH_EXPANSION_RATIO = 0.30f
 
-        private fun maxPairwiseOverlap(detections: List<PersonDetection>): Float {
-            var maxOverlap = 0f
-            for (i in detections.indices) {
-                val a = detections[i].bbox
-                for (j in i + 1 until detections.size) {
-                    val b = detections[j].bbox
-                    val intersection = TrackManager.computeBBoxIntersectionArea(a, b)
-                    val minArea = minOf(a.width * a.height, b.width * b.height)
-                    if (minArea > 0f) {
-                        maxOverlap = maxOf(maxOverlap, intersection / minArea)
-                    }
-                }
-            }
-            return maxOverlap
-        }
+        private fun expandBbox(bbox: com.danceanon.native.inference.FloatRect, ratio: Float) =
+            com.danceanon.native.inference.FloatRect(
+                left = bbox.left - bbox.width * ratio,
+                top = bbox.top - bbox.height * ratio,
+                right = bbox.right + bbox.width * ratio,
+                bottom = bbox.bottom + bbox.height * ratio
+            )
+
+        private fun bboxIntersectionArea(
+            a: com.danceanon.native.inference.FloatRect,
+            b: com.danceanon.native.inference.FloatRect
+        ): Float = TrackManager.computeBBoxIntersectionArea(a, b)
 
         internal fun mapProductionIdsToCpuDetections(
             productionDetections: List<PersonDetection>,

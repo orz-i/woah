@@ -29,20 +29,21 @@ class CrossDeviceTrackingDiagnosticsTest {
         )
         val tracks = listOf(
             TrackedPerson(7, previous[0].bbox, null, 0.9f, state = TrackState.ACTIVE),
-            TrackedPerson(3, previous[1].bbox, null, 0.8f, state = TrackState.ACTIVE)
+            TrackedPerson(3, previous[1].bbox, null, 0.8f, state = TrackState.LOST)
         )
 
         val decision = CrossDeviceTrackingDiagnostics.decideCpuAnchor(
             config = config,
             inferenceOrdinal = 1,
             lastCpuOrdinal = 0,
-            previousGpuDetections = previous,
             gpuDetections = current,
-            previousTracks = tracks
+            previousTracks = tracks,
+            identityProtectedTrackIds = setOf(7)
         )
 
         assertFalse(decision.useCpu)
         assertEquals("SAFE_GPU_SCHEDULER_ONLY", decision.reason)
+        assertEquals(0, decision.metrics.nonActiveProtectedTrackCount)
     }
 
     @Test
@@ -71,7 +72,7 @@ class CrossDeviceTrackingDiagnosticsTest {
     }
 
     @Test
-    fun adaptiveSchedulerForcesCpuOnGapOverlapAndUnstableTrackState() {
+    fun adaptiveSchedulerForcesCpuOnGapLocalOverlapAndProtectedTrackState() {
         val config = CrossDeviceTrackingDiagnostics.AdaptiveConfig(
             key = "test",
             maxGap = 3,
@@ -88,7 +89,7 @@ class CrossDeviceTrackingDiagnosticsTest {
         )
 
         val gapDecision = CrossDeviceTrackingDiagnostics.decideCpuAnchor(
-            config, 3, 0, separated, separated, activeTracks
+            config, 3, 0, separated, activeTracks, setOf(7)
         )
         assertTrue(gapDecision.useCpu)
         assertEquals("MAX_GAP", gapDecision.reason)
@@ -98,18 +99,84 @@ class CrossDeviceTrackingDiagnosticsTest {
             separated[1].copy(bbox = FloatRect(80f, 0f, 180f, 200f))
         )
         val overlapDecision = CrossDeviceTrackingDiagnostics.decideCpuAnchor(
-            config, 1, 0, separated, overlapping, activeTracks
+            config, 1, 0, overlapping, activeTracks, setOf(7)
         )
         assertTrue(overlapDecision.useCpu)
-        assertEquals("PERSON_OVERLAP", overlapDecision.reason)
+        assertEquals("PROTECTED_GPU_CANDIDATE_COUNT", overlapDecision.reason)
 
         val unstableTracks = activeTracks.toMutableList().apply {
             this[0] = this[0].copy(state = TrackState.OCCLUDED)
         }
         val stateDecision = CrossDeviceTrackingDiagnostics.decideCpuAnchor(
-            config, 1, 0, separated, separated, unstableTracks
+            config, 1, 0, separated, unstableTracks, setOf(7)
         )
         assertTrue(stateDecision.useCpu)
-        assertEquals("NON_ACTIVE_TRACK", stateDecision.reason)
+        assertEquals("PROTECTED_NON_ACTIVE", stateDecision.reason)
+    }
+
+    @Test
+    fun adaptiveSchedulerIgnoresUnrelatedOverlapAwayFromProtectedIdentity() {
+        val config = CrossDeviceTrackingDiagnostics.AdaptiveConfig(
+            key = "test",
+            maxGap = 4,
+            maxMotionRatio = 0.20f,
+            overlapTrigger = 0.10f
+        )
+        val protected = PersonDetection(FloatRect(0f, 0f, 100f, 200f), 0.9f)
+        val unrelatedA = PersonDetection(FloatRect(300f, 0f, 400f, 200f), 0.9f)
+        val unrelatedB = PersonDetection(FloatRect(350f, 0f, 450f, 200f), 0.9f)
+        val tracks = listOf(
+            TrackedPerson(7, protected.bbox, null, 0.9f, state = TrackState.ACTIVE),
+            TrackedPerson(3, unrelatedA.bbox, null, 0.9f, state = TrackState.LOST)
+        )
+
+        val decision = CrossDeviceTrackingDiagnostics.decideCpuAnchor(
+            config = config,
+            inferenceOrdinal = 1,
+            lastCpuOrdinal = 0,
+            gpuDetections = listOf(
+                protected.copy(bbox = FloatRect(4f, 1f, 104f, 201f)),
+                unrelatedA,
+                unrelatedB
+            ),
+            previousTracks = tracks,
+            identityProtectedTrackIds = setOf(7)
+        )
+
+        assertFalse(decision.useCpu)
+        assertEquals("SAFE_GPU_SCHEDULER_ONLY", decision.reason)
+        assertEquals(1, decision.metrics.maxLocalCandidateCount)
+    }
+
+    @Test
+    fun adaptiveSchedulerForcesCpuWhenProtectedGpuCandidateIsMissing() {
+        val config = CrossDeviceTrackingDiagnostics.AdaptiveConfig(
+            key = "test",
+            maxGap = 4,
+            maxMotionRatio = 0.20f,
+            overlapTrigger = 0.10f
+        )
+        val track = TrackedPerson(
+            7,
+            FloatRect(0f, 0f, 100f, 200f),
+            null,
+            0.9f,
+            state = TrackState.ACTIVE
+        )
+
+        val decision = CrossDeviceTrackingDiagnostics.decideCpuAnchor(
+            config = config,
+            inferenceOrdinal = 1,
+            lastCpuOrdinal = 0,
+            gpuDetections = listOf(
+                PersonDetection(FloatRect(400f, 0f, 500f, 200f), 0.9f)
+            ),
+            previousTracks = listOf(track),
+            identityProtectedTrackIds = setOf(7)
+        )
+
+        assertTrue(decision.useCpu)
+        assertEquals("PROTECTED_GPU_CANDIDATE_COUNT", decision.reason)
+        assertEquals(0, decision.metrics.minLocalCandidateCount)
     }
 }
