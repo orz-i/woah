@@ -18,7 +18,7 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
   /// ID binding, TrackManager and compositor runtime behavior remain unchanged.
   /// This threshold only decides which first-frame people are offered to the user
   /// as selectable privacy targets.
-  static const double selectionCandidateMinConfidence = 0.55;
+  static const double selectionCandidateMinConfidence = 0.60;
 
   final NativeProcessingRepository _repository;
 

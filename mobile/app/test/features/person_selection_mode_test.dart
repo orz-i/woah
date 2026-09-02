@@ -28,18 +28,21 @@ void main() {
       updatedAt: now,
     );
     final controller = PersonSelectionController(
-      _FakePersonSelectionRepository(confidences: const [0.92, 0.50]),
+      _FakePersonSelectionRepository(
+        confidences: const [0.92, 0.56, 0.59, 0.60],
+      ),
     );
     addTearDown(controller.dispose);
 
     await controller.analyzeProject(project);
 
-    expect(controller.state.persons.map((p) => p.id).toSet(), equals({0}));
-    expect(controller.state.selectedPersonIds, equals({0}));
+    expect(controller.state.persons.map((p) => p.id).toSet(), equals({0, 3}));
+    expect(controller.state.selectedPersonIds, equals({0, 3}));
     expect(controller.state.privacyModeForPerson(1), PersonPrivacyMode.none);
+    expect(controller.state.privacyModeForPerson(2), PersonPrivacyMode.none);
 
     controller.setPrivacyMode(1, PersonPrivacyMode.fullBody);
-    expect(controller.state.selectedPersonIds, equals({0}));
+    expect(controller.state.selectedPersonIds, equals({0, 3}));
   });
 
   test('stored privacy mode cannot revive excluded weak first-frame candidate', () async {
@@ -63,7 +66,7 @@ void main() {
       updatedAt: now,
     );
     final controller = PersonSelectionController(
-      _FakePersonSelectionRepository(confidences: const [0.92, 0.50]),
+      _FakePersonSelectionRepository(confidences: const [0.92, 0.56]),
     );
     addTearDown(controller.dispose);
 
@@ -168,26 +171,18 @@ class _FakePersonSelectionRepository implements NativeProcessingRepository {
         audioCodec: null,
         hasAudio: false,
       ),
-      persons: [
-        DetectedPersonDto(
-          id: 0,
-          x1: 0.05,
+      persons: List.generate(confidences.length, (index) {
+        final left = 0.05 + index * 0.20;
+        return DetectedPersonDto(
+          id: index,
+          x1: left,
           y1: 0.1,
-          x2: 0.35,
+          x2: left + 0.15,
           y2: 0.9,
           thumbnailPath: '',
-          confidence: confidences[0],
-        ),
-        DetectedPersonDto(
-          id: 1,
-          x1: 0.55,
-          y1: 0.1,
-          x2: 0.85,
-          y2: 0.9,
-          thumbnailPath: '',
-          confidence: confidences[1],
-        ),
-      ],
+          confidence: confidences[index],
+        );
+      }),
     );
   }
 
