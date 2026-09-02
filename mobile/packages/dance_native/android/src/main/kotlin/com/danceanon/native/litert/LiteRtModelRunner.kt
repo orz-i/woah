@@ -18,7 +18,8 @@ class LiteRtModelRunner(
     private val modelFile: File? = null,
     private val assetPath: String? = null,
     private val assetManager: AssetManager? = null,
-    val policy: LiteRtRunnerPolicy = LiteRtRunnerPolicy.STRICT_GPU
+    val policy: LiteRtRunnerPolicy = LiteRtRunnerPolicy.STRICT_GPU,
+    private val cpuNumThreads: Int? = null
 ) : AutoCloseable {
 
     constructor(
@@ -36,7 +37,8 @@ class LiteRtModelRunner(
             LiteRtRunnerPolicy.GPU_WITH_CPU_FALLBACK
         } else {
             LiteRtRunnerPolicy.STRICT_CPU
-        }
+        },
+        cpuNumThreads = null
     )
 
     private val executor = Executors.newSingleThreadExecutor { runnable ->
@@ -138,7 +140,11 @@ class LiteRtModelRunner(
             var inBufs: List<TensorBuffer> = emptyList()
             var outBufs: List<TensorBuffer> = emptyList()
             try {
-                val cpuOptions = CompiledModel.Options(setOf(Accelerator.CPU))
+                val cpuOptions = CompiledModel.Options(setOf(Accelerator.CPU)).apply {
+                    if (cpuNumThreads != null) {
+                        this.cpuOptions = CompiledModel.CpuOptions(numThreads = cpuNumThreads)
+                    }
+                }
                 cpuModel = createCompiledModel(cpuOptions)
                 inBufs = cpuModel.createInputBuffers()
                 outBufs = cpuModel.createOutputBuffers()
@@ -354,7 +360,8 @@ class LiteRtModelRunner(
             context: Context,
             assetPath: String,
             modelName: String = File(assetPath).name,
-            policy: LiteRtRunnerPolicy = LiteRtRunnerPolicy.STRICT_GPU
+            policy: LiteRtRunnerPolicy = LiteRtRunnerPolicy.STRICT_GPU,
+            cpuNumThreads: Int? = null
         ): LiteRtModelRunner {
             val extracted = ensureAssetExtracted(context, assetPath)
             return if (extracted.exists() && extracted.length() > 0L) {
@@ -363,14 +370,16 @@ class LiteRtModelRunner(
                     modelFile = extracted,
                     assetPath = assetPath,
                     assetManager = context.assets,
-                    policy = policy
+                    policy = policy,
+                    cpuNumThreads = cpuNumThreads
                 )
             } else {
                 LiteRtModelRunner(
                     modelName = modelName,
                     assetPath = assetPath,
                     assetManager = context.assets,
-                    policy = policy
+                    policy = policy,
+                    cpuNumThreads = cpuNumThreads
                 )
             }
         }
@@ -403,12 +412,14 @@ class LiteRtModelRunner(
         fun fromFile(
             modelFile: File,
             modelName: String = modelFile.name,
-            policy: LiteRtRunnerPolicy = LiteRtRunnerPolicy.STRICT_GPU
+            policy: LiteRtRunnerPolicy = LiteRtRunnerPolicy.STRICT_GPU,
+            cpuNumThreads: Int? = null
         ): LiteRtModelRunner {
             return LiteRtModelRunner(
                 modelName = modelName,
                 modelFile = modelFile,
-                policy = policy
+                policy = policy,
+                cpuNumThreads = cpuNumThreads
             )
         }
 

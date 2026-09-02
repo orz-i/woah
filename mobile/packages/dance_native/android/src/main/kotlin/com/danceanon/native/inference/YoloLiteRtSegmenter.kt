@@ -17,7 +17,8 @@ class YoloLiteRtSegmenter(
     private val context: Context,
     private val modelFile: File? = null,
     private val assetPath: String = DEFAULT_ASSET_PATH,
-    private val requestedAccelerator: LiteRtAccelerator = LiteRtAccelerator.GPU
+    private val requestedAccelerator: LiteRtAccelerator = LiteRtAccelerator.GPU,
+    private val cpuNumThreads: Int? = null
 ) : Segmenter {
 
     private var runner: LiteRtModelRunner? = null
@@ -46,14 +47,16 @@ class YoloLiteRtSegmenter(
                 LiteRtModelRunner.fromFile(
                     modelFile = modelFile,
                     modelName = modelFile.name,
-                    policy = policy
+                    policy = policy,
+                    cpuNumThreads = cpuNumThreads
                 )
             } else {
                 LiteRtModelRunner.fromAsset(
                     context = context,
                     assetPath = assetPath,
                     modelName = File(assetPath).name,
-                    policy = policy
+                    policy = policy,
+                    cpuNumThreads = cpuNumThreads
                 )
             }
 

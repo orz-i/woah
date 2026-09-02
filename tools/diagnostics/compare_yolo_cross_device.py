@@ -51,7 +51,13 @@ def read_bundle(path: Path):
             continue
         m = TENSOR_RE.search(name)
         if m:
-            backend = "cpu_probe" if current_job_id and f"{current_job_id}_cpu_probe_" in name else "gpu"
+            backend = (
+                "cpu_mt4_probe"
+                if current_job_id and f"{current_job_id}_cpu_mt4_probe_" in name
+                else "cpu_probe"
+                if current_job_id and f"{current_job_id}_cpu_probe_" in name
+                else "gpu"
+            )
             tensors[(backend, int(m.group(1)), m.group(2))] = z.read(name)
     return z, current_job_id, yuv, tensors
 
