@@ -320,6 +320,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 color: AppTheme.warmTextPrimary,
               ),
               color: AppTheme.warmSurface,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: const BorderSide(color: AppTheme.warmBorder),
+              ),
               onSelected: (value) {
                 if (value == 'diagnostics') _exportDiagnostics();
                 if (value == 'copy') _copySavedUri();
@@ -329,28 +334,67 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 PopupMenuItem(
                   value: 'open',
                   enabled: !_isOpening,
-                  child: const ListTile(
-                    dense: true,
-                    leading: Icon(Icons.folder_open_rounded),
-                    title: Text('查看文件'),
+                  child: const Row(
+                    children: [
+                      Icon(
+                        Icons.folder_open_rounded,
+                        color: AppTheme.warmTextSecondary,
+                        size: 20,
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        '查看文件',
+                        style: TextStyle(
+                          color: AppTheme.warmTextPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 PopupMenuItem(
                   value: 'copy',
                   enabled: !_isSaving,
-                  child: const ListTile(
-                    dense: true,
-                    leading: Icon(Icons.link_rounded),
-                    title: Text('复制保存地址'),
+                  child: const Row(
+                    children: [
+                      Icon(
+                        Icons.link_rounded,
+                        color: AppTheme.warmTextSecondary,
+                        size: 20,
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        '复制保存地址',
+                        style: TextStyle(
+                          color: AppTheme.warmTextPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 PopupMenuItem(
                   value: 'diagnostics',
                   enabled: !_isExportingDiagnostics,
-                  child: const ListTile(
-                    dense: true,
-                    leading: Icon(Icons.bug_report_outlined),
-                    title: Text('导出诊断包'),
+                  child: const Row(
+                    children: [
+                      Icon(
+                        Icons.bug_report_outlined,
+                        color: AppTheme.warmTextSecondary,
+                        size: 20,
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        '导出诊断包',
+                        style: TextStyle(
+                          color: AppTheme.warmTextPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],

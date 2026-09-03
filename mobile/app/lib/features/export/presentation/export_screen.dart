@@ -173,6 +173,11 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       color: AppTheme.warmTextPrimary,
                     ),
                     color: AppTheme.warmSurface,
+                    surfaceTintColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: const BorderSide(color: AppTheme.warmBorder),
+                    ),
                     onSelected: (value) {
                       if (value == 'copy') {
                         _copyError(state.errorMessage);
@@ -183,18 +188,44 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                     itemBuilder: (context) => const [
                       PopupMenuItem(
                         value: 'copy',
-                        child: ListTile(
-                          dense: true,
-                          leading: Icon(Icons.copy_rounded),
-                          title: Text('复制错误详情'),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.copy_rounded,
+                              color: AppTheme.warmTextSecondary,
+                              size: 20,
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              '复制错误详情',
+                              style: TextStyle(
+                                color: AppTheme.warmTextPrimary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       PopupMenuItem(
                         value: 'diagnostics',
-                        child: ListTile(
-                          dense: true,
-                          leading: Icon(Icons.bug_report_outlined),
-                          title: Text('导出诊断包'),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.bug_report_outlined,
+                              color: AppTheme.warmTextSecondary,
+                              size: 20,
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              '导出诊断包',
+                              style: TextStyle(
+                                color: AppTheme.warmTextPrimary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -619,23 +650,112 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     HapticFeedback.lightImpact();
     showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('取消导出？'),
-        content: const Text('当前进度将不会保留。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('继续导出'),
+      barrierColor: const Color(0x52000000),
+      builder: (dialogContext) => Dialog(
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 30),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
+          decoration: BoxDecoration(
+            color: AppTheme.warmSurface,
+            borderRadius: BorderRadius.circular(26),
+            border: Border.all(color: AppTheme.warmBorder),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x22000000),
+                blurRadius: 30,
+                offset: Offset(0, 12),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              controller.cancelExport();
-              context.pop();
-            },
-            child: const Text('取消导出', style: TextStyle(color: AppTheme.error)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: AppTheme.coralPale,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.close_rounded,
+                  color: AppTheme.coral,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                '取消处理？',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppTheme.warmTextPrimary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                '当前处理进度不会保留。',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppTheme.warmTextSecondary,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 22),
+              Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+                child: InkWell(
+                  onTap: () => Navigator.of(dialogContext).pop(),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Ink(
+                    height: 54,
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.coralActionGradient,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        '继续处理',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                    controller.cancelExport();
+                    context.pop();
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.coralStrong,
+                    side: const BorderSide(color: AppTheme.warmBorder),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    '取消处理',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

@@ -22,12 +22,12 @@ class ImportVideoScreen extends ConsumerStatefulWidget {
 }
 
 class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
-  static const _darkWorkspaceSystemUiStyle = SystemUiOverlayStyle(
+  static const _workspaceSystemUiStyle = SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-    statusBarBrightness: Brightness.dark,
-    systemNavigationBarColor: AppTheme.background,
-    systemNavigationBarIconBrightness: Brightness.light,
+    statusBarIconBrightness: Brightness.dark,
+    statusBarBrightness: Brightness.light,
+    systemNavigationBarColor: AppTheme.warmBackground,
+    systemNavigationBarIconBrightness: Brightness.dark,
     systemNavigationBarDividerColor: Colors.transparent,
     systemStatusBarContrastEnforced: false,
     systemNavigationBarContrastEnforced: false,
@@ -54,7 +54,7 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
 
   Future<void> _restoreWorkspaceSystemUi() async {
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    SystemChrome.setSystemUIOverlayStyle(_darkWorkspaceSystemUiStyle);
+    SystemChrome.setSystemUIOverlayStyle(_workspaceSystemUiStyle);
   }
 
   Future<void> _closeApp() async {
@@ -165,22 +165,36 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
   Widget _buildSystemInfoDrawer() {
     final capsAsync = ref.watch(capabilitiesProvider);
     return Drawer(
-      backgroundColor: AppTheme.surface,
-      width: MediaQuery.sizeOf(context).width * 0.84,
+      backgroundColor: AppTheme.warmSurface,
+      surfaceTintColor: Colors.transparent,
+      width: (MediaQuery.sizeOf(context).width * 0.88)
+          .clamp(280.0, 420.0)
+          .toDouble(),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.horizontal(left: Radius.circular(30)),
+      ),
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(22, 20, 22, 16),
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Container(
-                    width: 44,
-                    height: 44,
-                    decoration: AppTheme.panelDecoration(radius: 14),
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: AppTheme.coralPale,
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: AppTheme.warmBorder),
+                    ),
                     alignment: Alignment.center,
-                    child: const Icon(Icons.memory_rounded, size: 21),
+                    child: const Icon(
+                      Icons.developer_board_rounded,
+                      size: 22,
+                      color: AppTheme.coral,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   const Expanded(
@@ -190,8 +204,8 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
                         Text(
                           '设备与诊断',
                           style: TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 17,
+                            color: AppTheme.warmTextPrimary,
+                            fontSize: 18,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -199,51 +213,127 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
                         Text(
                           '技术信息仅用于排查问题',
                           style: TextStyle(
-                            color: AppTheme.textMuted,
+                            color: AppTheme.warmTextSecondary,
                             fontSize: 12,
                           ),
                         ),
                       ],
                     ),
                   ),
+                  Builder(
+                    builder: (drawerContext) => IconButton(
+                      tooltip: '关闭',
+                      onPressed: () => Navigator.of(drawerContext).pop(),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: AppTheme.warmTextPrimary,
+                        size: 25,
+                      ),
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 22),
-              const Divider(height: 1),
+              const SizedBox(height: 20),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 13,
+                  vertical: 11,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.warmSurfaceSoft,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppTheme.warmBorder),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.lock_outline_rounded,
+                      color: AppTheme.coral,
+                      size: 18,
+                    ),
+                    SizedBox(width: 9),
+                    Expanded(
+                      child: Text(
+                        '视频分析与处理均在本机完成',
+                        style: TextStyle(
+                          color: AppTheme.warmTextPrimary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 18),
               Expanded(
                 child: capsAsync.when(
                   data: (caps) => ListView(
                     physics: const BouncingScrollPhysics(),
                     children: [
-                      _sectionTitle('设备'),
-                      _infoRow(
-                        '系统',
-                        '${caps.platform.toUpperCase()} ${caps.osVersion}',
+                      _infoSection(
+                        icon: Icons.phone_android_rounded,
+                        title: '设备',
+                        children: [
+                          _infoRow(
+                            '系统',
+                            '${caps.platform.toUpperCase()} ${caps.osVersion}',
+                          ),
+                          _infoRow('CPU', '${caps.cpuCores} 核'),
+                          _infoRow(
+                            '推荐档位',
+                            caps.recommendedProfile.toUpperCase(),
+                          ),
+                        ],
                       ),
-                      _infoRow('CPU', '${caps.cpuCores} 核'),
-                      _infoRow('推荐档位', caps.recommendedProfile.toUpperCase()),
-                      const SizedBox(height: 22),
-                      _sectionTitle('加速能力'),
-                      _infoRow(
-                        '图形渲染',
-                        caps.gpuSupported ? 'OpenGL ES' : '软件渲染',
+                      const SizedBox(height: 14),
+                      _infoSection(
+                        icon: Icons.speed_rounded,
+                        title: '加速能力',
+                        children: [
+                          _infoRow(
+                            '图形渲染',
+                            caps.gpuSupported ? 'OpenGL ES' : '软件渲染',
+                          ),
+                          _infoRow(
+                            'H.264 编码',
+                            caps.h264Encoder ? '硬件支持' : '不可用',
+                          ),
+                        ],
                       ),
-                      _infoRow('H.264 编码', caps.h264Encoder ? '硬件支持' : '不可用'),
-                      const SizedBox(height: 22),
-                      _sectionTitle('隐私'),
-                      _infoRow('视频处理', '仅本机'),
-                      _infoRow('云端上传', '关闭'),
+                      const SizedBox(height: 14),
+                      _infoSection(
+                        icon: Icons.shield_outlined,
+                        title: '隐私',
+                        children: [
+                          _infoRow('视频处理', '仅本机'),
+                          _infoRow('云端上传', '关闭'),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      const Center(
+                        child: Text(
+                          '开发者面板 · 长按首页 Woah 打开',
+                          style: TextStyle(
+                            color: AppTheme.warmTextMuted,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                   loading: () => const Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppTheme.coral,
+                    ),
                   ),
                   error: (error, _) => const Center(
                     child: Text(
                       '暂时无法读取设备信息',
                       style: TextStyle(
-                        color: AppTheme.textSecondary,
+                        color: AppTheme.warmTextSecondary,
                         fontSize: 13,
                       ),
                     ),
@@ -257,17 +347,45 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
     );
   }
 
-  Widget _sectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        title,
-        style: const TextStyle(
-          color: AppTheme.textMuted,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.5,
-        ),
+  Widget _infoSection({
+    required IconData icon,
+    required String title,
+    required List<Widget> children,
+  }) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(15, 14, 15, 4),
+      decoration: BoxDecoration(
+        color: AppTheme.warmSurface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.warmBorder),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0C000000),
+            blurRadius: 16,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: AppTheme.coral),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: AppTheme.warmTextPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 7),
+          ...children,
+        ],
       ),
     );
   }
@@ -277,7 +395,7 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
       constraints: const BoxConstraints(minHeight: AppTheme.minTouchTarget),
       padding: const EdgeInsets.symmetric(vertical: 10),
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppTheme.surfaceBorder)),
+        border: Border(top: BorderSide(color: AppTheme.warmBorder)),
       ),
       child: Row(
         children: [
@@ -285,7 +403,7 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
             child: Text(
               label,
               style: const TextStyle(
-                color: AppTheme.textSecondary,
+                color: AppTheme.warmTextSecondary,
                 fontSize: 13,
               ),
             ),
@@ -296,7 +414,7 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
               value,
               textAlign: TextAlign.right,
               style: const TextStyle(
-                color: AppTheme.textPrimary,
+                color: AppTheme.warmTextPrimary,
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),

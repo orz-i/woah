@@ -241,11 +241,18 @@ class AppTheme {
         trackOutlineColor: WidgetStateProperty.all(surfaceBorder),
       ),
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: surfaceHigh,
-        contentTextStyle: const TextStyle(color: textPrimary, fontSize: 13),
+        backgroundColor: warmSurface,
+        contentTextStyle: const TextStyle(
+          color: warmTextPrimary,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
+        actionTextColor: coralStrong,
+        elevation: 8,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusMedium),
+          side: const BorderSide(color: warmBorder),
         ),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
