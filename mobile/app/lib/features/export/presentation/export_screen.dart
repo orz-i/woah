@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/widgets/main_flow_header.dart';
 import '../../../repositories/native_processing_repository.dart';
 import '../domain/export_state.dart';
 import 'export_controller.dart';
@@ -140,107 +141,79 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     required ExportController controller,
   }) {
     final isFailed = state.isFailed;
-    return SizedBox(
-      height: 78,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned(
-            left: 8,
-            child: IconButton(
-              tooltip: isActive ? '取消处理' : '关闭',
-              onPressed: isActive
-                  ? () => _confirmCancel(controller)
-                  : () => context.pop(),
+    return MainFlowHeader(
+      title: isFailed ? '导出失败' : '正在保护舞段',
+      closeTooltip: isActive ? '取消处理' : '关闭',
+      onClose: isActive
+          ? () => _confirmCancel(controller)
+          : () => context.pop(),
+      trailing: isFailed
+          ? PopupMenuButton<String>(
+              tooltip: '更多',
               icon: const Icon(
-                Icons.close_rounded,
-                size: 34,
+                Icons.more_horiz_rounded,
+                size: 30,
                 color: AppTheme.warmTextPrimary,
               ),
-            ),
-          ),
-          Text(
-            isFailed ? '导出失败' : '正在保护舞段',
-            style: const TextStyle(
-              color: AppTheme.warmTextPrimary,
-              fontSize: 19,
-              height: 1.1,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.3,
-            ),
-          ),
-          Positioned(
-            right: 8,
-            child: isFailed
-                ? PopupMenuButton<String>(
-                    tooltip: '更多',
-                    icon: const Icon(
-                      Icons.more_horiz_rounded,
-                      size: 30,
-                      color: AppTheme.warmTextPrimary,
-                    ),
-                    color: AppTheme.warmSurface,
-                    surfaceTintColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      side: const BorderSide(color: AppTheme.warmBorder),
-                    ),
-                    onSelected: (value) {
-                      if (value == 'copy') {
-                        _copyError(state.errorMessage);
-                      } else if (value == 'diagnostics') {
-                        _exportDiagnostics();
-                      }
-                    },
-                    itemBuilder: (context) => const [
-                      PopupMenuItem(
-                        value: 'copy',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.copy_rounded,
-                              color: AppTheme.warmTextSecondary,
-                              size: 20,
-                            ),
-                            SizedBox(width: 12),
-                            Text(
-                              '复制错误详情',
-                              style: TextStyle(
-                                color: AppTheme.warmTextPrimary,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
+              color: AppTheme.warmSurface,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: const BorderSide(color: AppTheme.warmBorder),
+              ),
+              onSelected: (value) {
+                if (value == 'copy') {
+                  _copyError(state.errorMessage);
+                } else if (value == 'diagnostics') {
+                  _exportDiagnostics();
+                }
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(
+                  value: 'copy',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.copy_rounded,
+                        color: AppTheme.warmTextSecondary,
+                        size: 20,
                       ),
-                      PopupMenuItem(
-                        value: 'diagnostics',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.bug_report_outlined,
-                              color: AppTheme.warmTextSecondary,
-                              size: 20,
-                            ),
-                            SizedBox(width: 12),
-                            Text(
-                              '导出诊断包',
-                              style: TextStyle(
-                                color: AppTheme.warmTextPrimary,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
+                      SizedBox(width: 12),
+                      Text(
+                        '复制错误详情',
+                        style: TextStyle(
+                          color: AppTheme.warmTextPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
-                  )
-                : const SizedBox(width: 48, height: 48),
-          ),
-        ],
-      ),
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'diagnostics',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.bug_report_outlined,
+                        color: AppTheme.warmTextSecondary,
+                        size: 20,
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        '导出诊断包',
+                        style: TextStyle(
+                          color: AppTheme.warmTextPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            )
+          : null,
     );
   }
 

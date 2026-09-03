@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
 import '../../../core/widgets/bottom_control_drawer.dart';
+import '../../../core/widgets/main_flow_header.dart';
 import '../../../core/widgets/stage_viewport.dart';
 import '../../export/presentation/export_screen.dart';
 import '../domain/effect_editor_state.dart';
@@ -160,43 +161,17 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
     EffectEditorState state,
     EffectEditorController controller,
   ) {
-    return SizedBox(
-      height: 78,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned(
-            left: 18,
-            child: _TopButton(
-              icon: Icons.close_rounded,
-              tooltip: '关闭',
-              onPressed: () {
-                HapticFeedback.lightImpact();
-                context.pop(controller.buildConfiguredProject());
-              },
-            ),
-          ),
-          Positioned(
-            right: 18,
-            child: _TopButton(
-              icon: Icons.restart_alt_rounded,
-              tooltip: '重置',
-              outlined: true,
-              onPressed: () => _resetToDefault(controller, state),
-            ),
-          ),
-          const Text(
-            '编辑效果',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppTheme.warmTextPrimary,
-              fontSize: 19,
-              height: 1.1,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.3,
-            ),
-          ),
-        ],
+    return MainFlowHeader(
+      title: '编辑效果',
+      onClose: () {
+        HapticFeedback.lightImpact();
+        context.pop(controller.buildConfiguredProject());
+      },
+      trailing: _TopButton(
+        icon: Icons.restart_alt_rounded,
+        tooltip: '重置',
+        outlined: true,
+        onPressed: () => _resetToDefault(controller, state),
       ),
     );
   }

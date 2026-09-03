@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/widgets/main_flow_header.dart';
 import '../../../repositories/native_processing_repository.dart';
 import '../../import_video/presentation/widgets/video_preview_player.dart';
 import '../domain/export_state.dart';
@@ -280,121 +281,92 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   }
 
   Widget _buildTopBar() {
-    return SizedBox(
-      height: 78,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned(
-            left: 8,
-            child: IconButton(
-              tooltip: '关闭',
-              onPressed: () {
-                HapticFeedback.lightImpact();
-                context.go('/');
-              },
-              icon: const Icon(
-                Icons.close_rounded,
-                size: 34,
-                color: AppTheme.warmTextPrimary,
-              ),
-            ),
-          ),
-          const Text(
-            '舞段已完成',
-            style: TextStyle(
-              color: AppTheme.warmTextPrimary,
-              fontSize: 19,
-              height: 1.1,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.3,
-            ),
-          ),
-          Positioned(
-            right: 8,
-            child: PopupMenuButton<String>(
-              tooltip: '更多',
-              icon: const Icon(
-                Icons.more_vert_rounded,
-                size: 28,
-                color: AppTheme.warmTextPrimary,
-              ),
-              color: AppTheme.warmSurface,
-              surfaceTintColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: const BorderSide(color: AppTheme.warmBorder),
-              ),
-              onSelected: (value) {
-                if (value == 'diagnostics') _exportDiagnostics();
-                if (value == 'copy') _copySavedUri();
-                if (value == 'open') _openSavedVideo();
-              },
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: 'open',
-                  enabled: !_isOpening,
-                  child: const Row(
-                    children: [
-                      Icon(
-                        Icons.folder_open_rounded,
-                        color: AppTheme.warmTextSecondary,
-                        size: 20,
-                      ),
-                      SizedBox(width: 12),
-                      Text(
-                        '查看文件',
-                        style: TextStyle(
-                          color: AppTheme.warmTextPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+    return MainFlowHeader(
+      title: '舞段已完成',
+      onClose: () {
+        HapticFeedback.lightImpact();
+        context.go('/');
+      },
+      trailing: PopupMenuButton<String>(
+        tooltip: '更多',
+        icon: const Icon(
+          Icons.more_vert_rounded,
+          size: 28,
+          color: AppTheme.warmTextPrimary,
+        ),
+        color: AppTheme.warmSurface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppTheme.warmBorder),
+        ),
+        onSelected: (value) {
+          if (value == 'diagnostics') _exportDiagnostics();
+          if (value == 'copy') _copySavedUri();
+          if (value == 'open') _openSavedVideo();
+        },
+        itemBuilder: (context) => [
+          PopupMenuItem(
+            value: 'open',
+            enabled: !_isOpening,
+            child: const Row(
+              children: [
+                Icon(
+                  Icons.folder_open_rounded,
+                  color: AppTheme.warmTextSecondary,
+                  size: 20,
+                ),
+                SizedBox(width: 12),
+                Text(
+                  '查看文件',
+                  style: TextStyle(
+                    color: AppTheme.warmTextPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                PopupMenuItem(
-                  value: 'copy',
-                  enabled: !_isSaving,
-                  child: const Row(
-                    children: [
-                      Icon(
-                        Icons.link_rounded,
-                        color: AppTheme.warmTextSecondary,
-                        size: 20,
-                      ),
-                      SizedBox(width: 12),
-                      Text(
-                        '复制保存地址',
-                        style: TextStyle(
-                          color: AppTheme.warmTextPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+              ],
+            ),
+          ),
+          PopupMenuItem(
+            value: 'copy',
+            enabled: !_isSaving,
+            child: const Row(
+              children: [
+                Icon(
+                  Icons.link_rounded,
+                  color: AppTheme.warmTextSecondary,
+                  size: 20,
+                ),
+                SizedBox(width: 12),
+                Text(
+                  '复制保存地址',
+                  style: TextStyle(
+                    color: AppTheme.warmTextPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                PopupMenuItem(
-                  value: 'diagnostics',
-                  enabled: !_isExportingDiagnostics,
-                  child: const Row(
-                    children: [
-                      Icon(
-                        Icons.bug_report_outlined,
-                        color: AppTheme.warmTextSecondary,
-                        size: 20,
-                      ),
-                      SizedBox(width: 12),
-                      Text(
-                        '导出诊断包',
-                        style: TextStyle(
-                          color: AppTheme.warmTextPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+              ],
+            ),
+          ),
+          PopupMenuItem(
+            value: 'diagnostics',
+            enabled: !_isExportingDiagnostics,
+            child: const Row(
+              children: [
+                Icon(
+                  Icons.bug_report_outlined,
+                  color: AppTheme.warmTextSecondary,
+                  size: 20,
+                ),
+                SizedBox(width: 12),
+                Text(
+                  '导出诊断包',
+                  style: TextStyle(
+                    color: AppTheme.warmTextPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],

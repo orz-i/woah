@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/widgets/main_flow_header.dart';
 import '../../../repositories/native_processing_repository.dart';
 
 class TrimVideoScreen extends ConsumerStatefulWidget {
@@ -214,15 +215,15 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
               Expanded(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
+                  padding: const EdgeInsets.fromLTRB(18, 2, 18, 18),
                   child: Column(
                     children: [
                       _buildPreview(),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
                       _buildTimeline(),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 14),
                       _buildTimeSummary(),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 22),
                       _buildContinueButton(),
                     ],
                   ),
@@ -236,44 +237,13 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
   }
 
   Widget _buildHeader() {
-    return SizedBox(
-      height: 78,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned(
-            left: 18,
-            child: SizedBox(
-              width: 48,
-              height: 48,
-              child: IconButton(
-                tooltip: '返回',
-                padding: EdgeInsets.zero,
-                onPressed: () {
-                  HapticFeedback.lightImpact();
-                  context.pop();
-                },
-                icon: const Icon(
-                  Icons.close_rounded,
-                  size: 34,
-                  color: AppTheme.warmTextPrimary,
-                ),
-              ),
-            ),
-          ),
-          const Text(
-            '预览并裁剪视频',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppTheme.warmTextPrimary,
-              fontSize: 19,
-              height: 1.1,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.3,
-            ),
-          ),
-        ],
-      ),
+    return MainFlowHeader(
+      title: '预览并裁剪视频',
+      closeTooltip: '返回',
+      onClose: () {
+        HapticFeedback.lightImpact();
+        context.pop();
+      },
     );
   }
 
@@ -360,7 +330,7 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
                     icon: const Icon(
                       Icons.replay_rounded,
                       color: Colors.white,
-                      size: 26,
+                      size: 24,
                     ),
                   ),
                 ),
@@ -527,8 +497,8 @@ class _PreviewTimeChip extends StatelessWidget {
       text,
       style: const TextStyle(
         color: Colors.white,
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
+        fontSize: 11,
+        fontWeight: FontWeight.w500,
         shadows: [
           Shadow(color: Color(0x99000000), blurRadius: 4, offset: Offset(0, 1)),
         ],
@@ -780,11 +750,11 @@ class _TrimHandle extends StatelessWidget {
       onHorizontalDragUpdate: (details) => onDrag(details.delta.dx),
       child: SizedBox(
         width: 42,
-        height: 80,
+        height: 74,
         child: Center(
           child: Container(
-            width: 22,
-            height: 68,
+            width: 20,
+            height: 58,
             decoration: BoxDecoration(
               color: AppTheme.warmSurface,
               borderRadius: BorderRadius.circular(12),
@@ -801,7 +771,7 @@ class _TrimHandle extends StatelessWidget {
             child: const Icon(
               Icons.drag_indicator_rounded,
               color: AppTheme.coral,
-              size: 20,
+              size: 17,
             ),
           ),
         ),

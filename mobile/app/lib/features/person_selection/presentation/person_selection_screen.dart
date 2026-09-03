@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
 import '../../../core/widgets/bottom_control_drawer.dart';
+import '../../../core/widgets/main_flow_header.dart';
 import '../domain/person_selection_state.dart';
 import 'person_selection_controller.dart';
 
@@ -101,46 +102,20 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
   }
 
   Widget _buildHeader(PersonSelectionController controller) {
-    return SizedBox(
-      height: 78,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned(
-            left: 18,
-            child: _HeaderIconButton(
-              icon: Icons.close_rounded,
-              tooltip: '关闭',
-              onPressed: () {
-                HapticFeedback.lightImpact();
-                context.pop();
-              },
-            ),
-          ),
-          Positioned(
-            right: 18,
-            child: _HeaderIconButton(
-              icon: Icons.refresh_rounded,
-              tooltip: '重新选择',
-              outlined: true,
-              onPressed: () {
-                HapticFeedback.lightImpact();
-                controller.selectAll();
-              },
-            ),
-          ),
-          const Text(
-            '选择要保护的人',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppTheme.warmTextPrimary,
-              fontSize: 19,
-              height: 1.1,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.3,
-            ),
-          ),
-        ],
+    return MainFlowHeader(
+      title: '选择要保护的人',
+      onClose: () {
+        HapticFeedback.lightImpact();
+        context.pop();
+      },
+      trailing: _HeaderIconButton(
+        icon: Icons.refresh_rounded,
+        tooltip: '重新选择',
+        outlined: true,
+        onPressed: () {
+          HapticFeedback.lightImpact();
+          controller.selectAll();
+        },
       ),
     );
   }
