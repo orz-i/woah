@@ -536,7 +536,9 @@ class _TimelineRuler extends StatelessWidget {
   }
 }
 
-class _TrimTimeline extends StatelessWidget {
+enum _TrimDragMode { start, end, playhead }
+
+class _TrimTimeline extends StatefulWidget {
   final int durationMs;
   final int trimStartMs;
   final int trimEndMs;
@@ -558,14 +560,24 @@ class _TrimTimeline extends StatelessWidget {
   });
 
   @override
+  State<_TrimTimeline> createState() => _TrimTimelineState();
+}
+
+class _TrimTimelineState extends State<_TrimTimeline> {
+  _TrimDragMode? _dragMode;
+
+  @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final startX = width * trimStartMs / durationMs;
-        final endX = width * trimEndMs / durationMs;
-        final clampedPlayheadMs = playheadMs.clamp(trimStartMs, trimEndMs);
-        final playX = width * clampedPlayheadMs / durationMs;
+        final startX = width * widget.trimStartMs / widget.durationMs;
+        final endX = width * widget.trimEndMs / widget.durationMs;
+        final clampedPlayheadMs = widget.playheadMs.clamp(
+          widget.trimStartMs,
+          widget.trimEndMs,
+        );
+        final playX = width * clampedPlayheadMs / widget.durationMs;
         const trackTop = 20.0;
         const trackHeight = 62.0;
         const handleHitWidth = 52.0;
@@ -576,36 +588,75 @@ class _TrimTimeline extends StatelessWidget {
             ? width - bubbleWidth - 8
             : playX - bubbleWidth / 2;
 
-        return Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Positioned(
-              left: 0,
-              right: 0,
-              top: trackTop,
-              height: trackHeight,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTapDown: (details) {
-                  final tapX = details.localPosition.dx;
-                  final guard = handleHitWidth * 0.58;
-                  if ((tapX - startX).abs() <= guard ||
-                      (tapX - endX).abs() <= guard) {
-                    return;
-                  }
-                  final value = (tapX / width * durationMs).round().clamp(
-                    trimStartMs,
-                    trimEndMs,
-                  );
-                  onPlayheadChanged(value);
-                },
+        int valueForX(double x) =>
+            (x.clamp(0.0, width) / width * widget.durationMs).round();
+
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapUp: (details) {
+            final x = details.localPosition.dx;
+            final edgeGuard = handleHitWidth * 0.58;
+            if ((x - startX).abs() <= edgeGuard ||
+                (x - endX).abs() <= edgeGuard) {
+              return;
+            }
+            widget.onPlayheadChanged(
+              valueForX(x).clamp(widget.trimStartMs, widget.trimEndMs),
+            );
+          },
+          onHorizontalDragStart: (details) {
+            final x = details.localPosition.dx;
+            final startDistance = (x - startX).abs();
+            final endDistance = (x - endX).abs();
+            final edgeHitRadius = handleHitWidth / 2 + 4;
+
+            if (startDistance <= edgeHitRadius &&
+                startDistance <= endDistance) {
+              _dragMode = _TrimDragMode.start;
+            } else if (endDistance <= edgeHitRadius) {
+              _dragMode = _TrimDragMode.end;
+            } else {
+              _dragMode = _TrimDragMode.playhead;
+              widget.onPlayheadChanged(
+                valueForX(x).clamp(widget.trimStartMs, widget.trimEndMs),
+              );
+            }
+          },
+          onHorizontalDragUpdate: (details) {
+            final value = valueForX(details.localPosition.dx);
+            switch (_dragMode) {
+              case _TrimDragMode.start:
+                widget.onStartChanged(value);
+                break;
+              case _TrimDragMode.end:
+                widget.onEndChanged(value);
+                break;
+              case _TrimDragMode.playhead:
+                widget.onPlayheadChanged(
+                  value.clamp(widget.trimStartMs, widget.trimEndMs),
+                );
+                break;
+              case null:
+                break;
+            }
+          },
+          onHorizontalDragEnd: (_) => _dragMode = null,
+          onHorizontalDragCancel: () => _dragMode = null,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                left: 0,
+                right: 0,
+                top: trackTop,
+                height: trackHeight,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: List.generate(10, (index) {
-                      final path = index < thumbnailPaths.length
-                          ? thumbnailPaths[index]
+                      final path = index < widget.thumbnailPaths.length
+                          ? widget.thumbnailPaths[index]
                           : null;
                       return Expanded(
                         child: path != null && File(path).existsSync()
@@ -620,129 +671,97 @@ class _TrimTimeline extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
-            Positioned(
-              left: 0,
-              width: startX,
-              top: trackTop,
-              height: trackHeight,
-              child: IgnorePointer(
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.horizontal(
-                    left: Radius.circular(12),
-                  ),
-                  child: const ColoredBox(color: Color(0x70000000)),
-                ),
-              ),
-            ),
-            Positioned(
-              left: endX,
-              right: 0,
-              top: trackTop,
-              height: trackHeight,
-              child: IgnorePointer(
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.horizontal(
-                    right: Radius.circular(12),
-                  ),
-                  child: const ColoredBox(color: Color(0x70000000)),
-                ),
-              ),
-            ),
-            Positioned(
-              left: startX,
-              width: (endX - startX).clamp(0.0, width),
-              top: trackTop - 1,
-              height: trackHeight + 2,
-              child: IgnorePointer(
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: AppTheme.coral, width: 2),
-                    borderRadius: BorderRadius.circular(12),
+              Positioned(
+                left: 0,
+                width: startX,
+                top: trackTop,
+                height: trackHeight,
+                child: IgnorePointer(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.horizontal(
+                      left: Radius.circular(12),
+                    ),
+                    child: const ColoredBox(color: Color(0x70000000)),
                   ),
                 ),
               ),
-            ),
-            Positioned(
-              left: (startX - handleHitWidth / 2).clamp(
-                -8.0,
-                width - handleHitWidth + 8,
-              ),
-              top: 11,
-              child: _TrimHandle(
-                onDrag: (delta) {
-                  onStartChanged(
-                    (trimStartMs + delta * durationMs / width).round(),
-                  );
-                },
-              ),
-            ),
-            Positioned(
-              left: (endX - handleHitWidth / 2).clamp(
-                -8.0,
-                width - handleHitWidth + 8,
-              ),
-              top: 11,
-              child: _TrimHandle(
-                onDrag: (delta) {
-                  onEndChanged(
-                    (trimEndMs + delta * durationMs / width).round(),
-                  );
-                },
-              ),
-            ),
-            Positioned(
-              left: (playX - 14).clamp(
-                startX + handleHitWidth / 2,
-                endX - handleHitWidth / 2 - 28,
-              ),
-              top: 0,
-              bottom: 0,
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onHorizontalDragUpdate: (details) {
-                  final value =
-                      (clampedPlayheadMs +
-                              details.delta.dx * durationMs / width)
-                          .round()
-                          .clamp(trimStartMs, trimEndMs);
-                  onPlayheadChanged(value);
-                },
-                child: const SizedBox(width: 28),
-              ),
-            ),
-            Positioned(
-              left: (playX - 1).clamp(0.0, width - 2),
-              top: 18,
-              bottom: 0,
-              child: IgnorePointer(
-                child: Container(width: 2, color: AppTheme.coral),
-              ),
-            ),
-            Positioned(
-              left: bubbleLeft,
-              top: 0,
-              width: bubbleWidth,
-              child: IgnorePointer(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppTheme.coral,
-                    borderRadius: BorderRadius.circular(12),
+              Positioned(
+                left: endX,
+                right: 0,
+                top: trackTop,
+                height: trackHeight,
+                child: IgnorePointer(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.horizontal(
+                      right: Radius.circular(12),
+                    ),
+                    child: const ColoredBox(color: Color(0x70000000)),
                   ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    _precise(playheadMs),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
+                ),
+              ),
+              Positioned(
+                left: startX,
+                width: (endX - startX).clamp(0.0, width),
+                top: trackTop - 1,
+                height: trackHeight + 2,
+                child: IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppTheme.coral, width: 2),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+              Positioned(
+                left: (playX - 1).clamp(0.0, width - 2),
+                top: 18,
+                bottom: 0,
+                child: IgnorePointer(
+                  child: Container(width: 2, color: AppTheme.coral),
+                ),
+              ),
+              Positioned(
+                left: bubbleLeft,
+                top: 0,
+                width: bubbleWidth,
+                child: IgnorePointer(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.coral,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      _precise(widget.playheadMs),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: (startX - handleHitWidth / 2).clamp(
+                  -8.0,
+                  width - handleHitWidth + 8,
+                ),
+                top: 11,
+                child: const IgnorePointer(child: _TrimHandle()),
+              ),
+              Positioned(
+                left: (endX - handleHitWidth / 2).clamp(
+                  -8.0,
+                  width - handleHitWidth + 8,
+                ),
+                top: 11,
+                child: const IgnorePointer(child: _TrimHandle()),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -753,43 +772,37 @@ class _TrimTimeline extends StatelessWidget {
 }
 
 class _TrimHandle extends StatelessWidget {
-  final ValueChanged<double> onDrag;
-
-  const _TrimHandle({required this.onDrag});
+  const _TrimHandle();
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onHorizontalDragUpdate: (details) => onDrag(details.delta.dx),
-      child: SizedBox(
-        width: 52,
-        height: 74,
-        child: Center(
-          child: Container(
-            width: 14,
-            height: 54,
-            decoration: BoxDecoration(
-              color: AppTheme.warmSurface,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppTheme.coral, width: 1.5),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x18000000),
-                  blurRadius: 6,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            alignment: Alignment.center,
-            child: const SizedBox(
-              width: 4,
-              height: 20,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AppTheme.coral,
-                  borderRadius: BorderRadius.all(Radius.circular(2)),
-                ),
+    return SizedBox(
+      width: 52,
+      height: 74,
+      child: Center(
+        child: Container(
+          width: 14,
+          height: 54,
+          decoration: BoxDecoration(
+            color: AppTheme.warmSurface,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppTheme.coral, width: 1.5),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x18000000),
+                blurRadius: 6,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          alignment: Alignment.center,
+          child: const SizedBox(
+            width: 4,
+            height: 20,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppTheme.coral,
+                borderRadius: BorderRadius.all(Radius.circular(2)),
               ),
             ),
           ),
