@@ -136,6 +136,11 @@ class NativeProcessingRepository {
     return _client.shareVideo(publicUri);
   }
 
+  Future<void> openVideo(String publicUri) {
+    AppLogger.d('NativeRepository', 'Opening exported video: $publicUri');
+    return _client.openVideo(publicUri);
+  }
+
   Future<Map<dynamic, dynamic>?> createDiagnosticBundle() {
     AppLogger.d('NativeRepository', 'Creating diagnostic bundle...');
     return _client.createDiagnosticBundle();

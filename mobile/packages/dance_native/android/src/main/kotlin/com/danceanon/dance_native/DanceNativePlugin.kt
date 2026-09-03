@@ -92,6 +92,27 @@ class DanceNativePlugin :
                     result.error("SHARE_VIDEO_FAILED", e.message ?: "Failed to share video", null)
                 }
             }
+            "openVideo" -> {
+                val publicUri = call.argument<String>("publicUri")
+                val ctx = context
+                if (publicUri.isNullOrBlank() || ctx == null) {
+                    result.error("INVALID_ARGS", "publicUri or context is null", null)
+                    return
+                }
+                try {
+                    val uri = Uri.parse(publicUri)
+                    val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(uri, "video/mp4")
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    ctx.startActivity(viewIntent)
+                    result.success(null)
+                } catch (e: Exception) {
+                    android.util.Log.e("DanceNativePlugin", "Failed to open video: ${e.message}", e)
+                    result.error("OPEN_VIDEO_FAILED", e.message ?: "Failed to open video", null)
+                }
+            }
             "getVideoFrameThumbnails" -> {
                 val videoUri = call.argument<String>("videoUri")
                 val timestampsMs = call.argument<List<Number>>("timestampsMs")

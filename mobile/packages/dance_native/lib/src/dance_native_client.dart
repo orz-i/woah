@@ -147,6 +147,11 @@ class DanceNativeClient implements DanceProcessingEvents {
     await _channel.invokeMethod<void>('shareVideo', {'publicUri': publicUri});
   }
 
+  /// Open an already-public media Uri in the system video viewer/gallery.
+  Future<void> openVideo(String publicUri) async {
+    await _channel.invokeMethod<void>('openVideo', {'publicUri': publicUri});
+  }
+
   /// Create diagnostic bundle ZIP file
   Future<Map<dynamic, dynamic>?> createDiagnosticBundle() async {
     return _channel.invokeMapMethod<dynamic, dynamic>('createDiagnosticBundle');
