@@ -1,52 +1,64 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dance_domain/dance_domain.dart';
 import 'package:dance_native/dance_native.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../core/logging/app_logger.dart';
 import '../../../repositories/native_processing_repository.dart';
 import '../domain/person_selection_state.dart';
 
-final personSelectionControllerProvider = StateNotifierProvider.autoDispose<
-    PersonSelectionController, PersonSelectionState>((ref) {
-  final repo = ref.watch(nativeRepositoryProvider);
-  return PersonSelectionController(repo);
-});
+final personSelectionControllerProvider =
+    StateNotifierProvider.autoDispose<
+      PersonSelectionController,
+      PersonSelectionState
+    >((ref) {
+      final repo = ref.watch(nativeRepositoryProvider);
+      return PersonSelectionController(repo);
+    });
 
 class PersonSelectionController extends StateNotifier<PersonSelectionState> {
   /// Selection-screen-only gate for the first-frame YOLO result.
-  ///
-  /// Native analysis metadata deliberately keeps every detector result so export
-  /// ID binding, TrackManager and compositor runtime behavior remain unchanged.
-  /// This threshold only decides which first-frame people are offered to the user
-  /// as selectable privacy targets.
+  /// Native analysis metadata remains untouched.
   static const double selectionCandidateMinConfidence = 0.60;
 
   final NativeProcessingRepository _repository;
 
   PersonSelectionController(this._repository)
-      : super(const PersonSelectionState());
+    : super(const PersonSelectionState());
 
-  /// Run first frame YOLO segmentation on project video
   Future<void> analyzeProject(DanceProject project) async {
     try {
       state = state.copyWith(
         status: PersonSelectionStatus.analyzing,
         project: project,
         errorMessage: null,
+        clearAnalysisCacheId: true,
+        clearSelectionPreviewPath: true,
+        selectionPreviewLoading: false,
       );
 
-      AppLogger.d('PersonSelectionController', 'Analyzing video: ${project.sourceUri}');
+      AppLogger.d(
+        'PersonSelectionController',
+        'Analyzing video: ${project.sourceUri}',
+      );
       final result = await _repository.analyzeVideo(
         videoUri: project.sourceUri,
         modelProfile: 'balanced',
       );
 
-      final analyzedPersons = result.persons.map((dto) => dto.toDomain()).toList();
+      final analyzedPersons = result.persons
+          .map((dto) => dto.toDomain())
+          .toList();
       final persons = analyzedPersons
-          .where((person) => person.confidence >= selectionCandidateMinConfidence)
+          .where(
+            (person) => person.confidence >= selectionCandidateMinConfidence,
+          )
           .toList();
       final excludedPersons = analyzedPersons
-          .where((person) => person.confidence < selectionCandidateMinConfidence)
+          .where(
+            (person) => person.confidence < selectionCandidateMinConfidence,
+          )
           .toList();
+
       if (excludedPersons.isNotEmpty) {
         AppLogger.d(
           'PersonSelectionController',
@@ -54,95 +66,141 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
               '${excludedPersons.map((person) => '${person.id}:${person.confidence.toStringAsFixed(3)}').join(', ')}',
         );
       }
-      final personIds = persons.map((p) => p.id).toSet();
-      final hasStoredPrivacyModes =
-          project.selectedPersonIds.isNotEmpty || project.faceOnlyPersonIds.isNotEmpty;
-      final defaultSelected = hasStoredPrivacyModes
-          ? project.selectedPersonIds.intersection(personIds)
-          : personIds;
-      final defaultFaceOnly = hasStoredPrivacyModes
-          ? project.faceOnlyPersonIds
-              .intersection(personIds)
-              .difference(defaultSelected)
-          : <int>{};
+
+      final personIds = persons.map((person) => person.id).toSet();
+      final storedTargets = {
+        ...project.selectedPersonIds,
+        ...project.faceOnlyPersonIds,
+      }.intersection(personIds);
+      final hasStoredTargets =
+          project.selectedPersonIds.isNotEmpty ||
+          project.faceOnlyPersonIds.isNotEmpty;
+      final targetIds = hasStoredTargets ? storedTargets : personIds;
+
+      // Legacy mixed projects are normalized to full-body for privacy safety.
+      // A pure face-only project remains face-only when revisited.
+      final initialMode =
+          project.selectedPersonIds.isEmpty &&
+              project.faceOnlyPersonIds.isNotEmpty
+          ? ProjectPrivacyMode.faceOnly
+          : ProjectPrivacyMode.fullBody;
 
       state = state.copyWith(
         status: PersonSelectionStatus.ready,
         persons: persons,
-        selectedPersonIds: defaultSelected,
-        faceOnlyPersonIds: defaultFaceOnly,
+        selectedPersonIds: initialMode == ProjectPrivacyMode.fullBody
+            ? targetIds
+            : <int>{},
+        faceOnlyPersonIds: initialMode == ProjectPrivacyMode.faceOnly
+            ? targetIds
+            : <int>{},
+        privacyMode: initialMode,
         analysisCacheId: result.analysisCacheId,
+        selectionPreviewLoading: true,
       );
+
+      await _loadSelectionPreview(result.analysisCacheId);
     } catch (e, stack) {
       AppLogger.e('PersonSelectionController', 'Analysis failed', e, stack);
       state = state.copyWith(
         status: PersonSelectionStatus.error,
-        errorMessage: '首帧人物分析失败: $e',
+        errorMessage: '人物分析失败，请重试。',
+        selectionPreviewLoading: false,
       );
     }
   }
 
-  /// Toggle selection state for a specific person ID
-  void togglePerson(int id) {
-    final current = state.privacyModeForPerson(id);
-    setPrivacyMode(
-      id,
-      current == PersonPrivacyMode.fullBody
-          ? PersonPrivacyMode.none
-          : PersonPrivacyMode.fullBody,
-    );
+  Future<void> _loadSelectionPreview(String analysisCacheId) async {
+    try {
+      final preview = await _repository.getPreviewFrame(
+        analysisCacheId: analysisCacheId,
+        timestampMs: 0,
+        selectedPersonIds: const [],
+        faceOnlyPersonIds: const [],
+        effects: const EffectConfig(),
+        follow: const FollowConfig(),
+      );
+      if (!mounted || state.analysisCacheId != analysisCacheId) return;
+      state = state.copyWith(
+        selectionPreviewPath: preview.thumbnailPath,
+        selectionPreviewLoading: false,
+      );
+    } catch (e) {
+      // Selection still works from detector thumbnails if the neutral preview is
+      // unavailable on a device. This is presentation-only and must never block
+      // the detector result.
+      AppLogger.d(
+        'PersonSelectionController',
+        'Selection stage preview unavailable: $e',
+      );
+      if (mounted && state.analysisCacheId == analysisCacheId) {
+        state = state.copyWith(selectionPreviewLoading: false);
+      }
+    }
   }
 
-  /// Explicitly sets one person's privacy mode. The two persisted ID sets remain
-  /// mutually exclusive in controller state; FULL_BODY conflict handling still
-  /// exists at the domain/native boundary as an additional safety net.
+  void setProjectPrivacyMode(ProjectPrivacyMode mode) {
+    if (state.privacyMode == mode) return;
+    _applyTargets(state.privacyTargetIds, mode: mode);
+  }
+
+  void togglePerson(int id) {
+    if (!state.persons.any((person) => person.id == id)) return;
+    final targets = Set<int>.from(state.privacyTargetIds);
+    if (!targets.add(id)) targets.remove(id);
+    _applyTargets(targets);
+  }
+
+  /// Compatibility entry point for older callers/tests. V2 intentionally turns
+  /// any non-none choice into a project-wide mode rather than a per-person mode.
   void setPrivacyMode(int id, PersonPrivacyMode mode) {
-    if (!state.persons.any((person) => person.id == id)) {
-      return;
-    }
-    final fullBody = Set<int>.from(state.selectedPersonIds)..remove(id);
-    final faceOnly = Set<int>.from(state.faceOnlyPersonIds)..remove(id);
+    if (!state.persons.any((person) => person.id == id)) return;
+    final targets = Set<int>.from(state.privacyTargetIds);
     switch (mode) {
       case PersonPrivacyMode.none:
-        break;
+        targets.remove(id);
+        _applyTargets(targets);
       case PersonPrivacyMode.faceOnly:
-        faceOnly.add(id);
+        targets.add(id);
+        _applyTargets(targets, mode: ProjectPrivacyMode.faceOnly);
       case PersonPrivacyMode.fullBody:
-        fullBody.add(id);
+        targets.add(id);
+        _applyTargets(targets, mode: ProjectPrivacyMode.fullBody);
     }
-    state = state.copyWith(
-      selectedPersonIds: fullBody,
-      faceOnlyPersonIds: faceOnly,
-    );
   }
 
-  /// Select all detected persons
   void selectAll() {
-    final allIds = state.persons.map((p) => p.id).toSet();
-    state = state.copyWith(
-      selectedPersonIds: allIds,
-      faceOnlyPersonIds: {},
-    );
+    _applyTargets(state.persons.map((person) => person.id).toSet());
   }
 
-  /// Deselect all detected persons
   void deselectAll() {
+    _applyTargets(<int>{});
+  }
+
+  void _applyTargets(Set<int> targets, {ProjectPrivacyMode? mode}) {
+    final effectiveMode = mode ?? state.privacyMode;
     state = state.copyWith(
-      selectedPersonIds: {},
-      faceOnlyPersonIds: {},
+      privacyMode: effectiveMode,
+      selectedPersonIds: effectiveMode == ProjectPrivacyMode.fullBody
+          ? targets
+          : <int>{},
+      faceOnlyPersonIds: effectiveMode == ProjectPrivacyMode.faceOnly
+          ? targets
+          : <int>{},
     );
   }
 
-  /// Produce final project with selection state applied
   DanceProject? buildConfiguredProject() {
-    final proj = state.project;
-    if (proj == null) return null;
+    final project = state.project;
+    if (project == null) return null;
 
-    final updatedPersons = state.persons.map((p) {
-      return p.copyWith(selected: state.selectedPersonIds.contains(p.id));
+    final updatedPersons = state.persons.map((person) {
+      return person.copyWith(
+        selected: state.selectedPersonIds.contains(person.id),
+      );
     }).toList();
 
-    return proj.copyWith(
+    return project.copyWith(
       persons: updatedPersons,
       selectedPersonIds: state.selectedPersonIds,
       faceOnlyPersonIds: state.faceOnlyPersonIds,
@@ -151,12 +209,18 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
     );
   }
 
-  /// Update project state (e.g. when returning from effect editor with updated effects/follow)
   void updateProject(DanceProject updated) {
-    state = state.copyWith(
-      project: updated,
-      selectedPersonIds: updated.selectedPersonIds,
-      faceOnlyPersonIds: updated.faceOnlyPersonIds,
-    );
+    final targets = {
+      ...updated.selectedPersonIds,
+      ...updated.faceOnlyPersonIds,
+    };
+    final mode =
+        updated.selectedPersonIds.isEmpty &&
+            updated.faceOnlyPersonIds.isNotEmpty
+        ? ProjectPrivacyMode.faceOnly
+        : ProjectPrivacyMode.fullBody;
+
+    state = state.copyWith(project: updated);
+    _applyTargets(targets, mode: mode);
   }
 }

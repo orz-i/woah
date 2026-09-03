@@ -1,19 +1,19 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../domain/export_state.dart';
+
+import '../../../app/theme.dart';
 import '../../../repositories/native_processing_repository.dart';
 import '../../import_video/presentation/widgets/video_preview_player.dart';
+import '../domain/export_state.dart';
 
 class ResultScreen extends ConsumerStatefulWidget {
   final ExportState exportState;
 
-  const ResultScreen({
-    super.key,
-    required this.exportState,
-  });
+  const ResultScreen({super.key, required this.exportState});
 
   @override
   ConsumerState<ResultScreen> createState() => _ResultScreenState();
@@ -22,91 +22,92 @@ class ResultScreen extends ConsumerStatefulWidget {
 class _ResultScreenState extends ConsumerState<ResultScreen> {
   bool _isSaving = false;
   bool _isSaved = false;
+  bool _isSharing = false;
   bool _isExportingDiagnostics = false;
   String? _savedUri;
+  String? _saveError;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _saveToGallery(automatic: true);
+    });
+  }
+
+  Future<void> _saveToGallery({bool automatic = false}) async {
+    final outputPath = widget.exportState.outputUri;
+    if (outputPath == null || outputPath.isEmpty || _isSaved || _isSaving) {
+      return;
+    }
+
+    if (!automatic) HapticFeedback.mediumImpact();
+    setState(() {
+      _isSaving = true;
+      _saveError = null;
+    });
+
+    try {
+      final uri = await ref
+          .read(nativeRepositoryProvider)
+          .saveVideoToGallery(outputPath);
+      if (!mounted) return;
+      HapticFeedback.heavyImpact();
+      setState(() {
+        _isSaving = false;
+        _isSaved = uri != null && uri.isNotEmpty;
+        _savedUri = uri;
+        _saveError = _isSaved ? null : '保存失败，请重试';
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isSaving = false;
+        _saveError = '保存失败，请重试';
+      });
+    }
+  }
+
+  Future<void> _shareVideo() async {
+    if (_isSharing) return;
+    if (!_isSaved || _savedUri == null) {
+      await _saveToGallery();
+      if (!_isSaved || _savedUri == null) return;
+    }
+
+    HapticFeedback.mediumImpact();
+    setState(() => _isSharing = true);
+    try {
+      await ref.read(nativeRepositoryProvider).shareVideo(_savedUri!);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('暂时无法打开系统分享面板')));
+      }
+    } finally {
+      if (mounted) setState(() => _isSharing = false);
+    }
   }
 
   Future<void> _exportDiagnostics() async {
     if (_isExportingDiagnostics) return;
-
-    HapticFeedback.mediumImpact();
     setState(() => _isExportingDiagnostics = true);
     try {
       final repo = ref.read(nativeRepositoryProvider);
       final bundle = await repo.createDiagnosticBundle();
-      final fileName = bundle?['fileName'] as String? ?? 'diagnostic_bundle.zip';
-      final filePath = bundle?['filePath'] as String?;
-      final publicUri = bundle?['publicUri'] as String?;
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('完整导出诊断包已生成: $fileName'),
-            backgroundColor: const Color(0xFF10B981),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-
       await repo.shareDiagnosticBundle(
-        filePath: filePath,
-        publicUri: publicUri,
+        filePath: bundle?['filePath'] as String?,
+        publicUri: bundle?['publicUri'] as String?,
       );
-    } catch (e) {
+    } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('导出诊断包失败: $e'),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('诊断包导出失败')));
       }
     } finally {
-      if (mounted) {
-        setState(() => _isExportingDiagnostics = false);
-      }
-    }
-  }
-
-  Future<void> _saveToGallery() async {
-    final outputPath = widget.exportState.outputUri;
-    if (outputPath == null || outputPath.isEmpty || _isSaved || _isSaving) return;
-
-    HapticFeedback.mediumImpact();
-    setState(() => _isSaving = true);
-    try {
-      final uri = await ref.read(nativeRepositoryProvider).saveVideoToGallery(outputPath);
-      if (mounted) {
-        HapticFeedback.heavyImpact();
-        setState(() {
-          _isSaving = false;
-          _isSaved = true;
-          _savedUri = uri;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            backgroundColor: Color(0xFF22C55E),
-            duration: Duration(seconds: 3),
-            content: Text('🎉 视频已成功保存至系统相册 (Movies/DanceAnon)！', style: TextStyle(color: Colors.white)),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        HapticFeedback.lightImpact();
-        setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: Colors.redAccent,
-            content: Text('保存至相册失败: $e'),
-          ),
-        );
-      }
+      if (mounted) setState(() => _isExportingDiagnostics = false);
     }
   }
 
@@ -117,199 +118,113 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final file = File(outputPath);
     final fileSizeMb = file.existsSync()
         ? (file.lengthSync() / (1024 * 1024)).toStringAsFixed(1)
-        : '0.0';
+        : null;
 
     return Scaffold(
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('导出完成'),
+        title: const Text('处理完成'),
         leading: IconButton(
+          tooltip: '返回首页',
           icon: const Icon(Icons.home_outlined),
           onPressed: () {
             HapticFeedback.lightImpact();
             context.go('/');
           },
         ),
+        actions: [
+          PopupMenuButton<String>(
+            tooltip: '更多',
+            icon: const Icon(Icons.more_horiz_rounded),
+            color: AppTheme.surfaceElevated,
+            onSelected: (value) {
+              if (value == 'diagnostics') _exportDiagnostics();
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'diagnostics',
+                enabled: !_isExportingDiagnostics,
+                child: const ListTile(
+                  dense: true,
+                  leading: Icon(Icons.bug_report_outlined),
+                  title: Text('导出诊断包'),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       body: SafeArea(
+        top: false,
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 1. Preview Player with ambient shadow
               if (outputPath.isNotEmpty)
                 Container(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+                    border: Border.all(color: AppTheme.surfaceBorder),
+                    boxShadow: const [
                       BoxShadow(
-                        color: Colors.black.withAlpha(150),
-                        blurRadius: 24,
-                        offset: const Offset(0, 8),
+                        color: Color(0x60000000),
+                        blurRadius: 22,
+                        offset: Offset(0, 8),
                       ),
                     ],
                   ),
+                  clipBehavior: Clip.antiAlias,
                   child: VideoPreviewPlayer(
                     videoPath: outputPath,
-                    aspectRatio: project?.videoInfo.aspectRatio ?? (16 / 9),
+                    aspectRatio: project?.videoInfo.aspectRatio ?? 16 / 9,
                   ),
                 ),
-              const SizedBox(height: 16),
-
-              // 2. Summary 2x2 Grid Card
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF22C55E).withAlpha(25),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.check_circle_rounded, color: Color(0xFF22C55E), size: 18),
+              const SizedBox(height: 18),
+              _buildSaveStatus(fileSizeMb),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 54,
+                child: ElevatedButton.icon(
+                  onPressed: _isSharing || _isSaving || _saveError != null
+                      ? null
+                      : _shareVideo,
+                  icon: _isSharing
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppTheme.canvas,
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '视频已处理就绪',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                          ),
-                        ],
-                      ),
-                      const Divider(height: 24),
-                      Row(
-                        children: [
-                          Expanded(child: _buildMetricTile('文件大小', '$fileSizeMb MB', Icons.data_usage_rounded)),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildMetricTile(
-                              '输出分辨率',
-                              '${project?.videoInfo.width ?? 1920}×${project?.videoInfo.height ?? 1080}',
-                              Icons.aspect_ratio_rounded,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildMetricTile(
-                              '处理人物数',
-                              '${project?.privacyTargetIds.length ?? 0} 位人物',
-                              Icons.person_rounded,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildMetricTile(
-                              '原音轨保留',
-                              project?.videoInfo.hasAudio == true ? '高清 AAC' : '无音频',
-                              Icons.audiotrack_rounded,
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (_savedUri != null) ...[
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF22C55E).withAlpha(15),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFF22C55E).withAlpha(40)),
-                          ),
-                          child: Row(
-                            children: const [
-                              Icon(Icons.photo_library_rounded, size: 16, color: Color(0xFF22C55E)),
-                              SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  '已存储至系统相册 (Movies/DanceAnon)',
-                                  style: TextStyle(fontSize: 12, color: Color(0xFF22C55E), fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
+                        )
+                      : const Icon(Icons.ios_share_rounded, size: 20),
+                  label: Text(_isSharing ? '正在打开分享…' : '分享视频'),
                 ),
               ),
-              const SizedBox(height: 24),
-
-              // 3. Action Buttons
-              ElevatedButton.icon(
-                onPressed: _isSaving ? null : _saveToGallery,
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
-                      )
-                    : Icon(_isSaved ? Icons.check_circle_rounded : Icons.save_alt_rounded),
-                label: Text(
-                  _isSaving
-                      ? '正在写入系统相册...'
-                      : _isSaved
-                          ? '已成功存入系统相册'
-                          : '保存到系统相册 (Save to MediaStore)',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _isSaved ? const Color(0xFF22C55E) : Colors.white,
-                  foregroundColor: _isSaved ? Colors.white : Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+              if (_saveError != null) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 52,
+                  child: ElevatedButton.icon(
+                    onPressed: _isSaving ? null : () => _saveToGallery(),
+                    icon: const Icon(Icons.save_alt_rounded, size: 19),
+                    label: const Text('重新保存到相册'),
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: _isExportingDiagnostics ? null : _exportDiagnostics,
-                icon: _isExportingDiagnostics
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.bug_report_outlined),
-                label: Text(
-                  _isExportingDiagnostics ? '正在生成诊断包...' : '导出并分享完整诊断包',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF60A5FA),
-                  side: const BorderSide(color: Color(0xFF3B82F6)),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: () {
-                  HapticFeedback.mediumImpact();
-                  context.go('/');
-                },
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('制作下一个视频'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+              ],
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 52,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    HapticFeedback.mediumImpact();
+                    context.go('/');
+                  },
+                  icon: const Icon(Icons.add_rounded, size: 19),
+                  label: const Text('制作下一个'),
                 ),
               ),
             ],
@@ -319,28 +234,71 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     );
   }
 
-  Widget _buildMetricTile(String label, String value, IconData icon) {
+  Widget _buildSaveStatus(String? fileSizeMb) {
+    final IconData icon;
+    final String title;
+    final String subtitle;
+
+    if (_isSaving) {
+      icon = Icons.downloading_rounded;
+      title = '正在保存到相册';
+      subtitle = '保存完成后即可直接分享';
+    } else if (_isSaved) {
+      icon = Icons.check_circle_outline_rounded;
+      title = '已保存到相册';
+      subtitle = fileSizeMb == null
+          ? '视频已安全保存到系统媒体库'
+          : '视频已安全保存 · $fileSizeMb MB';
+    } else if (_saveError != null) {
+      icon = Icons.error_outline_rounded;
+      title = '尚未保存到相册';
+      subtitle = '成品仍保留在应用中，可以重新保存';
+    } else {
+      icon = Icons.check_circle_outline_rounded;
+      title = '视频处理完成';
+      subtitle = '正在准备保存';
+    }
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E24),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withAlpha(15)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+      decoration: AppTheme.panelDecoration(radius: 16),
+      child: Row(
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 14, color: Colors.white54),
-              const SizedBox(width: 6),
-              Text(label, style: const TextStyle(fontSize: 11, color: Colors.white54)),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+          if (_isSaving)
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else
+            Icon(
+              icon,
+              size: 24,
+              color: _saveError != null ? AppTheme.error : AppTheme.metalHigh,
+            ),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: AppTheme.textMuted,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

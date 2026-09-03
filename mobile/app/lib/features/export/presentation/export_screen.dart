@@ -1,23 +1,21 @@
 import 'dart:io';
+
+import 'package:dance_domain/dance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:dance_domain/dance_domain.dart';
-import '../../../repositories/native_processing_repository.dart';
-import 'export_controller.dart';
-import '../domain/export_state.dart';
 
+import '../../../app/theme.dart';
+import '../../../repositories/native_processing_repository.dart';
+import '../domain/export_state.dart';
+import 'export_controller.dart';
 
 class ExportArgs {
   final DanceProject project;
   final String processingProfile;
 
-  const ExportArgs({
-    required this.project,
-    this.processingProfile = 'quality',
-  });
+  const ExportArgs({required this.project, this.processingProfile = 'quality'});
 }
 
 class ExportScreen extends ConsumerStatefulWidget {
@@ -38,66 +36,18 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _startExportJob();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startExportJob());
   }
 
   void _startExportJob() {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final outPath = 'export_$timestamp.mp4';
     ref
         .read(exportControllerProvider.notifier)
-        .startExport(widget.project, outPath, processingProfile: widget.processingProfile);
-  }
-
-
-  void _copyErrorLog(BuildContext context, String? errorMessage) {
-    HapticFeedback.mediumImpact();
-    final text = errorMessage ?? '未知错误';
-    Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        backgroundColor: Color(0xFF22C55E),
-        duration: Duration(seconds: 3),
-        content: Text('📋 错误日志已复制到剪贴板，可直接粘贴反馈！', style: TextStyle(color: Colors.white)),
-      ),
-    );
-  }
-
-  Future<void> _exportDiagnostics(BuildContext context) async {
-    try {
-      final repo = ref.read(nativeRepositoryProvider);
-      final bundle = await repo.createDiagnosticBundle();
-      final fileName = bundle?['fileName'] as String? ?? 'diagnostic_bundle.zip';
-      final filePath = bundle?['filePath'] as String?;
-      final publicUri = bundle?['publicUri'] as String?;
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('诊断包已生成: $fileName'),
-            backgroundColor: const Color(0xFF10B981),
-            behavior: SnackBarBehavior.floating,
-          ),
+        .startExport(
+          widget.project,
+          'export_$timestamp.mp4',
+          processingProfile: widget.processingProfile,
         );
-      }
-
-      await repo.shareDiagnosticBundle(
-        filePath: filePath,
-        publicUri: publicUri,
-      );
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('导出诊断包失败: $e'),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
   }
 
   @override
@@ -105,531 +55,362 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     final state = ref.watch(exportControllerProvider);
     final controller = ref.read(exportControllerProvider.notifier);
 
-    // Auto navigate on completion
     ref.listen<ExportState>(exportControllerProvider, (previous, next) {
-      if (next.isCompleted && next.outputUri != null && next.outputUri!.endsWith('.mp4')) {
+      if (next.isCompleted &&
+          next.outputUri != null &&
+          next.outputUri!.endsWith('.mp4')) {
         HapticFeedback.heavyImpact();
         context.pushReplacement('/result', extra: next);
       }
     });
 
-    final percent = (state.progress * 100).toStringAsFixed(1);
     final isFailed = state.isFailed;
+    final isActive =
+        state.status == ExportJobState.queued || state.isProcessing;
 
     return Scaffold(
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('正在导出视频'),
+        title: Text(isFailed ? '导出失败' : '导出中'),
         leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => _confirmCancel(context, controller),
+          tooltip: '取消导出',
+          icon: const Icon(Icons.close_rounded),
+          onPressed: isActive
+              ? () => _confirmCancel(controller)
+              : () => context.pop(),
         ),
+        actions: [
+          if (isFailed)
+            PopupMenuButton<String>(
+              tooltip: '更多',
+              icon: const Icon(Icons.more_horiz_rounded),
+              color: AppTheme.surfaceElevated,
+              onSelected: (value) {
+                if (value == 'copy') {
+                  _copyError(state.errorMessage);
+                } else if (value == 'diagnostics') {
+                  _exportDiagnostics();
+                }
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(
+                  value: 'copy',
+                  child: ListTile(
+                    dense: true,
+                    leading: Icon(Icons.copy_rounded),
+                    title: Text('复制错误详情'),
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'diagnostics',
+                  child: ListTile(
+                    dense: true,
+                    leading: Icon(Icons.bug_report_outlined),
+                    title: Text('导出诊断包'),
+                  ),
+                ),
+              ],
+            ),
+        ],
       ),
-      body: Center(
+      body: SafeArea(
+        top: false,
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Live Preview Toggle Bar
-              if (!isFailed && state.isProcessing) ...[
-                Container(
-                  margin: const EdgeInsets.only(bottom: 20),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E1E24),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white10),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.remove_red_eye_outlined, size: 20, color: Colors.white70),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '实时画面预览',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            Text(
-                              '实时监视打码处理后的视频帧（默认关闭）',
-                              style: TextStyle(
-                                color: Colors.white38,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Switch.adaptive(
-                        value: state.showLivePreview,
-                        activeThumbColor: Colors.white,
-                        activeTrackColor: const Color(0xFF3B82F6),
-                        onChanged: (val) {
-                          HapticFeedback.lightImpact();
-                          controller.toggleLivePreview(val);
-                        },
-                      ),
-
-                    ],
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 132),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: MediaQuery.sizeOf(context).height - 230,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildProgressVisual(state),
+                const SizedBox(height: 26),
+                Text(
+                  isFailed ? '处理没有完成' : _statusTitle(state.status),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-              ],
-
-              // Central Visual Display: Toggle between Circular Progress & Live Rendered Frame
-              AnimatedCrossFade(
-                duration: const Duration(milliseconds: 300),
-                crossFadeState: (state.showLivePreview && !isFailed)
-                    ? CrossFadeState.showSecond
-                    : CrossFadeState.showFirst,
-                firstChild: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Container(
-                      width: 220,
-                      height: 220,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          if (!isFailed)
-                            BoxShadow(
-                              color: Colors.white.withAlpha(15),
-                              blurRadius: 30,
-                              spreadRadius: 2,
-                            ),
-                        ],
-                      ),
-                      child: CircularProgressIndicator(
-                        value: isFailed ? 1.0 : (state.progress > 0 ? state.progress : null),
-                        strokeWidth: 9,
-                        backgroundColor: Colors.white12,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          isFailed ? Colors.redAccent : Colors.white,
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: 180,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          if (isFailed) ...[
-                            const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 48),
-                            const SizedBox(height: 8),
-                            const Text(
-                              '导出失败',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.redAccent,
-                              ),
-                            ),
-                          ] else ...[
-                            Text(
-                              '$percent%',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 38,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                                letterSpacing: -1,
-                                fontFeatures: [FontFeature.tabularFigures()],
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              state.progress >= 1.0 ? '即将完成' : '本地端侧处理中',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: Colors.white60,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                secondChild: Container(
-                  width: double.infinity,
-                  constraints: const BoxConstraints(maxHeight: 280),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF141418),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFF3B82F6).withAlpha(80), width: 1.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF3B82F6).withAlpha(25),
-                        blurRadius: 24,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      if (state.currentPreviewPath != null &&
-                          File(state.currentPreviewPath!).existsSync())
-                        Image.file(
-                          File(state.currentPreviewPath!),
-                          key: ValueKey('${state.currentPreviewPath}_${state.currentFrame}'),
-                          width: double.infinity,
-                          height: double.infinity,
-                          fit: BoxFit.contain,
-                          gaplessPlayback: true,
-                        )
-
-                      else
-                        Container(
-                          color: const Color(0xFF1E1E24),
-                          child: const Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                SizedBox(
-                                  width: 32,
-                                  height: 32,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 3,
-                                    color: Colors.white70,
-                                  ),
-                                ),
-                                SizedBox(height: 12),
-                                Text(
-                                  '正在捕获实时处理帧...',
-                                  style: TextStyle(color: Colors.white60, fontSize: 13),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      // Top Overlay Tag
-                      Positioned(
-                        top: 12,
-                        left: 12,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withAlpha(180),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.white12),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF22C55E),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              const Text(
-                                '实时渲染中',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      // Bottom Overlay Progress
-                      Positioned(
-                        bottom: 12,
-                        right: 12,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withAlpha(180),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.white12),
-                          ),
-                          child: Text(
-                            '$percent%',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              fontFeatures: [FontFeature.tabularFigures()],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E1E24),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white10),
-                    ),
-                    child: Text(
-                      switch (widget.processingProfile.toLowerCase()) {
-                        'sam2' => '⚡ SAM2 时序跟踪',
-                        'speed' => '🚀 极速导出',
-                        'balanced' => '⚖️ 均衡模式',
-                        _ => '🌟 质量优先',
-                      },
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E1E24),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white10),
-                    ),
-                    child: Text(
-                      '已处理 ${state.currentFrame} / ${state.totalFrames} 帧',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        fontFeatures: [FontFeature.tabularFigures()],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (state.fps > 0) ...[
                 const SizedBox(height: 8),
                 Text(
-                  '当前渲染速度: ${state.fps.toStringAsFixed(1)} FPS',
+                  isFailed
+                      ? '可以重试导出；技术详情已收进右上角菜单。'
+                      : _remainingTimeLabel(state),
+                  textAlign: TextAlign.center,
                   style: const TextStyle(
-                    color: Colors.white38,
-                    fontSize: 12,
-                    fontFeatures: [FontFeature.tabularFigures()],
+                    color: AppTheme.textMuted,
+                    fontSize: 13,
                   ),
                 ),
+                if (!isFailed) ...[
+                  const SizedBox(height: 26),
+                  _buildBackgroundHint(),
+                  const SizedBox(height: 14),
+                  _buildLivePreviewSection(state, controller),
+                ],
               ],
-
-              const SizedBox(height: 24),
-
-              // Status Description & Action
-              SizedBox(
-                height: 80,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      isFailed ? '导出遇到异常，请重试或复制日志反馈' : _getStatusTitle(state.status),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: isFailed ? Colors.redAccent : Colors.white,
-                          ),
-                    ),
-                    const SizedBox(height: 10),
-                    if (isFailed)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          OutlinedButton.icon(
-                            onPressed: () => _copyErrorLog(context, state.errorMessage),
-                            icon: const Icon(Icons.copy_rounded, size: 16),
-                            label: const Text(
-                              '复制错误信息',
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              side: const BorderSide(color: Colors.white30),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          OutlinedButton.icon(
-                            onPressed: () => _exportDiagnostics(context),
-                            icon: const Icon(Icons.bug_report_outlined, size: 16, color: Color(0xFF60A5FA)),
-                            label: const Text(
-                              '导出诊断包',
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF60A5FA)),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF60A5FA),
-                              side: const BorderSide(color: Color(0xFF3B82F6)),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // Background Service Hint
-              if (!isFailed)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(6),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.white10),
-                  ),
-                  child: Row(
-                    children: const [
-                      Icon(Icons.lock_clock_rounded, size: 18, color: Colors.white60),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          '已开启前台保活服务，锁屏或切换到其他应用仍将继续导出。',
-                          style: TextStyle(fontSize: 12, color: Colors.white60),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-            ],
+            ),
           ),
         ),
       ),
       bottomNavigationBar: SafeArea(
+        top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
           child: isFailed
               ? Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.arrow_back),
-                        label: const Text('返回调节'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
+                      child: OutlinedButton(
+                        onPressed: () => context.pop(),
+                        child: const Text('返回编辑'),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: _startExportJob,
-                        icon: const Icon(Icons.refresh_rounded),
-                        label: const Text('重试导出'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
+                        icon: const Icon(Icons.refresh_rounded, size: 18),
+                        label: const Text('重试'),
                       ),
                     ),
                   ],
                 )
-              : (state.isProcessing
-                  ? OutlinedButton.icon(
-                      onPressed: () => _confirmCancel(context, controller),
-                      icon: const Icon(Icons.cancel_outlined, color: Colors.redAccent),
-                      label: const Text(
-                        '取消导出',
-                        style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: Colors.redAccent.withAlpha(100)),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                    )
-                  : const SizedBox.shrink()),
+              : OutlinedButton.icon(
+                  onPressed: isActive ? () => _confirmCancel(controller) : null,
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                  label: const Text('取消导出'),
+                ),
         ),
       ),
     );
   }
 
-  String _getStatusTitle(ExportJobState status) {
-    switch (status) {
-      case ExportJobState.queued:
-        return '正在排队等待处理...';
-      case ExportJobState.preparing:
-        return '正在准备视频资源...';
-      case ExportJobState.processing:
-        return '正在智能识别并绘制遮挡...';
-      case ExportJobState.muxing:
-        return '正在合成音频并完成保存...';
-      case ExportJobState.completed:
-        return '导出完成！';
-      case ExportJobState.cancelled:
-        return '已取消导出';
-      case ExportJobState.failed:
-        return '导出失败';
+  Widget _buildProgressVisual(ExportState state) {
+    final progress = state.progress.clamp(0.0, 1.0);
+    final percent = (progress * 100).round();
+    final isFailed = state.isFailed;
+    return SizedBox(
+      width: 190,
+      height: 190,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          SizedBox.expand(
+            child: CircularProgressIndicator(
+              value: isFailed ? 1 : (progress > 0 ? progress : null),
+              strokeWidth: 8,
+              backgroundColor: AppTheme.surfaceHigh,
+              valueColor: AlwaysStoppedAnimation(
+                isFailed ? AppTheme.error : AppTheme.metalHigh,
+              ),
+            ),
+          ),
+          if (isFailed)
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 52,
+              color: AppTheme.error,
+            )
+          else
+            Text(
+              '$percent%',
+              style: const TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 40,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -1.5,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBackgroundHint() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: AppTheme.panelDecoration(radius: 14),
+      child: const Row(
+        children: [
+          Icon(
+            Icons.phone_android_rounded,
+            size: 21,
+            color: AppTheme.metalHigh,
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '可以切换到其他应用',
+                  style: TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 3),
+                Text(
+                  '处理会在后台继续运行',
+                  style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLivePreviewSection(
+    ExportState state,
+    ExportController controller,
+  ) {
+    return Container(
+      width: double.infinity,
+      decoration: AppTheme.panelDecoration(radius: 14),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          SwitchListTile(
+            value: state.showLivePreview,
+            onChanged: (value) {
+              HapticFeedback.lightImpact();
+              controller.toggleLivePreview(value);
+            },
+            secondary: const Icon(
+              Icons.visibility_outlined,
+              color: AppTheme.metalMid,
+              size: 21,
+            ),
+            title: const Text(
+              '实时预览',
+              style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            subtitle: const Text(
+              '需要时查看处理画面，默认关闭以减少额外开销',
+              style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+            ),
+          ),
+          if (state.showLivePreview) ...[
+            const Divider(height: 1),
+            AspectRatio(
+              aspectRatio: widget.project.videoInfo.aspectRatio > 0
+                  ? widget.project.videoInfo.aspectRatio
+                  : 16 / 9,
+              child: Container(
+                color: Colors.black,
+                child:
+                    state.currentPreviewPath != null &&
+                        File(state.currentPreviewPath!).existsSync()
+                    ? Image.file(
+                        File(state.currentPreviewPath!),
+                        key: ValueKey(
+                          '${state.currentPreviewPath}_${state.currentFrame}',
+                        ),
+                        fit: BoxFit.contain,
+                        gaplessPlayback: true,
+                      )
+                    : const Center(
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _statusTitle(ExportJobState status) {
+    return switch (status) {
+      ExportJobState.queued => '正在准备处理',
+      ExportJobState.preparing => '正在准备视频',
+      ExportJobState.processing => '正在保护人物',
+      ExportJobState.muxing => '正在保存视频',
+      ExportJobState.completed => '处理完成',
+      ExportJobState.cancelled => '已取消',
+      ExportJobState.failed => '处理没有完成',
+    };
+  }
+
+  String _remainingTimeLabel(ExportState state) {
+    if (state.status == ExportJobState.muxing) return '正在完成最后一步';
+    if (state.totalFrames <= 0 || state.fps <= 0) return '正在计算剩余时间…';
+
+    final remainingFrames = (state.totalFrames - state.currentFrame).clamp(
+      0,
+      state.totalFrames,
+    );
+    final seconds = (remainingFrames / state.fps).ceil();
+    if (seconds <= 0) return '即将完成';
+    if (seconds < 60) return '预计还需约 $seconds 秒';
+    final minutes = seconds ~/ 60;
+    final remainder = seconds % 60;
+    return remainder == 0
+        ? '预计还需约 $minutes 分钟'
+        : '预计还需约 $minutes 分 $remainder 秒';
+  }
+
+  void _copyError(String? errorMessage) {
+    Clipboard.setData(ClipboardData(text: errorMessage ?? '未知错误'));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('错误详情已复制')));
+  }
+
+  Future<void> _exportDiagnostics() async {
+    try {
+      final repo = ref.read(nativeRepositoryProvider);
+      final bundle = await repo.createDiagnosticBundle();
+      await repo.shareDiagnosticBundle(
+        filePath: bundle?['filePath'] as String?,
+        publicUri: bundle?['publicUri'] as String?,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('诊断包导出失败')));
     }
   }
 
-  void _confirmCancel(BuildContext context, ExportController controller) {
+  void _confirmCancel(ExportController controller) {
     HapticFeedback.lightImpact();
-    showDialog(
+    showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF18181C),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('确认取消导出？', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: const Text('当前导出进度将丢失，确认取消吗？', style: TextStyle(color: Colors.white70)),
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('取消导出？'),
+        content: const Text('当前进度将不会保留。'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('继续导出', style: TextStyle(color: Colors.white)),
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('继续导出'),
           ),
           TextButton(
             onPressed: () {
-              HapticFeedback.mediumImpact();
-              Navigator.of(ctx).pop();
+              Navigator.of(dialogContext).pop();
               controller.cancelExport();
-              Navigator.of(context).pop();
+              context.pop();
             },
-            child: const Text('确认取消', style: TextStyle(color: Colors.redAccent)),
+            child: const Text('取消导出', style: TextStyle(color: AppTheme.error)),
           ),
         ],
       ),

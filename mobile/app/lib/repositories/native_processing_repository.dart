@@ -35,11 +35,11 @@ class NativeProcessingRepository {
     required String videoUri,
     String modelProfile = 'balanced',
   }) async {
-    AppLogger.d('NativeRepository', 'Analyzing video: $videoUri (profile: $modelProfile)');
-    return _client.analyzeVideo(
-      videoUri: videoUri,
-      modelProfile: modelProfile,
+    AppLogger.d(
+      'NativeRepository',
+      'Analyzing video: $videoUri (profile: $modelProfile)',
     );
+    return _client.analyzeVideo(videoUri: videoUri, modelProfile: modelProfile);
   }
 
   Future<PreviewFrameDto> getPreviewFrame({
@@ -92,8 +92,6 @@ class NativeProcessingRepository {
     );
   }
 
-
-
   Future<void> cancelJob(String jobId) {
     return _client.cancelJob(jobId);
   }
@@ -107,8 +105,16 @@ class NativeProcessingRepository {
   }
 
   Future<String?> saveVideoToGallery(String filePath) {
-    AppLogger.d('NativeRepository', 'Saving video to system gallery: $filePath');
+    AppLogger.d(
+      'NativeRepository',
+      'Saving video to system gallery: $filePath',
+    );
     return _client.saveVideoToGallery(filePath);
+  }
+
+  Future<void> shareVideo(String publicUri) {
+    AppLogger.d('NativeRepository', 'Sharing exported video: $publicUri');
+    return _client.shareVideo(publicUri);
   }
 
   Future<Map<dynamic, dynamic>?> createDiagnosticBundle() {
@@ -116,9 +122,15 @@ class NativeProcessingRepository {
     return _client.createDiagnosticBundle();
   }
 
-  Future<Map<dynamic, dynamic>?> shareDiagnosticBundle({String? filePath, String? publicUri}) {
+  Future<Map<dynamic, dynamic>?> shareDiagnosticBundle({
+    String? filePath,
+    String? publicUri,
+  }) {
     AppLogger.d('NativeRepository', 'Sharing diagnostic bundle...');
-    return _client.shareDiagnosticBundle(filePath: filePath, publicUri: publicUri);
+    return _client.shareDiagnosticBundle(
+      filePath: filePath,
+      publicUri: publicUri,
+    );
   }
 
   Future<void> clearDiagnosticLogs() {

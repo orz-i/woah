@@ -4,7 +4,6 @@ import 'package:dance_domain/dance_domain.dart';
 import '../features/import_video/presentation/import_video_screen.dart';
 import '../features/person_selection/presentation/person_selection_screen.dart';
 import '../features/effect_editor/presentation/effect_editor_screen.dart';
-import '../features/frame_preview/presentation/frame_preview_screen.dart';
 import '../features/export/presentation/export_screen.dart';
 import '../features/export/presentation/result_screen.dart';
 import '../features/export/domain/export_state.dart';
@@ -37,21 +36,6 @@ final appRouter = GoRouter(
       },
     ),
     GoRoute(
-      path: '/frame_preview',
-      name: 'frame_preview',
-      builder: (context, state) {
-        if (state.extra is FramePreviewArgs) {
-          final args = state.extra as FramePreviewArgs;
-          return FramePreviewScreen(
-            project: args.project,
-            initialPreviewPath: args.initialPreviewPath,
-          );
-        }
-        final project = state.extra as DanceProject;
-        return FramePreviewScreen(project: project);
-      },
-    ),
-    GoRoute(
       path: '/export',
       name: 'export',
       builder: (context, state) {
@@ -66,7 +50,6 @@ final appRouter = GoRouter(
         return ExportScreen(project: project);
       },
     ),
-
 
     GoRoute(
       path: '/result',

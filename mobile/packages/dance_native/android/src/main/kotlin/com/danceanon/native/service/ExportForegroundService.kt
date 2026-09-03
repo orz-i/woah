@@ -247,7 +247,7 @@ class ExportForegroundService : Service() {
             Notification.Builder(this)
         }
 
-        builder.setContentTitle("Dance Anonymizer")
+        builder.setContentTitle("Woah")
             .setContentText(content)
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setProgress(100, progress, progress == 0)

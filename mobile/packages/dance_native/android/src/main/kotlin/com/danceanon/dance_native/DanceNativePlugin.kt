@@ -2,7 +2,9 @@ package com.danceanon.dance_native
 
 import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
 import android.media.MediaScannerConnection
+import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import com.danceanon.native.bridge.DanceNativeApi
@@ -61,6 +63,31 @@ class DanceNativePlugin :
                 } catch (e: Exception) {
                     android.util.Log.e("DanceNativePlugin", "Failed to save video to gallery: ${e.message}", e)
                     result.error("SAVE_FAILED", e.message ?: "Failed to save video to gallery", null)
+                }
+            }
+            "shareVideo" -> {
+                val publicUri = call.argument<String>("publicUri")
+                val ctx = context
+                if (publicUri.isNullOrBlank() || ctx == null) {
+                    result.error("INVALID_ARGS", "publicUri or context is null", null)
+                    return
+                }
+                try {
+                    val uri = Uri.parse(publicUri)
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "video/mp4"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    val chooser = Intent.createChooser(shareIntent, "分享视频").apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    ctx.startActivity(chooser)
+                    result.success(null)
+                } catch (e: Exception) {
+                    android.util.Log.e("DanceNativePlugin", "Failed to share video: ${e.message}", e)
+                    result.error("SHARE_VIDEO_FAILED", e.message ?: "Failed to share video", null)
                 }
             }
             "createDiagnosticBundle" -> {

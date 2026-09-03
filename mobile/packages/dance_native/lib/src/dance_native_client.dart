@@ -39,10 +39,9 @@ class DanceNativeClient implements DanceProcessingEvents {
     required String videoUri,
     String modelProfile = 'balanced',
   }) {
-    return _api.analyzeVideo(AnalyzeRequestDto(
-      videoUri: videoUri,
-      modelProfile: modelProfile,
-    ));
+    return _api.analyzeVideo(
+      AnalyzeRequestDto(videoUri: videoUri, modelProfile: modelProfile),
+    );
   }
 
   /// Request a single rendered preview frame with applied effects
@@ -54,14 +53,16 @@ class DanceNativeClient implements DanceProcessingEvents {
     required EffectConfig effects,
     FollowConfig follow = const FollowConfig(),
   }) {
-    return _api.getPreviewFrame(PreviewRequestDto(
-      analysisCacheId: analysisCacheId,
-      timestampMs: timestampMs,
-      selectedPersonIds: selectedPersonIds,
-      effects: effects.toDto(),
-      follow: follow.toDto(),
-      faceOnlyPersonIds: faceOnlyPersonIds,
-    ));
+    return _api.getPreviewFrame(
+      PreviewRequestDto(
+        analysisCacheId: analysisCacheId,
+        timestampMs: timestampMs,
+        selectedPersonIds: selectedPersonIds,
+        effects: effects.toDto(),
+        follow: follow.toDto(),
+        faceOnlyPersonIds: faceOnlyPersonIds,
+      ),
+    );
   }
 
   /// Start background video export job
@@ -80,23 +81,24 @@ class DanceNativeClient implements DanceProcessingEvents {
     String processingProfile = 'quality',
     bool enableLivePreview = false,
   }) {
-    return _api.startExport(ExportRequestDto(
-      sourceUri: sourceUri,
-      analysisCacheId: analysisCacheId,
-      outputFilePath: outputFilePath,
-      selectedPersonIds: selectedPersonIds,
-      effects: effects.toDto(),
-      follow: follow.toDto(),
-      targetWidth: targetWidth,
-      targetHeight: targetHeight,
-      targetFps: targetFps,
-      videoBitrate: videoBitrate,
-      processingProfile: processingProfile,
-      enableLivePreview: enableLivePreview,
-      faceOnlyPersonIds: faceOnlyPersonIds,
-    ));
+    return _api.startExport(
+      ExportRequestDto(
+        sourceUri: sourceUri,
+        analysisCacheId: analysisCacheId,
+        outputFilePath: outputFilePath,
+        selectedPersonIds: selectedPersonIds,
+        effects: effects.toDto(),
+        follow: follow.toDto(),
+        targetWidth: targetWidth,
+        targetHeight: targetHeight,
+        targetFps: targetFps,
+        videoBitrate: videoBitrate,
+        processingProfile: processingProfile,
+        enableLivePreview: enableLivePreview,
+        faceOnlyPersonIds: faceOnlyPersonIds,
+      ),
+    );
   }
-
 
   /// Cancel an ongoing export job
   Future<void> cancelJob(String jobId) {
@@ -115,7 +117,14 @@ class DanceNativeClient implements DanceProcessingEvents {
 
   /// Save exported MP4 video to Android MediaStore System Gallery
   Future<String?> saveVideoToGallery(String filePath) async {
-    return _channel.invokeMethod<String>('saveVideoToGallery', {'filePath': filePath});
+    return _channel.invokeMethod<String>('saveVideoToGallery', {
+      'filePath': filePath,
+    });
+  }
+
+  /// Share an already-public media Uri through the Android system share sheet.
+  Future<void> shareVideo(String publicUri) async {
+    await _channel.invokeMethod<void>('shareVideo', {'publicUri': publicUri});
   }
 
   /// Create diagnostic bundle ZIP file

@@ -1,12 +1,12 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../app/theme.dart';
+
 /// 底部可拖拽控制抽屉组件
 ///
-/// 采用现代毛玻璃（Glassmorphism）与多级吸附（Snap points）设计，承载控制面板、
-/// 参数调节滑块、模式选择器与主要操作按钮。
-/// 支持完全收起（minChildSize 降至边缘，留出 100% 全屏主舞台且绝无布局溢出）。
+/// V2 使用克制的不透明石墨面板与多级吸附（Snap points），让媒体始终作为主舞台。
+/// 用户可以直接上下拖动收起/展开，也可以点击顶部把手在主要吸附位置间切换。
 class BottomControlDrawer extends StatefulWidget {
   final double minChildSize;
   final double initialChildSize;
@@ -19,7 +19,7 @@ class BottomControlDrawer extends StatefulWidget {
 
   const BottomControlDrawer({
     super.key,
-    this.minChildSize = 0.045,
+    this.minChildSize = 0.065,
     this.initialChildSize = 0.38,
     this.maxChildSize = 0.82,
     this.snapSizes,
@@ -35,6 +35,13 @@ class BottomControlDrawer extends StatefulWidget {
 
 class _BottomControlDrawerState extends State<BottomControlDrawer> {
   late final DraggableScrollableController _sheetController;
+
+  List<double> get _effectiveSnapSizes {
+    final values =
+        widget.snapSizes ??
+        [widget.minChildSize, widget.initialChildSize, widget.maxChildSize];
+    return [...values]..sort();
+  }
 
   @override
   void initState() {
@@ -68,10 +75,57 @@ class _BottomControlDrawerState extends State<BottomControlDrawer> {
     );
   }
 
+  void _animateToNearestSnap({double velocity = 0}) {
+    if (!_sheetController.isAttached) return;
+
+    final current = _sheetController.size;
+    final snapSizes = _effectiveSnapSizes;
+    double target;
+
+    if (velocity < -300) {
+      target = snapSizes.firstWhere(
+        (size) => size > current + 0.01,
+        orElse: () => snapSizes.last,
+      );
+    } else if (velocity > 300) {
+      target = snapSizes.reversed.firstWhere(
+        (size) => size < current - 0.01,
+        orElse: () => snapSizes.first,
+      );
+    } else {
+      target = snapSizes.reduce(
+        (a, b) => (a - current).abs() <= (b - current).abs() ? a : b,
+      );
+    }
+
+    HapticFeedback.selectionClick();
+    _sheetController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
   Widget _buildDragHandle() {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
+      onVerticalDragUpdate: (details) {
+        if (!_sheetController.isAttached) return;
+        final viewportHeight = MediaQuery.sizeOf(context).height;
+        if (viewportHeight <= 0) return;
+
+        final delta = details.delta.dy / viewportHeight;
+        final nextSize = (_sheetController.size - delta).clamp(
+          widget.minChildSize,
+          widget.maxChildSize,
+        );
+        _sheetController.jumpTo(nextSize);
+      },
+      onVerticalDragEnd: (details) {
+        _animateToNearestSnap(velocity: details.primaryVelocity ?? 0);
+      },
       onTap: () {
+        if (!_sheetController.isAttached) return;
         final current = _sheetController.size;
         if (current <= widget.minChildSize * 1.5) {
           _expandToInitial();
@@ -88,16 +142,24 @@ class _BottomControlDrawerState extends State<BottomControlDrawer> {
           _collapseCompletely();
         }
       },
-      child: Container(
+      child: SizedBox(
+        key: const ValueKey('bottom_control_drawer_handle'),
         width: double.infinity,
-        padding: const EdgeInsets.only(top: 8, bottom: 6),
-        alignment: Alignment.center,
-        child: Container(
-          width: 36,
-          height: 4,
-          decoration: BoxDecoration(
-            color: Colors.white.withAlpha(90),
-            borderRadius: BorderRadius.circular(2),
+        height: 28,
+        child: Center(
+          child: Container(
+            width: 42,
+            height: 5,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [
+                  AppTheme.metalLow,
+                  AppTheme.metalHigh,
+                  AppTheme.metalLow,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(3),
+            ),
           ),
         ),
       ),
@@ -106,12 +168,7 @@ class _BottomControlDrawerState extends State<BottomControlDrawer> {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveSnapSizes = widget.snapSizes ??
-        [
-          widget.minChildSize,
-          widget.initialChildSize,
-          widget.maxChildSize,
-        ];
+    final effectiveSnapSizes = _effectiveSnapSizes;
 
     return DraggableScrollableSheet(
       controller: _sheetController,
@@ -124,71 +181,78 @@ class _BottomControlDrawerState extends State<BottomControlDrawer> {
         return LayoutBuilder(
           builder: (context, constraints) {
             final height = constraints.maxHeight;
-            final isCollapsed = height < 90;
+            final viewportHeight = MediaQuery.sizeOf(context).height;
+            final collapsedHeight = viewportHeight * widget.minChildSize;
+            final isCollapsed = height <= collapsedHeight + 28;
+            final showBottomAction = !isCollapsed && height >= 160;
 
-            return ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xE6141418), // 深色毛玻璃半透底
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                    border: Border.all(
-                      color: Colors.white.withAlpha(25),
-                      width: 1.0,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(140),
-                        blurRadius: 24,
-                        spreadRadius: 4,
-                        offset: const Offset(0, -6),
-                      ),
-                    ],
+            return Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF18181B), Color(0xFF101012)],
+                ),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(AppTheme.radiusSheet),
+                ),
+                border: const Border(
+                  top: BorderSide(color: AppTheme.surfaceBorder, width: 1),
+                ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x8A000000),
+                    blurRadius: 28,
+                    spreadRadius: 2,
+                    offset: Offset(0, -8),
                   ),
-                  child: isCollapsed
-                      ? SingleChildScrollView(
-                          controller: scrollController,
-                          physics: const ClampingScrollPhysics(),
-                          child: SizedBox(
-                            height: height,
-                            child: Center(
-                              child: _buildDragHandle(),
+                ],
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: isCollapsed
+                  ? SingleChildScrollView(
+                      controller: scrollController,
+                      physics: const ClampingScrollPhysics(),
+                      child: SizedBox(
+                        height: height,
+                        child: Align(
+                          alignment: Alignment.topCenter,
+                          child: _buildDragHandle(),
+                        ),
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        _buildDragHandle(),
+                        if (widget.peekHeader != null) widget.peekHeader!,
+                        Expanded(
+                          child: SingleChildScrollView(
+                            controller: scrollController,
+                            physics: const BouncingScrollPhysics(),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 8,
                             ),
+                            child: widget.child,
                           ),
-                        )
-                      : Column(
-                          children: [
-                            // 1. Drag Handle
-                            _buildDragHandle(),
-
-                            // 2. Peek Header
-                            if (widget.peekHeader != null) widget.peekHeader!,
-
-                            // 3. Scrollable Controls Body
-                            Expanded(
-                              child: SingleChildScrollView(
-                                controller: scrollController,
-                                physics: const BouncingScrollPhysics(),
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                                child: widget.child,
-                              ),
-                            ),
-
-                            // 4. Bottom Persistent Action Bar (有足够空间时显示)
-                            if (widget.bottomActionBar != null && height >= 200)
-                              SafeArea(
-                                top: false,
-                                child: Padding(
-                                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
-                                  child: widget.bottomActionBar!,
+                        ),
+                        if (widget.bottomActionBar != null && showBottomAction)
+                          SafeArea(
+                            top: false,
+                            child: Container(
+                              padding: const EdgeInsets.fromLTRB(18, 8, 18, 14),
+                              decoration: const BoxDecoration(
+                                border: Border(
+                                  top: BorderSide(
+                                    color: AppTheme.surfaceBorder,
+                                  ),
                                 ),
                               ),
-                          ],
-                        ),
-                ),
-              ),
+                              child: widget.bottomActionBar!,
+                            ),
+                          ),
+                      ],
+                    ),
             );
           },
         );

@@ -1,5 +1,6 @@
 import 'package:app/features/person_selection/presentation/person_selection_controller.dart';
 import 'package:app/features/person_selection/presentation/person_selection_screen.dart';
+import 'package:app/features/person_selection/domain/person_selection_state.dart';
 import 'package:app/repositories/native_processing_repository.dart';
 import 'package:dance_domain/dance_domain.dart';
 import 'package:dance_native/dance_native.dart';
@@ -8,143 +9,175 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('fresh analysis excludes weak candidate from selectable targets', () async {
-    final now = DateTime.utc(2026, 8, 31);
-    final project = DanceProject(
-      id: 'weak-candidate-default',
-      sourceUri: 'file:///weak-candidate.mp4',
-      videoInfo: const VideoInfo(
-        codedWidth: 720,
-        codedHeight: 1280,
-        displayWidth: 720,
-        displayHeight: 1280,
-        fps: 60,
-        durationMs: 1000,
-        rotation: 0,
-        videoCodec: 'h264',
-        hasAudio: false,
-      ),
-      createdAt: now,
-      updatedAt: now,
-    );
-    final controller = PersonSelectionController(
-      _FakePersonSelectionRepository(
-        confidences: const [0.92, 0.56, 0.59, 0.60],
-      ),
-    );
-    addTearDown(controller.dispose);
+  test(
+    'fresh analysis excludes weak candidate from selectable targets',
+    () async {
+      final now = DateTime.utc(2026, 8, 31);
+      final project = DanceProject(
+        id: 'weak-candidate-default',
+        sourceUri: 'file:///weak-candidate.mp4',
+        videoInfo: const VideoInfo(
+          codedWidth: 720,
+          codedHeight: 1280,
+          displayWidth: 720,
+          displayHeight: 1280,
+          fps: 60,
+          durationMs: 1000,
+          rotation: 0,
+          videoCodec: 'h264',
+          hasAudio: false,
+        ),
+        createdAt: now,
+        updatedAt: now,
+      );
+      final controller = PersonSelectionController(
+        _FakePersonSelectionRepository(
+          confidences: const [0.92, 0.56, 0.59, 0.60],
+        ),
+      );
+      addTearDown(controller.dispose);
 
-    await controller.analyzeProject(project);
+      await controller.analyzeProject(project);
 
-    expect(controller.state.persons.map((p) => p.id).toSet(), equals({0, 3}));
-    expect(controller.state.selectedPersonIds, equals({0, 3}));
-    expect(controller.state.privacyModeForPerson(1), PersonPrivacyMode.none);
-    expect(controller.state.privacyModeForPerson(2), PersonPrivacyMode.none);
+      expect(controller.state.persons.map((p) => p.id).toSet(), equals({0, 3}));
+      expect(controller.state.selectedPersonIds, equals({0, 3}));
+      expect(controller.state.privacyModeForPerson(1), PersonPrivacyMode.none);
+      expect(controller.state.privacyModeForPerson(2), PersonPrivacyMode.none);
 
-    controller.setPrivacyMode(1, PersonPrivacyMode.fullBody);
-    expect(controller.state.selectedPersonIds, equals({0, 3}));
-  });
+      controller.setPrivacyMode(1, PersonPrivacyMode.fullBody);
+      expect(controller.state.selectedPersonIds, equals({0, 3}));
+    },
+  );
 
-  test('stored privacy mode cannot revive excluded weak first-frame candidate', () async {
-    final now = DateTime.utc(2026, 8, 31);
-    final project = DanceProject(
-      id: 'weak-stored-selection',
-      sourceUri: 'file:///weak-stored-selection.mp4',
-      videoInfo: const VideoInfo(
-        codedWidth: 720,
-        codedHeight: 1280,
-        displayWidth: 720,
-        displayHeight: 1280,
-        fps: 60,
-        durationMs: 1000,
-        rotation: 0,
-        videoCodec: 'h264',
-        hasAudio: false,
-      ),
-      selectedPersonIds: const {1},
-      createdAt: now,
-      updatedAt: now,
-    );
-    final controller = PersonSelectionController(
-      _FakePersonSelectionRepository(confidences: const [0.92, 0.56]),
-    );
-    addTearDown(controller.dispose);
+  test(
+    'stored privacy mode cannot revive excluded weak first-frame candidate',
+    () async {
+      final now = DateTime.utc(2026, 8, 31);
+      final project = DanceProject(
+        id: 'weak-stored-selection',
+        sourceUri: 'file:///weak-stored-selection.mp4',
+        videoInfo: const VideoInfo(
+          codedWidth: 720,
+          codedHeight: 1280,
+          displayWidth: 720,
+          displayHeight: 1280,
+          fps: 60,
+          durationMs: 1000,
+          rotation: 0,
+          videoCodec: 'h264',
+          hasAudio: false,
+        ),
+        selectedPersonIds: const {1},
+        createdAt: now,
+        updatedAt: now,
+      );
+      final controller = PersonSelectionController(
+        _FakePersonSelectionRepository(confidences: const [0.92, 0.56]),
+      );
+      addTearDown(controller.dispose);
 
-    await controller.analyzeProject(project);
+      await controller.analyzeProject(project);
 
-    expect(controller.state.persons.map((p) => p.id).toSet(), equals({0}));
-    expect(controller.state.selectedPersonIds, isEmpty);
-    expect(controller.state.faceOnlyPersonIds, isEmpty);
-  });
+      expect(controller.state.persons.map((p) => p.id).toSet(), equals({0}));
+      expect(controller.state.selectedPersonIds, isEmpty);
+      expect(controller.state.faceOnlyPersonIds, isEmpty);
+    },
+  );
 
-  testWidgets('person selection keeps FULL_BODY and FACE_ONLY mutually exclusive',
-      (tester) async {
-    tester.view.physicalSize = const Size(720, 1280);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(() {
-      tester.view.resetPhysicalSize();
-      tester.view.resetDevicePixelRatio();
-    });
+  testWidgets(
+    'person selection applies one privacy mode to all selected targets',
+    (tester) async {
+      tester.view.physicalSize = const Size(720, 1280);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
 
-    final now = DateTime.utc(2026, 8, 30);
-    final project = DanceProject(
-      id: 'privacy-mode-ui',
-      sourceUri: 'file:///privacy-mode-ui.mp4',
-      videoInfo: const VideoInfo(
-        codedWidth: 720,
-        codedHeight: 1280,
-        displayWidth: 720,
-        displayHeight: 1280,
-        fps: 30,
-        durationMs: 1000,
-        rotation: 0,
-        videoCodec: 'h264',
-        hasAudio: false,
-      ),
-      selectedPersonIds: const {1},
-      faceOnlyPersonIds: const {0},
-      createdAt: now,
-      updatedAt: now,
-    );
-    final repository = _FakePersonSelectionRepository();
-    final container = ProviderContainer(
-      overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
-    );
-    addTearDown(container.dispose);
+      final now = DateTime.utc(2026, 8, 30);
+      final project = DanceProject(
+        id: 'privacy-mode-ui',
+        sourceUri: 'file:///privacy-mode-ui.mp4',
+        videoInfo: const VideoInfo(
+          codedWidth: 720,
+          codedHeight: 1280,
+          displayWidth: 720,
+          displayHeight: 1280,
+          fps: 30,
+          durationMs: 1000,
+          rotation: 0,
+          videoCodec: 'h264',
+          hasAudio: false,
+        ),
+        selectedPersonIds: const {1},
+        faceOnlyPersonIds: const {0},
+        createdAt: now,
+        updatedAt: now,
+      );
+      final repository = _FakePersonSelectionRepository();
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
 
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: MaterialApp(home: PersonSelectionScreen(project: project)),
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(home: PersonSelectionScreen(project: project)),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    final controller = container.read(personSelectionControllerProvider.notifier);
-    expect(controller.state.selectedPersonIds, equals({1}));
-    expect(controller.state.faceOnlyPersonIds, equals({0}));
-    expect(controller.state.privacyModeForPerson(0), PersonPrivacyMode.faceOnly);
-    expect(find.textContaining('仅人脸'), findsWidgets);
+      final controller = container.read(
+        personSelectionControllerProvider.notifier,
+      );
+      // Legacy mixed projects are normalized to a single privacy-safe full-body mode.
+      expect(controller.state.privacyMode, ProjectPrivacyMode.fullBody);
+      expect(controller.state.selectedPersonIds, equals({0, 1}));
+      expect(controller.state.faceOnlyPersonIds, isEmpty);
+      expect(
+        controller.state.privacyModeForPerson(0),
+        PersonPrivacyMode.fullBody,
+      );
+      expect(
+        controller.state.privacyModeForPerson(1),
+        PersonPrivacyMode.fullBody,
+      );
+      expect(find.text('全身保护'), findsWidgets);
+      expect(find.text('人脸保护'), findsWidgets);
 
-    await tester.tap(find.text('全身'));
-    await tester.pump();
-    expect(controller.state.selectedPersonIds, equals({0, 1}));
-    expect(controller.state.faceOnlyPersonIds, isEmpty);
-    expect(controller.state.privacyModeForPerson(0), PersonPrivacyMode.fullBody);
+      await tester.tap(find.text('人脸保护').first);
+      await tester.pump();
+      expect(controller.state.privacyMode, ProjectPrivacyMode.faceOnly);
+      expect(controller.state.selectedPersonIds, isEmpty);
+      expect(controller.state.faceOnlyPersonIds, equals({0, 1}));
+      expect(
+        controller.state.privacyModeForPerson(0),
+        PersonPrivacyMode.faceOnly,
+      );
+      expect(
+        controller.state.privacyModeForPerson(1),
+        PersonPrivacyMode.faceOnly,
+      );
 
-    await tester.tap(find.text('仅人脸'));
-    await tester.pump();
-    expect(controller.state.selectedPersonIds, equals({1}));
-    expect(controller.state.faceOnlyPersonIds, equals({0}));
-    expect(controller.state.privacyModeForPerson(0), PersonPrivacyMode.faceOnly);
+      controller.togglePerson(0);
+      expect(controller.state.faceOnlyPersonIds, equals({1}));
+      expect(controller.state.privacyModeForPerson(0), PersonPrivacyMode.none);
 
-    final configured = controller.buildConfiguredProject();
-    expect(configured, isNotNull);
-    expect(configured!.selectedPersonIds, equals({1}));
-    expect(configured.faceOnlyPersonIds, equals({0}));
-    expect(configured.persons.firstWhere((p) => p.id == 0).selected, isFalse);
-    expect(configured.persons.firstWhere((p) => p.id == 1).selected, isTrue);
-  });
+      await tester.tap(find.text('全身保护').first);
+      await tester.pump();
+      expect(controller.state.privacyMode, ProjectPrivacyMode.fullBody);
+      expect(controller.state.selectedPersonIds, equals({1}));
+      expect(controller.state.faceOnlyPersonIds, isEmpty);
+
+      final configured = controller.buildConfiguredProject();
+      expect(configured, isNotNull);
+      expect(configured!.selectedPersonIds, equals({1}));
+      expect(configured.faceOnlyPersonIds, isEmpty);
+      expect(configured.persons.firstWhere((p) => p.id == 0).selected, isFalse);
+      expect(configured.persons.firstWhere((p) => p.id == 1).selected, isTrue);
+    },
+  );
 }
 
 class _FakePersonSelectionRepository implements NativeProcessingRepository {
@@ -183,6 +216,22 @@ class _FakePersonSelectionRepository implements NativeProcessingRepository {
           confidence: confidences[index],
         );
       }),
+    );
+  }
+
+  @override
+  Future<PreviewFrameDto> getPreviewFrame({
+    required String analysisCacheId,
+    required int timestampMs,
+    required List<int> selectedPersonIds,
+    List<int> faceOnlyPersonIds = const [],
+    required EffectConfig effects,
+    FollowConfig follow = const FollowConfig(),
+  }) async {
+    return PreviewFrameDto(
+      thumbnailPath: '',
+      renderTimeMs: 1,
+      timestampMs: timestampMs,
     );
   }
 

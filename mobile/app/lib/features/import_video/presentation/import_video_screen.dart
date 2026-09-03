@@ -1,165 +1,222 @@
+import 'package:dance_native/dance_native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:dance_native/dance_native.dart';
+
+import '../../../app/theme.dart';
 import '../../../repositories/native_processing_repository.dart';
 import '../domain/video_import_state.dart';
 import 'import_video_controller.dart';
-import 'widgets/video_preview_player.dart';
 
 final capabilitiesProvider = FutureProvider<NativeCapabilitiesDto>((ref) async {
   final repo = ref.watch(nativeRepositoryProvider);
   return repo.getCapabilities();
 });
 
-class ImportVideoScreen extends ConsumerWidget {
+class ImportVideoScreen extends ConsumerStatefulWidget {
   const ImportVideoScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final importState = ref.watch(importVideoControllerProvider);
+  ConsumerState<ImportVideoScreen> createState() => _ImportVideoScreenState();
+}
+
+class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
+  Future<void> _pickVideoAndContinue() async {
+    HapticFeedback.mediumImpact();
     final controller = ref.read(importVideoControllerProvider.notifier);
+    await controller.pickAndProbeVideo();
+    if (!mounted) return;
+
+    final project = controller.createProject();
+    if (project == null) return;
+
+    await context.push('/person_selection', extra: project);
+    if (mounted) controller.reset();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(importVideoControllerProvider);
+    final isBusy =
+        state.status == VideoImportStatus.picking ||
+        state.status == VideoImportStatus.probing;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dance Anonymizer'),
-        leading: Builder(
-          builder: (scaffoldContext) => IconButton(
-            icon: const Icon(Icons.info_outline_rounded),
-            tooltip: '系统与设备信息 (右滑可查看)',
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              Scaffold.of(scaffoldContext).openDrawer();
-            },
-          ),
-        ),
-        actions: [
-          if (importState.isReady)
-            IconButton(
-              icon: const Icon(Icons.refresh_rounded),
-              tooltip: '重新选择视频',
-              onPressed: () {
-                HapticFeedback.mediumImpact();
-                controller.reset();
-              },
-            ),
-        ],
-      ),
-      drawer: _buildSystemInfoDrawer(context, ref),
+      backgroundColor: AppTheme.background,
+      endDrawer: _buildSystemInfoDrawer(),
       body: Builder(
-        builder: (scaffoldContext) => GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onHorizontalDragEnd: (details) {
-            // Swipe right to open system info drawer
-            if (details.primaryVelocity != null && details.primaryVelocity! > 250) {
-              HapticFeedback.lightImpact();
-              Scaffold.of(scaffoldContext).openDrawer();
-            }
-          },
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 12.0),
-              child: Center(
+        builder: (scaffoldContext) => SafeArea(
+          child: Stack(
+            children: [
+              Positioned(
+                top: 8,
+                right: 14,
+                child: _ChromeIconButton(
+                  icon: Icons.more_horiz_rounded,
+                  tooltip: '设备与诊断',
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    Scaffold.of(scaffoldContext).openEndDrawer();
+                  },
+                ),
+              ),
+              Center(
                 child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (importState.isLoading)
-                        _buildLoadingCard(context, importState.status)
-                      else if (importState.isReady)
-                        _buildReadyView(context, importState, controller)
-                      else
-                        _buildImportPlaceholder(context, controller, importState.errorMessage),
-                    ],
+                  padding: const EdgeInsets.fromLTRB(28, 72, 28, 36),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ShaderMask(
+                          blendMode: BlendMode.srcIn,
+                          shaderCallback: AppTheme.metalGradient.createShader,
+                          child: const Text(
+                            'Woah',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 54,
+                              height: 1,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -2.2,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          '隐私保护 · 本机处理',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+                        const _PrivacyPromise(),
+                        const SizedBox(height: 58),
+                        if (state.errorMessage != null) ...[
+                          _ErrorNotice(message: state.errorMessage!),
+                          const SizedBox(height: 18),
+                        ],
+                        if (isBusy)
+                          _LoadingPanel(status: state.status)
+                        else
+                          _MetalActionButton(
+                            icon: Icons.folder_open_rounded,
+                            label: '选择视频',
+                            onTap: _pickVideoAndContinue,
+                          ),
+                        const SizedBox(height: 14),
+                        const Text(
+                          '支持 MP4 · MOV · H.264 · HEVC',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: AppTheme.textMuted,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildSystemInfoDrawer(BuildContext context, WidgetRef ref) {
+  Widget _buildSystemInfoDrawer() {
     final capsAsync = ref.watch(capabilitiesProvider);
-
     return Drawer(
-      backgroundColor: const Color(0xFF0D0D10),
+      backgroundColor: AppTheme.surface,
+      width: MediaQuery.sizeOf(context).width * 0.84,
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+          padding: const EdgeInsets.fromLTRB(22, 20, 22, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(15),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white24),
-                    ),
-                    child: const Icon(Icons.memory_rounded, color: Colors.white, size: 22),
+                    width: 44,
+                    height: 44,
+                    decoration: AppTheme.panelDecoration(radius: 14),
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.memory_rounded, size: 21),
                   ),
                   const SizedBox(width: 12),
-                  const Text(
-                    '系统与设备信息',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '设备与诊断',
+                          style: TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          '技术信息仅用于排查问题',
+                          style: TextStyle(
+                            color: AppTheme.textMuted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
-              const Text(
-                '当前设备端侧引擎运行参数',
-                style: TextStyle(fontSize: 12, color: Colors.white54),
-              ),
-              const Divider(height: 28),
+              const SizedBox(height: 22),
+              const Divider(height: 1),
+              const SizedBox(height: 18),
               Expanded(
                 child: capsAsync.when(
                   data: (caps) => ListView(
                     physics: const BouncingScrollPhysics(),
                     children: [
-                       _buildDrawerSectionTitle('系统规格与环境'),
-                      _buildInfoTile('系统版本', '${caps.platform.toUpperCase()} ${caps.osVersion}'),
-                      _buildInfoTile('处理器核心 (CPU)', '${caps.cpuCores} 核心'),
-                      _buildInfoTile('性能配置档位', caps.recommendedProfile.toUpperCase()),
-                      const SizedBox(height: 16),
-                      _buildDrawerSectionTitle('图形与加速能力'),
-                      _buildInfoTile('图形渲染 (GPU)', caps.gpuSupported ? 'OpenGL ES 硬件渲染' : '软件渲染'),
-                      _buildInfoTile('编解码器', caps.h264Encoder ? 'MediaCodec 硬件编码' : '软件编码'),
-                      _buildInfoTile('零内存拷贝管线', 'Zero-Copy OES/GLES'),
-                      const SizedBox(height: 16),
-                      _buildDrawerSectionTitle('AI 推理后端'),
-                      _buildInfoTile('推理引擎', 'ONNX Runtime (CPU/端侧)'),
-                      _buildInfoTile('应用版本', 'v1.0.0 (Pro Studio)'),
+                      _sectionTitle('设备'),
+                      _infoRow(
+                        '系统',
+                        '${caps.platform.toUpperCase()} ${caps.osVersion}',
+                      ),
+                      _infoRow('CPU', '${caps.cpuCores} 核'),
+                      _infoRow('推荐档位', caps.recommendedProfile.toUpperCase()),
+                      const SizedBox(height: 22),
+                      _sectionTitle('加速能力'),
+                      _infoRow(
+                        '图形渲染',
+                        caps.gpuSupported ? 'OpenGL ES' : '软件渲染',
+                      ),
+                      _infoRow('H.264 编码', caps.h264Encoder ? '硬件支持' : '不可用'),
+                      const SizedBox(height: 22),
+                      _sectionTitle('隐私'),
+                      _infoRow('视频处理', '仅本机'),
+                      _infoRow('云端上传', '关闭'),
                     ],
                   ),
-
                   loading: () => const Center(
-                    child: CircularProgressIndicator(color: Colors.white),
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   ),
-                  error: (err, _) => Center(
+                  error: (error, _) => const Center(
                     child: Text(
-                      '无法获取设备信息: $err',
-                      style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                      '暂时无法读取设备信息',
+                      style: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
-                ),
-              ),
-              const Divider(),
-              Center(
-                child: Text(
-                  '向左滑动或点击空白处关闭',
-                  style: TextStyle(fontSize: 12, color: Colors.white.withAlpha(80)),
                 ),
               ),
             ],
@@ -169,253 +226,242 @@ class ImportVideoScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDrawerSectionTitle(String title) {
+  Widget _sectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         title,
-        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white38, letterSpacing: 0.5),
+        style: const TextStyle(
+          color: AppTheme.textMuted,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.5,
+        ),
       ),
     );
   }
 
-  Widget _buildInfoTile(String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+  Widget _infoRow(String label, String value) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: AppTheme.minTouchTarget),
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppTheme.surfaceBorder)),
+      ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: const TextStyle(fontSize: 13, color: Colors.white70)),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 13,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildImportPlaceholder(
-    BuildContext context,
-    ImportVideoController controller,
-    String? errorMessage,
-  ) {
-    return Column(
+class _PrivacyPromise extends StatelessWidget {
+  const _PrivacyPromise();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+      decoration: BoxDecoration(
+        color: AppTheme.surface.withAlpha(210),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        border: Border.all(color: AppTheme.surfaceBorder),
+      ),
+      child: const Column(
+        children: [
+          _PromiseRow(icon: Icons.lock_outline_rounded, text: '视频仅在本机处理'),
+          SizedBox(height: 10),
+          _PromiseRow(icon: Icons.cloud_off_outlined, text: '不会上传任何内容'),
+        ],
+      ),
+    );
+  }
+}
+
+class _PromiseRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _PromiseRow({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (errorMessage != null) ...[
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.redAccent.withAlpha(20),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.redAccent.withAlpha(60)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 20),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    errorMessage,
-                    style: const TextStyle(color: Colors.redAccent, fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              HapticFeedback.mediumImpact();
-              controller.pickAndProbeVideo();
-            },
-            borderRadius: BorderRadius.circular(28),
-            splashColor: Colors.white.withAlpha(20),
-            highlightColor: Colors.white.withAlpha(10),
-            child: Container(
-              height: 290,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: const Color(0xFF131316),
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(
-                  color: Colors.white.withAlpha(25),
-                  width: 1.2,
-                  strokeAlign: BorderSide.strokeAlignInside,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withAlpha(120),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(22),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(12),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white24, width: 1.5),
-                    ),
-                    child: const Icon(
-                      Icons.video_library_rounded,
-                      size: 48,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    '选择舞蹈视频',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: -0.3,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '支持常见视频格式，自动校准画面方向',
-                    style: TextStyle(fontSize: 13, color: Colors.white54),
-                  ),
-                ],
-              ),
-            ),
+        Icon(icon, size: 18, color: AppTheme.metalMid),
+        const SizedBox(width: 10),
+        Text(
+          text,
+          style: const TextStyle(
+            color: AppTheme.textSecondary,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
     );
   }
+}
 
-  Widget _buildLoadingCard(BuildContext context, VideoImportStatus status) {
-    final text = status == VideoImportStatus.picking
-        ? '正在选取视频...'
-        : '正在解析视频信息...';
+class _ChromeIconButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
 
+  const _ChromeIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      height: 280,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: const Color(0xFF131316),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withAlpha(20)),
+      width: AppTheme.minTouchTarget,
+      height: AppTheme.minTouchTarget,
+      decoration: AppTheme.panelDecoration(radius: 14),
+      child: IconButton(
+        tooltip: tooltip,
+        onPressed: onPressed,
+        icon: Icon(icon, size: 22),
       ),
-      child: Column(
+    );
+  }
+}
+
+class _MetalActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _MetalActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        child: Ink(
+          width: double.infinity,
+          height: 58,
+          decoration: AppTheme.metalButtonDecoration(),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: AppTheme.canvas, size: 21),
+              const SizedBox(width: 10),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: AppTheme.canvas,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadingPanel extends StatelessWidget {
+  final VideoImportStatus status;
+
+  const _LoadingPanel({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final label = status == VideoImportStatus.picking ? '正在选择视频…' : '正在读取视频信息…';
+    return Container(
+      width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 58),
+      decoration: AppTheme.panelDecoration(),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const SizedBox(
-            width: 44,
-            height: 44,
-            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
           ),
-          const SizedBox(height: 20),
-          Text(text, style: const TextStyle(fontSize: 14, color: Colors.white70, fontWeight: FontWeight.w500)),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+          ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildReadyView(
-    BuildContext context,
-    VideoImportState state,
-    ImportVideoController controller,
-  ) {
-    final info = state.videoInfo!;
-    final videoPath = state.videoPath!;
-    final durationSec = (info.durationMs / 1000.0).toStringAsFixed(1);
-    final isVertical = info.height > info.width;
+class _ErrorNotice extends StatelessWidget {
+  final String message;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // 1. Video Player Container with Shadow
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(150),
-                blurRadius: 24,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Stack(
-            children: [
-              VideoPreviewPlayer(
-                videoPath: videoPath,
-                aspectRatio: info.aspectRatio,
-              ),
-              // Floating Video Info Badges
-              Positioned(
-                top: 12,
-                left: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withAlpha(180),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.white24),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isVertical ? Icons.stay_current_portrait_rounded : Icons.stay_current_landscape_rounded,
-                        size: 14,
-                        color: Colors.white70,
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        '${info.width}×${info.height} · ${info.fps.toStringAsFixed(0)}fps · $durationSec秒',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
+  const _ErrorNotice({required this.message});
 
-        // 2. Next step button (Pure white on black)
-        ElevatedButton.icon(
-          onPressed: () {
-            HapticFeedback.mediumImpact();
-            final project = controller.createProject();
-            if (project != null) {
-              context.push('/person_selection', extra: project);
-            }
-          },
-          icon: const Icon(Icons.person_search_rounded, size: 20),
-          label: const Text(
-            '下一步：智能识别人物',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceElevated,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        border: Border.all(color: AppTheme.error.withAlpha(110)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            color: AppTheme.error,
+            size: 20,
           ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 13,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
