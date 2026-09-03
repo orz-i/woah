@@ -22,44 +22,8 @@ class ImportVideoScreen extends ConsumerStatefulWidget {
 }
 
 class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
-  static const _workspaceSystemUiStyle = SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.dark,
-    statusBarBrightness: Brightness.light,
-    systemNavigationBarColor: AppTheme.warmBackground,
-    systemNavigationBarIconBrightness: Brightness.dark,
-    systemNavigationBarDividerColor: Colors.transparent,
-    systemStatusBarContrastEnforced: false,
-    systemNavigationBarContrastEnforced: false,
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    _enterImportImmersiveMode();
-  }
-
-  @override
-  void dispose() {
-    _restoreWorkspaceSystemUi();
-    super.dispose();
-  }
-
-  Future<void> _enterImportImmersiveMode() async {
-    await SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.manual,
-      overlays: const [SystemUiOverlay.bottom],
-    );
-  }
-
-  Future<void> _restoreWorkspaceSystemUi() async {
-    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    SystemChrome.setSystemUIOverlayStyle(_workspaceSystemUiStyle);
-  }
-
-  Future<void> _closeApp() async {
+  void _closeApp() {
     HapticFeedback.lightImpact();
-    await _restoreWorkspaceSystemUi();
     SystemNavigator.pop();
   }
 
@@ -72,12 +36,9 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
     final project = controller.createProject();
     if (project == null) return;
 
-    await _restoreWorkspaceSystemUi();
-    if (!mounted) return;
     await context.push('/trim_video', extra: project);
     if (!mounted) return;
     controller.reset();
-    await _enterImportImmersiveMode();
   }
 
   @override
