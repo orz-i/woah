@@ -128,10 +128,10 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
               Positioned.fill(
                 child: BottomControlDrawer(
                   controller: _drawerController,
-                  minChildSize: 0.065,
-                  initialChildSize: 0.38,
-                  maxChildSize: 0.74,
-                  snapSizes: const [0.065, 0.38, 0.74],
+                  minChildSize: 0.10,
+                  initialChildSize: 0.34,
+                  maxChildSize: 0.58,
+                  snapSizes: const [0.10, 0.34, 0.58],
                   panelColor: AppTheme.warmSurface,
                   panelBorderColor: AppTheme.warmBorder,
                   handleColor: AppTheme.warmBorder,
@@ -238,6 +238,8 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
             File(displayPath),
             key: ValueKey('${displayPath}_${state.previewRequestId}'),
             fit: BoxFit.contain,
+            width: double.infinity,
+            height: double.infinity,
             gaplessPlayback: true,
           )
         else
@@ -802,9 +804,16 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
     );
 
     if (!mounted || profile == null) return;
+    final editorState = ref.read(effectEditorControllerProvider);
+    final initialPreviewPath =
+        editorState.previewPath ?? editorState.previewThumbnailPath;
     await context.push(
       '/export',
-      extra: ExportArgs(project: project, processingProfile: profile),
+      extra: ExportArgs(
+        project: project,
+        processingProfile: profile,
+        initialPreviewPath: initialPreviewPath,
+      ),
     );
   }
 

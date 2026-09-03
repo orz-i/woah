@@ -73,14 +73,15 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
               Positioned.fill(
                 child: BottomControlDrawer(
                   controller: _drawerController,
-                  minChildSize: 0.055,
+                  minChildSize: 0.28,
                   initialChildSize: 0.30,
                   maxChildSize: 0.40,
-                  snapSizes: const [0.055, 0.30, 0.40],
+                  snapSizes: const [0.28, 0.30, 0.40],
                   panelColor: AppTheme.warmSurface,
                   panelBorderColor: AppTheme.warmBorder,
                   handleColor: AppTheme.warmBorder,
                   panelRadius: 30,
+                  allowHandleOnlyCollapse: false,
                   panelShadow: const [
                     BoxShadow(
                       color: Color(0x16000000),
@@ -212,7 +213,8 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
             stageWidth = stageHeight * aspectRatio;
           }
 
-          return Center(
+          return Align(
+            alignment: const Alignment(0, -0.18),
             child: SizedBox(
               width: stageWidth,
               height: stageHeight,

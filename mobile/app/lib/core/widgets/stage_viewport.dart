@@ -38,14 +38,15 @@ class _StageViewportState extends State<StageViewport>
   void initState() {
     super.initState();
     _controller = widget.transformationController ?? TransformationController();
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 240),
-    )..addListener(() {
-        if (_animation != null) {
-          _controller.value = _animation!.value;
-        }
-      });
+    _animController =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 240),
+        )..addListener(() {
+          if (_animation != null) {
+            _controller.value = _animation!.value;
+          }
+        });
   }
 
   @override
@@ -62,15 +63,14 @@ class _StageViewportState extends State<StageViewport>
     final currentScale = _controller.value.getMaxScaleOnAxis();
     final isZoomed = currentScale > 1.05;
 
-    final targetMatrix = isZoomed ? Matrix4.identity() : Matrix4.diagonal3Values(2.0, 2.0, 1.0);
+    final targetMatrix = isZoomed
+        ? Matrix4.identity()
+        : Matrix4.diagonal3Values(2.0, 2.0, 1.0);
 
-    _animation = Matrix4Tween(
-      begin: _controller.value,
-      end: targetMatrix,
-    ).animate(CurvedAnimation(
-      parent: _animController,
-      curve: Curves.easeOutCubic,
-    ));
+    _animation = Matrix4Tween(begin: _controller.value, end: targetMatrix)
+        .animate(
+          CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
+        );
 
     _animController.forward(from: 0);
   }
@@ -91,9 +91,9 @@ class _StageViewportState extends State<StageViewport>
                 maxScale: widget.maxScale,
                 panEnabled: true,
                 scaleEnabled: true,
-                child: Center(child: widget.child),
+                child: SizedBox.expand(child: widget.child),
               )
-            : Center(child: widget.child),
+            : SizedBox.expand(child: widget.child),
       ),
     );
   }

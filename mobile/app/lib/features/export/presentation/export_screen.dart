@@ -14,18 +14,25 @@ import 'export_controller.dart';
 class ExportArgs {
   final DanceProject project;
   final String processingProfile;
+  final String? initialPreviewPath;
 
-  const ExportArgs({required this.project, this.processingProfile = 'quality'});
+  const ExportArgs({
+    required this.project,
+    this.processingProfile = 'quality',
+    this.initialPreviewPath,
+  });
 }
 
 class ExportScreen extends ConsumerStatefulWidget {
   final DanceProject project;
   final String processingProfile;
+  final String? initialPreviewPath;
 
   const ExportScreen({
     super.key,
     required this.project,
     this.processingProfile = 'quality',
+    this.initialPreviewPath,
   });
 
   @override
@@ -239,10 +246,19 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
 
   Widget _buildMediaPreview(ExportState state) {
     final previewPath = state.currentPreviewPath;
-    final hasPreview =
+    final hasLivePreview =
         previewPath != null &&
         previewPath.isNotEmpty &&
         File(previewPath).existsSync();
+    final fallbackPath = widget.initialPreviewPath;
+    final hasFallbackPreview =
+        fallbackPath != null &&
+        fallbackPath.isNotEmpty &&
+        File(fallbackPath).existsSync();
+    final displayPath = hasLivePreview
+        ? previewPath
+        : (hasFallbackPreview ? fallbackPath : null);
+    final hasPreview = displayPath != null;
     final rawAspect = widget.project.videoInfo.aspectRatio > 0
         ? widget.project.videoInfo.aspectRatio
         : 16 / 9;
@@ -269,8 +285,8 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
           children: [
             if (hasPreview)
               Image.file(
-                File(previewPath),
-                key: ValueKey('${previewPath}_${state.currentFrame}'),
+                File(displayPath),
+                key: ValueKey('${displayPath}_${state.currentFrame}'),
                 fit: BoxFit.cover,
                 gaplessPlayback: true,
               )

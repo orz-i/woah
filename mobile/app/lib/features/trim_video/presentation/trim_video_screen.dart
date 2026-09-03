@@ -373,7 +373,7 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
                   tooltip: '从片段起点播放',
                   onPressed: () => _seekTo(_trimStartMs),
                   icon: const Icon(
-                    Icons.fullscreen_rounded,
+                    Icons.replay_rounded,
                     color: Colors.white,
                     size: 28,
                   ),

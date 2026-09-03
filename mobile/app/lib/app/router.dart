@@ -53,6 +53,7 @@ final appRouter = GoRouter(
           return ExportScreen(
             project: args.project,
             processingProfile: args.processingProfile,
+            initialPreviewPath: args.initialPreviewPath,
           );
         }
         final project = state.extra as DanceProject;

@@ -24,6 +24,7 @@ class BottomControlDrawer extends StatefulWidget {
   final List<BoxShadow>? panelShadow;
   final double panelRadius;
   final Color? bottomActionBorderColor;
+  final bool allowHandleOnlyCollapse;
 
   const BottomControlDrawer({
     super.key,
@@ -43,6 +44,7 @@ class BottomControlDrawer extends StatefulWidget {
     this.panelShadow,
     this.panelRadius = AppTheme.radiusSheet,
     this.bottomActionBorderColor,
+    this.allowHandleOnlyCollapse = true,
   });
 
   @override
@@ -206,7 +208,9 @@ class _BottomControlDrawerState extends State<BottomControlDrawer> {
             final height = constraints.maxHeight;
             final viewportHeight = MediaQuery.sizeOf(context).height;
             final collapsedHeight = viewportHeight * widget.minChildSize;
-            final isCollapsed = height <= collapsedHeight + 28;
+            final isCollapsed =
+                widget.allowHandleOnlyCollapse &&
+                height <= collapsedHeight + 28;
             final showBottomAction = !isCollapsed && height >= 160;
 
             return Container(
