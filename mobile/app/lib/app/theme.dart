@@ -6,6 +6,41 @@ import 'package:flutter/material.dart';
 /// chrome uses restrained black, graphite, silver and white surfaces. Semantic
 /// red is kept only for destructive/error states.
 class AppTheme {
+  // Warm editorial system used by the import + person-selection flow.
+  // These tokens intentionally live beside the dark media-workspace tokens so
+  // the editor/export surfaces can remain dark while the entry flow stays
+  // visually continuous.
+  static const Color warmBackground = Color(0xFFF9F8F6);
+  static const Color warmSurface = Color(0xFFFFFCF9);
+  static const Color warmSurfaceSoft = Color(0xFFFFF5F2);
+  static const Color warmTextPrimary = Color(0xFF302C2B);
+  static const Color warmTextSecondary = Color(0xFF8F7471);
+  static const Color warmTextMuted = Color(0xFFB7A09D);
+  static const Color warmBorder = Color(0xFFF0D8D4);
+  static const Color coral = Color(0xFFFF5E5B);
+  static const Color coralStrong = Color(0xFFF44848);
+  static const Color coralSoft = Color(0xFFFF8176);
+  static const Color coralPale = Color(0xFFFFEAE7);
+
+  static const LinearGradient coralActionGradient = LinearGradient(
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+    colors: [coralStrong, coral, coralSoft],
+  );
+
+  static const LinearGradient importCardGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [
+      Color(0xFFDCECF8),
+      Color(0xFFF2DEE1),
+      Color(0xFFFF9C91),
+      Color(0xFFF25657),
+      Color(0xFFB51435),
+    ],
+    stops: [0.0, 0.23, 0.48, 0.72, 1.0],
+  );
+
   static const Color background = Color(0xFF050506);
   static const Color canvas = Color(0xFF09090B);
   static const Color surface = Color(0xFF111113);

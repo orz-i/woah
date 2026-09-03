@@ -92,14 +92,14 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.dark,
         statusBarBrightness: Brightness.light,
-        systemNavigationBarColor: Color(0xFFF9F8F6),
+        systemNavigationBarColor: AppTheme.warmBackground,
         systemNavigationBarIconBrightness: Brightness.dark,
         systemNavigationBarDividerColor: Colors.transparent,
         systemStatusBarContrastEnforced: false,
         systemNavigationBarContrastEnforced: false,
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFFF9F8F6),
+        backgroundColor: AppTheme.warmBackground,
         endDrawer: _buildSystemInfoDrawer(),
         body: Builder(
           builder: (scaffoldContext) => SafeArea(
@@ -358,18 +358,7 @@ class _DanceClipImportCard extends StatelessWidget {
               children: [
                 const DecoratedBox(
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Color(0xFFDCECF8),
-                        Color(0xFFF2DEE1),
-                        Color(0xFFFF9C91),
-                        Color(0xFFF25657),
-                        Color(0xFFB51435),
-                      ],
-                      stops: [0.0, 0.23, 0.48, 0.72, 1.0],
-                    ),
+                    gradient: AppTheme.importCardGradient,
                   ),
                 ),
                 const DecoratedBox(

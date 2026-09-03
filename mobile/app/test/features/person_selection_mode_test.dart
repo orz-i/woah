@@ -145,7 +145,10 @@ void main() {
       );
       expect(find.text('全身保护'), findsWidgets);
       expect(find.text('人脸保护'), findsWidgets);
-      expect(find.text('默认已全选 · 直接点按画面中的人物取消或重新选中'), findsOneWidget);
+      expect(find.text('选择要保护的人'), findsOneWidget);
+      expect(find.text('点击画面中的人物可取消或重新选中'), findsOneWidget);
+      expect(find.textContaining('已选择'), findsNothing);
+      expect(find.byIcon(Icons.refresh_rounded), findsOneWidget);
       expect(find.byType(ListView), findsNothing);
 
       // The media canvas is the target-selection surface; no duplicate
@@ -155,6 +158,16 @@ void main() {
       await tester.pump();
       expect(controller.state.selectedPersonIds, equals({1}));
       expect(find.bySemanticsLabel('未选择人物'), findsOneWidget);
+
+      // The aligned top-right reselection icon restores the safe default-all
+      // selection without rerunning detection.
+      await tester.tap(find.byIcon(Icons.refresh_rounded));
+      await tester.pump();
+      expect(controller.state.selectedPersonIds, equals({0, 1}));
+
+      await tester.tap(find.bySemanticsLabel('已选择人物').first);
+      await tester.pump();
+      expect(controller.state.selectedPersonIds, equals({1}));
       await tester.tap(find.bySemanticsLabel('未选择人物'));
       await tester.pump();
       expect(controller.state.selectedPersonIds, equals({0, 1}));

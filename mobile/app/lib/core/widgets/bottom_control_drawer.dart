@@ -16,6 +16,14 @@ class BottomControlDrawer extends StatefulWidget {
   final Widget child;
   final Widget? bottomActionBar;
   final DraggableScrollableController? controller;
+  final Gradient? panelGradient;
+  final Color? panelColor;
+  final Color? panelBorderColor;
+  final Gradient? handleGradient;
+  final Color? handleColor;
+  final List<BoxShadow>? panelShadow;
+  final double panelRadius;
+  final Color? bottomActionBorderColor;
 
   const BottomControlDrawer({
     super.key,
@@ -27,6 +35,14 @@ class BottomControlDrawer extends StatefulWidget {
     required this.child,
     this.bottomActionBar,
     this.controller,
+    this.panelGradient,
+    this.panelColor,
+    this.panelBorderColor,
+    this.handleGradient,
+    this.handleColor,
+    this.panelShadow,
+    this.panelRadius = AppTheme.radiusSheet,
+    this.bottomActionBorderColor,
   });
 
   @override
@@ -151,13 +167,20 @@ class _BottomControlDrawerState extends State<BottomControlDrawer> {
             width: 42,
             height: 5,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [
-                  AppTheme.metalLow,
-                  AppTheme.metalHigh,
-                  AppTheme.metalLow,
-                ],
-              ),
+              color: widget.handleGradient == null
+                  ? (widget.handleColor ?? AppTheme.metalMid)
+                  : null,
+              gradient:
+                  widget.handleGradient ??
+                  (widget.handleColor == null
+                      ? const LinearGradient(
+                          colors: [
+                            AppTheme.metalLow,
+                            AppTheme.metalHigh,
+                            AppTheme.metalLow,
+                          ],
+                        )
+                      : null),
               borderRadius: BorderRadius.circular(3),
             ),
           ),
@@ -188,25 +211,35 @@ class _BottomControlDrawerState extends State<BottomControlDrawer> {
 
             return Container(
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xFF18181B), Color(0xFF101012)],
+                color: widget.panelGradient == null ? widget.panelColor : null,
+                gradient:
+                    widget.panelGradient ??
+                    (widget.panelColor == null
+                        ? const LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Color(0xFF18181B), Color(0xFF101012)],
+                          )
+                        : null),
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(widget.panelRadius),
                 ),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(AppTheme.radiusSheet),
-                ),
-                border: const Border(
-                  top: BorderSide(color: AppTheme.surfaceBorder, width: 1),
-                ),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x8A000000),
-                    blurRadius: 28,
-                    spreadRadius: 2,
-                    offset: Offset(0, -8),
+                border: Border(
+                  top: BorderSide(
+                    color: widget.panelBorderColor ?? AppTheme.surfaceBorder,
+                    width: 1,
                   ),
-                ],
+                ),
+                boxShadow:
+                    widget.panelShadow ??
+                    const [
+                      BoxShadow(
+                        color: Color(0x8A000000),
+                        blurRadius: 28,
+                        spreadRadius: 2,
+                        offset: Offset(0, -8),
+                      ),
+                    ],
               ),
               clipBehavior: Clip.antiAlias,
               child: isCollapsed
@@ -241,10 +274,12 @@ class _BottomControlDrawerState extends State<BottomControlDrawer> {
                             top: false,
                             child: Container(
                               padding: const EdgeInsets.fromLTRB(18, 8, 18, 14),
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
                                 border: Border(
                                   top: BorderSide(
-                                    color: AppTheme.surfaceBorder,
+                                    color:
+                                        widget.bottomActionBorderColor ??
+                                        AppTheme.surfaceBorder,
                                   ),
                                 ),
                               ),
