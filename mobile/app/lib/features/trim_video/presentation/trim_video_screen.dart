@@ -564,10 +564,11 @@ class _TrimTimeline extends StatelessWidget {
         final width = constraints.maxWidth;
         final startX = width * trimStartMs / durationMs;
         final endX = width * trimEndMs / durationMs;
-        final playX = width * playheadMs / durationMs;
+        final clampedPlayheadMs = playheadMs.clamp(trimStartMs, trimEndMs);
+        final playX = width * clampedPlayheadMs / durationMs;
         const trackTop = 20.0;
         const trackHeight = 62.0;
-        const handleHitWidth = 46.0;
+        const handleHitWidth = 52.0;
         const bubbleWidth = 58.0;
         final bubbleLeft = playX <= 34
             ? 8.0
@@ -586,8 +587,16 @@ class _TrimTimeline extends StatelessWidget {
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTapDown: (details) {
-                  final value = (details.localPosition.dx / width * durationMs)
-                      .round();
+                  final tapX = details.localPosition.dx;
+                  final guard = handleHitWidth * 0.58;
+                  if ((tapX - startX).abs() <= guard ||
+                      (tapX - endX).abs() <= guard) {
+                    return;
+                  }
+                  final value = (tapX / width * durationMs).round().clamp(
+                    trimStartMs,
+                    trimEndMs,
+                  );
                   onPlayheadChanged(value);
                 },
                 child: ClipRRect(
@@ -683,18 +692,23 @@ class _TrimTimeline extends StatelessWidget {
               ),
             ),
             Positioned(
-              left: (playX - 16).clamp(0.0, width - 32),
+              left: (playX - 14).clamp(
+                startX + handleHitWidth / 2,
+                endX - handleHitWidth / 2 - 28,
+              ),
               top: 0,
               bottom: 0,
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
                 onHorizontalDragUpdate: (details) {
-                  onPlayheadChanged(
-                    (playheadMs + details.delta.dx * durationMs / width)
-                        .round(),
-                  );
+                  final value =
+                      (clampedPlayheadMs +
+                              details.delta.dx * durationMs / width)
+                          .round()
+                          .clamp(trimStartMs, trimEndMs);
+                  onPlayheadChanged(value);
                 },
-                child: const SizedBox(width: 32),
+                child: const SizedBox(width: 28),
               ),
             ),
             Positioned(
@@ -749,29 +763,34 @@ class _TrimHandle extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onHorizontalDragUpdate: (details) => onDrag(details.delta.dx),
       child: SizedBox(
-        width: 42,
+        width: 52,
         height: 74,
         child: Center(
           child: Container(
-            width: 20,
-            height: 58,
+            width: 14,
+            height: 54,
             decoration: BoxDecoration(
               color: AppTheme.warmSurface,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(color: AppTheme.coral, width: 1.5),
               boxShadow: const [
                 BoxShadow(
                   color: Color(0x18000000),
-                  blurRadius: 8,
-                  offset: Offset(0, 3),
+                  blurRadius: 6,
+                  offset: Offset(0, 2),
                 ),
               ],
             ),
             alignment: Alignment.center,
-            child: const Icon(
-              Icons.drag_indicator_rounded,
-              color: AppTheme.coral,
-              size: 17,
+            child: const SizedBox(
+              width: 4,
+              height: 20,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppTheme.coral,
+                  borderRadius: BorderRadius.all(Radius.circular(2)),
+                ),
+              ),
             ),
           ),
         ),
