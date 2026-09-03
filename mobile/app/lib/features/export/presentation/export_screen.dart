@@ -163,10 +163,10 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
             isFailed ? '导出失败' : '正在保护舞段',
             style: const TextStyle(
               color: AppTheme.warmTextPrimary,
-              fontSize: 24,
+              fontSize: 19,
               height: 1.1,
               fontWeight: FontWeight.w700,
-              letterSpacing: -0.6,
+              letterSpacing: -0.3,
             ),
           ),
           Positioned(

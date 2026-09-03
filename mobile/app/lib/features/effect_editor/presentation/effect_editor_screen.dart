@@ -160,13 +160,12 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
     EffectEditorState state,
     EffectEditorController controller,
   ) {
-    final faceMode = _isFaceMode(state);
     return SizedBox(
-      height: 118,
+      height: 78,
       child: Stack(
+        alignment: Alignment.center,
         children: [
           Positioned(
-            top: 8,
             left: 18,
             child: _TopButton(
               icon: Icons.close_rounded,
@@ -178,7 +177,6 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
             ),
           ),
           Positioned(
-            top: 8,
             right: 18,
             child: _TopButton(
               icon: Icons.restart_alt_rounded,
@@ -187,34 +185,15 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
               onPressed: () => _resetToDefault(controller, state),
             ),
           ),
-          Positioned(
-            top: 54,
-            left: 74,
-            right: 74,
-            child: Column(
-              children: [
-                const Text(
-                  '编辑效果',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: AppTheme.warmTextPrimary,
-                    fontSize: 22,
-                    height: 1.15,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  faceMode ? '为选中的人脸设置遮挡保护效果' : '为选中的人物设置遮挡保护效果',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppTheme.warmTextSecondary,
-                    fontSize: 12,
-                    height: 1.35,
-                  ),
-                ),
-              ],
+          const Text(
+            '编辑效果',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppTheme.warmTextPrimary,
+              fontSize: 19,
+              height: 1.1,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.3,
             ),
           ),
         ],

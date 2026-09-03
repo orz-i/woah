@@ -102,11 +102,11 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
 
   Widget _buildHeader(PersonSelectionController controller) {
     return SizedBox(
-      height: 118,
+      height: 78,
       child: Stack(
+        alignment: Alignment.center,
         children: [
           Positioned(
-            top: 8,
             left: 18,
             child: _HeaderIconButton(
               icon: Icons.close_rounded,
@@ -118,7 +118,6 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
             ),
           ),
           Positioned(
-            top: 8,
             right: 18,
             child: _HeaderIconButton(
               icon: Icons.refresh_rounded,
@@ -130,35 +129,15 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
               },
             ),
           ),
-          const Positioned(
-            left: 74,
-            right: 74,
-            top: 54,
-            child: Column(
-              children: [
-                Text(
-                  '选择要保护的人',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: AppTheme.warmTextPrimary,
-                    fontSize: 22,
-                    height: 1.15,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  '点击画面中的人物可取消或重新选中',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: AppTheme.warmTextSecondary,
-                    fontSize: 12,
-                    height: 1.35,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              ],
+          const Text(
+            '选择要保护的人',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppTheme.warmTextPrimary,
+              fontSize: 19,
+              height: 1.1,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.3,
             ),
           ),
         ],

@@ -149,7 +149,7 @@ void main() {
       expect(find.text('全身保护'), findsWidgets);
       expect(find.text('人脸保护'), findsWidgets);
       expect(find.text('选择要保护的人'), findsOneWidget);
-      expect(find.text('点击画面中的人物可取消或重新选中'), findsOneWidget);
+      expect(find.text('点击画面中的人物可取消或重新选中'), findsNothing);
       expect(find.textContaining('已选择'), findsNothing);
       expect(find.byIcon(Icons.refresh_rounded), findsOneWidget);
       expect(find.byType(ListView), findsNothing);

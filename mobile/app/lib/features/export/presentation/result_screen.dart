@@ -304,10 +304,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             '舞段已完成',
             style: TextStyle(
               color: AppTheme.warmTextPrimary,
-              fontSize: 24,
+              fontSize: 19,
               height: 1.1,
               fontWeight: FontWeight.w700,
-              letterSpacing: -0.6,
+              letterSpacing: -0.3,
             ),
           ),
           Positioned(

@@ -237,11 +237,11 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
 
   Widget _buildHeader() {
     return SizedBox(
-      height: 126,
+      height: 78,
       child: Stack(
+        alignment: Alignment.center,
         children: [
           Positioned(
-            top: 8,
             left: 18,
             child: SizedBox(
               width: 48,
@@ -261,34 +261,15 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
               ),
             ),
           ),
-          const Positioned(
-            left: 70,
-            right: 70,
-            top: 48,
-            child: Column(
-              children: [
-                Text(
-                  '预览并裁剪视频',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: AppTheme.warmTextPrimary,
-                    fontSize: 22,
-                    height: 1.15,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                SizedBox(height: 9),
-                Text(
-                  '拖动两端或移动中间选取你需要的片段',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: AppTheme.warmTextSecondary,
-                    fontSize: 12,
-                    height: 1.35,
-                  ),
-                ),
-              ],
+          const Text(
+            '预览并裁剪视频',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppTheme.warmTextPrimary,
+              fontSize: 19,
+              height: 1.1,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.3,
             ),
           ),
         ],
@@ -367,15 +348,20 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
             ),
             if (controller != null && controller.value.isInitialized)
               Positioned(
-                right: 12,
-                bottom: 10,
-                child: IconButton(
-                  tooltip: '从片段起点播放',
-                  onPressed: () => _seekTo(_trimStartMs),
-                  icon: const Icon(
-                    Icons.replay_rounded,
-                    color: Colors.white,
-                    size: 28,
+                right: 14,
+                bottom: 14,
+                child: SizedBox(
+                  width: 34,
+                  height: 34,
+                  child: IconButton(
+                    tooltip: '从片段起点播放',
+                    padding: EdgeInsets.zero,
+                    onPressed: () => _seekTo(_trimStartMs),
+                    icon: const Icon(
+                      Icons.replay_rounded,
+                      color: Colors.white,
+                      size: 26,
+                    ),
                   ),
                 ),
               ),
@@ -537,19 +523,15 @@ class _PreviewTimeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(230),
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: AppTheme.warmTextPrimary,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
+    return Text(
+      text,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        shadows: [
+          Shadow(color: Color(0x99000000), blurRadius: 4, offset: Offset(0, 1)),
+        ],
       ),
     );
   }
@@ -797,12 +779,12 @@ class _TrimHandle extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onHorizontalDragUpdate: (details) => onDrag(details.delta.dx),
       child: SizedBox(
-        width: 46,
+        width: 42,
         height: 80,
         child: Center(
           child: Container(
-            width: 28,
-            height: 76,
+            width: 22,
+            height: 68,
             decoration: BoxDecoration(
               color: AppTheme.warmSurface,
               borderRadius: BorderRadius.circular(12),
