@@ -389,9 +389,9 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
     return Column(
       children: [
         _TimelineRuler(durationMs: _durationMs),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         SizedBox(
-          height: 118,
+          height: 102,
           child: _TrimTimeline(
             durationMs: _durationMs,
             trimStartMs: _trimStartMs,
@@ -435,13 +435,25 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 18),
-        Text(
-          '时长 ${_formatPrecise(duration)}',
-          style: const TextStyle(
-            color: AppTheme.warmTextPrimary,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
+        const SizedBox(height: 12),
+        Text.rich(
+          TextSpan(
+            text: '片段时长 ',
+            style: const TextStyle(
+              color: AppTheme.warmTextSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+            children: [
+              TextSpan(
+                text: _formatPrecise(duration),
+                style: const TextStyle(
+                  color: AppTheme.warmTextPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -601,6 +613,15 @@ class _TrimTimeline extends StatelessWidget {
         final startX = width * trimStartMs / durationMs;
         final endX = width * trimEndMs / durationMs;
         final playX = width * playheadMs / durationMs;
+        const trackTop = 20.0;
+        const trackHeight = 62.0;
+        const handleHitWidth = 46.0;
+        const bubbleWidth = 58.0;
+        final bubbleLeft = playX <= 34
+            ? 8.0
+            : playX >= width - 34
+            ? width - bubbleWidth - 8
+            : playX - bubbleWidth / 2;
 
         return Stack(
           clipBehavior: Clip.none,
@@ -608,8 +629,8 @@ class _TrimTimeline extends StatelessWidget {
             Positioned(
               left: 0,
               right: 0,
-              top: 22,
-              height: 72,
+              top: trackTop,
+              height: trackHeight,
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTapDown: (details) {
@@ -620,6 +641,7 @@ class _TrimTimeline extends StatelessWidget {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: List.generate(10, (index) {
                       final path = index < thumbnailPaths.length
                           ? thumbnailPaths[index]
@@ -641,22 +663,36 @@ class _TrimTimeline extends StatelessWidget {
             Positioned(
               left: 0,
               width: startX,
-              top: 22,
-              height: 72,
-              child: const ColoredBox(color: Color(0x66000000)),
+              top: trackTop,
+              height: trackHeight,
+              child: IgnorePointer(
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.horizontal(
+                    left: Radius.circular(12),
+                  ),
+                  child: const ColoredBox(color: Color(0x70000000)),
+                ),
+              ),
             ),
             Positioned(
               left: endX,
               right: 0,
-              top: 22,
-              height: 72,
-              child: const ColoredBox(color: Color(0x66000000)),
+              top: trackTop,
+              height: trackHeight,
+              child: IgnorePointer(
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.horizontal(
+                    right: Radius.circular(12),
+                  ),
+                  child: const ColoredBox(color: Color(0x70000000)),
+                ),
+              ),
             ),
             Positioned(
               left: startX,
               width: (endX - startX).clamp(0.0, width),
-              top: 21,
-              height: 74,
+              top: trackTop - 1,
+              height: trackHeight + 2,
               child: IgnorePointer(
                 child: Container(
                   decoration: BoxDecoration(
@@ -667,8 +703,11 @@ class _TrimTimeline extends StatelessWidget {
               ),
             ),
             Positioned(
-              left: (startX - 20).clamp(-4.0, width - 40),
-              top: 14,
+              left: (startX - handleHitWidth / 2).clamp(
+                -8.0,
+                width - handleHitWidth + 8,
+              ),
+              top: 11,
               child: _TrimHandle(
                 onDrag: (delta) {
                   onStartChanged(
@@ -678,8 +717,11 @@ class _TrimTimeline extends StatelessWidget {
               ),
             ),
             Positioned(
-              left: (endX - 20).clamp(-4.0, width - 40),
-              top: 14,
+              left: (endX - handleHitWidth / 2).clamp(
+                -8.0,
+                width - handleHitWidth + 8,
+              ),
+              top: 11,
               child: _TrimHandle(
                 onDrag: (delta) {
                   onEndChanged(
@@ -689,7 +731,7 @@ class _TrimTimeline extends StatelessWidget {
               ),
             ),
             Positioned(
-              left: (playX - 1).clamp(0.0, width - 2),
+              left: (playX - 16).clamp(0.0, width - 32),
               top: 0,
               bottom: 0,
               child: GestureDetector(
@@ -700,28 +742,37 @@ class _TrimTimeline extends StatelessWidget {
                         .round(),
                   );
                 },
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.coral,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        _precise(playheadMs),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                child: const SizedBox(width: 32),
+              ),
+            ),
+            Positioned(
+              left: (playX - 1).clamp(0.0, width - 2),
+              top: 18,
+              bottom: 0,
+              child: IgnorePointer(
+                child: Container(width: 2, color: AppTheme.coral),
+              ),
+            ),
+            Positioned(
+              left: bubbleLeft,
+              top: 0,
+              width: bubbleWidth,
+              child: IgnorePointer(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.coral,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    _precise(playheadMs),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
                     ),
-                    Expanded(child: Container(width: 2, color: AppTheme.coral)),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -745,26 +796,32 @@ class _TrimHandle extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onHorizontalDragUpdate: (details) => onDrag(details.delta.dx),
-      child: Container(
-        width: 40,
-        height: 88,
-        decoration: BoxDecoration(
-          color: AppTheme.warmSurface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppTheme.coral, width: 1.5),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x18000000),
-              blurRadius: 8,
-              offset: Offset(0, 3),
+      child: SizedBox(
+        width: 46,
+        height: 80,
+        child: Center(
+          child: Container(
+            width: 28,
+            height: 76,
+            decoration: BoxDecoration(
+              color: AppTheme.warmSurface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.coral, width: 1.5),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x18000000),
+                  blurRadius: 8,
+                  offset: Offset(0, 3),
+                ),
+              ],
             ),
-          ],
-        ),
-        alignment: Alignment.center,
-        child: const Icon(
-          Icons.drag_indicator_rounded,
-          color: AppTheme.coral,
-          size: 22,
+            alignment: Alignment.center,
+            child: const Icon(
+              Icons.drag_indicator_rounded,
+              color: AppTheme.coral,
+              size: 20,
+            ),
+          ),
         ),
       ),
     );
@@ -780,7 +837,7 @@ class _TimeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 84,
+      height: 76,
       decoration: BoxDecoration(
         color: AppTheme.warmSurfaceSoft,
         borderRadius: BorderRadius.circular(18),
@@ -796,7 +853,7 @@ class _TimeCard extends StatelessWidget {
               fontSize: 12,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             value,
             style: const TextStyle(
