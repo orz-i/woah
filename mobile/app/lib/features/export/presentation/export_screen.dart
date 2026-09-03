@@ -68,166 +68,358 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     final isActive =
         state.status == ExportJobState.queued || state.isProcessing;
 
-    return Scaffold(
-      backgroundColor: AppTheme.background,
-      appBar: AppBar(
-        title: Text(isFailed ? '导出失败' : '导出中'),
-        leading: IconButton(
-          tooltip: '取消导出',
-          icon: const Icon(Icons.close_rounded),
-          onPressed: isActive
-              ? () => _confirmCancel(controller)
-              : () => context.pop(),
-        ),
-        actions: [
-          if (isFailed)
-            PopupMenuButton<String>(
-              tooltip: '更多',
-              icon: const Icon(Icons.more_horiz_rounded),
-              color: AppTheme.surfaceElevated,
-              onSelected: (value) {
-                if (value == 'copy') {
-                  _copyError(state.errorMessage);
-                } else if (value == 'diagnostics') {
-                  _exportDiagnostics();
-                }
-              },
-              itemBuilder: (context) => const [
-                PopupMenuItem(
-                  value: 'copy',
-                  child: ListTile(
-                    dense: true,
-                    leading: Icon(Icons.copy_rounded),
-                    title: Text('复制错误详情'),
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'diagnostics',
-                  child: ListTile(
-                    dense: true,
-                    leading: Icon(Icons.bug_report_outlined),
-                    title: Text('导出诊断包'),
-                  ),
-                ),
-              ],
-            ),
-        ],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemNavigationBarColor: AppTheme.warmBackground,
+        systemNavigationBarIconBrightness: Brightness.dark,
+        systemNavigationBarDividerColor: Colors.transparent,
+        systemStatusBarContrastEnforced: false,
+        systemNavigationBarContrastEnforced: false,
       ),
-      body: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 132),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: MediaQuery.sizeOf(context).height - 230,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildProgressVisual(state),
-                const SizedBox(height: 26),
-                Text(
-                  isFailed ? '处理没有完成' : _statusTitle(state.status),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
+      child: Scaffold(
+        backgroundColor: AppTheme.warmBackground,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildTopBar(state, isActive: isActive, controller: controller),
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 30),
+                  child: Column(
+                    children: [
+                      _buildMediaPreview(state),
+                      if (isFailed) ...[
+                        const SizedBox(height: 34),
+                        _buildPrimaryAction(
+                          label: '重试导出',
+                          icon: Icons.refresh_rounded,
+                          onTap: _startExportJob,
+                        ),
+                        const SizedBox(height: 14),
+                        _buildOutlinedAction(
+                          label: '返回编辑',
+                          onTap: () => context.pop(),
+                        ),
+                      ] else ...[
+                        const SizedBox(height: 22),
+                        _buildProgressCard(state),
+                        const SizedBox(height: 14),
+                        _buildBackgroundHint(),
+                        const SizedBox(height: 20),
+                        _buildOutlinedAction(
+                          label: '取消处理',
+                          enabled: isActive,
+                          onTap: () => _confirmCancel(controller),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  isFailed
-                      ? '可以重试导出；技术详情已收进右上角菜单。'
-                      : _remainingTimeLabel(state),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppTheme.textMuted,
-                    fontSize: 13,
-                  ),
-                ),
-                if (!isFailed) ...[
-                  const SizedBox(height: 26),
-                  _buildBackgroundHint(),
-                  const SizedBox(height: 14),
-                  _buildLivePreviewSection(state, controller),
-                ],
-              ],
-            ),
+              ),
+            ],
           ),
-        ),
-      ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
-          child: isFailed
-              ? Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => context.pop(),
-                        child: const Text('返回编辑'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _startExportJob,
-                        icon: const Icon(Icons.refresh_rounded, size: 18),
-                        label: const Text('重试'),
-                      ),
-                    ),
-                  ],
-                )
-              : OutlinedButton.icon(
-                  onPressed: isActive ? () => _confirmCancel(controller) : null,
-                  icon: const Icon(Icons.close_rounded, size: 18),
-                  label: const Text('取消导出'),
-                ),
         ),
       ),
     );
   }
 
-  Widget _buildProgressVisual(ExportState state) {
-    final progress = state.progress.clamp(0.0, 1.0);
-    final percent = (progress * 100).round();
+  Widget _buildTopBar(
+    ExportState state, {
+    required bool isActive,
+    required ExportController controller,
+  }) {
     final isFailed = state.isFailed;
     return SizedBox(
-      width: 190,
-      height: 190,
+      height: 78,
       child: Stack(
         alignment: Alignment.center,
         children: [
-          SizedBox.expand(
-            child: CircularProgressIndicator(
-              value: isFailed ? 1 : (progress > 0 ? progress : null),
-              strokeWidth: 8,
-              backgroundColor: AppTheme.surfaceHigh,
-              valueColor: AlwaysStoppedAnimation(
-                isFailed ? AppTheme.error : AppTheme.metalHigh,
+          Positioned(
+            left: 8,
+            child: IconButton(
+              tooltip: isActive ? '取消处理' : '关闭',
+              onPressed: isActive
+                  ? () => _confirmCancel(controller)
+                  : () => context.pop(),
+              icon: const Icon(
+                Icons.close_rounded,
+                size: 34,
+                color: AppTheme.warmTextPrimary,
               ),
             ),
           ),
-          if (isFailed)
-            const Icon(
-              Icons.error_outline_rounded,
-              size: 52,
-              color: AppTheme.error,
-            )
-          else
-            Text(
-              '$percent%',
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 40,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -1.5,
-                fontFeatures: [FontFeature.tabularFigures()],
-              ),
+          Text(
+            isFailed ? '导出失败' : '正在保护舞段',
+            style: const TextStyle(
+              color: AppTheme.warmTextPrimary,
+              fontSize: 24,
+              height: 1.1,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.6,
             ),
+          ),
+          Positioned(
+            right: 8,
+            child: isFailed
+                ? PopupMenuButton<String>(
+                    tooltip: '更多',
+                    icon: const Icon(
+                      Icons.more_horiz_rounded,
+                      size: 30,
+                      color: AppTheme.warmTextPrimary,
+                    ),
+                    color: AppTheme.warmSurface,
+                    onSelected: (value) {
+                      if (value == 'copy') {
+                        _copyError(state.errorMessage);
+                      } else if (value == 'diagnostics') {
+                        _exportDiagnostics();
+                      }
+                    },
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(
+                        value: 'copy',
+                        child: ListTile(
+                          dense: true,
+                          leading: Icon(Icons.copy_rounded),
+                          title: Text('复制错误详情'),
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'diagnostics',
+                        child: ListTile(
+                          dense: true,
+                          leading: Icon(Icons.bug_report_outlined),
+                          title: Text('导出诊断包'),
+                        ),
+                      ),
+                    ],
+                  )
+                : const SizedBox(width: 48, height: 48),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMediaPreview(ExportState state) {
+    final previewPath = state.currentPreviewPath;
+    final hasPreview =
+        previewPath != null &&
+        previewPath.isNotEmpty &&
+        File(previewPath).existsSync();
+    final rawAspect = widget.project.videoInfo.aspectRatio > 0
+        ? widget.project.videoInfo.aspectRatio
+        : 16 / 9;
+    final aspect = rawAspect.clamp(0.65, 1.8).toDouble();
+
+    return AspectRatio(
+      aspectRatio: aspect,
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFF0E6E0),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: AppTheme.warmBorder),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x12000000),
+              blurRadius: 24,
+              offset: Offset(0, 8),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (hasPreview)
+              Image.file(
+                File(previewPath),
+                key: ValueKey('${previewPath}_${state.currentFrame}'),
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+              )
+            else
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.movie_filter_outlined,
+                      size: 52,
+                      color: AppTheme.warmTextMuted,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      state.isFailed ? '没有可用的失败预览' : '正在准备处理预览',
+                      style: const TextStyle(
+                        color: AppTheme.warmTextSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            if (state.isFailed)
+              Positioned(
+                right: 14,
+                bottom: 14,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.coralActionGradient,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      SizedBox(width: 6),
+                      Text(
+                        '导出失败',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            if (state.isFailed && state.fps > 0)
+              Positioned(
+                left: 14,
+                bottom: 14,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0x88000000),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    _formatProcessedTime(state),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProgressCard(ExportState state) {
+    final progress = state.progress.clamp(0.0, 1.0);
+    final percent = (progress * 100).round();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
+      decoration: BoxDecoration(
+        color: AppTheme.warmSurface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.warmBorder),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x10000000),
+            blurRadius: 22,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '$percent',
+                style: const TextStyle(
+                  color: AppTheme.coral,
+                  fontSize: 54,
+                  height: 0.95,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: -2,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Text(
+                  '%',
+                  style: TextStyle(
+                    color: AppTheme.coral,
+                    fontSize: 25,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  _remainingTimeLabel(state),
+                  style: const TextStyle(
+                    color: AppTheme.warmTextSecondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(5),
+            child: LinearProgressIndicator(
+              value: progress > 0 ? progress : null,
+              minHeight: 7,
+              backgroundColor: AppTheme.coralPale,
+              valueColor: const AlwaysStoppedAnimation(AppTheme.coral),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: AppTheme.coral,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  _statusTitle(state.status),
+                  style: const TextStyle(
+                    color: AppTheme.warmTextPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -236,32 +428,50 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   Widget _buildBackgroundHint() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: AppTheme.panelDecoration(radius: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      decoration: BoxDecoration(
+        color: AppTheme.warmSurface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppTheme.warmBorder),
+      ),
       child: const Row(
         children: [
-          Icon(
-            Icons.phone_android_rounded,
-            size: 21,
-            color: AppTheme.metalHigh,
+          SizedBox(
+            width: 46,
+            height: 46,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppTheme.warmSurfaceSoft,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.phone_android_rounded,
+                size: 23,
+                color: AppTheme.warmTextPrimary,
+              ),
+            ),
           ),
-          SizedBox(width: 12),
+          SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '可以切换到其他应用',
+                  '处理将在后台继续',
                   style: TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                    color: AppTheme.warmTextPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                SizedBox(height: 3),
+                SizedBox(height: 4),
                 Text(
-                  '处理会在后台继续运行',
-                  style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                  '你可以切换应用，处理完成后我们会在通知中提醒你。',
+                  style: TextStyle(
+                    color: AppTheme.warmTextSecondary,
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
                 ),
               ],
             ),
@@ -271,80 +481,84 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     );
   }
 
-  Widget _buildLivePreviewSection(
-    ExportState state,
-    ExportController controller,
-  ) {
-    return Container(
-      width: double.infinity,
-      decoration: AppTheme.panelDecoration(radius: 14),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          SwitchListTile(
-            value: state.showLivePreview,
-            onChanged: (value) {
-              HapticFeedback.lightImpact();
-              controller.toggleLivePreview(value);
-            },
-            secondary: const Icon(
-              Icons.visibility_outlined,
-              color: AppTheme.metalMid,
-              size: 21,
-            ),
-            title: const Text(
-              '实时预览',
-              style: TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+  Widget _buildPrimaryAction({
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Ink(
+          height: 58,
+          decoration: BoxDecoration(
+            gradient: AppTheme.coralActionGradient,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x22F44848),
+                blurRadius: 16,
+                offset: Offset(0, 7),
               ),
-            ),
-            subtitle: const Text(
-              '需要时查看处理画面，默认关闭以减少额外开销',
-              style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: 9),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOutlinedAction({
+    required String label,
+    required VoidCallback onTap,
+    bool enabled = true,
+  }) {
+    return Opacity(
+      opacity: enabled ? 1 : 0.45,
+      child: SizedBox(
+        width: double.infinity,
+        height: 58,
+        child: OutlinedButton(
+          onPressed: enabled ? onTap : null,
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: AppTheme.coral, width: 1.3),
+            foregroundColor: AppTheme.coralStrong,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
             ),
           ),
-          if (state.showLivePreview) ...[
-            const Divider(height: 1),
-            AspectRatio(
-              aspectRatio: widget.project.videoInfo.aspectRatio > 0
-                  ? widget.project.videoInfo.aspectRatio
-                  : 16 / 9,
-              child: Container(
-                color: Colors.black,
-                child:
-                    state.currentPreviewPath != null &&
-                        File(state.currentPreviewPath!).existsSync()
-                    ? Image.file(
-                        File(state.currentPreviewPath!),
-                        key: ValueKey(
-                          '${state.currentPreviewPath}_${state.currentFrame}',
-                        ),
-                        fit: BoxFit.contain,
-                        gaplessPlayback: true,
-                      )
-                    : const Center(
-                        child: SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      ),
-              ),
-            ),
-          ],
-        ],
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+          ),
+        ),
       ),
     );
   }
 
   String _statusTitle(ExportJobState status) {
     return switch (status) {
-      ExportJobState.queued => '正在准备处理',
-      ExportJobState.preparing => '正在准备视频',
-      ExportJobState.processing => '正在保护人物',
-      ExportJobState.muxing => '正在保存视频',
+      ExportJobState.queued => '正在准备裁剪后的片段',
+      ExportJobState.preparing => '正在准备裁剪后的片段',
+      ExportJobState.processing => '正在处理裁剪后的片段',
+      ExportJobState.muxing => '正在保存保护后的舞段',
       ExportJobState.completed => '处理完成',
       ExportJobState.cancelled => '已取消',
       ExportJobState.failed => '处理没有完成',
@@ -361,12 +575,21 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     );
     final seconds = (remainingFrames / state.fps).ceil();
     if (seconds <= 0) return '即将完成';
-    if (seconds < 60) return '预计还需约 $seconds 秒';
+    if (seconds < 60) return '预计还需 $seconds 秒';
     final minutes = seconds ~/ 60;
     final remainder = seconds % 60;
-    return remainder == 0
-        ? '预计还需约 $minutes 分钟'
-        : '预计还需约 $minutes 分 $remainder 秒';
+    return remainder == 0 ? '预计还需 $minutes 分钟' : '预计还需 $minutes 分 $remainder 秒';
+  }
+
+  String _formatProcessedTime(ExportState state) {
+    if (state.fps <= 0) return '00:00';
+    final totalSeconds = (state.currentFrame / state.fps)
+        .floor()
+        .clamp(0, 359999)
+        .toInt();
+    final minutes = totalSeconds ~/ 60;
+    final seconds = totalSeconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 
   void _copyError(String? errorMessage) {

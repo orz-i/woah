@@ -65,6 +65,7 @@ class ExportState {
     String? currentPreviewPath,
     bool? showLivePreview,
     String? errorMessage,
+    bool clearErrorMessage = false,
   }) {
     return ExportState(
       status: status ?? this.status,
@@ -77,7 +78,7 @@ class ExportState {
       outputUri: outputUri ?? this.outputUri,
       currentPreviewPath: currentPreviewPath ?? this.currentPreviewPath,
       showLivePreview: showLivePreview ?? this.showLivePreview,
-      errorMessage: errorMessage ?? this.errorMessage,
+      errorMessage: clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
     );
   }
 }

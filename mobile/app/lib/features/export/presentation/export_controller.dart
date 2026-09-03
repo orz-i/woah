@@ -65,7 +65,7 @@ class ExportController extends StateNotifier<ExportState> {
         status: ExportJobState.preparing,
         project: project,
         progress: 0.0,
-        errorMessage: null,
+        clearErrorMessage: true,
       );
 
       AppLogger.d('ExportController', 'Starting export for project ${project.id} (profile: $processingProfile)');

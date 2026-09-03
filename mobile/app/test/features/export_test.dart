@@ -79,6 +79,22 @@ void main() {
         );
       },
     );
+
+    test('ExportState can explicitly clear a previous export error', () {
+      const failed = ExportState(
+        status: ExportJobState.failed,
+        errorMessage: 'encoder failed',
+      );
+
+      final retrying = failed.copyWith(
+        status: ExportJobState.preparing,
+        clearErrorMessage: true,
+      );
+
+      expect(retrying.status, ExportJobState.preparing);
+      expect(retrying.errorMessage, isNull);
+      expect(retrying.isFailed, isFalse);
+    });
   });
 
   test('ExportController forwards temporal trim bounds', () async {
