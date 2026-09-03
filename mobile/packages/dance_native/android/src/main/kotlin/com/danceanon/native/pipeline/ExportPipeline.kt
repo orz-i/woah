@@ -90,7 +90,12 @@ class ExportPipeline(
         }
         val tempOutFile = File(finalOutFile.parentFile, "${finalOutFile.nameWithoutExtension}.tmp.mp4")
 
-        val totalFrames = if (videoInfo.fps > 0) ((videoInfo.durationMs / 1000.0) * videoInfo.fps).toInt().coerceAtLeast(1) else 300
+        val trimStartMs = request.trimStartMs.coerceIn(0L, videoInfo.durationMs)
+        val trimEndMs = (request.trimEndMs ?: videoInfo.durationMs).coerceIn(trimStartMs, videoInfo.durationMs)
+        val trimStartUs = trimStartMs * 1000L
+        val trimEndUs = trimEndMs * 1000L
+        val trimmedDurationMs = (trimEndMs - trimStartMs).coerceAtLeast(1L)
+        val totalFrames = if (videoInfo.fps > 0) ((trimmedDurationMs / 1000.0) * videoInfo.fps).toInt().coerceAtLeast(1) else 300
         val privacyModeByTrackId = com.danceanon.native.privacy.PersonPrivacyModeResolver.resolve(
             fullBodyPersonIds = request.selectedPersonIds.map { it.toInt() },
             faceOnlyPersonIds = request.faceOnlyPersonIds?.map { it.toInt() }
@@ -236,7 +241,12 @@ class ExportPipeline(
             var faceOnlyPrivacyProcessor: com.danceanon.native.privacy.FaceOnlyPrivacyFrameProcessor? = null
 
             try {
-                audioCopier = AudioTrackCopier(context, sourceUri)
+                audioCopier = AudioTrackCopier(
+                    context = context,
+                    sourceUri = sourceUri,
+                    startUs = trimStartUs,
+                    endUs = trimEndUs
+                )
                 val hasAudioTrack = audioCopier.prepare()
                 val audioFmt = if (hasAudioTrack) audioCopier.audioFormat else null
                 val actualHasAudio = hasAudioTrack && audioFmt != null
@@ -303,13 +313,15 @@ class ExportPipeline(
                 decoder = VideoDecoder(
                     context = context,
                     sourceUri = sourceUri,
-                    outputSurface = decoderSurface
+                    outputSurface = decoderSurface,
+                    startUs = trimStartUs,
+                    endUs = trimEndUs
                 )
                 decoder.prepare()
 
                 var processedFrames = 0
                 val targetFps = if (videoInfo.fps > 0) videoInfo.fps else 30.0
-                val totalEstFrames = ((videoInfo.durationMs / 1000.0) * targetFps).toLong().coerceAtLeast(1L)
+                val totalEstFrames = ((trimmedDurationMs / 1000.0) * targetFps).toLong().coerceAtLeast(1L)
                 val frameDurationNs = (1_000_000_000.0 / targetFps).toLong().coerceAtLeast(1_000_000L)
                 val stMatrix = FloatArray(16).apply {
                     android.opengl.Matrix.setIdentityM(this, 0)
@@ -561,6 +573,14 @@ class ExportPipeline(
                     }
 
                     val ptsUs = token.presentationTimeUs
+                    if (ptsUs < trimStartUs) {
+                        decoder.releaseOutputBuffer(token.bufferIndex, false)
+                        continue
+                    }
+                    if (ptsUs >= trimEndUs) {
+                        decoder.releaseOutputBuffer(token.bufferIndex, false)
+                        break
+                    }
                     val targetSeq = frameAvailableSequence.get() + 1L
 
                     // Handshake: Release buffer to SurfaceTexture and wait for onFrameAvailable sequence increment

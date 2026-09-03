@@ -27,6 +27,11 @@ class DanceProject {
   final FollowConfig follow;
   final CropConfig? crop;
 
+  /// Optional temporal trim bounds in the original source timeline.
+  /// A null [trimEndMs] means the source duration.
+  final int trimStartMs;
+  final int? trimEndMs;
+
   /// Cache ID returned from native analysis to reference cached masks/models
   final String? analysisCacheId;
 
@@ -43,6 +48,8 @@ class DanceProject {
     this.effects = const EffectConfig(),
     this.follow = const FollowConfig(),
     this.crop,
+    this.trimStartMs = 0,
+    this.trimEndMs,
     this.analysisCacheId,
     required this.createdAt,
     required this.updatedAt,
@@ -58,6 +65,8 @@ class DanceProject {
         'effects': effects.toJson(),
         'follow': follow.toJson(),
         'crop': crop?.toJson(),
+        'trimStartMs': trimStartMs,
+        'trimEndMs': trimEndMs,
         'analysisCacheId': analysisCacheId,
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt.toIso8601String(),
@@ -88,6 +97,8 @@ class DanceProject {
         crop: json['crop'] != null
             ? CropConfig.fromJson(json['crop'] as Map<String, dynamic>)
             : null,
+        trimStartMs: (json['trimStartMs'] as num?)?.toInt() ?? 0,
+        trimEndMs: (json['trimEndMs'] as num?)?.toInt(),
         analysisCacheId: json['analysisCacheId'] as String?,
         createdAt: DateTime.parse(json['createdAt'] as String),
         updatedAt: DateTime.parse(json['updatedAt'] as String),
@@ -103,6 +114,9 @@ class DanceProject {
     EffectConfig? effects,
     FollowConfig? follow,
     CropConfig? crop,
+    int? trimStartMs,
+    int? trimEndMs,
+    bool clearTrimEnd = false,
     String? analysisCacheId,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -117,6 +131,8 @@ class DanceProject {
       effects: effects ?? this.effects,
       follow: follow ?? this.follow,
       crop: crop ?? this.crop,
+      trimStartMs: trimStartMs ?? this.trimStartMs,
+      trimEndMs: clearTrimEnd ? null : (trimEndMs ?? this.trimEndMs),
       analysisCacheId: analysisCacheId ?? this.analysisCacheId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -136,4 +152,10 @@ class DanceProject {
         ...faceOnlyPersonIds,
         ...selectedPersonIds,
       };
+
+  int get effectiveTrimEndMs =>
+      (trimEndMs ?? videoInfo.durationMs).clamp(trimStartMs, videoInfo.durationMs);
+
+  int get trimmedDurationMs =>
+      (effectiveTrimEndMs - trimStartMs).clamp(0, videoInfo.durationMs);
 }

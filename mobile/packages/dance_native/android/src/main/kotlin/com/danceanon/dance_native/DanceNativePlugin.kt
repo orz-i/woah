@@ -3,7 +3,9 @@ package com.danceanon.dance_native
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.media.MediaScannerConnection
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -88,6 +90,51 @@ class DanceNativePlugin :
                 } catch (e: Exception) {
                     android.util.Log.e("DanceNativePlugin", "Failed to share video: ${e.message}", e)
                     result.error("SHARE_VIDEO_FAILED", e.message ?: "Failed to share video", null)
+                }
+            }
+            "getVideoFrameThumbnails" -> {
+                val videoUri = call.argument<String>("videoUri")
+                val timestampsMs = call.argument<List<Number>>("timestampsMs")
+                val ctx = context
+                if (videoUri.isNullOrBlank() || timestampsMs == null || ctx == null) {
+                    result.error("INVALID_ARGS", "videoUri, timestampsMs or context is null", null)
+                    return
+                }
+                try {
+                    val retriever = MediaMetadataRetriever()
+                    try {
+                        if (videoUri.startsWith("content://")) {
+                            retriever.setDataSource(ctx, Uri.parse(videoUri))
+                        } else {
+                            retriever.setDataSource(videoUri.removePrefix("file://"))
+                        }
+                        val dir = File(ctx.cacheDir, "trim_thumbnails").apply { mkdirs() }
+                        val token = System.currentTimeMillis()
+                        val paths = timestampsMs.mapIndexedNotNull { index, value ->
+                            val timestampMs = value.toLong().coerceAtLeast(0L)
+                            val bitmap = retriever.getFrameAtTime(
+                                timestampMs * 1000L,
+                                MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+                            ) ?: retriever.getFrameAtTime(
+                                timestampMs * 1000L,
+                                MediaMetadataRetriever.OPTION_CLOSEST
+                            )
+                            bitmap?.let {
+                                val out = File(dir, "trim_${token}_${index}.jpg")
+                                out.outputStream().use { stream ->
+                                    it.compress(Bitmap.CompressFormat.JPEG, 76, stream)
+                                }
+                                try { it.recycle() } catch (_: Throwable) {}
+                                out.absolutePath
+                            }
+                        }
+                        result.success(paths)
+                    } finally {
+                        try { retriever.release() } catch (_: Throwable) {}
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("DanceNativePlugin", "Failed to create trim thumbnails: ${e.message}", e)
+                    result.error("THUMBNAIL_FAILED", e.message ?: "Failed to create trim thumbnails", null)
                 }
             }
             "createDiagnosticBundle" -> {

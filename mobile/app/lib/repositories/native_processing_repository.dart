@@ -34,12 +34,17 @@ class NativeProcessingRepository {
   Future<AnalyzeResultDto> analyzeVideo({
     required String videoUri,
     String modelProfile = 'balanced',
+    int trimStartMs = 0,
   }) async {
     AppLogger.d(
       'NativeRepository',
       'Analyzing video: $videoUri (profile: $modelProfile)',
     );
-    return _client.analyzeVideo(videoUri: videoUri, modelProfile: modelProfile);
+    return _client.analyzeVideo(
+      videoUri: videoUri,
+      modelProfile: modelProfile,
+      trimStartMs: trimStartMs,
+    );
   }
 
   Future<PreviewFrameDto> getPreviewFrame({
@@ -74,6 +79,8 @@ class NativeProcessingRepository {
     int videoBitrate = 8000000,
     String processingProfile = 'quality',
     bool enableLivePreview = false,
+    int trimStartMs = 0,
+    int? trimEndMs,
   }) {
     return _client.startExport(
       sourceUri: sourceUri,
@@ -89,6 +96,18 @@ class NativeProcessingRepository {
       videoBitrate: videoBitrate,
       processingProfile: processingProfile,
       enableLivePreview: enableLivePreview,
+      trimStartMs: trimStartMs,
+      trimEndMs: trimEndMs,
+    );
+  }
+
+  Future<List<String>> getVideoFrameThumbnails({
+    required String videoUri,
+    required List<int> timestampsMs,
+  }) {
+    return _client.getVideoFrameThumbnails(
+      videoUri: videoUri,
+      timestampsMs: timestampsMs,
     );
   }
 

@@ -49,14 +49,24 @@ void main() {
         persons: const [
           PersonTrack(
             id: 0,
-            normalizedInitialBox: NormalizedRect(left: 0.1, top: 0.1, right: 0.4, bottom: 0.9),
+            normalizedInitialBox: NormalizedRect(
+              left: 0.1,
+              top: 0.1,
+              right: 0.4,
+              bottom: 0.9,
+            ),
             thumbnailPath: '/path/thumb0.webp',
             confidence: 0.92,
             selected: true,
           ),
           PersonTrack(
             id: 1,
-            normalizedInitialBox: NormalizedRect(left: 0.5, top: 0.1, right: 0.8, bottom: 0.9),
+            normalizedInitialBox: NormalizedRect(
+              left: 0.5,
+              top: 0.1,
+              right: 0.8,
+              bottom: 0.9,
+            ),
             thumbnailPath: '/path/thumb1.webp',
             confidence: 0.88,
             selected: false,
@@ -70,6 +80,8 @@ void main() {
           borderColorArgb: 0xFF00FF00,
           borderWidth: 4.0,
         ),
+        trimStartMs: 1200,
+        trimEndMs: 7600,
         createdAt: now,
         updatedAt: now,
       );
@@ -91,6 +103,9 @@ void main() {
       );
       expect(reconstructed.privacyTargetIds, equals({0, 1}));
       expect(reconstructed.effects.fillMode, equals(FillMode.blur));
+      expect(reconstructed.trimStartMs, 1200);
+      expect(reconstructed.trimEndMs, 7600);
+      expect(reconstructed.trimmedDurationMs, 6400);
     });
 
     test('DanceProject legacy JSON defaults face-only to empty', () {
@@ -112,11 +127,13 @@ void main() {
         selectedPersonIds: const {3},
         createdAt: now,
         updatedAt: now,
-      ).toJson()
-        ..remove('faceOnlyPersonIds');
+      ).toJson()..remove('faceOnlyPersonIds');
 
       final reconstructed = DanceProject.fromJson(json);
       expect(reconstructed.faceOnlyPersonIds, isEmpty);
+      expect(reconstructed.trimStartMs, 0);
+      expect(reconstructed.trimEndMs, isNull);
+      expect(reconstructed.trimmedDurationMs, 1000);
       expect(reconstructed.privacyModeForPerson(3), PersonPrivacyMode.fullBody);
     });
 

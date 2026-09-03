@@ -74,7 +74,7 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
 
     await _restoreWorkspaceSystemUi();
     if (!mounted) return;
-    await context.push('/person_selection', extra: project);
+    await context.push('/trim_video', extra: project);
     if (!mounted) return;
     controller.reset();
     await _enterImportImmersiveMode();

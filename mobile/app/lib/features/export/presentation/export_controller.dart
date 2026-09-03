@@ -82,6 +82,8 @@ class ExportController extends StateNotifier<ExportState> {
         targetFps: project.videoInfo.fps,
         processingProfile: processingProfile,
         enableLivePreview: true, // Allow native pipeline to capture lightweight previews for UI toggle
+        trimStartMs: project.trimStartMs,
+        trimEndMs: project.trimEndMs,
       );
 
       state = state.copyWith(jobId: jobId);

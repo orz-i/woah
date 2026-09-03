@@ -34,8 +34,9 @@ class AnalyzePipeline(
             } else {
                 retriever.setDataSource(request.videoUri.removePrefix("file://"))
             }
-            rawBitmap = retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-                ?: retriever.getFrameAtTime(1000L, MediaMetadataRetriever.OPTION_CLOSEST)
+            val trimStartUs = request.trimStartMs.coerceAtLeast(0L) * 1000L
+            rawBitmap = retriever.getFrameAtTime(trimStartUs, MediaMetadataRetriever.OPTION_CLOSEST)
+                ?: retriever.getFrameAtTime(trimStartUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
                 ?: retriever.frameAtTime
         } catch (e: Exception) {
             android.util.Log.e("AnalyzePipeline", "Failed to retrieve first frame", e)
@@ -81,7 +82,10 @@ class AnalyzePipeline(
 
         // 3. Initialize & Run YOLO Segmentation
         segmenter.initialize()
-        val segFrame = segmenter.segmentBitmap(visualBitmap, 0)
+        val segFrame = segmenter.segmentBitmap(
+            visualBitmap,
+            request.trimStartMs.coerceAtLeast(0L) * 1000L
+        )
         val safePersons = com.danceanon.native.privacy.PrivacySegmentationProcessor.DEFAULT.applyPrivacySafety(segFrame.persons)
 
         // 4. Build DetectedPersonDto list with thumbnails and save metadata

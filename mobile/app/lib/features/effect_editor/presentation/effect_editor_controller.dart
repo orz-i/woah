@@ -146,10 +146,11 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
 
       try {
         final currentProj = state.project ?? project;
-        // V1 constraint: strictly preview timestampMs = 0 (first frame) to avoid Hungarian instability
+        // Keep preview on the stable first frame of the selected subclip to
+        // avoid identity instability while respecting the temporal trim.
         final result = await repo.getPreviewFrame(
           analysisCacheId: cacheId,
-          timestampMs: 0,
+          timestampMs: currentProj.trimStartMs,
           selectedPersonIds: currentProj.selectedPersonIds.toList(),
           faceOnlyPersonIds: currentProj.faceOnlyPersonIds.toList(),
           effects: state.effects,

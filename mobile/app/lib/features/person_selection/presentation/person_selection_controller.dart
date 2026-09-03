@@ -43,6 +43,7 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
       final result = await _repository.analyzeVideo(
         videoUri: project.sourceUri,
         modelProfile: 'balanced',
+        trimStartMs: project.trimStartMs,
       );
 
       final analyzedPersons = result.persons
@@ -99,7 +100,7 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
         selectionPreviewLoading: true,
       );
 
-      await _loadSelectionPreview(result.analysisCacheId);
+      await _loadSelectionPreview(result.analysisCacheId, project.trimStartMs);
     } catch (e, stack) {
       AppLogger.e('PersonSelectionController', 'Analysis failed', e, stack);
       state = state.copyWith(
@@ -110,11 +111,14 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
     }
   }
 
-  Future<void> _loadSelectionPreview(String analysisCacheId) async {
+  Future<void> _loadSelectionPreview(
+    String analysisCacheId,
+    int trimStartMs,
+  ) async {
     try {
       final preview = await _repository.getPreviewFrame(
         analysisCacheId: analysisCacheId,
-        timestampMs: 0,
+        timestampMs: trimStartMs,
         selectedPersonIds: const [],
         faceOnlyPersonIds: const [],
         effects: const EffectConfig(),

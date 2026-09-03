@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dance_domain/dance_domain.dart';
 import '../features/import_video/presentation/import_video_screen.dart';
+import '../features/trim_video/presentation/trim_video_screen.dart';
 import '../features/person_selection/presentation/person_selection_screen.dart';
 import '../features/effect_editor/presentation/effect_editor_screen.dart';
 import '../features/export/presentation/export_screen.dart';
@@ -18,6 +19,14 @@ final appRouter = GoRouter(
       path: '/',
       name: 'import_video',
       builder: (context, state) => const ImportVideoScreen(),
+    ),
+    GoRoute(
+      path: '/trim_video',
+      name: 'trim_video',
+      builder: (context, state) {
+        final project = state.extra as DanceProject;
+        return TrimVideoScreen(project: project);
+      },
     ),
     GoRoute(
       path: '/person_selection',

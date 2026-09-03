@@ -1,18 +1,16 @@
 import 'package:pigeon/pigeon.dart';
 
-@ConfigurePigeon(PigeonOptions(
-  dartOut: 'lib/src/bridge/dance_api.g.dart',
-  dartPackageName: 'dance_native',
-  kotlinOut:
-      'android/src/main/kotlin/com/danceanon/native/bridge/DanceApi.g.kt',
-  kotlinOptions: KotlinOptions(
-    package: 'com.danceanon.native.bridge',
+@ConfigurePigeon(
+  PigeonOptions(
+    dartOut: 'lib/src/bridge/dance_api.g.dart',
+    dartPackageName: 'dance_native',
+    kotlinOut:
+        'android/src/main/kotlin/com/danceanon/native/bridge/DanceApi.g.kt',
+    kotlinOptions: KotlinOptions(package: 'com.danceanon.native.bridge'),
+    swiftOut: 'ios/dance_native/Sources/dance_native/DanceApi.g.swift',
+    swiftOptions: SwiftOptions(),
   ),
-  swiftOut: 'ios/dance_native/Sources/dance_native/DanceApi.g.swift',
-  swiftOptions: SwiftOptions(),
-))
-
-
+)
 class NativeCapabilitiesDto {
   final String platform;
   final String osVersion;
@@ -90,10 +88,12 @@ class DetectedPersonDto {
 class AnalyzeRequestDto {
   final String videoUri;
   final String modelProfile;
+  final int trimStartMs;
 
   AnalyzeRequestDto({
     required this.videoUri,
     required this.modelProfile,
+    this.trimStartMs = 0,
   });
 }
 
@@ -201,6 +201,8 @@ class ExportRequestDto {
   final String processingProfile;
   final bool enableLivePreview;
   final List<int>? faceOnlyPersonIds;
+  final int trimStartMs;
+  final int? trimEndMs;
 
   ExportRequestDto({
     required this.sourceUri,
@@ -216,6 +218,8 @@ class ExportRequestDto {
     required this.processingProfile,
     this.enableLivePreview = false,
     this.faceOnlyPersonIds,
+    this.trimStartMs = 0,
+    this.trimEndMs,
   });
 }
 
@@ -244,7 +248,6 @@ class JobStatusDto {
     this.errorMessage,
   });
 }
-
 
 @HostApi()
 abstract class DanceNativeApi {

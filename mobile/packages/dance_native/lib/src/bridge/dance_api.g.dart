@@ -371,16 +371,20 @@ class AnalyzeRequestDto {
   AnalyzeRequestDto({
     required this.videoUri,
     required this.modelProfile,
+    required this.trimStartMs,
   });
 
   String videoUri;
 
   String modelProfile;
 
+  int trimStartMs;
+
   List<Object?> _toList() {
     return <Object?>[
       videoUri,
       modelProfile,
+      trimStartMs,
     ];
   }
 
@@ -392,6 +396,7 @@ class AnalyzeRequestDto {
     return AnalyzeRequestDto(
       videoUri: result[0]! as String,
       modelProfile: result[1]! as String,
+      trimStartMs: result[2]! as int,
     );
   }
 
@@ -404,7 +409,7 @@ class AnalyzeRequestDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(videoUri, other.videoUri) && _deepEquals(modelProfile, other.modelProfile);
+    return _deepEquals(videoUri, other.videoUri) && _deepEquals(modelProfile, other.modelProfile) && _deepEquals(trimStartMs, other.trimStartMs);
   }
 
   @override
@@ -413,7 +418,7 @@ class AnalyzeRequestDto {
 
   @override
   String toString() {
-    return 'AnalyzeRequestDto(videoUri: $videoUri, modelProfile: $modelProfile)';
+    return 'AnalyzeRequestDto(videoUri: $videoUri, modelProfile: $modelProfile, trimStartMs: $trimStartMs)';
   }
 }
 
@@ -782,6 +787,8 @@ class ExportRequestDto {
     required this.processingProfile,
     required this.enableLivePreview,
     this.faceOnlyPersonIds,
+    required this.trimStartMs,
+    this.trimEndMs,
   });
 
   String sourceUri;
@@ -810,6 +817,10 @@ class ExportRequestDto {
 
   List<int>? faceOnlyPersonIds;
 
+  int trimStartMs;
+
+  int? trimEndMs;
+
   List<Object?> _toList() {
     return <Object?>[
       sourceUri,
@@ -825,6 +836,8 @@ class ExportRequestDto {
       processingProfile,
       enableLivePreview,
       faceOnlyPersonIds,
+      trimStartMs,
+      trimEndMs,
     ];
   }
 
@@ -847,6 +860,8 @@ class ExportRequestDto {
       processingProfile: result[10]! as String,
       enableLivePreview: result[11]! as bool,
       faceOnlyPersonIds: (result[12] as List<Object?>?)?.cast<int>(),
+      trimStartMs: result[13]! as int,
+      trimEndMs: result[14] as int?,
     );
   }
 
@@ -859,7 +874,7 @@ class ExportRequestDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(sourceUri, other.sourceUri) && _deepEquals(analysisCacheId, other.analysisCacheId) && _deepEquals(outputFilePath, other.outputFilePath) && _deepEquals(selectedPersonIds, other.selectedPersonIds) && _deepEquals(effects, other.effects) && _deepEquals(follow, other.follow) && _deepEquals(targetWidth, other.targetWidth) && _deepEquals(targetHeight, other.targetHeight) && _deepEquals(targetFps, other.targetFps) && _deepEquals(videoBitrate, other.videoBitrate) && _deepEquals(processingProfile, other.processingProfile) && _deepEquals(enableLivePreview, other.enableLivePreview) && _deepEquals(faceOnlyPersonIds, other.faceOnlyPersonIds);
+    return _deepEquals(sourceUri, other.sourceUri) && _deepEquals(analysisCacheId, other.analysisCacheId) && _deepEquals(outputFilePath, other.outputFilePath) && _deepEquals(selectedPersonIds, other.selectedPersonIds) && _deepEquals(effects, other.effects) && _deepEquals(follow, other.follow) && _deepEquals(targetWidth, other.targetWidth) && _deepEquals(targetHeight, other.targetHeight) && _deepEquals(targetFps, other.targetFps) && _deepEquals(videoBitrate, other.videoBitrate) && _deepEquals(processingProfile, other.processingProfile) && _deepEquals(enableLivePreview, other.enableLivePreview) && _deepEquals(faceOnlyPersonIds, other.faceOnlyPersonIds) && _deepEquals(trimStartMs, other.trimStartMs) && _deepEquals(trimEndMs, other.trimEndMs);
   }
 
   @override
@@ -868,7 +883,7 @@ class ExportRequestDto {
 
   @override
   String toString() {
-    return 'ExportRequestDto(sourceUri: $sourceUri, analysisCacheId: $analysisCacheId, outputFilePath: $outputFilePath, selectedPersonIds: $selectedPersonIds, effects: $effects, follow: $follow, targetWidth: $targetWidth, targetHeight: $targetHeight, targetFps: $targetFps, videoBitrate: $videoBitrate, processingProfile: $processingProfile, enableLivePreview: $enableLivePreview, faceOnlyPersonIds: $faceOnlyPersonIds)';
+    return 'ExportRequestDto(sourceUri: $sourceUri, analysisCacheId: $analysisCacheId, outputFilePath: $outputFilePath, selectedPersonIds: $selectedPersonIds, effects: $effects, follow: $follow, targetWidth: $targetWidth, targetHeight: $targetHeight, targetFps: $targetFps, videoBitrate: $videoBitrate, processingProfile: $processingProfile, enableLivePreview: $enableLivePreview, faceOnlyPersonIds: $faceOnlyPersonIds, trimStartMs: $trimStartMs, trimEndMs: $trimEndMs)';
   }
 }
 

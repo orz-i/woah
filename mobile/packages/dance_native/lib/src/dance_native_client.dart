@@ -38,9 +38,14 @@ class DanceNativeClient implements DanceProcessingEvents {
   Future<AnalyzeResultDto> analyzeVideo({
     required String videoUri,
     String modelProfile = 'balanced',
+    int trimStartMs = 0,
   }) {
     return _api.analyzeVideo(
-      AnalyzeRequestDto(videoUri: videoUri, modelProfile: modelProfile),
+      AnalyzeRequestDto(
+        videoUri: videoUri,
+        modelProfile: modelProfile,
+        trimStartMs: trimStartMs,
+      ),
     );
   }
 
@@ -80,6 +85,8 @@ class DanceNativeClient implements DanceProcessingEvents {
     int videoBitrate = 8000000,
     String processingProfile = 'quality',
     bool enableLivePreview = false,
+    int trimStartMs = 0,
+    int? trimEndMs,
   }) {
     return _api.startExport(
       ExportRequestDto(
@@ -96,8 +103,21 @@ class DanceNativeClient implements DanceProcessingEvents {
         processingProfile: processingProfile,
         enableLivePreview: enableLivePreview,
         faceOnlyPersonIds: faceOnlyPersonIds,
+        trimStartMs: trimStartMs,
+        trimEndMs: trimEndMs,
       ),
     );
+  }
+
+  Future<List<String>> getVideoFrameThumbnails({
+    required String videoUri,
+    required List<int> timestampsMs,
+  }) async {
+    final result = await _channel.invokeListMethod<String>(
+      'getVideoFrameThumbnails',
+      {'videoUri': videoUri, 'timestampsMs': timestampsMs},
+    );
+    return result ?? const [];
   }
 
   /// Cancel an ongoing export job

@@ -9,7 +9,9 @@ import java.nio.ByteBuffer
 
 class AudioTrackCopier(
     private val context: Context,
-    private val sourceUri: String
+    private val sourceUri: String,
+    private val startUs: Long = 0L,
+    private val endUs: Long? = null
 ) : AutoCloseable {
 
     private val extractor = MediaExtractor()
@@ -32,6 +34,9 @@ class AudioTrackCopier(
                 audioTrackIndexInSource = i
                 audioFormat = format
                 extractor.selectTrack(i)
+                if (startUs > 0L) {
+                    extractor.seekTo(startUs, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
+                }
                 return true
             }
         }
@@ -48,9 +53,16 @@ class AudioTrackCopier(
             val sampleSize = extractor.readSampleData(buffer, 0)
             if (sampleSize < 0) break
 
+            val sampleTimeUs = extractor.sampleTime
+            if (sampleTimeUs < startUs) {
+                extractor.advance()
+                continue
+            }
+            if (endUs != null && sampleTimeUs >= endUs) break
+
             bufferInfo.offset = 0
             bufferInfo.size = sampleSize
-            bufferInfo.presentationTimeUs = extractor.sampleTime
+            bufferInfo.presentationTimeUs = (sampleTimeUs - startUs).coerceAtLeast(0L)
             bufferInfo.flags = extractor.sampleFlags
 
             muxer.writeAudioSample(buffer, bufferInfo)

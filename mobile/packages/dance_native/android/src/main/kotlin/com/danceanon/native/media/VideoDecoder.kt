@@ -11,7 +11,9 @@ import java.nio.ByteBuffer
 class VideoDecoder(
     private val context: Context,
     private val sourceUri: String,
-    private val outputSurface: Surface? = null
+    private val outputSurface: Surface? = null,
+    private val startUs: Long = 0L,
+    private val endUs: Long? = null
 ) : AutoCloseable {
 
     private val extractor = MediaExtractor()
@@ -46,6 +48,9 @@ class VideoDecoder(
                     durationUs = format.getLong(MediaFormat.KEY_DURATION)
                 }
                 extractor.selectTrack(i)
+                if (startUs > 0L) {
+                    extractor.seekTo(startUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+                }
                 break
             }
         }
@@ -84,6 +89,11 @@ class VideoDecoder(
                 return false
             } else {
                 val pts = extractor.sampleTime
+                if (endUs != null && pts >= endUs) {
+                    codec!!.queueInputBuffer(inputIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                    isEOSInput = true
+                    return false
+                }
                 codec!!.queueInputBuffer(inputIndex, 0, sampleSize, pts, 0)
                 extractor.advance()
                 return true

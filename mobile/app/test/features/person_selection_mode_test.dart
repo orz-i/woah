@@ -27,14 +27,15 @@ void main() {
           videoCodec: 'h264',
           hasAudio: false,
         ),
+        trimStartMs: 240,
+        trimEndMs: 900,
         createdAt: now,
         updatedAt: now,
       );
-      final controller = PersonSelectionController(
-        _FakePersonSelectionRepository(
-          confidences: const [0.92, 0.56, 0.59, 0.60],
-        ),
+      final repository = _FakePersonSelectionRepository(
+        confidences: const [0.92, 0.56, 0.59, 0.60],
       );
+      final controller = PersonSelectionController(repository);
       addTearDown(controller.dispose);
 
       await controller.analyzeProject(project);
@@ -43,6 +44,8 @@ void main() {
       expect(controller.state.selectedPersonIds, equals({0, 3}));
       expect(controller.state.privacyModeForPerson(1), PersonPrivacyMode.none);
       expect(controller.state.privacyModeForPerson(2), PersonPrivacyMode.none);
+      expect(repository.lastAnalyzeTrimStartMs, 240);
+      expect(repository.lastPreviewTimestampMs, 240);
 
       controller.setPrivacyMode(1, PersonPrivacyMode.fullBody);
       expect(controller.state.selectedPersonIds, equals({0, 3}));
@@ -208,6 +211,8 @@ void main() {
 
 class _FakePersonSelectionRepository implements NativeProcessingRepository {
   final List<double> confidences;
+  int? lastAnalyzeTrimStartMs;
+  int? lastPreviewTimestampMs;
 
   _FakePersonSelectionRepository({this.confidences = const [0.94, 0.91]});
 
@@ -215,7 +220,9 @@ class _FakePersonSelectionRepository implements NativeProcessingRepository {
   Future<AnalyzeResultDto> analyzeVideo({
     required String videoUri,
     String modelProfile = 'balanced',
+    int trimStartMs = 0,
   }) async {
+    lastAnalyzeTrimStartMs = trimStartMs;
     return AnalyzeResultDto(
       analysisCacheId: 'privacy-mode-cache',
       videoInfo: VideoInfoDto(
@@ -254,6 +261,7 @@ class _FakePersonSelectionRepository implements NativeProcessingRepository {
     required EffectConfig effects,
     FollowConfig follow = const FollowConfig(),
   }) async {
+    lastPreviewTimestampMs = timestampMs;
     return PreviewFrameDto(
       thumbnailPath: '',
       renderTimeMs: 1,
