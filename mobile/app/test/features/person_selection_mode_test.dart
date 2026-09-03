@@ -145,6 +145,19 @@ void main() {
       );
       expect(find.text('全身保护'), findsWidgets);
       expect(find.text('人脸保护'), findsWidgets);
+      expect(find.text('默认已全选 · 直接点按画面中的人物取消或重新选中'), findsOneWidget);
+      expect(find.byType(ListView), findsNothing);
+
+      // The media canvas is the target-selection surface; no duplicate
+      // thumbnail rail is required.
+      expect(find.bySemanticsLabel('已选择人物'), findsNWidgets(2));
+      await tester.tap(find.bySemanticsLabel('已选择人物').first);
+      await tester.pump();
+      expect(controller.state.selectedPersonIds, equals({1}));
+      expect(find.bySemanticsLabel('未选择人物'), findsOneWidget);
+      await tester.tap(find.bySemanticsLabel('未选择人物'));
+      await tester.pump();
+      expect(controller.state.selectedPersonIds, equals({0, 1}));
 
       await tester.tap(find.text('人脸保护').first);
       await tester.pump();

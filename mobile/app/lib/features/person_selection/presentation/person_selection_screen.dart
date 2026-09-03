@@ -69,9 +69,9 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
               child: BottomControlDrawer(
                 controller: _drawerController,
                 minChildSize: 0.065,
-                initialChildSize: 0.31,
-                maxChildSize: 0.58,
-                snapSizes: const [0.065, 0.31, 0.58],
+                initialChildSize: 0.25,
+                maxChildSize: 0.43,
+                snapSizes: const [0.065, 0.25, 0.43],
                 peekHeader: _buildDrawerHeader(state),
                 bottomActionBar: _buildContinueButton(state, controller),
                 child: _buildDrawerContent(state, controller),
@@ -137,7 +137,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
               ),
               SizedBox(height: 14),
               Text(
-                '选择“全身保护”或“人脸保护”后，点击画面中的人物框或下方头像即可选择目标。一个视频只使用一种保护模式。',
+                '人物默认全部选中。选择“全身保护”或“人脸保护”后，直接点击画面中的人物框即可取消或重新选中。一个视频只使用一种保护模式。',
                 style: TextStyle(
                   color: AppTheme.textSecondary,
                   fontSize: 14,
@@ -444,31 +444,14 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
         _buildPrivacyModeSelector(state, controller),
         const SizedBox(height: 18),
         const Text(
-          '点击画面中的人物或下方头像进行选择',
-          style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 86,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            itemCount: state.persons.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 10),
-            itemBuilder: (context, index) {
-              final person = state.persons[index];
-              return _buildPersonThumbnail(
-                person,
-                selected: state.isPersonSelected(person.id),
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  controller.togglePerson(person.id);
-                },
-              );
-            },
+          '默认已全选 · 直接点按画面中的人物取消或重新选中',
+          style: TextStyle(
+            color: AppTheme.textMuted,
+            fontSize: 12,
+            height: 1.45,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         Row(
           children: [
             Expanded(
@@ -531,68 +514,6 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildPersonThumbnail(
-    PersonTrack person, {
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    final hasThumb =
-        person.thumbnailPath.isNotEmpty &&
-        File(person.thumbnailPath).existsSync();
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: selected ? '已选择人物头像' : '未选择人物头像',
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          width: 68,
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceHigh,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: selected ? AppTheme.primaryWhite : AppTheme.surfaceBorder,
-              width: selected ? 2 : 1,
-            ),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (hasThumb)
-                Image.file(File(person.thumbnailPath), fit: BoxFit.cover)
-              else
-                const Icon(
-                  Icons.person_rounded,
-                  color: AppTheme.metalLow,
-                  size: 34,
-                ),
-              if (selected)
-                Positioned(
-                  right: 5,
-                  bottom: 5,
-                  child: Container(
-                    width: 24,
-                    height: 24,
-                    decoration: const BoxDecoration(
-                      color: AppTheme.primaryWhite,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.check_rounded,
-                      size: 16,
-                      color: AppTheme.canvas,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
       ),
     );
   }
