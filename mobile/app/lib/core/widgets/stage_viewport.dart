@@ -11,6 +11,7 @@ class StageViewport extends StatefulWidget {
   final double maxScale;
   final VoidCallback? onTap;
   final TransformationController? transformationController;
+  final Color backgroundColor;
 
   const StageViewport({
     super.key,
@@ -20,6 +21,7 @@ class StageViewport extends StatefulWidget {
     this.maxScale = 4.0,
     this.onTap,
     this.transformationController,
+    this.backgroundColor = const Color(0xFF0A0A0C),
   });
 
   @override
@@ -81,7 +83,7 @@ class _StageViewportState extends State<StageViewport>
       child: Container(
         width: double.infinity,
         height: double.infinity,
-        color: const Color(0xFF0A0A0C),
+        color: widget.backgroundColor,
         child: widget.enableZoom
             ? InteractiveViewer(
                 transformationController: _controller,

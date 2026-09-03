@@ -57,6 +57,31 @@ void main() {
       expect(configured.effects.legStretch, equals(0.20));
     });
 
+    test('Face sticker style toggles real sticker configuration', () {
+      final controller = EffectEditorController();
+      controller.init(testProject);
+
+      controller.updateProtectionStyle(FillMode.sticker);
+      expect(controller.state.effects.fillMode, FillMode.sticker);
+      expect(controller.state.effects.faceStickerEnabled, isTrue);
+      expect(
+        controller.state.effects.stickerAssetId,
+        equals('builtin:sunglasses'),
+      );
+
+      controller.updateStickerAsset('builtin:panda');
+      controller.updateStickerScale(1.4);
+      var configured = controller.buildConfiguredProject();
+      expect(configured!.effects.stickerAssetId, equals('builtin:panda'));
+      expect(configured.effects.stickerScale, equals(1.4));
+
+      controller.updateProtectionStyle(FillMode.blur);
+      configured = controller.buildConfiguredProject();
+      expect(configured!.effects.fillMode, FillMode.blur);
+      expect(configured.effects.faceStickerEnabled, isFalse);
+      expect(configured.effects.stickerAssetId, equals('disabled'));
+    });
+
     test('Initializes preview and guards against out-of-order responses with sequence ID', () async {
       final repo = _FakeNativeRepository();
       final projectWithCache = testProject.copyWith(analysisCacheId: 'cache_123');

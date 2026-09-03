@@ -180,6 +180,14 @@ void main() {
       expect(controller.state.privacyMode, ProjectPrivacyMode.faceOnly);
       expect(controller.state.selectedPersonIds, isEmpty);
       expect(controller.state.faceOnlyPersonIds, equals({0, 1}));
+      final faceConfigured = controller.buildConfiguredProject();
+      expect(faceConfigured, isNotNull);
+      expect(faceConfigured!.effects.fillMode, FillMode.sticker);
+      expect(faceConfigured.effects.faceStickerEnabled, isTrue);
+      expect(
+        faceConfigured.effects.stickerAssetId,
+        equals('builtin:sunglasses'),
+      );
       expect(
         controller.state.privacyModeForPerson(0),
         PersonPrivacyMode.faceOnly,

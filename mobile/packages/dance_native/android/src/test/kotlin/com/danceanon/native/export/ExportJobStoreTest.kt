@@ -37,7 +37,9 @@ class ExportJobStoreTest {
             targetFps = 30.0,
             videoBitrate = 8000000,
             processingProfile = "balanced",
-            enableLivePreview = false
+            enableLivePreview = false,
+            trimStartMs = 0,
+            trimEndMs = null
         )
     }
 

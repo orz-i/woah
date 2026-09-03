@@ -133,17 +133,36 @@ class GlRenderer : FrameRenderer {
             }
         }
 
-        fun createDefaultStickerBitmap(): Bitmap? {
+        fun createDefaultStickerBitmap(assetId: String? = null): Bitmap? {
             return try {
                 val size = 128
                 val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888) ?: return null
                 val canvas = android.graphics.Canvas(bitmap)
                 val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
 
-                // Yellow face background
-                paint.color = android.graphics.Color.argb(255, 255, 215, 0)
+                val stickerKind = assetId?.removePrefix("builtin:") ?: "sunglasses"
+                val faceColor = when (stickerKind) {
+                    "blush" -> android.graphics.Color.rgb(255, 154, 158)
+                    "panda" -> android.graphics.Color.rgb(250, 250, 248)
+                    "cat" -> android.graphics.Color.rgb(255, 218, 166)
+                    "bear" -> android.graphics.Color.rgb(190, 132, 88)
+                    else -> android.graphics.Color.rgb(255, 215, 0)
+                }
+
+                paint.color = faceColor
                 paint.style = android.graphics.Paint.Style.FILL
                 canvas.drawCircle(size / 2f, size / 2f, size / 2f - 4f, paint)
+
+                if (stickerKind == "panda" || stickerKind == "cat" || stickerKind == "bear") {
+                    paint.color = if (stickerKind == "panda") {
+                        android.graphics.Color.rgb(30, 30, 30)
+                    } else {
+                        faceColor
+                    }
+                    val earRadius = if (stickerKind == "cat") 19f else 21f
+                    canvas.drawCircle(28f, 25f, earRadius, paint)
+                    canvas.drawCircle(100f, 25f, earRadius, paint)
+                }
 
                 // Dark border outline
                 paint.color = android.graphics.Color.argb(255, 30, 30, 30)
@@ -151,12 +170,29 @@ class GlRenderer : FrameRenderer {
                 paint.strokeWidth = 6f
                 canvas.drawCircle(size / 2f, size / 2f, size / 2f - 4f, paint)
 
-                // Eyes / Sunglasses
                 paint.style = android.graphics.Paint.Style.FILL
                 paint.color = android.graphics.Color.BLACK
-                canvas.drawRoundRect(24f, 40f, 60f, 65f, 8f, 8f, paint)
-                canvas.drawRoundRect(68f, 40f, 104f, 65f, 8f, 8f, paint)
-                canvas.drawRect(56f, 48f, 72f, 56f, paint)
+                if (stickerKind == "sunglasses") {
+                    canvas.drawRoundRect(24f, 40f, 60f, 65f, 8f, 8f, paint)
+                    canvas.drawRoundRect(68f, 40f, 104f, 65f, 8f, 8f, paint)
+                    canvas.drawRect(56f, 48f, 72f, 56f, paint)
+                } else if (stickerKind == "panda") {
+                    canvas.drawOval(android.graphics.RectF(27f, 38f, 57f, 70f), paint)
+                    canvas.drawOval(android.graphics.RectF(71f, 38f, 101f, 70f), paint)
+                    paint.color = android.graphics.Color.WHITE
+                    canvas.drawCircle(43f, 54f, 6f, paint)
+                    canvas.drawCircle(85f, 54f, 6f, paint)
+                } else {
+                    canvas.drawCircle(43f, 53f, 6f, paint)
+                    canvas.drawCircle(85f, 53f, 6f, paint)
+                }
+
+                if (stickerKind == "blush") {
+                    paint.color = android.graphics.Color.rgb(235, 80, 100)
+                    canvas.drawCircle(27f, 72f, 10f, paint)
+                    canvas.drawCircle(101f, 72f, 10f, paint)
+                    paint.color = android.graphics.Color.BLACK
+                }
 
                 // Smile
                 paint.style = android.graphics.Paint.Style.STROKE
@@ -243,7 +279,9 @@ class GlRenderer : FrameRenderer {
 
         var bitmap: Bitmap? = null
         try {
-            if (!assetId.isNullOrBlank()) {
+            if (!assetId.isNullOrBlank() && assetId.startsWith("builtin:")) {
+                bitmap = createDefaultStickerBitmap(assetId)
+            } else if (!assetId.isNullOrBlank()) {
                 val f = java.io.File(assetId)
                 if (f.exists() && f.length() > 0) {
                     bitmap = android.graphics.BitmapFactory.decodeFile(assetId)
@@ -252,7 +290,7 @@ class GlRenderer : FrameRenderer {
         } catch (_: Throwable) {}
 
         if (bitmap == null) {
-            bitmap = createDefaultStickerBitmap()
+            bitmap = createDefaultStickerBitmap(assetId)
         }
 
         if (stickerTextureId == 0) {
@@ -538,7 +576,9 @@ class GlRenderer : FrameRenderer {
             )
         }
         val renderFacePrivacyAsSticker =
-            faceStickerPlacements.isNotEmpty() && additionalResolvedPrivacy?.privacyMask != null
+            effects.faceStickerEnabled &&
+                faceStickerPlacements.isNotEmpty() &&
+                additionalResolvedPrivacy?.privacyMask != null
         // FACE_ONLY is visually rendered by the privacy-sticker pass. Keep the
         // secondary face mask out of the main fill compositor so the sticker
         // replaces the solid/blur/mosaic block instead of being layered on it.
@@ -639,7 +679,7 @@ class GlRenderer : FrameRenderer {
             val headZoneHeight = primaryPerson.bbox.height * 0.25f
             val headCenterX = primaryPerson.bbox.centerX
             val headCenterY = primaryPerson.bbox.top + headZoneHeight * 0.5f
-            val scale = effects.stickerScale.toFloat().coerceIn(0.5f, 3.0f)
+            val scale = effects.stickerScale.toFloat().coerceIn(1.0f, 3.0f)
             val halfDim = (maxOf(primaryPerson.bbox.width * 0.35f, headZoneHeight * 0.6f) * scale).coerceAtLeast(10f)
 
             val sLeft = ((headCenterX - halfDim) / refW.toFloat()).coerceIn(0f, 1f)
@@ -659,7 +699,8 @@ class GlRenderer : FrameRenderer {
                 placements = faceStickerPlacements,
                 textureMatrix = matrix,
                 cropRect = cropRect,
-                stickerPrivacy = requireNotNull(additionalResolvedPrivacy)
+                stickerPrivacy = requireNotNull(additionalResolvedPrivacy),
+                effects = effects
             )
         }
         checkGlError("render")
@@ -669,16 +710,16 @@ class GlRenderer : FrameRenderer {
         placements: List<FaceStickerPlacement>,
         textureMatrix: FloatArray,
         cropRect: com.danceanon.native.inference.FloatRect,
-        stickerPrivacy: com.danceanon.native.privacy.ResolvedCompositorMasks
+        stickerPrivacy: com.danceanon.native.privacy.ResolvedCompositorMasks,
+        effects: com.danceanon.native.bridge.EffectConfigDto
     ) {
         val prog = stickerOverlayProgram ?: return
         if (placements.isEmpty()) return
         val privacyMask = stickerPrivacy.privacyMask ?: return
 
-        // FACE_ONLY always uses the built-in opaque privacy sticker. Arbitrary
-        // effect assets are not trusted as privacy surfaces because they may
-        // contain transparent holes.
-        val stickerTexId = ensureStickerTexture(null)
+        // Transparent asset holes are still privacy-safe because the shader
+        // fills them with an opaque fallback color inside the resolved face mask.
+        val stickerTexId = ensureStickerTexture(effects.stickerAssetId)
         GLES20.glUseProgram(prog.programId)
         if (prog.uTexMatrixLoc >= 0) {
             GLES20.glUniformMatrix4fv(prog.uTexMatrixLoc, 1, false, textureMatrix, 0)
@@ -739,7 +780,7 @@ class GlRenderer : FrameRenderer {
         GLES20.glEnable(GLES20.GL_BLEND)
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
         try {
-            val scale = 1.0f
+            val scale = effects.stickerScale.toFloat().coerceIn(0.5f, 3.0f)
             placements.sortedBy { it.trackId }.forEach { placement ->
                 val refW = placement.sourceWidth.coerceAtLeast(1).toFloat()
                 val refH = placement.sourceHeight.coerceAtLeast(1).toFloat()

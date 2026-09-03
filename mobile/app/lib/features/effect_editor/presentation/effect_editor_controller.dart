@@ -41,6 +41,41 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
     _requestPreview(debounce: true);
   }
 
+  void updateProtectionStyle(FillMode mode) {
+    final sticker = mode == FillMode.sticker;
+    final currentAsset = state.effects.stickerAssetId;
+    state = state.copyWith(
+      effects: state.effects.copyWith(
+        fillMode: mode,
+        faceStickerEnabled: sticker,
+        stickerAssetId: sticker
+            ? ((currentAsset == null || currentAsset == 'disabled')
+                  ? 'builtin:sunglasses'
+                  : currentAsset)
+            : 'disabled',
+      ),
+    );
+    _requestPreview(debounce: true);
+  }
+
+  void updateStickerAsset(String assetId) {
+    state = state.copyWith(
+      effects: state.effects.copyWith(
+        fillMode: FillMode.sticker,
+        faceStickerEnabled: true,
+        stickerAssetId: assetId,
+      ),
+    );
+    _requestPreview(debounce: true);
+  }
+
+  void updateStickerScale(double scale) {
+    state = state.copyWith(
+      effects: state.effects.copyWith(stickerScale: scale),
+    );
+    _requestPreview(debounce: true);
+  }
+
   void updateOpacity(double opacity) {
     state = state.copyWith(
       effects: state.effects.copyWith(opacity: opacity),

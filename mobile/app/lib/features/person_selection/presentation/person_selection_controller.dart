@@ -204,10 +204,31 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
       );
     }).toList();
 
+    var effects = project.effects;
+    if (state.privacyMode == ProjectPrivacyMode.fullBody &&
+        (effects.faceStickerEnabled || effects.fillMode == FillMode.sticker)) {
+      effects = effects.copyWith(
+        fillMode: FillMode.solid,
+        faceStickerEnabled: false,
+        stickerAssetId: 'disabled',
+      );
+    } else if (state.privacyMode == ProjectPrivacyMode.faceOnly &&
+        effects.stickerAssetId == null) {
+      // Before the effect-style selector existed, FACE_ONLY always rendered as
+      // an opaque privacy sticker. Keep that safe/compatible first-run default.
+      effects = effects.copyWith(
+        fillMode: FillMode.sticker,
+        faceStickerEnabled: true,
+        stickerAssetId: 'builtin:sunglasses',
+        stickerScale: 1.0,
+      );
+    }
+
     return project.copyWith(
       persons: updatedPersons,
       selectedPersonIds: state.selectedPersonIds,
       faceOnlyPersonIds: state.faceOnlyPersonIds,
+      effects: effects,
       analysisCacheId: state.analysisCacheId,
       updatedAt: DateTime.now(),
     );

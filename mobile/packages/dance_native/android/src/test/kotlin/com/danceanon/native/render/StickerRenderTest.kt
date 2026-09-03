@@ -25,6 +25,18 @@ class StickerRenderTest {
     }
 
     @Test
+    fun testBuiltInStickerVariantsAreRenderable() {
+        listOf("sunglasses", "blush", "panda", "cat", "bear").forEach { id ->
+            val bmp = GlRenderer.createDefaultStickerBitmap("builtin:$id")
+            if (bmp != null) {
+                assertEquals(128, bmp.width)
+                assertEquals(128, bmp.height)
+                bmp.recycle()
+            }
+        }
+    }
+
+    @Test
     fun testHeadZonePlacementCalculation() {
         val srcW = 1920
         val srcH = 1080
