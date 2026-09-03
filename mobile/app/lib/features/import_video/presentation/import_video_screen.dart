@@ -42,89 +42,80 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
         state.status == VideoImportStatus.picking ||
         state.status == VideoImportStatus.probing;
 
-    return Scaffold(
-      backgroundColor: AppTheme.background,
-      endDrawer: _buildSystemInfoDrawer(),
-      body: Builder(
-        builder: (scaffoldContext) => SafeArea(
-          child: Stack(
-            children: [
-              Positioned(
-                top: 8,
-                right: 14,
-                child: _ChromeIconButton(
-                  icon: Icons.more_horiz_rounded,
-                  tooltip: '设备与诊断',
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    Scaffold.of(scaffoldContext).openEndDrawer();
-                  },
-                ),
-              ),
-              Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(28, 72, 28, 36),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 420),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ShaderMask(
-                          blendMode: BlendMode.srcIn,
-                          shaderCallback: AppTheme.metalGradient.createShader,
-                          child: const Text(
-                            'Woah',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 54,
-                              height: 1,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -2.2,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          '隐私保护 · 本机处理',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.4,
-                          ),
-                        ),
-                        const SizedBox(height: 28),
-                        const _PrivacyPromise(),
-                        const SizedBox(height: 58),
-                        if (state.errorMessage != null) ...[
-                          _ErrorNotice(message: state.errorMessage!),
-                          const SizedBox(height: 18),
-                        ],
-                        if (isBusy)
-                          _LoadingPanel(status: state.status)
-                        else
-                          _MetalActionButton(
-                            icon: Icons.folder_open_rounded,
-                            label: '选择视频',
-                            onTap: _pickVideoAndContinue,
-                          ),
-                        const SizedBox(height: 14),
-                        const Text(
-                          '支持 MP4 · MOV · H.264 · HEVC',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: AppTheme.textMuted,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemNavigationBarColor: Color(0xFFF9F8F6),
+        systemNavigationBarIconBrightness: Brightness.dark,
+        systemNavigationBarDividerColor: Colors.transparent,
+        systemStatusBarContrastEnforced: false,
+        systemNavigationBarContrastEnforced: false,
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF9F8F6),
+        endDrawer: _buildSystemInfoDrawer(),
+        body: Builder(
+          builder: (scaffoldContext) => SafeArea(
+            child: Stack(
+              children: [
+                Positioned(
+                  top: 10,
+                  left: 18,
+                  child: _CloseButton(
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      SystemNavigator.pop();
+                    },
                   ),
                 ),
-              ),
-            ],
+                Positioned.fill(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final cardWidth = (constraints.maxWidth * 0.60).clamp(
+                        210.0,
+                        340.0,
+                      );
+
+                      return Stack(
+                        children: [
+                          Align(
+                            alignment: const Alignment(0, -0.02),
+                            child: _DanceClipImportCard(
+                              width: cardWidth,
+                              isBusy: isBusy,
+                              status: state.status,
+                              onTap: isBusy ? null : _pickVideoAndContinue,
+                            ),
+                          ),
+                          if (state.errorMessage != null)
+                            Positioned(
+                              left: 36,
+                              right: 36,
+                              bottom: 138,
+                              child: _LightErrorNotice(
+                                message: state.errorMessage!,
+                              ),
+                            ),
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 28,
+                            child: _ImportBrandSignature(
+                              onLongPress: () {
+                                HapticFeedback.lightImpact();
+                                Scaffold.of(scaffoldContext).openEndDrawer();
+                              },
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -277,117 +268,139 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
   }
 }
 
-class _PrivacyPromise extends StatelessWidget {
-  const _PrivacyPromise();
+class _DanceClipImportCard extends StatelessWidget {
+  final double width;
+  final bool isBusy;
+  final VideoImportStatus status;
+  final VoidCallback? onTap;
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
-      decoration: BoxDecoration(
-        color: AppTheme.surface.withAlpha(210),
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: AppTheme.surfaceBorder),
-      ),
-      child: const Column(
-        children: [
-          _PromiseRow(icon: Icons.lock_outline_rounded, text: '视频仅在本机处理'),
-          SizedBox(height: 10),
-          _PromiseRow(icon: Icons.cloud_off_outlined, text: '不会上传任何内容'),
-        ],
-      ),
-    );
-  }
-}
-
-class _PromiseRow extends StatelessWidget {
-  final IconData icon;
-  final String text;
-
-  const _PromiseRow({required this.icon, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 18, color: AppTheme.metalMid),
-        const SizedBox(width: 10),
-        Text(
-          text,
-          style: const TextStyle(
-            color: AppTheme.textSecondary,
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ChromeIconButton extends StatelessWidget {
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onPressed;
-
-  const _ChromeIconButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: AppTheme.minTouchTarget,
-      height: AppTheme.minTouchTarget,
-      decoration: AppTheme.panelDecoration(radius: 14),
-      child: IconButton(
-        tooltip: tooltip,
-        onPressed: onPressed,
-        icon: Icon(icon, size: 22),
-      ),
-    );
-  }
-}
-
-class _MetalActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _MetalActionButton({
-    required this.icon,
-    required this.label,
+  const _DanceClipImportCard({
+    required this.width,
+    required this.isBusy,
+    required this.status,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
+    final label = switch (status) {
+      VideoImportStatus.picking => '正在导入舞段…',
+      VideoImportStatus.probing => '正在读取舞段…',
+      _ => '导入舞段',
+    };
+
+    return Semantics(
+      button: !isBusy,
+      enabled: !isBusy,
+      label: label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        child: Ink(
-          width: double.infinity,
-          height: 58,
-          decoration: AppTheme.metalButtonDecoration(),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: AppTheme.canvas, size: 21),
-              const SizedBox(width: 10),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: AppTheme.canvas,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 180),
+          opacity: isBusy ? 0.92 : 1,
+          child: Container(
+            width: width,
+            height: width / 0.75,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x16000000),
+                  blurRadius: 28,
+                  offset: Offset(0, 14),
                 ),
-              ),
-            ],
+              ],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Color(0xFFDCECF8),
+                        Color(0xFFF2DEE1),
+                        Color(0xFFFF9C91),
+                        Color(0xFFF25657),
+                        Color(0xFFB51435),
+                      ],
+                      stops: [0.0, 0.23, 0.48, 0.72, 1.0],
+                    ),
+                  ),
+                ),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: Alignment(-0.86, 0.98),
+                      radius: 0.88,
+                      colors: [Color(0xAA780524), Color(0x00780524)],
+                      stops: [0.0, 1.0],
+                    ),
+                  ),
+                ),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: Alignment(0.82, 0.72),
+                      radius: 0.82,
+                      colors: [Color(0x55FF726B), Color(0x00FF726B)],
+                      stops: [0.0, 1.0],
+                    ),
+                  ),
+                ),
+                Align(
+                  alignment: const Alignment(0, -0.10),
+                  child: isBusy
+                      ? const SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.add_rounded,
+                          color: Colors.white,
+                          size: 36,
+                          shadows: [
+                            Shadow(
+                              color: Color(0x28000000),
+                              blurRadius: 5,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                ),
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: 20,
+                  child: Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      height: 1.2,
+                      fontWeight: FontWeight.w400,
+                      letterSpacing: 0.6,
+                      shadows: [
+                        Shadow(
+                          color: Color(0x22000000),
+                          blurRadius: 4,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -395,68 +408,102 @@ class _MetalActionButton extends StatelessWidget {
   }
 }
 
-class _LoadingPanel extends StatelessWidget {
-  final VideoImportStatus status;
+class _CloseButton extends StatelessWidget {
+  final VoidCallback onPressed;
 
-  const _LoadingPanel({required this.status});
+  const _CloseButton({required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
-    final label = status == VideoImportStatus.picking ? '正在选择视频…' : '正在读取视频信息…';
-    return Container(
-      width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 58),
-      decoration: AppTheme.panelDecoration(),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            label,
-            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
-          ),
-        ],
+    return SizedBox(
+      width: 48,
+      height: 48,
+      child: IconButton(
+        tooltip: '关闭',
+        onPressed: onPressed,
+        padding: EdgeInsets.zero,
+        icon: const Icon(
+          Icons.close_rounded,
+          size: 28,
+          color: Color(0xFF161616),
+        ),
       ),
     );
   }
 }
 
-class _ErrorNotice extends StatelessWidget {
+class _ImportBrandSignature extends StatelessWidget {
+  final VoidCallback onLongPress;
+
+  const _ImportBrandSignature({required this.onLongPress});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onLongPress: onLongPress,
+      child: const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Woah',
+              style: TextStyle(
+                color: Color(0xFFB0ACAA),
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 5.2,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              '记录每一个舞动瞬间',
+              style: TextStyle(
+                color: Color(0xFFBDB9B7),
+                fontSize: 11,
+                fontWeight: FontWeight.w400,
+                letterSpacing: 3.0,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LightErrorNotice extends StatelessWidget {
   final String message;
 
-  const _ErrorNotice({required this.message});
+  const _LightErrorNotice({required this.message});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceElevated,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: AppTheme.error.withAlpha(110)),
+        color: const Color(0xFFFFF5F3),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0x33B93438)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(
             Icons.error_outline_rounded,
-            color: AppTheme.error,
-            size: 20,
+            color: Color(0xFFB93438),
+            size: 18,
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
               style: const TextStyle(
-                color: AppTheme.textSecondary,
-                fontSize: 13,
+                color: Color(0xFF7A4648),
+                fontSize: 12,
+                height: 1.4,
               ),
             ),
           ),
