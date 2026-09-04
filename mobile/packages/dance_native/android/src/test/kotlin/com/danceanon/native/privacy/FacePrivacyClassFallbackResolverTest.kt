@@ -66,8 +66,14 @@ class FacePrivacyClassFallbackResolverTest {
             faceOnlyTrackIds = setOf(6),
             dormantSuppressedTrackIds = setOf(6),
             existingPlacements = emptyList(),
-            trustedFaceSizeByTrackId = mapOf(
-                6 to FacePrivacyTrustedSize(radiusX = 25f, radiusY = 30f)
+            trustedFaceGeometryByTrackId = mapOf(
+                6 to FacePrivacyTrustedGeometry(
+                    centerX = 400f,
+                    centerY = 212f,
+                    radiusX = 25f,
+                    radiusY = 30f,
+                    trustedPersonBbox = FloatRect(200f, 100f, 600f, 900f)
+                )
             ),
             canonicalizeReferenceGeometry = false
         ).single()

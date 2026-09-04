@@ -136,6 +136,14 @@ class FaceOnlyPrivacyFrameProcessor(
         val trustedPersonBbox: FloatRect,
         val lastTrustedPtsUs: Long
     ) {
+        fun asTrustedGeometry(): FacePrivacyTrustedGeometry = FacePrivacyTrustedGeometry(
+            centerX = centerX,
+            centerY = centerY,
+            radiusX = radiusX,
+            radiusY = radiusY,
+            trustedPersonBbox = trustedPersonBbox
+        )
+
         fun project(personBbox: FloatRect, ageUs: Long): FacePrivacyEllipse? {
             if (personBbox.width <= 1f || personBbox.height <= 1f) return null
 
@@ -410,16 +418,42 @@ class FaceOnlyPrivacyFrameProcessor(
         } else {
             MAX_PREDICTED_FACE_AGE_US
         }
-        val base = if (
+        val canUseCachedProjection =
             cached != null && cacheAgeUs != null &&
             cacheAgeUs in 0L..maxCacheAgeUs &&
             (renderMode == FaceOnlyRenderMode.BODY_MASK_COMPENSATED ||
                 person.framesSinceLastObservation <= MAX_LOCAL_FACE_UNOBSERVED_FRAMES)
+        val expiredFaceMaskFallback = if (
+            !canUseCachedProjection &&
+            cached != null && cacheAgeUs != null &&
+            cacheAgeUs in 0L..FacePixelMotionTracker.ROI_MAX_DETECTOR_SEED_AGE_US &&
+            person.observedThisFrame && person.mask != null
         ) {
-            cached.project(
-                person.bbox,
-                cacheAgeUs.coerceAtMost(FaceOnlyDormancyPolicy.MAX_BODY_COMPENSATION_AGE_US)
+            // The 150 ms face-evidence lease remains unchanged. Beyond it, an
+            // old face may only seed a local search over *current* body-mask
+            // pixels; the stale face center itself is never rendered.
+            FaceTrustedMaskFallback.resolve(
+                mask = person.mask,
+                currentPersonBbox = person.bbox,
+                trusted = cached.asTrustedGeometry(),
+                radiusExpansion = EXPIRED_FACE_MASK_FALLBACK_SIZE_EXPANSION
             )
+        } else {
+            null
+        }
+        val cachedProjection = if (canUseCachedProjection) {
+            checkNotNull(cached).project(
+                person.bbox,
+                checkNotNull(cacheAgeUs)
+                    .coerceAtMost(FaceOnlyDormancyPolicy.MAX_BODY_COMPENSATION_AGE_US)
+            )
+        } else {
+            null
+        }
+        val base = if (cachedProjection != null) {
+            cachedProjection
+        } else if (expiredFaceMaskFallback != null) {
+            expiredFaceMaskFallback
         } else {
             FacePrivacyRegionResolver.resolve(
                 personBbox = person.bbox,
@@ -428,11 +462,15 @@ class FaceOnlyPrivacyFrameProcessor(
             )
         } ?: return null
         val allowUnobservedBodyMask = renderMode == FaceOnlyRenderMode.BODY_MASK_COMPENSATED
-        val refined = refineWithCurrentBodyMask(
-            person = person,
-            region = base,
-            allowUnobservedMask = allowUnobservedBodyMask
-        )
+        val refined = if (expiredFaceMaskFallback != null) {
+            expiredFaceMaskFallback
+        } else {
+            refineWithCurrentBodyMask(
+                person = person,
+                region = base,
+                allowUnobservedMask = allowUnobservedBodyMask
+            )
+        }
         val compensated = if (
             renderMode == FaceOnlyRenderMode.BODY_MASK_COMPENSATED &&
             cacheAgeUs != null
@@ -452,7 +490,7 @@ class FaceOnlyPrivacyFrameProcessor(
         }
         return FallbackGeometry(
             region = compensated,
-            bodyMaskGuided = refined != null
+            bodyMaskGuided = expiredFaceMaskFallback != null || refined != null
         )
     }
 
@@ -1315,16 +1353,10 @@ class FaceOnlyPrivacyFrameProcessor(
             faceOnlyTrackIds = faceOnlyTrackIds,
             dormantSuppressedTrackIds = dormantSuppressedTrackIds,
             existingPlacements = stickerPlacements,
-            trustedFaceSizeByTrackId = buildMap {
+            trustedFaceGeometryByTrackId = buildMap {
                 dormantSuppressedTrackIds.forEach { trackId ->
                     cachedFaceByTrackId[trackId]?.let { cached ->
-                        put(
-                            trackId,
-                            FacePrivacyTrustedSize(
-                                radiusX = cached.radiusX,
-                                radiusY = cached.radiusY
-                            )
-                        )
+                        put(trackId, cached.asTrustedGeometry())
                     }
                 }
             },
@@ -1355,6 +1387,10 @@ class FaceOnlyPrivacyFrameProcessor(
                     "job_id" to diagnosticJobId,
                     "pts_us" to ptsUs,
                     "detection_indices" to classFallbacks.map { it.detectionIndex }.sorted(),
+                    "body_mask_guided_detection_indices" to classFallbacks
+                        .filter { it.bodyMaskGuided }
+                        .map { it.detectionIndex }
+                        .sorted(),
                     "residual_track_ids" to classFallbacks
                         .flatMap { it.residualTrackIds }
                         .toSortedSet()
@@ -1504,6 +1540,7 @@ class FaceOnlyPrivacyFrameProcessor(
         private const val MIN_PREDICTED_FACE_SCALE = 0.88f
         private const val MAX_PREDICTED_FACE_SCALE = 1.12f
         private const val MAX_PREDICTED_AGE_EXPANSION = 0.10f
+        private const val EXPIRED_FACE_MASK_FALLBACK_SIZE_EXPANSION = 1.10f
         private const val LOCAL_FACE_ROI_MIN_SIDE_PX = 72f
         private const val LOCAL_FACE_ROI_DIAMETER_FACTOR = 2.8f
         private const val OCCLUSION_REACQUIRE_ROI_DIAMETER_FACTOR = 4.2f

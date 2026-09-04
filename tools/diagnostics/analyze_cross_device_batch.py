@@ -280,6 +280,7 @@ def read_bundle(path: Path) -> dict:
                         pts = int(fields["pts_us"])
                         face_class_fallbacks[pts] = (
                             tuple(sorted(int(x) for x in fields.get("detection_indices", []))),
+                            tuple(sorted(int(x) for x in fields.get("body_mask_guided_detection_indices", []))),
                             tuple(sorted(int(x) for x in fields.get("residual_track_ids", []))),
                             tuple(sorted(int(x) for x in fields.get("synthetic_track_ids", []))),
                         )
@@ -515,7 +516,14 @@ def summarize_face_selected_gaps(bundle: dict) -> dict:
         value = fallbacks.get(pts)
         if value is None:
             return set()
-        return {int(x) for x in value[1]}
+        # Current tuples are (detections, mask-guided detections, owners,
+        # synthetic ids). Older bundles used (detections, owners, synthetic ids).
+        owner_index = 2 if len(value) >= 4 else 1
+        return {int(x) for x in value[owner_index]}
+
+    def is_mask_guided_fallback_at(pts: int) -> bool:
+        value = fallbacks.get(pts)
+        return value is not None and len(value) >= 4 and bool(value[1])
 
     by_track: dict[str, dict] = {}
     for track_id in selected_ids:
@@ -562,6 +570,9 @@ def summarize_face_selected_gaps(bundle: dict) -> dict:
     return {
         "selected_track_ids": selected_ids,
         "class_fallback_frames": len(fallbacks),
+        "body_mask_guided_class_fallback_frames": sum(
+            1 for pts in fallbacks if is_mask_guided_fallback_at(pts)
+        ),
         "by_track_id": by_track,
     }
 

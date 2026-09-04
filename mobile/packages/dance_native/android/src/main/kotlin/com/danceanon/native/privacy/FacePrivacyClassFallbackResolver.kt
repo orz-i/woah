@@ -8,12 +8,8 @@ internal data class FacePrivacyClassFallback(
     val syntheticTrackId: Int,
     val detectionIndex: Int,
     val residualTrackIds: Set<Int>,
-    val region: FacePrivacyEllipse
-)
-
-internal data class FacePrivacyTrustedSize(
-    val radiusX: Float,
-    val radiusY: Float
+    val region: FacePrivacyEllipse,
+    val bodyMaskGuided: Boolean = false
 )
 
 /**
@@ -33,7 +29,7 @@ internal object FacePrivacyClassFallbackResolver {
         faceOnlyTrackIds: Set<Int>,
         dormantSuppressedTrackIds: Set<Int>,
         existingPlacements: List<FaceStickerPlacement>,
-        trustedFaceSizeByTrackId: Map<Int, FacePrivacyTrustedSize> = emptyMap(),
+        trustedFaceGeometryByTrackId: Map<Int, FacePrivacyTrustedGeometry> = emptyMap(),
         canonicalizeReferenceGeometry: Boolean
     ): List<FacePrivacyClassFallback> {
         if (evidence.isEmpty() || dormantSuppressedTrackIds.isEmpty()) return emptyList()
@@ -60,22 +56,30 @@ internal object FacePrivacyClassFallbackResolver {
                     roiPlan = null,
                     selectedFace = null
                 ) ?: return@mapNotNull null
-                val trustedSize = item.residualTrackIds
+                val trustedGeometry = item.residualTrackIds
                     .singleOrNull()
-                    ?.let(trustedFaceSizeByTrackId::get)
-                val sizeBoundedRegion = if (trustedSize != null) {
+                    ?.let(trustedFaceGeometryByTrackId::get)
+                val maskGuidedRegion = trustedGeometry?.let { trusted ->
+                    FaceTrustedMaskFallback.resolve(
+                        mask = item.detection.mask,
+                        currentPersonBbox = personBbox,
+                        trusted = trusted,
+                        radiusExpansion = TRUSTED_SIZE_FALLBACK_EXPANSION
+                    )
+                }
+                val sizeBoundedRegion = if (maskGuidedRegion != null) {
+                    maskGuidedRegion
+                } else if (trustedGeometry != null) {
                     // Exact identity is intentionally unresolved here, but the
                     // privacy sidecar has already reduced the possible owner set
-                    // to one selected slot. Reuse only that slot's last trusted
-                    // source-space face size; current fresh body geometry remains
-                    // the sole center authority. This prevents a merge-expanded
-                    // person bbox from turning a short privacy fallback into a
-                    // head-and-shoulders sticker, without reviving stale face
-                    // position or updating any identity/cache state.
+                    // to one selected slot. Prefer a current-mask local head
+                    // estimate above; if that current evidence is unavailable,
+                    // retain the already validated body-head center and borrow
+                    // only the trusted source-space face size.
                     rawRegion.copy(
-                        radiusX = (trustedSize.radiusX * TRUSTED_SIZE_FALLBACK_EXPANSION)
+                        radiusX = (trustedGeometry.radiusX * TRUSTED_SIZE_FALLBACK_EXPANSION)
                             .coerceAtLeast(1f),
-                        radiusY = (trustedSize.radiusY * TRUSTED_SIZE_FALLBACK_EXPANSION)
+                        radiusY = (trustedGeometry.radiusY * TRUSTED_SIZE_FALLBACK_EXPANSION)
                             .coerceAtLeast(1f)
                     )
                 } else {
@@ -102,7 +106,8 @@ internal object FacePrivacyClassFallbackResolver {
                     syntheticTrackId = SYNTHETIC_TRACK_ID_BASE - item.detectionIndex,
                     detectionIndex = item.detectionIndex,
                     residualTrackIds = item.residualTrackIds,
-                    region = region
+                    region = region,
+                    bodyMaskGuided = maskGuidedRegion != null
                 )
             }
             .toList()
