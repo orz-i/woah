@@ -39,6 +39,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 class ExportPipeline(
@@ -46,6 +47,16 @@ class ExportPipeline(
     private val segmenter: YoloLiteRtSegmenter,
     private val eventEmitter: DanceProcessingEvents? = null
 ) {
+
+    private fun mergeCpuReferenceGeometryWithProductionMasks(
+        cpuReferenceTracks: List<TrackedPerson>,
+        productionTracks: List<TrackedPerson>
+    ): List<TrackedPerson> {
+        val productionById = productionTracks.associateBy { it.id }
+        return cpuReferenceTracks.map { cpuTrack ->
+            cpuTrack.copy(mask = productionById[cpuTrack.id]?.mask)
+        }
+    }
 
     private fun emitProgress(st: JobStatusDto, onStatusChange: (JobStatusDto) -> Unit) {
         onStatusChange(st)
@@ -722,6 +733,7 @@ class ExportPipeline(
                     var freshSelectedCoveredTrackIds = emptySet<Int>()
                     var suppressedSelectedPrivacyTrackIds = emptySet<Int>()
                     var preferFreshPrivacyClassPrimary = false
+                    var cpuReferenceTrackedForFace: List<TrackedPerson>? = null
 
                         // 2. Perform Inference / Temporal Mask Tracking
                         val trackedList: List<com.danceanon.native.tracking.TrackedPerson> = if (isSam2Mode && sam2Fbo != null && sam2Renderer != null && sam2Tracker != null) {
@@ -1085,7 +1097,7 @@ class ExportPipeline(
                                     trackManager.predict(ptsUs)
                                 }
                             }
-                            crossDeviceTrackingDiagnostics?.recordFrame(
+                            cpuReferenceTrackedForFace = crossDeviceTrackingDiagnostics?.recordFrame(
                                 ptsUs = ptsUs,
                                 shouldInfer = shouldInfer,
                                 productionDetections = if (shouldInfer) detections else null,
@@ -1166,13 +1178,29 @@ class ExportPipeline(
                         }
 
                         val faceOnlyFrameResult = faceOnlyPrivacyProcessor?.let { processor ->
-                            val protectedMotionEvidence = trackManager.getFreshProtectedTrackMotionEvidence()
+                            val useCpuReferenceGeometry =
+                                com.danceanon.dance_native.BuildConfig.DEBUG && cpuReferenceTrackedForFace != null
+                            val faceGeometryPersons = if (useCpuReferenceGeometry) {
+                                mergeCpuReferenceGeometryWithProductionMasks(
+                                    cpuReferenceTracks = requireNotNull(cpuReferenceTrackedForFace),
+                                    productionTracks = trackedList
+                                )
+                            } else {
+                                trackedList
+                            }
+                            val protectedMotionEvidence = if (useCpuReferenceGeometry) {
+                                crossDeviceTrackingDiagnostics
+                                    ?.getCpuFullProtectedTrackMotionEvidence()
+                                    .orEmpty()
+                            } else {
+                                trackManager.getFreshProtectedTrackMotionEvidence()
+                            }
                             profiler.recordStage("faceOnlyPrivacy") {
                                 processor.resolveFrame(
                                     frameTexture = renderTexId,
                                     texMatrix = finalTexMatrix,
                                     textureType = renderTexType,
-                                    persons = trackedList,
+                                    persons = faceGeometryPersons,
                                     faceOnlyTrackIds = faceOnlyPersonIds,
                                     fullBodyTrackIds = selectedIds,
                                     protectedMotionEvidence = protectedMotionEvidence,
@@ -1181,6 +1209,37 @@ class ExportPipeline(
                             }
                         }
                         if (faceOnlyFrameResult != null) {
+                            if (com.danceanon.dance_native.BuildConfig.DEBUG) {
+                                com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                                    level = "INFO",
+                                    component = "ExportPipeline",
+                                    event = "FACE_ONLY_STICKER_PLACEMENT_SIGNATURE",
+                                    fields = mapOf(
+                                        "job_id" to jobId,
+                                        "pts_us" to ptsUs,
+                                        "geometry_source" to if (cpuReferenceTrackedForFace != null) {
+                                            "CPU_MT4_REFERENCE"
+                                        } else {
+                                            "PRODUCTION_TRACKS"
+                                        },
+                                        "mask_source" to "PRODUCTION_TRACKS",
+                                        "placements" to faceOnlyFrameResult.stickerPlacements
+                                            .sortedBy { it.trackId }
+                                            .map { placement ->
+                                                mapOf(
+                                                    "track_id" to placement.trackId,
+                                                    "source" to placement.source.name,
+                                                    "source_rect_q0_0625px" to listOf(
+                                                        (placement.sourceRect.left * 16f).roundToInt(),
+                                                        (placement.sourceRect.top * 16f).roundToInt(),
+                                                        (placement.sourceRect.right * 16f).roundToInt(),
+                                                        (placement.sourceRect.bottom * 16f).roundToInt()
+                                                    )
+                                                )
+                                            }
+                                    )
+                                )
+                            }
                             faceDetectorCallCount += faceOnlyFrameResult.detectorCallCount
                             faceDetectorObservationCount += faceOnlyFrameResult.detectorObservationCount
                             faceDetectorZeroObservationCallCount += faceOnlyFrameResult.detectorZeroObservationCallCount

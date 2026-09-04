@@ -99,8 +99,10 @@ def read_bundle(path: Path) -> dict:
         shadow_adaptive_metrics: dict[str, dict[int, dict]] = {}
         shadow_protected_track_ids: set[int] = set()
         face_production_tracks: dict[int, tuple] = {}
+        face_production_identity: dict[int, tuple] = {}
         face_identity_roots: dict | None = None
         face_roi_detector: dict[tuple[int, int, str], tuple] = {}
+        face_sticker_placements: dict[int, tuple] = {}
         shadow_inference_ordinal: dict[int, int] = {}
         shadow_should_infer: dict[int, bool] = {}
         shadow_disabled: list[dict] = []
@@ -217,7 +219,9 @@ def read_bundle(path: Path) -> dict:
                 elif event_name == "FACE_ONLY_PRODUCTION_TRACK_SIGNATURE":
                     if fields.get("job_id") == job_id:
                         pts = int(fields["pts_us"])
-                        face_production_tracks[pts] = _track_signature(fields.get("tracks", []))
+                        face_tracks = fields.get("tracks", [])
+                        face_production_tracks[pts] = _track_signature(face_tracks)
+                        face_production_identity[pts] = _track_identity_signature(face_tracks)
                 elif event_name == "FACE_ROI_DETECTOR_DIAGNOSTIC":
                     if fields.get("job_id") == job_id:
                         key = (
@@ -234,6 +238,21 @@ def read_bundle(path: Path) -> dict:
                             fields.get("pixel_reject_reason"),
                             tuple(fields.get("source_rect_q0_0625px", [])),
                             tuple(fields.get("person_bbox_q0_0625px", [])),
+                        )
+                elif event_name == "FACE_ONLY_STICKER_PLACEMENT_SIGNATURE":
+                    if fields.get("job_id") == job_id:
+                        pts = int(fields["pts_us"])
+                        face_sticker_placements[pts] = (
+                            fields.get("geometry_source"),
+                            fields.get("mask_source"),
+                            tuple(
+                                (
+                                    placement.get("track_id"),
+                                    placement.get("source"),
+                                    tuple(placement.get("source_rect_q0_0625px", [])),
+                                )
+                                for placement in fields.get("placements", [])
+                            ),
                         )
 
         historical = []
@@ -281,8 +300,10 @@ def read_bundle(path: Path) -> dict:
             "shadow_adaptive_metrics": shadow_adaptive_metrics,
             "shadow_protected_track_ids": shadow_protected_track_ids,
             "face_production_tracks": face_production_tracks,
+            "face_production_identity": face_production_identity,
             "face_identity_roots": face_identity_roots,
             "face_roi_detector": face_roi_detector,
+            "face_sticker_placements": face_sticker_placements,
             "shadow_inference_ordinal": shadow_inference_ordinal,
             "shadow_should_infer": shadow_should_infer,
             "shadow_disabled": shadow_disabled,
@@ -593,7 +614,43 @@ def main() -> int:
                 "identity_protected_track_ids": sorted(b["shadow_protected_track_ids"]),
                 "face_identity_roots": b["face_identity_roots"],
                 "face_production_track_frames": len(b["face_production_tracks"]),
+                "face_production_vs_cpu_full": {
+                    "identity": compare_map(
+                        b["face_production_identity"],
+                        filter_identity_map(
+                            b["shadow_cpu_identity"], b["shadow_protected_track_ids"]
+                        ),
+                    ),
+                    "id_set": compare_map(
+                        transform_map(
+                            b["face_production_identity"], _track_id_set_signature_from_identity
+                        ),
+                        transform_map(
+                            filter_identity_map(
+                                b["shadow_cpu_identity"], b["shadow_protected_track_ids"]
+                            ),
+                            _track_id_set_signature_from_identity,
+                        ),
+                    ),
+                    "state_topology": compare_map(
+                        transform_map(
+                            b["face_production_identity"], _track_state_signature_from_identity
+                        ),
+                        transform_map(
+                            filter_identity_map(
+                                b["shadow_cpu_identity"], b["shadow_protected_track_ids"]
+                            ),
+                            _track_state_signature_from_identity,
+                        ),
+                    ),
+                    "bbox_delta": protected_bbox_delta_summary(
+                        b["face_production_tracks"],
+                        b["shadow_cpu_full"],
+                        b["shadow_protected_track_ids"],
+                    ),
+                },
                 "face_roi_detector_events": len(b["face_roi_detector"]),
+                "face_sticker_placement_frames": len(b["face_sticker_placements"]),
             }
             for b in bundles
         ],
@@ -622,8 +679,35 @@ def main() -> int:
                     "face_only_production_tracks": compare_map(
                         a["face_production_tracks"], b["face_production_tracks"]
                     ),
+                    "face_only_production_identity": compare_map(
+                        a["face_production_identity"], b["face_production_identity"]
+                    ),
+                    "face_only_production_id_set": compare_map(
+                        transform_map(
+                            a["face_production_identity"], _track_id_set_signature_from_identity
+                        ),
+                        transform_map(
+                            b["face_production_identity"], _track_id_set_signature_from_identity
+                        ),
+                    ),
+                    "face_only_production_state_topology": compare_map(
+                        transform_map(
+                            a["face_production_identity"], _track_state_signature_from_identity
+                        ),
+                        transform_map(
+                            b["face_production_identity"], _track_state_signature_from_identity
+                        ),
+                    ),
+                    "face_only_production_bbox_delta": protected_bbox_delta_summary(
+                        a["face_production_tracks"],
+                        b["face_production_tracks"],
+                        a["shadow_protected_track_ids"] | b["shadow_protected_track_ids"],
+                    ),
                     "face_roi_detector": compare_face_roi(
                         a["face_roi_detector"], b["face_roi_detector"]
+                    ),
+                    "face_sticker_placements": compare_map(
+                        a["face_sticker_placements"], b["face_sticker_placements"]
                     ),
                     "cpu_1t_detection": compare_map(a["detections"]["cpu_probe"], b["detections"]["cpu_probe"]),
                     "cpu_2t_detection": compare_map(a["detections"]["cpu_mt2_probe"], b["detections"]["cpu_mt2_probe"]),

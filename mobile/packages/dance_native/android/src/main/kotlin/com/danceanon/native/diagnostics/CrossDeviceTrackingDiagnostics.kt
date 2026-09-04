@@ -2,6 +2,7 @@ package com.danceanon.native.diagnostics
 
 import com.danceanon.native.inference.PersonDetection
 import com.danceanon.native.tracking.HungarianSolver
+import com.danceanon.native.tracking.ProtectedTrackMotionEvidence
 import com.danceanon.native.tracking.TrackManager
 import com.danceanon.native.tracking.TrackState
 import com.danceanon.native.tracking.TrackedPerson
@@ -98,8 +99,8 @@ internal class CrossDeviceTrackingDiagnostics(
         productionDetections: List<PersonDetection>?,
         productionTracked: List<TrackedPerson>?,
         cpuMt4Detections: List<PersonDetection>?
-    ) {
-        if (!com.danceanon.dance_native.BuildConfig.DEBUG || disabledReason != null) return
+    ): List<TrackedPerson>? {
+        if (!com.danceanon.dance_native.BuildConfig.DEBUG || disabledReason != null) return null
 
         try {
             val cpuFullTracked: List<TrackedPerson>
@@ -190,13 +191,21 @@ internal class CrossDeviceTrackingDiagnostics(
                     "adaptive_metrics" to adaptiveMetrics
                 )
             )
+            return cpuFullTracked
         } catch (t: Throwable) {
-            disable("${t.javaClass.simpleName}:${t.message ?: "unknown"}")
+            return disable("${t.javaClass.simpleName}:${t.message ?: "unknown"}")
         }
     }
 
-    private fun disable(reason: String) {
-        if (disabledReason != null) return
+    fun getCpuFullProtectedTrackMotionEvidence(): List<ProtectedTrackMotionEvidence> =
+        if (initialized && disabledReason == null) {
+            cpuFullTracker.getFreshProtectedTrackMotionEvidence()
+        } else {
+            emptyList()
+        }
+
+    private fun disable(reason: String): List<TrackedPerson>? {
+        if (disabledReason != null) return null
         disabledReason = reason
         NativeDiagnostics.event(
             level = "WARN",
@@ -207,6 +216,7 @@ internal class CrossDeviceTrackingDiagnostics(
                 "reason" to reason
             )
         )
+        return null
     }
 
     companion object {
