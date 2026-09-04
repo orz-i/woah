@@ -103,6 +103,9 @@ def read_bundle(path: Path) -> dict:
         face_identity_roots: dict | None = None
         face_roi_detector: dict[tuple[int, int, str], tuple] = {}
         face_sticker_placements: dict[int, tuple] = {}
+        face_class_fallbacks: dict[int, tuple] = {}
+        new_track_events: list[dict] = []
+        protected_lost_reservation_events: list[dict] = []
         shadow_inference_ordinal: dict[int, int] = {}
         shadow_should_infer: dict[int, bool] = {}
         shadow_disabled: list[dict] = []
@@ -255,6 +258,36 @@ def read_bundle(path: Path) -> dict:
                                 for placement in fields.get("placements", [])
                             ),
                         )
+                elif event_name == "FACE_ONLY_CLASS_FALLBACK":
+                    if fields.get("job_id") == job_id:
+                        pts = int(fields["pts_us"])
+                        face_class_fallbacks[pts] = (
+                            tuple(sorted(int(x) for x in fields.get("detection_indices", []))),
+                            tuple(sorted(int(x) for x in fields.get("residual_track_ids", []))),
+                            tuple(sorted(int(x) for x in fields.get("synthetic_track_ids", []))),
+                        )
+                elif event_name == "NEW_TRACK_CREATED":
+                    new_track_events.append(
+                        {
+                            "pts_us": fields.get("pts_us"),
+                            "track_id": fields.get("track_id"),
+                            "det_index": fields.get("det_index"),
+                            "bbox": fields.get("bbox"),
+                        }
+                    )
+                elif event_name == "AMBIGUOUS_PROTECTED_LOST_DETECTION_RESERVED":
+                    protected_lost_reservation_events.append(
+                        {
+                            "pts_us": fields.get("pts_us"),
+                            "det_index": fields.get("det_index"),
+                            "protected_lost_motion_owner_ids": fields.get(
+                                "protected_lost_motion_owner_ids", []
+                            ),
+                            "strict_protected_lost_owner_ids": fields.get(
+                                "strict_protected_lost_owner_ids", []
+                            ),
+                        }
+                    )
 
         historical = []
         for name in z.namelist():
@@ -284,6 +317,10 @@ def read_bundle(path: Path) -> dict:
                 "cpu_4t_total": _stage(summary, "yoloCpuMt4Probe"),
                 "cpu_4t_run": _stage(summary, "yoloCpuMt4Probe_yoloLiteRtRun"),
                 "canonical": _stage(summary, "canonicalYuvToRgba"),
+                "face_roi": _stage(summary, "faceRoiReadback"),
+                "face_detector": _stage(summary, "faceDetectorCpu"),
+                "face_pixel_motion": _stage(summary, "facePixelMotionCpu"),
+                "face_privacy": _stage(summary, "faceOnlyPrivacy"),
             },
             "detections": detections,
             "shadow_raw": shadow_raw,
@@ -305,6 +342,10 @@ def read_bundle(path: Path) -> dict:
             "face_identity_roots": face_identity_roots,
             "face_roi_detector": face_roi_detector,
             "face_sticker_placements": face_sticker_placements,
+            "face_class_fallbacks": face_class_fallbacks,
+            "new_track_events": new_track_events,
+            "protected_lost_reservation_events": protected_lost_reservation_events,
+            "pipeline_summary": summary,
             "shadow_inference_ordinal": shadow_inference_ordinal,
             "shadow_should_infer": shadow_should_infer,
             "shadow_disabled": shadow_disabled,
@@ -390,6 +431,90 @@ def compare_map(a: dict[int, tuple], b: dict[int, tuple]) -> dict:
         "only_b_frames": len(only_b),
         "different_frames": len(diffs),
         "first_different_pts_us": diffs[0] if diffs else None,
+    }
+
+
+def summarize_face_selected_gaps(bundle: dict) -> dict:
+    roots = bundle.get("face_identity_roots") or {}
+    selected_ids = [int(x) for x in roots.get("face_only_person_ids", [])]
+    placements = bundle.get("face_sticker_placements", {})
+    fallbacks = bundle.get("face_class_fallbacks", {})
+    ordered_pts = sorted(placements)
+    if not ordered_pts:
+        return {"selected_track_ids": selected_ids, "by_track_id": {}}
+
+    def present_ids_at(pts: int) -> set[int]:
+        value = placements[pts]
+        return {
+            int(item[0])
+            for item in value[2]
+            if isinstance(item[0], int) and int(item[0]) >= 0
+        }
+
+    def fallback_owner_ids_at(pts: int) -> set[int]:
+        value = fallbacks.get(pts)
+        if value is None:
+            return set()
+        return {int(x) for x in value[1]}
+
+    by_track: dict[str, dict] = {}
+    for track_id in selected_ids:
+        missing_indices = [
+            index
+            for index, pts in enumerate(ordered_pts)
+            if track_id not in present_ids_at(pts)
+        ]
+        runs: list[tuple[int, int]] = []
+        if missing_indices:
+            run_start = missing_indices[0]
+            run_end = missing_indices[0]
+            for index in missing_indices[1:]:
+                if index == run_end + 1:
+                    run_end = index
+                else:
+                    runs.append((run_start, run_end))
+                    run_start = run_end = index
+            runs.append((run_start, run_end))
+        longest = max(runs, key=lambda item: item[1] - item[0] + 1) if runs else None
+        fallback_covered = [
+            pts
+            for pts in ordered_pts
+            if track_id not in present_ids_at(pts) and track_id in fallback_owner_ids_at(pts)
+        ]
+        uncovered = [
+            pts
+            for pts in ordered_pts
+            if track_id not in present_ids_at(pts) and track_id not in fallback_owner_ids_at(pts)
+        ]
+        by_track[str(track_id)] = {
+            "missing_sticker_frames": len(missing_indices),
+            "class_fallback_covered_missing_frames": len(fallback_covered),
+            "missing_without_class_fallback_frames": len(uncovered),
+            "longest_missing_run": None
+            if longest is None
+            else {
+                "frames": longest[1] - longest[0] + 1,
+                "start_pts_us": ordered_pts[longest[0]],
+                "end_pts_us": ordered_pts[longest[1]],
+                "span_us": ordered_pts[longest[1]] - ordered_pts[longest[0]],
+            },
+        }
+    return {
+        "selected_track_ids": selected_ids,
+        "class_fallback_frames": len(fallbacks),
+        "by_track_id": by_track,
+    }
+
+
+def selected_face_quality_summary(summary: dict) -> dict:
+    exact_keys = {
+        "face_dormant_suppressed_track_frames",
+        "face_detector_rejected_call_count",
+    }
+    return {
+        key: value
+        for key, value in sorted(summary.items())
+        if key in exact_keys or (key.startswith("face_") and key.endswith("_by_track_id"))
     }
 
 
@@ -656,6 +781,20 @@ def main() -> int:
                 },
                 "face_roi_detector_events": len(b["face_roi_detector"]),
                 "face_sticker_placement_frames": len(b["face_sticker_placements"]),
+                "face_selected_quality": summarize_face_selected_gaps(b),
+                "face_pipeline_quality": selected_face_quality_summary(b["pipeline_summary"]),
+                "new_track_ids": sorted(
+                    {
+                        int(event["track_id"])
+                        for event in b["new_track_events"]
+                        if isinstance(event.get("track_id"), int)
+                    }
+                ),
+                "new_track_events": b["new_track_events"],
+                "protected_lost_reservation_event_count": len(
+                    b["protected_lost_reservation_events"]
+                ),
+                "protected_lost_reservation_events": b["protected_lost_reservation_events"],
             }
             for b in bundles
         ],
@@ -713,6 +852,9 @@ def main() -> int:
                     ),
                     "face_sticker_placements": compare_map(
                         a["face_sticker_placements"], b["face_sticker_placements"]
+                    ),
+                    "face_class_fallbacks": compare_map(
+                        a["face_class_fallbacks"], b["face_class_fallbacks"]
                     ),
                     "cpu_1t_detection": compare_map(a["detections"]["cpu_probe"], b["detections"]["cpu_probe"]),
                     "cpu_2t_detection": compare_map(a["detections"]["cpu_mt2_probe"], b["detections"]["cpu_mt2_probe"]),

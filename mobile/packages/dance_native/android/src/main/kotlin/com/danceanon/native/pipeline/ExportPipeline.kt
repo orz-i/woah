@@ -1215,6 +1215,15 @@ class ExportPipeline(
                             } else {
                                 trackManager.getFreshProtectedTrackMotionEvidence()
                             }
+                            val freshFacePrivacyClassEvidence = if (useCpuReferenceGeometry) {
+                                crossDeviceTrackingDiagnostics
+                                    ?.getCpuFullFreshFacePrivacyClassEvidence()
+                                    .orEmpty()
+                            } else {
+                                // Keep release/runtime behavior unchanged until the
+                                // deterministic candidate is validated on devices.
+                                emptyList()
+                            }
                             profiler.recordStage("faceOnlyPrivacy") {
                                 processor.resolveFrame(
                                     frameTexture = renderTexId,
@@ -1224,6 +1233,7 @@ class ExportPipeline(
                                     faceOnlyTrackIds = faceOnlyPersonIds,
                                     fullBodyTrackIds = selectedIds,
                                     protectedMotionEvidence = protectedMotionEvidence,
+                                    freshPrivacyClassEvidence = freshFacePrivacyClassEvidence,
                                     canonicalModelRgbaBottomUp = if (useCpuReferenceGeometry) {
                                         canonicalModelRgbaForFace
                                     } else {

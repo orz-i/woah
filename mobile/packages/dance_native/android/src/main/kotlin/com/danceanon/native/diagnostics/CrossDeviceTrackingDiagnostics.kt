@@ -204,6 +204,13 @@ internal class CrossDeviceTrackingDiagnostics(
             emptyList()
         }
 
+    fun getCpuFullFreshFacePrivacyClassEvidence(): List<com.danceanon.native.tracking.FreshPrivacyClassEvidence> =
+        if (initialized && disabledReason == null) {
+            cpuFullTracker.getFreshFacePrivacyClassEvidence()
+        } else {
+            emptyList()
+        }
+
     private fun disable(reason: String): List<TrackedPerson>? {
         if (disabledReason != null) return null
         disabledReason = reason
@@ -410,6 +417,7 @@ internal class CrossDeviceTrackingDiagnostics(
             } else {
                 tracker.setIdentityProtectedTrackIds(identityProtectedTrackIds)
                 tracker.setPrivacySelectedTrackIds(fullBodyPersonIds)
+                tracker.setFacePrivacySelectedTrackIds(faceOnlyPersonIds)
                 tracker.setPrivacyOffscreenDormancyEnabled(fullBodyPersonIds.isNotEmpty())
             }
         }

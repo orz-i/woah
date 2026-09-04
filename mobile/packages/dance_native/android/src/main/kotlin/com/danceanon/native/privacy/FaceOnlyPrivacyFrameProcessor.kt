@@ -15,6 +15,7 @@ import com.danceanon.native.render.FaceRoiRenderer
 import com.danceanon.native.render.FaceStickerPlacement
 import com.danceanon.native.render.InferenceFbo
 import com.danceanon.native.render.SourceTextureType
+import com.danceanon.native.tracking.FreshPrivacyClassEvidence
 import com.danceanon.native.tracking.ProtectedTrackMotionEvidence
 import com.danceanon.native.tracking.TrackState
 import com.danceanon.native.tracking.TrackedPerson
@@ -497,6 +498,7 @@ class FaceOnlyPrivacyFrameProcessor(
         faceOnlyTrackIds: Set<Int>,
         fullBodyTrackIds: Set<Int> = emptySet(),
         protectedMotionEvidence: List<ProtectedTrackMotionEvidence> = emptyList(),
+        freshPrivacyClassEvidence: List<FreshPrivacyClassEvidence> = emptyList(),
         canonicalModelRgbaBottomUp: ByteBuffer? = null,
         ptsUs: Long
     ): FaceOnlyPrivacyFrameResult {
@@ -1308,6 +1310,47 @@ class FaceOnlyPrivacyFrameProcessor(
         dormantFaceOnlyTrackIds.removeAll(renderableFaceOnlyTrackIds)
         dormantFaceOnlyTrackIds.addAll(dormantSuppressedTrackIds)
 
+        val classFallbacks = FacePrivacyClassFallbackResolver.resolve(
+            evidence = freshPrivacyClassEvidence,
+            faceOnlyTrackIds = faceOnlyTrackIds,
+            dormantSuppressedTrackIds = dormantSuppressedTrackIds,
+            existingPlacements = stickerPlacements,
+            canonicalizeReferenceGeometry = canonicalizeReferenceGeometry
+        )
+        classFallbacks.forEach { classFallback ->
+            FaceStickerPlacement.from(
+                trackId = classFallback.syntheticTrackId,
+                region = classFallback.region,
+                sourceWidth = mapper.srcWidth,
+                sourceHeight = mapper.srcHeight
+            )?.let(stickerPlacements::add)
+        }
+        val classFallbackMask = if (classFallbacks.isEmpty()) {
+            null
+        } else {
+            val startNs = System.nanoTime()
+            FacePrivacyMaskBuilder.build(classFallbacks.map { it.region }, mapper).also {
+                maskBuildMs += (System.nanoTime() - startNs) / 1_000_000.0
+            }
+        }
+        if (classFallbacks.isNotEmpty() && diagnosticJobId != null) {
+            NativeDiagnostics.event(
+                level = "INFO",
+                component = TAG,
+                event = "FACE_ONLY_CLASS_FALLBACK",
+                fields = mapOf(
+                    "job_id" to diagnosticJobId,
+                    "pts_us" to ptsUs,
+                    "detection_indices" to classFallbacks.map { it.detectionIndex }.sorted(),
+                    "residual_track_ids" to classFallbacks
+                        .flatMap { it.residualTrackIds }
+                        .toSortedSet()
+                        .toList(),
+                    "synthetic_track_ids" to classFallbacks.map { it.syntheticTrackId }.sorted()
+                )
+            )
+        }
+
         // FULL_BODY targets are owned by the primary compositor path. They must
         // not become "unselected foreground" inside this secondary FACE_ONLY
         // resolver or they could carve a selected face during overlap. Preserve
@@ -1332,7 +1375,7 @@ class FaceOnlyPrivacyFrameProcessor(
             addAll(missingTrackIds)
             addAll(adaptation.unresolvedSelectedTrackIds)
         }
-        val resolved = if (adaptation.selectedPersonIds.isEmpty()) {
+        val baseResolved = if (adaptation.selectedPersonIds.isEmpty()) {
             null
         } else {
             PrivacyOcclusionResolver.resolveMasks(
@@ -1341,6 +1384,20 @@ class FaceOnlyPrivacyFrameProcessor(
                 ptsUs = ptsUs,
                 expectedSelectedCount = adaptation.selectedPersonIds.size
             )
+        }
+        val classResolved = classFallbackMask?.let { mask ->
+            ResolvedCompositorMasks(
+                privacyMask = mask,
+                occluderMask = null,
+                hasPrivacy = true,
+                hasOccluder = false
+            )
+        }
+        val resolved = when {
+            baseResolved != null && classResolved != null ->
+                PrivacyOcclusionResolver.mergeResolvedMasks(listOf(baseResolved, classResolved))
+            baseResolved != null -> baseResolved
+            else -> classResolved
         }
         val privacyResolveMs = (System.nanoTime() - privacyResolveStartNs) / 1_000_000.0
 
