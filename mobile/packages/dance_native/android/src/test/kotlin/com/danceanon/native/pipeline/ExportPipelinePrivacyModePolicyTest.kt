@@ -3,6 +3,7 @@ package com.danceanon.native.pipeline
 import com.danceanon.native.storage.AnalysisMetadata
 import com.danceanon.native.storage.CachedBBox
 import com.danceanon.native.storage.CachedPerson
+import com.danceanon.native.inference.FloatRect
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -33,6 +34,19 @@ class ExportPipelinePrivacyModePolicyTest {
             ExportPipeline.shouldUseFreshFullBodyClassPrimary(
                 fullBodyPersonIds = emptySet(),
                 faceOnlyPersonIds = emptySet()
+            )
+        )
+    }
+
+    @Test
+    fun `face reference canonicalization collapses subpixel cpu noise without touching tracker policy`() {
+        assertEquals(100.5f, ExportPipeline.canonicalizeFaceReferenceCoordinate(100.47f))
+        assertEquals(100.5f, ExportPipeline.canonicalizeFaceReferenceCoordinate(100.53f))
+
+        assertEquals(
+            FloatRect(100.5f, 200.0f, 300.5f, 500.0f),
+            ExportPipeline.canonicalizeFaceReferenceBbox(
+                FloatRect(100.47f, 200.03f, 300.53f, 499.97f)
             )
         )
     }

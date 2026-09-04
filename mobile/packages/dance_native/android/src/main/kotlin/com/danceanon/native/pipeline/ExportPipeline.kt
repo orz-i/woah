@@ -11,6 +11,7 @@ import com.danceanon.native.bridge.DanceNativeException
 import com.danceanon.native.bridge.DanceProcessingEvents
 import com.danceanon.native.bridge.ExportRequestDto
 import com.danceanon.native.bridge.JobStatusDto
+import com.danceanon.native.inference.FloatRect
 import com.danceanon.native.inference.RgbaColOrder
 import com.danceanon.native.inference.RgbaRowOrder
 import com.danceanon.native.inference.YoloLiteRtSegmenter
@@ -27,6 +28,7 @@ import com.danceanon.native.render.EglCore
 import com.danceanon.native.render.GlRenderer
 import com.danceanon.native.storage.CacheManager
 import com.danceanon.native.tracking.HungarianSolver
+import com.danceanon.native.tracking.ProtectedTrackMotionEvidence
 import com.danceanon.native.tracking.TrackManager
 import com.danceanon.native.tracking.TrackState
 import com.danceanon.native.tracking.TrackedPerson
@@ -48,14 +50,24 @@ class ExportPipeline(
     private val eventEmitter: DanceProcessingEvents? = null
 ) {
 
-    private fun mergeCpuReferenceGeometryWithProductionMasks(
-        cpuReferenceTracks: List<TrackedPerson>,
-        productionTracks: List<TrackedPerson>
-    ): List<TrackedPerson> {
-        val productionById = productionTracks.associateBy { it.id }
-        return cpuReferenceTracks.map { cpuTrack ->
-            cpuTrack.copy(mask = productionById[cpuTrack.id]?.mask)
-        }
+    private fun canonicalizeCpuReferenceForFace(
+        cpuReferenceTracks: List<TrackedPerson>
+    ): List<TrackedPerson> = cpuReferenceTracks.map { cpuTrack ->
+        cpuTrack.copy(
+            bbox = canonicalizeFaceReferenceBbox(cpuTrack.bbox),
+            footY = cpuTrack.footY?.let(::canonicalizeFaceReferenceCoordinate)
+        )
+    }
+
+    private fun canonicalizeCpuReferenceMotionEvidence(
+        evidence: List<ProtectedTrackMotionEvidence>
+    ): List<ProtectedTrackMotionEvidence> = evidence.map { item ->
+        item.copy(
+            detection = item.detection.copy(
+                bbox = canonicalizeFaceReferenceBbox(item.detection.bbox),
+                footY = canonicalizeFaceReferenceCoordinate(item.detection.footY)
+            )
+        )
     }
 
     private fun emitProgress(st: JobStatusDto, onStatusChange: (JobStatusDto) -> Unit) {
@@ -1183,17 +1195,22 @@ class ExportPipeline(
                             val useCpuReferenceGeometry =
                                 com.danceanon.dance_native.BuildConfig.DEBUG && cpuReferenceTrackedForFace != null
                             val faceGeometryPersons = if (useCpuReferenceGeometry) {
-                                mergeCpuReferenceGeometryWithProductionMasks(
-                                    cpuReferenceTracks = requireNotNull(cpuReferenceTrackedForFace),
-                                    productionTracks = trackedList
+                                // Keep the complete deterministic CPU reference for FACE_ONLY:
+                                // identity/state, geometry and body-mask evidence. Mixing the
+                                // production GPU mask back into this path reintroduces a second
+                                // device-specific geometry source through head refinement.
+                                canonicalizeCpuReferenceForFace(
+                                    cpuReferenceTracks = requireNotNull(cpuReferenceTrackedForFace)
                                 )
                             } else {
                                 trackedList
                             }
                             val protectedMotionEvidence = if (useCpuReferenceGeometry) {
-                                crossDeviceTrackingDiagnostics
-                                    ?.getCpuFullProtectedTrackMotionEvidence()
-                                    .orEmpty()
+                                canonicalizeCpuReferenceMotionEvidence(
+                                    crossDeviceTrackingDiagnostics
+                                        ?.getCpuFullProtectedTrackMotionEvidence()
+                                        .orEmpty()
+                                )
                             } else {
                                 trackManager.getFreshProtectedTrackMotionEvidence()
                             }
@@ -1229,7 +1246,11 @@ class ExportPipeline(
                                         } else {
                                             "PRODUCTION_TRACKS"
                                         },
-                                        "mask_source" to "PRODUCTION_TRACKS",
+                                        "mask_source" to if (cpuReferenceTrackedForFace != null) {
+                                            "CPU_MT4_REFERENCE"
+                                        } else {
+                                            "PRODUCTION_TRACKS"
+                                        },
                                         "placements" to faceOnlyFrameResult.stickerPlacements
                                             .sortedBy { it.trackId }
                                             .map { placement ->
@@ -2011,7 +2032,25 @@ class ExportPipeline(
     companion object {
         private const val CPU_MT_PROBE_THREADS = 4
         private const val CPU_MT4_ARTIFACT_MAX_PTS_US = 450_000L
+        // FACE_ONLY only. TrackManager itself remains unquantized. We first collapse
+        // lower float noise to the existing 1/16 px diagnostic lattice, then snap
+        // to 0.5 px. Offline replay of the current 751-frame three-device batch
+        // showed this is the smallest tested step with zero protected-bbox diffs.
+        private const val FACE_REFERENCE_Q16_PER_HALF_PIXEL = 8
         internal const val SELECTION_IDENTITY_ROOT_MIN_CONFIDENCE = 0.60
+
+        internal fun canonicalizeFaceReferenceCoordinate(value: Float): Float {
+            val q16 = (value * 16f).roundToInt()
+            val halfPixelBucket = (q16.toFloat() / FACE_REFERENCE_Q16_PER_HALF_PIXEL).roundToInt()
+            return (halfPixelBucket * FACE_REFERENCE_Q16_PER_HALF_PIXEL) / 16f
+        }
+
+        internal fun canonicalizeFaceReferenceBbox(bbox: FloatRect): FloatRect = FloatRect(
+            left = canonicalizeFaceReferenceCoordinate(bbox.left),
+            top = canonicalizeFaceReferenceCoordinate(bbox.top),
+            right = canonicalizeFaceReferenceCoordinate(bbox.right),
+            bottom = canonicalizeFaceReferenceCoordinate(bbox.bottom)
+        )
 
         internal fun resolveFaceOnlyIdentityProtectedIds(
             metadata: com.danceanon.native.storage.AnalysisMetadata?,
