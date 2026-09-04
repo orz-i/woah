@@ -8,6 +8,7 @@ internal data class FacePrivacyClassFallback(
     val syntheticTrackId: Int,
     val detectionIndex: Int,
     val residualTrackIds: Set<Int>,
+    val personBbox: com.danceanon.native.inference.FloatRect,
     val region: FacePrivacyEllipse,
     val bodyMaskGuided: Boolean = false
 )
@@ -106,6 +107,7 @@ internal object FacePrivacyClassFallbackResolver {
                     syntheticTrackId = SYNTHETIC_TRACK_ID_BASE - item.detectionIndex,
                     detectionIndex = item.detectionIndex,
                     residualTrackIds = item.residualTrackIds,
+                    personBbox = personBbox,
                     region = region,
                     bodyMaskGuided = maskGuidedRegion != null
                 )

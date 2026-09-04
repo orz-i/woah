@@ -39,6 +39,7 @@ class FacePrivacyClassFallbackResolverTest {
         assertEquals(1, fallback.size)
         assertEquals(1, fallback.single().detectionIndex)
         assertEquals(setOf(5, 6), fallback.single().residualTrackIds)
+        assertEquals(FloatRect(240f, 100f, 340f, 400f), fallback.single().personBbox)
         assertTrue(fallback.single().syntheticTrackId < 0)
         assertEquals(FacePrivacyRegionSource.YOLO_HEAD_FALLBACK, fallback.single().region.source)
     }

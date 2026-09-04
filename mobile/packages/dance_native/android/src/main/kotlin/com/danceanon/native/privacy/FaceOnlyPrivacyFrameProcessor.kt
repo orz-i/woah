@@ -261,6 +261,7 @@ class FaceOnlyPrivacyFrameProcessor(
     }
 
     private val cachedFaceByTrackId = mutableMapOf<Int, CachedFaceGeometry>()
+    private val classFallbackContinuity = FacePrivacyClassFallbackContinuity()
     private val lastDetectorAttemptPtsUsByTrackId = mutableMapOf<Int, Long>()
     private val lastObservedPtsUsByTrackId = mutableMapOf<Int, Long>()
     private data class RecentBodyMotionGeometry(
@@ -1348,7 +1349,7 @@ class FaceOnlyPrivacyFrameProcessor(
         dormantFaceOnlyTrackIds.removeAll(renderableFaceOnlyTrackIds)
         dormantFaceOnlyTrackIds.addAll(dormantSuppressedTrackIds)
 
-        val classFallbacks = FacePrivacyClassFallbackResolver.resolve(
+        val rawClassFallbacks = FacePrivacyClassFallbackResolver.resolve(
             evidence = freshPrivacyClassEvidence,
             faceOnlyTrackIds = faceOnlyTrackIds,
             dormantSuppressedTrackIds = dormantSuppressedTrackIds,
@@ -1360,6 +1361,11 @@ class FaceOnlyPrivacyFrameProcessor(
                     }
                 }
             },
+            canonicalizeReferenceGeometry = canonicalizeReferenceGeometry
+        )
+        val classFallbacks = classFallbackContinuity.stabilize(
+            fallbacks = rawClassFallbacks,
+            ptsUs = ptsUs,
             canonicalizeReferenceGeometry = canonicalizeReferenceGeometry
         )
         classFallbacks.forEach { classFallback ->
