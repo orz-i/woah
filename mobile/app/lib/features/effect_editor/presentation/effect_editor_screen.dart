@@ -7,9 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
-import '../../../core/widgets/bottom_control_drawer.dart';
 import '../../../core/widgets/main_flow_header.dart';
-import '../../../core/widgets/stage_viewport.dart';
 import '../../export/presentation/export_screen.dart';
 import '../domain/effect_editor_state.dart';
 import 'effect_editor_controller.dart';
@@ -24,11 +22,7 @@ class EffectEditorScreen extends ConsumerStatefulWidget {
 }
 
 class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
-  final TransformationController _stageTransformationController =
-      TransformationController();
-  final DraggableScrollableController _drawerController =
-      DraggableScrollableController();
-  bool _showAdvancedEffects = false;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -40,8 +34,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
 
   @override
   void dispose() {
-    _stageTransformationController.dispose();
-    _drawerController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -71,15 +64,32 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
     controller.updateSkinWhiten(0.0);
     controller.updateLegStretch(enabled: false, stretch: 0.15);
     controller.updateFollowConfig(enabled: false);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('已恢复默认效果')));
+
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text(
+          '已恢复默认效果',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white, fontSize: 13),
+        ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppTheme.warmTextPrimary.withValues(alpha: 0.9),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        duration: const Duration(milliseconds: 1400),
+        width: 150,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(effectEditorControllerProvider);
     final controller = ref.read(effectEditorControllerProvider.notifier);
+    final project = state.project ?? widget.project;
+    final aspectRatio = project.videoInfo.aspectRatio > 0
+        ? project.videoInfo.aspectRatio
+        : 16 / 9;
 
     return PopScope(
       canPop: false,
@@ -101,56 +111,46 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
         child: Scaffold(
           backgroundColor: AppTheme.warmBackground,
           resizeToAvoidBottomInset: false,
-          body: Stack(
-            children: [
-              Positioned(
-                top: 132,
-                left: 18,
-                right: 18,
-                bottom: 48,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(28),
-                  child: StageViewport(
-                    transformationController: _stageTransformationController,
-                    backgroundColor: const Color(0xFFF0E6E0),
-                    child: _buildStagePreview(state),
+          body: SafeArea(
+            child: Column(
+              children: [
+                _buildTopBar(state, controller),
+                // 主舞台视口：占据上半部稳定视口，等比居中自适应，绝不再被遮挡或挤压
+                Expanded(
+                  flex: 11,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                    child: Center(
+                      child: AspectRatio(
+                        aspectRatio: aspectRatio,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1E7E1),
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x14000000),
+                                blurRadius: 20,
+                                offset: Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(24),
+                            child: _buildStagePreview(state),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: SafeArea(
-                  bottom: false,
-                  child: _buildTopBar(state, controller),
+                // 底部常驻控制工作区：占据下半部，独立内部滚动与底栏固定导出
+                Expanded(
+                  flex: 10,
+                  child: _buildBottomControlPanel(state, controller),
                 ),
-              ),
-              Positioned.fill(
-                child: BottomControlDrawer(
-                  controller: _drawerController,
-                  minChildSize: 0.10,
-                  initialChildSize: 0.34,
-                  maxChildSize: 0.58,
-                  snapSizes: const [0.10, 0.34, 0.58],
-                  panelColor: AppTheme.warmSurface,
-                  panelBorderColor: AppTheme.warmBorder,
-                  handleColor: AppTheme.warmBorder,
-                  panelRadius: 30,
-                  panelShadow: const [
-                    BoxShadow(
-                      color: Color(0x18000000),
-                      blurRadius: 28,
-                      offset: Offset(0, -8),
-                    ),
-                  ],
-                  bottomActionBorderColor: Colors.transparent,
-                  peekHeader: _buildDrawerHeader(state),
-                  bottomActionBar: _buildExportButton(state, controller),
-                  child: _buildDrawerContent(state, controller),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -167,17 +167,10 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
         HapticFeedback.lightImpact();
         context.pop(controller.buildConfiguredProject());
       },
-      trailing: _TopButton(
-        icon: Icons.restart_alt_rounded,
-        tooltip: '重置',
-        outlined: true,
-        onPressed: () => _resetToDefault(controller, state),
-      ),
     );
   }
 
   Widget _buildStagePreview(EffectEditorState state) {
-    final faceMode = _isFaceMode(state);
     final displayPath = state.previewPath ?? state.previewThumbnailPath;
     final hasImage =
         displayPath != null &&
@@ -191,7 +184,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
           Image.file(
             File(displayPath),
             key: ValueKey('${displayPath}_${state.previewRequestId}'),
-            fit: BoxFit.contain,
+            fit: BoxFit.cover,
             width: double.infinity,
             height: double.infinity,
             gaplessPlayback: true,
@@ -215,39 +208,6 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
               ),
             ],
           ),
-        Positioned(
-          left: 14,
-          bottom: 14,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-            decoration: BoxDecoration(
-              color: AppTheme.warmSurface.withAlpha(235),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.warmBorder),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  faceMode
-                      ? Icons.face_retouching_off_rounded
-                      : Icons.accessibility_new_rounded,
-                  size: 16,
-                  color: AppTheme.coral,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  faceMode ? '人脸保护' : '全身保护',
-                  style: const TextStyle(
-                    color: AppTheme.warmTextPrimary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
         if (state.previewLoading)
           Positioned(
             top: 14,
@@ -318,40 +278,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
     );
   }
 
-  Widget _buildDrawerHeader(EffectEditorState state) {
-    final modeLabel = state.effects.faceStickerEnabled
-        ? '贴纸'
-        : _fillModeLabel(state.effects.fillMode);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
-      child: Row(
-        children: [
-          const Icon(Icons.tune_rounded, size: 18, color: AppTheme.coral),
-          const SizedBox(width: 8),
-          const Expanded(
-            child: Text(
-              '遮挡效果',
-              style: TextStyle(
-                color: AppTheme.warmTextPrimary,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          Text(
-            modeLabel,
-            style: const TextStyle(
-              color: AppTheme.warmTextSecondary,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDrawerContent(
+  Widget _buildBottomControlPanel(
     EffectEditorState state,
     EffectEditorController controller,
   ) {
@@ -360,240 +287,251 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
     final activeMode = effects.faceStickerEnabled
         ? FillMode.sticker
         : effects.fillMode;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          faceMode ? '人脸遮挡样式' : '全身遮挡样式',
-          style: TextStyle(
-            color: AppTheme.warmTextPrimary,
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 10),
-        _buildModeChips(activeMode, controller, faceMode: faceMode),
-        if (faceMode && effects.faceStickerEnabled) ...[
-          const SizedBox(height: 20),
-          const Text(
-            '贴纸',
-            style: TextStyle(
-              color: AppTheme.warmTextPrimary,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 10),
-          _buildStickerPicker(effects, controller),
-          const SizedBox(height: 16),
-          _buildStepSlider(
-            label: '贴纸大小',
-            value: effects.stickerScale,
-            min: 1.0,
-            max: 2.0,
-            step: 0.1,
-            displayValue: '${(effects.stickerScale * 100).round()}%',
-            onChanged: controller.updateStickerScale,
-          ),
-        ],
-        if (!effects.faceStickerEnabled) ...[
-          const SizedBox(height: 20),
-          _buildStepSlider(
-            label: '强度',
-            value: effects.opacity,
-            min: 0.1,
-            max: 1.0,
-            step: 0.05,
-            displayValue: '${(effects.opacity * 100).round()}%',
-            onChanged: controller.updateOpacity,
-          ),
-        ],
-        if (effects.fillMode == FillMode.solid ||
-            effects.fillMode == FillMode.gradient &&
-                !effects.faceStickerEnabled) ...[
-          const SizedBox(height: 16),
-          const Text(
-            '颜色',
-            style: TextStyle(
-              color: AppTheme.warmTextPrimary,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 10),
-          _buildColorPalette(effects.fillColorArgb, controller.updateFillColor),
-        ],
-        if (effects.fillMode == FillMode.blur ||
-            effects.fillMode == FillMode.mosaic &&
-                !effects.faceStickerEnabled) ...[
-          const SizedBox(height: 16),
-          _buildStepSlider(
-            label: effects.fillMode == FillMode.mosaic ? '马赛克颗粒' : '模糊程度',
-            value: effects.blurStrength,
-            min: 1,
-            max: 30,
-            step: 1,
-            displayValue: '${effects.blurStrength.round()}',
-            onChanged: controller.updateBlurStrength,
-          ),
-        ],
-        const SizedBox(height: 18),
-        InkWell(
-          onTap: () {
-            HapticFeedback.lightImpact();
-            setState(() => _showAdvancedEffects = !_showAdvancedEffects);
-          },
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            constraints: const BoxConstraints(
-              minHeight: AppTheme.minTouchTarget,
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppTheme.warmSurfaceSoft,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.warmBorder),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.tune_rounded, size: 18, color: AppTheme.coral),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Text(
-                    '更多效果',
-                    style: TextStyle(
-                      color: AppTheme.warmTextPrimary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                AnimatedRotation(
-                  turns: _showAdvancedEffects ? 0.5 : 0,
-                  duration: const Duration(milliseconds: 180),
-                  child: const Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    color: AppTheme.warmTextSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          child: _showAdvancedEffects
-              ? _buildAdvancedEffects(state, controller)
-              : const SizedBox.shrink(),
-        ),
-        const SizedBox(height: 18),
-      ],
-    );
-  }
-
-  Widget _buildAdvancedEffects(
-    EffectEditorState state,
-    EffectEditorController controller,
-  ) {
-    final effects = state.effects;
     final followEnabled = state.project?.follow.enabled ?? false;
-    return Padding(
-      padding: const EdgeInsets.only(top: 18),
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppTheme.warmSurface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 24,
+            offset: Offset(0, -6),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildStepSlider(
-            label: '描边',
-            value: effects.borderWidth,
-            min: 0,
-            max: 20,
-            step: 1,
-            displayValue: '${effects.borderWidth.round()} px',
-            onChanged: controller.updateBorderWidth,
-          ),
-          if (effects.borderWidth > 0) ...[
-            const SizedBox(height: 14),
-            const Text(
-              '描边颜色',
-              style: TextStyle(color: AppTheme.warmTextPrimary, fontSize: 13),
-            ),
-            const SizedBox(height: 10),
-            _buildColorPalette(
-              effects.borderColorArgb,
-              controller.updateBorderColor,
-            ),
-          ],
-          const SizedBox(height: 18),
-          _buildStepSlider(
-            label: '人像提亮',
-            value: effects.skinWhiten,
-            min: 0,
-            max: 1,
-            step: 0.05,
-            displayValue: '${(effects.skinWhiten * 100).round()}%',
-            onChanged: controller.updateSkinWhiten,
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppTheme.warmSurfaceSoft,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppTheme.warmBorder),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '主角跟随',
-                            style: TextStyle(
-                              color: AppTheme.warmTextPrimary,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          SizedBox(height: 2),
-                          Text(
-                            '自动保持主角居中',
-                            style: TextStyle(
-                              color: AppTheme.warmTextSecondary,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
+          Expanded(
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 1. 顶部标题与一键恢复默认
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        faceMode
+                            ? '人脸遮挡 · ${_fillModeLabel(activeMode)}'
+                            : '全身遮挡 · ${_fillModeLabel(activeMode)}',
+                        style: const TextStyle(
+                          color: AppTheme.warmTextPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
+                      Semantics(
+                        button: true,
+                        label: '恢复默认效果',
+                        child: InkWell(
+                          onTap: () => _resetToDefault(controller, state),
+                          borderRadius: BorderRadius.circular(12),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 3,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.restart_alt_rounded,
+                                  size: 16,
+                                  color: AppTheme.warmTextSecondary,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  '恢复默认',
+                                  style: TextStyle(
+                                    color: AppTheme.warmTextSecondary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  // 2. 模式切换 Chips
+                  _buildModeChips(activeMode, controller, faceMode: faceMode),
+                  const SizedBox(height: 12),
+                  // 3. 当前模式专属调节项
+                  if (faceMode && effects.faceStickerEnabled) ...[
+                    _buildStickerPicker(effects, controller),
+                    const SizedBox(height: 10),
+                    _buildStepSlider(
+                      label: '贴纸大小',
+                      value: effects.stickerScale,
+                      min: 1.0,
+                      max: 2.0,
+                      step: 0.1,
+                      displayValue: '${(effects.stickerScale * 100).round()}%',
+                      onChanged: controller.updateStickerScale,
                     ),
-                    Switch(
-                      value: followEnabled,
-                      onChanged: (value) {
-                        HapticFeedback.lightImpact();
-                        controller.updateFollowConfig(enabled: value);
-                      },
+                  ] else ...[
+                    _buildStepSlider(
+                      label: '强度',
+                      value: effects.opacity,
+                      min: 0.1,
+                      max: 1.0,
+                      step: 0.05,
+                      displayValue: '${(effects.opacity * 100).round()}%',
+                      onChanged: controller.updateOpacity,
                     ),
                   ],
-                ),
-                if (followEnabled) ...[
-                  const SizedBox(height: 8),
+                  if (effects.fillMode == FillMode.solid ||
+                      (effects.fillMode == FillMode.gradient &&
+                          !effects.faceStickerEnabled)) ...[
+                    const SizedBox(height: 10),
+                    const Text(
+                      '颜色',
+                      style: TextStyle(
+                        color: AppTheme.warmTextPrimary,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildColorPalette(
+                      effects.fillColorArgb,
+                      controller.updateFillColor,
+                    ),
+                  ],
+                  if ((effects.fillMode == FillMode.blur ||
+                          effects.fillMode == FillMode.mosaic) &&
+                      !effects.faceStickerEnabled) ...[
+                    const SizedBox(height: 10),
+                    _buildStepSlider(
+                      label: effects.fillMode == FillMode.mosaic
+                          ? '马赛克颗粒'
+                          : '模糊程度',
+                      value: effects.blurStrength,
+                      min: 1,
+                      max: 30,
+                      step: 1,
+                      displayValue: '${effects.blurStrength.round()}',
+                      onChanged: controller.updateBlurStrength,
+                    ),
+                  ],
+                  const SizedBox(height: 10),
                   _buildStepSlider(
-                    label: '放大',
-                    value: state.project!.follow.zoom,
-                    min: 1,
-                    max: 2.5,
-                    step: 0.1,
-                    displayValue:
-                        '${state.project!.follow.zoom.toStringAsFixed(1)}×',
-                    onChanged: (value) =>
-                        controller.updateFollowConfig(zoom: value),
+                    label: '描边宽度',
+                    value: effects.borderWidth,
+                    min: 0,
+                    max: 20,
+                    step: 1,
+                    displayValue: '${effects.borderWidth.round()} px',
+                    onChanged: controller.updateBorderWidth,
                   ),
+                  if (effects.borderWidth > 0) ...[
+                    const SizedBox(height: 8),
+                    const Text(
+                      '描边颜色',
+                      style: TextStyle(
+                        color: AppTheme.warmTextPrimary,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    _buildColorPalette(
+                      effects.borderColorArgb,
+                      controller.updateBorderColor,
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  _buildStepSlider(
+                    label: '人像提亮',
+                    value: effects.skinWhiten,
+                    min: 0,
+                    max: 1,
+                    step: 0.05,
+                    displayValue: '${(effects.skinWhiten * 100).round()}%',
+                    onChanged: controller.updateSkinWhiten,
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.warmSurfaceSoft,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppTheme.warmBorder),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '主角跟随画面裁剪',
+                                    style: TextStyle(
+                                      color: AppTheme.warmTextPrimary,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    '自动运镜保持主角居中',
+                                    style: TextStyle(
+                                      color: AppTheme.warmTextSecondary,
+                                      fontSize: 11.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Switch(
+                              value: followEnabled,
+                              activeThumbColor: AppTheme.coral,
+                              onChanged: (value) {
+                                HapticFeedback.lightImpact();
+                                controller.updateFollowConfig(enabled: value);
+                              },
+                            ),
+                          ],
+                        ),
+                        if (followEnabled) ...[
+                          const SizedBox(height: 6),
+                          _buildStepSlider(
+                            label: '特写放大',
+                            value: state.project!.follow.zoom,
+                            min: 1,
+                            max: 2.5,
+                            step: 0.1,
+                            displayValue:
+                                '${state.project!.follow.zoom.toStringAsFixed(1)}×',
+                            onChanged: (value) =>
+                                controller.updateFollowConfig(zoom: value),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                 ],
-              ],
+              ),
             ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 6, 18, 14),
+            child: _buildExportButton(state, controller),
           ),
         ],
       ),
@@ -621,7 +559,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
                 },
           borderRadius: BorderRadius.circular(18),
           child: Ink(
-            height: 58,
+            height: 52,
             decoration: BoxDecoration(
               gradient: AppTheme.coralActionGradient,
               borderRadius: BorderRadius.circular(18),
@@ -639,19 +577,23 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
               padding: EdgeInsets.symmetric(horizontal: 22),
               child: Row(
                 children: [
-                  SizedBox(width: 28),
+                  SizedBox(width: 24),
                   Expanded(
                     child: Text(
-                      '导出',
+                      '下一步: 导出',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 17,
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
-                  Icon(Icons.ios_share_rounded, color: Colors.white, size: 24),
+                  Icon(
+                    Icons.arrow_forward_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ],
               ),
             ),
@@ -786,12 +728,12 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
     ];
 
     return SizedBox(
-      height: 86,
+      height: 72,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         itemCount: modes.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 9),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final item = modes[index];
           final selected = current == item.$1;
@@ -806,16 +748,16 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 160),
-                width: 76,
+                width: 68,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 10,
+                  horizontal: 6,
+                  vertical: 8,
                 ),
                 decoration: BoxDecoration(
                   color: selected
                       ? AppTheme.coralPale
                       : AppTheme.warmSurfaceSoft,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: selected ? AppTheme.coral : AppTheme.warmBorder,
                     width: selected ? 1.5 : 1,
@@ -826,19 +768,19 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
                   children: [
                     Icon(
                       item.$3,
-                      size: 24,
+                      size: 22,
                       color: selected
                           ? AppTheme.coral
                           : AppTheme.warmTextSecondary,
                     ),
-                    const SizedBox(height: 7),
+                    const SizedBox(height: 5),
                     Text(
                       item.$2,
                       style: TextStyle(
                         color: selected
                             ? AppTheme.coralStrong
                             : AppTheme.warmTextPrimary,
-                        fontSize: 12,
+                        fontSize: 11.5,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1137,39 +1079,6 @@ class _ExportProfileCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _TopButton extends StatelessWidget {
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onPressed;
-  final bool outlined;
-
-  const _TopButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-    this.outlined = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: AppTheme.minTouchTarget,
-      height: AppTheme.minTouchTarget,
-      decoration: BoxDecoration(
-        color: outlined ? AppTheme.warmSurfaceSoft : Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
-        border: outlined ? Border.all(color: AppTheme.coralPale) : null,
-      ),
-      child: IconButton(
-        tooltip: tooltip,
-        onPressed: onPressed,
-        padding: EdgeInsets.zero,
-        icon: Icon(icon, size: 30, color: AppTheme.warmTextPrimary),
       ),
     );
   }
