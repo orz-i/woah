@@ -25,7 +25,8 @@ class CanonicalYuvInferenceDecoder(
     private val context: Context,
     private val sourceUri: String,
     private val rotationDegrees: Int,
-    private val modelInputSize: Int = 640
+    private val modelInputSize: Int = 640,
+    private val startUs: Long = 0L
 ) : AutoCloseable {
 
     data class RuntimeInfo(
@@ -33,6 +34,11 @@ class CanonicalYuvInferenceDecoder(
         val colorStandard: Int?,
         val colorRange: Int?,
         val colorTransfer: Int?
+    )
+
+    data class DecodedRgbaFrame(
+        val ptsUs: Long,
+        val rgbaBuffer: ByteBuffer
     )
 
     private val extractor = MediaExtractor()
@@ -70,6 +76,9 @@ class CanonicalYuvInferenceDecoder(
         require(trackIndex >= 0 && inputFormat != null) { "No video track for canonical inference decode" }
 
         extractor.selectTrack(trackIndex)
+        if (startUs > 0L) {
+            extractor.seekTo(startUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+        }
         val mime = inputFormat.getString(MediaFormat.KEY_MIME)
             ?: error("Missing video MIME for canonical inference decode")
         inputFormat.setInteger(
@@ -92,7 +101,30 @@ class CanonicalYuvInferenceDecoder(
     fun decodeRgbaAtPts(
         targetPtsUs: Long,
         mapper: ModelCoordinateMapper
-    ): ByteBuffer {
+    ): ByteBuffer = decodeRgbaFrame(
+        targetPtsUs = targetPtsUs,
+        mapper = mapper,
+        requireExactPts = true
+    ).rgbaBuffer
+
+    /**
+     * Decodes the first display frame at or after [targetPtsUs]. This is used by one-shot
+     * analysis where a millisecond trim boundary is not guaranteed to be an exact source PTS.
+     */
+    fun decodeRgbaAtOrAfterPts(
+        targetPtsUs: Long,
+        mapper: ModelCoordinateMapper
+    ): DecodedRgbaFrame = decodeRgbaFrame(
+        targetPtsUs = targetPtsUs,
+        mapper = mapper,
+        requireExactPts = false
+    )
+
+    private fun decodeRgbaFrame(
+        targetPtsUs: Long,
+        mapper: ModelCoordinateMapper,
+        requireExactPts: Boolean
+    ): DecodedRgbaFrame {
         val decoder = codec ?: error("Canonical inference decoder not prepared")
         var emptyOutputCount = 0
 
@@ -118,7 +150,7 @@ class CanonicalYuvInferenceDecoder(
                     var image: Image? = null
                     try {
                         if (!isEos && ptsUs >= targetPtsUs) {
-                            if (ptsUs != targetPtsUs) {
+                            if (requireExactPts && ptsUs != targetPtsUs) {
                                 error("Canonical decoder PTS mismatch: requested=$targetPtsUs decoded=$ptsUs")
                             }
                             image = decoder.getOutputImage(outputIndex)
@@ -132,7 +164,7 @@ class CanonicalYuvInferenceDecoder(
                                 colorRange = colorInt(outputFormat, MediaFormat.KEY_COLOR_RANGE),
                                 workspace = conversionWorkspace
                             )
-                            return rgbaBuffer
+                            return DecodedRgbaFrame(ptsUs = ptsUs, rgbaBuffer = rgbaBuffer)
                         }
                     } finally {
                         try { image?.close() } catch (_: Throwable) {}

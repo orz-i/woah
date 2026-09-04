@@ -101,6 +101,7 @@ def read_bundle(path: Path) -> dict:
         shadow_inference_ordinal: dict[int, int] = {}
         shadow_should_infer: dict[int, bool] = {}
         shadow_disabled: list[dict] = []
+        analysis_selection: dict | None = None
 
         for name in z.namelist():
             if not (name.startswith("session_") and name.endswith(".jsonl")):
@@ -114,7 +115,26 @@ def read_bundle(path: Path) -> dict:
                     continue
                 event_name = event.get("event")
                 fields = event.get("fields", {})
-                if event_name in DETECTION_EVENTS:
+                if event_name == "ANALYZE_SELECTION_SIGNATURE":
+                    analysis_selection = {
+                        "analysis_cache_id": fields.get("analysis_cache_id"),
+                        "requested_trim_start_us": fields.get("requested_trim_start_us"),
+                        "analysis_pts_us": fields.get("analysis_pts_us"),
+                        "input_path": fields.get("input_path"),
+                        "canonical_rgba_sha256": fields.get("canonical_rgba_sha256"),
+                        "bitmap_grid_sha256": fields.get("bitmap_grid_sha256"),
+                        "canonical_fallback_reason": fields.get("canonical_fallback_reason"),
+                        "canonical_codec_name": fields.get("canonical_codec_name"),
+                        "canonical_color_standard": fields.get("canonical_color_standard"),
+                        "canonical_color_range": fields.get("canonical_color_range"),
+                        "yolo_requested_accelerator": fields.get("yolo_requested_accelerator"),
+                        "yolo_effective_accelerator": fields.get("yolo_effective_accelerator"),
+                        "cpu_num_threads": fields.get("cpu_num_threads"),
+                        "detection_count": fields.get("detection_count"),
+                        "candidate_ids_ge_0_60": tuple(fields.get("diagnostic_candidate_ids_ge_0_60", [])),
+                        "detection_signature": _detection_signature(fields.get("detections", [])),
+                    }
+                elif event_name in DETECTION_EVENTS:
                     diagnostic_job = str(fields.get("job_id", ""))
                     backend = None
                     for candidate in detections:
@@ -236,7 +256,32 @@ def read_bundle(path: Path) -> dict:
             "shadow_inference_ordinal": shadow_inference_ordinal,
             "shadow_should_infer": shadow_should_infer,
             "shadow_disabled": shadow_disabled,
+            "analysis_selection": analysis_selection,
         }
+
+
+def compare_analysis_selection(a: dict | None, b: dict | None) -> dict:
+    if a is None or b is None:
+        return {
+            "available_a": a is not None,
+            "available_b": b is not None,
+            "same_requested_trim_start": None,
+            "same_analysis_pts": None,
+            "same_input_path": None,
+            "same_canonical_rgba_sha256": None,
+            "same_candidate_ids_ge_0_60": None,
+            "same_detection_signature": None,
+        }
+    return {
+        "available_a": True,
+        "available_b": True,
+        "same_requested_trim_start": a["requested_trim_start_us"] == b["requested_trim_start_us"],
+        "same_analysis_pts": a["analysis_pts_us"] == b["analysis_pts_us"],
+        "same_input_path": a["input_path"] == b["input_path"],
+        "same_canonical_rgba_sha256": a["canonical_rgba_sha256"] == b["canonical_rgba_sha256"],
+        "same_candidate_ids_ge_0_60": a["candidate_ids_ge_0_60"] == b["candidate_ids_ge_0_60"],
+        "same_detection_signature": a["detection_signature"] == b["detection_signature"],
+    }
 
 
 def compare_map(a: dict[int, tuple], b: dict[int, tuple]) -> dict:
@@ -438,6 +483,7 @@ def main() -> int:
                 "zip_size_bytes": b["zip_size_bytes"],
                 "historical_entry_count": len(b["historical_entries"]),
                 "manifest_excluded_historical": b["manifest_excluded_historical"],
+                "analysis_selection": b["analysis_selection"],
                 "timings": b["timings"],
                 "frame_counts": {k: len(v) for k, v in b["detections"].items()},
                 "shadow_frame_count": max(
@@ -498,6 +544,9 @@ def main() -> int:
                 {
                     "a": a["device"],
                     "b": b["device"],
+                    "analysis_selection": compare_analysis_selection(
+                        a["analysis_selection"], b["analysis_selection"]
+                    ),
                     "cpu_1t_detection": compare_map(a["detections"]["cpu_probe"], b["detections"]["cpu_probe"]),
                     "cpu_2t_detection": compare_map(a["detections"]["cpu_mt2_probe"], b["detections"]["cpu_mt2_probe"]),
                     "cpu_4t_detection": compare_map(a["detections"]["cpu_mt4_probe"], b["detections"]["cpu_mt4_probe"]),

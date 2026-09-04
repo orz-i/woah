@@ -79,7 +79,7 @@ class DanceNativeApiImpl(
 
     private val segmenter = com.danceanon.native.inference.YoloLiteRtSegmenter(context)
     private val cacheManager = com.danceanon.native.storage.CacheManager(context)
-    private val analyzePipeline = com.danceanon.native.pipeline.AnalyzePipeline(context, segmenter, cacheManager)
+    private val analyzePipeline = com.danceanon.native.pipeline.AnalyzePipeline(context, cacheManager)
     private val previewPipeline = com.danceanon.native.pipeline.PreviewPipeline(context, segmenter, cacheManager)
 
     override suspend fun analyzeVideo(request: AnalyzeRequestDto): AnalyzeResultDto = withContext(Dispatchers.Default) {
@@ -155,7 +155,8 @@ class DanceNativeApiImpl(
         coordinator.registerJobRequest(jobId, request)
 
         try {
-            // Preview/analyze owns its own LiteRT YOLO runner.  Release it before
+            // Preview owns the reusable GPU LiteRT YOLO runner. Analysis uses a one-shot strict
+            // CPU runner, so only the preview runner needs to be released before
             // starting the foreground export service so the export runner can
             // acquire the GPU/OpenCL delegate without competing with a stale
             // preview CompiledModel.  Preview is lazy-initialized on the next
