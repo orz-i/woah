@@ -1,7 +1,11 @@
 package com.danceanon.native.diagnostics
 
 import com.danceanon.native.inference.PersonDetection
+import com.danceanon.native.privacy.FaceReferenceGeometryCanonicalizer
+import com.danceanon.native.privacy.PrivacyClassTemporalTracker
+import com.danceanon.native.tracking.FreshPrivacyClassEvidence
 import com.danceanon.native.tracking.HungarianSolver
+import com.danceanon.native.tracking.PrivacySelectionClass
 import com.danceanon.native.tracking.ProtectedTrackMotionEvidence
 import com.danceanon.native.tracking.TrackManager
 import com.danceanon.native.tracking.TrackState
@@ -65,6 +69,13 @@ internal class CrossDeviceTrackingDiagnostics(
     )
 
     private val cpuFullTracker = TrackManager(diagnosticsEnabled = false)
+    private val faceOnlyPersonIds = faceOnlyPersonIds.toSortedSet()
+    private val facePrivacyClassTemporalTracker = if (this.faceOnlyPersonIds.isNotEmpty()) {
+        PrivacyClassTemporalTracker()
+    } else {
+        null
+    }
+    private var latestCpuFullTemporalFacePrivacyClassEvidence: List<FreshPrivacyClassEvidence> = emptyList()
     private val identityProtectedTrackIds = identityProtectedTrackIds.toSortedSet()
     private val adaptiveTrackers = adaptiveConfigs.associateWith {
         TrackManager(diagnosticsEnabled = false)
@@ -124,10 +135,17 @@ internal class CrossDeviceTrackingDiagnostics(
                     adaptiveReasons[config.key] = "INITIALIZE"
                     tracker.initializeWithAssignedIds(cpuDetections, assignedIds)
                 }
+                updateTemporalFacePrivacyClassEvidence(
+                    ptsUs = ptsUs,
+                    cpuDetections = cpuDetections,
+                    hardAssignedIds = assignedIds,
+                    cpuFullTracked = cpuFullTracked
+                )
                 initialized = true
                 inferenceOrdinal = 0
             } else if (!shouldInfer) {
                 cpuFullTracked = cpuFullTracker.predictWithoutObservation(ptsUs)
+                latestCpuFullTemporalFacePrivacyClassEvidence = emptyList()
                 adaptiveTracked = adaptiveTrackers.mapValues { (config, tracker) ->
                     adaptiveSources[config.key] = "PREDICT"
                     adaptiveReasons[config.key] = "NO_INFERENCE_FRAME"
@@ -168,6 +186,12 @@ internal class CrossDeviceTrackingDiagnostics(
                         tracker.predictWithoutObservation(ptsUs)
                     }
                 }
+                updateTemporalFacePrivacyClassEvidence(
+                    ptsUs = ptsUs,
+                    cpuDetections = cpuDetections,
+                    hardAssignedIds = null,
+                    cpuFullTracked = cpuFullTracked
+                )
             }
             lastAdaptiveTracked = adaptiveTracked
 
@@ -203,6 +227,95 @@ internal class CrossDeviceTrackingDiagnostics(
         } else {
             emptyList()
         }
+
+    fun getCpuFullTemporalFacePrivacyClassEvidence(): List<FreshPrivacyClassEvidence> =
+        if (initialized && disabledReason == null) {
+            latestCpuFullTemporalFacePrivacyClassEvidence
+        } else {
+            emptyList()
+        }
+
+    private fun updateTemporalFacePrivacyClassEvidence(
+        ptsUs: Long,
+        cpuDetections: List<PersonDetection>,
+        hardAssignedIds: List<Int>?,
+        cpuFullTracked: List<TrackedPerson>
+    ) {
+        val startedNs = System.nanoTime()
+        val temporalTracker = facePrivacyClassTemporalTracker ?: run {
+            latestCpuFullTemporalFacePrivacyClassEvidence = emptyList()
+            return
+        }
+        if (cpuDetections.isEmpty()) {
+            temporalTracker.update(emptyList(), emptyMap(), ptsUs)
+            latestCpuFullTemporalFacePrivacyClassEvidence = emptyList()
+            return
+        }
+
+        // Face rendering already canonicalizes reference geometry to the 0.5px
+        // lattice. Feed the privacy-class sidecar the same geometry so tiny CPU
+        // LiteRT float differences cannot become a new cross-device branch.
+        val canonicalDetections = cpuDetections.map { detection ->
+            val bbox = FaceReferenceGeometryCanonicalizer.rect(detection.bbox)
+            detection.copy(bbox = bbox, footY = bbox.bottom)
+        }
+        val hardClassByDetectionIndex = hardAssignedIds
+            ?.mapIndexed { detectionIndex, trackId ->
+                detectionIndex to if (faceOnlyPersonIds.contains(trackId)) {
+                    PrivacySelectionClass.SELECTED
+                } else {
+                    PrivacySelectionClass.UNSELECTED
+                }
+            }
+            ?.toMap()
+            .orEmpty()
+
+        val selectedTemporalEvidence = temporalTracker.update(
+            detections = canonicalDetections,
+            hardClassByDetectionIndex = hardClassByDetectionIndex,
+            ptsUs = ptsUs
+        ).filter {
+            it.selectionClass == PrivacySelectionClass.SELECTED && !it.conservativeUnknown
+        }
+
+        latestCpuFullTemporalFacePrivacyClassEvidence = selectedTemporalEvidence.mapNotNull { evidence ->
+            val plausibleDormantOwners = cpuFullTracked.asSequence()
+                .filter { faceOnlyPersonIds.contains(it.id) && !it.observedThisFrame }
+                .filter { track ->
+                    val canonicalTrackBbox = FaceReferenceGeometryCanonicalizer.rect(track.bbox)
+                    bboxIntersectionArea(
+                        expandBbox(canonicalTrackBbox, LOCAL_GPU_SEARCH_EXPANSION_RATIO),
+                        evidence.detection.bbox
+                    ) > 0f
+                }
+                .map { it.id }
+                .toSortedSet()
+            if (plausibleDormantOwners.isEmpty()) {
+                null
+            } else {
+                evidence.copy(residualTrackIds = plausibleDormantOwners)
+            }
+        }
+
+        NativeDiagnostics.event(
+            level = "INFO",
+            component = "CrossDeviceTrackingDiagnostics",
+            event = "FACE_PRIVACY_TEMPORAL_CLASS_EVIDENCE",
+            fields = mapOf(
+                "job_id" to jobId,
+                "pts_us" to ptsUs,
+                "selected_detection_indices" to selectedTemporalEvidence.map { it.detectionIndex }.sorted(),
+                "mapped_detection_indices" to latestCpuFullTemporalFacePrivacyClassEvidence
+                    .map { it.detectionIndex }
+                    .sorted(),
+                "mapped_residual_track_ids" to latestCpuFullTemporalFacePrivacyClassEvidence
+                    .flatMap { it.residualTrackIds }
+                    .toSortedSet()
+                    .toList(),
+                "elapsed_ms" to (System.nanoTime() - startedNs) / 1_000_000.0
+            )
+        )
+    }
 
     fun getCpuFullFreshFacePrivacyClassEvidence(): List<com.danceanon.native.tracking.FreshPrivacyClassEvidence> =
         if (initialized && disabledReason == null) {

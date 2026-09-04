@@ -24,6 +24,21 @@ def _stage(summary: dict, name: str):
     return summary.get("stage_timings", {}).get(name)
 
 
+def _timing_values(values: list[float]):
+    if not values:
+        return None
+    ordered = sorted(values)
+    def percentile(q: float) -> float:
+        return ordered[min(len(ordered) - 1, round((len(ordered) - 1) * q))]
+    return {
+        "count": len(ordered),
+        "avg_ms": sum(ordered) / len(ordered),
+        "p50_ms": percentile(0.50),
+        "p95_ms": percentile(0.95),
+        "max_ms": ordered[-1],
+    }
+
+
 def _detection_signature(detections: list[dict]) -> tuple:
     return tuple(
         (
@@ -104,6 +119,8 @@ def read_bundle(path: Path) -> dict:
         face_roi_detector: dict[tuple[int, int, str], tuple] = {}
         face_sticker_placements: dict[int, tuple] = {}
         face_class_fallbacks: dict[int, tuple] = {}
+        face_temporal_class_evidence: dict[int, tuple] = {}
+        face_temporal_class_timings_ms: list[float] = []
         new_track_events: list[dict] = []
         protected_lost_reservation_events: list[dict] = []
         shadow_inference_ordinal: dict[int, int] = {}
@@ -266,6 +283,16 @@ def read_bundle(path: Path) -> dict:
                             tuple(sorted(int(x) for x in fields.get("residual_track_ids", []))),
                             tuple(sorted(int(x) for x in fields.get("synthetic_track_ids", []))),
                         )
+                elif event_name == "FACE_PRIVACY_TEMPORAL_CLASS_EVIDENCE":
+                    if fields.get("job_id") == job_id:
+                        pts = int(fields["pts_us"])
+                        face_temporal_class_evidence[pts] = (
+                            tuple(sorted(int(x) for x in fields.get("selected_detection_indices", []))),
+                            tuple(sorted(int(x) for x in fields.get("mapped_detection_indices", []))),
+                            tuple(sorted(int(x) for x in fields.get("mapped_residual_track_ids", []))),
+                        )
+                        if fields.get("elapsed_ms") is not None:
+                            face_temporal_class_timings_ms.append(float(fields["elapsed_ms"]))
                 elif event_name == "NEW_TRACK_CREATED":
                     new_track_events.append(
                         {
@@ -343,6 +370,8 @@ def read_bundle(path: Path) -> dict:
             "face_roi_detector": face_roi_detector,
             "face_sticker_placements": face_sticker_placements,
             "face_class_fallbacks": face_class_fallbacks,
+            "face_temporal_class_evidence": face_temporal_class_evidence,
+            "face_temporal_class_timings_ms": face_temporal_class_timings_ms,
             "new_track_events": new_track_events,
             "protected_lost_reservation_events": protected_lost_reservation_events,
             "pipeline_summary": summary,
@@ -812,6 +841,13 @@ def main() -> int:
                 "face_sticker_placement_frames": len(b["face_sticker_placements"]),
                 "face_selected_quality": summarize_face_selected_gaps(b),
                 "face_pipeline_quality": selected_face_quality_summary(b["pipeline_summary"]),
+                "face_temporal_class_evidence_frames": len(b["face_temporal_class_evidence"]),
+                "face_temporal_class_mapped_frames": sum(
+                    1 for value in b["face_temporal_class_evidence"].values() if value[1]
+                ),
+                "face_temporal_class_timing": _timing_values(
+                    b["face_temporal_class_timings_ms"]
+                ),
                 # NEW_TRACK_CREATED comes from the production TrackManager. Keep
                 # it explicitly labelled so it cannot be mistaken for the
                 # deterministic CPU reference topology used by Face rendering.
@@ -890,6 +926,9 @@ def main() -> int:
                     ),
                     "face_class_fallbacks": compare_map(
                         a["face_class_fallbacks"], b["face_class_fallbacks"]
+                    ),
+                    "face_temporal_class_evidence": compare_map(
+                        a["face_temporal_class_evidence"], b["face_temporal_class_evidence"]
                     ),
                     "cpu_1t_detection": compare_map(a["detections"]["cpu_probe"], b["detections"]["cpu_probe"]),
                     "cpu_2t_detection": compare_map(a["detections"]["cpu_mt2_probe"], b["detections"]["cpu_mt2_probe"]),

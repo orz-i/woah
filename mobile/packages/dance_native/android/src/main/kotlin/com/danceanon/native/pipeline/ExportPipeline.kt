@@ -1216,9 +1216,11 @@ class ExportPipeline(
                                 trackManager.getFreshProtectedTrackMotionEvidence()
                             }
                             val freshFacePrivacyClassEvidence = if (useCpuReferenceGeometry) {
-                                crossDeviceTrackingDiagnostics
-                                    ?.getCpuFullFreshFacePrivacyClassEvidence()
-                                    .orEmpty()
+                                val diagnostics = crossDeviceTrackingDiagnostics
+                                buildList {
+                                    addAll(diagnostics?.getCpuFullFreshFacePrivacyClassEvidence().orEmpty())
+                                    addAll(diagnostics?.getCpuFullTemporalFacePrivacyClassEvidence().orEmpty())
+                                }.distinctBy { it.detectionIndex }
                             } else {
                                 // Keep release/runtime behavior unchanged until the
                                 // deterministic candidate is validated on devices.
