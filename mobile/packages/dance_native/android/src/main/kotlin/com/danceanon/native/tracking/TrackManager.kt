@@ -2182,61 +2182,15 @@ class TrackManager(
                     unresolved && computeMatchScore(track, det) >= config.minMatchScore
                 }
 
-                // A fresh detection can sit between multiple durable protected
-                // LOST identities without being strong enough to identify either
-                // one. Creating a brand-new ID in that exact situation turns an
-                // unresolved crossing into a long-lived duplicate identity. Keep
-                // the detection reserved when at least two protected LOST slots
-                // have motion-grade evidence and there is no unique strict
-                // recovery owner. This does not lower the recovery threshold or
-                // commit the detection to any protected ID.
-                val protectedLostMotionOwners = tracks.filter { track ->
-                    if (!protectedTrackIds.contains(track.id) || track.state != TrackState.LOST) {
-                        return@filter false
-                    }
-                    val bboxIoU = computeBBoxIoU(track.currentPredictedBbox, det.bbox)
-                    val maskIoU = computePredictedMaskIoU(track, det.mask)
-                    isProtectedMotionEvidenceSufficient(bboxIoU, maskIoU)
-                }
-                val strictProtectedLostOwners = protectedLostMotionOwners.filter { track ->
-                    val bboxIoU = computeBBoxIoU(track.currentPredictedBbox, det.bbox)
-                    val maskIoU = computePredictedMaskIoU(track, det.mask)
-                    isProtectedGroupIdentityEvidenceSufficient(TrackState.LOST, bboxIoU, maskIoU)
-                }
-                val ambiguousProtectedLostOwnership =
-                    facePrivacySelectedTrackIds.isNotEmpty() &&
-                        protectedLostMotionOwners.size >= 2 &&
-                        strictProtectedLostOwners.size != 1
-
-                if (plausiblyOwnedByUnresolvedIdentity || ambiguousProtectedLostOwnership) {
+                if (plausiblyOwnedByUnresolvedIdentity) {
                     reservedGlobalDetectionIndices.add(c)
-                    if (
-                        ambiguousProtectedLostOwnership &&
-                        det.mask != null &&
-                        protectedLostMotionOwners.all { facePrivacySelectedTrackIds.contains(it.id) }
-                    ) {
-                        currentFacePrivacyClassEvidence.add(
-                            FreshPrivacyClassEvidence(
-                                selectionClass = PrivacySelectionClass.SELECTED,
-                                detectionIndex = c,
-                                detection = det,
-                                residualTrackIds = protectedLostMotionOwners.map { it.id }.toSet()
-                            )
-                        )
-                    }
                     diagnosticEvent(
                         level = "INFO",
                         component = "TrackManager",
-                        event = if (ambiguousProtectedLostOwnership) {
-                            "AMBIGUOUS_PROTECTED_LOST_DETECTION_RESERVED"
-                        } else {
-                            "UNRESOLVED_IDENTITY_DETECTION_RESERVED"
-                        },
+                        event = "UNRESOLVED_IDENTITY_DETECTION_RESERVED",
                         fields = mapOf(
                             "det_index" to c,
                             "bbox" to listOf(det.bbox.left, det.bbox.top, det.bbox.right, det.bbox.bottom),
-                            "protected_lost_motion_owner_ids" to protectedLostMotionOwners.map { it.id },
-                            "strict_protected_lost_owner_ids" to strictProtectedLostOwners.map { it.id },
                             "pts_us" to timestampUs
                         )
                     )

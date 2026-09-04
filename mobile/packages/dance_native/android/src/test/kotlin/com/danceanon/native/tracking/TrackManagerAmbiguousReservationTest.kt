@@ -19,8 +19,9 @@ class TrackManagerAmbiguousReservationTest {
     }
 
     @Test
-    fun testAmbiguousProtectedLostDetectionIsReservedInsteadOfCreatingReplacementIdentity() {
-        tracker = TrackManager(
+    fun testFacePrivacyClassDoesNotChangeAmbiguousProtectedLostIdentityLifecycle() {
+        fun run(facePrivacyEnabled: Boolean): List<TrackedPerson> {
+            val localTracker = TrackManager(
             TrackingConfig(
                 maxMissedFrames = 1,
                 minMatchScore = 0.20f,
@@ -31,37 +32,40 @@ class TrackManagerAmbiguousReservationTest {
                 associationAmbiguityMargin = 0.05f
             )
         )
-        tracker.setIdentityProtectedTrackIds(setOf(5, 6))
-        tracker.setPrivacySelectedTrackIds(emptySet())
-        tracker.setFacePrivacySelectedTrackIds(setOf(5, 6))
-        tracker.initializeWithAssignedIds(
+            localTracker.setIdentityProtectedTrackIds(setOf(5, 6))
+            localTracker.setPrivacySelectedTrackIds(emptySet())
+            localTracker.setFacePrivacySelectedTrackIds(if (facePrivacyEnabled) setOf(5, 6) else emptySet())
+            localTracker.initializeWithAssignedIds(
+                listOf(
+                    PersonDetection(FloatRect(100f, 100f, 180f, 300f), 0.95f, createDummyMask()),
+                    PersonDetection(FloatRect(220f, 100f, 300f, 300f), 0.95f, createDummyMask())
+                ),
+                listOf(5, 6)
+            )
+            localTracker.update(emptyList(), 33_333L)
+            localTracker.update(emptyList(), 66_666L)
+            return localTracker.update(
+                listOf(
+                    PersonDetection(FloatRect(140f, 100f, 260f, 300f), 0.95f, createDummyMask())
+                ),
+                99_999L
+            )
+        }
+
+        val control = run(facePrivacyEnabled = false)
+        val withFacePrivacyClass = run(facePrivacyEnabled = true)
+        fun identitySignature(persons: List<TrackedPerson>) = persons.sortedBy { it.id }.map {
             listOf(
-                PersonDetection(FloatRect(100f, 100f, 180f, 300f), 0.95f, createDummyMask()),
-                PersonDetection(FloatRect(220f, 100f, 300f, 300f), 0.95f, createDummyMask())
-            ),
-            listOf(5, 6)
-        )
+                it.id,
+                it.state,
+                it.observedThisFrame,
+                it.framesSinceLastObservation,
+                it.bbox
+            )
+        }
 
-        tracker.update(emptyList(), 33_333L)
-        val lost = tracker.update(emptyList(), 66_666L)
-        assertTrue(lost.all { it.state == TrackState.LOST || it.state == TrackState.REACQUIRING })
-
-        val tracks = tracker.update(
-            listOf(
-                // Motion-grade support for both durable identities, but no
-                // unique owner. This used to mint a new replacement ID.
-                PersonDetection(FloatRect(140f, 100f, 260f, 300f), 0.95f, createDummyMask())
-            ),
-            99_999L
-        )
-
-        assertEquals(setOf(5, 6), tracks.map { it.id }.toSet())
-        assertTrue(tracks.none { it.observedThisFrame }, "reservation must not guess which protected ID owns the detection")
-        val faceEvidence = tracker.getFreshFacePrivacyClassEvidence()
-        assertEquals(1, faceEvidence.size)
-        assertEquals(setOf(5, 6), faceEvidence.single().residualTrackIds)
-        assertEquals(FloatRect(140f, 100f, 260f, 300f), faceEvidence.single().detection.bbox)
-        assertTrue(tracker.getPrivacySuppressedSelectedTrackIds().isEmpty())
+        assertEquals(identitySignature(control), identitySignature(withFacePrivacyClass))
+        assertEquals(control.map { it.id }.toSet(), withFacePrivacyClass.map { it.id }.toSet())
     }
 
     @Test

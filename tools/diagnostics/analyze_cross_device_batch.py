@@ -434,6 +434,35 @@ def compare_map(a: dict[int, tuple], b: dict[int, tuple]) -> dict:
     }
 
 
+def summarize_cpu_reference_track_births(frames: dict[int, tuple]) -> dict:
+    if not frames:
+        return {"initial_track_ids": [], "new_track_events": []}
+    ordered_pts = sorted(frames)
+    first_pts = ordered_pts[0]
+    initial_track_ids = sorted(int(track[0]) for track in frames[first_pts])
+    seen = set(initial_track_ids)
+    births: list[dict] = []
+    for pts in ordered_pts[1:]:
+        for track in frames[pts]:
+            track_id = int(track[0])
+            if track_id in seen:
+                continue
+            seen.add(track_id)
+            births.append(
+                {
+                    "pts_us": pts,
+                    "track_id": track_id,
+                    "state": track[1],
+                    "bbox_q0_0625px": list(track[2]),
+                    "observed_this_frame": track[3],
+                }
+            )
+    return {
+        "initial_track_ids": initial_track_ids,
+        "new_track_events": births,
+    }
+
+
 def summarize_face_selected_gaps(bundle: dict) -> dict:
     roots = bundle.get("face_identity_roots") or {}
     selected_ids = [int(x) for x in roots.get("face_only_person_ids", [])]
@@ -783,14 +812,20 @@ def main() -> int:
                 "face_sticker_placement_frames": len(b["face_sticker_placements"]),
                 "face_selected_quality": summarize_face_selected_gaps(b),
                 "face_pipeline_quality": selected_face_quality_summary(b["pipeline_summary"]),
-                "new_track_ids": sorted(
+                # NEW_TRACK_CREATED comes from the production TrackManager. Keep
+                # it explicitly labelled so it cannot be mistaken for the
+                # deterministic CPU reference topology used by Face rendering.
+                "production_new_track_ids": sorted(
                     {
                         int(event["track_id"])
                         for event in b["new_track_events"]
                         if isinstance(event.get("track_id"), int)
                     }
                 ),
-                "new_track_events": b["new_track_events"],
+                "production_new_track_events": b["new_track_events"],
+                "cpu_reference_track_births": summarize_cpu_reference_track_births(
+                    b["shadow_cpu_full"]
+                ),
                 "protected_lost_reservation_event_count": len(
                     b["protected_lost_reservation_events"]
                 ),
