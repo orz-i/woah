@@ -100,7 +100,7 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
         selectionPreviewLoading: true,
       );
 
-      await _loadSelectionPreview(result.analysisCacheId, project.trimStartMs);
+      await _executePreviewRequest();
     } catch (e, stack) {
       AppLogger.e('PersonSelectionController', 'Analysis failed', e, stack);
       state = state.copyWith(
@@ -111,33 +111,56 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
     }
   }
 
-  Future<void> _loadSelectionPreview(
-    String analysisCacheId,
-    int trimStartMs,
-  ) async {
+  static const selectionMaskEffect = EffectConfig(
+    fillMode: FillMode.solid,
+    fillColorArgb: 0xFFF44848,
+    opacity: 0.38,
+    borderWidth: 0,
+  );
+
+  int _previewRequestId = 0;
+
+  void _requestSelectionPreview() {
+    _executePreviewRequest();
+  }
+
+  Future<void> _executePreviewRequest() async {
+    final cacheId = state.analysisCacheId;
+    final project = state.project;
+    if (cacheId == null || project == null) return;
+
+    final currentRequestId = ++_previewRequestId;
     try {
+      final isFaceOnly = state.privacyMode == ProjectPrivacyMode.faceOnly;
+      final selectedPersonIds = isFaceOnly
+          ? const <int>[]
+          : state.selectedPersonIds.toList();
+      final faceOnlyPersonIds = isFaceOnly
+          ? state.faceOnlyPersonIds.toList()
+          : const <int>[];
+
       final preview = await _repository.getPreviewFrame(
-        analysisCacheId: analysisCacheId,
-        timestampMs: trimStartMs,
-        selectedPersonIds: const [],
-        faceOnlyPersonIds: const [],
-        effects: const EffectConfig(),
+        analysisCacheId: cacheId,
+        timestampMs: project.trimStartMs,
+        selectedPersonIds: selectedPersonIds,
+        faceOnlyPersonIds: faceOnlyPersonIds,
+        effects: selectionMaskEffect,
         follow: const FollowConfig(),
       );
-      if (!mounted || state.analysisCacheId != analysisCacheId) return;
-      state = state.copyWith(
-        selectionPreviewPath: preview.thumbnailPath,
-        selectionPreviewLoading: false,
-      );
+
+      if (!mounted || state.analysisCacheId != cacheId) return;
+      if (currentRequestId == _previewRequestId) {
+        state = state.copyWith(
+          selectionPreviewPath: preview.thumbnailPath,
+          selectionPreviewLoading: false,
+        );
+      }
     } catch (e) {
-      // Selection still works from detector thumbnails if the neutral preview is
-      // unavailable on a device. This is presentation-only and must never block
-      // the detector result.
       AppLogger.d(
         'PersonSelectionController',
         'Selection stage preview unavailable: $e',
       );
-      if (mounted && state.analysisCacheId == analysisCacheId) {
+      if (mounted && state.analysisCacheId == cacheId) {
         state = state.copyWith(selectionPreviewLoading: false);
       }
     }
@@ -177,6 +200,26 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
     _applyTargets(state.persons.map((person) => person.id).toSet());
   }
 
+  void resetSelection() {
+    final project = state.project;
+    final personIds = state.persons.map((person) => person.id).toSet();
+    if (project != null) {
+      final storedTargets = {
+        ...project.selectedPersonIds,
+        ...project.faceOnlyPersonIds,
+      }.intersection(personIds);
+      final targets = storedTargets.isNotEmpty ? storedTargets : personIds;
+      final mode =
+          project.selectedPersonIds.isEmpty &&
+              project.faceOnlyPersonIds.isNotEmpty
+          ? ProjectPrivacyMode.faceOnly
+          : ProjectPrivacyMode.fullBody;
+      _applyTargets(targets, mode: mode);
+    } else {
+      _applyTargets(personIds, mode: ProjectPrivacyMode.fullBody);
+    }
+  }
+
   void deselectAll() {
     _applyTargets(<int>{});
   }
@@ -192,6 +235,7 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
           ? targets
           : <int>{},
     );
+    _requestSelectionPreview();
   }
 
   DanceProject? buildConfiguredProject() {

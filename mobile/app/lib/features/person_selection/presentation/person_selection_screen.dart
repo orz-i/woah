@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
-import '../../../core/widgets/bottom_control_drawer.dart';
 import '../../../core/widgets/main_flow_header.dart';
 import '../domain/person_selection_state.dart';
 import 'person_selection_controller.dart';
@@ -23,9 +22,6 @@ class PersonSelectionScreen extends ConsumerStatefulWidget {
 }
 
 class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
-  final DraggableScrollableController _drawerController =
-      DraggableScrollableController();
-
   @override
   void initState() {
     super.initState();
@@ -37,15 +33,12 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
   }
 
   @override
-  void dispose() {
-    _drawerController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final state = ref.watch(personSelectionControllerProvider);
     final controller = ref.read(personSelectionControllerProvider.notifier);
+
+    final showControls = state.status == PersonSelectionStatus.ready &&
+        state.persons.isNotEmpty;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -60,63 +53,35 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
       ),
       child: Scaffold(
         backgroundColor: AppTheme.warmBackground,
-        body: Stack(
-          children: [
-            Positioned.fill(child: _buildStage(state, controller)),
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: SafeArea(bottom: false, child: _buildHeader(controller)),
-            ),
-            if (state.status == PersonSelectionStatus.ready &&
-                state.persons.isNotEmpty)
-              Positioned.fill(
-                child: BottomControlDrawer(
-                  controller: _drawerController,
-                  minChildSize: 0.28,
-                  initialChildSize: 0.30,
-                  maxChildSize: 0.40,
-                  snapSizes: const [0.28, 0.30, 0.40],
-                  panelColor: AppTheme.warmSurface,
-                  panelBorderColor: AppTheme.warmBorder,
-                  handleColor: AppTheme.warmBorder,
-                  panelRadius: 30,
-                  allowHandleOnlyCollapse: false,
-                  panelShadow: const [
-                    BoxShadow(
-                      color: Color(0x16000000),
-                      blurRadius: 28,
-                      offset: Offset(0, -8),
-                    ),
-                  ],
-                  bottomActionBorderColor: Colors.transparent,
-                  bottomActionBar: _buildContinueButton(state, controller),
-                  child: _buildDrawerContent(state, controller),
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 6,
+                  ),
+                  child: _buildStage(state, controller),
                 ),
               ),
-          ],
+              if (showControls)
+                _buildBottomControlPanel(state, controller),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(PersonSelectionController controller) {
+  Widget _buildHeader() {
     return MainFlowHeader(
       title: '选择要保护的人',
       onClose: () {
         HapticFeedback.lightImpact();
         context.pop();
       },
-      trailing: _HeaderIconButton(
-        icon: Icons.refresh_rounded,
-        tooltip: '重新选择',
-        outlined: true,
-        onPressed: () {
-          HapticFeedback.lightImpact();
-          controller.selectAll();
-        },
-      ),
     );
   }
 
@@ -156,26 +121,10 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
         ? videoInfo.aspectRatio
         : 9 / 16;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 132, 18, 48),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          var stageWidth = constraints.maxWidth;
-          var stageHeight = stageWidth / aspectRatio;
-          if (stageHeight > constraints.maxHeight) {
-            stageHeight = constraints.maxHeight;
-            stageWidth = stageHeight * aspectRatio;
-          }
-
-          return Align(
-            alignment: const Alignment(0, -0.18),
-            child: SizedBox(
-              width: stageWidth,
-              height: stageHeight,
-              child: _buildSelectableFrame(state, controller),
-            ),
-          );
-        },
+    return Center(
+      child: AspectRatio(
+        aspectRatio: aspectRatio,
+        child: _buildSelectableFrame(state, controller),
       ),
     );
   }
@@ -314,120 +263,182 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            decoration: BoxDecoration(
-              color: selected
-                  ? AppTheme.coral.withAlpha(12)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: selected ? AppTheme.coralSoft : AppTheme.warmTextMuted,
-                width: selected ? 2.2 : 1.2,
-              ),
-              boxShadow: selected
-                  ? const [BoxShadow(color: Color(0x18F44848), blurRadius: 10)]
-                  : null,
-            ),
-            child: Align(
-              alignment: Alignment.topRight,
-              child: Transform.translate(
-                offset: const Offset(8, -8),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 160),
-                  width: 30,
-                  height: 30,
-                  decoration: BoxDecoration(
-                    color: selected ? AppTheme.coral : AppTheme.warmSurface,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: selected ? Colors.white : AppTheme.warmTextMuted,
-                      width: selected ? 1.5 : 1.2,
-                    ),
-                  ),
-                  child: selected
-                      ? const Icon(
-                          Icons.check_rounded,
-                          color: Colors.white,
-                          size: 19,
-                        )
-                      : null,
+          child: const SizedBox.expand(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomControlPanel(
+    PersonSelectionState state,
+    PersonSelectionController controller,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildPrivacyModeSwitch(state, controller),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _SelectionBarButton(
+                  icon: Icons.done_all_rounded,
+                  label: '全选',
+                  onPressed: controller.selectAll,
                 ),
               ),
-            ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _SelectionBarButton(
+                  icon: Icons.refresh_rounded,
+                  label: '重置',
+                  onPressed: controller.resetSelection,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _SelectionBarButton(
+                  icon: Icons.remove_done_rounded,
+                  label: '清空',
+                  onPressed: controller.deselectAll,
+                ),
+              ),
+            ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDrawerContent(
-    PersonSelectionState state,
-    PersonSelectionController controller,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildPrivacyModeSelector(state, controller),
-        const SizedBox(height: 22),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _SelectionActionButton(
-              icon: Icons.check_circle_outline_rounded,
-              label: '全选',
-              onPressed: controller.selectAll,
-            ),
-            _SelectionActionButton(
-              icon: Icons.remove_circle_outline_rounded,
-              label: '清空',
-              onPressed: controller.deselectAll,
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-      ],
-    );
-  }
-
-  Widget _buildPrivacyModeSelector(
-    PersonSelectionState state,
-    PersonSelectionController controller,
-  ) {
-    return Container(
-      height: 58,
-      padding: const EdgeInsets.all(5),
-      decoration: BoxDecoration(
-        color: AppTheme.warmSurfaceSoft,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppTheme.coralPale),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _ModeButton(
-              label: '全身保护',
-              icon: Icons.accessibility_new_rounded,
-              selected: state.privacyMode == ProjectPrivacyMode.fullBody,
-              onTap: () {
-                HapticFeedback.selectionClick();
-                controller.setProjectPrivacyMode(ProjectPrivacyMode.fullBody);
-              },
-            ),
-          ),
-          const SizedBox(width: 5),
-          Expanded(
-            child: _ModeButton(
-              label: '人脸保护',
-              icon: Icons.face_retouching_off_rounded,
-              selected: state.privacyMode == ProjectPrivacyMode.faceOnly,
-              onTap: () {
-                HapticFeedback.selectionClick();
-                controller.setProjectPrivacyMode(ProjectPrivacyMode.faceOnly);
-              },
-            ),
-          ),
+          const SizedBox(height: 14),
+          _buildContinueButton(state, controller),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPrivacyModeSwitch(
+    PersonSelectionState state,
+    PersonSelectionController controller,
+  ) {
+    final isFaceOnly = state.privacyMode == ProjectPrivacyMode.faceOnly;
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFECE3DE),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final itemWidth = (constraints.maxWidth - 2) / 2;
+          return Stack(
+            children: [
+              // 平滑滑动背景指示块
+              AnimatedAlign(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeInOutCubic,
+                alignment: isFaceOnly
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
+                child: Container(
+                  width: itemWidth,
+                  height: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.coralActionGradient,
+                    borderRadius: BorderRadius.circular(19),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x33F44848),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // 全身 / 人脸选项
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        controller.setProjectPrivacyMode(
+                          ProjectPrivacyMode.fullBody,
+                        );
+                      },
+                      child: Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.accessibility_new_rounded,
+                              size: 18,
+                              color: !isFaceOnly
+                                  ? Colors.white
+                                  : AppTheme.warmTextSecondary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '全身保护',
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: !isFaceOnly
+                                    ? FontWeight.w600
+                                    : FontWeight.w500,
+                                color: !isFaceOnly
+                                    ? Colors.white
+                                    : AppTheme.warmTextSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        controller.setProjectPrivacyMode(
+                          ProjectPrivacyMode.faceOnly,
+                        );
+                      },
+                      child: Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.face_retouching_off_rounded,
+                              size: 18,
+                              color: isFaceOnly
+                                  ? Colors.white
+                                  : AppTheme.warmTextSecondary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '人脸保护',
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: isFaceOnly
+                                    ? FontWeight.w600
+                                    : FontWeight.w500,
+                                color: isFaceOnly
+                                    ? Colors.white
+                                    : AppTheme.warmTextSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -458,96 +469,12 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
   }
 }
 
-class _ModeButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _ModeButton({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Ink(
-          decoration: BoxDecoration(
-            gradient: selected ? AppTheme.coralActionGradient : null,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 20,
-                color: selected ? Colors.white : AppTheme.warmTextSecondary,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  color: selected ? Colors.white : AppTheme.warmTextSecondary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _HeaderIconButton extends StatelessWidget {
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onPressed;
-  final bool outlined;
-
-  const _HeaderIconButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-    this.outlined = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: BoxDecoration(
-        color: outlined ? AppTheme.warmSurfaceSoft : Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
-        border: outlined ? Border.all(color: AppTheme.coralPale) : null,
-      ),
-      child: IconButton(
-        tooltip: tooltip,
-        onPressed: onPressed,
-        padding: EdgeInsets.zero,
-        icon: Icon(icon, size: 30, color: AppTheme.warmTextPrimary),
-      ),
-    );
-  }
-}
-
-class _SelectionActionButton extends StatelessWidget {
+class _SelectionBarButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onPressed;
 
-  const _SelectionActionButton({
+  const _SelectionBarButton({
     required this.icon,
     required this.label,
     required this.onPressed,
@@ -560,32 +487,33 @@ class _SelectionActionButton extends StatelessWidget {
       label: label,
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: () {
             HapticFeedback.selectionClick();
             onPressed();
           },
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(14),
           child: Container(
-            constraints: const BoxConstraints(minWidth: 106, minHeight: 52),
-            padding: const EdgeInsets.symmetric(horizontal: 18),
+            height: 38,
             decoration: BoxDecoration(
-              color: AppTheme.warmSurface,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppTheme.warmBorder),
+              color: const Color(0xFFF2ECE7),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: AppTheme.warmBorder.withValues(alpha: 0.6),
+                width: 1.0,
+              ),
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, size: 22, color: AppTheme.coral),
-                const SizedBox(width: 8),
+                Icon(icon, size: 16, color: AppTheme.coral),
+                const SizedBox(width: 5),
                 Text(
                   label,
                   style: const TextStyle(
-                    color: AppTheme.coral,
-                    fontSize: 14,
+                    color: AppTheme.warmTextPrimary,
+                    fontSize: 12.5,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
