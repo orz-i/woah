@@ -85,6 +85,7 @@ class FaceOnlyPrivacyFrameProcessor(
 
     private val pixelMotionTracker = FacePixelMotionTracker()
     private val canonicalRoiBuffer = ByteBuffer.allocateDirect(FACE_ROI_SIZE * FACE_ROI_SIZE * 4)
+    private val canonicalRoiWorkspace = CanonicalFaceRoiSampler.Workspace(FACE_ROI_SIZE)
 
     private data class RoiPixels(
         val rgba: ByteBuffer,
@@ -105,7 +106,8 @@ class FaceOnlyPrivacyFrameProcessor(
                     mapper = mapper,
                     sourceRect = plan.sourceRect,
                     outputSize = FACE_ROI_SIZE,
-                    output = canonicalRoiBuffer
+                    output = canonicalRoiBuffer,
+                    workspace = canonicalRoiWorkspace
                 ),
                 source = "CANONICAL_MODEL_RGBA"
             )
