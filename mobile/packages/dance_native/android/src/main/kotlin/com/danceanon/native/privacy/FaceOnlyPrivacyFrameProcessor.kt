@@ -1315,6 +1315,19 @@ class FaceOnlyPrivacyFrameProcessor(
             faceOnlyTrackIds = faceOnlyTrackIds,
             dormantSuppressedTrackIds = dormantSuppressedTrackIds,
             existingPlacements = stickerPlacements,
+            trustedFaceSizeByTrackId = buildMap {
+                dormantSuppressedTrackIds.forEach { trackId ->
+                    cachedFaceByTrackId[trackId]?.let { cached ->
+                        put(
+                            trackId,
+                            FacePrivacyTrustedSize(
+                                radiusX = cached.radiusX,
+                                radiusY = cached.radiusY
+                            )
+                        )
+                    }
+                }
+            },
             canonicalizeReferenceGeometry = canonicalizeReferenceGeometry
         )
         classFallbacks.forEach { classFallback ->

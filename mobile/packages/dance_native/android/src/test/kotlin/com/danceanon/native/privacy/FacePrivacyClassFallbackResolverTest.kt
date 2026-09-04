@@ -55,6 +55,36 @@ class FacePrivacyClassFallbackResolverTest {
         assertTrue(fallback.isEmpty())
     }
 
+    @Test
+    fun `unique owner fallback keeps fresh center but reuses conservative trusted face size`() {
+        val evidence = listOf(
+            fresh(5, FloatRect(200f, 100f, 600f, 900f), setOf(6))
+        )
+
+        val fallback = FacePrivacyClassFallbackResolver.resolve(
+            evidence = evidence,
+            faceOnlyTrackIds = setOf(6),
+            dormantSuppressedTrackIds = setOf(6),
+            existingPlacements = emptyList(),
+            trustedFaceSizeByTrackId = mapOf(
+                6 to FacePrivacyTrustedSize(radiusX = 25f, radiusY = 30f)
+            ),
+            canonicalizeReferenceGeometry = false
+        ).single()
+
+        val rawBodyFallback = FacePrivacyRegionResolver.resolve(
+            personBbox = evidence.single().detection.bbox,
+            roiPlan = null,
+            selectedFace = null
+        )!!
+        assertEquals(rawBodyFallback.centerX, fallback.region.centerX)
+        assertEquals(rawBodyFallback.centerY, fallback.region.centerY)
+        assertEquals(31f, fallback.region.radiusX, 0.001f)
+        assertEquals(37.2f, fallback.region.radiusY, 0.001f)
+        assertTrue(fallback.region.radiusX < rawBodyFallback.radiusX)
+        assertTrue(fallback.region.radiusY < rawBodyFallback.radiusY)
+    }
+
     private fun fresh(index: Int, bbox: FloatRect, owners: Set<Int>) =
         FreshPrivacyClassEvidence(
             selectionClass = PrivacySelectionClass.SELECTED,

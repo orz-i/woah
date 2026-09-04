@@ -11,6 +11,11 @@ internal data class FacePrivacyClassFallback(
     val region: FacePrivacyEllipse
 )
 
+internal data class FacePrivacyTrustedSize(
+    val radiusX: Float,
+    val radiusY: Float
+)
+
 /**
  * Fail-closed FACE_ONLY coverage for fresh detections whose exact identity is
  * unresolved but whose complete residual owner set is already Face-selected.
@@ -21,12 +26,14 @@ internal data class FacePrivacyClassFallback(
  */
 internal object FacePrivacyClassFallbackResolver {
     private const val SYNTHETIC_TRACK_ID_BASE = -1_000_000
+    private const val TRUSTED_SIZE_FALLBACK_EXPANSION = 1.24f
 
     fun resolve(
         evidence: List<FreshPrivacyClassEvidence>,
         faceOnlyTrackIds: Set<Int>,
         dormantSuppressedTrackIds: Set<Int>,
         existingPlacements: List<FaceStickerPlacement>,
+        trustedFaceSizeByTrackId: Map<Int, FacePrivacyTrustedSize> = emptyMap(),
         canonicalizeReferenceGeometry: Boolean
     ): List<FacePrivacyClassFallback> {
         if (evidence.isEmpty() || dormantSuppressedTrackIds.isEmpty()) return emptyList()
@@ -53,10 +60,31 @@ internal object FacePrivacyClassFallbackResolver {
                     roiPlan = null,
                     selectedFace = null
                 ) ?: return@mapNotNull null
-                val region = if (canonicalizeReferenceGeometry) {
-                    FaceReferenceGeometryCanonicalizer.ellipse(rawRegion)
+                val trustedSize = item.residualTrackIds
+                    .singleOrNull()
+                    ?.let(trustedFaceSizeByTrackId::get)
+                val sizeBoundedRegion = if (trustedSize != null) {
+                    // Exact identity is intentionally unresolved here, but the
+                    // privacy sidecar has already reduced the possible owner set
+                    // to one selected slot. Reuse only that slot's last trusted
+                    // source-space face size; current fresh body geometry remains
+                    // the sole center authority. This prevents a merge-expanded
+                    // person bbox from turning a short privacy fallback into a
+                    // head-and-shoulders sticker, without reviving stale face
+                    // position or updating any identity/cache state.
+                    rawRegion.copy(
+                        radiusX = (trustedSize.radiusX * TRUSTED_SIZE_FALLBACK_EXPANSION)
+                            .coerceAtLeast(1f),
+                        radiusY = (trustedSize.radiusY * TRUSTED_SIZE_FALLBACK_EXPANSION)
+                            .coerceAtLeast(1f)
+                    )
                 } else {
                     rawRegion
+                }
+                val region = if (canonicalizeReferenceGeometry) {
+                    FaceReferenceGeometryCanonicalizer.ellipse(sizeBoundedRegion)
+                } else {
+                    sizeBoundedRegion
                 }
 
                 // Existing selected sticker coverage already protects this fresh
