@@ -3,6 +3,7 @@ package com.danceanon.native.diagnostics
 import com.danceanon.native.inference.FloatRect
 import com.danceanon.native.inference.NativeMask
 import com.danceanon.native.inference.PersonDetection
+import com.danceanon.native.tracking.FreshPrivacyClassEvidence
 import com.danceanon.native.tracking.PrivacySelectionClass
 import com.danceanon.native.tracking.TrackState
 import com.danceanon.native.tracking.TrackedPerson
@@ -23,52 +24,82 @@ class CrossDeviceTrackingDiagnosticsTest {
     }
 
     @Test
-    fun temporalFacePrivacyClassEvidenceSurvivesAmbiguousSelectedIdentityWithoutCommittingId() {
-        val diagnostics = CrossDeviceTrackingDiagnostics(
-            jobId = "test",
-            fullBodyPersonIds = emptySet(),
+    fun conservativeUnknownFaceEvidenceRequiresOneStrongDormantSelectedOwner() {
+        val unknown = FreshPrivacyClassEvidence(
+            selectionClass = PrivacySelectionClass.SELECTED,
+            detectionIndex = 5,
+            detection = PersonDetection(
+                FloatRect(220f, 100f, 340f, 320f),
+                0.95f,
+                solidMask()
+            ),
+            residualTrackIds = emptySet(),
+            conservativeUnknown = true
+        )
+        val tracks = listOf(
+            TrackedPerson(
+                id = 5,
+                bbox = FloatRect(20f, 100f, 140f, 320f),
+                mask = solidMask(),
+                confidence = 0.95f,
+                state = TrackState.ACTIVE,
+                observedThisFrame = true
+            ),
+            TrackedPerson(
+                id = 6,
+                bbox = FloatRect(210f, 100f, 330f, 320f),
+                mask = solidMask(),
+                confidence = 0.95f,
+                state = TrackState.LOST,
+                observedThisFrame = false
+            )
+        )
+
+        val resolved = CrossDeviceTrackingDiagnostics.resolveTemporalFacePrivacyClassEvidence(
+            temporalEvidence = listOf(unknown),
             faceOnlyPersonIds = setOf(5, 6),
-            identityProtectedTrackIds = setOf(5, 6)
-        )
-        val initialDetections = listOf(
-            PersonDetection(FloatRect(100f, 100f, 220f, 320f), 0.95f, solidMask()),
-            PersonDetection(FloatRect(180f, 100f, 300f, 320f), 0.95f, solidMask())
-        )
-        val initialTracks = listOf(
-            TrackedPerson(5, initialDetections[0].bbox, initialDetections[0].mask, 0.95f, state = TrackState.ACTIVE),
-            TrackedPerson(6, initialDetections[1].bbox, initialDetections[1].mask, 0.95f, state = TrackState.ACTIVE)
+            cpuFullTracked = tracks
         )
 
-        diagnostics.recordFrame(
-            ptsUs = 0L,
-            shouldInfer = true,
-            productionDetections = initialDetections,
-            productionTracked = initialTracks,
-            cpuMt4Detections = initialDetections
+        assertEquals(1, resolved.size)
+        assertEquals(setOf(6), resolved.single().residualTrackIds)
+        assertTrue(resolved.single().conservativeUnknown)
+    }
+
+    @Test
+    fun conservativeUnknownFaceEvidenceRejectsFarOrMultiOwnerGeometry() {
+        val unknown = FreshPrivacyClassEvidence(
+            selectionClass = PrivacySelectionClass.SELECTED,
+            detectionIndex = 5,
+            detection = PersonDetection(
+                FloatRect(220f, 100f, 340f, 320f),
+                0.95f,
+                solidMask()
+            ),
+            residualTrackIds = emptySet(),
+            conservativeUnknown = true
+        )
+        val twoDormantOwners = listOf(
+            TrackedPerson(5, FloatRect(205f, 100f, 325f, 320f), solidMask(), 0.95f,
+                state = TrackState.LOST, observedThisFrame = false),
+            TrackedPerson(6, FloatRect(225f, 100f, 345f, 320f), solidMask(), 0.95f,
+                state = TrackState.LOST, observedThisFrame = false)
+        )
+        val farOwner = listOf(
+            TrackedPerson(6, FloatRect(500f, 100f, 620f, 320f), solidMask(), 0.95f,
+                state = TrackState.LOST, observedThisFrame = false)
         )
 
-        // One fresh body is compatible with the selected privacy class but is
-        // deliberately ambiguous between the two protected identities.
-        val merged = PersonDetection(
-            FloatRect(140f, 100f, 260f, 320f),
-            0.95f,
-            solidMask()
+        assertTrue(
+            CrossDeviceTrackingDiagnostics.resolveTemporalFacePrivacyClassEvidence(
+                listOf(unknown), setOf(5, 6), twoDormantOwners
+            ).isEmpty()
         )
-        val cpuTracks = diagnostics.recordFrame(
-            ptsUs = 16_667L,
-            shouldInfer = true,
-            productionDetections = listOf(merged),
-            productionTracked = null,
-            cpuMt4Detections = listOf(merged)
-        ).orEmpty()
-
-        val evidence = diagnostics.getCpuFullTemporalFacePrivacyClassEvidence()
-        assertTrue(evidence.isNotEmpty())
-        assertTrue(evidence.all { it.selectionClass == PrivacySelectionClass.SELECTED })
-        assertTrue(evidence.none { it.conservativeUnknown })
-        assertTrue(evidence.flatMap { it.residualTrackIds }.all { it == 5 || it == 6 })
-        assertTrue(evidence.any { it.residualTrackIds.isNotEmpty() })
-        assertTrue(cpuTracks.map { it.id }.toSet().containsAll(setOf(5, 6)))
+        assertTrue(
+            CrossDeviceTrackingDiagnostics.resolveTemporalFacePrivacyClassEvidence(
+                listOf(unknown), setOf(6), farOwner
+            ).isEmpty()
+        )
     }
 
     @Test

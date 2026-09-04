@@ -275,27 +275,27 @@ internal class CrossDeviceTrackingDiagnostics(
             hardClassByDetectionIndex = hardClassByDetectionIndex,
             ptsUs = ptsUs
         ).filter {
-            it.selectionClass == PrivacySelectionClass.SELECTED && !it.conservativeUnknown
+            it.selectionClass == PrivacySelectionClass.SELECTED
         }
 
-        latestCpuFullTemporalFacePrivacyClassEvidence = selectedTemporalEvidence.mapNotNull { evidence ->
-            val plausibleDormantOwners = cpuFullTracked.asSequence()
-                .filter { faceOnlyPersonIds.contains(it.id) && !it.observedThisFrame }
-                .filter { track ->
-                    val canonicalTrackBbox = FaceReferenceGeometryCanonicalizer.rect(track.bbox)
-                    bboxIntersectionArea(
-                        expandBbox(canonicalTrackBbox, LOCAL_GPU_SEARCH_EXPANSION_RATIO),
-                        evidence.detection.bbox
-                    ) > 0f
-                }
-                .map { it.id }
-                .toSortedSet()
-            if (plausibleDormantOwners.isEmpty()) {
-                null
-            } else {
-                evidence.copy(residualTrackIds = plausibleDormantOwners)
-            }
-        }
+        latestCpuFullTemporalFacePrivacyClassEvidence = resolveTemporalFacePrivacyClassEvidence(
+            temporalEvidence = selectedTemporalEvidence,
+            faceOnlyPersonIds = faceOnlyPersonIds,
+            cpuFullTracked = cpuFullTracked
+        )
+
+        val trustedSelectedDetectionIndices = selectedTemporalEvidence
+            .filterNot { it.conservativeUnknown }
+            .map { it.detectionIndex }
+            .sorted()
+        val unknownDetectionIndices = selectedTemporalEvidence
+            .filter { it.conservativeUnknown }
+            .map { it.detectionIndex }
+            .sorted()
+        val mappedUnknownDetectionIndices = latestCpuFullTemporalFacePrivacyClassEvidence
+            .filter { it.conservativeUnknown }
+            .map { it.detectionIndex }
+            .sorted()
 
         NativeDiagnostics.event(
             level = "INFO",
@@ -304,10 +304,12 @@ internal class CrossDeviceTrackingDiagnostics(
             fields = mapOf(
                 "job_id" to jobId,
                 "pts_us" to ptsUs,
-                "selected_detection_indices" to selectedTemporalEvidence.map { it.detectionIndex }.sorted(),
+                "selected_detection_indices" to trustedSelectedDetectionIndices,
+                "unknown_detection_indices" to unknownDetectionIndices,
                 "mapped_detection_indices" to latestCpuFullTemporalFacePrivacyClassEvidence
                     .map { it.detectionIndex }
                     .sorted(),
+                "mapped_unknown_detection_indices" to mappedUnknownDetectionIndices,
                 "mapped_residual_track_ids" to latestCpuFullTemporalFacePrivacyClassEvidence
                     .flatMap { it.residualTrackIds }
                     .toSortedSet()
@@ -455,6 +457,46 @@ internal class CrossDeviceTrackingDiagnostics(
 
         private const val SAFE_GPU_CONFIDENCE = 0.35f
         private const val LOCAL_GPU_SEARCH_EXPANSION_RATIO = 0.30f
+
+        internal fun resolveTemporalFacePrivacyClassEvidence(
+            temporalEvidence: List<FreshPrivacyClassEvidence>,
+            faceOnlyPersonIds: Set<Int>,
+            cpuFullTracked: List<TrackedPerson>
+        ): List<FreshPrivacyClassEvidence> = temporalEvidence.mapNotNull { evidence ->
+            if (evidence.selectionClass != PrivacySelectionClass.SELECTED) {
+                return@mapNotNull null
+            }
+            val eligibleOwners = cpuFullTracked.asSequence()
+                .filter { faceOnlyPersonIds.contains(it.id) && !it.observedThisFrame }
+                .filter { track ->
+                    val canonicalTrackBbox = FaceReferenceGeometryCanonicalizer.rect(track.bbox)
+                    val bboxIoU = TrackManager.computeBBoxIoU(
+                        canonicalTrackBbox,
+                        evidence.detection.bbox
+                    )
+                    // Reuse the existing protected-motion bbox gate. Passing a
+                    // zero mask IoU deliberately makes this sidecar stricter
+                    // than identity recovery: a privacy-only UNKNOWN cannot be
+                    // rescued by a weak/stale mask alone.
+                    TrackManager.isProtectedMotionEvidenceSufficient(
+                        bboxIoU = bboxIoU,
+                        maskIoU = 0f
+                    )
+                }
+                .map { it.id }
+                .distinct()
+                .sorted()
+                .toList()
+
+            // Privacy-only continuity is safe only when geometry points to one
+            // dormant selected slot. Multiple plausible owners stay unresolved
+            // and far/new entrants never inherit the selected class.
+            if (eligibleOwners.size != 1) {
+                null
+            } else {
+                evidence.copy(residualTrackIds = setOf(eligibleOwners.single()))
+            }
+        }
 
         private fun expandBbox(bbox: com.danceanon.native.inference.FloatRect, ratio: Float) =
             com.danceanon.native.inference.FloatRect(

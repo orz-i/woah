@@ -288,7 +288,9 @@ def read_bundle(path: Path) -> dict:
                         pts = int(fields["pts_us"])
                         face_temporal_class_evidence[pts] = (
                             tuple(sorted(int(x) for x in fields.get("selected_detection_indices", []))),
+                            tuple(sorted(int(x) for x in fields.get("unknown_detection_indices", []))),
                             tuple(sorted(int(x) for x in fields.get("mapped_detection_indices", []))),
+                            tuple(sorted(int(x) for x in fields.get("mapped_unknown_detection_indices", []))),
                             tuple(sorted(int(x) for x in fields.get("mapped_residual_track_ids", []))),
                         )
                         if fields.get("elapsed_ms") is not None:
@@ -843,7 +845,10 @@ def main() -> int:
                 "face_pipeline_quality": selected_face_quality_summary(b["pipeline_summary"]),
                 "face_temporal_class_evidence_frames": len(b["face_temporal_class_evidence"]),
                 "face_temporal_class_mapped_frames": sum(
-                    1 for value in b["face_temporal_class_evidence"].values() if value[1]
+                    1 for value in b["face_temporal_class_evidence"].values() if value[2]
+                ),
+                "face_temporal_class_unknown_mapped_frames": sum(
+                    1 for value in b["face_temporal_class_evidence"].values() if value[3]
                 ),
                 "face_temporal_class_timing": _timing_values(
                     b["face_temporal_class_timings_ms"]
