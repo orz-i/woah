@@ -261,12 +261,16 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
           children: [
             const ColoredBox(color: Color(0xFFF0E6E0)),
             if (controller != null && controller.value.isInitialized)
-              FittedBox(
-                fit: BoxFit.contain,
-                child: SizedBox(
-                  width: controller.value.size.width,
-                  height: controller.value.size.height,
-                  child: VideoPlayer(controller),
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _togglePlayback,
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: SizedBox(
+                    width: controller.value.size.width,
+                    height: controller.value.size.height,
+                    child: VideoPlayer(controller),
+                  ),
                 ),
               )
             else if (_initializing)
@@ -286,55 +290,98 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
                   ),
                 ),
               ),
-            if (controller != null && controller.value.isInitialized)
-              Align(
-                alignment: Alignment.center,
-                child: GestureDetector(
-                  onTap: _togglePlayback,
-                  child: Container(
-                    width: 62,
-                    height: 62,
-                    decoration: const BoxDecoration(
-                      color: Color(0x77000000),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      controller.value.isPlaying
-                          ? Icons.pause_rounded
-                          : Icons.play_arrow_rounded,
-                      color: Colors.white,
-                      size: 36,
-                    ),
-                  ),
-                ),
-              ),
+            // 底部控制条：背景透明，仅纯文字与纯图标，大小水平位置绝对对齐
             Positioned(
               left: 14,
-              bottom: 14,
-              child: _PreviewTimeChip(
-                text:
-                    '${_formatTime(_playheadMs)} / ${_formatTime(_durationMs)}',
-              ),
-            ),
-            if (controller != null && controller.value.isInitialized)
-              Positioned(
-                right: 14,
-                bottom: 14,
-                child: SizedBox(
-                  width: 34,
-                  height: 34,
-                  child: IconButton(
-                    tooltip: '从片段起点播放',
-                    padding: EdgeInsets.zero,
-                    onPressed: () => _seekTo(_trimStartMs),
-                    icon: const Icon(
-                      Icons.replay_rounded,
-                      color: Colors.white,
-                      size: 24,
+              right: 14,
+              bottom: 12,
+              child: SizedBox(
+                height: 36,
+                child: Stack(
+                  children: [
+                    // 左侧：时间显示（背景透明，纯文字 + 阴影）
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '${_formatTime(_playheadMs)} / ${_formatTime(_durationMs)}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.3,
+                          shadows: [
+                            Shadow(
+                              color: Color(0xB3000000),
+                              blurRadius: 4,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
+                    // 中间：播放/暂停按钮（背景透明，仅图标，绝对水平居中）
+                    if (controller != null && controller.value.isInitialized)
+                      Align(
+                        alignment: Alignment.center,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: _togglePlayback,
+                          child: SizedBox(
+                            width: 36,
+                            height: 36,
+                            child: Center(
+                              child: Icon(
+                                controller.value.isPlaying
+                                    ? Icons.pause_rounded
+                                    : Icons.play_arrow_rounded,
+                                color: Colors.white,
+                                size: 28,
+                                shadows: const [
+                                  Shadow(
+                                    color: Color(0xB3000000),
+                                    blurRadius: 4,
+                                    offset: Offset(0, 1),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    // 右侧：从起点重新播放按钮（背景透明，仅图标）
+                    if (controller != null && controller.value.isInitialized)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            _seekTo(_trimStartMs);
+                          },
+                          child: const SizedBox(
+                            width: 36,
+                            height: 36,
+                            child: Center(
+                              child: Icon(
+                                Icons.replay_rounded,
+                                color: Colors.white,
+                                size: 24,
+                                shadows: [
+                                  Shadow(
+                                    color: Color(0xB3000000),
+                                    blurRadius: 4,
+                                    offset: Offset(0, 1),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
+            ),
           ],
         ),
       ),
@@ -344,10 +391,8 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
   Widget _buildTimeline() {
     return Column(
       children: [
-        _TimelineRuler(durationMs: _durationMs),
-        const SizedBox(height: 6),
         SizedBox(
-          height: 102,
+          height: 94,
           child: _TrimTimeline(
             durationMs: _durationMs,
             trimStartMs: _trimStartMs,
@@ -359,6 +404,8 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
             onPlayheadChanged: _seekTo,
           ),
         ),
+        const SizedBox(height: 8),
+        _TimelineRuler(durationMs: _durationMs),
       ],
     );
   }
@@ -376,11 +423,11 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
               ),
             ),
             const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 12),
+              padding: EdgeInsets.symmetric(horizontal: 14),
               child: Icon(
-                Icons.swap_horiz_rounded,
+                Icons.arrow_forward_rounded,
                 color: AppTheme.coralSoft,
-                size: 30,
+                size: 24,
               ),
             ),
             Expanded(
@@ -486,27 +533,6 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
   }
 }
 
-class _PreviewTimeChip extends StatelessWidget {
-  final String text;
-
-  const _PreviewTimeChip({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        color: Colors.white,
-        fontSize: 11,
-        fontWeight: FontWeight.w500,
-        shadows: [
-          Shadow(color: Color(0x99000000), blurRadius: 4, offset: Offset(0, 1)),
-        ],
-      ),
-    );
-  }
-}
-
 class _TimelineRuler extends StatelessWidget {
   final int durationMs;
 
@@ -514,25 +540,71 @@ class _TimelineRuler extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text('00:00', style: _style),
-        Text(_format(durationMs ~/ 3), style: _style),
-        Text(_format(durationMs * 2 ~/ 3), style: _style),
-        Text(_format(durationMs), style: _style),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        const trackInset = 16.0;
+        final trackWidth = math.max(width - 2 * trackInset, 1.0);
+
+        final points = [
+          (0.0, '00:00'),
+          (trackWidth / 3, _format(durationMs ~/ 3)),
+          (trackWidth * 2 / 3, _format(durationMs * 2 ~/ 3)),
+          (trackWidth, _formatPrecise(durationMs)),
+        ];
+
+        return SizedBox(
+          height: 18,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: points.map((pt) {
+              final x = trackInset + pt.$1;
+              final isFirst = pt.$1 == 0.0;
+              final isLast = pt.$1 == trackWidth;
+              return Positioned(
+                left: isFirst
+                    ? x - 4
+                    : isLast
+                        ? null
+                        : x - 24,
+                right: isLast ? (width - x) - 4 : null,
+                width: (!isFirst && !isLast) ? 48 : null,
+                top: 0,
+                child: Text(
+                  pt.$2,
+                  textAlign: isFirst
+                      ? TextAlign.left
+                      : isLast
+                          ? TextAlign.right
+                          : TextAlign.center,
+                  style: const TextStyle(
+                    color: AppTheme.warmTextSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        );
+      },
     );
   }
-
-  static const _style = TextStyle(
-    color: AppTheme.warmTextSecondary,
-    fontSize: 11,
-  );
 
   String _format(int ms) {
     final total = ms ~/ 1000;
     return '${(total ~/ 60).toString().padLeft(2, '0')}:${(total % 60).toString().padLeft(2, '0')}';
+  }
+
+  String _formatPrecise(int ms) {
+    final totalSec = ms / 1000.0;
+    final min = totalSec ~/ 60;
+    final sec = totalSec - min * 60;
+    final frac = ((ms % 1000) / 100).round();
+    if (frac == 0) {
+      return _format(ms);
+    }
+    return '${min.toString().padLeft(2, '0')}:${sec.toStringAsFixed(1).padLeft(4, '0')}';
   }
 }
 
@@ -571,59 +643,88 @@ class _TrimTimelineState extends State<_TrimTimeline> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final startX = width * widget.trimStartMs / widget.durationMs;
-        final endX = width * widget.trimEndMs / widget.durationMs;
+        const trackInset = 16.0;
+        final trackWidth = math.max(width - 2 * trackInset, 1.0);
+
+        double xForMs(int ms) =>
+            trackInset +
+            trackWidth *
+                (ms.clamp(0, widget.durationMs) / widget.durationMs);
+
+        int msForX(double x) =>
+            (((x - trackInset) / trackWidth).clamp(0.0, 1.0) *
+                    widget.durationMs)
+                .round();
+
+        final startX = xForMs(widget.trimStartMs);
+        final endX = xForMs(widget.trimEndMs);
         final clampedPlayheadMs = widget.playheadMs.clamp(
           widget.trimStartMs,
           widget.trimEndMs,
         );
-        final playX = width * clampedPlayheadMs / widget.durationMs;
-        const trackTop = 20.0;
-        const trackHeight = 62.0;
-        const handleHitWidth = 52.0;
-        const bubbleWidth = 58.0;
-        final bubbleLeft = playX <= 34
-            ? 8.0
-            : playX >= width - 34
-            ? width - bubbleWidth - 8
-            : playX - bubbleWidth / 2;
+        final playX = xForMs(clampedPlayheadMs);
 
-        int valueForX(double x) =>
-            (x.clamp(0.0, width) / width * widget.durationMs).round();
+        const trackTop = 26.0;
+        const trackHeight = 60.0;
+        const trackBottom = trackTop + trackHeight;
+        const handleWidth = 14.0;
+        const bubbleWidth = 50.0;
+        const bubbleHeight = 22.0;
+
+        // 气泡绝对居中锚定 playX（因为预留了 trackInset=16，外层还有 18px padding，气泡居中绝不会超出屏幕）
+        final bubbleLeft = playX - bubbleWidth / 2;
 
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTapUp: (details) {
             final x = details.localPosition.dx;
-            final edgeGuard = handleHitWidth * 0.58;
+            final y = details.localPosition.dy;
+            if (y <= trackTop + 6) {
+              widget.onPlayheadChanged(
+                msForX(x).clamp(widget.trimStartMs, widget.trimEndMs),
+              );
+              return;
+            }
+            const edgeGuard = 16.0;
             if ((x - startX).abs() <= edgeGuard ||
                 (x - endX).abs() <= edgeGuard) {
               return;
             }
             widget.onPlayheadChanged(
-              valueForX(x).clamp(widget.trimStartMs, widget.trimEndMs),
+              msForX(x).clamp(widget.trimStartMs, widget.trimEndMs),
             );
           },
           onHorizontalDragStart: (details) {
             final x = details.localPosition.dx;
+            final y = details.localPosition.dy;
+
+            // 1. 上方气泡区域或极贴近播放头，优先判定为拖动播放头
+            if (y <= trackTop + 6 || (x - playX).abs() <= 12) {
+              _dragMode = _TrimDragMode.playhead;
+              widget.onPlayheadChanged(
+                msForX(x).clamp(widget.trimStartMs, widget.trimEndMs),
+              );
+              return;
+            }
+
+            // 2. 判断是否命中左右手柄
             final startDistance = (x - startX).abs();
             final endDistance = (x - endX).abs();
-            final edgeHitRadius = handleHitWidth / 2 + 4;
+            const edgeHitRadius = 24.0;
 
-            if (startDistance <= edgeHitRadius &&
-                startDistance <= endDistance) {
+            if (startDistance <= edgeHitRadius && startDistance <= endDistance) {
               _dragMode = _TrimDragMode.start;
             } else if (endDistance <= edgeHitRadius) {
               _dragMode = _TrimDragMode.end;
             } else {
               _dragMode = _TrimDragMode.playhead;
               widget.onPlayheadChanged(
-                valueForX(x).clamp(widget.trimStartMs, widget.trimEndMs),
+                msForX(x).clamp(widget.trimStartMs, widget.trimEndMs),
               );
             }
           },
           onHorizontalDragUpdate: (details) {
-            final value = valueForX(details.localPosition.dx);
+            final value = msForX(details.localPosition.dx);
             switch (_dragMode) {
               case _TrimDragMode.start:
                 widget.onStartChanged(value);
@@ -645,13 +746,14 @@ class _TrimTimelineState extends State<_TrimTimeline> {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
+              // 1. 缩略图轨道底图（严格限制在 trackInset 到 width - trackInset 之间）
               Positioned(
-                left: 0,
-                right: 0,
+                left: trackInset,
+                right: trackInset,
                 top: trackTop,
                 height: trackHeight,
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(8),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: List.generate(10, (index) {
@@ -671,94 +773,122 @@ class _TrimTimelineState extends State<_TrimTimeline> {
                   ),
                 ),
               ),
-              Positioned(
-                left: 0,
-                width: startX,
-                top: trackTop,
-                height: trackHeight,
-                child: IgnorePointer(
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.horizontal(
-                      left: Radius.circular(12),
+              // 2. 左侧未选中暗色遮罩
+              if (startX > trackInset)
+                Positioned(
+                  left: trackInset,
+                  width: startX - trackInset,
+                  top: trackTop,
+                  height: trackHeight,
+                  child: IgnorePointer(
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.horizontal(
+                        left: Radius.circular(8),
+                      ),
+                      child: const ColoredBox(color: Color(0x75000000)),
                     ),
-                    child: const ColoredBox(color: Color(0x70000000)),
                   ),
                 ),
-              ),
-              Positioned(
-                left: endX,
-                right: 0,
-                top: trackTop,
-                height: trackHeight,
-                child: IgnorePointer(
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.horizontal(
-                      right: Radius.circular(12),
+              // 3. 右侧未选中暗色遮罩
+              if (endX < width - trackInset)
+                Positioned(
+                  left: endX,
+                  right: trackInset,
+                  top: trackTop,
+                  height: trackHeight,
+                  child: IgnorePointer(
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.horizontal(
+                        right: Radius.circular(8),
+                      ),
+                      child: const ColoredBox(color: Color(0x75000000)),
                     ),
-                    child: const ColoredBox(color: Color(0x70000000)),
                   ),
                 ),
-              ),
+              // 4. 选区高亮外框（上下边框）
               Positioned(
                 left: startX,
-                width: (endX - startX).clamp(0.0, width),
+                width: (endX - startX).clamp(0.0, trackWidth),
                 top: trackTop - 1,
                 height: trackHeight + 2,
                 child: IgnorePointer(
                   child: Container(
                     decoration: BoxDecoration(
                       border: Border.all(color: AppTheme.coral, width: 2),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                 ),
               ),
+              // 5. 播放指针垂线（严格从气泡底部延伸到轨道下边缘）
               Positioned(
-                left: (playX - 1).clamp(0.0, width - 2),
-                top: 18,
-                bottom: 0,
+                left: playX - 1,
+                top: bubbleHeight - 1,
+                height: trackBottom - bubbleHeight + 2,
                 child: IgnorePointer(
-                  child: Container(width: 2, color: AppTheme.coral),
+                  child: Container(
+                    width: 2,
+                    decoration: BoxDecoration(
+                      color: AppTheme.coral,
+                      borderRadius: BorderRadius.circular(1),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x33000000),
+                          blurRadius: 2,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
+              // 6. 浮动时间气泡（绝对居中对齐 playX）
               Positioned(
                 left: bubbleLeft,
                 top: 0,
                 width: bubbleWidth,
+                height: bubbleHeight,
                 child: IgnorePointer(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
                     decoration: BoxDecoration(
                       color: AppTheme.coral,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(11),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x30F44848),
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
                     ),
                     alignment: Alignment.center,
                     child: Text(
-                      _precise(widget.playheadMs),
+                      _precise(clampedPlayheadMs),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 10,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
                       ),
                     ),
                   ),
                 ),
               ),
+              // 7. 左侧裁剪手柄（居中对齐 startX，包覆轨道左边缘）
               Positioned(
-                left: (startX - handleHitWidth / 2).clamp(
-                  -8.0,
-                  width - handleHitWidth + 8,
+                left: startX - handleWidth / 2,
+                top: trackTop - 1,
+                child: const IgnorePointer(
+                  child: _TrimHandle(isLeft: true),
                 ),
-                top: 11,
-                child: const IgnorePointer(child: _TrimHandle()),
               ),
+              // 8. 右侧裁剪手柄（居中对齐 endX，包覆轨道右边缘）
               Positioned(
-                left: (endX - handleHitWidth / 2).clamp(
-                  -8.0,
-                  width - handleHitWidth + 8,
+                left: endX - handleWidth / 2,
+                top: trackTop - 1,
+                child: const IgnorePointer(
+                  child: _TrimHandle(isLeft: false),
                 ),
-                top: 11,
-                child: const IgnorePointer(child: _TrimHandle()),
               ),
             ],
           ),
@@ -772,40 +902,37 @@ class _TrimTimelineState extends State<_TrimTimeline> {
 }
 
 class _TrimHandle extends StatelessWidget {
-  const _TrimHandle();
+  final bool isLeft;
+
+  const _TrimHandle({required this.isLeft});
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 52,
-      height: 74,
-      child: Center(
-        child: Container(
-          width: 14,
-          height: 54,
-          decoration: BoxDecoration(
-            color: AppTheme.warmSurface,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppTheme.coral, width: 1.5),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x18000000),
-                blurRadius: 6,
-                offset: Offset(0, 2),
-              ),
-            ],
+    return Container(
+      width: 14,
+      height: 62,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.horizontal(
+          left: Radius.circular(isLeft ? 8 : 3),
+          right: Radius.circular(isLeft ? 3 : 8),
+        ),
+        border: Border.all(color: AppTheme.coral, width: 2),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x22000000),
+            blurRadius: 4,
+            offset: Offset(0, 2),
           ),
-          alignment: Alignment.center,
-          child: const SizedBox(
-            width: 4,
-            height: 20,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: AppTheme.coral,
-                borderRadius: BorderRadius.all(Radius.circular(2)),
-              ),
-            ),
-          ),
+        ],
+      ),
+      alignment: Alignment.center,
+      child: Container(
+        width: 2.5,
+        height: 18,
+        decoration: BoxDecoration(
+          color: AppTheme.coral,
+          borderRadius: BorderRadius.circular(1.5),
         ),
       ),
     );

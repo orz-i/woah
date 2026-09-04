@@ -135,11 +135,11 @@ class DanceNativePlugin :
                             val timestampMs = value.toLong().coerceAtLeast(0L)
                             val bitmap = retriever.getFrameAtTime(
                                 timestampMs * 1000L,
-                                MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+                                MediaMetadataRetriever.OPTION_CLOSEST
                             ) ?: retriever.getFrameAtTime(
                                 timestampMs * 1000L,
-                                MediaMetadataRetriever.OPTION_CLOSEST
-                            )
+                                MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+                            ) ?: retriever.frameAtTime
                             bitmap?.let {
                                 val out = File(dir, "trim_${token}_${index}.jpg")
                                 out.outputStream().use { stream ->

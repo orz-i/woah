@@ -4,6 +4,7 @@ import '../../app/theme.dart';
 
 class MainFlowHeader extends StatelessWidget {
   final String title;
+  final String? subtitle;
   final VoidCallback onClose;
   final String closeTooltip;
   final Widget? trailing;
@@ -11,6 +12,7 @@ class MainFlowHeader extends StatelessWidget {
   const MainFlowHeader({
     super.key,
     required this.title,
+    this.subtitle,
     required this.onClose,
     this.closeTooltip = '关闭',
     this.trailing,
@@ -19,7 +21,7 @@ class MainFlowHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 68,
+      height: subtitle != null ? 74 : 68,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 18),
         child: Row(
@@ -41,18 +43,38 @@ class MainFlowHeader extends StatelessWidget {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppTheme.warmTextPrimary,
-                    fontSize: 19,
-                    height: 1.1,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AppTheme.warmTextPrimary,
+                        fontSize: 19,
+                        height: 1.1,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: AppTheme.warmTextSecondary,
+                          fontSize: 12,
+                          height: 1.1,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
