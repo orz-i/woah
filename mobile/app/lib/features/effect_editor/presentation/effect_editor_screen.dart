@@ -287,8 +287,6 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
     final activeMode = effects.faceStickerEnabled
         ? FillMode.sticker
         : effects.fillMode;
-    final followEnabled = state.project?.follow.enabled ?? false;
-
     return Container(
       decoration: const BoxDecoration(
         color: AppTheme.warmSurface,
@@ -449,81 +447,6 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
                       controller.updateBorderColor,
                     ),
                   ],
-                  const SizedBox(height: 10),
-                  _buildStepSlider(
-                    label: '人像提亮',
-                    value: effects.skinWhiten,
-                    min: 0,
-                    max: 1,
-                    step: 0.05,
-                    displayValue: '${(effects.skinWhiten * 100).round()}%',
-                    onChanged: controller.updateSkinWhiten,
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppTheme.warmSurfaceSoft,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppTheme.warmBorder),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            const Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '主角跟随画面裁剪',
-                                    style: TextStyle(
-                                      color: AppTheme.warmTextPrimary,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  SizedBox(height: 2),
-                                  Text(
-                                    '自动运镜保持主角居中',
-                                    style: TextStyle(
-                                      color: AppTheme.warmTextSecondary,
-                                      fontSize: 11.5,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Switch(
-                              value: followEnabled,
-                              activeThumbColor: AppTheme.coral,
-                              onChanged: (value) {
-                                HapticFeedback.lightImpact();
-                                controller.updateFollowConfig(enabled: value);
-                              },
-                            ),
-                          ],
-                        ),
-                        if (followEnabled) ...[
-                          const SizedBox(height: 6),
-                          _buildStepSlider(
-                            label: '特写放大',
-                            value: state.project!.follow.zoom,
-                            min: 1,
-                            max: 2.5,
-                            step: 0.1,
-                            displayValue:
-                                '${state.project!.follow.zoom.toStringAsFixed(1)}×',
-                            onChanged: (value) =>
-                                controller.updateFollowConfig(zoom: value),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
                   const SizedBox(height: 8),
                 ],
               ),

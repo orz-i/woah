@@ -167,7 +167,7 @@ void main() {
       expect(find.text('模糊'), findsOneWidget);
       expect(find.text('强度'), findsOneWidget);
 
-      // Verify merged enhancement controls exist in the same panel
+      // Verify retained controls remain available in the same panel
       final verticalScrollable = find.byType(Scrollable).last;
       await tester.scrollUntilVisible(
         find.text('描边宽度'),
@@ -175,14 +175,10 @@ void main() {
         scrollable: verticalScrollable,
       );
       expect(find.text('描边宽度'), findsOneWidget);
-      expect(find.text('人像提亮'), findsOneWidget);
-
-      await tester.scrollUntilVisible(
-        find.text('主角跟随画面裁剪'),
-        100,
-        scrollable: verticalScrollable,
-      );
-      expect(find.text('主角跟随画面裁剪'), findsOneWidget);
+      expect(find.text('人像提亮'), findsNothing);
+      expect(find.text('主角跟随画面裁剪'), findsNothing);
+      expect(find.text('自动运镜保持主角居中'), findsNothing);
+      expect(find.text('特写放大'), findsNothing);
       expect(find.text('下一步: 导出'), findsOneWidget);
 
       expect(tester.takeException(), isNull);
