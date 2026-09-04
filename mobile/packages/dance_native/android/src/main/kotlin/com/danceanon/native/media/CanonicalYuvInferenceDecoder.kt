@@ -224,6 +224,7 @@ class CanonicalYuvInferenceDecoder(
 /** CPU-only deterministic YUV_420_888 -> letterboxed RGBA conversion. */
 internal object CanonicalYuvToRgba {
     private const val FP = 256
+    private const val LETTERBOX_RGBA = -9276814 // 0xFF727272 as signed Int.
 
     internal class Workspace(val modelInputSize: Int) {
         internal val rgbaInts = IntArray(modelInputSize * modelInputSize)
@@ -232,6 +233,10 @@ internal object CanonicalYuvToRgba {
         internal var vBytes = ByteArray(0)
         internal var planKey: PlanKey? = null
         internal var plan: SamplingPlan? = null
+        internal var accessPlanKey: AccessPlanKey? = null
+        internal var yAccessPlan: PlaneAccessPlan? = null
+        internal var uAccessPlan: PlaneAccessPlan? = null
+        internal var vAccessPlan: PlaneAccessPlan? = null
     }
 
     internal data class PlaneSnapshot(
@@ -245,6 +250,16 @@ internal object CanonicalYuvToRgba {
         val i0: IntArray,
         val i1: IntArray,
         val w1: IntArray
+    )
+
+    internal data class PlaneAccessPlan(
+        val x0: IntArray,
+        val x1: IntArray,
+        val xW1: IntArray,
+        val y0: IntArray,
+        val y1: IntArray,
+        val yW1: IntArray,
+        val maxOffset: Int
     )
 
     internal data class PlanKey(
@@ -262,14 +277,96 @@ internal object CanonicalYuvToRgba {
         val rotation: Int
     )
 
+    internal data class AccessPlanKey(
+        val planKey: PlanKey,
+        val yRowStride: Int,
+        val yPixelStride: Int,
+        val uRowStride: Int,
+        val uPixelStride: Int,
+        val vRowStride: Int,
+        val vPixelStride: Int
+    )
+
     internal data class SamplingPlan(
         val validX: BooleanArray,
         val validY: BooleanArray,
+        val validXStart: Int,
+        val validXEndExclusive: Int,
+        val validYStart: Int,
+        val validYEndExclusive: Int,
         val lumaX: AxisSamples,
         val lumaY: AxisSamples,
         val uvX: AxisSamples,
         val uvY: AxisSamples,
         val swapAxes: Boolean
+    )
+
+    internal data class ColorTransform(
+        val yTerms: IntArray,
+        val rU: IntArray,
+        val rV: IntArray,
+        val gU: IntArray,
+        val gV: IntArray,
+        val bU: IntArray,
+        val bV: IntArray,
+        val rBias: Int,
+        val gBias: Int,
+        val bBias: Int
+    )
+
+    private val limitedBt601 = buildColorTransform(
+        fullRange = false,
+        rU = 0,
+        rV = 409,
+        gU = -100,
+        gV = -208,
+        bU = 516,
+        bV = 0
+    )
+    private val limitedBt2020 = buildColorTransform(
+        fullRange = false,
+        rU = 0,
+        rV = 430,
+        gU = -48,
+        gV = -167,
+        bU = 548,
+        bV = 0
+    )
+    private val limitedBt709 = buildColorTransform(
+        fullRange = false,
+        rU = 0,
+        rV = 459,
+        gU = -55,
+        gV = -136,
+        bU = 541,
+        bV = 0
+    )
+    private val fullBt601 = buildColorTransform(
+        fullRange = true,
+        rU = 0,
+        rV = 359,
+        gU = -88,
+        gV = -183,
+        bU = 454,
+        bV = 0
+    )
+    private val fullBt2020 = buildColorTransform(
+        fullRange = true,
+        rU = 0,
+        rV = 377,
+        gU = -42,
+        gV = -146,
+        bU = 482,
+        bV = 0
+    )
+    private val fullBt709 = buildColorTransform(
+        fullRange = true,
+        rU = 0,
+        rV = 403,
+        gU = -48,
+        gV = -120,
+        bU = 475,
+        bV = 0
     )
 
     fun convert(
@@ -314,26 +411,68 @@ internal object CanonicalYuvToRgba {
         val yPlane = snapshotPlane(image.planes[0], workspace, 0)
         val uPlane = snapshotPlane(image.planes[1], workspace, 1)
         val vPlane = snapshotPlane(image.planes[2], workspace, 2)
+        val accessPlanKey = AccessPlanKey(
+            planKey = planKey,
+            yRowStride = yPlane.rowStride,
+            yPixelStride = yPlane.pixelStride,
+            uRowStride = uPlane.rowStride,
+            uPixelStride = uPlane.pixelStride,
+            vRowStride = vPlane.rowStride,
+            vPixelStride = vPlane.pixelStride
+        )
+        if (workspace.accessPlanKey != accessPlanKey) {
+            workspace.yAccessPlan = buildPlaneAccessPlan(
+                x = plan.lumaX,
+                y = plan.lumaY,
+                rowStride = yPlane.rowStride,
+                pixelStride = yPlane.pixelStride
+            )
+            workspace.uAccessPlan = buildPlaneAccessPlan(
+                x = plan.uvX,
+                y = plan.uvY,
+                rowStride = uPlane.rowStride,
+                pixelStride = uPlane.pixelStride
+            )
+            workspace.vAccessPlan = buildPlaneAccessPlan(
+                x = plan.uvX,
+                y = plan.uvY,
+                rowStride = vPlane.rowStride,
+                pixelStride = vPlane.pixelStride
+            )
+            workspace.accessPlanKey = accessPlanKey
+        }
+        val yAccessPlan = workspace.yAccessPlan ?: error("Canonical Y access plan missing")
+        val uAccessPlan = workspace.uAccessPlan ?: error("Canonical U access plan missing")
+        val vAccessPlan = workspace.vAccessPlan ?: error("Canonical V access plan missing")
+        validatePlaneAccess(yPlane, yAccessPlan)
+        validatePlaneAccess(uPlane, uAccessPlan)
+        validatePlaneAccess(vPlane, vAccessPlan)
+        val colorTransform = colorTransform(colorStandard, colorRange)
         val rgbaInts = workspace.rgbaInts
+        rgbaInts.fill(LETTERBOX_RGBA)
 
-        for (bufferY in 0 until size) {
-            // glReadPixels contract is bottom-up; YoloPreprocessor flips it back to model top-down.
-            val modelY = size - 1 - bufferY
-            val dstRow = bufferY * size
-            for (modelX in 0 until size) {
-                val dstIndex = dstRow + modelX
-                if (!plan.validX[modelX] || !plan.validY[modelY]) {
-                    rgbaInts[dstIndex] = rgbaLittleEndianInt(0x727272)
-                    continue
+        if (plan.swapAxes) {
+            for (modelY in plan.validYStart until plan.validYEndExclusive) {
+                // glReadPixels contract is bottom-up; YoloPreprocessor flips it back to model top-down.
+                val dstRow = (size - 1 - modelY) * size
+                val xIndex = modelY
+                for (modelX in plan.validXStart until plan.validXEndExclusive) {
+                    val yIndex = modelX
+                    val y8 = sampleSnapshotFast(yPlane, yAccessPlan, xIndex, yIndex)
+                    val u8 = sampleSnapshotFast(uPlane, uAccessPlan, xIndex, yIndex)
+                    val v8 = sampleSnapshotFast(vPlane, vAccessPlan, xIndex, yIndex)
+                    rgbaInts[dstRow + modelX] = rgbaFromYuv(y8, u8, v8, colorTransform)
                 }
-                val xIndex = if (plan.swapAxes) modelY else modelX
-                val yIndex = if (plan.swapAxes) modelX else modelY
-                val y8 = sampleSnapshot(yPlane, plan.lumaX, xIndex, plan.lumaY, yIndex)
-                val u8 = sampleSnapshot(uPlane, plan.uvX, xIndex, plan.uvY, yIndex)
-                val v8 = sampleSnapshot(vPlane, plan.uvX, xIndex, plan.uvY, yIndex)
-                rgbaInts[dstIndex] = rgbaLittleEndianInt(
-                    yuvToRgb(y8, u8, v8, colorStandard, colorRange)
-                )
+            }
+        } else {
+            for (modelY in plan.validYStart until plan.validYEndExclusive) {
+                val dstRow = (size - 1 - modelY) * size
+                for (modelX in plan.validXStart until plan.validXEndExclusive) {
+                    val y8 = sampleSnapshotFast(yPlane, yAccessPlan, modelX, modelY)
+                    val u8 = sampleSnapshotFast(uPlane, uAccessPlan, modelX, modelY)
+                    val v8 = sampleSnapshotFast(vPlane, vAccessPlan, modelX, modelY)
+                    rgbaInts[dstRow + modelX] = rgbaFromYuv(y8, u8, v8, colorTransform)
+                }
             }
         }
 
@@ -398,7 +537,23 @@ internal object CanonicalYuvToRgba {
         val uvHeight = (imageHeight + 1) / 2
         val uvX = axisSamples(DoubleArray(size) { sourceX[it] * 0.5 }, uvWidth)
         val uvY = axisSamples(DoubleArray(size) { sourceY[it] * 0.5 }, uvHeight)
-        return SamplingPlan(validX, validY, lumaX, lumaY, uvX, uvY, swapAxes)
+        val validXStart = validX.indexOfFirst { it }.let { if (it >= 0) it else size }
+        val validXEndExclusive = validX.indexOfLast { it }.let { if (it >= 0) it + 1 else size }
+        val validYStart = validY.indexOfFirst { it }.let { if (it >= 0) it else size }
+        val validYEndExclusive = validY.indexOfLast { it }.let { if (it >= 0) it + 1 else size }
+        return SamplingPlan(
+            validX = validX,
+            validY = validY,
+            validXStart = validXStart,
+            validXEndExclusive = validXEndExclusive,
+            validYStart = validYStart,
+            validYEndExclusive = validYEndExclusive,
+            lumaX = lumaX,
+            lumaY = lumaY,
+            uvX = uvX,
+            uvY = uvY,
+            swapAxes = swapAxes
+        )
     }
 
     private fun axisSamples(coords: DoubleArray, dimension: Int): AxisSamples {
@@ -430,6 +585,140 @@ internal object CanonicalYuvToRgba {
 
     private fun ensureCapacity(bytes: ByteArray, required: Int): ByteArray =
         if (bytes.size >= required) bytes else ByteArray(required)
+
+    internal fun buildPlaneAccessPlan(
+        x: AxisSamples,
+        y: AxisSamples,
+        rowStride: Int,
+        pixelStride: Int
+    ): PlaneAccessPlan {
+        val x0 = IntArray(x.i0.size)
+        val x1 = IntArray(x.i1.size)
+        for (i in x0.indices) {
+            x0[i] = x.i0[i] * pixelStride
+            x1[i] = x.i1[i] * pixelStride
+        }
+        val y0 = IntArray(y.i0.size)
+        val y1 = IntArray(y.i1.size)
+        for (i in y0.indices) {
+            y0[i] = y.i0[i] * rowStride
+            y1[i] = y.i1[i] * rowStride
+        }
+        val maxX = maxOf(x0.maxOrNull() ?: 0, x1.maxOrNull() ?: 0)
+        val maxY = maxOf(y0.maxOrNull() ?: 0, y1.maxOrNull() ?: 0)
+        return PlaneAccessPlan(
+            x0 = x0,
+            x1 = x1,
+            xW1 = x.w1,
+            y0 = y0,
+            y1 = y1,
+            yW1 = y.w1,
+            maxOffset = maxX + maxY
+        )
+    }
+
+    private fun validatePlaneAccess(plane: PlaneSnapshot, access: PlaneAccessPlan) {
+        if (access.maxOffset < 0 || access.maxOffset >= plane.length) {
+            error(
+                "YUV plane access out of bounds: maxOffset=${access.maxOffset} length=${plane.length}"
+            )
+        }
+    }
+
+    internal fun sampleSnapshotFast(
+        plane: PlaneSnapshot,
+        access: PlaneAccessPlan,
+        xIndex: Int,
+        yIndex: Int
+    ): Int {
+        val fx = access.xW1[xIndex]
+        val fy = access.yW1[yIndex]
+        val row0 = access.y0[yIndex]
+        val row1 = access.y1[yIndex]
+        val col0 = access.x0[xIndex]
+        val col1 = access.x1[xIndex]
+        val bytes = plane.bytes
+        val p00 = bytes[row0 + col0].toInt() and 0xFF
+        if (fx == 0 && fy == 0) return p00
+        val p10 = bytes[row0 + col1].toInt() and 0xFF
+        val p01 = bytes[row1 + col0].toInt() and 0xFF
+        val p11 = bytes[row1 + col1].toInt() and 0xFF
+        val top = p00 * (FP - fx) + p10 * fx
+        val bottom = p01 * (FP - fx) + p11 * fx
+        return (top * (FP - fy) + bottom * fy + (FP * FP / 2)) / (FP * FP)
+    }
+
+    private fun buildColorTransform(
+        fullRange: Boolean,
+        rU: Int,
+        rV: Int,
+        gU: Int,
+        gV: Int,
+        bU: Int,
+        bV: Int
+    ): ColorTransform {
+        val yTerms = IntArray(256) { y ->
+            if (fullRange) {
+                y * FP
+            } else {
+                298 * (y - 16).coerceAtLeast(0)
+            }
+        }
+        fun contribution(coefficient: Int): IntArray =
+            IntArray(256) { value -> coefficient * (value - 128) }
+
+        return ColorTransform(
+            yTerms = yTerms,
+            rU = contribution(rU),
+            rV = contribution(rV),
+            gU = contribution(gU),
+            gV = contribution(gV),
+            bU = contribution(bU),
+            bV = contribution(bV),
+            rBias = 128,
+            // Full-range green historically subtracts a rounded chroma term:
+            // y - ((x + 128) >> 8) == ((y << 8) - x + 127) >> 8.
+            gBias = if (fullRange) 127 else 128,
+            bBias = 128
+        )
+    }
+
+    private fun colorTransform(colorStandard: Int?, colorRange: Int?): ColorTransform {
+        val fullRange = colorRange == MediaFormat.COLOR_RANGE_FULL
+        return when (colorStandard ?: MediaFormat.COLOR_STANDARD_BT709) {
+            MediaFormat.COLOR_STANDARD_BT601_PAL,
+            MediaFormat.COLOR_STANDARD_BT601_NTSC -> if (fullRange) fullBt601 else limitedBt601
+            MediaFormat.COLOR_STANDARD_BT2020 -> if (fullRange) fullBt2020 else limitedBt2020
+            else -> if (fullRange) fullBt709 else limitedBt709
+        }
+    }
+
+    internal fun rgbaFromYuv(
+        y: Int,
+        u: Int,
+        v: Int,
+        transform: ColorTransform
+    ): Int {
+        val yTerm = transform.yTerms[y]
+        val r = (
+            (yTerm + transform.rU[u] + transform.rV[v] + transform.rBias) shr 8
+            ).coerceIn(0, 255)
+        val g = (
+            (yTerm + transform.gU[u] + transform.gV[v] + transform.gBias) shr 8
+            ).coerceIn(0, 255)
+        val b = (
+            (yTerm + transform.bU[u] + transform.bV[v] + transform.bBias) shr 8
+            ).coerceIn(0, 255)
+        return (0xFF shl 24) or (b shl 16) or (g shl 8) or r
+    }
+
+    internal fun optimizedRgbaFromYuv(
+        y: Int,
+        u: Int,
+        v: Int,
+        colorStandard: Int?,
+        colorRange: Int?
+    ): Int = rgbaFromYuv(y, u, v, colorTransform(colorStandard, colorRange))
 
     internal fun sampleSnapshot(
         plane: PlaneSnapshot,

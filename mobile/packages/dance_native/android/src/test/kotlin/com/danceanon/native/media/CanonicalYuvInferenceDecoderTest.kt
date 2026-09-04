@@ -78,6 +78,74 @@ class CanonicalYuvInferenceDecoderTest {
     }
 
     @Test
+    fun precomputedPlaneOffsetsMatchReferenceSamplerForPaddedInterleavedLayout() {
+        val bytes = ByteArray(40) { index -> (index * 7 + 3).toByte() }
+        val plane = CanonicalYuvToRgba.PlaneSnapshot(
+            bytes = bytes,
+            length = bytes.size,
+            rowStride = 10,
+            pixelStride = 2
+        )
+        val x = CanonicalYuvToRgba.AxisSamples(
+            i0 = intArrayOf(0, 1, 2),
+            i1 = intArrayOf(1, 2, 3),
+            w1 = intArrayOf(0, 64, 192)
+        )
+        val y = CanonicalYuvToRgba.AxisSamples(
+            i0 = intArrayOf(0, 1, 2),
+            i1 = intArrayOf(1, 2, 3),
+            w1 = intArrayOf(0, 128, 224)
+        )
+        val access = CanonicalYuvToRgba.buildPlaneAccessPlan(
+            x = x,
+            y = y,
+            rowStride = plane.rowStride,
+            pixelStride = plane.pixelStride
+        )
+
+        for (yi in 0..2) {
+            for (xi in 0..2) {
+                assertEquals(
+                    CanonicalYuvToRgba.sampleSnapshot(plane, x, xi, y, yi),
+                    CanonicalYuvToRgba.sampleSnapshotFast(plane, access, xi, yi)
+                )
+            }
+        }
+    }
+
+    @Test
+    fun optimizedColorLookupIsByteExactAcrossStandardsAndRanges() {
+        val standards = listOf(
+            MediaFormat.COLOR_STANDARD_BT601_NTSC,
+            MediaFormat.COLOR_STANDARD_BT601_PAL,
+            MediaFormat.COLOR_STANDARD_BT709,
+            MediaFormat.COLOR_STANDARD_BT2020,
+            null
+        )
+        val ranges = listOf(MediaFormat.COLOR_RANGE_LIMITED, MediaFormat.COLOR_RANGE_FULL, null)
+        val values = listOf(0, 1, 15, 16, 17, 63, 64, 127, 128, 129, 191, 235, 254, 255)
+
+        for (standard in standards) {
+            for (range in ranges) {
+                for (y in values) {
+                    for (u in values) {
+                        for (v in values) {
+                            val reference = CanonicalYuvToRgba.rgbaLittleEndianInt(
+                                CanonicalYuvToRgba.yuvToRgb(y, u, v, standard, range)
+                            )
+                            assertEquals(
+                                reference,
+                                CanonicalYuvToRgba.optimizedRgbaFromYuv(y, u, v, standard, range),
+                                "standard=$standard range=$range y=$y u=$u v=$v"
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     fun packedRgbaIntWritesSameLittleEndianByteContract() {
         val buffer = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN)
         buffer.putInt(CanonicalYuvToRgba.rgbaLittleEndianInt(0x123456))
