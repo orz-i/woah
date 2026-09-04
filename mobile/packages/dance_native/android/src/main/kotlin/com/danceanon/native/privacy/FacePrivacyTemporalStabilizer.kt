@@ -37,7 +37,8 @@ class FacePrivacyTemporalStabilizer {
         personBbox: FloatRect,
         ptsUs: Long,
         personObservedThisFrame: Boolean = true,
-        trustedCurrentPixelCenter: Boolean = false
+        trustedCurrentPixelCenter: Boolean = false,
+        canonicalizeReferenceGeometry: Boolean = false
     ): FacePrivacyEllipse {
         if (personBbox.width <= 1f || personBbox.height <= 1f) return rawRegion
 
@@ -167,8 +168,13 @@ class FacePrivacyTemporalStabilizer {
             )
         }
 
+        val committedOutput = if (canonicalizeReferenceGeometry) {
+            FaceReferenceGeometryCanonicalizer.ellipse(output)
+        } else {
+            output
+        }
         stateByTrackId[trackId] = State(
-            output = output,
+            output = committedOutput,
             detectedRadiusX = detectedRadiusX,
             detectedRadiusY = detectedRadiusY,
             detectedPersonWidth = detectedPersonWidth,
@@ -177,7 +183,7 @@ class FacePrivacyTemporalStabilizer {
             personObservedThisFrame = personObservedThisFrame,
             lastPtsUs = ptsUs
         )
-        return output
+        return committedOutput
     }
 
     private fun updateDetectedReference(previous: Float?, observed: Float?): Float? {

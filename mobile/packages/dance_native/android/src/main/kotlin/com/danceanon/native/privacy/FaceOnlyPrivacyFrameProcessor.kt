@@ -498,6 +498,7 @@ class FaceOnlyPrivacyFrameProcessor(
         canonicalModelRgbaBottomUp: ByteBuffer? = null,
         ptsUs: Long
     ): FaceOnlyPrivacyFrameResult {
+        val canonicalizeReferenceGeometry = canonicalModelRgbaBottomUp != null
         if (faceOnlyTrackIds.isEmpty()) {
             return FaceOnlyPrivacyFrameResult(
                 resolvedPrivacy = null,
@@ -778,7 +779,7 @@ class FaceOnlyPrivacyFrameProcessor(
             } else {
                 null
             }
-            val plan = localPlan ?: if (trackedPerson.observedThisFrame && trackedPerson.state == TrackState.ACTIVE) {
+            val rawPlan = localPlan ?: if (trackedPerson.observedThisFrame && trackedPerson.state == TrackState.ACTIVE) {
                 FaceHeadRoiPlanner.plan(
                     personBbox = trackedPerson.bbox,
                     frameWidth = mapper.srcWidth,
@@ -786,6 +787,9 @@ class FaceOnlyPrivacyFrameProcessor(
                 )
             } else {
                 null
+            }
+            val plan = rawPlan?.let {
+                if (canonicalizeReferenceGeometry) FaceReferenceGeometryCanonicalizer.plan(it) else it
             }
             if (plan != null) {
                 detectorPlanByTrackId[trackId] = plan
@@ -1065,7 +1069,9 @@ class FaceOnlyPrivacyFrameProcessor(
                         ) &&
                     extraOcclusionDetectorCalls < MAX_OCCLUSION_REACQUIRE_EXTRA_CALLS_PER_FRAME
             if (needsExpandedOcclusionReacquire) {
-                val reacquirePlan = planOcclusionReacquireRoi(trackId, ptsUs)
+                val reacquirePlan = planOcclusionReacquireRoi(trackId, ptsUs)?.let {
+                    if (canonicalizeReferenceGeometry) FaceReferenceGeometryCanonicalizer.plan(it) else it
+                }
                 if (reacquirePlan != null) {
                     extraOcclusionDetectorCalls++
                     occlusionReacquireDetectorTrackIds += trackId
@@ -1188,6 +1194,9 @@ class FaceOnlyPrivacyFrameProcessor(
                 }?.region
             }
             if (region != null) {
+                if (canonicalizeReferenceGeometry) {
+                    region = FaceReferenceGeometryCanonicalizer.ellipse(region)
+                }
                 val trustedDetectedRadiusX = if (region.source == FacePrivacyRegionSource.DETECTED_FACE) region.radiusX else null
                 val trustedDetectedRadiusY = if (region.source == FacePrivacyRegionSource.DETECTED_FACE) region.radiusY else null
                 val rawCenterX = region.centerX
@@ -1198,7 +1207,8 @@ class FaceOnlyPrivacyFrameProcessor(
                     personBbox = person.bbox,
                     personObservedThisFrame = person.observedThisFrame,
                     ptsUs = ptsUs,
-                    trustedCurrentPixelCenter = trustedCurrentPixelCenter
+                    trustedCurrentPixelCenter = trustedCurrentPixelCenter,
+                    canonicalizeReferenceGeometry = canonicalizeReferenceGeometry
                 )
                 if (region.source == FacePrivacyRegionSource.DETECTED_FACE || trustedCurrentPixelCenter) {
                     occlusionHoldByTrackId[trackId] = OcclusionHoldGeometry(

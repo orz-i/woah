@@ -24,6 +24,7 @@ import com.danceanon.native.media.VideoEncoder
 import com.danceanon.native.media.VideoProbe
 import com.danceanon.native.privacy.FaceOcclusionBridgePolicy
 import com.danceanon.native.privacy.FacePixelMotionTracker
+import com.danceanon.native.privacy.FaceReferenceGeometryCanonicalizer
 import com.danceanon.native.render.EglCore
 import com.danceanon.native.render.GlRenderer
 import com.danceanon.native.storage.CacheManager
@@ -54,8 +55,8 @@ class ExportPipeline(
         cpuReferenceTracks: List<TrackedPerson>
     ): List<TrackedPerson> = cpuReferenceTracks.map { cpuTrack ->
         cpuTrack.copy(
-            bbox = canonicalizeFaceReferenceBbox(cpuTrack.bbox),
-            footY = cpuTrack.footY?.let(::canonicalizeFaceReferenceCoordinate)
+            bbox = FaceReferenceGeometryCanonicalizer.rect(cpuTrack.bbox),
+            footY = cpuTrack.footY?.let(FaceReferenceGeometryCanonicalizer::coordinate)
         )
     }
 
@@ -64,8 +65,8 @@ class ExportPipeline(
     ): List<ProtectedTrackMotionEvidence> = evidence.map { item ->
         item.copy(
             detection = item.detection.copy(
-                bbox = canonicalizeFaceReferenceBbox(item.detection.bbox),
-                footY = canonicalizeFaceReferenceCoordinate(item.detection.footY)
+                bbox = FaceReferenceGeometryCanonicalizer.rect(item.detection.bbox),
+                footY = FaceReferenceGeometryCanonicalizer.coordinate(item.detection.footY)
             )
         )
     }
@@ -2032,25 +2033,13 @@ class ExportPipeline(
     companion object {
         private const val CPU_MT_PROBE_THREADS = 4
         private const val CPU_MT4_ARTIFACT_MAX_PTS_US = 450_000L
-        // FACE_ONLY only. TrackManager itself remains unquantized. We first collapse
-        // lower float noise to the existing 1/16 px diagnostic lattice, then snap
-        // to 0.5 px. Offline replay of the current 751-frame three-device batch
-        // showed this is the smallest tested step with zero protected-bbox diffs.
-        private const val FACE_REFERENCE_Q16_PER_HALF_PIXEL = 8
         internal const val SELECTION_IDENTITY_ROOT_MIN_CONFIDENCE = 0.60
 
-        internal fun canonicalizeFaceReferenceCoordinate(value: Float): Float {
-            val q16 = (value * 16f).roundToInt()
-            val halfPixelBucket = (q16.toFloat() / FACE_REFERENCE_Q16_PER_HALF_PIXEL).roundToInt()
-            return (halfPixelBucket * FACE_REFERENCE_Q16_PER_HALF_PIXEL) / 16f
-        }
+        internal fun canonicalizeFaceReferenceCoordinate(value: Float): Float =
+            FaceReferenceGeometryCanonicalizer.coordinate(value)
 
-        internal fun canonicalizeFaceReferenceBbox(bbox: FloatRect): FloatRect = FloatRect(
-            left = canonicalizeFaceReferenceCoordinate(bbox.left),
-            top = canonicalizeFaceReferenceCoordinate(bbox.top),
-            right = canonicalizeFaceReferenceCoordinate(bbox.right),
-            bottom = canonicalizeFaceReferenceCoordinate(bbox.bottom)
-        )
+        internal fun canonicalizeFaceReferenceBbox(bbox: FloatRect): FloatRect =
+            FaceReferenceGeometryCanonicalizer.rect(bbox)
 
         internal fun resolveFaceOnlyIdentityProtectedIds(
             metadata: com.danceanon.native.storage.AnalysisMetadata?,
