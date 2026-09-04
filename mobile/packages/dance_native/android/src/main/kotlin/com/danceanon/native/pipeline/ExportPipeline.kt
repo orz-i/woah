@@ -109,6 +109,19 @@ class ExportPipeline(
             .map { it.key }
             .toSet()
         val allPrivacyTargetIds = privacyModeByTrackId.keys.toSet()
+        val analysisMetadata = if (request.analysisCacheId.isNotBlank()) {
+            CacheManager(context).getAnalysisMetadata(request.analysisCacheId)
+        } else {
+            null
+        }
+        val faceOnlyIdentityProtectedIds = if (faceOnlyPersonIds.isNotEmpty()) {
+            resolveFaceOnlyIdentityProtectedIds(
+                metadata = analysisMetadata,
+                privacyTargetIds = allPrivacyTargetIds
+            )
+        } else {
+            emptySet()
+        }
 
         var status = JobStatusDto(
             jobId = jobId,
@@ -344,9 +357,31 @@ class ExportPipeline(
                     // FACE_ONLY policy was requested.
                     trackManager.setProtectedTrackIds(fullBodyPersonIds)
                 } else {
-                    trackManager.setIdentityProtectedTrackIds(allPrivacyTargetIds)
+                    // FACE_ONLY identity durability must not depend on which people the user
+                    // chose to anonymize. Otherwise an unselected but credible neighbor can use
+                    // weaker association/recovery rules and destabilize a selected identity.
+                    // Keep privacy selection separate: these extra roots never receive privacy.
+                    trackManager.setIdentityProtectedTrackIds(faceOnlyIdentityProtectedIds)
                     trackManager.setPrivacySelectedTrackIds(fullBodyPersonIds)
                     trackManager.setPrivacyOffscreenDormancyEnabled(fullBodyPersonIds.isNotEmpty())
+                    if (com.danceanon.dance_native.BuildConfig.DEBUG) {
+                        com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                            level = "INFO",
+                            component = "ExportPipeline",
+                            event = "FACE_ONLY_IDENTITY_ROOTS_RESOLVED",
+                            fields = mapOf(
+                                "job_id" to jobId,
+                                "face_only_person_ids" to faceOnlyPersonIds.sorted(),
+                                "identity_protected_track_ids" to faceOnlyIdentityProtectedIds.sorted(),
+                                "analysis_candidate_ids_ge_0_60" to analysisMetadata
+                                    ?.persons
+                                    ?.filter { it.confidence >= SELECTION_IDENTITY_ROOT_MIN_CONFIDENCE }
+                                    ?.map { it.id }
+                                    ?.sorted()
+                                    .orEmpty()
+                            )
+                        )
+                    }
                 }
                 val privacyClassTemporalTracker = com.danceanon.native.privacy.PrivacyClassTemporalTracker()
                 val profile = ProcessingProfile.fromName(request.processingProfile)
@@ -359,7 +394,12 @@ class ExportPipeline(
                     com.danceanon.native.diagnostics.CrossDeviceTrackingDiagnostics(
                         jobId = jobId,
                         fullBodyPersonIds = fullBodyPersonIds,
-                        faceOnlyPersonIds = faceOnlyPersonIds
+                        faceOnlyPersonIds = faceOnlyPersonIds,
+                        identityProtectedTrackIds = if (faceOnlyPersonIds.isNotEmpty()) {
+                            faceOnlyIdentityProtectedIds
+                        } else {
+                            fullBodyPersonIds
+                        }
                     )
                 } else {
                     null
@@ -420,7 +460,11 @@ class ExportPipeline(
                         )
                     }
                     faceOnlyPrivacyProcessor =
-                        com.danceanon.native.privacy.FaceOnlyPrivacyFrameProcessor.create(context, mapper)
+                        com.danceanon.native.privacy.FaceOnlyPrivacyFrameProcessor.create(
+                            context = context,
+                            mapper = mapper,
+                            diagnosticJobId = jobId
+                        )
                 }
 
                 if (isSam2Mode) {
@@ -979,8 +1023,7 @@ class ExportPipeline(
                             // Tracking on detections
                             val tracked = profiler.recordStage("tracking") {
                                 if (processedFrames == 1) {
-                                    val cacheMgr = com.danceanon.native.storage.CacheManager(context)
-                                    val metadata = if (request.analysisCacheId.isNotBlank()) cacheMgr.getAnalysisMetadata(request.analysisCacheId) else null
+                                    val metadata = analysisMetadata
                                     if (metadata != null && metadata.persons.isNotEmpty() && detections.isNotEmpty()) {
                                         val cached = metadata.persons
                                         val costMatrix = Array(cached.size) { r ->
@@ -1049,6 +1092,27 @@ class ExportPipeline(
                                 productionTracked = if (processedFrames == 1) tracked else null,
                                 cpuMt4Detections = cpuMt4DetectionsForShadow
                             )
+                            if (
+                                com.danceanon.dance_native.BuildConfig.DEBUG &&
+                                faceOnlyPersonIds.isNotEmpty()
+                            ) {
+                                com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                                    level = "INFO",
+                                    component = "ExportPipeline",
+                                    event = "FACE_ONLY_PRODUCTION_TRACK_SIGNATURE",
+                                    fields = mapOf(
+                                        "job_id" to jobId,
+                                        "pts_us" to ptsUs,
+                                        "should_infer" to shouldInfer,
+                                        "face_only_person_ids" to faceOnlyPersonIds.sorted(),
+                                        "identity_protected_track_ids" to faceOnlyIdentityProtectedIds.sorted(),
+                                        "tracks" to com.danceanon.native.diagnostics.CrossDeviceTrackingDiagnostics
+                                            .trackSignature(
+                                                tracked.filter { faceOnlyIdentityProtectedIds.contains(it.id) }
+                                            )
+                                    )
+                                )
+                            }
                             val temporalPrivacyEvidence = if (shouldInfer && allowFreshFullBodyClassPrimary) {
                                 profiler.recordStage("privacyClassTracking") {
                                     privacyClassTemporalTracker.update(
@@ -1881,6 +1945,21 @@ class ExportPipeline(
     companion object {
         private const val CPU_MT_PROBE_THREADS = 4
         private const val CPU_MT4_ARTIFACT_MAX_PTS_US = 450_000L
+        internal const val SELECTION_IDENTITY_ROOT_MIN_CONFIDENCE = 0.60
+
+        internal fun resolveFaceOnlyIdentityProtectedIds(
+            metadata: com.danceanon.native.storage.AnalysisMetadata?,
+            privacyTargetIds: Set<Int>
+        ): Set<Int> {
+            val credibleAnalysisIds = metadata
+                ?.persons
+                ?.asSequence()
+                ?.filter { it.confidence >= SELECTION_IDENTITY_ROOT_MIN_CONFIDENCE }
+                ?.map { it.id }
+                ?.toSet()
+                .orEmpty()
+            return credibleAnalysisIds + privacyTargetIds
+        }
 
         internal fun shouldUseFreshFullBodyClassPrimary(
             fullBodyPersonIds: Set<Int>,

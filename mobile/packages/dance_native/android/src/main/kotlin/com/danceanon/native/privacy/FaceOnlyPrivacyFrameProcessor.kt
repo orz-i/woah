@@ -7,6 +7,7 @@ import com.danceanon.native.face.FaceHeadRoiPlan
 import com.danceanon.native.face.FaceLocator
 import com.danceanon.native.face.FaceLocatorProvider
 import com.danceanon.native.face.FaceRoiCandidateSelector
+import com.danceanon.native.diagnostics.NativeDiagnostics
 import com.danceanon.native.geometry.ModelCoordinateMapper
 import com.danceanon.native.inference.FloatRect
 import com.danceanon.native.inference.NativeMask
@@ -18,6 +19,7 @@ import com.danceanon.native.tracking.ProtectedTrackMotionEvidence
 import com.danceanon.native.tracking.TrackState
 import com.danceanon.native.tracking.TrackedPerson
 import java.nio.ByteBuffer
+import java.security.MessageDigest
 import kotlin.math.sqrt
 
 data class FaceOnlyPrivacyFrameResult(
@@ -73,6 +75,7 @@ data class FaceOnlyPrivacyFrameResult(
 class FaceOnlyPrivacyFrameProcessor(
     private val locator: FaceLocator,
     private val mapper: ModelCoordinateMapper,
+    private val diagnosticJobId: String? = null,
     private val roiRenderer: FaceRoiRenderer = FaceRoiRenderer(),
     private val roiFbo: InferenceFbo = InferenceFbo(FACE_ROI_SIZE),
     private val temporalStabilizer: FacePrivacyTemporalStabilizer = FacePrivacyTemporalStabilizer(),
@@ -138,6 +141,70 @@ class FaceOnlyPrivacyFrameProcessor(
             }
         }
 
+    }
+
+    private fun emitRoiDiagnostic(
+        phase: String,
+        trackId: Int,
+        ptsUs: Long,
+        plan: FaceHeadRoiPlan,
+        personBbox: FloatRect,
+        rgba: ByteBuffer,
+        observationCount: Int,
+        selected: Boolean,
+        pixelRejectReason: FacePixelMotionTracker.RoiRejectReason?,
+        renderMode: FaceOnlyRenderMode
+    ) {
+        val jobId = diagnosticJobId ?: return
+        if (!com.danceanon.dance_native.BuildConfig.DEBUG) return
+        NativeDiagnostics.event(
+            level = "INFO",
+            component = "FaceOnlyPrivacyFrameProcessor",
+            event = "FACE_ROI_DETECTOR_DIAGNOSTIC",
+            fields = mapOf(
+                "job_id" to jobId,
+                "pts_us" to ptsUs,
+                "track_id" to trackId,
+                "phase" to phase,
+                "render_mode" to renderMode.name,
+                "rgba_grid_sha256" to sparseRgbaSha256(rgba),
+                "observation_count" to observationCount,
+                "selected_face" to selected,
+                "detector_rejected" to (observationCount > 0 && !selected),
+                "pixel_reject_reason" to pixelRejectReason?.name,
+                "source_rect_q0_0625px" to listOf(
+                    (plan.sourceRect.left * 16f).toInt(),
+                    (plan.sourceRect.top * 16f).toInt(),
+                    (plan.sourceRect.right * 16f).toInt(),
+                    (plan.sourceRect.bottom * 16f).toInt()
+                ),
+                "person_bbox_q0_0625px" to listOf(
+                    (personBbox.left * 16f).toInt(),
+                    (personBbox.top * 16f).toInt(),
+                    (personBbox.right * 16f).toInt(),
+                    (personBbox.bottom * 16f).toInt()
+                )
+            )
+        )
+    }
+
+    private fun sparseRgbaSha256(rgba: ByteBuffer, gridSize: Int = 16): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        val duplicate = rgba.duplicate().apply { rewind() }
+        val requiredBytes = FACE_ROI_SIZE * FACE_ROI_SIZE * 4
+        if (duplicate.remaining() < requiredBytes) return "short:${duplicate.remaining()}"
+        for (gy in 0 until gridSize) {
+            val y = (((gy + 0.5f) * FACE_ROI_SIZE) / gridSize).toInt().coerceIn(0, FACE_ROI_SIZE - 1)
+            for (gx in 0 until gridSize) {
+                val x = (((gx + 0.5f) * FACE_ROI_SIZE) / gridSize).toInt().coerceIn(0, FACE_ROI_SIZE - 1)
+                val offset = (y * FACE_ROI_SIZE + x) * 4
+                digest.update(duplicate.get(offset))
+                digest.update(duplicate.get(offset + 1))
+                digest.update(duplicate.get(offset + 2))
+                digest.update(duplicate.get(offset + 3))
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
     }
 
     private val cachedFaceByTrackId = mutableMapOf<Int, CachedFaceGeometry>()
@@ -877,6 +944,18 @@ class FaceOnlyPrivacyFrameProcessor(
                             anchorY = plan.anchorY
                         )
                     }
+                    emitRoiDiagnostic(
+                        phase = "NORMAL",
+                        trackId = trackId,
+                        ptsUs = ptsUs,
+                        plan = plan,
+                        personBbox = person.bbox,
+                        rgba = requireNotNull(roiRgba),
+                        observationCount = locatorResult.observations.size,
+                        selected = selectedFace != null,
+                        pixelRejectReason = pixelRejectReason,
+                        renderMode = renderMode
+                    )
                     if (locatorResult.observations.isNotEmpty() && selectedFace == null) {
                         detectorRejectedCallCount++
                         detectorRejectedTrackIds += trackId
@@ -987,6 +1066,18 @@ class FaceOnlyPrivacyFrameProcessor(
                             anchorX = reacquirePlan.anchorX,
                             anchorY = reacquirePlan.anchorY,
                             maxAnchorDistanceRatio = OCCLUSION_REACQUIRE_MAX_ANCHOR_DISTANCE_RATIO
+                        )
+                        emitRoiDiagnostic(
+                            phase = "EXPANDED_REACQUIRE",
+                            trackId = trackId,
+                            ptsUs = ptsUs,
+                            plan = reacquirePlan,
+                            personBbox = person.bbox,
+                            rgba = reacquireRgba,
+                            observationCount = locatorResult.observations.size,
+                            selected = selectedFace != null,
+                            pixelRejectReason = pixelRejectReason,
+                            renderMode = renderMode
                         )
                         if (locatorResult.observations.isNotEmpty() && selectedFace == null) {
                             detectorRejectedCallCount++
@@ -1298,11 +1389,19 @@ class FaceOnlyPrivacyFrameProcessor(
         private const val MAX_OCCLUSION_REACQUIRE_EXTRA_CALLS_PER_FRAME = 1
         private const val SLOW_STAGE_LOG_THRESHOLD_MS = 20.0
 
-        fun create(context: Context, mapper: ModelCoordinateMapper): FaceOnlyPrivacyFrameProcessor {
+        fun create(
+            context: Context,
+            mapper: ModelCoordinateMapper,
+            diagnosticJobId: String? = null
+        ): FaceOnlyPrivacyFrameProcessor {
             val locator = requireNotNull(FaceLocatorProvider.createOrNull(context, enabled = true)) {
                 "Face locator was not available after explicit enable"
             }
-            return FaceOnlyPrivacyFrameProcessor(locator = locator, mapper = mapper)
+            return FaceOnlyPrivacyFrameProcessor(
+                locator = locator,
+                mapper = mapper,
+                diagnosticJobId = diagnosticJobId
+            )
         }
     }
 }

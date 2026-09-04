@@ -21,6 +21,7 @@ internal class CrossDeviceTrackingDiagnostics(
     private val jobId: String,
     fullBodyPersonIds: Set<Int>,
     faceOnlyPersonIds: Set<Int>,
+    identityProtectedTrackIds: Set<Int> = fullBodyPersonIds + faceOnlyPersonIds,
     private val adaptiveConfigs: List<AdaptiveConfig> = DEFAULT_ADAPTIVE_CONFIGS
 ) {
     internal data class AdaptiveConfig(
@@ -63,7 +64,7 @@ internal class CrossDeviceTrackingDiagnostics(
     )
 
     private val cpuFullTracker = TrackManager(diagnosticsEnabled = false)
-    private val identityProtectedTrackIds = (fullBodyPersonIds + faceOnlyPersonIds).toSortedSet()
+    private val identityProtectedTrackIds = identityProtectedTrackIds.toSortedSet()
     private val adaptiveTrackers = adaptiveConfigs.associateWith {
         TrackManager(diagnosticsEnabled = false)
     }
@@ -75,9 +76,19 @@ internal class CrossDeviceTrackingDiagnostics(
 
     init {
         require(adaptiveConfigs.isNotEmpty())
-        configureTracker(cpuFullTracker, fullBodyPersonIds, faceOnlyPersonIds)
+        configureTracker(
+            tracker = cpuFullTracker,
+            fullBodyPersonIds = fullBodyPersonIds,
+            faceOnlyPersonIds = faceOnlyPersonIds,
+            identityProtectedTrackIds = this.identityProtectedTrackIds
+        )
         adaptiveTrackers.values.forEach {
-            configureTracker(it, fullBodyPersonIds, faceOnlyPersonIds)
+            configureTracker(
+                tracker = it,
+                fullBodyPersonIds = fullBodyPersonIds,
+                faceOnlyPersonIds = faceOnlyPersonIds,
+                identityProtectedTrackIds = this.identityProtectedTrackIds
+            )
         }
     }
 
@@ -381,12 +392,13 @@ internal class CrossDeviceTrackingDiagnostics(
         private fun configureTracker(
             tracker: TrackManager,
             fullBodyPersonIds: Set<Int>,
-            faceOnlyPersonIds: Set<Int>
+            faceOnlyPersonIds: Set<Int>,
+            identityProtectedTrackIds: Set<Int>
         ) {
             if (faceOnlyPersonIds.isEmpty()) {
                 tracker.setProtectedTrackIds(fullBodyPersonIds)
             } else {
-                tracker.setIdentityProtectedTrackIds(fullBodyPersonIds + faceOnlyPersonIds)
+                tracker.setIdentityProtectedTrackIds(identityProtectedTrackIds)
                 tracker.setPrivacySelectedTrackIds(fullBodyPersonIds)
                 tracker.setPrivacyOffscreenDormancyEnabled(fullBodyPersonIds.isNotEmpty())
             }

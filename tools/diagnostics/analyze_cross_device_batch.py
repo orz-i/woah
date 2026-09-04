@@ -98,6 +98,9 @@ def read_bundle(path: Path) -> dict:
         shadow_adaptive_reasons: dict[str, dict[int, str]] = {}
         shadow_adaptive_metrics: dict[str, dict[int, dict]] = {}
         shadow_protected_track_ids: set[int] = set()
+        face_production_tracks: dict[int, tuple] = {}
+        face_identity_roots: dict | None = None
+        face_roi_detector: dict[tuple[int, int, str], tuple] = {}
         shadow_inference_ordinal: dict[int, int] = {}
         shadow_should_infer: dict[int, bool] = {}
         shadow_disabled: list[dict] = []
@@ -208,6 +211,30 @@ def read_bundle(path: Path) -> dict:
                 elif event_name == "YOLO_CPU_MT4_TRACK_SHADOW_DISABLED":
                     if fields.get("job_id") == job_id:
                         shadow_disabled.append(fields)
+                elif event_name == "FACE_ONLY_IDENTITY_ROOTS_RESOLVED":
+                    if fields.get("job_id") == job_id:
+                        face_identity_roots = fields
+                elif event_name == "FACE_ONLY_PRODUCTION_TRACK_SIGNATURE":
+                    if fields.get("job_id") == job_id:
+                        pts = int(fields["pts_us"])
+                        face_production_tracks[pts] = _track_signature(fields.get("tracks", []))
+                elif event_name == "FACE_ROI_DETECTOR_DIAGNOSTIC":
+                    if fields.get("job_id") == job_id:
+                        key = (
+                            int(fields["pts_us"]),
+                            int(fields["track_id"]),
+                            str(fields.get("phase", "")),
+                        )
+                        face_roi_detector[key] = (
+                            fields.get("render_mode"),
+                            fields.get("rgba_grid_sha256"),
+                            fields.get("observation_count"),
+                            fields.get("selected_face"),
+                            fields.get("detector_rejected"),
+                            fields.get("pixel_reject_reason"),
+                            tuple(fields.get("source_rect_q0_0625px", [])),
+                            tuple(fields.get("person_bbox_q0_0625px", [])),
+                        )
 
         historical = []
         for name in z.namelist():
@@ -253,6 +280,9 @@ def read_bundle(path: Path) -> dict:
             "shadow_adaptive_reasons": shadow_adaptive_reasons,
             "shadow_adaptive_metrics": shadow_adaptive_metrics,
             "shadow_protected_track_ids": shadow_protected_track_ids,
+            "face_production_tracks": face_production_tracks,
+            "face_identity_roots": face_identity_roots,
+            "face_roi_detector": face_roi_detector,
             "shadow_inference_ordinal": shadow_inference_ordinal,
             "shadow_should_infer": shadow_should_infer,
             "shadow_disabled": shadow_disabled,
@@ -281,6 +311,45 @@ def compare_analysis_selection(a: dict | None, b: dict | None) -> dict:
         "same_canonical_rgba_sha256": a["canonical_rgba_sha256"] == b["canonical_rgba_sha256"],
         "same_candidate_ids_ge_0_60": a["candidate_ids_ge_0_60"] == b["candidate_ids_ge_0_60"],
         "same_detection_signature": a["detection_signature"] == b["detection_signature"],
+    }
+
+
+def compare_face_roi(a: dict[tuple[int, int, str], tuple], b: dict[tuple[int, int, str], tuple]) -> dict:
+    common = sorted(set(a) & set(b))
+    only_a = sorted(set(a) - set(b))
+    only_b = sorted(set(b) - set(a))
+    source_rect_diffs = []
+    person_bbox_diffs = []
+    rgba_diffs_same_source = []
+    detector_result_diffs_same_rgba = []
+    full_diffs = []
+    for key in common:
+        av = a[key]
+        bv = b[key]
+        if av != bv:
+            full_diffs.append(key)
+        if av[6] != bv[6]:
+            source_rect_diffs.append(key)
+        if av[7] != bv[7]:
+            person_bbox_diffs.append(key)
+        if av[6] == bv[6] and av[1] != bv[1]:
+            rgba_diffs_same_source.append(key)
+        if av[1] == bv[1] and (av[2], av[3], av[4]) != (bv[2], bv[3], bv[4]):
+            detector_result_diffs_same_rgba.append(key)
+    return {
+        "common_events": len(common),
+        "only_a_events": len(only_a),
+        "only_b_events": len(only_b),
+        "different_events": len(full_diffs),
+        "source_rect_different_events": len(source_rect_diffs),
+        "person_bbox_different_events": len(person_bbox_diffs),
+        "rgba_hash_different_with_same_source_rect": len(rgba_diffs_same_source),
+        "detector_result_different_with_same_rgba": len(detector_result_diffs_same_rgba),
+        "first_different_key": list(full_diffs[0]) if full_diffs else None,
+        "first_rgba_difference_key": list(rgba_diffs_same_source[0]) if rgba_diffs_same_source else None,
+        "first_detector_result_difference_key": (
+            list(detector_result_diffs_same_rgba[0]) if detector_result_diffs_same_rgba else None
+        ),
     }
 
 
@@ -522,6 +591,9 @@ def main() -> int:
                     for key in sorted(b["shadow_adaptive_identity"])
                 },
                 "identity_protected_track_ids": sorted(b["shadow_protected_track_ids"]),
+                "face_identity_roots": b["face_identity_roots"],
+                "face_production_track_frames": len(b["face_production_tracks"]),
+                "face_roi_detector_events": len(b["face_roi_detector"]),
             }
             for b in bundles
         ],
@@ -546,6 +618,12 @@ def main() -> int:
                     "b": b["device"],
                     "analysis_selection": compare_analysis_selection(
                         a["analysis_selection"], b["analysis_selection"]
+                    ),
+                    "face_only_production_tracks": compare_map(
+                        a["face_production_tracks"], b["face_production_tracks"]
+                    ),
+                    "face_roi_detector": compare_face_roi(
+                        a["face_roi_detector"], b["face_roi_detector"]
                     ),
                     "cpu_1t_detection": compare_map(a["detections"]["cpu_probe"], b["detections"]["cpu_probe"]),
                     "cpu_2t_detection": compare_map(a["detections"]["cpu_mt2_probe"], b["detections"]["cpu_mt2_probe"]),
