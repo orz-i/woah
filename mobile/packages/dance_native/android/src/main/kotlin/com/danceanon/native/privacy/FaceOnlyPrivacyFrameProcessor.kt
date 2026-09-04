@@ -843,9 +843,14 @@ class FaceOnlyPrivacyFrameProcessor(
         val detectorCandidates = detectorPlanByTrackId.keys.asSequence()
             .filter { trackId ->
                 val lastAttemptPtsUs = lastDetectorAttemptPtsUsByTrackId[trackId]
+                val effectiveIntervalUs = effectiveDetectorIntervalUs(
+                    baseIntervalUs = detectorIntervalUs,
+                    roiStateStatus = roiPixelStateStatusByTrackId[trackId],
+                    renderMode = renderModeByTrackId[trackId] ?: FaceOnlyRenderMode.DORMANT
+                )
                 lastAttemptPtsUs == null ||
                     ptsUs < lastAttemptPtsUs ||
-                    ptsUs - lastAttemptPtsUs >= detectorIntervalUs
+                    ptsUs - lastAttemptPtsUs >= effectiveIntervalUs
             }
             .sortedWith(
                 compareBy<Int> {
@@ -979,7 +984,18 @@ class FaceOnlyPrivacyFrameProcessor(
                 FaceOcclusionBridgePolicy.isAppearanceOcclusionReject(pixelRejectReason)
             val evidenceGapDetectorReacquire = evidenceGapDetectorReacquireTrackIds.contains(trackId)
             val normalDetectorDue = dueDetectorTrackIds.contains(trackId)
-            val shouldCallDetector = normalDetectorDue
+            val lastDetectorAttemptPtsUs = lastDetectorAttemptPtsUsByTrackId[trackId]
+            val baseDetectorDue = lastDetectorAttemptPtsUs == null ||
+                ptsUs < lastDetectorAttemptPtsUs ||
+                ptsUs - lastDetectorAttemptPtsUs >= detectorIntervalUs
+            val pixelRefreshRescueDue =
+                !normalDetectorDue &&
+                    renderMode != FaceOnlyRenderMode.DORMANT &&
+                    hasRoiPixelState &&
+                    region == null &&
+                    baseDetectorDue
+            val shouldCallDetector =
+                (normalDetectorDue || pixelRefreshRescueDue) && detectorCallCount < detectorBudget
 
             if (shouldCallDetector && plan != null && roiRgba != null) {
                 if (renderMode == FaceOnlyRenderMode.DORMANT) {
@@ -1539,6 +1555,11 @@ class FaceOnlyPrivacyFrameProcessor(
         const val FACE_ROI_SIZE = 256
         const val DEFAULT_DETECTOR_INTERVAL_US = 33_000L
         const val DEFAULT_MAX_DETECTOR_CALLS_PER_FRAME = 2
+        // Healthy deterministic ROI-pixel tracking already follows current-frame
+        // head motion between detector seeds. Only that non-dormant path may reuse
+        // the previously validated ~15 Hz detector cadence. Pixel-match failure
+        // stays eligible at the normal 33 ms base interval in resolveFrame().
+        internal const val PIXEL_ASSISTED_DETECTOR_INTERVAL_US = 66_000L
         private const val INITIAL_ACQUISITION_MAX_CALLS = 8
         private const val MAX_PREDICTED_FACE_AGE_US = 150_000L
         private const val MAX_LOCAL_FACE_REFRESH_AGE_US = FaceOnlyDormancyPolicy.MAX_BODY_COMPENSATION_AGE_US
@@ -1556,6 +1577,22 @@ class FaceOnlyPrivacyFrameProcessor(
         private const val POSITION_CLAMP_DIAGNOSTIC_EPSILON_PX = 0.25f
         private const val MAX_OCCLUSION_REACQUIRE_EXTRA_CALLS_PER_FRAME = 1
         private const val SLOW_STAGE_LOG_THRESHOLD_MS = 20.0
+
+        internal fun effectiveDetectorIntervalUs(
+            baseIntervalUs: Long,
+            roiStateStatus: FacePixelMotionTracker.RoiStateStatus?,
+            renderMode: FaceOnlyRenderMode
+        ): Long {
+            require(baseIntervalUs > 0L)
+            return if (
+                roiStateStatus == FacePixelMotionTracker.RoiStateStatus.USABLE &&
+                renderMode != FaceOnlyRenderMode.DORMANT
+            ) {
+                maxOf(baseIntervalUs, PIXEL_ASSISTED_DETECTOR_INTERVAL_US)
+            } else {
+                baseIntervalUs
+            }
+        }
 
         fun create(
             context: Context,
