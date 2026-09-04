@@ -238,6 +238,7 @@ def read_bundle(path: Path) -> dict:
                             fields.get("pixel_reject_reason"),
                             tuple(fields.get("source_rect_q0_0625px", [])),
                             tuple(fields.get("person_bbox_q0_0625px", [])),
+                            fields.get("roi_pixel_source"),
                         )
                 elif event_name == "FACE_ONLY_STICKER_PLACEMENT_SIGNATURE":
                     if fields.get("job_id") == job_id:
@@ -343,6 +344,7 @@ def compare_face_roi(a: dict[tuple[int, int, str], tuple], b: dict[tuple[int, in
     person_bbox_diffs = []
     rgba_diffs_same_source = []
     detector_result_diffs_same_rgba = []
+    pixel_source_diffs = []
     full_diffs = []
     for key in common:
         av = a[key]
@@ -357,6 +359,8 @@ def compare_face_roi(a: dict[tuple[int, int, str], tuple], b: dict[tuple[int, in
             rgba_diffs_same_source.append(key)
         if av[1] == bv[1] and (av[2], av[3], av[4]) != (bv[2], bv[3], bv[4]):
             detector_result_diffs_same_rgba.append(key)
+        if len(av) > 8 and len(bv) > 8 and av[8] != bv[8]:
+            pixel_source_diffs.append(key)
     return {
         "common_events": len(common),
         "only_a_events": len(only_a),
@@ -366,6 +370,7 @@ def compare_face_roi(a: dict[tuple[int, int, str], tuple], b: dict[tuple[int, in
         "person_bbox_different_events": len(person_bbox_diffs),
         "rgba_hash_different_with_same_source_rect": len(rgba_diffs_same_source),
         "detector_result_different_with_same_rgba": len(detector_result_diffs_same_rgba),
+        "roi_pixel_source_different_events": len(pixel_source_diffs),
         "first_different_key": list(full_diffs[0]) if full_diffs else None,
         "first_rgba_difference_key": list(rgba_diffs_same_source[0]) if rgba_diffs_same_source else None,
         "first_detector_result_difference_key": (

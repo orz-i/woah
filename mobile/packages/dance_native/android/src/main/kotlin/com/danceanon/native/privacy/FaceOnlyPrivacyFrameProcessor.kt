@@ -84,6 +84,46 @@ class FaceOnlyPrivacyFrameProcessor(
 ) : AutoCloseable {
 
     private val pixelMotionTracker = FacePixelMotionTracker()
+    private val canonicalRoiBuffer = ByteBuffer.allocateDirect(FACE_ROI_SIZE * FACE_ROI_SIZE * 4)
+
+    private data class RoiPixels(
+        val rgba: ByteBuffer,
+        val source: String
+    )
+
+    private fun readRoiPixels(
+        frameTexture: Int,
+        texMatrix: FloatArray,
+        textureType: SourceTextureType,
+        plan: FaceHeadRoiPlan,
+        canonicalModelRgbaBottomUp: ByteBuffer?
+    ): RoiPixels {
+        if (canonicalModelRgbaBottomUp != null) {
+            return RoiPixels(
+                rgba = CanonicalFaceRoiSampler.sampleTopDown(
+                    canonicalRgbaBottomUp = canonicalModelRgbaBottomUp,
+                    mapper = mapper,
+                    sourceRect = plan.sourceRect,
+                    outputSize = FACE_ROI_SIZE,
+                    output = canonicalRoiBuffer
+                ),
+                source = "CANONICAL_MODEL_RGBA"
+            )
+        }
+        roiRenderer.renderToFbo(
+            textureId = frameTexture,
+            texMatrix = texMatrix,
+            sourceRect = plan.sourceRect,
+            sourceWidth = mapper.srcWidth,
+            sourceHeight = mapper.srcHeight,
+            fbo = roiFbo,
+            textureType = textureType
+        )
+        return RoiPixels(
+            rgba = roiFbo.readRgbaPixels(),
+            source = "SURFACE_TEXTURE"
+        )
+    }
 
     private data class CachedFaceGeometry(
         val centerX: Float,
@@ -153,7 +193,8 @@ class FaceOnlyPrivacyFrameProcessor(
         observationCount: Int,
         selected: Boolean,
         pixelRejectReason: FacePixelMotionTracker.RoiRejectReason?,
-        renderMode: FaceOnlyRenderMode
+        renderMode: FaceOnlyRenderMode,
+        roiPixelSource: String
     ) {
         val jobId = diagnosticJobId ?: return
         if (!com.danceanon.dance_native.BuildConfig.DEBUG) return
@@ -167,6 +208,7 @@ class FaceOnlyPrivacyFrameProcessor(
                 "track_id" to trackId,
                 "phase" to phase,
                 "render_mode" to renderMode.name,
+                "roi_pixel_source" to roiPixelSource,
                 "rgba_grid_sha256" to sparseRgbaSha256(rgba),
                 "observation_count" to observationCount,
                 "selected_face" to selected,
@@ -453,6 +495,7 @@ class FaceOnlyPrivacyFrameProcessor(
         faceOnlyTrackIds: Set<Int>,
         fullBodyTrackIds: Set<Int> = emptySet(),
         protectedMotionEvidence: List<ProtectedTrackMotionEvidence> = emptyList(),
+        canonicalModelRgbaBottomUp: ByteBuffer? = null,
         ptsUs: Long
     ): FaceOnlyPrivacyFrameResult {
         if (faceOnlyTrackIds.isEmpty()) {
@@ -832,19 +875,19 @@ class FaceOnlyPrivacyFrameProcessor(
             var detectorSeedRgba: ByteBuffer? = null
             var detectorSeedPlan: FaceHeadRoiPlan? = null
             var pixelRejectReason: FacePixelMotionTracker.RoiRejectReason? = null
+            var roiPixelSource = "NONE"
             val hasRoiPixelState = pixelMotionTracker.hasUsableRoiState(trackId, ptsUs)
             if (plan != null && (hasRoiPixelState || dueDetectorTrackIds.contains(trackId))) {
                 val roiStartNs = System.nanoTime()
-                roiRenderer.renderToFbo(
-                    textureId = frameTexture,
+                val roiPixels = readRoiPixels(
+                    frameTexture = frameTexture,
                     texMatrix = texMatrix,
-                    sourceRect = plan.sourceRect,
-                    sourceWidth = mapper.srcWidth,
-                    sourceHeight = mapper.srcHeight,
-                    fbo = roiFbo,
-                    textureType = textureType
+                    textureType = textureType,
+                    plan = plan,
+                    canonicalModelRgbaBottomUp = canonicalModelRgbaBottomUp
                 )
-                roiRgba = roiFbo.readRgbaPixels()
+                roiRgba = roiPixels.rgba
+                roiPixelSource = roiPixels.source
                 roiReadbackMs += (System.nanoTime() - roiStartNs) / 1_000_000.0
 
                 if (hasRoiPixelState) {
@@ -954,7 +997,8 @@ class FaceOnlyPrivacyFrameProcessor(
                         observationCount = locatorResult.observations.size,
                         selected = selectedFace != null,
                         pixelRejectReason = pixelRejectReason,
-                        renderMode = renderMode
+                        renderMode = renderMode,
+                        roiPixelSource = roiPixelSource
                     )
                     if (locatorResult.observations.isNotEmpty() && selectedFace == null) {
                         detectorRejectedCallCount++
@@ -1031,16 +1075,14 @@ class FaceOnlyPrivacyFrameProcessor(
                         appearanceReacquireDetectorTrackIds += trackId
                     }
                     val roiStartNs = System.nanoTime()
-                    roiRenderer.renderToFbo(
-                        textureId = frameTexture,
+                    val reacquirePixels = readRoiPixels(
+                        frameTexture = frameTexture,
                         texMatrix = texMatrix,
-                        sourceRect = reacquirePlan.sourceRect,
-                        sourceWidth = mapper.srcWidth,
-                        sourceHeight = mapper.srcHeight,
-                        fbo = roiFbo,
-                        textureType = textureType
+                        textureType = textureType,
+                        plan = reacquirePlan,
+                        canonicalModelRgbaBottomUp = canonicalModelRgbaBottomUp
                     )
-                    val reacquireRgba = roiFbo.readRgbaPixels()
+                    val reacquireRgba = reacquirePixels.rgba
                     roiReadbackMs += (System.nanoTime() - roiStartNs) / 1_000_000.0
                     lastDetectorAttemptPtsUsByTrackId[trackId] = ptsUs
                     try {
@@ -1077,7 +1119,8 @@ class FaceOnlyPrivacyFrameProcessor(
                             observationCount = locatorResult.observations.size,
                             selected = selectedFace != null,
                             pixelRejectReason = pixelRejectReason,
-                            renderMode = renderMode
+                            renderMode = renderMode,
+                            roiPixelSource = reacquirePixels.source
                         )
                         if (locatorResult.observations.isNotEmpty() && selectedFace == null) {
                             detectorRejectedCallCount++

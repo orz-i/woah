@@ -734,6 +734,7 @@ class ExportPipeline(
                     var suppressedSelectedPrivacyTrackIds = emptySet<Int>()
                     var preferFreshPrivacyClassPrimary = false
                     var cpuReferenceTrackedForFace: List<TrackedPerson>? = null
+                    var canonicalModelRgbaForFace: java.nio.ByteBuffer? = null
 
                         // 2. Perform Inference / Temporal Mask Tracking
                         val trackedList: List<com.danceanon.native.tracking.TrackedPerson> = if (isSam2Mode && sam2Fbo != null && sam2Renderer != null && sam2Tracker != null) {
@@ -932,6 +933,7 @@ class ExportPipeline(
                                         null
                                     }
                                 } else null
+                                canonicalModelRgbaForFace = canonicalRgba?.duplicate()?.apply { rewind() }
                                 val rgbaBuffer = canonicalRgba ?: run {
                                     profiler.recordStage("fboLetterbox") {
                                         inferenceRenderer.renderToFbo(renderTexId, finalTexMatrix, mapper, inferenceFbo, renderTexType)
@@ -1204,6 +1206,11 @@ class ExportPipeline(
                                     faceOnlyTrackIds = faceOnlyPersonIds,
                                     fullBodyTrackIds = selectedIds,
                                     protectedMotionEvidence = protectedMotionEvidence,
+                                    canonicalModelRgbaBottomUp = if (useCpuReferenceGeometry) {
+                                        canonicalModelRgbaForFace
+                                    } else {
+                                        null
+                                    },
                                     ptsUs = ptsUs
                                 )
                             }
