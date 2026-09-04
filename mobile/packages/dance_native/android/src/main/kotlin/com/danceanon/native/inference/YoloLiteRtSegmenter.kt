@@ -174,6 +174,7 @@ class YoloLiteRtSegmenter(
             )
             stageTimings["yoloDecode"] = (System.nanoTime() - decodeStartNs) / 1_000_000
             if (diagnosticJobId != null) {
+                val diagnosticsStartNs = System.nanoTime()
                 tensorDiagnosticsByJobId
                     .getOrPut(diagnosticJobId) {
                         com.danceanon.native.diagnostics.YoloTensorDiagnostics(
@@ -189,6 +190,8 @@ class YoloLiteRtSegmenter(
                         output1 = out1Floats,
                         detections = parsed
                     )
+                stageTimings["yoloDiagnostics"] =
+                    (System.nanoTime() - diagnosticsStartNs) / 1_000_000
             }
             parsed
         } catch (e: DanceNativeException) {

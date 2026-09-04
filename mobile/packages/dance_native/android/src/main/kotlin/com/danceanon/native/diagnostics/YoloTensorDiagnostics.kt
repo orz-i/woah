@@ -41,7 +41,13 @@ class YoloTensorDiagnostics(
                     "job_id" to jobId,
                     "pts_us" to ptsUs,
                     "detection_count" to detections.size,
-                    "detections" to associationDetectionSignature(detections)
+                    // Full-export geometry coverage is still useful for proving
+                    // deterministic CPU identity input, but hashing every 160x160
+                    // mask on every frame turns debug telemetry into a material
+                    // part of the measured CPU4T cost. Keep full mask/tensor
+                    // signatures in the early artifact window below; after that,
+                    // record only the quantized geometry/confidence signature.
+                    "detections" to geometryDetectionSignature(detections)
                 )
             )
             return
@@ -112,9 +118,8 @@ class YoloTensorDiagnostics(
                 )
             }
 
-        private fun associationDetectionSignature(detections: List<PersonDetection>): List<Map<String, Any?>> =
+        internal fun geometryDetectionSignature(detections: List<PersonDetection>): List<Map<String, Any?>> =
             detections.mapIndexed { index, detection ->
-                val associationMask = detection.mask?.buffer?.let(::associationMaskSummary)
                 mapOf(
                     "index" to index,
                     "confidence_q1e4" to (detection.confidence * 10_000f).roundToInt(),
@@ -125,10 +130,7 @@ class YoloTensorDiagnostics(
                         (detection.bbox.bottom * 16f).roundToInt()
                     ),
                     "mask_width" to detection.mask?.width,
-                    "mask_height" to detection.mask?.height,
-                    "mask_assoc_binary_sha256" to associationMask?.sha256,
-                    "mask_assoc_foreground_pixels" to associationMask?.foregroundPixels,
-                    "mask_assoc_near_threshold_pixels" to associationMask?.nearThresholdPixels
+                    "mask_height" to detection.mask?.height
                 )
             }
 

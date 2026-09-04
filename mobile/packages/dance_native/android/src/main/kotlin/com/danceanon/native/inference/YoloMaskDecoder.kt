@@ -105,9 +105,24 @@ class NchwArrayProtoView(
             for (py in y1 until y2) {
                 val pixelRow = py * protoSize
                 val protoRow = channelBase + pixelRow
-                for (px in x1 until x2) {
+                var px = x1
+                // Preserve the exact channel accumulation order for every pixel,
+                // but amortize Kotlin loop/index overhead across adjacent NCHW
+                // values. Each scratch cell still receives one c=0..31 += in the
+                // same order as the scalar implementation.
+                while (px + 3 < x2) {
+                    val pixelIndex = pixelRow + px
+                    val protoIndex = protoRow + px
+                    scratch[pixelIndex] += coeff * values[protoIndex]
+                    scratch[pixelIndex + 1] += coeff * values[protoIndex + 1]
+                    scratch[pixelIndex + 2] += coeff * values[protoIndex + 2]
+                    scratch[pixelIndex + 3] += coeff * values[protoIndex + 3]
+                    px += 4
+                }
+                while (px < x2) {
                     val pixelIndex = pixelRow + px
                     scratch[pixelIndex] += coeff * values[protoRow + px]
+                    px++
                 }
             }
         }
