@@ -340,6 +340,8 @@ def read_bundle(path: Path) -> dict:
             "historical_entries": historical,
             "manifest_excluded_historical": manifest.get("snapshot_files_excluded_as_historical"),
             "timings": {
+                "production_yolo": _stage(summary, "yoloCpuInference"),
+                "production_tracking": _stage(summary, "tracking"),
                 "cpu_1t_total": _stage(summary, "yoloCpuDeterminismProbe"),
                 "cpu_1t_run": _stage(summary, "yoloCpuProbe_yoloLiteRtRun"),
                 "cpu_2t_total": _stage(summary, "yoloCpuMt2Probe"),
@@ -864,6 +866,23 @@ def main() -> int:
                 "face_temporal_class_timing": _timing_values(
                     b["face_temporal_class_timings_ms"]
                 ),
+                "face_deterministic_cpu_primary": {
+                    "preferred": bool(
+                        (b["pipeline_summary"] or {}).get(
+                            "face_deterministic_cpu_primary_preferred", False
+                        )
+                    ),
+                    "inference_frames": int(
+                        (b["pipeline_summary"] or {}).get(
+                            "face_deterministic_cpu_primary_inference_frames", 0
+                        )
+                    ),
+                    "fallback_frames": int(
+                        (b["pipeline_summary"] or {}).get(
+                            "face_deterministic_cpu_primary_fallback_frames", 0
+                        )
+                    ),
+                },
                 # NEW_TRACK_CREATED comes from the production TrackManager. Keep
                 # it explicitly labelled so it cannot be mistaken for the
                 # deterministic CPU reference topology used by Face rendering.

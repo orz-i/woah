@@ -39,6 +39,50 @@ class ExportPipelinePrivacyModePolicyTest {
     }
 
     @Test
+    fun `deterministic cpu primary is restricted to debug face only yolo exports`() {
+        assertTrue(
+            ExportPipeline.shouldPreferDebugFaceDeterministicCpuPrimary(
+                isDebugBuild = true,
+                isSam2Mode = false,
+                fullBodyPersonIds = emptySet(),
+                faceOnlyPersonIds = setOf(1, 3, 6)
+            )
+        )
+        assertFalse(
+            ExportPipeline.shouldPreferDebugFaceDeterministicCpuPrimary(
+                isDebugBuild = false,
+                isSam2Mode = false,
+                fullBodyPersonIds = emptySet(),
+                faceOnlyPersonIds = setOf(1)
+            )
+        )
+        assertFalse(
+            ExportPipeline.shouldPreferDebugFaceDeterministicCpuPrimary(
+                isDebugBuild = true,
+                isSam2Mode = true,
+                fullBodyPersonIds = emptySet(),
+                faceOnlyPersonIds = setOf(1)
+            )
+        )
+        assertFalse(
+            ExportPipeline.shouldPreferDebugFaceDeterministicCpuPrimary(
+                isDebugBuild = true,
+                isSam2Mode = false,
+                fullBodyPersonIds = setOf(4),
+                faceOnlyPersonIds = setOf(1)
+            )
+        )
+        assertFalse(
+            ExportPipeline.shouldPreferDebugFaceDeterministicCpuPrimary(
+                isDebugBuild = true,
+                isSam2Mode = false,
+                fullBodyPersonIds = emptySet(),
+                faceOnlyPersonIds = emptySet()
+            )
+        )
+    }
+
+    @Test
     fun `face reference canonicalization collapses subpixel cpu noise without touching tracker policy`() {
         assertEquals(100.5f, ExportPipeline.canonicalizeFaceReferenceCoordinate(100.47f))
         assertEquals(100.5f, ExportPipeline.canonicalizeFaceReferenceCoordinate(100.53f))

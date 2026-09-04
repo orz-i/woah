@@ -412,6 +412,14 @@ class ExportPipeline(
                 val frameStride = profile.inferenceStride
                 var lastProgressEmitTime = 0L
                 val isSam2Mode = profile.useSam2
+                val preferDebugFaceDeterministicCpuPrimary = shouldPreferDebugFaceDeterministicCpuPrimary(
+                    isDebugBuild = com.danceanon.dance_native.BuildConfig.DEBUG,
+                    isSam2Mode = isSam2Mode,
+                    fullBodyPersonIds = fullBodyPersonIds,
+                    faceOnlyPersonIds = faceOnlyPersonIds
+                )
+                var faceDeterministicCpuPrimaryInferenceFrames = 0L
+                var faceDeterministicCpuPrimaryFallbackFrames = 0L
                 val crossDeviceTrackingDiagnostics = if (
                     com.danceanon.dance_native.BuildConfig.DEBUG && !isSam2Mode
                 ) {
@@ -990,15 +998,7 @@ class ExportPipeline(
                                         }
                                     }.orEmpty()
                                 )
-                                val seg = profiler.recordStage("yoloCpuInference") {
-                                    segmenter.segmentGlReadbackRgbaSync(
-                                        rgbaBuffer,
-                                        mapper,
-                                        ptsUs,
-                                        colOrder = RgbaColOrder.LEFT_TO_RIGHT,
-                                        diagnosticJobId = jobId
-                                    )
-                                }
+                                var cpuMt4PrimaryInferenceTimeMs: Long? = null
                                 val cpuMt4Probe = cpuMt4ProbeSegmenter
                                 if (cpuMt4Probe != null) {
                                     try {
@@ -1012,6 +1012,7 @@ class ExportPipeline(
                                             )
                                         }
                                         cpuMt4DetectionsForShadow = cpuMt4Seg.persons
+                                        cpuMt4PrimaryInferenceTimeMs = cpuMt4Seg.inferenceTimeMs
                                         for ((stage, elapsedMs) in cpuMt4Seg.stageTimingsMs) {
                                             profiler.recordSample("yoloCpuMt4Probe_${stage}", elapsedMs)
                                         }
@@ -1033,16 +1034,51 @@ class ExportPipeline(
                                         )
                                     }
                                 }
-                                // Historical compatibility: this metric name predates the
-                                // LiteRT GPU path and is misleading. Preserve it unchanged
-                                // for existing diagnostics, and expose a correctly named
-                                // canonical alias from the segmenter's own whole-call timer.
-                                profiler.recordSample("yoloPipelineTotal", seg.inferenceTimeMs)
-                                for ((stage, elapsedMs) in seg.stageTimingsMs) {
-                                    profiler.recordSample(stage, elapsedMs)
+                                val deterministicPrimaryDetections = if (
+                                    preferDebugFaceDeterministicCpuPrimary
+                                ) {
+                                    cpuMt4DetectionsForShadow
+                                } else {
+                                    null
                                 }
-                                // Export QUALITY path: YOLO raw organic masks directly enter TrackManager without pre-dilation
-                                seg.persons
+                                if (deterministicPrimaryDetections != null) {
+                                    // FACE_ONLY debug validation has already established that
+                                    // final geometry/masks/class evidence come from this same
+                                    // deterministic CPU4T measurement. Do not infer the identical
+                                    // canonical frame a second time only to feed the historical
+                                    // production TrackManager. Reuse the CPU4T detections here so
+                                    // production tracking remains continuous and available as a
+                                    // shadow comparison. A missing/failed CPU probe falls through
+                                    // to the historical production segmenter below in the same frame.
+                                    faceDeterministicCpuPrimaryInferenceFrames++
+                                    cpuMt4PrimaryInferenceTimeMs?.let {
+                                        profiler.recordSample("yoloPipelineTotal", it)
+                                    }
+                                    deterministicPrimaryDetections
+                                } else {
+                                    if (preferDebugFaceDeterministicCpuPrimary) {
+                                        faceDeterministicCpuPrimaryFallbackFrames++
+                                    }
+                                    val seg = profiler.recordStage("yoloCpuInference") {
+                                        segmenter.segmentGlReadbackRgbaSync(
+                                            rgbaBuffer,
+                                            mapper,
+                                            ptsUs,
+                                            colOrder = RgbaColOrder.LEFT_TO_RIGHT,
+                                            diagnosticJobId = jobId
+                                        )
+                                    }
+                                    // Historical compatibility: this metric name predates the
+                                    // LiteRT GPU path and is misleading. Preserve it unchanged
+                                    // for existing diagnostics, and expose a correctly named
+                                    // canonical alias from the segmenter's own whole-call timer.
+                                    profiler.recordSample("yoloPipelineTotal", seg.inferenceTimeMs)
+                                    for ((stage, elapsedMs) in seg.stageTimingsMs) {
+                                        profiler.recordSample(stage, elapsedMs)
+                                    }
+                                    // Export QUALITY path: YOLO raw organic masks directly enter TrackManager without pre-dilation
+                                    seg.persons
+                                }
                             } else {
                                 emptyList()
                             }
@@ -1907,6 +1943,9 @@ class ExportPipeline(
                             "face_sticker_max_consecutive_center_step_by_track_id" to faceStickerMaxConsecutiveCenterStepByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_partial_occlusion_max_center_step_by_track_id" to facePartialOcclusionMaxCenterStepByTrackId.toSortedMap().mapKeys { it.key.toString() },
                             "face_partial_occlusion_max_consecutive_center_step_by_track_id" to facePartialOcclusionMaxConsecutiveCenterStepByTrackId.toSortedMap().mapKeys { it.key.toString() },
+                            "face_deterministic_cpu_primary_preferred" to preferDebugFaceDeterministicCpuPrimary,
+                            "face_deterministic_cpu_primary_inference_frames" to faceDeterministicCpuPrimaryInferenceFrames,
+                            "face_deterministic_cpu_primary_fallback_frames" to faceDeterministicCpuPrimaryFallbackFrames,
                             "fresh_full_body_class_primary_enabled" to allowFreshFullBodyClassPrimary,
                             "conservative_mixed_full_body_occluder_policy_enabled" to false,
                             "surface_wait_timeout_count" to surfaceWaitTimeoutCount,
@@ -2071,6 +2110,17 @@ class ExportPipeline(
             fullBodyPersonIds: Set<Int>,
             faceOnlyPersonIds: Set<Int>
         ): Boolean = fullBodyPersonIds.isNotEmpty() && faceOnlyPersonIds.isEmpty()
+
+        internal fun shouldPreferDebugFaceDeterministicCpuPrimary(
+            isDebugBuild: Boolean,
+            isSam2Mode: Boolean,
+            fullBodyPersonIds: Set<Int>,
+            faceOnlyPersonIds: Set<Int>
+        ): Boolean =
+            isDebugBuild &&
+                !isSam2Mode &&
+                fullBodyPersonIds.isEmpty() &&
+                faceOnlyPersonIds.isNotEmpty()
     }
 }
 
