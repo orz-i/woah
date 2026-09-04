@@ -1045,11 +1045,11 @@ class ExportPipeline(
                                     // FACE_ONLY debug validation has already established that
                                     // final geometry/masks/class evidence come from this same
                                     // deterministic CPU4T measurement. Do not infer the identical
-                                    // canonical frame a second time only to feed the historical
-                                    // production TrackManager. Reuse the CPU4T detections here so
-                                    // production tracking remains continuous and available as a
-                                    // shadow comparison. A missing/failed CPU probe falls through
-                                    // to the historical production segmenter below in the same frame.
+                                    // canonical frame a second time. Reuse the CPU4T detections for
+                                    // the deterministic tracking primary below. A missing/failed CPU
+                                    // probe still falls through to the historical production
+                                    // segmenter in the same frame, and those fallback detections are
+                                    // consumed by that same tracking primary.
                                     faceDeterministicCpuPrimaryInferenceFrames++
                                     cpuMt4PrimaryInferenceTimeMs?.let {
                                         profiler.recordSample("yoloPipelineTotal", it)
@@ -1083,8 +1083,42 @@ class ExportPipeline(
                                 emptyList()
                             }
 
-                            // Tracking on detections
-                            val tracked = profiler.recordStage("tracking") {
+                            val deterministicTrackingPrimary = if (preferDebugFaceDeterministicCpuPrimary) {
+                                val diagnostics = checkNotNull(crossDeviceTrackingDiagnostics) {
+                                    "Deterministic Face tracking diagnostics unavailable"
+                                }
+                                checkNotNull(
+                                    diagnostics.recordFrame(
+                                        ptsUs = ptsUs,
+                                        shouldInfer = shouldInfer,
+                                        productionDetections = if (shouldInfer) detections else null,
+                                        productionTracked = null,
+                                        cpuMt4Detections = cpuMt4DetectionsForShadow,
+                                        initialAssignedIds = if (processedFrames == 1) {
+                                            resolveInitialTrackIdsFromAnalysis(
+                                                metadata = analysisMetadata,
+                                                detections = detections,
+                                                targetWidth = targetWidth,
+                                                targetHeight = targetHeight
+                                            )
+                                        } else {
+                                            null
+                                        },
+                                        allowProductionFallbackForCpuFull = true
+                                    )
+                                ) {
+                                    "Deterministic Face tracking primary unavailable at pts_us=$ptsUs"
+                                }
+                            } else {
+                                null
+                            }
+
+                            // Once deterministic CPU4T detections are the Face-only primary,
+                            // the CPU full tracker is the production bookkeeping tracker too.
+                            // Do not run a second TrackManager over the same measurements merely
+                            // to produce equivalent IDs/state/geometry. Release, FULL_BODY and
+                            // SAM2 still execute the historical production tracker below.
+                            val tracked = deterministicTrackingPrimary ?: profiler.recordStage("tracking") {
                                 if (processedFrames == 1) {
                                     val metadata = analysisMetadata
                                     if (metadata != null && metadata.persons.isNotEmpty() && detections.isNotEmpty()) {
@@ -1148,16 +1182,21 @@ class ExportPipeline(
                                     trackManager.predict(ptsUs)
                                 }
                             }
-                            cpuReferenceTrackedForFace = crossDeviceTrackingDiagnostics?.recordFrame(
-                                ptsUs = ptsUs,
-                                shouldInfer = shouldInfer,
-                                productionDetections = if (shouldInfer) detections else null,
-                                productionTracked = if (processedFrames == 1) tracked else null,
-                                cpuMt4Detections = cpuMt4DetectionsForShadow
-                            )
+                            cpuReferenceTrackedForFace = if (deterministicTrackingPrimary != null) {
+                                deterministicTrackingPrimary
+                            } else {
+                                crossDeviceTrackingDiagnostics?.recordFrame(
+                                    ptsUs = ptsUs,
+                                    shouldInfer = shouldInfer,
+                                    productionDetections = if (shouldInfer) detections else null,
+                                    productionTracked = if (processedFrames == 1) tracked else null,
+                                    cpuMt4Detections = cpuMt4DetectionsForShadow
+                                )
+                            }
                             if (
                                 com.danceanon.dance_native.BuildConfig.DEBUG &&
-                                faceOnlyPersonIds.isNotEmpty()
+                                faceOnlyPersonIds.isNotEmpty() &&
+                                deterministicTrackingPrimary == null
                             ) {
                                 com.danceanon.native.diagnostics.NativeDiagnostics.event(
                                     level = "INFO",
@@ -2104,6 +2143,64 @@ class ExportPipeline(
                 ?.toSet()
                 .orEmpty()
             return credibleAnalysisIds + privacyTargetIds
+        }
+
+        internal fun resolveInitialTrackIdsFromAnalysis(
+            metadata: com.danceanon.native.storage.AnalysisMetadata?,
+            detections: List<com.danceanon.native.inference.PersonDetection>,
+            targetWidth: Int,
+            targetHeight: Int
+        ): List<Int> {
+            if (metadata == null || metadata.persons.isEmpty() || detections.isEmpty()) {
+                return detections.indices.toList()
+            }
+
+            val cached = metadata.persons
+            val costMatrix = Array(cached.size) { r ->
+                val cPerson = cached[r]
+                val cLeft = (cPerson.bbox.left * targetWidth).toFloat()
+                val cTop = (cPerson.bbox.top * targetHeight).toFloat()
+                val cRight = (cPerson.bbox.right * targetWidth).toFloat()
+                val cBottom = (cPerson.bbox.bottom * targetHeight).toFloat()
+                val cBox = com.danceanon.native.inference.FloatRect(cLeft, cTop, cRight, cBottom)
+
+                FloatArray(detections.size) { c ->
+                    val dBox = detections[c].bbox
+                    val iou = com.danceanon.native.tracking.TrackManager.computeBBoxIoU(cBox, dBox)
+                    val refDim = maxOf(cBox.width, cBox.height, 1f)
+                    val dx = cBox.centerX - dBox.centerX
+                    val dy = cBox.centerY - dBox.centerY
+                    val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+                    val distScore = (1.0f - (dist / (refDim * 1.5f))).coerceIn(0f, 1f)
+                    val score = 0.7f * iou + 0.3f * distScore
+                    (1.0f - score).coerceIn(0f, 1f)
+                }
+            }
+
+            val matchResult = com.danceanon.native.tracking.HungarianSolver.match(
+                costMatrix,
+                maxCostThreshold = 0.85f
+            )
+            val assignedIds = IntArray(detections.size) { -1 }
+            val usedIds = mutableSetOf<Int>()
+            for ((cachedIndex, detectionIndex) in matchResult.matches) {
+                if (detectionIndex < detections.size && cachedIndex < cached.size) {
+                    val id = cached[cachedIndex].id
+                    assignedIds[detectionIndex] = id
+                    usedIds.add(id)
+                }
+            }
+
+            var nextId = 0
+            for (index in assignedIds.indices) {
+                if (assignedIds[index] == -1) {
+                    while (usedIds.contains(nextId)) nextId++
+                    assignedIds[index] = nextId
+                    usedIds.add(nextId)
+                    nextId++
+                }
+            }
+            return assignedIds.toList()
         }
 
         internal fun shouldUseFreshFullBodyClassPrimary(

@@ -109,7 +109,9 @@ internal class CrossDeviceTrackingDiagnostics(
         shouldInfer: Boolean,
         productionDetections: List<PersonDetection>?,
         productionTracked: List<TrackedPerson>?,
-        cpuMt4Detections: List<PersonDetection>?
+        cpuMt4Detections: List<PersonDetection>?,
+        initialAssignedIds: List<Int>? = null,
+        allowProductionFallbackForCpuFull: Boolean = false
     ): List<TrackedPerson>? {
         if (!com.danceanon.dance_native.BuildConfig.DEBUG || disabledReason != null) return null
 
@@ -119,19 +121,33 @@ internal class CrossDeviceTrackingDiagnostics(
             val adaptiveSources = linkedMapOf<String, String>()
             val adaptiveReasons = linkedMapOf<String, String>()
             val adaptiveMetrics = linkedMapOf<String, Map<String, Any?>>()
+            var cpuFullSource = "CPU"
             if (!initialized) {
-                val prodDetections = productionDetections ?: return disable("MISSING_PRODUCTION_FIRST_FRAME")
-                val prodTracked = productionTracked ?: return disable("MISSING_PRODUCTION_TRACKS_FIRST_FRAME")
-                val cpuDetections = cpuMt4Detections ?: return disable("MISSING_CPU_MT4_FIRST_FRAME")
-                val assignedIds = mapProductionIdsToCpuDetections(
-                    productionDetections = prodDetections,
-                    productionTracked = prodTracked,
-                    cpuDetections = cpuDetections
-                ) ?: return disable("CPU_MT4_FIRST_FRAME_ID_MAP_FAILED")
+                val prodDetections = productionDetections
+                val cpuDetections = cpuMt4Detections
+                    ?: (if (allowProductionFallbackForCpuFull) prodDetections else null)
+                    ?: return disable("MISSING_CPU_MT4_FIRST_FRAME")
+                cpuFullSource = if (cpuMt4Detections != null) "CPU" else "PRODUCTION_FALLBACK"
+                val assignedIds = if (initialAssignedIds != null) {
+                    if (initialAssignedIds.size != cpuDetections.size) {
+                        return disable("INITIAL_ASSIGNED_ID_COUNT_MISMATCH")
+                    }
+                    initialAssignedIds
+                } else {
+                    val requiredProdDetections = prodDetections
+                        ?: return disable("MISSING_PRODUCTION_FIRST_FRAME")
+                    val prodTracked = productionTracked
+                        ?: return disable("MISSING_PRODUCTION_TRACKS_FIRST_FRAME")
+                    mapProductionIdsToCpuDetections(
+                        productionDetections = requiredProdDetections,
+                        productionTracked = prodTracked,
+                        cpuDetections = cpuDetections
+                    ) ?: return disable("CPU_MT4_FIRST_FRAME_ID_MAP_FAILED")
+                }
 
                 cpuFullTracked = cpuFullTracker.initializeWithAssignedIds(cpuDetections, assignedIds)
                 adaptiveTracked = adaptiveTrackers.mapValues { (config, tracker) ->
-                    adaptiveSources[config.key] = "CPU"
+                    adaptiveSources[config.key] = cpuFullSource
                     adaptiveReasons[config.key] = "INITIALIZE"
                     tracker.initializeWithAssignedIds(cpuDetections, assignedIds)
                 }
@@ -144,6 +160,7 @@ internal class CrossDeviceTrackingDiagnostics(
                 initialized = true
                 inferenceOrdinal = 0
             } else if (!shouldInfer) {
+                cpuFullSource = "PREDICT"
                 cpuFullTracked = cpuFullTracker.predictWithoutObservation(ptsUs)
                 latestCpuFullTemporalFacePrivacyClassEvidence = emptyList()
                 adaptiveTracked = adaptiveTrackers.mapValues { (config, tracker) ->
@@ -152,8 +169,11 @@ internal class CrossDeviceTrackingDiagnostics(
                     tracker.predictWithoutObservation(ptsUs)
                 }
             } else {
-                val cpuDetections = cpuMt4Detections ?: return disable("MISSING_CPU_MT4_INFERENCE_FRAME")
                 val gpuDetections = productionDetections ?: return disable("MISSING_PRODUCTION_INFERENCE_FRAME")
+                val cpuDetections = cpuMt4Detections
+                    ?: (if (allowProductionFallbackForCpuFull) gpuDetections else null)
+                    ?: return disable("MISSING_CPU_MT4_INFERENCE_FRAME")
+                cpuFullSource = if (cpuMt4Detections != null) "CPU" else "PRODUCTION_FALLBACK"
                 inferenceOrdinal++
 
                 cpuFullTracked = if (cpuDetections.isEmpty()) {
@@ -175,7 +195,7 @@ internal class CrossDeviceTrackingDiagnostics(
                     adaptiveMetrics[config.key] = decision.metrics.asFields()
                     if (decision.useCpu) {
                         lastCpuOrdinalByConfig[config] = inferenceOrdinal
-                        adaptiveSources[config.key] = "CPU"
+                        adaptiveSources[config.key] = cpuFullSource
                         if (cpuDetections.isEmpty()) {
                             tracker.predict(ptsUs)
                         } else {
@@ -204,6 +224,7 @@ internal class CrossDeviceTrackingDiagnostics(
                     "pts_us" to ptsUs,
                     "should_infer" to shouldInfer,
                     "cpu_inference_ordinal" to inferenceOrdinal,
+                    "cpu_full_source" to cpuFullSource,
                     "identity_protected_track_ids" to identityProtectedTrackIds.toList(),
                     "cpu_full_tracks" to trackSignature(cpuFullTracked),
                     "adaptive_tracks" to adaptiveTracked

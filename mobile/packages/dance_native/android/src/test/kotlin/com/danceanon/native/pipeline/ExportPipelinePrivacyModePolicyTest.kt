@@ -4,6 +4,7 @@ import com.danceanon.native.storage.AnalysisMetadata
 import com.danceanon.native.storage.CachedBBox
 import com.danceanon.native.storage.CachedPerson
 import com.danceanon.native.inference.FloatRect
+import com.danceanon.native.inference.PersonDetection
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -78,6 +79,49 @@ class ExportPipelinePrivacyModePolicyTest {
                 isSam2Mode = false,
                 fullBodyPersonIds = emptySet(),
                 faceOnlyPersonIds = emptySet()
+            )
+        )
+    }
+
+    @Test
+    fun `deterministic face tracking primary preserves analyze ids without production tracker`() {
+        val metadata = AnalysisMetadata(
+            sourceUri = "test.mp4",
+            persons = listOf(
+                CachedPerson(
+                    id = 10,
+                    bbox = CachedBBox(0.10, 0.10, 0.20, 0.40),
+                    confidence = 0.9
+                ),
+                CachedPerson(
+                    id = 3,
+                    bbox = CachedBBox(0.70, 0.10, 0.80, 0.40),
+                    confidence = 0.9
+                )
+            )
+        )
+        val detections = listOf(
+            PersonDetection(FloatRect(700f, 100f, 800f, 400f), 0.9f),
+            PersonDetection(FloatRect(100f, 100f, 200f, 400f), 0.9f),
+            PersonDetection(FloatRect(400f, 100f, 500f, 400f), 0.9f)
+        )
+
+        assertEquals(
+            listOf(3, 10, 0),
+            ExportPipeline.resolveInitialTrackIdsFromAnalysis(
+                metadata = metadata,
+                detections = detections,
+                targetWidth = 1000,
+                targetHeight = 1000
+            )
+        )
+        assertEquals(
+            listOf(0, 1, 2),
+            ExportPipeline.resolveInitialTrackIdsFromAnalysis(
+                metadata = null,
+                detections = detections,
+                targetWidth = 1000,
+                targetHeight = 1000
             )
         )
     }
