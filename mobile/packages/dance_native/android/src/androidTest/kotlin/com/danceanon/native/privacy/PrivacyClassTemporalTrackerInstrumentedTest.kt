@@ -10,6 +10,7 @@ import org.junit.runner.RunWith
 import java.nio.ByteBuffer
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 @RunWith(AndroidJUnit4::class)
 class PrivacyClassTemporalTrackerInstrumentedTest {
@@ -45,20 +46,65 @@ class PrivacyClassTemporalTrackerInstrumentedTest {
         )
     }
 
+    @Test
+    fun cachedWarpedSupportPreservesSequenceAndReducesWallTimeBeyondSimilarityCache() {
+        val frames = buildFrames()
+        repeat(3) {
+            runSequence(frames, reuseCache = true, reuseWarpedSupport = false)
+            runSequence(frames, reuseCache = true, reuseWarpedSupport = true)
+        }
+
+        val referenceTimes = mutableListOf<Double>()
+        val candidateTimes = mutableListOf<Double>()
+        var expectedSignature: List<List<Any>>? = null
+        repeat(9) { trial ->
+            val reference = timedSequence(
+                frames = frames,
+                reuseCache = true,
+                reuseWarpedSupport = false
+            )
+            val candidate = timedSequence(
+                frames = frames,
+                reuseCache = true,
+                reuseWarpedSupport = true
+            )
+            if (trial == 0) expectedSignature = reference.second
+            assertEquals(expectedSignature, reference.second)
+            assertEquals(expectedSignature, candidate.second)
+            referenceTimes += reference.first
+            candidateTimes += candidate.first
+        }
+        val referenceMedian = median(referenceTimes)
+        val candidateMedian = median(candidateTimes)
+        val improvementPct = (referenceMedian - candidateMedian) / referenceMedian * 100.0
+        Log.i(
+            TAG,
+            "warped_support_reference_median_ms=$referenceMedian " +
+                "warped_support_candidate_median_ms=$candidateMedian " +
+                "improvement_pct=$improvementPct"
+        )
+        assertTrue(improvementPct >= 10.0, "Expected >=10% warped-support gain, got $improvementPct%")
+    }
+
     private fun timedSequence(
         frames: List<List<PersonDetection>>,
-        reuseCache: Boolean
+        reuseCache: Boolean,
+        reuseWarpedSupport: Boolean = false
     ): Pair<Double, List<List<Any>>> {
         val startedNs = System.nanoTime()
-        val signature = runSequence(frames, reuseCache)
+        val signature = runSequence(frames, reuseCache, reuseWarpedSupport)
         return (System.nanoTime() - startedNs) / 1_000_000.0 to signature
     }
 
     private fun runSequence(
         frames: List<List<PersonDetection>>,
-        reuseCache: Boolean
+        reuseCache: Boolean,
+        reuseWarpedSupport: Boolean = false
     ): List<List<Any>> {
-        val tracker = PrivacyClassTemporalTracker(reuseFrameSimilarityCache = reuseCache)
+        val tracker = PrivacyClassTemporalTracker(
+            reuseFrameSimilarityCache = reuseCache,
+            reuseFrameWarpedMaskSupportCache = reuseWarpedSupport
+        )
         return frames.mapIndexed { frameIndex, detections ->
             val hard = if (frameIndex == 0) {
                 mapOf(

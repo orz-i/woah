@@ -24,6 +24,7 @@ class PrivacyClassTemporalTracker(
     private val minClassMargin: Float = 0.12f,
     private val maxPrototypeMisses: Int = 4,
     private val reuseFrameSimilarityCache: Boolean = true,
+    private val reuseFrameWarpedMaskSupportCache: Boolean = true,
     private val countSimilarityEvaluations: Boolean = false
 ) {
     private data class Prototype(
@@ -42,6 +43,13 @@ class PrivacyClassTemporalTracker(
     private var rootSeeded = false
     internal var lastSimilarityEvaluationCount: Int = 0
         private set
+
+    private data class WarpedMaskSupport(
+        val width: Int,
+        val height: Int,
+        val sampleStride: Int,
+        val sampledForeground: BooleanArray
+    )
 
     fun reset() {
         prototypes.clear()
@@ -96,6 +104,11 @@ class PrivacyClassTemporalTracker(
         } else {
             null
         }
+        val warpedMaskSupportCache = if (reuseFrameWarpedMaskSupportCache) {
+            IdentityHashMap<Prototype, WarpedMaskSupport>()
+        } else {
+            null
+        }
 
         for ((index, selectionClass) in rootClassByDetectionIndex) {
             if (index !in detections.indices) continue
@@ -111,14 +124,16 @@ class PrivacyClassTemporalTracker(
                 detectionIndex = index,
                 detection = detection,
                 detections = detections,
-                similarityCache = similarityCache
+                similarityCache = similarityCache,
+                warpedMaskSupportCache = warpedMaskSupportCache
             )
             val unselectedScore = bestClassScore(
                 selectionClass = PrivacySelectionClass.UNSELECTED,
                 detectionIndex = index,
                 detection = detection,
                 detections = detections,
-                similarityCache = similarityCache
+                similarityCache = similarityCache,
+                warpedMaskSupportCache = warpedMaskSupportCache
             )
 
             val inferredClass = when {
@@ -149,7 +164,8 @@ class PrivacyClassTemporalTracker(
             detections = detections,
             classified = classified,
             hardClassByDetectionIndex = rootClassByDetectionIndex,
-            similarityCache = similarityCache
+            similarityCache = similarityCache,
+            warpedMaskSupportCache = warpedMaskSupportCache
         )
 
         val unknown = detections.size - classified.size
@@ -181,7 +197,8 @@ class PrivacyClassTemporalTracker(
         detectionIndex: Int,
         detection: PersonDetection,
         detections: List<PersonDetection>,
-        similarityCache: IdentityHashMap<Prototype, FloatArray>?
+        similarityCache: IdentityHashMap<Prototype, FloatArray>?,
+        warpedMaskSupportCache: IdentityHashMap<Prototype, WarpedMaskSupport>?
     ): Float {
         var best = 0f
         for (prototype in prototypes) {
@@ -191,7 +208,8 @@ class PrivacyClassTemporalTracker(
                 detectionIndex = detectionIndex,
                 detection = detection,
                 detections = detections,
-                similarityCache = similarityCache
+                similarityCache = similarityCache,
+                warpedMaskSupportCache = warpedMaskSupportCache
             ) * prototype.reliability.coerceIn(0f, 1f)
             if (score > best) best = score
         }
@@ -203,21 +221,26 @@ class PrivacyClassTemporalTracker(
         detectionIndex: Int,
         detection: PersonDetection,
         detections: List<PersonDetection>,
-        similarityCache: IdentityHashMap<Prototype, FloatArray>?
+        similarityCache: IdentityHashMap<Prototype, FloatArray>?,
+        warpedMaskSupportCache: IdentityHashMap<Prototype, WarpedMaskSupport>?
     ): Float {
         if (similarityCache == null) {
             if (countSimilarityEvaluations) lastSimilarityEvaluationCount++
-            return similarity(prototype, detection)
+            return similarity(prototype, detection, warpedMaskSupportCache)
         }
         val values = similarityCache[prototype] ?: FloatArray(detections.size) { Float.NaN }
             .also { similarityCache[prototype] = it }
         val cached = values[detectionIndex]
         if (!cached.isNaN()) return cached
         if (countSimilarityEvaluations) lastSimilarityEvaluationCount++
-        return similarity(prototype, detection).also { values[detectionIndex] = it }
+        return similarity(prototype, detection, warpedMaskSupportCache).also { values[detectionIndex] = it }
     }
 
-    private fun similarity(prototype: Prototype, detection: PersonDetection): Float {
+    private fun similarity(
+        prototype: Prototype,
+        detection: PersonDetection,
+        warpedMaskSupportCache: IdentityHashMap<Prototype, WarpedMaskSupport>?
+    ): Float {
         val predicted = prototype.predictedBbox()
         val bboxIoU = TrackManager.computeBBoxIoU(predicted, detection.bbox)
         val dx = predicted.centerX - detection.bbox.centerX
@@ -231,21 +254,129 @@ class PrivacyClassTemporalTracker(
             1f
         )
         val distanceScore = (1f - distance / (referenceDim * 1.5f)).coerceIn(0f, 1f)
-        val maskIoU = TrackManager.computeWarpedMaskIoU(
-            sourceMask = prototype.mask,
+        val maskIoU = if (warpedMaskSupportCache == null) {
+            TrackManager.computeWarpedMaskIoU(
+                sourceMask = prototype.mask,
+                prevBbox = prototype.bbox,
+                predBbox = predicted,
+                candidateMask = detection.mask,
+                sampleStride = 4
+            )
+        } else {
+            maskIoUFromCachedSupport(
+                prototype = prototype,
+                predicted = predicted,
+                candidateMask = detection.mask,
+                warpedMaskSupportCache = warpedMaskSupportCache
+            )
+        }
+        return (0.40f * bboxIoU + 0.40f * maskIoU + 0.20f * distanceScore).coerceIn(0f, 1f)
+    }
+
+    private fun maskIoUFromCachedSupport(
+        prototype: Prototype,
+        predicted: FloatRect,
+        candidateMask: NativeMask?,
+        warpedMaskSupportCache: IdentityHashMap<Prototype, WarpedMaskSupport>
+    ): Float {
+        val sourceMask = prototype.mask ?: return 0f
+        val candidate = candidateMask ?: return 0f
+        if (sourceMask.width != candidate.width || sourceMask.height != candidate.height) return 0f
+        val support = warpedMaskSupportCache[prototype] ?: buildWarpedMaskSupport(
+            sourceMask = sourceMask,
             prevBbox = prototype.bbox,
             predBbox = predicted,
-            candidateMask = detection.mask,
             sampleStride = 4
+        ).also { warpedMaskSupportCache[prototype] = it }
+
+        var intersection = 0
+        var union = 0
+        var sampleIndex = 0
+        var y = 0
+        while (y < support.height) {
+            val row = y * support.width
+            var x = 0
+            while (x < support.width) {
+                val a = support.sampledForeground[sampleIndex++]
+                val b = (candidate.buffer.get(row + x).toInt() and 0xFF) > 128
+                if (a && b) intersection++
+                if (a || b) union++
+                x += support.sampleStride
+            }
+            y += support.sampleStride
+        }
+        return if (union == 0) 1.0f else intersection.toFloat() / union.toFloat()
+    }
+
+    private fun buildWarpedMaskSupport(
+        sourceMask: NativeMask,
+        prevBbox: FloatRect,
+        predBbox: FloatRect,
+        sampleStride: Int
+    ): WarpedMaskSupport {
+        val w = sourceMask.width
+        val h = sourceMask.height
+        val stride = sampleStride.coerceAtLeast(1)
+        val sourceBuf = sourceMask.buffer
+        val prevW = maxOf(1f, prevBbox.width)
+        val prevH = maxOf(1f, prevBbox.height)
+        val predW = maxOf(1f, predBbox.width)
+        val predH = maxOf(1f, predBbox.height)
+        val scaleX = predW / prevW
+        val scaleY = predH / prevH
+        val mapper = sourceMask.mapper ?: com.danceanon.native.geometry.ModelCoordinateMapper(
+            srcWidth = maxOf(1, sourceMask.originalWidth),
+            srcHeight = maxOf(1, sourceMask.originalHeight),
+            modelInputSize = 640,
+            protoSize = w
         )
-        return (0.40f * bboxIoU + 0.40f * maskIoU + 0.20f * distanceScore).coerceIn(0f, 1f)
+        val prevCenterX = mapper.sourceToProtoX(prevBbox.centerX)
+        val prevCenterY = mapper.sourceToProtoY(prevBbox.centerY)
+        val predCenterX = mapper.sourceToProtoX(predBbox.centerX)
+        val predCenterY = mapper.sourceToProtoY(predBbox.centerY)
+        val sampleWidth = (w + stride - 1) / stride
+        val sampleHeight = (h + stride - 1) / stride
+        val sampledForeground = BooleanArray(sampleWidth * sampleHeight)
+        var sampleIndex = 0
+        var y = 0
+        while (y < h) {
+            val floatY = (y - predCenterY) / scaleY + prevCenterY
+            val y0 = kotlin.math.floor(floatY).toInt()
+            val y1 = y0 + 1
+            val wy1 = (floatY - y0).coerceIn(0f, 1f)
+            val wy0 = 1f - wy1
+            var x = 0
+            while (x < w) {
+                val floatX = (x - predCenterX) / scaleX + prevCenterX
+                val x0 = kotlin.math.floor(floatX).toInt()
+                val x1 = x0 + 1
+                val wx1 = (floatX - x0).coerceIn(0f, 1f)
+                val wx0 = 1f - wx1
+                fun sample(ix: Int, iy: Int): Int =
+                    if (ix in 0 until w && iy in 0 until h) {
+                        sourceBuf.get(iy * w + ix).toInt() and 0xFF
+                    } else {
+                        0
+                    }
+                val v00 = sample(x0, y0)
+                val v01 = sample(x1, y0)
+                val v10 = sample(x0, y1)
+                val v11 = sample(x1, y1)
+                val warped = (v00 * wx0 + v01 * wx1) * wy0 + (v10 * wx0 + v11 * wx1) * wy1
+                sampledForeground[sampleIndex++] = warped > 128f
+                x += stride
+            }
+            y += stride
+        }
+        return WarpedMaskSupport(w, h, stride, sampledForeground)
     }
 
     private fun updatePrototypes(
         detections: List<PersonDetection>,
         classified: Map<Int, PrivacySelectionClass>,
         hardClassByDetectionIndex: Map<Int, PrivacySelectionClass>,
-        similarityCache: IdentityHashMap<Prototype, FloatArray>?
+        similarityCache: IdentityHashMap<Prototype, FloatArray>?,
+        warpedMaskSupportCache: IdentityHashMap<Prototype, WarpedMaskSupport>?
     ) {
         val updated = Collections.newSetFromMap(IdentityHashMap<Prototype, Boolean>())
 
@@ -264,7 +395,8 @@ class PrivacyClassTemporalTracker(
                             detectionIndex = detectionIndex,
                             detection = detections[detectionIndex],
                             detections = detections,
-                            similarityCache = similarityCache
+                            similarityCache = similarityCache,
+                            warpedMaskSupportCache = warpedMaskSupportCache
                         )
                     }
                 }
