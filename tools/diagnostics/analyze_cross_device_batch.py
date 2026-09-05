@@ -356,6 +356,7 @@ def read_bundle(path: Path) -> dict:
                 "face_detector": _stage(summary, "faceDetectorCpu"),
                 "face_detector_wall": _stage(summary, "faceDetectorWall"),
                 "face_pixel_motion": _stage(summary, "facePixelMotionCpu"),
+                "face_temporal_class": _timing_values(face_temporal_class_timings_ms),
                 "face_privacy": _stage(summary, "faceOnlyPrivacy"),
             },
             "detections": detections,

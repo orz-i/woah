@@ -22,7 +22,9 @@ class PrivacyClassTemporalTracker(
     private val minClassScore: Float = 0.42f,
     private val minSingleClassScore: Float = 0.65f,
     private val minClassMargin: Float = 0.12f,
-    private val maxPrototypeMisses: Int = 4
+    private val maxPrototypeMisses: Int = 4,
+    private val reuseFrameSimilarityCache: Boolean = true,
+    private val countSimilarityEvaluations: Boolean = false
 ) {
     private data class Prototype(
         val selectionClass: PrivacySelectionClass,
@@ -38,6 +40,8 @@ class PrivacyClassTemporalTracker(
 
     private val prototypes = mutableListOf<Prototype>()
     private var rootSeeded = false
+    internal var lastSimilarityEvaluationCount: Int = 0
+        private set
 
     fun reset() {
         prototypes.clear()
@@ -59,6 +63,7 @@ class PrivacyClassTemporalTracker(
         hardClassByDetectionIndex: Map<Int, PrivacySelectionClass>,
         ptsUs: Long
     ): List<FreshPrivacyClassEvidence> {
+        lastSimilarityEvaluationCount = 0
         if (detections.isEmpty()) {
             advanceMissingPrototypes()
             emitSummary(
@@ -84,6 +89,13 @@ class PrivacyClassTemporalTracker(
         var hardUnselected = 0
         var inferredSelected = 0
         var inferredUnselected = 0
+        val hasSelectedHistory = prototypes.any { it.selectionClass == PrivacySelectionClass.SELECTED }
+        val hasUnselectedHistory = prototypes.any { it.selectionClass == PrivacySelectionClass.UNSELECTED }
+        val similarityCache = if (reuseFrameSimilarityCache) {
+            IdentityHashMap<Prototype, FloatArray>()
+        } else {
+            null
+        }
 
         for ((index, selectionClass) in rootClassByDetectionIndex) {
             if (index !in detections.indices) continue
@@ -94,10 +106,20 @@ class PrivacyClassTemporalTracker(
         for (index in detections.indices) {
             if (classified.containsKey(index)) continue
             val detection = detections[index]
-            val selectedScore = bestClassScore(PrivacySelectionClass.SELECTED, detection)
-            val unselectedScore = bestClassScore(PrivacySelectionClass.UNSELECTED, detection)
-            val hasSelectedHistory = prototypes.any { it.selectionClass == PrivacySelectionClass.SELECTED }
-            val hasUnselectedHistory = prototypes.any { it.selectionClass == PrivacySelectionClass.UNSELECTED }
+            val selectedScore = bestClassScore(
+                selectionClass = PrivacySelectionClass.SELECTED,
+                detectionIndex = index,
+                detection = detection,
+                detections = detections,
+                similarityCache = similarityCache
+            )
+            val unselectedScore = bestClassScore(
+                selectionClass = PrivacySelectionClass.UNSELECTED,
+                detectionIndex = index,
+                detection = detection,
+                detections = detections,
+                similarityCache = similarityCache
+            )
 
             val inferredClass = when {
                 hasSelectedHistory && hasUnselectedHistory &&
@@ -123,7 +145,12 @@ class PrivacyClassTemporalTracker(
             }
         }
 
-        updatePrototypes(detections, classified, rootClassByDetectionIndex)
+        updatePrototypes(
+            detections = detections,
+            classified = classified,
+            hardClassByDetectionIndex = rootClassByDetectionIndex,
+            similarityCache = similarityCache
+        )
 
         val unknown = detections.size - classified.size
         val frameEvidence = detections.indices.mapNotNull { index ->
@@ -151,15 +178,43 @@ class PrivacyClassTemporalTracker(
 
     private fun bestClassScore(
         selectionClass: PrivacySelectionClass,
-        detection: PersonDetection
+        detectionIndex: Int,
+        detection: PersonDetection,
+        detections: List<PersonDetection>,
+        similarityCache: IdentityHashMap<Prototype, FloatArray>?
     ): Float {
         var best = 0f
         for (prototype in prototypes) {
             if (prototype.selectionClass != selectionClass) continue
-            val score = similarity(prototype, detection) * prototype.reliability.coerceIn(0f, 1f)
+            val score = similarityForFrame(
+                prototype = prototype,
+                detectionIndex = detectionIndex,
+                detection = detection,
+                detections = detections,
+                similarityCache = similarityCache
+            ) * prototype.reliability.coerceIn(0f, 1f)
             if (score > best) best = score
         }
         return best
+    }
+
+    private fun similarityForFrame(
+        prototype: Prototype,
+        detectionIndex: Int,
+        detection: PersonDetection,
+        detections: List<PersonDetection>,
+        similarityCache: IdentityHashMap<Prototype, FloatArray>?
+    ): Float {
+        if (similarityCache == null) {
+            if (countSimilarityEvaluations) lastSimilarityEvaluationCount++
+            return similarity(prototype, detection)
+        }
+        val values = similarityCache[prototype] ?: FloatArray(detections.size) { Float.NaN }
+            .also { similarityCache[prototype] = it }
+        val cached = values[detectionIndex]
+        if (!cached.isNaN()) return cached
+        if (countSimilarityEvaluations) lastSimilarityEvaluationCount++
+        return similarity(prototype, detection).also { values[detectionIndex] = it }
     }
 
     private fun similarity(prototype: Prototype, detection: PersonDetection): Float {
@@ -189,7 +244,8 @@ class PrivacyClassTemporalTracker(
     private fun updatePrototypes(
         detections: List<PersonDetection>,
         classified: Map<Int, PrivacySelectionClass>,
-        hardClassByDetectionIndex: Map<Int, PrivacySelectionClass>
+        hardClassByDetectionIndex: Map<Int, PrivacySelectionClass>,
+        similarityCache: IdentityHashMap<Prototype, FloatArray>?
     ) {
         val updated = Collections.newSetFromMap(IdentityHashMap<Prototype, Boolean>())
 
@@ -202,7 +258,14 @@ class PrivacyClassTemporalTracker(
             if (oldClassPrototypes.isNotEmpty() && currentIndices.isNotEmpty()) {
                 val costs = Array(oldClassPrototypes.size) { r ->
                     FloatArray(currentIndices.size) { c ->
-                        1f - similarity(oldClassPrototypes[r], detections[currentIndices[c]])
+                        val detectionIndex = currentIndices[c]
+                        1f - similarityForFrame(
+                            prototype = oldClassPrototypes[r],
+                            detectionIndex = detectionIndex,
+                            detection = detections[detectionIndex],
+                            detections = detections,
+                            similarityCache = similarityCache
+                        )
                     }
                 }
                 val matches = HungarianSolver.match(costs, maxCostThreshold = 0.75f)

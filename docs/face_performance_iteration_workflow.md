@@ -13,15 +13,16 @@ cannot prove its policy/math equivalence locally does not go to a phone.
 
 ## 2. One-device canary for micro-iterations
 
-Pick the device that exposes the target bottleneck most strongly. For the current
-MediaPipe Face detector stage this is **KB2000**. Do one normal fixture export and
-run:
+Pick the device that exposes the target bottleneck most strongly. **KB2000** is
+the default Face-only canary unless a different device is demonstrably more
+sensitive to the stage under test. For the current temporal privacy-class sidecar
+work, do one normal fixture export and run:
 
 ```text
 python tools/diagnostics/face_iteration_gate.py check <KB-bundle.zip> \
   --contract tools/diagnostics/baselines/face_only_febd1b4_exact.json \
-  --target-stage face_detector --target-stat p50_ms --min-improvement-pct 5 \
-  --target-work detector_calls_total --min-work-reduction-pct 5
+  --target-stage face_temporal_class --target-stat p50_ms \
+  --min-improvement-pct 10
 ```
 
 The gate has independent quality, target-stage, and optional structural-work
@@ -29,6 +30,12 @@ requirements. Use the nearest stage to the optimization rather than a noisy
 full-pipeline average. For detector scheduling, `detector_calls_total` is a
 deterministic work-count signal while detector `p50_ms` is much less sensitive to
 thermal/scheduler outliers than the full `face_privacy` average.
+
+For temporal privacy-class optimizations, target `face_temporal_class` directly.
+Its baseline is captured from the `FACE_PRIVACY_TEMPORAL_CLASS_EVIDENCE`
+`elapsed_ms` field, while the exact golden fingerprints still require temporal
+evidence, sticker placement, class fallback, and deterministic CPU identity to
+remain frame-exact.
 
 For parallel detector execution, target `face_detector_wall` p50 instead of the
 sum-of-call `face_detector` metric. The accepted pre-parallel KB baseline aliases

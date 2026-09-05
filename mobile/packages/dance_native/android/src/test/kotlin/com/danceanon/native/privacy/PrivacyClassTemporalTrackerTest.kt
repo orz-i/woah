@@ -224,4 +224,71 @@ class PrivacyClassTemporalTrackerTest {
         assertEquals(PrivacySelectionClass.SELECTED, returned.single { it.detectionIndex == 0 }.selectionClass)
         assertEquals(PrivacySelectionClass.UNSELECTED, returned.single { it.detectionIndex == 1 }.selectionClass)
     }
+
+    @Test
+    fun frameSimilarityCachePreservesDecisionsAndEliminatesDuplicateEvaluations() {
+        val cached = PrivacyClassTemporalTracker(
+            reuseFrameSimilarityCache = true,
+            countSimilarityEvaluations = true
+        )
+        val uncached = PrivacyClassTemporalTracker(
+            reuseFrameSimilarityCache = false,
+            countSimilarityEvaluations = true
+        )
+        val frames = listOf(
+            listOf(
+                detection(100f, 260f, 10, 26),
+                detection(380f, 540f, 38, 54)
+            ),
+            listOf(
+                detection(115f, 275f, 12, 28),
+                detection(365f, 525f, 37, 53)
+            ),
+            listOf(
+                detection(130f, 290f, 13, 29),
+                detection(350f, 510f, 35, 51)
+            ),
+            listOf(
+                detection(145f, 305f, 15, 31),
+                detection(335f, 495f, 34, 50)
+            )
+        )
+
+        var cachedEvaluations = 0
+        var uncachedEvaluations = 0
+        frames.forEachIndexed { frameIndex, detections ->
+            val hard = if (frameIndex == 0) {
+                mapOf(
+                    0 to PrivacySelectionClass.SELECTED,
+                    1 to PrivacySelectionClass.UNSELECTED
+                )
+            } else {
+                emptyMap()
+            }
+            val cachedResult = cached.update(detections, hard, frameIndex * 16_667L)
+            val uncachedResult = uncached.update(detections, hard, frameIndex * 16_667L)
+
+            assertEquals(
+                uncachedResult.map { evidence ->
+                    listOf(
+                        evidence.selectionClass,
+                        evidence.detectionIndex,
+                        evidence.conservativeUnknown
+                    )
+                },
+                cachedResult.map { evidence ->
+                    listOf(
+                        evidence.selectionClass,
+                        evidence.detectionIndex,
+                        evidence.conservativeUnknown
+                    )
+                }
+            )
+            cachedEvaluations += cached.lastSimilarityEvaluationCount
+            uncachedEvaluations += uncached.lastSimilarityEvaluationCount
+        }
+
+        assertEquals(12, cachedEvaluations)
+        assertEquals(18, uncachedEvaluations)
+    }
 }

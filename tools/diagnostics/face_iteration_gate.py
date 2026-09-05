@@ -53,6 +53,7 @@ TIMING_KEYS = {
     "face_roi": "face_roi",
     "face_detector": "face_detector",
     "face_detector_wall": "face_detector_wall",
+    "face_temporal_class": "face_temporal_class",
     "face_privacy": "face_privacy",
 }
 
