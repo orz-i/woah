@@ -181,6 +181,7 @@ class LiteRtModelRunner(
             compileMs = compileMs,
             warmupMs = warmupMs,
             fallbackReason = fallbackReason,
+            cpuNumThreads = cpuNumThreads,
             inputShapes = inShapes,
             outputShapes = outShapes
         )
@@ -189,12 +190,12 @@ class LiteRtModelRunner(
         if (effective == LiteRtAccelerator.GPU) {
             Log.i(
                 TAG,
-                "[LiteRT]\nmodel=$modelName\nruntime=LiteRT\nrequested=GPU\neffective=GPU\ncompile_ms=$compileMs\nwarmup_ms=$warmupMs\ninputs=$inShapes\noutputs=$outShapes"
+                "[LiteRT]\nmodel=$modelName\nruntime=LiteRT\nrequested=GPU\neffective=GPU\ncpu_fallback_threads=$cpuNumThreads\ncompile_ms=$compileMs\nwarmup_ms=$warmupMs\ninputs=$inShapes\noutputs=$outShapes"
             )
         } else {
             Log.i(
                 TAG,
-                "[LiteRT]\nmodel=$modelName\nruntime=LiteRT\nrequested=${policy.requestedAccelerator}\ngpu_compile_failed=$fallbackReason\neffective=CPU\ncpu_compile_ms=$compileMs\nwarmup_ms=$warmupMs\ninputs=$inShapes\noutputs=$outShapes"
+                "[LiteRT]\nmodel=$modelName\nruntime=LiteRT\nrequested=${policy.requestedAccelerator}\ngpu_compile_failed=$fallbackReason\neffective=CPU\ncpu_threads=$cpuNumThreads\ncpu_compile_ms=$compileMs\nwarmup_ms=$warmupMs\ninputs=$inShapes\noutputs=$outShapes"
             )
         }
     }

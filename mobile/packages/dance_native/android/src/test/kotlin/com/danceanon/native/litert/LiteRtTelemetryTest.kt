@@ -25,6 +25,7 @@ class LiteRtTelemetryTest {
             compileMs = 120L,
             warmupMs = 45L,
             fallbackReason = null,
+            cpuNumThreads = 4,
             inputShapes = listOf(listOf(1, 3, 640, 640)),
             outputShapes = listOf(listOf(1, 116, 8400), listOf(1, 32, 160, 160))
         )
@@ -35,6 +36,7 @@ class LiteRtTelemetryTest {
         assertEquals(120L, info.compileMs)
         assertEquals(45L, info.warmupMs)
         assertEquals(null, info.fallbackReason)
+        assertEquals(4, info.cpuNumThreads)
         assertEquals(1, info.inputShapes.size)
         assertEquals(2, info.outputShapes.size)
     }

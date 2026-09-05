@@ -177,6 +177,13 @@ class ExportPipeline(
         val yoloEffectiveAccelerator = segmenter.effectiveAccelerator
         val yoloRequestedAccelerator = yoloRuntimeInfo?.requestedAccelerator?.name ?: "GPU"
         val yoloFallbackReason = yoloRuntimeInfo?.fallbackReason
+        val yoloEffectiveCpuNumThreads = if (
+            yoloEffectiveAccelerator == com.danceanon.native.litert.LiteRtAccelerator.CPU
+        ) {
+            yoloRuntimeInfo?.cpuNumThreads
+        } else {
+            null
+        }
         var cpuMt4ProbeSegmenter: YoloLiteRtSegmenter? = null
         var cpuMt4ProbeFallbackReason: String? = null
         if (com.danceanon.dance_native.BuildConfig.DEBUG) {
@@ -225,6 +232,7 @@ class ExportPipeline(
                 "yolo_requested_accelerator" to yoloRequestedAccelerator,
                 "yolo_effective_accelerator" to yoloEffectiveAccelerator.name,
                 "yolo_gpu_fallback_reason" to yoloFallbackReason,
+                "yolo_effective_cpu_num_threads" to yoloEffectiveCpuNumThreads,
                 "yolo_compile_ms" to yoloRuntimeInfo?.compileMs,
                 "yolo_warmup_ms" to yoloRuntimeInfo?.warmupMs
             )
@@ -242,6 +250,7 @@ class ExportPipeline(
                 "requested_accelerator" to yoloRequestedAccelerator,
                 "effective_accelerator" to yoloEffectiveAccelerator.name,
                 "fallback_reason" to yoloFallbackReason,
+                "effective_cpu_num_threads" to yoloEffectiveCpuNumThreads,
                 "compile_ms" to yoloRuntimeInfo?.compileMs,
                 "warmup_ms" to yoloRuntimeInfo?.warmupMs
             )
@@ -2071,6 +2080,7 @@ class ExportPipeline(
                             "yolo_requested_accelerator" to yoloRequestedAccelerator,
                             "yolo_effective_accelerator" to yoloEffectiveAccelerator.name,
                             "yolo_gpu_fallback_reason" to yoloFallbackReason,
+                            "yolo_effective_cpu_num_threads" to yoloEffectiveCpuNumThreads,
                             "yolo_inference_input_path" to if (canonicalValidationWindowCompleted) {
                                 "CANONICAL_YUV_CPU_THEN_SURFACE_OES_RGBA"
                             } else if (canonicalInferenceDecoder != null) {

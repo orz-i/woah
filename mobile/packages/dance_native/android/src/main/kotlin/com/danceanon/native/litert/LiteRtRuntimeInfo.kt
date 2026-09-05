@@ -7,6 +7,7 @@ data class LiteRtRuntimeInfo(
     val compileMs: Long,
     val warmupMs: Long,
     val fallbackReason: String? = null,
+    val cpuNumThreads: Int? = null,
     val inputShapes: List<List<Int>> = emptyList(),
     val outputShapes: List<List<Int>> = emptyList()
 )

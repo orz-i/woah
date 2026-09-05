@@ -30,6 +30,7 @@ configuration alone. At minimum the lane includes:
 - `yolo_requested_accelerator`
 - `yolo_effective_accelerator`
 - `yolo_gpu_fallback_reason`
+- `yolo_effective_cpu_num_threads`
 - `yolo_inference_input_path`
 - `cpu_mt4_probe_threads`
 - `cpu_mt4_signature_scope`
