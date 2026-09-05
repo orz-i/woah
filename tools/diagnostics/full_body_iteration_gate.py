@@ -168,6 +168,7 @@ def extract_bundle(bundle_path: Path, include_fingerprints: bool = True) -> dict
             "production_detection_probe": _fingerprint(production_detections),
             "cpu4t_detections": _fingerprint(cpu4t_detections),
             "cpu4t_reference_tracks": _fingerprint(bundle.get("shadow_cpu_full", {})),
+            "cpu4t_reference_identity": _fingerprint(bundle.get("shadow_cpu_identity", {})),
         }
     return result
 
@@ -184,9 +185,12 @@ def _compare_expected(expected: Any, actual: Any, path: str, mismatches: list[di
             else:
                 _compare_expected(expected_value, actual[key], child, mismatches)
         return
-    if isinstance(expected, list):
-        if expected != actual:
+    if isinstance(expected, (list, tuple)):
+        if not isinstance(actual, (list, tuple)) or len(expected) != len(actual):
             mismatches.append({"path": path, "expected": expected, "actual": actual})
+            return
+        for index, expected_value in enumerate(expected):
+            _compare_expected(expected_value, actual[index], f"{path}[{index}]", mismatches)
         return
     if expected != actual:
         mismatches.append({"path": path, "expected": expected, "actual": actual})
@@ -439,6 +443,22 @@ def snapshot(args: argparse.Namespace) -> int:
                 "build the instrumented current code before freezing the baseline"
             )
 
+    reference_cpu4t_identity = data[0]["fingerprints"]["cpu4t_reference_identity"]
+    cross_device_identity_mismatches = [
+        {
+            "device": item["device"],
+            "expected": reference_cpu4t_identity,
+            "actual": item["fingerprints"]["cpu4t_reference_identity"],
+        }
+        for item in data[1:]
+        if item["fingerprints"]["cpu4t_reference_identity"] != reference_cpu4t_identity
+    ]
+    if cross_device_identity_mismatches:
+        raise SystemExit(
+            "Full Body CPU4T identity topology must be cross-device exact before freezing a golden:\n"
+            + json.dumps(cross_device_identity_mismatches, ensure_ascii=False, indent=2)
+        )
+
     commit = data[0]["commit"]
     contract = {
         "schema_version": 1,
@@ -451,6 +471,9 @@ def snapshot(args: argparse.Namespace) -> int:
         "runtime_by_device": {item["device"]: item["runtime"] for item in data},
         "performance_by_device": {item["device"]: item["performance"] for item in data},
         "observability_by_device": {item["device"]: item["observability"] for item in data},
+        "cross_device_invariants": {
+            "cpu4t_reference_identity": reference_cpu4t_identity,
+        },
     }
     if len(data) == 1:
         reference = data[0]

@@ -80,8 +80,12 @@ The Full Body gate fingerprints:
 - full-export CPU4T detection signatures;
 - full-export CPU4T reference tracking.
 
-The CPU4T lane remains the deterministic reference anchor. Production GPU
-results are evaluated against the same device's accepted GPU golden.
+The CPU4T lane remains the deterministic reference anchor. Raw CPU4T detector
+geometry/mask signatures may retain small device-level numeric differences, but
+the CPU4T TrackManager identity topology must remain frame-exact across milestone
+devices. A Full Body golden snapshot is rejected if that identity invariant
+diverges. Production GPU results are evaluated against the same device's accepted
+GPU golden.
 
 The debug-only events used for this contract are:
 
