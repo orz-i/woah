@@ -60,6 +60,16 @@ TIMING_KEYS = {
     "face_privacy": "face_privacy",
 }
 
+RUNTIME_KEYS = (
+    "yolo_requested_accelerator",
+    "yolo_effective_accelerator",
+    "yolo_gpu_fallback_reason",
+    "yolo_inference_input_path",
+    "cpu_mt4_probe_threads",
+    "cpu_mt4_signature_scope",
+    "cpu_mt4_probe_fallback_reason",
+)
+
 
 def _normalize(value: Any) -> Any:
     if isinstance(value, dict):
@@ -99,6 +109,10 @@ def _timing_summary(bundle: dict) -> dict[str, dict | None]:
                 "max_ms": float(timing["max_ms"]),
             }
     return result
+
+
+def _runtime_summary(pipeline_summary: dict) -> dict[str, Any]:
+    return {key: pipeline_summary.get(key) for key in RUNTIME_KEYS}
 
 
 def extract_bundle(bundle_path: Path, include_fingerprints: bool = True) -> dict:
@@ -143,6 +157,7 @@ def extract_bundle(bundle_path: Path, include_fingerprints: bool = True) -> dict
         "device": bundle["device"],
         "commit": bundle["commit"],
         "quality": quality,
+        "runtime": _runtime_summary(pipeline_summary),
         "performance": _timing_summary(bundle),
         "observability": {
             "face_roi_detector_events": len(bundle["face_roi_detector"]),
@@ -218,6 +233,13 @@ def _performance_baseline(contract: dict, device: str, stage: str, stat: str) ->
     return float(value) if value is not None else None
 
 
+def _runtime_baseline(contract: dict, device: str) -> dict[str, Any] | None:
+    value = contract.get("runtime_by_device", {}).get(device)
+    if value is None and contract.get("source_device") == device:
+        value = contract.get("runtime")
+    return value if isinstance(value, dict) else None
+
+
 def _work_baseline(contract: dict, device: str, key: str) -> float | None:
     value = contract.get("observability_by_device", {}).get(device, {}).get(key)
     if value is None:
@@ -271,6 +293,45 @@ def check_candidate(args: argparse.Namespace) -> int:
                 f"{prefix}.fingerprints",
                 mismatches,
             )
+
+    if performance_baseline_bundle is not None:
+        baseline_runtime = performance_baseline_bundle.get("runtime")
+        runtime_source = "performance_baseline_bundle"
+    elif performance_baseline_contract is not None:
+        baseline_runtime = _runtime_baseline(performance_baseline_contract, device)
+        runtime_source = "performance_baseline_contract"
+    else:
+        baseline_runtime = _runtime_baseline(contract, device)
+        runtime_source = "contract"
+
+    runtime_mismatches: list[dict] = []
+    if baseline_runtime is not None:
+        for index, candidate in enumerate(candidates):
+            _compare_expected(
+                baseline_runtime,
+                candidate.get("runtime", {}),
+                f"canary[{index}].runtime",
+                runtime_mismatches,
+            )
+    elif len(candidates) > 1:
+        for index, candidate in enumerate(candidates[1:], start=1):
+            _compare_expected(
+                candidates[0].get("runtime", {}),
+                candidate.get("runtime", {}),
+                f"canary[{index}].runtime",
+                runtime_mismatches,
+            )
+
+    runtime_changed = bool(runtime_mismatches)
+    runtime_result = {
+        "mode": args.runtime_compatibility,
+        "baseline_source": runtime_source if baseline_runtime is not None else None,
+        "baseline": baseline_runtime,
+        "candidates": [candidate.get("runtime", {}) for candidate in candidates],
+        "mismatches": runtime_mismatches,
+        "comparable": not runtime_changed,
+        "performance_report_only": runtime_changed and args.runtime_compatibility == "report-only",
+    }
 
     stage_result = None
     performance_pass = True
@@ -370,11 +431,18 @@ def check_candidate(args: argparse.Namespace) -> int:
                 "pass": work_pass,
             }
 
+    if runtime_changed and args.runtime_compatibility == "same":
+        performance_pass = False
+
     quality_pass = not mismatches
     enough_canary_runs = len(candidates) >= args.min_canary_runs_for_milestone
     ready = False
     if not quality_pass:
         recommendation = "NO_GO_TRI_DEVICE_QUALITY_DRIFT"
+    elif runtime_changed and args.runtime_compatibility == "report-only":
+        recommendation = "REPORT_ONLY_RUNTIME_CHANGE"
+    elif runtime_changed:
+        recommendation = "RUNTIME_MISMATCH_NO_PERF_COMPARISON"
     elif not performance_pass:
         recommendation = "CONTINUE_SINGLE_DEVICE_OPTIMIZATION"
     elif args.promotion_mode == "accumulate":
@@ -420,6 +488,7 @@ def check_candidate(args: argparse.Namespace) -> int:
         ),
         "quality_pass": quality_pass,
         "quality_mismatches": mismatches,
+        "runtime_compatibility": runtime_result,
         "performance_pass": performance_pass,
         "target_performance": stage_result,
         "target_work": work_result,
@@ -481,11 +550,15 @@ def snapshot(args: argparse.Namespace) -> int:
         "observability_by_device": {
             item["device"]: item["observability"] for item in data
         },
+        "runtime_by_device": {
+            item["device"]: item["runtime"] for item in data
+        },
     }
     if len(data) == 1:
         contract["source_device"] = reference["device"]
         contract["performance"] = reference["performance"]
         contract["observability"] = reference["observability"]
+        contract["runtime"] = reference["runtime"]
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(contract, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({"written": str(args.output), "name": contract["name"]}, indent=2))
@@ -527,6 +600,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Use p50 by default to reduce thermal/scheduler outlier sensitivity",
     )
     check.add_argument("--min-improvement-pct", type=float, default=0.0)
+    check.add_argument(
+        "--runtime-compatibility",
+        choices=("same", "report-only"),
+        default="same",
+        help=(
+            "Require the candidate to stay in the same LiteRT/runtime lane as the baseline. "
+            "Use report-only explicitly for accelerator/fallback experiments; such runtime changes "
+            "are reported but are never accepted into normal accumulation from timing alone."
+        ),
+    )
     check.add_argument("--target-work")
     check.add_argument(
         "--target-work-mode",

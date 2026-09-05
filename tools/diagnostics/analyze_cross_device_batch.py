@@ -55,6 +55,25 @@ def _detection_signature(detections: list[dict]) -> tuple:
     )
 
 
+def _full_body_privacy_input_signature(fields: dict) -> tuple:
+    evidence = tuple(
+        (
+            item.get("detection_index"),
+            item.get("selection_class"),
+            item.get("conservative_unknown"),
+            tuple(item.get("residual_track_ids", [])),
+            tuple(item.get("bbox_q0_0625px", [])),
+        )
+        for item in fields.get("evidence", [])
+    )
+    return (
+        tuple(fields.get("full_body_person_ids", [])),
+        tuple(fields.get("fresh_selected_covered_track_ids", [])),
+        fields.get("prefer_fresh_class_primary"),
+        evidence,
+    )
+
+
 def _track_identity_signature(tracks: list[dict]) -> tuple:
     return tuple(
         (
@@ -98,7 +117,12 @@ def read_bundle(path: Path) -> dict:
         session_id = manifest.get("session_id")
         job_id = manifest.get("pipeline_lifecycle_job_id")
         summary = json.loads(z.read(f"pipeline_summary_{job_id}.json")).get("summary", {})
-        detections = {"cpu_probe": {}, "cpu_mt2_probe": {}, "cpu_mt4_probe": {}}
+        detections = {
+            "production": {},
+            "cpu_probe": {},
+            "cpu_mt2_probe": {},
+            "cpu_mt4_probe": {},
+        }
         shadow_raw: dict[int, tuple] = {}
         shadow_stabilized: dict[int, tuple] = {}
         shadow_cadence_full: dict[int, dict[int, tuple]] = {}
@@ -115,6 +139,9 @@ def read_bundle(path: Path) -> dict:
         shadow_protected_track_ids: set[int] = set()
         face_production_tracks: dict[int, tuple] = {}
         face_production_identity: dict[int, tuple] = {}
+        full_body_production_tracks: dict[int, tuple] = {}
+        full_body_production_identity: dict[int, tuple] = {}
+        full_body_privacy_inputs: dict[int, tuple] = {}
         face_identity_roots: dict | None = None
         face_roi_detector: dict[tuple[int, int, str], tuple] = {}
         face_sticker_placements: dict[int, tuple] = {}
@@ -161,8 +188,10 @@ def read_bundle(path: Path) -> dict:
                     }
                 elif event_name in DETECTION_EVENTS:
                     diagnostic_job = str(fields.get("job_id", ""))
-                    backend = None
+                    backend = "production" if diagnostic_job == job_id else None
                     for candidate in detections:
+                        if candidate == "production":
+                            continue
                         if diagnostic_job == f"{job_id}_{candidate}":
                             backend = candidate
                             break
@@ -242,6 +271,17 @@ def read_bundle(path: Path) -> dict:
                         face_tracks = fields.get("tracks", [])
                         face_production_tracks[pts] = _track_signature(face_tracks)
                         face_production_identity[pts] = _track_identity_signature(face_tracks)
+                elif event_name == "FULL_BODY_PRODUCTION_TRACK_SIGNATURE":
+                    if fields.get("job_id") == job_id:
+                        pts = int(fields["pts_us"])
+                        full_body_tracks = fields.get("tracks", [])
+                        full_body_production_tracks[pts] = _track_signature(full_body_tracks)
+                        full_body_production_identity[pts] = _track_identity_signature(full_body_tracks)
+                elif event_name == "FULL_BODY_PRIVACY_INPUT_SIGNATURE":
+                    if fields.get("job_id") == job_id:
+                        full_body_privacy_inputs[int(fields["pts_us"])] = (
+                            _full_body_privacy_input_signature(fields)
+                        )
                 elif event_name == "FACE_ROI_DETECTOR_DIAGNOSTIC":
                     if fields.get("job_id") == job_id:
                         key = (
@@ -342,6 +382,8 @@ def read_bundle(path: Path) -> dict:
             "timings": {
                 "production_yolo": _stage(summary, "yoloCpuInference"),
                 "production_tracking": _stage(summary, "tracking"),
+                "privacy_class_tracking": _stage(summary, "privacyClassTracking"),
+                "render_effects": _stage(summary, "renderEffects"),
                 "cpu_1t_total": _stage(summary, "yoloCpuDeterminismProbe"),
                 "cpu_1t_run": _stage(summary, "yoloCpuProbe_yoloLiteRtRun"),
                 "cpu_2t_total": _stage(summary, "yoloCpuMt2Probe"),
@@ -378,6 +420,9 @@ def read_bundle(path: Path) -> dict:
             "shadow_protected_track_ids": shadow_protected_track_ids,
             "face_production_tracks": face_production_tracks,
             "face_production_identity": face_production_identity,
+            "full_body_production_tracks": full_body_production_tracks,
+            "full_body_production_identity": full_body_production_identity,
+            "full_body_privacy_inputs": full_body_privacy_inputs,
             "face_identity_roots": face_identity_roots,
             "face_roi_detector": face_roi_detector,
             "face_sticker_placements": face_sticker_placements,

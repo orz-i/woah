@@ -1224,6 +1224,25 @@ class ExportPipeline(
                                     )
                                 )
                             }
+                            if (
+                                com.danceanon.dance_native.BuildConfig.DEBUG &&
+                                fullBodyPersonIds.isNotEmpty() &&
+                                faceOnlyPersonIds.isEmpty()
+                            ) {
+                                com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                                    level = "INFO",
+                                    component = "ExportPipeline",
+                                    event = "FULL_BODY_PRODUCTION_TRACK_SIGNATURE",
+                                    fields = mapOf(
+                                        "job_id" to jobId,
+                                        "pts_us" to ptsUs,
+                                        "should_infer" to shouldInfer,
+                                        "full_body_person_ids" to fullBodyPersonIds.sorted(),
+                                        "tracks" to com.danceanon.native.diagnostics.CrossDeviceTrackingDiagnostics
+                                            .trackSignature(tracked)
+                                    )
+                                )
+                            }
                             val temporalPrivacyEvidence = if (shouldInfer && allowFreshFullBodyClassPrimary) {
                                 profiler.recordStage("privacyClassTracking") {
                                     privacyClassTemporalTracker.update(
@@ -1272,6 +1291,41 @@ class ExportPipeline(
                                 freshSelectedCoveredTrackIds = emptySet()
                                 suppressedSelectedPrivacyTrackIds = emptySet()
                                 preferFreshPrivacyClassPrimary = false
+                            }
+                            if (
+                                com.danceanon.dance_native.BuildConfig.DEBUG &&
+                                fullBodyPersonIds.isNotEmpty() &&
+                                faceOnlyPersonIds.isEmpty()
+                            ) {
+                                com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                                    level = "INFO",
+                                    component = "ExportPipeline",
+                                    event = "FULL_BODY_PRIVACY_INPUT_SIGNATURE",
+                                    fields = mapOf(
+                                        "job_id" to jobId,
+                                        "pts_us" to ptsUs,
+                                        "full_body_person_ids" to fullBodyPersonIds.sorted(),
+                                        "fresh_selected_covered_track_ids" to freshSelectedCoveredTrackIds.sorted(),
+                                        "prefer_fresh_class_primary" to preferFreshPrivacyClassPrimary,
+                                        "evidence" to freshPrivacyClassEvidence
+                                            .sortedBy { it.detectionIndex }
+                                            .map { evidence ->
+                                                val bbox = evidence.detection.bbox
+                                                mapOf(
+                                                    "detection_index" to evidence.detectionIndex,
+                                                    "selection_class" to evidence.selectionClass.name,
+                                                    "conservative_unknown" to evidence.conservativeUnknown,
+                                                    "residual_track_ids" to evidence.residualTrackIds.sorted(),
+                                                    "bbox_q0_0625px" to listOf(
+                                                        (bbox.left * 16f).roundToInt(),
+                                                        (bbox.top * 16f).roundToInt(),
+                                                        (bbox.right * 16f).roundToInt(),
+                                                        (bbox.bottom * 16f).roundToInt()
+                                                    )
+                                                )
+                                            }
+                                    )
+                                )
                             }
                             tracked
                         }

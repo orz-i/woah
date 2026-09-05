@@ -264,7 +264,27 @@
       "adaptive_shadow_tracker_steps": 0
     }
   },
+  "runtime_by_device": {
+    "KB2000": {
+      "yolo_requested_accelerator": "GPU",
+      "yolo_effective_accelerator": "GPU",
+      "yolo_gpu_fallback_reason": null,
+      "yolo_inference_input_path": "CANONICAL_YUV_CPU",
+      "cpu_mt4_probe_threads": 4,
+      "cpu_mt4_signature_scope": "FULL_EXPORT",
+      "cpu_mt4_probe_fallback_reason": null
+    }
+  },
   "source_device": "KB2000",
+  "runtime": {
+    "yolo_requested_accelerator": "GPU",
+    "yolo_effective_accelerator": "GPU",
+    "yolo_gpu_fallback_reason": null,
+    "yolo_inference_input_path": "CANONICAL_YUV_CPU",
+    "cpu_mt4_probe_threads": 4,
+    "cpu_mt4_signature_scope": "FULL_EXPORT",
+    "cpu_mt4_probe_fallback_reason": null
+  },
   "performance": {
     "canonical": {
       "count": 751,
