@@ -341,17 +341,53 @@ def check_candidate(args: argparse.Namespace) -> int:
 
 
 def snapshot(args: argparse.Namespace) -> int:
-    data = extract_bundle(args.bundle, include_fingerprints=True)
+    data = [extract_bundle(path, include_fingerprints=True) for path in args.bundle]
+    commits = {item["commit"] for item in data}
+    if len(commits) != 1:
+        raise SystemExit(f"Golden bundles must share one commit, got: {sorted(commits)}")
+
+    devices = [item["device"] for item in data]
+    if len(set(devices)) != len(devices):
+        raise SystemExit(f"Golden bundles must contain unique devices, got: {devices}")
+
+    reference = data[0]
+    mismatches: list[dict] = []
+    for index, item in enumerate(data[1:], start=1):
+        _compare_expected(
+            reference["quality"], item["quality"], f"bundle[{index}].quality", mismatches
+        )
+        _compare_expected(
+            reference["fingerprints"],
+            item["fingerprints"],
+            f"bundle[{index}].fingerprints",
+            mismatches,
+        )
+    if mismatches:
+        raise SystemExit(
+            "Golden bundles do not share exact quality/fingerprints:\n"
+            + json.dumps(mismatches, ensure_ascii=False, indent=2)
+        )
+
+    commit = reference["commit"]
     contract = {
-        "schema_version": 1,
-        "name": args.name or f"face_only_{data['commit'][:8]}_{data['device']}",
-        "source_commit": data["commit"],
-        "source_device": data["device"],
-        "quality": data["quality"],
-        "fingerprints": data["fingerprints"],
-        "performance": data["performance"],
-        "observability": data["observability"],
+        "schema_version": 2,
+        "name": args.name or f"face_only_{commit[:8]}_exact",
+        "source_commit": commit,
+        "source_devices": devices,
+        "source_bundles": [str(path) for path in args.bundle],
+        "quality": reference["quality"],
+        "fingerprints": reference["fingerprints"],
+        "performance_by_device": {
+            item["device"]: item["performance"] for item in data
+        },
+        "observability_by_device": {
+            item["device"]: item["observability"] for item in data
+        },
     }
+    if len(data) == 1:
+        contract["source_device"] = reference["device"]
+        contract["performance"] = reference["performance"]
+        contract["observability"] = reference["observability"]
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(contract, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({"written": str(args.output), "name": contract["name"]}, indent=2))
@@ -384,8 +420,11 @@ def build_parser() -> argparse.ArgumentParser:
     check.add_argument("--min-canary-runs-for-milestone", type=int, default=2)
     check.set_defaults(func=check_candidate)
 
-    snap = sub.add_parser("snapshot", help="Create an exact golden contract from an accepted bundle")
-    snap.add_argument("bundle", type=Path)
+    snap = sub.add_parser(
+        "snapshot",
+        help="Create an exact golden contract from one or more accepted cross-device bundles",
+    )
+    snap.add_argument("bundle", type=Path, nargs="+")
     snap.add_argument("--output", type=Path, required=True)
     snap.add_argument("--name")
     snap.set_defaults(func=snapshot)

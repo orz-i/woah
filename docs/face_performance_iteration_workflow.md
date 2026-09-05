@@ -19,7 +19,7 @@ run:
 
 ```text
 python tools/diagnostics/face_iteration_gate.py check <KB-bundle.zip> \
-  --contract tools/diagnostics/baselines/face_only_78a1beca_contract.json \
+  --contract tools/diagnostics/baselines/face_only_febd1b4_exact.json \
   --target-stage face_detector --target-stat p50_ms --min-improvement-pct 5 \
   --target-work detector_calls_total --min-work-reduction-pct 5
 ```
@@ -72,22 +72,27 @@ visual/privacy acceptance decision before becoming the new golden contract.
 At a milestone, run PLK110 + 2206123SC + KB2000 once. Require the established
 cross-device checks (Analyze selection, CPU identity, Face ROI where applicable,
 sticker placement, class fallback, temporal evidence) to converge. If accepted,
-archive one accepted bundle as the exact golden for the next iteration series:
+archive the accepted cross-device bundles as one exact golden for the next
+iteration series:
 
 ```text
-python tools/diagnostics/face_iteration_gate.py snapshot <accepted-bundle.zip> \
+python tools/diagnostics/face_iteration_gate.py snapshot \
+  <PLK-bundle.zip> <Xiaomi-bundle.zip> <KB-bundle.zip> \
   --output tools/diagnostics/baselines/face_only_next.json
 ```
 
 Snapshot contracts include exact SHA-256 fingerprints for sticker placements,
-class fallback, temporal evidence, and deterministic CPU identity, so subsequent
+class fallback, temporal evidence, and deterministic CPU identity, plus per-device
+performance/observability baselines. The snapshot command rejects a milestone if
+the accepted bundles disagree on quality or any exact fingerprint, so subsequent
 single-device iterations can detect subtle frame-level drift without another
 three-device run.
 
 ## Current baseline status
 
-`face_only_78a1beca_contract.json` represents the last accepted behavior before
-the detector-cadence experiment. It is a summary contract because the old bundle
-was no longer present when this workflow was introduced. The next accepted
-milestone should replace it with a `snapshot` contract containing exact frame-map
-fingerprints.
+`face_only_febd1b4_exact.json` is the current accepted Face-only baseline. It was
+created from the PLK110, 2206123SC, and KB2000 milestone bundles after the
+scheduled Face detector parallelization passed with pairwise-exact Analyze, Face
+ROI, sticker placement, class fallback, temporal evidence, and deterministic CPU
+identity output. `face_only_78a1beca_contract.json` is retained only as the
+historical pre-parallel summary baseline.
