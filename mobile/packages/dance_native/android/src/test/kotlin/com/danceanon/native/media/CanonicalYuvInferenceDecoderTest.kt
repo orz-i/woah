@@ -114,6 +114,50 @@ class CanonicalYuvInferenceDecoderTest {
     }
 
     @Test
+    fun fusedUvSamplerMatchesTwoHistoricalSamplersExactly() {
+        val uBytes = ByteArray(96) { index -> (index * 13 + 7).toByte() }
+        val vBytes = ByteArray(96) { index -> (index * 29 + 11).toByte() }
+        val uPlane = CanonicalYuvToRgba.PlaneSnapshot(
+            bytes = uBytes,
+            length = uBytes.size,
+            rowStride = 16,
+            pixelStride = 2
+        )
+        val vPlane = CanonicalYuvToRgba.PlaneSnapshot(
+            bytes = vBytes,
+            length = vBytes.size,
+            rowStride = 16,
+            pixelStride = 2
+        )
+        val x = CanonicalYuvToRgba.AxisSamples(
+            i0 = intArrayOf(0, 1, 2, 3),
+            i1 = intArrayOf(1, 2, 3, 4),
+            w1 = intArrayOf(0, 64, 128, 224)
+        )
+        val y = CanonicalYuvToRgba.AxisSamples(
+            i0 = intArrayOf(0, 1, 2, 3),
+            i1 = intArrayOf(1, 2, 3, 4),
+            w1 = intArrayOf(0, 96, 160, 240)
+        )
+        val access = CanonicalYuvToRgba.buildPlaneAccessPlan(
+            x = x,
+            y = y,
+            rowStride = uPlane.rowStride,
+            pixelStride = uPlane.pixelStride
+        )
+
+        for (yi in 0..3) {
+            for (xi in 0..3) {
+                val expectedU = CanonicalYuvToRgba.sampleSnapshotFast(uPlane, access, xi, yi)
+                val expectedV = CanonicalYuvToRgba.sampleSnapshotFast(vPlane, access, xi, yi)
+                val packed = CanonicalYuvToRgba.sampleUvPairFast(uPlane, vPlane, access, xi, yi)
+                assertEquals(expectedU, packed ushr 8, "u xi=$xi yi=$yi")
+                assertEquals(expectedV, packed and 0xFF, "v xi=$xi yi=$yi")
+            }
+        }
+    }
+
+    @Test
     fun optimizedColorLookupIsByteExactAcrossStandardsAndRanges() {
         val standards = listOf(
             MediaFormat.COLOR_STANDARD_BT601_NTSC,

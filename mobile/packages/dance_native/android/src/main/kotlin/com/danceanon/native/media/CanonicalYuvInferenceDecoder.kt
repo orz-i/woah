@@ -298,7 +298,8 @@ internal object CanonicalYuvToRgba {
         val lumaY: AxisSamples,
         val uvX: AxisSamples,
         val uvY: AxisSamples,
-        val swapAxes: Boolean
+        val swapAxes: Boolean,
+        val lumaNearestInValidRect: Boolean
     )
 
     internal data class ColorTransform(
@@ -451,6 +452,12 @@ internal object CanonicalYuvToRgba {
         val rgbaInts = workspace.rgbaInts
         rgbaInts.fill(LETTERBOX_RGBA)
 
+        val canUseNearestLumaFusedChroma =
+            !plan.swapAxes &&
+                plan.lumaNearestInValidRect &&
+                uPlane.rowStride == vPlane.rowStride &&
+                uPlane.pixelStride == vPlane.pixelStride
+
         if (plan.swapAxes) {
             for (modelY in plan.validYStart until plan.validYEndExclusive) {
                 // glReadPixels contract is bottom-up; YoloPreprocessor flips it back to model top-down.
@@ -462,6 +469,28 @@ internal object CanonicalYuvToRgba {
                     val u8 = sampleSnapshotFast(uPlane, uAccessPlan, xIndex, yIndex)
                     val v8 = sampleSnapshotFast(vPlane, vAccessPlan, xIndex, yIndex)
                     rgbaInts[dstRow + modelX] = rgbaFromYuv(y8, u8, v8, colorTransform)
+                }
+            }
+        } else if (canUseNearestLumaFusedChroma) {
+            val yBytes = yPlane.bytes
+            for (modelY in plan.validYStart until plan.validYEndExclusive) {
+                val dstRow = (size - 1 - modelY) * size
+                val yRow = yAccessPlan.y0[modelY]
+                for (modelX in plan.validXStart until plan.validXEndExclusive) {
+                    val y8 = yBytes[yRow + yAccessPlan.x0[modelX]].toInt() and 0xFF
+                    val uv = sampleUvPairFast(
+                        uPlane = uPlane,
+                        vPlane = vPlane,
+                        access = uAccessPlan,
+                        xIndex = modelX,
+                        yIndex = modelY
+                    )
+                    rgbaInts[dstRow + modelX] = rgbaFromYuv(
+                        y = y8,
+                        u = uv ushr 8,
+                        v = uv and 0xFF,
+                        transform = colorTransform
+                    )
                 }
             }
         } else {
@@ -541,6 +570,9 @@ internal object CanonicalYuvToRgba {
         val validXEndExclusive = validX.indexOfLast { it }.let { if (it >= 0) it + 1 else size }
         val validYStart = validY.indexOfFirst { it }.let { if (it >= 0) it else size }
         val validYEndExclusive = validY.indexOfLast { it }.let { if (it >= 0) it + 1 else size }
+        val lumaNearestInValidRect =
+            (validXStart until validXEndExclusive).all { lumaX.w1[it] == 0 } &&
+                (validYStart until validYEndExclusive).all { lumaY.w1[it] == 0 }
         return SamplingPlan(
             validX = validX,
             validY = validY,
@@ -552,7 +584,8 @@ internal object CanonicalYuvToRgba {
             lumaY = lumaY,
             uvX = uvX,
             uvY = uvY,
-            swapAxes = swapAxes
+            swapAxes = swapAxes,
+            lumaNearestInValidRect = lumaNearestInValidRect
         )
     }
 
@@ -646,6 +679,48 @@ internal object CanonicalYuvToRgba {
         val top = p00 * (FP - fx) + p10 * fx
         val bottom = p01 * (FP - fx) + p11 * fx
         return (top * (FP - fy) + bottom * fy + (FP * FP / 2)) / (FP * FP)
+    }
+
+    /**
+     * Samples U and V together when both chroma planes share the same row/pixel
+     * layout. The fixed-point arithmetic for each component is intentionally the
+     * same as [sampleSnapshotFast]; only the shared offset/weight work is fused.
+     * The high byte is U and the low byte is V.
+     */
+    internal fun sampleUvPairFast(
+        uPlane: PlaneSnapshot,
+        vPlane: PlaneSnapshot,
+        access: PlaneAccessPlan,
+        xIndex: Int,
+        yIndex: Int
+    ): Int {
+        val fx = access.xW1[xIndex]
+        val fy = access.yW1[yIndex]
+        val row0 = access.y0[yIndex]
+        val row1 = access.y1[yIndex]
+        val col0 = access.x0[xIndex]
+        val col1 = access.x1[xIndex]
+        val i00 = row0 + col0
+        val u00 = uPlane.bytes[i00].toInt() and 0xFF
+        val v00 = vPlane.bytes[i00].toInt() and 0xFF
+        if (fx == 0 && fy == 0) return (u00 shl 8) or v00
+
+        val i10 = row0 + col1
+        val i01 = row1 + col0
+        val i11 = row1 + col1
+        val u10 = uPlane.bytes[i10].toInt() and 0xFF
+        val u01 = uPlane.bytes[i01].toInt() and 0xFF
+        val u11 = uPlane.bytes[i11].toInt() and 0xFF
+        val v10 = vPlane.bytes[i10].toInt() and 0xFF
+        val v01 = vPlane.bytes[i01].toInt() and 0xFF
+        val v11 = vPlane.bytes[i11].toInt() and 0xFF
+        val topU = u00 * (FP - fx) + u10 * fx
+        val bottomU = u01 * (FP - fx) + u11 * fx
+        val topV = v00 * (FP - fx) + v10 * fx
+        val bottomV = v01 * (FP - fx) + v11 * fx
+        val u = (topU * (FP - fy) + bottomU * fy + (FP * FP / 2)) / (FP * FP)
+        val v = (topV * (FP - fy) + bottomV * fy + (FP * FP / 2)) / (FP * FP)
+        return (u shl 8) or v
     }
 
     private fun buildColorTransform(
