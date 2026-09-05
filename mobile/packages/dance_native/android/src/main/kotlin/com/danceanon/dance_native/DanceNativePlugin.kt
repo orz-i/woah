@@ -8,6 +8,9 @@ import android.media.MediaScannerConnection
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.os.Process
 import android.provider.MediaStore
 import com.danceanon.native.bridge.DanceNativeApi
 import com.danceanon.native.bridge.DanceNativeApiImpl
@@ -21,6 +24,9 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileNotFoundException
 import java.io.IOException
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 
 /** DanceNativePlugin */
 class DanceNativePlugin :
@@ -29,10 +35,17 @@ class DanceNativePlugin :
     private lateinit var channel: MethodChannel
     private var context: Context? = null
     private var apiImpl: DanceNativeApiImpl? = null
+    private var mainHandler: Handler? = null
+    private var thumbnailExecutor: ExecutorService? = null
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         val appCtx = flutterPluginBinding.applicationContext
         context = appCtx
+        mainHandler = Handler(Looper.getMainLooper())
+        thumbnailExecutor?.shutdownNow()
+        thumbnailExecutor = Executors.newSingleThreadExecutor { runnable ->
+            Thread(runnable, "DanceTrimThumbnail").apply { isDaemon = true }
+        }
         com.danceanon.native.diagnostics.NativeDiagnostics.initialize(appCtx)
 
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "dance_native")
@@ -42,6 +55,92 @@ class DanceNativePlugin :
         val impl = DanceNativeApiImpl(appCtx, eventEmitter)
         apiImpl = impl
         DanceNativeApi.setUp(flutterPluginBinding.binaryMessenger, impl)
+    }
+
+    private fun createTrimThumbnails(
+        ctx: Context,
+        videoUri: String,
+        timestampsMs: List<Number>
+    ): List<String> {
+        val retriever = MediaMetadataRetriever()
+        try {
+            if (videoUri.startsWith("content://")) {
+                retriever.setDataSource(ctx, Uri.parse(videoUri))
+            } else {
+                retriever.setDataSource(videoUri.removePrefix("file://"))
+            }
+
+            val dir = File(ctx.cacheDir, "trim_thumbnails").apply { mkdirs() }
+            val token = System.currentTimeMillis()
+            return timestampsMs.mapIndexedNotNull { index, value ->
+                if (Thread.currentThread().isInterrupted) return@mapIndexedNotNull null
+
+                val timestampUs = value.toLong().coerceAtLeast(0L) * 1000L
+                val bitmap = getTrimThumbnailFrame(retriever, timestampUs)
+                    ?: return@mapIndexedNotNull null
+                try {
+                    val out = File(dir, "trim_${token}_${index}.jpg")
+                    val written = out.outputStream().use { stream ->
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 72, stream)
+                    }
+                    if (written) {
+                        out.absolutePath
+                    } else {
+                        out.delete()
+                        null
+                    }
+                } finally {
+                    try { bitmap.recycle() } catch (_: Throwable) {}
+                }
+            }
+        } finally {
+            try { retriever.release() } catch (_: Throwable) {}
+        }
+    }
+
+    private fun getTrimThumbnailFrame(
+        retriever: MediaMetadataRetriever,
+        timestampUs: Long
+    ): Bitmap? {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            return retriever.getScaledFrameAtTime(
+                timestampUs,
+                MediaMetadataRetriever.OPTION_CLOSEST_SYNC,
+                TRIM_THUMBNAIL_MAX_SIZE,
+                TRIM_THUMBNAIL_MAX_SIZE
+            ) ?: retriever.getScaledFrameAtTime(
+                timestampUs,
+                MediaMetadataRetriever.OPTION_CLOSEST,
+                TRIM_THUMBNAIL_MAX_SIZE,
+                TRIM_THUMBNAIL_MAX_SIZE
+            )
+        }
+
+        val fullSize = retriever.getFrameAtTime(
+            timestampUs,
+            MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+        ) ?: retriever.getFrameAtTime(
+            timestampUs,
+            MediaMetadataRetriever.OPTION_CLOSEST
+        ) ?: retriever.frameAtTime ?: return null
+        return scaleBitmapForThumbnail(fullSize)
+    }
+
+    private fun scaleBitmapForThumbnail(bitmap: Bitmap): Bitmap {
+        val maxDimension = maxOf(bitmap.width, bitmap.height)
+        if (maxDimension <= TRIM_THUMBNAIL_MAX_SIZE) return bitmap
+
+        val targetWidth = ((bitmap.width.toLong() * TRIM_THUMBNAIL_MAX_SIZE) / maxDimension)
+            .toInt()
+            .coerceAtLeast(1)
+        val targetHeight = ((bitmap.height.toLong() * TRIM_THUMBNAIL_MAX_SIZE) / maxDimension)
+            .toInt()
+            .coerceAtLeast(1)
+        val scaled = Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true)
+        if (scaled !== bitmap) {
+            try { bitmap.recycle() } catch (_: Throwable) {}
+        }
+        return scaled
     }
 
     override fun onMethodCall(
@@ -121,41 +220,28 @@ class DanceNativePlugin :
                     result.error("INVALID_ARGS", "videoUri, timestampsMs or context is null", null)
                     return
                 }
+
+                val executor = thumbnailExecutor
+                val replyHandler = mainHandler
+                if (executor == null || replyHandler == null) {
+                    result.error("PLUGIN_DETACHED", "Thumbnail worker is unavailable", null)
+                    return
+                }
                 try {
-                    val retriever = MediaMetadataRetriever()
-                    try {
-                        if (videoUri.startsWith("content://")) {
-                            retriever.setDataSource(ctx, Uri.parse(videoUri))
-                        } else {
-                            retriever.setDataSource(videoUri.removePrefix("file://"))
-                        }
-                        val dir = File(ctx.cacheDir, "trim_thumbnails").apply { mkdirs() }
-                        val token = System.currentTimeMillis()
-                        val paths = timestampsMs.mapIndexedNotNull { index, value ->
-                            val timestampMs = value.toLong().coerceAtLeast(0L)
-                            val bitmap = retriever.getFrameAtTime(
-                                timestampMs * 1000L,
-                                MediaMetadataRetriever.OPTION_CLOSEST
-                            ) ?: retriever.getFrameAtTime(
-                                timestampMs * 1000L,
-                                MediaMetadataRetriever.OPTION_CLOSEST_SYNC
-                            ) ?: retriever.frameAtTime
-                            bitmap?.let {
-                                val out = File(dir, "trim_${token}_${index}.jpg")
-                                out.outputStream().use { stream ->
-                                    it.compress(Bitmap.CompressFormat.JPEG, 76, stream)
-                                }
-                                try { it.recycle() } catch (_: Throwable) {}
-                                out.absolutePath
+                    executor.execute {
+                        try {
+                            Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
+                            val paths = createTrimThumbnails(ctx, videoUri, timestampsMs)
+                            replyHandler.post { result.success(paths) }
+                        } catch (e: Exception) {
+                            android.util.Log.e("DanceNativePlugin", "Failed to create trim thumbnails: ${e.message}", e)
+                            replyHandler.post {
+                                result.error("THUMBNAIL_FAILED", e.message ?: "Failed to create trim thumbnails", null)
                             }
                         }
-                        result.success(paths)
-                    } finally {
-                        try { retriever.release() } catch (_: Throwable) {}
                     }
-                } catch (e: Exception) {
-                    android.util.Log.e("DanceNativePlugin", "Failed to create trim thumbnails: ${e.message}", e)
-                    result.error("THUMBNAIL_FAILED", e.message ?: "Failed to create trim thumbnails", null)
+                } catch (e: RejectedExecutionException) {
+                    result.error("PLUGIN_DETACHED", "Thumbnail worker is shutting down", null)
                 }
             }
             "createDiagnosticBundle" -> {
@@ -252,10 +338,17 @@ class DanceNativePlugin :
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
         DanceNativeApi.setUp(binding.binaryMessenger, null)
+        thumbnailExecutor?.shutdownNow()
+        thumbnailExecutor = null
+        mainHandler = null
         try {
             apiImpl?.close()
         } catch (_: Throwable) {}
         apiImpl = null
         context = null
+    }
+
+    private companion object {
+        const val TRIM_THUMBNAIL_MAX_SIZE = 240
     }
 }
