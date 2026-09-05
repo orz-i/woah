@@ -125,7 +125,9 @@ class FaceOnlyPrivacyFrameProcessor(
                     outputSize = FACE_ROI_SIZE,
                     output = canonicalRoiBuffer,
                     workspace = canonicalRoiWorkspace,
-                    preparedCanonicalInput = preparedCanonicalInput
+                    preparedCanonicalInput = preparedCanonicalInput,
+                    preparedCanonicalInputIsOpaque = preparedCanonicalInput != null,
+                    preparedCanonicalOutputUsesHeapStaging = preparedCanonicalInput != null
                 ),
                 source = "CANONICAL_MODEL_RGBA"
             )

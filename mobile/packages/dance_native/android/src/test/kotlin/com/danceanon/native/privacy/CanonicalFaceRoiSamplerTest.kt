@@ -109,6 +109,61 @@ class CanonicalFaceRoiSamplerTest {
     }
 
     @Test
+    fun `opaque prepared canonical fast path matches historical prepared sampler byte exactly`() {
+        val mapper = ModelCoordinateMapper(srcWidth = 37, srcHeight = 23, modelInputSize = 40, protoSize = 10)
+        val input = ByteBuffer.allocateDirect(40 * 40 * 4)
+        repeat(40 * 40) { pixel ->
+            input.put(((pixel * 11 + 3) and 0xff).toByte())
+            input.put(((pixel * 5 + 17) and 0xff).toByte())
+            input.put(((pixel * 13 + 29) and 0xff).toByte())
+            input.put(255.toByte())
+        }
+        input.rewind()
+        val workspace = CanonicalFaceRoiSampler.Workspace(13)
+        val prepared = CanonicalFaceRoiSampler.prepareCanonicalInput(input, 40, workspace)
+        val random = Random(20260905)
+
+        repeat(32) { roiIndex ->
+            val left = random.nextFloat() * 18f
+            val top = random.nextFloat() * 10f
+            val width = 4f + random.nextFloat() * (37f - left - 4f)
+            val height = 4f + random.nextFloat() * (23f - top - 4f)
+            val rect = FloatRect(left, top, left + width, top + height)
+            val historicalPrepared = ByteBuffer.allocateDirect(13 * 13 * 4)
+            val opaquePrepared = ByteBuffer.allocateDirect(13 * 13 * 4)
+
+            CanonicalFaceRoiSampler.sampleTopDown(
+                canonicalRgbaBottomUp = input,
+                mapper = mapper,
+                sourceRect = rect,
+                outputSize = 13,
+                output = historicalPrepared,
+                workspace = workspace,
+                preparedCanonicalInput = prepared
+            )
+            CanonicalFaceRoiSampler.sampleTopDown(
+                canonicalRgbaBottomUp = input,
+                mapper = mapper,
+                sourceRect = rect,
+                outputSize = 13,
+                output = opaquePrepared,
+                workspace = workspace,
+                preparedCanonicalInput = prepared,
+                preparedCanonicalInputIsOpaque = true,
+                preparedCanonicalOutputUsesHeapStaging = true
+            )
+
+            for (byteIndex in 0 until 13 * 13 * 4) {
+                assertEquals(
+                    historicalPrepared.get(byteIndex),
+                    opaquePrepared.get(byteIndex),
+                    "roi=$roiIndex byte=$byteIndex rect=$rect"
+                )
+            }
+        }
+    }
+
+    @Test
     fun `optimized sampler matches scalar reference for varied deterministic rois`() {
         val mapper = ModelCoordinateMapper(srcWidth = 37, srcHeight = 23, modelInputSize = 40, protoSize = 10)
         val input = ByteBuffer.allocateDirect(40 * 40 * 4)
