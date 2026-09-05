@@ -113,6 +113,20 @@ Hardware-acceleration experiments must explicitly use:
 If the runtime lane changes, the gate reports the timing difference but does not
 accept the candidate into normal accumulation from that timing comparison alone.
 
+For a CPU-fallback thread/runtime change, a debug Full Body export can itself
+change sustained CPU pressure because the full-export CPU4T reference probe also
+runs on every frame. If the absolute cross-run timing is thermally confounded,
+promotion may use two stronger controls together: (1) exact Full Body quality and
+topology plus same-bundle production-vs-CPU4T parity, and (2) an isolated
+same-device LiteRT CPU default-vs-candidate microbenchmark. The accepted export
+bundle's own timing still becomes the conservative new runtime-lane baseline;
+microbenchmark latency must never be substituted for export latency.
+
+Device/runtime lanes may advance independently. A Full Body baseline may therefore
+contain different accepted commits per device, recorded in
+`source_commit_by_device`, while `cpu4t_reference_identity` remains a mandatory
+cross-device exact invariant.
+
 ## 5. Hardware-acceleration experiments
 
 GPU / delegate / GL / LiteRT-GPU candidates are cross-device-sensitive by

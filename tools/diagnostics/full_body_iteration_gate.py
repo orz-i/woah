@@ -428,8 +428,6 @@ def check_candidate(args: argparse.Namespace) -> int:
 def snapshot(args: argparse.Namespace) -> int:
     data = [extract_bundle(path, include_fingerprints=True) for path in args.bundle]
     commits = {item["commit"] for item in data}
-    if len(commits) != 1:
-        raise SystemExit(f"Full Body golden bundles must share one commit, got {sorted(commits)}")
     devices = [item["device"] for item in data]
     if len(set(devices)) != len(devices):
         raise SystemExit(f"Full Body golden bundles must contain unique devices, got {devices}")
@@ -460,13 +458,21 @@ def snapshot(args: argparse.Namespace) -> int:
             + json.dumps(cross_device_identity_mismatches, ensure_ascii=False, indent=2)
         )
 
-    commit = data[0]["commit"]
+    single_commit = next(iter(commits)) if len(commits) == 1 else None
     contract = {
-        "schema_version": 1,
-        "name": args.name or f"full_body_{commit[:8]}_device_lanes",
-        "source_commit": commit,
+        "schema_version": 2,
+        "name": args.name or (
+            f"full_body_{single_commit[:8]}_device_lanes"
+            if single_commit is not None
+            else "full_body_mixed_device_lanes"
+        ),
+        "source_commit": single_commit,
+        "source_commit_by_device": {item["device"]: item["commit"] for item in data},
         "source_devices": devices,
         "source_bundles": [str(path) for path in args.bundle],
+        "source_bundle_by_device": {
+            item["device"]: str(path) for path, item in zip(args.bundle, data)
+        },
         "quality_by_device": {item["device"]: item["quality"] for item in data},
         "fingerprints_by_device": {item["device"]: item["fingerprints"] for item in data},
         "runtime_by_device": {item["device"]: item["runtime"] for item in data},
