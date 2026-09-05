@@ -27,7 +27,8 @@ internal class CrossDeviceTrackingDiagnostics(
     fullBodyPersonIds: Set<Int>,
     faceOnlyPersonIds: Set<Int>,
     identityProtectedTrackIds: Set<Int> = fullBodyPersonIds + faceOnlyPersonIds,
-    private val adaptiveConfigs: List<AdaptiveConfig> = DEFAULT_ADAPTIVE_CONFIGS
+    private val adaptiveConfigs: List<AdaptiveConfig> = DEFAULT_ADAPTIVE_CONFIGS,
+    private val enableAdaptiveShadowMatrix: Boolean = true
 ) {
     internal data class AdaptiveConfig(
         val key: String,
@@ -77,14 +78,21 @@ internal class CrossDeviceTrackingDiagnostics(
     }
     private var latestCpuFullTemporalFacePrivacyClassEvidence: List<FreshPrivacyClassEvidence> = emptyList()
     private val identityProtectedTrackIds = identityProtectedTrackIds.toSortedSet()
-    private val adaptiveTrackers = adaptiveConfigs.associateWith {
-        TrackManager(diagnosticsEnabled = false)
+    private val adaptiveTrackers = if (enableAdaptiveShadowMatrix) {
+        adaptiveConfigs.associateWith { TrackManager(diagnosticsEnabled = false) }
+    } else {
+        emptyMap()
     }
-    private val lastCpuOrdinalByConfig = adaptiveConfigs.associateWith { 0 }.toMutableMap()
+    private val lastCpuOrdinalByConfig = if (enableAdaptiveShadowMatrix) {
+        adaptiveConfigs.associateWith { 0 }.toMutableMap()
+    } else {
+        mutableMapOf()
+    }
     private var initialized = false
     private var inferenceOrdinal = 0
     private var lastAdaptiveTracked: Map<AdaptiveConfig, List<TrackedPerson>> = emptyMap()
     private var disabledReason: String? = null
+    private var adaptiveShadowTrackerSteps: Long = 0L
 
     init {
         require(adaptiveConfigs.isNotEmpty())
@@ -146,6 +154,7 @@ internal class CrossDeviceTrackingDiagnostics(
                 }
 
                 cpuFullTracked = cpuFullTracker.initializeWithAssignedIds(cpuDetections, assignedIds)
+                adaptiveShadowTrackerSteps += adaptiveTrackers.size.toLong()
                 adaptiveTracked = adaptiveTrackers.mapValues { (config, tracker) ->
                     adaptiveSources[config.key] = cpuFullSource
                     adaptiveReasons[config.key] = "INITIALIZE"
@@ -163,6 +172,7 @@ internal class CrossDeviceTrackingDiagnostics(
                 cpuFullSource = "PREDICT"
                 cpuFullTracked = cpuFullTracker.predictWithoutObservation(ptsUs)
                 latestCpuFullTemporalFacePrivacyClassEvidence = emptyList()
+                adaptiveShadowTrackerSteps += adaptiveTrackers.size.toLong()
                 adaptiveTracked = adaptiveTrackers.mapValues { (config, tracker) ->
                     adaptiveSources[config.key] = "PREDICT"
                     adaptiveReasons[config.key] = "NO_INFERENCE_FRAME"
@@ -182,6 +192,7 @@ internal class CrossDeviceTrackingDiagnostics(
                     cpuFullTracker.update(cpuDetections, ptsUs)
                 }
 
+                adaptiveShadowTrackerSteps += adaptiveTrackers.size.toLong()
                 adaptiveTracked = adaptiveTrackers.mapValues { (config, tracker) ->
                     val decision = decideCpuAnchor(
                         config = config,
@@ -225,6 +236,7 @@ internal class CrossDeviceTrackingDiagnostics(
                     "should_infer" to shouldInfer,
                     "cpu_inference_ordinal" to inferenceOrdinal,
                     "cpu_full_source" to cpuFullSource,
+                    "adaptive_shadow_matrix_enabled" to enableAdaptiveShadowMatrix,
                     "identity_protected_track_ids" to identityProtectedTrackIds.toList(),
                     "cpu_full_tracks" to trackSignature(cpuFullTracked),
                     "adaptive_tracks" to adaptiveTracked
@@ -248,6 +260,10 @@ internal class CrossDeviceTrackingDiagnostics(
         } else {
             emptyList()
         }
+
+    fun isAdaptiveShadowMatrixEnabled(): Boolean = enableAdaptiveShadowMatrix
+
+    fun getAdaptiveShadowTrackerSteps(): Long = adaptiveShadowTrackerSteps
 
     fun getCpuFullTemporalFacePrivacyClassEvidence(): List<FreshPrivacyClassEvidence> =
         if (initialized && disabledReason == null) {

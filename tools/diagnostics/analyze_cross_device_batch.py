@@ -352,6 +352,7 @@ def read_bundle(path: Path) -> dict:
                 "cpu_4t_mask_decode": _stage(summary, "yoloCpuMt4Probe_yoloMaskDecode"),
                 "cpu_4t_diagnostics": _stage(summary, "yoloCpuMt4Probe_yoloDiagnostics"),
                 "canonical": _stage(summary, "canonicalYuvToRgba"),
+                "face_reference_tracking": _stage(summary, "faceDeterministicCpuTracking"),
                 "face_roi": _stage(summary, "faceRoiReadback"),
                 "face_detector": _stage(summary, "faceDetectorCpu"),
                 "face_detector_wall": _stage(summary, "faceDetectorWall"),

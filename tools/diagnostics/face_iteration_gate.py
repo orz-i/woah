@@ -50,6 +50,7 @@ TIMING_KEYS = {
     "cpu4t_decode": "cpu_4t_decode",
     "cpu4t_mask_decode": "cpu_4t_mask_decode",
     "cpu4t_diagnostics": "cpu_4t_diagnostics",
+    "face_reference_tracking": "face_reference_tracking",
     "face_roi": "face_roi",
     "face_detector": "face_detector",
     "face_detector_wall": "face_detector_wall",
@@ -161,6 +162,12 @@ def extract_bundle(bundle_path: Path, include_fingerprints: bool = True) -> dict
             "face_roi_reads_total": pipeline_summary.get("face_roi_read_count"),
             "cpu4t_frames_total": pipeline_summary.get(
                 "face_deterministic_cpu_primary_inference_frames"
+            ),
+            "adaptive_shadow_matrix_enabled": pipeline_summary.get(
+                "cross_device_adaptive_shadow_matrix_enabled"
+            ),
+            "adaptive_shadow_tracker_steps": pipeline_summary.get(
+                "cross_device_adaptive_shadow_tracker_steps"
             ),
         },
     }

@@ -431,7 +431,13 @@ class ExportPipeline(
                             faceOnlyIdentityProtectedIds
                         } else {
                             fullBodyPersonIds
-                        }
+                        },
+                        // The deterministic Face primary consumes only cpuFullTracked.
+                        // Five adaptive TrackManagers were retained solely for an older
+                        // cadence experiment and never feed identity/privacy/rendering.
+                        // Keep that historical diagnostic matrix everywhere else, but
+                        // do not pay for it on the accepted deterministic Face path.
+                        enableAdaptiveShadowMatrix = !preferDebugFaceDeterministicCpuPrimary
                     )
                 } else {
                     null
@@ -1088,27 +1094,29 @@ class ExportPipeline(
                                 val diagnostics = checkNotNull(crossDeviceTrackingDiagnostics) {
                                     "Deterministic Face tracking diagnostics unavailable"
                                 }
-                                checkNotNull(
-                                    diagnostics.recordFrame(
-                                        ptsUs = ptsUs,
-                                        shouldInfer = shouldInfer,
-                                        productionDetections = if (shouldInfer) detections else null,
-                                        productionTracked = null,
-                                        cpuMt4Detections = cpuMt4DetectionsForShadow,
-                                        initialAssignedIds = if (processedFrames == 1) {
-                                            resolveInitialTrackIdsFromAnalysis(
-                                                metadata = analysisMetadata,
-                                                detections = detections,
-                                                targetWidth = targetWidth,
-                                                targetHeight = targetHeight
-                                            )
-                                        } else {
-                                            null
-                                        },
-                                        allowProductionFallbackForCpuFull = true
-                                    )
-                                ) {
-                                    "Deterministic Face tracking primary unavailable at pts_us=$ptsUs"
+                                profiler.recordStage("faceDeterministicCpuTracking") {
+                                    checkNotNull(
+                                        diagnostics.recordFrame(
+                                            ptsUs = ptsUs,
+                                            shouldInfer = shouldInfer,
+                                            productionDetections = if (shouldInfer) detections else null,
+                                            productionTracked = null,
+                                            cpuMt4Detections = cpuMt4DetectionsForShadow,
+                                            initialAssignedIds = if (processedFrames == 1) {
+                                                resolveInitialTrackIdsFromAnalysis(
+                                                    metadata = analysisMetadata,
+                                                    detections = detections,
+                                                    targetWidth = targetWidth,
+                                                    targetHeight = targetHeight
+                                                )
+                                            } else {
+                                                null
+                                            },
+                                            allowProductionFallbackForCpuFull = true
+                                        )
+                                    ) {
+                                        "Deterministic Face tracking primary unavailable at pts_us=$ptsUs"
+                                    }
                                 }
                             } else {
                                 null
@@ -1994,6 +2002,10 @@ class ExportPipeline(
                             "face_deterministic_cpu_primary_preferred" to preferDebugFaceDeterministicCpuPrimary,
                             "face_deterministic_cpu_primary_inference_frames" to faceDeterministicCpuPrimaryInferenceFrames,
                             "face_deterministic_cpu_primary_fallback_frames" to faceDeterministicCpuPrimaryFallbackFrames,
+                            "cross_device_adaptive_shadow_matrix_enabled" to
+                                (crossDeviceTrackingDiagnostics?.isAdaptiveShadowMatrixEnabled() ?: false),
+                            "cross_device_adaptive_shadow_tracker_steps" to
+                                (crossDeviceTrackingDiagnostics?.getAdaptiveShadowTrackerSteps() ?: 0L),
                             "fresh_full_body_class_primary_enabled" to allowFreshFullBodyClassPrimary,
                             "conservative_mixed_full_body_occluder_policy_enabled" to false,
                             "surface_wait_timeout_count" to surfaceWaitTimeoutCount,
