@@ -63,6 +63,14 @@ exact golden, and pair the timing check with unchanged structural work such as
 detector calls / pixel-motion frames / ROI reads when the candidate does not
 intentionally change those schedules.
 
+For deterministic CPU4T YOLO post-processing work, use the narrowest available
+decode substage. Mask-byte generation should target `cpu4t_mask_decode` and pair
+it with `--target-work cpu4t_frames_total --target-work-mode equal`; the current
+KB accumulation baseline is 8 ms p50 across 751 deterministic CPU inference
+frames. This prevents a post-processing optimization from winning by reducing
+the number of CPU reference frames. Mask/NMS policy, model execution cadence,
+and GPU identity authority remain unchanged.
+
 For parallel detector execution, target `face_detector_wall` p50 instead of the
 sum-of-call `face_detector` metric. The accepted pre-parallel KB baseline aliases
 `face_detector_wall` p50 to the historical sequential detector p50 (85 ms), since

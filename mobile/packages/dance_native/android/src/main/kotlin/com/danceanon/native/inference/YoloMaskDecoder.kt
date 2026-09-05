@@ -3,6 +3,78 @@ package com.danceanon.native.inference
 import java.nio.FloatBuffer
 import java.util.IdentityHashMap
 
+/**
+ * Byte-exact replacement for the historical per-pixel sigmoid conversion.
+ *
+ * The historical path maps a Float logit to one of 256 mask bytes via exp().
+ * That mapping is monotonic. Build the 255 exact Float transition points once
+ * using the historical function itself, then classify later logits with an
+ * upper-bound search. This is not an approximation: on the current runtime the
+ * thresholds are defined by the exact same exp()/Float input semantics that the
+ * previous hot loop used.
+ */
+internal object ExactMaskByteSigmoid {
+    private val thresholds: FloatArray by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        FloatArray(255) { index -> minimumFloatProducingAtLeast(index + 1) }
+    }
+
+    fun toByteValue(sum: Float): Int {
+        if (sum.isNaN()) return historicalMaskByte(sum)
+        val local = thresholds
+        var low = 0
+        var high = local.size
+        while (low < high) {
+            val mid = (low + high) ushr 1
+            if (sum >= local[mid]) {
+                low = mid + 1
+            } else {
+                high = mid
+            }
+        }
+        return low
+    }
+
+    internal fun historicalMaskByte(sum: Float): Int {
+        val prob = 1.0f / (1.0f + kotlin.math.exp(-sum))
+        return (prob * 255f).toInt().coerceIn(0, 255)
+    }
+
+    internal fun thresholdsForTest(): FloatArray = thresholds.copyOf()
+
+    private fun minimumFloatProducingAtLeast(target: Int): Float {
+        var low = orderedKey(-Float.MAX_VALUE)
+        var high = orderedKey(Float.MAX_VALUE)
+        while (low < high) {
+            val mid = (low + high) ushr 1
+            val value = floatFromOrderedKey(mid)
+            if (historicalMaskByte(value) >= target) {
+                high = mid
+            } else {
+                low = mid + 1
+            }
+        }
+        return floatFromOrderedKey(low)
+    }
+
+    private fun orderedKey(value: Float): Long {
+        val bits = value.toRawBits().toLong() and 0xffff_ffffL
+        return if ((bits and 0x8000_0000L) != 0L) {
+            bits xor 0xffff_ffffL
+        } else {
+            bits xor 0x8000_0000L
+        }
+    }
+
+    private fun floatFromOrderedKey(key: Long): Float {
+        val bits = if ((key and 0x8000_0000L) != 0L) {
+            key xor 0x8000_0000L
+        } else {
+            key xor 0xffff_ffffL
+        }
+        return Float.fromBits(bits.toInt())
+    }
+}
+
 data class RawCandidate(
     val x1: Float,
     val y1: Float,
@@ -130,8 +202,8 @@ class NchwArrayProtoView(
         for (py in y1 until y2) {
             val rowOffset = py * protoSize
             for (px in x1 until x2) {
-                val prob = 1.0f / (1.0f + kotlin.math.exp(-scratch[rowOffset + px]))
-                maskBytes[rowOffset + px] = (prob * 255f).toInt().coerceIn(0, 255).toByte()
+                maskBytes[rowOffset + px] =
+                    ExactMaskByteSigmoid.toByteValue(scratch[rowOffset + px]).toByte()
             }
         }
         return maskBytes

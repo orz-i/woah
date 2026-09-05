@@ -211,7 +211,8 @@
         "6": 135
       },
       "pixel_motion_rejected_frames_total": 452,
-      "face_roi_reads_total": 3769
+      "face_roi_reads_total": 3769,
+      "cpu4t_frames_total": 751
     }
   },
   "source_device": "KB2000",
@@ -334,6 +335,7 @@
       "6": 135
     },
     "pixel_motion_rejected_frames_total": 452,
-    "face_roi_reads_total": 3769
+    "face_roi_reads_total": 3769,
+    "cpu4t_frames_total": 751
   }
 }

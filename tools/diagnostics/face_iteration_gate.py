@@ -159,6 +159,9 @@ def extract_bundle(bundle_path: Path, include_fingerprints: bool = True) -> dict
                 int(value) for value in pixel_motion_rejected_frames_by_track_id.values()
             ),
             "face_roi_reads_total": pipeline_summary.get("face_roi_read_count"),
+            "cpu4t_frames_total": pipeline_summary.get(
+                "face_deterministic_cpu_primary_inference_frames"
+            ),
         },
     }
     if include_fingerprints:

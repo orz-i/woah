@@ -9,6 +9,49 @@ import kotlin.random.Random
 class YoloMaskAwareNmsTest {
 
     @Test
+    fun exactMaskByteSigmoidMatchesHistoricalAcrossFloatBoundaries() {
+        val thresholds = ExactMaskByteSigmoid.thresholdsForTest()
+        assertEquals(255, thresholds.size)
+
+        val special = floatArrayOf(
+            Float.NEGATIVE_INFINITY,
+            -Float.MAX_VALUE,
+            -100f,
+            -10f,
+            -1f,
+            -0.0f,
+            0.0f,
+            1f,
+            10f,
+            100f,
+            Float.MAX_VALUE,
+            Float.POSITIVE_INFINITY,
+            Float.NaN
+        )
+
+        fun assertExact(value: Float) {
+            assertEquals(
+                ExactMaskByteSigmoid.historicalMaskByte(value),
+                ExactMaskByteSigmoid.toByteValue(value),
+                "value=$value bits=${value.toRawBits()}"
+            )
+        }
+
+        special.forEach(::assertExact)
+        thresholds.forEach { threshold ->
+            assertExact(Math.nextDown(threshold))
+            assertExact(threshold)
+            assertExact(Math.nextUp(threshold))
+        }
+
+        var state = 0x13579BDFL
+        repeat(250_000) {
+            state = (state * 1_664_525L + 1_013_904_223L) and 0xffff_ffffL
+            assertExact(Float.fromBits(state.toInt()))
+        }
+    }
+
+    @Test
     fun boundedCandidateSupportMaskIouMatchesFullScanExactly() {
         val protoSize = 160
         val channels = 32
