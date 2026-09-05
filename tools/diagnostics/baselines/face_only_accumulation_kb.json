@@ -1,13 +1,22 @@
 {
   "schema_version": 2,
-  "name": "face_only_accumulation_kb_0cbf560",
-  "source_commit": "0cbf560592e661c16c67c5b8569921c5c125af3a",
+  "name": "face_only_accumulation_kb_515b201",
+  "source_commit": "515b201633532fbd766c5c2faba4f8af0d6310ca",
   "source_devices": [
     "KB2000"
   ],
   "source_bundles": [
-    "logs\\woah_diag_20260905_071138_20260905_070119_8b74226d.zip"
+    "logs\\woah_diag_20260905_071138_20260905_070119_8b74226d.zip",
+    "logs\\woah_diag_20260905_083332_20260905_082502_404a5341.zip"
   ],
+  "performance_stage_sources": {
+    "face_roi": {
+      "measured_commit": "94bdea5297f2b36989daaf2b503caca407a5096b",
+      "accepted_commit": "515b201633532fbd766c5c2faba4f8af0d6310ca",
+      "bundle": "logs\\woah_diag_20260905_083332_20260905_082502_404a5341.zip",
+      "note": "Face ROI accepted from the combined KB batch; the fresh-depth-core resolver experiment in that measured commit was reverted after missing the frozen p50 promotion threshold."
+    }
+  },
   "quality": {
     "analysis_canonical_rgba_sha256": "7dba6e49fd377da5daf430bac429673455f2257e9daeb90d14378ef3ec6d874e",
     "analysis_candidate_ids_ge_0_60": [
@@ -135,10 +144,10 @@
       },
       "face_roi": {
         "count": 751,
-        "avg_ms": 40.73768308921438,
-        "p50_ms": 33.0,
-        "p95_ms": 70.0,
-        "max_ms": 287.0
+        "avg_ms": 20.00798934753662,
+        "p50_ms": 19.0,
+        "p95_ms": 27.0,
+        "max_ms": 78.0
       },
       "face_detector": {
         "count": 750,
@@ -261,10 +270,10 @@
     },
     "face_roi": {
       "count": 751,
-      "avg_ms": 40.73768308921438,
-      "p50_ms": 33.0,
-      "p95_ms": 70.0,
-      "max_ms": 287.0
+      "avg_ms": 20.00798934753662,
+      "p50_ms": 19.0,
+      "p95_ms": 27.0,
+      "max_ms": 78.0
     },
     "face_detector": {
       "count": 750,
