@@ -20,19 +20,28 @@ run:
 ```text
 python tools/diagnostics/face_iteration_gate.py check <KB-bundle.zip> \
   --contract tools/diagnostics/baselines/face_only_78a1beca_contract.json \
-  --target-stage face_privacy --min-improvement-pct 5
+  --target-stage face_detector --target-stat p50_ms --min-improvement-pct 5 \
+  --target-work detector_calls_total --min-work-reduction-pct 5
 ```
 
-The gate has two independent requirements:
+The gate has independent quality, target-stage, and optional structural-work
+requirements. Use the nearest stage to the optimization rather than a noisy
+full-pipeline average. For detector scheduling, `detector_calls_total` is a
+deterministic work-count signal while detector `p50_ms` is much less sensitive to
+thermal/scheduler outliers than the full `face_privacy` average.
 
-1. the accepted privacy/identity quality contract must remain unchanged;
-2. the target stage must improve enough to justify another hardware cycle.
+The first canary has three possible outcomes:
 
-`NO_GO_TRI_DEVICE_QUALITY_DRIFT` means the optimization changed visible/privacy
-behavior and must be diagnosed on the canary before any other phone is used.
-`NO_GO_TRI_DEVICE_INSUFFICIENT_GAIN` means the change is too small/noisy to promote
-yet; keep iterating locally and on the same canary. Only
-`READY_FOR_MILESTONE_TRI_DEVICE` is eligible for the full matrix.
+- `NO_GO_TRI_DEVICE_QUALITY_DRIFT`: stop and diagnose on the canary;
+- `CONTINUE_SINGLE_DEVICE_OPTIMIZATION`: quality is intact but the cumulative gain
+  is not yet worth another hardware run;
+- `READY_FOR_CONFIRMING_CANARY`: the change is promising enough to justify one
+  more run on the **same** device.
+
+When confirmation is requested, run KB2000 once more and pass both bundle paths to
+the same `check` command. The gate uses the median target-stage statistic across
+the canaries. Only `READY_FOR_MILESTONE_TRI_DEVICE` is eligible for the full
+matrix. Low-value iterations therefore still consume only one device run.
 
 ## 3. Batch gains before the three-device milestone
 

@@ -67,28 +67,33 @@
   },
   "performance_by_device": {
     "2206123SC": {
-      "canonical": 32.51664447403462,
-      "cpu4t_total": 70.8948069241012,
-      "cpu4t_run": 49.885486018641814,
-      "face_roi": 55.01597869507324,
-      "face_detector": 13.549333333333333,
-      "face_privacy": 111.81890812250333
+      "canonical": {"avg_ms": 32.51664447403462, "p50_ms": 31, "p95_ms": 40},
+      "cpu4t_total": {"avg_ms": 70.8948069241012, "p50_ms": 65, "p95_ms": 106},
+      "cpu4t_run": {"avg_ms": 49.885486018641814, "p50_ms": 45, "p95_ms": 76},
+      "face_roi": {"avg_ms": 55.01597869507324, "p50_ms": 54, "p95_ms": 67},
+      "face_detector": {"avg_ms": 13.549333333333333, "p50_ms": 12, "p95_ms": 19},
+      "face_privacy": {"avg_ms": 111.81890812250333, "p50_ms": 108, "p95_ms": 137}
     },
     "PLK110": {
-      "canonical": 49.665778961384824,
-      "cpu4t_total": 74.43142476697736,
-      "cpu4t_run": 57.78428761651132,
-      "face_roi": 83.37549933422103,
-      "face_detector": 23.426666666666666,
-      "face_privacy": 178.31291611185085
+      "canonical": {"avg_ms": 49.665778961384824, "p50_ms": 52, "p95_ms": 66},
+      "cpu4t_total": {"avg_ms": 74.43142476697736, "p50_ms": 82, "p95_ms": 92},
+      "cpu4t_run": {"avg_ms": 57.78428761651132, "p50_ms": 66, "p95_ms": 72},
+      "face_roi": {"avg_ms": 83.37549933422103, "p50_ms": 96, "p95_ms": 117},
+      "face_detector": {"avg_ms": 23.426666666666666, "p50_ms": 17, "p95_ms": 49},
+      "face_privacy": {"avg_ms": 178.31291611185085, "p50_ms": 191, "p95_ms": 235}
     },
     "KB2000": {
-      "canonical": 50.396804260985355,
-      "cpu4t_total": 127.27563249001332,
-      "cpu4t_run": 105.54327563249001,
-      "face_roi": 72.12782956058588,
-      "face_detector": 93.576,
-      "face_privacy": 244.05858854860188
+      "canonical": {"avg_ms": 50.396804260985355, "p50_ms": 49, "p95_ms": 64},
+      "cpu4t_total": {"avg_ms": 127.27563249001332, "p50_ms": 124, "p95_ms": 138},
+      "cpu4t_run": {"avg_ms": 105.54327563249001, "p50_ms": 105, "p95_ms": 111},
+      "face_roi": {"avg_ms": 72.12782956058588, "p50_ms": 70, "p95_ms": 88},
+      "face_detector": {"avg_ms": 93.576, "p50_ms": 85, "p95_ms": 136},
+      "face_privacy": {"avg_ms": 244.05858854860188, "p50_ms": 235, "p95_ms": 311}
     }
+  },
+  "observability_by_device": {
+    "2206123SC": {"detector_calls_total": 1623},
+    "PLK110": {"detector_calls_total": 1623},
+    "KB2000": {"detector_calls_total": 1623}
   }
 }

@@ -22,6 +22,7 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import statistics
 import sys
 from typing import Any
 
@@ -137,6 +138,10 @@ def extract_bundle(bundle_path: Path, include_fingerprints: bool = True) -> dict
         "observability": {
             "face_roi_detector_events": len(bundle["face_roi_detector"]),
             "detector_calls_by_track_id": pipeline_summary.get("face_detector_calls_by_track_id"),
+            "detector_calls_total": sum(
+                int(value)
+                for value in (pipeline_summary.get("face_detector_calls_by_track_id") or {}).values()
+            ),
             "pixel_motion_frames_by_track_id": pipeline_summary.get(
                 "face_pixel_motion_frames_by_track_id"
             ),
@@ -178,70 +183,134 @@ def _compare_expected(expected: Any, actual: Any, path: str, mismatches: list[di
         mismatches.append({"path": path, "expected": expected, "actual": actual})
 
 
-def _performance_baseline(contract: dict, device: str, stage: str) -> float | None:
+def _performance_baseline(contract: dict, device: str, stage: str, stat: str) -> float | None:
     by_device = contract.get("performance_by_device", {})
     device_values = by_device.get(device, {})
     value = device_values.get(stage)
+    if isinstance(value, dict):
+        value = value.get(stat)
     if value is None:
         snapshot_perf = contract.get("performance", {})
         timing = snapshot_perf.get(stage)
         if isinstance(timing, dict):
-            value = timing.get("avg_ms")
+            value = timing.get(stat)
+    return float(value) if value is not None else None
+
+
+def _work_baseline(contract: dict, device: str, key: str) -> float | None:
+    value = contract.get("observability_by_device", {}).get(device, {}).get(key)
+    if value is None:
+        value = contract.get("observability", {}).get(key)
     return float(value) if value is not None else None
 
 
 def check_candidate(args: argparse.Namespace) -> int:
     contract = json.loads(args.contract.read_text(encoding="utf-8"))
-    candidate = extract_bundle(args.bundle, include_fingerprints=True)
+    candidates = [extract_bundle(path, include_fingerprints=True) for path in args.bundle]
+    devices = {candidate["device"] for candidate in candidates}
+    if len(devices) != 1:
+        raise SystemExit("All canary bundles must come from the same device")
+    device = candidates[0]["device"]
 
     mismatches: list[dict] = []
-    _compare_expected(contract.get("quality", {}), candidate["quality"], "quality", mismatches)
-    if contract.get("fingerprints"):
+    for index, candidate in enumerate(candidates):
+        prefix = f"canary[{index}]"
         _compare_expected(
-            contract["fingerprints"], candidate.get("fingerprints", {}), "fingerprints", mismatches
+            contract.get("quality", {}), candidate["quality"], f"{prefix}.quality", mismatches
         )
+        if contract.get("fingerprints"):
+            _compare_expected(
+                contract["fingerprints"],
+                candidate.get("fingerprints", {}),
+                f"{prefix}.fingerprints",
+                mismatches,
+            )
 
     stage_result = None
     performance_pass = True
     if args.target_stage:
-        timing = candidate["performance"].get(args.target_stage)
-        baseline = _performance_baseline(contract, candidate["device"], args.target_stage)
-        if timing is None or baseline is None:
+        timings = [candidate["performance"].get(args.target_stage) for candidate in candidates]
+        baseline = _performance_baseline(contract, device, args.target_stage, args.target_stat)
+        if any(timing is None for timing in timings) or baseline is None:
             performance_pass = False
             stage_result = {
                 "stage": args.target_stage,
+                "stat": args.target_stat,
                 "error": "missing candidate timing or device baseline",
-                "candidate": timing,
-                "baseline_avg_ms": baseline,
+                "candidate": timings,
+                "baseline": baseline,
             }
         else:
-            candidate_avg = float(timing["avg_ms"])
-            improvement_pct = ((baseline - candidate_avg) / baseline) * 100.0 if baseline > 0 else 0.0
+            values = [float(timing[args.target_stat]) for timing in timings if timing is not None]
+            candidate_value = float(statistics.median(values))
+            improvement_pct = (
+                ((baseline - candidate_value) / baseline) * 100.0 if baseline > 0 else 0.0
+            )
             performance_pass = improvement_pct >= args.min_improvement_pct
             stage_result = {
                 "stage": args.target_stage,
-                "baseline_avg_ms": baseline,
-                "candidate_avg_ms": candidate_avg,
+                "stat": args.target_stat,
+                "baseline": baseline,
+                "candidate_values": values,
+                "candidate_median": candidate_value,
                 "improvement_pct": improvement_pct,
                 "required_improvement_pct": args.min_improvement_pct,
                 "pass": performance_pass,
             }
 
+    work_result = None
+    if args.target_work:
+        baseline_work = _work_baseline(contract, device, args.target_work)
+        candidate_work = [candidate["observability"].get(args.target_work) for candidate in candidates]
+        if baseline_work is None or any(value is None for value in candidate_work):
+            performance_pass = False
+            work_result = {
+                "key": args.target_work,
+                "error": "missing candidate work count or device baseline",
+                "baseline": baseline_work,
+                "candidate": candidate_work,
+            }
+        else:
+            values = [float(value) for value in candidate_work]
+            median_value = float(statistics.median(values))
+            reduction_pct = (
+                ((baseline_work - median_value) / baseline_work) * 100.0
+                if baseline_work > 0
+                else 0.0
+            )
+            work_pass = reduction_pct >= args.min_work_reduction_pct
+            performance_pass = performance_pass and work_pass
+            work_result = {
+                "key": args.target_work,
+                "baseline": baseline_work,
+                "candidate_values": values,
+                "candidate_median": median_value,
+                "reduction_pct": reduction_pct,
+                "required_reduction_pct": args.min_work_reduction_pct,
+                "pass": work_pass,
+            }
+
     quality_pass = not mismatches
-    ready = quality_pass and performance_pass
+    enough_canary_runs = len(candidates) >= args.min_canary_runs_for_milestone
+    ready = quality_pass and performance_pass and enough_canary_runs
     if not quality_pass:
         recommendation = "NO_GO_TRI_DEVICE_QUALITY_DRIFT"
     elif not performance_pass:
-        recommendation = "NO_GO_TRI_DEVICE_INSUFFICIENT_GAIN"
+        recommendation = "CONTINUE_SINGLE_DEVICE_OPTIMIZATION"
+    elif not enough_canary_runs:
+        recommendation = "READY_FOR_CONFIRMING_CANARY"
     else:
         recommendation = "READY_FOR_MILESTONE_TRI_DEVICE"
 
     report = {
-        "candidate": {
-            "bundle": str(args.bundle),
-            "device": candidate["device"],
-            "commit": candidate["commit"],
-        },
+        "candidates": [
+            {
+                "bundle": str(path),
+                "device": candidate["device"],
+                "commit": candidate["commit"],
+            }
+            for path, candidate in zip(args.bundle, candidates)
+        ],
         "contract": {
             "path": str(args.contract),
             "name": contract.get("name"),
@@ -251,6 +320,9 @@ def check_candidate(args: argparse.Namespace) -> int:
         "quality_mismatches": mismatches,
         "performance_pass": performance_pass,
         "target_performance": stage_result,
+        "target_work": work_result,
+        "canary_runs": len(candidates),
+        "required_canary_runs_for_milestone": args.min_canary_runs_for_milestone,
         "recommendation": recommendation,
     }
     print(json.dumps(report, ensure_ascii=False, indent=2))
@@ -284,10 +356,19 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     check = sub.add_parser("check", help="Gate one candidate bundle before a three-device run")
-    check.add_argument("bundle", type=Path)
+    check.add_argument("bundle", type=Path, nargs="+")
     check.add_argument("--contract", type=Path, required=True)
     check.add_argument("--target-stage", choices=sorted(TIMING_KEYS))
+    check.add_argument(
+        "--target-stat",
+        choices=("avg_ms", "p50_ms", "p95_ms"),
+        default="p50_ms",
+        help="Use p50 by default to reduce thermal/scheduler outlier sensitivity",
+    )
     check.add_argument("--min-improvement-pct", type=float, default=0.0)
+    check.add_argument("--target-work")
+    check.add_argument("--min-work-reduction-pct", type=float, default=0.0)
+    check.add_argument("--min-canary-runs-for-milestone", type=int, default=2)
     check.set_defaults(func=check_candidate)
 
     snap = sub.add_parser("snapshot", help="Create an exact golden contract from an accepted bundle")
