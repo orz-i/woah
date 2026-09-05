@@ -53,6 +53,7 @@ TIMING_KEYS = {
     "face_roi": "face_roi",
     "face_detector": "face_detector",
     "face_detector_wall": "face_detector_wall",
+    "face_pixel_motion": "face_pixel_motion",
     "face_temporal_class": "face_temporal_class",
     "face_privacy": "face_privacy",
 }
@@ -130,6 +131,10 @@ def extract_bundle(bundle_path: Path, include_fingerprints: bool = True) -> dict
         "selected_track_ids": selected_quality["selected_track_ids"],
         "by_track_id": selected_quality["by_track_id"],
     }
+    pixel_motion_frames_by_track_id = pipeline_summary.get("face_pixel_motion_frames_by_track_id") or {}
+    pixel_motion_rejected_frames_by_track_id = (
+        pipeline_summary.get("face_pixel_motion_rejected_frames_by_track_id") or {}
+    )
     result = {
         "schema_version": 1,
         "bundle": str(bundle_path),
@@ -144,11 +149,13 @@ def extract_bundle(bundle_path: Path, include_fingerprints: bool = True) -> dict
                 int(value)
                 for value in (pipeline_summary.get("face_detector_calls_by_track_id") or {}).values()
             ),
-            "pixel_motion_frames_by_track_id": pipeline_summary.get(
-                "face_pixel_motion_frames_by_track_id"
+            "pixel_motion_frames_by_track_id": pixel_motion_frames_by_track_id,
+            "pixel_motion_frames_total": sum(
+                int(value) for value in pixel_motion_frames_by_track_id.values()
             ),
-            "pixel_motion_rejected_frames_by_track_id": pipeline_summary.get(
-                "face_pixel_motion_rejected_frames_by_track_id"
+            "pixel_motion_rejected_frames_by_track_id": pixel_motion_rejected_frames_by_track_id,
+            "pixel_motion_rejected_frames_total": sum(
+                int(value) for value in pixel_motion_rejected_frames_by_track_id.values()
             ),
         },
     }
@@ -213,6 +220,31 @@ def check_candidate(args: argparse.Namespace) -> int:
     if len(devices) != 1:
         raise SystemExit("All canary bundles must come from the same device")
     device = candidates[0]["device"]
+    performance_baseline_bundle = None
+    performance_baseline_contract = None
+    if args.performance_baseline_bundle is not None:
+        performance_baseline_bundle = extract_bundle(
+            args.performance_baseline_bundle,
+            include_fingerprints=False,
+        )
+        if performance_baseline_bundle["device"] != device:
+            raise SystemExit(
+                "Performance baseline bundle must come from the same device as the canary"
+            )
+    elif args.performance_baseline_contract is not None:
+        performance_baseline_contract = json.loads(
+            args.performance_baseline_contract.read_text(encoding="utf-8")
+        )
+        baseline_device = performance_baseline_contract.get("source_device")
+        baseline_devices = performance_baseline_contract.get("source_devices", [])
+        if baseline_device is not None and baseline_device != device:
+            raise SystemExit(
+                "Performance baseline contract must come from the same device as the canary"
+            )
+        if baseline_device is None and baseline_devices and device not in baseline_devices:
+            raise SystemExit(
+                "Performance baseline contract does not contain the canary device"
+            )
 
     mismatches: list[dict] = []
     for index, candidate in enumerate(candidates):
@@ -232,7 +264,23 @@ def check_candidate(args: argparse.Namespace) -> int:
     performance_pass = True
     if args.target_stage:
         timings = [candidate["performance"].get(args.target_stage) for candidate in candidates]
-        baseline = _performance_baseline(contract, device, args.target_stage, args.target_stat)
+        if performance_baseline_bundle is not None:
+            baseline_timing = performance_baseline_bundle["performance"].get(args.target_stage)
+            baseline = (
+                float(baseline_timing[args.target_stat])
+                if isinstance(baseline_timing, dict)
+                and baseline_timing.get(args.target_stat) is not None
+                else None
+            )
+        elif performance_baseline_contract is not None:
+            baseline = _performance_baseline(
+                performance_baseline_contract,
+                device,
+                args.target_stage,
+                args.target_stat,
+            )
+        else:
+            baseline = _performance_baseline(contract, device, args.target_stage, args.target_stat)
         if any(timing is None for timing in timings) or baseline is None:
             performance_pass = False
             stage_result = {
@@ -262,7 +310,19 @@ def check_candidate(args: argparse.Namespace) -> int:
 
     work_result = None
     if args.target_work:
-        baseline_work = _work_baseline(contract, device, args.target_work)
+        if performance_baseline_bundle is not None:
+            baseline_work_value = performance_baseline_bundle["observability"].get(args.target_work)
+            baseline_work = (
+                float(baseline_work_value) if baseline_work_value is not None else None
+            )
+        elif performance_baseline_contract is not None:
+            baseline_work = _work_baseline(
+                performance_baseline_contract,
+                device,
+                args.target_work,
+            )
+        else:
+            baseline_work = _work_baseline(contract, device, args.target_work)
         candidate_work = [candidate["observability"].get(args.target_work) for candidate in candidates]
         if baseline_work is None or any(value is None for value in candidate_work):
             performance_pass = False
@@ -328,6 +388,24 @@ def check_candidate(args: argparse.Namespace) -> int:
             "name": contract.get("name"),
             "source_commit": contract.get("source_commit"),
         },
+        "performance_baseline": (
+            {
+                "bundle": str(args.performance_baseline_bundle),
+                "device": performance_baseline_bundle["device"],
+                "commit": performance_baseline_bundle["commit"],
+            }
+            if performance_baseline_bundle is not None
+            else {
+                "contract": str(args.performance_baseline_contract),
+                "name": performance_baseline_contract.get("name"),
+                "source_commit": performance_baseline_contract.get("source_commit"),
+            }
+            if performance_baseline_contract is not None
+            else {
+                "source": "contract",
+                "device": device,
+            }
+        ),
         "quality_pass": quality_pass,
         "quality_mismatches": mismatches,
         "performance_pass": performance_pass,
@@ -412,6 +490,23 @@ def build_parser() -> argparse.ArgumentParser:
     )
     check.add_argument("bundle", type=Path, nargs="+")
     check.add_argument("--contract", type=Path, required=True)
+    performance_baseline = check.add_mutually_exclusive_group()
+    performance_baseline.add_argument(
+        "--performance-baseline-bundle",
+        type=Path,
+        help=(
+            "Optional same-device accepted accumulation bundle used only for target-stage "
+            "and structural-work baselines; quality/fingerprints remain anchored to --contract"
+        ),
+    )
+    performance_baseline.add_argument(
+        "--performance-baseline-contract",
+        type=Path,
+        help=(
+            "Persisted same-device accumulation snapshot used only for target-stage and "
+            "structural-work baselines; preferred when old log bundles are routinely removed"
+        ),
+    )
     check.add_argument("--target-stage", choices=sorted(TIMING_KEYS))
     check.add_argument(
         "--target-stat",

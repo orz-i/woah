@@ -97,6 +97,58 @@ class FacePixelMotionTrackerTest {
     }
 
     @Test
+    fun `bulk roi gray conversion preserves exact match outcomes`() {
+        val optimized = FacePixelMotionTracker(useBulkRoiGrayConversion = true)
+        val reference = FacePixelMotionTracker(useBulkRoiGrayConversion = false)
+        val plan = FaceHeadRoiPlan(
+            sourceRect = FloatRect(140f, 80f, 340f, 280f),
+            anchorX = 0.5f,
+            anchorY = 0.5f,
+            outputSize = 256
+        )
+        val detected = FacePrivacyEllipse(
+            centerX = 240f,
+            centerY = 180f,
+            radiusX = 14f,
+            radiusY = 16f,
+            source = FacePrivacyRegionSource.DETECTED_FACE
+        )
+        val person = FloatRect(180f, 100f, 300f, 500f)
+        val seedOptimized = roiFrameWithPatch(plan, 240f, 180f)
+        val seedReference = roiFrameWithPatch(plan, 240f, 180f)
+        assertTrue(optimized.seedRoi(50, seedOptimized, plan, detected, person, 0L))
+        assertTrue(reference.seedRoi(50, seedReference, plan, detected, person, 0L))
+
+        val centers = listOf(
+            244f to 178f,
+            248f to 175f,
+            252f to 173f,
+            255f to 176f,
+            258f to 179f
+        )
+        centers.forEachIndexed { index, (centerX, centerY) ->
+            val ptsUs = (index + 1L) * 16_666L
+            val optimizedOutcome = optimized.matchRoiDetailed(
+                50,
+                roiFrameWithPatch(plan, centerX, centerY),
+                plan,
+                person,
+                true,
+                ptsUs
+            )
+            val referenceOutcome = reference.matchRoiDetailed(
+                50,
+                roiFrameWithPatch(plan, centerX, centerY),
+                plan,
+                person,
+                true,
+                ptsUs
+            )
+            assertEquals(referenceOutcome, optimizedOutcome)
+        }
+    }
+
+    @Test
     fun `roi partial occlusion keeps current pixel evidence from two agreeing quadrants`() {
         val tracker = FacePixelMotionTracker()
         val plan = FaceHeadRoiPlan(

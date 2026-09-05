@@ -14,16 +14,23 @@ cannot prove its policy/math equivalence locally does not go to a phone.
 ## 2. One-device canary for micro-iterations
 
 Pick the device that exposes the target bottleneck most strongly. **KB2000** is
-the default Face-only canary unless a different device is demonstrably more
-sensitive to the stage under test. For the current temporal privacy-class sidecar
-work, do one normal fixture export and run:
+the default Face-only CPU canary unless a different device is demonstrably more
+sensitive to the stage under test. For the current pixel-motion work, do one
+normal fixture export and run:
 
 ```text
 python tools/diagnostics/face_iteration_gate.py check <KB-bundle.zip> \
   --contract tools/diagnostics/baselines/face_only_febd1b4_exact.json \
-  --target-stage face_temporal_class --target-stat p50_ms \
-  --min-improvement-pct 10
+  --performance-baseline-contract tools/diagnostics/baselines/face_only_accumulation_kb.json \
+  --target-stage face_pixel_motion --target-stat p50_ms \
+  --min-improvement-pct 10 \
+  --target-work pixel_motion_frames_total --target-work-mode equal
 ```
+
+Current local device roles: use `emulator-5560` for CPU-only micro-benchmarks.
+Reserve `334da6a3` (BK) for candidates that actually touch a GPU/GL/LiteRT GPU
+boundary. GPU acceleration remains performance-only and must never become
+deterministic Face identity authority.
 
 The gate has independent quality, target-stage, and optional structural-work
 requirements. Use the nearest stage to the optimization rather than a noisy
@@ -36,6 +43,18 @@ Its baseline is captured from the `FACE_PRIVACY_TEMPORAL_CLASS_EVIDENCE`
 `elapsed_ms` field, while the exact golden fingerprints still require temporal
 evidence, sticker placement, class fallback, and deterministic CPU identity to
 remain frame-exact.
+
+During an accumulation batch, quality remains anchored to the last promoted
+three-device exact golden, while performance should compare against the latest
+accepted same-device accumulation state. Pass that bundle with
+`--performance-baseline-bundle`, or preferably persist it once with `snapshot`
+and use `--performance-baseline-contract` when `/logs` is routinely replaced.
+This prevents later optimizations from claiming credit for gains that were
+already accepted earlier in the batch.
+
+For pixel-motion execution-only work, also require
+`--target-work pixel_motion_frames_total --target-work-mode equal` so a candidate
+cannot win by silently running the motion tracker on fewer frames.
 
 For parallel detector execution, target `face_detector_wall` p50 instead of the
 sum-of-call `face_detector` metric. The accepted pre-parallel KB baseline aliases

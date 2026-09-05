@@ -24,7 +24,8 @@ import kotlin.math.sqrt
 internal class FacePixelMotionTracker(
     private val maxEvidenceGapUs: Long = DEFAULT_MAX_EVIDENCE_GAP_US,
     private val minCorrelation: Float = DEFAULT_MIN_CORRELATION,
-    private val minUniquenessGap: Float = DEFAULT_MIN_UNIQUENESS_GAP
+    private val minUniquenessGap: Float = DEFAULT_MIN_UNIQUENESS_GAP,
+    private val useBulkRoiGrayConversion: Boolean = true
 ) {
     enum class RoiStateStatus {
         MISSING,
@@ -107,6 +108,7 @@ internal class FacePixelMotionTracker(
     private var grayWorkspaceSize = 0
     private var grayWorkspacePtsUs = Long.MIN_VALUE
     private var roiGrayWorkspace = ByteArray(0)
+    private var roiRgbaWorkspace = ByteArray(0)
 
     fun retainTracks(trackIds: Set<Int>) {
         stateByTrackId.keys.retainAll(trackIds)
@@ -688,6 +690,24 @@ internal class FacePixelMotionTracker(
         val totalPixels = size * size
         if (roiGrayWorkspace.size != totalPixels) {
             roiGrayWorkspace = ByteArray(totalPixels)
+        }
+        if (useBulkRoiGrayConversion) {
+            val totalBytes = totalPixels * RGBA_STRIDE
+            if (roiRgbaWorkspace.size != totalBytes) {
+                roiRgbaWorkspace = ByteArray(totalBytes)
+            }
+            val source = rgbaTopDown.duplicate()
+            source.position(0)
+            source.get(roiRgbaWorkspace, 0, totalBytes)
+            var srcOffset = 0
+            for (i in 0 until totalPixels) {
+                val r = roiRgbaWorkspace[srcOffset].toInt() and 0xFF
+                val g = roiRgbaWorkspace[srcOffset + 1].toInt() and 0xFF
+                val b = roiRgbaWorkspace[srcOffset + 2].toInt() and 0xFF
+                roiGrayWorkspace[i] = ((77 * r + 150 * g + 29 * b) ushr 8).toByte()
+                srcOffset += RGBA_STRIDE
+            }
+            return roiGrayWorkspace
         }
         val previousOrder = rgbaTopDown.order()
         rgbaTopDown.order(ByteOrder.LITTLE_ENDIAN)
