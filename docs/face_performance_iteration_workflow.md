@@ -30,6 +30,14 @@ full-pipeline average. For detector scheduling, `detector_calls_total` is a
 deterministic work-count signal while detector `p50_ms` is much less sensitive to
 thermal/scheduler outliers than the full `face_privacy` average.
 
+For parallel detector execution, target `face_detector_wall` p50 instead of the
+sum-of-call `face_detector` metric. The accepted pre-parallel KB baseline aliases
+`face_detector_wall` p50 to the historical sequential detector p50 (85 ms), since
+those calls were executed serially and this is the correct transition baseline
+for an execution-overlap-only optimization. Pair it with
+`--target-work detector_calls_total --target-work-mode equal` so a faster result
+cannot be promoted by silently reducing detector cadence.
+
 The first canary has three possible outcomes:
 
 - `NO_GO_TRI_DEVICE_QUALITY_DRIFT`: stop and diagnose on the canary;

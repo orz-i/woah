@@ -6,6 +6,7 @@ import android.opengl.GLES20
 import android.opengl.GLUtils
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.danceanon.native.face.FaceLocator
+import com.danceanon.native.face.FaceLocatorRequest
 import com.danceanon.native.face.FaceLocatorResult
 import com.danceanon.native.face.FaceObservation
 import com.danceanon.native.geometry.ModelCoordinateMapper
@@ -28,6 +29,99 @@ import kotlin.test.assertTrue
 
 @RunWith(AndroidJUnit4::class)
 class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
+    @Test
+    fun parallelBatchExecutionPreservesStartupDetectorSemantics() {
+        val observation = FaceObservation(FloatRect(104f, 96f, 152f, 144f), 0.9f)
+        val persons = listOf(
+            person(1, FloatRect(80f, 30f, 260f, 340f)),
+            person(2, FloatRect(190f, 30f, 370f, 340f)),
+            person(3, FloatRect(300f, 30f, 480f, 340f)),
+            person(5, FloatRect(410f, 30f, 590f, 340f)),
+            person(6, FloatRect(460f, 30f, 640f, 340f))
+        )
+        val ids = setOf(1, 2, 3, 5, 6)
+
+        val sequentialLocator = CountingLocator(listOf(observation))
+        var sequentialSignature: Any? = null
+        withProcessor(sequentialLocator) { processor, texture, _ ->
+            sequentialSignature = resultSignature(
+                processor.resolveFrame(
+                    frameTexture = texture,
+                    texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                    textureType = SourceTextureType.TEXTURE_2D,
+                    persons = persons,
+                    faceOnlyTrackIds = ids,
+                    ptsUs = 0L
+                )
+            )
+        }
+
+        val batchLocator = BatchCountingLocator(listOf(observation))
+        var batchSignature: Any? = null
+        withProcessor(batchLocator) { processor, texture, _ ->
+            batchSignature = resultSignature(
+                processor.resolveFrame(
+                    frameTexture = texture,
+                    texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                    textureType = SourceTextureType.TEXTURE_2D,
+                    persons = persons,
+                    faceOnlyTrackIds = ids,
+                    ptsUs = 0L
+                )
+            )
+        }
+
+        assertEquals(5, sequentialLocator.calls)
+        assertEquals(5, batchLocator.calls)
+        assertEquals(1, batchLocator.batchCalls)
+        assertEquals(sequentialSignature, batchSignature)
+    }
+
+    private fun resultSignature(result: FaceOnlyPrivacyFrameResult): List<Any> = listOf(
+        result.readyForRender,
+        result.detectedTrackIds.sorted(),
+        result.predictedTrackIds.sorted(),
+        result.fallbackTrackIds.sorted(),
+        result.detectorCallCount,
+        (result.faceInferenceMs * 1000.0).roundToInt(),
+        result.stickerPlacements.map { placement ->
+            listOf(
+                placement.trackId,
+                (placement.sourceRect.left * 16f).roundToInt(),
+                (placement.sourceRect.top * 16f).roundToInt(),
+                (placement.sourceRect.right * 16f).roundToInt(),
+                (placement.sourceRect.bottom * 16f).roundToInt()
+            )
+        }
+    )
+
+    @Test
+    fun failedParallelBatchFallsBackToHistoricalPerTrackCalls() {
+        val observation = FaceObservation(FloatRect(104f, 96f, 152f, 144f), 0.9f)
+        val persons = listOf(
+            person(1, FloatRect(80f, 30f, 260f, 340f)),
+            person(2, FloatRect(190f, 30f, 370f, 340f))
+        )
+        val locator = FailingBatchCountingLocator(listOf(observation))
+
+        withProcessor(locator) { processor, texture, _ ->
+            val result = processor.resolveFrame(
+                frameTexture = texture,
+                texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = persons,
+                faceOnlyTrackIds = setOf(1, 2),
+                ptsUs = 0L
+            )
+            assertEquals(setOf(1, 2), result.detectedTrackIds)
+            assertTrue(result.fallbackTrackIds.isEmpty())
+            assertEquals(listOf(1, 2), result.stickerPlacements.map { it.trackId })
+        }
+
+        assertEquals(1, locator.batchCalls)
+        assertEquals(2, locator.calls)
+    }
+
     @Test
     fun unambiguousFaceProducesDetectedFacePrivacyMask() {
         withProcessor(FixedLocator(listOf(FaceObservation(FloatRect(104f, 96f, 152f, 144f), 0.9f)))) {
@@ -981,6 +1075,40 @@ class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
             FaceLocatorResult(observations = observations, inferenceMs = 1.0)
 
         override fun close() = Unit
+    }
+
+    private open class BatchCountingLocator(
+        private val observations: List<FaceObservation>
+    ) : FaceLocator {
+        var calls: Int = 0
+            protected set
+        var batchCalls: Int = 0
+            protected set
+
+        override val supportsParallelBatch: Boolean
+            get() = true
+
+        override fun detectRgbaTopDown(rgba: ByteBuffer, width: Int, height: Int): FaceLocatorResult {
+            calls++
+            return FaceLocatorResult(observations = observations, inferenceMs = 1.0)
+        }
+
+        override fun detectBatchRgbaTopDown(requests: List<FaceLocatorRequest>): List<FaceLocatorResult> {
+            batchCalls++
+            calls += requests.size
+            return requests.map { FaceLocatorResult(observations = observations, inferenceMs = 1.0) }
+        }
+
+        override fun close() = Unit
+    }
+
+    private class FailingBatchCountingLocator(
+        observations: List<FaceObservation>
+    ) : BatchCountingLocator(observations) {
+        override fun detectBatchRgbaTopDown(requests: List<FaceLocatorRequest>): List<FaceLocatorResult> {
+            batchCalls++
+            throw IllegalStateException("synthetic batch failure")
+        }
     }
 
     private class SequencedLocator(private val sequence: List<List<FaceObservation>>) : FaceLocator {

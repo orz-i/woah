@@ -354,6 +354,7 @@ def read_bundle(path: Path) -> dict:
                 "canonical": _stage(summary, "canonicalYuvToRgba"),
                 "face_roi": _stage(summary, "faceRoiReadback"),
                 "face_detector": _stage(summary, "faceDetectorCpu"),
+                "face_detector_wall": _stage(summary, "faceDetectorWall"),
                 "face_pixel_motion": _stage(summary, "facePixelMotionCpu"),
                 "face_privacy": _stage(summary, "faceOnlyPrivacy"),
             },

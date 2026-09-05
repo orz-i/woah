@@ -88,6 +88,7 @@
       "cpu4t_run": {"avg_ms": 105.54327563249001, "p50_ms": 105, "p95_ms": 111},
       "face_roi": {"avg_ms": 72.12782956058588, "p50_ms": 70, "p95_ms": 88},
       "face_detector": {"avg_ms": 93.576, "p50_ms": 85, "p95_ms": 136},
+      "face_detector_wall": {"p50_ms": 85},
       "face_privacy": {"avg_ms": 244.05858854860188, "p50_ms": 235, "p95_ms": 311}
     }
   },

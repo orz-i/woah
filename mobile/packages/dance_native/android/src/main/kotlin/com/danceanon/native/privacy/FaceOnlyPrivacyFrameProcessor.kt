@@ -5,6 +5,8 @@ import android.util.Log
 import com.danceanon.native.face.FaceHeadRoiPlanner
 import com.danceanon.native.face.FaceHeadRoiPlan
 import com.danceanon.native.face.FaceLocator
+import com.danceanon.native.face.FaceLocatorRequest
+import com.danceanon.native.face.FaceLocatorResult
 import com.danceanon.native.face.FaceLocatorProvider
 import com.danceanon.native.face.FaceRoiCandidateSelector
 import com.danceanon.native.diagnostics.NativeDiagnostics
@@ -32,6 +34,7 @@ data class FaceOnlyPrivacyFrameResult(
     val fallbackTrackIds: Set<Int>,
     val escalatedFullBodyTrackIds: Set<Int>,
     val faceInferenceMs: Double,
+    val faceDetectorWallMs: Double,
     val detectorCallCount: Int,
     val detectorObservationCount: Int,
     val detectorZeroObservationCallCount: Int,
@@ -87,11 +90,22 @@ class FaceOnlyPrivacyFrameProcessor(
     private val pixelMotionTracker = FacePixelMotionTracker()
     private val canonicalRoiBuffer = ByteBuffer.allocateDirect(FACE_ROI_SIZE * FACE_ROI_SIZE * 4)
     private val canonicalRoiWorkspace = CanonicalFaceRoiSampler.Workspace(FACE_ROI_SIZE)
+    private val detectorBatchRoiBuffers = Array(INITIAL_ACQUISITION_MAX_CALLS) {
+        ByteBuffer.allocateDirect(FACE_ROI_SIZE * FACE_ROI_SIZE * 4)
+    }
 
     private data class RoiPixels(
         val rgba: ByteBuffer,
         val source: String
     )
+
+    private fun copyRoiForBatch(source: ByteBuffer, target: ByteBuffer): ByteBuffer {
+        val readable = source.duplicate().apply { rewind() }
+        target.clear()
+        target.put(readable)
+        target.flip()
+        return target
+    }
 
     private fun readRoiPixels(
         frameTexture: Int,
@@ -552,6 +566,7 @@ class FaceOnlyPrivacyFrameProcessor(
                 fallbackTrackIds = emptySet(),
                 escalatedFullBodyTrackIds = emptySet(),
                 faceInferenceMs = 0.0,
+                faceDetectorWallMs = 0.0,
                 detectorCallCount = 0,
                 detectorObservationCount = 0,
                 detectorZeroObservationCallCount = 0,
@@ -878,6 +893,7 @@ class FaceOnlyPrivacyFrameProcessor(
         val predicted = linkedSetOf<Int>()
         val fallback = linkedSetOf<Int>()
         var inferenceMs = 0.0
+        var detectorWallMs = 0.0
         var detectorCallCount = 0
         var detectorObservationCount = 0
         var detectorZeroObservationCallCount = 0
@@ -906,6 +922,57 @@ class FaceOnlyPrivacyFrameProcessor(
         var maskBuildMs = 0.0
         val stickerPlacements = mutableListOf<FaceStickerPlacement>()
 
+        val preloadedRoiPixelsByTrackId = linkedMapOf<Int, RoiPixels>()
+        val batchedDetectorResultByTrackId = linkedMapOf<Int, FaceLocatorResult>()
+        if (locator.supportsParallelBatch && dueDetectorTrackIds.size >= 2) {
+            val orderedDueTrackIds = processingFaceOnlyTrackIds.sorted().filter { trackId ->
+                dueDetectorTrackIds.contains(trackId) && detectorPlanByTrackId.containsKey(trackId)
+            }
+            if (orderedDueTrackIds.size >= 2) {
+                val requests = ArrayList<FaceLocatorRequest>(orderedDueTrackIds.size)
+                orderedDueTrackIds.forEachIndexed { index, trackId ->
+                    val plan = requireNotNull(detectorPlanByTrackId[trackId])
+                    val roiStartNs = System.nanoTime()
+                    val roiPixels = readRoiPixels(
+                        frameTexture = frameTexture,
+                        texMatrix = texMatrix,
+                        textureType = textureType,
+                        plan = plan,
+                        canonicalModelRgbaBottomUp = canonicalModelRgbaBottomUp
+                    )
+                    roiReadbackMs += (System.nanoTime() - roiStartNs) / 1_000_000.0
+                    val copiedRgba = copyRoiForBatch(
+                        source = roiPixels.rgba,
+                        target = detectorBatchRoiBuffers[index]
+                    )
+                    preloadedRoiPixelsByTrackId[trackId] = RoiPixels(
+                        rgba = copiedRgba,
+                        source = roiPixels.source
+                    )
+                    requests += FaceLocatorRequest(
+                        rgba = copiedRgba,
+                        width = FACE_ROI_SIZE,
+                        height = FACE_ROI_SIZE
+                    )
+                }
+
+                try {
+                    val detectorStartNs = System.nanoTime()
+                    val results = locator.detectBatchRgbaTopDown(requests)
+                    detectorWallMs += (System.nanoTime() - detectorStartNs) / 1_000_000.0
+                    check(results.size == orderedDueTrackIds.size) {
+                        "Face locator batch result count ${results.size} != requests ${orderedDueTrackIds.size}"
+                    }
+                    orderedDueTrackIds.forEachIndexed { index, trackId ->
+                        batchedDetectorResultByTrackId[trackId] = results[index]
+                    }
+                } catch (t: Throwable) {
+                    batchedDetectorResultByTrackId.clear()
+                    Log.w(TAG, "Parallel face-detector batch failed; falling back to sequential calls", t)
+                }
+            }
+        }
+
         for (trackId in processingFaceOnlyTrackIds.sorted()) {
             val trackedPerson = personsById[trackId] ?: continue
             val person = geometryPersonByTrackId[trackId] ?: trackedPerson
@@ -925,8 +992,9 @@ class FaceOnlyPrivacyFrameProcessor(
             var roiPixelSource = "NONE"
             val hasRoiPixelState = pixelMotionTracker.hasUsableRoiState(trackId, ptsUs)
             if (plan != null && (hasRoiPixelState || dueDetectorTrackIds.contains(trackId))) {
-                val roiStartNs = System.nanoTime()
-                val roiPixels = readRoiPixels(
+                val preloadedRoiPixels = preloadedRoiPixelsByTrackId[trackId]
+                val roiStartNs = if (preloadedRoiPixels == null) System.nanoTime() else 0L
+                val roiPixels = preloadedRoiPixels ?: readRoiPixels(
                     frameTexture = frameTexture,
                     texMatrix = texMatrix,
                     textureType = textureType,
@@ -935,7 +1003,9 @@ class FaceOnlyPrivacyFrameProcessor(
                 )
                 roiRgba = roiPixels.rgba
                 roiPixelSource = roiPixels.source
-                roiReadbackMs += (System.nanoTime() - roiStartNs) / 1_000_000.0
+                if (roiStartNs != 0L) {
+                    roiReadbackMs += (System.nanoTime() - roiStartNs) / 1_000_000.0
+                }
 
                 if (hasRoiPixelState) {
                     val pixelMotionStartNs = System.nanoTime()
@@ -992,11 +1062,18 @@ class FaceOnlyPrivacyFrameProcessor(
                 lastDetectorAttemptPtsUsByTrackId[trackId] = ptsUs
                 val cachedBeforeAttempt = cachedFaceByTrackId[trackId]
                 try {
-                    val locatorResult = locator.detectRgbaTopDown(
-                        rgba = requireNotNull(roiRgba),
-                        width = FACE_ROI_SIZE,
-                        height = FACE_ROI_SIZE
-                    )
+                    val locatorResult = batchedDetectorResultByTrackId[trackId] ?: run {
+                        val detectorStartNs = System.nanoTime()
+                        try {
+                            locator.detectRgbaTopDown(
+                                rgba = requireNotNull(roiRgba),
+                                width = FACE_ROI_SIZE,
+                                height = FACE_ROI_SIZE
+                            )
+                        } finally {
+                            detectorWallMs += (System.nanoTime() - detectorStartNs) / 1_000_000.0
+                        }
+                    }
                     detectorCallCount++
                     detectorCalledTrackIds += trackId
                     inferenceMs += locatorResult.inferenceMs
@@ -1135,11 +1212,16 @@ class FaceOnlyPrivacyFrameProcessor(
                     roiReadbackMs += (System.nanoTime() - roiStartNs) / 1_000_000.0
                     lastDetectorAttemptPtsUsByTrackId[trackId] = ptsUs
                     try {
-                        val locatorResult = locator.detectRgbaTopDown(
-                            rgba = reacquireRgba,
-                            width = FACE_ROI_SIZE,
-                            height = FACE_ROI_SIZE
-                        )
+                        val detectorStartNs = System.nanoTime()
+                        val locatorResult = try {
+                            locator.detectRgbaTopDown(
+                                rgba = reacquireRgba,
+                                width = FACE_ROI_SIZE,
+                                height = FACE_ROI_SIZE
+                            )
+                        } finally {
+                            detectorWallMs += (System.nanoTime() - detectorStartNs) / 1_000_000.0
+                        }
                         detectorCallCount++
                         detectorCalledTrackIds += trackId
                         inferenceMs += locatorResult.inferenceMs
@@ -1483,6 +1565,7 @@ class FaceOnlyPrivacyFrameProcessor(
             fallbackTrackIds = fallback,
             escalatedFullBodyTrackIds = adaptation.escalatedFullBodyTrackIds,
             faceInferenceMs = inferenceMs,
+            faceDetectorWallMs = detectorWallMs,
             detectorCallCount = detectorCallCount,
             detectorObservationCount = detectorObservationCount,
             detectorZeroObservationCallCount = detectorZeroObservationCallCount,

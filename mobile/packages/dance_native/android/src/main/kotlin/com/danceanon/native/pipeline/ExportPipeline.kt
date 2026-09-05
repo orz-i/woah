@@ -1563,6 +1563,12 @@ class ExportPipeline(
                                     faceOnlyFrameResult.faceInferenceMs.toLong().coerceAtLeast(0L)
                                 )
                             }
+                            if (faceOnlyFrameResult.faceDetectorWallMs > 0.0) {
+                                profiler.recordSample(
+                                    "faceDetectorWall",
+                                    faceOnlyFrameResult.faceDetectorWallMs.toLong().coerceAtLeast(0L)
+                                )
+                            }
                             if (faceOnlyFrameResult.pixelMotionMs > 0.0) {
                                 profiler.recordSample(
                                     "facePixelMotionCpu",

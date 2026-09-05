@@ -52,6 +52,7 @@ TIMING_KEYS = {
     "cpu4t_diagnostics": "cpu_4t_diagnostics",
     "face_roi": "face_roi",
     "face_detector": "face_detector",
+    "face_detector_wall": "face_detector_wall",
     "face_privacy": "face_privacy",
 }
 
@@ -278,15 +279,21 @@ def check_candidate(args: argparse.Namespace) -> int:
                 if baseline_work > 0
                 else 0.0
             )
-            work_pass = reduction_pct >= args.min_work_reduction_pct
+            if args.target_work_mode == "equal":
+                work_pass = all(value == baseline_work for value in values)
+            else:
+                work_pass = reduction_pct >= args.min_work_reduction_pct
             performance_pass = performance_pass and work_pass
             work_result = {
                 "key": args.target_work,
+                "mode": args.target_work_mode,
                 "baseline": baseline_work,
                 "candidate_values": values,
                 "candidate_median": median_value,
                 "reduction_pct": reduction_pct,
-                "required_reduction_pct": args.min_work_reduction_pct,
+                "required_reduction_pct": (
+                    args.min_work_reduction_pct if args.target_work_mode == "reduce" else None
+                ),
                 "pass": work_pass,
             }
 
@@ -367,6 +374,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     check.add_argument("--min-improvement-pct", type=float, default=0.0)
     check.add_argument("--target-work")
+    check.add_argument(
+        "--target-work-mode",
+        choices=("reduce", "equal"),
+        default="reduce",
+        help="Require structural work to decrease, or remain exactly equal to baseline",
+    )
     check.add_argument("--min-work-reduction-pct", type=float, default=0.0)
     check.add_argument("--min-canary-runs-for-milestone", type=int, default=2)
     check.set_defaults(func=check_candidate)
