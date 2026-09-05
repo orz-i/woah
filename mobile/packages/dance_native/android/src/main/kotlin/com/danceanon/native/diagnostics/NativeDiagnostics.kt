@@ -32,7 +32,7 @@ import java.util.concurrent.atomic.AtomicLong
 /**
  * Production native diagnostics infrastructure.
  * Enforces:
- * 1. Async JSONL file writes via dedicated single-thread executor (no hot-path blocking).
+ * 1. Async JSON serialization + JSONL file writes via dedicated single-thread executor.
  * 2. True rollover & rotation (8 MiB / segment, session_<id>_000.jsonl, total <= 32 MiB).
  * 3. Consistent snapshot barrier: snapshot operations are serialized through the single-thread
  *    writer executor, guaranteeing flush and atomic file copy without reading partial lines.
@@ -67,6 +67,27 @@ object NativeDiagnostics {
         get() = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("UTC")
         }
+
+    private data class EventThrowableSnapshot(
+        val exceptionClass: String,
+        val exceptionMessage: String,
+        val rootCauseClass: String,
+        val rootCauseMessage: String,
+        val causeChain: String,
+        val stackTrace: String
+    )
+
+    private data class EventSnapshot(
+        val wallTimeMs: Long,
+        val elapsedMs: Long,
+        val threadName: String,
+        val pid: Int,
+        val level: String,
+        val component: String,
+        val event: String,
+        val fields: Map<String, Any?>,
+        val throwable: EventThrowableSnapshot?
+    )
 
     fun initialize(context: Context) {
         if (initialized.getAndSet(true)) {
@@ -207,48 +228,98 @@ object NativeDiagnostics {
         throwable: Throwable? = null
     ) {
         val now = System.currentTimeMillis()
-        val wallTimeStr = isoFormat.format(Date(now))
-        val elapsedMs = now - sessionStartTimeMs
-        val threadName = Thread.currentThread().name
-        val pid = Process.myPid()
-
-        val json = JSONObject()
-        try {
-            json.put("wall_time", wallTimeStr)
-            json.put("elapsed_ms", elapsedMs)
-            json.put("session_id", sessionId)
-            json.put("pid", pid)
-            json.put("thread", threadName)
-            json.put("level", level.uppercase(Locale.US))
-            json.put("component", component)
-            json.put("event", event)
-
-            val fieldsObj = JSONObject()
-            for ((k, v) in fields) {
-                fieldsObj.put(k, sanitizeValue(v))
-            }
-            json.put("fields", fieldsObj)
-
-            if (throwable != null) {
-                val root = rootCause(throwable)
-                json.put("exception_class", throwable.javaClass.name)
-                json.put("exception_message", throwable.message ?: "")
-                json.put("root_cause_class", root.javaClass.name)
-                json.put("root_cause_message", root.message ?: "")
-                json.put("cause_chain", buildCauseChain(throwable))
-
-                val sw = StringWriter()
-                throwable.printStackTrace(PrintWriter(sw))
-                json.put("stack_trace", sw.toString().take(4000))
-            }
+        val snapshot = try {
+            EventSnapshot(
+                wallTimeMs = now,
+                elapsedMs = now - sessionStartTimeMs,
+                threadName = Thread.currentThread().name,
+                pid = Process.myPid(),
+                level = level,
+                component = component,
+                event = event,
+                fields = snapshotFields(fields),
+                throwable = throwable?.let(::snapshotThrowable)
+            )
         } catch (_: Throwable) {
             return
         }
 
-        val line = json.toString()
-
         writerExecutor.submit {
-            writeLogLine(line)
+            serializeEvent(snapshot)?.let(::writeLogLine)
+        }
+    }
+
+    /**
+     * Captures mutable caller-owned diagnostic fields before returning from [event].
+     * Sanitization and JSON materialization stay on the writer thread; this snapshot keeps
+     * asynchronous serialization from observing later mutations of maps/lists.
+     */
+    internal fun snapshotFields(fields: Map<String, Any?>): Map<String, Any?> {
+        if (fields.isEmpty()) return emptyMap()
+        val snapshot = LinkedHashMap<String, Any?>(fields.size)
+        for ((key, value) in fields) {
+            snapshot[key] = snapshotValue(value)
+        }
+        return snapshot
+    }
+
+    private fun snapshotValue(value: Any?): Any? = when (value) {
+        null -> null
+        is Number, is Boolean, is String -> value
+        is List<*> -> value.map(::snapshotValue)
+        is Map<*, *> -> {
+            val snapshot = LinkedHashMap<String, Any?>(value.size)
+            for ((key, item) in value) {
+                if (key != null) snapshot[key.toString()] = snapshotValue(item)
+            }
+            snapshot
+        }
+        else -> value.toString()
+    }
+
+    private fun snapshotThrowable(throwable: Throwable): EventThrowableSnapshot {
+        val root = rootCause(throwable)
+        val sw = StringWriter()
+        throwable.printStackTrace(PrintWriter(sw))
+        return EventThrowableSnapshot(
+            exceptionClass = throwable.javaClass.name,
+            exceptionMessage = throwable.message ?: "",
+            rootCauseClass = root.javaClass.name,
+            rootCauseMessage = root.message ?: "",
+            causeChain = buildCauseChain(throwable),
+            stackTrace = sw.toString().take(4000)
+        )
+    }
+
+    private fun serializeEvent(snapshot: EventSnapshot): String? {
+        val json = JSONObject()
+        return try {
+            json.put("wall_time", isoFormat.format(Date(snapshot.wallTimeMs)))
+            json.put("elapsed_ms", snapshot.elapsedMs)
+            json.put("session_id", sessionId)
+            json.put("pid", snapshot.pid)
+            json.put("thread", snapshot.threadName)
+            json.put("level", snapshot.level.uppercase(Locale.US))
+            json.put("component", snapshot.component)
+            json.put("event", snapshot.event)
+
+            val fieldsObj = JSONObject()
+            for ((key, value) in snapshot.fields) {
+                fieldsObj.put(key, sanitizeValue(value))
+            }
+            json.put("fields", fieldsObj)
+
+            snapshot.throwable?.let { throwable ->
+                json.put("exception_class", throwable.exceptionClass)
+                json.put("exception_message", throwable.exceptionMessage)
+                json.put("root_cause_class", throwable.rootCauseClass)
+                json.put("root_cause_message", throwable.rootCauseMessage)
+                json.put("cause_chain", throwable.causeChain)
+                json.put("stack_trace", throwable.stackTrace)
+            }
+            json.toString()
+        } catch (_: Throwable) {
+            null
         }
     }
 

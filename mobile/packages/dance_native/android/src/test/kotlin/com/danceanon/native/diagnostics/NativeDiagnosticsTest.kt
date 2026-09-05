@@ -160,6 +160,34 @@ class NativeDiagnosticsTest {
         assertTrue(chain.contains("IllegalArgumentException"))
     }
 
+    @Test
+    fun eventFieldSnapshotDetachesMutableCallerOwnedValues() {
+        class MutableLabel(var value: String) {
+            override fun toString(): String = value
+        }
+
+        val nestedMap = linkedMapOf<String, Any?>("value" to 7)
+        val nestedList = mutableListOf<Any?>("original", nestedMap)
+        val label = MutableLabel("before")
+        val fields = linkedMapOf<String, Any?>(
+            "items" to nestedList,
+            "label" to label
+        )
+
+        val snapshot = NativeDiagnostics.snapshotFields(fields)
+
+        nestedMap["value"] = 99
+        nestedList[0] = "changed"
+        label.value = "after"
+        fields["late"] = true
+
+        val snapshotItems = snapshot["items"] as List<*>
+        assertEquals("original", snapshotItems[0])
+        assertEquals(7, (snapshotItems[1] as Map<*, *>)["value"])
+        assertEquals("before", snapshot["label"])
+        assertFalse(snapshot.containsKey("late"))
+    }
+
     private fun createMockContext(filesDir: File): android.content.Context {
         return object : android.content.ContextWrapper(null) {
             override fun getFilesDir(): File = filesDir

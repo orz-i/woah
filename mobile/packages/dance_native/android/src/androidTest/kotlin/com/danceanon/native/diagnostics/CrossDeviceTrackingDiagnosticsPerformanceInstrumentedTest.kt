@@ -92,6 +92,59 @@ class CrossDeviceTrackingDiagnosticsPerformanceInstrumentedTest {
         assertTrue(improvementPct >= 10.0, "Expected >=10% diagnostic tracking gain, got $improvementPct%")
     }
 
+    @Test
+    fun cpuFullStructuredDiagnosticsCostIsMeasuredSeparately() {
+        val frames = buildFrames(frameCount = 36, personCount = 6)
+        val assignedIds = (0 until 6).toList()
+        val protectedIds = assignedIds.take(5).toSet()
+
+        fun run(emitDiagnostics: Boolean): List<Any> {
+            val diagnostics = CrossDeviceTrackingDiagnostics(
+                jobId = "bench",
+                fullBodyPersonIds = emptySet(),
+                faceOnlyPersonIds = protectedIds,
+                identityProtectedTrackIds = protectedIds,
+                enableAdaptiveShadowMatrix = false,
+                emitStructuredDiagnostics = emitDiagnostics
+            )
+            val signature = ArrayList<Any>(frames.size * 2)
+            frames.forEachIndexed { index, detections ->
+                val tracked = assertNotNull(
+                    diagnostics.recordFrame(
+                        ptsUs = index * 16_677L,
+                        shouldInfer = true,
+                        productionDetections = detections,
+                        productionTracked = null,
+                        cpuMt4Detections = detections,
+                        initialAssignedIds = if (index == 0) assignedIds else null,
+                        allowProductionFallbackForCpuFull = false
+                    )
+                )
+                signature.add(tracked.map { listOf(it.id, it.state.name, it.observedThisFrame) })
+                signature.add(
+                    diagnostics.getCpuFullTemporalFacePrivacyClassEvidence()
+                        .map { listOf(it.detectionIndex, it.selectionClass.name, it.conservativeUnknown) }
+                )
+            }
+            NativeDiagnostics.flushCriticalNow(5_000L)
+            return signature
+        }
+
+        val withDiagnostics = run(true)
+        val withoutDiagnostics = run(false)
+        assertEquals(withDiagnostics, withoutDiagnostics)
+        repeat(2) { run(true); run(false) }
+        val enabledMs = medianMs(7) { run(true) }
+        val disabledMs = medianMs(7) { run(false) }
+        val costPct = (enabledMs - disabledMs) / enabledMs * 100.0
+        Log.i(
+            TAG,
+            "cpu_full_diag_enabled_ms=$enabledMs cpu_full_diag_disabled_ms=$disabledMs " +
+                "diagnostic_cost_pct=$costPct"
+        )
+        assertTrue(costPct < 15.0, "Expected async structured diagnostics cost <15%, got $costPct%")
+    }
+
     private fun buildFrames(frameCount: Int, personCount: Int): List<List<PersonDetection>> =
         List(frameCount) { frame ->
             List(personCount) { index ->

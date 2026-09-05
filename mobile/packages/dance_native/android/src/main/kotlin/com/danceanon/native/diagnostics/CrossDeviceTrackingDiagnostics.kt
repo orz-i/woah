@@ -28,7 +28,8 @@ internal class CrossDeviceTrackingDiagnostics(
     faceOnlyPersonIds: Set<Int>,
     identityProtectedTrackIds: Set<Int> = fullBodyPersonIds + faceOnlyPersonIds,
     private val adaptiveConfigs: List<AdaptiveConfig> = DEFAULT_ADAPTIVE_CONFIGS,
-    private val enableAdaptiveShadowMatrix: Boolean = true
+    private val enableAdaptiveShadowMatrix: Boolean = true,
+    private val emitStructuredDiagnostics: Boolean = true
 ) {
     internal data class AdaptiveConfig(
         val key: String,
@@ -226,28 +227,30 @@ internal class CrossDeviceTrackingDiagnostics(
             }
             lastAdaptiveTracked = adaptiveTracked
 
-            NativeDiagnostics.event(
-                level = "INFO",
-                component = "CrossDeviceTrackingDiagnostics",
-                event = "YOLO_CPU_MT4_TRACK_SHADOW",
-                fields = mapOf(
-                    "job_id" to jobId,
-                    "pts_us" to ptsUs,
-                    "should_infer" to shouldInfer,
-                    "cpu_inference_ordinal" to inferenceOrdinal,
-                    "cpu_full_source" to cpuFullSource,
-                    "adaptive_shadow_matrix_enabled" to enableAdaptiveShadowMatrix,
-                    "identity_protected_track_ids" to identityProtectedTrackIds.toList(),
-                    "cpu_full_tracks" to trackSignature(cpuFullTracked),
-                    "adaptive_tracks" to adaptiveTracked
-                        .entries
-                        .sortedBy { it.key.key }
-                        .associate { (config, tracks) -> config.key to trackSignature(tracks) },
-                    "adaptive_sources" to adaptiveSources,
-                    "adaptive_reasons" to adaptiveReasons,
-                    "adaptive_metrics" to adaptiveMetrics
+            if (emitStructuredDiagnostics) {
+                NativeDiagnostics.event(
+                    level = "INFO",
+                    component = "CrossDeviceTrackingDiagnostics",
+                    event = "YOLO_CPU_MT4_TRACK_SHADOW",
+                    fields = mapOf(
+                        "job_id" to jobId,
+                        "pts_us" to ptsUs,
+                        "should_infer" to shouldInfer,
+                        "cpu_inference_ordinal" to inferenceOrdinal,
+                        "cpu_full_source" to cpuFullSource,
+                        "adaptive_shadow_matrix_enabled" to enableAdaptiveShadowMatrix,
+                        "identity_protected_track_ids" to identityProtectedTrackIds.toList(),
+                        "cpu_full_tracks" to trackSignature(cpuFullTracked),
+                        "adaptive_tracks" to adaptiveTracked
+                            .entries
+                            .sortedBy { it.key.key }
+                            .associate { (config, tracks) -> config.key to trackSignature(tracks) },
+                        "adaptive_sources" to adaptiveSources,
+                        "adaptive_reasons" to adaptiveReasons,
+                        "adaptive_metrics" to adaptiveMetrics
+                    )
                 )
-            )
+            }
             return cpuFullTracked
         } catch (t: Throwable) {
             return disable("${t.javaClass.simpleName}:${t.message ?: "unknown"}")
@@ -334,26 +337,28 @@ internal class CrossDeviceTrackingDiagnostics(
             .map { it.detectionIndex }
             .sorted()
 
-        NativeDiagnostics.event(
-            level = "INFO",
-            component = "CrossDeviceTrackingDiagnostics",
-            event = "FACE_PRIVACY_TEMPORAL_CLASS_EVIDENCE",
-            fields = mapOf(
-                "job_id" to jobId,
-                "pts_us" to ptsUs,
-                "selected_detection_indices" to trustedSelectedDetectionIndices,
-                "unknown_detection_indices" to unknownDetectionIndices,
-                "mapped_detection_indices" to latestCpuFullTemporalFacePrivacyClassEvidence
-                    .map { it.detectionIndex }
-                    .sorted(),
-                "mapped_unknown_detection_indices" to mappedUnknownDetectionIndices,
-                "mapped_residual_track_ids" to latestCpuFullTemporalFacePrivacyClassEvidence
-                    .flatMap { it.residualTrackIds }
-                    .toSortedSet()
-                    .toList(),
-                "elapsed_ms" to (System.nanoTime() - startedNs) / 1_000_000.0
+        if (emitStructuredDiagnostics) {
+            NativeDiagnostics.event(
+                level = "INFO",
+                component = "CrossDeviceTrackingDiagnostics",
+                event = "FACE_PRIVACY_TEMPORAL_CLASS_EVIDENCE",
+                fields = mapOf(
+                    "job_id" to jobId,
+                    "pts_us" to ptsUs,
+                    "selected_detection_indices" to trustedSelectedDetectionIndices,
+                    "unknown_detection_indices" to unknownDetectionIndices,
+                    "mapped_detection_indices" to latestCpuFullTemporalFacePrivacyClassEvidence
+                        .map { it.detectionIndex }
+                        .sorted(),
+                    "mapped_unknown_detection_indices" to mappedUnknownDetectionIndices,
+                    "mapped_residual_track_ids" to latestCpuFullTemporalFacePrivacyClassEvidence
+                        .flatMap { it.residualTrackIds }
+                        .toSortedSet()
+                        .toList(),
+                    "elapsed_ms" to (System.nanoTime() - startedNs) / 1_000_000.0
+                )
             )
-        )
+        }
     }
 
     fun getCpuFullFreshFacePrivacyClassEvidence(): List<com.danceanon.native.tracking.FreshPrivacyClassEvidence> =
