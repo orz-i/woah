@@ -37,6 +37,86 @@ class PrivacyFreshClassEvidenceTest {
     }
 
     @Test
+    fun faceOnlyFreshDepthCoreReusePreservesMultiTargetResolvedMasksExactly() {
+        val selectedMasks = listOf(
+            rectMask(left = 8, top = 8, right = 45, bottom = 55, value = 190),
+            rectMask(left = 15, top = 6, right = 52, bottom = 53, value = 205),
+            rectMask(left = 21, top = 10, right = 59, bottom = 57, value = 220)
+        )
+        val foregroundMask = rectMask(left = 22, top = 12, right = 48, bottom = 58, value = 255)
+        val selectedIds = setOf(101, 102, 103)
+        val evidence = buildList {
+            selectedMasks.forEachIndexed { index, mask ->
+                add(
+                    FreshPrivacyClassEvidence(
+                        selectionClass = PrivacySelectionClass.SELECTED,
+                        detectionIndex = index,
+                        detection = PersonDetection(
+                            bbox = FloatRect(
+                                90f + index * 24f,
+                                90f,
+                                410f + index * 24f,
+                                410f
+                            ),
+                            confidence = 0.95f - index * 0.01f,
+                            mask = mask,
+                            footY = 410f
+                        ),
+                        residualTrackIds = setOf(101 + index)
+                    )
+                )
+            }
+            add(
+                FreshPrivacyClassEvidence(
+                    selectionClass = PrivacySelectionClass.UNSELECTED,
+                    detectionIndex = 3,
+                    detection = PersonDetection(
+                        bbox = FloatRect(170f, 110f, 430f, 540f),
+                        confidence = 0.98f,
+                        mask = foregroundMask,
+                        footY = 540f
+                    ),
+                    residualTrackIds = setOf(7)
+                )
+            )
+        }
+
+        fun resolve(reuse: Boolean): ResolvedCompositorMasks =
+            PrivacyOcclusionResolver.resolveMasks(
+                persons = emptyList(),
+                selectedPersonIds = selectedIds,
+                applyDilationToPrivacyTargets = false,
+                occluderErosionRadius = 1,
+                freshClassEvidence = evidence,
+                preferFreshClassPrimary = true,
+                expectedSelectedCount = selectedIds.size,
+                behaviorNeutralFaceOnlyFastPaths = true,
+                reuseFaceOnlyFreshDepthCores = reuse
+            )
+
+        val reference = resolve(reuse = false)
+        val cached = resolve(reuse = true)
+        assertEquals(reference.hasPrivacy, cached.hasPrivacy)
+        assertEquals(reference.hasOccluder, cached.hasOccluder)
+
+        fun assertMaskEquals(expected: NativeMask?, actual: NativeMask?, label: String) {
+            if (expected == null || actual == null) {
+                assertEquals(expected, actual, label)
+                return
+            }
+            assertEquals(expected.width, actual.width, "$label width")
+            assertEquals(expected.height, actual.height, "$label height")
+            assertEquals(expected.buffer.capacity(), actual.buffer.capacity(), "$label capacity")
+            for (i in 0 until expected.buffer.capacity()) {
+                assertEquals(expected.buffer.get(i), actual.buffer.get(i), "$label byte=$i")
+            }
+        }
+
+        assertMaskEquals(reference.privacyMask, cached.privacyMask, "privacy")
+        assertMaskEquals(reference.occluderMask, cached.occluderMask, "occluder")
+    }
+
+    @Test
     fun freshSelectedClassEvidenceReplacesStaleSelectedMaskWithoutAssigningIdentity() {
         val staleMask = rectMask(left = 5, top = 10, right = 16, bottom = 40)
         val freshMask = rectMask(left = 40, top = 10, right = 52, bottom = 40)
