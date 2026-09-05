@@ -300,15 +300,19 @@ def check_candidate(args: argparse.Namespace) -> int:
 
     quality_pass = not mismatches
     enough_canary_runs = len(candidates) >= args.min_canary_runs_for_milestone
-    ready = quality_pass and performance_pass and enough_canary_runs
+    ready = False
     if not quality_pass:
         recommendation = "NO_GO_TRI_DEVICE_QUALITY_DRIFT"
     elif not performance_pass:
         recommendation = "CONTINUE_SINGLE_DEVICE_OPTIMIZATION"
+    elif args.promotion_mode == "accumulate":
+        recommendation = "ACCEPT_FOR_ACCUMULATION"
+        ready = True
     elif not enough_canary_runs:
-        recommendation = "READY_FOR_CONFIRMING_CANARY"
+        recommendation = "READY_FOR_OPTIONAL_CONFIRMING_CANARY"
     else:
         recommendation = "READY_FOR_MILESTONE_TRI_DEVICE"
+        ready = True
 
     report = {
         "candidates": [
@@ -329,8 +333,11 @@ def check_candidate(args: argparse.Namespace) -> int:
         "performance_pass": performance_pass,
         "target_performance": stage_result,
         "target_work": work_result,
+        "promotion_mode": args.promotion_mode,
         "canary_runs": len(candidates),
-        "required_canary_runs_for_milestone": args.min_canary_runs_for_milestone,
+        "required_canary_runs_for_milestone": (
+            args.min_canary_runs_for_milestone if args.promotion_mode == "milestone" else None
+        ),
         "recommendation": recommendation,
     }
     print(json.dumps(report, ensure_ascii=False, indent=2))
@@ -399,7 +406,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    check = sub.add_parser("check", help="Gate one candidate bundle before a three-device run")
+    check = sub.add_parser(
+        "check",
+        help="Gate one or more single-device candidates for accumulation or a milestone promotion",
+    )
     check.add_argument("bundle", type=Path, nargs="+")
     check.add_argument("--contract", type=Path, required=True)
     check.add_argument("--target-stage", choices=sorted(TIMING_KEYS))
@@ -418,7 +428,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="Require structural work to decrease, or remain exactly equal to baseline",
     )
     check.add_argument("--min-work-reduction-pct", type=float, default=0.0)
-    check.add_argument("--min-canary-runs-for-milestone", type=int, default=2)
+    check.add_argument(
+        "--promotion-mode",
+        choices=("accumulate", "milestone"),
+        default="accumulate",
+        help=(
+            "accumulate accepts one passing canary into the current optimization batch; "
+            "milestone is an explicit request to prepare for a cross-device promotion"
+        ),
+    )
+    check.add_argument(
+        "--min-canary-runs-for-milestone",
+        type=int,
+        default=1,
+        help=(
+            "Only used with --promotion-mode milestone. Extra same-device confirmation "
+            "is opt-in rather than part of the normal optimization loop."
+        ),
+    )
     check.set_defaults(func=check_candidate)
 
     snap = sub.add_parser(

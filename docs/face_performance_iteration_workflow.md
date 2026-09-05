@@ -45,30 +45,42 @@ for an execution-overlap-only optimization. Pair it with
 `--target-work detector_calls_total --target-work-mode equal` so a faster result
 cannot be promoted by silently reducing detector cadence.
 
-The first canary has three possible outcomes:
+The default gate mode is **accumulation**, not promotion. A normal micro-iteration
+therefore has three possible outcomes:
 
 - `NO_GO_TRI_DEVICE_QUALITY_DRIFT`: stop and diagnose on the canary;
 - `CONTINUE_SINGLE_DEVICE_OPTIMIZATION`: quality is intact but the cumulative gain
   is not yet worth another hardware run;
-- `READY_FOR_CONFIRMING_CANARY`: the change is promising enough to justify one
-  more run on the **same** device.
+- `ACCEPT_FOR_ACCUMULATION`: keep the change in the current performance batch and
+  continue optimizing without another phone run.
 
-When confirmation is requested, run KB2000 once more and pass both bundle paths to
-the same `check` command. The gate uses the median target-stage statistic across
-the canaries. Only `READY_FOR_MILESTONE_TRI_DEVICE` is eligible for the full
-matrix. Low-value iterations therefore still consume only one device run.
+A second KB2000 run is **optional diagnostic evidence**, not a standard gate. Use
+it only when the first run is suspiciously close to the threshold, shows unusual
+thermal/scheduler behavior, or the changed boundary is known to be runtime-
+sensitive. Multiple same-device bundles can still be passed to `check`, which uses
+their median target-stage statistic.
 
-## 3. Batch gains before the three-device milestone
+## 3. Accumulate gains before the three-device milestone
 
-Behavior-neutral optimizations may accumulate behind the canary gate. Do not run
-three phones after each 2–5% micro-gain. Promote when one of these is true:
+Behavior-neutral optimizations accumulate behind the same exact golden. Do not run
+three phones after each accepted canary. The normal hardware budget is therefore
+**one KB2000 run per optimization candidate**, not `KB x2 + three-device`.
 
-- cumulative target-stage improvement is materially useful (normally >=10%);
-- the stage is considered finished and the candidate is ready to become the new
-  baseline;
+Continue stacking accepted-on-canary changes until one of these explicit milestone
+triggers is true:
+
+- cumulative end-to-end or bottleneck-stage improvement is large enough to close
+  the current performance batch (normally >=15-20% over the last three-device
+  golden, judged on a stable stage rather than one noisy full-pipeline run);
+- the current performance phase is considered finished or a release checkpoint is
+  approaching;
 - the change touches a cross-device-sensitive boundary such as decoder pixel
   semantics, model/precision/backend, deterministic identity authority, or a
   platform-specific implementation.
+
+Do **not** trigger a milestone merely because one micro-optimization passed its
+single-device target. The purpose of accumulation is to amortize one PLK110 +
+2206123SC + KB2000 matrix across several optimizations.
 
 Changes that intentionally alter detector cadence, fallback behavior, or rendered
 geometry are **quality changes**, even if motivated by performance. They require a
@@ -76,7 +88,10 @@ visual/privacy acceptance decision before becoming the new golden contract.
 
 ## 4. Three-device promotion gate
 
-At a milestone, run PLK110 + 2206123SC + KB2000 once. Require the established
+At an explicit milestone, first run the current KB bundle through the gate with
+`--promotion-mode milestone`. One KB run is sufficient by default; an extra
+same-device confirmation is opt-in through `--min-canary-runs-for-milestone 2`.
+Only then run PLK110 + 2206123SC + KB2000 once. Require the established
 cross-device checks (Analyze selection, CPU identity, Face ROI where applicable,
 sticker placement, class fallback, temporal evidence) to converge. If accepted,
 archive the accepted cross-device bundles as one exact golden for the next
