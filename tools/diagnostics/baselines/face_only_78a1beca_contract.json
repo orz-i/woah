@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "name": "face_only_accepted_78a1beca",
+  "source_commit": "78a1beca57f4813e9cb3d60387ace6ccf6527288",
+  "quality_source": "accepted three-device analyzer baseline",
+  "quality": {
+    "analysis_canonical_rgba_sha256": "7dba6e49fd377da5daf430bac429673455f2257e9daeb90d14378ef3ec6d874e",
+    "analysis_candidate_ids_ge_0_60": [0, 1, 2, 3, 5, 6],
+    "deterministic_primary": {
+      "preferred": true,
+      "inference_frames": 751,
+      "fallback_frames": 0
+    },
+    "cpu_identity_frames": 751,
+    "sticker_frames": 751,
+    "class_fallback_frames": 96,
+    "body_mask_guided_class_fallback_frames": 72,
+    "temporal_frames": 747,
+    "selected_track_ids": [0, 1, 3, 5, 6],
+    "by_track_id": {
+      "0": {
+        "missing_sticker_frames": 0,
+        "class_fallback_covered_missing_frames": 0,
+        "missing_without_class_fallback_frames": 0,
+        "longest_missing_run": null
+      },
+      "1": {
+        "missing_sticker_frames": 0,
+        "class_fallback_covered_missing_frames": 0,
+        "missing_without_class_fallback_frames": 0,
+        "longest_missing_run": null
+      },
+      "3": {
+        "missing_sticker_frames": 18,
+        "class_fallback_covered_missing_frames": 7,
+        "missing_without_class_fallback_frames": 11,
+        "longest_missing_run": {
+          "frames": 11,
+          "start_pts_us": 12309866,
+          "end_pts_us": 12476644,
+          "span_us": 166778
+        }
+      },
+      "5": {
+        "missing_sticker_frames": 21,
+        "class_fallback_covered_missing_frames": 1,
+        "missing_without_class_fallback_frames": 20,
+        "longest_missing_run": {
+          "frames": 21,
+          "start_pts_us": 12176444,
+          "end_pts_us": 12510000,
+          "span_us": 333556
+        }
+      },
+      "6": {
+        "missing_sticker_frames": 88,
+        "class_fallback_covered_missing_frames": 88,
+        "missing_without_class_fallback_frames": 0,
+        "longest_missing_run": {
+          "frames": 85,
+          "start_pts_us": 8990544,
+          "end_pts_us": 10391700,
+          "span_us": 1401156
+        }
+      }
+    }
+  },
+  "performance_by_device": {
+    "2206123SC": {
+      "canonical": 32.51664447403462,
+      "cpu4t_total": 70.8948069241012,
+      "cpu4t_run": 49.885486018641814,
+      "face_roi": 55.01597869507324,
+      "face_detector": 13.549333333333333,
+      "face_privacy": 111.81890812250333
+    },
+    "PLK110": {
+      "canonical": 49.665778961384824,
+      "cpu4t_total": 74.43142476697736,
+      "cpu4t_run": 57.78428761651132,
+      "face_roi": 83.37549933422103,
+      "face_detector": 23.426666666666666,
+      "face_privacy": 178.31291611185085
+    },
+    "KB2000": {
+      "canonical": 50.396804260985355,
+      "cpu4t_total": 127.27563249001332,
+      "cpu4t_run": 105.54327563249001,
+      "face_roi": 72.12782956058588,
+      "face_detector": 93.576,
+      "face_privacy": 244.05858854860188
+    }
+  }
+}
