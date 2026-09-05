@@ -69,6 +69,7 @@ class FaceOnlyExportPipelineInstrumentedTest {
                     sourceUri = input.absolutePath,
                     request = ExportRequestDto(
                         sourceUri = input.absolutePath,
+                        trimStartMs = 0L,
                         analysisCacheId = "",
                         outputFilePath = output.absolutePath,
                         selectedPersonIds = emptyList(),
@@ -213,6 +214,7 @@ class FaceOnlyExportPipelineInstrumentedTest {
                     sourceUri = input.absolutePath,
                     request = ExportRequestDto(
                         sourceUri = input.absolutePath,
+                        trimStartMs = 0L,
                         analysisCacheId = "",
                         outputFilePath = output.absolutePath,
                         selectedPersonIds = listOf(SECONDARY_PERSON_ID),
@@ -316,6 +318,7 @@ class FaceOnlyExportPipelineInstrumentedTest {
                     sourceUri = input.absolutePath,
                     request = ExportRequestDto(
                         sourceUri = input.absolutePath,
+                        trimStartMs = 0L,
                         analysisCacheId = "",
                         outputFilePath = output.absolutePath,
                         selectedPersonIds = emptyList(),
