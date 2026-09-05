@@ -42,6 +42,7 @@ class ExportForegroundService : Service() {
 
         const val EXTRA_JOB_ID = "extra_job_id"
         const val EXTRA_PROGRESS = "extra_progress"
+        internal const val YOLO_CPU_FALLBACK_THREADS = 4
 
         internal fun foregroundServiceTypeForSdk(sdkInt: Int): Int {
             return if (sdkInt >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
@@ -91,7 +92,10 @@ class ExportForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        segmenter = YoloLiteRtSegmenter(applicationContext)
+        segmenter = YoloLiteRtSegmenter(
+            context = applicationContext,
+            cpuNumThreads = YOLO_CPU_FALLBACK_THREADS
+        )
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

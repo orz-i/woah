@@ -162,6 +162,59 @@ class LiteRtGpuBenchmarkInstrumentedTest {
     }
 
     @Test
+    fun benchmarkYoloCpuDefaultVsFourThreads() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val dummyInput = FloatArray(1 * 3 * 640 * 640) { 0.5f }
+
+        suspend fun benchmark(cpuThreads: Int?): BenchmarkStats {
+            val runner = LiteRtModelRunner.fromAsset(
+                context = context,
+                assetPath = YoloLiteRtSegmenter.DEFAULT_ASSET_PATH,
+                policy = LiteRtRunnerPolicy.STRICT_CPU,
+                cpuNumThreads = cpuThreads
+            )
+            try {
+                runner.initialize()
+                runner.getInputBuffers()[0].writeFloat(dummyInput)
+                repeat(4) { runner.runInference() }
+                val latencies = ArrayList<Double>(30)
+                repeat(30) {
+                    val startedNs = System.nanoTime()
+                    runner.runInference()
+                    latencies += (System.nanoTime() - startedNs) / 1_000_000.0
+                }
+                return calculateStats(
+                    modelName = "yolo11n-seg-fp16.tflite",
+                    requested = LiteRtAccelerator.CPU,
+                    effective = runner.effectiveAccelerator,
+                    compileMs = runner.runtimeInfo?.compileMs ?: 0L,
+                    warmupMs = runner.runtimeInfo?.warmupMs ?: 0L,
+                    latencies = latencies
+                )
+            } finally {
+                runner.close()
+            }
+        }
+
+        val defaultStats = benchmark(cpuThreads = null)
+        val fourThreadStats = benchmark(cpuThreads = 4)
+        val improvementPct = if (defaultStats.p50Ms > 0.0) {
+            (defaultStats.p50Ms - fourThreadStats.p50Ms) / defaultStats.p50Ms * 100.0
+        } else {
+            0.0
+        }
+        Log.i(
+            "CPU_THREAD_BENCHMARK",
+            "default_p50_ms=${defaultStats.p50Ms} four_thread_p50_ms=${fourThreadStats.p50Ms} " +
+                "improvement_pct=$improvementPct"
+        )
+        assertTrue(
+            improvementPct >= 10.0,
+            "Expected CPU4T LiteRT run p50 to improve by >=10%, got $improvementPct%"
+        )
+    }
+
+    @Test
     fun benchmarkSam2ImageFeaturesGpuVsCpu() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val dummyInput = FloatArray(1 * 3 * 1024 * 1024) { 0.5f }
