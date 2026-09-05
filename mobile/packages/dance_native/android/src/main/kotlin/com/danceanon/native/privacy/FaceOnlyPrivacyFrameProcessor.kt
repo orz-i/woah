@@ -1545,7 +1545,8 @@ class FaceOnlyPrivacyFrameProcessor(
                 persons = adaptation.persons,
                 selectedPersonIds = adaptation.selectedPersonIds,
                 ptsUs = ptsUs,
-                expectedSelectedCount = adaptation.selectedPersonIds.size
+                expectedSelectedCount = adaptation.selectedPersonIds.size,
+                behaviorNeutralFaceOnlyFastPaths = true
             )
         }
         val classResolved = classFallbackMask?.let { mask ->
@@ -1558,7 +1559,10 @@ class FaceOnlyPrivacyFrameProcessor(
         }
         val resolved = when {
             baseResolved != null && classResolved != null ->
-                PrivacyOcclusionResolver.mergeResolvedMasks(listOf(baseResolved, classResolved))
+                PrivacyOcclusionResolver.mergeResolvedMasks(
+                    parts = listOf(baseResolved, classResolved),
+                    behaviorNeutralFaceOnlyFastPaths = true
+                )
             baseResolved != null -> baseResolved
             else -> classResolved
         }

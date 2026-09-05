@@ -44,6 +44,91 @@ class PrivacyOcclusionResolverTest {
         return mask.buffer.get(idx).toInt() and 0xFF
     }
 
+    private fun assertResolvedMasksEqual(
+        expected: ResolvedCompositorMasks,
+        actual: ResolvedCompositorMasks
+    ) {
+        assertEquals(expected.hasPrivacy, actual.hasPrivacy)
+        assertEquals(expected.hasOccluder, actual.hasOccluder)
+        val expectedPrivacy = expected.privacyMask
+        val actualPrivacy = actual.privacyMask
+        assertEquals(expectedPrivacy == null, actualPrivacy == null)
+        if (expectedPrivacy != null && actualPrivacy != null) {
+            assertEquals(expectedPrivacy.width, actualPrivacy.width)
+            assertEquals(expectedPrivacy.height, actualPrivacy.height)
+            repeat(expectedPrivacy.width * expectedPrivacy.height) { index ->
+                assertEquals(
+                    expectedPrivacy.buffer.get(index),
+                    actualPrivacy.buffer.get(index),
+                    "privacy byte $index"
+                )
+            }
+        }
+        val expectedOccluder = expected.occluderMask
+        val actualOccluder = actual.occluderMask
+        assertEquals(expectedOccluder == null, actualOccluder == null)
+        if (expectedOccluder != null && actualOccluder != null) {
+            repeat(expectedOccluder.width * expectedOccluder.height) { index ->
+                assertEquals(
+                    expectedOccluder.buffer.get(index),
+                    actualOccluder.buffer.get(index),
+                    "occluder byte $index"
+                )
+            }
+        }
+    }
+
+    @Test
+    fun faceOnlyNoCarveFastPathsPreserveExactResolvedMasks() {
+        val selectedA = TrackedPerson(
+            id = 0,
+            bbox = FloatRect(10f, 10f, 55f, 70f),
+            mask = createBinaryMask(10, 10, 1..4, 2..6),
+            confidence = 0.95f,
+            age = 20,
+            state = TrackState.ACTIVE,
+            observedThisFrame = true
+        )
+        val selectedB = TrackedPerson(
+            id = 1,
+            bbox = FloatRect(45f, 15f, 90f, 75f),
+            mask = createBinaryMask(10, 10, 5..8, 2..6),
+            confidence = 0.95f,
+            age = 20,
+            state = TrackState.ACTIVE,
+            observedThisFrame = true
+        )
+        // Overlaps both selected bboxes/masks, but equal raw mask probability
+        // and lower confidence cannot satisfy the ownership margin. This forces
+        // the expensive candidate path while producing no accepted carve.
+        val unselected = TrackedPerson(
+            id = 9,
+            bbox = FloatRect(20f, 8f, 82f, 78f),
+            mask = createBinaryMask(10, 10, 0..9, 0..9),
+            confidence = 0.40f,
+            age = 20,
+            state = TrackState.ACTIVE,
+            observedThisFrame = true
+        )
+
+        val historical = PrivacyOcclusionResolver.resolveMasks(
+            persons = listOf(selectedA, selectedB, unselected),
+            selectedPersonIds = setOf(0, 1),
+            applyDilationToPrivacyTargets = true,
+            dilationRadius = 1,
+            behaviorNeutralFaceOnlyFastPaths = false
+        )
+        val optimized = PrivacyOcclusionResolver.resolveMasks(
+            persons = listOf(selectedA, selectedB, unselected),
+            selectedPersonIds = setOf(0, 1),
+            applyDilationToPrivacyTargets = true,
+            dilationRadius = 1,
+            behaviorNeutralFaceOnlyFastPaths = true
+        )
+
+        assertResolvedMasksEqual(historical, optimized)
+    }
+
     @Test
     fun testCase1_ActiveSelectedTargetNeverCarvedByUnselectedPerson() {
         // Selected Person A is ACTIVE: covers (x: 2..7, y: 2..7)

@@ -161,6 +161,13 @@
         "p95_ms": 19.0,
         "max_ms": 52.0
       },
+      "face_privacy_resolve": {
+        "count": 751,
+        "avg_ms": 36.52862849533955,
+        "p50_ms": 35.0,
+        "p95_ms": 47.0,
+        "max_ms": 98.0
+      },
       "face_temporal_class": {
         "count": 747,
         "avg_ms": 13.275431159303881,
@@ -278,6 +285,13 @@
       "p50_ms": 11.0,
       "p95_ms": 19.0,
       "max_ms": 52.0
+    },
+    "face_privacy_resolve": {
+      "count": 751,
+      "avg_ms": 36.52862849533955,
+      "p50_ms": 35.0,
+      "p95_ms": 47.0,
+      "max_ms": 98.0
     },
     "face_temporal_class": {
       "count": 747,

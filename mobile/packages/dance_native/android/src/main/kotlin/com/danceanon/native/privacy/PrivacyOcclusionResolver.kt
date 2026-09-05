@@ -88,7 +88,8 @@ object PrivacyOcclusionResolver {
         preferFreshClassPrimary: Boolean = false,
         expectedSelectedCount: Int = 0,
         maxFallbackObservationAgeFrames: Int = 15,
-        conservativeUnobservedOccluderPolicy: Boolean = false
+        conservativeUnobservedOccluderPolicy: Boolean = false,
+        behaviorNeutralFaceOnlyFastPaths: Boolean = false
     ): ResolvedCompositorMasks {
         if (selectedPersonIds.isEmpty()) {
             return ResolvedCompositorMasks(
@@ -249,9 +250,11 @@ object PrivacyOcclusionResolver {
         // Keep per-target raw-mask geometry telemetry because it is independent of
         // occluder carving and remains useful for detecting segmentation collapse.
         if ((unselectedPersons.isEmpty() || noPotentialUnselectedBboxOccluder) && selectedPersons.size > 1) {
-            selectedPersons.forEach { target ->
-                val rawMask = target.mask ?: return@forEach
-                recordSelectedMaskGeometryHealth(target, rawMask, ptsUs)
+            if (!behaviorNeutralFaceOnlyFastPaths) {
+                selectedPersons.forEach { target ->
+                    val rawMask = target.mask ?: return@forEach
+                    recordSelectedMaskGeometryHealth(target, rawMask, ptsUs)
+                }
             }
             val rawUnion = mergeMasks(selectedPersons.mapNotNull { it.mask })
             val mergedPrivacy = if (
@@ -271,6 +274,7 @@ object PrivacyOcclusionResolver {
 
         val preCarveSelectedMasks = mutableListOf<NativeMask>()
         val effectiveSelectedMasks = mutableListOf<NativeMask>()
+        var anyAcceptedOccluder = false
 
         for (target in selectedPersons) {
             val rawMask = target.mask ?: continue
@@ -409,7 +413,7 @@ object PrivacyOcclusionResolver {
                         !suppressUnstableTinyFreshDepthCore &&
                             (usesFreshDepthCore || ownershipPixels > 0)
                     val candidateFreshEvidence = freshEvidenceByPersonId[cand.id]
-                    val decisionFields = mapOf(
+                    fun fullDecisionFields(): Map<String, Any?> = mapOf(
                         "target_id" to target.id,
                         "candidate_id" to cand.id,
                         "target_detection_index" to targetFreshEvidence?.detectionIndex,
@@ -516,7 +520,7 @@ object PrivacyOcclusionResolver {
                             level = "INFO",
                             component = "PrivacyOcclusionResolver",
                             event = "FOREGROUND_OCCLUDER_ACCEPTED",
-                            fields = decisionFields + ("occluder_id" to cand.id)
+                            fields = fullDecisionFields() + ("occluder_id" to cand.id)
                         )
                     } else {
                         // Ambiguous depth or candidate is background: PRIVACY WINS
@@ -524,13 +528,33 @@ object PrivacyOcclusionResolver {
                             level = "INFO",
                             component = "PrivacyOcclusionResolver",
                             event = "FOREGROUND_OCCLUDER_REJECTED_AMBIGUOUS",
-                            fields = decisionFields
+                            fields = if (behaviorNeutralFaceOnlyFastPaths) {
+                                // The full per-pair structure is expensive to
+                                // serialize synchronously and repeated 1833 times
+                                // on the accepted Face fixture. Keep the exact
+                                // decision evidence needed to diagnose a reject;
+                                // accepted carves retain the full structure above.
+                                mapOf(
+                                    "target_id" to target.id,
+                                    "candidate_id" to cand.id,
+                                    "bbox_overlap" to bboxOverlapRatio,
+                                    "mask_overlap" to maskOverlapRatio,
+                                    "ownership_pixels" to ownershipPixels,
+                                    "fresh_depth_core_pixels" to freshDepthCorePixels,
+                                    "target_state" to target.state.name,
+                                    "candidate_fresh" to isCandFresh,
+                                    "pts_us" to ptsUs
+                                )
+                            } else {
+                                fullDecisionFields()
+                            }
                         )
                     }
                 }
             }
 
             val effectiveMask = if (acceptedOccluderCores.isNotEmpty()) {
+                anyAcceptedOccluder = true
                 val mergedOccluderCore = mergeMasks(acceptedOccluderCores)
                 computeEffectivePrivacyMask(dilatedMask, mergedOccluderCore) ?: dilatedMask
             } else {
@@ -540,7 +564,19 @@ object PrivacyOcclusionResolver {
             // Telemetry & under-coverage verification
             val rawArea = countMaskPixels(rawMask)
             val dilatedArea = countMaskPixels(dilatedMask)
-            val effArea = countMaskPixels(effectiveMask)
+            // With no accepted carve, effectiveMask is exactly the same
+            // NativeMask instance as dilatedMask. FACE_ONLY already proves this
+            // branch before reaching the compositor, so avoid rescanning all
+            // 160x160 pixels merely to count the same area twice. Keep the
+            // historical path as the default so production FULL_BODY execution
+            // remains byte-for-byte untouched.
+            val effArea = if (
+                behaviorNeutralFaceOnlyFastPaths && acceptedOccluderCores.isEmpty()
+            ) {
+                dilatedArea
+            } else {
+                countMaskPixels(effectiveMask)
+            }
             val removedArea = (dilatedArea - effArea).coerceAtLeast(0)
             val coverageRatio = if (dilatedArea > 0) effArea.toFloat() / dilatedArea.toFloat() else 1.0f
 
@@ -550,7 +586,14 @@ object PrivacyOcclusionResolver {
             // portion of the person's bbox. NativeMask carries the mapper needed
             // to compare source-space bbox geometry with proto-space mask pixels
             // without mixing coordinate systems.
-            recordSelectedMaskGeometryHealth(target, rawMask, ptsUs, rawArea)
+            if (!behaviorNeutralFaceOnlyFastPaths) {
+                // A FACE_ONLY privacy mask intentionally occupies only the head
+                // region, so comparing it with the entire person bbox generates
+                // structural false positives (3650 warnings on the accepted KB
+                // fixture). Preserve this full-body geometry diagnostic for the
+                // historical/default resolver only.
+                recordSelectedMaskGeometryHealth(target, rawMask, ptsUs, rawArea)
+            }
 
             if (coverageRatio < 0.65f) {
                 NativeDiagnostics.event(
@@ -590,11 +633,23 @@ object PrivacyOcclusionResolver {
         }
 
         val mergedPreCarvePrivacy = mergeMasks(preCarveSelectedMasks)
-        val mergedPrivacy = mergeMasks(effectiveSelectedMasks)
-        val renderOccluder = buildSafeRenderOccluderMask(
-            preCarvePrivacy = mergedPreCarvePrivacy,
-            effectivePrivacy = mergedPrivacy
-        )
+        val mergedPrivacy: NativeMask?
+        val renderOccluder: NativeMask?
+        if (behaviorNeutralFaceOnlyFastPaths && !anyAcceptedOccluder) {
+            // Every effectiveSelectedMasks entry is the corresponding
+            // preCarveSelectedMasks entry when no foreground carve was accepted.
+            // Therefore their unions are identical and the safe render occluder
+            // is provably empty. Reuse the first union rather than rebuilding the
+            // same 160x160 mask and comparing it against itself.
+            mergedPrivacy = mergedPreCarvePrivacy
+            renderOccluder = null
+        } else {
+            mergedPrivacy = mergeMasks(effectiveSelectedMasks)
+            renderOccluder = buildSafeRenderOccluderMask(
+                preCarvePrivacy = mergedPreCarvePrivacy,
+                effectivePrivacy = mergedPrivacy
+            )
+        }
 
         val renderOccluderPixels = countMaskPixels(renderOccluder)
         if (renderOccluderPixels > 0) {
@@ -713,7 +768,10 @@ object PrivacyOcclusionResolver {
      * occluder. This guarantees that a hole approved for one selected target can
      * never subtract privacy still owned by another selected target.
      */
-    fun mergeResolvedMasks(parts: List<ResolvedCompositorMasks>): ResolvedCompositorMasks {
+    fun mergeResolvedMasks(
+        parts: List<ResolvedCompositorMasks>,
+        behaviorNeutralFaceOnlyFastPaths: Boolean = false
+    ): ResolvedCompositorMasks {
         if (parts.isEmpty()) {
             return ResolvedCompositorMasks(
                 privacyMask = null,
@@ -749,6 +807,23 @@ object PrivacyOcclusionResolver {
             }
         }
         requireCompatibleResolvedMaskContracts(allMasks)
+
+        if (behaviorNeutralFaceOnlyFastPaths && privacyParts.all { it.occluderMask == null }) {
+            // Without an input occluder, each part's reconstructed pre-carve
+            // mask is exactly its privacy mask. The historical implementation
+            // unions the same list twice and then scans both identical unions to
+            // prove the global occluder is empty. FACE_ONLY can return that same
+            // result after one union; default callers retain the old execution.
+            val effectivePrivacy = requireNotNull(
+                mergeMasks(privacyParts.map { requireNotNull(it.privacyMask) })
+            )
+            return ResolvedCompositorMasks(
+                privacyMask = effectivePrivacy,
+                occluderMask = null,
+                hasPrivacy = true,
+                hasOccluder = false
+            )
+        }
 
         val effectivePrivacy = requireNotNull(
             mergeMasks(privacyParts.map { requireNotNull(it.privacyMask) })

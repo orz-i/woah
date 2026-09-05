@@ -56,6 +56,13 @@ For pixel-motion execution-only work, also require
 `--target-work pixel_motion_frames_total --target-work-mode equal` so a candidate
 cannot win by silently running the motion tracker on fewer frames.
 
+For FACE_ONLY compositor/resolver execution work, target
+`face_privacy_resolve` directly. Its timing comes from the existing
+`facePrivacyResolve` profiler stage. Keep quality anchored to the cross-device
+exact golden, and pair the timing check with unchanged structural work such as
+detector calls / pixel-motion frames / ROI reads when the candidate does not
+intentionally change those schedules.
+
 For parallel detector execution, target `face_detector_wall` p50 instead of the
 sum-of-call `face_detector` metric. The accepted pre-parallel KB baseline aliases
 `face_detector_wall` p50 to the historical sequential detector p50 (85 ms), since

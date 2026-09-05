@@ -12,6 +12,29 @@ import kotlin.test.assertNull
 
 class ResolvedPrivacyMergeTest {
     @Test
+    fun `face only no-occluder merge fast path is byte exact`() {
+        val parts = listOf(
+            ResolvedCompositorMasks(mask(255, 64, 0, 0), null, true, false),
+            ResolvedCompositorMasks(mask(0, 128, 255, 0), null, true, false)
+        )
+
+        val historical = PrivacyOcclusionResolver.mergeResolvedMasks(
+            parts = parts,
+            behaviorNeutralFaceOnlyFastPaths = false
+        )
+        val optimized = PrivacyOcclusionResolver.mergeResolvedMasks(
+            parts = parts,
+            behaviorNeutralFaceOnlyFastPaths = true
+        )
+
+        assertEquals(historical.hasPrivacy, optimized.hasPrivacy)
+        assertEquals(historical.hasOccluder, optimized.hasOccluder)
+        assertEquals(bytes(assertNotNull(historical.privacyMask)), bytes(assertNotNull(optimized.privacyMask)))
+        assertNull(historical.occluderMask)
+        assertNull(optimized.occluderMask)
+    }
+
+    @Test
     fun `one selected target hole cannot carve another selected target privacy`() {
         // Group A originally owned pixels 0,1,2, but its resolver approved holes
         // at 1 and 2. Group B still owns pixel 1. The globally safe occluder must
