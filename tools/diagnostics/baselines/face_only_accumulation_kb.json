@@ -1,13 +1,14 @@
 {
   "schema_version": 2,
-  "name": "face_only_accumulation_kb_515b201",
-  "source_commit": "515b201633532fbd766c5c2faba4f8af0d6310ca",
+  "name": "face_only_accumulation_kb_ca3d242",
+  "source_commit": "ca3d242a8653a643b075bd63962a828b5e7b661d",
   "source_devices": [
     "KB2000"
   ],
   "source_bundles": [
     "logs\\woah_diag_20260905_071138_20260905_070119_8b74226d.zip",
-    "logs\\woah_diag_20260905_083332_20260905_082502_404a5341.zip"
+    "logs\\woah_diag_20260905_083332_20260905_082502_404a5341.zip",
+    "logs\\woah_diag_20260905_133127_20260905_132504_f76b8d70.zip"
   ],
   "performance_stage_sources": {
     "face_roi": {
@@ -15,6 +16,36 @@
       "accepted_commit": "515b201633532fbd766c5c2faba4f8af0d6310ca",
       "bundle": "logs\\woah_diag_20260905_083332_20260905_082502_404a5341.zip",
       "note": "Face ROI accepted from the combined KB batch; the fresh-depth-core resolver experiment in that measured commit was reverted after missing the frozen p50 promotion threshold."
+    },
+    "canonical": {
+      "measured_commit": "cff421497382e1fcbdfb8f7a8e3eee3728d829d7",
+      "accepted_commit": "ca3d242a8653a643b075bd63962a828b5e7b661d",
+      "bundle": "logs\\woah_diag_20260905_133127_20260905_132504_f76b8d70.zip",
+      "note": "Integer-luma/fused-chroma candidate measured canonical p50 54->53ms (1.85%) and was reverted; canonical performance baseline intentionally remains at the prior accepted value."
+    },
+    "face_reference_tracking": {
+      "measured_commit": "cff421497382e1fcbdfb8f7a8e3eee3728d829d7",
+      "accepted_commit": "ca3d242a8653a643b075bd63962a828b5e7b661d",
+      "bundle": "logs\\woah_diag_20260905_133127_20260905_132504_f76b8d70.zip",
+      "note": "First real-device transition baseline after disabling the legacy adaptive shadow matrix on deterministic Face CPU-primary; no historical same-name stage exists, so no fabricated percentage comparison."
+    },
+    "face_temporal_class": {
+      "measured_commit": "cff421497382e1fcbdfb8f7a8e3eee3728d829d7",
+      "accepted_commit": "ca3d242a8653a643b075bd63962a828b5e7b661d",
+      "bundle": "logs\\woah_diag_20260905_133127_20260905_132504_f76b8d70.zip",
+      "note": "Warped-support reuse accepted on KB: p50 14.035052->3.909323ms (72.15%) with exact temporal evidence and CPU4T frame count preserved."
+    },
+    "face_privacy_resolve": {
+      "measured_commit": "cff421497382e1fcbdfb8f7a8e3eee3728d829d7",
+      "accepted_commit": "ca3d242a8653a643b075bd63962a828b5e7b661d",
+      "bundle": "logs\\woah_diag_20260905_133127_20260905_132504_f76b8d70.zip",
+      "note": "Async native diagnostics plus accepted batch reduced facePrivacyResolve p50 22->18ms (18.18%) while ROI reads and exact quality remained unchanged."
+    },
+    "face_privacy": {
+      "measured_commit": "cff421497382e1fcbdfb8f7a8e3eee3728d829d7",
+      "accepted_commit": "ca3d242a8653a643b075bd63962a828b5e7b661d",
+      "bundle": "logs\\woah_diag_20260905_133127_20260905_132504_f76b8d70.zip",
+      "note": "Accepted remaining batch reduced Face-only privacy p50 139->102ms (26.62%); canonical conversion is outside this stage and its low-yield candidate was reverted separately."
     }
   },
   "quality": {
@@ -142,6 +173,13 @@
         "p95_ms": 5.0,
         "max_ms": 155.0
       },
+      "face_reference_tracking": {
+        "count": 751,
+        "avg_ms": 50.48735019973369,
+        "p50_ms": 50.0,
+        "p95_ms": 63.0,
+        "max_ms": 221.0
+      },
       "face_roi": {
         "count": 751,
         "avg_ms": 20.00798934753662,
@@ -172,24 +210,24 @@
       },
       "face_privacy_resolve": {
         "count": 751,
-        "avg_ms": 25.51797603195739,
-        "p50_ms": 22.0,
-        "p95_ms": 41.0,
-        "max_ms": 54.0
+        "avg_ms": 18.41011984021305,
+        "p50_ms": 18.0,
+        "p95_ms": 26.0,
+        "max_ms": 39.0
       },
       "face_temporal_class": {
         "count": 747,
-        "avg_ms": 15.651377935742971,
-        "p50_ms": 14.035052,
-        "p95_ms": 23.233594,
-        "max_ms": 35.258854
+        "avg_ms": 4.266645834002677,
+        "p50_ms": 3.909323,
+        "p95_ms": 5.311459,
+        "max_ms": 55.039792
       },
       "face_privacy": {
         "count": 751,
-        "avg_ms": 156.57656458055925,
-        "p50_ms": 139.0,
-        "p95_ms": 267.0,
-        "max_ms": 400.0
+        "avg_ms": 114.91344873501997,
+        "p50_ms": 102.0,
+        "p95_ms": 172.0,
+        "max_ms": 249.0
       }
     }
   },
@@ -221,7 +259,9 @@
       },
       "pixel_motion_rejected_frames_total": 452,
       "face_roi_reads_total": 3769,
-      "cpu4t_frames_total": 751
+      "cpu4t_frames_total": 751,
+      "adaptive_shadow_matrix_enabled": false,
+      "adaptive_shadow_tracker_steps": 0
     }
   },
   "source_device": "KB2000",
@@ -268,6 +308,13 @@
       "p95_ms": 5.0,
       "max_ms": 155.0
     },
+    "face_reference_tracking": {
+      "count": 751,
+      "avg_ms": 50.48735019973369,
+      "p50_ms": 50.0,
+      "p95_ms": 63.0,
+      "max_ms": 221.0
+    },
     "face_roi": {
       "count": 751,
       "avg_ms": 20.00798934753662,
@@ -298,24 +345,24 @@
     },
     "face_privacy_resolve": {
       "count": 751,
-      "avg_ms": 25.51797603195739,
-      "p50_ms": 22.0,
-      "p95_ms": 41.0,
-      "max_ms": 54.0
+      "avg_ms": 18.41011984021305,
+      "p50_ms": 18.0,
+      "p95_ms": 26.0,
+      "max_ms": 39.0
     },
     "face_temporal_class": {
       "count": 747,
-      "avg_ms": 15.651377935742971,
-      "p50_ms": 14.035052,
-      "p95_ms": 23.233594,
-      "max_ms": 35.258854
+      "avg_ms": 4.266645834002677,
+      "p50_ms": 3.909323,
+      "p95_ms": 5.311459,
+      "max_ms": 55.039792
     },
     "face_privacy": {
       "count": 751,
-      "avg_ms": 156.57656458055925,
-      "p50_ms": 139.0,
-      "p95_ms": 267.0,
-      "max_ms": 400.0
+      "avg_ms": 114.91344873501997,
+      "p50_ms": 102.0,
+      "p95_ms": 172.0,
+      "max_ms": 249.0
     }
   },
   "observability": {
@@ -345,6 +392,8 @@
     },
     "pixel_motion_rejected_frames_total": 452,
     "face_roi_reads_total": 3769,
-    "cpu4t_frames_total": 751
+    "cpu4t_frames_total": 751,
+    "adaptive_shadow_matrix_enabled": false,
+    "adaptive_shadow_tracker_steps": 0
   }
 }
