@@ -28,7 +28,7 @@ internal class CrossDeviceTrackingDiagnostics(
     faceOnlyPersonIds: Set<Int>,
     identityProtectedTrackIds: Set<Int> = fullBodyPersonIds + faceOnlyPersonIds,
     private val adaptiveConfigs: List<AdaptiveConfig> = DEFAULT_ADAPTIVE_CONFIGS,
-    private val enableAdaptiveShadowMatrix: Boolean = true,
+    private val enableAdaptiveShadowMatrix: Boolean = false,
     private val emitStructuredDiagnostics: Boolean = true
 ) {
     internal data class AdaptiveConfig(

@@ -441,12 +441,13 @@ class ExportPipeline(
                         } else {
                             fullBodyPersonIds
                         },
-                        // The deterministic Face primary consumes only cpuFullTracked.
-                        // Five adaptive TrackManagers were retained solely for an older
-                        // cadence experiment and never feed identity/privacy/rendering.
-                        // Keep that historical diagnostic matrix everywhere else, but
-                        // do not pay for it on the accepted deterministic Face path.
-                        enableAdaptiveShadowMatrix = !preferDebugFaceDeterministicCpuPrimary
+                        // Five adaptive TrackManagers belong to an older scheduler experiment.
+                        // They never feed production identity, privacy, or rendering, while the
+                        // CPU-full tracker below is the cross-device identity reference for both
+                        // Face and Full Body. Keep the adaptive scheduler implementation available
+                        // for explicit tests/experiments, but do not run the matrix in standard
+                        // debug exports.
+                        enableAdaptiveShadowMatrix = false
                     )
                 } else {
                     null

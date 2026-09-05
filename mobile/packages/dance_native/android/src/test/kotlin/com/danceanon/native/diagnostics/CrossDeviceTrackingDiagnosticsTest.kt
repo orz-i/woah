@@ -270,4 +270,65 @@ class CrossDeviceTrackingDiagnosticsTest {
         assertEquals("PROTECTED_GPU_CANDIDATE_COUNT", decision.reason)
         assertEquals(0, decision.metrics.minLocalCandidateCount)
     }
+
+    @Test
+    fun disablingAdaptiveMatrixPreservesCpuFullTrackingExactly() {
+        val adaptiveOn = CrossDeviceTrackingDiagnostics(
+            jobId = "adaptive-on",
+            fullBodyPersonIds = setOf(7),
+            faceOnlyPersonIds = emptySet(),
+            identityProtectedTrackIds = setOf(7),
+            enableAdaptiveShadowMatrix = true,
+            emitStructuredDiagnostics = false
+        )
+        val adaptiveOff = CrossDeviceTrackingDiagnostics(
+            jobId = "adaptive-off",
+            fullBodyPersonIds = setOf(7),
+            faceOnlyPersonIds = emptySet(),
+            identityProtectedTrackIds = setOf(7),
+            enableAdaptiveShadowMatrix = false,
+            emitStructuredDiagnostics = false
+        )
+
+        repeat(12) { frame ->
+            val shouldInfer = frame == 0 || frame % 3 != 2
+            val shift = frame * 4f
+            val detections = listOf(
+                PersonDetection(FloatRect(shift, 0f, 100f + shift, 200f), 0.90f),
+                PersonDetection(FloatRect(300f + shift, 0f, 400f + shift, 200f), 0.80f)
+            )
+            val productionDetections = if (shouldInfer) detections else null
+            val cpuDetections = if (shouldInfer) detections else null
+            val assignedIds = if (frame == 0) listOf(7, 3) else null
+
+            val withAdaptive = adaptiveOn.recordFrame(
+                ptsUs = frame * 33_366L,
+                shouldInfer = shouldInfer,
+                productionDetections = productionDetections,
+                productionTracked = null,
+                cpuMt4Detections = cpuDetections,
+                initialAssignedIds = assignedIds
+            )
+            val withoutAdaptive = adaptiveOff.recordFrame(
+                ptsUs = frame * 33_366L,
+                shouldInfer = shouldInfer,
+                productionDetections = productionDetections,
+                productionTracked = null,
+                cpuMt4Detections = cpuDetections,
+                initialAssignedIds = assignedIds
+            )
+
+            assertEquals(
+                CrossDeviceTrackingDiagnostics.trackSignature(requireNotNull(withAdaptive)),
+                CrossDeviceTrackingDiagnostics.trackSignature(requireNotNull(withoutAdaptive)),
+                "CPU-full tracking changed at frame $frame"
+            )
+        }
+
+        assertTrue(adaptiveOn.isAdaptiveShadowMatrixEnabled())
+        assertFalse(adaptiveOff.isAdaptiveShadowMatrixEnabled())
+        assertEquals(12L * CrossDeviceTrackingDiagnostics.DEFAULT_ADAPTIVE_CONFIGS.size,
+            adaptiveOn.getAdaptiveShadowTrackerSteps())
+        assertEquals(0L, adaptiveOff.getAdaptiveShadowTrackerSteps())
+    }
 }
