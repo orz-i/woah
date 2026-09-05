@@ -11,7 +11,6 @@ import com.danceanon.native.tracking.TrackManager
 import com.danceanon.native.tracking.TrackedPerson
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.util.IdentityHashMap
 
 data class ResolvedCompositorMasks(
     val privacyMask: NativeMask?,
@@ -31,11 +30,6 @@ data class OcclusionEvidence(
 )
 
 object PrivacyOcclusionResolver {
-
-    private data class FreshDepthCoreCacheEntry(
-        val mask: NativeMask,
-        val totalPixels: Int
-    )
 
     private const val OWNERSHIP_MARGIN = 0.12f
     private const val MIN_UNSELECTED_PROBABILITY = 0.50f
@@ -95,12 +89,8 @@ object PrivacyOcclusionResolver {
         expectedSelectedCount: Int = 0,
         maxFallbackObservationAgeFrames: Int = 15,
         conservativeUnobservedOccluderPolicy: Boolean = false,
-        behaviorNeutralFaceOnlyFastPaths: Boolean = false,
-        reuseFaceOnlyFreshDepthCores: Boolean = behaviorNeutralFaceOnlyFastPaths
+        behaviorNeutralFaceOnlyFastPaths: Boolean = false
     ): ResolvedCompositorMasks {
-        require(!reuseFaceOnlyFreshDepthCores || behaviorNeutralFaceOnlyFastPaths) {
-            "Fresh-depth-core reuse is restricted to behavior-neutral FACE_ONLY fast paths"
-        }
         if (selectedPersonIds.isEmpty()) {
             return ResolvedCompositorMasks(
                 privacyMask = null,
@@ -284,11 +274,6 @@ object PrivacyOcclusionResolver {
 
         val preCarveSelectedMasks = mutableListOf<NativeMask>()
         val effectiveSelectedMasks = mutableListOf<NativeMask>()
-        val freshDepthCoreCache = if (reuseFaceOnlyFreshDepthCores) {
-            IdentityHashMap<NativeMask, FreshDepthCoreCacheEntry>()
-        } else {
-            null
-        }
         var anyAcceptedOccluder = false
 
         for (target in selectedPersons) {
@@ -385,25 +370,10 @@ object PrivacyOcclusionResolver {
                     }
                     if (maxOf(maskOverlapRatio, renderVisibleMaskOverlapRatio) <= 0.02f) continue
 
-                    val freshDepthCoreEntry = if (useFreshDepthCore && freshDepthCoreCache != null) {
-                        freshDepthCoreCache[candMask] ?: run {
-                            val core = buildFreshDepthCore(candMask, occluderErosionRadius)
-                            FreshDepthCoreCacheEntry(
-                                mask = core,
-                                totalPixels = countMaskPixels(core)
-                            ).also { freshDepthCoreCache[candMask] = it }
-                        }
+                    val freshDepthCore = if (useFreshDepthCore) {
+                        buildFreshDepthCore(candMask, occluderErosionRadius)
                     } else {
                         null
-                    }
-                    // Preserve the historical/default resolver path exactly:
-                    // build the per-pair core here, intersect it below, then
-                    // count its total pixels afterwards. Only FACE_ONLY cache
-                    // mode creates/stores an entry before target-specific work.
-                    val freshDepthCore = when {
-                        !useFreshDepthCore -> null
-                        freshDepthCoreEntry != null -> freshDepthCoreEntry.mask
-                        else -> buildFreshDepthCore(candMask, occluderErosionRadius)
                     }
                     val freshDepthCorePixels = countMaskIntersectionPixels(
                         maskA = dilatedMask,
@@ -411,11 +381,7 @@ object PrivacyOcclusionResolver {
                         thresholdA = RENDER_VISIBLE_MASK_THRESHOLD_BYTE,
                         thresholdB = 128
                     )
-                    val freshDepthCoreTotalPixels = when {
-                        freshDepthCore == null -> 0
-                        freshDepthCoreEntry != null -> freshDepthCoreEntry.totalPixels
-                        else -> countMaskPixels(freshDepthCore)
-                    }
+                    val freshDepthCoreTotalPixels = countMaskPixels(freshDepthCore)
                     val ownershipMask = if (isCandFresh) {
                         computeUnselectedOwnershipMask(
                             selectedMask = rawMask,
