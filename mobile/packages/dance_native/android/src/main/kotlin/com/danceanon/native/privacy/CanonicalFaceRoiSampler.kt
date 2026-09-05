@@ -25,6 +25,28 @@ internal object CanonicalFaceRoiSampler {
         internal val row0 = IntArray(outputSize)
         internal val row1 = IntArray(outputSize)
         internal val wy1 = IntArray(outputSize)
+        internal var canonicalInput = IntArray(0)
+    }
+
+    fun prepareCanonicalInput(
+        canonicalRgbaBottomUp: ByteBuffer,
+        modelSize: Int,
+        workspace: Workspace
+    ): IntArray {
+        require(modelSize > 0)
+        val pixelCount = modelSize * modelSize
+        val requiredInputBytes = pixelCount * 4
+        require(canonicalRgbaBottomUp.capacity() >= requiredInputBytes)
+        if (workspace.canonicalInput.size != pixelCount) {
+            workspace.canonicalInput = IntArray(pixelCount)
+        }
+        val inputInts = canonicalRgbaBottomUp.duplicate().apply {
+            position(0)
+            limit(requiredInputBytes)
+            order(ByteOrder.LITTLE_ENDIAN)
+        }.asIntBuffer()
+        inputInts.get(workspace.canonicalInput, 0, pixelCount)
+        return workspace.canonicalInput
     }
 
     fun sampleTopDown(
@@ -33,7 +55,8 @@ internal object CanonicalFaceRoiSampler {
         sourceRect: FloatRect,
         outputSize: Int,
         output: ByteBuffer,
-        workspace: Workspace = Workspace(outputSize)
+        workspace: Workspace = Workspace(outputSize),
+        preparedCanonicalInput: IntArray? = null
     ): ByteBuffer {
         require(outputSize > 0)
         require(workspace.outputSize == outputSize)
@@ -42,12 +65,17 @@ internal object CanonicalFaceRoiSampler {
         val requiredOutputBytes = outputSize * outputSize * 4
         require(canonicalRgbaBottomUp.capacity() >= requiredInputBytes)
         require(output.capacity() >= requiredOutputBytes)
+        require(preparedCanonicalInput == null || preparedCanonicalInput.size >= modelSize * modelSize)
 
-        val inputInts = canonicalRgbaBottomUp.duplicate().apply {
-            position(0)
-            limit(requiredInputBytes)
-            order(ByteOrder.LITTLE_ENDIAN)
-        }.asIntBuffer()
+        val inputInts = if (preparedCanonicalInput == null) {
+            canonicalRgbaBottomUp.duplicate().apply {
+                position(0)
+                limit(requiredInputBytes)
+                order(ByteOrder.LITTLE_ENDIAN)
+            }.asIntBuffer()
+        } else {
+            null
+        }
         val dstInts = output.duplicate().apply {
             clear()
             limit(requiredOutputBytes)
@@ -85,27 +113,50 @@ internal object CanonicalFaceRoiSampler {
         }
 
         var dstIndex = 0
-        for (outY in 0 until outputSize) {
-            val row0 = workspace.row0[outY]
-            val row1 = workspace.row1[outY]
-            val wy1 = workspace.wy1[outY]
-            val wy0 = FP - wy1
-            for (outX in 0 until outputSize) {
-                val x0 = workspace.x0[outX]
-                val x1 = workspace.x1[outX]
-                val wx1 = workspace.wx1[outX]
-                val wx0 = FP - wx1
-
-                val p00 = inputInts.get(row0 + x0)
-                val p10 = inputInts.get(row0 + x1)
-                val p01 = inputInts.get(row1 + x0)
-                val p11 = inputInts.get(row1 + x1)
-
-                val r = bilerpChannel(p00, p10, p01, p11, 0, wx0, wx1, wy0, wy1)
-                val g = bilerpChannel(p00, p10, p01, p11, 8, wx0, wx1, wy0, wy1)
-                val b = bilerpChannel(p00, p10, p01, p11, 16, wx0, wx1, wy0, wy1)
-                val a = bilerpChannel(p00, p10, p01, p11, 24, wx0, wx1, wy0, wy1)
-                dstInts.put(dstIndex++, r or (g shl 8) or (b shl 16) or (a shl 24))
+        if (preparedCanonicalInput != null) {
+            for (outY in 0 until outputSize) {
+                val row0 = workspace.row0[outY]
+                val row1 = workspace.row1[outY]
+                val wy1 = workspace.wy1[outY]
+                val wy0 = FP - wy1
+                for (outX in 0 until outputSize) {
+                    val x0 = workspace.x0[outX]
+                    val x1 = workspace.x1[outX]
+                    val wx1 = workspace.wx1[outX]
+                    val wx0 = FP - wx1
+                    val p00 = preparedCanonicalInput[row0 + x0]
+                    val p10 = preparedCanonicalInput[row0 + x1]
+                    val p01 = preparedCanonicalInput[row1 + x0]
+                    val p11 = preparedCanonicalInput[row1 + x1]
+                    val r = bilerpChannel(p00, p10, p01, p11, 0, wx0, wx1, wy0, wy1)
+                    val g = bilerpChannel(p00, p10, p01, p11, 8, wx0, wx1, wy0, wy1)
+                    val b = bilerpChannel(p00, p10, p01, p11, 16, wx0, wx1, wy0, wy1)
+                    val a = bilerpChannel(p00, p10, p01, p11, 24, wx0, wx1, wy0, wy1)
+                    dstInts.put(dstIndex++, r or (g shl 8) or (b shl 16) or (a shl 24))
+                }
+            }
+        } else {
+            val directInput = requireNotNull(inputInts)
+            for (outY in 0 until outputSize) {
+                val row0 = workspace.row0[outY]
+                val row1 = workspace.row1[outY]
+                val wy1 = workspace.wy1[outY]
+                val wy0 = FP - wy1
+                for (outX in 0 until outputSize) {
+                    val x0 = workspace.x0[outX]
+                    val x1 = workspace.x1[outX]
+                    val wx1 = workspace.wx1[outX]
+                    val wx0 = FP - wx1
+                    val p00 = directInput.get(row0 + x0)
+                    val p10 = directInput.get(row0 + x1)
+                    val p01 = directInput.get(row1 + x0)
+                    val p11 = directInput.get(row1 + x1)
+                    val r = bilerpChannel(p00, p10, p01, p11, 0, wx0, wx1, wy0, wy1)
+                    val g = bilerpChannel(p00, p10, p01, p11, 8, wx0, wx1, wy0, wy1)
+                    val b = bilerpChannel(p00, p10, p01, p11, 16, wx0, wx1, wy0, wy1)
+                    val a = bilerpChannel(p00, p10, p01, p11, 24, wx0, wx1, wy0, wy1)
+                    dstInts.put(dstIndex++, r or (g shl 8) or (b shl 16) or (a shl 24))
+                }
             }
         }
         output.position(0)

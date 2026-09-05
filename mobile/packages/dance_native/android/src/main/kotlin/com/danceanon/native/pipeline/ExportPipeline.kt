@@ -549,6 +549,7 @@ class ExportPipeline(
                 var facePixelMotionTrackFrameCount = 0L
                 var facePartialOcclusionPixelMotionTrackFrameCount = 0L
                 var facePixelMotionRejectedTrackFrameCount = 0L
+                var faceRoiReadCount = 0L
                 var faceOcclusionHoldTrackFrameCount = 0L
                 var faceOcclusionReacquireDetectorTrackFrameCount = 0L
                 var faceAppearanceReacquireDetectorTrackFrameCount = 0L
@@ -1382,6 +1383,7 @@ class ExportPipeline(
                             facePartialOcclusionPixelMotionTrackFrameCount +=
                                 faceOnlyFrameResult.partialOcclusionPixelMotionTrackIds.size
                             facePixelMotionRejectedTrackFrameCount += faceOnlyFrameResult.pixelMotionRejectedTrackIds.size
+                            faceRoiReadCount += faceOnlyFrameResult.roiReadCount
                             faceOcclusionHoldTrackFrameCount += faceOnlyFrameResult.occlusionHoldTrackIds.size
                             faceOcclusionReacquireDetectorTrackFrameCount +=
                                 faceOnlyFrameResult.occlusionReacquireDetectorTrackIds.size
@@ -1931,6 +1933,7 @@ class ExportPipeline(
                             "face_pixel_motion_track_frames" to facePixelMotionTrackFrameCount,
                             "face_partial_occlusion_pixel_motion_track_frames" to facePartialOcclusionPixelMotionTrackFrameCount,
                             "face_pixel_motion_rejected_track_frames" to facePixelMotionRejectedTrackFrameCount,
+                            "face_roi_read_count" to faceRoiReadCount,
                             "face_occlusion_hold_track_frames" to faceOcclusionHoldTrackFrameCount,
                             "face_occlusion_reacquire_detector_track_frames" to faceOcclusionReacquireDetectorTrackFrameCount,
                             "face_appearance_reacquire_detector_track_frames" to faceAppearanceReacquireDetectorTrackFrameCount,

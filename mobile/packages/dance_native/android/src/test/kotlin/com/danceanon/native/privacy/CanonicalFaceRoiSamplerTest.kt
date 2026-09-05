@@ -65,6 +65,50 @@ class CanonicalFaceRoiSamplerTest {
     }
 
     @Test
+    fun `prepared canonical input matches direct sampler byte exactly`() {
+        val mapper = ModelCoordinateMapper(srcWidth = 37, srcHeight = 23, modelInputSize = 40, protoSize = 10)
+        val input = ByteBuffer.allocateDirect(40 * 40 * 4)
+        repeat(40 * 40) { pixel ->
+            input.put(((pixel * 11 + 3) and 0xff).toByte())
+            input.put(((pixel * 5 + 17) and 0xff).toByte())
+            input.put(((pixel * 13 + 29) and 0xff).toByte())
+            input.put(((pixel * 7 + 251) and 0xff).toByte())
+        }
+        input.position(17)
+        val originalPosition = input.position()
+        val originalOrder = input.order()
+        val workspace = CanonicalFaceRoiSampler.Workspace(13)
+        val prepared = CanonicalFaceRoiSampler.prepareCanonicalInput(input, 40, workspace)
+        assertEquals(originalPosition, input.position())
+        assertEquals(originalOrder, input.order())
+
+        val rects = listOf(
+            FloatRect(1.25f, 0.5f, 20.75f, 15.5f),
+            FloatRect(12.5f, 4.25f, 36.5f, 22.5f),
+            FloatRect(0f, 0f, 37f, 23f)
+        )
+        rects.forEachIndexed { index, rect ->
+            val direct = ByteBuffer.allocateDirect(13 * 13 * 4)
+            val cached = ByteBuffer.allocateDirect(13 * 13 * 4)
+            CanonicalFaceRoiSampler.sampleTopDown(input, mapper, rect, 13, direct, workspace)
+            CanonicalFaceRoiSampler.sampleTopDown(
+                canonicalRgbaBottomUp = input,
+                mapper = mapper,
+                sourceRect = rect,
+                outputSize = 13,
+                output = cached,
+                workspace = workspace,
+                preparedCanonicalInput = prepared
+            )
+            for (byteIndex in 0 until 13 * 13 * 4) {
+                assertEquals(direct.get(byteIndex), cached.get(byteIndex), "roi=$index byte=$byteIndex")
+            }
+        }
+        assertEquals(originalPosition, input.position())
+        assertEquals(originalOrder, input.order())
+    }
+
+    @Test
     fun `optimized sampler matches scalar reference for varied deterministic rois`() {
         val mapper = ModelCoordinateMapper(srcWidth = 37, srcHeight = 23, modelInputSize = 40, protoSize = 10)
         val input = ByteBuffer.allocateDirect(40 * 40 * 4)

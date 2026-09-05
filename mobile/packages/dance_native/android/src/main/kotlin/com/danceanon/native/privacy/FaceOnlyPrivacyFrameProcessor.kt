@@ -65,6 +65,7 @@ data class FaceOnlyPrivacyFrameResult(
     val evidenceGapReacquireDetectorZeroObservationTrackIds: Set<Int>,
     val evidenceGapReacquireDetectorRejectedTrackIds: Set<Int>,
     val pixelMotionMs: Double,
+    val roiReadCount: Int,
     val roiReadbackMs: Double,
     val maskBuildMs: Double,
     val privacyResolveMs: Double,
@@ -112,7 +113,8 @@ class FaceOnlyPrivacyFrameProcessor(
         texMatrix: FloatArray,
         textureType: SourceTextureType,
         plan: FaceHeadRoiPlan,
-        canonicalModelRgbaBottomUp: ByteBuffer?
+        canonicalModelRgbaBottomUp: ByteBuffer?,
+        preparedCanonicalInput: IntArray? = null
     ): RoiPixels {
         if (canonicalModelRgbaBottomUp != null) {
             return RoiPixels(
@@ -122,7 +124,8 @@ class FaceOnlyPrivacyFrameProcessor(
                     sourceRect = plan.sourceRect,
                     outputSize = FACE_ROI_SIZE,
                     output = canonicalRoiBuffer,
-                    workspace = canonicalRoiWorkspace
+                    workspace = canonicalRoiWorkspace,
+                    preparedCanonicalInput = preparedCanonicalInput
                 ),
                 source = "CANONICAL_MODEL_RGBA"
             )
@@ -597,6 +600,7 @@ class FaceOnlyPrivacyFrameProcessor(
                 evidenceGapReacquireDetectorZeroObservationTrackIds = emptySet(),
                 evidenceGapReacquireDetectorRejectedTrackIds = emptySet(),
                 pixelMotionMs = 0.0,
+                roiReadCount = 0,
                 roiReadbackMs = 0.0,
                 maskBuildMs = 0.0,
                 privacyResolveMs = 0.0,
@@ -918,9 +922,25 @@ class FaceOnlyPrivacyFrameProcessor(
         val evidenceGapReacquireDetectorRejectedTrackIds = linkedSetOf<Int>()
         var extraOcclusionDetectorCalls = 0
         var pixelMotionMs = 0.0
+        var roiReadCount = 0
         var roiReadbackMs = 0.0
         var maskBuildMs = 0.0
         val stickerPlacements = mutableListOf<FaceStickerPlacement>()
+
+        var preparedCanonicalInput: IntArray? = null
+        fun getPreparedCanonicalInput(): IntArray? {
+            val canonical = canonicalModelRgbaBottomUp ?: return null
+            preparedCanonicalInput?.let { return it }
+            val prepareStartNs = System.nanoTime()
+            val prepared = CanonicalFaceRoiSampler.prepareCanonicalInput(
+                canonicalRgbaBottomUp = canonical,
+                modelSize = mapper.modelInputSize,
+                workspace = canonicalRoiWorkspace
+            )
+            roiReadbackMs += (System.nanoTime() - prepareStartNs) / 1_000_000.0
+            preparedCanonicalInput = prepared
+            return prepared
+        }
 
         val preloadedRoiPixelsByTrackId = linkedMapOf<Int, RoiPixels>()
         val batchedDetectorResultByTrackId = linkedMapOf<Int, FaceLocatorResult>()
@@ -933,12 +953,14 @@ class FaceOnlyPrivacyFrameProcessor(
                 orderedDueTrackIds.forEachIndexed { index, trackId ->
                     val plan = requireNotNull(detectorPlanByTrackId[trackId])
                     val roiStartNs = System.nanoTime()
+                    roiReadCount++
                     val roiPixels = readRoiPixels(
                         frameTexture = frameTexture,
                         texMatrix = texMatrix,
                         textureType = textureType,
                         plan = plan,
-                        canonicalModelRgbaBottomUp = canonicalModelRgbaBottomUp
+                        canonicalModelRgbaBottomUp = canonicalModelRgbaBottomUp,
+                        preparedCanonicalInput = getPreparedCanonicalInput()
                     )
                     roiReadbackMs += (System.nanoTime() - roiStartNs) / 1_000_000.0
                     val copiedRgba = copyRoiForBatch(
@@ -994,12 +1016,14 @@ class FaceOnlyPrivacyFrameProcessor(
             if (plan != null && (hasRoiPixelState || dueDetectorTrackIds.contains(trackId))) {
                 val preloadedRoiPixels = preloadedRoiPixelsByTrackId[trackId]
                 val roiStartNs = if (preloadedRoiPixels == null) System.nanoTime() else 0L
+                if (preloadedRoiPixels == null) roiReadCount++
                 val roiPixels = preloadedRoiPixels ?: readRoiPixels(
                     frameTexture = frameTexture,
                     texMatrix = texMatrix,
                     textureType = textureType,
                     plan = plan,
-                    canonicalModelRgbaBottomUp = canonicalModelRgbaBottomUp
+                    canonicalModelRgbaBottomUp = canonicalModelRgbaBottomUp,
+                    preparedCanonicalInput = getPreparedCanonicalInput()
                 )
                 roiRgba = roiPixels.rgba
                 roiPixelSource = roiPixels.source
@@ -1201,12 +1225,14 @@ class FaceOnlyPrivacyFrameProcessor(
                         appearanceReacquireDetectorTrackIds += trackId
                     }
                     val roiStartNs = System.nanoTime()
+                    roiReadCount++
                     val reacquirePixels = readRoiPixels(
                         frameTexture = frameTexture,
                         texMatrix = texMatrix,
                         textureType = textureType,
                         plan = reacquirePlan,
-                        canonicalModelRgbaBottomUp = canonicalModelRgbaBottomUp
+                        canonicalModelRgbaBottomUp = canonicalModelRgbaBottomUp,
+                        preparedCanonicalInput = getPreparedCanonicalInput()
                     )
                     val reacquireRgba = reacquirePixels.rgba
                     roiReadbackMs += (System.nanoTime() - roiStartNs) / 1_000_000.0
@@ -1598,6 +1624,7 @@ class FaceOnlyPrivacyFrameProcessor(
             evidenceGapReacquireDetectorZeroObservationTrackIds = evidenceGapReacquireDetectorZeroObservationTrackIds,
             evidenceGapReacquireDetectorRejectedTrackIds = evidenceGapReacquireDetectorRejectedTrackIds,
             pixelMotionMs = pixelMotionMs,
+            roiReadCount = roiReadCount,
             roiReadbackMs = roiReadbackMs,
             maskBuildMs = maskBuildMs,
             privacyResolveMs = privacyResolveMs,
