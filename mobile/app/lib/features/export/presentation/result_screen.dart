@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
-import '../../../core/widgets/main_flow_header.dart';
 import '../../../repositories/native_processing_repository.dart';
 import '../../import_video/presentation/widgets/video_preview_player.dart';
 import '../domain/export_state.dart';
@@ -172,106 +171,63 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       child: Scaffold(
         backgroundColor: AppTheme.warmBackground,
         body: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              _buildTopBar(),
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 28),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (outputPath.isNotEmpty)
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.black,
-                            borderRadius: BorderRadius.circular(28),
-                            border: Border.all(color: AppTheme.warmBorder),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color(0x16000000),
-                                blurRadius: 26,
-                                offset: Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: VideoPreviewPlayer(
-                            videoPath: outputPath,
-                            aspectRatio:
-                                project?.videoInfo.aspectRatio ?? 16 / 9,
-                          ),
+              SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(18, 14, 18, 190),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (outputPath.isNotEmpty)
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black,
+                          borderRadius: BorderRadius.circular(28),
+                          border: Border.all(color: AppTheme.warmBorder),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x16000000),
+                              blurRadius: 26,
+                              offset: Offset(0, 8),
+                            ),
+                          ],
                         ),
-                      const SizedBox(height: 18),
-                      _buildSaveStatus(fileSizeMb),
-                      const SizedBox(height: 20),
-                      _buildShareButton(),
-                      const SizedBox(height: 12),
-                      _buildNextButton(),
-                      const SizedBox(height: 24),
-                      const Text(
-                        '更多选项',
-                        style: TextStyle(
-                          color: AppTheme.warmTextPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
+                        clipBehavior: Clip.antiAlias,
+                        child: VideoPreviewPlayer(
+                          videoPath: outputPath,
+                          aspectRatio: project?.videoInfo.aspectRatio ?? 16 / 9,
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _ResultOptionCard(
-                              icon: Icons.folder_open_rounded,
-                              label: _isOpening ? '正在打开…' : '查看文件',
-                              onTap: _isOpening ? null : _openSavedVideo,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _ResultOptionCard(
-                              icon: Icons.link_rounded,
-                              label: '复制保存地址',
-                              onTap: _isSaving ? null : _copySavedUri,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _ResultOptionCard(
-                              icon: Icons.description_outlined,
-                              label: _isExportingDiagnostics
-                                  ? '正在准备…'
-                                  : '保存诊断包',
-                              onTap: _isExportingDiagnostics
-                                  ? null
-                                  : _exportDiagnostics,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 26),
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.shield_outlined,
-                            size: 15,
+                    const SizedBox(height: 18),
+                    _buildSaveStatus(fileSizeMb),
+                    const SizedBox(height: 26),
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.shield_outlined,
+                          size: 15,
+                          color: AppTheme.warmTextMuted,
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          '视频已安全保存到你的设备',
+                          style: TextStyle(
                             color: AppTheme.warmTextMuted,
+                            fontSize: 11,
                           ),
-                          SizedBox(width: 6),
-                          Text(
-                            '视频已安全保存到你的设备',
-                            style: TextStyle(
-                              color: AppTheme.warmTextMuted,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 8,
+                child: _buildSuccessActionCluster(),
               ),
             ],
           ),
@@ -280,179 +236,110 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     );
   }
 
-  Widget _buildTopBar() {
-    return MainFlowHeader(
-      title: '舞段已完成',
-      onClose: () {
-        HapticFeedback.lightImpact();
-        context.go('/');
-      },
-      trailing: PopupMenuButton<String>(
-        tooltip: '更多',
-        icon: const Icon(
-          Icons.more_vert_rounded,
-          size: 28,
-          color: AppTheme.warmTextPrimary,
-        ),
-        color: AppTheme.warmSurface,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AppTheme.warmBorder),
-        ),
-        onSelected: (value) {
-          if (value == 'diagnostics') _exportDiagnostics();
-          if (value == 'copy') _copySavedUri();
-          if (value == 'open') _openSavedVideo();
-        },
-        itemBuilder: (context) => [
-          PopupMenuItem(
-            value: 'open',
-            enabled: !_isOpening,
-            child: const Row(
-              children: [
-                Icon(
-                  Icons.folder_open_rounded,
-                  color: AppTheme.warmTextSecondary,
-                  size: 20,
-                ),
-                SizedBox(width: 12),
-                Text(
-                  '查看文件',
-                  style: TextStyle(
-                    color: AppTheme.warmTextPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+  Widget _buildSuccessActionCluster() {
+    final shareEnabled = !_isSharing && !_isSaving && _saveError == null;
+    return Center(
+      child: SizedBox(
+        width: 286,
+        height: 166,
+        child: Stack(
+          alignment: Alignment.bottomCenter,
+          children: [
+            Positioned(
+              left: 10,
+              bottom: 16,
+              child: _ResultSatelliteAction(
+                key: const ValueKey('result-next-action'),
+                icon: Icons.add_rounded,
+                tooltip: '制作下一个',
+                onTap: () {
+                  HapticFeedback.mediumImpact();
+                  context.go('/');
+                },
+              ),
             ),
-          ),
-          PopupMenuItem(
-            value: 'copy',
-            enabled: !_isSaving,
-            child: const Row(
-              children: [
-                Icon(
-                  Icons.link_rounded,
-                  color: AppTheme.warmTextSecondary,
-                  size: 20,
-                ),
-                SizedBox(width: 12),
-                Text(
-                  '复制保存地址',
-                  style: TextStyle(
-                    color: AppTheme.warmTextPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+            Positioned(
+              left: 54,
+              bottom: 88,
+              child: _ResultSatelliteAction(
+                key: const ValueKey('result-open-action'),
+                icon: Icons.folder_open_rounded,
+                tooltip: _isOpening ? '正在打开' : '查看文件',
+                onTap: _isOpening ? null : _openSavedVideo,
+              ),
             ),
-          ),
-          PopupMenuItem(
-            value: 'diagnostics',
-            enabled: !_isExportingDiagnostics,
-            child: const Row(
-              children: [
-                Icon(
-                  Icons.bug_report_outlined,
-                  color: AppTheme.warmTextSecondary,
-                  size: 20,
-                ),
-                SizedBox(width: 12),
-                Text(
-                  '导出诊断包',
-                  style: TextStyle(
-                    color: AppTheme.warmTextPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+            Positioned(
+              right: 54,
+              bottom: 88,
+              child: _ResultSatelliteAction(
+                key: const ValueKey('result-copy-action'),
+                icon: Icons.link_rounded,
+                tooltip: '复制保存地址',
+                onTap: _isSaving ? null : _copySavedUri,
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildShareButton() {
-    final enabled = !_isSharing && !_isSaving && _saveError == null;
-    return Opacity(
-      opacity: enabled ? 1 : 0.5,
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          onTap: enabled ? _shareVideo : null,
-          borderRadius: BorderRadius.circular(18),
-          child: Ink(
-            height: 58,
-            decoration: BoxDecoration(
-              gradient: AppTheme.coralActionGradient,
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x22F44848),
-                  blurRadius: 16,
-                  offset: Offset(0, 7),
-                ),
-              ],
+            Positioned(
+              right: 10,
+              bottom: 16,
+              child: _ResultSatelliteAction(
+                key: const ValueKey('result-diagnostics-action'),
+                icon: Icons.bug_report_outlined,
+                tooltip: _isExportingDiagnostics ? '正在准备诊断包' : '导出诊断包',
+                onTap: _isExportingDiagnostics ? null : _exportDiagnostics,
+              ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (_isSharing)
-                  const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
+            Positioned(
+              bottom: 0,
+              child: Semantics(
+                button: true,
+                enabled: shareEnabled,
+                label: _isSharing ? '正在分享视频' : '分享视频',
+                child: Tooltip(
+                  message: _isSharing ? '正在分享视频' : '分享视频',
+                  child: GestureDetector(
+                    key: const ValueKey('result-share-action'),
+                    behavior: HitTestBehavior.opaque,
+                    onTap: shareEnabled ? _shareVideo : null,
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 120),
+                      opacity: shareEnabled ? 1 : 0.46,
+                      child: Container(
+                        width: 70,
+                        height: 70,
+                        decoration: const BoxDecoration(
+                          gradient: AppTheme.coralActionGradient,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0x38F44848),
+                              blurRadius: 22,
+                              offset: Offset(0, 9),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: _isSharing
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.ios_share_rounded,
+                                  color: Colors.white,
+                                  size: 30,
+                                ),
+                        ),
+                      ),
                     ),
-                  )
-                else
-                  const Icon(
-                    Icons.ios_share_rounded,
-                    color: Colors.white,
-                    size: 21,
-                  ),
-                const SizedBox(width: 9),
-                Text(
-                  _isSharing ? '正在打开分享…' : '分享视频',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNextButton() {
-    return SizedBox(
-      height: 58,
-      child: OutlinedButton.icon(
-        onPressed: () {
-          HapticFeedback.mediumImpact();
-          context.go('/');
-        },
-        icon: const Icon(Icons.add_rounded, size: 22),
-        label: const Text('制作下一个'),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppTheme.warmTextPrimary,
-          side: const BorderSide(color: AppTheme.warmBorder, width: 1.2),
-          backgroundColor: AppTheme.warmSurface,
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
+          ],
         ),
       ),
     );
@@ -590,50 +477,53 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   }
 }
 
-class _ResultOptionCard extends StatelessWidget {
+class _ResultSatelliteAction extends StatelessWidget {
   final IconData icon;
-  final String label;
-  final Future<void> Function()? onTap;
+  final String tooltip;
+  final VoidCallback? onTap;
 
-  const _ResultOptionCard({
+  const _ResultSatelliteAction({
+    super.key,
     required this.icon,
-    required this.label,
+    required this.tooltip,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final enabled = onTap != null;
-    return Opacity(
-      opacity: enabled ? 1 : 0.45,
-      child: Material(
-        color: AppTheme.warmSurface,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          onTap: enabled ? () => onTap!() : null,
-          borderRadius: BorderRadius.circular(18),
-          child: Container(
-            height: 92,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppTheme.warmBorder),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 26, color: AppTheme.warmTextPrimary),
-                const SizedBox(height: 9),
-                Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppTheme.warmTextPrimary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: tooltip,
+      child: Tooltip(
+        message: tooltip,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 120),
+          opacity: enabled ? 1 : 0.42,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: enabled ? onTap : null,
+            child: Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: AppTheme.warmSurface.withValues(alpha: 0.96),
+                shape: BoxShape.circle,
+                border: Border.all(color: AppTheme.warmBorder, width: 1.2),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x1E000000),
+                    blurRadius: 14,
+                    offset: Offset(0, 5),
                   ),
-                ),
-              ],
+                ],
+              ),
+              child: Icon(
+                icon,
+                size: 22,
+                color: AppTheme.warmTextPrimary,
+              ),
             ),
           ),
         ),
