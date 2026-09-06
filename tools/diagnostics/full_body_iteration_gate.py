@@ -125,6 +125,11 @@ def extract_bundle(bundle_path: Path, include_fingerprints: bool = True) -> dict
     cpu4t_production_reuse_frames = summary.get("cpu_mt4_production_reuse_frames")
     if cpu4t_production_reuse_frames is None:
         cpu4t_production_reuse_frames = 0
+    cpu4t_production_reuse_parity_frames = summary.get(
+        "cpu_mt4_production_reuse_parity_frames"
+    )
+    if cpu4t_production_reuse_parity_frames is None:
+        cpu4t_production_reuse_parity_frames = 0
 
     quality = {
         "analysis_canonical_rgba_sha256": (bundle.get("analysis_selection") or {}).get(
@@ -162,6 +167,13 @@ def extract_bundle(bundle_path: Path, include_fingerprints: bool = True) -> dict
             "cpu4t_reference_track_frames_total": len(bundle.get("shadow_cpu_full", {})),
             "cpu4t_probe_inference_frames_total": int(cpu4t_probe_inference_frames or 0),
             "cpu4t_production_reuse_frames_total": int(cpu4t_production_reuse_frames),
+            "cpu4t_production_reuse_parity_frames_total": int(
+                cpu4t_production_reuse_parity_frames
+            ),
+            "cpu4t_production_reuse_parity_exact": summary.get(
+                "cpu_mt4_production_reuse_parity_exact"
+            ),
+            "cpu4t_reference_source_policy": summary.get("cpu_mt4_reference_source_policy"),
             "adaptive_shadow_matrix_enabled": summary.get(
                 "cross_device_adaptive_shadow_matrix_enabled"
             ),
@@ -230,6 +242,60 @@ def _runtime_baseline(contract: dict, device: str) -> dict[str, Any] | None:
     return value if isinstance(value, dict) else None
 
 
+def _validate_cpu4t_reuse_observability(
+    candidate: dict,
+    index: int,
+    mismatches: list[dict],
+) -> None:
+    observability = candidate.get("observability", {})
+    reuse_frames = int(observability.get("cpu4t_production_reuse_frames_total") or 0)
+    if reuse_frames <= 0:
+        return
+
+    base_path = f"canary[{index}].observability"
+    parity_frames = int(observability.get("cpu4t_production_reuse_parity_frames_total") or 0)
+    parity_exact = observability.get("cpu4t_production_reuse_parity_exact")
+    probe_frames = int(observability.get("cpu4t_probe_inference_frames_total") or 0)
+    signature_frames = int(observability.get("cpu4t_detection_signature_frames_total") or 0)
+    source_policy = observability.get("cpu4t_reference_source_policy")
+
+    if parity_exact is not True:
+        mismatches.append(
+            {
+                "path": f"{base_path}.cpu4t_production_reuse_parity_exact",
+                "expected": True,
+                "actual": parity_exact,
+            }
+        )
+    if parity_frames <= 0:
+        mismatches.append(
+            {
+                "path": f"{base_path}.cpu4t_production_reuse_parity_frames_total",
+                "expected": ">0",
+                "actual": parity_frames,
+            }
+        )
+    if probe_frames + reuse_frames != signature_frames:
+        mismatches.append(
+            {
+                "path": f"{base_path}.cpu4t_reference_coverage_frames",
+                "expected": signature_frames,
+                "actual": probe_frames + reuse_frames,
+            }
+        )
+    expected_policy = (
+        "INDEPENDENT_ARTIFACT_WINDOW_WITH_SPARSE_PARITY_THEN_PRODUCTION_CPU4T_REUSE"
+    )
+    if source_policy != expected_policy:
+        mismatches.append(
+            {
+                "path": f"{base_path}.cpu4t_reference_source_policy",
+                "expected": expected_policy,
+                "actual": source_policy,
+            }
+        )
+
+
 def check_candidate(args: argparse.Namespace) -> int:
     contract = json.loads(args.contract.read_text(encoding="utf-8"))
     candidates = [extract_bundle(path, include_fingerprints=True) for path in args.bundle]
@@ -268,6 +334,7 @@ def check_candidate(args: argparse.Namespace) -> int:
             f"canary[{index}].fingerprints",
             quality_mismatches,
         )
+        _validate_cpu4t_reuse_observability(candidate, index, quality_mismatches)
 
     if baseline_bundle is not None:
         baseline_runtime = baseline_bundle.get("runtime")
