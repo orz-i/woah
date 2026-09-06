@@ -375,7 +375,7 @@ class ExportPipeline(
                 }
                 var basePtsUs = -1L
                 var lastPresentationNs = -1L
-                val trackManager = TrackManager(verboseDiagnosticsEnabled = false)
+                val trackManager = TrackManager()
                 // Temporal fresh-class evidence has no exact person ID. It is safe
                 // only for the historical FULL_BODY-only compositor. In mixed mode
                 // it can label nearby FACE_ONLY detections as SELECTED and turn

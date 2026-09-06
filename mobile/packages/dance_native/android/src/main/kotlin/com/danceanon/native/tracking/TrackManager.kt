@@ -162,8 +162,7 @@ class InternalTrack(
 
 class TrackManager(
     val config: TrackingConfig = TrackingConfig(),
-    private val diagnosticsEnabled: Boolean = true,
-    private val verboseDiagnosticsEnabled: Boolean = true
+    private val diagnosticsEnabled: Boolean = true
 ) : PersonTracker {
 
     private val tracks = mutableListOf<InternalTrack>()
@@ -199,21 +198,6 @@ class TrackManager(
             event = event,
             fields = fields,
             throwable = throwable
-        )
-    }
-
-    private inline fun verboseDiagnosticEvent(
-        level: String,
-        component: String,
-        event: String,
-        fields: () -> Map<String, Any?>
-    ) {
-        if (!diagnosticsEnabled || !verboseDiagnosticsEnabled) return
-        NativeDiagnostics.event(
-            level = level,
-            component = component,
-            event = event,
-            fields = fields()
         )
     }
 
@@ -472,11 +456,11 @@ class TrackManager(
                     abs(overlapRatio - config.occlusionOverlapRatio) <= OCCLUSION_OVERLAP_EDGE_TELEMETRY_MARGIN ||
                     (previouslySameGroup && overlapRatio < config.occlusionOverlapRatio)
                 ) {
-                    verboseDiagnosticEvent(
+                    diagnosticEvent(
                         level = "INFO",
                         component = "TrackManager",
                         event = "OCCLUSION_PAIR_OVERLAP_EDGE",
-                        fields = { mapOf(
+                        fields = mapOf(
                             "track_a_id" to trackA.id,
                             "track_b_id" to trackB.id,
                             "overlap_ratio" to overlapRatio,
@@ -497,7 +481,7 @@ class TrackManager(
                                 trackB.currentPredictedBbox.bottom
                             ),
                             "pts_us" to timestampUs
-                        ) }
+                        )
                     )
                 }
                 if (overlapRatio >= config.occlusionOverlapRatio) {
@@ -695,22 +679,21 @@ class TrackManager(
                 !it.offscreenDormant && !isDormantMixedFullBodyIdentity(it)
             },
             detections,
-            config,
-            emitDiagnostics = diagnosticsEnabled && verboseDiagnosticsEnabled
+            config
         )
         if (sceneMotion.inlierCount > 0 || sceneMotion.confidence > 0f) {
-            verboseDiagnosticEvent(
+            diagnosticEvent(
                 level = "INFO",
                 component = "TrackManager",
                 event = "SCENE_MOTION_ESTIMATED",
-                fields = { mapOf(
+                fields = mapOf(
                     "dx" to sceneMotion.dx,
                     "dy" to sceneMotion.dy,
                     "inliers" to sceneMotion.inlierCount,
                     "confidence" to sceneMotion.confidence,
                     "applied" to config.enableSceneMotionCompensation,
                     "pts_us" to timestampUs
-                ) }
+                )
             )
         }
 
@@ -1143,11 +1126,11 @@ class TrackManager(
                 track.currentObservedFootY = det.footY
                 track.lastObservedFootY = det.footY
                 track.kalman.update(det.bbox, timestampUs)
-                verboseDiagnosticEvent(
+                diagnosticEvent(
                     level = "INFO",
                     component = "TrackManager",
                     event = "GROUP_ASSIGNMENT_COMMIT",
-                    fields = { mapOf(
+                    fields = mapOf(
                         "group_id" to group.trackIds.toList(),
                         "track_id" to track.id,
                         "det_index" to dIdx,
@@ -1171,7 +1154,7 @@ class TrackManager(
                         ),
                         "detection_bbox" to listOf(det.bbox.left, det.bbox.top, det.bbox.right, det.bbox.bottom),
                         "pts_us" to timestampUs
-                    ) }
+                    )
                 )
 
                 if (prevState == TrackState.OCCLUDED || prevState == TrackState.REACQUIRING) {
@@ -1217,11 +1200,11 @@ class TrackManager(
                             .getOrPut(dIdx) { mutableSetOf() }
                             .add(group.trackIds.toSet())
                         reservedThisGroup.add(dIdx)
-                        verboseDiagnosticEvent(
+                        diagnosticEvent(
                             level = "INFO",
                             component = "TrackManager",
                             event = "GROUP_DETECTION_RESERVED",
-                            fields = { mapOf(
+                            fields = mapOf(
                                 "group_id" to group.trackIds.toList(),
                                 "det_index" to dIdx,
                                 "reason" to "UNCOMMITTED_OVERLAP",
@@ -1238,7 +1221,7 @@ class TrackManager(
                                     candidateDetectionIndices[pair.second]
                                 },
                                 "pts_us" to timestampUs
-                            ) }
+                            )
                         )
                     }
                 }
@@ -1782,11 +1765,11 @@ class TrackManager(
                 track.currentObservedFootY = det.footY
                 track.lastObservedFootY = det.footY
                 track.kalman.update(det.bbox, timestampUs)
-                verboseDiagnosticEvent(
+                diagnosticEvent(
                     level = "INFO",
                     component = "TrackManager",
                     event = "GLOBAL_ASSIGNMENT_COMMIT",
-                    fields = { mapOf(
+                    fields = mapOf(
                         "track_id" to track.id,
                         "det_index" to dIdx,
                         "assigned_score" to assignedScore,
@@ -1807,7 +1790,7 @@ class TrackManager(
                         ),
                         "detection_bbox" to listOf(det.bbox.left, det.bbox.top, det.bbox.right, det.bbox.bottom),
                         "pts_us" to timestampUs
-                    ) }
+                    )
                 )
 
                 if (prevState == TrackState.OCCLUDED || prevState == TrackState.REACQUIRING) {

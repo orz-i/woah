@@ -136,53 +136,6 @@ class TrackManagerTest {
         }
     }
 
-    private fun assertTrackedPersonsExact(expected: List<TrackedPerson>, actual: List<TrackedPerson>) {
-        assertEquals(expected.size, actual.size)
-        for ((a, b) in expected.sortedBy { it.id }.zip(actual.sortedBy { it.id })) {
-            assertEquals(a.id, b.id)
-            assertEquals(a.bbox, b.bbox)
-            assertEquals(a.confidence, b.confidence)
-            assertEquals(a.missedFrames, b.missedFrames)
-            assertEquals(a.framesSinceLastObservation, b.framesSinceLastObservation)
-            assertEquals(a.age, b.age)
-            assertEquals(a.state, b.state)
-            assertEquals(a.occludedByTrackIds, b.occludedByTrackIds)
-            assertEquals(a.observedThisFrame, b.observedThisFrame)
-            assertEquals(a.footY, b.footY)
-            when {
-                a.mask == null || b.mask == null -> assertEquals(a.mask == null, b.mask == null)
-                else -> assertMaskBytesEqual(a.mask!!, b.mask!!)
-            }
-        }
-    }
-
-    @Test
-    fun disablingVerboseDiagnosticsPreservesTrackingExactly() {
-        val verbose = TrackManager(verboseDiagnosticsEnabled = true)
-        val quiet = TrackManager(verboseDiagnosticsEnabled = false)
-        val initial = listOf(
-            PersonDetection(FloatRect(80f, 100f, 220f, 420f), 0.95f, createTestMask()),
-            PersonDetection(FloatRect(260f, 110f, 400f, 430f), 0.94f, createTestMask()),
-            PersonDetection(FloatRect(500f, 90f, 640f, 410f), 0.93f, createTestMask())
-        )
-        assertTrackedPersonsExact(verbose.initialize(initial), quiet.initialize(initial))
-
-        val dtUs = 33333L
-        for (i in 1..24) {
-            val detections = buildList {
-                add(PersonDetection(FloatRect(80f + i * 9f, 100f, 220f + i * 9f, 420f), 0.95f, createTestMask()))
-                if (i !in 10..12) {
-                    add(PersonDetection(FloatRect(260f - i * 5f, 110f, 400f - i * 5f, 430f), 0.94f, createTestMask()))
-                }
-                add(PersonDetection(FloatRect(500f - i * 10f, 90f, 640f - i * 10f, 410f), 0.93f, createTestMask()))
-            }
-            assertTrackedPersonsExact(
-                verbose.update(detections, i * dtUs),
-                quiet.update(detections, i * dtUs)
-            )
-        }
-    }
-
     @Test
     fun testTwoPeopleCrossingMaintainsStableIds() {
         val tracker = TrackManager(TrackingConfig(minMatchScore = 0.30f))
