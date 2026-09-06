@@ -730,42 +730,49 @@ class TrackManager(
             val sourceMask: NativeMask,
             val previousBbox: FloatRect,
             val predictedBbox: FloatRect,
-            val samples: PreparedWarpedMaskSamples
+            val samples: PreparedWarpedMaskSamples,
+            val iouByDetectionIndex: FloatArray
         )
 
         val preparedWarpedMaskByTrackId = mutableMapOf<Int, PreparedWarpedMaskCacheEntry>()
 
-        fun computePredictedMaskIoU(track: InternalTrack, detMask: NativeMask?): Float {
+        fun computePredictedMaskIoU(track: InternalTrack, detectionIndex: Int): Float {
             val src = track.lastObservedMask ?: return 0f
+            val detMask = detections[detectionIndex].mask
             if (detMask == null || src.width != detMask.width || src.height != detMask.height) return 0f
 
             val cached = preparedWarpedMaskByTrackId[track.id]
-            val prepared = if (
+            val preparedEntry = if (
                 cached != null &&
                 cached.sourceMask === src &&
                 cached.previousBbox == track.lastObservedBbox &&
                 cached.predictedBbox == track.currentPredictedBbox
             ) {
-                cached.samples
+                cached
             } else {
-                prepareWarpedMaskSamples(
+                PreparedWarpedMaskCacheEntry(
                     sourceMask = src,
-                    prevBbox = track.lastObservedBbox,
-                    predBbox = track.currentPredictedBbox,
-                    sampleStride = ASSOCIATION_MASK_IOU_SAMPLE_STRIDE
-                ).also { samples ->
-                    preparedWarpedMaskByTrackId[track.id] = PreparedWarpedMaskCacheEntry(
+                    previousBbox = track.lastObservedBbox,
+                    predictedBbox = track.currentPredictedBbox,
+                    samples = prepareWarpedMaskSamples(
                         sourceMask = src,
-                        previousBbox = track.lastObservedBbox,
-                        predictedBbox = track.currentPredictedBbox,
-                        samples = samples
-                    )
-                }
+                        prevBbox = track.lastObservedBbox,
+                        predBbox = track.currentPredictedBbox,
+                        sampleStride = ASSOCIATION_MASK_IOU_SAMPLE_STRIDE
+                    ),
+                    iouByDetectionIndex = FloatArray(detections.size) { Float.NaN }
+                ).also { preparedWarpedMaskByTrackId[track.id] = it }
             }
-            return computePreparedWarpedMaskIoU(prepared, detMask)
+            val cachedIoU = preparedEntry.iouByDetectionIndex[detectionIndex]
+            if (!cachedIoU.isNaN()) return cachedIoU
+
+            val computedIoU = computePreparedWarpedMaskIoU(preparedEntry.samples, detMask)
+            preparedEntry.iouByDetectionIndex[detectionIndex] = computedIoU
+            return computedIoU
         }
 
-        fun computeMatchScore(track: InternalTrack, det: PersonDetection): Float {
+        fun computeMatchScore(track: InternalTrack, detectionIndex: Int): Float {
+            val det = detections[detectionIndex]
             val predBox = track.currentPredictedBbox
             val detBox = det.bbox
             val bIoU = computeBBoxIoU(predBox, detBox)
@@ -795,7 +802,7 @@ class TrackManager(
                 return 0f
             }
 
-            val mIoU = computePredictedMaskIoU(track, det.mask)
+            val mIoU = computePredictedMaskIoU(track, detectionIndex)
             val distScore = (1.0f - (dist / maxAllowedDist)).coerceIn(0f, 1f)
             val motionScore = maxOf(distScore, (1.0f - (gateDist / (config.kalmanGatingThreshold * 2f))).coerceIn(0f, 1f))
 
@@ -930,7 +937,7 @@ class TrackManager(
             val scoreMatrix = Array(groupTrackIndices.size) { r ->
                 val track = tracks[groupTrackIndices[r]]
                 FloatArray(candidateDetectionIndices.size) { c ->
-                    computeMatchScore(track, detections[candidateDetectionIndices[c]])
+                    computeMatchScore(track, candidateDetectionIndices[c])
                 }
             }
 
@@ -961,10 +968,10 @@ class TrackManager(
                     val bestDetection = detections[bestDetectionIndex]
                     val bestScore = scoreMatrix[r][bestCol]
                     val bestBBoxIoU = computeBBoxIoU(track.currentPredictedBbox, bestDetection.bbox)
-                    val bestMaskIoU = computePredictedMaskIoU(track, bestDetection.mask)
+                    val bestMaskIoU = computePredictedMaskIoU(track, bestDetectionIndex)
                     val winningPairForBestCol = matchResult.matches.firstOrNull { it.second == bestCol }
                     val winnerTrack = winningPairForBestCol?.let { pair -> tracks[groupTrackIndices[pair.first]] }
-                    val winnerMaskIoU = winnerTrack?.let { computePredictedMaskIoU(it, bestDetection.mask) }
+                    val winnerMaskIoU = winnerTrack?.let { computePredictedMaskIoU(it, bestDetectionIndex) }
                     val protectedIdentityEvidenceOk = if (protectedTrackIds.contains(track.id)) {
                         isProtectedGroupIdentityEvidenceSufficient(track.state, bestBBoxIoU, bestMaskIoU)
                     } else {
@@ -1047,7 +1054,7 @@ class TrackManager(
                 val hasColSeparation = colMargin >= config.associationAmbiguityMargin
                 val isScoreValid = assignedScore >= config.minMatchScore
                 val candidateBBoxIoU = computeBBoxIoU(track.currentPredictedBbox, det.bbox)
-                val candidateMaskIoU = computePredictedMaskIoU(track, det.mask)
+                val candidateMaskIoU = computePredictedMaskIoU(track, dIdx)
                 val protectedIdentityEvidenceOk = if (protectedTrackIds.contains(track.id)) {
                     isProtectedGroupIdentityEvidenceSufficient(track.state, candidateBBoxIoU, candidateMaskIoU)
                 } else {
@@ -1357,7 +1364,7 @@ class TrackManager(
             val shadowScoreMatrix = Array(remainingTrackIndices.size) { r ->
                 val track = tracks[remainingTrackIndices[r]]
                 FloatArray(shadowGlobalDetectionIndices.size) { c ->
-                    computeMatchScore(track, detections[shadowGlobalDetectionIndices[c]])
+                    computeMatchScore(track, shadowGlobalDetectionIndices[c])
                 }
             }
             val shadowCostMatrix = Array(remainingTrackIndices.size) { r ->
@@ -1424,7 +1431,7 @@ class TrackManager(
                         (rowMargin < config.associationAmbiguityMargin && rowHasConfusableAlternative) ||
                         (colMargin < config.associationAmbiguityMargin && colHasConfusableAlternative)
                     val candidateBBoxIoU = computeBBoxIoU(track.currentPredictedBbox, det.bbox)
-                    val candidateMaskIoU = computePredictedMaskIoU(track, det.mask)
+                    val candidateMaskIoU = computePredictedMaskIoU(track, dIdx)
                     val protectedIdentityEvidenceOk = if (protectedTrackIds.contains(track.id)) {
                         isProtectedGroupIdentityEvidenceSufficient(
                             track.state,
@@ -1553,8 +1560,7 @@ class TrackManager(
             val scoreMatrix = Array(remainingTrackIndices.size) { r ->
                 val track = tracks[remainingTrackIndices[r]]
                 FloatArray(remainingDetectionIndices.size) { c ->
-                    val det = detections[remainingDetectionIndices[c]]
-                    computeMatchScore(track, det)
+                    computeMatchScore(track, remainingDetectionIndices[c])
                 }
             }
             val costMatrix = Array(remainingTrackIndices.size) { r ->
@@ -1615,7 +1621,7 @@ class TrackManager(
                     (rowMargin < config.associationAmbiguityMargin && rowHasConfusableAlternative) ||
                     (colMargin < config.associationAmbiguityMargin && colHasConfusableAlternative)
                 val candidateBBoxIoU = computeBBoxIoU(track.currentPredictedBbox, det.bbox)
-                val candidateMaskIoU = computePredictedMaskIoU(track, det.mask)
+                val candidateMaskIoU = computePredictedMaskIoU(track, dIdx)
                 val protectedIdentityEvidenceOk = if (protectedTrackIds.contains(track.id)) {
                     isProtectedGroupIdentityEvidenceSufficient(
                         track.state,
@@ -2224,7 +2230,7 @@ class TrackManager(
                         occlusionGroups.any {
                             it.state == OcclusionGroupState.REACQUIRING && it.trackIds.contains(track.id)
                         }
-                    unresolved && computeMatchScore(track, det) >= config.minMatchScore
+                    unresolved && computeMatchScore(track, c) >= config.minMatchScore
                 }
 
                 if (plausiblyOwnedByUnresolvedIdentity) {
@@ -2289,7 +2295,7 @@ class TrackManager(
                 val maxRecoverDist = refDim * 0.8f
                 val isNearby = bIoU > 0.05f || dist < maxRecoverDist
 
-                val recoveryMaskIoU = computePredictedMaskIoU(candTrack, det.mask)
+                val recoveryMaskIoU = computePredictedMaskIoU(candTrack, detIndex)
                 val protectedIdentityEvidenceOk = if (protectedTrackIds.contains(candTrack.id)) {
                     bIoU >= PROTECTED_RECOVERY_MIN_BBOX_IOU ||
                         recoveryMaskIoU >= PROTECTED_RECOVERY_MIN_MASK_IOU
@@ -2307,7 +2313,7 @@ class TrackManager(
                 val recoveryPredictedBbox = bestTrack.currentPredictedBbox
                 val recoveryLastObservedBbox = bestTrack.lastObservedBbox
                 val recoveryBBoxIoU = computeBBoxIoU(recoveryPredictedBbox, det.bbox)
-                val recoveryMaskIoU = computePredictedMaskIoU(bestTrack, det.mask)
+                val recoveryMaskIoU = computePredictedMaskIoU(bestTrack, detIndex)
                 recordReliableObservedMotion(bestTrack, det)
                 bestTrack.lastObservedBbox = det.bbox
                 bestTrack.lastObservedMask = det.mask ?: bestTrack.lastObservedMask
