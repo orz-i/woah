@@ -1,9 +1,9 @@
 {
   "schema_version": 2,
-  "name": "full_body_device_lanes_b188_composite_kb",
+  "name": "full_body_device_lanes_fa1c_kb_warp_x",
   "source_commit": null,
   "source_commit_by_device": {
-    "KB2000": "b188c3395629a09107cfe9ab122ba0f89d72d028",
+    "KB2000": "fa1c2ef9a5525620602f2902e9f876bae92758a1",
     "PLK110": "94b1e688c22208ba9204993fc9c0181cbb36de02",
     "2206123SC": "94dc16c9b67481ccf9fab8edf643133f3ec14029"
   },
@@ -13,12 +13,12 @@
     "2206123SC"
   ],
   "source_bundles": [
-    "logs\\woah_diag_20260906_023813_20260906_022824_29883628.zip",
+    "logs\\woah_diag_20260906_034420_20260906_033912_3a654a22.zip",
     "logs\\woah_diag_20260905_144047_20260905_143152_2efbf2e8.zip",
     "logs\\woah_diag_20260906_004555_20260906_003943_9102bb5c.zip"
   ],
   "source_bundle_by_device": {
-    "KB2000": "logs\\woah_diag_20260906_023813_20260906_022824_29883628.zip",
+    "KB2000": "logs\\woah_diag_20260906_034420_20260906_033912_3a654a22.zip",
     "PLK110": "logs\\woah_diag_20260905_144047_20260905_143152_2efbf2e8.zip",
     "2206123SC": "logs\\woah_diag_20260906_004555_20260906_003943_9102bb5c.zip"
   },
@@ -167,73 +167,73 @@
     "KB2000": {
       "canonical": {
         "count": 751,
-        "avg_ms": 61.475366178428764,
+        "avg_ms": 61.54593874833555,
         "p50_ms": 63.0,
         "p95_ms": 71.0,
-        "max_ms": 190.0
+        "max_ms": 186.0
       },
       "production_yolo": {
         "count": 751,
-        "avg_ms": 56.729693741677764,
-        "p50_ms": 56.0,
+        "avg_ms": 57.07190412782956,
+        "p50_ms": 57.0,
         "p95_ms": 63.0,
-        "max_ms": 148.0
+        "max_ms": 139.0
       },
       "production_tracking": {
         "count": 751,
-        "avg_ms": 42.73501997336884,
-        "p50_ms": 42.0,
-        "p95_ms": 56.0,
-        "max_ms": 206.0
+        "avg_ms": 33.412782956058585,
+        "p50_ms": 33.0,
+        "p95_ms": 42.0,
+        "max_ms": 211.0
       },
       "privacy_class_tracking": {
         "count": 751,
-        "avg_ms": 2.8162450066577898,
+        "avg_ms": 2.8495339547270304,
         "p50_ms": 2.0,
         "p95_ms": 4.0,
-        "max_ms": 68.0
+        "max_ms": 74.0
       },
       "render_effects": {
         "count": 751,
-        "avg_ms": 25.876165113182424,
+        "avg_ms": 26.685752330226364,
         "p50_ms": 26.0,
         "p95_ms": 41.0,
-        "max_ms": 84.0
+        "max_ms": 87.0
       },
       "cpu4t_total": {
         "count": 751,
-        "avg_ms": 127.94806924101198,
-        "p50_ms": 123.0,
-        "p95_ms": 142.0,
-        "max_ms": 325.0
+        "avg_ms": 131.28229027962718,
+        "p50_ms": 133.0,
+        "p95_ms": 144.0,
+        "max_ms": 366.0
       },
       "cpu4t_run": {
         "count": 751,
-        "avg_ms": 111.39014647137151,
-        "p50_ms": 108.0,
-        "p95_ms": 124.0,
-        "max_ms": 153.0
+        "avg_ms": 114.59786950732357,
+        "p50_ms": 118.0,
+        "p95_ms": 125.0,
+        "max_ms": 184.0
       },
       "cpu4t_decode": {
         "count": 751,
-        "avg_ms": 7.173102529960053,
+        "avg_ms": 7.270306258322237,
         "p50_ms": 7.0,
         "p95_ms": 10.0,
         "max_ms": 20.0
       },
       "cpu4t_mask_decode": {
         "count": 751,
-        "avg_ms": 5.374167776298269,
+        "avg_ms": 5.418109187749667,
         "p50_ms": 5.0,
-        "p95_ms": 8.0,
-        "max_ms": 15.0
+        "p95_ms": 7.0,
+        "max_ms": 14.0
       },
       "cpu4t_diagnostics": {
         "count": 751,
-        "avg_ms": 1.8095872170439413,
+        "avg_ms": 1.818908122503329,
         "p50_ms": 0.0,
         "p95_ms": 0.0,
-        "max_ms": 147.0
+        "max_ms": 149.0
       }
     },
     "PLK110": {
@@ -495,6 +495,39 @@
           "improvement_pct": 5.680675488020947
         },
         "note": "The tested HEAD also includes the UI/UX merge that changes Android live preview from eager capture to default-off runtime opt-in, so whole-export timing is treated as composite evidence rather than attributed solely to the TrackManager cache. TrackManager itself was unchanged by the UI merge after commit 033f2c5c, Full Body fingerprints remained exact, runtime stayed on the same KB GPU lane, and production tracking still cleared the 10% p50 gate."
+      },
+      {
+        "decision": "ACCEPT_FOR_ACCUMULATION",
+        "candidate_commit": "fa1c2ef9a5525620602f2902e9f876bae92758a1",
+        "quality_exact": true,
+        "runtime_unchanged": true,
+        "target_stage": {
+          "name": "production_tracking",
+          "p50_ms_before": 42.0,
+          "p50_ms_after": 33.0,
+          "improvement_pct": 21.428571428571427
+        },
+        "stage_crosscheck_p50_ms": {
+          "canonical_before": 63.0,
+          "canonical_after": 63.0,
+          "production_yolo_before": 56.0,
+          "production_yolo_after": 57.0,
+          "cpu4t_before": 123.0,
+          "cpu4t_after": 133.0,
+          "render_effects_before": 26.0,
+          "render_effects_after": 26.0
+        },
+        "host_warp_mask_microbench_ms": {
+          "historical_scalar_p50": 0.4868,
+          "precomputed_x_geometry_p50": 0.1978,
+          "improvement_pct": 59.367296631059986
+        },
+        "full_export_job_wall_time_seconds": {
+          "before": 295.46,
+          "after": 286.346,
+          "improvement_pct": 3.084681513572058
+        },
+        "note": "Acceptance is anchored to exact Full Body fingerprints, unchanged KB GPU runtime, and the 42->33ms production-tracking p50 reduction. The optimization only precomputes X-axis inverse-warp geometry once per 160x160 mask warp; interpolation order, rounding, dilation, mask resolution, tracking thresholds, and state transitions are unchanged. Historical scalar output is byte-exact for missedFrames 0/1/11. CPU4T was slower in the candidate run, so the tracking gain is not attributed to a globally faster thermal state."
       }
     ],
     "2206123SC": [
