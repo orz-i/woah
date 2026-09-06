@@ -3089,6 +3089,25 @@ class TrackManager(
 
             val tempArr = ByteArray(w * h)
 
+            // The inverse X mapping is identical for every output row. The old
+            // scalar loop recomputed division/floor/bilinear weights w*h times;
+            // prepare the exact same Float expressions once per output column.
+            // This is only a geometry cache: interpolation order, rounding,
+            // thresholding/dilation and mask bytes stay unchanged.
+            val sourceX0 = IntArray(w)
+            val sourceX1 = IntArray(w)
+            val sourceWx0 = FloatArray(w)
+            val sourceWx1 = FloatArray(w)
+            for (x in 0 until w) {
+                val floatX = (x - predNormCenterX) / scaleX + prevNormCenterX
+                val x0 = kotlin.math.floor(floatX).toInt()
+                val wx1 = (floatX - x0).coerceIn(0f, 1f)
+                sourceX0[x] = x0
+                sourceX1[x] = x0 + 1
+                sourceWx1[x] = wx1
+                sourceWx0[x] = 1f - wx1
+            }
+
             for (y in 0 until h) {
                 val floatY = (y - predNormCenterY) / scaleY + prevNormCenterY
                 val y0 = kotlin.math.floor(floatY).toInt()
@@ -3097,11 +3116,10 @@ class TrackManager(
                 val wy0 = 1f - wy1
 
                 for (x in 0 until w) {
-                    val floatX = (x - predNormCenterX) / scaleX + prevNormCenterX
-                    val x0 = kotlin.math.floor(floatX).toInt()
-                    val x1 = x0 + 1
-                    val wx1 = (floatX - x0).coerceIn(0f, 1f)
-                    val wx0 = 1f - wx1
+                    val x0 = sourceX0[x]
+                    val x1 = sourceX1[x]
+                    val wx0 = sourceWx0[x]
+                    val wx1 = sourceWx1[x]
 
                     val v00 = if (x0 in 0 until w && y0 in 0 until h) (srcBuf.get(y0 * w + x0).toInt() and 0xFF) else 0
                     val v01 = if (x1 in 0 until w && y0 in 0 until h) (srcBuf.get(y0 * w + x1).toInt() and 0xFF) else 0

@@ -4,6 +4,7 @@ import com.danceanon.native.inference.FloatRect
 import com.danceanon.native.inference.NativeMask
 import com.danceanon.native.inference.PersonDetection
 import java.nio.ByteBuffer
+import kotlin.math.roundToInt
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -24,6 +25,115 @@ class TrackManagerTest {
             originalWidth = 640,
             originalHeight = 640
         )
+    }
+
+    @Test
+    fun optimizedWarpMaskMatchesHistoricalScalarBytesWithDilation() {
+        val size = 64
+        val mapper = com.danceanon.native.geometry.ModelCoordinateMapper(1920, 1080, modelInputSize = 640, protoSize = size)
+        val buffer = ByteBuffer.allocateDirect(size * size)
+        for (y in 0 until size) {
+            for (x in 0 until size) {
+                buffer.put(((x * 17 + y * 29 + (x * y) % 31) and 0xFF).toByte())
+            }
+        }
+        buffer.rewind()
+        val mask = NativeMask(size, size, buffer, 1920, 1080, mapper)
+        val geometries = listOf(
+            FloatRect(420f, 150f, 980f, 940f) to FloatRect(510f, 105f, 1120f, 990f),
+            FloatRect(1080f, 120f, 1690f, 1010f) to FloatRect(960f, 210f, 1580f, 1030f),
+            FloatRect(35f, 40f, 505f, 880f) to FloatRect(-40f, 10f, 470f, 970f)
+        )
+
+        for ((prev, pred) in geometries) {
+            for (missedFrames in listOf(0, 1, 11)) {
+                val expected = scalarWarpMaskReference(mask, prev, pred, missedFrames)
+                val actual = TrackManager.warpMask(mask, prev, pred, missedFrames)
+                assertMaskBytesEqual(expected, actual)
+            }
+        }
+    }
+
+    private fun scalarWarpMaskReference(
+        sourceMask: NativeMask,
+        prevBbox: FloatRect,
+        predBbox: FloatRect,
+        missedFrames: Int
+    ): NativeMask {
+        val w = sourceMask.width
+        val h = sourceMask.height
+        val srcBuf = sourceMask.buffer
+        val prevW = kotlin.math.max(1f, prevBbox.width)
+        val prevH = kotlin.math.max(1f, prevBbox.height)
+        val predW = kotlin.math.max(1f, predBbox.width)
+        val predH = kotlin.math.max(1f, predBbox.height)
+        val scaleX = predW / prevW
+        val scaleY = predH / prevH
+        val mapper = sourceMask.mapper ?: com.danceanon.native.geometry.ModelCoordinateMapper(
+            srcWidth = kotlin.math.max(1, sourceMask.originalWidth),
+            srcHeight = kotlin.math.max(1, sourceMask.originalHeight),
+            modelInputSize = 640,
+            protoSize = w
+        )
+        val prevNormCenterX = mapper.sourceToProtoX(prevBbox.centerX)
+        val prevNormCenterY = mapper.sourceToProtoY(prevBbox.centerY)
+        val predNormCenterX = mapper.sourceToProtoX(predBbox.centerX)
+        val predNormCenterY = mapper.sourceToProtoY(predBbox.centerY)
+        val dilation = if (missedFrames > 10) 2 else if (missedFrames > 0) 1 else 0
+        val temp = ByteArray(w * h)
+
+        for (y in 0 until h) {
+            val floatY = (y - predNormCenterY) / scaleY + prevNormCenterY
+            val y0 = kotlin.math.floor(floatY).toInt()
+            val y1 = y0 + 1
+            val wy1 = (floatY - y0).coerceIn(0f, 1f)
+            val wy0 = 1f - wy1
+            for (x in 0 until w) {
+                val floatX = (x - predNormCenterX) / scaleX + prevNormCenterX
+                val x0 = kotlin.math.floor(floatX).toInt()
+                val x1 = x0 + 1
+                val wx1 = (floatX - x0).coerceIn(0f, 1f)
+                val wx0 = 1f - wx1
+                val v00 = if (x0 in 0 until w && y0 in 0 until h) (srcBuf.get(y0 * w + x0).toInt() and 0xFF) else 0
+                val v01 = if (x1 in 0 until w && y0 in 0 until h) (srcBuf.get(y0 * w + x1).toInt() and 0xFF) else 0
+                val v10 = if (x0 in 0 until w && y1 in 0 until h) (srcBuf.get(y1 * w + x0).toInt() and 0xFF) else 0
+                val v11 = if (x1 in 0 until w && y1 in 0 until h) (srcBuf.get(y1 * w + x1).toInt() and 0xFF) else 0
+                val interp = (v00 * wx0 + v01 * wx1) * wy0 + (v10 * wx0 + v11 * wx1) * wy1
+                temp[y * w + x] = interp.roundToInt().coerceIn(0, 255).toByte()
+            }
+        }
+
+        val out = ByteBuffer.allocateDirect(w * h)
+        if (dilation > 0) {
+            for (y in 0 until h) {
+                for (x in 0 until w) {
+                    var maxVal = temp[y * w + x]
+                    for (dy in -dilation..dilation) {
+                        for (dx in -dilation..dilation) {
+                            val ny = y + dy
+                            val nx = x + dx
+                            if (nx in 0 until w && ny in 0 until h) {
+                                val value = temp[ny * w + nx]
+                                if ((value.toInt() and 0xFF) > (maxVal.toInt() and 0xFF)) maxVal = value
+                            }
+                        }
+                    }
+                    out.put(maxVal)
+                }
+            }
+        } else {
+            out.put(temp)
+        }
+        out.rewind()
+        return NativeMask(w, h, out, sourceMask.originalWidth, sourceMask.originalHeight, mapper)
+    }
+
+    private fun assertMaskBytesEqual(expected: NativeMask, actual: NativeMask) {
+        assertEquals(expected.width, actual.width)
+        assertEquals(expected.height, actual.height)
+        for (i in 0 until expected.width * expected.height) {
+            assertEquals(expected.buffer.get(i), actual.buffer.get(i), "mask byte mismatch at index $i")
+        }
     }
 
     @Test
