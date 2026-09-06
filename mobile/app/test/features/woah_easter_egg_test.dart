@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('easter egg shows author build commit and word cloud', (
+  testWidgets('easter egg shows rolling credits and build metadata', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -24,18 +24,24 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('CREATED BY'), findsOneWidget);
-    expect(find.text('CJ'), findsOneWidget);
-    expect(find.text('v2.3.4'), findsOneWidget);
-    expect(find.text('#57'), findsOneWidget);
-    expect(find.text('RELEASE'), findsOneWidget);
-    expect(find.text('abcdef123456'), findsOneWidget);
-    expect(find.text('DANCE'), findsOneWidget);
-    expect(find.text('PRIVACY'), findsOneWidget);
-    expect(find.text('DETERMINISTIC'), findsOneWidget);
+    expect(find.text('作者  CJ'), findsOneWidget);
+    expect(find.text('本程序免费开源'), findsOneWidget);
+    expect(find.text('谨防上当受骗'), findsOneWidget);
+    expect(find.text('版本 · v2.3.4'), findsOneWidget);
+    expect(find.text('构建 · #57'), findsOneWidget);
+    expect(find.text('构建类型 · RELEASE'), findsOneWidget);
+    expect(find.text('提交 · abcdef123456'), findsOneWidget);
+    expect(find.text('处理 · LOCAL FIRST'), findsOneWidget);
+    expect(find.text('隐私 · PRIVATE BY DESIGN'), findsOneWidget);
     expect(find.text('设备与诊断'), findsNothing);
     expect(find.text('加速能力'), findsNothing);
+    expect(find.byKey(WoahEasterEggScreen.creditsRollKey), findsOneWidget);
     expect(find.byKey(WoahEasterEggScreen.closeButtonKey), findsOneWidget);
+
+    final initialTop = tester.getTopLeft(find.text('作者  CJ')).dy;
+    await tester.pump(const Duration(seconds: 2));
+    final movedTop = tester.getTopLeft(find.text('作者  CJ')).dy;
+    expect(movedTop, lessThan(initialTop));
   });
 
   testWidgets(
@@ -55,17 +61,21 @@ void main() {
       expect(find.text('设备与诊断'), findsNothing);
 
       await tester.longPress(find.text('Woah'));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
 
-      expect(find.text('CREATED BY'), findsOneWidget);
+      expect(find.text('作者  CJ'), findsOneWidget);
+      expect(find.text('本程序免费开源'), findsOneWidget);
+      expect(find.text('谨防上当受骗'), findsOneWidget);
       expect(find.byKey(WoahEasterEggScreen.closeButtonKey), findsOneWidget);
       expect(find.text('设备与诊断'), findsNothing);
 
       await tester.tap(find.byKey(WoahEasterEggScreen.closeButtonKey));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 700));
 
       expect(find.text('导入舞段'), findsOneWidget);
-      expect(find.text('CREATED BY'), findsNothing);
+      expect(find.text('作者  CJ'), findsNothing);
     },
   );
 }

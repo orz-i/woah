@@ -6,6 +6,7 @@ import '../../../core/metadata/woah_build_info.dart';
 
 class WoahEasterEggScreen extends StatefulWidget {
   static const closeButtonKey = ValueKey('woah-easter-egg-close');
+  static const creditsRollKey = ValueKey('woah-easter-egg-credits-roll');
 
   final Future<WoahBuildInfo> Function()? buildInfoLoader;
 
@@ -15,13 +16,27 @@ class WoahEasterEggScreen extends StatefulWidget {
   State<WoahEasterEggScreen> createState() => _WoahEasterEggScreenState();
 }
 
-class _WoahEasterEggScreenState extends State<WoahEasterEggScreen> {
+class _WoahEasterEggScreenState extends State<WoahEasterEggScreen>
+    with SingleTickerProviderStateMixin {
+  static const _creditsDuration = Duration(seconds: 28);
+
   late final Future<WoahBuildInfo> _buildInfoFuture;
+  late final AnimationController _creditsController;
 
   @override
   void initState() {
     super.initState();
     _buildInfoFuture = (widget.buildInfoLoader ?? WoahBuildInfo.load).call();
+    _creditsController = AnimationController(
+      vsync: this,
+      duration: _creditsDuration,
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _creditsController.dispose();
+    super.dispose();
   }
 
   @override
@@ -31,76 +46,25 @@ class _WoahEasterEggScreenState extends State<WoahEasterEggScreen> {
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.dark,
         statusBarBrightness: Brightness.light,
-        systemNavigationBarColor: AppTheme.warmBackground,
+        systemNavigationBarColor: Colors.white,
         systemNavigationBarIconBrightness: Brightness.dark,
         systemNavigationBarDividerColor: Colors.transparent,
         systemStatusBarContrastEnforced: false,
         systemNavigationBarContrastEnforced: false,
       ),
       child: Scaffold(
-        backgroundColor: AppTheme.warmBackground,
+        backgroundColor: Colors.white,
         body: Stack(
           children: [
-            const Positioned(
-              top: -120,
-              right: -90,
-              child: _AmbientOrb(size: 300, opacity: 0.12),
-            ),
-            const Positioned(
-              left: -130,
-              bottom: 90,
-              child: _AmbientOrb(size: 280, opacity: 0.08),
-            ),
-            SafeArea(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(24, 32, 24, 132),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Text(
-                      'Woah',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: AppTheme.warmTextPrimary,
-                        fontSize: 40,
-                        height: 1,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 8,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      '记录舞动，也保护舞动的人',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: AppTheme.warmTextMuted,
-                        fontSize: 12,
-                        letterSpacing: 2.4,
-                      ),
-                    ),
-                    const SizedBox(height: 34),
-                    FutureBuilder<WoahBuildInfo>(
-                      future: _buildInfoFuture,
-                      builder: (context, snapshot) {
-                        return _BuildIdentityCard(info: snapshot.data);
-                      },
-                    ),
-                    const SizedBox(height: 28),
-                    const _WordCloud(),
-                    const SizedBox(height: 28),
-                    const Text(
-                      'LOCAL FIRST  ·  PRIVATE BY DESIGN',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: AppTheme.warmTextMuted,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 1.8,
-                      ),
-                    ),
-                  ],
-                ),
+            Positioned.fill(
+              child: FutureBuilder<WoahBuildInfo>(
+                future: _buildInfoFuture,
+                builder: (context, snapshot) {
+                  return _RollingCredits(
+                    controller: _creditsController,
+                    info: snapshot.data,
+                  );
+                },
               ),
             ),
             SafeArea(
@@ -154,228 +118,118 @@ class _WoahEasterEggScreenState extends State<WoahEasterEggScreen> {
   }
 }
 
-class _BuildIdentityCard extends StatelessWidget {
+class _RollingCredits extends StatelessWidget {
+  static const _lineExtent = 68.0;
+  static const _coralPink = AppTheme.coralSoft;
+
+  final Animation<double> controller;
   final WoahBuildInfo? info;
 
-  const _BuildIdentityCard({required this.info});
+  const _RollingCredits({required this.controller, required this.info});
 
   @override
   Widget build(BuildContext context) {
     final value = info;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
-      decoration: BoxDecoration(
-        color: AppTheme.warmSurface.withValues(alpha: 0.90),
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: AppTheme.warmBorder),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x10000000),
-            blurRadius: 28,
-            offset: Offset(0, 10),
-          ),
-        ],
+    final lines = <_CreditLineData>[
+      const _CreditLineData('作者  CJ', emphasis: _CreditEmphasis.author),
+      const _CreditLineData('本程序免费开源', emphasis: _CreditEmphasis.notice),
+      const _CreditLineData('谨防上当受骗', emphasis: _CreditEmphasis.warning),
+      const _CreditLineData('程序 · Woah'),
+      const _CreditLineData('包名 · art.gaoge.dance'),
+      _CreditLineData(value == null ? '版本 · —' : '版本 · v${value.versionName}'),
+      _CreditLineData(value == null ? '构建 · —' : '构建 · #${value.buildNumber}'),
+      _CreditLineData(
+        value == null ? '构建类型 · —' : '构建类型 · ${value.buildType.toUpperCase()}',
       ),
-      child: Column(
-        children: [
-          const Text(
-            'CREATED BY',
-            style: TextStyle(
-              color: AppTheme.warmTextMuted,
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 2.2,
-            ),
-          ),
-          const SizedBox(height: 7),
-          const Text(
-            WoahBuildInfo.authorName,
-            style: TextStyle(
-              color: AppTheme.warmTextPrimary,
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.1,
-            ),
-          ),
-          const SizedBox(height: 20),
-          const Divider(height: 1, color: AppTheme.warmBorder),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _BuildDatum(
-                  label: 'VERSION',
-                  value: value == null ? '—' : 'v${value.versionName}',
-                ),
+      _CreditLineData(
+        value == null ? '提交 · loading' : '提交 · ${value.shortCommit}',
+      ),
+      const _CreditLineData('处理 · LOCAL FIRST'),
+      const _CreditLineData('隐私 · PRIVATE BY DESIGN'),
+      const _CreditLineData('界面 · Flutter'),
+      const _CreditLineData('推理 · LiteRT'),
+      const _CreditLineData('分割 · YOLO'),
+      const _CreditLineData('追踪 · DETERMINISTIC'),
+      const _CreditLineData('视频 · H.264'),
+      const _CreditLineData('记录舞动，也保护舞动的人'),
+    ];
+    final creditsHeight = lines.length * _lineExtent;
+
+    return ClipRect(
+      key: WoahEasterEggScreen.creditsRollKey,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return AnimatedBuilder(
+            animation: controller,
+            child: SizedBox(
+              height: creditsHeight,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final line in lines)
+                    SizedBox(
+                      height: _lineExtent,
+                      child: Center(child: _CreditLine(data: line)),
+                    ),
+                ],
               ),
-              Expanded(
-                child: _BuildDatum(
-                  label: 'BUILD',
-                  value: value == null ? '—' : '#${value.buildNumber}',
-                ),
-              ),
-              Expanded(
-                child: _BuildDatum(
-                  label: 'TYPE',
-                  value: value?.buildType.toUpperCase() ?? '—',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-            decoration: BoxDecoration(
-              color: AppTheme.warmSurfaceSoft,
-              borderRadius: BorderRadius.circular(14),
             ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.commit_rounded,
-                  size: 17,
-                  color: AppTheme.coral,
+            builder: (context, child) {
+              final travel = constraints.maxHeight + creditsHeight;
+              final y = constraints.maxHeight - (travel * controller.value);
+              return Transform.translate(
+                offset: Offset(0, y),
+                child: OverflowBox(
+                  alignment: Alignment.topCenter,
+                  minHeight: 0,
+                  maxHeight: double.infinity,
+                  child: child,
                 ),
-                const SizedBox(width: 9),
-                const Text(
-                  'COMMIT',
-                  style: TextStyle(
-                    color: AppTheme.warmTextMuted,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.3,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  value?.shortCommit ?? 'loading',
-                  style: const TextStyle(
-                    color: AppTheme.warmTextPrimary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'monospace',
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+              );
+            },
+          );
+        },
       ),
     );
   }
 }
 
-class _BuildDatum extends StatelessWidget {
-  final String label;
-  final String value;
+enum _CreditEmphasis { normal, author, notice, warning }
 
-  const _BuildDatum({required this.label, required this.value});
+class _CreditLineData {
+  final String text;
+  final _CreditEmphasis emphasis;
 
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppTheme.warmTextMuted,
-            fontSize: 9,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.4,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: AppTheme.warmTextPrimary,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
+  const _CreditLineData(this.text, {this.emphasis = _CreditEmphasis.normal});
 }
 
-class _WordCloud extends StatelessWidget {
-  const _WordCloud();
+class _CreditLine extends StatelessWidget {
+  final _CreditLineData data;
 
-  static const words = <(String, double, FontWeight, Color)>[
-    ('DANCE', 27, FontWeight.w800, AppTheme.coralStrong),
-    ('PRIVACY', 20, FontWeight.w700, AppTheme.warmTextPrimary),
-    ('LOCAL FIRST', 15, FontWeight.w600, AppTheme.warmTextSecondary),
-    ('LiteRT', 18, FontWeight.w700, AppTheme.coral),
-    ('Tracking', 16, FontWeight.w600, AppTheme.warmTextPrimary),
-    ('FACE', 13, FontWeight.w700, AppTheme.warmTextMuted),
-    ('FULL BODY', 17, FontWeight.w700, AppTheme.warmTextPrimary),
-    ('MASK', 14, FontWeight.w700, AppTheme.coralStrong),
-    ('Flutter', 19, FontWeight.w700, AppTheme.warmTextPrimary),
-    ('Android', 14, FontWeight.w600, AppTheme.warmTextSecondary),
-    ('OpenGL ES', 13, FontWeight.w600, AppTheme.warmTextMuted),
-    ('YOLO', 19, FontWeight.w800, AppTheme.coral),
-    ('SEGMENTATION', 12, FontWeight.w600, AppTheme.warmTextSecondary),
-    ('DETERMINISTIC', 16, FontWeight.w700, AppTheme.warmTextPrimary),
-    ('H.264', 13, FontWeight.w700, AppTheme.warmTextMuted),
-    ('MOTION', 23, FontWeight.w800, AppTheme.coralStrong),
-    ('Woah', 18, FontWeight.w700, AppTheme.warmTextPrimary),
-  ];
+  const _CreditLine({required this.data});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
-      decoration: BoxDecoration(
-        color: AppTheme.warmSurfaceSoft.withValues(alpha: 0.64),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: AppTheme.warmBorder.withValues(alpha: 0.7)),
-      ),
-      child: Wrap(
-        alignment: WrapAlignment.center,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 13,
-        runSpacing: 11,
-        children: [
-          for (final word in words)
-            Text(
-              word.$1,
-              style: TextStyle(
-                color: word.$4,
-                fontSize: word.$2,
-                height: 1,
-                fontWeight: word.$3,
-                letterSpacing: word.$2 >= 20 ? 1.4 : 0.5,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
+    final (fontSize, fontWeight, letterSpacing) = switch (data.emphasis) {
+      _CreditEmphasis.author => (28.0, FontWeight.w800, 3.2),
+      _CreditEmphasis.notice => (23.0, FontWeight.w700, 2.0),
+      _CreditEmphasis.warning => (23.0, FontWeight.w800, 2.0),
+      _CreditEmphasis.normal => (16.0, FontWeight.w600, 1.25),
+    };
 
-class _AmbientOrb extends StatelessWidget {
-  final double size;
-  final double opacity;
-
-  const _AmbientOrb({required this.size, required this.opacity});
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [
-              AppTheme.coral.withValues(alpha: opacity),
-              AppTheme.coral.withValues(alpha: 0),
-            ],
-          ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 28),
+      child: Text(
+        data.text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: _RollingCredits._coralPink,
+          fontSize: fontSize,
+          height: 1.1,
+          fontWeight: fontWeight,
+          letterSpacing: letterSpacing,
         ),
       ),
     );
