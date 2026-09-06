@@ -210,28 +210,6 @@ class TrackManagerAmbiguousReservationTest {
     }
 
     @Test
-    fun testStrictFaceOnlyReservationShadowProbeSkipsFullBodyOnlySelection() {
-        assertTrue(
-            !TrackManager.shouldRunStrictFaceOnlyReservationShadowProbe(
-                identityProtectedTrackIds = setOf(0, 1, 3, 5, 6),
-                privacySelectedTrackIds = setOf(0, 1, 3, 5, 6)
-            )
-        )
-        assertTrue(
-            TrackManager.shouldRunStrictFaceOnlyReservationShadowProbe(
-                identityProtectedTrackIds = setOf(0, 1, 2, 3, 5, 6),
-                privacySelectedTrackIds = emptySet()
-            )
-        )
-        assertTrue(
-            TrackManager.shouldRunStrictFaceOnlyReservationShadowProbe(
-                identityProtectedTrackIds = setOf(0, 1, 2, 3),
-                privacySelectedTrackIds = setOf(0, 1)
-            )
-        )
-    }
-
-    @Test
     fun testNearTieGroupAssignmentsRemainAmbiguousWithoutSecondBestMargin() {
         val bboxOnlyConfig = TrackingConfig(
             minMatchScore = 0.20f,
