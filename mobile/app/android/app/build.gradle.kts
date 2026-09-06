@@ -4,6 +4,15 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val woahGitCommit = runCatching {
+    val process = ProcessBuilder("git", "rev-parse", "--short=12", "HEAD")
+        .directory(rootProject.projectDir)
+        .redirectErrorStream(true)
+        .start()
+    val output = process.inputStream.bufferedReader().use { it.readText() }.trim()
+    if (process.waitFor() == 0 && output.isNotBlank()) output else "unknown"
+}.getOrDefault("unknown")
+
 android {
     namespace = "com.danceanon.app"
     compileSdk = 36
@@ -23,6 +32,11 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        buildConfigField("String", "GIT_COMMIT", "\"$woahGitCommit\"")
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     androidResources {
