@@ -3102,8 +3102,9 @@ class TrackManager(
                 val floatX = (x - predNormCenterX) / scaleX + prevNormCenterX
                 val x0 = kotlin.math.floor(floatX).toInt()
                 val wx1 = (floatX - x0).coerceIn(0f, 1f)
-                sourceX0[x] = x0
-                sourceX1[x] = x0 + 1
+                sourceX0[x] = if (x0 in 0 until w) x0 else -1
+                val x1 = x0 + 1
+                sourceX1[x] = if (x1 in 0 until w) x1 else -1
                 sourceWx1[x] = wx1
                 sourceWx0[x] = 1f - wx1
             }
@@ -3114,6 +3115,11 @@ class TrackManager(
                 val y1 = y0 + 1
                 val wy1 = (floatY - y0).coerceIn(0f, 1f)
                 val wy0 = 1f - wy1
+                val sourceRow0 = if (y0 in 0 until h) y0 * w else -1
+                val sourceRow1 = if (y1 in 0 until h) y1 * w else -1
+                val dstRow = y * w
+
+                if (sourceRow0 < 0 && sourceRow1 < 0) continue
 
                 for (x in 0 until w) {
                     val x0 = sourceX0[x]
@@ -3121,13 +3127,13 @@ class TrackManager(
                     val wx0 = sourceWx0[x]
                     val wx1 = sourceWx1[x]
 
-                    val v00 = if (x0 in 0 until w && y0 in 0 until h) (srcBuf.get(y0 * w + x0).toInt() and 0xFF) else 0
-                    val v01 = if (x1 in 0 until w && y0 in 0 until h) (srcBuf.get(y0 * w + x1).toInt() and 0xFF) else 0
-                    val v10 = if (x0 in 0 until w && y1 in 0 until h) (srcBuf.get(y1 * w + x0).toInt() and 0xFF) else 0
-                    val v11 = if (x1 in 0 until w && y1 in 0 until h) (srcBuf.get(y1 * w + x1).toInt() and 0xFF) else 0
+                    val v00 = if (sourceRow0 >= 0 && x0 >= 0) (srcBuf.get(sourceRow0 + x0).toInt() and 0xFF) else 0
+                    val v01 = if (sourceRow0 >= 0 && x1 >= 0) (srcBuf.get(sourceRow0 + x1).toInt() and 0xFF) else 0
+                    val v10 = if (sourceRow1 >= 0 && x0 >= 0) (srcBuf.get(sourceRow1 + x0).toInt() and 0xFF) else 0
+                    val v11 = if (sourceRow1 >= 0 && x1 >= 0) (srcBuf.get(sourceRow1 + x1).toInt() and 0xFF) else 0
 
                     val interp = (v00 * wx0 + v01 * wx1) * wy0 + (v10 * wx0 + v11 * wx1) * wy1
-                    tempArr[y * w + x] = interp.roundToInt().coerceIn(0, 255).toByte()
+                    tempArr[dstRow + x] = interp.roundToInt().coerceIn(0, 255).toByte()
                 }
             }
 
