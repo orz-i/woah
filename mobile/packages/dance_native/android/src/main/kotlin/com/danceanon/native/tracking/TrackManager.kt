@@ -1301,8 +1301,15 @@ class TrackManager(
         // ACTIVE/NEW tracks that are about to enter Global Hungarian. The real
         // association below still uses remainingDetectionIndices, so this probe
         // cannot commit, unreserve, create, or mutate any identity.
-        val shadowGlobalDetectionIndices = detections.indices.filter {
-            !matchedDetectionIndices.contains(it)
+        val runStrictFaceOnlyReservationShadowProbe =
+            shouldRunStrictFaceOnlyReservationShadowProbe(
+                identityProtectedTrackIds = protectedTrackIds,
+                privacySelectedTrackIds = privacySelectedTrackIds
+            )
+        val shadowGlobalDetectionIndices = if (runStrictFaceOnlyReservationShadowProbe) {
+            detections.indices.filter { !matchedDetectionIndices.contains(it) }
+        } else {
+            emptyList()
         }
         if (
             remainingTrackIndices.isNotEmpty() &&
@@ -2543,6 +2550,12 @@ class TrackManager(
             wouldStrictGlobalCommit &&
                 faceOnlyIdentityProtected &&
                 reservationOwnerGroupCount >= 2
+
+        internal fun shouldRunStrictFaceOnlyReservationShadowProbe(
+            identityProtectedTrackIds: Set<Int>,
+            privacySelectedTrackIds: Set<Int>
+        ): Boolean =
+            identityProtectedTrackIds.any { !privacySelectedTrackIds.contains(it) }
 
         internal fun isProtectedLostAnchorOcclusionSupported(
             trackState: TrackState,
