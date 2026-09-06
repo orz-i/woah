@@ -111,6 +111,13 @@ class NativeProcessingRepository {
     );
   }
 
+  Future<void> setExportLivePreviewEnabled({
+    required String jobId,
+    required bool enabled,
+  }) {
+    return _client.setExportLivePreviewEnabled(jobId: jobId, enabled: enabled);
+  }
+
   Future<void> cancelJob(String jobId) {
     return _client.cancelJob(jobId);
   }

@@ -40,7 +40,14 @@ final appRouter = GoRouter(
       path: '/effect_editor',
       name: 'effect_editor',
       builder: (context, state) {
-        final project = state.extra as DanceProject;
+        final extra = state.extra;
+        if (extra is EffectEditorArgs) {
+          return EffectEditorScreen(
+            project: extra.project,
+            initialPreviewPath: extra.initialPreviewPath,
+          );
+        }
+        final project = extra as DanceProject;
         return EffectEditorScreen(project: project);
       },
     ),

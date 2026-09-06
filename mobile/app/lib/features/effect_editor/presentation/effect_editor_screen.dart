@@ -7,15 +7,30 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
-import '../../../core/widgets/main_flow_header.dart';
+import '../../../core/widgets/immersive_flow_action.dart';
 import '../../export/presentation/export_screen.dart';
 import '../domain/effect_editor_state.dart';
 import 'effect_editor_controller.dart';
 
+class EffectEditorArgs {
+  final DanceProject project;
+  final String? initialPreviewPath;
+
+  const EffectEditorArgs({
+    required this.project,
+    this.initialPreviewPath,
+  });
+}
+
 class EffectEditorScreen extends ConsumerStatefulWidget {
   final DanceProject project;
+  final String? initialPreviewPath;
 
-  const EffectEditorScreen({super.key, required this.project});
+  const EffectEditorScreen({
+    super.key,
+    required this.project,
+    this.initialPreviewPath,
+  });
 
   @override
   ConsumerState<EffectEditorScreen> createState() => _EffectEditorScreenState();
@@ -23,12 +38,29 @@ class EffectEditorScreen extends ConsumerStatefulWidget {
 
 class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
   final ScrollController _scrollController = ScrollController();
+  bool _allowRoutePop = false;
+  bool _returnRequested = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(effectEditorControllerProvider.notifier).init(widget.project);
+      if (!mounted) return;
+      ref.read(effectEditorControllerProvider.notifier).init(
+            widget.project,
+            initialPreviewPath: widget.initialPreviewPath,
+          );
+    });
+  }
+
+  void _requestReturn(EffectEditorController controller) {
+    if (_returnRequested || !mounted) return;
+    _returnRequested = true;
+    final configuredProject = controller.buildConfiguredProject();
+    setState(() => _allowRoutePop = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.pop(configuredProject);
     });
   }
 
@@ -92,10 +124,10 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
         : 16 / 9;
 
     return PopScope(
-      canPop: false,
+      canPop: _allowRoutePop,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        context.pop(controller.buildConfiguredProject());
+        _requestReturn(controller);
       },
       child: AnnotatedRegion<SystemUiOverlayStyle>(
         value: const SystemUiOverlayStyle(
@@ -112,42 +144,55 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
           backgroundColor: AppTheme.warmBackground,
           resizeToAvoidBottomInset: false,
           body: SafeArea(
-            child: Column(
+            child: Stack(
               children: [
-                _buildTopBar(state, controller),
-                // 主舞台视口：占据上半部稳定视口，等比居中自适应，绝不再被遮挡或挤压
-                Expanded(
-                  flex: 11,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                    child: Center(
-                      child: AspectRatio(
-                        aspectRatio: aspectRatio,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1E7E1),
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color(0x14000000),
-                                blurRadius: 20,
-                                offset: Offset(0, 6),
+                Column(
+                  children: [
+                    // 沉浸式主舞台：移除独立顶栏后直接从可用顶部空间开始。
+                    Expanded(
+                      flex: 11,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                        child: Center(
+                          child: AspectRatio(
+                            aspectRatio: aspectRatio,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1E7E1),
+                                borderRadius: BorderRadius.circular(24),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color(0x14000000),
+                                    blurRadius: 20,
+                                    offset: Offset(0, 6),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(24),
-                            child: _buildStagePreview(state),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(24),
+                                child: _buildStagePreview(state),
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
+                    // 底部常驻控制工作区；圆形下一步按钮悬浮在其上方。
+                    Expanded(
+                      flex: 10,
+                      child: _buildBottomControlPanel(state, controller),
+                    ),
+                  ],
                 ),
-                // 底部常驻控制工作区：占据下半部，独立内部滚动与底栏固定导出
-                Expanded(
-                  flex: 10,
-                  child: _buildBottomControlPanel(state, controller),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 10,
+                  child: ImmersiveFlowAction(
+                    enabled: state.project != null,
+                    onNext: () => _handleNextAction(controller),
+                    onReturn: () => _requestReturn(controller),
+                  ),
                 ),
               ],
             ),
@@ -157,25 +202,11 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
     );
   }
 
-  Widget _buildTopBar(
-    EffectEditorState state,
-    EffectEditorController controller,
-  ) {
-    return MainFlowHeader(
-      title: '编辑效果',
-      onClose: () {
-        HapticFeedback.lightImpact();
-        context.pop(controller.buildConfiguredProject());
-      },
-    );
-  }
-
   Widget _buildStagePreview(EffectEditorState state) {
-    final displayPath = state.previewPath ?? state.previewThumbnailPath;
-    final hasImage =
-        displayPath != null &&
-        displayPath.isNotEmpty &&
-        File(displayPath).existsSync();
+    final displayPath = state.previewPath ??
+        state.previewThumbnailPath ??
+        widget.initialPreviewPath;
+    final hasImage = displayPath != null && displayPath.isNotEmpty;
 
     return Stack(
       alignment: Alignment.center,
@@ -183,31 +214,16 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
         if (hasImage)
           Image.file(
             File(displayPath),
-            key: ValueKey('${displayPath}_${state.previewRequestId}'),
             fit: BoxFit.cover,
             width: double.infinity,
             height: double.infinity,
             gaplessPlayback: true,
+            filterQuality: FilterQuality.low,
+            errorBuilder: (context, error, stackTrace) =>
+                _buildPreviewPlaceholder(),
           )
         else
-          const Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.movie_filter_outlined,
-                size: 52,
-                color: AppTheme.warmTextMuted,
-              ),
-              SizedBox(height: 12),
-              Text(
-                '正在准备效果预览',
-                style: TextStyle(
-                  color: AppTheme.warmTextSecondary,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
+          _buildPreviewPlaceholder(),
         if (state.previewLoading)
           Positioned(
             top: 14,
@@ -278,6 +294,27 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
     );
   }
 
+  Widget _buildPreviewPlaceholder() {
+    return const Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.movie_filter_outlined,
+          size: 52,
+          color: AppTheme.warmTextMuted,
+        ),
+        SizedBox(height: 12),
+        Text(
+          '正在准备效果预览',
+          style: TextStyle(
+            color: AppTheme.warmTextSecondary,
+            fontSize: 13,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildBottomControlPanel(
     EffectEditorState state,
     EffectEditorController controller,
@@ -306,7 +343,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
             child: SingleChildScrollView(
               controller: _scrollController,
               physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 6),
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 96),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -452,78 +489,15 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 6, 18, 14),
-            child: _buildExportButton(state, controller),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildExportButton(
-    EffectEditorState state,
-    EffectEditorController controller,
-  ) {
-    final enabled = state.project != null;
-    return Opacity(
-      opacity: enabled ? 1 : 0.45,
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          onTap: !enabled
-              ? null
-              : () async {
-                  HapticFeedback.mediumImpact();
-                  final project = controller.buildConfiguredProject();
-                  if (project == null) return;
-                  await _showExportSettings(project);
-                },
-          borderRadius: BorderRadius.circular(18),
-          child: Ink(
-            height: 52,
-            decoration: BoxDecoration(
-              gradient: AppTheme.coralActionGradient,
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: enabled
-                  ? const [
-                      BoxShadow(
-                        color: Color(0x20F44848),
-                        blurRadius: 14,
-                        offset: Offset(0, 6),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 22),
-              child: Row(
-                children: [
-                  SizedBox(width: 24),
-                  Expanded(
-                    child: Text(
-                      '下一步: 导出',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  Icon(
-                    Icons.arrow_forward_rounded,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+  Future<void> _handleNextAction(EffectEditorController controller) async {
+    final project = controller.buildConfiguredProject();
+    if (project == null) return;
+    await _showExportSettings(project);
   }
 
   Future<void> _showExportSettings(DanceProject project) async {

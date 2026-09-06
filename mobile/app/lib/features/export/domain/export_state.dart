@@ -49,7 +49,8 @@ class ExportState {
       status == ExportJobState.processing ||
       status == ExportJobState.muxing;
 
-  bool get isCompleted => status == ExportJobState.completed && outputUri != null;
+  bool get isCompleted =>
+      status == ExportJobState.completed && outputUri != null;
 
   bool get isFailed => status == ExportJobState.failed || errorMessage != null;
 
@@ -66,6 +67,7 @@ class ExportState {
     bool? showLivePreview,
     String? errorMessage,
     bool clearErrorMessage = false,
+    bool clearCurrentPreviewPath = false,
   }) {
     return ExportState(
       status: status ?? this.status,
@@ -76,10 +78,13 @@ class ExportState {
       totalFrames: totalFrames ?? this.totalFrames,
       fps: fps ?? this.fps,
       outputUri: outputUri ?? this.outputUri,
-      currentPreviewPath: currentPreviewPath ?? this.currentPreviewPath,
+      currentPreviewPath: clearCurrentPreviewPath
+          ? null
+          : (currentPreviewPath ?? this.currentPreviewPath),
       showLivePreview: showLivePreview ?? this.showLivePreview,
-      errorMessage: clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
+      errorMessage: clearErrorMessage
+          ? null
+          : (errorMessage ?? this.errorMessage),
     );
   }
 }
-

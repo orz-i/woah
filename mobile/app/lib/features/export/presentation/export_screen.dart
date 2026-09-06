@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
-import '../../../core/widgets/main_flow_header.dart';
+import '../../../core/widgets/immersive_flow_action.dart';
 import '../../../repositories/native_processing_repository.dart';
 import '../domain/export_state.dart';
 import 'export_controller.dart';
@@ -41,6 +41,11 @@ class ExportScreen extends ConsumerStatefulWidget {
 }
 
 class _ExportScreenState extends ConsumerState<ExportScreen> {
+  static const _failedRetryKey = ValueKey('export-failed-retry');
+  static const _failedBackKey = ValueKey('export-failed-back');
+  static const _failedCopyKey = ValueKey('export-failed-copy');
+  static const _failedDiagnosticsKey = ValueKey('export-failed-diagnostics');
+
   @override
   void initState() {
     super.initState();
@@ -90,44 +95,60 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       child: Scaffold(
         backgroundColor: AppTheme.warmBackground,
         body: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              _buildTopBar(state, isActive: isActive, controller: controller),
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 30),
-                  child: Column(
-                    children: [
-                      _buildMediaPreview(state),
-                      if (isFailed) ...[
-                        const SizedBox(height: 34),
-                        _buildPrimaryAction(
-                          label: '重试导出',
-                          icon: Icons.refresh_rounded,
-                          onTap: _startExportJob,
-                        ),
-                        const SizedBox(height: 14),
-                        _buildOutlinedAction(
-                          label: '返回编辑',
-                          onTap: () => context.pop(),
-                        ),
-                      ] else ...[
-                        const SizedBox(height: 22),
-                        _buildProgressCard(state),
-                        const SizedBox(height: 14),
-                        _buildBackgroundHint(),
-                        const SizedBox(height: 20),
-                        _buildOutlinedAction(
-                          label: '取消处理',
-                          enabled: isActive,
-                          onTap: () => _confirmCancel(controller),
-                        ),
-                      ],
-                    ],
+              Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: EdgeInsets.fromLTRB(
+                        24,
+                        18,
+                        24,
+                        isFailed ? 180 : 112,
+                      ),
+                      child: Column(
+                        children: [
+                          _buildMediaPreview(
+                            state,
+                            controller,
+                            livePreviewToggleEnabled: isActive,
+                          ),
+                          if (!isFailed) ...[
+                            const SizedBox(height: 22),
+                            _buildProgressCard(state),
+                            const SizedBox(height: 14),
+                            _buildBackgroundHint(),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (isFailed)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 8,
+                  child: _buildFailureActionCluster(state),
+                )
+              else
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 8,
+                  child: ImmersiveFlowAction(
+                    enabled: isActive,
+                    actionIcon: Icons.close_rounded,
+                    nextSemanticsLabel: '取消处理，长按并上拉可返回',
+                    onNext: () => _confirmCancel(controller),
+                    onReturn: () => isActive
+                        ? _confirmCancel(controller)
+                        : context.pop(),
                   ),
                 ),
-              ),
             ],
           ),
         ),
@@ -135,213 +156,315 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     );
   }
 
-  Widget _buildTopBar(
-    ExportState state, {
-    required bool isActive,
-    required ExportController controller,
-  }) {
-    final isFailed = state.isFailed;
-    return MainFlowHeader(
-      title: isFailed ? '导出失败' : '正在保护舞段',
-      closeTooltip: isActive ? '取消处理' : '关闭',
-      onClose: isActive
-          ? () => _confirmCancel(controller)
-          : () => context.pop(),
-      trailing: isFailed
-          ? PopupMenuButton<String>(
-              tooltip: '更多',
-              icon: const Icon(
-                Icons.more_horiz_rounded,
-                size: 30,
-                color: AppTheme.warmTextPrimary,
+  Widget _buildFailureActionCluster(ExportState state) {
+    return Center(
+      child: SizedBox(
+        width: 290,
+        height: 160,
+        child: Stack(
+          alignment: Alignment.bottomCenter,
+          children: [
+            Positioned(
+              left: 26,
+              bottom: 24,
+              child: _FailureSatelliteAction(
+                key: _failedBackKey,
+                icon: Icons.arrow_back_rounded,
+                tooltip: '返回编辑',
+                onTap: () => context.pop(),
               ),
-              color: AppTheme.warmSurface,
-              surfaceTintColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: const BorderSide(color: AppTheme.warmBorder),
+            ),
+            Positioned(
+              left: 121,
+              bottom: 94,
+              child: _FailureSatelliteAction(
+                key: _failedCopyKey,
+                icon: Icons.content_copy_rounded,
+                tooltip: '复制错误详情',
+                onTap: () => _copyError(state.errorMessage),
               ),
-              onSelected: (value) {
-                if (value == 'copy') {
-                  _copyError(state.errorMessage);
-                } else if (value == 'diagnostics') {
-                  _exportDiagnostics();
-                }
-              },
-              itemBuilder: (context) => const [
-                PopupMenuItem(
-                  value: 'copy',
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.copy_rounded,
-                        color: AppTheme.warmTextSecondary,
-                        size: 20,
-                      ),
-                      SizedBox(width: 12),
-                      Text(
-                        '复制错误详情',
-                        style: TextStyle(
-                          color: AppTheme.warmTextPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
+            ),
+            Positioned(
+              right: 26,
+              bottom: 24,
+              child: _FailureSatelliteAction(
+                key: _failedDiagnosticsKey,
+                icon: Icons.bug_report_outlined,
+                tooltip: '导出诊断包',
+                onTap: _exportDiagnostics,
+              ),
+            ),
+            Positioned(
+              bottom: 0,
+              child: Semantics(
+                button: true,
+                label: '重试导出',
+                child: Tooltip(
+                  message: '重试导出',
+                  child: Material(
+                    key: _failedRetryKey,
+                    color: Colors.transparent,
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: () {
+                        HapticFeedback.mediumImpact();
+                        _startExportJob();
+                      },
+                      child: Ink(
+                        width: 68,
+                        height: 68,
+                        decoration: const BoxDecoration(
+                          gradient: AppTheme.coralActionGradient,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0x3DF44848),
+                              blurRadius: 22,
+                              offset: Offset(0, 9),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.refresh_rounded,
+                          color: Colors.white,
+                          size: 31,
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
-                PopupMenuItem(
-                  value: 'diagnostics',
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.bug_report_outlined,
-                        color: AppTheme.warmTextSecondary,
-                        size: 20,
-                      ),
-                      SizedBox(width: 12),
-                      Text(
-                        '导出诊断包',
-                        style: TextStyle(
-                          color: AppTheme.warmTextPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            )
-          : null,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildMediaPreview(ExportState state) {
-    final previewPath = state.currentPreviewPath;
-    final hasLivePreview =
-        previewPath != null &&
-        previewPath.isNotEmpty &&
-        File(previewPath).existsSync();
+  Widget _buildMediaPreview(
+    ExportState state,
+    ExportController controller, {
+    required bool livePreviewToggleEnabled,
+  }) {
+    final livePath = state.showLivePreview ? state.currentPreviewPath : null;
+    final hasLivePreview = livePath != null && livePath.isNotEmpty;
     final fallbackPath = widget.initialPreviewPath;
-    final hasFallbackPreview =
-        fallbackPath != null &&
-        fallbackPath.isNotEmpty &&
-        File(fallbackPath).existsSync();
+    final hasFallbackPreview = fallbackPath != null && fallbackPath.isNotEmpty;
     final displayPath = hasLivePreview
-        ? previewPath
+        ? livePath
         : (hasFallbackPreview ? fallbackPath : null);
-    final hasPreview = displayPath != null;
     final rawAspect = widget.project.videoInfo.aspectRatio > 0
         ? widget.project.videoInfo.aspectRatio
         : 16 / 9;
     final aspect = rawAspect.clamp(0.65, 1.8).toDouble();
 
-    return AspectRatio(
-      aspectRatio: aspect,
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFFF0E6E0),
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: AppTheme.warmBorder),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x12000000),
-              blurRadius: 24,
-              offset: Offset(0, 8),
-            ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (hasPreview)
-              Image.file(
-                File(displayPath),
-                key: ValueKey('${displayPath}_${state.currentFrame}'),
-                fit: BoxFit.cover,
-                gaplessPlayback: true,
-              )
-            else
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.movie_filter_outlined,
-                      size: 52,
-                      color: AppTheme.warmTextMuted,
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      state.isFailed ? '没有可用的失败预览' : '正在准备处理预览',
-                      style: const TextStyle(
-                        color: AppTheme.warmTextSecondary,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
+    return Semantics(
+      button: livePreviewToggleEnabled,
+      label: state.showLivePreview ? '关闭实时画面' : '开启实时画面',
+      child: GestureDetector(
+        key: const ValueKey('export-live-preview-toggle'),
+        behavior: HitTestBehavior.opaque,
+        onTap: livePreviewToggleEnabled
+            ? () {
+                HapticFeedback.selectionClick();
+                controller.toggleLivePreview(!state.showLivePreview);
+              }
+            : null,
+        child: AspectRatio(
+          aspectRatio: aspect,
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0E6E0),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: AppTheme.warmBorder),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x12000000),
+                  blurRadius: 24,
+                  offset: Offset(0, 8),
                 ),
-              ),
-            if (state.isFailed)
-              Positioned(
-                right: 14,
-                bottom: 14,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
+              ],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (displayPath != null)
+                  Image.file(
+                    File(displayPath),
+                    fit: BoxFit.cover,
+                    gaplessPlayback: true,
+                    filterQuality: FilterQuality.low,
+                    errorBuilder: (context, error, stackTrace) =>
+                        _buildPreviewPlaceholder(state),
+                  )
+                else
+                  _buildPreviewPlaceholder(state),
+                if (livePreviewToggleEnabled && !state.showLivePreview)
+                  _buildLivePreviewToggleOverlay(
+                    icon: Icons.play_circle_outline_rounded,
+                    label: '点击查看实时画面',
                   ),
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.coralActionGradient,
-                    borderRadius: BorderRadius.circular(16),
+                if (livePreviewToggleEnabled &&
+                    state.showLivePreview &&
+                    !hasLivePreview)
+                  _buildLivePreviewToggleOverlay(
+                    icon: Icons.hourglass_top_rounded,
+                    label: '正在开启实时画面…',
                   ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.warning_amber_rounded,
-                        color: Colors.white,
-                        size: 18,
+                if (livePreviewToggleEnabled &&
+                    state.showLivePreview &&
+                    hasLivePreview)
+                  Positioned(
+                    top: 14,
+                    right: 14,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 11,
+                        vertical: 7,
                       ),
-                      SizedBox(width: 6),
-                      Text(
-                        '导出失败',
-                        style: TextStyle(
+                      decoration: BoxDecoration(
+                        color: const Color(0x99000000),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.visibility_off_outlined,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            '实时画面 · 点击关闭',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (state.isFailed)
+                  Positioned(
+                    right: 14,
+                    bottom: 14,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.coralActionGradient,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            '导出失败',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (state.isFailed && state.fps > 0)
+                  Positioned(
+                    left: 14,
+                    bottom: 14,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0x88000000),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        _formatProcessedTime(state),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                          fontFeatures: [FontFeature.tabularFigures()],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-            if (state.isFailed && state.fps > 0)
-              Positioned(
-                left: 14,
-                bottom: 14,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 7,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0x88000000),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    _formatProcessedTime(state),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontFeatures: [FontFeature.tabularFigures()],
                     ),
                   ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPreviewPlaceholder(ExportState state) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.movie_filter_outlined,
+            size: 52,
+            color: AppTheme.warmTextMuted,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            state.isFailed ? '没有可用的失败预览' : '实时画面已关闭',
+            style: const TextStyle(
+              color: AppTheme.warmTextSecondary,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLivePreviewToggleOverlay({
+    required IconData icon,
+    required String label,
+  }) {
+    return ColoredBox(
+      color: const Color(0x36000000),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xA8000000),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -497,78 +620,6 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildPrimaryAction({
-    required String label,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Ink(
-          height: 58,
-          decoration: BoxDecoration(
-            gradient: AppTheme.coralActionGradient,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x22F44848),
-                blurRadius: 16,
-                offset: Offset(0, 7),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: Colors.white, size: 20),
-              const SizedBox(width: 9),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOutlinedAction({
-    required String label,
-    required VoidCallback onTap,
-    bool enabled = true,
-  }) {
-    return Opacity(
-      opacity: enabled ? 1 : 0.45,
-      child: SizedBox(
-        width: double.infinity,
-        height: 58,
-        child: OutlinedButton(
-          onPressed: enabled ? onTap : null,
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: AppTheme.coral, width: 1.3),
-            foregroundColor: AppTheme.coralStrong,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
-            ),
-          ),
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-          ),
-        ),
       ),
     );
   }
@@ -743,6 +794,58 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FailureSatelliteAction extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  const _FailureSatelliteAction({
+    super.key,
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: tooltip,
+      child: Tooltip(
+        message: tooltip,
+        child: Material(
+          color: Colors.transparent,
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () {
+              HapticFeedback.selectionClick();
+              onTap();
+            },
+            child: Ink(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppTheme.warmSurface.withValues(alpha: 0.96),
+                shape: BoxShape.circle,
+                border: Border.all(color: AppTheme.warmBorder),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x20000000),
+                    blurRadius: 14,
+                    offset: Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Icon(icon, color: AppTheme.warmTextPrimary, size: 22),
+            ),
           ),
         ),
       ),

@@ -10,7 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../app/theme.dart';
-import '../../../core/widgets/main_flow_header.dart';
+import '../../../core/widgets/immersive_flow_action.dart';
 import '../../../repositories/native_processing_repository.dart';
 
 class TrimVideoScreen extends ConsumerStatefulWidget {
@@ -34,6 +34,8 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
   bool _initializing = true;
   String? _errorMessage;
   bool _seekingFromListener = false;
+  bool _seekInFlight = false;
+  int? _pendingSeekMs;
 
   int get _durationMs => math.max(widget.project.videoInfo.durationMs, 1);
 
@@ -57,6 +59,7 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
   }
 
   Future<void> _initialize() async {
+    VideoPlayerController? createdController;
     try {
       final source = widget.project.sourceUri;
       final controller = source.startsWith('content://')
@@ -64,10 +67,42 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
           : VideoPlayerController.file(
               File(source.startsWith('file://') ? source.substring(7) : source),
             );
+      createdController = controller;
       await controller.initialize();
-      controller.addListener(_onVideoTick);
       await controller.seekTo(Duration(milliseconds: _trimStartMs));
 
+      if (!mounted) {
+        await controller.dispose();
+        return;
+      }
+
+      controller.addListener(_onVideoTick);
+      setState(() {
+        _videoController = controller;
+        _initializing = false;
+      });
+
+      // Give the initialized video texture a chance to paint before thumbnail
+      // extraction starts. Thumbnail generation is non-critical for playback.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_loadThumbnails());
+      });
+    } catch (error) {
+      if (createdController != null) {
+        try {
+          await createdController.dispose();
+        } catch (_) {}
+      }
+      if (!mounted) return;
+      setState(() {
+        _initializing = false;
+        _errorMessage = '暂时无法预览这个舞段';
+      });
+    }
+  }
+
+  Future<void> _loadThumbnails() async {
+    try {
       final timestamps = List<int>.generate(_thumbnailCount, (index) {
         if (_thumbnailCount == 1) return 0;
         return ((_durationMs * index) / (_thumbnailCount - 1)).round();
@@ -79,21 +114,12 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
             timestampsMs: timestamps,
           );
 
-      if (!mounted) {
-        await controller.dispose();
-        return;
-      }
-      setState(() {
-        _videoController = controller;
-        _thumbnailPaths = thumbnails;
-        _initializing = false;
-      });
-    } catch (error) {
       if (!mounted) return;
-      setState(() {
-        _initializing = false;
-        _errorMessage = '暂时无法预览这个舞段';
-      });
+      setState(() => _thumbnailPaths = thumbnails);
+    } catch (error) {
+      // The timeline can remain usable with placeholders when thumbnail
+      // extraction fails; do not turn a working video preview into an error.
+      debugPrint('TrimVideoScreen: thumbnail generation failed: $error');
     }
   }
 
@@ -102,6 +128,7 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
     if (controller == null || !controller.value.isInitialized || !mounted) {
       return;
     }
+    if (_seekInFlight) return;
     final positionMs = controller.value.position.inMilliseconds.clamp(
       0,
       _durationMs,
@@ -153,7 +180,21 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
   Future<void> _seekTo(int valueMs) async {
     final value = valueMs.clamp(_trimStartMs, _trimEndMs);
     setState(() => _playheadMs = value);
-    await _videoController?.seekTo(Duration(milliseconds: value));
+    _pendingSeekMs = value;
+    if (_seekInFlight) return;
+
+    _seekInFlight = true;
+    try {
+      while (_pendingSeekMs != null) {
+        final targetMs = _pendingSeekMs!;
+        _pendingSeekMs = null;
+        final controller = _videoController;
+        if (controller == null || !controller.value.isInitialized) return;
+        await controller.seekTo(Duration(milliseconds: targetMs));
+      }
+    } finally {
+      _seekInFlight = false;
+    }
   }
 
   Future<void> _setTrimStart(int valueMs) async {
@@ -181,7 +222,6 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
   }
 
   Future<void> _continue() async {
-    HapticFeedback.mediumImpact();
     final controller = _videoController;
     if (controller?.value.isPlaying == true) await controller?.pause();
     if (!mounted) return;
@@ -209,13 +249,12 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
       child: Scaffold(
         backgroundColor: AppTheme.warmBackground,
         body: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              _buildHeader(),
-              Expanded(
+              Positioned.fill(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(18, 2, 18, 18),
+                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 112),
                   child: Column(
                     children: [
                       _buildPreview(),
@@ -223,27 +262,24 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
                       _buildTimeline(),
                       const SizedBox(height: 14),
                       _buildTimeSummary(),
-                      const SizedBox(height: 22),
-                      _buildContinueButton(),
                     ],
                   ),
+                ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 8,
+                child: ImmersiveFlowAction(
+                  enabled: true,
+                  onNext: _continue,
+                  onReturn: () => context.pop(),
                 ),
               ),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return MainFlowHeader(
-      title: '预览并裁剪视频',
-      closeTooltip: '返回',
-      onClose: () {
-        HapticFeedback.lightImpact();
-        context.pop();
-      },
     );
   }
 
@@ -463,58 +499,6 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
     );
   }
 
-  Widget _buildContinueButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 60,
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          onTap: _continue,
-          borderRadius: BorderRadius.circular(18),
-          child: Ink(
-            decoration: BoxDecoration(
-              gradient: AppTheme.coralActionGradient,
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x20F44848),
-                  blurRadius: 14,
-                  offset: Offset(0, 6),
-                ),
-              ],
-            ),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 22),
-              child: Row(
-                children: [
-                  SizedBox(width: 30),
-                  Expanded(
-                    child: Text(
-                      '下一步',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  Icon(
-                    Icons.arrow_forward_rounded,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   String _formatTime(int ms) {
     final seconds = (ms / 1000).floor();
     final minutes = seconds ~/ 60;
@@ -565,8 +549,8 @@ class _TimelineRuler extends StatelessWidget {
                 left: isFirst
                     ? x - 4
                     : isLast
-                        ? null
-                        : x - 24,
+                    ? null
+                    : x - 24,
                 right: isLast ? (width - x) - 4 : null,
                 width: (!isFirst && !isLast) ? 48 : null,
                 top: 0,
@@ -575,8 +559,8 @@ class _TimelineRuler extends StatelessWidget {
                   textAlign: isFirst
                       ? TextAlign.left
                       : isLast
-                          ? TextAlign.right
-                          : TextAlign.center,
+                      ? TextAlign.right
+                      : TextAlign.center,
                   style: const TextStyle(
                     color: AppTheme.warmTextSecondary,
                     fontSize: 11,
@@ -648,8 +632,7 @@ class _TrimTimelineState extends State<_TrimTimeline> {
 
         double xForMs(int ms) =>
             trackInset +
-            trackWidth *
-                (ms.clamp(0, widget.durationMs) / widget.durationMs);
+            trackWidth * (ms.clamp(0, widget.durationMs) / widget.durationMs);
 
         int msForX(double x) =>
             (((x - trackInset) / trackWidth).clamp(0.0, 1.0) *
@@ -712,7 +695,8 @@ class _TrimTimelineState extends State<_TrimTimeline> {
             final endDistance = (x - endX).abs();
             const edgeHitRadius = 24.0;
 
-            if (startDistance <= edgeHitRadius && startDistance <= endDistance) {
+            if (startDistance <= edgeHitRadius &&
+                startDistance <= endDistance) {
               _dragMode = _TrimDragMode.start;
             } else if (endDistance <= edgeHitRadius) {
               _dragMode = _TrimDragMode.end;
@@ -761,8 +745,19 @@ class _TrimTimelineState extends State<_TrimTimeline> {
                           ? widget.thumbnailPaths[index]
                           : null;
                       return Expanded(
-                        child: path != null && File(path).existsSync()
-                            ? Image.file(File(path), fit: BoxFit.cover)
+                        child: path != null
+                            ? Image.file(
+                                File(path),
+                                fit: BoxFit.cover,
+                                gaplessPlayback: true,
+                                filterQuality: FilterQuality.low,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    ColoredBox(
+                                      color: index.isEven
+                                          ? const Color(0xFFE8D7D0)
+                                          : const Color(0xFFF2E4DE),
+                                    ),
+                              )
                             : ColoredBox(
                                 color: index.isEven
                                     ? const Color(0xFFE8D7D0)
@@ -878,17 +873,13 @@ class _TrimTimelineState extends State<_TrimTimeline> {
               Positioned(
                 left: startX - handleWidth / 2,
                 top: trackTop - 1,
-                child: const IgnorePointer(
-                  child: _TrimHandle(isLeft: true),
-                ),
+                child: const IgnorePointer(child: _TrimHandle(isLeft: true)),
               ),
               // 8. 右侧裁剪手柄（居中对齐 endX，包覆轨道右边缘）
               Positioned(
                 left: endX - handleWidth / 2,
                 top: trackTop - 1,
-                child: const IgnorePointer(
-                  child: _TrimHandle(isLeft: false),
-                ),
+                child: const IgnorePointer(child: _TrimHandle(isLeft: false)),
               ),
             ],
           ),

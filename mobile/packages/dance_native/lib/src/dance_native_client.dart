@@ -120,6 +120,24 @@ class DanceNativeClient implements DanceProcessingEvents {
     return result ?? const [];
   }
 
+  /// Toggle Android export live-preview capture for a running job.
+  /// Platforms that do not expose the legacy MethodChannel control simply
+  /// keep their existing export-preview behavior.
+  Future<void> setExportLivePreviewEnabled({
+    required String jobId,
+    required bool enabled,
+  }) async {
+    try {
+      await _channel.invokeMethod<void>('setExportLivePreviewEnabled', {
+        'jobId': jobId,
+        'enabled': enabled,
+      });
+    } on MissingPluginException {
+      // Android implements this runtime control. Keep other platforms
+      // backwards-compatible instead of failing the export UI toggle.
+    }
+  }
+
   /// Cancel an ongoing export job
   Future<void> cancelJob(String jobId) {
     return _api.cancelJob(jobId);
