@@ -12,10 +12,25 @@ import '../../export/presentation/export_screen.dart';
 import '../domain/effect_editor_state.dart';
 import 'effect_editor_controller.dart';
 
+class EffectEditorArgs {
+  final DanceProject project;
+  final String? initialPreviewPath;
+
+  const EffectEditorArgs({
+    required this.project,
+    this.initialPreviewPath,
+  });
+}
+
 class EffectEditorScreen extends ConsumerStatefulWidget {
   final DanceProject project;
+  final String? initialPreviewPath;
 
-  const EffectEditorScreen({super.key, required this.project});
+  const EffectEditorScreen({
+    super.key,
+    required this.project,
+    this.initialPreviewPath,
+  });
 
   @override
   ConsumerState<EffectEditorScreen> createState() => _EffectEditorScreenState();
@@ -28,7 +43,11 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(effectEditorControllerProvider.notifier).init(widget.project);
+      if (!mounted) return;
+      ref.read(effectEditorControllerProvider.notifier).init(
+            widget.project,
+            initialPreviewPath: widget.initialPreviewPath,
+          );
     });
   }
 
@@ -171,11 +190,10 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
   }
 
   Widget _buildStagePreview(EffectEditorState state) {
-    final displayPath = state.previewPath ?? state.previewThumbnailPath;
-    final hasImage =
-        displayPath != null &&
-        displayPath.isNotEmpty &&
-        File(displayPath).existsSync();
+    final displayPath = state.previewPath ??
+        state.previewThumbnailPath ??
+        widget.initialPreviewPath;
+    final hasImage = displayPath != null && displayPath.isNotEmpty;
 
     return Stack(
       alignment: Alignment.center,
@@ -183,31 +201,16 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
         if (hasImage)
           Image.file(
             File(displayPath),
-            key: ValueKey('${displayPath}_${state.previewRequestId}'),
             fit: BoxFit.cover,
             width: double.infinity,
             height: double.infinity,
             gaplessPlayback: true,
+            filterQuality: FilterQuality.low,
+            errorBuilder: (context, error, stackTrace) =>
+                _buildPreviewPlaceholder(),
           )
         else
-          const Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.movie_filter_outlined,
-                size: 52,
-                color: AppTheme.warmTextMuted,
-              ),
-              SizedBox(height: 12),
-              Text(
-                '正在准备效果预览',
-                style: TextStyle(
-                  color: AppTheme.warmTextSecondary,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
+          _buildPreviewPlaceholder(),
         if (state.previewLoading)
           Positioned(
             top: 14,
@@ -274,6 +277,27 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
               ),
             ),
           ),
+      ],
+    );
+  }
+
+  Widget _buildPreviewPlaceholder() {
+    return const Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.movie_filter_outlined,
+          size: 52,
+          color: AppTheme.warmTextMuted,
+        ),
+        SizedBox(height: 12),
+        Text(
+          '正在准备效果预览',
+          style: TextStyle(
+            color: AppTheme.warmTextSecondary,
+            fontSize: 13,
+          ),
+        ),
       ],
     );
   }

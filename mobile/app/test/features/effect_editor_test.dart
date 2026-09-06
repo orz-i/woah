@@ -108,6 +108,37 @@ void main() {
       expect(controller.state.previewPath, equals('/path/to/rendered_preview.jpg'));
       controller.dispose();
     });
+
+    test('uses only a full-frame handoff preview and never a person crop fallback', () {
+      const personCrop = '/path/to/person_crop.jpg';
+      const handoffPreview = '/path/to/selection_preview.jpg';
+      final projectWithPerson = testProject.copyWith(
+        persons: const [
+          PersonTrack(
+            id: 7,
+            normalizedInitialBox: NormalizedRect(
+              left: 0.1,
+              top: 0.1,
+              right: 0.4,
+              bottom: 0.9,
+            ),
+            thumbnailPath: personCrop,
+            confidence: 0.95,
+          ),
+        ],
+      );
+
+      final withHandoff = EffectEditorController();
+      addTearDown(withHandoff.dispose);
+      withHandoff.init(projectWithPerson, initialPreviewPath: handoffPreview);
+      expect(withHandoff.state.previewThumbnailPath, handoffPreview);
+      expect(withHandoff.state.previewThumbnailPath, isNot(personCrop));
+
+      final withoutHandoff = EffectEditorController();
+      addTearDown(withoutHandoff.dispose);
+      withoutHandoff.init(projectWithPerson);
+      expect(withoutHandoff.state.previewThumbnailPath, isNull);
+    });
   });
 
   group('EffectEditorScreen Widget Tests', () {
@@ -128,6 +159,55 @@ void main() {
         hasAudio: true,
       ),
     );
+
+    testWidgets('first frame keeps the full-frame handoff preview instead of a person crop', (tester) async {
+      const handoffPreview = '/path/to/selection_preview.jpg';
+      const personCrop = '/path/to/person_crop.jpg';
+      final projectWithPerson = testProject.copyWith(
+        persons: const [
+          PersonTrack(
+            id: 3,
+            normalizedInitialBox: NormalizedRect(
+              left: 0.1,
+              top: 0.1,
+              right: 0.4,
+              bottom: 0.9,
+            ),
+            thumbnailPath: personCrop,
+            confidence: 0.96,
+          ),
+        ],
+      );
+      final repo = _FakeNativeRepository();
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repo)],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: EffectEditorScreen(
+              project: projectWithPerson,
+              initialPreviewPath: handoffPreview,
+            ),
+          ),
+        ),
+      );
+
+      final stageImage = tester.widget<Image>(find.byType(Image).first);
+      final provider = stageImage.image as FileImage;
+      expect(provider.file.path, handoffPreview);
+      expect(provider.file.path, isNot(personCrop));
+      expect(stageImage.key, isNull);
+
+      await tester.pump();
+      expect(
+        container.read(effectEditorControllerProvider).previewThumbnailPath,
+        handoffPreview,
+      );
+    });
 
     testWidgets('renders stably without overflow on standard and small screens', (tester) async {
       tester.view.physicalSize = const Size(360, 640);

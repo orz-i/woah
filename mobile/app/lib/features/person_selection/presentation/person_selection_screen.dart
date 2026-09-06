@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
 import '../../../core/widgets/main_flow_header.dart';
+import '../../effect_editor/presentation/effect_editor_screen.dart';
 import '../domain/person_selection_state.dart';
 import 'person_selection_controller.dart';
 
@@ -458,9 +459,16 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
           HapticFeedback.mediumImpact();
           final configured = controller.buildConfiguredProject();
           if (configured == null) return;
+          final latestState = ref.read(personSelectionControllerProvider);
+          final initialPreviewPath = latestState.selectionPreviewLoading
+              ? null
+              : latestState.selectionPreviewPath;
           final updated = await context.push<DanceProject>(
             '/effect_editor',
-            extra: configured,
+            extra: EffectEditorArgs(
+              project: configured,
+              initialPreviewPath: initialPreviewPath,
+            ),
           );
           if (updated != null) controller.updateProject(updated);
         },

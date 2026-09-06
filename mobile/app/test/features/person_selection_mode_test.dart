@@ -49,6 +49,11 @@ void main() {
 
       controller.setPrivacyMode(1, PersonPrivacyMode.fullBody);
       expect(controller.state.selectedPersonIds, equals({0, 3}));
+
+      controller.togglePerson(0);
+      expect(controller.state.selectionPreviewLoading, isTrue);
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.state.selectionPreviewLoading, isFalse);
     },
   );
 

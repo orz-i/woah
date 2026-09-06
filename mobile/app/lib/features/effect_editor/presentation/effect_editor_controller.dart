@@ -20,16 +20,11 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
       : _repository = repository,
         super(const EffectEditorState());
 
-  void init(DanceProject project) {
-    state = state.copyWith(
+  void init(DanceProject project, {String? initialPreviewPath}) {
+    state = EffectEditorState(
       project: project,
       effects: project.effects,
-      previewThumbnailPath: project.persons.isNotEmpty
-          ? project.persons.first.thumbnailPath
-          : null,
-      previewPath: null,
-      previewLoading: false,
-      previewError: null,
+      previewThumbnailPath: initialPreviewPath,
     );
     _requestPreview(debounce: false);
   }

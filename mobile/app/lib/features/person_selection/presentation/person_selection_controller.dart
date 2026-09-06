@@ -130,6 +130,7 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
     if (cacheId == null || project == null) return;
 
     final currentRequestId = ++_previewRequestId;
+    state = state.copyWith(selectionPreviewLoading: true);
     try {
       final isFaceOnly = state.privacyMode == ProjectPrivacyMode.faceOnly;
       final selectedPersonIds = isFaceOnly
@@ -160,7 +161,9 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
         'PersonSelectionController',
         'Selection stage preview unavailable: $e',
       );
-      if (mounted && state.analysisCacheId == cacheId) {
+      if (mounted &&
+          state.analysisCacheId == cacheId &&
+          currentRequestId == _previewRequestId) {
         state = state.copyWith(selectionPreviewLoading: false);
       }
     }
