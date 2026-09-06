@@ -427,8 +427,21 @@ class ExportPipeline(
                     fullBodyPersonIds = fullBodyPersonIds,
                     faceOnlyPersonIds = faceOnlyPersonIds
                 )
+                val reuseProductionCpuFallbackForCpuMt4Reference =
+                    shouldReuseProductionCpuFallbackForCpuMt4Reference(
+                        isDebugBuild = com.danceanon.dance_native.BuildConfig.DEBUG,
+                        isSam2Mode = isSam2Mode,
+                        fullBodyPersonIds = fullBodyPersonIds,
+                        faceOnlyPersonIds = faceOnlyPersonIds,
+                        effectiveAccelerator = yoloEffectiveAccelerator,
+                        effectiveCpuNumThreads = yoloEffectiveCpuNumThreads
+                    )
                 var faceDeterministicCpuPrimaryInferenceFrames = 0L
                 var faceDeterministicCpuPrimaryFallbackFrames = 0L
+                var cpuMt4ProbeInferenceFrames = 0L
+                var cpuMt4ProductionReuseFrames = 0L
+                var cpuMt4ProductionReuseParityFrames = 0L
+                var cpuMt4ProductionReuseParityExact = true
                 val crossDeviceTrackingDiagnostics = if (
                     com.danceanon.dance_native.BuildConfig.DEBUG && !isSam2Mode
                 ) {
@@ -1017,7 +1030,16 @@ class ExportPipeline(
                                 )
                                 var cpuMt4PrimaryInferenceTimeMs: Long? = null
                                 val cpuMt4Probe = cpuMt4ProbeSegmenter
-                                if (cpuMt4Probe != null) {
+                                val canReuseProductionForCpuMt4Reference =
+                                    reuseProductionCpuFallbackForCpuMt4Reference &&
+                                        cpuMt4ProductionReuseParityExact &&
+                                        cpuMt4ProductionReuseParityFrames > 0L &&
+                                        cpuMt4ProbeFallbackReason == null
+                                val shouldRunIndependentCpuMt4Probe =
+                                    !canReuseProductionForCpuMt4Reference ||
+                                        ptsUs <= CPU_MT4_ARTIFACT_MAX_PTS_US ||
+                                        processedFrames % CPU_MT4_PRODUCTION_REUSE_PARITY_INTERVAL_FRAMES == 0
+                                if (cpuMt4Probe != null && shouldRunIndependentCpuMt4Probe) {
                                     try {
                                         val cpuMt4Seg = profiler.recordStage("yoloCpuMt4Probe") {
                                             cpuMt4Probe.segmentGlReadbackRgbaSync(
@@ -1030,6 +1052,7 @@ class ExportPipeline(
                                         }
                                         cpuMt4DetectionsForShadow = cpuMt4Seg.persons
                                         cpuMt4PrimaryInferenceTimeMs = cpuMt4Seg.inferenceTimeMs
+                                        cpuMt4ProbeInferenceFrames++
                                         for ((stage, elapsedMs) in cpuMt4Seg.stageTimingsMs) {
                                             profiler.recordSample("yoloCpuMt4Probe_${stage}", elapsedMs)
                                         }
@@ -1092,6 +1115,49 @@ class ExportPipeline(
                                     profiler.recordSample("yoloPipelineTotal", seg.inferenceTimeMs)
                                     for ((stage, elapsedMs) in seg.stageTimingsMs) {
                                         profiler.recordSample(stage, elapsedMs)
+                                    }
+                                    if (
+                                        reuseProductionCpuFallbackForCpuMt4Reference &&
+                                        cpuMt4DetectionsForShadow != null
+                                    ) {
+                                        val productionSignature =
+                                            com.danceanon.native.diagnostics.YoloTensorDiagnostics
+                                                .detectionSignature(seg.persons)
+                                        val cpuMt4Signature =
+                                            com.danceanon.native.diagnostics.YoloTensorDiagnostics
+                                                .detectionSignature(requireNotNull(cpuMt4DetectionsForShadow))
+                                        if (productionSignature == cpuMt4Signature) {
+                                            cpuMt4ProductionReuseParityFrames++
+                                        } else {
+                                            cpuMt4ProductionReuseParityExact = false
+                                            com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                                                level = "WARN",
+                                                component = "ExportPipeline",
+                                                event = "YOLO_CPU_MT4_PRODUCTION_REUSE_PARITY_MISMATCH",
+                                                fields = mapOf(
+                                                    "job_id" to jobId,
+                                                    "pts_us" to ptsUs,
+                                                    "confirmed_parity_frames" to cpuMt4ProductionReuseParityFrames
+                                                )
+                                            )
+                                        }
+                                    }
+                                    if (
+                                        reuseProductionCpuFallbackForCpuMt4Reference &&
+                                        cpuMt4ProductionReuseParityExact &&
+                                        cpuMt4ProductionReuseParityFrames > 0L &&
+                                        cpuMt4ProbeFallbackReason == null &&
+                                        ptsUs > CPU_MT4_ARTIFACT_MAX_PTS_US &&
+                                        cpuMt4DetectionsForShadow == null
+                                    ) {
+                                        cpuMt4DetectionsForShadow = seg.persons
+                                        cpuMt4ProductionReuseFrames++
+                                        com.danceanon.native.diagnostics.YoloTensorDiagnostics
+                                            .recordGeometrySignature(
+                                                jobId = "${jobId}_cpu_mt4_probe",
+                                                ptsUs = ptsUs,
+                                                detections = seg.persons
+                                            )
                                     }
                                     // Export QUALITY path: YOLO raw organic masks directly enter TrackManager without pre-dilation
                                     seg.persons
@@ -2095,6 +2161,19 @@ class ExportPipeline(
                             "canonical_yuv_fallback_reason" to canonicalInferenceFallbackReason,
                             "cpu_mt4_probe_threads" to CPU_MT_PROBE_THREADS,
                             "cpu_mt4_signature_scope" to "FULL_EXPORT",
+                            "cpu_mt4_probe_inference_frames" to cpuMt4ProbeInferenceFrames,
+                            "cpu_mt4_production_reuse_frames" to cpuMt4ProductionReuseFrames,
+                            "cpu_mt4_production_reuse_parity_frames" to cpuMt4ProductionReuseParityFrames,
+                            "cpu_mt4_production_reuse_parity_exact" to cpuMt4ProductionReuseParityExact,
+                            "cpu_mt4_reference_source_policy" to if (
+                                reuseProductionCpuFallbackForCpuMt4Reference
+                            ) {
+                                "INDEPENDENT_ARTIFACT_WINDOW_WITH_SPARSE_PARITY_THEN_PRODUCTION_CPU4T_REUSE"
+                            } else {
+                                "INDEPENDENT_CPU4T_FULL_EXPORT"
+                            },
+                            "cpu_mt4_production_reuse_parity_interval_frames" to
+                                CPU_MT4_PRODUCTION_REUSE_PARITY_INTERVAL_FRAMES,
                             "cpu_mt4_shadow_adaptive_schedules" to com.danceanon.native.diagnostics.CrossDeviceTrackingDiagnostics.DEFAULT_ADAPTIVE_CONFIGS.map { it.key },
                             "cpu_mt4_probe_fallback_reason" to cpuMt4ProbeFallbackReason,
                             "state" to "completed"
@@ -2209,6 +2288,7 @@ class ExportPipeline(
     companion object {
         private const val CPU_MT_PROBE_THREADS = 4
         private const val CPU_MT4_ARTIFACT_MAX_PTS_US = 450_000L
+        private const val CPU_MT4_PRODUCTION_REUSE_PARITY_INTERVAL_FRAMES = 120
         internal const val SELECTION_IDENTITY_ROOT_MIN_CONFIDENCE = 0.60
 
         internal fun canonicalizeFaceReferenceCoordinate(value: Float): Float =
@@ -2304,6 +2384,21 @@ class ExportPipeline(
                 !isSam2Mode &&
                 fullBodyPersonIds.isEmpty() &&
                 faceOnlyPersonIds.isNotEmpty()
+
+        internal fun shouldReuseProductionCpuFallbackForCpuMt4Reference(
+            isDebugBuild: Boolean,
+            isSam2Mode: Boolean,
+            fullBodyPersonIds: Set<Int>,
+            faceOnlyPersonIds: Set<Int>,
+            effectiveAccelerator: com.danceanon.native.litert.LiteRtAccelerator,
+            effectiveCpuNumThreads: Int?
+        ): Boolean =
+            isDebugBuild &&
+                !isSam2Mode &&
+                fullBodyPersonIds.isNotEmpty() &&
+                faceOnlyPersonIds.isEmpty() &&
+                effectiveAccelerator == com.danceanon.native.litert.LiteRtAccelerator.CPU &&
+                effectiveCpuNumThreads == CPU_MT_PROBE_THREADS
     }
 }
 

@@ -5,6 +5,7 @@ import com.danceanon.native.storage.CachedBBox
 import com.danceanon.native.storage.CachedPerson
 import com.danceanon.native.inference.FloatRect
 import com.danceanon.native.inference.PersonDetection
+import com.danceanon.native.litert.LiteRtAccelerator
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -35,6 +36,70 @@ class ExportPipelinePrivacyModePolicyTest {
             ExportPipeline.shouldUseFreshFullBodyClassPrimary(
                 fullBodyPersonIds = emptySet(),
                 faceOnlyPersonIds = emptySet()
+            )
+        )
+    }
+
+    @Test
+    fun `production CPU4T reuse is restricted to debug full body CPU fallback`() {
+        assertTrue(
+            ExportPipeline.shouldReuseProductionCpuFallbackForCpuMt4Reference(
+                isDebugBuild = true,
+                isSam2Mode = false,
+                fullBodyPersonIds = setOf(1, 3),
+                faceOnlyPersonIds = emptySet(),
+                effectiveAccelerator = LiteRtAccelerator.CPU,
+                effectiveCpuNumThreads = 4
+            )
+        )
+        assertFalse(
+            ExportPipeline.shouldReuseProductionCpuFallbackForCpuMt4Reference(
+                isDebugBuild = true,
+                isSam2Mode = false,
+                fullBodyPersonIds = setOf(1, 3),
+                faceOnlyPersonIds = emptySet(),
+                effectiveAccelerator = LiteRtAccelerator.GPU,
+                effectiveCpuNumThreads = null
+            )
+        )
+        assertFalse(
+            ExportPipeline.shouldReuseProductionCpuFallbackForCpuMt4Reference(
+                isDebugBuild = true,
+                isSam2Mode = false,
+                fullBodyPersonIds = setOf(1),
+                faceOnlyPersonIds = setOf(3),
+                effectiveAccelerator = LiteRtAccelerator.CPU,
+                effectiveCpuNumThreads = 4
+            )
+        )
+        assertFalse(
+            ExportPipeline.shouldReuseProductionCpuFallbackForCpuMt4Reference(
+                isDebugBuild = false,
+                isSam2Mode = false,
+                fullBodyPersonIds = setOf(1),
+                faceOnlyPersonIds = emptySet(),
+                effectiveAccelerator = LiteRtAccelerator.CPU,
+                effectiveCpuNumThreads = 4
+            )
+        )
+        assertFalse(
+            ExportPipeline.shouldReuseProductionCpuFallbackForCpuMt4Reference(
+                isDebugBuild = true,
+                isSam2Mode = true,
+                fullBodyPersonIds = setOf(1),
+                faceOnlyPersonIds = emptySet(),
+                effectiveAccelerator = LiteRtAccelerator.CPU,
+                effectiveCpuNumThreads = 4
+            )
+        )
+        assertFalse(
+            ExportPipeline.shouldReuseProductionCpuFallbackForCpuMt4Reference(
+                isDebugBuild = true,
+                isSam2Mode = false,
+                fullBodyPersonIds = setOf(1),
+                faceOnlyPersonIds = emptySet(),
+                effectiveAccelerator = LiteRtAccelerator.CPU,
+                effectiveCpuNumThreads = 2
             )
         )
     }

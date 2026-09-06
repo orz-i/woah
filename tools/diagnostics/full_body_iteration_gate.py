@@ -118,6 +118,13 @@ def extract_bundle(bundle_path: Path, include_fingerprints: bool = True) -> dict
     privacy_inputs = bundle.get("full_body_privacy_inputs", {})
     production_detections = bundle.get("detections", {}).get("production", {})
     cpu4t_detections = bundle.get("detections", {}).get("cpu_mt4_probe", {})
+    cpu4t_timing = bundle.get("timings", {}).get("cpu_4t_total")
+    cpu4t_probe_inference_frames = summary.get("cpu_mt4_probe_inference_frames")
+    if cpu4t_probe_inference_frames is None and isinstance(cpu4t_timing, dict):
+        cpu4t_probe_inference_frames = int(cpu4t_timing.get("count", 0))
+    cpu4t_production_reuse_frames = summary.get("cpu_mt4_production_reuse_frames")
+    if cpu4t_production_reuse_frames is None:
+        cpu4t_production_reuse_frames = 0
 
     quality = {
         "analysis_canonical_rgba_sha256": (bundle.get("analysis_selection") or {}).get(
@@ -153,6 +160,8 @@ def extract_bundle(bundle_path: Path, include_fingerprints: bool = True) -> dict
             "production_detection_signature_frames_total": len(production_detections),
             "cpu4t_detection_signature_frames_total": len(cpu4t_detections),
             "cpu4t_reference_track_frames_total": len(bundle.get("shadow_cpu_full", {})),
+            "cpu4t_probe_inference_frames_total": int(cpu4t_probe_inference_frames or 0),
+            "cpu4t_production_reuse_frames_total": int(cpu4t_production_reuse_frames),
             "adaptive_shadow_matrix_enabled": summary.get(
                 "cross_device_adaptive_shadow_matrix_enabled"
             ),

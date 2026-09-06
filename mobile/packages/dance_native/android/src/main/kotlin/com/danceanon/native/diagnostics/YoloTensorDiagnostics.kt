@@ -33,23 +33,7 @@ class YoloTensorDiagnostics(
         if (!capturedPts.add(ptsUs)) return
 
         if (ptsUs > artifactMaxPtsUs) {
-            NativeDiagnostics.event(
-                level = "INFO",
-                component = "YoloTensorDiagnostics",
-                event = "YOLO_DETECTION_SIGNATURE_CAPTURED",
-                fields = mapOf(
-                    "job_id" to jobId,
-                    "pts_us" to ptsUs,
-                    "detection_count" to detections.size,
-                    // Full-export geometry coverage is still useful for proving
-                    // deterministic CPU identity input, but hashing every 160x160
-                    // mask on every frame turns debug telemetry into a material
-                    // part of the measured CPU4T cost. Keep full mask/tensor
-                    // signatures in the early artifact window below; after that,
-                    // record only the quantized geometry/confidence signature.
-                    "detections" to geometryDetectionSignature(detections)
-                )
-            )
+            recordGeometrySignature(jobId, ptsUs, detections)
             return
         }
 
@@ -96,7 +80,7 @@ class YoloTensorDiagnostics(
             return out.array()
         }
 
-        private fun detectionSignature(detections: List<PersonDetection>): List<Map<String, Any?>> =
+        internal fun detectionSignature(detections: List<PersonDetection>): List<Map<String, Any?>> =
             detections.mapIndexed { index, detection ->
                 val maskBuffer = detection.mask?.buffer
                 val associationMask = maskBuffer?.let(::associationMaskSummary)
@@ -117,6 +101,31 @@ class YoloTensorDiagnostics(
                     "mask_assoc_near_threshold_pixels" to associationMask?.nearThresholdPixels
                 )
             }
+
+        internal fun recordGeometrySignature(
+            jobId: String,
+            ptsUs: Long,
+            detections: List<PersonDetection>
+        ) {
+            if (!com.danceanon.dance_native.BuildConfig.DEBUG || ptsUs < 0L) return
+            NativeDiagnostics.event(
+                level = "INFO",
+                component = "YoloTensorDiagnostics",
+                event = "YOLO_DETECTION_SIGNATURE_CAPTURED",
+                fields = mapOf(
+                    "job_id" to jobId,
+                    "pts_us" to ptsUs,
+                    "detection_count" to detections.size,
+                    // Full-export geometry coverage is still useful for proving
+                    // deterministic CPU identity input, but hashing every 160x160
+                    // mask on every frame turns debug telemetry into a material
+                    // part of the measured CPU4T cost. Keep full mask/tensor
+                    // signatures in the early artifact window; after that,
+                    // record only the quantized geometry/confidence signature.
+                    "detections" to geometryDetectionSignature(detections)
+                )
+            )
+        }
 
         internal fun geometryDetectionSignature(detections: List<PersonDetection>): List<Map<String, Any?>> =
             detections.mapIndexed { index, detection ->
