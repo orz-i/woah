@@ -24,10 +24,10 @@
       "note": "Integer-luma/fused-chroma candidate measured canonical p50 54->53ms (1.85%) and was reverted; canonical performance baseline intentionally remains at the prior accepted value."
     },
     "face_reference_tracking": {
-      "measured_commit": "cff421497382e1fcbdfb8f7a8e3eee3728d829d7",
-      "accepted_commit": "ca3d242a8653a643b075bd63962a828b5e7b661d",
-      "bundle": "logs\\woah_diag_20260905_133127_20260905_132504_f76b8d70.zip",
-      "note": "First real-device transition baseline after disabling the legacy adaptive shadow matrix on deterministic Face CPU-primary; no historical same-name stage exists, so no fabricated percentage comparison."
+      "measured_commit": "b188c3395629a09107cfe9ab122ba0f89d72d028",
+      "accepted_commit": "b188c3395629a09107cfe9ab122ba0f89d72d028",
+      "bundle": "logs\\woah_diag_20260906_024541_20260906_022824_29883628.zip",
+      "note": "Shared TrackManager prepared-warped-mask cache advanced face reference tracking p50 50->43ms (14.0%) with exact Face fingerprints and unchanged runtime. The same tested HEAD also contains the UI/UX merge that disables Android live-preview capture by default, so whole-export attribution is composite. Unrelated CPU stages were slower in this run (canonical 53->61ms, CPU4T 121->136ms), while the cache itself measured 66.39% faster in the host batch microbench. Only this tracking stage is advanced; unrelated rolling performance baselines remain unchanged."
     },
     "face_temporal_class": {
       "measured_commit": "cff421497382e1fcbdfb8f7a8e3eee3728d829d7",
@@ -175,10 +175,10 @@
       },
       "face_reference_tracking": {
         "count": 751,
-        "avg_ms": 50.48735019973369,
-        "p50_ms": 50.0,
-        "p95_ms": 63.0,
-        "max_ms": 221.0
+        "avg_ms": 42.539280958721704,
+        "p50_ms": 43.0,
+        "p95_ms": 56.0,
+        "max_ms": 81.0
       },
       "face_roi": {
         "count": 751,
@@ -332,10 +332,10 @@
     },
     "face_reference_tracking": {
       "count": 751,
-      "avg_ms": 50.48735019973369,
-      "p50_ms": 50.0,
-      "p95_ms": 63.0,
-      "max_ms": 221.0
+      "avg_ms": 42.539280958721704,
+      "p50_ms": 43.0,
+      "p95_ms": 56.0,
+      "max_ms": 81.0
     },
     "face_roi": {
       "count": 751,
