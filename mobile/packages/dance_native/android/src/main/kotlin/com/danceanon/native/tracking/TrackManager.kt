@@ -709,15 +709,43 @@ class TrackManager(
         val matchedTrackIndices = mutableSetOf<Int>()
         val matchedDetectionIndices = mutableSetOf<Int>()
 
+        data class PreparedWarpedMaskCacheEntry(
+            val sourceMask: NativeMask,
+            val previousBbox: FloatRect,
+            val predictedBbox: FloatRect,
+            val samples: PreparedWarpedMaskSamples
+        )
+
+        val preparedWarpedMaskByTrackId = mutableMapOf<Int, PreparedWarpedMaskCacheEntry>()
+
         fun computePredictedMaskIoU(track: InternalTrack, detMask: NativeMask?): Float {
             val src = track.lastObservedMask ?: return 0f
-            return computeWarpedMaskIoU(
-                sourceMask = src,
-                prevBbox = track.lastObservedBbox,
-                predBbox = track.currentPredictedBbox,
-                candidateMask = detMask,
-                sampleStride = ASSOCIATION_MASK_IOU_SAMPLE_STRIDE
-            )
+            if (detMask == null || src.width != detMask.width || src.height != detMask.height) return 0f
+
+            val cached = preparedWarpedMaskByTrackId[track.id]
+            val prepared = if (
+                cached != null &&
+                cached.sourceMask === src &&
+                cached.previousBbox == track.lastObservedBbox &&
+                cached.predictedBbox == track.currentPredictedBbox
+            ) {
+                cached.samples
+            } else {
+                prepareWarpedMaskSamples(
+                    sourceMask = src,
+                    prevBbox = track.lastObservedBbox,
+                    predBbox = track.currentPredictedBbox,
+                    sampleStride = ASSOCIATION_MASK_IOU_SAMPLE_STRIDE
+                ).also { samples ->
+                    preparedWarpedMaskByTrackId[track.id] = PreparedWarpedMaskCacheEntry(
+                        sourceMask = src,
+                        previousBbox = track.lastObservedBbox,
+                        predictedBbox = track.currentPredictedBbox,
+                        samples = samples
+                    )
+                }
+            }
+            return computePreparedWarpedMaskIoU(prepared, detMask)
         }
 
         fun computeMatchScore(track: InternalTrack, det: PersonDetection): Float {
@@ -2755,6 +2783,121 @@ class TrackManager(
                     if (a && b) intersection++
                     if (a || b) union++
                 }
+            }
+
+            return if (union == 0) 1.0f else intersection.toFloat() / union.toFloat()
+        }
+
+        internal data class PreparedWarpedMaskSamples(
+            val width: Int,
+            val height: Int,
+            val sampleStride: Int,
+            val foreground: ByteArray
+        )
+
+        internal fun prepareWarpedMaskSamples(
+            sourceMask: NativeMask,
+            prevBbox: FloatRect,
+            predBbox: FloatRect,
+            sampleStride: Int = ASSOCIATION_MASK_IOU_SAMPLE_STRIDE
+        ): PreparedWarpedMaskSamples {
+            val w = sourceMask.width
+            val h = sourceMask.height
+            val stride = sampleStride.coerceAtLeast(1)
+            val sourceBuf = sourceMask.buffer
+
+            val prevW = max(1f, prevBbox.width)
+            val prevH = max(1f, prevBbox.height)
+            val predW = max(1f, predBbox.width)
+            val predH = max(1f, predBbox.height)
+            val scaleX = predW / prevW
+            val scaleY = predH / prevH
+
+            val mapper = sourceMask.mapper ?: com.danceanon.native.geometry.ModelCoordinateMapper(
+                srcWidth = max(1, sourceMask.originalWidth),
+                srcHeight = max(1, sourceMask.originalHeight),
+                modelInputSize = 640,
+                protoSize = w
+            )
+            val prevCenterX = mapper.sourceToProtoX(prevBbox.centerX)
+            val prevCenterY = mapper.sourceToProtoY(prevBbox.centerY)
+            val predCenterX = mapper.sourceToProtoX(predBbox.centerX)
+            val predCenterY = mapper.sourceToProtoY(predBbox.centerY)
+
+            val sampleColumns = (w + stride - 1) / stride
+            val sampleRows = (h + stride - 1) / stride
+            val foreground = ByteArray(sampleColumns * sampleRows)
+            var sampleIndex = 0
+
+            var y = 0
+            while (y < h) {
+                val floatY = (y - predCenterY) / scaleY + prevCenterY
+                val y0 = kotlin.math.floor(floatY).toInt()
+                val y1 = y0 + 1
+                val wy1 = (floatY - y0).coerceIn(0f, 1f)
+                val wy0 = 1f - wy1
+
+                var x = 0
+                while (x < w) {
+                    val floatX = (x - predCenterX) / scaleX + prevCenterX
+                    val x0 = kotlin.math.floor(floatX).toInt()
+                    val x1 = x0 + 1
+                    val wx1 = (floatX - x0).coerceIn(0f, 1f)
+                    val wx0 = 1f - wx1
+
+                    fun sample(ix: Int, iy: Int): Int {
+                        return if (ix in 0 until w && iy in 0 until h) {
+                            sourceBuf.get(iy * w + ix).toInt() and 0xFF
+                        } else {
+                            0
+                        }
+                    }
+
+                    val v00 = sample(x0, y0)
+                    val v01 = sample(x1, y0)
+                    val v10 = sample(x0, y1)
+                    val v11 = sample(x1, y1)
+                    val warped = (v00 * wx0 + v01 * wx1) * wy0 + (v10 * wx0 + v11 * wx1) * wy1
+                    foreground[sampleIndex++] = if (warped > 128f) 1 else 0
+                    x += stride
+                }
+                y += stride
+            }
+
+            return PreparedWarpedMaskSamples(
+                width = w,
+                height = h,
+                sampleStride = stride,
+                foreground = foreground
+            )
+        }
+
+        internal fun computePreparedWarpedMaskIoU(
+            prepared: PreparedWarpedMaskSamples,
+            candidateMask: NativeMask?
+        ): Float {
+            if (candidateMask == null) return 0f
+            if (prepared.width != candidateMask.width || prepared.height != candidateMask.height) return 0f
+
+            val candidateBuf = candidateMask.buffer
+            val w = prepared.width
+            val h = prepared.height
+            val stride = prepared.sampleStride
+            var intersection = 0
+            var union = 0
+            var sampleIndex = 0
+
+            var y = 0
+            while (y < h) {
+                var x = 0
+                while (x < w) {
+                    val a = prepared.foreground[sampleIndex++].toInt() != 0
+                    val b = (candidateBuf.get(y * w + x).toInt() and 0xFF) > 128
+                    if (a && b) intersection++
+                    if (a || b) union++
+                    x += stride
+                }
+                y += stride
             }
 
             return if (union == 0) 1.0f else intersection.toFloat() / union.toFloat()

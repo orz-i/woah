@@ -27,6 +27,19 @@ class TrackManagerSampledMaskIoUTest {
         return NativeMask(size, size, buf, 1920, 1080)
     }
 
+    private fun patternedMask(size: Int = 160, seed: Int): NativeMask {
+        val values = intArrayOf(0, 127, 128, 129, 255)
+        val buf = ByteBuffer.allocateDirect(size * size)
+        for (y in 0 until size) {
+            for (x in 0 until size) {
+                val value = values[(x * 17 + y * 31 + seed) % values.size]
+                buf.put(value.toByte())
+            }
+        }
+        buf.rewind()
+        return NativeMask(size, size, buf, 1920, 1080)
+    }
+
     @Test
     fun sampledAssociationIoUPreservesCandidateOrdering() {
         val base = rectMask(left = 32, top = 24, right = 112, bottom = 144)
@@ -65,6 +78,48 @@ class TrackManagerSampledMaskIoUTest {
         assertTrue(kotlin.math.abs(directGood - expectedGood) < 0.02f)
         assertTrue(kotlin.math.abs(directBad - expectedBad) < 0.05f)
         assertTrue(directGood > directBad)
+    }
+
+    @Test
+    fun preparedWarpedSamplesMatchDirectIoUExactlyAcrossCandidates() {
+        val source = patternedMask(seed = 2)
+        val previousBoxes = listOf(
+            FloatRect(600f, 250f, 1000f, 950f),
+            FloatRect(120f, 80f, 420f, 720f),
+            FloatRect(900f, 300f, 1320f, 1010f)
+        )
+        val predictedBoxes = listOf(
+            FloatRect(680f, 270f, 1080f, 970f),
+            FloatRect(90f, 110f, 430f, 760f),
+            FloatRect(820f, 260f, 1280f, 1040f)
+        )
+        val candidates = listOf(
+            patternedMask(seed = 0),
+            patternedMask(seed = 1),
+            patternedMask(seed = 3),
+            rectMask(left = 20, top = 30, right = 100, bottom = 140),
+            rectMask(left = 70, top = 10, right = 155, bottom = 120)
+        )
+
+        for (index in previousBoxes.indices) {
+            val prepared = TrackManager.prepareWarpedMaskSamples(
+                sourceMask = source,
+                prevBbox = previousBoxes[index],
+                predBbox = predictedBoxes[index],
+                sampleStride = 4
+            )
+            for (candidate in candidates) {
+                val direct = TrackManager.computeWarpedMaskIoU(
+                    sourceMask = source,
+                    prevBbox = previousBoxes[index],
+                    predBbox = predictedBoxes[index],
+                    candidateMask = candidate,
+                    sampleStride = 4
+                )
+                val cached = TrackManager.computePreparedWarpedMaskIoU(prepared, candidate)
+                assertEquals(direct, cached)
+            }
+        }
     }
 
     @Test
