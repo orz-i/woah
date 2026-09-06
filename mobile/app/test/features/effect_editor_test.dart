@@ -4,8 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:dance_domain/dance_domain.dart';
 import 'package:dance_native/dance_native.dart';
 import 'package:app/repositories/native_processing_repository.dart';
+import 'package:app/core/widgets/immersive_flow_action.dart';
 import 'package:app/features/effect_editor/presentation/effect_editor_controller.dart';
 import 'package:app/features/effect_editor/presentation/effect_editor_screen.dart';
+import 'package:go_router/go_router.dart';
 
 
 void main() {
@@ -231,8 +233,16 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
-      expect(find.text('编辑效果'), findsOneWidget);
-      expect(find.text('下一步: 导出'), findsOneWidget);
+      expect(find.text('编辑效果'), findsNothing);
+      expect(find.text('下一步: 导出'), findsNothing);
+      expect(
+        find.byKey(ImmersiveFlowAction.nextControlKey),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(ImmersiveFlowAction.exitTargetKey),
+        findsNothing,
+      );
       expect(find.textContaining('遮挡'), findsOneWidget);
 
       // Verify stage preview exists and has prominent non-zero height
@@ -259,8 +269,95 @@ void main() {
       expect(find.text('主角跟随画面裁剪'), findsNothing);
       expect(find.text('自动运镜保持主角居中'), findsNothing);
       expect(find.text('特写放大'), findsNothing);
-      expect(find.text('下一步: 导出'), findsOneWidget);
+      expect(find.text('下一步: 导出'), findsNothing);
 
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('floating next control opens export settings on tap', (tester) async {
+      final repo = _FakeNativeRepository();
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repo)],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: EffectEditorScreen(project: testProject),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byKey(ImmersiveFlowAction.nextControlKey),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('导出设置'), findsOneWidget);
+      expect(find.text('开始导出'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('long press and drag next control upward reveals return and pops',
+        (tester) async {
+      final repo = _FakeNativeRepository();
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repo)],
+      );
+      addTearDown(container.dispose);
+
+      final router = GoRouter(
+        initialLocation: '/',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (context, state) => const Scaffold(
+              body: Center(child: Text('editor-entry')),
+            ),
+          ),
+          GoRoute(
+            path: '/edit',
+            builder: (context, state) =>
+                EffectEditorScreen(project: testProject),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      router.push('/edit');
+      await tester.pumpAndSettle();
+
+      final nextFinder =
+          find.byKey(ImmersiveFlowAction.nextControlKey);
+      final gesture = await tester.startGesture(tester.getCenter(nextFinder));
+      await tester.pump(const Duration(milliseconds: 650));
+
+      expect(
+        find.byKey(ImmersiveFlowAction.exitTargetKey),
+        findsNothing,
+      );
+
+      await gesture.moveBy(const Offset(0, -108));
+      await tester.pump();
+      expect(
+        find.byKey(ImmersiveFlowAction.exitTargetKey),
+        findsOneWidget,
+      );
+      expect(find.bySemanticsLabel('松开返回'), findsOneWidget);
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(find.text('editor-entry'), findsOneWidget);
+      expect(find.text('导出设置'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 

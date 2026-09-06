@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
-import '../../../core/widgets/main_flow_header.dart';
+import '../../../core/widgets/immersive_flow_action.dart';
 import '../../effect_editor/presentation/effect_editor_screen.dart';
 import '../domain/person_selection_state.dart';
 import 'person_selection_controller.dart';
@@ -40,6 +40,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
 
     final showControls = state.status == PersonSelectionStatus.ready &&
         state.persons.isNotEmpty;
+    final nextEnabled = showControls && state.privacyTargetIds.isNotEmpty;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -55,34 +56,34 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
       child: Scaffold(
         backgroundColor: AppTheme.warmBackground,
         body: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              _buildHeader(),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 6,
+              Column(
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+                      child: _buildStage(state, controller),
+                    ),
                   ),
-                  child: _buildStage(state, controller),
+                  if (showControls)
+                    _buildBottomControlPanel(state, controller),
+                ],
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 8,
+                child: ImmersiveFlowAction(
+                  enabled: nextEnabled,
+                  onNext: () => _continueToEditor(controller),
+                  onReturn: () => context.pop(),
                 ),
               ),
-              if (showControls)
-                _buildBottomControlPanel(state, controller),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return MainFlowHeader(
-      title: '选择要保护的人',
-      onClose: () {
-        HapticFeedback.lightImpact();
-        context.pop();
-      },
     );
   }
 
@@ -275,7 +276,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
     PersonSelectionController controller,
   ) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 92),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -309,8 +310,6 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          _buildContinueButton(state, controller),
         ],
       ),
     );
@@ -444,36 +443,23 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
     );
   }
 
-  Widget _buildContinueButton(
-    PersonSelectionState state,
+  Future<void> _continueToEditor(
     PersonSelectionController controller,
-  ) {
-    final selectedCount = state.privacyTargetIds.length;
-    return SizedBox(
-      width: double.infinity,
-      height: 58,
-      child: _CoralContinueButton(
-        enabled: selectedCount > 0,
-        label: selectedCount == 0 ? '请选择人物' : '继续',
-        onPressed: () async {
-          HapticFeedback.mediumImpact();
-          final configured = controller.buildConfiguredProject();
-          if (configured == null) return;
-          final latestState = ref.read(personSelectionControllerProvider);
-          final initialPreviewPath = latestState.selectionPreviewLoading
-              ? null
-              : latestState.selectionPreviewPath;
-          final updated = await context.push<DanceProject>(
-            '/effect_editor',
-            extra: EffectEditorArgs(
-              project: configured,
-              initialPreviewPath: initialPreviewPath,
-            ),
-          );
-          if (updated != null) controller.updateProject(updated);
-        },
+  ) async {
+    final configured = controller.buildConfiguredProject();
+    if (configured == null) return;
+    final latestState = ref.read(personSelectionControllerProvider);
+    final initialPreviewPath = latestState.selectionPreviewLoading
+        ? null
+        : latestState.selectionPreviewPath;
+    final updated = await context.push<DanceProject>(
+      '/effect_editor',
+      extra: EffectEditorArgs(
+        project: configured,
+        initialPreviewPath: initialPreviewPath,
       ),
     );
+    if (updated != null) controller.updateProject(updated);
   }
 }
 
@@ -526,78 +512,6 @@ class _SelectionBarButton extends StatelessWidget {
                   ),
                 ),
               ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CoralContinueButton extends StatelessWidget {
-  final bool enabled;
-  final String label;
-  final Future<void> Function() onPressed;
-
-  const _CoralContinueButton({
-    required this.enabled,
-    required this.label,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      enabled: enabled,
-      label: label,
-      child: Opacity(
-        opacity: enabled ? 1 : 0.45,
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(18),
-          child: InkWell(
-            onTap: enabled ? () => onPressed() : null,
-            borderRadius: BorderRadius.circular(18),
-            child: Ink(
-              decoration: BoxDecoration(
-                gradient: AppTheme.coralActionGradient,
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: enabled
-                    ? const [
-                        BoxShadow(
-                          color: Color(0x20F44848),
-                          blurRadius: 14,
-                          offset: Offset(0, 6),
-                        ),
-                      ]
-                    : null,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 22),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 30),
-                    Expanded(
-                      child: Text(
-                        label,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.4,
-                        ),
-                      ),
-                    ),
-                    const Icon(
-                      Icons.arrow_forward_rounded,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ],
-                ),
-              ),
             ),
           ),
         ),

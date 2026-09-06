@@ -10,7 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../app/theme.dart';
-import '../../../core/widgets/main_flow_header.dart';
+import '../../../core/widgets/immersive_flow_action.dart';
 import '../../../repositories/native_processing_repository.dart';
 
 class TrimVideoScreen extends ConsumerStatefulWidget {
@@ -222,7 +222,6 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
   }
 
   Future<void> _continue() async {
-    HapticFeedback.mediumImpact();
     final controller = _videoController;
     if (controller?.value.isPlaying == true) await controller?.pause();
     if (!mounted) return;
@@ -250,13 +249,12 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
       child: Scaffold(
         backgroundColor: AppTheme.warmBackground,
         body: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              _buildHeader(),
-              Expanded(
+              Positioned.fill(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(18, 2, 18, 18),
+                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 112),
                   child: Column(
                     children: [
                       _buildPreview(),
@@ -264,27 +262,24 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
                       _buildTimeline(),
                       const SizedBox(height: 14),
                       _buildTimeSummary(),
-                      const SizedBox(height: 22),
-                      _buildContinueButton(),
                     ],
                   ),
+                ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 8,
+                child: ImmersiveFlowAction(
+                  enabled: true,
+                  onNext: _continue,
+                  onReturn: () => context.pop(),
                 ),
               ),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return MainFlowHeader(
-      title: '预览并裁剪视频',
-      closeTooltip: '返回',
-      onClose: () {
-        HapticFeedback.lightImpact();
-        context.pop();
-      },
     );
   }
 
@@ -501,58 +496,6 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildContinueButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 60,
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          onTap: _continue,
-          borderRadius: BorderRadius.circular(18),
-          child: Ink(
-            decoration: BoxDecoration(
-              gradient: AppTheme.coralActionGradient,
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x20F44848),
-                  blurRadius: 14,
-                  offset: Offset(0, 6),
-                ),
-              ],
-            ),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 22),
-              child: Row(
-                children: [
-                  SizedBox(width: 30),
-                  Expanded(
-                    child: Text(
-                      '下一步',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  Icon(
-                    Icons.arrow_forward_rounded,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 

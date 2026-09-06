@@ -1,6 +1,7 @@
 import 'package:app/features/person_selection/presentation/person_selection_controller.dart';
 import 'package:app/features/person_selection/presentation/person_selection_screen.dart';
 import 'package:app/features/person_selection/domain/person_selection_state.dart';
+import 'package:app/core/widgets/immersive_flow_action.dart';
 import 'package:app/repositories/native_processing_repository.dart';
 import 'package:dance_domain/dance_domain.dart';
 import 'package:dance_native/dance_native.dart';
@@ -153,7 +154,11 @@ void main() {
       );
       expect(find.text('全身保护'), findsWidgets);
       expect(find.text('人脸保护'), findsWidgets);
-      expect(find.text('选择要保护的人'), findsOneWidget);
+      expect(find.text('选择要保护的人'), findsNothing);
+      expect(
+        find.byKey(ImmersiveFlowAction.nextControlKey),
+        findsOneWidget,
+      );
       expect(find.text('点击画面中的人物可取消或重新选中'), findsNothing);
       expect(find.textContaining('已选择'), findsNothing);
       expect(find.byIcon(Icons.refresh_rounded), findsOneWidget);
