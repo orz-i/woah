@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dance_domain/dance_domain.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -184,16 +185,17 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                 onTap: () => _copyError(state.errorMessage),
               ),
             ),
-            Positioned(
-              right: 26,
-              bottom: 24,
-              child: _FailureSatelliteAction(
-                key: _failedDiagnosticsKey,
-                icon: Icons.bug_report_outlined,
-                tooltip: '导出诊断包',
-                onTap: _exportDiagnostics,
+            if (kDebugMode)
+              Positioned(
+                right: 26,
+                bottom: 24,
+                child: _FailureSatelliteAction(
+                  key: _failedDiagnosticsKey,
+                  icon: Icons.bug_report_outlined,
+                  tooltip: '导出诊断包',
+                  onTap: _exportDiagnostics,
+                ),
               ),
-            ),
             Positioned(
               bottom: 0,
               child: Semantics(

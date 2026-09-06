@@ -89,6 +89,7 @@ class ExportPipeline(
         onStatusChange: (JobStatusDto) -> Unit
     ) = withContext(Dispatchers.IO) {
         val startTime = System.currentTimeMillis()
+        val diagnosticJobId = if (com.danceanon.native.diagnostics.DiagnosticsBuild.ENABLED) jobId else null
         val videoInfo = VideoProbe.probe(context, sourceUri)
 
         var w = if (request.targetWidth > 0) request.targetWidth.toInt() else videoInfo.displayWidth.toInt()
@@ -334,11 +335,15 @@ class ExportPipeline(
                 val inferenceRenderer = com.danceanon.native.render.InferenceRenderer()
                 val mapper = com.danceanon.native.geometry.ModelCoordinateMapper(targetWidth, targetHeight, 640)
                 val profiler = com.danceanon.native.profiler.PipelineProfiler()
-                val inferencePixelDiagnostics = com.danceanon.native.diagnostics.InferencePixelDiagnostics(
-                    jobId = jobId,
-                    width = inferenceFbo.size,
-                    height = inferenceFbo.size
-                )
+                val inferencePixelDiagnostics = if (com.danceanon.native.diagnostics.DiagnosticsBuild.ENABLED) {
+                    com.danceanon.native.diagnostics.InferencePixelDiagnostics(
+                        jobId = jobId,
+                        width = inferenceFbo.size,
+                        height = inferenceFbo.size
+                    )
+                } else {
+                    null
+                }
 
                 val frameAvailableSequence = java.util.concurrent.atomic.AtomicLong(0L)
                 val consumedFrameSequence = java.util.concurrent.atomic.AtomicLong(0L)
@@ -525,7 +530,7 @@ class ExportPipeline(
                         com.danceanon.native.privacy.FaceOnlyPrivacyFrameProcessor.create(
                             context = context,
                             mapper = mapper,
-                            diagnosticJobId = jobId
+                            diagnosticJobId = diagnosticJobId
                         )
                 }
 
@@ -801,7 +806,7 @@ class ExportPipeline(
                                         mapper,
                                         ptsUs,
                                         colOrder = RgbaColOrder.LEFT_TO_RIGHT,
-                                        diagnosticJobId = jobId
+                                        diagnosticJobId = diagnosticJobId
                                     )
                                     seg.persons.sortedBy { it.bbox.centerX }
                                 }
@@ -995,7 +1000,7 @@ class ExportPipeline(
                                         inferenceFbo.readRgbaPixels()
                                     }
                                 }
-                                inferencePixelDiagnostics.maybeCapture(
+                                inferencePixelDiagnostics?.maybeCapture(
                                     rgbaBuffer = rgbaBuffer,
                                     ptsUs = ptsUs,
                                     surfaceTransform = finalTexMatrix,
@@ -1107,7 +1112,7 @@ class ExportPipeline(
                                             mapper,
                                             ptsUs,
                                             colOrder = RgbaColOrder.LEFT_TO_RIGHT,
-                                            diagnosticJobId = jobId
+                                            diagnosticJobId = diagnosticJobId
                                         )
                                     }
                                     // Historical compatibility: this metric name predates the

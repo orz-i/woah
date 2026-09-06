@@ -98,6 +98,8 @@ DerivedData/
 # --- Data & Temporary Storage ---
 data/tasks/
 debug/
+!mobile/packages/dance_native/android/src/debug/
+!mobile/packages/dance_native/android/src/debug/**
 input/
 output/
 uploads/

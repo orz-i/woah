@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -278,16 +279,17 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 onTap: _isSaving ? null : _copySavedUri,
               ),
             ),
-            Positioned(
-              right: 10,
-              bottom: 16,
-              child: _ResultSatelliteAction(
-                key: const ValueKey('result-diagnostics-action'),
-                icon: Icons.bug_report_outlined,
-                tooltip: _isExportingDiagnostics ? '正在准备诊断包' : '导出诊断包',
-                onTap: _isExportingDiagnostics ? null : _exportDiagnostics,
+            if (kDebugMode)
+              Positioned(
+                right: 10,
+                bottom: 16,
+                child: _ResultSatelliteAction(
+                  key: const ValueKey('result-diagnostics-action'),
+                  icon: Icons.bug_report_outlined,
+                  tooltip: _isExportingDiagnostics ? '正在准备诊断包' : '导出诊断包',
+                  onTap: _isExportingDiagnostics ? null : _exportDiagnostics,
+                ),
               ),
-            ),
             Positioned(
               bottom: 0,
               child: Semantics(

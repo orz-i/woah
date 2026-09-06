@@ -155,11 +155,11 @@ object PrivacyOcclusionResolver {
             privacyPersons = evidencePersons + fallbackSelectedPersons
             effectiveSelectedIds = evidenceSelectedIds + fallbackSelectedPersons.map { it.id }
 
-            NativeDiagnostics.event(
+            NativeDiagnostics.eventLazy(
                 level = "INFO",
                 component = "PrivacyOcclusionResolver",
                 event = "PRIVACY_FRESH_CLASS_PRIMARY_COMPOSITION",
-                fields = mapOf(
+                fields = { mapOf(
                     "expected_selected" to expectedCount,
                     "fresh_selected" to freshSelectedPersons.size,
                     "fresh_unselected" to (evidencePersons.size - freshSelectedPersons.size),
@@ -183,7 +183,7 @@ object PrivacyOcclusionResolver {
                         .sorted()
                         .toList(),
                     "pts_us" to ptsUs
-                )
+                ) }
             )
         } else {
             val effectiveSuppressedSelectedTrackIds = suppressedSelectedTrackIds +
@@ -516,19 +516,19 @@ object PrivacyOcclusionResolver {
                         }
                         acceptedOccluderCores.add(occluderCore)
 
-                        NativeDiagnostics.event(
+                        NativeDiagnostics.eventLazy(
                             level = "INFO",
                             component = "PrivacyOcclusionResolver",
                             event = "FOREGROUND_OCCLUDER_ACCEPTED",
-                            fields = fullDecisionFields() + ("occluder_id" to cand.id)
+                            fields = { fullDecisionFields() + ("occluder_id" to cand.id) }
                         )
                     } else {
                         // Ambiguous depth or candidate is background: PRIVACY WINS
-                        NativeDiagnostics.event(
+                        NativeDiagnostics.eventLazy(
                             level = "INFO",
                             component = "PrivacyOcclusionResolver",
                             event = "FOREGROUND_OCCLUDER_REJECTED_AMBIGUOUS",
-                            fields = if (behaviorNeutralFaceOnlyFastPaths) {
+                            fields = { if (behaviorNeutralFaceOnlyFastPaths) {
                                 // The full per-pair structure is expensive to
                                 // serialize synchronously and repeated 1833 times
                                 // on the accepted Face fixture. Keep the exact
@@ -547,7 +547,7 @@ object PrivacyOcclusionResolver {
                                 )
                             } else {
                                 fullDecisionFields()
-                            }
+                            } }
                         )
                     }
                 }
@@ -612,20 +612,22 @@ object PrivacyOcclusionResolver {
                     )
                 )
             } else if (coverageRatio < 0.85f) {
-                NativeDiagnostics.event(
+                NativeDiagnostics.eventLazy(
                     level = "INFO",
                     component = "PrivacyOcclusionResolver",
                     event = "PRIVACY_COVERAGE_DROP",
-                    fields = mapOf(
-                        "target_id" to target.id,
-                        "state" to target.state.name,
-                        "coverage_ratio" to coverageRatio,
-                        "raw_area" to rawArea,
-                        "dilated_area" to dilatedArea,
-                        "effective_area" to effArea,
-                        "removed_area" to removedArea,
-                        "pts_us" to ptsUs
-                    )
+                    fields = {
+                        mapOf(
+                            "target_id" to target.id,
+                            "state" to target.state.name,
+                            "coverage_ratio" to coverageRatio,
+                            "raw_area" to rawArea,
+                            "dilated_area" to dilatedArea,
+                            "effective_area" to effArea,
+                            "removed_area" to removedArea,
+                            "pts_us" to ptsUs
+                        )
+                    }
                 )
             }
 
@@ -653,14 +655,14 @@ object PrivacyOcclusionResolver {
 
         val renderOccluderPixels = countMaskPixels(renderOccluder)
         if (renderOccluderPixels > 0) {
-            NativeDiagnostics.event(
+            NativeDiagnostics.eventLazy(
                 level = "INFO",
                 component = "PrivacyOcclusionResolver",
                 event = "PRIVACY_RENDER_OCCLUDER_COMPOSED",
-                fields = mapOf(
+                fields = { mapOf(
                     "pixels" to renderOccluderPixels,
                     "pts_us" to ptsUs
-                )
+                ) }
             )
         }
 

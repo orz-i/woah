@@ -250,6 +250,26 @@ object NativeDiagnostics {
     }
 
     /**
+     * Lazy hot-path variant. Field maps/lists are materialized only in diagnostic builds.
+     * Release supplies an inline no-op implementation from its source set.
+     */
+    inline fun eventLazy(
+        level: String,
+        component: String,
+        event: String,
+        throwable: Throwable? = null,
+        fields: () -> Map<String, Any?>
+    ) {
+        event(
+            level = level,
+            component = component,
+            event = event,
+            fields = fields(),
+            throwable = throwable
+        )
+    }
+
+    /**
      * Captures mutable caller-owned diagnostic fields before returning from [event].
      * Sanitization and JSON materialization stay on the writer thread; this snapshot keeps
      * asynchronous serialization from observing later mutations of maps/lists.

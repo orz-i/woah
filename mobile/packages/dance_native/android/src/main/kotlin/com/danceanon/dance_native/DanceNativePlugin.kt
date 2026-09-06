@@ -47,7 +47,9 @@ class DanceNativePlugin :
         thumbnailExecutor = Executors.newSingleThreadExecutor { runnable ->
             Thread(runnable, "DanceTrimThumbnail").apply { isDaemon = true }
         }
-        com.danceanon.native.diagnostics.NativeDiagnostics.initialize(appCtx)
+        if (com.danceanon.native.diagnostics.DiagnosticsBuild.ENABLED) {
+            com.danceanon.native.diagnostics.NativeDiagnostics.initialize(appCtx)
+        }
 
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "dance_native")
         channel.setMethodCallHandler(this)
@@ -148,6 +150,7 @@ class DanceNativePlugin :
         call: MethodCall,
         result: Result
     ) {
+        if (DiagnosticsChannelBridge.handle(call, result, context)) return
         when (call.method) {
             "getPlatformVersion" -> {
                 result.success("Android ${Build.VERSION.RELEASE}")
@@ -254,43 +257,6 @@ class DanceNativePlugin :
                     return
                 }
                 ExportCoordinator.getInstance(ctx).setLivePreviewEnabled(jobId, enabled)
-                result.success(null)
-            }
-            "createDiagnosticBundle" -> {
-                val ctx = context
-                if (ctx == null) {
-                    result.error("NO_CONTEXT", "Plugin context is null", null)
-                    return
-                }
-                try {
-                    val bundleInfo = com.danceanon.native.diagnostics.DiagnosticBundleExporter.createBundle(ctx)
-                    result.success(bundleInfo)
-                } catch (e: Exception) {
-                    android.util.Log.e("DanceNativePlugin", "Failed to create diagnostic bundle: ${e.message}", e)
-                    result.error("BUNDLE_FAILED", e.message ?: "Failed to create diagnostic bundle", null)
-                }
-            }
-            "shareDiagnosticBundle" -> {
-                val ctx = context
-                if (ctx == null) {
-                    result.error("NO_CONTEXT", "Plugin context is null", null)
-                    return
-                }
-                val filePath = call.argument<String>("filePath")
-                val publicUri = call.argument<String>("publicUri")
-                try {
-                    val shareResult = com.danceanon.native.diagnostics.DiagnosticBundleExporter.shareBundle(ctx, filePath, publicUri)
-                    result.success(shareResult)
-                } catch (e: Exception) {
-                    android.util.Log.e("DanceNativePlugin", "Failed to share diagnostic bundle: ${e.message}", e)
-                    result.error("SHARE_FAILED", e.message ?: "Failed to share diagnostic bundle", null)
-                }
-            }
-            "clearDiagnosticLogs" -> {
-                val ctx = context
-                if (ctx != null) {
-                    com.danceanon.native.diagnostics.DiagnosticBundleExporter.clearLogs(ctx)
-                }
                 result.success(null)
             }
             else -> {

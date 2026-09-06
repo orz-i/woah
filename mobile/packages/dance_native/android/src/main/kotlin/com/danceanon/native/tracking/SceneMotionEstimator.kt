@@ -107,33 +107,33 @@ object SceneMotionEstimator {
 
             val confidence = bestTrackCount.toFloat() / tracks.size.toFloat()
 
-            NativeDiagnostics.event(
+            NativeDiagnostics.eventLazy(
                 level = "INFO",
                 component = "SceneMotionEstimator",
                 event = "SCENE_MOTION_ESTIMATED",
-                fields = mapOf(
+                fields = { mapOf(
                     "dx" to medianDx,
                     "dy" to medianDy,
                     "inliers" to bestTrackCount,
                     "confidence" to confidence,
                     "track_count" to tracks.size,
                     "det_count" to detections.size
-                )
+                ) }
             )
 
             return SceneMotion(medianDx, medianDy, bestTrackCount, confidence)
         }
 
         if (pairs.isNotEmpty() && bestTrackCount < config.minSceneMotionInliers) {
-            NativeDiagnostics.event(
+            NativeDiagnostics.eventLazy(
                 level = "DEBUG",
                 component = "SceneMotionEstimator",
                 event = "SCENE_MOTION_REJECTED",
-                fields = mapOf(
+                fields = { mapOf(
                     "reason" to "INSUFFICIENT_INLIERS",
                     "best_inliers" to bestTrackCount,
                     "required" to config.minSceneMotionInliers
-                )
+                ) }
             )
         }
 

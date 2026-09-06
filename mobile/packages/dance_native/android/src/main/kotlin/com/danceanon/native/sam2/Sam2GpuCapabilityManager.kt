@@ -118,10 +118,13 @@ object Sam2GpuCapabilityManager {
             var probeRunner: LiteRtModelRunner? = null
             var probeStage = "compile"
 
-            // Start process-local native log capture
-            val diagDir = File(context.filesDir, "diagnostics").apply { mkdirs() }
-            val nativeLogFile = File(diagDir, "sam_gpu_native_log.txt")
-            ProcessLogCapture.start(nativeLogFile)
+            // Process-local log capture is a debug diagnostic capability, not part of the
+            // release GPU probe. Release builds must not even create the diagnostics directory.
+            if (com.danceanon.native.diagnostics.DiagnosticsBuild.ENABLED) {
+                val diagDir = File(context.filesDir, "diagnostics").apply { mkdirs() }
+                val nativeLogFile = File(diagDir, "sam_gpu_native_log.txt")
+                ProcessLogCapture.start(nativeLogFile)
+            }
 
             NativeDiagnostics.event(
                 level = "INFO",
@@ -375,6 +378,7 @@ object Sam2GpuCapabilityManager {
     }
 
     private fun persistCapabilities() {
+        if (!com.danceanon.native.diagnostics.DiagnosticsBuild.ENABLED) return
         NativeDiagnostics.recordCapabilities(
             mapOf(
                 "sam2" to mapOf(

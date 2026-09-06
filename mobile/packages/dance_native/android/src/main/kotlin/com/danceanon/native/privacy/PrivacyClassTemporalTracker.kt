@@ -486,11 +486,11 @@ class PrivacyClassTemporalTracker(
         inferredUnselected: Int,
         unknown: Int
     ) {
-        NativeDiagnostics.event(
+        NativeDiagnostics.eventLazy(
             level = "INFO",
             component = "PrivacyClassTemporalTracker",
             event = "PRIVACY_CLASS_TEMPORAL_SUMMARY",
-            fields = mapOf(
+            fields = { mapOf(
                 "hard_selected" to hardSelected,
                 "hard_unselected" to hardUnselected,
                 "inferred_selected" to inferredSelected,
@@ -499,7 +499,7 @@ class PrivacyClassTemporalTracker(
                 "selected_prototypes" to prototypes.count { it.selectionClass == PrivacySelectionClass.SELECTED },
                 "unselected_prototypes" to prototypes.count { it.selectionClass == PrivacySelectionClass.UNSELECTED },
                 "pts_us" to ptsUs
-            )
+            ) }
         )
     }
 }
