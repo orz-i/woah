@@ -15,6 +15,7 @@ class ImmersiveFlowAction extends StatefulWidget {
   final VoidCallback onNext;
   final VoidCallback onReturn;
   final String nextSemanticsLabel;
+  final IconData actionIcon;
 
   const ImmersiveFlowAction({
     super.key,
@@ -22,6 +23,7 @@ class ImmersiveFlowAction extends StatefulWidget {
     required this.onNext,
     required this.onReturn,
     this.nextSemanticsLabel = '下一步，长按并上拉可返回',
+    this.actionIcon = Icons.arrow_forward_rounded,
   });
 
   @override
@@ -135,8 +137,8 @@ class _ImmersiveFlowActionState extends State<ImmersiveFlowAction> {
                               ),
                             ],
                           ),
-                          child: const Icon(
-                            Icons.arrow_forward_rounded,
+                          child: Icon(
+                            widget.actionIcon,
                             color: Colors.white,
                             size: 30,
                           ),

@@ -7,6 +7,7 @@ import 'package:app/features/export/domain/export_state.dart';
 import 'package:app/features/export/presentation/export_controller.dart';
 import 'package:app/features/export/presentation/export_screen.dart';
 import 'package:app/repositories/native_processing_repository.dart';
+import 'package:app/core/widgets/immersive_flow_action.dart';
 import 'package:dance_domain/dance_domain.dart';
 import 'package:dance_native/dance_native.dart';
 
@@ -236,6 +237,75 @@ void main() {
       );
       expect(repository.livePreviewToggles.last, isFalse);
       expect(find.text('点击查看实时画面'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'active export uses immersive circular cancel control without processing header',
+    (tester) async {
+      final repository = _PreviewToggleRepository();
+      addTearDown(repository.dispose);
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(home: ExportScreen(project: _testProject())),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('正在保护舞段'), findsNothing);
+      expect(find.text('取消处理'), findsNothing);
+      expect(find.byKey(ImmersiveFlowAction.nextControlKey), findsOneWidget);
+      expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+
+      await tester.tap(find.byKey(ImmersiveFlowAction.nextControlKey));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(find.text('取消处理？'), findsOneWidget);
+      expect(find.text('继续处理'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'dragging active export action upward opens the existing cancel confirmation',
+    (tester) async {
+      final repository = _PreviewToggleRepository();
+      addTearDown(repository.dispose);
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(home: ExportScreen(project: _testProject())),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final action = find.byKey(ImmersiveFlowAction.nextControlKey);
+      final gesture = await tester.startGesture(tester.getCenter(action));
+      await tester.pump(const Duration(milliseconds: 650));
+      await gesture.moveBy(const Offset(0, -108));
+      await tester.pump();
+
+      expect(find.byKey(ImmersiveFlowAction.exitTargetKey), findsOneWidget);
+      expect(find.bySemanticsLabel('松开返回'), findsOneWidget);
+
+      await gesture.up();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(find.text('取消处理？'), findsOneWidget);
     },
   );
 }

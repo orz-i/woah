@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/widgets/immersive_flow_action.dart';
 import '../../../core/widgets/main_flow_header.dart';
 import '../../../repositories/native_processing_repository.dart';
 import '../domain/export_state.dart';
@@ -90,48 +91,71 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       child: Scaffold(
         backgroundColor: AppTheme.warmBackground,
         body: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              _buildTopBar(state, isActive: isActive, controller: controller),
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 30),
-                  child: Column(
-                    children: [
-                      _buildMediaPreview(
-                        state,
-                        controller,
-                        livePreviewToggleEnabled: isActive,
+              Column(
+                children: [
+                  if (isFailed)
+                    _buildTopBar(
+                      state,
+                      isActive: isActive,
+                      controller: controller,
+                    ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: EdgeInsets.fromLTRB(
+                        24,
+                        isFailed ? 12 : 18,
+                        24,
+                        isFailed ? 30 : 112,
                       ),
-                      if (isFailed) ...[
-                        const SizedBox(height: 34),
-                        _buildPrimaryAction(
-                          label: '重试导出',
-                          icon: Icons.refresh_rounded,
-                          onTap: _startExportJob,
-                        ),
-                        const SizedBox(height: 14),
-                        _buildOutlinedAction(
-                          label: '返回编辑',
-                          onTap: () => context.pop(),
-                        ),
-                      ] else ...[
-                        const SizedBox(height: 22),
-                        _buildProgressCard(state),
-                        const SizedBox(height: 14),
-                        _buildBackgroundHint(),
-                        const SizedBox(height: 20),
-                        _buildOutlinedAction(
-                          label: '取消处理',
-                          enabled: isActive,
-                          onTap: () => _confirmCancel(controller),
-                        ),
-                      ],
-                    ],
+                      child: Column(
+                        children: [
+                          _buildMediaPreview(
+                            state,
+                            controller,
+                            livePreviewToggleEnabled: isActive,
+                          ),
+                          if (isFailed) ...[
+                            const SizedBox(height: 34),
+                            _buildPrimaryAction(
+                              label: '重试导出',
+                              icon: Icons.refresh_rounded,
+                              onTap: _startExportJob,
+                            ),
+                            const SizedBox(height: 14),
+                            _buildOutlinedAction(
+                              label: '返回编辑',
+                              onTap: () => context.pop(),
+                            ),
+                          ] else ...[
+                            const SizedBox(height: 22),
+                            _buildProgressCard(state),
+                            const SizedBox(height: 14),
+                            _buildBackgroundHint(),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (!isFailed)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 8,
+                  child: ImmersiveFlowAction(
+                    enabled: isActive,
+                    actionIcon: Icons.close_rounded,
+                    nextSemanticsLabel: '取消处理，长按并上拉可返回',
+                    onNext: () => _confirmCancel(controller),
+                    onReturn: () => isActive
+                        ? _confirmCancel(controller)
+                        : context.pop(),
                   ),
                 ),
-              ),
             ],
           ),
         ),
