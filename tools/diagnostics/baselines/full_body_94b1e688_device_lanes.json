@@ -1,9 +1,9 @@
 {
   "schema_version": 2,
-  "name": "full_body_device_lanes_8dd3_xiaomi_no_adaptive_shadow",
+  "name": "full_body_device_lanes_94dc_kb_no_adaptive_shadow",
   "source_commit": null,
   "source_commit_by_device": {
-    "KB2000": "94b1e688c22208ba9204993fc9c0181cbb36de02",
+    "KB2000": "94dc16c9b67481ccf9fab8edf643133f3ec14029",
     "PLK110": "94b1e688c22208ba9204993fc9c0181cbb36de02",
     "2206123SC": "8dd3d378dfd75a16b431eeaccc3ebe4c639ed5b9"
   },
@@ -13,12 +13,12 @@
     "2206123SC"
   ],
   "source_bundles": [
-    "logs\\woah_diag_20260905_144017_20260905_143150_574dbde7.zip",
+    "logs\\woah_diag_20260906_002922_20260906_002309_9b5b34ac.zip",
     "logs\\woah_diag_20260905_144047_20260905_143152_2efbf2e8.zip",
     "logs\\woah_diag_20260905_235645_20260905_233611_f5339c3f.zip"
   ],
   "source_bundle_by_device": {
-    "KB2000": "logs\\woah_diag_20260905_144017_20260905_143150_574dbde7.zip",
+    "KB2000": "logs\\woah_diag_20260906_002922_20260906_002309_9b5b34ac.zip",
     "PLK110": "logs\\woah_diag_20260905_144047_20260905_143152_2efbf2e8.zip",
     "2206123SC": "logs\\woah_diag_20260905_235645_20260905_233611_f5339c3f.zip"
   },
@@ -167,73 +167,73 @@
     "KB2000": {
       "canonical": {
         "count": 751,
-        "avg_ms": 53.85486018641811,
-        "p50_ms": 54.0,
-        "p95_ms": 66.0,
+        "avg_ms": 58.134487350199734,
+        "p50_ms": 60.0,
+        "p95_ms": 69.0,
         "max_ms": 169.0
       },
       "production_yolo": {
         "count": 751,
-        "avg_ms": 54.72170439414114,
-        "p50_ms": 54.0,
-        "p95_ms": 62.0,
+        "avg_ms": 55.6098535286285,
+        "p50_ms": 55.0,
+        "p95_ms": 63.0,
         "max_ms": 150.0
       },
       "production_tracking": {
         "count": 751,
-        "avg_ms": 47.74833555259654,
-        "p50_ms": 46.0,
-        "p95_ms": 63.0,
-        "max_ms": 197.0
+        "avg_ms": 48.416777629826896,
+        "p50_ms": 47.0,
+        "p95_ms": 61.0,
+        "max_ms": 200.0
       },
       "privacy_class_tracking": {
         "count": 751,
-        "avg_ms": 2.797603195739015,
+        "avg_ms": 2.7083888149134485,
         "p50_ms": 2.0,
         "p95_ms": 4.0,
-        "max_ms": 86.0
+        "max_ms": 73.0
       },
       "render_effects": {
         "count": 751,
-        "avg_ms": 26.316910785619175,
-        "p50_ms": 26.0,
-        "p95_ms": 41.0,
-        "max_ms": 86.0
+        "avg_ms": 24.711051930758988,
+        "p50_ms": 25.0,
+        "p95_ms": 36.0,
+        "max_ms": 84.0
       },
       "cpu4t_total": {
         "count": 751,
-        "avg_ms": 129.41145139813582,
-        "p50_ms": 125.0,
-        "p95_ms": 148.0,
-        "max_ms": 342.0
+        "avg_ms": 124.254327563249,
+        "p50_ms": 121.0,
+        "p95_ms": 139.0,
+        "max_ms": 321.0
       },
       "cpu4t_run": {
         "count": 751,
-        "avg_ms": 112.8508655126498,
-        "p50_ms": 109.0,
-        "p95_ms": 128.0,
-        "max_ms": 160.0
+        "avg_ms": 107.95339547270306,
+        "p50_ms": 106.0,
+        "p95_ms": 121.0,
+        "max_ms": 165.0
       },
       "cpu4t_decode": {
         "count": 751,
-        "avg_ms": 7.102529960053262,
+        "avg_ms": 6.960053262316911,
         "p50_ms": 7.0,
         "p95_ms": 9.0,
-        "max_ms": 18.0
+        "max_ms": 22.0
       },
       "cpu4t_mask_decode": {
         "count": 751,
-        "avg_ms": 5.359520639147803,
+        "avg_ms": 5.187749667110519,
         "p50_ms": 5.0,
         "p95_ms": 7.0,
-        "max_ms": 13.0
+        "max_ms": 16.0
       },
       "cpu4t_diagnostics": {
         "count": 751,
-        "avg_ms": 1.7616511318242343,
+        "avg_ms": 1.8042609853528628,
         "p50_ms": 0.0,
-        "p95_ms": 0.0,
-        "max_ms": 146.0
+        "p95_ms": 1.0,
+        "max_ms": 150.0
       }
     },
     "PLK110": {
@@ -388,8 +388,10 @@
       "production_detection_signature_frames_total": 27,
       "cpu4t_detection_signature_frames_total": 751,
       "cpu4t_reference_track_frames_total": 751,
-      "adaptive_shadow_matrix_enabled": true,
-      "adaptive_shadow_tracker_steps": 3755
+      "cpu4t_probe_inference_frames_total": 751,
+      "cpu4t_production_reuse_frames_total": 0,
+      "adaptive_shadow_matrix_enabled": false,
+      "adaptive_shadow_tracker_steps": 0
     },
     "PLK110": {
       "production_track_frames_total": 751,
@@ -397,6 +399,8 @@
       "production_detection_signature_frames_total": 27,
       "cpu4t_detection_signature_frames_total": 751,
       "cpu4t_reference_track_frames_total": 751,
+      "cpu4t_probe_inference_frames_total": 751,
+      "cpu4t_production_reuse_frames_total": 0,
       "adaptive_shadow_matrix_enabled": true,
       "adaptive_shadow_tracker_steps": 3755
     },
@@ -406,6 +410,8 @@
       "production_detection_signature_frames_total": 27,
       "cpu4t_detection_signature_frames_total": 751,
       "cpu4t_reference_track_frames_total": 751,
+      "cpu4t_probe_inference_frames_total": 751,
+      "cpu4t_production_reuse_frames_total": 0,
       "adaptive_shadow_matrix_enabled": false,
       "adaptive_shadow_tracker_steps": 0
     }
@@ -414,6 +420,37 @@
     "cpu4t_reference_identity": "724ae5e21525d84a489affdc5bfe878849cfe58bb8ab7d3929f3a779397a5acc"
   },
   "promotion_evidence_by_device": {
+    "KB2000": [
+      {
+        "decision": "ACCEPT_FOR_ACCUMULATION",
+        "candidate_commit": "94dc16c9b67481ccf9fab8edf643133f3ec14029",
+        "quality_exact": true,
+        "runtime_unchanged": true,
+        "adaptive_shadow_work": {
+          "enabled_before": true,
+          "enabled_after": false,
+          "tracker_steps_before": 3755,
+          "tracker_steps_after": 0,
+          "reduction_pct": 100.0
+        },
+        "full_export_p50_ms": {
+          "production_yolo_before": 54.0,
+          "production_yolo_after": 55.0,
+          "cpu4t_before": 125.0,
+          "cpu4t_after": 121.0,
+          "production_tracking_before": 46.0,
+          "production_tracking_after": 47.0,
+          "render_effects_before": 26.0,
+          "render_effects_after": 25.0
+        },
+        "cpu4_reference_policy": {
+          "source": "INDEPENDENT_CPU4T_FULL_EXPORT",
+          "probe_inference_frames": 751,
+          "production_reuse_frames": 0
+        },
+        "note": "Acceptance is anchored to exact Full Body fingerprints plus elimination of 3755 debug-only adaptive TrackManager steps. GPU production remained on the same runtime lane, and stage timing deltas were noise-scale rather than a separate performance claim."
+      }
+    ],
     "2206123SC": [
       {
         "decision": "ACCEPT_RUNTIME_LANE_WITH_PAIRED_CONTROL",
