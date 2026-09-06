@@ -426,6 +426,15 @@ def check_candidate(args: argparse.Namespace) -> int:
 
 
 def snapshot(args: argparse.Namespace) -> int:
+    previous_contract: dict[str, Any] = {}
+    if args.output.exists():
+        try:
+            loaded = json.loads(args.output.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                previous_contract = loaded
+        except (OSError, json.JSONDecodeError):
+            previous_contract = {}
+
     data = [extract_bundle(path, include_fingerprints=True) for path in args.bundle]
     commits = {item["commit"] for item in data}
     devices = [item["device"] for item in data]
@@ -482,6 +491,9 @@ def snapshot(args: argparse.Namespace) -> int:
             "cpu4t_reference_identity": reference_cpu4t_identity,
         },
     }
+    previous_promotion_evidence = previous_contract.get("promotion_evidence_by_device")
+    if isinstance(previous_promotion_evidence, dict):
+        contract["promotion_evidence_by_device"] = previous_promotion_evidence
     if len(data) == 1:
         reference = data[0]
         contract["source_device"] = reference["device"]
