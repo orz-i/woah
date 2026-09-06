@@ -1,9 +1,9 @@
 {
   "schema_version": 2,
-  "name": "full_body_device_lanes_fa1c_kb_warp_x",
+  "name": "full_body_device_lanes_029cc197_kb_mask_iou_cache",
   "source_commit": null,
   "source_commit_by_device": {
-    "KB2000": "fa1c2ef9a5525620602f2902e9f876bae92758a1",
+    "KB2000": "029cc1979c79955aa365661c9642aba256a04058",
     "PLK110": "94b1e688c22208ba9204993fc9c0181cbb36de02",
     "2206123SC": "94dc16c9b67481ccf9fab8edf643133f3ec14029"
   },
@@ -13,12 +13,12 @@
     "2206123SC"
   ],
   "source_bundles": [
-    "logs\\woah_diag_20260906_034420_20260906_033912_3a654a22.zip",
+    "logs\\woah_diag_20260906_062821_20260906_062315_09b909a8.zip",
     "logs\\woah_diag_20260905_144047_20260905_143152_2efbf2e8.zip",
     "logs\\woah_diag_20260906_004555_20260906_003943_9102bb5c.zip"
   ],
   "source_bundle_by_device": {
-    "KB2000": "logs\\woah_diag_20260906_034420_20260906_033912_3a654a22.zip",
+    "KB2000": "logs\\woah_diag_20260906_062821_20260906_062315_09b909a8.zip",
     "PLK110": "logs\\woah_diag_20260905_144047_20260905_143152_2efbf2e8.zip",
     "2206123SC": "logs\\woah_diag_20260906_004555_20260906_003943_9102bb5c.zip"
   },
@@ -167,73 +167,73 @@
     "KB2000": {
       "canonical": {
         "count": 751,
-        "avg_ms": 61.54593874833555,
-        "p50_ms": 63.0,
+        "avg_ms": 60.78561917443409,
+        "p50_ms": 62.0,
         "p95_ms": 71.0,
-        "max_ms": 186.0
+        "max_ms": 164.0
       },
       "production_yolo": {
         "count": 751,
-        "avg_ms": 57.07190412782956,
-        "p50_ms": 57.0,
+        "avg_ms": 56.19973368841545,
+        "p50_ms": 56.0,
         "p95_ms": 63.0,
-        "max_ms": 139.0
+        "max_ms": 149.0
       },
       "production_tracking": {
         "count": 751,
-        "avg_ms": 33.412782956058585,
-        "p50_ms": 33.0,
+        "avg_ms": 31.922769640479363,
+        "p50_ms": 31.0,
         "p95_ms": 42.0,
-        "max_ms": 211.0
+        "max_ms": 207.0
       },
       "privacy_class_tracking": {
         "count": 751,
-        "avg_ms": 2.8495339547270304,
+        "avg_ms": 2.833555259653795,
         "p50_ms": 2.0,
         "p95_ms": 4.0,
-        "max_ms": 74.0
+        "max_ms": 75.0
       },
       "render_effects": {
         "count": 751,
-        "avg_ms": 26.685752330226364,
+        "avg_ms": 26.319573901464715,
         "p50_ms": 26.0,
         "p95_ms": 41.0,
-        "max_ms": 87.0
+        "max_ms": 82.0
       },
       "cpu4t_total": {
         "count": 751,
-        "avg_ms": 131.28229027962718,
-        "p50_ms": 133.0,
-        "p95_ms": 144.0,
-        "max_ms": 366.0
+        "avg_ms": 129.49800266311584,
+        "p50_ms": 126.0,
+        "p95_ms": 143.0,
+        "max_ms": 369.0
       },
       "cpu4t_run": {
         "count": 751,
-        "avg_ms": 114.59786950732357,
-        "p50_ms": 118.0,
+        "avg_ms": 112.76564580559254,
+        "p50_ms": 109.0,
         "p95_ms": 125.0,
-        "max_ms": 184.0
+        "max_ms": 161.0
       },
       "cpu4t_decode": {
         "count": 751,
-        "avg_ms": 7.270306258322237,
+        "avg_ms": 7.2836218375499335,
         "p50_ms": 7.0,
         "p95_ms": 10.0,
-        "max_ms": 20.0
+        "max_ms": 19.0
       },
       "cpu4t_mask_decode": {
         "count": 751,
-        "avg_ms": 5.418109187749667,
+        "avg_ms": 5.431424766977363,
         "p50_ms": 5.0,
-        "p95_ms": 7.0,
-        "max_ms": 14.0
+        "p95_ms": 8.0,
+        "max_ms": 13.0
       },
       "cpu4t_diagnostics": {
         "count": 751,
-        "avg_ms": 1.818908122503329,
+        "avg_ms": 1.758988015978695,
         "p50_ms": 0.0,
         "p95_ms": 0.0,
-        "max_ms": 149.0
+        "max_ms": 150.0
       }
     },
     "PLK110": {
@@ -528,6 +528,34 @@
           "improvement_pct": 3.084681513572058
         },
         "note": "Acceptance is anchored to exact Full Body fingerprints, unchanged KB GPU runtime, and the 42->33ms production-tracking p50 reduction. The optimization only precomputes X-axis inverse-warp geometry once per 160x160 mask warp; interpolation order, rounding, dilation, mask resolution, tracking thresholds, and state transitions are unchanged. Historical scalar output is byte-exact for missedFrames 0/1/11. CPU4T was slower in the candidate run, so the tracking gain is not attributed to a globally faster thermal state."
+      },
+      {
+        "decision": "ACCEPT_FOR_ACCUMULATION",
+        "candidate_commit": "029cc1979c79955aa365661c9642aba256a04058",
+        "quality_exact": true,
+        "runtime_unchanged": true,
+        "target_stage": {
+          "name": "production_tracking",
+          "p50_ms_before": 33.0,
+          "p50_ms_after": 31.0,
+          "improvement_pct": 6.0606060606060606,
+          "avg_ms_before": 33.412782956058585,
+          "avg_ms_after": 31.922769640479363,
+          "p95_ms_before": 42.0,
+          "p95_ms_after": 42.0
+        },
+        "stage_crosscheck_p50_ms": {
+          "canonical_before": 63.0,
+          "canonical_after": 62.0,
+          "production_yolo_before": 57.0,
+          "production_yolo_after": 56.0,
+          "cpu4t_before": 133.0,
+          "cpu4t_after": 126.0,
+          "render_effects_before": 26.0,
+          "render_effects_after": 26.0
+        },
+        "source_bundle": "logs\\woah_diag_20260906_062821_20260906_062315_09b909a8.zip",
+        "note": "Frame-local TrackManager cache reuses the final sampled warped-mask IoU for repeated track/detection queries within one update() call. Cache validity remains tied to the same source mask reference, last-observed bbox, predicted bbox, and detection index; first-computation math, association scores, thresholds, Hungarian inputs, identity commits, and production Full Body behavior are unchanged. Acceptance is anchored to exact Full Body fingerprints, unchanged KB GPU runtime, and 33->31ms production-tracking p50. The same shared primitive also passed the exact Face-only canary at commit 029cc197, improving face_reference_tracking 36->34ms p50."
       }
     ],
     "2206123SC": [

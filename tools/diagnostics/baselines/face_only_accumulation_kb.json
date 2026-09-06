@@ -24,10 +24,10 @@
       "note": "Integer-luma/fused-chroma candidate measured canonical p50 54->53ms (1.85%) and was reverted; canonical performance baseline intentionally remains at the prior accepted value."
     },
     "face_reference_tracking": {
-      "measured_commit": "fa1c2ef9a5525620602f2902e9f876bae92758a1",
-      "accepted_commit": "fa1c2ef9a5525620602f2902e9f876bae92758a1",
-      "bundle": "logs\\woah_diag_20260906_035342_20260906_033912_3a654a22.zip",
-      "note": "TrackManager warp-mask X-geometry precomputation advanced the already-merged Face reference tracking baseline from 43->36ms p50 (16.28%) with exact Face fingerprints and unchanged runtime. The candidate is byte-exact against the historical scalar warp for missedFrames 0/1/11 and measured 0.4868->0.1978ms p50 (59.37%) in the host warp microbench. This real-device run was thermally worse in unrelated stages (canonical 61->66ms and CPU4T 136->153ms), so only face_reference_tracking is advanced and the unrelated rolling baselines remain unchanged."
+      "measured_commit": "029cc1979c79955aa365661c9642aba256a04058",
+      "accepted_commit": "029cc1979c79955aa365661c9642aba256a04058",
+      "bundle": "logs\\woah_diag_20260906_063902_20260906_063336_db0ee540.zip",
+      "note": "Frame-local TrackManager final mask-IoU reuse advanced Face deterministic reference tracking from 36->34ms p50 (5.56%) with exact Face fingerprints and unchanged GPU runtime. This is a shared TrackManager primitive and the matching Full Body canary at the same commit was also exact, improving production tracking 33->31ms p50. Only face_reference_tracking is advanced; unrelated Face rolling stage baselines remain unchanged."
     },
     "face_temporal_class": {
       "measured_commit": "cff421497382e1fcbdfb8f7a8e3eee3728d829d7",
@@ -175,10 +175,10 @@
       },
       "face_reference_tracking": {
         "count": 751,
-        "avg_ms": 37.78428761651132,
-        "p50_ms": 36.0,
-        "p95_ms": 54.0,
-        "max_ms": 84.0
+        "avg_ms": 34.616511318242345,
+        "p50_ms": 34.0,
+        "p95_ms": 44.0,
+        "max_ms": 229.0
       },
       "face_roi": {
         "count": 751,
@@ -332,10 +332,10 @@
     },
     "face_reference_tracking": {
       "count": 751,
-      "avg_ms": 37.78428761651132,
-      "p50_ms": 36.0,
-      "p95_ms": 54.0,
-      "max_ms": 84.0
+      "avg_ms": 34.616511318242345,
+      "p50_ms": 34.0,
+      "p95_ms": 44.0,
+      "max_ms": 229.0
     },
     "face_roi": {
       "count": 751,
