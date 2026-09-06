@@ -308,6 +308,91 @@ void main() {
       expect(find.text('取消处理？'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'failed export uses a centered retry action with surrounding secondary actions',
+    (tester) async {
+      final repository = _PreviewToggleRepository();
+      addTearDown(repository.dispose);
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(home: ExportScreen(project: _testProject())),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      repository.emitFailure('encoder failed');
+      await tester.pump();
+
+      final retry = find.byKey(const ValueKey('export-failed-retry'));
+      final back = find.byKey(const ValueKey('export-failed-back'));
+      final copy = find.byKey(const ValueKey('export-failed-copy'));
+      final diagnostics = find.byKey(
+        const ValueKey('export-failed-diagnostics'),
+      );
+
+      expect(retry, findsOneWidget);
+      expect(back, findsOneWidget);
+      expect(copy, findsOneWidget);
+      expect(diagnostics, findsOneWidget);
+      expect(find.text('重试导出'), findsNothing);
+      expect(find.text('返回编辑'), findsNothing);
+
+      final retryCenter = tester.getCenter(retry);
+      final backCenter = tester.getCenter(back);
+      final copyCenter = tester.getCenter(copy);
+      final diagnosticsCenter = tester.getCenter(diagnostics);
+      expect(backCenter.dx, lessThan(retryCenter.dx));
+      expect(diagnosticsCenter.dx, greaterThan(retryCenter.dx));
+      expect(copyCenter.dy, lessThan(retryCenter.dy));
+
+      expect(repository.startExportCalls, 1);
+      await tester.tap(retry);
+      await tester.pump();
+      expect(repository.startExportCalls, 2);
+    },
+  );
+
+  testWidgets(
+    'failed export satellite actions keep copy and diagnostics available',
+    (tester) async {
+      final repository = _PreviewToggleRepository();
+      addTearDown(repository.dispose);
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(home: ExportScreen(project: _testProject())),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      repository.emitFailure('encoder failed');
+      await tester.pump();
+
+      await tester.tap(find.byKey(const ValueKey('export-failed-copy')));
+      await tester.pump();
+      expect(find.text('错误详情已复制'), findsOneWidget);
+
+      await tester.tap(
+        find.byKey(const ValueKey('export-failed-diagnostics')),
+      );
+      await tester.pump();
+      await tester.pump();
+      expect(repository.diagnosticShared, isTrue);
+    },
+  );
 }
 
 DanceProject _testProject() {
@@ -371,6 +456,8 @@ class _PreviewToggleRepository implements NativeProcessingRepository {
   final StreamController<JobStatusDto> _progress =
       StreamController<JobStatusDto>.broadcast();
   final List<bool> livePreviewToggles = [];
+  int startExportCalls = 0;
+  bool diagnosticShared = false;
 
   @override
   Stream<JobStatusDto> get progressStream => _progress.stream;
@@ -393,6 +480,7 @@ class _PreviewToggleRepository implements NativeProcessingRepository {
     int trimStartMs = 0,
     int? trimEndMs,
   }) async {
+    startExportCalls++;
     return 'preview-toggle-job';
   }
 
@@ -416,6 +504,34 @@ class _PreviewToggleRepository implements NativeProcessingRepository {
         currentPreviewPath: path,
       ),
     );
+  }
+
+  void emitFailure(String message) {
+    _progress.add(
+      JobStatusDto(
+        jobId: 'preview-toggle-job',
+        state: 'failed',
+        currentFrame: 8,
+        totalFrames: 100,
+        fps: 10,
+        progress: 0.08,
+        errorMessage: message,
+      ),
+    );
+  }
+
+  @override
+  Future<Map<dynamic, dynamic>?> createDiagnosticBundle() async {
+    return <dynamic, dynamic>{'filePath': '/tmp/diag.zip'};
+  }
+
+  @override
+  Future<Map<dynamic, dynamic>?> shareDiagnosticBundle({
+    String? filePath,
+    String? publicUri,
+  }) async {
+    diagnosticShared = true;
+    return <dynamic, dynamic>{'shared': true};
   }
 
   void dispose() {

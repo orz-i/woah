@@ -8,7 +8,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
 import '../../../core/widgets/immersive_flow_action.dart';
-import '../../../core/widgets/main_flow_header.dart';
 import '../../../repositories/native_processing_repository.dart';
 import '../domain/export_state.dart';
 import 'export_controller.dart';
@@ -42,6 +41,11 @@ class ExportScreen extends ConsumerStatefulWidget {
 }
 
 class _ExportScreenState extends ConsumerState<ExportScreen> {
+  static const _failedRetryKey = ValueKey('export-failed-retry');
+  static const _failedBackKey = ValueKey('export-failed-back');
+  static const _failedCopyKey = ValueKey('export-failed-copy');
+  static const _failedDiagnosticsKey = ValueKey('export-failed-diagnostics');
+
   @override
   void initState() {
     super.initState();
@@ -95,20 +99,14 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
             children: [
               Column(
                 children: [
-                  if (isFailed)
-                    _buildTopBar(
-                      state,
-                      isActive: isActive,
-                      controller: controller,
-                    ),
                   Expanded(
                     child: SingleChildScrollView(
                       physics: const BouncingScrollPhysics(),
                       padding: EdgeInsets.fromLTRB(
                         24,
-                        isFailed ? 12 : 18,
+                        18,
                         24,
-                        isFailed ? 30 : 112,
+                        isFailed ? 180 : 112,
                       ),
                       child: Column(
                         children: [
@@ -117,19 +115,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                             controller,
                             livePreviewToggleEnabled: isActive,
                           ),
-                          if (isFailed) ...[
-                            const SizedBox(height: 34),
-                            _buildPrimaryAction(
-                              label: '重试导出',
-                              icon: Icons.refresh_rounded,
-                              onTap: _startExportJob,
-                            ),
-                            const SizedBox(height: 14),
-                            _buildOutlinedAction(
-                              label: '返回编辑',
-                              onTap: () => context.pop(),
-                            ),
-                          ] else ...[
+                          if (!isFailed) ...[
                             const SizedBox(height: 22),
                             _buildProgressCard(state),
                             const SizedBox(height: 14),
@@ -141,7 +127,14 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                   ),
                 ],
               ),
-              if (!isFailed)
+              if (isFailed)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 8,
+                  child: _buildFailureActionCluster(state),
+                )
+              else
                 Positioned(
                   left: 0,
                   right: 0,
@@ -163,85 +156,89 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     );
   }
 
-  Widget _buildTopBar(
-    ExportState state, {
-    required bool isActive,
-    required ExportController controller,
-  }) {
-    final isFailed = state.isFailed;
-    return MainFlowHeader(
-      title: isFailed ? '导出失败' : '正在保护舞段',
-      closeTooltip: isActive ? '取消处理' : '关闭',
-      onClose: isActive
-          ? () => _confirmCancel(controller)
-          : () => context.pop(),
-      trailing: isFailed
-          ? PopupMenuButton<String>(
-              tooltip: '更多',
-              icon: const Icon(
-                Icons.more_horiz_rounded,
-                size: 30,
-                color: AppTheme.warmTextPrimary,
+  Widget _buildFailureActionCluster(ExportState state) {
+    return Center(
+      child: SizedBox(
+        width: 290,
+        height: 160,
+        child: Stack(
+          alignment: Alignment.bottomCenter,
+          children: [
+            Positioned(
+              left: 26,
+              bottom: 24,
+              child: _FailureSatelliteAction(
+                key: _failedBackKey,
+                icon: Icons.arrow_back_rounded,
+                tooltip: '返回编辑',
+                onTap: () => context.pop(),
               ),
-              color: AppTheme.warmSurface,
-              surfaceTintColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: const BorderSide(color: AppTheme.warmBorder),
+            ),
+            Positioned(
+              left: 121,
+              bottom: 94,
+              child: _FailureSatelliteAction(
+                key: _failedCopyKey,
+                icon: Icons.content_copy_rounded,
+                tooltip: '复制错误详情',
+                onTap: () => _copyError(state.errorMessage),
               ),
-              onSelected: (value) {
-                if (value == 'copy') {
-                  _copyError(state.errorMessage);
-                } else if (value == 'diagnostics') {
-                  _exportDiagnostics();
-                }
-              },
-              itemBuilder: (context) => const [
-                PopupMenuItem(
-                  value: 'copy',
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.copy_rounded,
-                        color: AppTheme.warmTextSecondary,
-                        size: 20,
-                      ),
-                      SizedBox(width: 12),
-                      Text(
-                        '复制错误详情',
-                        style: TextStyle(
-                          color: AppTheme.warmTextPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
+            ),
+            Positioned(
+              right: 26,
+              bottom: 24,
+              child: _FailureSatelliteAction(
+                key: _failedDiagnosticsKey,
+                icon: Icons.bug_report_outlined,
+                tooltip: '导出诊断包',
+                onTap: _exportDiagnostics,
+              ),
+            ),
+            Positioned(
+              bottom: 0,
+              child: Semantics(
+                button: true,
+                label: '重试导出',
+                child: Tooltip(
+                  message: '重试导出',
+                  child: Material(
+                    key: _failedRetryKey,
+                    color: Colors.transparent,
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: () {
+                        HapticFeedback.mediumImpact();
+                        _startExportJob();
+                      },
+                      child: Ink(
+                        width: 68,
+                        height: 68,
+                        decoration: const BoxDecoration(
+                          gradient: AppTheme.coralActionGradient,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0x3DF44848),
+                              blurRadius: 22,
+                              offset: Offset(0, 9),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.refresh_rounded,
+                          color: Colors.white,
+                          size: 31,
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
-                PopupMenuItem(
-                  value: 'diagnostics',
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.bug_report_outlined,
-                        color: AppTheme.warmTextSecondary,
-                        size: 20,
-                      ),
-                      SizedBox(width: 12),
-                      Text(
-                        '导出诊断包',
-                        style: TextStyle(
-                          color: AppTheme.warmTextPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            )
-          : null,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -627,78 +624,6 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     );
   }
 
-  Widget _buildPrimaryAction({
-    required String label,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Ink(
-          height: 58,
-          decoration: BoxDecoration(
-            gradient: AppTheme.coralActionGradient,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x22F44848),
-                blurRadius: 16,
-                offset: Offset(0, 7),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: Colors.white, size: 20),
-              const SizedBox(width: 9),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOutlinedAction({
-    required String label,
-    required VoidCallback onTap,
-    bool enabled = true,
-  }) {
-    return Opacity(
-      opacity: enabled ? 1 : 0.45,
-      child: SizedBox(
-        width: double.infinity,
-        height: 58,
-        child: OutlinedButton(
-          onPressed: enabled ? onTap : null,
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: AppTheme.coral, width: 1.3),
-            foregroundColor: AppTheme.coralStrong,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
-            ),
-          ),
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-          ),
-        ),
-      ),
-    );
-  }
-
   String _statusTitle(ExportJobState status) {
     return switch (status) {
       ExportJobState.queued => '正在准备裁剪后的片段',
@@ -869,6 +794,58 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FailureSatelliteAction extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  const _FailureSatelliteAction({
+    super.key,
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: tooltip,
+      child: Tooltip(
+        message: tooltip,
+        child: Material(
+          color: Colors.transparent,
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () {
+              HapticFeedback.selectionClick();
+              onTap();
+            },
+            child: Ink(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppTheme.warmSurface.withValues(alpha: 0.96),
+                shape: BoxShape.circle,
+                border: Border.all(color: AppTheme.warmBorder),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x20000000),
+                    blurRadius: 14,
+                    offset: Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Icon(icon, color: AppTheme.warmTextPrimary, size: 22),
+            ),
           ),
         ),
       ),
