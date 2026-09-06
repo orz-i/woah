@@ -15,6 +15,7 @@ import android.provider.MediaStore
 import com.danceanon.native.bridge.DanceNativeApi
 import com.danceanon.native.bridge.DanceNativeApiImpl
 import com.danceanon.native.bridge.DanceProcessingEvents
+import com.danceanon.native.export.ExportCoordinator
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -243,6 +244,17 @@ class DanceNativePlugin :
                 } catch (e: RejectedExecutionException) {
                     result.error("PLUGIN_DETACHED", "Thumbnail worker is shutting down", null)
                 }
+            }
+            "setExportLivePreviewEnabled" -> {
+                val jobId = call.argument<String>("jobId")
+                val enabled = call.argument<Boolean>("enabled")
+                val ctx = context
+                if (jobId.isNullOrBlank() || enabled == null || ctx == null) {
+                    result.error("INVALID_ARGS", "jobId, enabled or context is null", null)
+                    return
+                }
+                ExportCoordinator.getInstance(ctx).setLivePreviewEnabled(jobId, enabled)
+                result.success(null)
             }
             "createDiagnosticBundle" -> {
                 val ctx = context

@@ -12,6 +12,7 @@ class ExportCoordinator private constructor(private val appContext: Context) {
 
     val jobStore = ExportJobStore(appContext)
     private val activeCancellations = ConcurrentHashMap<String, AtomicBoolean>()
+    private val activeLivePreviews = ConcurrentHashMap<String, AtomicBoolean>()
     private val cachedRequests = ConcurrentHashMap<String, ExportRequestDto>()
     private var eventEmitter: DanceProcessingEvents? = null
 
@@ -29,6 +30,7 @@ class ExportCoordinator private constructor(private val appContext: Context) {
         jobStore.saveJob(record)
         cachedRequests[jobId] = request
         activeCancellations[jobId] = AtomicBoolean(false)
+        activeLivePreviews[jobId] = AtomicBoolean(request.enableLivePreview)
         return record
     }
 
@@ -38,6 +40,14 @@ class ExportCoordinator private constructor(private val appContext: Context) {
 
     fun getCancellationFlag(jobId: String): AtomicBoolean {
         return activeCancellations.getOrPut(jobId) { AtomicBoolean(false) }
+    }
+
+    fun getLivePreviewFlag(jobId: String): AtomicBoolean {
+        return activeLivePreviews.getOrPut(jobId) { AtomicBoolean(false) }
+    }
+
+    fun setLivePreviewEnabled(jobId: String, enabled: Boolean) {
+        getLivePreviewFlag(jobId).set(enabled)
     }
 
     fun cancelJob(jobId: String) {
@@ -88,6 +98,7 @@ class ExportCoordinator private constructor(private val appContext: Context) {
 
     fun onJobFinished(jobId: String) {
         activeCancellations.remove(jobId)
+        activeLivePreviews.remove(jobId)
         cachedRequests.remove(jobId)
     }
 

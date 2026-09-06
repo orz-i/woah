@@ -11,6 +11,7 @@ import com.danceanon.native.bridge.DanceNativeException
 import com.danceanon.native.bridge.DanceProcessingEvents
 import com.danceanon.native.bridge.ExportRequestDto
 import com.danceanon.native.bridge.JobStatusDto
+import com.danceanon.native.export.ExportCoordinator
 import com.danceanon.native.inference.FloatRect
 import com.danceanon.native.inference.RgbaColOrder
 import com.danceanon.native.inference.RgbaRowOrder
@@ -529,12 +530,13 @@ class ExportPipeline(
                 }
 
                 var lastLivePreviewCaptureTime = 0L
-                var previewFlip = 0
+                var previewSequence = 0L
                 val livePreviewDir = java.io.File(context.cacheDir, "export_live_preview").apply { mkdirs() }
                 val scope = kotlinx.coroutines.CoroutineScope(Dispatchers.IO + kotlinx.coroutines.SupervisorJob())
                 previewScope = scope
                 val isPreviewSaving = java.util.concurrent.atomic.AtomicBoolean(false)
-                var lastPreviewFilePath: String? = null
+                val livePreviewEnabled = ExportCoordinator.getInstance(context).getLivePreviewFlag(jobId)
+                val lastPreviewFilePath = java.util.concurrent.atomic.AtomicReference<String?>(null)
                 var sam2Initialized = false
 
                 var decodedFrameCount = 0L
@@ -1770,15 +1772,20 @@ class ExportPipeline(
                         }
 
 
-                    // Optional live preview capture when enabled (async background IO)
+                    // Optional live preview capture when enabled (async background IO).
+                    // Runtime gating prevents capture/readback/JPEG work while the UI is closed.
                     val now = System.currentTimeMillis()
-                    if (request.enableLivePreview && (now - lastLivePreviewCaptureTime > 350 || processedFrames == 1)) {
+                    if (!livePreviewEnabled.get()) {
+                        lastLivePreviewCaptureTime = 0L
+                        lastPreviewFilePath.set(null)
+                    }
+                    if (livePreviewEnabled.get() && (now - lastLivePreviewCaptureTime > 350 || processedFrames == 1)) {
                         lastLivePreviewCaptureTime = now
                         if (isPreviewSaving.compareAndSet(false, true)) {
                             val capturedBmp = glRenderer.captureRenderedFrame()
                             if (capturedBmp != null) {
-                                previewFlip = 1 - previewFlip
-                                val flipIndex = previewFlip
+                                previewSequence++
+                                val captureSequence = previewSequence
                                 previewScope?.launch {
                                     try {
                                         val scale = minOf(1.0f, 480f / maxOf(capturedBmp.width, capturedBmp.height))
@@ -1792,8 +1799,8 @@ class ExportPipeline(
                                         } else {
                                             capturedBmp
                                         }
-                                        val targetPreviewFile = java.io.File(livePreviewDir, "preview_${jobId}_$flipIndex.jpg")
-                                        val tempPreview = java.io.File(livePreviewDir, "preview_${jobId}_tmp_$flipIndex.jpg")
+                                        val targetPreviewFile = java.io.File(livePreviewDir, "preview_${jobId}_$captureSequence.jpg")
+                                        val tempPreview = java.io.File(livePreviewDir, "preview_${jobId}_tmp_$captureSequence.jpg")
                                         java.io.FileOutputStream(tempPreview).use { out ->
                                             previewBmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 75, out)
                                         }
@@ -1802,9 +1809,14 @@ class ExportPipeline(
                                         }
                                         capturedBmp.recycle()
                                         if (tempPreview.exists()) {
-                                            if (targetPreviewFile.exists()) targetPreviewFile.delete()
                                             tempPreview.renameTo(targetPreviewFile)
-                                            lastPreviewFilePath = targetPreviewFile.absolutePath
+                                            if (livePreviewEnabled.get()) {
+                                                lastPreviewFilePath.set(targetPreviewFile.absolutePath)
+                                            }
+                                            val staleSequence = captureSequence - 3L
+                                            if (staleSequence > 0L) {
+                                                java.io.File(livePreviewDir, "preview_${jobId}_$staleSequence.jpg").delete()
+                                            }
                                         }
                                     } catch (e: Throwable) {
                                         try { capturedBmp.recycle() } catch (_: Throwable) {}
@@ -1867,7 +1879,7 @@ class ExportPipeline(
                             fps = currentFps,
                             progress = progress,
                             outputUri = null,
-                            currentPreviewPath = lastPreviewFilePath ?: status.currentPreviewPath
+                            currentPreviewPath = if (livePreviewEnabled.get()) lastPreviewFilePath.get() else null
                         )
                         emitProgress(status, onStatusChange)
                     }

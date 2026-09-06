@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:dance_domain/dance_domain.dart';
@@ -11,9 +10,9 @@ import '../domain/export_state.dart';
 
 final exportControllerProvider =
     StateNotifierProvider.autoDispose<ExportController, ExportState>((ref) {
-  final repo = ref.watch(nativeRepositoryProvider);
-  return ExportController(repo);
-});
+      final repo = ref.watch(nativeRepositoryProvider);
+      return ExportController(repo);
+    });
 
 class ExportController extends StateNotifier<ExportState> {
   final NativeProcessingRepository _repository;
@@ -27,12 +26,9 @@ class ExportController extends StateNotifier<ExportState> {
     _progressSub = _repository.progressStream.listen((statusDto) {
       if (state.jobId != null && statusDto.jobId != state.jobId) return;
 
-      final newPreviewPath = statusDto.currentPreviewPath;
-      if (newPreviewPath != null && newPreviewPath.isNotEmpty) {
-        try {
-          FileImage(File(newPreviewPath)).evict();
-        } catch (_) {}
-      }
+      final newPreviewPath = state.showLivePreview
+          ? statusDto.currentPreviewPath
+          : null;
 
       final jobState = ExportJobState.fromString(statusDto.state);
       state = state.copyWith(
@@ -42,16 +38,42 @@ class ExportController extends StateNotifier<ExportState> {
         totalFrames: statusDto.totalFrames,
         fps: statusDto.fps,
         outputUri: statusDto.outputUri,
-        currentPreviewPath: newPreviewPath ?? state.currentPreviewPath,
+        currentPreviewPath: newPreviewPath,
+        clearCurrentPreviewPath: !state.showLivePreview,
         errorMessage: statusDto.errorMessage,
       );
     });
   }
 
-
   /// Toggle real-time rendered frame preview display
   void toggleLivePreview(bool enabled) {
-    state = state.copyWith(showLivePreview: enabled);
+    if (state.showLivePreview == enabled) return;
+
+    final jobId = state.jobId;
+    state = state.copyWith(
+      showLivePreview: enabled,
+      clearCurrentPreviewPath: true,
+    );
+
+    if (jobId != null) {
+      unawaited(_setNativeLivePreview(jobId, enabled));
+    }
+  }
+
+  Future<void> _setNativeLivePreview(String jobId, bool enabled) async {
+    try {
+      await _repository.setExportLivePreviewEnabled(
+        jobId: jobId,
+        enabled: enabled,
+      );
+    } catch (e, stack) {
+      AppLogger.e(
+        'ExportController',
+        'Failed to toggle live preview for $jobId',
+        e,
+        stack,
+      );
+    }
   }
 
   /// Launch export pipeline
@@ -68,7 +90,11 @@ class ExportController extends StateNotifier<ExportState> {
         clearErrorMessage: true,
       );
 
-      AppLogger.d('ExportController', 'Starting export for project ${project.id} (profile: $processingProfile)');
+      AppLogger.d(
+        'ExportController',
+        'Starting export for project ${project.id} (profile: $processingProfile)',
+      );
+      final livePreviewAtLaunch = state.showLivePreview;
       final jobId = await _repository.startExport(
         sourceUri: project.sourceUri,
         analysisCacheId: project.analysisCacheId ?? '',
@@ -81,12 +107,19 @@ class ExportController extends StateNotifier<ExportState> {
         targetHeight: project.videoInfo.height,
         targetFps: project.videoInfo.fps,
         processingProfile: processingProfile,
-        enableLivePreview: true, // Allow native pipeline to capture lightweight previews for UI toggle
+        // Android supports a runtime capture gate and starts with it disabled.
+        // Other platforms keep the previous eager-capture behavior so their
+        // UI toggle remains backwards-compatible.
+        enableLivePreview: Platform.isAndroid ? livePreviewAtLaunch : true,
         trimStartMs: project.trimStartMs,
         trimEndMs: project.trimEndMs,
       );
 
-      state = state.copyWith(jobId: jobId);
+      final desiredLivePreview = state.showLivePreview;
+      state = state.copyWith(jobId: jobId, clearCurrentPreviewPath: true);
+      if (Platform.isAndroid && desiredLivePreview != livePreviewAtLaunch) {
+        unawaited(_setNativeLivePreview(jobId, desiredLivePreview));
+      }
     } catch (e, stack) {
       AppLogger.e('ExportController', 'Failed to start export', e, stack);
       state = state.copyWith(
@@ -95,7 +128,6 @@ class ExportController extends StateNotifier<ExportState> {
       );
     }
   }
-
 
   /// Cancel current export job
   Future<void> cancelExport() async {

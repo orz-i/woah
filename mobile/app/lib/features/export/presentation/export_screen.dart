@@ -99,7 +99,11 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                   padding: const EdgeInsets.fromLTRB(24, 12, 24, 30),
                   child: Column(
                     children: [
-                      _buildMediaPreview(state),
+                      _buildMediaPreview(
+                        state,
+                        controller,
+                        livePreviewToggleEnabled: isActive,
+                      ),
                       if (isFailed) ...[
                         const SizedBox(height: 34),
                         _buildPrimaryAction(
@@ -217,131 +221,229 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     );
   }
 
-  Widget _buildMediaPreview(ExportState state) {
-    final previewPath = state.currentPreviewPath;
-    final hasLivePreview =
-        previewPath != null &&
-        previewPath.isNotEmpty &&
-        File(previewPath).existsSync();
+  Widget _buildMediaPreview(
+    ExportState state,
+    ExportController controller, {
+    required bool livePreviewToggleEnabled,
+  }) {
+    final livePath = state.showLivePreview ? state.currentPreviewPath : null;
+    final hasLivePreview = livePath != null && livePath.isNotEmpty;
     final fallbackPath = widget.initialPreviewPath;
-    final hasFallbackPreview =
-        fallbackPath != null &&
-        fallbackPath.isNotEmpty &&
-        File(fallbackPath).existsSync();
+    final hasFallbackPreview = fallbackPath != null && fallbackPath.isNotEmpty;
     final displayPath = hasLivePreview
-        ? previewPath
+        ? livePath
         : (hasFallbackPreview ? fallbackPath : null);
-    final hasPreview = displayPath != null;
     final rawAspect = widget.project.videoInfo.aspectRatio > 0
         ? widget.project.videoInfo.aspectRatio
         : 16 / 9;
     final aspect = rawAspect.clamp(0.65, 1.8).toDouble();
 
-    return AspectRatio(
-      aspectRatio: aspect,
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFFF0E6E0),
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: AppTheme.warmBorder),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x12000000),
-              blurRadius: 24,
-              offset: Offset(0, 8),
-            ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (hasPreview)
-              Image.file(
-                File(displayPath),
-                key: ValueKey('${displayPath}_${state.currentFrame}'),
-                fit: BoxFit.cover,
-                gaplessPlayback: true,
-              )
-            else
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.movie_filter_outlined,
-                      size: 52,
-                      color: AppTheme.warmTextMuted,
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      state.isFailed ? '没有可用的失败预览' : '正在准备处理预览',
-                      style: const TextStyle(
-                        color: AppTheme.warmTextSecondary,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
+    return Semantics(
+      button: livePreviewToggleEnabled,
+      label: state.showLivePreview ? '关闭实时画面' : '开启实时画面',
+      child: GestureDetector(
+        key: const ValueKey('export-live-preview-toggle'),
+        behavior: HitTestBehavior.opaque,
+        onTap: livePreviewToggleEnabled
+            ? () {
+                HapticFeedback.selectionClick();
+                controller.toggleLivePreview(!state.showLivePreview);
+              }
+            : null,
+        child: AspectRatio(
+          aspectRatio: aspect,
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0E6E0),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: AppTheme.warmBorder),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x12000000),
+                  blurRadius: 24,
+                  offset: Offset(0, 8),
                 ),
-              ),
-            if (state.isFailed)
-              Positioned(
-                right: 14,
-                bottom: 14,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
+              ],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (displayPath != null)
+                  Image.file(
+                    File(displayPath),
+                    fit: BoxFit.cover,
+                    gaplessPlayback: true,
+                    filterQuality: FilterQuality.low,
+                    errorBuilder: (context, error, stackTrace) =>
+                        _buildPreviewPlaceholder(state),
+                  )
+                else
+                  _buildPreviewPlaceholder(state),
+                if (livePreviewToggleEnabled && !state.showLivePreview)
+                  _buildLivePreviewToggleOverlay(
+                    icon: Icons.play_circle_outline_rounded,
+                    label: '点击查看实时画面',
                   ),
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.coralActionGradient,
-                    borderRadius: BorderRadius.circular(16),
+                if (livePreviewToggleEnabled &&
+                    state.showLivePreview &&
+                    !hasLivePreview)
+                  _buildLivePreviewToggleOverlay(
+                    icon: Icons.hourglass_top_rounded,
+                    label: '正在开启实时画面…',
                   ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.warning_amber_rounded,
-                        color: Colors.white,
-                        size: 18,
+                if (livePreviewToggleEnabled &&
+                    state.showLivePreview &&
+                    hasLivePreview)
+                  Positioned(
+                    top: 14,
+                    right: 14,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 11,
+                        vertical: 7,
                       ),
-                      SizedBox(width: 6),
-                      Text(
-                        '导出失败',
-                        style: TextStyle(
+                      decoration: BoxDecoration(
+                        color: const Color(0x99000000),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.visibility_off_outlined,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            '实时画面 · 点击关闭',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (state.isFailed)
+                  Positioned(
+                    right: 14,
+                    bottom: 14,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.coralActionGradient,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            '导出失败',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (state.isFailed && state.fps > 0)
+                  Positioned(
+                    left: 14,
+                    bottom: 14,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0x88000000),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        _formatProcessedTime(state),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                          fontFeatures: [FontFeature.tabularFigures()],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-            if (state.isFailed && state.fps > 0)
-              Positioned(
-                left: 14,
-                bottom: 14,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 7,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0x88000000),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    _formatProcessedTime(state),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontFeatures: [FontFeature.tabularFigures()],
                     ),
                   ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPreviewPlaceholder(ExportState state) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.movie_filter_outlined,
+            size: 52,
+            color: AppTheme.warmTextMuted,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            state.isFailed ? '没有可用的失败预览' : '实时画面已关闭',
+            style: const TextStyle(
+              color: AppTheme.warmTextSecondary,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLivePreviewToggleOverlay({
+    required IconData icon,
+    required String label,
+  }) {
+    return ColoredBox(
+      color: const Color(0x36000000),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xA8000000),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-          ],
+            ],
+          ),
         ),
       ),
     );
