@@ -19,7 +19,8 @@ object SceneMotionEstimator {
     fun estimateSceneMotion(
         tracks: List<InternalTrack>,
         detections: List<PersonDetection>,
-        config: TrackingConfig
+        config: TrackingConfig,
+        emitDiagnostics: Boolean = true
     ): SceneMotion {
         if (tracks.size < config.minSceneMotionInliers || detections.size < config.minSceneMotionInliers) {
             return SceneMotion(0f, 0f, 0, 0f)
@@ -107,24 +108,26 @@ object SceneMotionEstimator {
 
             val confidence = bestTrackCount.toFloat() / tracks.size.toFloat()
 
-            NativeDiagnostics.event(
-                level = "INFO",
-                component = "SceneMotionEstimator",
-                event = "SCENE_MOTION_ESTIMATED",
-                fields = mapOf(
-                    "dx" to medianDx,
-                    "dy" to medianDy,
-                    "inliers" to bestTrackCount,
-                    "confidence" to confidence,
-                    "track_count" to tracks.size,
-                    "det_count" to detections.size
+            if (emitDiagnostics) {
+                NativeDiagnostics.event(
+                    level = "INFO",
+                    component = "SceneMotionEstimator",
+                    event = "SCENE_MOTION_ESTIMATED",
+                    fields = mapOf(
+                        "dx" to medianDx,
+                        "dy" to medianDy,
+                        "inliers" to bestTrackCount,
+                        "confidence" to confidence,
+                        "track_count" to tracks.size,
+                        "det_count" to detections.size
+                    )
                 )
-            )
+            }
 
             return SceneMotion(medianDx, medianDy, bestTrackCount, confidence)
         }
 
-        if (pairs.isNotEmpty() && bestTrackCount < config.minSceneMotionInliers) {
+        if (emitDiagnostics && pairs.isNotEmpty() && bestTrackCount < config.minSceneMotionInliers) {
             NativeDiagnostics.event(
                 level = "DEBUG",
                 component = "SceneMotionEstimator",
