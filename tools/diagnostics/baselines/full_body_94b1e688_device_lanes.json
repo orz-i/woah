@@ -1,11 +1,11 @@
 {
   "schema_version": 2,
-  "name": "full_body_device_lanes_94dc_kb_no_adaptive_shadow",
+  "name": "full_body_device_lanes_94dc_kb_xiaomi_cpu4_reuse",
   "source_commit": null,
   "source_commit_by_device": {
     "KB2000": "94dc16c9b67481ccf9fab8edf643133f3ec14029",
     "PLK110": "94b1e688c22208ba9204993fc9c0181cbb36de02",
-    "2206123SC": "8dd3d378dfd75a16b431eeaccc3ebe4c639ed5b9"
+    "2206123SC": "94dc16c9b67481ccf9fab8edf643133f3ec14029"
   },
   "source_devices": [
     "KB2000",
@@ -15,12 +15,12 @@
   "source_bundles": [
     "logs\\woah_diag_20260906_002922_20260906_002309_9b5b34ac.zip",
     "logs\\woah_diag_20260905_144047_20260905_143152_2efbf2e8.zip",
-    "logs\\woah_diag_20260905_235645_20260905_233611_f5339c3f.zip"
+    "logs\\woah_diag_20260906_004555_20260906_003943_9102bb5c.zip"
   ],
   "source_bundle_by_device": {
     "KB2000": "logs\\woah_diag_20260906_002922_20260906_002309_9b5b34ac.zip",
     "PLK110": "logs\\woah_diag_20260905_144047_20260905_143152_2efbf2e8.zip",
-    "2206123SC": "logs\\woah_diag_20260905_235645_20260905_233611_f5339c3f.zip"
+    "2206123SC": "logs\\woah_diag_20260906_004555_20260906_003943_9102bb5c.zip"
   },
   "quality_by_device": {
     "KB2000": {
@@ -311,73 +311,73 @@
     "2206123SC": {
       "canonical": {
         "count": 751,
-        "avg_ms": 36.660452729693745,
-        "p50_ms": 35.0,
-        "p95_ms": 45.0,
-        "max_ms": 140.0
+        "avg_ms": 33.73501997336884,
+        "p50_ms": 33.0,
+        "p95_ms": 41.0,
+        "max_ms": 235.0
       },
       "production_yolo": {
         "count": 751,
-        "avg_ms": 75.20772303595206,
-        "p50_ms": 72.0,
-        "p95_ms": 97.0,
-        "max_ms": 279.0
+        "avg_ms": 70.29027962716378,
+        "p50_ms": 68.0,
+        "p95_ms": 89.0,
+        "max_ms": 239.0
       },
       "production_tracking": {
         "count": 751,
-        "avg_ms": 48.328894806924104,
-        "p50_ms": 47.0,
-        "p95_ms": 67.0,
-        "max_ms": 117.0
+        "avg_ms": 47.055925432756325,
+        "p50_ms": 46.0,
+        "p95_ms": 63.0,
+        "max_ms": 168.0
       },
       "privacy_class_tracking": {
         "count": 751,
-        "avg_ms": 3.8721704394141145,
+        "avg_ms": 3.806924101198402,
         "p50_ms": 4.0,
         "p95_ms": 6.0,
-        "max_ms": 31.0
+        "max_ms": 64.0
       },
       "render_effects": {
         "count": 751,
-        "avg_ms": 19.69507323568575,
-        "p50_ms": 19.0,
-        "p95_ms": 30.0,
-        "max_ms": 122.0
+        "avg_ms": 20.40479360852197,
+        "p50_ms": 20.0,
+        "p95_ms": 32.0,
+        "max_ms": 51.0
       },
       "cpu4t_total": {
-        "count": 751,
-        "avg_ms": 75.12782956058588,
-        "p50_ms": 72.0,
-        "p95_ms": 95.0,
-        "max_ms": 241.0
+        "count": 33,
+        "avg_ms": 86.36363636363636,
+        "p50_ms": 76.0,
+        "p95_ms": 149.0,
+        "max_ms": 216.0
       },
       "cpu4t_run": {
-        "count": 751,
-        "avg_ms": 59.08388814913449,
-        "p50_ms": 57.0,
-        "p95_ms": 78.0,
-        "max_ms": 194.0
+        "count": 33,
+        "avg_ms": 57.84848484848485,
+        "p50_ms": 52.0,
+        "p95_ms": 98.0,
+        "max_ms": 101.0
       },
       "cpu4t_decode": {
-        "count": 751,
-        "avg_ms": 7.516644474034621,
-        "p50_ms": 7.0,
-        "p95_ms": 12.0,
-        "max_ms": 29.0
+        "count": 33,
+        "avg_ms": 9.545454545454545,
+        "p50_ms": 9.0,
+        "p95_ms": 16.0,
+        "max_ms": 18.0
       },
       "cpu4t_mask_decode": {
-        "count": 751,
-        "avg_ms": 5.873501997336884,
-        "p50_ms": 5.0,
-        "p95_ms": 9.0,
-        "max_ms": 26.0
+        "count": 33,
+        "avg_ms": 7.0,
+        "p50_ms": 6.0,
+        "p95_ms": 14.0,
+        "max_ms": 14.0
       },
       "cpu4t_diagnostics": {
-        "count": 751,
-        "avg_ms": 0.35153129161118507,
-        "p50_ms": 0.0,
-        "p95_ms": 1.0,
-        "max_ms": 13.0
+        "count": 33,
+        "avg_ms": 7.515151515151516,
+        "p50_ms": 7.0,
+        "p95_ms": 13.0,
+        "max_ms": 35.0
       }
     }
   },
@@ -390,6 +390,9 @@
       "cpu4t_reference_track_frames_total": 751,
       "cpu4t_probe_inference_frames_total": 751,
       "cpu4t_production_reuse_frames_total": 0,
+      "cpu4t_production_reuse_parity_frames_total": 0,
+      "cpu4t_production_reuse_parity_exact": true,
+      "cpu4t_reference_source_policy": "INDEPENDENT_CPU4T_FULL_EXPORT",
       "adaptive_shadow_matrix_enabled": false,
       "adaptive_shadow_tracker_steps": 0
     },
@@ -401,6 +404,9 @@
       "cpu4t_reference_track_frames_total": 751,
       "cpu4t_probe_inference_frames_total": 751,
       "cpu4t_production_reuse_frames_total": 0,
+      "cpu4t_production_reuse_parity_frames_total": 0,
+      "cpu4t_production_reuse_parity_exact": null,
+      "cpu4t_reference_source_policy": null,
       "adaptive_shadow_matrix_enabled": true,
       "adaptive_shadow_tracker_steps": 3755
     },
@@ -410,8 +416,11 @@
       "production_detection_signature_frames_total": 27,
       "cpu4t_detection_signature_frames_total": 751,
       "cpu4t_reference_track_frames_total": 751,
-      "cpu4t_probe_inference_frames_total": 751,
-      "cpu4t_production_reuse_frames_total": 0,
+      "cpu4t_probe_inference_frames_total": 33,
+      "cpu4t_production_reuse_frames_total": 718,
+      "cpu4t_production_reuse_parity_frames_total": 33,
+      "cpu4t_production_reuse_parity_exact": true,
+      "cpu4t_reference_source_policy": "INDEPENDENT_ARTIFACT_WINDOW_WITH_SPARSE_PARITY_THEN_PRODUCTION_CPU4T_REUSE",
       "adaptive_shadow_matrix_enabled": false,
       "adaptive_shadow_tracker_steps": 0
     }
@@ -498,6 +507,35 @@
           "improvement_pct": 54.14012738853503
         },
         "note": "Acceptance is anchored to exact Full Body fingerprints plus elimination of 3755 debug-only adaptive TrackManager steps. The large YOLO and CPU4T timing improvement is consistent with lower sustained debug CPU load; it is retained as measured same-device export evidence without attributing every secondary stage delta solely to the shadow removal."
+      },
+      {
+        "decision": "ACCEPT_FOR_ACCUMULATION",
+        "candidate_commit": "94dc16c9b67481ccf9fab8edf643133f3ec14029",
+        "quality_exact": true,
+        "runtime_unchanged": true,
+        "cpu4_reference_reuse": {
+          "independent_probe_frames_before": 751,
+          "independent_probe_frames_after": 33,
+          "independent_probe_reduction_pct": 95.60585885486019,
+          "production_reuse_frames_before": 0,
+          "production_reuse_frames_after": 718,
+          "parity_frames": 33,
+          "parity_exact": true,
+          "reference_signature_frames": 751,
+          "reference_track_frames": 751,
+          "source_policy": "INDEPENDENT_ARTIFACT_WINDOW_WITH_SPARSE_PARITY_THEN_PRODUCTION_CPU4T_REUSE"
+        },
+        "full_export_job_wall_time_seconds": {
+          "before": 271.15,
+          "after": 203.196,
+          "improvement_pct": 25.06195832564909
+        },
+        "full_export_production_yolo_p50_ms": {
+          "before": 72.0,
+          "after": 68.0,
+          "improvement_pct": 5.555555555555555
+        },
+        "note": "Acceptance is anchored to exact Full Body and CPU4 reference fingerprints, 33/33 independent parity checks, complete 751-frame reference coverage, and elimination of 718 redundant CPU4T inference calls. The independent CPU4T timing distribution now contains only 33 probe samples and is therefore not compared directly with the old 751-frame distribution."
       }
     ]
   }
