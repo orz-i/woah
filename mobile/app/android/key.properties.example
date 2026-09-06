@@ -1,0 +1,6 @@
+# Copy to key.properties (which is gitignored) or provide the equivalent
+# WOAH_* environment variables in CI.
+storeFile=woah-upload-key.jks
+storePassword=REPLACE_ME
+keyAlias=woah-upload
+keyPassword=REPLACE_ME

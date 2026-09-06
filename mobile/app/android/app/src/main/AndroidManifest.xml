@@ -12,6 +12,7 @@
         android:label="Woah"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:largeHeap="true">
 
         <activity

@@ -1,4 +1,4 @@
-package com.danceanon.app
+package art.gaoge.dance
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -10,7 +10,7 @@ class MainActivity : FlutterActivity() {
 
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
-            "com.danceanon.app/build_info",
+            "art.gaoge.dance/build_info",
         ).setMethodCallHandler { call, result ->
             if (call.method != "getBuildInfo") {
                 result.notImplemented()

@@ -70,6 +70,7 @@ pubspec.lock
 *.aab
 *.jks
 *.keystore
+mobile/app/android/key.properties
 
 # --- iOS & macOS ---
 .DS_Store

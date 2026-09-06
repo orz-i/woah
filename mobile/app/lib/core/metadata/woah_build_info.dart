@@ -1,11 +1,11 @@
 import 'package:flutter/services.dart';
 
 class WoahBuildInfo {
-  static const _channel = MethodChannel('com.danceanon.app/build_info');
+  static const _channel = MethodChannel('art.gaoge.dance/build_info');
   static const authorName = 'CJ';
   static const _fallbackVersionName = String.fromEnvironment(
     'WOAH_APP_VERSION',
-    defaultValue: '1.0.0',
+    defaultValue: '0.1.0',
   );
   static const _fallbackBuildNumber = String.fromEnvironment(
     'WOAH_BUILD_NUMBER',
