@@ -120,6 +120,26 @@ class DanceNativeClient implements DanceProcessingEvents {
     return result ?? const [];
   }
 
+  /// Phase 1 iOS-only inference probe.
+  ///
+  /// This deliberately stays outside the Pigeon product API until real-device
+  /// parity is accepted. Android and other platforms may report a missing
+  /// method if this diagnostic helper is invoked there.
+  Future<Map<dynamic, dynamic>?> runIOSYoloPhase1Probe({
+    required String videoUri,
+    int timestampMs = 0,
+    String backend = 'auto',
+  }) {
+    return _channel.invokeMapMethod<dynamic, dynamic>(
+      'runIOSYoloPhase1Probe',
+      {
+        'videoUri': videoUri,
+        'timestampMs': timestampMs,
+        'backend': backend,
+      },
+    );
+  }
+
   /// Toggle Android export live-preview capture for a running job.
   /// Platforms that do not expose the legacy MethodChannel control simply
   /// keep their existing export-preview behavior.

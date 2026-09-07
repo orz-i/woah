@@ -22,6 +22,7 @@ enum IOSDeviceCapabilities {
       supportedCodecs.append(kCMVideoCodecType_HEVC)
     }
     let maxSize = maximumHardwareEncodeSize(for: supportedCodecs)
+    let inferenceBackends = IOSYoloRuntimeSupport.candidateBackendNames()
 
     return NativeCapabilitiesDto(
       platform: "ios",
@@ -33,11 +34,12 @@ enum IOSDeviceCapabilities {
       maxEncodeHeight: Int64(maxSize.height),
       cpuCores: Int64(ProcessInfo.processInfo.processorCount),
       recommendedProfile: "balanced",
-      // Profiles and inference backends describe implemented Woah processing
-      // pipelines, not merely frameworks available on the OS. Keep them empty
-      // until the LiteRT/Core ML pipeline is actually connected on iOS.
+      // Phase 1 has a real isolated YOLO runtime, so expose only backends for
+      // which both the runtime module and staged model resource are present.
+      // Public processing profiles remain empty until analyze/preview/export
+      // are accepted and connected to the product flow.
       supportedProfiles: [],
-      inferenceBackends: []
+      inferenceBackends: inferenceBackends
     )
   }
 
