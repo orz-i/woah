@@ -54,7 +54,7 @@ class WoahBuildInfo {
         buildType = _nonEmpty(raw['buildType']) ?? buildType;
       }
     } on MissingPluginException {
-      // Non-Android/test environments use compile-time fallbacks.
+      // Tests and platforms without the native metadata bridge use fallbacks.
     } on PlatformException {
       // Build metadata is decorative; keep the easter egg available even when
       // the native bridge is unavailable.

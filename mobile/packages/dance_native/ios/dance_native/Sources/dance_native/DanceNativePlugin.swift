@@ -1,13 +1,18 @@
 import Flutter
 import UIKit
-import AVFoundation
 
 public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
+  private let mediaBridge = IOSMediaLibraryBridge()
 
   public static func register(with registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(name: "dance_native", binaryMessenger: registrar.messenger())
     let instance = DanceNativePlugin()
     registrar.addMethodCallDelegate(instance, channel: channel)
+    let buildInfoChannel = FlutterMethodChannel(
+      name: "art.gaoge.dance/build_info",
+      binaryMessenger: registrar.messenger()
+    )
+    registrar.addMethodCallDelegate(instance, channel: buildInfoChannel)
     DanceNativeApiSetup.setUp(binaryMessenger: registrar.messenger(), api: instance)
   }
 
@@ -15,6 +20,102 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
     switch call.method {
     case "getPlatformVersion":
       result("iOS " + UIDevice.current.systemVersion)
+    case "getBuildInfo":
+      result(Self.buildInfo())
+    case "saveVideoToGallery":
+      guard let arguments = call.arguments as? [String: Any],
+            let filePath = arguments["filePath"] as? String,
+            !filePath.isEmpty else {
+        result(FlutterError(
+          code: "INVALID_ARGS",
+          message: "filePath is required.",
+          details: nil
+        ))
+        return
+      }
+      Task {
+        do {
+          let uri = try await mediaBridge.saveVideoToGallery(filePath: filePath)
+          await MainActor.run { result(uri) }
+        } catch {
+          let flutterError = Self.flutterError(from: error, fallbackCode: "SAVE_VIDEO_FAILED")
+          await MainActor.run { result(flutterError) }
+        }
+      }
+    case "shareVideo":
+      guard let arguments = call.arguments as? [String: Any],
+            let publicUri = arguments["publicUri"] as? String,
+            !publicUri.isEmpty else {
+        result(FlutterError(
+          code: "INVALID_ARGS",
+          message: "publicUri is required.",
+          details: nil
+        ))
+        return
+      }
+      Task {
+        do {
+          try await mediaBridge.shareVideo(publicUri: publicUri)
+          await MainActor.run { result(nil) }
+        } catch {
+          let flutterError = Self.flutterError(from: error, fallbackCode: "SHARE_VIDEO_FAILED")
+          await MainActor.run { result(flutterError) }
+        }
+      }
+    case "openVideo":
+      guard let arguments = call.arguments as? [String: Any],
+            let publicUri = arguments["publicUri"] as? String,
+            !publicUri.isEmpty else {
+        result(FlutterError(
+          code: "INVALID_ARGS",
+          message: "publicUri is required.",
+          details: nil
+        ))
+        return
+      }
+      Task {
+        do {
+          try await mediaBridge.openVideo(publicUri: publicUri)
+          await MainActor.run { result(nil) }
+        } catch {
+          let flutterError = Self.flutterError(from: error, fallbackCode: "OPEN_VIDEO_FAILED")
+          await MainActor.run { result(flutterError) }
+        }
+      }
+    case "getVideoFrameThumbnails":
+      guard let arguments = call.arguments as? [String: Any],
+            let videoUri = arguments["videoUri"] as? String,
+            let rawTimestamps = arguments["timestampsMs"] as? [Any] else {
+        result(FlutterError(
+          code: "INVALID_ARGS",
+          message: "videoUri and timestampsMs are required.",
+          details: nil
+        ))
+        return
+      }
+      let timestampsMs = rawTimestamps.compactMap {
+        ($0 as? NSNumber)?.int64Value
+      }
+      guard timestampsMs.count == rawTimestamps.count else {
+        result(FlutterError(
+          code: "INVALID_ARGS",
+          message: "timestampsMs must contain only integer timestamps.",
+          details: nil
+        ))
+        return
+      }
+      Task {
+        do {
+          let paths = try await mediaBridge.createTrimThumbnails(
+            videoUri: videoUri,
+            timestampsMs: timestampsMs
+          )
+          await MainActor.run { result(paths) }
+        } catch {
+          let flutterError = Self.flutterError(from: error, fallbackCode: "THUMBNAIL_FAILED")
+          await MainActor.run { result(flutterError) }
+        }
+      }
     default:
       result(FlutterMethodNotImplemented)
     }
@@ -22,92 +123,31 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
 
   // MARK: - DanceNativeApi Protocol Implementation
 
-  public func getCapabilities() async throws -> NativeCapabilitiesDto {
-    return NativeCapabilitiesDto(
-      platform: "ios",
-      osVersion: UIDevice.current.systemVersion,
-      gpuSupported: true,
-      h264Encoder: true,
-      hevcEncoder: true,
-      maxEncodeWidth: 3840,
-      maxEncodeHeight: 2160,
-      cpuCores: Int64(ProcessInfo.processInfo.processorCount),
-      recommendedProfile: "balanced",
-      supportedProfiles: ["balanced"],
-      inferenceBackends: ["coreml", "metal"]
-    )
+  func getCapabilities() async throws -> NativeCapabilitiesDto {
+    return IOSDeviceCapabilities.detect()
   }
 
-  public func probeVideo(uri: String) async throws -> VideoInfoDto {
-    let url: URL
-    if uri.hasPrefix("file://") {
-      url = URL(fileURLWithPath: String(uri.dropFirst(7)))
-    } else if let parsed = URL(string: uri) {
-      url = parsed
-    } else {
-      url = URL(fileURLWithPath: uri)
-    }
-
-    let asset = AVURLAsset(url: url)
-    guard let track = try await asset.loadTracks(withMediaType: .video).first else {
-      throw PigeonError(code: "VIDEO_TRACK_NOT_FOUND", message: "No video track found in \(uri)", details: nil)
-    }
-
-    let naturalSize = try await track.load(.naturalSize)
-    let nominalFrameRate = try await track.load(.nominalFrameRate)
-    let duration = try await asset.load(.duration)
-    let durationMs = Int64(CMTimeGetSeconds(duration) * 1000.0)
-    let audioTracks = try await asset.loadTracks(withMediaType: .audio)
-
-    let codedWidth = Int64(naturalSize.width)
-    let codedHeight = Int64(naturalSize.height)
-
-    // Calculate visual rotation and display dimensions via preferredTransform
-    let transform = try await track.load(.preferredTransform)
-    var rotation: Int64 = 0
-    if transform.a == 0 && transform.b == 1.0 && transform.c == -1.0 && transform.d == 0 {
-      rotation = 90
-    } else if transform.a == -1.0 && transform.b == 0 && transform.c == 0 && transform.d == -1.0 {
-      rotation = 180
-    } else if transform.a == 0 && transform.b == -1.0 && transform.c == 1.0 && transform.d == 0 {
-      rotation = 270
-    }
-
-    let isRotated = (rotation == 90 || rotation == 270)
-    let displayWidth = isRotated ? codedHeight : codedWidth
-    let displayHeight = isRotated ? codedWidth : codedHeight
-
-    return VideoInfoDto(
-      codedWidth: codedWidth,
-      codedHeight: codedHeight,
-      displayWidth: displayWidth,
-      displayHeight: displayHeight,
-      fps: Double(nominalFrameRate),
-      durationMs: durationMs,
-      rotation: rotation,
-      videoCodec: "video/avc",
-      audioCodec: audioTracks.isEmpty ? nil : "audio/mp4a-latm",
-      hasAudio: !audioTracks.isEmpty
-    )
+  func probeVideo(uri: String) async throws -> VideoInfoDto {
+    return try await IOSVideoProbe.probe(uri: uri)
   }
 
-  public func analyzeVideo(request: AnalyzeRequestDto) async throws -> AnalyzeResultDto {
-    throw PigeonError(code: "PLATFORM_NOT_SUPPORTED", message: "iOS CoreML segmentation pipeline will be supported in future releases", details: nil)
+  func analyzeVideo(request: AnalyzeRequestDto) async throws -> AnalyzeResultDto {
+    throw PigeonError(code: "PLATFORM_NOT_SUPPORTED", message: "iOS on-device segmentation pipeline is not implemented yet", details: nil)
   }
 
-  public func getPreviewFrame(request: PreviewRequestDto) async throws -> PreviewFrameDto {
+  func getPreviewFrame(request: PreviewRequestDto) async throws -> PreviewFrameDto {
     throw PigeonError(code: "PLATFORM_NOT_SUPPORTED", message: "iOS preview rendering pipeline will be supported in future releases", details: nil)
   }
 
-  public func startExport(request: ExportRequestDto) async throws -> String {
-    throw PigeonError(code: "PLATFORM_NOT_SUPPORTED", message: "iOS background export pipeline will be supported in future releases", details: nil)
+  func startExport(request: ExportRequestDto) async throws -> String {
+    throw PigeonError(code: "PLATFORM_NOT_SUPPORTED", message: "iOS export pipeline is not implemented yet", details: nil)
   }
 
-  public func cancelJob(jobId: String) async throws {
+  func cancelJob(jobId: String) async throws {
     // Graceful no-op on iOS stub
   }
 
-  public func getJobStatus(jobId: String) async throws -> JobStatusDto {
+  func getJobStatus(jobId: String) async throws -> JobStatusDto {
     return JobStatusDto(
       jobId: jobId,
       state: "failed",
@@ -117,11 +157,53 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
       progress: 0,
       outputUri: nil,
       errorCode: "PLATFORM_NOT_SUPPORTED",
-      errorMessage: "iOS background export pipeline is not implemented yet"
+      errorMessage: "iOS export pipeline is not implemented yet"
     )
   }
 
-  public func releaseProject(projectId: String) async throws {
+  func releaseProject(projectId: String) async throws {
     // Graceful no-op on iOS stub
+  }
+
+  private static func buildInfo() -> [String: Any] {
+    let bundle = Bundle.main
+    var info: [String: Any] = [
+      "versionName": bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.0",
+      "versionCode": bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1",
+    ]
+#if DEBUG
+    info["buildType"] = "debug"
+#else
+    info["buildType"] = "release"
+#endif
+
+    let commitCandidates: [String?] = [
+      bundle.object(forInfoDictionaryKey: "WoahGitCommit") as? String,
+      ProcessInfo.processInfo.environment["WOAH_GIT_COMMIT"],
+    ]
+    if let commit = commitCandidates
+      .compactMap({ $0?.trimmingCharacters(in: .whitespacesAndNewlines) })
+      .first(where: { !$0.isEmpty && !$0.contains("$(") }) {
+      info["gitCommit"] = commit
+    }
+    return info
+  }
+
+  private static func flutterError(
+    from error: Error,
+    fallbackCode: String
+  ) -> FlutterError {
+    if let pigeonError = error as? PigeonError {
+      return FlutterError(
+        code: pigeonError.code,
+        message: pigeonError.message,
+        details: pigeonError.details
+      )
+    }
+    return FlutterError(
+      code: fallbackCode,
+      message: String(describing: error),
+      details: nil
+    )
   }
 }

@@ -68,5 +68,7 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>WoahGitCommit</key>
+	<string>$(WOAH_GIT_COMMIT)</string>
 </dict>
 </plist>

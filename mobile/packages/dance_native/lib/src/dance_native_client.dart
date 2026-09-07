@@ -153,19 +153,19 @@ class DanceNativeClient implements DanceProcessingEvents {
     return _api.releaseProject(projectId);
   }
 
-  /// Save exported MP4 video to Android MediaStore System Gallery
+  /// Save an exported MP4 video to the platform system gallery / photo library.
   Future<String?> saveVideoToGallery(String filePath) async {
     return _channel.invokeMethod<String>('saveVideoToGallery', {
       'filePath': filePath,
     });
   }
 
-  /// Share an already-public media Uri through the Android system share sheet.
+  /// Share the saved/exported media URI through the platform share sheet.
   Future<void> shareVideo(String publicUri) async {
     await _channel.invokeMethod<void>('shareVideo', {'publicUri': publicUri});
   }
 
-  /// Open an already-public media Uri in the system video viewer/gallery.
+  /// Open the saved/exported media URI in a native video viewer.
   Future<void> openVideo(String publicUri) async {
     await _channel.invokeMethod<void>('openVideo', {'publicUri': publicUri});
   }
