@@ -88,6 +88,11 @@ mobile/app/android/key.properties
 **/ios/Runner.xcodeproj/project.xcworkspace/xcuserdata/
 DerivedData/
 
+# iOS inference model bytes are provisioned from the repository-local models/
+# cache and deliberately remain untracked, matching the Android asset strategy.
+mobile/packages/dance_native/ios/dance_native/Sources/dance_native/Resources/InferenceAssets/*.tflite
+mobile/packages/dance_native/ios/dance_native/Sources/dance_native/Resources/InferenceAssets/*.sha256
+
 # --- IDE & Editors ---
 .idea/
 .vscode/
