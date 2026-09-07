@@ -122,23 +122,28 @@ def verify_native_plugin_contract() -> None:
     podspec = (ROOT / "mobile/packages/dance_native/ios/dance_native.podspec").read_text(
         encoding="utf-8"
     )
-    package = (
-        ROOT / "mobile/packages/dance_native/ios/dance_native/Package.swift"
-    ).read_text(encoding="utf-8")
+    package_path = ROOT / "mobile/packages/dance_native/ios/dance_native/Package.swift"
     plugin_privacy = load_plist(
         "mobile/packages/dance_native/ios/dance_native/Sources/dance_native/PrivacyInfo.xcprivacy"
     )
     check("s.platform = :ios, '17.0'" in podspec, "dance_native Pod must target iOS 17")
     check("s.swift_version = '5.0'" in podspec, "dance_native Pod must use Swift 5 language mode")
     check(
-        "s.resource_bundles = {'dance_native_privacy'" in podspec,
+        "'dance_native_privacy'" in podspec
+        and "PrivacyInfo.xcprivacy" in podspec,
         "dance_native Pod must package its privacy manifest",
     )
-    check('.iOS("17.0")' in package, "dance_native SwiftPM package must target iOS 17")
-    check(
-        '.process("PrivacyInfo.xcprivacy")' in package,
-        "dance_native SwiftPM package must process its privacy manifest",
-    )
+    # Phase 1 temporarily makes dance_native CocoaPods-only because Google's
+    # general LiteRT/TensorFlowLite Swift runtime has no first-party SwiftPM
+    # package. If a SwiftPM manifest is restored later, keep the Phase 0 privacy
+    # and deployment contracts intact.
+    if package_path.is_file():
+        package = package_path.read_text(encoding="utf-8")
+        check('.iOS("17.0")' in package, "dance_native SwiftPM package must target iOS 17")
+        check(
+            '.process("PrivacyInfo.xcprivacy")' in package,
+            "dance_native SwiftPM package must process its privacy manifest",
+        )
     check(
         plugin_privacy.get("NSPrivacyTracking") is False,
         "dance_native privacy manifest must disable tracking",
@@ -176,8 +181,12 @@ def verify_native_plugin_contract() -> None:
         "iOS capability detection must query hardware encoder support",
     )
     check(
-        "supportedProfiles: []" in capabilities and "inferenceBackends: []" in capabilities,
-        "iOS must not advertise inference profiles before LiteRT is connected",
+        "supportedProfiles: []" in capabilities,
+        "iOS must not advertise product processing profiles before analyze/preview/export are accepted",
+    )
+    check(
+        "IOSYoloRuntimeSupport.candidateBackendNames()" in capabilities,
+        "iOS inference capability reporting must be derived from the Phase 1 runtime/model availability",
     )
     check(
         "formatDescriptions" in probe and "video/hevc" in probe and "audio/mp4a-latm" in probe,

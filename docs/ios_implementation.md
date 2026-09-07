@@ -1,6 +1,6 @@
 # Woah iOS implementation roadmap
 
-Status date: 2026-09-06
+Status date: 2026-09-07
 
 This document is the implementation handoff for the iOS port. The product UI,
 domain model, and Pigeon API remain shared with Android. iOS work is scoped to a
@@ -32,18 +32,19 @@ Completed in Phase 0:
 - Platform MethodChannel support exists for save-to-Photos, system sharing,
   native playback, and trim-timeline thumbnails.
 
-Still intentionally unavailable after Phase 0:
+Still intentionally unavailable to the product flow:
 
 - `analyzeVideo`
 - `getPreviewFrame`
 - `startExport`
-- LiteRT/Core ML inference profiles
+- public iOS processing profiles
 - Metal privacy compositor
 - iOS tracking/privacy implementation
 - long-running/background export lifecycle
 
-Those calls must continue to fail with `PLATFORM_NOT_SUPPORTED`; capability
-reporting must not advertise inference backends until the real runtime is wired.
+Those calls must continue to fail with `PLATFORM_NOT_SUPPORTED`. Phase 1 may
+report isolated YOLO runtime candidates when both the runtime and staged model
+are present, but it must not advertise a product processing profile yet.
 
 ## Architecture boundary
 
@@ -82,17 +83,55 @@ behavior are stable.
 
 ## Phase 1: inference feasibility spike
 
-Phase 1 should be a narrow experiment rather than a full export implementation.
+Phase 1 remains a narrow experiment rather than a full export implementation.
+The repository-side implementation is now present, but it is not yet accepted
+on macOS/Xcode or an iPhone.
 
-1. Add the supported LiteRT iOS dependency to `dance_native`.
-2. Bundle `yolo11n-seg-fp16.tflite` from the repository model source with a
-   deterministic hash check.
-3. Implement a small `IOSYoloRunner` accepting a canonical RGBA frame.
-4. Exercise delegates in priority order and record the effective backend rather
-   than the requested backend.
-5. Run the same fixed first-frame fixture through Android and iOS and compare
-   person count, confidence, bounding boxes, and mask coverage.
-6. Only after parity is acceptable should `analyzeVideo` be connected to the UI.
+Implemented:
+
+1. `dance_native` pins `TensorFlowLiteSwift/CoreML` and
+   `TensorFlowLiteSwift/Metal` 2.17.0 for the iOS feasibility bridge. The
+   first-party general Swift compatibility runtime is available through
+   CocoaPods, while the newer LiteRT API does not currently give this Flutter
+   plugin an equivalent drop-in SwiftPM integration. Flutter 3.44+ normally
+   prefers SwiftPM, so the Phase 1 plugin intentionally omits its `Package.swift`
+   and lets Flutter use its supported per-plugin CocoaPods fallback. This is a
+   temporary distribution seam, not a long-term architecture commitment.
+2. `yolo11n-seg-fp16.contract.json` locks the known graph/file contract against
+   `reports/yolo11n_seg_fp16_graph_report.json`: NCHW float32 input
+   `[1,3,640,640]`, detection output `[1,116,8400]`, proto output
+   `[1,32,160,160]`, 11,799,725 bytes, and `TFL3` FlatBuffer magic.
+3. `sync_ios_yolo_model.py` stages the ignored repository-local model into the
+   CocoaPods resource bundle atomically and writes a SHA-256 sidecar. The
+   source/staged hashes must match exactly. The isolated worktree does not have
+   the ignored source bytes, so `expected_sha256` is deliberately still `null`;
+   the first host that materializes the canonical model must pin the printed
+   SHA-256 in the tracked contract before Phase 1 can pass its acceptance gate.
+4. `IOSYoloPreprocessor` mirrors Android's 640x640 RGB-114 letterbox and NCHW
+   float normalization.
+5. `IOSYoloPostprocessor` mirrors the Android tensor layout, person confidence,
+   mask coefficients, bbox mapping, mask-aware NMS thresholds, proto-mask
+   decode, and deterministic left-to-right ordering.
+6. `IOSYoloRunner` is serialized because the interpreter is not thread-safe. In
+   automatic mode it attempts Core ML -> Metal -> XNNPACK and records every
+   fallback reason plus initialization/inference latency. A probe can also force
+   one backend at a time for real-device benchmarking.
+7. `runIOSYoloPhase1Probe` is a MethodChannel-only diagnostic path. It extracts
+   an oriented frame with AVFoundation and returns comparison-friendly bbox,
+   confidence, mask coverage, tensor-shape, backend, and latency data.
+8. Product `analyzeVideo` intentionally remains `PLATFORM_NOT_SUPPORTED`; the
+   spike cannot affect user-visible person selection until device parity is
+   accepted.
+
+Model provisioning before an iOS inference build:
+
+```text
+python tools/release/sync_ios_yolo_model.py
+python tools/release/verify_ios_phase1.py --require-model
+```
+
+The isolated Windows worktree does not materialize ignored `models/litert`
+artifacts, so the real model copy/hash gate cannot be satisfied on this host.
 
 Phase 1 acceptance gate:
 
@@ -160,6 +199,7 @@ Cross-platform static gate, runnable on Windows/Linux/macOS:
 
 ```text
 python tools/release/verify_ios_phase0.py
+python tools/release/verify_ios_phase1.py
 ```
 
 Flutter regression gate:
@@ -173,9 +213,12 @@ flutter test
 flutter analyze
 ```
 
-Required macOS gate before Phase 0 can be called device-validated:
+Required macOS gate before Phase 1 can be called runtime-validated:
 
 ```text
+python tools/release/sync_ios_yolo_model.py
+python tools/release/verify_ios_phase1.py --require-model
+
 cd mobile/app
 flutter pub get
 flutter build ios --debug --no-codesign
@@ -184,13 +227,20 @@ flutter build ios --debug --no-codesign
 Then open the Runner workspace/project with the current Xcode toolchain and run
 on at least one real iOS 17+ device. The macOS lane must specifically verify:
 
-- CocoaPods/SwiftPM privacy-resource packaging;
+- mixed Flutter SwiftPM + `dance_native` CocoaPods fallback resolution;
+- `TensorFlowLiteSwift` CoreML/Metal pod resolution and model-resource packaging;
 - `art.gaoge.dance` signing configuration;
 - Photos add-only permission and successful save;
 - share sheet and native player presentation;
 - portrait/landscape/HEVC video metadata probing;
 - trim thumbnails across several timestamps;
 - hardware capability values on device versus simulator.
+- forced `tflite_coreml`, `tflite_metal`, and `tflite_xnnpack` Phase 1 probes;
+- automatic fallback backend and fallback-reason reporting;
+- first-frame person count/order, confidence, bbox, and raw-mask coverage versus
+  the Android reference fixture;
+- repeated inference latency and memory/thermal behavior on at least one A12
+  baseline device and one newer device before choosing the production default.
 
 The Windows development host cannot satisfy this gate and must never be treated
 as evidence that the iOS target compiled or ran on device.
