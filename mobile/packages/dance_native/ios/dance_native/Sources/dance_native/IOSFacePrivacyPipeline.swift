@@ -8,6 +8,52 @@ enum IOSFacePrivacyRegionSource: String {
   case yoloHeadFallback = "YOLO_HEAD_FALLBACK"
 }
 
+enum IOSPersonBboxMotionEstimator {
+  private static let minEdgeAgreementPx: Float32 = 8
+  private static let edgeAgreementDimensionRatio: Float32 = 0.07
+
+  static func estimate(
+    previous: IOSYoloDetection,
+    current: IOSYoloDetection
+  ) -> (dx: Float32, dy: Float32) {
+    let previousWidth = max(1, previous.x2 - previous.x1)
+    let currentWidth = max(1, current.x2 - current.x1)
+    let previousHeight = max(1, previous.y2 - previous.y1)
+    let currentHeight = max(1, current.y2 - current.y1)
+    let referenceWidth = max((previousWidth + currentWidth) * 0.5, 1)
+    let referenceHeight = max((previousHeight + currentHeight) * 0.5, 1)
+    return (
+      resolveAxisTranslation(
+        firstEdgeDelta: current.x1 - previous.x1,
+        secondEdgeDelta: current.x2 - previous.x2,
+        referenceDimension: referenceWidth
+      ),
+      resolveAxisTranslation(
+        firstEdgeDelta: current.y1 - previous.y1,
+        secondEdgeDelta: current.y2 - previous.y2,
+        referenceDimension: referenceHeight
+      )
+    )
+  }
+
+  private static func resolveAxisTranslation(
+    firstEdgeDelta: Float32,
+    secondEdgeDelta: Float32,
+    referenceDimension: Float32
+  ) -> Float32 {
+    let agreementTolerance = max(
+      minEdgeAgreementPx,
+      referenceDimension * edgeAgreementDimensionRatio
+    )
+    if abs(firstEdgeDelta - secondEdgeDelta) <= agreementTolerance {
+      return (firstEdgeDelta + secondEdgeDelta) * 0.5
+    }
+    return abs(firstEdgeDelta) <= abs(secondEdgeDelta)
+      ? firstEdgeDelta
+      : secondEdgeDelta
+  }
+}
+
 struct IOSFacePrivacyEllipse {
   let centerX: Float32
   let centerY: Float32
@@ -119,12 +165,63 @@ final class IOSFacePrivacyTemporalResolver {
     let score: Float32
   }
 
+  private struct TrustedFaceGeometry {
+    let centerX: Float32
+    let centerY: Float32
+    let radiusX: Float32
+    let radiusY: Float32
+    let trustedPersonDetection: IOSYoloDetection
+    let lastTrustedTimestampUs: Int64
+
+    func project(
+      personDetection: IOSYoloDetection,
+      ageUs: Int64
+    ) -> IOSFacePrivacyEllipse? {
+      let personWidth = personDetection.x2 - personDetection.x1
+      let personHeight = personDetection.y2 - personDetection.y1
+      let trustedWidth = trustedPersonDetection.x2 - trustedPersonDetection.x1
+      let trustedHeight = trustedPersonDetection.y2 - trustedPersonDetection.y1
+      guard personWidth > 1, personHeight > 1, trustedWidth > 1, trustedHeight > 1 else {
+        return nil
+      }
+
+      let widthRatio = max(0.1, personWidth / max(1, trustedWidth))
+      let heightRatio = max(0.1, personHeight / max(1, trustedHeight))
+      let bboxScale = min(
+        IOSFacePrivacyTemporalResolver.maxPredictedFaceScale,
+        max(
+          IOSFacePrivacyTemporalResolver.minPredictedFaceScale,
+          sqrt(widthRatio * heightRatio)
+        )
+      )
+      let clampedAge = min(
+        IOSFacePrivacyTemporalResolver.maxPredictedFaceAgeUs,
+        max(Int64(0), ageUs)
+      )
+      let ageProgress = Float32(clampedAge)
+        / Float32(IOSFacePrivacyTemporalResolver.maxPredictedFaceAgeUs)
+      let ageExpansion = 1 + ageProgress * IOSFacePrivacyTemporalResolver.maxPredictedAgeExpansion
+      let translation = IOSPersonBboxMotionEstimator.estimate(
+        previous: trustedPersonDetection,
+        current: personDetection
+      )
+      return IOSFacePrivacyEllipse(
+        centerX: centerX + translation.dx,
+        centerY: centerY + translation.dy,
+        radiusX: max(1, radiusX * bboxScale * ageExpansion),
+        radiusY: max(1, radiusY * bboxScale * ageExpansion),
+        source: .predictedFace
+      )
+    }
+  }
+
   private struct State {
     let output: IOSFacePrivacyEllipse
     let detectedRadiusX: Float32?
     let detectedRadiusY: Float32?
     let detectedPersonWidth: Float32?
     let detectedPersonHeight: Float32?
+    let trustedFace: TrustedFaceGeometry?
     let personDetection: IOSYoloDetection
     let personObservedThisFrame: Bool
     let lastTimestampUs: Int64
@@ -186,6 +283,14 @@ final class IOSFacePrivacyTemporalResolver {
          faces.indices.contains(faceIndex) {
         raw = IOSFacePrivacyGeometry.detectedEllipse(faces[faceIndex])
           ?? IOSFacePrivacyGeometry.fallbackEllipse(person.detection)
+      } else if let trusted = stateByTrackId[person.id]?.trustedFace,
+                timestampUs >= trusted.lastTrustedTimestampUs,
+                timestampUs - trusted.lastTrustedTimestampUs <= Self.maxPredictedFaceAgeUs,
+                let projected = trusted.project(
+                  personDetection: person.detection,
+                  ageUs: timestampUs - trusted.lastTrustedTimestampUs
+                ) {
+        raw = projected
       } else {
         raw = IOSFacePrivacyGeometry.fallbackEllipse(person.detection)
       }
@@ -412,12 +517,27 @@ final class IOSFacePrivacyTemporalResolver {
       )
     }
 
+    let trustedFace: TrustedFaceGeometry?
+    if rawRegion.source == .detectedFace {
+      trustedFace = TrustedFaceGeometry(
+        centerX: output.centerX,
+        centerY: output.centerY,
+        radiusX: detectedRadiusX ?? output.radiusX,
+        radiusY: detectedRadiusY ?? output.radiusY,
+        trustedPersonDetection: personDetection,
+        lastTrustedTimestampUs: timestampUs
+      )
+    } else {
+      trustedFace = previous?.trustedFace
+    }
+
     stateByTrackId[trackId] = State(
       output: output,
       detectedRadiusX: detectedRadiusX,
       detectedRadiusY: detectedRadiusY,
       detectedPersonWidth: detectedPersonWidth,
       detectedPersonHeight: detectedPersonHeight,
+      trustedFace: trustedFace,
       personDetection: personDetection,
       personObservedThisFrame: personObservedThisFrame,
       lastTimestampUs: timestampUs
@@ -452,4 +572,9 @@ final class IOSFacePrivacyTemporalResolver {
   private let detectedShrinkTimeConstantSeconds = 0.24
   private let predictedSizeTimeConstantSeconds = 0.15
   private let fallbackSizeTimeConstantSeconds = 0.18
+
+  private static let maxPredictedFaceAgeUs: Int64 = 150_000
+  private static let minPredictedFaceScale: Float32 = 0.88
+  private static let maxPredictedFaceScale: Float32 = 1.12
+  private static let maxPredictedAgeExpansion: Float32 = 0.10
 }

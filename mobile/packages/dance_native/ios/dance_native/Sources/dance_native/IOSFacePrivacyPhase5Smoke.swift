@@ -62,11 +62,41 @@ enum IOSFacePrivacyPhase5Smoke {
       faceOnlyIds: [0],
       timestampUs: 33_333
     )
-    guard let missedRegion = missed[0], missedRegion.source == .yoloHeadFallback else {
-      throw smokeFailure("A detector miss did not retain YOLO-owned FACE_ONLY fallback privacy.")
+    guard let missedRegion = missed[0], missedRegion.source == .predictedFace else {
+      throw smokeFailure("A short detector miss did not use the trusted FACE_ONLY prediction lease.")
     }
     guard missedRegion.radiusX > 0, missedRegion.radiusY > 0 else {
-      throw smokeFailure("Detector-miss fallback produced an empty privacy region.")
+      throw smokeFailure("Detector-miss prediction produced an empty privacy region.")
+    }
+
+    let movedPerson = IOSPreviewPerson(
+      id: 0,
+      detection: makeDetection(x1: 12, y1: 4, x2: 60, y2: 60)
+    )
+    let translatedPrediction = resolver.resolve(
+      image: source,
+      persons: [movedPerson],
+      faceOnlyIds: [0],
+      timestampUs: 66_666
+    )
+    guard let translatedRegion = translatedPrediction[0], translatedRegion.source == .predictedFace else {
+      throw smokeFailure("Trusted FACE_ONLY prediction did not survive a short translated detector miss.")
+    }
+    try assertNear(
+      translatedRegion.centerX,
+      36,
+      tolerance: 0.05,
+      label: "translated predicted centerX"
+    )
+
+    let expired = resolver.resolve(
+      image: source,
+      persons: [movedPerson],
+      faceOnlyIds: [0],
+      timestampUs: 200_000
+    )
+    guard let expiredRegion = expired[0], expiredRegion.source == .yoloHeadFallback else {
+      throw smokeFailure("Stale FACE_ONLY trusted geometry remained renderable beyond the 150ms lease.")
     }
 
     let ambiguousResolver = IOSFacePrivacyTemporalResolver(
@@ -124,6 +154,50 @@ enum IOSFacePrivacyPhase5Smoke {
       throw smokeFailure("An unobserved predicted body must not consume fresh face evidence as identity evidence.")
     }
 
+    let cachedPredictedResolver = IOSFacePrivacyTemporalResolver(
+      locator: IOSPhase5SequenceFaceLocator(batches: [[trustedFace], []])
+    )
+    _ = cachedPredictedResolver.resolve(
+      image: source,
+      persons: [person],
+      faceOnlyIds: [0],
+      timestampUs: 0
+    )
+    let cachedPredictedBody = IOSPreviewPerson(
+      id: 0,
+      detection: makeDetection(x1: 12, y1: 4, x2: 60, y2: 60),
+      conservativePrivacyFallback: true
+    )
+    let cachedPredicted = cachedPredictedResolver.resolve(
+      image: source,
+      persons: [cachedPredictedBody],
+      faceOnlyIds: [0],
+      timestampUs: 33_333
+    )
+    guard let cachedPredictedRegion = cachedPredicted[0],
+          cachedPredictedRegion.source == .predictedFace else {
+      throw smokeFailure("A brief YOLO observation gap did not preserve the trusted FACE_ONLY prediction lease.")
+    }
+    try assertNear(
+      cachedPredictedRegion.centerX,
+      36,
+      tolerance: 0.05,
+      label: "predicted-body face centerX"
+    )
+
+    let motionBase = makeDetection(x1: 100, y1: 100, x2: 300, y2: 700)
+    let coherentMotion = IOSPersonBboxMotionEstimator.estimate(
+      previous: motionBase,
+      current: makeDetection(x1: 140, y1: 135, x2: 340, y2: 735)
+    )
+    try assertNear(coherentMotion.dx, 40, tolerance: 0.01, label: "coherent body dx")
+    try assertNear(coherentMotion.dy, 35, tolerance: 0.01, label: "coherent body dy")
+    let topEdgeJitter = IOSPersonBboxMotionEstimator.estimate(
+      previous: motionBase,
+      current: makeDetection(x1: 100, y1: 200, x2: 300, y2: 700)
+    )
+    try assertNear(topEdgeJitter.dy, 0, tolerance: 0.01, label: "top-edge jitter dy")
+
     let renderer = try IOSMetalPreviewRenderer()
     let preprocess = IOSYoloPreprocessResult(
       input: [],
@@ -179,9 +253,14 @@ enum IOSFacePrivacyPhase5Smoke {
       "status": "pass",
       "detected_source": detectedRegion.source.rawValue,
       "miss_source": missedRegion.source.rawValue,
+      "translated_prediction_source": translatedRegion.source.rawValue,
+      "expired_prediction_source": expiredRegion.source.rawValue,
       "ambiguous_source": ambiguous[0]?.source.rawValue ?? "missing",
       "neighbor_competition_source": neighborCompetition[0]?.source.rawValue ?? "missing",
       "predicted_body_source": predicted[0]?.source.rawValue ?? "missing",
+      "cached_predicted_body_source": cachedPredictedRegion.source.rawValue,
+      "coherent_body_motion": [coherentMotion.dx, coherentMotion.dy],
+      "top_edge_jitter_motion": [topEdgeJitter.dx, topEdgeJitter.dy],
       "vision_runtime_face_count": visionRuntimeFaces.count,
       "center_pixel": [centerPixel.r, centerPixel.g, centerPixel.b, centerPixel.a],
       "corner_pixel": [cornerPixel.r, cornerPixel.g, cornerPixel.b, cornerPixel.a],

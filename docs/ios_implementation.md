@@ -500,11 +500,45 @@ The Phase 5 Simulator gate now includes `IOSFacePrivacyPhase5Smoke`. It executes
 the real Vision request once on a synthetic image to prove the framework/runtime
 path works (the detected-face count is intentionally **not** a correctness
 expectation), then uses an injected deterministic locator to verify a clear face
-is accepted, a detector miss falls back, a near-tie is rejected to fallback,
-and a predicted body cannot consume fresh face evidence. The same smoke renders
-an explicit ellipse through Metal and checks that its center is opaque while a
-corner of the ellipse's bounding rectangle stays unchanged, preventing a
-regression back to the oversized rectangular FACE_ONLY mask.
+is accepted, an initial/no-trust miss falls back, a near-tie is rejected, an
+unselected observed neighbor participates in face ownership competition, and a
+predicted body cannot consume fresh face evidence as a new identity root. The
+same smoke renders an explicit ellipse through Metal and checks that its center
+is opaque while a corner of the ellipse's bounding rectangle stays unchanged,
+preventing a regression back to the oversized rectangular FACE_ONLY mask.
+
+Final cloud evidence for the completed Phase 5C foundation is GitHub Actions
+`iOS Cloud CI` run `34218031558` (#22) at head
+`d98c8a1c89092507ec25c7264f86e52f352a798e`. Job `102035039064`
+(`Xcode 26 / no-codesign build`) completed successfully. The Apple-only
+repository-contract step passed the Vision runtime probe, deterministic
+FACE_ONLY ownership/fallback smoke, Metal ellipse readback, the inherited
+tracking Golden Trace suite, and the Phase 4 real-media export gate. Production
+iPhoneOS no-codesign build, archive, and artifact upload also passed. This is
+macOS/iOS-Simulator evidence only; no physical or formal cloud iPhone was used.
+
+### Phase 5D: trusted-face short prediction lease
+
+Because a formal cloud iPhone is not currently available, Phase 5 continues by
+porting behavior that can be specified and replayed deterministically. After a
+face has been accepted for a YOLO-owned identity, iOS now mirrors Android's
+short trusted-face projection lease instead of immediately jumping back to the
+generic head fallback on every detector miss. Trusted face geometry may be
+projected for at most **150 ms**. It follows short-term body translation, clamps
+person-box-derived face scale to **0.88...1.12**, and expands by at most **10%**
+across the lease. Once the lease expires, stale face geometry is no longer
+renderable and the resolver returns to the current YOLO head fallback.
+
+The body translation used by that projection also ports Android's
+`PersonBboxMotionEstimator`: coherent movement of opposite bbox edges is treated
+as physical motion, while a one-sided segmentation/pose edge jump uses the
+quieter edge. This prevents top/bottom/side coverage jitter from dragging the
+face sticker even though the person did not translate. The deterministic
+Simulator smoke now checks short detector-miss prediction, translated
+prediction, 150 ms expiry, brief YOLO observation-gap prediction, coherent body
+motion, and one-edge jitter rejection. These rules require no real-device
+timing assumptions; real-iPhone visual quality and sustained Vision cost remain
+separate release acceptance gates.
 
 This is a substantial FACE_ONLY closure, but it is still not a claim of complete
 Android `FaceOnlyPrivacyFrameProcessor` parity. Android's local ROI detector

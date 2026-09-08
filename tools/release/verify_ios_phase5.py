@@ -184,6 +184,7 @@ def verify_ios_replay_surface() -> None:
         "VNDetectFaceRectanglesRequest()",
         "protocol IOSFaceLocating",
         "final class IOSVisionFaceLocator",
+        "enum IOSPersonBboxMotionEstimator",
         "final class IOSFacePrivacyTemporalResolver",
         "IOSFacePrivacyGeometry.fallbackEllipse",
         "person.conservativePrivacyFallback",
@@ -204,20 +205,33 @@ def verify_ios_replay_surface() -> None:
         "privacyTargetFloor: Float32 = 0.90",
         "positionMaxRadiusStep: Float32 = 0.80",
         "positionMaxUnobservedPersonRadiusStep: Float32 = 0.65",
+        "maxPredictedFaceAgeUs: Int64 = 150_000",
+        "minPredictedFaceScale: Float32 = 0.88",
+        "maxPredictedFaceScale: Float32 = 1.12",
+        "maxPredictedAgeExpansion: Float32 = 0.10",
+        "IOSPersonBboxMotionEstimator.estimate(",
+        "source: .predictedFace",
+        "timestampUs - trusted.lastTrustedTimestampUs <= Self.maxPredictedFaceAgeUs",
     ):
-        check(token in face_pipeline, f"Phase 5C FACE_ONLY pipeline missing: {token}")
+        check(token in face_pipeline, f"Phase 5C/D FACE_ONLY pipeline missing: {token}")
 
     for token in (
         "IOSPhase5SequenceFaceLocator",
         "IOSVisionFaceLocator().locateFaces(in: visionSource)",
         "Vision FACE_ONLY runtime probe failed",
         "detectedRegion.source == .detectedFace",
-        "missedRegion.source == .yoloHeadFallback",
+        "missedRegion.source == .predictedFace",
+        "translatedRegion.source == .predictedFace",
+        "expiredRegion.source == .yoloHeadFallback",
+        "Stale FACE_ONLY trusted geometry remained renderable beyond the 150ms lease",
         "ambiguous[0]?.source == .yoloHeadFallback",
         "neighborCompetition[0]?.source == .yoloHeadFallback",
         "An unselected observed neighbor must participate in face ownership ambiguity",
         "conservativePrivacyFallback: true",
         "predicted[0]?.source == .yoloHeadFallback",
+        "cachedPredictedRegion.source == .predictedFace",
+        "IOSPersonBboxMotionEstimator.estimate(",
+        'label: "top-edge jitter dy"',
         "faceRegions: [0: renderRegion]",
         "FACE_ONLY ellipse center was not covered",
         "FACE_ONLY privacy regressed to a rectangular mask",
@@ -312,6 +326,40 @@ def verify_android_reference_boundary() -> None:
         "private const val POSITION_MAX_UNOBSERVED_PERSON_RADIUS_STEP = 0.65f",
     ):
         check(token in face_temporal, f"Android FACE_ONLY temporal reference drifted: {token}")
+
+    face_processor = text(
+        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/com/danceanon/native/privacy/FaceOnlyPrivacyFrameProcessor.kt",
+        "Android FaceOnlyPrivacyFrameProcessor",
+    )
+    for token in (
+        "private const val MAX_PREDICTED_FACE_AGE_US = 150_000L",
+        "private const val MIN_PREDICTED_FACE_SCALE = 0.88f",
+        "private const val MAX_PREDICTED_FACE_SCALE = 1.12f",
+        "private const val MAX_PREDICTED_AGE_EXPANSION = 0.10f",
+        "source = FacePrivacyRegionSource.PREDICTED_FACE",
+        "cached.project(",
+    ):
+        check(token in face_processor, f"Android FACE_ONLY projection reference drifted: {token}")
+
+    motion_estimator = text(
+        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/com/danceanon/native/privacy/PersonBboxMotionEstimator.kt",
+        "Android PersonBboxMotionEstimator",
+    )
+    for token in (
+        "private const val MIN_EDGE_AGREEMENT_PX = 8f",
+        "private const val EDGE_AGREEMENT_DIMENSION_RATIO = 0.07f",
+        "return if (abs(firstEdgeDelta) <= abs(secondEdgeDelta))",
+    ):
+        check(token in motion_estimator, f"Android person-bbox motion reference drifted: {token}")
+    motion_test = text(
+        ROOT / "mobile/packages/dance_native/android/src/test/kotlin/com/danceanon/native/privacy/PersonBboxMotionEstimatorTest.kt",
+        "Android PersonBboxMotionEstimatorTest",
+    )
+    for test_name in (
+        "coherent whole-person translation follows both axes",
+        "top-edge-only coverage jitter does not become vertical translation",
+    ):
+        check(test_name in motion_test, f"Android person-bbox motion regression test missing: {test_name}")
 
 
 def verify_cloud_gate() -> None:
