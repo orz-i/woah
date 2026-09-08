@@ -447,6 +447,22 @@ requires REACQUIRING during the separation grace frame, then requires recovery
 of the original ID. These cases also assert the 0.30 protected-prediction bound
 and expose the remaining grace count through the internal parity snapshot.
 
+Final cloud evidence for Phase 5B is GitHub Actions `iOS Cloud CI` run
+`34214553738` (#19) at product head
+`ace8b14b86744606dd11ae555f08eb2e743aa77a`. Job `102023156022`
+(`Xcode 26 / no-codesign build`) completed successfully with no failed steps.
+The Apple-only `Verify repository iOS contracts` step passed the expanded
+six-case Golden Trace replay together with the inherited Phase 3 Metal and
+Phase 4 real-media Simulator gates. Dependency resolution, the production
+iPhoneOS no-codesign build, archive, and artifact-upload steps also all passed.
+Phase 5B is therefore cloud-accepted for macOS/Simulator evidence.
+
+The concurrent generic `Production CI` run `34214553783` (#78) at the same
+product head remains red only at `Run Android Native Unit Tests`, matching the
+pre-existing Android CI stage boundary seen before this iOS slice. Phase 5B
+does not modify Android production source or relax Android tracking/privacy or
+model gates.
+
 ## Cross-platform privacy gate
 
 iOS is not accepted merely because YOLO runs. The current Android behavior is
