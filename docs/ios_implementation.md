@@ -188,8 +188,9 @@ YOLO/runtime correctness run.
 
 ## Phase 3: Metal preview
 
-Phase 3 is implemented at repository level and is awaiting GitHub-hosted Xcode
-compile evidence plus eventual real-iPhone visual/privacy acceptance.
+Phase 3 is implemented at repository level and has passed the GitHub-hosted
+macOS/Xcode 26 no-codesign iPhoneOS compile lane. Real-iPhone Metal runtime,
+visual/privacy, and performance acceptance is still pending.
 
 The production `getPreviewFrame` path now:
 
@@ -242,6 +243,14 @@ The legacy `FollowConfig` DTO is preserved for protocol compatibility, but the
 hidden/removed subject-follow feature is not applied by this Phase 3 renderer.
 Likewise the previously removed beauty/leg-stretch controls are not reintroduced
 on iOS.
+
+Cloud compile evidence for the Phase 3 implementation/gate revision
+(`5841c9d`) is GitHub Actions run `34192482952`: dependency resolution,
+CocoaPods integration, Swift/Xcode iPhoneOS build, app archive, and artifact
+upload all completed successfully. Because the preview compute kernel is
+compiled from Metal source at runtime, this build proves the Swift/Metal API
+integration compiles but does not prove the kernel has executed on an Apple GPU;
+that remains part of the real-device Phase 3 gate.
 
 ## Phase 4: export
 
