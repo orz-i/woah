@@ -144,10 +144,10 @@ Phase 1 acceptance gate:
 
 ## Phase 2: analyze pipeline
 
-Phase 2 is now implemented at repository level and awaits cloud Xcode compile
-verification plus eventual real-iPhone runtime validation. The production
-`analyzeVideo` path now performs first-frame analysis and cache semantics
-compatible with Android:
+Phase 2 is implemented at repository level and has passed the GitHub-hosted
+macOS/Xcode 26 no-codesign compile lane. Real-iPhone runtime/delegate parity is
+still pending. The production `analyzeVideo` path now performs first-frame
+analysis and cache semantics compatible with Android:
 
 - trim-start frame extraction;
 - canonical orientation/letterbox mapping;
@@ -180,6 +180,12 @@ Implementation details:
 - `getPreviewFrame` and `startExport` intentionally remain
   `PLATFORM_NOT_SUPPORTED`; Phase 2 does not claim a working preview/export
   pipeline.
+
+Cloud compile evidence for the final CPU-selection revision (`62464b6`) is
+GitHub Actions run `34190614591`: dependency resolution, CocoaPods integration,
+Swift/Xcode iPhoneOS build, app archive, and artifact upload all completed
+successfully. This is compile evidence only; it does not replace a real-iPhone
+YOLO/runtime correctness run.
 
 ## Phase 3: Metal preview
 
