@@ -14,6 +14,10 @@ Native iOS media, rendering, and on-device inference bridge for Woah.
   s.author           = { 'Your Company' => 'email@example.com' }
   s.source           = { :path => '.' }
   s.source_files = 'dance_native/Sources/dance_native/**/*.swift'
+  # TensorFlowLiteSwift ships a statically linked binary. Mark the Flutter
+  # plugin pod itself static as well so CocoaPods does not try to build a
+  # dynamic dance_native framework with a transitive static binary dependency.
+  s.static_framework = true
   s.dependency 'Flutter'
   # The first-party general Swift runtime currently available through CocoaPods
   # is TensorFlowLiteSwift. This compatibility bridge is intentionally isolated

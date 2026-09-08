@@ -104,6 +104,10 @@ def verify_runtime_packaging() -> None:
         "s.dependency 'TensorFlowLiteSwift/Metal', '2.17.0'" in podspec,
         "Phase 1 must pin the Metal TensorFlowLiteSwift pod",
     )
+    check(
+        "s.static_framework = true" in podspec,
+        "dance_native must remain a static framework while TensorFlowLiteSwift is a static binary dependency",
+    )
     check("'dance_native_models'" in podspec and "InferenceAssets/**/*" in podspec,
           "CocoaPods must package provisioned inference assets")
     check("s.source_files = 'dance_native/Sources/dance_native/**/*.swift'" in podspec,
