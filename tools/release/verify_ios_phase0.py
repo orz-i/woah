@@ -176,9 +176,15 @@ def verify_native_plugin_contract() -> None:
         "Unimplemented AI/export pipeline must remain explicit",
     )
     check(
-        "VTIsHardwareEncodeSupported" in capabilities
-        and "RequireHardwareAcceleratedVideoEncoder" in capabilities,
-        "iOS capability detection must query hardware encoder support",
+        "VTCopyVideoEncoderList" in capabilities
+        and "kVTVideoEncoderList_IsHardwareAccelerated" in capabilities
+        and "kVTVideoEncoderSpecification_EncoderID" in capabilities,
+        "iOS capability detection must enumerate hardware encoders and probe the selected encoder ID",
+    )
+    check(
+        "VTIsHardwareEncodeSupported" not in capabilities
+        and "RequireHardwareAcceleratedVideoEncoder" not in capabilities,
+        "iOS 17.0 capability probing must avoid unavailable iOS 17.4-only encoder APIs",
     )
     check(
         "supportedProfiles: []" in capabilities,

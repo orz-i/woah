@@ -4,6 +4,11 @@ import UIKit
 import VideoToolbox
 
 enum IOSDeviceCapabilities {
+  private struct HardwareEncoder {
+    let codec: CMVideoCodecType
+    let encoderID: String
+  }
+
   private static let candidateEncodeSizes: [(Int32, Int32)] = [
     (3840, 2160),
     (2560, 1440),
@@ -12,16 +17,10 @@ enum IOSDeviceCapabilities {
   ]
 
   static func detect() -> NativeCapabilitiesDto {
-    let h264Supported = VTIsHardwareEncodeSupported(kCMVideoCodecType_H264)
-    let hevcSupported = VTIsHardwareEncodeSupported(kCMVideoCodecType_HEVC)
-    var supportedCodecs: [CMVideoCodecType] = []
-    if h264Supported {
-      supportedCodecs.append(kCMVideoCodecType_H264)
-    }
-    if hevcSupported {
-      supportedCodecs.append(kCMVideoCodecType_HEVC)
-    }
-    let maxSize = maximumHardwareEncodeSize(for: supportedCodecs)
+    let hardwareEncoders = availableHardwareEncoders()
+    let h264Supported = hardwareEncoders.contains { $0.codec == kCMVideoCodecType_H264 }
+    let hevcSupported = hardwareEncoders.contains { $0.codec == kCMVideoCodecType_HEVC }
+    let maxSize = maximumHardwareEncodeSize(for: hardwareEncoders)
     let inferenceBackends = IOSYoloRuntimeSupport.candidateBackendNames()
 
     return NativeCapabilitiesDto(
@@ -44,13 +43,13 @@ enum IOSDeviceCapabilities {
   }
 
   private static func maximumHardwareEncodeSize(
-    for codecs: [CMVideoCodecType]
+    for encoders: [HardwareEncoder]
   ) -> (width: Int32, height: Int32) {
-    guard !codecs.isEmpty else { return (0, 0) }
+    guard !encoders.isEmpty else { return (0, 0) }
 
     for size in candidateEncodeSizes {
-      if codecs.contains(where: { canCreateHardwareSession(
-        codec: $0,
+      if encoders.contains(where: { canCreateHardwareSession(
+        encoder: $0,
         width: size.0,
         height: size.1
       ) }) {
@@ -60,20 +59,45 @@ enum IOSDeviceCapabilities {
     return (0, 0)
   }
 
+  private static func availableHardwareEncoders() -> [HardwareEncoder] {
+    var rawList: CFArray?
+    guard VTCopyVideoEncoderList(nil, &rawList) == noErr,
+          let rawList else {
+      return []
+    }
+
+    let dictionaries = rawList as NSArray
+    var result: [HardwareEncoder] = []
+    result.reserveCapacity(dictionaries.count)
+    for case let dictionary as NSDictionary in dictionaries {
+      guard let codecNumber = dictionary[kVTVideoEncoderList_CodecType] as? NSNumber,
+            let hardwareNumber = dictionary[kVTVideoEncoderList_IsHardwareAccelerated] as? NSNumber,
+            hardwareNumber.boolValue,
+            let encoderID = dictionary[kVTVideoEncoderList_EncoderID] as? String else {
+        continue
+      }
+      result.append(HardwareEncoder(
+        codec: CMVideoCodecType(codecNumber.uint32Value),
+        encoderID: encoderID
+      ))
+    }
+    return result
+  }
+
   private static func canCreateHardwareSession(
-    codec: CMVideoCodecType,
+    encoder: HardwareEncoder,
     width: Int32,
     height: Int32
   ) -> Bool {
     let specification = [
-      kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder as String: true,
+      kVTVideoEncoderSpecification_EncoderID as String: encoder.encoderID,
     ] as CFDictionary
     var session: VTCompressionSession?
     let status = VTCompressionSessionCreate(
       allocator: kCFAllocatorDefault,
       width: width,
       height: height,
-      codecType: codec,
+      codecType: encoder.codec,
       encoderSpecification: specification,
       imageBufferAttributes: nil,
       compressedDataAllocator: nil,
