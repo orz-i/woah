@@ -1,0 +1,86 @@
+name: iOS Cloud CI
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'mobile/app/**'
+      - 'mobile/packages/dance_native/**'
+      - 'tools/release/verify_ios_phase0.py'
+      - 'tools/release/verify_ios_phase1.py'
+      - '.github/workflows/ios-cloud.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'mobile/app/**'
+      - 'mobile/packages/dance_native/**'
+      - 'tools/release/verify_ios_phase0.py'
+      - 'tools/release/verify_ios_phase1.py'
+      - '.github/workflows/ios-cloud.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-cloud-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios-build:
+    name: Xcode 26 / no-codesign build
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Flutter 3.44.2
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.2'
+          cache: true
+
+      - name: Print Apple toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          pod --version
+          flutter --version
+
+      - name: Verify repository iOS contracts
+        run: |
+          python tools/release/verify_ios_phase0.py
+          python tools/release/verify_ios_phase1.py
+
+      - name: Resolve Flutter and native dependencies
+        working-directory: mobile/app
+        run: |
+          flutter config --enable-swift-package-manager
+          flutter pub get
+
+      - name: Build production entrypoint for iPhoneOS
+        working-directory: mobile/app
+        run: |
+          flutter build ios --debug --no-codesign --target lib/main.dart
+
+      - name: Archive no-codesign app
+        working-directory: mobile/app
+        run: |
+          mkdir -p artifacts
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/ios/iphoneos/Runner.app \
+            artifacts/Woah-ios-debug-app.zip
+
+      - name: Upload iOS build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: woah-ios-debug-${{ github.sha }}
+          path: mobile/app/artifacts/Woah-ios-debug-app.zip
+          if-no-files-found: error
+          retention-days: 14

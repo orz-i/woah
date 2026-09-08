@@ -1,0 +1,187 @@
+name: iOS Phase 1 BrowserStack
+
+on:
+  workflow_dispatch:
+    inputs:
+      device_name:
+        description: 'BrowserStack real iPhone device name'
+        required: true
+        default: 'iPhone 16'
+        type: string
+      platform_version:
+        description: 'BrowserStack iOS version'
+        required: true
+        default: '18'
+        type: string
+      required_backends:
+        description: 'Comma-separated backends that must pass'
+        required: true
+        default: 'auto,tflite_xnnpack'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  browserstack-secrets:
+    name: Check BrowserStack configuration
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.guard.outputs.enabled }}
+    steps:
+      - name: Detect optional BrowserStack secrets
+        id: guard
+        env:
+          BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
+          BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
+        run: |
+          if [[ -n "$BROWSERSTACK_USERNAME" && -n "$BROWSERSTACK_ACCESS_KEY" ]]; then
+            echo 'enabled=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'enabled=false' >> "$GITHUB_OUTPUT"
+            echo '::notice::BrowserStack secrets are not configured; real-device Phase 1 job will be skipped.'
+          fi
+
+  phase1-model:
+    name: Reproduce Phase 1 YOLO model
+    needs: browserstack-secrets
+    if: needs.browserstack-secrets.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Restore generated YOLO model cache
+        id: model-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            models/pytorch/yolo11n-seg.pt
+            models/litert/yolo11n-seg-fp16.tflite
+          key: ios-yolo-phase1-${{ hashFiles('uv.lock', 'tools/litert/export_yolo_litert.py', 'tools/release/provision_ios_yolo_ci.py', 'mobile/packages/dance_native/ios/dance_native/Sources/dance_native/Resources/yolo11n-seg-fp16.contract.json') }}
+
+      - name: Set up uv for model export
+        if: steps.model-cache.outputs.cache-hit != 'true'
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: 'latest'
+
+      - name: Install locked model-export dependencies
+        if: steps.model-cache.outputs.cache-hit != 'true'
+        run: uv sync --locked
+
+      - name: Generate and stage canonical iOS YOLO model
+        if: steps.model-cache.outputs.cache-hit != 'true'
+        run: uv run python tools/release/provision_ios_yolo_ci.py
+
+      - name: Verify cached canonical YOLO model
+        if: steps.model-cache.outputs.cache-hit == 'true'
+        run: python tools/release/sync_ios_yolo_model.py
+
+      - name: Verify Phase 1 model bytes
+        run: |
+          python tools/release/verify_ios_phase1.py --require-model --allow-unpinned-hash
+
+      - name: Upload canonical model for macOS build
+        uses: actions/upload-artifact@v4
+        with:
+          name: woah-ios-phase1-model-${{ github.run_id }}
+          path: models/litert/yolo11n-seg-fp16.tflite
+          if-no-files-found: error
+          retention-days: 1
+
+  phase1-real-device:
+    name: ${{ inputs.device_name }} / iOS ${{ inputs.platform_version }}
+    needs: [browserstack-secrets, phase1-model]
+    if: needs.browserstack-secrets.outputs.enabled == 'true' && needs.phase1-model.result == 'success'
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Download canonical Phase 1 model
+        uses: actions/download-artifact@v4
+        with:
+          name: woah-ios-phase1-model-${{ github.run_id }}
+          path: models/litert
+
+      - name: Stage and verify iOS model resource
+        run: |
+          python tools/release/sync_ios_yolo_model.py
+          python tools/release/verify_ios_phase0.py
+          python tools/release/verify_ios_phase1.py --require-model --allow-unpinned-hash
+
+      - name: Set up Flutter 3.44.2
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.2'
+          cache: true
+
+      - name: Resolve Flutter and CocoaPods dependencies
+        working-directory: mobile/app
+        run: |
+          flutter config --enable-swift-package-manager
+          flutter pub get
+
+      - name: Build dedicated cloud-probe app
+        working-directory: mobile/app
+        run: |
+          xcodebuild -version
+          pod --version
+          flutter build ios --debug --no-codesign --target lib/cloud_probe_main.dart
+
+      - name: Ad-hoc sign and package BrowserStack IPA
+        working-directory: mobile/app
+        run: |
+          codesign --force --deep --sign - build/ios/iphoneos/Runner.app
+          codesign --verify --deep --strict build/ios/iphoneos/Runner.app
+          rm -rf build/ios/browserstack
+          mkdir -p build/ios/browserstack/Payload build/ios/artifacts artifacts
+          cp -R build/ios/iphoneos/Runner.app build/ios/browserstack/Payload/Runner.app
+          (
+            cd build/ios/browserstack
+            /usr/bin/zip -qry ../artifacts/WoahPhase1Cloud.ipa Payload
+          )
+
+      - name: Install BrowserStack Appium harness
+        run: python -m pip install -r tools/ios/browserstack/requirements.txt
+
+      - name: Run Phase 1 on BrowserStack real iPhone
+        env:
+          BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
+          BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
+          WOAH_BROWSERSTACK_DEVICE: ${{ inputs.device_name }}
+          WOAH_BROWSERSTACK_IOS: ${{ inputs.platform_version }}
+          WOAH_REQUIRED_BACKENDS: ${{ inputs.required_backends }}
+        run: |
+          python tools/ios/browserstack/run_phase1_probe.py \
+            --ipa mobile/app/build/ios/artifacts/WoahPhase1Cloud.ipa \
+            --device "$WOAH_BROWSERSTACK_DEVICE" \
+            --os-version "$WOAH_BROWSERSTACK_IOS" \
+            --required-backends "$WOAH_REQUIRED_BACKENDS" \
+            --build-name 'Woah Phase1 ${{ github.run_id }}-${{ github.run_attempt }}' \
+            --output mobile/app/artifacts/browserstack-phase1-report.json
+
+      - name: Upload Phase 1 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: woah-ios-phase1-browserstack-${{ github.run_id }}
+          path: |
+            mobile/app/build/ios/artifacts/WoahPhase1Cloud.ipa
+            mobile/app/artifacts/browserstack-phase1-report.json
+            mobile/packages/dance_native/ios/dance_native/Sources/dance_native/Resources/InferenceAssets/yolo11n-seg-fp16.tflite.sha256
+          if-no-files-found: warn
+          retention-days: 14
