@@ -200,6 +200,19 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
           await MainActor.run { result(flutterError) }
         }
       }
+    case "runIOSMetalPhase3Smoke":
+      Task {
+        do {
+          let report = try IOSMetalPhase3Smoke.run()
+          await MainActor.run { result(report) }
+        } catch {
+          let flutterError = Self.flutterError(
+            from: error,
+            fallbackCode: "IOS_METAL_PHASE3_SMOKE_FAILED"
+          )
+          await MainActor.run { result(flutterError) }
+        }
+      }
     default:
       result(FlutterMethodNotImplemented)
     }

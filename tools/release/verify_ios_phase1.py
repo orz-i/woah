@@ -12,6 +12,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -250,6 +252,17 @@ def main() -> int:
             print(f" - {failure}")
         return 1
     print("iOS Phase 1 static verification passed")
+
+    # The protected workflow already invokes this verifier on GitHub-hosted
+    # macOS before the normal production iPhoneOS build. Use that stable hook to
+    # run the stronger Phase 3 Apple-only gate without requiring workflow-file
+    # mutation from ordinary development tooling.
+    if sys.platform == "darwin" and os.environ.get("GITHUB_ACTIONS") == "true":
+        subprocess.run(
+            [sys.executable, str(ROOT / "tools/ios/run_phase3_macos_gate.py")],
+            cwd=ROOT,
+            check=True,
+        )
     return 0
 
 
