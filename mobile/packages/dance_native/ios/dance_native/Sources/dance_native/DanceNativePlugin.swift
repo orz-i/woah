@@ -160,6 +160,37 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
           await MainActor.run { result(flutterError) }
         }
       }
+    case "runIOSYoloPhase1BundledProbe":
+      let arguments = call.arguments as? [String: Any]
+      let backendName = (arguments?["backend"] as? String) ?? "auto"
+      let requestedBackend: IOSYoloBackend?
+      if backendName == "auto" {
+        requestedBackend = nil
+      } else if let backend = IOSYoloBackend(rawValue: backendName) {
+        requestedBackend = backend
+      } else {
+        result(FlutterError(
+          code: "INVALID_ARGS",
+          message: "backend must be auto, tflite_coreml, tflite_metal, or tflite_xnnpack.",
+          details: nil
+        ))
+        return
+      }
+      Task {
+        do {
+          let report = try IOSYoloPhase1Probe.runBundledFixture(
+            requestedBackend: requestedBackend,
+            runner: yoloRunner
+          )
+          await MainActor.run { result(report) }
+        } catch {
+          let flutterError = Self.flutterError(
+            from: error,
+            fallbackCode: "IOS_YOLO_PHASE1_BUNDLED_PROBE_FAILED"
+          )
+          await MainActor.run { result(flutterError) }
+        }
+      }
     default:
       result(FlutterMethodNotImplemented)
     }

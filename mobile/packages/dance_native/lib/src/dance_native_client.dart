@@ -49,6 +49,19 @@ class DanceNativeClient implements DanceProcessingEvents {
     );
   }
 
+  /// Phase 1 cloud-device probe using the tracked fixture bundled with iOS.
+  ///
+  /// This avoids depending on Photos/file-picker state in BrowserStack and is
+  /// intentionally kept outside the Pigeon product API until parity is accepted.
+  Future<Map<dynamic, dynamic>?> runIOSYoloPhase1BundledProbe({
+    String backend = 'auto',
+  }) {
+    return _channel.invokeMapMethod<dynamic, dynamic>(
+      'runIOSYoloPhase1BundledProbe',
+      {'backend': backend},
+    );
+  }
+
   /// Request a single rendered preview frame with applied effects
   Future<PreviewFrameDto> getPreviewFrame({
     required String analysisCacheId,

@@ -1,5 +1,6 @@
 import AVFoundation
 import Foundation
+import ImageIO
 
 enum IOSYoloPhase1Probe {
   static func run(
@@ -31,8 +32,63 @@ enum IOSYoloPhase1Probe {
       image: generated.image,
       preferredBackend: requestedBackend
     )
-    let width = max(1, generated.image.width)
-    let height = max(1, generated.image.height)
+    return makeReport(
+      image: generated.image,
+      inference: inference,
+      requestedBackend: requestedBackend,
+      metadata: [
+        "fixture": "video",
+        "requested_timestamp_ms": timestampMs,
+        "actual_timestamp_ms": Int64((CMTimeGetSeconds(generated.actualTime) * 1000.0).rounded()),
+        "frame_decode_ms": frameDecodeMs,
+      ]
+    )
+  }
+
+  static func runBundledFixture(
+    requestedBackend: IOSYoloBackend?,
+    runner: IOSYoloRunner
+  ) throws -> [String: Any] {
+    guard let fixtureURL = IOSModelResources.yoloPhase1FixtureURL() else {
+      throw PigeonError(
+        code: "IOS_PHASE1_FIXTURE_NOT_FOUND",
+        message: "The bundled Phase 1 YOLO fixture is missing.",
+        details: nil
+      )
+    }
+    guard let source = CGImageSourceCreateWithURL(fixtureURL as CFURL, nil),
+          let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
+      throw PigeonError(
+        code: "IOS_PHASE1_FIXTURE_DECODE_FAILED",
+        message: "Could not decode the bundled Phase 1 YOLO fixture.",
+        details: fixtureURL.lastPathComponent
+      )
+    }
+    let inference = try runner.run(
+      image: image,
+      preferredBackend: requestedBackend
+    )
+    return makeReport(
+      image: image,
+      inference: inference,
+      requestedBackend: requestedBackend,
+      metadata: [
+        "fixture": fixtureURL.lastPathComponent,
+        "requested_timestamp_ms": 0,
+        "actual_timestamp_ms": 0,
+        "frame_decode_ms": 0.0,
+      ]
+    )
+  }
+
+  private static func makeReport(
+    image: CGImage,
+    inference: IOSYoloInferenceResult,
+    requestedBackend: IOSYoloBackend?,
+    metadata: [String: Any]
+  ) -> [String: Any] {
+    let width = max(1, image.width)
+    let height = max(1, image.height)
     let maskPixels = IOSYoloPostprocessor.protoSize * IOSYoloPostprocessor.protoSize
     let detections: [[String: Any]] = inference.detections.enumerated().map { index, detection in
       let nonzero = detection.mask.reduce(into: 0) { count, value in
@@ -58,14 +114,11 @@ enum IOSYoloPhase1Probe {
       ]
     }
 
-    return [
+    var report: [String: Any] = [
       "phase": "ios_yolo_phase1",
       "requested_backend": requestedBackend?.rawValue ?? "auto",
-      "requested_timestamp_ms": timestampMs,
-      "actual_timestamp_ms": Int64((CMTimeGetSeconds(generated.actualTime) * 1000.0).rounded()),
       "frame_width": width,
       "frame_height": height,
-      "frame_decode_ms": frameDecodeMs,
       "effective_backend": inference.runtime.effectiveBackend.rawValue,
       "initialization_ms": inference.runtime.initializationMs,
       "inference_ms": inference.runtime.inferenceMs,
@@ -75,5 +128,9 @@ enum IOSYoloPhase1Probe {
       "detection_count": detections.count,
       "detections": detections,
     ]
+    for (key, value) in metadata {
+      report[key] = value
+    }
+    return report
   }
 }

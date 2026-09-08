@@ -3,12 +3,31 @@ import Foundation
 enum IOSModelResources {
   static let yoloModelFileName = "yolo11n-seg-fp16"
   static let yoloModelExtension = "tflite"
+  static let yoloPhase1FixtureFileName = "yolo_phase1_test_frame"
+  static let yoloPhase1FixtureExtension = "jpg"
 
   static func yoloModelURL() -> URL? {
+    resourceURL(
+      fileName: yoloModelFileName,
+      fileExtension: yoloModelExtension
+    )
+  }
+
+  static func yoloPhase1FixtureURL() -> URL? {
+    resourceURL(
+      fileName: yoloPhase1FixtureFileName,
+      fileExtension: yoloPhase1FixtureExtension
+    )
+  }
+
+  private static func resourceURL(
+    fileName: String,
+    fileExtension: String
+  ) -> URL? {
     for bundle in candidateBundles() {
       if let direct = bundle.url(
-        forResource: yoloModelFileName,
-        withExtension: yoloModelExtension
+        forResource: fileName,
+        withExtension: fileExtension
       ) {
         return direct
       }
@@ -19,8 +38,8 @@ enum IOSModelResources {
       ),
          let nested = Bundle(url: nestedURL),
          let modelURL = nested.url(
-           forResource: yoloModelFileName,
-           withExtension: yoloModelExtension
+           forResource: fileName,
+           withExtension: fileExtension
          ) {
         return modelURL
       }
