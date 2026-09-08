@@ -4,6 +4,11 @@ import UIKit
 public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
   private let mediaBridge = IOSMediaLibraryBridge()
   private let yoloRunner = IOSYoloRunner()
+  private let analysisCache = IOSAnalysisCache()
+  private lazy var analyzePipeline = IOSAnalyzePipeline(
+    cache: analysisCache,
+    runner: yoloRunner
+  )
 
   public static func register(with registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(name: "dance_native", binaryMessenger: registrar.messenger())
@@ -207,7 +212,7 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
   }
 
   func analyzeVideo(request: AnalyzeRequestDto) async throws -> AnalyzeResultDto {
-    throw PigeonError(code: "PLATFORM_NOT_SUPPORTED", message: "iOS on-device segmentation pipeline is not implemented yet", details: nil)
+    return try await analyzePipeline.analyze(request: request)
   }
 
   func getPreviewFrame(request: PreviewRequestDto) async throws -> PreviewFrameDto {
@@ -237,7 +242,8 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
   }
 
   func releaseProject(projectId: String) async throws {
-    // Graceful no-op on iOS stub
+    guard !projectId.isEmpty else { return }
+    try analysisCache.clearAnalysisCache(cacheId: projectId)
   }
 
   private static func buildInfo() -> [String: Any] {

@@ -169,8 +169,13 @@ def verify_swift_runtime() -> None:
     analyze_start = plugin.find("func analyzeVideo")
     analyze_end = plugin.find("func getPreviewFrame", analyze_start)
     analyze_block = plugin[analyze_start:analyze_end]
-    check('code: "PLATFORM_NOT_SUPPORTED"' in analyze_block,
-          "Phase 1 must not connect unvalidated YOLO output to product analyzeVideo")
+    phase2_pipeline = SOURCES / "IOSAnalyzePipeline.swift"
+    if phase2_pipeline.is_file():
+        check("analyzePipeline.analyze(request: request)" in analyze_block,
+              "Phase 2 analyzeVideo must route through the isolated iOS analyze pipeline")
+    else:
+        check('code: "PLATFORM_NOT_SUPPORTED"' in analyze_block,
+              "Phase 1 must not connect unvalidated YOLO output to product analyzeVideo")
 
 
 def verify_model_if_present(

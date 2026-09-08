@@ -144,7 +144,10 @@ Phase 1 acceptance gate:
 
 ## Phase 2: analyze pipeline
 
-Implement first-frame analysis and cache semantics compatible with Android:
+Phase 2 is now implemented at repository level and awaits cloud Xcode compile
+verification plus eventual real-iPhone runtime validation. The production
+`analyzeVideo` path now performs first-frame analysis and cache semantics
+compatible with Android:
 
 - trim-start frame extraction;
 - canonical orientation/letterbox mapping;
@@ -156,6 +159,24 @@ Implement first-frame analysis and cache semantics compatible with Android:
 
 The output DTO must remain unchanged unless a cross-platform protocol change is
 strictly necessary.
+
+Implementation details:
+
+- `IOSAnalyzePipeline` uses `AVAssetImageGenerator` with the preferred-track
+  transform applied, so the YOLO source coordinate system is the same visual
+  orientation returned to Flutter.
+- The existing Phase 1 `IOSYoloRunner` remains the only inference seam. The
+  product analyze path does not create a second TensorFlow Lite interpreter.
+- Detections retain the postprocessor's deterministic left-to-right order and
+  receive IDs from that order. Flutter continues to enforce the shared 0.60
+  first-frame selectable-person confidence threshold.
+- `IOSAnalysisCache` mirrors Android's `cache/analysis/<cacheId>` layout with
+  `source_uri.txt`, `analysis.json`, normalized bbox/confidence metadata, and
+  fixed 160x240 person thumbnails. Partial caches are removed if analysis
+  fails, and `releaseProject` removes the completed analysis cache.
+- `getPreviewFrame` and `startExport` intentionally remain
+  `PLATFORM_NOT_SUPPORTED`; Phase 2 does not claim a working preview/export
+  pipeline.
 
 ## Phase 3: Metal preview
 
