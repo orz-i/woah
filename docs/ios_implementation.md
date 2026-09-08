@@ -177,9 +177,8 @@ Implementation details:
   `source_uri.txt`, `analysis.json`, normalized bbox/confidence metadata, and
   fixed 160x240 person thumbnails. Partial caches are removed if analysis
   fails, and `releaseProject` removes the completed analysis cache.
-- `getPreviewFrame` and `startExport` intentionally remain
-  `PLATFORM_NOT_SUPPORTED`; Phase 2 does not claim a working preview/export
-  pipeline.
+- Phase 3 now owns `getPreviewFrame`; `startExport` intentionally remains
+  `PLATFORM_NOT_SUPPORTED` until the Phase 4 writer pipeline is implemented.
 
 Cloud compile evidence for the final CPU-selection revision (`62464b6`) is
 GitHub Actions run `34190614591`: dependency resolution, CocoaPods integration,
@@ -189,10 +188,60 @@ YOLO/runtime correctness run.
 
 ## Phase 3: Metal preview
 
-Port the visual/privacy compositor to Metal while retaining the current source
-coordinate convention. Initial preview scope is solid, mosaic, blur, gradient,
-outline, and face sticker. Occlusion subtraction is part of the privacy gate,
-not a cosmetic follow-up.
+Phase 3 is implemented at repository level and is awaiting GitHub-hosted Xcode
+compile evidence plus eventual real-iPhone visual/privacy acceptance.
+
+The production `getPreviewFrame` path now:
+
+- resolves the source URI and normalized person metadata from the Phase 2
+  analysis cache;
+- decodes the requested frame with `AVAssetImageGenerator` and
+  `appliesPreferredTrackTransform = true`;
+- intentionally uses XNNPACK/CPU for preview YOLO while delegate parity is
+  unverified, so a device-specific Core ML/Metal inference difference cannot
+  silently change the selected identity mapping;
+- assigns current detections back to cached IDs using the same 0.70 IoU-cost
+  greedy matching contract currently called `HungarianSolver` on Android;
+- fails closed with `PREVIEW_PRIVACY_UNRESOLVED` if any requested full-body or
+  face-only target cannot be mapped on the current frame;
+- caches the decoded/inferred frame analysis in memory so effect-style changes
+  do not rerun YOLO for the same `<analysisCacheId,timestamp>` pair;
+- renders at the source aspect ratio with a 1280-pixel maximum preview width;
+- writes a nonce-suffixed JPEG at quality 0.85 and removes stale previews for
+  the same analysis cache.
+
+`IOSMetalPreviewRenderer` is an actual Metal compute compositor. The kernel is
+compiled with `MTLDevice.makeLibrary(source:)`, runs over shared RGBA/mask
+textures, and currently implements the product-visible privacy styles:
+
+- solid;
+- blur;
+- gradient;
+- mosaic;
+- outward outline using the shared border configuration;
+- privacy-safe built-in sunglasses sticker for FACE_ONLY mode.
+
+Full-body masks are sampled from the original 160x160 YOLO proto using the
+exact Phase 1 letterbox `scale/padLeft/padTop` mapping. Before compositing, each
+selected target receives the same radius-1 grayscale max-filter dilation as
+Android. The first iOS occlusion subset is also privacy-first: an unselected
+person may carve only when current-frame bbox overlap is at least 10%, mask
+overlap exceeds 2%, and its foot position is at least 10% of the shorter person
+height lower in frame. Only that person's radius-1 eroded raw mask is
+subtracted. Ambiguous depth never carves privacy.
+
+FACE_ONLY does not yet claim parity with Android's temporal face detector and
+`FaceOnlyPrivacyFrameProcessor`. Until that subsystem is ported, iOS uses a
+conservative top-of-person head ROI, paints an underlying opaque privacy layer
+in sticker mode, and then draws an opaque sunglasses sticker. Covering extra
+hair/shoulder pixels is accepted in this interim path; exposing a selected face
+is not. Real-device acceptance must replace/tune this fallback with the proper
+face detector before release parity is claimed.
+
+The legacy `FollowConfig` DTO is preserved for protocol compatibility, but the
+hidden/removed subject-follow feature is not applied by this Phase 3 renderer.
+Likewise the previously removed beauty/leg-stretch controls are not reintroduced
+on iOS.
 
 ## Phase 4: export
 

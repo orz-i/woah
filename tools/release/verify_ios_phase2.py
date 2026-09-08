@@ -111,10 +111,17 @@ def verify_plugin_gating() -> None:
         'code: "PLATFORM_NOT_SUPPORTED"' not in analyze_block,
         "Phase 2 analyzeVideo must no longer be a platform stub",
     )
-    check(
-        'code: "PLATFORM_NOT_SUPPORTED"' in preview_block,
-        "getPreviewFrame must remain gated until Phase 3",
-    )
+    phase3_pipeline = SOURCES / "IOSPreviewPipeline.swift"
+    if phase3_pipeline.is_file():
+        check(
+            "previewPipeline.render(request: request)" in preview_block,
+            "Phase 3 getPreviewFrame must route through IOSPreviewPipeline",
+        )
+    else:
+        check(
+            'code: "PLATFORM_NOT_SUPPORTED"' in preview_block,
+            "getPreviewFrame must remain gated until Phase 3",
+        )
     check(
         'code: "PLATFORM_NOT_SUPPORTED"' in export_block,
         "startExport must remain gated until Phase 4",
