@@ -141,17 +141,47 @@ enum IOSExportPhase4Smoke {
         "Phase 4 output duration \(outputInfo.durationSeconds) does not match the 600 ms trim range."
       )
     }
-    guard outputInfo.videoSampleCount == expectedOutputFrames else {
+    guard outputInfo.presentationFrameCount == expectedOutputFrames else {
       throw smokeError(
         "EXPORT_SMOKE_FRAME_COUNT_MISMATCH",
-        "Phase 4 output has \(outputInfo.videoSampleCount) video samples, expected \(expectedOutputFrames)."
+        "Phase 4 output has \(outputInfo.presentationFrameCount) decoded presentation frames, expected \(expectedOutputFrames)."
       )
     }
-    let measuredFps = Double(outputInfo.videoSampleCount) / outputInfo.durationSeconds
+    guard outputInfo.firstPresentationSeconds >= -0.001,
+          outputInfo.firstPresentationSeconds <= 0.035 else {
+      throw smokeError(
+        "EXPORT_SMOKE_FIRST_PTS_MISMATCH",
+        "Phase 4 first decoded presentation timestamp is \(outputInfo.firstPresentationSeconds)s, expected near zero."
+      )
+    }
+    guard outputInfo.lastPresentationSeconds >= 0.54,
+          outputInfo.lastPresentationSeconds <= 0.59 else {
+      throw smokeError(
+        "EXPORT_SMOKE_LAST_PTS_MISMATCH",
+        "Phase 4 last decoded presentation timestamp is \(outputInfo.lastPresentationSeconds)s, expected near 17/30s."
+      )
+    }
+    let measuredFps = outputInfo.averageFrameIntervalSeconds > 0
+      ? 1.0 / outputInfo.averageFrameIntervalSeconds
+      : 0
     guard measuredFps >= 28.5, measuredFps <= 31.5 else {
       throw smokeError(
         "EXPORT_SMOKE_FPS_MISMATCH",
         "Phase 4 measured output FPS \(measuredFps) is outside the 30fps gate."
+      )
+    }
+    guard outputInfo.nominalFrameRate >= 29.0,
+          outputInfo.nominalFrameRate <= 31.0 else {
+      throw smokeError(
+        "EXPORT_SMOKE_NOMINAL_FPS_MISMATCH",
+        "Phase 4 nominal frame rate \(outputInfo.nominalFrameRate) is outside the 30fps gate."
+      )
+    }
+    guard outputInfo.minFrameDurationSeconds >= 0.030,
+          outputInfo.minFrameDurationSeconds <= 0.037 else {
+      throw smokeError(
+        "EXPORT_SMOKE_FRAME_DURATION_MISMATCH",
+        "Phase 4 minimum frame duration \(outputInfo.minFrameDurationSeconds)s is outside the 30fps gate."
       )
     }
 
@@ -221,8 +251,12 @@ enum IOSExportPhase4Smoke {
       "output_width": outputInfo.width,
       "output_height": outputInfo.height,
       "output_duration_seconds": outputInfo.durationSeconds,
-      "output_video_samples": outputInfo.videoSampleCount,
+      "output_presentation_frames": outputInfo.presentationFrameCount,
       "output_measured_fps": measuredFps,
+      "output_nominal_fps": outputInfo.nominalFrameRate,
+      "output_min_frame_duration_seconds": outputInfo.minFrameDurationSeconds,
+      "output_first_pts_seconds": outputInfo.firstPresentationSeconds,
+      "output_last_pts_seconds": outputInfo.lastPresentationSeconds,
       "output_has_audio": outputInfo.hasAudio,
       "output_audio_duration_seconds": outputInfo.audioDurationSeconds,
       "progress_events": statuses.filter { $0.jobId == jobId }.count,
@@ -618,9 +652,21 @@ enum IOSExportPhase4Smoke {
     let width: Int
     let height: Int
     let durationSeconds: Double
-    let videoSampleCount: Int64
+    let presentationFrameCount: Int64
+    let firstPresentationSeconds: Double
+    let lastPresentationSeconds: Double
+    let averageFrameIntervalSeconds: Double
+    let nominalFrameRate: Double
+    let minFrameDurationSeconds: Double
     let hasAudio: Bool
     let audioDurationSeconds: Double
+  }
+
+  private struct VideoTimelineInfo {
+    let frameCount: Int64
+    let firstPresentationSeconds: Double
+    let lastPresentationSeconds: Double
+    let averageFrameIntervalSeconds: Double
   }
 
   private static func inspectAsset(_ url: URL) async throws -> AssetInfo {
@@ -632,6 +678,8 @@ enum IOSExportPhase4Smoke {
     let size = try await track.load(.naturalSize)
     let descriptions = try await track.load(.formatDescriptions)
     let codec = descriptions.first.map(CMFormatDescriptionGetMediaSubType) ?? 0
+    let nominalFrameRate = try await track.load(.nominalFrameRate)
+    let minFrameDuration = try await track.load(.minFrameDuration)
     let audio = try await asset.loadTracks(withMediaType: .audio)
     let audioDurationSeconds: Double
     if let audioTrack = audio.first {
@@ -640,37 +688,80 @@ enum IOSExportPhase4Smoke {
     } else {
       audioDurationSeconds = 0
     }
-    let sampleCount = try countVideoSamples(asset: asset, track: track)
+    let timeline = try inspectVideoTimeline(asset: asset, track: track)
     return AssetInfo(
       codec: codec,
       width: Int(abs(size.width).rounded()),
       height: Int(abs(size.height).rounded()),
       durationSeconds: CMTimeGetSeconds(duration),
-      videoSampleCount: sampleCount,
+      presentationFrameCount: timeline.frameCount,
+      firstPresentationSeconds: timeline.firstPresentationSeconds,
+      lastPresentationSeconds: timeline.lastPresentationSeconds,
+      averageFrameIntervalSeconds: timeline.averageFrameIntervalSeconds,
+      nominalFrameRate: Double(nominalFrameRate),
+      minFrameDurationSeconds: CMTimeGetSeconds(minFrameDuration),
       hasAudio: !audio.isEmpty,
       audioDurationSeconds: audioDurationSeconds
     )
   }
 
-  private static func countVideoSamples(
+  private static func inspectVideoTimeline(
     asset: AVAsset,
     track: AVAssetTrack
-  ) throws -> Int64 {
+  ) throws -> VideoTimelineInfo {
     let reader = try AVAssetReader(asset: asset)
-    let output = AVAssetReaderTrackOutput(track: track, outputSettings: nil)
+    // Decode to pixel buffers before inspecting timestamps. `outputSettings:nil`
+    // exposes compressed samples in storage/decode order for H.264, which is not
+    // a presentation-fps metric when frame reordering/sample grouping is present.
+    let output = AVAssetReaderTrackOutput(
+      track: track,
+      outputSettings: [
+        kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+        kCVPixelBufferIOSurfacePropertiesKey as String: [:],
+      ]
+    )
+    output.alwaysCopiesSampleData = false
     guard reader.canAdd(output) else {
-      throw smokeError("EXPORT_SMOKE_SAMPLE_COUNT_FAILED", "Could not inspect encoded video samples.")
+      throw smokeError("EXPORT_SMOKE_TIMELINE_FAILED", "Could not inspect decoded video presentation frames.")
     }
     reader.add(output)
     guard reader.startReading() else {
-      throw smokeError("EXPORT_SMOKE_SAMPLE_COUNT_FAILED", "Could not start encoded video sample inspection.")
+      throw smokeError("EXPORT_SMOKE_TIMELINE_FAILED", "Could not start decoded video presentation inspection.")
     }
-    var count: Int64 = 0
-    while output.copyNextSampleBuffer() != nil { count += 1 }
+    var timestamps: [Double] = []
+    while let sample = output.copyNextSampleBuffer() {
+      let seconds = CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sample))
+      if seconds.isFinite {
+        timestamps.append(seconds)
+      }
+    }
     if reader.status == .failed {
-      throw smokeError("EXPORT_SMOKE_SAMPLE_COUNT_FAILED", "Encoded video sample inspection failed.")
+      throw smokeError("EXPORT_SMOKE_TIMELINE_FAILED", "Decoded video presentation inspection failed.")
     }
-    return count
+    guard !timestamps.isEmpty else {
+      throw smokeError("EXPORT_SMOKE_TIMELINE_FAILED", "Decoded video presentation timeline is empty.")
+    }
+    for index in 1..<timestamps.count where timestamps[index] <= timestamps[index - 1] {
+      throw smokeError(
+        "EXPORT_SMOKE_PTS_NOT_MONOTONIC",
+        "Decoded video presentation timestamps are not strictly increasing at frame \(index)."
+      )
+    }
+    var deltaSum = 0.0
+    if timestamps.count > 1 {
+      for index in 1..<timestamps.count {
+        deltaSum += timestamps[index] - timestamps[index - 1]
+      }
+    }
+    let averageInterval = timestamps.count > 1
+      ? deltaSum / Double(timestamps.count - 1)
+      : 0
+    return VideoTimelineInfo(
+      frameCount: Int64(timestamps.count),
+      firstPresentationSeconds: timestamps[0],
+      lastPresentationSeconds: timestamps[timestamps.count - 1],
+      averageFrameIntervalSeconds: averageInterval
+    )
   }
 
   private static func readOutputCenterPixel(
