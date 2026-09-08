@@ -81,6 +81,55 @@ def safe_run(command: list[str], *, timeout: int) -> None:
         print(completed.stderr, end="", file=sys.stderr)
 
 
+def simulator_state(udid: str) -> str | None:
+    """Return CoreSimulator's current state for one device, if observable."""
+    try:
+        completed = run(
+            ["xcrun", "simctl", "list", "devices", "-j"],
+            check=False,
+            timeout=30,
+        )
+    except subprocess.TimeoutExpired:
+        return None
+    if completed.returncode != 0:
+        return None
+    try:
+        payload = json.loads(completed.stdout)
+    except json.JSONDecodeError:
+        return None
+    for devices in payload.get("devices", {}).values():
+        for device in devices:
+            if str(device.get("udid", "")) == udid:
+                return str(device.get("state", "")) or None
+    return None
+
+
+def tolerate_degraded_bootstatus(
+    *,
+    name: str,
+    udid: str,
+    reason: str,
+) -> bool:
+    """Proceed only when bootstatus degraded but CoreSimulator is still Booted.
+
+    Hosted macOS runners occasionally finish a usable Simulator boot while a
+    migration plugin makes `simctl bootstatus -b` exit non-zero (or linger until
+    our stabilization timeout). This does not waive the actual gate: install,
+    app launch, Metal/export/FACE_ONLY markers, and media readback still run and
+    must succeed. If the device is not observably Booted, the runner falls back
+    to another iPhone candidate instead.
+    """
+    state = simulator_state(udid)
+    if state != "Booted":
+        return False
+    print(
+        f"SIMULATOR_BOOTSTATUS_DEGRADED_TOLERATED={name} "
+        f"state={state} reason={reason}",
+        file=sys.stderr,
+    )
+    return True
+
+
 def boot_iphone() -> tuple[str, str, str]:
     failures: list[str] = []
     for runtime, name, udid in choose_iphones()[:4]:
@@ -94,15 +143,34 @@ def boot_iphone() -> tuple[str, str, str]:
                 continue
             bootstatus = run(
                 ["xcrun", "simctl", "bootstatus", udid, "-b"],
+                check=False,
                 timeout=420,
             )
             if bootstatus.stdout:
                 print(bootstatus.stdout, end="")
             if bootstatus.stderr:
                 print(bootstatus.stderr, end="", file=sys.stderr)
-            return runtime, name, udid
+            if bootstatus.returncode == 0:
+                return runtime, name, udid
+            reason = f"bootstatus_exit_{bootstatus.returncode}"
+            if tolerate_degraded_bootstatus(name=name, udid=udid, reason=reason):
+                return runtime, name, udid
+            failures.append(
+                f"{name}: bootstatus exit={bootstatus.returncode} "
+                f"state={simulator_state(udid) or 'unknown'}"
+            )
+            safe_run(["xcrun", "simctl", "shutdown", udid], timeout=30)
         except subprocess.TimeoutExpired:
-            failures.append(f"{name}: bootstatus timed out after 420s")
+            if tolerate_degraded_bootstatus(
+                name=name,
+                udid=udid,
+                reason="bootstatus_timeout_420s",
+            ):
+                return runtime, name, udid
+            failures.append(
+                f"{name}: bootstatus timed out after 420s "
+                f"state={simulator_state(udid) or 'unknown'}"
+            )
             safe_run(["xcrun", "simctl", "shutdown", udid], timeout=30)
     raise SystemExit("Unable to boot an iPhone simulator: " + " | ".join(failures))
 
