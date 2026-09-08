@@ -244,13 +244,38 @@ hidden/removed subject-follow feature is not applied by this Phase 3 renderer.
 Likewise the previously removed beauty/leg-stretch controls are not reintroduced
 on iOS.
 
-Cloud compile evidence for the Phase 3 implementation/gate revision
-(`5841c9d`) is GitHub Actions run `34192482952`: dependency resolution,
-CocoaPods integration, Swift/Xcode iPhoneOS build, app archive, and artifact
-upload all completed successfully. Because the preview compute kernel is
-compiled from Metal source at runtime, this build proves the Swift/Metal API
-integration compiles but does not prove the kernel has executed on an Apple GPU;
-that remains part of the real-device Phase 3 gate.
+The Phase 3 Apple-only gate is now stronger than a normal Swift compile. The
+runtime kernel remains embedded in `IOSMetalPreviewRenderer` so production does
+not depend on locating a loose shader resource. `extract_phase3_metal.py`
+extracts that exact embedded source, rather than maintaining a second shader
+copy, and `compile_phase3_metal.py` compiles it with Apple's `metal` and
+`metallib` tools for both `iphoneos` and `iphonesimulator` SDKs.
+
+The same macOS gate also builds `lib/ios_metal_smoke_main.dart` for an iPhone
+Simulator, boots an available iPhone simulator with `simctl`, installs the
+application, and invokes `runIOSMetalPhase3Smoke`. The native smoke path creates
+an `MTLDevice`, constructs the production `IOSMetalPreviewRenderer`, dispatches
+the real `woahPreviewKernel` over a synthetic full-person privacy mask, reads
+the result back from the Metal output texture, and requires the expected opaque
+red privacy pixel. A missing Metal device, shader/pipeline failure, command
+buffer failure, or pixel mismatch fails the CI gate.
+
+The protected cloud workflow already runs `verify_ios_phase1.py`, so the
+Apple-only Phase 3 gate is invoked from that existing GitHub/macOS hook instead
+of requiring a second workflow entry point. Local Windows verification does not
+execute the Apple-only gate.
+
+Final cloud evidence for this strengthened gate is GitHub Actions run
+`34196697414` at commit `1f09d50`: the exact Phase 3 Metal source compiled for
+both Apple SDK targets, the iOS Simulator application built and completed the
+Metal dispatch/readback smoke test, and the normal Xcode 26 iPhoneOS production
+build/archive lane also completed successfully. The workflow reported Success
+with a total duration of 11m55s.
+
+This closes the earlier "Metal code only compiled as Swift" gap, but it is not
+equivalent to real-iPhone acceptance. Physical-device visual/privacy parity,
+sustained GPU performance/thermal behavior, and the full temporal FACE_ONLY
+pipeline remain explicit later validation gates.
 
 ## Phase 4: export
 
