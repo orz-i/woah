@@ -332,6 +332,23 @@ regenerate the large YOLO model; the production branch on the other side of
 that seam is statically locked to `IOSYoloRunner(... preferredBackend: .xnnpack)`.
 Phase 1 separately guards the real LiteRT/TensorFlowLite runtime contract.
 
+Final cloud evidence for this Phase 4 closure is GitHub Actions `iOS Cloud CI`
+run `34203376538` (#15), triggered from pull-request head
+`d169924a7575309c5217335d7550f9dab780c99b`. The complete job reported Success:
+the Phase 0-4 repository contracts passed, the inherited Phase 3 Metal source
+compiled for both `iphoneos` and `iphonesimulator`, the Simulator export gate
+passed, dependency resolution completed, the production `lib/main.dart`
+iPhoneOS no-codesign build completed, and the app archive/upload steps also
+completed. The uploaded artifact is
+`woah-ios-debug-c40cb4f3671c68a378e75c73321549c3a3b65a2d` (40,656,807 bytes).
+
+The concurrent generic Production CI remains red at its Android native-unit-test
+stage because the clean runner is missing the separately required
+`models/litert/yolo11n-seg-fp16.tflite` asset. The same failure was already
+present before Phase 4, and the Phase 4 change range does not modify Android
+tracking/privacy source files. That infrastructure/model-provisioning baseline
+must not be "fixed" by weakening Android model or privacy gates.
+
 This Simulator gate is media-runtime evidence, not physical-device acceptance.
 Real-iPhone visual/privacy parity, sustained encode/Metal performance and
 thermal behavior, interruption/background behavior, and the full temporal
