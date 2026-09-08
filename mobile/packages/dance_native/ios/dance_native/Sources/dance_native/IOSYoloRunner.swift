@@ -24,6 +24,7 @@ struct IOSYoloRuntimeInfo {
 struct IOSYoloInferenceResult {
   let detections: [IOSYoloDetection]
   let runtime: IOSYoloRuntimeInfo
+  let preprocess: IOSYoloPreprocessResult
 }
 
 enum IOSYoloRuntimeSupport {
@@ -135,7 +136,11 @@ final class IOSYoloRunner {
           outputShapes: outputShapes
         )
         lastRuntimeInfo = info
-        return IOSYoloInferenceResult(detections: detections, runtime: info)
+        return IOSYoloInferenceResult(
+          detections: detections,
+          runtime: info,
+          preprocess: preprocess
+        )
       } catch {
         guard let next = backendQueue.first else { throw error }
         backendQueue.removeFirst()

@@ -9,6 +9,10 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
     cache: analysisCache,
     runner: yoloRunner
   )
+  private lazy var previewPipeline = IOSPreviewPipeline(
+    analysisCache: analysisCache,
+    runner: yoloRunner
+  )
 
   public static func register(with registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(name: "dance_native", binaryMessenger: registrar.messenger())
@@ -216,7 +220,7 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
   }
 
   func getPreviewFrame(request: PreviewRequestDto) async throws -> PreviewFrameDto {
-    throw PigeonError(code: "PLATFORM_NOT_SUPPORTED", message: "iOS preview rendering pipeline will be supported in future releases", details: nil)
+    return try await previewPipeline.render(request: request)
   }
 
   func startExport(request: ExportRequestDto) async throws -> String {
@@ -243,6 +247,7 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
 
   func releaseProject(projectId: String) async throws {
     guard !projectId.isEmpty else { return }
+    previewPipeline.clearForAnalysis(cacheId: projectId)
     try analysisCache.clearAnalysisCache(cacheId: projectId)
   }
 
