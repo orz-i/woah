@@ -23,6 +23,15 @@ enum IOSFacePrivacyPhase5Smoke {
     let height = 64
     let source = try makeSolidImage(width: width, height: height, rgba: (0, 0, 255, 255))
     let visionSource = try makeSolidImage(width: 256, height: 256, rgba: (0, 0, 255, 255))
+    let preprocess = IOSYoloPreprocessResult(
+      input: [],
+      scale: Float32(IOSYoloPreprocessor.inputSize) / Float32(width),
+      padLeft: 0,
+      padTop: 0,
+      sourceWidth: width,
+      sourceHeight: height,
+      inputSize: IOSYoloPreprocessor.inputSize
+    )
     let visionRuntimeFaces: [IOSFaceCandidate]
     do {
       visionRuntimeFaces = try IOSVisionFaceLocator().locateFaces(in: visionSource)
@@ -312,15 +321,6 @@ enum IOSFacePrivacyPhase5Smoke {
     try assertNear(topEdgeJitter.dy, 0, tolerance: 0.01, label: "top-edge jitter dy")
 
     let renderer = try IOSMetalPreviewRenderer()
-    let preprocess = IOSYoloPreprocessResult(
-      input: [],
-      scale: Float32(IOSYoloPreprocessor.inputSize) / Float32(width),
-      padLeft: 0,
-      padTop: 0,
-      sourceWidth: width,
-      sourceHeight: height,
-      inputSize: IOSYoloPreprocessor.inputSize
-    )
     let effects = EffectConfigDto(
       fillMode: "solid",
       fillColorArgb: Int64(0xFFFF0000),
