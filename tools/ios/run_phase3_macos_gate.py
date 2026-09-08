@@ -14,9 +14,44 @@ APP = ROOT / "mobile/app"
 METAL_ROOT = Path(os.environ.get("RUNNER_TEMP", ROOT / "tmp")) / "woah-phase3-metal"
 
 
+def annotation_escape(value: str) -> str:
+    return value.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+
 def run(command: list[str], *, cwd: Path = ROOT, timeout: int = 1200) -> None:
-    print("+", " ".join(command), flush=True)
-    subprocess.run(command, cwd=cwd, check=True, timeout=timeout)
+    rendered = " ".join(command)
+    print("+", rendered, flush=True)
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=cwd,
+            check=False,
+            timeout=timeout,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+    except subprocess.TimeoutExpired as exc:
+        tail = (exc.stdout or "")[-6000:]
+        print(tail, end="" if tail.endswith("\n") else "\n")
+        print(
+            "::error title=Woah Phase 3 macOS gate timeout::"
+            + annotation_escape(f"{rendered} timed out after {timeout}s\n{tail}")
+        )
+        raise
+
+    output = completed.stdout or ""
+    if output:
+        print(output, end="" if output.endswith("\n") else "\n")
+    if completed.returncode != 0:
+        tail = output[-6000:]
+        print(
+            "::error title=Woah Phase 3 macOS gate failed::"
+            + annotation_escape(
+                f"command={rendered}\nexit={completed.returncode}\n{tail}"
+            )
+        )
+        raise SystemExit(completed.returncode)
 
 
 def main() -> int:
