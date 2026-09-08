@@ -14,6 +14,7 @@ from pathlib import Path
 BUNDLE_ID = "art.gaoge.dance"
 METAL_PASS_MARKER = "WOAH_METAL_PHASE3_SMOKE=PASS"
 EXPORT_PASS_MARKER = "WOAH_EXPORT_PHASE4_SMOKE=PASS"
+GOLDEN_TRACE_PASS_MARKER = "WOAH_GOLDEN_TRACE_PHASE5_SMOKE=PASS"
 
 
 def run(
@@ -109,6 +110,7 @@ def boot_iphone() -> tuple[str, str, str]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--app", type=Path, required=True)
+    parser.add_argument("--require-phase5", action="store_true")
     args = parser.parse_args()
     app = args.app.resolve()
     if not app.is_dir():
@@ -127,9 +129,12 @@ def main() -> int:
         )
         output = launched.stdout + launched.stderr
         print(output, end="")
+        required_markers = [METAL_PASS_MARKER, EXPORT_PASS_MARKER]
+        if args.require_phase5:
+            required_markers.append(GOLDEN_TRACE_PASS_MARKER)
         missing = [
             marker
-            for marker in (METAL_PASS_MARKER, EXPORT_PASS_MARKER)
+            for marker in required_markers
             if marker not in output
         ]
         if missing:
@@ -138,6 +143,8 @@ def main() -> int:
                 f"{missing}; launch_exit={launched.returncode}"
             )
         print("IOS_SIMULATOR_PHASE4_EXPORT_SMOKE=PASS")
+        if args.require_phase5:
+            print("IOS_SIMULATOR_PHASE5_GOLDEN_TRACE_SMOKE=PASS")
         return 0
     finally:
         # Teardown is deliberately best-effort. Phase 3 CI demonstrated that a

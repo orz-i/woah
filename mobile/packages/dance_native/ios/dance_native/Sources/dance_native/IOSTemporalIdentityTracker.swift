@@ -7,6 +7,19 @@ enum IOSTrackState: String {
   case reacquiring = "REACQUIRING"
 }
 
+struct IOSTemporalTrackSnapshot {
+  let id: Int
+  let state: IOSTrackState
+  let missedFrames: Int
+  let observedThisFrame: Bool
+  let identityProtected: Bool
+  let privacySelected: Bool
+  let predictedX1: Float32
+  let predictedY1: Float32
+  let predictedX2: Float32
+  let predictedY2: Float32
+}
+
 /// iOS Phase 4 temporal identity tracker.
 ///
 /// This deliberately keeps identity protection separate from privacy selection,
@@ -178,6 +191,27 @@ final class IOSTemporalIdentityTracker {
     return output
   }
 
+  /// Phase 5 Golden Trace observation surface. This is intentionally internal
+  /// to the native module and does not change the Flutter/Pigeon API. It lets
+  /// deterministic Simulator tests compare iOS identity/privacy lifecycle
+  /// decisions with the Android TrackManager reference contract.
+  func paritySnapshots() -> [IOSTemporalTrackSnapshot] {
+    tracks.map { track in
+      IOSTemporalTrackSnapshot(
+        id: track.id,
+        state: track.state,
+        missedFrames: track.missedFrames,
+        observedThisFrame: track.observedThisFrame,
+        identityProtected: identityProtectedIds.contains(track.id),
+        privacySelected: privacyTargetIds.contains(track.id),
+        predictedX1: track.predictedX1,
+        predictedY1: track.predictedY1,
+        predictedX2: track.predictedX2,
+        predictedY2: track.predictedY2
+      )
+    }.sorted { $0.id < $1.id }
+  }
+
   private func ensureInitialPrivacyRoots() throws {
     let resolved = Set(tracks.map(\.id))
     let unresolved = privacyTargetIds.subtracting(resolved)
@@ -297,7 +331,10 @@ final class IOSTemporalIdentityTracker {
     track.predictedX2 = detection.x2
     track.predictedY2 = detection.y2
     track.observedThisFrame = true
-    track.state = track.missedFrames > 0 ? .reacquiring : .active
+    // Android TrackManager exposes a successfully re-observed identity as
+    // ACTIVE in that same frame. REACQUIRING is reserved for the interval in
+    // which the identity is still unresolved, not the first fresh observation.
+    track.state = .active
     track.missedFrames = 0
     track.lastTimestampUs = timestampUs
     tracks[trackIndex] = track

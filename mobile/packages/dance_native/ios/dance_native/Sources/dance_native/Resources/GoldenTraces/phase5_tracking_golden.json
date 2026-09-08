@@ -1,0 +1,199 @@
+{
+  "schemaVersion": 1,
+  "frameIntervalUs": 33333,
+  "description": "Privacy-critical deterministic tracking traces derived from the Android TrackManager regression contract.",
+  "cases": [
+    {
+      "name": "short_gap_reacquire_full_body",
+      "androidReferences": [
+        {
+          "path": "mobile/packages/dance_native/android/src/test/kotlin/com/danceanon/native/tracking/TrackManagerReacquireIdentityTest.kt",
+          "testName": "testReacquireTransitionPreservesIdentityAfterTemporaryOcclusion"
+        }
+      ],
+      "frameWidth": 640,
+      "frameHeight": 640,
+      "fullBodyIds": [0],
+      "faceOnlyIds": [],
+      "analysisPersons": [
+        {"id": 0, "bbox": [100, 100, 160, 300], "confidence": 0.95}
+      ],
+      "steps": [
+        {
+          "repeat": 1,
+          "detections": [
+            {"bbox": [100, 100, 160, 300], "confidence": 0.95, "maskRect": [0.05, 0.15, 0.45, 0.85]}
+          ],
+          "expect": [
+            {"id": 0, "state": "ACTIVE", "missedFrames": 0, "observed": true, "identityProtected": true, "privacySelected": true, "outputPresent": true, "fallback": false}
+          ]
+        },
+        {
+          "repeat": 1,
+          "detections": [],
+          "expect": [
+            {"id": 0, "state": "REACQUIRING", "missedFrames": 1, "observed": false, "identityProtected": true, "privacySelected": true, "outputPresent": true, "fallback": true}
+          ]
+        },
+        {
+          "repeat": 1,
+          "detections": [
+            {"bbox": [105, 100, 165, 300], "confidence": 0.95, "maskRect": [0.05, 0.15, 0.45, 0.85]}
+          ],
+          "expect": [
+            {"id": 0, "state": "ACTIVE", "missedFrames": 0, "observed": true, "identityProtected": true, "privacySelected": true, "outputPresent": true, "fallback": false}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "face_only_unselected_neighbor_isolation",
+      "androidReferences": [
+        {
+          "path": "mobile/packages/dance_native/android/src/test/kotlin/com/danceanon/native/tracking/TrackManagerPrivacySelectionSplitTest.kt",
+          "testName": "identity protected face-only track remains unselected for full-body privacy class"
+        },
+        {
+          "path": "mobile/packages/dance_native/android/src/test/kotlin/com/danceanon/native/tracking/TrackManagerCrossingIdentityTest.kt",
+          "testName": "testTwoDancersCrossingAtSpeedMaintainsIdentities"
+        }
+      ],
+      "frameWidth": 640,
+      "frameHeight": 640,
+      "fullBodyIds": [],
+      "faceOnlyIds": [0],
+      "analysisPersons": [
+        {"id": 0, "bbox": [100, 100, 160, 300], "confidence": 0.95},
+        {"id": 1, "bbox": [220, 100, 280, 300], "confidence": 0.95}
+      ],
+      "steps": [
+        {
+          "repeat": 1,
+          "detections": [
+            {"bbox": [100, 100, 160, 300], "confidence": 0.95, "maskRect": [0.05, 0.15, 0.45, 0.85]},
+            {"bbox": [220, 100, 280, 300], "confidence": 0.95, "maskRect": [0.55, 0.15, 0.95, 0.85]}
+          ],
+          "expect": [
+            {"id": 0, "state": "ACTIVE", "missedFrames": 0, "observed": true, "identityProtected": true, "privacySelected": true, "outputPresent": true, "fallback": false},
+            {"id": 1, "state": "ACTIVE", "missedFrames": 0, "observed": true, "identityProtected": true, "privacySelected": false, "outputPresent": true, "fallback": false}
+          ]
+        },
+        {
+          "repeat": 1,
+          "detections": [
+            {"bbox": [150, 100, 210, 300], "confidence": 0.95, "maskRect": [0.55, 0.15, 0.95, 0.85]}
+          ],
+          "expect": [
+            {"id": 0, "state": "REACQUIRING", "missedFrames": 1, "observed": false, "identityProtected": true, "privacySelected": true, "outputPresent": true, "fallback": true},
+            {"id": 1, "state": "ACTIVE", "missedFrames": 0, "observed": true, "identityProtected": true, "privacySelected": false, "outputPresent": true, "fallback": false}
+          ]
+        },
+        {
+          "repeat": 1,
+          "detections": [
+            {"bbox": [120, 100, 180, 300], "confidence": 0.95, "maskRect": [0.05, 0.15, 0.45, 0.85]},
+            {"bbox": [130, 100, 190, 300], "confidence": 0.95, "maskRect": [0.55, 0.15, 0.95, 0.85]}
+          ],
+          "expect": [
+            {"id": 0, "state": "ACTIVE", "missedFrames": 0, "observed": true, "identityProtected": true, "privacySelected": true, "outputPresent": true, "fallback": false},
+            {"id": 1, "state": "ACTIVE", "missedFrames": 0, "observed": true, "identityProtected": true, "privacySelected": false, "outputPresent": true, "fallback": false}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ambiguous_face_only_defers_identity_commit",
+      "androidReferences": [
+        {
+          "path": "mobile/packages/dance_native/android/src/test/kotlin/com/danceanon/native/tracking/TrackManagerAmbiguousCrossingTest.kt",
+          "testName": "testAmbiguousOverlapDefersCommitWithoutSwapping"
+        }
+      ],
+      "frameWidth": 640,
+      "frameHeight": 640,
+      "fullBodyIds": [],
+      "faceOnlyIds": [0],
+      "analysisPersons": [
+        {"id": 0, "bbox": [100, 100, 160, 300], "confidence": 0.95},
+        {"id": 1, "bbox": [160, 100, 220, 300], "confidence": 0.95}
+      ],
+      "steps": [
+        {
+          "repeat": 1,
+          "detections": [
+            {"bbox": [100, 100, 160, 300], "confidence": 0.95, "maskRect": [0.25, 0.10, 0.75, 0.90]},
+            {"bbox": [160, 100, 220, 300], "confidence": 0.95, "maskRect": [0.25, 0.10, 0.75, 0.90]}
+          ],
+          "expect": [
+            {"id": 0, "state": "ACTIVE", "missedFrames": 0, "observed": true, "identityProtected": true, "privacySelected": true, "outputPresent": true, "fallback": false},
+            {"id": 1, "state": "ACTIVE", "missedFrames": 0, "observed": true, "identityProtected": true, "privacySelected": false, "outputPresent": true, "fallback": false}
+          ]
+        },
+        {
+          "repeat": 1,
+          "detections": [
+            {"bbox": [130, 100, 190, 300], "confidence": 0.95, "maskRect": [0.25, 0.10, 0.75, 0.90]}
+          ],
+          "expect": [
+            {"id": 0, "state": "REACQUIRING", "missedFrames": 1, "observed": false, "identityProtected": true, "privacySelected": true, "outputPresent": true, "fallback": true},
+            {"id": 1, "state": "REACQUIRING", "missedFrames": 1, "observed": false, "identityProtected": true, "privacySelected": false, "outputPresent": false, "fallback": false},
+            {"id": 2, "state": "ACTIVE", "missedFrames": 0, "observed": true, "identityProtected": false, "privacySelected": false, "outputPresent": true, "fallback": false}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "selected_identity_long_gap_fails_closed",
+      "androidReferences": [
+        {
+          "path": "mobile/packages/dance_native/android/src/test/kotlin/com/danceanon/native/tracking/LostTrackPrivacySafetyTest.kt",
+          "testName": "testLostTrackEventuallyRemoved"
+        }
+      ],
+      "frameWidth": 640,
+      "frameHeight": 640,
+      "fullBodyIds": [0],
+      "faceOnlyIds": [],
+      "analysisPersons": [
+        {"id": 0, "bbox": [100, 100, 160, 300], "confidence": 0.95}
+      ],
+      "steps": [
+        {
+          "repeat": 1,
+          "detections": [
+            {"bbox": [100, 100, 160, 300], "confidence": 0.95, "maskRect": [0.05, 0.15, 0.45, 0.85]}
+          ],
+          "expect": [
+            {"id": 0, "state": "ACTIVE", "missedFrames": 0, "observed": true, "identityProtected": true, "privacySelected": true, "outputPresent": true, "fallback": false}
+          ]
+        },
+        {
+          "repeat": 15,
+          "detections": [],
+          "expect": [
+            {"id": 0, "state": "REACQUIRING", "missedFrames": 15, "observed": false, "identityProtected": true, "privacySelected": true, "outputPresent": true, "fallback": true}
+          ]
+        },
+        {
+          "repeat": 1,
+          "detections": [],
+          "expect": [
+            {"id": 0, "state": "LOST", "missedFrames": 16, "observed": false, "identityProtected": true, "privacySelected": true, "outputPresent": true, "fallback": true}
+          ]
+        },
+        {
+          "repeat": 74,
+          "detections": [],
+          "expect": [
+            {"id": 0, "state": "LOST", "missedFrames": 90, "observed": false, "identityProtected": true, "privacySelected": true, "outputPresent": true, "fallback": true}
+          ]
+        },
+        {
+          "repeat": 1,
+          "detections": [],
+          "expectedErrorCode": "EXPORT_PRIVACY_UNRESOLVED"
+        }
+      ]
+    }
+  ]
+}

@@ -354,6 +354,58 @@ Real-iPhone visual/privacy parity, sustained encode/Metal performance and
 thermal behavior, interruption/background behavior, and the full temporal
 FACE_ONLY implementation remain required before release parity is claimed.
 
+## Phase 5: tracking parity and Golden Trace
+
+Phase 5 starts by converting the Android tracking/privacy behavior from an
+informal reference into a replayable contract that can run on GitHub-hosted
+macOS/iOS Simulator without local Apple hardware. The canonical first fixture is
+`Resources/GoldenTraces/phase5_tracking_golden.json`. Each case records its
+Android regression-test provenance, analysis identity roots, deterministic
+detections/masks, selected privacy IDs, lifecycle expectations, emitted fallback
+semantics, and expected fail-closed errors.
+
+The initial Phase 5A suite intentionally targets privacy-critical behavior rather
+than broad synthetic coverage:
+
+- a selected FULL_BODY identity survives a short detection gap and returns to
+  ACTIVE on the same frame that fresh evidence is observed;
+- FACE_ONLY identity protection remains separate from privacy selection so an
+  unselected credible neighbor cannot inherit the selected target's weaker
+  association semantics;
+- a protected near-tie defers identity commitment instead of guessing/swapping;
+- selected privacy remains conservatively covered through the bounded 90-frame
+  unresolved window and fails closed with `EXPORT_PRIVACY_UNRESOLVED` after the
+  window is exceeded.
+
+`IOSTemporalIdentityTracker.paritySnapshots()` is an internal observation
+surface only; it does not alter the Flutter/Pigeon API. The first concrete parity
+correction made under this gate changes a successfully re-observed iOS track to
+ACTIVE immediately, matching Android `TrackManager` behavior instead of keeping
+it REACQUIRING for one extra frame.
+
+`IOSGoldenTracePhase5Smoke` loads the bundled JSON and replays every logical
+frame through the production iOS temporal tracker. It compares exact track IDs,
+state, missed-frame count, observed/not-observed state, identity protection,
+privacy selection, output presence, and conservative fallback markers. The
+combined Simulator app now runs Phase 3 Metal smoke, Phase 4 real-media export,
+then Phase 5 Golden Trace replay. `run_phase5_macos_gate.py` preserves the
+existing offline Metal compilation and Simulator export evidence and requires
+the additional `WOAH_GOLDEN_TRACE_PHASE5_SMOKE=PASS` marker.
+
+On non-Apple hosts, `verify_ios_phase5.py` validates the fixture schema, confirms
+that every Golden Trace case still points at an existing Android reference test,
+guards the Android constants/selection boundaries the fixture depends on, and
+checks the iOS/CI wiring. At the time Phase 5A was introduced, Phase 0-5 static
+verification passes on Windows. Apple compilation and Simulator replay still
+require the GitHub macOS lane before this Phase 5 slice can be called
+cloud-accepted; no real-iPhone performance/thermal claim is made.
+
+Phase 5A is infrastructure plus the first parity correction, not full tracking
+parity. Android scene-motion recovery, mature occlusion-group/dormancy/reactivate
+logic, mask-warp/sample-IoU behavior, and the complete temporal
+`FaceOnlyPrivacyFrameProcessor` remain later Phase 5 work. Production iOS
+inference remains XNNPACK until real-device delegate parity exists.
+
 ## Cross-platform privacy gate
 
 iOS is not accepted merely because YOLO runs. The current Android behavior is
@@ -366,9 +418,11 @@ the reference contract for:
 - conservative fallback coverage;
 - false-mask suppression.
 
-The golden trace format should eventually include frame index, person ID, bbox,
-track state, privacy class, face ROI, occlusion state, and mask coverage/hash so
-both platforms can be evaluated with the same tooling.
+Phase 5A establishes the first Golden Trace schema for person ID, lifecycle
+state, privacy-selection class, protection class, observation age/fallback
+behavior, and fail-closed outcomes. Later Phase 5 slices should extend the same
+fixture family with explicit face ROI, occlusion-group state, scene motion,
+predicted bbox, and mask coverage/hash as those Android subsystems are ported.
 
 ## Verification lanes
 
@@ -380,6 +434,7 @@ python tools/release/verify_ios_phase1.py
 python tools/release/verify_ios_phase2.py
 python tools/release/verify_ios_phase3.py
 python tools/release/verify_ios_phase4.py
+python tools/release/verify_ios_phase5.py
 ```
 
 Flutter regression gate:

@@ -36,6 +36,11 @@ class _MetalSmokeAppState extends State<_MetalSmokeApp> {
       );
       stdout.writeln('WOAH_EXPORT_PHASE4_SMOKE=PASS');
       stdout.writeln('WOAH_EXPORT_PHASE4_REPORT=$exportReport');
+      final phase5Report = await _channel.invokeMapMethod<String, dynamic>(
+        'runIOSGoldenTracePhase5Smoke',
+      );
+      stdout.writeln('WOAH_GOLDEN_TRACE_PHASE5_SMOKE=PASS');
+      stdout.writeln('WOAH_GOLDEN_TRACE_PHASE5_REPORT=$phase5Report');
       await stdout.flush();
       exit(0);
     } catch (error, stackTrace) {

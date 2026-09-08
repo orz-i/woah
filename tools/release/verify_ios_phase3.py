@@ -222,7 +222,11 @@ def verify_metal_validation_lanes() -> None:
     check("python tools/release/verify_ios_phase1.py" in workflow_text,
           "iOS Cloud CI must retain the Phase 1 verifier hook used by the Phase 3 macOS gate")
     check(
-        ("run_phase3_macos_gate.py" in phase1_text or "run_phase4_macos_gate.py" in phase1_text)
+        (
+            "run_phase3_macos_gate.py" in phase1_text
+            or "run_phase4_macos_gate.py" in phase1_text
+            or "run_phase5_macos_gate.py" in phase1_text
+        )
         and 'GITHUB_ACTIONS' in phase1_text,
         "The GitHub macOS Phase 1 hook must invoke an Apple-only gate that preserves Phase 3",
     )

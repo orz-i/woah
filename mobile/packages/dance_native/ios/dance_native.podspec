@@ -37,6 +37,7 @@ Native iOS media, rendering, and on-device inference bridge for Woah.
   # see https://developer.apple.com/documentation/bundleresources/privacy_manifest_files
   s.resource_bundles = {
     'dance_native_privacy' => ['dance_native/Sources/dance_native/PrivacyInfo.xcprivacy'],
-    'dance_native_models' => ['dance_native/Sources/dance_native/Resources/InferenceAssets/**/*']
+    'dance_native_models' => ['dance_native/Sources/dance_native/Resources/InferenceAssets/**/*'],
+    'dance_native_phase5' => ['dance_native/Sources/dance_native/Resources/GoldenTraces/**/*']
   }
 end

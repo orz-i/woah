@@ -234,6 +234,19 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
           await MainActor.run { result(flutterError) }
         }
       }
+    case "runIOSGoldenTracePhase5Smoke":
+      Task {
+        do {
+          let report = try IOSGoldenTracePhase5Smoke.run()
+          await MainActor.run { result(report) }
+        } catch {
+          let flutterError = Self.flutterError(
+            from: error,
+            fallbackCode: "IOS_GOLDEN_TRACE_PHASE5_SMOKE_FAILED"
+          )
+          await MainActor.run { result(flutterError) }
+        }
+      }
     default:
       result(FlutterMethodNotImplemented)
     }

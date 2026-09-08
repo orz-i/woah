@@ -246,8 +246,9 @@ def verify_real_video_gate() -> None:
     ):
         check(token in macos_gate, f"Phase 4 macOS gate missing preserved/required lane: {token}")
     check(
-        "run_phase4_macos_gate.py" in phase1 and 'GITHUB_ACTIONS' in phase1,
-        "Existing GitHub iOS workflow hook must invoke the Phase 4 Apple-only gate",
+        ("run_phase4_macos_gate.py" in phase1 or "run_phase5_macos_gate.py" in phase1)
+        and 'GITHUB_ACTIONS' in phase1,
+        "Existing GitHub iOS workflow hook must invoke Phase 4 or a stronger Apple-only gate",
     )
 
 

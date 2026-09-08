@@ -257,10 +257,10 @@ def main() -> int:
     # macOS before the normal production iPhoneOS build. Use that stable hook to
     # run the strongest Apple-only gate without requiring workflow-file mutation
     # from ordinary development tooling. Phase 4 preserves the Phase 3 offline
-    # Metal compile + Simulator GPU smoke before its real-video export gate.
+    # Metal compile + Simulator GPU/export smoke before Phase 5 Golden Trace replay.
     if sys.platform == "darwin" and os.environ.get("GITHUB_ACTIONS") == "true":
         subprocess.run(
-            [sys.executable, str(ROOT / "tools/ios/run_phase4_macos_gate.py")],
+            [sys.executable, str(ROOT / "tools/ios/run_phase5_macos_gate.py")],
             cwd=ROOT,
             check=True,
         )
