@@ -47,7 +47,15 @@ final class IOSAnalyzePipeline {
       )
     }
 
-    let inference = try runner.run(image: generated.image)
+    // Selection IDs are the identity roots for the whole project. Android's
+    // AnalyzePipeline intentionally uses strict CPU inference here rather than
+    // a device-dependent GPU delegate. Keep iOS on XNNPACK for the same reason;
+    // Core ML/Metal remain available through the isolated Phase 1 probes until
+    // cross-device parity is accepted on real hardware.
+    let inference = try runner.run(
+      image: generated.image,
+      preferredBackend: .xnnpack
+    )
     let frameWidth = max(1, generated.image.width)
     let frameHeight = max(1, generated.image.height)
 

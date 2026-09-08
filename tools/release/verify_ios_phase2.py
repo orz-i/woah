@@ -65,7 +65,7 @@ def verify_analyze_pipeline() -> None:
         "generator.requestedTimeToleranceBefore = .zero",
         "generator.requestedTimeToleranceAfter = .zero",
         "request.trimStartMs",
-        "runner.run(image: generated.image)",
+        "preferredBackend: .xnnpack",
         "cache.saveVideoUri(cacheId: cacheId, videoUri: request.videoUri)",
         "cache.savePersonThumbnail(",
         "schemaVersion: 1",
@@ -78,6 +78,10 @@ def verify_analyze_pipeline() -> None:
         "Double(detection.x1) / Double(frameWidth)" in pipeline
         and "Double(detection.y1) / Double(frameHeight)" in pipeline,
         "Phase 2 detections must be normalized in the transformed display frame",
+    )
+    check(
+        "preferredBackend: .xnnpack" in pipeline,
+        "Phase 2 selection analysis must stay on deterministic CPU/XNNPACK like Android",
     )
     check(
         "if !committed" in pipeline and "clearAnalysisCache(cacheId: cacheId)" in pipeline,

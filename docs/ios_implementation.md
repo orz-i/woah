@@ -167,6 +167,9 @@ Implementation details:
   orientation returned to Flutter.
 - The existing Phase 1 `IOSYoloRunner` remains the only inference seam. The
   product analyze path does not create a second TensorFlow Lite interpreter.
+  Selection analysis explicitly forces the XNNPACK/CPU backend, matching
+  Android's strict CPU first-frame path so device-specific Core ML/Metal
+  differences cannot redefine the project's root person IDs.
 - Detections retain the postprocessor's deterministic left-to-right order and
   receive IDs from that order. Flutter continues to enforce the shared 0.60
   first-frame selectable-person confidence threshold.
