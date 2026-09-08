@@ -244,3 +244,116 @@ on at least one real iOS 17+ device. The macOS lane must specifically verify:
 
 The Windows development host cannot satisfy this gate and must never be treated
 as evidence that the iOS target compiled or ran on device.
+
+## No-local-Mac / no-local-iPhone validation path
+
+Woah can continue the iOS port without owning Apple hardware. The repository
+now separates the remaining Apple-only evidence into two cloud lanes.
+
+### 1. GitHub-hosted macOS compile lane
+
+`.github/workflows/ios-cloud.yml` runs automatically for relevant changes on
+`main`/`master` and pull requests, and can also be started manually. It uses the
+GitHub-hosted `macos-26` runner, pins Flutter 3.44.2, enables Flutter's SwiftPM
+integration, and lets Flutter fall back to CocoaPods for `dance_native` while
+the Phase 1 TensorFlowLiteSwift bridge is CocoaPods-only.
+
+The job executes the Phase 0/1 static gates and then performs:
+
+```text
+flutter build ios --debug --no-codesign --target lib/main.dart
+```
+
+The produced `Runner.app` is archived as a workflow artifact. This lane needs
+no BrowserStack or Apple signing credentials and is the first authority for
+Swift/CocoaPods/Xcode compile failures when development is being done from
+Windows.
+
+### 2. BrowserStack real-iPhone Phase 1 lane
+
+`.github/workflows/ios-browserstack.yml` is deliberately `workflow_dispatch`
+only. Normal pushes and pull requests never spend BrowserStack minutes. Add the
+following repository Actions secrets when a BrowserStack account is available:
+
+```text
+BROWSERSTACK_USERNAME
+BROWSERSTACK_ACCESS_KEY
+```
+
+If either secret is absent, the credential guard succeeds and the real-device
+job is skipped instead of making CI red.
+
+The workflow accepts a BrowserStack device name, iOS version, and the list of
+backends that are mandatory for that run. The default mandatory set is:
+
+```text
+auto,tflite_xnnpack
+```
+
+Core ML and Metal are always attempted and reported, but they can initially be
+treated as feasibility evidence rather than hard requirements. Once a device
+class is accepted, set `required_backends` to include `tflite_coreml` and/or
+`tflite_metal` to promote those paths into hard gates.
+
+The workflow first reproduces the ignored YOLO model on an Ubuntu runner. This
+is deliberate: the repository's locked PyTorch source is CUDA/Linux-oriented,
+so model export does not consume expensive macOS minutes or depend on macOS
+PyTorch wheel availability. The verified TFLite file is handed to the macOS job
+as a short-lived Actions artifact. The macOS job then builds the dedicated
+`lib/cloud_probe_main.dart` entrypoint, ad-hoc signs the device `.app`, packages
+it as an `.ipa`, uploads it through BrowserStack App Automate, and runs Appium
+against a real iPhone. BrowserStack re-provisions the uploaded iOS application
+for its device fleet.
+
+The probe does not use the user's Photos/files. A tracked copy of
+`tools/litert/test_frame.jpg` is bundled inside the plugin resource bundle. The
+cloud-only Flutter entrypoint automatically runs:
+
+```text
+auto
+tflite_coreml
+tflite_metal
+tflite_xnnpack
+```
+
+and publishes one accessibility value named
+`woah-ios-phase1-cloud-report`. The Appium harness collects that JSON and writes
+`browserstack-phase1-report.json`, including BrowserStack session metadata,
+effective backend, fallback reasons, inference latency, detections, bbox,
+confidence, mask coverage, and cross-backend comparison results.
+
+The current tracked fixture is expected to produce one YOLO person detection,
+matching `tools/litert/yolo_parity_report.json`. Required backends fail the
+cloud gate if that count drifts or their bbox/confidence/mask coverage diverges
+from the XNNPACK reference beyond the initial tolerances encoded in
+`tools/ios/browserstack/phase1_report.py`.
+
+### Model hash bootstrap
+
+The repository intentionally still does not commit the 11+ MB model binary.
+On a clean cloud runner, `tools/release/provision_ios_yolo_ci.py` can download
+the pinned YOLO11n segmentation checkpoint through the locked Python
+environment and reproduce the FP16 TFLite export recipe. The generated file
+must still match the tracked byte size and TFL3 contract.
+
+Until the first successful clean-cloud export is observed, the contract keeps
+`expected_sha256: null`. BrowserStack bootstrap runs use:
+
+```text
+python tools/release/verify_ios_phase1.py --require-model --allow-unpinned-hash
+```
+
+which prints `BOOTSTRAP_SHA256=<hash>`. After one clean-cloud export is checked
+against the existing Android model provenance, commit that hash into
+`yolo11n-seg-fp16.contract.json` and remove the bootstrap allowance from the
+workflow. A release/accepted Phase 1 state must use the pinned hash; the
+bootstrap flag is not release evidence.
+
+### What cloud devices still do not replace
+
+BrowserStack is sufficient for delegate compatibility, correctness, and broad
+device coverage. It is not the final authority for sustained thermal behavior,
+battery draw, long-video background transitions, or performance tuning because
+shared remote-device conditions introduce noise. Those items can remain a
+later release-candidate gate when physical Apple hardware becomes available;
+they do not block architecture/feature implementation now.

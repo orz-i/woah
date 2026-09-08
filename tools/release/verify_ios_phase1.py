@@ -169,7 +169,11 @@ def verify_swift_runtime() -> None:
           "Phase 1 must not connect unvalidated YOLO output to product analyzeVideo")
 
 
-def verify_model_if_present(contract: dict, require_model: bool) -> None:
+def verify_model_if_present(
+    contract: dict,
+    require_model: bool,
+    allow_unpinned_hash: bool,
+) -> None:
     source = ROOT / contract["source"]
     staged = MODEL_DIR / contract["model"]
     sidecar = MODEL_DIR / f"{contract['model']}.sha256"
@@ -182,7 +186,7 @@ def verify_model_if_present(contract: dict, require_model: bool) -> None:
 
     expected_size = int(contract["expected_size_bytes"])
     expected_hash = contract.get("expected_sha256")
-    if require_model:
+    if require_model and not allow_unpinned_hash:
         check(
             isinstance(expected_hash, str) and len(expected_hash) == 64,
             "Phase 1 acceptance requires expected_sha256 to be pinned in the tracked YOLO contract",
@@ -193,6 +197,8 @@ def verify_model_if_present(contract: dict, require_model: bool) -> None:
     check(header[4:8] == contract["flatbuffer_magic"].encode("ascii"), "Repository-local YOLO model is not TFL3")
 
     source_hash = sha256(source)
+    if require_model and allow_unpinned_hash and not expected_hash:
+        print(f"BOOTSTRAP_SHA256={source_hash}")
     if isinstance(expected_hash, str) and expected_hash:
         check(source_hash == expected_hash, "Repository-local YOLO model SHA-256 violates the tracked contract")
     if require_model:
@@ -213,12 +219,21 @@ def main() -> int:
         action="store_true",
         help="Fail unless the repository-local and staged iOS YOLO model bytes are present and identical.",
     )
+    parser.add_argument(
+        "--allow-unpinned-hash",
+        action="store_true",
+        help="Bootstrap only: allow --require-model before expected_sha256 is pinned and print the observed hash.",
+    )
     args = parser.parse_args()
 
     contract = verify_tensor_contract()
     verify_runtime_packaging()
     verify_swift_runtime()
-    verify_model_if_present(contract, require_model=args.require_model)
+    verify_model_if_present(
+        contract,
+        require_model=args.require_model,
+        allow_unpinned_hash=args.allow_unpinned_hash,
+    )
 
     if FAILURES:
         print("iOS Phase 1 verification FAILED:")
