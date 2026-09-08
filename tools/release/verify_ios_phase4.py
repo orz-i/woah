@@ -58,6 +58,8 @@ def verify_media_pipeline() -> None:
         "outputWidth: target.width",
         "outputHeight: target.height",
         "cancellation.isCancelled",
+        "commitIfNotCancelled",
+        "guard committed else { throw IOSExportPipelineError.cancelled }",
         'state: "exporting"',
         'partial.mp4',
         "fileManager.replaceItemAt",
@@ -148,6 +150,7 @@ def verify_job_contract() -> None:
         "IOSExportCancellationFlag()",
         "pipeline.execute(",
         "cancellation?.cancel()",
+        "guard cancellation?.cancel() == true else { return }",
         "hasActiveRuntime",
         "outputURL.absoluteString",
     ):

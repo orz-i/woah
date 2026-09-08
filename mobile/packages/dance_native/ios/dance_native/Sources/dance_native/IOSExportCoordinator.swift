@@ -98,7 +98,10 @@ final class IOSExportCoordinator {
 
   func cancel(jobId: String) {
     let cancellation = withLock { cancellations[jobId] }
-    cancellation?.cancel()
+    // Atomic publication is the commit point. If the pipeline already committed
+    // the final file, cancellation is too late and completion owns the terminal
+    // state. Before that point, cancel wins and publication is prohibited.
+    guard cancellation?.cancel() == true else { return }
     guard let current = status(jobId: jobId), !Self.isTerminal(current.state) else { return }
     let cancelled = JobStatusDto(
       jobId: current.jobId,

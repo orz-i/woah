@@ -8,11 +8,24 @@ import Foundation
 final class IOSExportCancellationFlag {
   private let lock = NSLock()
   private var value = false
+  private var committed = false
 
-  func cancel() {
+  @discardableResult
+  func cancel() -> Bool {
     lock.lock()
+    defer { lock.unlock() }
+    if committed { return false }
     value = true
-    lock.unlock()
+    return true
+  }
+
+  func commitIfNotCancelled(_ body: () throws -> Void) rethrows -> Bool {
+    lock.lock()
+    defer { lock.unlock() }
+    if value { return false }
+    try body()
+    committed = true
+    return true
   }
 
   var isCancelled: Bool {
@@ -301,8 +314,10 @@ final class IOSExportPipeline {
       guard writer.status == .completed else {
         throw writerError(writer, fallback: "iOS export writer did not complete.")
       }
-      if cancellation.isCancelled { throw IOSExportPipelineError.cancelled }
-      try atomicFinalize(temp: output.temp, final: output.final)
+      let committed = try cancellation.commitIfNotCancelled {
+        try atomicFinalize(temp: output.temp, final: output.final)
+      }
+      guard committed else { throw IOSExportPipelineError.cancelled }
       return output.final
     } catch {
       writer.cancelWriting()
