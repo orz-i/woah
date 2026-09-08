@@ -256,6 +256,7 @@ final class IOSExportPipeline {
           persons: tracked,
           faceOnlyIds: faceOnlyIds,
           preprocess: inference.preprocess,
+          freshPrivacyClassEvidence: tracker.facePrivacyClassEvidence(),
           timestampUs: timestampUs
         ) ?? [:]
         let rendered = try renderer.render(

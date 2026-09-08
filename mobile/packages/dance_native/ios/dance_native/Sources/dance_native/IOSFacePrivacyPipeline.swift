@@ -459,6 +459,7 @@ final class IOSFacePrivacyTemporalResolver {
     persons: [IOSPreviewPerson],
     faceOnlyIds: Set<Int>,
     preprocess: IOSYoloPreprocessResult,
+    freshPrivacyClassEvidence: [IOSFreshFacePrivacyClassEvidence] = [],
     timestampUs: Int64
   ) -> [Int: IOSFacePrivacyEllipse] {
     guard !faceOnlyIds.isEmpty else {
@@ -467,7 +468,7 @@ final class IOSFacePrivacyTemporalResolver {
     }
 
     let selectedPersons = persons.filter { faceOnlyIds.contains($0.id) }
-    guard !selectedPersons.isEmpty else {
+    guard !selectedPersons.isEmpty || !freshPrivacyClassEvidence.isEmpty else {
       lock.lock()
       stateByTrackId = stateByTrackId.filter { faceOnlyIds.contains($0.key) }
       lock.unlock()
@@ -476,7 +477,9 @@ final class IOSFacePrivacyTemporalResolver {
 
     // Detector failure only reduces localization precision. It is never allowed
     // to remove privacy or to create a new identity root.
-    let faces = (try? locator.locateFaces(in: image)) ?? []
+    let faces = selectedPersons.isEmpty
+      ? []
+      : ((try? locator.locateFaces(in: image)) ?? [])
     let assignments = associate(
       faces: faces,
       // Every observed YOLO person participates in ownership competition even
@@ -529,6 +532,54 @@ final class IOSFacePrivacyTemporalResolver {
         timestampUs: timestampUs,
         personObservedThisFrame: !person.conservativePrivacyFallback
       )
+    }
+
+    var seenDetectionIndices = Set<Int>()
+    for evidence in freshPrivacyClassEvidence.sorted(by: {
+      $0.detectionIndex < $1.detectionIndex
+    }) {
+      guard seenDetectionIndices.insert(evidence.detectionIndex).inserted,
+            !evidence.residualTrackIds.isEmpty,
+            evidence.residualTrackIds.allSatisfy({ faceOnlyIds.contains($0) }),
+            var region = IOSFacePrivacyGeometry.fallbackEllipse(evidence.detection) else {
+        continue
+      }
+
+      if evidence.residualTrackIds.count == 1,
+         let ownerId = evidence.residualTrackIds.first,
+         let trusted = stateByTrackId[ownerId]?.trustedFace {
+        if let maskGuided = trusted.maskGuidedFallback(
+          personDetection: evidence.detection,
+          preprocess: preprocess
+        ) {
+          region = maskGuided
+        } else {
+          // Exact identity is intentionally unresolved, but the privacy class
+          // sidecar has reduced the owner set to one selected slot. Borrow only
+          // the already trusted face size; the rendered center remains derived
+          // from this fresh detection's current YOLO body geometry.
+          region = IOSFacePrivacyEllipse(
+            centerX: region.centerX,
+            centerY: region.centerY,
+            radiusX: max(1, trusted.radiusX * Self.classFallbackTrustedSizeExpansion),
+            radiusY: max(1, trusted.radiusY * Self.classFallbackTrustedSizeExpansion),
+            source: .yoloHeadFallback
+          )
+        }
+      }
+
+      // If a normal selected placement already covers this fresh head location,
+      // avoid drawing a duplicate synthetic sticker. This test deliberately uses
+      // the bounding box of the conservative ellipse, matching Android's source
+      // placement rectangle containment check.
+      let alreadyCovered = regions.values.contains { existing in
+        region.centerX >= existing.centerX - existing.radiusX
+          && region.centerX <= existing.centerX + existing.radiusX
+          && region.centerY >= existing.centerY - existing.radiusY
+          && region.centerY <= existing.centerY + existing.radiusY
+      }
+      guard !alreadyCovered else { continue }
+      regions[Self.syntheticClassFallbackBase - evidence.detectionIndex] = region
     }
     return regions
   }
@@ -806,4 +857,6 @@ final class IOSFacePrivacyTemporalResolver {
   private static let maxPredictedFaceScale: Float32 = 1.12
   private static let maxPredictedAgeExpansion: Float32 = 0.10
   private static let expiredFaceMaskFallbackExpansion: Float32 = 1.10
+  private static let syntheticClassFallbackBase = -1_000_000
+  private static let classFallbackTrustedSizeExpansion: Float32 = 1.24
 }

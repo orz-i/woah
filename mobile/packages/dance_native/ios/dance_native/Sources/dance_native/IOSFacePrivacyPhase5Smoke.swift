@@ -320,6 +320,153 @@ enum IOSFacePrivacyPhase5Smoke {
     )
     try assertNear(topEdgeJitter.dy, 0, tolerance: 0.01, label: "top-edge jitter dy")
 
+    let classMetadata = IOSAnalysisMetadata(
+      schemaVersion: 1,
+      sourceUri: "woah-phase5://face-class-selected",
+      persons: [
+        IOSCachedPerson(
+          id: 0,
+          bbox: IOSCachedBBox(left: 4.0 / 64.0, top: 4.0 / 64.0, right: 24.0 / 64.0, bottom: 60.0 / 64.0),
+          confidence: 0.99
+        ),
+        IOSCachedPerson(
+          id: 1,
+          bbox: IOSCachedBBox(left: 40.0 / 64.0, top: 4.0 / 64.0, right: 60.0 / 64.0, bottom: 60.0 / 64.0),
+          confidence: 0.99
+        ),
+      ]
+    )
+    let selectedClassTracker = IOSTemporalIdentityTracker(
+      metadata: classMetadata,
+      fullBodyIds: [],
+      faceOnlyIds: [0, 1],
+      frameWidth: width,
+      frameHeight: height
+    )
+    _ = try selectedClassTracker.update(
+      detections: [
+        makeDetection(x1: 4, y1: 4, x2: 24, y2: 60),
+        makeDetection(x1: 40, y1: 4, x2: 60, y2: 60),
+      ],
+      preprocess: preprocess,
+      timestampUs: 0
+    )
+    // Two fresh detections remain positionally between the two protected
+    // identities. Their masks keep both owners plausible, producing a balanced
+    // 2-detection / 2-owner ambiguity group without committing either identity.
+    let freshAmbiguousDetections = [
+      makeDetection(x1: 27, y1: 4, x2: 33, y2: 60),
+      makeDetection(x1: 31, y1: 4, x2: 37, y2: 60),
+    ]
+    let selectedClassPersons = try selectedClassTracker.update(
+      detections: freshAmbiguousDetections,
+      preprocess: preprocess,
+      timestampUs: 33_333
+    )
+    let selectedClassEvidence = selectedClassTracker.facePrivacyClassEvidence()
+    guard selectedClassEvidence.count == 2,
+          selectedClassEvidence[0].detectionIndex == 0,
+          selectedClassEvidence[1].detectionIndex == 1,
+          selectedClassEvidence.allSatisfy({ $0.residualTrackIds == Set([0, 1]) }) else {
+      throw smokeFailure("Balanced selected-only ambiguity did not produce complete FACE_ONLY class evidence.")
+    }
+    let selectedClassSnapshotIds = Set(selectedClassTracker.paritySnapshots().map(\.id))
+    guard selectedClassSnapshotIds == Set([0, 1]) else {
+      throw smokeFailure("FACE_ONLY class-evidence reservation created a real synthetic identity.")
+    }
+    let classResolver = IOSFacePrivacyTemporalResolver(
+      locator: IOSPhase5SequenceFaceLocator(batches: [[]])
+    )
+    let classRegions = classResolver.resolve(
+      image: source,
+      persons: selectedClassPersons,
+      faceOnlyIds: [0, 1],
+      preprocess: preprocess,
+      freshPrivacyClassEvidence: selectedClassEvidence,
+      timestampUs: 33_333
+    )
+    guard let syntheticClassRegion = classRegions[-1_000_000],
+          let secondSyntheticClassRegion = classRegions[-1_000_001],
+          syntheticClassRegion.source == .yoloHeadFallback,
+          secondSyntheticClassRegion.source == .yoloHeadFallback else {
+      throw smokeFailure("Selected-only ambiguous evidence did not create a synthetic FACE_ONLY region.")
+    }
+    try assertNear(
+      syntheticClassRegion.centerX,
+      30,
+      tolerance: 0.05,
+      label: "synthetic class fallback centerX"
+    )
+    try assertNear(
+      secondSyntheticClassRegion.centerX,
+      34,
+      tolerance: 0.05,
+      label: "second synthetic class fallback centerX"
+    )
+
+    let mixedClassTracker = IOSTemporalIdentityTracker(
+      metadata: classMetadata,
+      fullBodyIds: [],
+      faceOnlyIds: [0],
+      frameWidth: width,
+      frameHeight: height
+    )
+    _ = try mixedClassTracker.update(
+      detections: [
+        makeDetection(x1: 4, y1: 4, x2: 24, y2: 60),
+        makeDetection(x1: 40, y1: 4, x2: 60, y2: 60),
+      ],
+      preprocess: preprocess,
+      timestampUs: 0
+    )
+    _ = try mixedClassTracker.update(
+      detections: freshAmbiguousDetections,
+      preprocess: preprocess,
+      timestampUs: 33_333
+    )
+    guard mixedClassTracker.facePrivacyClassEvidence().isEmpty else {
+      throw smokeFailure("Ambiguous detection with an unselected possible owner received FACE_ONLY class fallback.")
+    }
+
+    let uniqueClassResolver = IOSFacePrivacyTemporalResolver(
+      locator: IOSPhase5SequenceFaceLocator(batches: [[trustedFace], []])
+    )
+    _ = uniqueClassResolver.resolve(
+      image: source,
+      persons: [person],
+      faceOnlyIds: [0],
+      preprocess: preprocess,
+      timestampUs: 0
+    )
+    let uniqueClassEvidence = IOSFreshFacePrivacyClassEvidence(
+      detectionIndex: 5,
+      detection: makeDetection(
+        x1: 40,
+        y1: 4,
+        x2: 63,
+        y2: 60,
+        mask: [UInt8](
+          repeating: 0,
+          count: IOSYoloPostprocessor.protoSize * IOSYoloPostprocessor.protoSize
+        )
+      ),
+      residualTrackIds: [0]
+    )
+    let uniqueClassRegions = uniqueClassResolver.resolve(
+      image: source,
+      persons: [predictedPerson],
+      faceOnlyIds: [0],
+      preprocess: preprocess,
+      freshPrivacyClassEvidence: [uniqueClassEvidence],
+      timestampUs: 200_000
+    )
+    guard let uniqueSyntheticRegion = uniqueClassRegions[-1_000_005] else {
+      throw smokeFailure("Unique selected owner evidence did not create synthetic FACE_ONLY privacy.")
+    }
+    try assertNear(uniqueSyntheticRegion.centerX, 51.5, tolerance: 0.05, label: "unique class fresh centerX")
+    try assertNear(uniqueSyntheticRegion.radiusX, 8.184, tolerance: 0.05, label: "unique class trusted radiusX")
+    try assertNear(uniqueSyntheticRegion.radiusY, 11.0112, tolerance: 0.08, label: "unique class trusted radiusY")
+
     let renderer = try IOSMetalPreviewRenderer()
     let effects = EffectConfigDto(
       fillMode: "solid",
@@ -361,6 +508,23 @@ enum IOSFacePrivacyPhase5Smoke {
     guard cornerPixel.b >= 230, cornerPixel.r <= 30 else {
       throw smokeFailure("FACE_ONLY privacy regressed to a rectangular mask instead of ellipse geometry.")
     }
+    let syntheticRendered = try renderer.render(
+      source: source,
+      persons: [],
+      preprocess: preprocess,
+      fullBodyIds: [],
+      faceOnlyIds: [],
+      effects: effects,
+      faceRegions: [-1_000_000: syntheticClassRegion]
+    )
+    let syntheticPixel = try pixel(
+      syntheticRendered,
+      x: Int(syntheticClassRegion.centerX.rounded()),
+      y: Int(syntheticClassRegion.centerY.rounded())
+    )
+    guard syntheticPixel.r >= 240, syntheticPixel.g <= 20, syntheticPixel.b <= 20 else {
+      throw smokeFailure("Metal did not render synthetic negative-ID FACE_ONLY privacy evidence.")
+    }
 
     return [
       "status": "pass",
@@ -377,6 +541,11 @@ enum IOSFacePrivacyPhase5Smoke {
       "cached_predicted_body_source": cachedPredictedRegion.source.rawValue,
       "coherent_body_motion": [coherentMotion.dx, coherentMotion.dy],
       "top_edge_jitter_motion": [topEdgeJitter.dx, topEdgeJitter.dy],
+      "class_evidence_residual_ids": selectedClassEvidence[0].residualTrackIds.sorted(),
+      "class_evidence_synthetic_id": -1_000_000,
+      "class_evidence_center_x": syntheticClassRegion.centerX,
+      "mixed_class_evidence_count": mixedClassTracker.facePrivacyClassEvidence().count,
+      "unique_class_radius": [uniqueSyntheticRegion.radiusX, uniqueSyntheticRegion.radiusY],
       "vision_runtime_face_count": visionRuntimeFaces.count,
       "center_pixel": [centerPixel.r, centerPixel.g, centerPixel.b, centerPixel.a],
       "corner_pixel": [cornerPixel.r, cornerPixel.g, cornerPixel.b, cornerPixel.a],

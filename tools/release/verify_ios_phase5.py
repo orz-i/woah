@@ -160,6 +160,20 @@ def verify_ios_replay_surface() -> None:
         "protectedLostRecoveryGeometrySufficient",
         "boundProtectedPredictionAroundLastObservation",
         "track.occlusionGraceRemaining = postOcclusionGraceFrames",
+        "struct IOSFreshFacePrivacyClassEvidence",
+        "private let faceOnlyPrivacyIds: Set<Int>",
+        "currentFacePrivacyEvidence.removeAll(keepingCapacity: true)",
+        "var ambiguousProtectedDetections = Set<Int>()",
+        "ambiguousProtectedDetections.insert(candidate.detectionIndex)",
+        "ambiguousProtectedDetections.contains($0)",
+        "inferFacePrivacyClassEvidence(",
+        "associationAmbiguityMargin: Float32 = 0.05",
+        "possibleOwners.insert(track.id)",
+        "componentDetections.count == componentOwners.count",
+        "A 1-detection / 2-owner merge is intentionally *not* enough",
+        "componentOwners.allSatisfy({ faceOnlyPrivacyIds.contains($0) })",
+        "reservedDetections.insert(detectionIndex)",
+        "func facePrivacyClassEvidence() -> [IOSFreshFacePrivacyClassEvidence]",
     ):
         check(token in tracker, f"Phase 5 tracker parity surface missing: {token}")
 
@@ -220,8 +234,13 @@ def verify_ios_replay_surface() -> None:
         "timestampUs - trusted.lastTrustedTimestampUs <= Self.maxPredictedFaceAgeUs",
         "timestampUs - trusted.lastTrustedTimestampUs <= Self.trustedMaskSeedMaxAgeUs",
         "Current YOLO segmentation must provide the rendered",
+        "freshPrivacyClassEvidence: [IOSFreshFacePrivacyClassEvidence] = []",
+        "evidence.residualTrackIds.allSatisfy({ faceOnlyIds.contains($0) })",
+        "syntheticClassFallbackBase - evidence.detectionIndex",
+        "classFallbackTrustedSizeExpansion: Float32 = 1.24",
+        "Borrow only",
     ):
-        check(token in face_pipeline, f"Phase 5C/D/E FACE_ONLY pipeline missing: {token}")
+        check(token in face_pipeline, f"Phase 5C-G FACE_ONLY pipeline missing: {token}")
     trusted_start = face_pipeline.find("private struct TrustedFaceGeometry")
     mask_fallback_start = face_pipeline.find("func maskGuidedFallback(")
     state_start = face_pipeline.find("private struct State", trusted_start + 1)
@@ -263,6 +282,18 @@ def verify_ios_replay_surface() -> None:
         'label: "800ms mask-seed expiry centerX"',
         "Missing current head-like mask support removed FACE_ONLY fallback privacy",
         'label: "unsupported-mask generic fallback centerX"',
+        "selectedClassTracker.facePrivacyClassEvidence()",
+        "freshAmbiguousDetections",
+        "selectedClassEvidence.count == 2",
+        "selectedClassEvidence.allSatisfy({ $0.residualTrackIds == Set([0, 1]) })",
+        "selectedClassSnapshotIds == Set([0, 1])",
+        "classRegions[-1_000_000]",
+        "classRegions[-1_000_001]",
+        'label: "second synthetic class fallback centerX"',
+        "mixedClassTracker.facePrivacyClassEvidence().isEmpty",
+        "uniqueClassRegions[-1_000_005]",
+        'label: "unique class trusted radiusX"',
+        "Metal did not render synthetic negative-ID FACE_ONLY privacy evidence",
         "faceRegions: [0: renderRegion]",
         "FACE_ONLY ellipse center was not covered",
         "FACE_ONLY privacy regressed to a rectangular mask",
@@ -287,8 +318,10 @@ def verify_ios_replay_surface() -> None:
         "IOSFacePrivacyGeometry.fallbackEllipse(person.detection)",
         "dx * dx + dy * dy <= 1",
         "faceRect(",
+        "faceRegions.keys.filter({ $0 < 0 }).sorted()",
+        "regionsToRender.append(region)",
     ):
-        check(token in renderer, f"Phase 5C Metal FACE_ONLY rendering missing: {token}")
+        check(token in renderer, f"Phase 5C-G Metal FACE_ONLY rendering missing: {token}")
 
     for token in (
         "IOSFacePrivacyTemporalResolver()",
@@ -298,9 +331,10 @@ def verify_ios_replay_surface() -> None:
         "IOSFacePrivacyTemporalResolver(locator: faceLocatorProvider())",
         "facePrivacyResolver?.resolve(",
         "preprocess: inference.preprocess",
+        "freshPrivacyClassEvidence: tracker.facePrivacyClassEvidence()",
         "faceRegions: faceRegions",
     ):
-        check(token in export, f"Phase 5C-F export FACE_ONLY wiring missing: {token}")
+        check(token in export, f"Phase 5C-G export FACE_ONLY wiring missing: {token}")
     check(
         "faceLocatorProvider: IOSExportPipeline.FaceLocatorProvider? = nil" in coordinator
         and "faceLocatorProvider: faceLocatorProvider" in coordinator,
@@ -374,6 +408,9 @@ def verify_android_reference_boundary() -> None:
         "private const val PROTECTED_UNOBSERVED_MAX_CENTER_TRAVEL_RATIO = 0.30f",
         "val predictionProgress = if (predTravel > 1e-4f)",
         "val motionConsistent = !hasMeaningfulPrediction || bIoU > 0.05f || predictionProgress >= 0.25f",
+        "currentFacePrivacyClassEvidence",
+        "FreshPrivacyClassEvidence(",
+        "selectionClass = PrivacySelectionClass.SELECTED",
     ):
         check(token in android, f"Android tracking reference drifted; revisit Phase 5 Golden Trace: {token}")
 
@@ -494,6 +531,30 @@ def verify_android_reference_boundary() -> None:
         "const val ROI_MAX_DETECTOR_SEED_AGE_US = 800_000L" in pixel_motion,
         "Android FACE_ONLY detector-seed age reference drifted from 800ms",
     )
+
+    class_fallback = text(
+        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/com/danceanon/native/privacy/FacePrivacyClassFallbackResolver.kt",
+        "Android FacePrivacyClassFallbackResolver",
+    )
+    for token in (
+        "SYNTHETIC_TRACK_ID_BASE = -1_000_000",
+        "TRUSTED_SIZE_FALLBACK_EXPANSION = 1.24f",
+        "it.selectionClass == PrivacySelectionClass.SELECTED",
+        "item.residualTrackIds.all { faceOnlyTrackIds.contains(it) }",
+        "This never assigns or updates identity",
+        "syntheticTrackId = SYNTHETIC_TRACK_ID_BASE - item.detectionIndex",
+    ):
+        check(token in class_fallback, f"Android FACE_ONLY class-fallback reference drifted: {token}")
+    class_fallback_test = text(
+        ROOT / "mobile/packages/dance_native/android/src/test/kotlin/com/danceanon/native/privacy/FacePrivacyClassFallbackResolverTest.kt",
+        "Android FacePrivacyClassFallbackResolverTest",
+    )
+    for test_name in (
+        "selected ambiguous evidence fills uncovered dormant face without identity assignment",
+        "evidence with any non selected possible owner never gets class fallback",
+        "unique owner fallback keeps fresh center but reuses conservative trusted face size",
+    ):
+        check(test_name in class_fallback_test, f"Android FACE_ONLY class-fallback regression test missing: {test_name}")
 
 
 def verify_cloud_gate() -> None:

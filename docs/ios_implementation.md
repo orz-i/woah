@@ -613,12 +613,57 @@ observation gap and the detected-to-missed face sequence actually occurred.
 These are media/runtime/privacy semantics that the GitHub iOS Simulator can
 validate without a physical or formal cloud iPhone.
 
+Final cloud evidence for Phase 5F is GitHub Actions `iOS Cloud CI` run
+`34234693464` (#26) at product head
+`01b38d2c194a5cb4a73417bc98bba04bf8292aa3`. The public workflow result is
+`completed successfully` (15m15s). This acceptance includes the inherited
+Vision/Metal/Golden-Trace/full-body export gates plus the new second real MP4
+FACE_ONLY export and encoded pixel readback. Production iPhoneOS no-codesign
+build/archive/upload remain part of the same successful workflow. No physical
+or formal cloud iPhone was used.
+
+### Phase 5G: selected privacy-class residual fallback
+
+Exact identity must still be allowed to remain unresolved during a protected
+near-tie. However, Android also preserves privacy when a fresh detection's
+**complete possible-owner set** is already known to belong to the selected
+FACE_ONLY class. Phase 5G ports that sidecar without making privacy evidence an
+identity assignment mechanism.
+
+`IOSTemporalIdentityTracker` now records fresh anonymous class evidence only
+for a **cardinality-balanced residual ambiguity group**: the protected ambiguity
+gate must have explicitly deferred the fresh detections, the connected residual
+group must contain exactly one detection per complete possible owner, and every
+possible owner must be FACE_ONLY-selected. Raw near-margin competitors are
+included in that possible-owner set even when they failed the normal identity
+evidence threshold, so the privacy sidecar cannot silently drop the track that
+caused the ambiguity. A 1-detection / 2-owner merge is therefore insufficient.
+Accepted detections are reserved for the frame and do not create new real track
+IDs. If the group is unbalanced or even one possible owner is not selected, no
+class fallback is emitted.
+
+`IOSFacePrivacyTemporalResolver` converts accepted class evidence into temporary
+negative-ID regions (`-1_000_000 - detectionIndex`). Multiple possible selected
+owners use the fresh detection's current YOLO head geometry. A unique possible
+owner may borrow only its trusted face **size** (1.24x conservative expansion),
+or use current-mask guidance when available; the fresh detection still owns the
+rendered center. Existing normal selected coverage suppresses duplicate
+synthetic regions. The Metal renderer accepts negative-ID regions directly but
+never adds them to the person/track list.
+
+The deterministic FACE_ONLY Simulator smoke covers: a balanced 2-detection /
+2-selected-owner ambiguity group producing synthetic fallbacks without new real
+IDs; a mixed selected/unselected owner set producing no fallback; unique-owner
+trusted-size reuse with the fresh center preserved; and Metal rendering of the
+negative-ID region. This stage remains pure privacy/identity logic and therefore
+does not depend on a real or formal cloud device.
+
 This is a substantial FACE_ONLY closure, but it is still not a claim of complete
 Android `FaceOnlyPrivacyFrameProcessor` parity. Android's local ROI detector
 budgeting, landmark/keypoint center refinement, pixel-motion prediction,
-dormancy/reactivation probes, current-body-mask-guided expired-face recovery,
-privacy-class residual fallbacks, and mature diagnostics remain reference work
-for later Phase 5 slices. Vision-vs-MediaPipe visual quality and sustained face
+dormancy/reactivation probes, multi-frame privacy-class fallback continuity,
+and mature diagnostics remain reference work for later Phase 5 slices.
+Vision-vs-MediaPipe visual quality and sustained face
 inference cost also require real-iPhone evidence before release parity can be
 claimed.
 

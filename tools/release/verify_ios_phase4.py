@@ -100,7 +100,7 @@ def verify_temporal_privacy() -> None:
         ".filter { $0.confidence >= 0.60 }",
         "private let maxMissedFrames = 15",
         "private let maxOcclusionFrames = 90",
-        "let margin: Float32 = 0.05",
+        "associationAmbiguityMargin: Float32 = 0.05",
         "bboxIoU",
         "maskIoU",
         "motionScore",

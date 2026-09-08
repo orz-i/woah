@@ -7,6 +7,12 @@ enum IOSTrackState: String {
   case reacquiring = "REACQUIRING"
 }
 
+struct IOSFreshFacePrivacyClassEvidence {
+  let detectionIndex: Int
+  let detection: IOSYoloDetection
+  let residualTrackIds: Set<Int>
+}
+
 struct IOSTemporalTrackSnapshot {
   let id: Int
   let state: IOSTrackState
@@ -62,6 +68,7 @@ final class IOSTemporalIdentityTracker {
   private let metadata: IOSAnalysisMetadata?
   private let identityProtectedIds: Set<Int>
   private let privacyTargetIds: Set<Int>
+  private let faceOnlyPrivacyIds: Set<Int>
   private let frameWidth: Int
   private let frameHeight: Int
   private let maxMissedFrames = 15
@@ -76,7 +83,9 @@ final class IOSTemporalIdentityTracker {
   private let protectedUnobservedMaxCenterTravelRatio: Float32 = 0.30
   private let protectedUnobservedMinScale: Float32 = 0.82
   private let protectedUnobservedMaxScale: Float32 = 1.18
+  private let associationAmbiguityMargin: Float32 = 0.05
   private var tracks: [Track] = []
+  private var currentFacePrivacyEvidence: [IOSFreshFacePrivacyClassEvidence] = []
   private var nextTrackId = 0
   private var initialized = false
 
@@ -90,6 +99,7 @@ final class IOSTemporalIdentityTracker {
     self.metadata = metadata
     self.frameWidth = max(1, frameWidth)
     self.frameHeight = max(1, frameHeight)
+    faceOnlyPrivacyIds = faceOnlyIds.subtracting(fullBodyIds)
     privacyTargetIds = fullBodyIds.union(faceOnlyIds)
     if faceOnlyIds.isEmpty {
       identityProtectedIds = privacyTargetIds
@@ -111,6 +121,7 @@ final class IOSTemporalIdentityTracker {
     preprocess: IOSYoloPreprocessResult,
     timestampUs: Int64
   ) throws -> [IOSPreviewPerson] {
+    currentFacePrivacyEvidence.removeAll(keepingCapacity: true)
     if !initialized {
       initialized = true
       let assigned = IOSPreviewIdentityMatcher.assign(
@@ -139,6 +150,7 @@ final class IOSTemporalIdentityTracker {
     let assignments = assign(detections: detections)
     var matchedTracks = Set<Int>()
     var matchedDetections = Set<Int>()
+    var ambiguousProtectedDetections = Set<Int>()
 
     for candidate in assignments {
       guard !matchedTracks.contains(candidate.trackIndex),
@@ -147,6 +159,7 @@ final class IOSTemporalIdentityTracker {
       }
       let protected = identityProtectedIds.contains(tracks[candidate.trackIndex].id)
       if protected && isAmbiguousProtectedAssignment(candidate, detections: detections) {
+        ambiguousProtectedDetections.insert(candidate.detectionIndex)
         continue
       }
       observe(
@@ -158,11 +171,21 @@ final class IOSTemporalIdentityTracker {
       matchedDetections.insert(candidate.detectionIndex)
     }
 
+    let reservedFaceClassDetections = inferFacePrivacyClassEvidence(
+      detections: detections,
+      candidates: assignments,
+      matchedTracks: matchedTracks,
+      matchedDetections: matchedDetections,
+      ambiguousProtectedDetections: ambiguousProtectedDetections
+    )
+
     for index in tracks.indices where !matchedTracks.contains(index) {
       markMissed(trackIndex: index)
     }
 
-    for detectionIndex in detections.indices where !matchedDetections.contains(detectionIndex) {
+    for detectionIndex in detections.indices
+      where !matchedDetections.contains(detectionIndex)
+        && !reservedFaceClassDetections.contains(detectionIndex) {
       let detection = detections[detectionIndex]
       tracks.append(Track(
         id: nextTrackId,
@@ -205,6 +228,111 @@ final class IOSTemporalIdentityTracker {
       }
     }
     return output
+  }
+
+  /// Fresh selected-class detections whose exact protected owner remains
+  /// intentionally unresolved. Consumers may add temporary fail-closed FACE_ONLY
+  /// coverage for these detections, but must never use this sidecar to assign or
+  /// mutate a real track identity.
+  func facePrivacyClassEvidence() -> [IOSFreshFacePrivacyClassEvidence] {
+    currentFacePrivacyEvidence.sorted { first, second in
+      first.detectionIndex < second.detectionIndex
+    }
+  }
+
+  /// Mirrors Android's cardinality-balanced residual privacy-class sidecar.
+  /// A near-tie detection can only become anonymous FACE_ONLY evidence when the
+  /// connected residual ambiguity group has one fresh detection per possible
+  /// owner and every possible owner belongs to the selected FACE_ONLY class.
+  /// The possible-owner set deliberately includes raw near-margin competitors
+  /// even when they failed the normal identity-evidence threshold, because such
+  /// a competitor can still be the reason `isAmbiguousProtectedAssignment`
+  /// refused an identity commit.
+  private func inferFacePrivacyClassEvidence(
+    detections: [IOSYoloDetection],
+    candidates: [Candidate],
+    matchedTracks: Set<Int>,
+    matchedDetections: Set<Int>,
+    ambiguousProtectedDetections: Set<Int>
+  ) -> Set<Int> {
+    guard !faceOnlyPrivacyIds.isEmpty else { return [] }
+
+    let ambiguousDetections = detections.indices.filter {
+      !matchedDetections.contains($0) && ambiguousProtectedDetections.contains($0)
+    }
+    guard !ambiguousDetections.isEmpty else { return [] }
+
+    var ownerIdsByDetection: [Int: Set<Int>] = [:]
+    for detectionIndex in ambiguousDetections {
+      let candidateScores = candidates.compactMap { candidate -> Float32? in
+        guard candidate.detectionIndex == detectionIndex,
+              !matchedTracks.contains(candidate.trackIndex) else {
+          return nil
+        }
+        return candidate.score
+      }
+      guard let bestCandidateScore = candidateScores.max() else { continue }
+
+      let detection = detections[detectionIndex]
+      var possibleOwners = Set<Int>()
+      for trackIndex in tracks.indices where !matchedTracks.contains(trackIndex) {
+        let track = tracks[trackIndex]
+        let score = bboxIoU(track: track, detection: detection) * 0.45
+          + maskIoU(track.detection.mask, detection.mask) * 0.35
+          + motionScore(track: track, detection: detection) * 0.20
+        if score >= bestCandidateScore - associationAmbiguityMargin {
+          possibleOwners.insert(track.id)
+        }
+      }
+      if !possibleOwners.isEmpty {
+        ownerIdsByDetection[detectionIndex] = possibleOwners
+      }
+    }
+
+    var visitedDetections = Set<Int>()
+    var reservedDetections = Set<Int>()
+    for seedDetection in ambiguousDetections.sorted() {
+      guard !visitedDetections.contains(seedDetection),
+            let seedOwners = ownerIdsByDetection[seedDetection],
+            !seedOwners.isEmpty else {
+        continue
+      }
+
+      var componentDetections: Set<Int> = [seedDetection]
+      var componentOwners = seedOwners
+      var expanded = true
+      while expanded {
+        expanded = false
+        for detectionIndex in ambiguousDetections
+          where !componentDetections.contains(detectionIndex) {
+          guard let owners = ownerIdsByDetection[detectionIndex],
+                !componentOwners.isDisjoint(with: owners) else {
+            continue
+          }
+          componentDetections.insert(detectionIndex)
+          componentOwners.formUnion(owners)
+          expanded = true
+        }
+      }
+      visitedDetections.formUnion(componentDetections)
+
+      // Android only infers privacy class for a cardinality-balanced residual
+      // set. A 1-detection / 2-owner merge is intentionally *not* enough.
+      guard componentDetections.count == componentOwners.count,
+            componentOwners.allSatisfy({ faceOnlyPrivacyIds.contains($0) }) else {
+        continue
+      }
+
+      for detectionIndex in componentDetections.sorted() {
+        currentFacePrivacyEvidence.append(IOSFreshFacePrivacyClassEvidence(
+          detectionIndex: detectionIndex,
+          detection: detections[detectionIndex],
+          residualTrackIds: componentOwners
+        ))
+        reservedDetections.insert(detectionIndex)
+      }
+    }
+    return reservedDetections
   }
 
   /// Phase 5 Golden Trace observation surface. This is intentionally internal
@@ -311,7 +439,6 @@ final class IOSTemporalIdentityTracker {
     _ candidate: Candidate,
     detections: [IOSYoloDetection]
   ) -> Bool {
-    let margin: Float32 = 0.05
     let track = tracks[candidate.trackIndex]
     let competingDetectionScore = detections.indices
       .filter { $0 != candidate.detectionIndex }
@@ -322,7 +449,7 @@ final class IOSTemporalIdentityTracker {
           + motionScore(track: track, detection: detection) * 0.20
       }
       .max() ?? -1
-    if competingDetectionScore >= candidate.score - margin {
+    if competingDetectionScore >= candidate.score - associationAmbiguityMargin {
       return true
     }
 
@@ -336,7 +463,7 @@ final class IOSTemporalIdentityTracker {
           + motionScore(track: other, detection: detection) * 0.20
       }
       .max() ?? -1
-    return competingTrackScore >= candidate.score - margin
+    return competingTrackScore >= candidate.score - associationAmbiguityMargin
   }
 
   private func observe(

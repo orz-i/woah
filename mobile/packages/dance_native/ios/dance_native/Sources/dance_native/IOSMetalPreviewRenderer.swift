@@ -303,12 +303,23 @@ final class IOSMetalPreviewRenderer {
       }
     }
 
-    var faceRects: [SIMD4<Float>] = []
-    faceRects.reserveCapacity(facePersons.count)
+    var regionsToRender: [IOSFacePrivacyEllipse] = []
+    regionsToRender.reserveCapacity(facePersons.count + faceRegions.count)
     for person in facePersons {
       let region = faceRegions[person.id]
         ?? IOSFacePrivacyGeometry.fallbackEllipse(person.detection)
       guard let region else { continue }
+      regionsToRender.append(region)
+    }
+    for syntheticId in faceRegions.keys.filter({ $0 < 0 }).sorted() {
+      if let region = faceRegions[syntheticId] {
+        regionsToRender.append(region)
+      }
+    }
+
+    var faceRects: [SIMD4<Float>] = []
+    faceRects.reserveCapacity(regionsToRender.count)
+    for region in regionsToRender {
       let rect = faceRect(
         region,
         sourceWidth: sourceWidth,
