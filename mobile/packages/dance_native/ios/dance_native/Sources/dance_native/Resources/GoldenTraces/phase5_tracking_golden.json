@@ -143,6 +143,153 @@
       ]
     },
     {
+      "name": "protected_lost_stale_anchor_isolation",
+      "androidReferences": [
+        {
+          "path": "mobile/packages/dance_native/android/src/test/kotlin/com/danceanon/native/tracking/TrackManagerLostRecoveryIsolationTest.kt",
+          "testName": "testLostTrackIsNotGloballyReboundToPersonAtStaleLastObservedPosition"
+        },
+        {
+          "path": "mobile/packages/dance_native/android/src/test/kotlin/com/danceanon/native/tracking/TrackManagerSampledMaskIoUTest.kt",
+          "testName": "protectedUnobservedPredictionIsBoundedAroundReliableAnchor"
+        }
+      ],
+      "frameWidth": 640,
+      "frameHeight": 640,
+      "fullBodyIds": [0],
+      "faceOnlyIds": [],
+      "analysisPersons": [
+        {"id": 0, "bbox": [100, 100, 160, 300], "confidence": 0.95}
+      ],
+      "steps": [
+        {
+          "repeat": 1,
+          "detections": [
+            {"bbox": [100, 100, 160, 300], "confidence": 0.95, "maskRect": [0.10, 0.15, 0.30, 0.85]}
+          ],
+          "expect": [
+            {"id": 0, "state": "ACTIVE", "missedFrames": 0, "observed": true, "identityProtected": true, "privacySelected": true, "outputPresent": true, "fallback": false}
+          ]
+        },
+        {
+          "repeat": 1,
+          "detections": [
+            {"bbox": [200, 100, 260, 300], "confidence": 0.95, "maskRect": [0.10, 0.15, 0.30, 0.85]}
+          ],
+          "expect": [
+            {"id": 0, "state": "ACTIVE", "missedFrames": 0, "observed": true, "identityProtected": true, "privacySelected": true, "outputPresent": true, "fallback": false}
+          ]
+        },
+        {
+          "repeat": 1,
+          "detections": [
+            {"bbox": [300, 100, 360, 300], "confidence": 0.95, "maskRect": [0.10, 0.15, 0.30, 0.85]}
+          ],
+          "expect": [
+            {"id": 0, "state": "ACTIVE", "missedFrames": 0, "observed": true, "identityProtected": true, "privacySelected": true, "outputPresent": true, "fallback": false}
+          ]
+        },
+        {
+          "repeat": 1,
+          "detections": [
+            {"bbox": [400, 100, 460, 300], "confidence": 0.95, "maskRect": [0.10, 0.15, 0.30, 0.85]}
+          ],
+          "expect": [
+            {"id": 0, "state": "ACTIVE", "missedFrames": 0, "observed": true, "identityProtected": true, "privacySelected": true, "outputPresent": true, "fallback": false}
+          ]
+        },
+        {
+          "repeat": 16,
+          "detections": [],
+          "expect": [
+            {"id": 0, "state": "LOST", "missedFrames": 16, "observed": false, "identityProtected": true, "privacySelected": true, "outputPresent": true, "fallback": true, "maxPredictionTravelRatio": 0.30}
+          ]
+        },
+        {
+          "repeat": 1,
+          "detections": [
+            {"bbox": [400, 100, 460, 300], "confidence": 0.95, "maskRect": [0.10, 0.15, 0.30, 0.85]}
+          ],
+          "expect": [
+            {"id": 0, "state": "LOST", "missedFrames": 17, "observed": false, "identityProtected": true, "privacySelected": true, "outputPresent": true, "fallback": true, "maxPredictionTravelRatio": 0.30},
+            {"id": 1, "state": "ACTIVE", "missedFrames": 0, "observed": true, "identityProtected": false, "privacySelected": false, "outputPresent": true, "fallback": false}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "long_occlusion_grace_reacquires_original_id",
+      "androidReferences": [
+        {
+          "path": "mobile/packages/dance_native/android/src/test/kotlin/com/danceanon/native/tracking/TrackManagerLongOcclusionReacquisitionTest.kt",
+          "testName": "testLongOcclusion25FramesDoesNotInstantRemoveTargetAndReacquiresId"
+        }
+      ],
+      "frameWidth": 800,
+      "frameHeight": 640,
+      "fullBodyIds": [0],
+      "faceOnlyIds": [],
+      "analysisPersons": [
+        {"id": 0, "bbox": [350, 200, 450, 400], "confidence": 0.95},
+        {"id": 1, "bbox": [550, 200, 650, 400], "confidence": 0.95}
+      ],
+      "steps": [
+        {
+          "repeat": 1,
+          "detections": [
+            {"bbox": [350, 200, 450, 400], "confidence": 0.95, "maskRect": [0.10, 0.10, 0.35, 0.90]},
+            {"bbox": [550, 200, 650, 400], "confidence": 0.95, "maskRect": [0.65, 0.10, 0.90, 0.90]}
+          ],
+          "expect": [
+            {"id": 0, "state": "ACTIVE", "missedFrames": 0, "observed": true, "identityProtected": true, "privacySelected": true, "outputPresent": true, "fallback": false},
+            {"id": 1, "state": "ACTIVE", "missedFrames": 0, "observed": true, "identityProtected": false, "privacySelected": false, "outputPresent": true, "fallback": false}
+          ]
+        },
+        {
+          "repeat": 1,
+          "detections": [
+            {"bbox": [450, 200, 550, 400], "confidence": 0.95, "maskRect": [0.10, 0.10, 0.35, 0.90]},
+            {"bbox": [450, 200, 550, 400], "confidence": 0.95, "maskRect": [0.65, 0.10, 0.90, 0.90]}
+          ],
+          "expect": [
+            {"id": 0, "state": "ACTIVE", "missedFrames": 0, "observed": true, "identityProtected": true, "privacySelected": true, "outputPresent": true, "fallback": false},
+            {"id": 1, "state": "ACTIVE", "missedFrames": 0, "observed": true, "identityProtected": false, "privacySelected": false, "outputPresent": true, "fallback": false}
+          ]
+        },
+        {
+          "repeat": 25,
+          "detections": [
+            {"bbox": [450, 200, 550, 400], "confidence": 0.95, "maskRect": [0.65, 0.10, 0.90, 0.90]}
+          ],
+          "expect": [
+            {"id": 0, "state": "OCCLUDED", "missedFrames": 25, "occlusionGraceRemaining": 10, "observed": false, "identityProtected": true, "privacySelected": true, "outputPresent": true, "fallback": true, "maxPredictionTravelRatio": 0.30},
+            {"id": 1, "state": "ACTIVE", "missedFrames": 0, "observed": true, "identityProtected": false, "privacySelected": false, "outputPresent": true, "fallback": false}
+          ]
+        },
+        {
+          "repeat": 1,
+          "detections": [
+            {"bbox": [300, 200, 400, 400], "confidence": 0.95, "maskRect": [0.65, 0.10, 0.90, 0.90]}
+          ],
+          "expect": [
+            {"id": 0, "state": "REACQUIRING", "missedFrames": 26, "occlusionGraceRemaining": 9, "observed": false, "identityProtected": true, "privacySelected": true, "outputPresent": true, "fallback": true, "maxPredictionTravelRatio": 0.30},
+            {"id": 1, "state": "ACTIVE", "missedFrames": 0, "observed": true, "identityProtected": false, "privacySelected": false, "outputPresent": true, "fallback": false}
+          ]
+        },
+        {
+          "repeat": 1,
+          "detections": [
+            {"bbox": [600, 200, 700, 400], "confidence": 0.95, "maskRect": [0.10, 0.10, 0.35, 0.90]},
+            {"bbox": [250, 200, 350, 400], "confidence": 0.95, "maskRect": [0.65, 0.10, 0.90, 0.90]}
+          ],
+          "expect": [
+            {"id": 0, "state": "ACTIVE", "missedFrames": 0, "occlusionGraceRemaining": 0, "observed": true, "identityProtected": true, "privacySelected": true, "outputPresent": true, "fallback": false},
+            {"id": 1, "state": "ACTIVE", "missedFrames": 0, "observed": true, "identityProtected": false, "privacySelected": false, "outputPresent": true, "fallback": false}
+          ]
+        }
+      ]
+    },
+    {
       "name": "selected_identity_long_gap_fails_closed",
       "androidReferences": [
         {

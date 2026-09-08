@@ -48,6 +48,8 @@ def verify_trace_contract() -> None:
         "short_gap_reacquire_full_body",
         "face_only_unselected_neighbor_isolation",
         "ambiguous_face_only_defers_identity_commit",
+        "protected_lost_stale_anchor_isolation",
+        "long_occlusion_grace_reacquires_original_id",
         "selected_identity_long_gap_fails_closed",
     }
     names = {case.get("name") for case in cases if isinstance(case, dict)}
@@ -115,6 +117,15 @@ def verify_trace_contract() -> None:
                 if expectation.get("fallback") is True:
                     check(expectation.get("outputPresent") is True, f"{name}: fallback must be emitted")
                     check(expectation.get("privacySelected") is True, f"{name}: fallback may only cover a selected identity")
+                grace = expectation.get("occlusionGraceRemaining")
+                if grace is not None:
+                    check(isinstance(grace, int) and 0 <= grace <= 10, f"{name}: invalid occlusion grace expectation")
+                travel_ratio = expectation.get("maxPredictionTravelRatio")
+                if travel_ratio is not None:
+                    check(
+                        isinstance(travel_ratio, (int, float)) and 0 < travel_ratio <= 0.30,
+                        f"{name}: protected prediction travel bound must be <= Android 0.30 ratio",
+                    )
             check(len(ids) == len(set(ids)), f"{name}: duplicate expected track IDs")
 
 
@@ -133,6 +144,15 @@ def verify_ios_replay_surface() -> None:
         "privacySelected: privacyTargetIds.contains(track.id)",
         "track.state = .active",
         "REACQUIRING is reserved for the interval",
+        "postOcclusionGraceFrames = 10",
+        "protectedGroupActiveMinBBoxIoU: Float32 = 0.35",
+        "protectedGroupReacquireMinBBoxIoU: Float32 = 0.45",
+        "protectedRecoveryMinBBoxIoU: Float32 = 0.50",
+        "protectedRecoveryMinMaskIoU: Float32 = 0.45",
+        "protectedUnobservedMaxCenterTravelRatio: Float32 = 0.30",
+        "protectedLostRecoveryGeometrySufficient",
+        "boundProtectedPredictionAroundLastObservation",
+        "track.occlusionGraceRemaining = postOcclusionGraceFrames",
     ):
         check(token in tracker, f"Phase 5 tracker parity surface missing: {token}")
 
@@ -148,6 +168,9 @@ def verify_ios_replay_surface() -> None:
         "conservativePrivacyFallback",
         "expectedErrorCode",
         'error.code == expectedErrorCode',
+        "occlusionGraceRemaining == expectedGrace",
+        "maxPredictionTravelRatio",
+        "protected prediction escaped anchor bound",
     ):
         check(token in smoke, f"Phase 5 Golden Trace replay missing: {token}")
 
@@ -168,11 +191,19 @@ def verify_android_reference_boundary() -> None:
     )
     for token in (
         "val maxMissedFrames: Int = 15",
+        "val postOcclusionGraceFrames: Int = 10",
         "val occlusionMaxDurationFrames: Int = 90",
         "val associationAmbiguityMargin: Float = 0.05f",
         "setIdentityProtectedTrackIds",
         "setPrivacySelectedTrackIds",
         "framesSinceLastObservation",
+        "private const val PROTECTED_GROUP_ACTIVE_MIN_BBOX_IOU = 0.35f",
+        "private const val PROTECTED_GROUP_REACQUIRE_MIN_BBOX_IOU = 0.45f",
+        "private const val PROTECTED_RECOVERY_MIN_BBOX_IOU = 0.50f",
+        "private const val PROTECTED_RECOVERY_MIN_MASK_IOU = 0.45f",
+        "private const val PROTECTED_UNOBSERVED_MAX_CENTER_TRAVEL_RATIO = 0.30f",
+        "val predictionProgress = if (predTravel > 1e-4f)",
+        "val motionConsistent = !hasMeaningfulPrediction || bIoU > 0.05f || predictionProgress >= 0.25f",
     ):
         check(token in android, f"Android tracking reference drifted; revisit Phase 5 Golden Trace: {token}")
 

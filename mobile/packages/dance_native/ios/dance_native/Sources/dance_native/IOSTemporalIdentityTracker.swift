@@ -11,6 +11,7 @@ struct IOSTemporalTrackSnapshot {
   let id: Int
   let state: IOSTrackState
   let missedFrames: Int
+  let occlusionGraceRemaining: Int
   let observedThisFrame: Bool
   let identityProtected: Bool
   let privacySelected: Bool
@@ -18,6 +19,10 @@ struct IOSTemporalTrackSnapshot {
   let predictedY1: Float32
   let predictedX2: Float32
   let predictedY2: Float32
+  let lastObservedX1: Float32
+  let lastObservedY1: Float32
+  let lastObservedX2: Float32
+  let lastObservedY2: Float32
 }
 
 /// iOS Phase 4 temporal identity tracker.
@@ -40,6 +45,7 @@ final class IOSTemporalIdentityTracker {
     var velocityY: Float32 = 0
     var state: IOSTrackState = .active
     var missedFrames: Int = 0
+    var occlusionGraceRemaining: Int = 0
     var age: Int = 1
     var observedThisFrame: Bool = true
     var lastTimestampUs: Int64
@@ -60,6 +66,16 @@ final class IOSTemporalIdentityTracker {
   private let frameHeight: Int
   private let maxMissedFrames = 15
   private let maxOcclusionFrames = 90
+  private let postOcclusionGraceFrames = 10
+  private let protectedGroupActiveMinBBoxIoU: Float32 = 0.35
+  private let protectedGroupActiveMinMaskIoU: Float32 = 0.20
+  private let protectedGroupReacquireMinBBoxIoU: Float32 = 0.45
+  private let protectedGroupReacquireMinMaskIoU: Float32 = 0.25
+  private let protectedRecoveryMinBBoxIoU: Float32 = 0.50
+  private let protectedRecoveryMinMaskIoU: Float32 = 0.45
+  private let protectedUnobservedMaxCenterTravelRatio: Float32 = 0.30
+  private let protectedUnobservedMinScale: Float32 = 0.82
+  private let protectedUnobservedMaxScale: Float32 = 1.18
   private var tracks: [Track] = []
   private var nextTrackId = 0
   private var initialized = false
@@ -201,13 +217,18 @@ final class IOSTemporalIdentityTracker {
         id: track.id,
         state: track.state,
         missedFrames: track.missedFrames,
+        occlusionGraceRemaining: track.occlusionGraceRemaining,
         observedThisFrame: track.observedThisFrame,
         identityProtected: identityProtectedIds.contains(track.id),
         privacySelected: privacyTargetIds.contains(track.id),
         predictedX1: track.predictedX1,
         predictedY1: track.predictedY1,
         predictedX2: track.predictedX2,
-        predictedY2: track.predictedY2
+        predictedY2: track.predictedY2,
+        lastObservedX1: track.detection.x1,
+        lastObservedY1: track.detection.y1,
+        lastObservedX2: track.detection.x2,
+        lastObservedY2: track.detection.y2
       )
     }.sorted { $0.id < $1.id }
   }
@@ -238,6 +259,9 @@ final class IOSTemporalIdentityTracker {
       track.predictedX2 += dx
       track.predictedY1 += dy
       track.predictedY2 += dy
+      if identityProtectedIds.contains(track.id), track.missedFrames > 0 {
+        boundProtectedPredictionAroundLastObservation(track: &track)
+      }
       track.lastTimestampUs = timestampUs
       track.age += 1
       tracks[index] = track
@@ -258,9 +282,13 @@ final class IOSTemporalIdentityTracker {
         let score = bbox * 0.45 + mask * 0.35 + motion * 0.20
         let protected = identityProtectedIds.contains(track.id)
         let threshold: Float32 = protected ? 0.22 : 0.18
-        let absoluteGeometry = bbox >= (protected ? 0.12 : 0.08)
-          || mask >= (protected ? 0.10 : 0.06)
-        if score >= threshold && absoluteGeometry {
+        let identityEvidence = protected
+          ? protectedIdentityEvidenceSufficient(state: track.state, bboxIoU: bbox, maskIoU: mask)
+          : (bbox >= 0.08 || mask >= 0.06)
+        let recoveryGeometry = !protected
+          || track.state != .lost
+          || protectedLostRecoveryGeometrySufficient(track: track, detection: detection, bboxIoU: bbox)
+        if score >= threshold && identityEvidence && recoveryGeometry {
           candidates.append(Candidate(
             trackIndex: trackIndex,
             detectionIndex: detectionIndex,
@@ -336,6 +364,7 @@ final class IOSTemporalIdentityTracker {
     // which the identity is still unresolved, not the first fresh observation.
     track.state = .active
     track.missedFrames = 0
+    track.occlusionGraceRemaining = 0
     track.lastTimestampUs = timestampUs
     tracks[trackIndex] = track
   }
@@ -343,18 +372,124 @@ final class IOSTemporalIdentityTracker {
   private func markMissed(trackIndex: Int) {
     var track = tracks[trackIndex]
     track.missedFrames += 1
+    let wasLost = track.state == .lost
     let overlapsObservedTrack = tracks.indices.contains { otherIndex in
       guard otherIndex != trackIndex, tracks[otherIndex].observedThisFrame else { return false }
       return bboxOverlapRatio(track: track, other: tracks[otherIndex]) >= 0.30
     }
-    if overlapsObservedTrack && track.missedFrames <= maxOcclusionFrames {
+    if !wasLost && overlapsObservedTrack && track.missedFrames <= maxOcclusionFrames {
       track.state = .occluded
+      track.occlusionGraceRemaining = postOcclusionGraceFrames
+    } else if !wasLost && track.occlusionGraceRemaining > 0 {
+      track.state = .reacquiring
+      track.occlusionGraceRemaining -= 1
+    } else if wasLost {
+      // A LOST protected identity must not become OCCLUDED again merely because
+      // an unrelated fresh track happens to overlap its bounded prediction.
+      // Android keeps that case in the dedicated strict LOST recovery path.
+      track.state = .lost
+      track.occlusionGraceRemaining = 0
     } else if track.missedFrames <= maxMissedFrames {
       track.state = .reacquiring
     } else {
       track.state = .lost
+      track.occlusionGraceRemaining = 0
     }
     tracks[trackIndex] = track
+  }
+
+  private func protectedIdentityEvidenceSufficient(
+    state: IOSTrackState,
+    bboxIoU: Float32,
+    maskIoU: Float32
+  ) -> Bool {
+    switch state {
+    case .lost:
+      return bboxIoU >= protectedRecoveryMinBBoxIoU
+        || maskIoU >= protectedRecoveryMinMaskIoU
+    case .occluded, .reacquiring:
+      return bboxIoU >= protectedGroupReacquireMinBBoxIoU
+        || maskIoU >= protectedGroupReacquireMinMaskIoU
+    case .active:
+      return bboxIoU >= protectedGroupActiveMinBBoxIoU
+        || maskIoU >= protectedGroupActiveMinMaskIoU
+    }
+  }
+
+  private func protectedLostRecoveryGeometrySufficient(
+    track: Track,
+    detection: IOSYoloDetection,
+    bboxIoU: Float32
+  ) -> Bool {
+    let predictedCenterX = (track.predictedX1 + track.predictedX2) * 0.5
+    let predictedCenterY = (track.predictedY1 + track.predictedY2) * 0.5
+    let observedCenterX = (track.detection.x1 + track.detection.x2) * 0.5
+    let observedCenterY = (track.detection.y1 + track.detection.y2) * 0.5
+    let detectionCenterX = (detection.x1 + detection.x2) * 0.5
+    let detectionCenterY = (detection.y1 + detection.y2) * 0.5
+
+    let dx = predictedCenterX - detectionCenterX
+    let dy = predictedCenterY - detectionCenterY
+    let distance = sqrt(dx * dx + dy * dy)
+    let predictedWidth = max(1, track.predictedX2 - track.predictedX1)
+    let predictedHeight = max(1, track.predictedY2 - track.predictedY1)
+    let detectionWidth = max(1, detection.x2 - detection.x1)
+    let detectionHeight = max(1, detection.y2 - detection.y1)
+    let referenceDimension = max(
+      max(predictedWidth, predictedHeight),
+      max(detectionWidth, detectionHeight)
+    )
+
+    let predictionDx = predictedCenterX - observedCenterX
+    let predictionDy = predictedCenterY - observedCenterY
+    let predictionTravel = sqrt(predictionDx * predictionDx + predictionDy * predictionDy)
+    let candidateDx = detectionCenterX - observedCenterX
+    let candidateDy = detectionCenterY - observedCenterY
+    let predictionProgress: Float32
+    if predictionTravel > 0.0001 {
+      predictionProgress = (
+        candidateDx * predictionDx + candidateDy * predictionDy
+      ) / (predictionTravel * predictionTravel)
+    } else {
+      predictionProgress = 1
+    }
+
+    let hasMeaningfulPrediction = predictionTravel >= referenceDimension * 0.10
+    let motionConsistent = !hasMeaningfulPrediction
+      || bboxIoU > 0.05
+      || predictionProgress >= 0.25
+    let nearby = bboxIoU > 0.05 || distance < referenceDimension * 0.80
+    return nearby && motionConsistent
+  }
+
+  private func boundProtectedPredictionAroundLastObservation(track: inout Track) {
+    let anchorWidth = max(1, track.detection.x2 - track.detection.x1)
+    let anchorHeight = max(1, track.detection.y2 - track.detection.y1)
+    let anchorCenterX = (track.detection.x1 + track.detection.x2) * 0.5
+    let anchorCenterY = (track.detection.y1 + track.detection.y2) * 0.5
+    let predictedCenterX = (track.predictedX1 + track.predictedX2) * 0.5
+    let predictedCenterY = (track.predictedY1 + track.predictedY2) * 0.5
+    let dx = predictedCenterX - anchorCenterX
+    let dy = predictedCenterY - anchorCenterY
+    let travel = sqrt(dx * dx + dy * dy)
+    let maxTravel = max(anchorWidth, anchorHeight) * protectedUnobservedMaxCenterTravelRatio
+    let travelScale = travel > maxTravel && travel > 0.0001 ? maxTravel / travel : 1
+    let centerX = anchorCenterX + dx * travelScale
+    let centerY = anchorCenterY + dy * travelScale
+    let rawPredictedWidth = max(1, track.predictedX2 - track.predictedX1)
+    let rawPredictedHeight = max(1, track.predictedY2 - track.predictedY1)
+    let predictedWidth = min(
+      anchorWidth * protectedUnobservedMaxScale,
+      max(anchorWidth * protectedUnobservedMinScale, rawPredictedWidth)
+    )
+    let predictedHeight = min(
+      anchorHeight * protectedUnobservedMaxScale,
+      max(anchorHeight * protectedUnobservedMinScale, rawPredictedHeight)
+    )
+    track.predictedX1 = centerX - predictedWidth * 0.5
+    track.predictedY1 = centerY - predictedHeight * 0.5
+    track.predictedX2 = centerX + predictedWidth * 0.5
+    track.predictedY2 = centerY + predictedHeight * 0.5
   }
 
   private func conservativeFallbackDetection(

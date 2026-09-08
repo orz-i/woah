@@ -422,6 +422,31 @@ logic, mask-warp/sample-IoU behavior, and the complete temporal
 `FaceOnlyPrivacyFrameProcessor` remain later Phase 5 work. Production iOS
 inference remains XNNPACK until real-device delegate parity exists.
 
+Phase 5B strengthens the first temporal tracker against two Android regressions
+that matter directly to privacy identity ownership. Protected association now
+uses the Android state-aware minimum evidence tiers: ACTIVE requires bbox IoU
+>=0.35 or mask IoU >=0.20, OCCLUDED/REACQUIRING requires >=0.45 or >=0.25, and
+LOST recovery requires >=0.50 or >=0.45. LOST recovery additionally follows the
+Android current-prediction direction/proximity gate, so a different person at a
+stale last-observed box cannot steal a selected LOST identity merely because an
+old mask is similar.
+
+Unobserved protected predictions are now bounded around the last reliable
+observation using the Android 0.30 maximum center-travel ratio and 0.82...1.18
+size bounds. A 10-frame post-occlusion grace window is also retained when a
+long-running overlap separates, allowing the original ID to return ACTIVE even
+after the ordinary 15-frame missed-detection window. A track that is already
+LOST cannot be promoted back to OCCLUDED solely by overlap with an unrelated
+fresh track.
+
+The Golden Trace suite adds two matching Phase 5B cases: one establishes motion,
+lets a protected target become LOST, then places a passer at the stale anchor
+and requires a new ID; the other holds a selected target behind an observed
+neighbor for 25 frames, requires OCCLUDED state plus conservative privacy,
+requires REACQUIRING during the separation grace frame, then requires recovery
+of the original ID. These cases also assert the 0.30 protected-prediction bound
+and expose the remaining grace count through the internal parity snapshot.
+
 ## Cross-platform privacy gate
 
 iOS is not accepted merely because YOLO runs. The current Android behavior is

@@ -53,11 +53,13 @@ private struct IOSPhase5TrackExpectation: Decodable {
   let id: Int
   let state: String
   let missedFrames: Int
+  let occlusionGraceRemaining: Int?
   let observed: Bool
   let identityProtected: Bool
   let privacySelected: Bool
   let outputPresent: Bool
   let fallback: Bool
+  let maxPredictionTravelRatio: Double?
 }
 
 enum IOSGoldenTracePhase5Smoke {
@@ -341,6 +343,15 @@ enum IOSGoldenTracePhase5Smoke {
           "track \(expectation.id) missedFrames expected=\(expectation.missedFrames) actual=\(snapshot.missedFrames)"
         )
       }
+      if let expectedGrace = expectation.occlusionGraceRemaining {
+        guard snapshot.occlusionGraceRemaining == expectedGrace else {
+          throw failure(
+            caseName,
+            frame: frame,
+            "track \(expectation.id) occlusion grace expected=\(expectedGrace) actual=\(snapshot.occlusionGraceRemaining)"
+          )
+        }
+      }
       guard snapshot.observedThisFrame == expectation.observed else {
         throw failure(caseName, frame: frame, "track \(expectation.id) observed flag drifted")
       }
@@ -358,6 +369,25 @@ enum IOSGoldenTracePhase5Smoke {
       let fallback = emitted?.conservativePrivacyFallback ?? false
       guard fallback == expectation.fallback else {
         throw failure(caseName, frame: frame, "track \(expectation.id) fallback flag drifted")
+      }
+      if let maxTravelRatio = expectation.maxPredictionTravelRatio {
+        let predictedCenterX = Double(snapshot.predictedX1 + snapshot.predictedX2) * 0.5
+        let predictedCenterY = Double(snapshot.predictedY1 + snapshot.predictedY2) * 0.5
+        let observedCenterX = Double(snapshot.lastObservedX1 + snapshot.lastObservedX2) * 0.5
+        let observedCenterY = Double(snapshot.lastObservedY1 + snapshot.lastObservedY2) * 0.5
+        let dx = predictedCenterX - observedCenterX
+        let dy = predictedCenterY - observedCenterY
+        let travel = sqrt(dx * dx + dy * dy)
+        let anchorWidth = Double(max(1, snapshot.lastObservedX2 - snapshot.lastObservedX1))
+        let anchorHeight = Double(max(1, snapshot.lastObservedY2 - snapshot.lastObservedY1))
+        let referenceDimension = max(anchorWidth, anchorHeight)
+        guard travel <= referenceDimension * maxTravelRatio + 0.01 else {
+          throw failure(
+            caseName,
+            frame: frame,
+            "track \(expectation.id) protected prediction escaped anchor bound: ratio=\(travel / referenceDimension)"
+          )
+        }
       }
     }
   }
