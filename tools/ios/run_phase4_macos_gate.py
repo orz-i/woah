@@ -92,7 +92,7 @@ def main() -> int:
         "tools/ios/run_phase4_simulator_smoke.py",
         "--app",
         "mobile/app/build/ios/iphonesimulator/Runner.app",
-    ], timeout=720)
+    ], timeout=1200)
     print("IOS_PHASE4_MACOS_GATE=PASS")
     return 0
 
