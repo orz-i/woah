@@ -132,6 +132,11 @@ def verify_trace_contract() -> None:
 def verify_ios_replay_surface() -> None:
     tracker = text(SOURCES / "IOSTemporalIdentityTracker.swift", "IOSTemporalIdentityTracker.swift")
     smoke = text(SOURCES / "IOSGoldenTracePhase5Smoke.swift", "IOSGoldenTracePhase5Smoke.swift")
+    face_pipeline = text(SOURCES / "IOSFacePrivacyPipeline.swift", "IOSFacePrivacyPipeline.swift")
+    face_smoke = text(SOURCES / "IOSFacePrivacyPhase5Smoke.swift", "IOSFacePrivacyPhase5Smoke.swift")
+    renderer = text(SOURCES / "IOSMetalPreviewRenderer.swift", "IOSMetalPreviewRenderer.swift")
+    export = text(SOURCES / "IOSExportPipeline.swift", "IOSExportPipeline.swift")
+    preview = text(SOURCES / "IOSPreviewPipeline.swift", "IOSPreviewPipeline.swift")
     resources = text(SOURCES / "IOSGoldenTraceResources.swift", "IOSGoldenTraceResources.swift")
     plugin = text(SOURCES / "DanceNativePlugin.swift", "DanceNativePlugin.swift")
     podspec = text(ROOT / "mobile/packages/dance_native/ios/dance_native.podspec", "dance_native.podspec")
@@ -174,6 +179,74 @@ def verify_ios_replay_surface() -> None:
     ):
         check(token in smoke, f"Phase 5 Golden Trace replay missing: {token}")
 
+    for token in (
+        "import Vision",
+        "VNDetectFaceRectanglesRequest()",
+        "protocol IOSFaceLocating",
+        "final class IOSVisionFaceLocator",
+        "final class IOSFacePrivacyTemporalResolver",
+        "IOSFacePrivacyGeometry.fallbackEllipse",
+        "person.conservativePrivacyFallback",
+        "ambiguityMargin: Float32 = 0.08",
+        "containment >= 0.80",
+        "faceCenterY <= person.y1 + personHeight * 0.62",
+        "detectedRadiusXFactor: Float32 = 0.66",
+        "detectedRadiusYFactor: Float32 = 0.74",
+        "detectedCenterYShift: Float32 = -0.04",
+        "fallbackCenterYRatio: Float32 = 0.14",
+        "fallbackRadiusXFromWidth: Float32 = 0.22",
+        "fallbackRadiusYFromWidth: Float32 = 0.26",
+        "fallbackReferenceExpansion: Float32 = 1.24",
+        "fallbackMinTrustedExpansion: Float32 = 1.10",
+        "detectedReferenceAlpha: Float32 = 0.25",
+        "privacyTargetFloor: Float32 = 0.90",
+        "positionMaxRadiusStep: Float32 = 0.80",
+        "positionMaxUnobservedPersonRadiusStep: Float32 = 0.65",
+    ):
+        check(token in face_pipeline, f"Phase 5C FACE_ONLY pipeline missing: {token}")
+
+    for token in (
+        "IOSPhase5SequenceFaceLocator",
+        "IOSVisionFaceLocator().locateFaces(in: visionSource)",
+        "Vision FACE_ONLY runtime probe failed",
+        "detectedRegion.source == .detectedFace",
+        "missedRegion.source == .yoloHeadFallback",
+        "ambiguous[0]?.source == .yoloHeadFallback",
+        "conservativePrivacyFallback: true",
+        "predicted[0]?.source == .yoloHeadFallback",
+        "faceRegions: [0: renderRegion]",
+        "FACE_ONLY ellipse center was not covered",
+        "FACE_ONLY privacy regressed to a rectangular mask",
+        '"vision_runtime_face_count"',
+    ):
+        check(token in face_smoke, f"Phase 5C deterministic FACE_ONLY smoke missing: {token}")
+
+    for token in (
+        "faceRegions: [Int: IOSFacePrivacyEllipse] = [:]",
+        "IOSFacePrivacyGeometry.fallbackEllipse(person.detection)",
+        "dx * dx + dy * dy <= 1",
+        "faceRect(",
+    ):
+        check(token in renderer, f"Phase 5C Metal FACE_ONLY rendering missing: {token}")
+
+    for token in (
+        "IOSFacePrivacyTemporalResolver()",
+        "facePrivacyResolver?.resolve(",
+        "faceRegions: faceRegions",
+    ):
+        check(token in export, f"Phase 5C export FACE_ONLY wiring missing: {token}")
+    for token in (
+        "facePrivacyResolvers: [String: IOSFacePrivacyTemporalResolver]",
+        "facePrivacyResolver(cacheId: request.analysisCacheId).resolve(",
+        "facePrivacyResolvers.removeValue(forKey: cacheId)?.reset()",
+        "faceRegions: faceRegions",
+    ):
+        check(token in preview, f"Phase 5C preview FACE_ONLY wiring missing: {token}")
+    check(
+        "IOSFacePrivacyPhase5Smoke.run()" in smoke and '"facePrivacy": facePrivacyReport' in smoke,
+        "Phase 5 Golden Trace Simulator gate must include deterministic Phase 5C FACE_ONLY coverage",
+    )
+
     check("dance_native_phase5" in resources, "Phase 5 resource locator must resolve the dedicated bundle")
     check("dance_native_phase5" in podspec and "Resources/GoldenTraces/**/*" in podspec, "Phase 5 Golden Trace must be bundled by CocoaPods")
     check('case "runIOSGoldenTracePhase5Smoke"' in plugin, "Phase 5 smoke MethodChannel hook is missing")
@@ -206,6 +279,35 @@ def verify_android_reference_boundary() -> None:
         "val motionConsistent = !hasMeaningfulPrediction || bIoU > 0.05f || predictionProgress >= 0.25f",
     ):
         check(token in android, f"Android tracking reference drifted; revisit Phase 5 Golden Trace: {token}")
+
+    face_geometry = text(
+        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/com/danceanon/native/privacy/FacePrivacyRegionResolver.kt",
+        "Android FacePrivacyRegionResolver",
+    )
+    for token in (
+        "private const val DETECTED_RADIUS_X_FACTOR = 0.66f",
+        "private const val DETECTED_RADIUS_Y_FACTOR = 0.74f",
+        "private const val DETECTED_CENTER_Y_SHIFT = -0.04f",
+        "private const val FALLBACK_CENTER_Y_RATIO = 0.14f",
+        "private const val FALLBACK_RADIUS_X_FROM_WIDTH = 0.22f",
+        "private const val FALLBACK_RADIUS_Y_FROM_WIDTH = 0.26f",
+        "privacy falls back to a YOLO-derived",
+    ):
+        check(token in face_geometry, f"Android FACE_ONLY geometry reference drifted: {token}")
+
+    face_temporal = text(
+        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/com/danceanon/native/privacy/FacePrivacyTemporalStabilizer.kt",
+        "Android FacePrivacyTemporalStabilizer",
+    )
+    for token in (
+        "private const val FALLBACK_REFERENCE_EXPANSION = 1.24f",
+        "private const val FALLBACK_MIN_TRUSTED_EXPANSION = 1.10f",
+        "private const val DETECTED_REFERENCE_ALPHA = 0.25f",
+        "private const val PRIVACY_TARGET_FLOOR = 0.90f",
+        "private const val POSITION_MAX_RADIUS_STEP = 0.80f",
+        "private const val POSITION_MAX_UNOBSERVED_PERSON_RADIUS_STEP = 0.65f",
+    ):
+        check(token in face_temporal, f"Android FACE_ONLY temporal reference drifted: {token}")
 
 
 def verify_cloud_gate() -> None:

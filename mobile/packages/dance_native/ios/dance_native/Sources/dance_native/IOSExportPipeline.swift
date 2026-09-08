@@ -194,6 +194,9 @@ final class IOSExportPipeline {
         frameWidth: max(1, Int(displaySize.width.rounded())),
         frameHeight: max(1, Int(displaySize.height.rounded()))
       )
+      let facePrivacyResolver = faceOnlyIds.isEmpty
+        ? nil
+        : IOSFacePrivacyTemporalResolver()
 
       let videoReader = try makeVideoReader(
         asset: asset,
@@ -233,11 +236,18 @@ final class IOSExportPipeline {
           // iPhone delegate parity is accepted, matching the analysis root.
           inference = try runner.run(image: frame, preferredBackend: .xnnpack)
         }
+        let timestampUs = Int64((CMTimeGetSeconds(sourcePTS) * 1_000_000.0).rounded())
         let tracked = try tracker.update(
           detections: inference.detections,
           preprocess: inference.preprocess,
-          timestampUs: Int64((CMTimeGetSeconds(sourcePTS) * 1_000_000.0).rounded())
+          timestampUs: timestampUs
         )
+        let faceRegions = facePrivacyResolver?.resolve(
+          image: frame,
+          persons: tracked,
+          faceOnlyIds: faceOnlyIds,
+          timestampUs: timestampUs
+        ) ?? [:]
         let rendered = try renderer.render(
           source: frame,
           persons: tracked,
@@ -245,6 +255,7 @@ final class IOSExportPipeline {
           fullBodyIds: fullBodyIds,
           faceOnlyIds: faceOnlyIds,
           effects: request.effects,
+          faceRegions: faceRegions,
           outputWidth: target.width,
           outputHeight: target.height
         )

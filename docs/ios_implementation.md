@@ -463,6 +463,58 @@ pre-existing Android CI stage boundary seen before this iOS slice. Phase 5B
 does not modify Android production source or relax Android tracking/privacy or
 model gates.
 
+### Phase 5C: temporal FACE_ONLY foundation
+
+Phase 5C replaces the Phase 3/4 renderer-only head rectangle as the normal iOS
+FACE_ONLY path with a privacy-first localization pipeline. YOLO plus
+`IOSTemporalIdentityTracker` remains the only owner of person identity. Apple's
+Vision `VNDetectFaceRectanglesRequest` supplies source-space face rectangles,
+but a Vision observation may refine privacy geometry only after a conservative
+one-to-one association to an **observed** YOLO person. A near-tie candidate, a
+candidate that can plausibly belong to two people, a detector error, no face,
+or an unobserved/predicted person never removes privacy: that track uses the
+current YOLO-owned head fallback instead.
+
+`IOSFacePrivacyGeometry` mirrors the Android `FacePrivacyRegionResolver`
+geometry constants for the first cross-platform closure: detected face radii
+use 0.66x width / 0.74x height with the -0.04 vertical center shift, while the
+no-face fallback is centered 0.14 down the current person bbox and uses the
+same width/height-derived radius floors. The iOS temporal resolver also ports
+the Android trusted detected-size references and residual-motion limits,
+including the 1.24 fallback reference expansion, 1.10 minimum trusted
+expansion, 0.25 detected-reference update, 0.90 privacy target floor, and the
+0.80/0.65 residual/person-motion radius-step bounds. Detector evidence refines
+location; stale detector evidence does not become a second identity system.
+
+Preview keeps one FACE_ONLY resolver per analysis cache so sequential preview
+requests can reuse temporal geometry without leaking state between videos.
+Export owns one resolver for the job and feeds it the same tracked persons and
+presentation timestamps used by the production H.264 pipeline. Both paths pass
+resolved face ellipses into `IOSMetalPreviewRenderer`. The Metal input builder
+now paints the underlying FACE_ONLY privacy surface as an ellipse and uses the
+same ellipse bounds for sticker placement; if a caller provides no resolved
+region, the renderer still derives a YOLO head fallback locally so privacy does
+not depend on the face subsystem being present.
+
+The Phase 5 Simulator gate now includes `IOSFacePrivacyPhase5Smoke`. It executes
+the real Vision request once on a synthetic image to prove the framework/runtime
+path works (the detected-face count is intentionally **not** a correctness
+expectation), then uses an injected deterministic locator to verify a clear face
+is accepted, a detector miss falls back, a near-tie is rejected to fallback,
+and a predicted body cannot consume fresh face evidence. The same smoke renders
+an explicit ellipse through Metal and checks that its center is opaque while a
+corner of the ellipse's bounding rectangle stays unchanged, preventing a
+regression back to the oversized rectangular FACE_ONLY mask.
+
+This is a substantial FACE_ONLY closure, but it is still not a claim of complete
+Android `FaceOnlyPrivacyFrameProcessor` parity. Android's local ROI detector
+budgeting, landmark/keypoint center refinement, pixel-motion prediction,
+dormancy/reactivation probes, current-body-mask-guided expired-face recovery,
+privacy-class residual fallbacks, and mature diagnostics remain reference work
+for later Phase 5 slices. Vision-vs-MediaPipe visual quality and sustained face
+inference cost also require real-iPhone evidence before release parity can be
+claimed.
+
 ## Cross-platform privacy gate
 
 iOS is not accepted merely because YOLO runs. The current Android behavior is

@@ -46,6 +46,25 @@ final class IOSMetalPreviewRenderer {
     self.commandQueue = commandQueue
   }
 
+  private static func faceRect(
+    _ region: IOSFacePrivacyEllipse,
+    sourceWidth: Int,
+    sourceHeight: Int
+  ) -> SIMD4<Float> {
+    let width = Float32(max(1, sourceWidth))
+    let height = Float32(max(1, sourceHeight))
+    let left = max(0, region.centerX - region.radiusX)
+    let top = max(0, region.centerY - region.radiusY)
+    let right = min(width, region.centerX + region.radiusX)
+    let bottom = min(height, region.centerY + region.radiusY)
+    return SIMD4<Float>(
+      Float(left / width),
+      Float(top / height),
+      Float(right / width),
+      Float(bottom / height)
+    )
+  }
+
   func render(
     source: CGImage,
     persons: [IOSPreviewPerson],
@@ -53,6 +72,7 @@ final class IOSMetalPreviewRenderer {
     fullBodyIds: Set<Int>,
     faceOnlyIds: Set<Int>,
     effects: EffectConfigDto,
+    faceRegions: [Int: IOSFacePrivacyEllipse] = [:],
     outputWidth: Int? = nil,
     outputHeight: Int? = nil
   ) throws -> CGImage {
@@ -81,6 +101,7 @@ final class IOSMetalPreviewRenderer {
       preprocess: preprocess,
       fullBodyIds: fullBodyIds,
       faceOnlyIds: faceOnlyIds,
+      faceRegions: faceRegions,
       sourceWidth: sourceWidth,
       sourceHeight: sourceHeight,
       previewWidth: previewWidth,
@@ -237,6 +258,7 @@ final class IOSMetalPreviewRenderer {
     preprocess: IOSYoloPreprocessResult,
     fullBodyIds: Set<Int>,
     faceOnlyIds: Set<Int>,
+    faceRegions: [Int: IOSFacePrivacyEllipse],
     sourceWidth: Int,
     sourceHeight: Int,
     previewWidth: Int,
@@ -284,8 +306,11 @@ final class IOSMetalPreviewRenderer {
     var faceRects: [SIMD4<Float>] = []
     faceRects.reserveCapacity(facePersons.count)
     for person in facePersons {
-      let rect = conservativeFaceRect(
-        person.detection,
+      let region = faceRegions[person.id]
+        ?? IOSFacePrivacyGeometry.fallbackEllipse(person.detection)
+      guard let region else { continue }
+      let rect = faceRect(
+        region,
         sourceWidth: sourceWidth,
         sourceHeight: sourceHeight
       )
@@ -296,8 +321,14 @@ final class IOSMetalPreviewRenderer {
       let y2 = max(y1, min(previewHeight, Int(ceil(Double(rect.w) * Double(previewHeight)))))
       for y in y1..<y2 {
         let row = y * previewWidth
+        let sourceY = (Float32(y) + 0.5) * Float32(sourceHeight) / Float32(previewHeight)
+        let dy = (sourceY - region.centerY) / max(1, region.radiusY)
         for x in x1..<x2 {
-          mask[row + x] = 255
+          let sourceX = (Float32(x) + 0.5) * Float32(sourceWidth) / Float32(previewWidth)
+          let dx = (sourceX - region.centerX) / max(1, region.radiusX)
+          if dx * dx + dy * dy <= 1 {
+            mask[row + x] = 255
+          }
         }
       }
     }

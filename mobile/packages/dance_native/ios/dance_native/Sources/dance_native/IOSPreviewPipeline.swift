@@ -16,6 +16,7 @@ final class IOSPreviewPipeline {
   private let fileManager: FileManager
   private let cacheLock = NSLock()
   private var frameAnalysisCache: [String: CachedFrameAnalysis] = [:]
+  private var facePrivacyResolvers: [String: IOSFacePrivacyTemporalResolver] = [:]
   private var metalRenderer: IOSMetalPreviewRenderer?
 
   init(
@@ -74,6 +75,14 @@ final class IOSPreviewPipeline {
       )
     }
 
+    let faceRegions = faceOnlyIds.isEmpty
+      ? [:]
+      : facePrivacyResolver(cacheId: request.analysisCacheId).resolve(
+        image: frameAnalysis.image,
+        persons: frameAnalysis.persons,
+        faceOnlyIds: faceOnlyIds,
+        timestampUs: requestedTimestampMs * 1_000
+      )
     let renderer = try renderer()
     let rendered = try renderer.render(
       source: frameAnalysis.image,
@@ -81,7 +90,8 @@ final class IOSPreviewPipeline {
       preprocess: frameAnalysis.preprocess,
       fullBodyIds: fullBodyIds,
       faceOnlyIds: faceOnlyIds,
-      effects: request.effects
+      effects: request.effects,
+      faceRegions: faceRegions
     )
     let previewPath = try savePreview(
       rendered,
@@ -101,8 +111,20 @@ final class IOSPreviewPipeline {
     frameAnalysisCache = frameAnalysisCache.filter { key, _ in
       !key.hasPrefix("\(cacheId)_")
     }
+    facePrivacyResolvers.removeValue(forKey: cacheId)?.reset()
     cacheLock.unlock()
     removePreviewFiles(cacheId: cacheId)
+  }
+
+  private func facePrivacyResolver(cacheId: String) -> IOSFacePrivacyTemporalResolver {
+    cacheLock.lock()
+    defer { cacheLock.unlock() }
+    if let existing = facePrivacyResolvers[cacheId] {
+      return existing
+    }
+    let created = IOSFacePrivacyTemporalResolver()
+    facePrivacyResolvers[cacheId] = created
+    return created
   }
 
   private func analyzeFrame(
