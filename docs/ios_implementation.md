@@ -396,9 +396,25 @@ On non-Apple hosts, `verify_ios_phase5.py` validates the fixture schema, confirm
 that every Golden Trace case still points at an existing Android reference test,
 guards the Android constants/selection boundaries the fixture depends on, and
 checks the iOS/CI wiring. At the time Phase 5A was introduced, Phase 0-5 static
-verification passes on Windows. Apple compilation and Simulator replay still
-require the GitHub macOS lane before this Phase 5 slice can be called
-cloud-accepted; no real-iPhone performance/thermal claim is made.
+verification passes on Windows.
+
+Final cloud evidence for Phase 5A is GitHub Actions `iOS Cloud CI` run
+`34211579109` (#17), triggered from pull-request head
+`98b1b6640c80ad23f3a415210129280d1138c52f`. Job `102013584490`
+(`Xcode 26 / no-codesign build`) completed successfully. In particular,
+`Verify repository iOS contracts` passed the Phase 0-5 repository gates, the
+inherited Phase 3 Metal compilation for both Apple SDK targets, the Phase 4
+real-media Simulator export checks, and the Phase 5 Golden Trace replay. The
+subsequent dependency resolution, production `lib/main.dart` iPhoneOS
+no-codesign build, archive, and artifact-upload steps also all reported
+Success. This makes the Phase 5A slice cloud-accepted for macOS/Simulator
+evidence; it is not a real-iPhone performance/thermal acceptance claim.
+
+The concurrent generic `Production CI` run `34211579145` (#76) remains red in
+the same Android-native-unit-test stage that predates Phase 5; Flutter tests and
+the Android model-asset setup step passed before that failure. Phase 5A changes
+no Android production source and does not weaken or bypass Android tracking,
+privacy, or model gates.
 
 Phase 5A is infrastructure plus the first parity correction, not full tracking
 parity. Android scene-motion recovery, mature occlusion-group/dormancy/reactivate
