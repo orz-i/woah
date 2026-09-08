@@ -255,11 +255,12 @@ def main() -> int:
 
     # The protected workflow already invokes this verifier on GitHub-hosted
     # macOS before the normal production iPhoneOS build. Use that stable hook to
-    # run the stronger Phase 3 Apple-only gate without requiring workflow-file
-    # mutation from ordinary development tooling.
+    # run the strongest Apple-only gate without requiring workflow-file mutation
+    # from ordinary development tooling. Phase 4 preserves the Phase 3 offline
+    # Metal compile + Simulator GPU smoke before its real-video export gate.
     if sys.platform == "darwin" and os.environ.get("GITHUB_ACTIONS") == "true":
         subprocess.run(
-            [sys.executable, str(ROOT / "tools/ios/run_phase3_macos_gate.py")],
+            [sys.executable, str(ROOT / "tools/ios/run_phase4_macos_gate.py")],
             cwd=ROOT,
             check=True,
         )

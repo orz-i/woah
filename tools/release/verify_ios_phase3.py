@@ -141,10 +141,18 @@ def verify_runtime_wiring_and_gates() -> None:
         'code: "PLATFORM_NOT_SUPPORTED"' not in preview_block,
         "Phase 3 getPreviewFrame must no longer be a platform stub",
     )
-    check(
-        'code: "PLATFORM_NOT_SUPPORTED"' in export_block,
-        "Phase 3 must keep startExport gated until Phase 4",
-    )
+    phase4_pipeline = SOURCES / "IOSExportPipeline.swift"
+    if phase4_pipeline.is_file():
+        check(
+            "exportCoordinator.start(request: request)" in export_block
+            and 'code: "PLATFORM_NOT_SUPPORTED"' not in export_block,
+            "Once Phase 4 is present, startExport must route to the real iOS export coordinator",
+        )
+    else:
+        check(
+            'code: "PLATFORM_NOT_SUPPORTED"' in export_block,
+            "Phase 3 must keep startExport gated until Phase 4",
+        )
     check(
         "previewPipeline.clearForAnalysis(cacheId: projectId)" in release_block,
         "releaseProject must clear in-memory/on-disk preview state",
@@ -213,8 +221,11 @@ def verify_metal_validation_lanes() -> None:
           "Simulator smoke runner must boot/install/launch through simctl")
     check("python tools/release/verify_ios_phase1.py" in workflow_text,
           "iOS Cloud CI must retain the Phase 1 verifier hook used by the Phase 3 macOS gate")
-    check("run_phase3_macos_gate.py" in phase1_text and 'GITHUB_ACTIONS' in phase1_text,
-          "The GitHub macOS Phase 1 hook must invoke the Phase 3 Apple-only gate")
+    check(
+        ("run_phase3_macos_gate.py" in phase1_text or "run_phase4_macos_gate.py" in phase1_text)
+        and 'GITHUB_ACTIONS' in phase1_text,
+        "The GitHub macOS Phase 1 hook must invoke an Apple-only gate that preserves Phase 3",
+    )
     check(
         "compile_phase3_metal.py" in macos_gate_text
         and '"iphoneos"' in macos_gate_text

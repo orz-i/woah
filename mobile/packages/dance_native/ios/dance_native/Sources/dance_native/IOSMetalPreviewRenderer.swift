@@ -52,15 +52,24 @@ final class IOSMetalPreviewRenderer {
     preprocess: IOSYoloPreprocessResult,
     fullBodyIds: Set<Int>,
     faceOnlyIds: Set<Int>,
-    effects: EffectConfigDto
+    effects: EffectConfigDto,
+    outputWidth: Int? = nil,
+    outputHeight: Int? = nil
   ) throws -> CGImage {
     let sourceWidth = max(1, source.width)
     let sourceHeight = max(1, source.height)
-    let previewWidth = min(sourceWidth, 1280)
-    let previewHeight = max(
-      1,
-      Int((Double(previewWidth) * Double(sourceHeight) / Double(sourceWidth)).rounded())
-    )
+    let previewWidth: Int
+    let previewHeight: Int
+    if let outputWidth, let outputHeight, outputWidth > 0, outputHeight > 0 {
+      previewWidth = max(2, outputWidth)
+      previewHeight = max(2, outputHeight)
+    } else {
+      previewWidth = min(sourceWidth, 1280)
+      previewHeight = max(
+        1,
+        Int((Double(previewWidth) * Double(sourceHeight) / Double(sourceWidth)).rounded())
+      )
+    }
 
     let sourceBytes = try Self.rgbaBytes(
       image: source,
@@ -306,6 +315,12 @@ final class IOSMetalPreviewRenderer {
     fullBodyIds: Set<Int>
   ) -> [UInt8] {
     var effective = dilate(target.detection.mask, radius: 1)
+    // A temporal predicted fallback is already the conservative privacy
+    // boundary for an unresolved selected identity. Do not let the preview-only
+    // single-frame foreground carve punch holes into that fail-closed mask.
+    if target.conservativePrivacyFallback {
+      return effective
+    }
     let targetHeight = max(10, target.detection.y2 - target.detection.y1)
     for candidate in allPersons where !fullBodyIds.contains(candidate.id) {
       let candidateHeight = max(10, candidate.detection.y2 - candidate.detection.y1)

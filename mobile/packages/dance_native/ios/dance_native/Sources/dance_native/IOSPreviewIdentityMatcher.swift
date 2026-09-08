@@ -3,6 +3,17 @@ import Foundation
 struct IOSPreviewPerson {
   let id: Int
   let detection: IOSYoloDetection
+  let conservativePrivacyFallback: Bool
+
+  init(
+    id: Int,
+    detection: IOSYoloDetection,
+    conservativePrivacyFallback: Bool = false
+  ) {
+    self.id = id
+    self.detection = detection
+    self.conservativePrivacyFallback = conservativePrivacyFallback
+  }
 }
 
 enum IOSPreviewIdentityMatcher {

@@ -26,11 +26,16 @@ class _MetalSmokeAppState extends State<_MetalSmokeApp> {
 
   Future<void> _run() async {
     try {
-      final report = await _channel.invokeMapMethod<String, dynamic>(
+      final metalReport = await _channel.invokeMapMethod<String, dynamic>(
         'runIOSMetalPhase3Smoke',
       );
       stdout.writeln('WOAH_METAL_PHASE3_SMOKE=PASS');
-      stdout.writeln('WOAH_METAL_PHASE3_REPORT=$report');
+      stdout.writeln('WOAH_METAL_PHASE3_REPORT=$metalReport');
+      final exportReport = await _channel.invokeMapMethod<String, dynamic>(
+        'runIOSExportPhase4Smoke',
+      );
+      stdout.writeln('WOAH_EXPORT_PHASE4_SMOKE=PASS');
+      stdout.writeln('WOAH_EXPORT_PHASE4_REPORT=$exportReport');
       await stdout.flush();
       exit(0);
     } catch (error, stackTrace) {

@@ -177,8 +177,8 @@ Implementation details:
   `source_uri.txt`, `analysis.json`, normalized bbox/confidence metadata, and
   fixed 160x240 person thumbnails. Partial caches are removed if analysis
   fails, and `releaseProject` removes the completed analysis cache.
-- Phase 3 now owns `getPreviewFrame`; `startExport` intentionally remains
-  `PLATFORM_NOT_SUPPORTED` until the Phase 4 writer pipeline is implemented.
+- Phase 3 owns `getPreviewFrame`; Phase 4 now owns `startExport`, cancellation,
+  status/progress, and the first AVFoundation writer pipeline described below.
 
 Cloud compile evidence for the final CPU-selection revision (`62464b6`) is
 GitHub Actions run `34190614591`: dependency resolution, CocoaPods integration,
@@ -279,16 +279,63 @@ pipeline remain explicit later validation gates.
 
 ## Phase 4: export
 
-Target pipeline:
+Phase 4 now implements the first production export closure:
 
 ```text
-AVAssetReader -> CVPixelBuffer -> inference/tracking -> Metal
-             -> AVAssetWriter -> H.264 MP4 + source audio
+AVAssetReader -> oriented CVPixelBuffer -> XNNPACK YOLO -> temporal identity/privacy
+             -> production Metal compositor -> AVAssetWriter -> H.264 MP4 + AAC audio
 ```
 
-The first production target is 1080p/30 H.264 with trim, audio preservation,
-progress, cancellation, atomic output finalization, and explicit interruption
-handling. HEVC, 4K60, and advanced background execution are later gates.
+The accepted first target is 1080p/30 H.264. The writer fixes presentation
+timestamps to 30fps, caps the long edge at 1920, preserves source audio through
+PCM decode/AAC encode, rebases both media tracks to the requested trim start,
+and emits the existing `JobStatusDto` lifecycle (`preparing`, `exporting`,
+`completed`/`failed`/`cancelled`). A single in-process coordinator owns the
+active reader/writer job so `cancelJob` can cooperatively terminate it.
+
+Output publication is atomic: AVAssetWriter always writes a nonce-suffixed
+`.partial.mp4` beside the requested destination. The final path is populated
+only after `finishWriting` succeeds, using a same-directory move/replace. Any
+failure or cancellation cancels the writer and removes the partial file.
+
+Phase 4 does **not** replace Android's `TrackManager` or weaken its behavior.
+Android remains untouched. The iOS temporal tracker mirrors the privacy-critical
+boundaries needed by this first writer closure: identity-protected IDs are kept
+separate from privacy-selected IDs, mixed FACE_ONLY mode protects every
+credible (>=0.60) analysis identity from weaker neighbor association, protected
+assignments use an ambiguity margin instead of guessing, and tracks distinguish
+ACTIVE/OCCLUDED/REACQUIRING/LOST states. A selected identity with a short
+observation gap receives a conservative predicted bbox-backed mask; that
+synthetic fallback is explicitly marked so the preview-only foreground carve
+cannot punch holes into it. If a selected identity cannot be resolved within
+the bounded 90-frame occlusion window, export fails closed with
+`EXPORT_PRIVACY_UNRESOLVED` instead of silently exposing frames.
+
+The current iOS tracker is still a bounded Phase 4 subset, not a claim that the
+full Android tracking stack has been ported. Android's scene-motion recovery,
+all mature dormant/reactivation heuristics, and the complete temporal
+`FaceOnlyPrivacyFrameProcessor` remain the reference. FACE_ONLY on iOS still
+uses the conservative head ROI documented in Phase 3. SAM2, subject follow,
+skin whitening, and leg stretch are explicitly rejected during iOS Phase 4
+export rather than silently producing weaker or different semantics. HEVC,
+4K60, and advanced background execution are later gates.
+
+The GitHub-hosted macOS gate now keeps all Phase 3 Metal evidence and adds a
+real-media Simulator end-to-end export. The smoke app creates an actual H.264
+MP4 with an AAC tone track, exports the 200-800ms trim at 1920x1080/30fps,
+exercises a deliberate one-frame selected-identity detection gap, and then
+validates encoded codec/dimensions/frame count/duration/audio presence, an
+opaque red privacy pixel, intermediate progress, absence of the final path
+before writer finalization, and cancellation/partial-file cleanup. The smoke
+uses a deterministic inference provider at the test seam so CI does not need to
+regenerate the large YOLO model; the production branch on the other side of
+that seam is statically locked to `IOSYoloRunner(... preferredBackend: .xnnpack)`.
+Phase 1 separately guards the real LiteRT/TensorFlowLite runtime contract.
+
+This Simulator gate is media-runtime evidence, not physical-device acceptance.
+Real-iPhone visual/privacy parity, sustained encode/Metal performance and
+thermal behavior, interruption/background behavior, and the full temporal
+FACE_ONLY implementation remain required before release parity is claimed.
 
 ## Cross-platform privacy gate
 
@@ -313,6 +360,9 @@ Cross-platform static gate, runnable on Windows/Linux/macOS:
 ```text
 python tools/release/verify_ios_phase0.py
 python tools/release/verify_ios_phase1.py
+python tools/release/verify_ios_phase2.py
+python tools/release/verify_ios_phase3.py
+python tools/release/verify_ios_phase4.py
 ```
 
 Flutter regression gate:

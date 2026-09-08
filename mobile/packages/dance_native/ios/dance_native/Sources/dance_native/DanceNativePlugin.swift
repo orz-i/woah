@@ -5,6 +5,7 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
   private let mediaBridge = IOSMediaLibraryBridge()
   private let yoloRunner = IOSYoloRunner()
   private let analysisCache = IOSAnalysisCache()
+  private var processingEvents: DanceProcessingEvents?
   private lazy var analyzePipeline = IOSAnalyzePipeline(
     cache: analysisCache,
     runner: yoloRunner
@@ -12,6 +13,12 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
   private lazy var previewPipeline = IOSPreviewPipeline(
     analysisCache: analysisCache,
     runner: yoloRunner
+  )
+  private lazy var exportCoordinator = IOSExportCoordinator(
+    analysisCache: analysisCache,
+    observer: { [weak self] status in
+      self?.emitExportStatus(status)
+    }
   )
 
   public static func register(with registrar: FlutterPluginRegistrar) {
@@ -23,6 +30,7 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
       binaryMessenger: registrar.messenger()
     )
     registrar.addMethodCallDelegate(instance, channel: buildInfoChannel)
+    instance.processingEvents = DanceProcessingEvents(binaryMessenger: registrar.messenger())
     DanceNativeApiSetup.setUp(binaryMessenger: registrar.messenger(), api: instance)
   }
 
@@ -213,6 +221,19 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
           await MainActor.run { result(flutterError) }
         }
       }
+    case "runIOSExportPhase4Smoke":
+      Task {
+        do {
+          let report = try await IOSExportPhase4Smoke.run()
+          await MainActor.run { result(report) }
+        } catch {
+          let flutterError = Self.flutterError(
+            from: error,
+            fallbackCode: "IOS_EXPORT_PHASE4_SMOKE_FAILED"
+          )
+          await MainActor.run { result(flutterError) }
+        }
+      }
     default:
       result(FlutterMethodNotImplemented)
     }
@@ -237,24 +258,28 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
   }
 
   func startExport(request: ExportRequestDto) async throws -> String {
-    throw PigeonError(code: "PLATFORM_NOT_SUPPORTED", message: "iOS export pipeline is not implemented yet", details: nil)
+    return try exportCoordinator.start(request: request)
   }
 
   func cancelJob(jobId: String) async throws {
-    // Graceful no-op on iOS stub
+    exportCoordinator.cancel(jobId: jobId)
   }
 
   func getJobStatus(jobId: String) async throws -> JobStatusDto {
+    if let status = exportCoordinator.status(jobId: jobId) {
+      return status
+    }
     return JobStatusDto(
       jobId: jobId,
-      state: "failed",
+      state: "unknown",
       currentFrame: 0,
       totalFrames: 0,
       fps: 0,
       progress: 0,
       outputUri: nil,
-      errorCode: "PLATFORM_NOT_SUPPORTED",
-      errorMessage: "iOS export pipeline is not implemented yet"
+      currentPreviewPath: nil,
+      errorCode: "JOB_NOT_FOUND",
+      errorMessage: "Job \(jobId) was not found in the iOS export registry."
     )
   }
 
@@ -262,6 +287,13 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
     guard !projectId.isEmpty else { return }
     previewPipeline.clearForAnalysis(cacheId: projectId)
     try analysisCache.clearAnalysisCache(cacheId: projectId)
+  }
+
+  private func emitExportStatus(_ status: JobStatusDto) {
+    guard let processingEvents else { return }
+    Task { @MainActor in
+      try? await processingEvents.onProgressUpdate(status: status)
+    }
   }
 
   private static func buildInfo() -> [String: Any] {

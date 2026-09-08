@@ -171,10 +171,17 @@ def verify_native_plugin_contract() -> None:
         'case "getVideoFrameThumbnails"',
     ):
         check(method in plugin, f"Missing iOS MethodChannel surface: {method}")
-    check(
-        'code: "PLATFORM_NOT_SUPPORTED"' in plugin,
-        "Unimplemented AI/export pipeline must remain explicit",
-    )
+    phase4_pipeline = sources / "IOSExportPipeline.swift"
+    if phase4_pipeline.is_file():
+        check(
+            "exportCoordinator.start(request: request)" in plugin,
+            "Once Phase 4 exists, iOS export must route through the real coordinator",
+        )
+    else:
+        check(
+            'code: "PLATFORM_NOT_SUPPORTED"' in plugin,
+            "Unimplemented AI/export pipeline must remain explicit",
+        )
     check(
         "VTCopyVideoEncoderList" in capabilities
         and "kVTVideoEncoderList_IsHardwareAccelerated" in capabilities

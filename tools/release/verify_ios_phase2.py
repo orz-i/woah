@@ -122,10 +122,18 @@ def verify_plugin_gating() -> None:
             'code: "PLATFORM_NOT_SUPPORTED"' in preview_block,
             "getPreviewFrame must remain gated until Phase 3",
         )
-    check(
-        'code: "PLATFORM_NOT_SUPPORTED"' in export_block,
-        "startExport must remain gated until Phase 4",
-    )
+    phase4_pipeline = SOURCES / "IOSExportPipeline.swift"
+    if phase4_pipeline.is_file():
+        check(
+            "exportCoordinator.start(request: request)" in export_block
+            and 'code: "PLATFORM_NOT_SUPPORTED"' not in export_block,
+            "Once Phase 4 exists, startExport must route through the real iOS export coordinator",
+        )
+    else:
+        check(
+            'code: "PLATFORM_NOT_SUPPORTED"' in export_block,
+            "startExport must remain gated until Phase 4",
+        )
     check(
         "analysisCache.clearAnalysisCache(cacheId: projectId)" in release_block,
         "releaseProject must clear the iOS analysis cache",
