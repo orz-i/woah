@@ -574,6 +574,45 @@ seed is older than 800 ms, it is ignored even if current body-mask pixels exist.
 The deterministic Simulator smoke covers a shifted current head silhouette, the
 800 ms seed expiry, and the no-current-mask-support fallback case.
 
+The first Apple-only Phase 5E attempt, `iOS Cloud CI` run `34229591863` (#24)
+at head `73923e548e392bd344b60b23c535f5d5d84e6026`, failed before the
+mask-guided assertions because the smoke declared its deterministic
+`IOSYoloPreprocessResult` after the first resolver call. Xcode correctly rejected
+that test-only Swift ordering error; the production FACE_ONLY resolver had not
+failed. Commit `927cc721d2b79ee746f0b1fd1966336371572b51` moves the fixture
+declaration before use and adds a host-side declaration-order guard. The
+replacement `iOS Cloud CI` run `34232354647` (#25) completed successfully in
+18m04s, so Phase 5E is accepted on GitHub macOS/iOS Simulator. As with the other
+Phase 5 lanes, this is not physical/formal-cloud iPhone evidence.
+
+### Phase 5F: real-MP4 FACE_ONLY export closure
+
+Resolver/Metal unit-style smokes are not enough to prove the privacy mode is
+wired into the actual writer. Phase 5F therefore extends the existing real-media
+Simulator export gate with a second, deterministic **FACE_ONLY** MP4. The test
+still decodes a real H.264 source, runs the production temporal tracker and
+production Metal compositor, writes H.264/AAC through `AVAssetWriter`, then
+decodes the finished file for assertions.
+
+The only new seam is an optional `FaceLocatorProvider` on the native export
+pipeline/coordinator. Production construction leaves it `nil`, so release code
+continues to instantiate the Apple Vision locator. The Simulator smoke injects
+a stateful locator that emits one trusted face and then detector misses. Its
+deterministic YOLO provider separately drops one early person observation and
+then supplies a current head-like segmentation mask. That drives the real MP4
+through detected-face privacy, the short predicted-face lease, and the later
+mask-guided fallback without making CI depend on whether Vision happens to
+recognize a synthetic test image.
+
+The final encoded FACE_ONLY clip must preserve the Phase 4 H.264, 1920x1080,
+30fps presentation-frame-count, and audio contracts. Pixel readback then checks
+that the face location is opaque privacy red while the person's body center is
+**not** red. This explicitly catches a regression where FACE_ONLY accidentally
+falls back to FULL_BODY rendering. The smoke also asserts that both the YOLO
+observation gap and the detected-to-missed face sequence actually occurred.
+These are media/runtime/privacy semantics that the GitHub iOS Simulator can
+validate without a physical or formal cloud iPhone.
+
 This is a substantial FACE_ONLY closure, but it is still not a claim of complete
 Android `FaceOnlyPrivacyFrameProcessor` parity. Android's local ROI detector
 budgeting, landmark/keypoint center refinement, pixel-motion prediction,

@@ -136,6 +136,8 @@ def verify_ios_replay_surface() -> None:
     face_smoke = text(SOURCES / "IOSFacePrivacyPhase5Smoke.swift", "IOSFacePrivacyPhase5Smoke.swift")
     renderer = text(SOURCES / "IOSMetalPreviewRenderer.swift", "IOSMetalPreviewRenderer.swift")
     export = text(SOURCES / "IOSExportPipeline.swift", "IOSExportPipeline.swift")
+    coordinator = text(SOURCES / "IOSExportCoordinator.swift", "IOSExportCoordinator.swift")
+    export_smoke = text(SOURCES / "IOSExportPhase4Smoke.swift", "IOSExportPhase4Smoke.swift")
     preview = text(SOURCES / "IOSPreviewPipeline.swift", "IOSPreviewPipeline.swift")
     resources = text(SOURCES / "IOSGoldenTraceResources.swift", "IOSGoldenTraceResources.swift")
     plugin = text(SOURCES / "DanceNativePlugin.swift", "DanceNativePlugin.swift")
@@ -267,6 +269,18 @@ def verify_ios_replay_surface() -> None:
         '"vision_runtime_face_count"',
     ):
         check(token in face_smoke, f"Phase 5C deterministic FACE_ONLY smoke missing: {token}")
+    preprocess_decl = face_smoke.find("let preprocess = IOSYoloPreprocessResult(")
+    first_face_resolve = face_smoke.find("resolver.resolve(")
+    check(
+        preprocess_decl >= 0
+        and first_face_resolve >= 0
+        and preprocess_decl < first_face_resolve,
+        "Phase 5 FACE_ONLY smoke must declare preprocess before the first resolver call",
+    )
+    check(
+        face_smoke.count("let preprocess = IOSYoloPreprocessResult(") == 1,
+        "Phase 5 FACE_ONLY smoke must keep exactly one deterministic preprocess fixture",
+    )
 
     for token in (
         "faceRegions: [Int: IOSFacePrivacyEllipse] = [:]",
@@ -278,11 +292,45 @@ def verify_ios_replay_surface() -> None:
 
     for token in (
         "IOSFacePrivacyTemporalResolver()",
+        "typealias FaceLocatorProvider = () -> IOSFaceLocating",
+        "private let faceLocatorProvider: FaceLocatorProvider?",
+        "faceLocatorProvider: FaceLocatorProvider? = nil",
+        "IOSFacePrivacyTemporalResolver(locator: faceLocatorProvider())",
         "facePrivacyResolver?.resolve(",
         "preprocess: inference.preprocess",
         "faceRegions: faceRegions",
     ):
-        check(token in export, f"Phase 5C export FACE_ONLY wiring missing: {token}")
+        check(token in export, f"Phase 5C-F export FACE_ONLY wiring missing: {token}")
+    check(
+        "faceLocatorProvider: IOSExportPipeline.FaceLocatorProvider? = nil" in coordinator
+        and "faceLocatorProvider: faceLocatorProvider" in coordinator,
+        "Phase 5F coordinator must forward the optional face-locator test seam",
+    )
+    for token in (
+        "runFaceOnlyExportSmoke(",
+        '"phase5_face_only_e2e": faceOnlyReport',
+        "faceOnlyExportRequest(",
+        "selectedPersonIds: []",
+        "faceOnlyPersonIds: [0]",
+        "FaceOnlyInferenceState",
+        "FaceOnlyLocatorState",
+        "preferBundledImage: false",
+        "faceLocatorProvider: { faceLocator }",
+        "FACE_ONLY_EXPORT_SMOKE_FACE_UNCOVERED",
+        "FACE_ONLY_EXPORT_SMOKE_BODY_OVERMASKED",
+        "FACE_ONLY_EXPORT_SMOKE_BODY_GAP_MISSING",
+        "FACE_ONLY_EXPORT_SMOKE_FACE_SEQUENCE_MISSING",
+        "readOutputPixel(",
+        "isPrivacyRed(upperFacePixel) || isPrivacyRed(mirroredFacePixel)",
+        "!isPrivacyRed(bodyCenterPixel)",
+        "outputInfo.presentationFrameCount == expectedOutputFrames",
+        "outputInfo.hasAudio",
+    ):
+        check(token in export_smoke, f"Phase 5F FACE_ONLY real-MP4 gate missing: {token}")
+    check(
+        "faceLocatorProvider" not in text(SOURCES / "DanceNativePlugin.swift", "DanceNativePlugin.swift"),
+        "Production plugin must not inject the Phase 5F deterministic face locator",
+    )
     for token in (
         "facePrivacyResolvers: [String: IOSFacePrivacyTemporalResolver]",
         "facePrivacyResolver(cacheId: request.analysisCacheId).resolve(",

@@ -41,20 +41,24 @@ enum IOSExportPipelineError: Error {
 
 final class IOSExportPipeline {
   typealias InferenceProvider = (CGImage) throws -> IOSYoloInferenceResult
+  typealias FaceLocatorProvider = () -> IOSFaceLocating
 
   private let analysisCache: IOSAnalysisCache
   private let fileManager: FileManager
   private let ciContext = CIContext()
   private let inferenceProvider: InferenceProvider?
+  private let faceLocatorProvider: FaceLocatorProvider?
 
   init(
     analysisCache: IOSAnalysisCache,
     fileManager: FileManager = .default,
-    inferenceProvider: InferenceProvider? = nil
+    inferenceProvider: InferenceProvider? = nil,
+    faceLocatorProvider: FaceLocatorProvider? = nil
   ) {
     self.analysisCache = analysisCache
     self.fileManager = fileManager
     self.inferenceProvider = inferenceProvider
+    self.faceLocatorProvider = faceLocatorProvider
   }
 
   func execute(
@@ -194,9 +198,14 @@ final class IOSExportPipeline {
         frameWidth: max(1, Int(displaySize.width.rounded())),
         frameHeight: max(1, Int(displaySize.height.rounded()))
       )
-      let facePrivacyResolver = faceOnlyIds.isEmpty
-        ? nil
-        : IOSFacePrivacyTemporalResolver()
+      let facePrivacyResolver: IOSFacePrivacyTemporalResolver?
+      if faceOnlyIds.isEmpty {
+        facePrivacyResolver = nil
+      } else if let faceLocatorProvider {
+        facePrivacyResolver = IOSFacePrivacyTemporalResolver(locator: faceLocatorProvider())
+      } else {
+        facePrivacyResolver = IOSFacePrivacyTemporalResolver()
+      }
 
       let videoReader = try makeVideoReader(
         asset: asset,

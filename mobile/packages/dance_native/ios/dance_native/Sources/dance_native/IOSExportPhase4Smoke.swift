@@ -242,6 +242,11 @@ enum IOSExportPhase4Smoke {
       throw smokeError("EXPORT_SMOKE_CANCEL_PARTIAL_LEAK", "Cancelled export left a partial MP4 file.")
     }
 
+    let faceOnlyReport = try await runFaceOnlyExportSmoke(
+      directory: directory,
+      nonce: nonce
+    )
+
     let statuses = statusRecorder.snapshot()
     return [
       "status": "pass",
@@ -265,6 +270,192 @@ enum IOSExportPhase4Smoke {
       "privacy_pixel_rgba": [privacyPixel.r, privacyPixel.g, privacyPixel.b, privacyPixel.a],
       "cancel_state": cancelled.state,
       "cancel_partial_clean": !leakedPartial,
+      "phase5_face_only_e2e": faceOnlyReport,
+    ]
+  }
+
+  private static func faceOnlyExportRequest(
+    sourceURL: URL,
+    cacheId: String,
+    outputURL: URL
+  ) -> ExportRequestDto {
+    ExportRequestDto(
+      sourceUri: sourceURL.absoluteString,
+      analysisCacheId: cacheId,
+      outputFilePath: outputURL.path,
+      selectedPersonIds: [],
+      effects: EffectConfigDto(
+        fillMode: "solid",
+        fillColorArgb: Int64(0xFFFF0000),
+        borderColorArgb: 0,
+        opacity: 1,
+        borderWidth: 0,
+        blurStrength: 1,
+        faceStickerEnabled: false,
+        stickerAssetId: nil,
+        stickerScale: 1,
+        skinWhiten: 0,
+        legStretchEnabled: false,
+        legStretch: 0,
+        legZoneTop: 0,
+        legZoneBottom: 1
+      ),
+      follow: FollowConfigDto(
+        enabled: false,
+        targetPersonId: nil,
+        zoom: 1,
+        smoothFactor: 0.15
+      ),
+      targetWidth: 1920,
+      targetHeight: 1080,
+      targetFps: 30,
+      videoBitrate: 8_000_000,
+      processingProfile: "quality",
+      enableLivePreview: false,
+      faceOnlyPersonIds: [0],
+      trimStartMs: trimStartMs,
+      trimEndMs: trimEndMs
+    )
+  }
+
+  private static func runFaceOnlyExportSmoke(
+    directory: URL,
+    nonce: String
+  ) async throws -> [String: Any] {
+    let fileManager = FileManager.default
+    let sourceURL = directory.appendingPathComponent("face_source_\(nonce).mp4")
+    let outputURL = directory.appendingPathComponent("face_output_\(nonce).mp4")
+    let toneURL = directory.appendingPathComponent("face_tone_\(nonce).caf")
+    defer {
+      try? fileManager.removeItem(at: sourceURL)
+      try? fileManager.removeItem(at: outputURL)
+      try? fileManager.removeItem(at: toneURL)
+    }
+
+    try await createSourceFixture(
+      videoURL: sourceURL,
+      toneURL: toneURL,
+      preferBundledImage: false
+    )
+    let cache = IOSAnalysisCache()
+    let cacheId = "phase5_face_export_smoke_\(nonce)"
+    defer { try? cache.clearAnalysisCache(cacheId: cacheId) }
+    try cache.saveVideoUri(cacheId: cacheId, videoUri: sourceURL.absoluteString)
+    try cache.saveMetadata(
+      cacheId: cacheId,
+      metadata: IOSAnalysisMetadata(
+        schemaVersion: 1,
+        sourceUri: sourceURL.absoluteString,
+        persons: [
+          IOSCachedPerson(
+            id: 0,
+            bbox: IOSCachedBBox(left: 0.25, top: 0.12, right: 0.75, bottom: 0.90),
+            confidence: 0.99
+          ),
+        ]
+      )
+    )
+
+    let inferenceState = FaceOnlyInferenceState()
+    let faceLocator = FaceOnlyLocatorState()
+    let coordinator = IOSExportCoordinator(
+      analysisCache: cache,
+      inferenceProvider: { image in try inferenceState.infer(image: image) },
+      faceLocatorProvider: { faceLocator },
+      observer: { _ in }
+    )
+    let jobId = try coordinator.start(request: faceOnlyExportRequest(
+      sourceURL: sourceURL,
+      cacheId: cacheId,
+      outputURL: outputURL
+    ))
+    let completed = try await waitForTerminal(
+      coordinator: coordinator,
+      jobId: jobId,
+      timeoutSeconds: 180,
+      onPoll: { _ in }
+    )
+    guard completed.state == "completed" else {
+      throw smokeError(
+        "FACE_ONLY_EXPORT_SMOKE_JOB_FAILED",
+        "Phase 5 FACE_ONLY export ended as \(completed.state): \(completed.errorCode ?? "") \(completed.errorMessage ?? "")"
+      )
+    }
+    guard fileManager.fileExists(atPath: outputURL.path) else {
+      throw smokeError(
+        "FACE_ONLY_EXPORT_SMOKE_OUTPUT_MISSING",
+        "Completed Phase 5 FACE_ONLY export file is missing."
+      )
+    }
+
+    let outputInfo = try await inspectAsset(outputURL)
+    guard outputInfo.codec == kCMVideoCodecType_H264,
+          outputInfo.width == 1920,
+          outputInfo.height == 1080,
+          outputInfo.presentationFrameCount == expectedOutputFrames,
+          outputInfo.hasAudio else {
+      throw smokeError(
+        "FACE_ONLY_EXPORT_SMOKE_MEDIA_MISMATCH",
+        "Phase 5 FACE_ONLY real-media output did not preserve the Phase 4 H.264/1080p30/audio contract."
+      )
+    }
+
+    let upperFacePixel = try await readOutputPixel(
+      outputURL,
+      normalizedX: 0.50,
+      normalizedY: 0.26,
+      timestampMs: 300
+    )
+    let mirroredFacePixel = try await readOutputPixel(
+      outputURL,
+      normalizedX: 0.50,
+      normalizedY: 0.74,
+      timestampMs: 300
+    )
+    let bodyCenterPixel = try await readOutputPixel(
+      outputURL,
+      normalizedX: 0.50,
+      normalizedY: 0.50,
+      timestampMs: 300
+    )
+    let faceCovered = isPrivacyRed(upperFacePixel) || isPrivacyRed(mirroredFacePixel)
+    guard faceCovered else {
+      throw smokeError(
+        "FACE_ONLY_EXPORT_SMOKE_FACE_UNCOVERED",
+        "Phase 5 FACE_ONLY real MP4 did not contain the opaque red face privacy region."
+      )
+    }
+    guard !isPrivacyRed(bodyCenterPixel) else {
+      throw smokeError(
+        "FACE_ONLY_EXPORT_SMOKE_BODY_OVERMASKED",
+        "Phase 5 FACE_ONLY real MP4 regressed to full-body privacy coverage."
+      )
+    }
+    guard inferenceState.missingObservationCount >= 1 else {
+      throw smokeError(
+        "FACE_ONLY_EXPORT_SMOKE_BODY_GAP_MISSING",
+        "Phase 5 FACE_ONLY E2E did not exercise a brief YOLO observation gap."
+      )
+    }
+    guard faceLocator.detectedEmissionCount == 1,
+          faceLocator.missCount >= 1 else {
+      throw smokeError(
+        "FACE_ONLY_EXPORT_SMOKE_FACE_SEQUENCE_MISSING",
+        "Phase 5 FACE_ONLY E2E did not exercise detected-to-missed face localization."
+      )
+    }
+
+    return [
+      "job_id": jobId,
+      "codec": fourCC(outputInfo.codec),
+      "presentation_frames": outputInfo.presentationFrameCount,
+      "has_audio": outputInfo.hasAudio,
+      "face_detected_emissions": faceLocator.detectedEmissionCount,
+      "face_locator_misses": faceLocator.missCount,
+      "body_missing_observations": inferenceState.missingObservationCount,
+      "upper_face_pixel_rgba": [upperFacePixel.r, upperFacePixel.g, upperFacePixel.b, upperFacePixel.a],
+      "mirrored_face_pixel_rgba": [mirroredFacePixel.r, mirroredFacePixel.g, mirroredFacePixel.b, mirroredFacePixel.a],
+      "body_center_pixel_rgba": [bodyCenterPixel.r, bodyCenterPixel.g, bodyCenterPixel.b, bodyCenterPixel.a],
     ]
   }
 
@@ -403,6 +594,121 @@ enum IOSExportPhase4Smoke {
     }
   }
 
+  private final class FaceOnlyInferenceState {
+    private let lock = NSLock()
+    private var callCount = 0
+    private var missingCount = 0
+
+    var missingObservationCount: Int {
+      lock.lock()
+      defer { lock.unlock() }
+      return missingCount
+    }
+
+    func infer(image: CGImage) throws -> IOSYoloInferenceResult {
+      lock.lock()
+      callCount += 1
+      let call = callCount
+      lock.unlock()
+      let preprocess = try IOSYoloPreprocessor.process(image: image)
+      let detections: [IOSYoloDetection]
+      // The third decoded frame loses the YOLO observation while the trusted
+      // face is still inside its 150ms projection lease. Later frames keep the
+      // person observation but provide no new face detection, so the same real
+      // MP4 also crosses into the current-mask-guided fallback tier.
+      if call == 3 {
+        lock.lock()
+        missingCount += 1
+        lock.unlock()
+        detections = []
+      } else {
+        let shift = Float32((call % 5) - 2) * 0.003 * Float32(image.width)
+        let x1 = Float32(image.width) * 0.25 + shift
+        let y1 = Float32(image.height) * 0.12
+        let x2 = Float32(image.width) * 0.75 + shift
+        let y2 = Float32(image.height) * 0.90
+        let headMask = IOSExportPhase4Smoke.detectionMask(
+          x1: Float32(image.width) * 0.43 + shift,
+          y1: Float32(image.height) * 0.18,
+          x2: Float32(image.width) * 0.57 + shift,
+          y2: Float32(image.height) * 0.34,
+          preprocess: preprocess
+        )
+        let torsoMask = IOSExportPhase4Smoke.detectionMask(
+          x1: Float32(image.width) * 0.30 + shift,
+          y1: Float32(image.height) * 0.36,
+          x2: Float32(image.width) * 0.70 + shift,
+          y2: y2,
+          preprocess: preprocess
+        )
+        let mask = zip(headMask, torsoMask).map { pair in
+          max(pair.0, pair.1)
+        }
+        detections = [IOSYoloDetection(
+          x1: x1,
+          y1: y1,
+          x2: x2,
+          y2: y2,
+          confidence: 0.99,
+          mask: mask
+        )]
+      }
+      return IOSYoloInferenceResult(
+        detections: detections,
+        runtime: IOSYoloRuntimeInfo(
+          effectiveBackend: .xnnpack,
+          initializationMs: 0,
+          inferenceMs: 0,
+          fallbackReasons: ["phase5_face_only_e2e_deterministic_fixture"],
+          inputShape: [1, 3, 640, 640],
+          outputShapes: [[1, 116, 8400], [1, 32, 160, 160]]
+        ),
+        preprocess: preprocess
+      )
+    }
+  }
+
+  private final class FaceOnlyLocatorState: IOSFaceLocating {
+    private let lock = NSLock()
+    private var calls = 0
+    private var detectedCount = 0
+    private var misses = 0
+
+    var detectedEmissionCount: Int {
+      lock.lock()
+      defer { lock.unlock() }
+      return detectedCount
+    }
+
+    var missCount: Int {
+      lock.lock()
+      defer { lock.unlock() }
+      return misses
+    }
+
+    func locateFaces(in image: CGImage) throws -> [IOSFaceCandidate] {
+      lock.lock()
+      calls += 1
+      let call = calls
+      if call == 1 {
+        detectedCount += 1
+      } else {
+        misses += 1
+      }
+      lock.unlock()
+      guard call == 1 else { return [] }
+      let width = Float32(image.width)
+      let height = Float32(image.height)
+      return [IOSFaceCandidate(
+        x1: width * 0.43,
+        y1: height * 0.18,
+        x2: width * 0.57,
+        y2: height * 0.34,
+        confidence: 0.99
+      )]
+    }
+  }
+
   private static func detectionMask(
     x1: Float32,
     y1: Float32,
@@ -426,7 +732,8 @@ enum IOSExportPhase4Smoke {
 
   private static func createSourceFixture(
     videoURL: URL,
-    toneURL: URL
+    toneURL: URL,
+    preferBundledImage: Bool = true
   ) async throws {
     let fileManager = FileManager.default
     try? fileManager.removeItem(at: videoURL)
@@ -479,7 +786,7 @@ enum IOSExportPhase4Smoke {
     }
     writer.startSession(atSourceTime: .zero)
 
-    let image = try fixtureImage()
+    let image = try fixtureImage(preferBundled: preferBundledImage)
     let videoFrames = Int(sourceDurationSeconds * Double(sourceFps))
     for frame in 0..<videoFrames {
       while !videoInput.isReadyForMoreMediaData {
@@ -559,8 +866,9 @@ enum IOSExportPhase4Smoke {
     try file.write(from: buffer)
   }
 
-  private static func fixtureImage() throws -> CGImage {
-    if let url = IOSModelResources.yoloPhase1FixtureURL(),
+  private static func fixtureImage(preferBundled: Bool = true) throws -> CGImage {
+    if preferBundled,
+       let url = IOSModelResources.yoloPhase1FixtureURL(),
        let source = CGImageSourceCreateWithURL(url as CFURL, nil),
        let image = CGImageSourceCreateImageAtIndex(source, 0, nil) {
       return image
@@ -767,16 +1075,44 @@ enum IOSExportPhase4Smoke {
   private static func readOutputCenterPixel(
     _ url: URL
   ) async throws -> (r: Int, g: Int, b: Int, a: Int) {
+    try await readOutputPixel(
+      url,
+      normalizedX: 0.50,
+      normalizedY: 0.50,
+      timestampMs: 300
+    )
+  }
+
+  private static func readOutputPixel(
+    _ url: URL,
+    normalizedX: Double,
+    normalizedY: Double,
+    timestampMs: Int64
+  ) async throws -> (r: Int, g: Int, b: Int, a: Int) {
     let asset = AVURLAsset(url: url)
     let generator = AVAssetImageGenerator(asset: asset)
     generator.appliesPreferredTrackTransform = true
     generator.requestedTimeToleranceBefore = .zero
     generator.requestedTimeToleranceAfter = .zero
-    let generated = try await generator.image(at: CMTime(value: 300, timescale: 1000))
+    let generated = try await generator.image(at: CMTime(value: timestampMs, timescale: 1000))
     let image = generated.image
-    guard let center = image.cropping(to: CGRect(
-      x: image.width / 2,
-      y: image.height / 2,
+    let x = max(
+      0,
+      min(
+        image.width - 1,
+        Int((normalizedX * Double(max(1, image.width - 1))).rounded())
+      )
+    )
+    let y = max(
+      0,
+      min(
+        image.height - 1,
+        Int((normalizedY * Double(max(1, image.height - 1))).rounded())
+      )
+    )
+    guard let pixel = image.cropping(to: CGRect(
+      x: x,
+      y: y,
       width: 1,
       height: 1
     )) else {
@@ -797,13 +1133,22 @@ enum IOSExportPhase4Smoke {
             ) else {
         return false
       }
-      context.draw(center, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+      context.draw(pixel, in: CGRect(x: 0, y: 0, width: 1, height: 1))
       return true
     }
     guard rendered else {
       throw smokeError("EXPORT_SMOKE_PRIVACY_READBACK_FAILED", "Could not read output privacy pixel.")
     }
     return (Int(bytes[0]), Int(bytes[1]), Int(bytes[2]), Int(bytes[3]))
+  }
+
+  private static func isPrivacyRed(
+    _ pixel: (r: Int, g: Int, b: Int, a: Int)
+  ) -> Bool {
+    pixel.r >= 225
+      && pixel.g <= 45
+      && pixel.b <= 45
+      && pixel.a >= 225
   }
 
   private static func finishWriter(_ writer: AVAssetWriter) async {

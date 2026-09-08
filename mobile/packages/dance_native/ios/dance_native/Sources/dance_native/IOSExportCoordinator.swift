@@ -13,11 +13,13 @@ final class IOSExportCoordinator {
   init(
     analysisCache: IOSAnalysisCache,
     inferenceProvider: IOSExportPipeline.InferenceProvider? = nil,
+    faceLocatorProvider: IOSExportPipeline.FaceLocatorProvider? = nil,
     observer: @escaping StatusObserver
   ) {
     pipeline = IOSExportPipeline(
       analysisCache: analysisCache,
-      inferenceProvider: inferenceProvider
+      inferenceProvider: inferenceProvider,
+      faceLocatorProvider: faceLocatorProvider
     )
     self.observer = observer
   }
