@@ -85,6 +85,27 @@ enum IOSFacePrivacyPhase5Smoke {
       throw smokeFailure("Near-tie face candidates must defer localization and use the privacy fallback.")
     }
 
+    let neighborResolver = IOSFacePrivacyTemporalResolver(
+      locator: IOSPhase5SequenceFaceLocator(batches: [[trustedFace]])
+    )
+    let selectedOverlap = IOSPreviewPerson(
+      id: 0,
+      detection: makeDetection(x1: 4, y1: 4, x2: 44, y2: 60)
+    )
+    let unselectedOverlap = IOSPreviewPerson(
+      id: 1,
+      detection: makeDetection(x1: 20, y1: 4, x2: 60, y2: 60)
+    )
+    let neighborCompetition = neighborResolver.resolve(
+      image: source,
+      persons: [selectedOverlap, unselectedOverlap],
+      faceOnlyIds: [0],
+      timestampUs: 0
+    )
+    guard neighborCompetition[0]?.source == .yoloHeadFallback else {
+      throw smokeFailure("An unselected observed neighbor must participate in face ownership ambiguity.")
+    }
+
     let predictedResolver = IOSFacePrivacyTemporalResolver(
       locator: IOSPhase5SequenceFaceLocator(batches: [[trustedFace]])
     )
@@ -159,6 +180,7 @@ enum IOSFacePrivacyPhase5Smoke {
       "detected_source": detectedRegion.source.rawValue,
       "miss_source": missedRegion.source.rawValue,
       "ambiguous_source": ambiguous[0]?.source.rawValue ?? "missing",
+      "neighbor_competition_source": neighborCompetition[0]?.source.rawValue ?? "missing",
       "predicted_body_source": predicted[0]?.source.rawValue ?? "missing",
       "vision_runtime_face_count": visionRuntimeFaces.count,
       "center_pixel": [centerPixel.r, centerPixel.g, centerPixel.b, centerPixel.a],

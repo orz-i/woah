@@ -168,7 +168,10 @@ final class IOSFacePrivacyTemporalResolver {
     let faces = (try? locator.locateFaces(in: image)) ?? []
     let assignments = associate(
       faces: faces,
-      persons: selectedPersons.filter { !$0.conservativePrivacyFallback }
+      // Every observed YOLO person participates in ownership competition even
+      // when it is not privacy-selected. Otherwise an unselected neighbor's
+      // face could be incorrectly consumed as the selected target's face.
+      persons: persons.filter { !$0.conservativePrivacyFallback }
     )
 
     lock.lock()
