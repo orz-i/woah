@@ -46,6 +46,7 @@ enum IOSFacePrivacyPhase5Smoke {
       image: source,
       persons: [person],
       faceOnlyIds: [0],
+      preprocess: preprocess,
       timestampUs: 0
     )
     guard let detectedRegion = detected[0], detectedRegion.source == .detectedFace else {
@@ -60,6 +61,7 @@ enum IOSFacePrivacyPhase5Smoke {
       image: source,
       persons: [person],
       faceOnlyIds: [0],
+      preprocess: preprocess,
       timestampUs: 33_333
     )
     guard let missedRegion = missed[0], missedRegion.source == .predictedFace else {
@@ -77,6 +79,7 @@ enum IOSFacePrivacyPhase5Smoke {
       image: source,
       persons: [movedPerson],
       faceOnlyIds: [0],
+      preprocess: preprocess,
       timestampUs: 66_666
     )
     guard let translatedRegion = translatedPrediction[0], translatedRegion.source == .predictedFace else {
@@ -93,11 +96,116 @@ enum IOSFacePrivacyPhase5Smoke {
       image: source,
       persons: [movedPerson],
       faceOnlyIds: [0],
+      preprocess: preprocess,
       timestampUs: 200_000
     )
     guard let expiredRegion = expired[0], expiredRegion.source == .yoloHeadFallback else {
       throw smokeFailure("Stale FACE_ONLY trusted geometry remained renderable beyond the 150ms lease.")
     }
+    try assertNear(
+      expiredRegion.centerX,
+      36,
+      tolerance: 0.05,
+      label: "expired generic fallback centerX"
+    )
+
+    let maskGuidedResolver = IOSFacePrivacyTemporalResolver(
+      locator: IOSPhase5SequenceFaceLocator(batches: [[trustedFace], [], []])
+    )
+    _ = maskGuidedResolver.resolve(
+      image: source,
+      persons: [person],
+      faceOnlyIds: [0],
+      preprocess: preprocess,
+      timestampUs: 0
+    )
+    let headShiftMask = makeProtoMask(
+      sourceRects: [
+        (35, 8, 43, 20),
+        (20, 20, 48, 60),
+      ],
+      preprocess: preprocess
+    )
+    let maskGuidedPerson = IOSPreviewPerson(
+      id: 0,
+      detection: makeDetection(
+        x1: 8,
+        y1: 4,
+        x2: 56,
+        y2: 60,
+        mask: headShiftMask
+      )
+    )
+    let maskGuided = maskGuidedResolver.resolve(
+      image: source,
+      persons: [maskGuidedPerson],
+      faceOnlyIds: [0],
+      preprocess: preprocess,
+      timestampUs: 200_000
+    )
+    guard let maskGuidedRegion = maskGuided[0],
+          maskGuidedRegion.source == .yoloHeadFallback,
+          maskGuidedRegion.centerX > 34 else {
+      throw smokeFailure("Expired trusted face did not move toward current head-like YOLO mask support.")
+    }
+    let maskSeedExpired = maskGuidedResolver.resolve(
+      image: source,
+      persons: [maskGuidedPerson],
+      faceOnlyIds: [0],
+      preprocess: preprocess,
+      timestampUs: 900_000
+    )
+    guard let maskSeedExpiredRegion = maskSeedExpired[0],
+          maskSeedExpiredRegion.source == .yoloHeadFallback else {
+      throw smokeFailure("Expired FACE_ONLY mask seed did not return to generic YOLO head fallback.")
+    }
+    try assertNear(
+      maskSeedExpiredRegion.centerX,
+      32,
+      tolerance: 0.05,
+      label: "800ms mask-seed expiry centerX"
+    )
+
+    let unsupportedMaskResolver = IOSFacePrivacyTemporalResolver(
+      locator: IOSPhase5SequenceFaceLocator(batches: [[trustedFace], []])
+    )
+    _ = unsupportedMaskResolver.resolve(
+      image: source,
+      persons: [person],
+      faceOnlyIds: [0],
+      preprocess: preprocess,
+      timestampUs: 0
+    )
+    let emptyMaskPerson = IOSPreviewPerson(
+      id: 0,
+      detection: makeDetection(
+        x1: 12,
+        y1: 4,
+        x2: 60,
+        y2: 60,
+        mask: [UInt8](
+          repeating: 0,
+          count: IOSYoloPostprocessor.protoSize * IOSYoloPostprocessor.protoSize
+        )
+      )
+    )
+    let unsupportedMask = unsupportedMaskResolver.resolve(
+      image: source,
+      persons: [emptyMaskPerson],
+      faceOnlyIds: [0],
+      preprocess: preprocess,
+      timestampUs: 200_000
+    )
+    guard let unsupportedMaskRegion = unsupportedMask[0],
+          unsupportedMaskRegion.source == .yoloHeadFallback else {
+      throw smokeFailure("Missing current head-like mask support removed FACE_ONLY fallback privacy.")
+    }
+    try assertNear(
+      unsupportedMaskRegion.centerX,
+      36,
+      tolerance: 0.05,
+      label: "unsupported-mask generic fallback centerX"
+    )
 
     let ambiguousResolver = IOSFacePrivacyTemporalResolver(
       locator: IOSPhase5SequenceFaceLocator(batches: [[
@@ -109,6 +217,7 @@ enum IOSFacePrivacyPhase5Smoke {
       image: source,
       persons: [person],
       faceOnlyIds: [0],
+      preprocess: preprocess,
       timestampUs: 0
     )
     guard ambiguous[0]?.source == .yoloHeadFallback else {
@@ -130,6 +239,7 @@ enum IOSFacePrivacyPhase5Smoke {
       image: source,
       persons: [selectedOverlap, unselectedOverlap],
       faceOnlyIds: [0],
+      preprocess: preprocess,
       timestampUs: 0
     )
     guard neighborCompetition[0]?.source == .yoloHeadFallback else {
@@ -148,6 +258,7 @@ enum IOSFacePrivacyPhase5Smoke {
       image: source,
       persons: [predictedPerson],
       faceOnlyIds: [0],
+      preprocess: preprocess,
       timestampUs: 0
     )
     guard predicted[0]?.source == .yoloHeadFallback else {
@@ -161,6 +272,7 @@ enum IOSFacePrivacyPhase5Smoke {
       image: source,
       persons: [person],
       faceOnlyIds: [0],
+      preprocess: preprocess,
       timestampUs: 0
     )
     let cachedPredictedBody = IOSPreviewPerson(
@@ -172,6 +284,7 @@ enum IOSFacePrivacyPhase5Smoke {
       image: source,
       persons: [cachedPredictedBody],
       faceOnlyIds: [0],
+      preprocess: preprocess,
       timestampUs: 33_333
     )
     guard let cachedPredictedRegion = cachedPredicted[0],
@@ -255,6 +368,9 @@ enum IOSFacePrivacyPhase5Smoke {
       "miss_source": missedRegion.source.rawValue,
       "translated_prediction_source": translatedRegion.source.rawValue,
       "expired_prediction_source": expiredRegion.source.rawValue,
+      "mask_guided_center_x": maskGuidedRegion.centerX,
+      "mask_seed_expired_center_x": maskSeedExpiredRegion.centerX,
+      "unsupported_mask_center_x": unsupportedMaskRegion.centerX,
       "ambiguous_source": ambiguous[0]?.source.rawValue ?? "missing",
       "neighbor_competition_source": neighborCompetition[0]?.source.rawValue ?? "missing",
       "predicted_body_source": predicted[0]?.source.rawValue ?? "missing",
@@ -271,7 +387,8 @@ enum IOSFacePrivacyPhase5Smoke {
     x1: Float32,
     y1: Float32,
     x2: Float32,
-    y2: Float32
+    y2: Float32,
+    mask: [UInt8]? = nil
   ) -> IOSYoloDetection {
     IOSYoloDetection(
       x1: x1,
@@ -279,11 +396,36 @@ enum IOSFacePrivacyPhase5Smoke {
       x2: x2,
       y2: y2,
       confidence: 0.99,
-      mask: [UInt8](
+      mask: mask ?? [UInt8](
         repeating: 255,
         count: IOSYoloPostprocessor.protoSize * IOSYoloPostprocessor.protoSize
       )
     )
+  }
+
+  private static func makeProtoMask(
+    sourceRects: [(Float32, Float32, Float32, Float32)],
+    preprocess: IOSYoloPreprocessResult
+  ) -> [UInt8] {
+    let proto = IOSYoloPostprocessor.protoSize
+    var mask = [UInt8](repeating: 0, count: proto * proto)
+    for rect in sourceRects {
+      let modelX1 = rect.0 * preprocess.scale + preprocess.padLeft
+      let modelY1 = rect.1 * preprocess.scale + preprocess.padTop
+      let modelX2 = rect.2 * preprocess.scale + preprocess.padLeft
+      let modelY2 = rect.3 * preprocess.scale + preprocess.padTop
+      let factor = Float32(proto) / Float32(preprocess.inputSize)
+      let x1 = max(0, min(proto - 1, Int(floor(Double(modelX1 * factor)))))
+      let y1 = max(0, min(proto - 1, Int(floor(Double(modelY1 * factor)))))
+      let x2 = max(x1 + 1, min(proto, Int(ceil(Double(modelX2 * factor)))))
+      let y2 = max(y1 + 1, min(proto, Int(ceil(Double(modelY2 * factor)))))
+      for y in y1..<y2 {
+        for x in x1..<x2 {
+          mask[y * proto + x] = 255
+        }
+      }
+    }
+    return mask
   }
 
   private static func assertNear(

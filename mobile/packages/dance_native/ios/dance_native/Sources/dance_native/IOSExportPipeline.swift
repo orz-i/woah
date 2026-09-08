@@ -246,6 +246,7 @@ final class IOSExportPipeline {
           image: frame,
           persons: tracked,
           faceOnlyIds: faceOnlyIds,
+          preprocess: inference.preprocess,
           timestampUs: timestampUs
         ) ?? [:]
         let rendered = try renderer.render(

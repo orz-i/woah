@@ -81,6 +81,7 @@ final class IOSPreviewPipeline {
         image: frameAnalysis.image,
         persons: frameAnalysis.persons,
         faceOnlyIds: faceOnlyIds,
+        preprocess: frameAnalysis.preprocess,
         timestampUs: requestedTimestampMs * 1_000
       )
     let renderer = try renderer()

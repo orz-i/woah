@@ -185,6 +185,7 @@ def verify_ios_replay_surface() -> None:
         "protocol IOSFaceLocating",
         "final class IOSVisionFaceLocator",
         "enum IOSPersonBboxMotionEstimator",
+        "enum IOSBodyMaskFaceHeadEstimator",
         "final class IOSFacePrivacyTemporalResolver",
         "IOSFacePrivacyGeometry.fallbackEllipse",
         "person.conservativePrivacyFallback",
@@ -206,14 +207,36 @@ def verify_ios_replay_surface() -> None:
         "positionMaxRadiusStep: Float32 = 0.80",
         "positionMaxUnobservedPersonRadiusStep: Float32 = 0.65",
         "maxPredictedFaceAgeUs: Int64 = 150_000",
+        "trustedMaskSeedMaxAgeUs: Int64 = 800_000",
         "minPredictedFaceScale: Float32 = 0.88",
         "maxPredictedFaceScale: Float32 = 1.12",
         "maxPredictedAgeExpansion: Float32 = 0.10",
+        "expiredFaceMaskFallbackExpansion: Float32 = 1.10",
         "IOSPersonBboxMotionEstimator.estimate(",
+        "IOSBodyMaskFaceHeadEstimator.estimate(",
         "source: .predictedFace",
         "timestampUs - trusted.lastTrustedTimestampUs <= Self.maxPredictedFaceAgeUs",
+        "timestampUs - trusted.lastTrustedTimestampUs <= Self.trustedMaskSeedMaxAgeUs",
+        "Current YOLO segmentation must provide the rendered",
     ):
-        check(token in face_pipeline, f"Phase 5C/D FACE_ONLY pipeline missing: {token}")
+        check(token in face_pipeline, f"Phase 5C/D/E FACE_ONLY pipeline missing: {token}")
+    trusted_start = face_pipeline.find("private struct TrustedFaceGeometry")
+    mask_fallback_start = face_pipeline.find("func maskGuidedFallback(")
+    state_start = face_pipeline.find("private struct State", trusted_start + 1)
+    check(
+        trusted_start >= 0
+        and mask_fallback_start > trusted_start
+        and state_start > mask_fallback_start,
+        "Phase 5E maskGuidedFallback must remain scoped inside TrustedFaceGeometry",
+    )
+    vision_start = face_pipeline.find("final class IOSVisionFaceLocator")
+    geometry_start = face_pipeline.find("enum IOSFacePrivacyGeometry", vision_start + 1)
+    check(
+        vision_start >= 0
+        and geometry_start > vision_start
+        and "maskGuidedFallback" not in face_pipeline[vision_start:geometry_start],
+        "Vision locator must not own trusted-face fallback state",
+    )
 
     for token in (
         "IOSPhase5SequenceFaceLocator",
@@ -232,6 +255,12 @@ def verify_ios_replay_surface() -> None:
         "cachedPredictedRegion.source == .predictedFace",
         "IOSPersonBboxMotionEstimator.estimate(",
         'label: "top-edge jitter dy"',
+        "makeProtoMask(",
+        "maskGuidedRegion.centerX > 34",
+        "maskSeedExpiredRegion.source == .yoloHeadFallback",
+        'label: "800ms mask-seed expiry centerX"',
+        "Missing current head-like mask support removed FACE_ONLY fallback privacy",
+        'label: "unsupported-mask generic fallback centerX"',
         "faceRegions: [0: renderRegion]",
         "FACE_ONLY ellipse center was not covered",
         "FACE_ONLY privacy regressed to a rectangular mask",
@@ -250,12 +279,14 @@ def verify_ios_replay_surface() -> None:
     for token in (
         "IOSFacePrivacyTemporalResolver()",
         "facePrivacyResolver?.resolve(",
+        "preprocess: inference.preprocess",
         "faceRegions: faceRegions",
     ):
         check(token in export, f"Phase 5C export FACE_ONLY wiring missing: {token}")
     for token in (
         "facePrivacyResolvers: [String: IOSFacePrivacyTemporalResolver]",
         "facePrivacyResolver(cacheId: request.analysisCacheId).resolve(",
+        "preprocess: frameAnalysis.preprocess",
         "facePrivacyResolvers.removeValue(forKey: cacheId)?.reset()",
         "faceRegions: faceRegions",
     ):
@@ -360,6 +391,61 @@ def verify_android_reference_boundary() -> None:
         "top-edge-only coverage jitter does not become vertical translation",
     ):
         check(test_name in motion_test, f"Android person-bbox motion regression test missing: {test_name}")
+
+    body_mask_estimator = text(
+        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/com/danceanon/native/privacy/BodyMaskFaceHeadEstimator.kt",
+        "Android BodyMaskFaceHeadEstimator",
+    )
+    for token in (
+        "private const val MASK_THRESHOLD = 96",
+        "private const val MIN_SUPPORT_ROWS = 2",
+        "private const val PERSON_HEAD_MAX_Y_RATIO = 0.42f",
+        "private const val MIN_RUN_WIDTH_RATIO = 0.30f",
+        "private const val MAX_RUN_WIDTH_RATIO = 1.75f",
+        "private const val MAX_RUN_CENTER_DISTANCE_RATIO = 1.05f",
+        "head-like narrow run",
+    ):
+        check(token in body_mask_estimator, f"Android body-mask face-head reference drifted: {token}")
+
+    body_mask_test = text(
+        ROOT / "mobile/packages/dance_native/android/src/test/kotlin/com/danceanon/native/privacy/BodyMaskFaceHeadEstimatorTest.kt",
+        "Android BodyMaskFaceHeadEstimatorTest",
+    )
+    for test_name in (
+        "current body mask pulls fallback toward shifted head silhouette",
+        "distant raised arm cannot pull local face fallback away from head seed",
+        "arm crossing local head window cannot turn body silhouette into face centroid",
+    ):
+        check(test_name in body_mask_test, f"Android body-mask face-head regression test missing: {test_name}")
+
+    trusted_mask_fallback = text(
+        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/com/danceanon/native/privacy/FaceTrustedMaskFallback.kt",
+        "Android FaceTrustedMaskFallback",
+    )
+    for token in (
+        "old trusted face only as a local seed",
+        "stale face center is never rendered",
+        "BodyMaskFaceHeadEstimator.estimate(",
+    ):
+        check(token in trusted_mask_fallback, f"Android trusted-mask fallback reference drifted: {token}")
+    trusted_mask_test = text(
+        ROOT / "mobile/packages/dance_native/android/src/test/kotlin/com/danceanon/native/privacy/FaceTrustedMaskFallbackTest.kt",
+        "Android FaceTrustedMaskFallbackTest",
+    )
+    for test_name in (
+        "fresh mask moves trusted seed toward current head without following body box center",
+        "stale trusted seed cannot render without current head like mask support",
+    ):
+        check(test_name in trusted_mask_test, f"Android trusted-mask fallback regression test missing: {test_name}")
+
+    pixel_motion = text(
+        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/com/danceanon/native/privacy/FacePixelMotionTracker.kt",
+        "Android FacePixelMotionTracker",
+    )
+    check(
+        "const val ROI_MAX_DETECTOR_SEED_AGE_US = 800_000L" in pixel_motion,
+        "Android FACE_ONLY detector-seed age reference drifted from 800ms",
+    )
 
 
 def verify_cloud_gate() -> None:

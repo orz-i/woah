@@ -540,6 +540,40 @@ motion, and one-edge jitter rejection. These rules require no real-device
 timing assumptions; real-iPhone visual quality and sustained Vision cost remain
 separate release acceptance gates.
 
+Final cloud evidence for Phase 5D is GitHub Actions `iOS Cloud CI` run
+`34227432896` (#23) at product head
+`bd843c622b3c9e16856e5a47b4bc7f62af96bde7`. Job `102064889713`
+(`Xcode 26 / no-codesign build`) completed successfully with every step green.
+The Apple-only repository-contract step passed the expanded FACE_ONLY smoke,
+including the 150 ms trusted-face prediction lease, short translated/body-gap
+projection, expiry to current YOLO fallback, and bbox-motion jitter checks,
+together with the inherited Vision/Metal/Golden-Trace/real-media export gates.
+Production iPhoneOS no-codesign build, archive, and artifact upload also passed.
+This remains macOS/iOS-Simulator evidence only; no physical or formal cloud
+iPhone was available or used.
+
+### Phase 5E: current-mask-guided expired-face recovery
+
+The next FACE_ONLY fallback tier is also deterministic and does not require a
+physical or formal cloud iPhone. Between the 150 ms direct face lease and the
+Android detector-seed hard cap at **800 ms**, an old trusted face may be used
+only as a **local search seed**. The rendered center must come from the current
+frame's YOLO person segmentation. iOS now ports Android's
+`BodyMaskFaceHeadEstimator` scanline policy: it searches only the upper local
+head window, accepts narrow head-like mask runs, rejects shoulder/arm-width
+runs, prefers geometry near the translated trusted seed, and bounds the final
+correction around that seed.
+
+This does not turn the body mask into a face identity source. Exact person
+identity still comes exclusively from `IOSTemporalIdentityTracker`. The
+mask-guided path runs only for a currently observed person with current
+segmentation. If current mask pixels cannot support a head-like local shape, the
+stale trusted center is **not** rendered; the resolver immediately uses the
+generic head ellipse derived from the current YOLO person bbox. Once the trusted
+seed is older than 800 ms, it is ignored even if current body-mask pixels exist.
+The deterministic Simulator smoke covers a shifted current head silhouette, the
+800 ms seed expiry, and the no-current-mask-support fallback case.
+
 This is a substantial FACE_ONLY closure, but it is still not a claim of complete
 Android `FaceOnlyPrivacyFrameProcessor` parity. Android's local ROI detector
 budgeting, landmark/keypoint center refinement, pixel-motion prediction,
