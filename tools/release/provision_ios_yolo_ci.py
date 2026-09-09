@@ -94,6 +94,8 @@ def exporter_versions() -> dict[str, str | None]:
         "torch": distribution_version("torch"),
         "torchvision": distribution_version("torchvision"),
         "numpy": distribution_version("numpy"),
+        "tflite": distribution_version("tflite"),
+        "flatbuffers": distribution_version("flatbuffers"),
         "litert-torch": distribution_version("litert-torch"),
         "ai-edge-litert": distribution_version("ai-edge-litert"),
         "ai-edge-quantizer": distribution_version("ai-edge-quantizer"),
@@ -110,6 +112,8 @@ def expected_exporter_versions(contract: dict) -> dict[str, str]:
         "torch": environment["torch_version"],
         "torchvision": environment["torchvision_version"],
         "numpy": environment["numpy_version"],
+        "tflite": environment["tflite_schema_version"],
+        "flatbuffers": environment["flatbuffers_version"],
         "litert-torch": environment["litert_torch_version"],
         "ai-edge-litert": environment["ai_edge_litert_version"],
         "ai-edge-quantizer": environment["ai_edge_quantizer_version"],
@@ -184,6 +188,8 @@ def create_exporter_environment(contract: dict, root: Path) -> Path:
     install_names = (
         "ultralytics",
         "numpy",
+        "tflite",
+        "flatbuffers",
         "litert-torch",
         "ai-edge-litert",
         "ai-edge-quantizer",
@@ -369,24 +375,66 @@ def reproduce_model(contract: dict, checkpoint: Path, exporter_python: Path, tem
     target = ROOT / contract["source"]
     target.parent.mkdir(parents=True, exist_ok=True)
     print("[iOS CI] Reproducing YOLO11n segmentation with Ultralytics LiteRT export...", flush=True)
-    result = temporary_root / "generated-yolo11n-seg.tflite"
-    run_checked(
-        [
-            str(exporter_python),
-            str(Path(__file__).resolve()),
-            "--worker-export",
-            str(checkpoint),
-            str(result),
-        ],
-        title="Phase 7 isolated LiteRT export failed",
-    )
+    results = [
+        temporary_root / "generated-yolo11n-seg-a.tflite",
+        temporary_root / "generated-yolo11n-seg-b.tflite",
+    ]
+    for index, result in enumerate(results, start=1):
+        run_checked(
+            [
+                str(exporter_python),
+                str(Path(__file__).resolve()),
+                "--worker-export",
+                str(checkpoint),
+                str(result),
+            ],
+            title=f"Phase 7 isolated LiteRT export #{index} failed",
+        )
     verify_checkpoint(checkpoint, contract)
 
-    metadata = load_export_metadata(result)
-    validate_export_metadata(metadata, contract)
-    core, generated_tail = split_core(result)
+    generated: list[dict] = []
+    semantic_tool = ROOT / "tools/release/fingerprint_tflite_semantics.py"
+    for result in results:
+        metadata = load_export_metadata(result)
+        validate_export_metadata(metadata, contract)
+        core, generated_tail = split_core(result)
+        fingerprint_output = run_checked(
+            [str(exporter_python), str(semantic_tool), str(result)],
+            title="Phase 7 generated LiteRT semantic fingerprint failed",
+        )
+        marker = "PHASE7_TFLITE_SEMANTIC_FINGERPRINT="
+        marker_lines = [line for line in fingerprint_output.splitlines() if line.startswith(marker)]
+        if len(marker_lines) != 1:
+            fail(
+                "Phase 7 generated LiteRT semantic fingerprint",
+                f"Missing semantic marker in output for {result}:\n{fingerprint_output[-2000:]}",
+            )
+        fingerprint = json.loads(marker_lines[0][len(marker) :])
+        generated.append(
+            {
+                "path": result,
+                "metadata": metadata,
+                "core": core,
+                "generated_tail": generated_tail,
+                "fingerprint": fingerprint,
+            }
+        )
+
+    first = generated[0]
+    second = generated[1]
+    result = first["path"]
+    metadata = first["metadata"]
+    core = first["core"]
+    generated_tail = first["generated_tail"]
+    first_fingerprint = first["fingerprint"]
+    second_fingerprint = second["fingerprint"]
     reproducibility = contract["reproducibility"]
     core_hash = sha256_bytes(core)
+    repeated_core_hash = sha256_bytes(second["core"])
+    repeat_core_equal = core == second["core"]
+    repeat_semantic_equal = (
+        first_fingerprint["semantic_sha256"] == second_fingerprint["semantic_sha256"]
+    )
     print(
         "PHASE7_MODEL_GENERATED="
         + json.dumps(
@@ -395,6 +443,13 @@ def reproduce_model(contract: dict, checkpoint: Path, exporter_python: Path, tem
                 "raw_sha256": sha256(result),
                 "core_size": len(core),
                 "core_sha256": core_hash,
+                "repeat_core_sha256": repeated_core_hash,
+                "repeat_core_equal": repeat_core_equal,
+                "semantic_sha256": first_fingerprint["semantic_sha256"],
+                "repeat_semantic_sha256": second_fingerprint["semantic_sha256"],
+                "repeat_semantic_equal": repeat_semantic_equal,
+                "structure_sha256": first_fingerprint["structure_sha256"],
+                "constants_sha256": first_fingerprint["constants_sha256"],
                 "generated_tail_size": len(generated_tail),
                 "metadata_version": metadata.get("version"),
                 "metadata_args": metadata.get("args"),
@@ -403,11 +458,28 @@ def reproduce_model(contract: dict, checkpoint: Path, exporter_python: Path, tem
         ),
         flush=True,
     )
+    expected_semantic = reproducibility["semantic_fingerprint"]
+    semantic_mismatches = {
+        key: {"expected": expected_semantic[key], "actual": first_fingerprint.get(key)}
+        for key in (
+            "tensor_count",
+            "operator_count",
+            "constant_tensor_count",
+            "constant_bytes",
+            "structure_sha256",
+            "constants_sha256",
+            "semantic_sha256",
+        )
+        if first_fingerprint.get(key) != expected_semantic[key]
+    }
     if len(core) != int(reproducibility["expected_core_size_bytes"]) or core_hash != reproducibility["expected_core_sha256"]:
         fail(
             "Phase 7 LiteRT core reproducibility failure",
             f"expected_size={reproducibility['expected_core_size_bytes']} actual_size={len(core)} "
-            f"expected_sha256={reproducibility['expected_core_sha256']} actual_sha256={core_hash}",
+            f"expected_sha256={reproducibility['expected_core_sha256']} actual_sha256={core_hash} "
+            f"repeat_sha256={repeated_core_hash} repeat_core_equal={repeat_core_equal} "
+            f"repeat_semantic_equal={repeat_semantic_equal} semantic_mismatches="
+            f"{json.dumps(semantic_mismatches, sort_keys=True)}",
         )
 
     target.write_bytes(core + canonical_tail(contract))

@@ -191,6 +191,8 @@ def verify_model_contract() -> None:
         ("torchvision_version", "0.28.0+cpu"),
         ("torchvision_wheel_sha256", "1dad604dfc0177ecebe0891bd9701fe2c62ec3f7819a247be541b3fb6effee99"),
         ("numpy_version", "2.4.6"),
+        ("tflite_schema_version", "2.18.0"),
+        ("flatbuffers_version", "25.2.10"),
         ("litert_torch_version", "0.9.4"),
         ("ai_edge_litert_version", "2.2.0"),
         ("ai_edge_quantizer_version", "0.9.0"),
@@ -202,6 +204,22 @@ def verify_model_contract() -> None:
         check(environment.get(key) == expected, f"Phase 7 canonical exporter environment drifted: {key}")
     tail_path = ROOT / str(reproducibility.get("canonical_metadata_tail_path", ""))
     check(tail_path.is_file(), "Phase 7 canonical metadata tail evidence is missing")
+
+    semantic = reproducibility.get("semantic_fingerprint", {})
+    for key, expected in (
+        ("schema", 1),
+        ("tensor_count", 643),
+        ("operator_count", 394),
+        ("constant_tensor_count", 248),
+        ("constant_bytes", 11576060),
+        ("structure_sha256", "ca2dc210ac9ada611b83d4cc5dd3400d8209b4f9464ee125ed1f4db3654dd66b"),
+        ("constants_sha256", "8e2bc7b693a5d42c2a1a19ef2dfe2264f8b3be82e5f89a04684eaddc25a0f9a3"),
+        ("semantic_sha256", "5b65e547b81bb394e0036948b7ece40c270bf88b89f92d78c19708f378be65bd"),
+    ):
+        check(semantic.get(key) == expected, f"Phase 7 canonical semantic fingerprint drifted: {key}")
+
+    fingerprint_tool = ROOT / "tools/release/fingerprint_tflite_semantics.py"
+    check(fingerprint_tool.is_file(), "Phase 7 TFLite semantic fingerprint tool is missing")
     if tail_path.is_file():
         try:
             tail = base64.b64decode(tail_path.read_text(encoding="ascii").strip(), validate=True)
@@ -222,6 +240,9 @@ def verify_model_contract() -> None:
         '"--exclude-newer"',
         'format=exporter["format"]',
         'quantize=exporter["quantize"]',
+        "fingerprint_tflite_semantics.py",
+        "repeat_core_equal",
+        "semantic_mismatches",
         "PHASE7_MODEL_CHECKPOINT_SHA256",
         "PHASE7_MODEL_EXPORTER_VERSIONS",
         "PHASE7_MODEL_EXPORTER_ISOLATION=temporary_venv",

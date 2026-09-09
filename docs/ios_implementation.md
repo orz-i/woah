@@ -917,6 +917,25 @@ PyTorch and torchvision cp311/Linux x86_64 CPU wheel URLs and their SHA-256
 digests directly. PyPI is used only for their ordinary dependencies and the
 cutoff-pinned LiteRT exporter stack.
 
+Phase 7 Release Run #6 (`34346810849`) then exposed an isolated-environment
+resolver error rather than a model error: the provisional NumPy `2.5.2` pin
+requires Python 3.12+, while the release workflow intentionally uses Python
+3.11. The pin was corrected to cutoff-era NumPy `2.4.6`, for which a cp311 Linux
+x86_64 wheel exists and which is also present in the surviving historical
+LiteRT environment residue.
+
+Phase 7 Release Run #7 (`34357948244`) was the first clean-cloud attempt to
+complete dependency installation and a real LiteRT export. The generated core
+had the exact historical size (11,798,720 bytes) but a different raw SHA-256
+(`3d25c2be9f1d32bd843fd1ed502d960831e8304bc0d06b0d70fa0bed1f17937d`
+instead of `881b3107910165066ba8ab8cd9c76bd5f51b781d1e224ccce91f60a904c0951c`).
+The raw core hash remains blocking. Before any acceptance rule can be changed,
+Phase 7 now records a serialization-order-resistant semantic fingerprint over
+643 tensors, 394 operators, operator options/wiring, and 248 constant tensors,
+and exports the model twice in the same isolated environment. This diagnostic
+will distinguish a serializer/layout difference from a real graph or weight
+drift without weakening the historical whole-file or core identities.
+
 Two subsequent legacy `iOS Cloud CI` runs provide intermediate Apple-only
 evidence while the independent Phase 7 Release workflow remains intentionally
 blocked on protected-path installation. Run `34334830050` (#40), job

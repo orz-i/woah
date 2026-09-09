@@ -12,6 +12,16 @@
   "reproducibility": {
     "expected_core_size_bytes": 11798720,
     "expected_core_sha256": "881b3107910165066ba8ab8cd9c76bd5f51b781d1e224ccce91f60a904c0951c",
+    "semantic_fingerprint": {
+      "schema": 1,
+      "tensor_count": 643,
+      "operator_count": 394,
+      "constant_tensor_count": 248,
+      "constant_bytes": 11576060,
+      "structure_sha256": "ca2dc210ac9ada611b83d4cc5dd3400d8209b4f9464ee125ed1f4db3654dd66b",
+      "constants_sha256": "8e2bc7b693a5d42c2a1a19ef2dfe2264f8b3be82e5f89a04684eaddc25a0f9a3",
+      "semantic_sha256": "5b65e547b81bb394e0036948b7ece40c270bf88b89f92d78c19708f378be65bd"
+    },
     "canonical_metadata_tail_path": "tools/ios/yolo11n-seg-fp16.canonical-tail.b64",
     "canonical_metadata_tail_size_bytes": 1005,
     "canonical_metadata_tail_sha256": "25c2b7ba6ecd5021c417426266682a7e580d2ea62fbf0da836fe4b7be8e5f2d1",
@@ -35,6 +45,8 @@
       "torchvision_wheel_url": "https://download-r2.pytorch.org/whl/cpu/torchvision-0.28.0%2Bcpu-cp311-cp311-manylinux_2_28_x86_64.whl",
       "torchvision_wheel_sha256": "1dad604dfc0177ecebe0891bd9701fe2c62ec3f7819a247be541b3fb6effee99",
       "numpy_version": "2.4.6",
+      "tflite_schema_version": "2.18.0",
+      "flatbuffers_version": "25.2.10",
       "litert_torch_version": "0.9.4",
       "ai_edge_litert_version": "2.2.0",
       "ai_edge_quantizer_version": "0.9.0",
