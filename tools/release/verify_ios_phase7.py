@@ -7,6 +7,7 @@ import argparse
 import json
 import plistlib
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -27,6 +28,21 @@ def check(condition: bool, message: str) -> None:
 def text(path: Path, label: str) -> str:
     check(path.is_file(), f"Missing iOS Phase 7 asset: {label}")
     return path.read_text(encoding="utf-8") if path.is_file() else ""
+
+
+def is_git_tracked(path: Path) -> bool:
+    try:
+        relative = path.relative_to(ROOT).as_posix()
+    except ValueError:
+        return False
+    completed = subprocess.run(
+        ["git", "ls-files", "--error-unmatch", "--", relative],
+        cwd=ROOT,
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    return completed.returncode == 0
 
 
 def load_plist(path: Path, label: str) -> dict:
@@ -247,7 +263,13 @@ def verify_release_tooling() -> None:
     ):
         check(token in macos, f"Phase 7 macOS Release gate missing: {token}")
 
-    workflow = text(ROOT / ".github/workflows/ios-release.yml", "Phase 7 GitHub workflow")
+    workflow_template = ROOT / "tools/ios/ios-release.phase7.workflow.yml"
+    workflow = text(workflow_template, "Phase 7 GitHub workflow template")
+    workflow_path = ROOT / ".github/workflows/ios-release.yml"
+    check(
+        workflow_path.is_file() and is_git_tracked(workflow_path),
+        "Phase 7 GitHub Release workflow must be committed, not merely present as an untracked workspace file",
+    )
     for token in (
         "name: iOS Phase 7 Release Readiness",
         "runs-on: macos-26",
