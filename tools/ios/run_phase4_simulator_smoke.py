@@ -130,7 +130,43 @@ def tolerate_degraded_bootstatus(
     return True
 
 
-def boot_iphone() -> tuple[str, str, str]:
+def install_probe(udid: str, app: Path, *, attempts: int = 3) -> bool:
+    """Use the operation we actually need as the final Simulator readiness probe.
+
+    `simctl bootstatus -b` is advisory on GitHub-hosted runners: migration
+    plugins can fail or stall even though CoreSimulator is already capable of
+    installing and launching an app. An install probe is therefore stricter and
+    more relevant than accepting a state string alone. It does not waive the
+    gate because the real launch plus all Phase 3/4/5 smoke markers still run
+    after this function returns true.
+    """
+    for attempt in range(1, attempts + 1):
+        try:
+            completed = run(
+                ["xcrun", "simctl", "install", udid, str(app)],
+                check=False,
+                timeout=120,
+            )
+        except subprocess.TimeoutExpired:
+            print(
+                f"SIMULATOR_INSTALL_PROBE_TIMEOUT=attempt_{attempt}",
+                file=sys.stderr,
+            )
+            completed = None
+        if completed is not None:
+            if completed.stdout:
+                print(completed.stdout, end="")
+            if completed.stderr:
+                print(completed.stderr, end="", file=sys.stderr)
+            if completed.returncode == 0:
+                print(f"SIMULATOR_INSTALL_PROBE=PASS attempt={attempt}")
+                return True
+        if attempt < attempts:
+            time.sleep(5)
+    return False
+
+
+def boot_iphone(app: Path) -> tuple[str, str, str]:
     failures: list[str] = []
     for runtime, name, udid in choose_iphones()[:4]:
         print(f"SIMULATOR_BOOT_ATTEMPT={name} runtime={runtime} udid={udid}")
@@ -151,9 +187,22 @@ def boot_iphone() -> tuple[str, str, str]:
             if bootstatus.stderr:
                 print(bootstatus.stderr, end="", file=sys.stderr)
             if bootstatus.returncode == 0:
-                return runtime, name, udid
+                if install_probe(udid, app):
+                    return runtime, name, udid
+                failures.append(f"{name}: bootstatus passed but install probe failed")
+                safe_run(["xcrun", "simctl", "shutdown", udid], timeout=30)
+                continue
             reason = f"bootstatus_exit_{bootstatus.returncode}"
             if tolerate_degraded_bootstatus(name=name, udid=udid, reason=reason):
+                if install_probe(udid, app):
+                    return runtime, name, udid
+            elif install_probe(udid, app):
+                print(
+                    f"SIMULATOR_BOOTSTATUS_DEGRADED_TOLERATED={name} "
+                    f"state={simulator_state(udid) or 'unknown'} "
+                    f"reason={reason}_install_probe_passed",
+                    file=sys.stderr,
+                )
                 return runtime, name, udid
             failures.append(
                 f"{name}: bootstatus exit={bootstatus.returncode} "
@@ -166,6 +215,15 @@ def boot_iphone() -> tuple[str, str, str]:
                 udid=udid,
                 reason="bootstatus_timeout_420s",
             ):
+                if install_probe(udid, app):
+                    return runtime, name, udid
+            elif install_probe(udid, app):
+                print(
+                    f"SIMULATOR_BOOTSTATUS_DEGRADED_TOLERATED={name} "
+                    f"state={simulator_state(udid) or 'unknown'} "
+                    "reason=bootstatus_timeout_420s_install_probe_passed",
+                    file=sys.stderr,
+                )
                 return runtime, name, udid
             failures.append(
                 f"{name}: bootstatus timed out after 420s "
@@ -184,12 +242,11 @@ def main() -> int:
     if not app.is_dir():
         raise SystemExit(f"Simulator app bundle does not exist: {app}")
 
-    runtime, name, udid = boot_iphone()
+    runtime, name, udid = boot_iphone(app)
     print(f"SIMULATOR_DEVICE={name}")
     print(f"SIMULATOR_RUNTIME={runtime}")
     print(f"SIMULATOR_UDID={udid}")
     try:
-        run(["xcrun", "simctl", "install", udid, str(app)], timeout=120)
         launched = run(
             ["xcrun", "simctl", "launch", "--console", udid, BUNDLE_ID],
             check=False,
