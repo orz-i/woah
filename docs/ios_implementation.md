@@ -880,6 +880,14 @@ the core from the pinned `yolo11n-seg.pt` checkpoint before restoring that tail
 and re-establishing the original whole-file hash. This fixes reproducibility
 without changing the inference graph or Android runtime behavior.
 
+Phase 7 Release Run #2 (`34344338654`) still failed inside the clean Ubuntu
+`Generate canonical model` step before the core comparison produced an
+annotation. The provisioner therefore now pins the cutoff-era
+`litert-lm-builder==0.16.1` transitive dependency and converts exporter-package
+installation, LiteRT export exceptions, and staging failures into explicit
+GitHub annotations. Hash gates remain unchanged; this is diagnostic hardening,
+not an acceptance relaxation.
+
 Two subsequent legacy `iOS Cloud CI` runs provide intermediate Apple-only
 evidence while the independent Phase 7 Release workflow remains intentionally
 blocked on protected-path installation. Run `34334830050` (#40), job

@@ -192,6 +192,7 @@ def verify_model_contract() -> None:
         ("ai_edge_quantizer_version", "0.9.0"),
         ("litert_converter_version", "0.4.0"),
         ("torchao_version", "0.18.0"),
+        ("litert_lm_builder_version", "0.16.1"),
         ("exclude_newer_utc", "2026-08-27T05:36:51Z"),
     ):
         check(environment.get(key) == expected, f"Phase 7 canonical exporter environment drifted: {key}")

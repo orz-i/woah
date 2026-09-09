@@ -22,6 +22,7 @@ import os
 import shutil
 import subprocess
 import sys
+import traceback
 import zipfile
 from pathlib import Path
 
@@ -53,6 +54,25 @@ def annotation_escape(value: str) -> str:
 def fail(title: str, message: str) -> "NoReturn":
     print(f"::error title={annotation_escape(title)}::{annotation_escape(message)}", flush=True)
     raise SystemExit(message)
+
+
+def run_checked(command: list[str], *, title: str) -> None:
+    completed = subprocess.run(
+        command,
+        cwd=ROOT,
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    output = completed.stdout or ""
+    if output:
+        print(output, end="" if output.endswith("\n") else "\n", flush=True)
+    if completed.returncode != 0:
+        fail(
+            title,
+            f"exit={completed.returncode}\ncommand={' '.join(command)}\n{output[-8000:]}",
+        )
 
 
 def distribution_version(name: str) -> str | None:
@@ -89,6 +109,7 @@ def expected_exporter_versions(contract: dict) -> dict[str, str]:
         "ai-edge-quantizer": environment["ai_edge_quantizer_version"],
         "litert-converter": environment["litert_converter_version"],
         "torchao": environment["torchao_version"],
+        "litert-lm-builder": environment["litert_lm_builder_version"],
     }
 
 
@@ -102,6 +123,7 @@ def ensure_exporter_environment(contract: dict) -> dict[str, str | None]:
         "ai-edge-quantizer",
         "litert-converter",
         "torchao",
+        "litert-lm-builder",
     )
     needs_install = any(observed.get(name) != expected[name] for name in install_names)
     if needs_install:
@@ -121,7 +143,7 @@ def ensure_exporter_environment(contract: dict) -> dict[str, str | None]:
             *packages,
         ]
         print("[iOS CI] Installing pinned Phase 7 LiteRT exporter stack:", " ".join(packages), flush=True)
-        subprocess.run(command, cwd=ROOT, check=True)
+        run_checked(command, title="Phase 7 model exporter dependency install failed")
         observed = exporter_versions()
 
     mismatches = {
@@ -236,15 +258,18 @@ def reproduce_model(contract: dict, checkpoint: Path) -> Path:
     target.parent.mkdir(parents=True, exist_ok=True)
     print("[iOS CI] Reproducing YOLO11n segmentation with Ultralytics LiteRT export...", flush=True)
     exporter = contract["reproducibility"]["exporter"]
-    model = YOLO(str(checkpoint))
-    result = Path(
-        model.export(
-            format=exporter["format"],
-            imgsz=int(exporter["imgsz"]),
-            quantize=exporter["quantize"],
-            nms=bool(exporter["nms"]),
+    try:
+        model = YOLO(str(checkpoint))
+        result = Path(
+            model.export(
+                format=exporter["format"],
+                imgsz=int(exporter["imgsz"]),
+                quantize=exporter["quantize"],
+                nms=bool(exporter["nms"]),
+            )
         )
-    )
+    except Exception:
+        fail("Phase 7 LiteRT export exception", traceback.format_exc()[-10000:])
     if result.is_dir():
         candidates = sorted(result.glob("*.tflite"))
         if len(candidates) != 1:
@@ -328,10 +353,9 @@ def main() -> int:
         target = reproduce_model(contract, checkpoint)
 
     observed_hash = verify_canonical_model(target, contract)
-    subprocess.run(
+    run_checked(
         [sys.executable, str(ROOT / "tools/release/sync_ios_yolo_model.py")],
-        cwd=ROOT,
-        check=True,
+        title="Phase 7 canonical model staging failed",
     )
     print(f"IOS_YOLO_SHA256={observed_hash}")
     print(f"IOS_YOLO_CORE_SHA256={contract['reproducibility']['expected_core_sha256']}")
@@ -339,4 +363,9 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except SystemExit:
+        raise
+    except Exception:
+        fail("Phase 7 model provisioner unhandled exception", traceback.format_exc()[-10000:])
