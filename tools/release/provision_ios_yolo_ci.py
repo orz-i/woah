@@ -94,6 +94,7 @@ def exporter_versions() -> dict[str, str | None]:
         "ai-edge-quantizer": distribution_version("ai-edge-quantizer"),
         "litert-converter": distribution_version("litert-converter"),
         "torchao": distribution_version("torchao"),
+        "litert-lm-builder": distribution_version("litert-lm-builder"),
     }
 
 

@@ -888,6 +888,15 @@ installation, LiteRT export exceptions, and staging failures into explicit
 GitHub annotations. Hash gates remain unchanged; this is diagnostic hardening,
 not an acceptance relaxation.
 
+Phase 7 Release Run #3 (`34344945710`) confirmed the pinned exporter stack was
+installed and surfaced the intended annotation path. Its only reported drift
+was `litert-lm-builder actual=null`; inspection found a local diagnostic bug:
+the dependency was present in both the expected and install lists but omitted
+from `exporter_versions()`. The package's published wheel metadata confirms the
+distribution name `litert-lm-builder`. Run #4 therefore changes only that
+version-observation omission; all model/checkpoint/core/full-file hash gates
+remain unchanged.
+
 Two subsequent legacy `iOS Cloud CI` runs provide intermediate Apple-only
 evidence while the independent Phase 7 Release workflow remains intentionally
 blocked on protected-path installation. Run `34334830050` (#40), job
