@@ -54,6 +54,26 @@ pubspec version, dependency-lock SHA-256, app bundle metadata, app executable
 SHA-256, model contract/hash evidence, bundled frameworks, and bundled privacy
 manifests.
 
+The YOLO release artifact has two model identities. The complete packaged file
+remains pinned at SHA-256
+`ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340`.
+Clean-cloud reproducibility is proved against the inference FlatBuffer core,
+whose SHA-256 is
+`881b3107910165066ba8ab8cd9c76bd5f51b781d1e224ccce91f60a904c0951c`.
+Ultralytics appends a ZIP `metadata.json` containing export-time timestamps, so
+that 1,005-byte non-inference tail is restored from tracked canonical evidence
+only *after* the generated core is byte-identical. This preserves the original
+whole-file identity without pretending timestamps are reproducible model
+content.
+
+The canonical model metadata identifies Ultralytics `8.4.130` and its LiteRT
+argument set (`format=litert`, unquantized, 640 input). The historical `fp16`
+filename is retained for compatibility, but the graph tensors are float32;
+LiteRT GPU delegates may execute that graph with FP16 arithmetic at runtime.
+The model-production environment is isolated from the Android/application
+Python lock and uses the tracked 2026-08-27 package cutoff and exporter version
+contract.
+
 The canonical `yolo11n-seg-fp16.tflite` contract is pinned to
 `ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340`.
 That value was seeded from the existing repository-root model shared by the

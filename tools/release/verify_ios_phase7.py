@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
 import plistlib
 import re
@@ -157,6 +159,72 @@ def verify_model_contract() -> None:
     check(pinned, "Phase 7 Release acceptance requires a pinned YOLO expected_sha256")
     check(contract.get("expected_size_bytes") == 11799725, "Phase 7 YOLO byte-size contract drifted")
     check(contract.get("flatbuffer_magic") == "TFL3", "Phase 7 YOLO FlatBuffer contract drifted")
+    checkpoint = contract.get("source_checkpoint") or {}
+    check(checkpoint.get("path") == "models/pytorch/yolo11n-seg.pt", "Phase 7 YOLO checkpoint path drifted")
+    check(checkpoint.get("expected_size_bytes") == 6182636, "Phase 7 YOLO checkpoint size drifted")
+    check(
+        checkpoint.get("expected_sha256") == "55ed65c56c91713d23e8402371c6c49a6fd84f257f7dce452e8d70e41dcbe152",
+        "Phase 7 YOLO checkpoint hash drifted",
+    )
+    reproducibility = contract.get("reproducibility") or {}
+    check(reproducibility.get("expected_core_size_bytes") == 11798720, "Phase 7 YOLO FlatBuffer core size drifted")
+    check(
+        reproducibility.get("expected_core_sha256") == "881b3107910165066ba8ab8cd9c76bd5f51b781d1e224ccce91f60a904c0951c",
+        "Phase 7 YOLO FlatBuffer core hash drifted",
+    )
+    check(reproducibility.get("canonical_metadata_tail_size_bytes") == 1005, "Phase 7 canonical metadata tail size drifted")
+    check(
+        reproducibility.get("canonical_metadata_tail_sha256") == "25c2b7ba6ecd5021c417426266682a7e580d2ea62fbf0da836fe4b7be8e5f2d1",
+        "Phase 7 canonical metadata tail hash drifted",
+    )
+    exporter = reproducibility.get("exporter") or {}
+    check(exporter.get("ultralytics_version") == "8.4.130", "Phase 7 canonical Ultralytics exporter version drifted")
+    check(exporter.get("format") == "litert", "Phase 7 canonical export format must remain litert")
+    check(exporter.get("quantize") is None, "Phase 7 canonical LiteRT export must remain unquantized")
+    check(exporter.get("graph_precision") == "float32", "Phase 7 canonical graph precision contract drifted")
+    environment = reproducibility.get("environment") or {}
+    for key, expected in (
+        ("torch_version", "2.6.0+cu124"),
+        ("torchvision_version", "0.21.0+cu124"),
+        ("numpy_version", "2.1.1"),
+        ("litert_torch_version", "0.9.4"),
+        ("ai_edge_litert_version", "2.2.0"),
+        ("ai_edge_quantizer_version", "0.9.0"),
+        ("litert_converter_version", "0.4.0"),
+        ("torchao_version", "0.18.0"),
+        ("exclude_newer_utc", "2026-08-27T05:36:51Z"),
+    ):
+        check(environment.get(key) == expected, f"Phase 7 canonical exporter environment drifted: {key}")
+    tail_path = ROOT / str(reproducibility.get("canonical_metadata_tail_path", ""))
+    check(tail_path.is_file(), "Phase 7 canonical metadata tail evidence is missing")
+    if tail_path.is_file():
+        try:
+            tail = base64.b64decode(tail_path.read_text(encoding="ascii").strip(), validate=True)
+        except Exception:
+            tail = b""
+            check(False, "Phase 7 canonical metadata tail is not valid Base64")
+        check(
+            len(tail) == reproducibility.get("canonical_metadata_tail_size_bytes"),
+            "Phase 7 canonical metadata tail decoded size drifted",
+        )
+        check(
+            hashlib.sha256(tail).hexdigest() == reproducibility.get("canonical_metadata_tail_sha256"),
+            "Phase 7 canonical metadata tail decoded hash drifted",
+        )
+
+    provision = text(ROOT / "tools/release/provision_ios_yolo_ci.py", "Phase 7 canonical model provisioner")
+    for token in (
+        '"--exclude-newer"',
+        'format=exporter["format"]',
+        'quantize=exporter["quantize"]',
+        "PHASE7_MODEL_CHECKPOINT_SHA256",
+        "PHASE7_MODEL_EXPORTER_VERSIONS",
+        "PHASE7_MODEL_GENERATED",
+        "Phase 7 LiteRT core reproducibility failure",
+        "canonical_tail(contract)",
+        "IOS_YOLO_CORE_SHA256",
+    ):
+        check(token in provision, f"Phase 7 model reproducibility provisioner missing: {token}")
 
 
 def verify_release_regression_contract() -> None:

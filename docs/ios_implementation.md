@@ -867,6 +867,19 @@ itself clean-cloud acceptance: the dedicated Phase 7 `release-model` job must
 reproduce exactly the same hash in the locked model-export environment or the
 Release lane fails closed.
 
+The first independent Phase 7 Release workflow run (`34339971155`) exposed a
+model-production provenance bug before any Xcode Release job started. The
+historical file's embedded `metadata.json` records Ultralytics `8.4.130`, while
+the repository application lock still pins `8.3.82`. The same metadata argument
+set matches the `8.4.130` direct LiteRT exporter (`format=litert`,
+`quantize=null`), not the old TensorFlow/TFLite recipe. The canonical file is
+therefore now contracted as a deterministic 11,798,720-byte FlatBuffer core
+(`881b3107910165066ba8ab8cd9c76bd5f51b781d1e224ccce91f60a904c0951c`)
+plus a 1,005-byte historical ZIP metadata tail. Clean-cloud CI must reproduce
+the core from the pinned `yolo11n-seg.pt` checkpoint before restoring that tail
+and re-establishing the original whole-file hash. This fixes reproducibility
+without changing the inference graph or Android runtime behavior.
+
 Two subsequent legacy `iOS Cloud CI` runs provide intermediate Apple-only
 evidence while the independent Phase 7 Release workflow remains intentionally
 blocked on protected-path installation. Run `34334830050` (#40), job

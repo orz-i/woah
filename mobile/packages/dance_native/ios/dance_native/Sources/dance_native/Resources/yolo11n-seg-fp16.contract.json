@@ -4,6 +4,46 @@
   "expected_size_bytes": 11799725,
   "expected_sha256": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
   "flatbuffer_magic": "TFL3",
+  "source_checkpoint": {
+    "path": "models/pytorch/yolo11n-seg.pt",
+    "expected_size_bytes": 6182636,
+    "expected_sha256": "55ed65c56c91713d23e8402371c6c49a6fd84f257f7dce452e8d70e41dcbe152"
+  },
+  "reproducibility": {
+    "expected_core_size_bytes": 11798720,
+    "expected_core_sha256": "881b3107910165066ba8ab8cd9c76bd5f51b781d1e224ccce91f60a904c0951c",
+    "canonical_metadata_tail_path": "tools/ios/yolo11n-seg-fp16.canonical-tail.b64",
+    "canonical_metadata_tail_size_bytes": 1005,
+    "canonical_metadata_tail_sha256": "25c2b7ba6ecd5021c417426266682a7e580d2ea62fbf0da836fe4b7be8e5f2d1",
+    "exporter": {
+      "ultralytics_version": "8.4.130",
+      "format": "litert",
+      "quantize": null,
+      "imgsz": 640,
+      "nms": false,
+      "graph_precision": "float32",
+      "runtime_precision_note": "LiteRT GPU delegates may execute the FP32 graph with FP16 arithmetic at runtime; the historical fp16 filename is not a graph-dtype claim."
+    },
+    "environment": {
+      "python_major_minor": "3.11",
+      "torch_version": "2.6.0+cu124",
+      "torchvision_version": "0.21.0+cu124",
+      "numpy_version": "2.1.1",
+      "litert_torch_version": "0.9.4",
+      "ai_edge_litert_version": "2.2.0",
+      "ai_edge_quantizer_version": "0.9.0",
+      "litert_converter_version": "0.4.0",
+      "torchao_version": "0.18.0",
+      "exclude_newer_utc": "2026-08-27T05:36:51Z"
+    },
+    "embedded_metadata": {
+      "version": "8.4.130",
+      "task": "segment",
+      "imgsz": [640, 640],
+      "quantize": null,
+      "end2end": false
+    }
+  },
   "input": {
     "dtype": "float32",
     "shape": [1, 3, 640, 640]

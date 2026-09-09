@@ -31,6 +31,19 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def sha256_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def model_core(path: Path) -> bytes:
+    data = path.read_bytes()
+    search_start = max(8, len(data) - 64 * 1024)
+    offset = data.find(b"PK\x03\x04", search_start)
+    if offset < 0:
+        raise SystemExit(f"Packaged model has no appended metadata ZIP boundary: {path}")
+    return data[:offset]
+
+
 def git_head() -> str:
     completed = subprocess.run(
         ["git", "rev-parse", "HEAD"],
@@ -125,6 +138,17 @@ def main() -> int:
         raise SystemExit(
             f"Packaged model hash drifted: expected={expected_model_hash} actual={packaged_model_hash}"
         )
+    reproducibility = contract.get("reproducibility") or {}
+    packaged_core = model_core(model)
+    packaged_core_hash = sha256_bytes(packaged_core)
+    expected_core_size = int(reproducibility.get("expected_core_size_bytes", 0))
+    expected_core_hash = str(reproducibility.get("expected_core_sha256", ""))
+    if len(packaged_core) != expected_core_size or packaged_core_hash != expected_core_hash:
+        raise SystemExit(
+            "Packaged model FlatBuffer core drifted: "
+            f"expected_size={expected_core_size} actual_size={len(packaged_core)} "
+            f"expected_sha256={expected_core_hash} actual_sha256={packaged_core_hash}"
+        )
 
     privacy_manifests = relative_files(app, "PrivacyInfo.xcprivacy")
     if not privacy_manifests:
@@ -168,6 +192,12 @@ def main() -> int:
             "expected_sha256": expected_model_hash,
             "packaged_sha256": packaged_model_hash,
             "size_bytes": model.stat().st_size,
+            "expected_core_sha256": expected_core_hash,
+            "packaged_core_sha256": packaged_core_hash,
+            "core_size_bytes": len(packaged_core),
+            "source_checkpoint": contract.get("source_checkpoint"),
+            "exporter": reproducibility.get("exporter"),
+            "export_environment": reproducibility.get("environment"),
         },
         "privacy_manifests": privacy_manifests,
         "frameworks": frameworks,
@@ -178,6 +208,7 @@ def main() -> int:
     print(f"IOS_PHASE7_RELEASE_AUDIT=PASS output={output}")
     print(f"IOS_PHASE7_RELEASE_COMMIT={source_commit}")
     print(f"IOS_PHASE7_RELEASE_MODEL_SHA256={packaged_model_hash}")
+    print(f"IOS_PHASE7_RELEASE_MODEL_CORE_SHA256={packaged_core_hash}")
     print(f"IOS_PHASE7_RELEASE_DEPENDENCY_SHA256={report['dependencies']['pubspec_lock_sha256']}")
     return 0
 
