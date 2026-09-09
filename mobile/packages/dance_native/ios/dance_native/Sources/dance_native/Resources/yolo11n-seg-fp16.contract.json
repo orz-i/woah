@@ -22,6 +22,8 @@
       "constants_sha256": "8e2bc7b693a5d42c2a1a19ef2dfe2264f8b3be82e5f89a04684eaddc25a0f9a3",
       "semantic_sha256": "5b65e547b81bb394e0036948b7ece40c270bf88b89f92d78c19708f378be65bd"
     },
+    "constant_manifest_path": "tools/ios/yolo11n-seg-fp16.constants.json",
+    "constant_manifest_sha256": "1e7f3a484ed43bda8c08a979b8c38c24bdd96516b31ef05a275a72964b5a03ad",
     "canonical_metadata_tail_path": "tools/ios/yolo11n-seg-fp16.canonical-tail.b64",
     "canonical_metadata_tail_size_bytes": 1005,
     "canonical_metadata_tail_sha256": "25c2b7ba6ecd5021c417426266682a7e580d2ea62fbf0da836fe4b7be8e5f2d1",

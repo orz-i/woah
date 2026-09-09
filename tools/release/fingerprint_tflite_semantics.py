@@ -3,11 +3,27 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import inspect
 import json
 import sys
+import types
 from pathlib import Path
+
+# The generated TFLite schema bindings expose optional ``*AsNumpy`` helpers,
+# but this fingerprint only needs scalar FlatBuffer access. Avoid importing the
+# host NumPy ABI entirely so the diagnostic remains portable across the Windows
+# developer host and the isolated Linux exporter environment.
+# ``flatbuffers.__init__`` imports modules that call ``import_numpy()`` before
+# we can patch that helper, so provide a harmless module stub first. No NumPy
+# API is used anywhere below.
+if "numpy" not in sys.modules:
+    sys.modules["numpy"] = types.ModuleType("numpy")
+
+import flatbuffers.compat  # type: ignore
+
+flatbuffers.compat.import_numpy = lambda: None
 
 import tflite  # type: ignore
 
@@ -111,7 +127,7 @@ def quantization(tensor) -> dict | None:
     return meaningful or None
 
 
-def model_fingerprint(path: Path) -> dict:
+def model_fingerprint(path: Path) -> tuple[dict, list[dict]]:
     data = path.read_bytes()
     zip_offset = data.find(b"PK\x03\x04", max(8, len(data) - 65536))
     core = data[:zip_offset] if zip_offset >= 0 else data
@@ -133,7 +149,7 @@ def model_fingerprint(path: Path) -> dict:
             buffer_size = int(buffer.DataLength())
             buffer_hash = None
             if buffer_size:
-                raw = buffer.DataAsNumpy().tobytes()
+                raw = bytes(int(buffer.Data(j)) for j in range(buffer_size))
                 buffer_hash = hashlib.sha256(raw).hexdigest()
                 constant_records.append(
                     {"tensor": name, "bytes": buffer_size, "sha256": buffer_hash}
@@ -163,7 +179,11 @@ def model_fingerprint(path: Path) -> dict:
             inputs = [int(op.Inputs(j)) for j in range(op.InputsLength())]
             outputs = [int(op.Outputs(j)) for j in range(op.OutputsLength())]
             intermediates = [int(op.Intermediates(j)) for j in range(op.IntermediatesLength())]
-            custom = bytes(op.CustomOptionsAsNumpy()) if op.CustomOptionsLength() else b""
+            custom = (
+                bytes(int(op.CustomOptions(j)) for j in range(op.CustomOptionsLength()))
+                if op.CustomOptionsLength()
+                else b""
+            )
             operators.append(
                 {
                     "opcode": opcode,
@@ -206,7 +226,7 @@ def model_fingerprint(path: Path) -> dict:
         for tensor in sg["tensors"]:
             tensor["constant_sha256"] = None
 
-    return {
+    fingerprint = {
         "core_size_bytes": len(core),
         "core_sha256": hashlib.sha256(core).hexdigest(),
         "tensor_count": sum(len(sg["tensors"]) for sg in semantic["subgraphs"]),
@@ -217,11 +237,22 @@ def model_fingerprint(path: Path) -> dict:
         "constants_sha256": digest_json(constant_records),
         "semantic_sha256": digest_json(semantic),
     }
+    return fingerprint, constant_records
 
 
 def main() -> int:
-    target = Path(sys.argv[1])
-    print("PHASE7_TFLITE_SEMANTIC_FINGERPRINT=" + json.dumps(model_fingerprint(target), sort_keys=True))
+    parser = argparse.ArgumentParser()
+    parser.add_argument("model", type=Path)
+    parser.add_argument("--constants-output", type=Path, default=None)
+    args = parser.parse_args()
+    fingerprint, constants = model_fingerprint(args.model)
+    if args.constants_output is not None:
+        args.constants_output.parent.mkdir(parents=True, exist_ok=True)
+        args.constants_output.write_text(
+            json.dumps({"schema": 1, "constants": constants}, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    print("PHASE7_TFLITE_SEMANTIC_FINGERPRINT=" + json.dumps(fingerprint, sort_keys=True))
     return 0
 
 

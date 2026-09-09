@@ -936,6 +936,17 @@ and exports the model twice in the same isolated environment. This diagnostic
 will distinguish a serializer/layout difference from a real graph or weight
 drift without weakening the historical whole-file or core identities.
 
+Phase 7 Release Run #8 (`34360135588`) showed the new exporter is fully
+deterministic: two clean-cloud exports produced the same raw core SHA
+`3d25c2be9f1d32bd843fd1ed502d960831e8304bc0d06b0d70fa0bed1f17937d`
+and the same semantic fingerprint. The historical and clean-cloud structures
+match exactly (643 tensors, 394 operators, identical shapes/wiring/options),
+but the aggregate constant-tensor fingerprint differs. Phase 7 therefore now
+tracks the historical 248 constant tensors individually and reports the count,
+total bytes, and largest named tensors that differ. The raw historical core
+hash remains blocking until those constant differences are explained; no model
+identity or acceptance threshold is relaxed by this diagnostic.
+
 Two subsequent legacy `iOS Cloud CI` runs provide intermediate Apple-only
 evidence while the independent Phase 7 Release workflow remains intentionally
 blocked on protected-path installation. Run `34334830050` (#40), job

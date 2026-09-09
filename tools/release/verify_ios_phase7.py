@@ -220,6 +220,32 @@ def verify_model_contract() -> None:
 
     fingerprint_tool = ROOT / "tools/release/fingerprint_tflite_semantics.py"
     check(fingerprint_tool.is_file(), "Phase 7 TFLite semantic fingerprint tool is missing")
+    constant_manifest = ROOT / str(reproducibility.get("constant_manifest_path", ""))
+    check(constant_manifest.is_file(), "Phase 7 canonical constant manifest is missing")
+    if constant_manifest.is_file():
+        manifest_bytes = constant_manifest.read_bytes()
+        check(
+            hashlib.sha256(manifest_bytes).hexdigest() == reproducibility.get("constant_manifest_sha256"),
+            "Phase 7 canonical constant manifest file hash drifted",
+        )
+        try:
+            manifest = json.loads(manifest_bytes.decode("utf-8"))
+        except Exception:
+            manifest = {}
+            check(False, "Phase 7 canonical constant manifest is invalid JSON")
+        constants = manifest.get("constants") if isinstance(manifest, dict) else None
+        check(manifest.get("schema") == 1 if isinstance(manifest, dict) else False,
+              "Phase 7 canonical constant manifest schema drifted")
+        check(isinstance(constants, list) and len(constants) == 248,
+              "Phase 7 canonical constant manifest entry count drifted")
+        if isinstance(constants, list):
+            check(sum(int(item.get("bytes", 0)) for item in constants if isinstance(item, dict)) == 11576060,
+                  "Phase 7 canonical constant manifest byte total drifted")
+            canonical_digest = hashlib.sha256(
+                json.dumps(constants, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+            ).hexdigest()
+            check(canonical_digest == semantic.get("constants_sha256"),
+                  "Phase 7 canonical constant manifest aggregate hash drifted")
     if tail_path.is_file():
         try:
             tail = base64.b64decode(tail_path.read_text(encoding="ascii").strip(), validate=True)
@@ -243,6 +269,8 @@ def verify_model_contract() -> None:
         "fingerprint_tflite_semantics.py",
         "repeat_core_equal",
         "semantic_mismatches",
+        "compare_constant_manifests",
+        "constant_diff",
         "PHASE7_MODEL_CHECKPOINT_SHA256",
         "PHASE7_MODEL_EXPORTER_VERSIONS",
         "PHASE7_MODEL_EXPORTER_ISOLATION=temporary_venv",

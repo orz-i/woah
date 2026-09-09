@@ -1,0 +1,1245 @@
+{
+  "constants": [
+    {
+      "bytes": 12,
+      "sha256": "59fc2d1c4f02a82eaa158ffa543c922c560c5faa0f10e24af9d1ddec83eb258b",
+      "tensor": "arith.constant"
+    },
+    {
+      "bytes": 16,
+      "sha256": "7bf0cbefbc336f2be420948c9572b6bfddff72fcb263ff40f292cef0bc74ead2",
+      "tensor": "arith.constant1"
+    },
+    {
+      "bytes": 32,
+      "sha256": "02b8275e427a62aa956cb1cc5bfb538126533528a34b9e6581abf7e3db2705e1",
+      "tensor": "arith.constant10"
+    },
+    {
+      "bytes": 16,
+      "sha256": "a7043e69d7802ac6b5fb2fbaa572063a447802e785630c5ffeaf9516d9a5414c",
+      "tensor": "arith.constant11"
+    },
+    {
+      "bytes": 16,
+      "sha256": "9e97865f268fbcc4190687a97d459d7ac09dfaded381b251528e2041ffe51739",
+      "tensor": "arith.constant12"
+    },
+    {
+      "bytes": 12,
+      "sha256": "eddeee1263462e344d332b879506d730a6c9d951de36d236ae5a9091feb5d0bb",
+      "tensor": "arith.constant13"
+    },
+    {
+      "bytes": 16,
+      "sha256": "b8c4efcef88471ba2ae9908590eece93ca755daec9b3d4cad6219222f331e48c",
+      "tensor": "arith.constant14"
+    },
+    {
+      "bytes": 16,
+      "sha256": "20a743e052c9d5cfd34446bb42d40e9113bd65a8e43d9e3d108793bf2162f73c",
+      "tensor": "arith.constant15"
+    },
+    {
+      "bytes": 16,
+      "sha256": "7aa877887b42a89e842f39316984e430348fb949c60728da491e02f952a0143d",
+      "tensor": "arith.constant16"
+    },
+    {
+      "bytes": 16,
+      "sha256": "011f2dc4b73b1f318df59a602ef269105009e3d0bc1becb9fe968d50b739751c",
+      "tensor": "arith.constant2"
+    },
+    {
+      "bytes": 16,
+      "sha256": "16f36c22022dd353f58bd98f08b498d60d772b9f5ed89b76675bb9e3d711aba1",
+      "tensor": "arith.constant3"
+    },
+    {
+      "bytes": 16,
+      "sha256": "001c1024813ff2af869af6ba881dd7648455404eed2be5c7faef5dd3c6ca6441",
+      "tensor": "arith.constant4"
+    },
+    {
+      "bytes": 16,
+      "sha256": "2cf0b87ee8de64c425cb6f62f0949a1b1a16b9e81922adaa968617433dedc9c7",
+      "tensor": "arith.constant5"
+    },
+    {
+      "bytes": 16,
+      "sha256": "df9c2ab63854494d77bbb1345b2a6936aaa3c5333174b5b5be6b1f4704b224e8",
+      "tensor": "arith.constant6"
+    },
+    {
+      "bytes": 16,
+      "sha256": "6e63f93fef51f7d77f1ea1ab8dc102e8d61995efb08c71f7a044376a94d0bca4",
+      "tensor": "arith.constant7"
+    },
+    {
+      "bytes": 16,
+      "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+      "tensor": "arith.constant8"
+    },
+    {
+      "bytes": 16,
+      "sha256": "8b5a44ccea9e6b7d94223372bc400c6a8318f6a92f14a074662b18dfcf2516ae",
+      "tensor": "arith.constant9"
+    },
+    {
+      "bytes": 8,
+      "sha256": "508eb12fee4f5c724398e922b4671894be22eefd00b5ff62ce47813b6ed1baa2",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/torch.nn.modules.upsampling.Upsample_11;"
+    },
+    {
+      "bytes": 8,
+      "sha256": "53d7746d68696a5ce378433424d1b2a2c6606fa8d45536ef9b286bac36833887",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/torch.nn.modules.upsampling.Upsample_14;"
+    },
+    {
+      "bytes": 1024,
+      "sha256": "cbebde9422664a3bba662468970d5c28d516f835c171e4bb88bcab75c34fdc7b",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C2PSA_10/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.PSABlock_0/torch.nn.modules.container.Sequential_ffn/ultralytics.nn.modules.conv.Conv_0/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 131072,
+      "sha256": "aab19a662e79ccd4d4d3ea8d59fcf398f8012ad81f1a89bdf740f351c757e72f",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C2PSA_10/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.PSABlock_0/torch.nn.modules.container.Sequential_ffn/ultralytics.nn.modules.conv.Conv_0/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 512,
+      "sha256": "6f54b560526affc6e9b2f1815e83aec97eef744ff574351f138d6f034e10819c",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C2PSA_10/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.PSABlock_0/torch.nn.modules.container.Sequential_ffn/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 131072,
+      "sha256": "7e800a8783d4ecf1c959251b7954c150062538556120c75e615da6236235de57",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C2PSA_10/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.PSABlock_0/torch.nn.modules.container.Sequential_ffn/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 512,
+      "sha256": "afe83712cb987970e66fd67c3e542608a0387424caf6813c4891b09e38fd2876",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C2PSA_10/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.PSABlock_0/ultralytics.nn.modules.block.Attention_attn/ultralytics.nn.modules.conv.Conv_pe/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 4608,
+      "sha256": "6a4436bbba9d60237b114f20138d383a35c1ab557c642db6769d88b3729f69b9",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C2PSA_10/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.PSABlock_0/ultralytics.nn.modules.block.Attention_attn/ultralytics.nn.modules.conv.Conv_pe/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 512,
+      "sha256": "aebf1d7a4217ced1b95080f77d0ac5811134f8bfe8b41faf9e4f3ce8e602ca3e",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C2PSA_10/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.PSABlock_0/ultralytics.nn.modules.block.Attention_attn/ultralytics.nn.modules.conv.Conv_proj/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 65536,
+      "sha256": "afa60e13fb794fc996558b0b62cc2b84149ba858aa9ba8bd30fd555dbe6c2dbb",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C2PSA_10/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.PSABlock_0/ultralytics.nn.modules.block.Attention_attn/ultralytics.nn.modules.conv.Conv_proj/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 1024,
+      "sha256": "cf5bae822d703c8447c9d5388f6eccde289361396aa5abc5b45182050b6f0c39",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C2PSA_10/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.PSABlock_0/ultralytics.nn.modules.block.Attention_attn/ultralytics.nn.modules.conv.Conv_qkv/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 131072,
+      "sha256": "4b876ab1d8fe53e6028de11a52d4aaa1740fb5d32f8544443686a2e73cc8a4e3",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C2PSA_10/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.PSABlock_0/ultralytics.nn.modules.block.Attention_attn/ultralytics.nn.modules.conv.Conv_qkv/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 16,
+      "sha256": "e4d593b4bb7f13344473eaec14d5ffe7c1e15ccede78577cc70d57e36173e701",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C2PSA_10/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.PSABlock_0/ultralytics.nn.modules.block.Attention_attn;"
+    },
+    {
+      "bytes": 16,
+      "sha256": "483ce2f0d20e50a89a4cc74dd20baf0d5988900a876984c6a54c11491b151f27",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C2PSA_10/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.PSABlock_0/ultralytics.nn.modules.block.Attention_attn;1"
+    },
+    {
+      "bytes": 16,
+      "sha256": "1f4a81df7ac47d62676760757944089a226294b1f30b429791470f217153d1a6",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C2PSA_10/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.PSABlock_0/ultralytics.nn.modules.block.Attention_attn;2"
+    },
+    {
+      "bytes": 12,
+      "sha256": "7a322dc5d57da6f623ffbf68430c6b59cad46945b38b04d95d5f6e6b3e40e756",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C2PSA_10/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.PSABlock_0/ultralytics.nn.modules.block.Attention_attn;3"
+    },
+    {
+      "bytes": 12,
+      "sha256": "e2e9e3a9f3b9c38bc23bb278ba1d04d94b387b614ae1f3bbdef9a0e80d5622ed",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C2PSA_10/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.PSABlock_0/ultralytics.nn.modules.block.Attention_attn;4"
+    },
+    {
+      "bytes": 16,
+      "sha256": "3ceadc177692817d2042d535dc62ebebb70753f6b2060cea656c07e311c1e61e",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C2PSA_10/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.PSABlock_0/ultralytics.nn.modules.block.Attention_attn;5"
+    },
+    {
+      "bytes": 12,
+      "sha256": "350ba8cdb2389740a83a73641581c755a56fc6fa4130973eb758767adb800789",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C2PSA_10/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.PSABlock_0/ultralytics.nn.modules.block.Attention_attn;6"
+    },
+    {
+      "bytes": 12,
+      "sha256": "c62dde7cd220a85de87b468359f5998daa6b54ad50a4f7b55e875a545e0f49ee",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C2PSA_10/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.PSABlock_0/ultralytics.nn.modules.block.Attention_attn;7"
+    },
+    {
+      "bytes": 4,
+      "sha256": "69c199f6174d4ebf6b546cdfff3d4b9d319ae927a353047e91723e023a69acab",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C2PSA_10/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.PSABlock_0/ultralytics.nn.modules.block.Attention_attn;8"
+    },
+    {
+      "bytes": 1024,
+      "sha256": "7e4dfddff1e4b74d563a07ec984b7b2c266a15866e23348ed189dcc092d9618c",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C2PSA_10/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 262144,
+      "sha256": "046bb3e48b80e94f6ce535178e7d9d9a9fcd3747375b61d590cf435f4e72ac0e",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C2PSA_10/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 1024,
+      "sha256": "2a2282691ed30831679652db8be39785c16a8b869477f79b3ca085b22d822edc",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C2PSA_10/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 262144,
+      "sha256": "f83e316298bad4195862df79ee5f13e62562e5886363df649aefa3fc034e2535",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C2PSA_10/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 128,
+      "sha256": "e2c1d624a20fc6bbb6ceb032be8a1bd1bc41291f5ceac2dc69620ec818cd14a0",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_13/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 73728,
+      "sha256": "b2ea5bab55da4cdad8ca4ec3d790555c69c9cb0aa55b75f80bd0dd5dac71c591",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_13/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "85c1d962c75a979b878de6eec19ab0132f64be3900ff6e76f3900f10451c5c7a",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_13/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 73728,
+      "sha256": "705f847d5fb991ec9d2265c8936f406ce3154a980b4743c609fafc27852b78ee",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_13/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 512,
+      "sha256": "9505036b9109b491b74c28d8690ec049ef44d48f94ef2f59d047dee7e88e48f9",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_13/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 196608,
+      "sha256": "edb984f3e367f012f0645e0a870ec2a6955b60c913e402e385f427061940c148",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_13/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 512,
+      "sha256": "8c2488407f23ae594a99bd5807dfbde4bb5505609c51d8bf854b5177932a6218",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_13/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 98304,
+      "sha256": "5a43e0d109a1c584a684b7aa4370bdd0d88ea9a608d8f5fc7bd7a9e7f84f0312",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_13/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 64,
+      "sha256": "76220d80e58b180978eaf40331fcc0c90dada3090495fa837ebe5db57743efdb",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_16/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 18432,
+      "sha256": "9642246e59912ccfc5bb7b2cf940f4929bc9afdfd45943e09141bcdcf491631a",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_16/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 128,
+      "sha256": "4b4aca8f7742f8c6e40cc2d7e1c9e6c15350d9811e02363425e80f710d0279ff",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_16/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 18432,
+      "sha256": "4d8d4bd226ea924c453f85462563117866719173d2401e79472ab215122dc9db",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_16/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "6b75d202505860603d711025c2571600caa4fee630ee9f0d6aa135c2150d5b63",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_16/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 65536,
+      "sha256": "c932e168188248979704d9c6eb98408742d44df3e98646ae5cab6e0f2adff4eb",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_16/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "770e3792b99d333bde1f2a05e017eeb2bf2f964100e956b92d052821fd78a969",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_16/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 24576,
+      "sha256": "04b6227c4912763d83c9247a86b7e24b7c9e54a203dc87c7990bcf5a1024383b",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_16/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 128,
+      "sha256": "9ad38d3ae8400c273d8375ce86d2cfbffff533668e8af83d88019a69f6b81b3b",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_19/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 73728,
+      "sha256": "711554d662f9739c7ece41c71db2cc8828bf37637ae24d35eec526cb0507001d",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_19/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "649d7b2105c60b6b8fa6f1371be87340615f23ad32912268f86ae73720ebdd8b",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_19/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 73728,
+      "sha256": "67b550c136aaa931d1bd56aa3eedac4596121c0bef74ecc38e9344dd49c23c0f",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_19/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 512,
+      "sha256": "9024c7a2169566f6b7d3f58fe848c88d8c412e9a3a34dc434a061a94ae51c974",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_19/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 98304,
+      "sha256": "ed19d2f59c3072a65b14a264b6c6360e3cad41b566031b7db0dffbcc5ae10e4e",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_19/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 512,
+      "sha256": "12ffa5499b01e82db209b2447bac0db3820f6d506c55aa8f4d94e4d54e16fc7b",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_19/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 98304,
+      "sha256": "6d45228ffb885a00c8776c78129d2a57e0ef2aa2f5c4965a09a3d9c0d4b3d7ed",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_19/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 32,
+      "sha256": "e48f7bda6af717aa9e8b38ccb2415930c3f094f6f1f119da1f35a2eceb5a860f",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_2/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 16,
+      "sha256": "083f5dce6b995aa51fdaba0f2cdfbb6c692c947106d48b0055ee09384d29f3dc",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_2/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 4608,
+      "sha256": "397c42749d81936d378bb39dba9629087bcdf1a9fd509a35c114b43c9caeda5f",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_2/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;2"
+    },
+    {
+      "bytes": 64,
+      "sha256": "ca105a3ab50ed9da580f470c6beb33b36d348bdb869042ed5d8fcf706b2257be",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_2/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 4608,
+      "sha256": "e0c007fde0dae687a62b15ddfd84729a386c04770b1b0049358b904e7e3d70c4",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_2/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 128,
+      "sha256": "d7b3ab9fdd65d26113b745911756df6d20ec15e26d7c91621df6fa90e666b0f9",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_2/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 4096,
+      "sha256": "58b995af3d2396ec8ddaaecec980ba80a3be499dac61c9884ba8b77b4cb75a0e",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_2/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "3b110e209b086542828a85e6de8e693b4a4ed933cc09d4038f4f924e61cf605a",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_2/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 12288,
+      "sha256": "4f01b3dfcc4bfe36e7ebdf54bc2af640672610e545603c1b1fe77c11370782aa",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_2/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "28a3e757cd890993db3bb90c511b07ae13273b2291f68028ad62be88f9bd84e9",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_22/ultralytics.nn.modules.block.C3k_0/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 147456,
+      "sha256": "db9ad69628c0b73b26b1222911d577205177f8ce29c9d3c6b9f8fcf3030c6e34",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_22/ultralytics.nn.modules.block.C3k_0/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "c3c94005b55f2c04a89e86c68befa3cf59a8db884467832db0f72230721bd438",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_22/ultralytics.nn.modules.block.C3k_0/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 147456,
+      "sha256": "3a0cf69fef086f0123cb0da9b22a0c826e65dda7a2c9b0fa2d9a0ae0ebfbc8b9",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_22/ultralytics.nn.modules.block.C3k_0/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "bf51f6d0bdfd7f151067a661c2057374274bc17d5aa91210e94dd71589007db3",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_22/ultralytics.nn.modules.block.C3k_0/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.Bottleneck_1/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 147456,
+      "sha256": "33e2eb0768c81f19154fbb6ddfdec1d2320f7ed102a5c492051dbe2274d2f494",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_22/ultralytics.nn.modules.block.C3k_0/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.Bottleneck_1/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "0ff766806bf3cbcc5d2539721149ed7b0b6f7ff620b8c8a871f0c573cf230fb5",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_22/ultralytics.nn.modules.block.C3k_0/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.Bottleneck_1/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 147456,
+      "sha256": "aeca7fd265ae538698c85491b6f61bc0a47a08f31f727686769a377bcc9cef8b",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_22/ultralytics.nn.modules.block.C3k_0/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.Bottleneck_1/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "e2c6158c087f7aaae00700f1930e1b1ff27934d37f4b4a2755ca50881e5dbed3",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_22/ultralytics.nn.modules.block.C3k_0/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 32768,
+      "sha256": "16689a6efddb9395438f09efe3705f31cd27529305f3d65bd238a48f87ce5109",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_22/ultralytics.nn.modules.block.C3k_0/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "a986bd13c10cd2c534eb959c56042390c4b2ae8bf37dccc8b8476a7ea9d9c102",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_22/ultralytics.nn.modules.block.C3k_0/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 32768,
+      "sha256": "cc29ea052da4b55829ff0ead9c4ed284f795e4d96d44f10759cbffe821a2a5a8",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_22/ultralytics.nn.modules.block.C3k_0/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 512,
+      "sha256": "baa1f79b801149570c608a9269666f46e477920038cb4421ec4758fc2c905e9d",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_22/ultralytics.nn.modules.block.C3k_0/ultralytics.nn.modules.conv.Conv_cv3/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 65536,
+      "sha256": "586d97bc3b30186ff7ff42855082e36635a1af15ed376ecf66140d2dbe29a8cf",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_22/ultralytics.nn.modules.block.C3k_0/ultralytics.nn.modules.conv.Conv_cv3/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 1024,
+      "sha256": "3406f01a508d276307e57719a4a08ac1b6cc27b91397f83ef5a9595f9f8be8a7",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_22/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 393216,
+      "sha256": "6d3cb800f6979136b575d340f64350eefff7f77dcaa6ccd2a5552a40a8cc5d68",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_22/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 1024,
+      "sha256": "1b4339f4abf4ef439e486365a483e83adaa518632761006ea10f0bbdd412d461",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_22/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 393216,
+      "sha256": "5428dcc7c5241c59a95dace9bdc16cf91c276a8f879ec85b79545d4a83305af5",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_22/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 64,
+      "sha256": "09bab13e9a2018ca17ca77b56556b0319b1ab2c8ac7d197989d460a26444f6ba",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_4/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 18432,
+      "sha256": "226e0a6981e5e03086caebb2f03abada35869755e33fce210b9f43ba064f0294",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_4/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 128,
+      "sha256": "5305c8907446f23a413083e0b85950a5e83979683531e307a3e4894e30f7840e",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_4/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 18432,
+      "sha256": "cdda9dfa585ea6a25896da78c670d16107f5eabc8c8a0242b80e760cc36ff4eb",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_4/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "c64ece9540a1920ac07c27d69f54bd8fa1a77e6791675b083a2676fa7e53b23a",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_4/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 16384,
+      "sha256": "1a919a840ce8cc963340e59d9555d0f1537805a1e61eb353d0dcde8fe2ee553d",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_4/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 512,
+      "sha256": "84c4367de9ded390e45108bb4b29529a2dc8f84cb385b313ef4efcbc1c15e3d5",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_4/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 49152,
+      "sha256": "5c19092e5fa00afa773a33a6dfe121d2fddefe70d9997a1071cf32fa5c2c4997",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_4/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 128,
+      "sha256": "94367ded2e7207161f680fa61903da0febd0309828343a6034270a6f41094594",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_6/ultralytics.nn.modules.block.C3k_0/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 36864,
+      "sha256": "3d8f1e3e2d0964c2ea6b84d8bb4850f9a3d686ec341bc4bbbe6c52a00ac7188e",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_6/ultralytics.nn.modules.block.C3k_0/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 128,
+      "sha256": "51c3cf3b12498d3a3082bf8c0e0e0629d512ea19a3d316c82f7342155f502e0a",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_6/ultralytics.nn.modules.block.C3k_0/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 36864,
+      "sha256": "49d081b339f12f5162202607c5ea06346e266154a806e6b49aa5a132f73afb8b",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_6/ultralytics.nn.modules.block.C3k_0/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 128,
+      "sha256": "18b97eafddee1d884d9e107a0eceb24ff2de69023410eb81c5b4d6463ddeddd6",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_6/ultralytics.nn.modules.block.C3k_0/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.Bottleneck_1/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 36864,
+      "sha256": "055ef8615acdd616982bead686133436fbccf828b81dc63a1be50741d5d10e98",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_6/ultralytics.nn.modules.block.C3k_0/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.Bottleneck_1/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 128,
+      "sha256": "ef3225c4f94fe6e9d65a84f1e7ec5cadb01542cb37947ff52d7705468478e510",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_6/ultralytics.nn.modules.block.C3k_0/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.Bottleneck_1/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 36864,
+      "sha256": "263721698e8289f1309d93fbcb9f692a1f5f60208f3d90a2d5642e7648a684cf",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_6/ultralytics.nn.modules.block.C3k_0/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.Bottleneck_1/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 128,
+      "sha256": "cbfa5d40d91689ce6ec7aa5be9f307ded6135c66646626fb79a75e9623bc4d43",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_6/ultralytics.nn.modules.block.C3k_0/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 8192,
+      "sha256": "46da4d859fccf03b60bf3627c568e3b9dff57a97b38e1c78194e5d3bf133ed3a",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_6/ultralytics.nn.modules.block.C3k_0/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 128,
+      "sha256": "48280d774d3c0c60a7fd59f4ca0c3f61dcd5d8a9f7a66696b04f2e2187a8596b",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_6/ultralytics.nn.modules.block.C3k_0/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 8192,
+      "sha256": "90c5a89fded3eba0ef128ff894cf97bf0a55375078358f2d6c8aed4c9fb204f6",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_6/ultralytics.nn.modules.block.C3k_0/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "6f4cb67b81d8f703d6f1ae03266ba7780d2adc7c061a96ec58d604c2da477f48",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_6/ultralytics.nn.modules.block.C3k_0/ultralytics.nn.modules.conv.Conv_cv3/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 16384,
+      "sha256": "d42d8fdde7350e08162a241900a85e9d424cdb6262bbc41fa08d15e152a5ca12",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_6/ultralytics.nn.modules.block.C3k_0/ultralytics.nn.modules.conv.Conv_cv3/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 512,
+      "sha256": "1e423fce5dc5c9a79cc72940854105c65315a796f83d6100574d2a23ee22a494",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_6/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 65536,
+      "sha256": "24594d1cd462e31dd9837d52b6c69bb077c0df8c69888afea36380e958d61ee3",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_6/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 512,
+      "sha256": "b605982af74f7c80ade1670ca802117e680790ebf123eceb4032aec61de93f9b",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_6/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 98304,
+      "sha256": "2b18e132527608e1a2bc9286c110b05f8d573b201c458f2e2de19cc1343b5053",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_6/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "6cb9537f346d8078cc98e49ae0e39dee1d41222111c3afb1a128e6676a27c2d1",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_8/ultralytics.nn.modules.block.C3k_0/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 147456,
+      "sha256": "2848818d712c0a4afa5f3eb36a8b4ba8ab4fbee26cb96ddb272a22b5cffbd611",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_8/ultralytics.nn.modules.block.C3k_0/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "98768085c983d5262923b79b011db4852ca37b21c815cb1f3136ea2d27f83c3f",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_8/ultralytics.nn.modules.block.C3k_0/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 147456,
+      "sha256": "790ad3589f551e45aa1143773291ac4db257e8f045e44859785ee546f9b7594b",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_8/ultralytics.nn.modules.block.C3k_0/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.Bottleneck_0/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "da9fd90235b5521baf51165d5af0d24c939543df77e7de46c2a2947007e8b8de",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_8/ultralytics.nn.modules.block.C3k_0/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.Bottleneck_1/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 147456,
+      "sha256": "e8f1eb3cb1932f76450ccc4a41eda01b4def49e78207b69c2cbe524ec2372060",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_8/ultralytics.nn.modules.block.C3k_0/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.Bottleneck_1/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "b1ce75554c5e708eff5993935f22cac5bac1e9ab479d527c69c9dd835623c876",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_8/ultralytics.nn.modules.block.C3k_0/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.Bottleneck_1/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 147456,
+      "sha256": "2fb7c72ce239e239a52097f25b18c15f27559301875869e6689dc28e1c739a8d",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_8/ultralytics.nn.modules.block.C3k_0/torch.nn.modules.container.Sequential_m/ultralytics.nn.modules.block.Bottleneck_1/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "7f4e0ac5986756a8e7756d732b38e4aef405b194b61f4ce172d3c7bfbe81748e",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_8/ultralytics.nn.modules.block.C3k_0/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 32768,
+      "sha256": "acd0200135f24a2d9dc3687d27f8bed9e099b8947b60a89cc79a8b48c7798a57",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_8/ultralytics.nn.modules.block.C3k_0/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "67eaaa9be6ec251e3622fa514fe27ec1128fdb0d5ac25a44f69eac90b5b6b84b",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_8/ultralytics.nn.modules.block.C3k_0/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 32768,
+      "sha256": "90bfc0c67cbcfdd905ff3d7c44b6a7fb1255680435c5bac54adf3fe01082db51",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_8/ultralytics.nn.modules.block.C3k_0/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 512,
+      "sha256": "98051664ee7d782b2ba9a7eb6b892d85d124821785465bf57dc859e43a9aceb8",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_8/ultralytics.nn.modules.block.C3k_0/ultralytics.nn.modules.conv.Conv_cv3/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 65536,
+      "sha256": "49402cf9dc6eae9ce2f4a54ad9430dc78f2f7098682e3f036d75621adf28dabb",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_8/ultralytics.nn.modules.block.C3k_0/ultralytics.nn.modules.conv.Conv_cv3/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 1024,
+      "sha256": "e024e201acc5401bbf82853e0addd486ca3b86bf55bf8e927b0b18966f01859a",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_8/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 262144,
+      "sha256": "b563aaa283f43db73115a1098cd6dfaa149a0d9555de1b896f2bdf5899f19c1e",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_8/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 1024,
+      "sha256": "355925613452e664cb7fb0431d78dde418c3b483593bb613b1ea25a6934d5664",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_8/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 393216,
+      "sha256": "74db1a27710420e6e379a30b56b7215841b1a4d17033bad646e378e5a160ca54",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.C3k2_8/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 512,
+      "sha256": "213bed224fa7033216fe7375d21ec4f8606a1183a1e8827870c71017428e2323",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.SPPF_9/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 131072,
+      "sha256": "50a076e9156776b9d91f922d5b7005ecc9930f7d356ca99988dc5177aa06bdbb",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.SPPF_9/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 1024,
+      "sha256": "4cb53e30584e3eec2ee5b8bf0d056e6e30c95821f2982dd971d766420b2e6f9e",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.SPPF_9/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 524288,
+      "sha256": "f56faf88a7a7deba2a5697214b3825e4cd0205680a98ecaf7dc1ceaa60919358",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.block.SPPF_9/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 64,
+      "sha256": "868cf6cc9ff22879f04c2bce6cdea81eb365b2cc91a2bd890d1c6b971f7deaa0",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.conv.Conv_0/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 1728,
+      "sha256": "f16299b1401183573083fb219f15f08afa5749e3aeef5c3c95656f6b483ac721",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.conv.Conv_0/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 128,
+      "sha256": "f12c928cbd7aad4af2c074438f3b79d092a03213017658ad2d02fff72702b5ad",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 18432,
+      "sha256": "da3f8e3c3280d2daa1f461b1ec76273e4d78188de937c55876b56d85d171b9cf",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "72e2cb4df0f7627a169a462c0a7aad8cdd3e2651325d54a52edd21604a5402d8",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.conv.Conv_17/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 147456,
+      "sha256": "265646642730d6003c37b48f4d7ad670d5f492068099b7e0121ce2b604265959",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.conv.Conv_17/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 512,
+      "sha256": "9d0fc82935ff616f1838a06bae010b0ee1cd55edcb533ac64b389a0ffaf386e0",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.conv.Conv_20/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 589824,
+      "sha256": "e2f2b86f3eddd5f88f79b9ff0e7b07135a6c3979c54ee018d771064b5633a97e",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.conv.Conv_20/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "324dbdcc7a689670e47a15bc65d13d371505a99f6ac4f466e18a68ddbd751689",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.conv.Conv_3/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 147456,
+      "sha256": "34f9c03292898716efa45482aec58baa9bdff1e87a01f09b6f2a0e1c2eda4c10",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.conv.Conv_3/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 512,
+      "sha256": "dcb1b024730bf39115c511181c4888d8d63540656b6502026dd7e05d9439d006",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.conv.Conv_5/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 589824,
+      "sha256": "875383adc6486b40b5920d39f23e2ca4356fdf94f46caa40bd6cf45e712616dd",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.conv.Conv_5/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 1024,
+      "sha256": "e638f0668bd5a3108ac1d1b7cea82563d6ae5828ed44609894865f131421f5ca",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.conv.Conv_7/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 1179648,
+      "sha256": "7cfc8661cf1469fbd681e6cb4f63025ffff8f5e0b50256dc5599e80481bee521",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.conv.Conv_7/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 320,
+      "sha256": "d32ed78d98c3c7d72d140ecdb9b3b923c6fe42d34c7b9b8d18ac509763130970",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_0/torch.nn.modules.container.Sequential_0/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 20480,
+      "sha256": "560331a7743e547d7a15c9480023665b0352647add8c343745995a560dca8b19",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_0/torch.nn.modules.container.Sequential_0/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "dff02699a7aec72cdb84574ca5479e3fdd82670f0ee282d9c93101a2aa44b689",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_0/torch.nn.modules.container.Sequential_0/ultralytics.nn.modules.conv.DWConv_0/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 2304,
+      "sha256": "3a5e9618fafcadcb946aeb82b4e29c09aadeb09cdd6ddd09b795a5e8e98bd7c6",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_0/torch.nn.modules.container.Sequential_0/ultralytics.nn.modules.conv.DWConv_0/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 320,
+      "sha256": "b6c6b68be1a89ceb144caa1f41ba5e8aa603ba0e5caa1c1a36b0410b730ec07e",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_0/torch.nn.modules.container.Sequential_1/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 25600,
+      "sha256": "2a9479bce4038436d4179919a0efe5bc5cff4ff26dcb57592f1c956b8c932d21",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_0/torch.nn.modules.container.Sequential_1/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 320,
+      "sha256": "42a42ae24a14645d3a81818b42d176bfba44972ce2d949e8369f3aa658fa8b82",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_0/torch.nn.modules.container.Sequential_1/ultralytics.nn.modules.conv.DWConv_0/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 2880,
+      "sha256": "8f09bada84783a96454b5fa21d9329baccb144611d9f9765235bac1225c71757",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_0/torch.nn.modules.container.Sequential_1/ultralytics.nn.modules.conv.DWConv_0/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 128,
+      "sha256": "32362e7e7f7f5f177c0fff4ff56219823355fee0ca8a2e65ade61059c347c933",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_0/torch.nn.modules.conv.Conv2d_2;"
+    },
+    {
+      "bytes": 320,
+      "sha256": "203f4bfe0addbbb3c07ea6b038cbc3f0c98acfb51fee8910119a199ea67bf6ec",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_0/torch.nn.modules.conv.Conv2d_2;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "792b72fb8e3b6fe72303786a81e298e860f415b74cad1e1976de55326f7ad448",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_0/torch.nn.modules.conv.Conv2d_2;2"
+    },
+    {
+      "bytes": 4096,
+      "sha256": "a3f93577eb9421834e8cf3dab48ff933277a20cf2e0a309a90e8df8555ad4eea",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_0/torch.nn.modules.conv.Conv2d_2;3"
+    },
+    {
+      "bytes": 25600,
+      "sha256": "62ba6a4586948d25d0b3959916c7048f4b3502c75693a1087b3fd711e6f7d223",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_0/torch.nn.modules.conv.Conv2d_2;4"
+    },
+    {
+      "bytes": 16384,
+      "sha256": "871cfa4dabea232ac3d50760b07e585e0707ea3b045519e6a0467851e52501c3",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_0/torch.nn.modules.conv.Conv2d_2;5"
+    },
+    {
+      "bytes": 128,
+      "sha256": "c7b6ada27602d447b6140aaf14bf2b36b0728dbd98a4a7369625d1944d41a91f",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_0/ultralytics.nn.modules.conv.Conv_0/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 256,
+      "sha256": "d10269205e10c610295db21944618715a89bb00cca9f4dc02dccb23c88d2ff05",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_0/ultralytics.nn.modules.conv.Conv_0/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 73728,
+      "sha256": "ea21b50fc2ac287203b4c4275dddb5822d582287722436da68164be44353b9ad",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_0/ultralytics.nn.modules.conv.Conv_0/torch.nn.modules.conv.Conv2d_conv;2"
+    },
+    {
+      "bytes": 147456,
+      "sha256": "4c52ee317e815744befd7682bfb669177eb715ce92f95582699509924d53b468",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_0/ultralytics.nn.modules.conv.Conv_0/torch.nn.modules.conv.Conv2d_conv;3"
+    },
+    {
+      "bytes": 128,
+      "sha256": "ec8eae6da853477a3b4fdc43dc996c2ec0a51961dcf0d44b6e36e8f411541960",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_0/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 256,
+      "sha256": "8aac4d259b677de2e181b957e7c22f60b4fbae4c3068fdca5632e5278d3feb09",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_0/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 36864,
+      "sha256": "d778c42dbd4e7a81ff1e82077599aec95d1c69ad471366e2673990354bf5d5ca",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_0/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;2"
+    },
+    {
+      "bytes": 147456,
+      "sha256": "ad0e98fe0513f71a599223ac529884fbeb3afd6e49b68b9c9a9d1a4ad519e0cc",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_0/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;3"
+    },
+    {
+      "bytes": 320,
+      "sha256": "6ae3e212b65507ca0a9e1b738c0da28079fb656b1ba15a797fac40d6c7b65430",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_1/torch.nn.modules.container.Sequential_0/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 40960,
+      "sha256": "e8e040723273128628ec89aeae9d6f1c3d97810c1598fbec52b6d2ed3885fac7",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_1/torch.nn.modules.container.Sequential_0/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 512,
+      "sha256": "b22fd4ddd43a3faa4138e26189cbcd1461a2fda29b76c5630c6fa5c2d33fadc3",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_1/torch.nn.modules.container.Sequential_0/ultralytics.nn.modules.conv.DWConv_0/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 4608,
+      "sha256": "717eb01495da220a95e442198f48b6d0c7852cda154e2d9fe9ca61a406566e62",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_1/torch.nn.modules.container.Sequential_0/ultralytics.nn.modules.conv.DWConv_0/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 320,
+      "sha256": "f857b7719bcc6dd67c908bfada72485f295681bed0a107e8271bd918d3408d9f",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_1/torch.nn.modules.container.Sequential_1/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 25600,
+      "sha256": "2af4304c4a0636e2b2e523ac9000513c15a9c568bbbd9da083d6758699e61e8f",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_1/torch.nn.modules.container.Sequential_1/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 320,
+      "sha256": "d216c7e02a12d9389a0f2317eb7f2a2ec6fd0e9a248262b20d7fb9c4a5354a19",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_1/torch.nn.modules.container.Sequential_1/ultralytics.nn.modules.conv.DWConv_0/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 2880,
+      "sha256": "e292830a343e63329ea3ad58cbea58fff57372caf36469296bc02e164acecaf1",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_1/torch.nn.modules.container.Sequential_1/ultralytics.nn.modules.conv.DWConv_0/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 128,
+      "sha256": "5ea7337cd5b23c0e4691eaeebbf440afb658bd86e9057ef28ed5dee6058c55d8",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_1/torch.nn.modules.conv.Conv2d_2;"
+    },
+    {
+      "bytes": 320,
+      "sha256": "e3ef93229e5126f10182a8119442e09c88bcf352b5340c108bf11023776a8a8c",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_1/torch.nn.modules.conv.Conv2d_2;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "9b1dbd7090688397e8b19d6c2715681a026715bc7d2bfc9b74274cc4dbac980d",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_1/torch.nn.modules.conv.Conv2d_2;2"
+    },
+    {
+      "bytes": 4096,
+      "sha256": "88c661fb5761540666c681dbf342f4fc2277d17260a12b0d52146d7a53493692",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_1/torch.nn.modules.conv.Conv2d_2;3"
+    },
+    {
+      "bytes": 25600,
+      "sha256": "76ce6d262c793994802845c71366b803c2b9ac110de824981b5b420db891ba31",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_1/torch.nn.modules.conv.Conv2d_2;4"
+    },
+    {
+      "bytes": 16384,
+      "sha256": "c9f389ab8eebd18d424729d87d7aa809e59fbd59ca303c3ad1c6c74aac3bd031",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_1/torch.nn.modules.conv.Conv2d_2;5"
+    },
+    {
+      "bytes": 128,
+      "sha256": "3d30d06936d180b7c464bd8d40172583898d6ab9ccbc277b4c4f5ea3d77332f5",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_1/ultralytics.nn.modules.conv.Conv_0/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 256,
+      "sha256": "5f4fe5062f6f887821c28e3eb182466718ece9679ef9839b45879233a66aea29",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_1/ultralytics.nn.modules.conv.Conv_0/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 147456,
+      "sha256": "904d4266e191ffd84f82ae847e88b78361085faa50ce72e4f50b80738fef5a44",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_1/ultralytics.nn.modules.conv.Conv_0/torch.nn.modules.conv.Conv2d_conv;2"
+    },
+    {
+      "bytes": 294912,
+      "sha256": "eb17abc057d83c187f494434d9dcfa081a0143bbe9268200032df4ab25d6700d",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_1/ultralytics.nn.modules.conv.Conv_0/torch.nn.modules.conv.Conv2d_conv;3"
+    },
+    {
+      "bytes": 128,
+      "sha256": "35f765b2a67d894ac5aed01ee43a174748a749448ea44c0d97a55ae55166adab",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_1/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 256,
+      "sha256": "66a171fb05e7303699dccf792d71a6d1082fa79680d6ac54f8181741ad1072b8",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_1/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 36864,
+      "sha256": "5a33733c814752f2a1439f1ec49a9eb42ba9b835b97b9a2aa6d2372011311cc8",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_1/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;2"
+    },
+    {
+      "bytes": 147456,
+      "sha256": "cc3e62d51692a26134b276f80489f6cd19aca0dc31588c747ba28a857392c91d",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_1/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;3"
+    },
+    {
+      "bytes": 320,
+      "sha256": "aafc782d6ae0825c7a0b1fd5baed91c481c8d9fae21ad782faf8839a467fde95",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_2/torch.nn.modules.container.Sequential_0/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 81920,
+      "sha256": "6d50bb5876a6fc4412988236acdab8d8660d317011f037a4ec56701f4c149568",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_2/torch.nn.modules.container.Sequential_0/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 1024,
+      "sha256": "0b8f9adf25c413b3fb6bfca8159bc6f469310075347fcf64a1dc71011aeb4e18",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_2/torch.nn.modules.container.Sequential_0/ultralytics.nn.modules.conv.DWConv_0/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 9216,
+      "sha256": "3d7b377b848155a72b39541ba241ad53be9e1a40f9625882cbd88d61a00eafb2",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_2/torch.nn.modules.container.Sequential_0/ultralytics.nn.modules.conv.DWConv_0/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 320,
+      "sha256": "b9e86aab0700f031984beef3c18491daed3d1c0b07632904e24e41082499b04b",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_2/torch.nn.modules.container.Sequential_1/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 25600,
+      "sha256": "3f3167cae25f7b3ab7db96d4c976c5f95dd8f312236d15f3124f22fb88613b1f",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_2/torch.nn.modules.container.Sequential_1/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 320,
+      "sha256": "257907df55ee3d2e02e0faa63edf33114d0c463804583a064cab2038612f9aac",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_2/torch.nn.modules.container.Sequential_1/ultralytics.nn.modules.conv.DWConv_0/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 2880,
+      "sha256": "6aa11a49865540203d67aebb1cc848feaf7ba6a90af72b7e5cb63856ae123e68",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_2/torch.nn.modules.container.Sequential_1/ultralytics.nn.modules.conv.DWConv_0/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 128,
+      "sha256": "27d1294a54f44d88fa1f6f2b383db435617714b8c8ce41561c956aab8035787c",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_2/torch.nn.modules.conv.Conv2d_2;"
+    },
+    {
+      "bytes": 320,
+      "sha256": "683fd968b29d1737d1a45035daa3680c5a26f5432fdb72804fd2f6535d08c0bb",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_2/torch.nn.modules.conv.Conv2d_2;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "d5fc1f2f1079110ad2e6d2ec0df71f17d6f60afe493376adffed141123fcd9a7",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_2/torch.nn.modules.conv.Conv2d_2;2"
+    },
+    {
+      "bytes": 4096,
+      "sha256": "93a118aed1c48a2eddfaa7e9f04021942db18513fb8fbc348ce1931aef534759",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_2/torch.nn.modules.conv.Conv2d_2;3"
+    },
+    {
+      "bytes": 25600,
+      "sha256": "e21c2243e5702c670ebdb8000032952604891f99ec8e82c13391da011f347ba3",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_2/torch.nn.modules.conv.Conv2d_2;4"
+    },
+    {
+      "bytes": 16384,
+      "sha256": "ed711a1ecff7dc490b81e89e13301a14f4499336d3fe31a599285f6f1b45a326",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_2/torch.nn.modules.conv.Conv2d_2;5"
+    },
+    {
+      "bytes": 128,
+      "sha256": "e9a70af3acf820ed4f5f082be9a6fec10c010aad7d82e115b021f2beb7fbb6f5",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_2/ultralytics.nn.modules.conv.Conv_0/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 256,
+      "sha256": "d0a48cca4ae042c611a9ab0a168079f3670ba051d788c07c2981eaa4f914b68c",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_2/ultralytics.nn.modules.conv.Conv_0/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 294912,
+      "sha256": "2c17f7359f1df44cb2f7b5e9e37194895d8c27ab9bef7dcf889e58d5542bd557",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_2/ultralytics.nn.modules.conv.Conv_0/torch.nn.modules.conv.Conv2d_conv;2"
+    },
+    {
+      "bytes": 589824,
+      "sha256": "b0c36010dcc3f8f9f6fc393db2423f5ba73a6615b409e9487359dec96d26f920",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_2/ultralytics.nn.modules.conv.Conv_0/torch.nn.modules.conv.Conv2d_conv;3"
+    },
+    {
+      "bytes": 128,
+      "sha256": "ff5a2e05c5e165ba6dc4f15e97bbee4254be81bd8e1e53c421e19f16de5091e3",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_2/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 256,
+      "sha256": "01359448a1ef061e04b2d94041e6930786329343d48ac279189d09e41bf91991",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_2/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 36864,
+      "sha256": "662c80d93534d7765dfd369fe3ac1289171833b2c848776b66e0ddb47de8147f",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_2/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;2"
+    },
+    {
+      "bytes": 147456,
+      "sha256": "453fd576c418d636f41e5b797e7a76d24056af27c1284b576358ac284f5b8cd8",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/torch.nn.modules.container.Sequential_2/ultralytics.nn.modules.conv.Conv_1/torch.nn.modules.conv.Conv2d_conv;3"
+    },
+    {
+      "bytes": 64,
+      "sha256": "58dda328598e2f7fe472621bfc54935aaa354d1a6ebcaf9562cd743fd575eb19",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/ultralytics.nn.modules.block.DFL_dfl/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 4,
+      "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/ultralytics.nn.modules.block.DFL_dfl/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 16,
+      "sha256": "2774c284484b5212c3c263a989f63d7f453ba951cf5baa1a27dd859cab98fbf8",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/ultralytics.nn.modules.block.DFL_dfl;"
+    },
+    {
+      "bytes": 256,
+      "sha256": "4b2969cfab02ceb511f4fdbbb3870b42628bf298e82253e0f62532d2e859ee39",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/ultralytics.nn.modules.block.Proto_proto/torch.nn.modules.conv.ConvTranspose2d_upsample;"
+    },
+    {
+      "bytes": 65536,
+      "sha256": "1c2453734c4323df102b8cb74d1eb9a6f5b4487625822245f512c18128d025d7",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/ultralytics.nn.modules.block.Proto_proto/torch.nn.modules.conv.ConvTranspose2d_upsample;1"
+    },
+    {
+      "bytes": 16,
+      "sha256": "f33da5068ce19b6ddff18913bdd8750bbcce6935e2149bc54867c3d660e8b86a",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/ultralytics.nn.modules.block.Proto_proto/torch.nn.modules.conv.ConvTranspose2d_upsample;2"
+    },
+    {
+      "bytes": 256,
+      "sha256": "fa76b2a397aa30f679cde2c675d7ae1ad92bf46de082dd2ec84ae8f160377057",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/ultralytics.nn.modules.block.Proto_proto/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 147456,
+      "sha256": "5a391526605cd986f43768a8dea5d1be7bdef2ab41c22d7c137ea4f09bd16aa5",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/ultralytics.nn.modules.block.Proto_proto/ultralytics.nn.modules.conv.Conv_cv1/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 256,
+      "sha256": "be9024ea4504b75cbdda5f29c97413c8f396c096e8edee2251021c8244eab171",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/ultralytics.nn.modules.block.Proto_proto/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 147456,
+      "sha256": "6771467165a0b438d64ca7e837ebd2fa03b0157a0dc32b849f02454110a19acd",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/ultralytics.nn.modules.block.Proto_proto/ultralytics.nn.modules.conv.Conv_cv2/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 128,
+      "sha256": "29a6d6636a70db35424e45ac551846818a6c5db3bf8a90a37cabc87ae15e66f7",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/ultralytics.nn.modules.block.Proto_proto/ultralytics.nn.modules.conv.Conv_cv3/torch.nn.modules.conv.Conv2d_conv;"
+    },
+    {
+      "bytes": 8192,
+      "sha256": "17218d084de7ee0fda87da131f13f1d0274eec0460cb2fbf9f299b1e7258b15e",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23/ultralytics.nn.modules.block.Proto_proto/ultralytics.nn.modules.conv.Conv_cv3/torch.nn.modules.conv.Conv2d_conv;1"
+    },
+    {
+      "bytes": 4,
+      "sha256": "d99e58435243d9fef9c88273b8d553b4fba4d0baf8009d29eae74fa99e0d9f57",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23;"
+    },
+    {
+      "bytes": 12,
+      "sha256": "a261a65a31a7b4d09c078a3932c2c2971fa1364382190331b78c1ebde81b40a5",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23;1"
+    },
+    {
+      "bytes": 12,
+      "sha256": "8fa643e2cd0eb3793e4203c676dbff1957bb8e45a1661c6db20a0f3499340fa3",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23;10"
+    },
+    {
+      "bytes": 12,
+      "sha256": "b4688c1dcb1ba0e6c361d3e03e5c4e1be967b7d13687d3f6022f1a522907c02f",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23;11"
+    },
+    {
+      "bytes": 33600,
+      "sha256": "ae76db0286c343bc0bf45396d0b553180e6edc6c4d41ade11fc1700699b552e8",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23;12"
+    },
+    {
+      "bytes": 67200,
+      "sha256": "e69fd7f31beb3c8e7690f75c4749da403440074c11f86f54fd7764633b586be8",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23;13"
+    },
+    {
+      "bytes": 12,
+      "sha256": "15ec7bf0b50732b49f8228e07d24365338f9e3ab994b00af08e5a3bffe55fd8b",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23;2"
+    },
+    {
+      "bytes": 12,
+      "sha256": "e37bf32c7aac2cf426eed1283c446a1c7562b14fdc5cd56955d0e50d12c1572f",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23;3"
+    },
+    {
+      "bytes": 12,
+      "sha256": "368a0a130fe96b5e8729ef2f80f481625b17cf4d04eae58cad0fb408c47a7293",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23;4"
+    },
+    {
+      "bytes": 12,
+      "sha256": "01a5e92808291ad5839462240ed9108698149b63c5424afa89a74559ea13dbde",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23;5"
+    },
+    {
+      "bytes": 12,
+      "sha256": "a002c1a3cca2f4e88e1ea3fcf6a727963f2ce8b8c939df32ed1b240f715707bc",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23;6"
+    },
+    {
+      "bytes": 12,
+      "sha256": "21b4fcce5df1ac4e2caa8a42237aef788c14e10a1cfe0be1de4aa5fb652cfb4b",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23;7"
+    },
+    {
+      "bytes": 12,
+      "sha256": "1d4c4aee69fe53fa40562b788a2010e37cf637bc21d9c4c4b526c9231a0df8cb",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23;8"
+    },
+    {
+      "bytes": 12,
+      "sha256": "4e7f413f148adca831aa8817d990fb9bb6c0e217c7980dfd4a02b0da0970ff30",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords/ultralytics.nn.tasks.SegmentationModel_model/ultralytics.nn.modules.head.Segment_23;9"
+    },
+    {
+      "bytes": 4,
+      "sha256": "4acfc2dd7c69f396516aae65fe483aa703801d7b3ce0c57bb31183a40ad4f689",
+      "tensor": "ultralytics.utils.export.engine._NormalizeCoords;"
+    }
+  ],
+  "schema": 1
+}

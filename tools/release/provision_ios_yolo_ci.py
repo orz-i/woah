@@ -371,6 +371,64 @@ def canonical_tail(contract: dict) -> bytes:
     return tail
 
 
+def load_constant_manifest(path: Path) -> list[dict]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        fail("Phase 7 constant manifest invalid", f"{path}: {exc}")
+    if payload.get("schema") != 1 or not isinstance(payload.get("constants"), list):
+        fail("Phase 7 constant manifest invalid", f"Unexpected schema in {path}")
+    constants = payload["constants"]
+    for item in constants:
+        if not isinstance(item, dict) or set(item) != {"tensor", "bytes", "sha256"}:
+            fail("Phase 7 constant manifest invalid", f"Malformed constant record in {path}: {item!r}")
+    return constants
+
+
+def compare_constant_manifests(expected: list[dict], actual: list[dict]) -> dict:
+    expected_by_name = {str(item["tensor"]): item for item in expected}
+    actual_by_name = {str(item["tensor"]): item for item in actual}
+    missing = sorted(set(expected_by_name) - set(actual_by_name))
+    extra = sorted(set(actual_by_name) - set(expected_by_name))
+    changed = []
+    for name in sorted(set(expected_by_name) & set(actual_by_name)):
+        expected_item = expected_by_name[name]
+        actual_item = actual_by_name[name]
+        if (
+            int(expected_item["bytes"]) != int(actual_item["bytes"])
+            or str(expected_item["sha256"]) != str(actual_item["sha256"])
+        ):
+            changed.append(
+                {
+                    "tensor": name,
+                    "bytes": int(expected_item["bytes"]),
+                    "actual_bytes": int(actual_item["bytes"]),
+                    "expected_sha256": str(expected_item["sha256"]),
+                    "actual_sha256": str(actual_item["sha256"]),
+                }
+            )
+    changed.sort(key=lambda item: max(item["bytes"], item["actual_bytes"]), reverse=True)
+    compact = [
+        {
+            "tensor": item["tensor"][-220:],
+            "bytes": item["bytes"],
+            "actual_bytes": item["actual_bytes"],
+            "expected": item["expected_sha256"][:16],
+            "actual": item["actual_sha256"][:16],
+        }
+        for item in changed[:12]
+    ]
+    return {
+        "changed_count": len(changed),
+        "changed_bytes": sum(max(item["bytes"], item["actual_bytes"]) for item in changed),
+        "missing_count": len(missing),
+        "extra_count": len(extra),
+        "missing": [name[-220:] for name in missing[:8]],
+        "extra": [name[-220:] for name in extra[:8]],
+        "largest_changed": compact,
+    }
+
+
 def reproduce_model(contract: dict, checkpoint: Path, exporter_python: Path, temporary_root: Path) -> Path:
     target = ROOT / contract["source"]
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -394,12 +452,19 @@ def reproduce_model(contract: dict, checkpoint: Path, exporter_python: Path, tem
 
     generated: list[dict] = []
     semantic_tool = ROOT / "tools/release/fingerprint_tflite_semantics.py"
-    for result in results:
+    for index, result in enumerate(results, start=1):
         metadata = load_export_metadata(result)
         validate_export_metadata(metadata, contract)
         core, generated_tail = split_core(result)
+        constants_output = temporary_root / f"generated-{index}.constants.json"
         fingerprint_output = run_checked(
-            [str(exporter_python), str(semantic_tool), str(result)],
+            [
+                str(exporter_python),
+                str(semantic_tool),
+                str(result),
+                "--constants-output",
+                str(constants_output),
+            ],
             title="Phase 7 generated LiteRT semantic fingerprint failed",
         )
         marker = "PHASE7_TFLITE_SEMANTIC_FINGERPRINT="
@@ -417,6 +482,7 @@ def reproduce_model(contract: dict, checkpoint: Path, exporter_python: Path, tem
                 "core": core,
                 "generated_tail": generated_tail,
                 "fingerprint": fingerprint,
+                "constants": load_constant_manifest(constants_output),
             }
         )
 
@@ -459,6 +525,9 @@ def reproduce_model(contract: dict, checkpoint: Path, exporter_python: Path, tem
         flush=True,
     )
     expected_semantic = reproducibility["semantic_fingerprint"]
+    canonical_manifest_path = ROOT / reproducibility["constant_manifest_path"]
+    canonical_constants = load_constant_manifest(canonical_manifest_path)
+    constant_diff = compare_constant_manifests(canonical_constants, first["constants"])
     semantic_mismatches = {
         key: {"expected": expected_semantic[key], "actual": first_fingerprint.get(key)}
         for key in (
@@ -479,7 +548,8 @@ def reproduce_model(contract: dict, checkpoint: Path, exporter_python: Path, tem
             f"expected_sha256={reproducibility['expected_core_sha256']} actual_sha256={core_hash} "
             f"repeat_sha256={repeated_core_hash} repeat_core_equal={repeat_core_equal} "
             f"repeat_semantic_equal={repeat_semantic_equal} semantic_mismatches="
-            f"{json.dumps(semantic_mismatches, sort_keys=True)}",
+            f"{json.dumps(semantic_mismatches, sort_keys=True)} constant_diff="
+            f"{json.dumps(constant_diff, sort_keys=True)}",
         )
 
     target.write_bytes(core + canonical_tail(contract))
