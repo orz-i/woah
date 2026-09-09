@@ -702,6 +702,16 @@ center plus body translation instead of following a far-away raw head center.
 This remains pure render/privacy continuity and needs no physical or formal
 cloud iPhone.
 
+Final cloud evidence for Phase 5H is GitHub Actions `iOS Cloud CI` run
+`34311848716` (#32) at head
+`296a4d0c95768c5fed6e19cd6db96ce6dd42010c`. The public Actions result is
+`completed successfully`. This run exercises the Phase 5H continuity smoke on
+top of the already-required Phase 3 Metal, Phase 4 real-media export, Phase 5G
+synthetic privacy-class fallback, and real FACE_ONLY MP4 gates, followed by the
+workflow's production iPhoneOS no-codesign build/archive path. This remains
+Simulator/cloud-build evidence, not physical-iPhone visual or performance
+acceptance.
+
 This is a substantial FACE_ONLY closure, but it is still not a claim of complete
 Android `FaceOnlyPrivacyFrameProcessor` parity. Android's local ROI detector
 budgeting, landmark/keypoint center refinement, pixel-motion prediction,
