@@ -391,6 +391,47 @@ def verify_device_acceptance_package() -> None:
     ):
         check(token.lower() in runbook.lower(), f"Physical-device acceptance runbook missing: {token}")
 
+    report_template_path = ROOT / "tools/ios/phase7_device_acceptance_report.template.json"
+    report_template = json.loads(text(report_template_path, "physical-device report template") or "{}")
+    check(report_template.get("schema_version") == 1, "Physical-device report template schema must be version 1")
+    check(report_template.get("phase") == 7, "Physical-device report template must belong to Phase 7")
+    check(report_template.get("acceptance_status") == "pending", "Physical-device report template must start pending")
+    matrix = json.loads(text(ROOT / "tools/ios/phase7_regression_matrix.json", "Phase 7 regression matrix") or "{}")
+    expected_cases = {str(item.get("id")) for item in matrix.get("cases", []) if isinstance(item, dict)}
+    template_cases = report_template.get("functional_cases", {})
+    check(set(template_cases) == expected_cases, "Physical-device report functional cases must exactly mirror the Phase 7 regression matrix")
+    check(len(report_template.get("media", {})) == 8, "Physical-device report template must contain the fixed eight-media set")
+    for section in ("artifact", "device", "privacy_review", "performance", "background_interruption", "stability"):
+        check(isinstance(report_template.get(section), dict), f"Physical-device report template missing section: {section}")
+
+    preparer = text(ROOT / "tools/ios/prepare_phase7_device_acceptance_report.py", "physical-device report preparer")
+    for token in (
+        "phase7_release_audit.json",
+        "release_audit_sha256",
+        "pubspec_lock_sha256",
+        "model_contract_sha256",
+        "privacy_manifests",
+        "testdata/videos/01_sample.mp4",
+    ):
+        check(token in preparer or token in runbook, f"Physical-device report preparer/runbook missing: {token}")
+
+    verifier = text(ROOT / "tools/ios/verify_phase7_device_acceptance_report.py", "physical-device report verifier")
+    for token in (
+        '"--require-accepted"',
+        "physical-device-acceptance",
+        "unresolved_escape_count",
+        "analyze_fps",
+        "export_processed_fps",
+        "peak_memory_mib",
+        "thermal_states",
+        "idle_background_round_trip",
+        "export_background_round_trip",
+        "crash_count",
+        "hang_count",
+        "IOS_PHASE7_PHYSICAL_DEVICE_ACCEPTANCE=PASS",
+    ):
+        check(token in verifier, f"Physical-device report verifier missing: {token}")
+
 
 def main() -> int:
     verify_boundary()

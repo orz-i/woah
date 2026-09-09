@@ -23,6 +23,22 @@ Before installing anything, copy these values from the Phase 7 CI artifact and
 Do not compare results produced by different artifact identities as though they
 were one acceptance run.
 
+The acceptance record has a fixed machine-readable shape at
+`tools/ios/phase7_device_acceptance_report.template.json`. After downloading the
+audited Release artifact, seed a report instead of copying identity fields by
+hand:
+
+```text
+python tools/ios/prepare_phase7_device_acceptance_report.py \
+  --audit mobile/app/artifacts/phase7_release_audit.json \
+  --output reports/ios_phase7_device_acceptance.json
+```
+
+The preparer copies commit/version/build, executable/dependency/model hashes,
+privacy-manifest inventory, the Release audit SHA-256, and the repository
+baseline-video SHA-256. Device/media/performance results remain `pending` until
+they come from real hardware.
+
 ## Fixed media set
 
 Always include:
@@ -61,6 +77,11 @@ For every successful export verify H.264, 1920x1080, expected 30fps output
 contract, expected trim duration, audio presence/absence, and that no final or
 partial file appears before successful completion.
 
+Every functional row in the JSON report must name the media IDs exercised and
+one or more `evidence_files` (for example exported-file hashes/metadata,
+diagnostic JSON, device log excerpts, or screenshots). Final acceptance rejects
+a row marked `pass` if those evidence references are empty.
+
 ## Final visual privacy acceptance
 
 Review the complete exported video, not only thumbnails or the live preview.
@@ -76,6 +97,8 @@ Record any frame where:
 - portrait/landscape transforms move privacy coverage away from the subject.
 
 Any unresolved privacy escape blocks physical-device acceptance.
+The final `privacy_review` record must also reference its review evidence files;
+setting only the result field to `pass` is insufficient.
 
 ## Performance and stability collection
 
@@ -94,6 +117,21 @@ The exact instrumentation may use Xcode/Instruments, device logs, or the app's
 existing diagnostics. Phase 7 does not invent synthetic pass thresholds before
 real-device evidence exists; the first accepted device run establishes a
 measured baseline that must be documented rather than silently normalized.
+
+Record the measured values in the fixed report. Structural completeness can be
+checked at any point without claiming acceptance:
+
+```text
+python tools/ios/verify_phase7_device_acceptance_report.py \
+  reports/ios_phase7_device_acceptance.json
+```
+
+For the final physical-device gate use `--require-accepted`. That mode rejects
+pending/failed functional rows, missing media hashes/metadata, absent
+FPS/backend/memory/throughput/thermal observations, unresolved privacy escapes,
+background/interruption failures, crashes, and hangs. The verifier deliberately
+does **not** invent performance thresholds; it enforces evidence completeness
+and the privacy/stability pass conditions.
 
 ## Completion record
 

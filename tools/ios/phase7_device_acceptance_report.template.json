@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "phase": 7,
+  "evidence_class": "physical-device-acceptance",
+  "acceptance_status": "pending",
+  "artifact": {
+    "release_audit_path": null,
+    "release_audit_sha256": null,
+    "git_commit": null,
+    "bundle_identifier": null,
+    "version": null,
+    "build": null,
+    "executable_sha256": null,
+    "pubspec_lock_sha256": null,
+    "model_contract_sha256": null,
+    "model_sha256": null,
+    "privacy_manifests": []
+  },
+  "device": {
+    "model": null,
+    "ios_version": null,
+    "available_storage_bytes": null,
+    "battery_start_percent": null,
+    "battery_end_percent": null,
+    "initial_thermal_state": null
+  },
+  "media": {
+    "repository_baseline": {
+      "path": "testdata/videos/01_sample.mp4",
+      "sha256": null,
+      "codec": null,
+      "width": null,
+      "height": null,
+      "average_fps": null,
+      "duration_seconds": null,
+      "has_audio": null
+    },
+    "portrait_audio": {"path": null, "sha256": null, "codec": null, "width": null, "height": null, "average_fps": null, "duration_seconds": null, "has_audio": null},
+    "landscape_audio": {"path": null, "sha256": null, "codec": null, "width": null, "height": null, "average_fps": null, "duration_seconds": null, "has_audio": null},
+    "no_audio": {"path": null, "sha256": null, "codec": null, "width": null, "height": null, "average_fps": null, "duration_seconds": null, "has_audio": null},
+    "vfr_phone_capture": {"path": null, "sha256": null, "codec": null, "width": null, "height": null, "average_fps": null, "duration_seconds": null, "has_audio": null},
+    "crossing_occlusion": {"path": null, "sha256": null, "codec": null, "width": null, "height": null, "average_fps": null, "duration_seconds": null, "has_audio": null},
+    "face_only_fast_motion": {"path": null, "sha256": null, "codec": null, "width": null, "height": null, "average_fps": null, "duration_seconds": null, "has_audio": null},
+    "mixed_full_body_face_only": {"path": null, "sha256": null, "codec": null, "width": null, "height": null, "average_fps": null, "duration_seconds": null, "has_audio": null}
+  },
+  "functional_cases": {
+    "full_body_real_mp4": {"result": "pending", "media_ids": [], "evidence_files": [], "notes": null},
+    "face_only_real_mp4": {"result": "pending", "media_ids": [], "evidence_files": [], "notes": null},
+    "mixed_full_body_face_only": {"result": "pending", "media_ids": [], "evidence_files": [], "notes": null},
+    "crossing_occlusion_reacquisition": {"result": "pending", "media_ids": [], "evidence_files": [], "notes": null},
+    "trim": {"result": "pending", "media_ids": [], "evidence_files": [], "notes": null},
+    "audio_preservation": {"result": "pending", "media_ids": [], "evidence_files": [], "notes": null},
+    "no_audio_source": {"result": "pending", "media_ids": [], "evidence_files": [], "notes": null},
+    "cancel_cleanup": {"result": "pending", "media_ids": [], "evidence_files": [], "notes": null},
+    "failure_cleanup": {"result": "pending", "media_ids": [], "evidence_files": [], "notes": null},
+    "portrait_landscape_transform": {"result": "pending", "media_ids": [], "evidence_files": [], "notes": null},
+    "common_cfr_inputs": {"result": "pending", "media_ids": [], "evidence_files": [], "notes": null},
+    "vfr_timestamp_handling": {"result": "pending", "media_ids": [], "evidence_files": [], "notes": null},
+    "h264_1080p30_output": {"result": "pending", "media_ids": [], "evidence_files": [], "notes": null}
+  },
+  "privacy_review": {
+    "result": "pending",
+    "unresolved_escape_count": null,
+    "evidence_files": [],
+    "observations": []
+  },
+  "performance": {
+    "analyze_fps": null,
+    "effective_inference_backend": null,
+    "export_processed_fps": null,
+    "export_wall_seconds": null,
+    "peak_memory_mib": null,
+    "progress_event_count": null,
+    "terminal_errors": [],
+    "sustained_run_minutes": null,
+    "thermal_states": [],
+    "notes": null
+  },
+  "background_interruption": {
+    "idle_background_round_trip": "pending",
+    "export_background_round_trip": "pending",
+    "screen_lock": "pending",
+    "app_switch": "pending",
+    "notes": null
+  },
+  "stability": {
+    "result": "pending",
+    "crash_count": null,
+    "hang_count": null,
+    "notes": null
+  },
+  "operator_notes": null
+}
