@@ -44,7 +44,7 @@ The production release contract is:
 - production Simulator smoke build: `flutter build ios --simulator --release
   --target lib/main.dart`;
 - release-regression Simulator build: `flutter build ios --simulator --release
-  --target lib/ios_phase6_smoke_main.dart`;
+  --target lib/ios_phase7_smoke_main.dart`;
 - archive artifact: zipped release `Runner.app`, never a debug app relabeled as
   release.
 
@@ -94,16 +94,22 @@ gate. It must remain separate from `verify_ios_phase5.py` and
 
 1. runs the Phase 0-7 static verifiers;
 2. inherits the accepted Phase 6 macOS/Simulator gate;
-3. rebuilds the Phase 6 combined smoke entrypoint in **Release** mode and
-   requires the Phase 3/4/5/6 markers again under release optimization;
+3. builds the Phase 7 combined smoke entrypoint in **Release** mode, requires
+   the unchanged Phase 3/4/5/6 markers again, then requires the Phase 7 media
+   regression marker for no-audio, injected-failure cleanup,
+   preferred-transform orientation, and VFR timestamp rebasing;
 4. builds and launches the production `lib/main.dart` Simulator app in Release
    mode as a startup/crash smoke;
 5. builds production iPhoneOS in Release mode with `--no-codesign`;
 6. audits the built `Runner.app` and writes `phase7_release_audit.json`;
 7. archives the exact audited app for artifact upload.
 
-The dedicated GitHub workflow is `.github/workflows/ios-release.yml`. This lane
-is Apple-only implementation evidence. It is not a physical-device acceptance
+The dedicated GitHub workflow is `.github/workflows/ios-release.yml`. Its
+tracked source template is `tools/ios/ios-release.phase7.workflow.yml`, because
+the current local workspace security policy does not permit ordinary mutation
+of `.github/workflows/**`; Phase 7 remains fail-closed until a trusted GitHub
+write path commits the template at the protected workflow path. This lane is
+Apple-only implementation evidence. It is not a physical-device acceptance
 lane.
 
 ## Release regression matrix
@@ -121,16 +127,17 @@ by rerunning the accepted deterministic/real-media smoke under Release:
 - selected/unselected crossing and occlusion/reacquisition;
 - trim;
 - audio preservation;
-- no-audio source handling contract;
+- no-audio source export with no synthetic audio track;
 - cancel and partial-file cleanup;
-- terminal failure cleanup contract;
-- portrait and landscape metadata/transform contract;
-- common CFR inputs and VFR-tolerant timestamp handling contract;
+- injected terminal failure with no final/partial-file leak;
+- landscape and preferred-transform portrait output sizing;
+- common CFR input plus a real VFR presentation-timestamp fixture rebased to
+  fixed 30fps output;
 - H.264 / 1920x1080 / 30fps output contract.
 
-Cases that are only statically covered are marked as such in the matrix and are
-repeated on the physical-device checklist before release acceptance. Phase 7
-does not pretend static source checks are equivalent to visual playback on an
+All matrix cases remain on the physical-device checklist even when they also
+have Release Simulator evidence. Phase 7 does not pretend deterministic
+Simulator media checks are equivalent to visual playback on an iPhone.
 iPhone.
 
 ## Physical-device acceptance package

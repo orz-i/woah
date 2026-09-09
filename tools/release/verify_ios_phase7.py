@@ -188,6 +188,18 @@ def verify_release_regression_contract() -> None:
         all(item.get("physical_device_required") is True for item in cases if isinstance(item, dict)),
         "Every Phase 7 release regression case must remain on the physical-device acceptance checklist",
     )
+    phase7_simulator_cases = {
+        "no_audio_source",
+        "failure_cleanup",
+        "portrait_landscape_transform",
+        "vfr_timestamp_handling",
+    }
+    for item in cases:
+        if isinstance(item, dict) and item.get("id") in phase7_simulator_cases:
+            check(
+                item.get("release_ci_evidence") == "phase7_release_simulator_smoke",
+                f"{item.get('id')} must be backed by the Phase 7 Release Simulator smoke",
+            )
 
     smoke = text(SOURCES / "IOSExportPhase4Smoke.swift", "real-media export smoke")
     for token in (
@@ -216,6 +228,41 @@ def verify_release_regression_contract() -> None:
         "let targetFps = 30.0",
     ):
         check(token in pipeline, f"Phase 7 static export regression contract missing: {token}")
+
+    phase7_smoke = text(SOURCES / "IOSReleasePhase7Smoke.swift", "Phase 7 Release media smoke")
+    for token in (
+        "enum IOSReleasePhase7Smoke",
+        "PHASE7_NO_AUDIO_OUTPUT_HAS_AUDIO",
+        "PHASE7_FAILURE_PARTIAL_LEAK",
+        "PHASE7_PORTRAIT_TRANSFORM_FIXTURE",
+        "PHASE7_VFR_FIXTURE_NOT_VFR",
+        "distinctIntervals >= 2",
+        "expectedWidth: 1920",
+        "expectedHeight: 1080",
+        "expectedWidth: 1080",
+        "expectedHeight: 1920",
+        "InjectedFailure.inference",
+        "AVVideoCodecType.h264",
+        "outputInfo.timeline.frameCount == expectedFrames",
+        "measuredFps >= 28.5",
+        "nominalFrameRate >= 29.0",
+    ):
+        check(token in phase7_smoke, f"Phase 7 Release media smoke missing: {token}")
+
+    plugin = text(SOURCES / "DanceNativePlugin.swift", "dance_native iOS plugin")
+    check('case "runIOSReleasePhase7Smoke"' in plugin, "Phase 7 Release smoke MethodChannel hook is missing")
+    check("IOSReleasePhase7Smoke.run()" in plugin, "Phase 7 MethodChannel hook must execute the Phase 7-owned smoke")
+
+    dart = text(APP / "lib/ios_phase7_smoke_main.dart", "Phase 7 Release smoke entrypoint")
+    for token in (
+        "runIOSMetalPhase3Smoke",
+        "runIOSExportPhase4Smoke",
+        "runIOSGoldenTracePhase5Smoke",
+        "runIOSPrivacyClassPhase6Smoke",
+        "runIOSReleasePhase7Smoke",
+        "WOAH_RELEASE_PHASE7_SMOKE=PASS",
+    ):
+        check(token in dart, f"Phase 7 Release smoke entrypoint missing inherited/Phase 7 marker: {token}")
 
 
 def verify_release_tooling() -> None:
@@ -252,7 +299,8 @@ def verify_release_tooling() -> None:
         '"--enforce-lockfile"',
         '"--simulator"',
         '"--release"',
-        "lib/ios_phase6_smoke_main.dart",
+        "lib/ios_phase7_smoke_main.dart",
+        "run_phase7_simulator_smoke.py",
         "lib/main.dart",
         "run_phase7_production_simulator_smoke.py",
         '"--no-codesign"',
@@ -262,6 +310,18 @@ def verify_release_tooling() -> None:
         "implementation complete pending physical-device acceptance",
     ):
         check(token in macos, f"Phase 7 macOS Release gate missing: {token}")
+
+    simulator = text(ROOT / "tools/ios/run_phase7_simulator_smoke.py", "Phase 7 Release Simulator runner")
+    for token in (
+        "WOAH_METAL_PHASE3_SMOKE=PASS",
+        "WOAH_EXPORT_PHASE4_SMOKE=PASS",
+        "WOAH_GOLDEN_TRACE_PHASE5_SMOKE=PASS",
+        "WOAH_PRIVACY_CLASS_PHASE6_SMOKE=PASS",
+        "WOAH_RELEASE_PHASE7_SMOKE=PASS",
+        "IOS_SIMULATOR_PHASE7_RELEASE_REGRESSION=PASS",
+        "boot_iphone(app)",
+    ):
+        check(token in simulator, f"Phase 7 Release Simulator runner missing: {token}")
 
     workflow_template = ROOT / "tools/ios/ios-release.phase7.workflow.yml"
     workflow = text(workflow_template, "Phase 7 GitHub workflow template")

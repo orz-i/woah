@@ -35,7 +35,7 @@
     },
     {
       "id": "no_audio_source",
-      "release_ci_evidence": "static_export_contract",
+      "release_ci_evidence": "phase7_release_simulator_smoke",
       "physical_device_required": true
     },
     {
@@ -45,12 +45,12 @@
     },
     {
       "id": "failure_cleanup",
-      "release_ci_evidence": "static_export_contract",
+      "release_ci_evidence": "phase7_release_simulator_smoke",
       "physical_device_required": true
     },
     {
       "id": "portrait_landscape_transform",
-      "release_ci_evidence": "static_video_transform_contract",
+      "release_ci_evidence": "phase7_release_simulator_smoke",
       "physical_device_required": true
     },
     {
@@ -60,7 +60,7 @@
     },
     {
       "id": "vfr_timestamp_handling",
-      "release_ci_evidence": "static_timestamp_contract",
+      "release_ci_evidence": "phase7_release_simulator_smoke",
       "physical_device_required": true
     },
     {

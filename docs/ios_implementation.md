@@ -818,7 +818,10 @@ The Phase 7 implementation adds an independent host verifier
 (`tools/release/verify_ios_phase7.py`), a Release-mode macOS gate
 (`tools/ios/run_phase7_macos_gate.py`), and a dedicated GitHub workflow
 (`.github/workflows/ios-release.yml`). The Apple-only lane reruns the accepted
-Phase 3-6 Simulator regressions under Release optimization, separately launches
+Phase 3-6 Simulator regressions under Release optimization and then executes a
+Phase 7-owned real-media smoke for video-only input, injected-failure cleanup,
+preferred-transform portrait/landscape output, and VFR timestamp rebasing into
+the fixed H.264/30fps contract. It separately launches
 the production `lib/main.dart` Release Simulator app, builds the production
 iPhoneOS target with `--release --no-codesign`, audits the exact resulting
 `Runner.app`, and archives that audited bundle. The audit records the Git

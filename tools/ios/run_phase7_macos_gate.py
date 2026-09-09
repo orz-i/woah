@@ -95,7 +95,9 @@ def main() -> int:
     run(["flutter", "config", "--enable-swift-package-manager"], cwd=APP)
     run(["flutter", "pub", "get", "--enforce-lockfile"], cwd=APP)
 
-    # Re-run the complete Phase 3-6 smoke stack under Release optimization.
+    # Re-run the complete Phase 3-6 stack plus the Phase 7-owned media
+    # regressions under Release optimization. Earlier phase smoke sources stay
+    # frozen; the Phase 7 entrypoint composes them without changing their gates.
     run(
         [
             "flutter",
@@ -104,7 +106,7 @@ def main() -> int:
             "--simulator",
             "--release",
             "--target",
-            "lib/ios_phase6_smoke_main.dart",
+            "lib/ios_phase7_smoke_main.dart",
         ],
         cwd=APP,
         timeout=2400,
@@ -112,10 +114,9 @@ def main() -> int:
     run(
         [
             sys.executable,
-            "tools/ios/run_phase4_simulator_smoke.py",
+            "tools/ios/run_phase7_simulator_smoke.py",
             "--app",
             "mobile/app/build/ios/iphonesimulator/Runner.app",
-            "--require-phase6",
         ],
         timeout=1500,
     )
