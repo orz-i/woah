@@ -191,13 +191,22 @@ final class IOSExportPipeline {
       let fullBodyIds = Set(request.selectedPersonIds.map { Int($0) })
       let faceOnlyIds = Set((request.faceOnlyPersonIds ?? []).map { Int($0) })
         .subtracting(fullBodyIds)
+      let identityFrameWidth = max(1, Int(displaySize.width.rounded()))
+      let identityFrameHeight = max(1, Int(displaySize.height.rounded()))
       let tracker = IOSTemporalIdentityTracker(
         metadata: metadata,
         fullBodyIds: fullBodyIds,
         faceOnlyIds: faceOnlyIds,
-        frameWidth: max(1, Int(displaySize.width.rounded())),
-        frameHeight: max(1, Int(displaySize.height.rounded()))
+        frameWidth: identityFrameWidth,
+        frameHeight: identityFrameHeight
       )
+      // Match Android's production boundary: identity-independent privacy-class
+      // continuity may drive only the FULL_BODY-only compositor. Mixed/FACE_ONLY
+      // composition stays rooted exclusively in exact temporal track IDs.
+      let privacyClassTracker = !fullBodyIds.isEmpty && faceOnlyIds.isEmpty
+        ? IOSPrivacyClassTemporalTracker()
+        : nil
+      var privacyClassHardRootsSent = false
       let facePrivacyResolver: IOSFacePrivacyTemporalResolver?
       if faceOnlyIds.isEmpty {
         facePrivacyResolver = nil
@@ -251,6 +260,32 @@ final class IOSExportPipeline {
           preprocess: inference.preprocess,
           timestampUs: timestampUs
         )
+        var freshFullBodyPrivacyEvidence: [IOSFreshPrivacyClassEvidence] = []
+        if let privacyClassTracker {
+          var hardRoots: [Int: IOSPrivacySelectionClass] = [:]
+          if !privacyClassHardRootsSent, !inference.detections.isEmpty {
+            let rootPersons = IOSPreviewIdentityMatcher.assign(
+              detections: inference.detections,
+              metadata: metadata,
+              frameWidth: identityFrameWidth,
+              frameHeight: identityFrameHeight
+            )
+            if rootPersons.count == inference.detections.count {
+              for index in inference.detections.indices {
+                hardRoots[index] = fullBodyIds.contains(rootPersons[index].id)
+                  ? .selected
+                  : .unselected
+              }
+              privacyClassHardRootsSent = true
+            }
+          }
+          freshFullBodyPrivacyEvidence = privacyClassTracker.update(
+            detections: inference.detections,
+            preprocess: inference.preprocess,
+            hardClassByDetectionIndex: hardRoots,
+            timestampUs: timestampUs
+          )
+        }
         let faceRegions = facePrivacyResolver?.resolve(
           image: frame,
           persons: tracked,
@@ -267,6 +302,9 @@ final class IOSExportPipeline {
           faceOnlyIds: faceOnlyIds,
           effects: request.effects,
           faceRegions: faceRegions,
+          freshFullBodyPrivacyEvidence: freshFullBodyPrivacyEvidence,
+          preferFreshFullBodyClassPrimary: privacyClassTracker != nil
+            && !freshFullBodyPrivacyEvidence.isEmpty,
           outputWidth: target.width,
           outputHeight: target.height
         )

@@ -73,6 +73,8 @@ final class IOSMetalPreviewRenderer {
     faceOnlyIds: Set<Int>,
     effects: EffectConfigDto,
     faceRegions: [Int: IOSFacePrivacyEllipse] = [:],
+    freshFullBodyPrivacyEvidence: [IOSFreshPrivacyClassEvidence] = [],
+    preferFreshFullBodyClassPrimary: Bool = false,
     outputWidth: Int? = nil,
     outputHeight: Int? = nil
   ) throws -> CGImage {
@@ -102,6 +104,8 @@ final class IOSMetalPreviewRenderer {
       fullBodyIds: fullBodyIds,
       faceOnlyIds: faceOnlyIds,
       faceRegions: faceRegions,
+      freshFullBodyPrivacyEvidence: freshFullBodyPrivacyEvidence,
+      preferFreshFullBodyClassPrimary: preferFreshFullBodyClassPrimary,
       sourceWidth: sourceWidth,
       sourceHeight: sourceHeight,
       previewWidth: previewWidth,
@@ -259,19 +263,62 @@ final class IOSMetalPreviewRenderer {
     fullBodyIds: Set<Int>,
     faceOnlyIds: Set<Int>,
     faceRegions: [Int: IOSFacePrivacyEllipse],
+    freshFullBodyPrivacyEvidence: [IOSFreshPrivacyClassEvidence],
+    preferFreshFullBodyClassPrimary: Bool,
     sourceWidth: Int,
     sourceHeight: Int,
     previewWidth: Int,
     previewHeight: Int
   ) -> PrivacyInputs {
-    let fullBodyPersons = persons.filter { fullBodyIds.contains($0.id) }
+    let trackedFullBodyPersons = persons.filter { fullBodyIds.contains($0.id) }
     let effectiveFaceOnlyIds = faceOnlyIds.subtracting(fullBodyIds)
     let facePersons = persons.filter { effectiveFaceOnlyIds.contains($0.id) }
+
+    // Android allows identity-independent temporal class evidence to become the
+    // primary compositor input only for FULL_BODY-only composition. Never let
+    // this path upgrade FACE_ONLY/mixed detections into whole-body privacy.
+    let freshSyntheticBase = Int.min / 4
+    let freshPersons = freshFullBodyPrivacyEvidence.enumerated().map { offset, evidence in
+      IOSPreviewPerson(
+        id: freshSyntheticBase + offset,
+        detection: evidence.detection
+      )
+    }
+    let freshSelectedIds = Set(freshFullBodyPrivacyEvidence.enumerated().compactMap { offset, evidence -> Int? in
+      evidence.selectionClass == .selected ? freshSyntheticBase + offset : nil
+    })
+    let useFreshPrimary = preferFreshFullBodyClassPrimary
+      && !fullBodyIds.isEmpty
+      && faceOnlyIds.isEmpty
+      && !freshPersons.isEmpty
+
+    let privacyPersons: [IOSPreviewPerson]
+    let effectiveFullBodyIds: Set<Int>
+    if useFreshPrimary {
+      let freshSelectedCount = freshSelectedIds.count
+      let fallbackDeficit = max(0, fullBodyIds.count - freshSelectedCount)
+      let fallbackSelected = trackedFullBodyPersons
+        .sorted {
+          if $0.conservativePrivacyFallback != $1.conservativePrivacyFallback {
+            return !$0.conservativePrivacyFallback
+          }
+          return $0.id < $1.id
+        }
+        .prefix(fallbackDeficit)
+      let fallbackSelectedArray = Array(fallbackSelected)
+      privacyPersons = freshPersons + fallbackSelectedArray
+      effectiveFullBodyIds = freshSelectedIds.union(fallbackSelectedArray.map { $0.id })
+    } else {
+      privacyPersons = persons
+      effectiveFullBodyIds = fullBodyIds
+    }
+
+    let fullBodyPersons = privacyPersons.filter { effectiveFullBodyIds.contains($0.id) }
     let effectiveFullBodyMasks = fullBodyPersons.map { target in
       effectivePrivacyMask(
         for: target,
-        allPersons: persons,
-        fullBodyIds: fullBodyIds
+        allPersons: privacyPersons,
+        fullBodyIds: effectiveFullBodyIds
       )
     }
 

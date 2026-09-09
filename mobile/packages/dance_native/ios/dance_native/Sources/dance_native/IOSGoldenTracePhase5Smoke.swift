@@ -117,6 +117,7 @@ enum IOSGoldenTracePhase5Smoke {
     }
 
     let facePrivacyReport = try IOSFacePrivacyPhase5Smoke.run()
+    let privacyClassReport = try IOSPrivacyClassPhase5Smoke.run()
     return [
       "schemaVersion": suite.schemaVersion,
       "caseCount": suite.cases.count,
@@ -125,6 +126,7 @@ enum IOSGoldenTracePhase5Smoke {
       "resource": traceURL.lastPathComponent,
       "cases": caseReports,
       "facePrivacy": facePrivacyReport,
+      "privacyClass": privacyClassReport,
     ]
   }
 

@@ -712,11 +712,39 @@ workflow's production iPhoneOS no-codesign build/archive path. This remains
 Simulator/cloud-build evidence, not physical-iPhone visual or performance
 acceptance.
 
+### Phase 5I: identity-independent privacy-class prototypes
+
+Android also maintains a selected/unselected temporal classifier whose state is
+deliberately independent of person IDs. iOS now mirrors that design with
+`IOSPrivacyClassTemporalTracker`. The first non-empty hard class map is the only
+immutable privacy root; later runtime identity labels are ignored completely.
+Class similarity uses predicted bbox IoU, bbox-relative distance, and a warped
+segmentation-mask IoU with the Android reference weights (0.40 / 0.20 / 0.40).
+The selected/unselected inference thresholds remain 0.42, 0.65 for a single
+known class, and a 0.12 class margin. Prototypes decay on misses and are removed
+after four missed frames or insufficient reliability.
+
+If a current detection cannot be classified confidently, it is emitted as
+SELECTED **only for fail-closed rendering** with `conservativeUnknown=true`; it
+does not update either class prototype. This prevents a merged crossing or new
+far entrant from poisoning the immutable selection history. The deterministic
+smoke covers poisoned runtime hard labels, selected/unselected crossings, a
+merged unknown, a far new entrant, and a one-frame unselected occlusion/return.
+
+Production use is intentionally narrower than the tracker itself. Fresh
+identity-independent class evidence may become the primary full-body compositor
+input only when at least one FULL_BODY target is selected and **no FACE_ONLY
+target exists**. The renderer treats selected/unknown-selected fresh detections
+as anonymous privacy targets and unselected detections only as occluders; if the
+fresh selected count is below the expected selected count, existing selected
+tracks fill the deficit. Mixed/FACE_ONLY rendering ignores this path even if a
+caller supplies evidence, preserving exact-ID semantics for face privacy.
+
 This is a substantial FACE_ONLY closure, but it is still not a claim of complete
 Android `FaceOnlyPrivacyFrameProcessor` parity. Android's local ROI detector
 budgeting, landmark/keypoint center refinement, pixel-motion prediction,
-dormancy/reactivation probes, privacy-class prototype tracking, and mature
-diagnostics remain reference work for later Phase 5 slices.
+dormancy/reactivation probes, deeper fresh-primary stale-mask replacement, and
+mature diagnostics remain reference work for later Phase 5 slices.
 Vision-vs-MediaPipe visual quality and sustained face
 inference cost also require real-iPhone evidence before release parity can be
 claimed.
