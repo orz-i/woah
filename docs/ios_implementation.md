@@ -909,6 +909,14 @@ stack. The Android/application root environment is not mutated or treated as
 model-export provenance; the generated FlatBuffer core hash remains the final
 acceptance authority.
 
+Phase 7 Release Run #5 (`34346445889`) validated the isolation boundary but
+failed before package installation because `uv` correctly refused to search a
+second index for `torch==2.13.0+cpu` under its dependency-confusion protection.
+Rather than enable `unsafe-best-match`, the contract now pins the official
+PyTorch and torchvision cp311/Linux x86_64 CPU wheel URLs and their SHA-256
+digests directly. PyPI is used only for their ordinary dependencies and the
+cutoff-pinned LiteRT exporter stack.
+
 Two subsequent legacy `iOS Cloud CI` runs provide intermediate Apple-only
 evidence while the independent Phase 7 Release workflow remains intentionally
 blocked on protected-path installation. Run `34334830050` (#40), job

@@ -163,8 +163,8 @@ def create_exporter_environment(contract: dict, root: Path) -> Path:
         fail("Phase 7 model exporter environment", "uv is required to provision the isolated LiteRT exporter stack")
 
     torch_packages = [
-        f"torch=={environment['torch_version']}",
-        f"torchvision=={environment['torchvision_version']}",
+        f"{environment['torch_wheel_url']}#sha256={environment['torch_wheel_sha256']}",
+        f"{environment['torchvision_wheel_url']}#sha256={environment['torchvision_wheel_sha256']}",
     ]
     run_checked(
         [
@@ -173,10 +173,8 @@ def create_exporter_environment(contract: dict, root: Path) -> Path:
             "install",
             "--python",
             str(python),
-            "--index-url",
-            environment["torch_index"],
-            "--extra-index-url",
-            "https://pypi.org/simple",
+            "--exclude-newer",
+            environment["exclude_newer_utc"],
             *torch_packages,
         ],
         title="Phase 7 isolated CPU Torch install failed",
