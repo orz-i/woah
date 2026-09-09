@@ -67,6 +67,17 @@ production Release build must target `lib/main.dart`. Phase 7 does not add a
 runtime switch that exposes smoke-only MethodChannel hooks through the normal
 product UI.
 
+All native `runIOS*` diagnostic/smoke MethodChannel hooks are fail-closed in
+Release builds. `Release.xcconfig` defaults `WOAH_ENABLE_SMOKE_HOOKS` to `NO`;
+Debug builds remain enabled for the already-accepted Phase 1-6 diagnostics.
+The Phase 7 macOS gate temporarily sets the Release value to `YES` only while
+building/running `ios_phase7_smoke_main.dart`, then rewrites it to `NO` before
+building either production `lib/main.dart` Simulator or iPhoneOS artifact. The
+production Simulator liveness runner inspects its built Info.plist before
+installation and rejects an enabled value. The final iPhoneOS bundle auditor
+repeats the same fail-closed assertion and records `smoke_hooks_enabled` in the
+audit manifest.
+
 ## Apple privacy and permission contract
 
 The app target and `dance_native` package both carry `PrivacyInfo.xcprivacy`.
@@ -111,6 +122,12 @@ gate. It must remain separate from `verify_ios_phase5.py` and
 5. builds production iPhoneOS in Release mode with `--no-codesign`;
 6. audits the built `Runner.app` and writes `phase7_release_audit.json`;
 7. archives the exact audited app for artifact upload.
+
+The Phase 1 verifier historically auto-launches the Phase 6 Apple gate whenever
+it detects GitHub Actions on macOS. Phase 7 suppresses that inherited auto-hook
+only for its Phase 1 **static-verifier subprocess**, then explicitly executes the
+Phase 6 Apple gate once. This avoids duplicate expensive Simulator/Metal/media
+execution without weakening or bypassing any accepted gate.
 
 The dedicated GitHub workflow is `.github/workflows/ios-release.yml`. Its
 tracked source template is `tools/ios/ios-release.phase7.workflow.yml`, because

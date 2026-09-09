@@ -4,12 +4,36 @@
 from __future__ import annotations
 
 import argparse
+import plistlib
 import subprocess
 import sys
 import time
 from pathlib import Path
 
 from run_phase4_simulator_smoke import BUNDLE_ID, boot_iphone, safe_run
+
+
+def truthy_plist_value(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return False
+
+
+def verify_production_bundle_contract(app: Path) -> None:
+    info_path = app / "Info.plist"
+    if not info_path.is_file():
+        raise SystemExit(f"Production Simulator Info.plist is missing: {info_path}")
+    with info_path.open("rb") as stream:
+        info = plistlib.load(stream)
+    if str(info.get("CFBundleIdentifier", "")) != BUNDLE_ID:
+        raise SystemExit("Production Simulator bundle ID does not match art.gaoge.dance")
+    if truthy_plist_value(info.get("WoahEnableSmokeHooks")):
+        raise SystemExit("Production Release Simulator must not enable iOS smoke MethodChannel hooks")
+    print("IOS_PHASE7_PRODUCTION_SIMULATOR_SMOKE_HOOKS=DISABLED")
 
 
 def main() -> int:
@@ -20,6 +44,7 @@ def main() -> int:
     app = args.app.resolve()
     if not app.is_dir():
         raise SystemExit(f"Production Simulator app bundle does not exist: {app}")
+    verify_production_bundle_contract(app)
 
     runtime, name, udid = boot_iphone(app)
     print(f"PHASE7_PRODUCTION_SIMULATOR_DEVICE={name}")

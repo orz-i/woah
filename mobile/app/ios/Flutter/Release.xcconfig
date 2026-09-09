@@ -1,2 +1,3 @@
 #include "Generated.xcconfig"
+WOAH_ENABLE_SMOKE_HOOKS = NO
 #include? "Phase7Release.xcconfig"

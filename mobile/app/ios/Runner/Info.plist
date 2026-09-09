@@ -70,5 +70,7 @@
 	</array>
 	<key>WoahGitCommit</key>
 	<string>$(WOAH_GIT_COMMIT)</string>
+	<key>WoahEnableSmokeHooks</key>
+	<string>$(WOAH_ENABLE_SMOKE_HOOKS)</string>
 </dict>
 </plist>

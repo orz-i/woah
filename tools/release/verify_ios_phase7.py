@@ -107,12 +107,17 @@ def verify_release_metadata() -> None:
     check(info.get("CFBundleShortVersionString") == "$(FLUTTER_BUILD_NAME)", "Runner version must remain Flutter driven")
     check(info.get("CFBundleVersion") == "$(FLUTTER_BUILD_NUMBER)", "Runner build number must remain Flutter driven")
     check(info.get("WoahGitCommit") == "$(WOAH_GIT_COMMIT)", "Runner must preserve the auditable commit Info.plist hook")
+    check(
+        info.get("WoahEnableSmokeHooks") == "$(WOAH_ENABLE_SMOKE_HOOKS)",
+        "Runner must expose the release smoke-hook build setting for final bundle audit",
+    )
 
     project = text(IOS / "Runner.xcodeproj/project.pbxproj", "Runner Xcode project")
     check(project.count("PRODUCT_BUNDLE_IDENTIFIER = art.gaoge.dance;") >= 3, "Runner Debug/Profile/Release bundle ID must remain art.gaoge.dance")
     check(project.count("IPHONEOS_DEPLOYMENT_TARGET = 17.0;") >= 3, "iOS deployment target must remain 17.0 across project configurations")
     release_config = text(IOS / "Flutter/Release.xcconfig", "Release xcconfig")
     check('#include "Generated.xcconfig"' in release_config, "Release xcconfig must inherit Flutter generated settings")
+    check("WOAH_ENABLE_SMOKE_HOOKS = NO" in release_config, "Release xcconfig must disable smoke hooks by default")
     check('#include? "Phase7Release.xcconfig"' in release_config, "Release xcconfig must accept the CI-generated commit identity")
 
 
@@ -248,6 +253,13 @@ def verify_release_regression_contract() -> None:
     plugin = text(SOURCES / "DanceNativePlugin.swift", "dance_native iOS plugin")
     check('case "runIOSReleasePhase7Smoke"' in plugin, "Phase 7 Release smoke MethodChannel hook is missing")
     check("IOSReleasePhase7Smoke.run()" in plugin, "Phase 7 MethodChannel hook must execute the Phase 7-owned smoke")
+    for token in (
+        'call.method.hasPrefix("runIOS")',
+        "iosSmokeHooksEnabled()",
+        'object(forInfoDictionaryKey: "WoahEnableSmokeHooks")',
+        "FlutterMethodNotImplemented",
+    ):
+        check(token in plugin, f"Release smoke-hook fail-closed guard missing: {token}")
 
     dart = text(APP / "lib/ios_phase7_smoke_main.dart", "Phase 7 Release smoke entrypoint")
     for token in (
@@ -271,6 +283,9 @@ def verify_release_tooling() -> None:
         "frameworks",
         "executable_sha256",
         "WoahGitCommit",
+        "WoahEnableSmokeHooks",
+        "smoke_hooks_enabled",
+        "Production Release bundle must not enable iOS smoke MethodChannel hooks",
         "expected_sha256",
         "apple-only-release-build-not-physical-device-acceptance",
     ):
@@ -281,6 +296,10 @@ def verify_release_tooling() -> None:
         "production Release Simulator smoke",
     )
     for token in (
+        "verify_production_bundle_contract(app)",
+        "WoahEnableSmokeHooks",
+        "Production Release Simulator must not enable iOS smoke MethodChannel hooks",
+        "IOS_PHASE7_PRODUCTION_SIMULATOR_SMOKE_HOOKS=DISABLED",
         '"--console"',
         "IOS_PHASE7_PRODUCTION_SIMULATOR_LIVENESS=PASS",
         "boot_iphone(app)",
@@ -291,6 +310,10 @@ def verify_release_tooling() -> None:
     macos = text(ROOT / "tools/ios/run_phase7_macos_gate.py", "Phase 7 macOS gate")
     for token in (
         "for phase in range(0, 8)",
+        'overrides = {"GITHUB_ACTIONS": "false"} if phase == 1 else None',
+        "enable_smoke_hooks=True",
+        "enable_smoke_hooks=False",
+        "WOAH_ENABLE_SMOKE_HOOKS",
         "run_phase6_macos_gate.py",
         '"--enforce-lockfile"',
         '"--simulator"',

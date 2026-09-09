@@ -35,6 +35,10 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    if call.method.hasPrefix("runIOS"), !Self.iosSmokeHooksEnabled() {
+      result(FlutterMethodNotImplemented)
+      return
+    }
     switch call.method {
     case "getPlatformVersion":
       result("iOS " + UIDevice.current.systemVersion)
@@ -357,6 +361,23 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
       info["gitCommit"] = commit
     }
     return info
+  }
+
+  private static func iosSmokeHooksEnabled() -> Bool {
+#if DEBUG
+    return true
+#else
+    let raw = Bundle.main.object(forInfoDictionaryKey: "WoahEnableSmokeHooks")
+    if let value = raw as? NSNumber {
+      return value.boolValue
+    }
+    if let value = raw as? String {
+      return ["1", "true", "yes", "on"].contains(
+        value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+      )
+    }
+    return false
+#endif
   }
 
   private static func flutterError(

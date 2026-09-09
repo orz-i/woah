@@ -54,6 +54,16 @@ def relative_files(root: Path, name: str) -> list[str]:
     return sorted(path.relative_to(root).as_posix() for path in root.rglob(name))
 
 
+def truthy_plist_value(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return False
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--app", type=Path, required=True)
@@ -73,6 +83,7 @@ def main() -> int:
     bundle_id = str(info.get("CFBundleIdentifier", ""))
     bundle_name = str(info.get("CFBundleShortVersionString", ""))
     bundle_build = str(info.get("CFBundleVersion", ""))
+    smoke_hooks_enabled = truthy_plist_value(info.get("WoahEnableSmokeHooks"))
     if bundle_id != EXPECTED_BUNDLE_ID:
         raise SystemExit(f"Unexpected Release bundle ID: {bundle_id!r}")
     if bundle_name != source_name or bundle_build != source_build:
@@ -80,6 +91,8 @@ def main() -> int:
             "Built Release version does not match pubspec.yaml: "
             f"built={bundle_name}+{bundle_build} source={source_name}+{source_build}"
         )
+    if smoke_hooks_enabled:
+        raise SystemExit("Production Release bundle must not enable iOS smoke MethodChannel hooks")
 
     executable_name = str(info.get("CFBundleExecutable", "Runner"))
     executable = app / executable_name
@@ -141,6 +154,7 @@ def main() -> int:
             "build": bundle_build,
             "minimum_os_version": info.get("MinimumOSVersion"),
             "woah_git_commit": info_commit,
+            "smoke_hooks_enabled": smoke_hooks_enabled,
             "executable": executable_name,
             "executable_sha256": sha256(executable),
         },
