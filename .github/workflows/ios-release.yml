@@ -1,0 +1,124 @@
+name: iOS Phase 7 Release Readiness
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'mobile/app/**'
+      - 'mobile/packages/dance_native/**'
+      - 'tools/ios/**'
+      - 'tools/release/verify_ios_phase*.py'
+      - 'tools/release/provision_ios_yolo_ci.py'
+      - 'tools/release/sync_ios_yolo_model.py'
+      - 'docs/ios_phase7_*.md'
+      - '.github/workflows/ios-release.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-phase7-release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-model:
+    name: Reproduce pinned Release YOLO model
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Restore canonical YOLO model cache
+        id: model-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            models/pytorch/yolo11n-seg.pt
+            models/litert/yolo11n-seg-fp16.tflite
+          key: ios-phase7-yolo-${{ hashFiles('uv.lock', 'tools/release/provision_ios_yolo_ci.py', 'mobile/packages/dance_native/ios/dance_native/Sources/dance_native/Resources/yolo11n-seg-fp16.contract.json') }}
+
+      - name: Set up uv for model export
+        if: steps.model-cache.outputs.cache-hit != 'true'
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: 'latest'
+
+      - name: Install locked model-export dependencies
+        if: steps.model-cache.outputs.cache-hit != 'true'
+        run: uv sync --locked
+
+      - name: Generate canonical model
+        if: steps.model-cache.outputs.cache-hit != 'true'
+        run: uv run python tools/release/provision_ios_yolo_ci.py
+
+      - name: Verify cached canonical model
+        if: steps.model-cache.outputs.cache-hit == 'true'
+        run: python tools/release/sync_ios_yolo_model.py
+
+      - name: Report canonical model identity
+        run: python tools/release/verify_ios_phase1.py --require-model
+
+      - name: Upload canonical model
+        uses: actions/upload-artifact@v4
+        with:
+          name: woah-ios-phase7-model-${{ github.run_id }}
+          path: models/litert/yolo11n-seg-fp16.tflite
+          if-no-files-found: error
+          retention-days: 1
+
+  release-build:
+    name: Xcode 26 / Phase 7 Release gate
+    needs: release-model
+    runs-on: macos-26
+    timeout-minutes: 75
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Flutter 3.44.2
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.2'
+          cache: true
+
+      - name: Download canonical Release model
+        uses: actions/download-artifact@v4
+        with:
+          name: woah-ios-phase7-model-${{ github.run_id }}
+          path: models/litert
+
+      - name: Stage pinned iOS model
+        run: python tools/release/sync_ios_yolo_model.py
+
+      - name: Print Apple toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          pod --version
+          flutter --version
+
+      - name: Run Phase 7 Release gate
+        run: python tools/ios/run_phase7_macos_gate.py
+
+      - name: Upload audited Release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: woah-ios-release-${{ github.sha }}
+          path: |
+            mobile/app/artifacts/Woah-ios-release-app.zip
+            mobile/app/artifacts/phase7_release_audit.json
+          if-no-files-found: error
+          retention-days: 14
+
