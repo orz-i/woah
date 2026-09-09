@@ -867,6 +867,20 @@ itself clean-cloud acceptance: the dedicated Phase 7 `release-model` job must
 reproduce exactly the same hash in the locked model-export environment or the
 Release lane fails closed.
 
+Two subsequent legacy `iOS Cloud CI` runs provide intermediate Apple-only
+evidence while the independent Phase 7 Release workflow remains intentionally
+blocked on protected-path installation. Run `34334830050` (#40), job
+`102411798459`, completed successfully at
+`af7df52fa153ba252d630b6daed663c2e6c8322c`; repository iOS contracts,
+production iPhoneOS build, no-codesign archive, and artifact upload all passed
+after the candidate model pin and Phase 7 Release-regression Swift sources were
+added. Run `34336876495` (#41), job `102418230396`, completed successfully at
+`db384382e8061894f4754168fdf1434d2cb8b010` after the Release smoke-hook
+fail-closed guard and Phase 7 macOS-gate deduplication were added. These runs
+prove compatibility with the existing Apple-only Debug/Phase-6 lane; they are
+not the dedicated Phase 7 Release Simulator/no-codesign acceptance lane and do
+not substitute for physical-iPhone evidence.
+
 ## Cross-platform privacy gate
 
 iOS is not accepted merely because YOLO runs. The current Android behavior is
