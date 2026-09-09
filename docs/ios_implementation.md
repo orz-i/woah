@@ -758,9 +758,16 @@ caller supplies evidence, preserving exact-ID semantics for face privacy.
 The initial Phase 6 implementation is commit
 `f42c5a1ae512ac302eb35534b5bccabe7a776bef`. GitHub Actions `iOS Cloud CI`
 run `34314346309` (#34) completed successfully for that implementation before
-the phase-boundary naming cleanup. The boundary cleanup gives Phase 6 its own
-smoke marker, static verifier, and macOS gate; a subsequent Phase 6 cloud run is
-required before the phase is considered structurally closed.
+the phase-boundary naming cleanup. Commit
+`62a4ab1680f10005b6731e3e7b6d055d9c667eef` then separated Phase 5 and Phase 6
+into independent smoke entrypoints, static verifiers, Simulator markers, and
+macOS gates. GitHub Actions `iOS Cloud CI` run `34318126080` (#35) at that head
+completed successfully: the independent Phase 6 contract/Simulator gate,
+production iPhoneOS no-codesign build, archive, and artifact upload all passed.
+The uploaded artifact was
+`woah-ios-debug-eec3ab297afc5e9367b39dd3b42f162d99ad3325` (id
+`10091079810`, 40,874,554 bytes, not expired at acceptance time). This closes
+Phase 6's structural contract without changing the already-closed Phase 5 gate.
 
 Phase 6 has a finite exit contract:
 
@@ -773,6 +780,14 @@ Phase 6 has a finite exit contract:
   build/archive path.
 
 Anything beyond this list is a later Phase, not another Phase 6 lettered slice.
+
+### Phase 6 boundary (closed)
+
+Phase 6 ends at `62a4ab1` plus the successful #35 cloud acceptance above. Its
+scope is limited to identity-independent selected/unselected privacy-class
+prototype tracking and FULL_BODY-only fresh-primary composition. Stale-mask
+replacement refinements, detector/face improvements, dormancy/reactivation,
+performance tuning, and real-device acceptance are explicitly outside Phase 6.
 
 Validation entrypoints are phase-scoped rather than cumulative by accident:
 `ios_phase3_smoke_main.dart`, `ios_phase4_smoke_main.dart`,
