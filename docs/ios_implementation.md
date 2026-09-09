@@ -805,6 +805,64 @@ Vision-vs-MediaPipe visual quality and sustained face
 inference cost also require real-iPhone evidence before release parity can be
 claimed.
 
+### Phase 7: iOS Pre-Release Readiness
+
+Phase 7 is deliberately finite and release-shaped rather than another tracking
+phase. Its contract is maintained in `docs/ios_phase7_release_readiness.md`.
+Phase 5 remains closed at 5H and Phase 6 remains closed at the privacy-class
+prototype boundary above; Phase 7 does not add new tracking/FACE_ONLY
+algorithms, HEVC/4K60, delegate performance tuning, or any physical-device
+parity claim.
+
+The Phase 7 implementation adds an independent host verifier
+(`tools/release/verify_ios_phase7.py`), a Release-mode macOS gate
+(`tools/ios/run_phase7_macos_gate.py`), and a dedicated GitHub workflow
+(`.github/workflows/ios-release.yml`). The Apple-only lane reruns the accepted
+Phase 3-6 Simulator regressions under Release optimization, separately launches
+the production `lib/main.dart` Release Simulator app, builds the production
+iPhoneOS target with `--release --no-codesign`, audits the exact resulting
+`Runner.app`, and archives that audited bundle. The audit records the Git
+commit, Flutter app version/build, app dependency-lock SHA-256, executable
+SHA-256, packaged model/contract SHA-256, bundled frameworks, and packaged
+privacy manifests. These remain macOS/Simulator/build facts, not physical-iPhone
+acceptance.
+
+Release reproducibility now includes a tracked `mobile/app/pubspec.lock` while
+package-level Flutter lockfiles remain ignored. The production Release build
+also receives the exact Git commit through the ignored/generated
+`Flutter/Phase7Release.xcconfig`; the built `WoahGitCommit` must match the source
+HEAD during bundle audit.
+
+Apple privacy behavior remains intentionally narrow: both app and native
+privacy manifests declare no tracking/collected-data/required-reason API
+categories, and saving an export continues to request Photos `.addOnly` access.
+Denied or unavailable add-only permission fails closed with
+`PHOTO_LIBRARY_PERMISSION_DENIED`; Phase 7 does not add broad Photos read
+permission. Final third-party manifest evidence is taken from the built Release
+`.app` inventory and tied to the tracked dependency lock rather than inferred
+only from source package names.
+
+The finite release-regression matrix is
+`tools/ios/phase7_regression_matrix.json`, and the predesigned real-device
+runbook is `docs/ios_phase7_device_acceptance.md`. Once the independent Phase 7
+Release CI lane succeeds and the fixed handoff package is complete, the iOS
+implementation status stops at:
+
+`implementation complete pending physical-device acceptance`
+
+Physical-iPhone visual privacy, sustained throughput, memory, thermal/power,
+background/interruption behavior, and cross-device Vision/Metal behavior remain
+unclaimed until that runbook is executed on real hardware. No Phase 8/9 is
+created merely to avoid this device gate.
+
+At Phase 7 bootstrap time, the pre-existing YOLO iOS model contract still has
+`expected_sha256: null`. The new Release bundle auditor intentionally rejects
+that state. The dedicated workflow first reproduces the canonical FP16 TFLite
+model in the locked model-export environment and exposes its SHA-256; that hash
+must then be pinned into the tracked model contract before the formal Phase 7
+Release gate can pass. `verify_ios_phase7.py --allow-unpinned-model` exists only
+for this one bootstrap transition and is not the Phase 7 acceptance command.
+
 ## Cross-platform privacy gate
 
 iOS is not accepted merely because YOLO runs. The current Android behavior is
@@ -835,6 +893,7 @@ python tools/release/verify_ios_phase3.py
 python tools/release/verify_ios_phase4.py
 python tools/release/verify_ios_phase5.py
 python tools/release/verify_ios_phase6.py
+python tools/release/verify_ios_phase7.py
 ```
 
 Flutter regression gate:

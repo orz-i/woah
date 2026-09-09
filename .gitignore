@@ -54,6 +54,8 @@ models/
 .packages
 **/build/
 pubspec.lock
+!mobile/app/pubspec.lock
+mobile/app/ios/Flutter/Phase7Release.xcconfig
 !uv.lock
 
 
