@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import argparse
 import json
 import plistlib
 import re
@@ -146,14 +145,11 @@ def verify_privacy_and_permissions() -> None:
         check(token in bridge, f"Add-only Photos fail-safe contract missing: {token}")
 
 
-def verify_model_contract(allow_unpinned_model: bool) -> None:
+def verify_model_contract() -> None:
     contract = json.loads(text(MODEL_CONTRACT, "YOLO model contract") or "{}")
     expected_hash = contract.get("expected_sha256")
     pinned = isinstance(expected_hash, str) and re.fullmatch(r"[0-9a-f]{64}", expected_hash) is not None
-    if not pinned and allow_unpinned_model:
-        print("NOTE: Phase 7 model SHA-256 is not pinned yet; bootstrap mode only.")
-    else:
-        check(pinned, "Phase 7 Release acceptance requires a pinned YOLO expected_sha256")
+    check(pinned, "Phase 7 Release acceptance requires a pinned YOLO expected_sha256")
     check(contract.get("expected_size_bytes") == 11799725, "Phase 7 YOLO byte-size contract drifted")
     check(contract.get("flatbuffer_magic") == "TFL3", "Phase 7 YOLO FlatBuffer contract drifted")
 
@@ -326,10 +322,17 @@ def verify_release_tooling() -> None:
     workflow_template = ROOT / "tools/ios/ios-release.phase7.workflow.yml"
     workflow = text(workflow_template, "Phase 7 GitHub workflow template")
     workflow_path = ROOT / ".github/workflows/ios-release.yml"
+    tracked_workflow = workflow_path.is_file() and is_git_tracked(workflow_path)
     check(
-        workflow_path.is_file() and is_git_tracked(workflow_path),
+        tracked_workflow,
         "Phase 7 GitHub Release workflow must be committed, not merely present as an untracked workspace file",
     )
+    if tracked_workflow:
+        installed_workflow = text(workflow_path, "committed Phase 7 GitHub workflow")
+        check(
+            installed_workflow == workflow,
+            "Committed Phase 7 GitHub Release workflow must exactly match the tracked workflow template",
+        )
     for token in (
         "name: iOS Phase 7 Release Readiness",
         "runs-on: macos-26",
@@ -367,18 +370,10 @@ def verify_device_acceptance_package() -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--allow-unpinned-model",
-        action="store_true",
-        help="Bootstrap only: validate the rest of Phase 7 before the canonical model SHA-256 is pinned.",
-    )
-    args = parser.parse_args()
-
     verify_boundary()
     verify_release_metadata()
     verify_privacy_and_permissions()
-    verify_model_contract(args.allow_unpinned_model)
+    verify_model_contract()
     verify_release_regression_contract()
     verify_release_tooling()
     verify_device_acceptance_package()
@@ -388,8 +383,7 @@ def main() -> int:
         for failure in FAILURES:
             print(f" - {failure}")
         return 1
-    suffix = " (bootstrap: model hash not yet pinned)" if args.allow_unpinned_model else ""
-    print(f"iOS Phase 7 static verification passed{suffix}")
+    print("iOS Phase 7 static verification passed")
     return 0
 
 

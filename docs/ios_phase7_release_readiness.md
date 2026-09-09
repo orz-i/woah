@@ -54,6 +54,14 @@ pubspec version, dependency-lock SHA-256, app bundle metadata, app executable
 SHA-256, model contract/hash evidence, bundled frameworks, and bundled privacy
 manifests.
 
+The canonical `yolo11n-seg-fp16.tflite` contract is pinned to
+`ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340`.
+That value was seeded from the existing repository-root model shared by the
+Android/iOS asset flow after exact byte-size, TFL3 magic, and iOS staged-copy
+equality checks. It is a candidate pin, not cloud acceptance: the dedicated
+Release model job must independently reproduce the same SHA-256 before Phase 7
+can satisfy its finite exit contract.
+
 Debug-only diagnostic entrypoints may remain in source for CI, but the
 production Release build must target `lib/main.dart`. Phase 7 does not add a
 runtime switch that exposes smoke-only MethodChannel hooks through the normal

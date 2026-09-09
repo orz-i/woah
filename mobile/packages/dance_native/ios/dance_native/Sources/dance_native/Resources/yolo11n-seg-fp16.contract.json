@@ -2,7 +2,7 @@
   "model": "yolo11n-seg-fp16.tflite",
   "source": "models/litert/yolo11n-seg-fp16.tflite",
   "expected_size_bytes": 11799725,
-  "expected_sha256": null,
+  "expected_sha256": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
   "flatbuffer_magic": "TFL3",
   "input": {
     "dtype": "float32",

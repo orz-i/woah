@@ -858,13 +858,14 @@ background/interruption behavior, and cross-device Vision/Metal behavior remain
 unclaimed until that runbook is executed on real hardware. No Phase 8/9 is
 created merely to avoid this device gate.
 
-At Phase 7 bootstrap time, the pre-existing YOLO iOS model contract still has
-`expected_sha256: null`. The new Release bundle auditor intentionally rejects
-that state. The dedicated workflow first reproduces the canonical FP16 TFLite
-model in the locked model-export environment and exposes its SHA-256; that hash
-must then be pinned into the tracked model contract before the formal Phase 7
-Release gate can pass. `verify_ios_phase7.py --allow-unpinned-model` exists only
-for this one bootstrap transition and is not the Phase 7 acceptance command.
+Phase 7 now pins the canonical shared Android/iOS FP16 TFLite source at
+`ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340`.
+The candidate pin was taken from the repository-root
+`models/litert/yolo11n-seg-fp16.tflite` after verifying the existing
+11,799,725-byte / TFL3 contract and byte-identical iOS staging. This pin is not
+itself clean-cloud acceptance: the dedicated Phase 7 `release-model` job must
+reproduce exactly the same hash in the locked model-export environment or the
+Release lane fails closed.
 
 ## Cross-platform privacy gate
 
@@ -1033,18 +1034,18 @@ the pinned YOLO11n segmentation checkpoint through the locked Python
 environment and reproduce the FP16 TFLite export recipe. The generated file
 must still match the tracked byte size and TFL3 contract.
 
-Until the first successful clean-cloud export is observed, the contract keeps
-`expected_sha256: null`. BrowserStack bootstrap runs use:
+The Phase 7 candidate contract now pins:
 
 ```text
-python tools/release/verify_ios_phase1.py --require-model --allow-unpinned-hash
+ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340
 ```
 
-which prints `BOOTSTRAP_SHA256=<hash>`. After one clean-cloud export is checked
-against the existing Android model provenance, commit that hash into
-`yolo11n-seg-fp16.contract.json` and remove the bootstrap allowance from the
-workflow. A release/accepted Phase 1 state must use the pinned hash; the
-bootstrap flag is not release evidence.
+It was seeded from the existing repository-root Android/iOS source after
+byte-size, TFL3 magic, and iOS staged-copy equality checks. The clean-cloud
+Phase 7 model job remains the independent reproduction authority: it must
+generate the same SHA-256 before the Release lane can pass. Historical
+`--allow-unpinned-hash` support remains only for older bootstrap workflows; the
+Phase 7 Release workflow does not use it.
 
 ### What cloud devices still do not replace
 

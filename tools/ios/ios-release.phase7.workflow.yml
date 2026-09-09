@@ -63,7 +63,7 @@ jobs:
         run: python tools/release/sync_ios_yolo_model.py
 
       - name: Report canonical model identity
-        run: python tools/release/verify_ios_phase1.py --require-model --allow-unpinned-hash
+        run: python tools/release/verify_ios_phase1.py --require-model
 
       - name: Upload canonical model
         uses: actions/upload-artifact@v4
