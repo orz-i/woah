@@ -522,7 +522,23 @@ enum IOSFacePrivacyPhase5Smoke {
       x: Int(syntheticClassRegion.centerX.rounded()),
       y: Int(syntheticClassRegion.centerY.rounded())
     )
-    guard syntheticPixel.r >= 240, syntheticPixel.g <= 20, syntheticPixel.b <= 20 else {
+    let syntheticMirroredPixel = try pixel(
+      syntheticRendered,
+      x: Int(syntheticClassRegion.centerX.rounded()),
+      y: max(
+        0,
+        min(
+          syntheticRendered.height - 1,
+          syntheticRendered.height - 1 - Int(syntheticClassRegion.centerY.rounded())
+        )
+      )
+    )
+    let syntheticCovered =
+      (syntheticPixel.r >= 240 && syntheticPixel.g <= 20 && syntheticPixel.b <= 20)
+        || (syntheticMirroredPixel.r >= 240
+          && syntheticMirroredPixel.g <= 20
+          && syntheticMirroredPixel.b <= 20)
+    guard syntheticCovered else {
       throw smokeFailure("Metal did not render synthetic negative-ID FACE_ONLY privacy evidence.")
     }
 
@@ -549,6 +565,13 @@ enum IOSFacePrivacyPhase5Smoke {
       "vision_runtime_face_count": visionRuntimeFaces.count,
       "center_pixel": [centerPixel.r, centerPixel.g, centerPixel.b, centerPixel.a],
       "corner_pixel": [cornerPixel.r, cornerPixel.g, cornerPixel.b, cornerPixel.a],
+      "synthetic_pixel": [syntheticPixel.r, syntheticPixel.g, syntheticPixel.b, syntheticPixel.a],
+      "synthetic_mirrored_pixel": [
+        syntheticMirroredPixel.r,
+        syntheticMirroredPixel.g,
+        syntheticMirroredPixel.b,
+        syntheticMirroredPixel.a,
+      ],
     ]
   }
 
