@@ -658,11 +658,55 @@ trusted-size reuse with the fresh center preserved; and Metal rendering of the
 negative-ID region. This stage remains pure privacy/identity logic and therefore
 does not depend on a real or formal cloud device.
 
+Final cloud evidence for Phase 5G is GitHub Actions `iOS Cloud CI` run
+`34310518949` (#31) at head
+`005726ca4a065b559016971696062924ad8cfd12`, completed successfully on
+2026-09-09. The Apple-only contract gate passed the inherited Phase 3 Metal,
+Phase 4 real-media export, Phase 5 Golden Trace/Vision/FACE_ONLY gates, and the
+new balanced residual + synthetic negative-ID Metal smoke. The same job then
+passed production iPhoneOS no-codesign build, archive, and artifact upload. The
+uploaded artifact is `woah-ios-debug-e4a2914581cc726510361349ab1c040374e3481b`
+(id `10088521354`, 40,819,677 bytes, not expired at acceptance time).
+
+Runs #27-#29 were blocked by GitHub-hosted CoreSimulator migration/readiness
+behavior before the Phase 5G app smoke could execute. The hardened Simulator
+runner now uses the operation actually required by the test (`simctl install`)
+as readiness rather than blocking on `simctl bootstatus -b`; app launch and all
+Metal/export/FACE_ONLY markers remain mandatory. Run #30 reached the real smoke
+and exposed only a CoreGraphics readback-Y convention in the new off-center
+synthetic-pixel assertion. The smoke was aligned with the already accepted real
+MP4 readback convention by checking the direct or vertically mirrored sample;
+no renderer, tracker, privacy geometry, or production export behavior changed.
+
+### Phase 5H: anonymous class-fallback temporal continuity
+
+Android keeps a second render-only continuity layer for **unique-owner** privacy-
+class fallbacks. iOS now mirrors that isolation with
+`IOSFacePrivacyClassFallbackContinuity`: the selected owner ID is used only as a
+private geometry-state key and is never written back to
+`IOSTemporalIdentityTracker` or the normal per-ID face cache. Multi-owner class
+fallbacks remain stateless because exact identity is still unresolved.
+
+When current mask guidance is weak or unavailable, the continuity layer ignores
+the raw body-proportion head-center jump and follows only robust whole-person
+translation from `IOSPersonBboxMotionEstimator`. When mask-guided geometry
+returns, the existing FACE_ONLY residual-size policy limits the correction step
+rather than snapping immediately. State is retained only for unique owners that
+are present in the current class-fallback evidence; a missing fallback clears the
+private continuity state just as Android does.
+
+The deterministic smoke mirrors Android's two continuity regressions: a
+guided/raw availability toggle must keep each center step below 35 px, and an
+unguided frame with a translated body bbox must land near the previous anonymous
+center plus body translation instead of following a far-away raw head center.
+This remains pure render/privacy continuity and needs no physical or formal
+cloud iPhone.
+
 This is a substantial FACE_ONLY closure, but it is still not a claim of complete
 Android `FaceOnlyPrivacyFrameProcessor` parity. Android's local ROI detector
 budgeting, landmark/keypoint center refinement, pixel-motion prediction,
-dormancy/reactivation probes, multi-frame privacy-class fallback continuity,
-and mature diagnostics remain reference work for later Phase 5 slices.
+dormancy/reactivation probes, privacy-class prototype tracking, and mature
+diagnostics remain reference work for later Phase 5 slices.
 Vision-vs-MediaPipe visual quality and sustained face
 inference cost also require real-iPhone evidence before release parity can be
 claimed.

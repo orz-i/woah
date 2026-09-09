@@ -237,6 +237,120 @@ struct IOSFacePrivacyEllipse {
   let source: IOSFacePrivacyRegionSource
 }
 
+/// Render-only temporal continuity for anonymous FACE_ONLY privacy-class
+/// fallbacks. The owner ID is only a private state key; this class never writes
+/// back to IOSTemporalIdentityTracker or the normal per-ID face cache.
+final class IOSFacePrivacyClassFallbackContinuity {
+  private struct State {
+    let output: IOSFacePrivacyEllipse
+    let personDetection: IOSYoloDetection
+    let timestampUs: Int64
+  }
+
+  private var stateByOwnerId: [Int: State] = [:]
+
+  func reset() {
+    stateByOwnerId.removeAll()
+  }
+
+  func retain(ownerIds: Set<Int>) {
+    stateByOwnerId = stateByOwnerId.filter { ownerIds.contains($0.key) }
+  }
+
+  func stabilize(
+    ownerId: Int,
+    rawRegion: IOSFacePrivacyEllipse,
+    personDetection: IOSYoloDetection,
+    timestampUs: Int64,
+    bodyMaskGuided: Bool
+  ) -> IOSFacePrivacyEllipse {
+    let previous = stateByOwnerId[ownerId]
+    var target = rawRegion
+    if !bodyMaskGuided, let previous {
+      // Weak raw body-head geometry may jump when segmentation coverage changes.
+      // Preserve only robust whole-person translation from the fresh detection;
+      // a later mask-guided measurement can correct through the residual gate.
+      let translation = IOSPersonBboxMotionEstimator.estimate(
+        previous: previous.personDetection,
+        current: personDetection
+      )
+      target = IOSFacePrivacyEllipse(
+        centerX: previous.output.centerX + translation.dx,
+        centerY: previous.output.centerY + translation.dy,
+        radiusX: rawRegion.radiusX,
+        radiusY: rawRegion.radiusY,
+        source: rawRegion.source
+      )
+    }
+
+    let output: IOSFacePrivacyEllipse
+    if previous == nil || timestampUs < previous!.timestampUs {
+      output = target
+    } else {
+      let prior = previous!
+      let rawDtSeconds = max(
+        0,
+        Double(timestampUs - prior.timestampUs) / 1_000_000.0
+      )
+      let dtSeconds = min(maxDtSeconds, max(minDtSeconds, rawDtSeconds))
+      let sizeAlpha = Float32(1.0 - exp(-dtSeconds / fallbackSizeTimeConstantSeconds))
+      let smoothedRadiusX = prior.output.radiusX
+        + (target.radiusX - prior.output.radiusX) * sizeAlpha
+      let smoothedRadiusY = prior.output.radiusY
+        + (target.radiusY - prior.output.radiusY) * sizeAlpha
+
+      let translation = IOSPersonBboxMotionEstimator.estimate(
+        previous: prior.personDetection,
+        current: personDetection
+      )
+      let expectedCenterX = prior.output.centerX + translation.dx
+      let expectedCenterY = prior.output.centerY + translation.dy
+      let residualDx = target.centerX - expectedCenterX
+      let residualDy = target.centerY - expectedCenterY
+      let residualDistance = sqrt(residualDx * residualDx + residualDy * residualDy)
+      let referenceRadius = max(
+        max(prior.output.radiusX, prior.output.radiusY),
+        max(target.radiusX, target.radiusY)
+      )
+      let maxResidualStep = max(
+        positionMinResidualStepPx,
+        referenceRadius * positionMaxRadiusStep
+      )
+      let clampPosition = rawDtSeconds <= positionGateMaxDtSeconds
+        && residualDistance > maxResidualStep
+        && residualDistance > 0.001
+      let centerScale = clampPosition ? maxResidualStep / residualDistance : 1
+
+      output = IOSFacePrivacyEllipse(
+        centerX: clampPosition
+          ? expectedCenterX + residualDx * centerScale
+          : target.centerX,
+        centerY: clampPosition
+          ? expectedCenterY + residualDy * centerScale
+          : target.centerY,
+        radiusX: max(smoothedRadiusX, target.radiusX * privacyTargetFloor),
+        radiusY: max(smoothedRadiusY, target.radiusY * privacyTargetFloor),
+        source: target.source
+      )
+    }
+
+    stateByOwnerId[ownerId] = State(
+      output: output,
+      personDetection: personDetection,
+      timestampUs: timestampUs
+    )
+    return output
+  }
+
+  private let privacyTargetFloor: Float32 = 0.90
+  private let positionMinResidualStepPx: Float32 = 10
+  private let positionMaxRadiusStep: Float32 = 0.80
+  private let positionGateMaxDtSeconds = 0.10
+  private let minDtSeconds = 1.0 / 120.0
+  private let maxDtSeconds = 0.25
+  private let fallbackSizeTimeConstantSeconds = 0.18
+}
+
 struct IOSFaceCandidate {
   let x1: Float32
   let y1: Float32
@@ -443,6 +557,7 @@ final class IOSFacePrivacyTemporalResolver {
   private let locator: IOSFaceLocating
   private let lock = NSLock()
   private var stateByTrackId: [Int: State] = [:]
+  private let classFallbackContinuity = IOSFacePrivacyClassFallbackContinuity()
 
   init(locator: IOSFaceLocating = IOSVisionFaceLocator()) {
     self.locator = locator
@@ -451,6 +566,7 @@ final class IOSFacePrivacyTemporalResolver {
   func reset() {
     lock.lock()
     stateByTrackId.removeAll()
+    classFallbackContinuity.reset()
     lock.unlock()
   }
 
@@ -534,6 +650,16 @@ final class IOSFacePrivacyTemporalResolver {
       )
     }
 
+    let activeUniqueClassOwners = Set(freshPrivacyClassEvidence.compactMap { evidence -> Int? in
+      guard evidence.residualTrackIds.count == 1,
+            let ownerId = evidence.residualTrackIds.first,
+            faceOnlyIds.contains(ownerId) else {
+        return nil
+      }
+      return ownerId
+    })
+    classFallbackContinuity.retain(ownerIds: activeUniqueClassOwners)
+
     var seenDetectionIndices = Set<Int>()
     for evidence in freshPrivacyClassEvidence.sorted(by: {
       $0.detectionIndex < $1.detectionIndex
@@ -545,14 +671,18 @@ final class IOSFacePrivacyTemporalResolver {
         continue
       }
 
-      if evidence.residualTrackIds.count == 1,
-         let ownerId = evidence.residualTrackIds.first,
+      var bodyMaskGuided = false
+      let uniqueOwnerId = evidence.residualTrackIds.count == 1
+        ? evidence.residualTrackIds.first
+        : nil
+      if let ownerId = uniqueOwnerId,
          let trusted = stateByTrackId[ownerId]?.trustedFace {
         if let maskGuided = trusted.maskGuidedFallback(
           personDetection: evidence.detection,
           preprocess: preprocess
         ) {
           region = maskGuided
+          bodyMaskGuided = true
         } else {
           // Exact identity is intentionally unresolved, but the privacy class
           // sidecar has reduced the owner set to one selected slot. Borrow only
@@ -566,6 +696,16 @@ final class IOSFacePrivacyTemporalResolver {
             source: .yoloHeadFallback
           )
         }
+      }
+
+      if let ownerId = uniqueOwnerId {
+        region = classFallbackContinuity.stabilize(
+          ownerId: ownerId,
+          rawRegion: region,
+          personDetection: evidence.detection,
+          timestampUs: timestampUs,
+          bodyMaskGuided: bodyMaskGuided
+        )
       }
 
       // If a normal selected placement already covers this fresh head location,

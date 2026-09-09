@@ -239,8 +239,17 @@ def verify_ios_replay_surface() -> None:
         "syntheticClassFallbackBase - evidence.detectionIndex",
         "classFallbackTrustedSizeExpansion: Float32 = 1.24",
         "Borrow only",
+        "final class IOSFacePrivacyClassFallbackContinuity",
+        "private var stateByOwnerId: [Int: State] = [:]",
+        "func retain(ownerIds: Set<Int>)",
+        "bodyMaskGuided: Bool",
+        "classFallbackContinuity = IOSFacePrivacyClassFallbackContinuity()",
+        "let activeUniqueClassOwners = Set(",
+        "classFallbackContinuity.retain(ownerIds: activeUniqueClassOwners)",
+        "region = classFallbackContinuity.stabilize(",
+        "referenceRadius * positionMaxRadiusStep",
     ):
-        check(token in face_pipeline, f"Phase 5C-G FACE_ONLY pipeline missing: {token}")
+        check(token in face_pipeline, f"Phase 5C-H FACE_ONLY pipeline missing: {token}")
     trusted_start = face_pipeline.find("private struct TrustedFaceGeometry")
     mask_fallback_start = face_pipeline.find("func maskGuidedFallback(")
     state_start = face_pipeline.find("private struct State", trusted_start + 1)
@@ -294,6 +303,12 @@ def verify_ios_replay_surface() -> None:
         "uniqueClassRegions[-1_000_005]",
         'label: "unique class trusted radiusX"',
         "Metal did not render synthetic negative-ID FACE_ONLY privacy evidence",
+        "let classContinuity = IOSFacePrivacyClassFallbackContinuity()",
+        "continuityFirstStep < 35",
+        "continuitySecondStep < 35",
+        'label: "class continuity translated centerX"',
+        'label: "class continuity translated centerY"',
+        "Weak raw class fallback center pulled away from robust body translation",
         "faceRegions: [0: renderRegion]",
         "FACE_ONLY ellipse center was not covered",
         "FACE_ONLY privacy regressed to a rectangular mask",
@@ -555,6 +570,30 @@ def verify_android_reference_boundary() -> None:
         "unique owner fallback keeps fresh center but reuses conservative trusted face size",
     ):
         check(test_name in class_fallback_test, f"Android FACE_ONLY class-fallback regression test missing: {test_name}")
+
+    class_continuity = text(
+        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/com/danceanon/native/privacy/FacePrivacyClassFallbackContinuity.kt",
+        "Android FacePrivacyClassFallbackContinuity",
+    )
+    for token in (
+        "Render-only temporal continuity for anonymous FACE_ONLY class fallbacks",
+        "private val stateByOwnerId = mutableMapOf<Int, State>()",
+        "it.residualTrackIds.singleOrNull()",
+        "PersonBboxMotionEstimator.estimate(",
+        "trustedCurrentPixelCenter = false",
+        "nothing here is written",
+        "back to TrackManager",
+    ):
+        check(token in class_continuity, f"Android FACE_ONLY class-continuity reference drifted: {token}")
+    class_continuity_test = text(
+        ROOT / "mobile/packages/dance_native/android/src/test/kotlin/com/danceanon/native/privacy/FacePrivacyClassFallbackContinuityTest.kt",
+        "Android FacePrivacyClassFallbackContinuityTest",
+    )
+    for test_name in (
+        "guided availability toggle is bounded for one anonymous selected owner",
+        "unguided frame follows body translation instead of raw body head center",
+    ):
+        check(test_name in class_continuity_test, f"Android FACE_ONLY class-continuity regression test missing: {test_name}")
 
 
 def verify_cloud_gate() -> None:

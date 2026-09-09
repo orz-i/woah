@@ -467,6 +467,97 @@ enum IOSFacePrivacyPhase5Smoke {
     try assertNear(uniqueSyntheticRegion.radiusX, 8.184, tolerance: 0.05, label: "unique class trusted radiusX")
     try assertNear(uniqueSyntheticRegion.radiusY, 11.0112, tolerance: 0.08, label: "unique class trusted radiusY")
 
+    let classContinuity = IOSFacePrivacyClassFallbackContinuity()
+    let continuityBbox = makeDetection(x1: 100, y1: 100, x2: 400, y2: 700)
+    let continuityFirst = classContinuity.stabilize(
+      ownerId: 6,
+      rawRegion: IOSFacePrivacyEllipse(
+        centerX: 300,
+        centerY: 180,
+        radiusX: 28,
+        radiusY: 28,
+        source: .yoloHeadFallback
+      ),
+      personDetection: continuityBbox,
+      timestampUs: 0,
+      bodyMaskGuided: false
+    )
+    let continuityGuided = classContinuity.stabilize(
+      ownerId: 6,
+      rawRegion: IOSFacePrivacyEllipse(
+        centerX: 360,
+        centerY: 210,
+        radiusX: 28,
+        radiusY: 28,
+        source: .yoloHeadFallback
+      ),
+      personDetection: continuityBbox,
+      timestampUs: 16_667,
+      bodyMaskGuided: true
+    )
+    let continuityRawAgain = classContinuity.stabilize(
+      ownerId: 6,
+      rawRegion: IOSFacePrivacyEllipse(
+        centerX: 302,
+        centerY: 181,
+        radiusX: 28,
+        radiusY: 28,
+        source: .yoloHeadFallback
+      ),
+      personDetection: continuityBbox,
+      timestampUs: 33_355,
+      bodyMaskGuided: false
+    )
+    let continuityFirstDx = continuityGuided.centerX - continuityFirst.centerX
+    let continuityFirstDy = continuityGuided.centerY - continuityFirst.centerY
+    let continuityFirstStep = sqrt(
+      continuityFirstDx * continuityFirstDx + continuityFirstDy * continuityFirstDy
+    )
+    let continuitySecondDx = continuityRawAgain.centerX - continuityGuided.centerX
+    let continuitySecondDy = continuityRawAgain.centerY - continuityGuided.centerY
+    let continuitySecondStep = sqrt(
+      continuitySecondDx * continuitySecondDx + continuitySecondDy * continuitySecondDy
+    )
+    guard continuityFirstStep < 35, continuitySecondStep < 35 else {
+      throw smokeFailure(
+        "Anonymous FACE_ONLY class fallback continuity allowed a guided/raw jump: \(continuityFirstStep), \(continuitySecondStep)"
+      )
+    }
+
+    let translationContinuity = IOSFacePrivacyClassFallbackContinuity()
+    let translatedFirst = translationContinuity.stabilize(
+      ownerId: 6,
+      rawRegion: IOSFacePrivacyEllipse(
+        centerX: 300,
+        centerY: 180,
+        radiusX: 28,
+        radiusY: 28,
+        source: .yoloHeadFallback
+      ),
+      personDetection: continuityBbox,
+      timestampUs: 0,
+      bodyMaskGuided: true
+    )
+    let translatedSecond = translationContinuity.stabilize(
+      ownerId: 6,
+      rawRegion: IOSFacePrivacyEllipse(
+        centerX: 390,
+        centerY: 245,
+        radiusX: 28,
+        radiusY: 28,
+        source: .yoloHeadFallback
+      ),
+      personDetection: makeDetection(x1: 106, y1: 103, x2: 406, y2: 703),
+      timestampUs: 16_667,
+      bodyMaskGuided: false
+    )
+    try assertNear(translatedFirst.centerX, 300, tolerance: 0.01, label: "class continuity initial centerX")
+    try assertNear(translatedSecond.centerX, 306, tolerance: 0.05, label: "class continuity translated centerX")
+    try assertNear(translatedSecond.centerY, 183, tolerance: 0.05, label: "class continuity translated centerY")
+    guard translatedSecond.centerX < 330 else {
+      throw smokeFailure("Weak raw class fallback center pulled away from robust body translation.")
+    }
+
     let renderer = try IOSMetalPreviewRenderer()
     let effects = EffectConfigDto(
       fillMode: "solid",
@@ -562,6 +653,8 @@ enum IOSFacePrivacyPhase5Smoke {
       "class_evidence_center_x": syntheticClassRegion.centerX,
       "mixed_class_evidence_count": mixedClassTracker.facePrivacyClassEvidence().count,
       "unique_class_radius": [uniqueSyntheticRegion.radiusX, uniqueSyntheticRegion.radiusY],
+      "class_continuity_steps": [continuityFirstStep, continuitySecondStep],
+      "class_continuity_translation": [translatedSecond.centerX, translatedSecond.centerY],
       "vision_runtime_face_count": visionRuntimeFaces.count,
       "center_pixel": [centerPixel.r, centerPixel.g, centerPixel.b, centerPixel.a],
       "corner_pixel": [cornerPixel.r, cornerPixel.g, cornerPixel.b, cornerPixel.a],
