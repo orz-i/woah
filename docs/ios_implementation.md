@@ -897,6 +897,18 @@ distribution name `litert-lm-builder`. Run #4 therefore changes only that
 version-observation omission; all model/checkpoint/core/full-file hash gates
 remain unchanged.
 
+Phase 7 Release Run #4 (`34345293459`) then crossed the version gate and reached
+the real `format=litert` exporter. Its exception arose while `litert-torch`
+imported TorchAO's PT2E stack. This disproved the remaining assumption that the
+canonical exporter inherited the application's root Torch `2.6.0` lock:
+TorchAO `0.18.0` targets newer PyTorch APIs, while the 2026-08-27 provenance
+cutoff already had PyTorch `2.13.0`, torchvision `0.28.0`, and NumPy `2.5.2`
+available. Phase 7 model production is therefore now explicitly isolated in a
+temporary Python 3.11 venv with the CPU PyTorch pair and cutoff-pinned LiteRT
+stack. The Android/application root environment is not mutated or treated as
+model-export provenance; the generated FlatBuffer core hash remains the final
+acceptance authority.
+
 Two subsequent legacy `iOS Cloud CI` runs provide intermediate Apple-only
 evidence while the independent Phase 7 Release workflow remains intentionally
 blocked on protected-path installation. Run `34334830050` (#40), job

@@ -25,10 +25,13 @@
       "runtime_precision_note": "LiteRT GPU delegates may execute the FP32 graph with FP16 arithmetic at runtime; the historical fp16 filename is not a graph-dtype claim."
     },
     "environment": {
+      "isolation": "temporary_venv",
+      "platform": "linux_x86_64",
       "python_major_minor": "3.11",
-      "torch_version": "2.6.0+cu124",
-      "torchvision_version": "0.21.0+cu124",
-      "numpy_version": "2.1.1",
+      "torch_index": "https://download.pytorch.org/whl/cpu",
+      "torch_version": "2.13.0+cpu",
+      "torchvision_version": "0.28.0+cpu",
+      "numpy_version": "2.5.2",
       "litert_torch_version": "0.9.4",
       "ai_edge_litert_version": "2.2.0",
       "ai_edge_quantizer_version": "0.9.0",

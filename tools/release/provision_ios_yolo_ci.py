@@ -7,13 +7,16 @@ proves reproducibility against the pinned FlatBuffer-core SHA-256, then restores
 the 1 KiB historical metadata tail before enforcing the pinned whole-file SHA.
 
 The repository root Python lock intentionally remains unchanged for Android and
-other tooling. This helper uses the already-locked Torch/NumPy baseline and asks
-``uv pip`` to install only the historically pinned LiteRT exporter stack with a
-hard ``--exclude-newer`` cutoff matching the canonical export timestamp.
+other tooling. On a cache miss this helper creates a throw-away Python 3.11
+virtual environment and resolves the historically pinned LiteRT exporter stack
+with a hard ``--exclude-newer`` cutoff matching the canonical export timestamp.
+The model-production interpreter is therefore independent of the app/root
+``uv.lock`` and is destroyed after the raw FlatBuffer core has been verified.
 """
 
 from __future__ import annotations
 
+import argparse
 import base64
 import hashlib
 import importlib.metadata
@@ -22,6 +25,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import traceback
 import zipfile
 from pathlib import Path
@@ -56,7 +60,7 @@ def fail(title: str, message: str) -> "NoReturn":
     raise SystemExit(message)
 
 
-def run_checked(command: list[str], *, title: str) -> None:
+def run_checked(command: list[str], *, title: str) -> str:
     completed = subprocess.run(
         command,
         cwd=ROOT,
@@ -71,8 +75,9 @@ def run_checked(command: list[str], *, title: str) -> None:
     if completed.returncode != 0:
         fail(
             title,
-            f"exit={completed.returncode}\ncommand={' '.join(command)}\n{output[-8000:]}",
+            f"exit={completed.returncode}\ncommand={' '.join(command)}\n{output[-3000:]}",
         )
+    return output
 
 
 def distribution_version(name: str) -> str | None:
@@ -114,11 +119,73 @@ def expected_exporter_versions(contract: dict) -> dict[str, str]:
     }
 
 
-def ensure_exporter_environment(contract: dict) -> dict[str, str | None]:
+def isolated_python(venv: Path) -> Path:
+    if os.name == "nt":
+        return venv / "Scripts/python.exe"
+    return venv / "bin/python"
+
+
+def worker_version_report(python: Path) -> dict[str, str | None]:
+    output = run_checked(
+        [str(python), str(Path(__file__).resolve()), "--worker-versions"],
+        title="Phase 7 isolated exporter version probe failed",
+    )
+    marker = "PHASE7_MODEL_EXPORTER_VERSIONS="
+    lines = [line for line in output.splitlines() if line.startswith(marker)]
+    if len(lines) != 1:
+        fail("Phase 7 isolated exporter version probe", f"Missing version marker in:\n{output[-2000:]}")
+    return json.loads(lines[0][len(marker) :])
+
+
+def create_exporter_environment(contract: dict, root: Path) -> Path:
+    environment = contract["reproducibility"]["environment"]
+    if environment.get("isolation") != "temporary_venv":
+        fail("Phase 7 model exporter isolation", f"Unsupported isolation={environment.get('isolation')!r}")
+    if environment.get("platform") != "linux_x86_64":
+        fail("Phase 7 model exporter platform", f"Unsupported platform={environment.get('platform')!r}")
+    if sys.platform != "linux":
+        fail("Phase 7 model exporter platform", f"Clean-cloud reproduction requires Linux, actual={sys.platform}")
+    python_expected = environment["python_major_minor"]
+    if f"{sys.version_info.major}.{sys.version_info.minor}" != python_expected:
+        fail(
+            "Phase 7 model exporter Python drift",
+            f"expected={python_expected} actual={sys.version_info.major}.{sys.version_info.minor}",
+        )
+
+    venv = root / "venv"
+    run_checked(
+        [sys.executable, "-m", "venv", str(venv)],
+        title="Phase 7 isolated exporter venv creation failed",
+    )
+    python = isolated_python(venv)
+    uv = shutil.which("uv")
+    if not uv:
+        fail("Phase 7 model exporter environment", "uv is required to provision the isolated LiteRT exporter stack")
+
+    torch_packages = [
+        f"torch=={environment['torch_version']}",
+        f"torchvision=={environment['torchvision_version']}",
+    ]
+    run_checked(
+        [
+            uv,
+            "pip",
+            "install",
+            "--python",
+            str(python),
+            "--index-url",
+            environment["torch_index"],
+            "--extra-index-url",
+            "https://pypi.org/simple",
+            *torch_packages,
+        ],
+        title="Phase 7 isolated CPU Torch install failed",
+    )
+
     expected = expected_exporter_versions(contract)
-    observed = exporter_versions()
     install_names = (
         "ultralytics",
+        "numpy",
         "litert-torch",
         "ai-edge-litert",
         "ai-edge-quantizer",
@@ -126,43 +193,36 @@ def ensure_exporter_environment(contract: dict) -> dict[str, str | None]:
         "torchao",
         "litert-lm-builder",
     )
-    needs_install = any(observed.get(name) != expected[name] for name in install_names)
-    if needs_install:
-        uv = shutil.which("uv")
-        if not uv:
-            fail("Phase 7 model exporter environment", "uv is required to provision the pinned LiteRT exporter stack")
-        cutoff = contract["reproducibility"]["environment"]["exclude_newer_utc"]
-        packages = [f"{name}=={expected[name]}" for name in install_names]
-        command = [
+    packages = [f"{name}=={expected[name]}" for name in install_names]
+    cutoff = environment["exclude_newer_utc"]
+    print("[iOS CI] Installing isolated Phase 7 LiteRT exporter stack:", " ".join(packages), flush=True)
+    run_checked(
+        [
             uv,
             "pip",
             "install",
             "--python",
-            sys.executable,
+            str(python),
             "--exclude-newer",
             cutoff,
             *packages,
-        ]
-        print("[iOS CI] Installing pinned Phase 7 LiteRT exporter stack:", " ".join(packages), flush=True)
-        run_checked(command, title="Phase 7 model exporter dependency install failed")
-        observed = exporter_versions()
+        ],
+        title="Phase 7 isolated exporter dependency install failed",
+    )
 
+    observed = worker_version_report(python)
     mismatches = {
         name: {"expected": version, "actual": observed.get(name)}
         for name, version in expected.items()
         if observed.get(name) != version
     }
-    python_expected = contract["reproducibility"]["environment"]["python_major_minor"]
-    if f"{sys.version_info.major}.{sys.version_info.minor}" != python_expected:
-        mismatches["python"] = {
-            "expected": python_expected,
-            "actual": f"{sys.version_info.major}.{sys.version_info.minor}",
-        }
+    if not str(observed.get("python", "")).startswith(python_expected + "."):
+        mismatches["python"] = {"expected": python_expected, "actual": observed.get("python")}
     if mismatches:
         fail("Phase 7 model exporter version drift", json.dumps(mismatches, sort_keys=True))
-
+    print("PHASE7_MODEL_EXPORTER_ISOLATION=temporary_venv", flush=True)
     print("PHASE7_MODEL_EXPORTER_VERSIONS=" + json.dumps(observed, sort_keys=True), flush=True)
-    return observed
+    return python
 
 
 def verify_checkpoint(path: Path, contract: dict) -> None:
@@ -180,11 +240,15 @@ def verify_checkpoint(path: Path, contract: dict) -> None:
     print(f"PHASE7_MODEL_CHECKPOINT_SHA256={actual_hash}", flush=True)
 
 
-def ensure_checkpoint(contract: dict) -> Path:
-    from ultralytics import YOLO
-
+def checkpoint_path(contract: dict) -> Path:
     checkpoint = ROOT / contract["source_checkpoint"]["path"]
     checkpoint.parent.mkdir(parents=True, exist_ok=True)
+    return checkpoint
+
+
+def worker_export(contract: dict, checkpoint: Path, output: Path) -> int:
+    from ultralytics import YOLO
+
     if not checkpoint.is_file():
         print("[iOS CI] Downloading pinned Ultralytics yolo11n-seg.pt checkpoint...", flush=True)
         bootstrap = YOLO("yolo11n-seg.pt")
@@ -198,7 +262,58 @@ def ensure_checkpoint(contract: dict) -> Path:
         if downloaded.resolve() != checkpoint.resolve():
             shutil.move(str(downloaded), checkpoint)
     verify_checkpoint(checkpoint, contract)
-    return checkpoint
+
+    exporter = contract["reproducibility"]["exporter"]
+    model = YOLO(str(checkpoint))
+    result = Path(
+        model.export(
+            format=exporter["format"],
+            imgsz=int(exporter["imgsz"]),
+            quantize=exporter["quantize"],
+            nms=bool(exporter["nms"]),
+        )
+    )
+    if result.is_dir():
+        candidates = sorted(result.glob("*.tflite"))
+        if len(candidates) != 1:
+            raise RuntimeError(f"Expected one .tflite under {result}, found {candidates}")
+        result = candidates[0]
+    if not result.is_file():
+        raise RuntimeError(f"Exporter did not produce a file: {result}")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(result, output)
+    print(f"PHASE7_MODEL_WORKER_OUTPUT={output}", flush=True)
+    return 0
+
+
+def cli() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--worker-versions", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--worker-export",
+        nargs=2,
+        metavar=("CHECKPOINT", "OUTPUT"),
+        help=argparse.SUPPRESS,
+    )
+    args = parser.parse_args()
+    if args.worker_versions:
+        print("PHASE7_MODEL_EXPORTER_VERSIONS=" + json.dumps(exporter_versions(), sort_keys=True))
+        return 0
+    if args.worker_export:
+        contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
+        checkpoint = Path(args.worker_export[0]).resolve()
+        output = Path(args.worker_export[1]).resolve()
+        try:
+            return worker_export(contract, checkpoint, output)
+        except SystemExit:
+            raise
+        except Exception as exc:
+            traceback.print_exc()
+            # Keep the concise exception marker last so the parent annotation's
+            # tail survives GitHub's 4096-byte annotation limit.
+            print(f"PHASE7_WORKER_EXCEPTION={type(exc).__name__}: {exc}", flush=True)
+            return 1
+    return main()
 
 
 def load_export_metadata(path: Path) -> dict:
@@ -252,32 +367,22 @@ def canonical_tail(contract: dict) -> bytes:
     return tail
 
 
-def reproduce_model(contract: dict, checkpoint: Path) -> Path:
-    from ultralytics import YOLO
-
+def reproduce_model(contract: dict, checkpoint: Path, exporter_python: Path, temporary_root: Path) -> Path:
     target = ROOT / contract["source"]
     target.parent.mkdir(parents=True, exist_ok=True)
     print("[iOS CI] Reproducing YOLO11n segmentation with Ultralytics LiteRT export...", flush=True)
-    exporter = contract["reproducibility"]["exporter"]
-    try:
-        model = YOLO(str(checkpoint))
-        result = Path(
-            model.export(
-                format=exporter["format"],
-                imgsz=int(exporter["imgsz"]),
-                quantize=exporter["quantize"],
-                nms=bool(exporter["nms"]),
-            )
-        )
-    except Exception:
-        fail("Phase 7 LiteRT export exception", traceback.format_exc()[-10000:])
-    if result.is_dir():
-        candidates = sorted(result.glob("*.tflite"))
-        if len(candidates) != 1:
-            fail("Phase 7 LiteRT export output", f"Expected one .tflite under {result}, found {candidates}")
-        result = candidates[0]
-    if not result.is_file():
-        fail("Phase 7 LiteRT export output", f"Exporter did not produce a file: {result}")
+    result = temporary_root / "generated-yolo11n-seg.tflite"
+    run_checked(
+        [
+            str(exporter_python),
+            str(Path(__file__).resolve()),
+            "--worker-export",
+            str(checkpoint),
+            str(result),
+        ],
+        title="Phase 7 isolated LiteRT export failed",
+    )
+    verify_checkpoint(checkpoint, contract)
 
     metadata = load_export_metadata(result)
     validate_export_metadata(metadata, contract)
@@ -349,9 +454,11 @@ def main() -> int:
     if target.is_file() and sha256(target) == contract["expected_sha256"]:
         print("[iOS CI] Reusing exact cached canonical YOLO model.", flush=True)
     else:
-        ensure_exporter_environment(contract)
-        checkpoint = ensure_checkpoint(contract)
-        target = reproduce_model(contract, checkpoint)
+        with tempfile.TemporaryDirectory(prefix="woah-phase7-model-export-") as temporary:
+            temporary_root = Path(temporary)
+            exporter_python = create_exporter_environment(contract, temporary_root)
+            checkpoint = checkpoint_path(contract)
+            target = reproduce_model(contract, checkpoint, exporter_python, temporary_root)
 
     observed_hash = verify_canonical_model(target, contract)
     run_checked(
@@ -365,7 +472,7 @@ def main() -> int:
 
 if __name__ == "__main__":
     try:
-        raise SystemExit(main())
+        raise SystemExit(cli())
     except SystemExit:
         raise
     except Exception:

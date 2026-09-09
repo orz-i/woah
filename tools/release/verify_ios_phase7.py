@@ -184,9 +184,12 @@ def verify_model_contract() -> None:
     check(exporter.get("graph_precision") == "float32", "Phase 7 canonical graph precision contract drifted")
     environment = reproducibility.get("environment") or {}
     for key, expected in (
-        ("torch_version", "2.6.0+cu124"),
-        ("torchvision_version", "0.21.0+cu124"),
-        ("numpy_version", "2.1.1"),
+        ("isolation", "temporary_venv"),
+        ("platform", "linux_x86_64"),
+        ("torch_index", "https://download.pytorch.org/whl/cpu"),
+        ("torch_version", "2.13.0+cpu"),
+        ("torchvision_version", "0.28.0+cpu"),
+        ("numpy_version", "2.5.2"),
         ("litert_torch_version", "0.9.4"),
         ("ai_edge_litert_version", "2.2.0"),
         ("ai_edge_quantizer_version", "0.9.0"),
@@ -220,8 +223,13 @@ def verify_model_contract() -> None:
         'quantize=exporter["quantize"]',
         "PHASE7_MODEL_CHECKPOINT_SHA256",
         "PHASE7_MODEL_EXPORTER_VERSIONS",
+        "PHASE7_MODEL_EXPORTER_ISOLATION=temporary_venv",
         "PHASE7_MODEL_GENERATED",
         "Phase 7 LiteRT core reproducibility failure",
+        '"--worker-export"',
+        '"--worker-versions"',
+        '"-m", "venv"',
+        '"--index-url"',
         "canonical_tail(contract)",
         "IOS_YOLO_CORE_SHA256",
     ):

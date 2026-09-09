@@ -71,8 +71,11 @@ argument set (`format=litert`, unquantized, 640 input). The historical `fp16`
 filename is retained for compatibility, but the graph tensors are float32;
 LiteRT GPU delegates may execute that graph with FP16 arithmetic at runtime.
 The model-production environment is isolated from the Android/application
-Python lock and uses the tracked 2026-08-27 package cutoff and exporter version
-contract.
+Python lock and uses a throw-away Python 3.11 virtual environment. At the
+canonical 2026-08-27 cutoff, that exporter environment resolves CPU
+PyTorch `2.13.0`, torchvision `0.28.0`, NumPy `2.5.2`, Ultralytics `8.4.130`,
+and the pinned LiteRT converter stack. The application/root `uv.lock` remains
+unchanged and is not used as evidence for model-production package identity.
 
 The canonical `yolo11n-seg-fp16.tflite` contract is pinned to
 `ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340`.
