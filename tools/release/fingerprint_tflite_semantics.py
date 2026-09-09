@@ -7,6 +7,8 @@ import argparse
 import hashlib
 import inspect
 import json
+import math
+import struct
 import sys
 import types
 from pathlib import Path
@@ -86,6 +88,76 @@ BUILTIN_OPTIONS = {
     if not name.startswith("_") and isinstance(value, int)
 }
 
+TENSOR_TYPES = {
+    value: name
+    for name, value in vars(tflite.TensorType).items()
+    if not name.startswith("_") and isinstance(value, int)
+}
+
+ELEMENT_WIDTHS = {
+    "FLOAT32": 4,
+    "FLOAT16": 2,
+    "INT32": 4,
+    "UINT8": 1,
+    "INT64": 8,
+    "BOOL": 1,
+    "INT16": 2,
+    "COMPLEX64": 8,
+    "INT8": 1,
+    "FLOAT64": 8,
+    "COMPLEX128": 16,
+    "UINT64": 8,
+    "UINT32": 4,
+    "UINT16": 2,
+    "INT4": 1,
+    "BFLOAT16": 2,
+}
+
+
+def multiset_sha256(raw: bytes, element_width: int, bit_mask: int | None = None) -> str | None:
+    """Hash a tensor as an order-independent multiset of fixed-width elements."""
+    if element_width <= 0 or len(raw) % element_width != 0:
+        return None
+    values = [
+        int.from_bytes(raw[offset : offset + element_width], "little", signed=False)
+        for offset in range(0, len(raw), element_width)
+    ]
+    if bit_mask is not None:
+        values = [value & bit_mask for value in values]
+    values.sort()
+    digest = hashlib.sha256()
+    for value in values:
+        digest.update(value.to_bytes(element_width, "little", signed=False))
+    return digest.hexdigest()
+
+
+def float32_stats(raw: bytes) -> dict | None:
+    """Return stable order-independent FLOAT32 moments for drift diagnosis."""
+    if len(raw) % 4 != 0:
+        return None
+    values = [item[0] for item in struct.iter_unpack("<f", raw)]
+    finite = [value for value in values if math.isfinite(value)]
+    nan_count = sum(math.isnan(value) for value in values)
+    inf_count = len(values) - len(finite) - nan_count
+    if not finite:
+        return {
+            "count": len(values),
+            "finite_count": 0,
+            "nan_count": nan_count,
+            "inf_count": inf_count,
+        }
+    return {
+        "count": len(values),
+        "finite_count": len(finite),
+        "nan_count": nan_count,
+        "inf_count": inf_count,
+        "min_hex": min(finite).hex(),
+        "max_hex": max(finite).hex(),
+        "sum_hex": math.fsum(finite).hex(),
+        "sum_abs_hex": math.fsum(abs(value) for value in finite).hex(),
+        "sum_sq_hex": math.fsum(value * value for value in finite).hex(),
+    }
+
 
 def opcode_descriptor(code) -> dict:
     out = {
@@ -151,9 +223,28 @@ def model_fingerprint(path: Path) -> tuple[dict, list[dict]]:
             if buffer_size:
                 raw = bytes(int(buffer.Data(j)) for j in range(buffer_size))
                 buffer_hash = hashlib.sha256(raw).hexdigest()
-                constant_records.append(
-                    {"tensor": name, "bytes": buffer_size, "sha256": buffer_hash}
-                )
+                type_code = int(tensor.Type())
+                type_name = TENSOR_TYPES.get(type_code, f"UNKNOWN_{type_code}")
+                element_width = ELEMENT_WIDTHS.get(type_name)
+                record = {
+                    "tensor": name,
+                    "bytes": buffer_size,
+                    "sha256": buffer_hash,
+                    "type": type_name,
+                    "shape": [int(tensor.Shape(j)) for j in range(tensor.ShapeLength())],
+                    "element_width": element_width,
+                    "multiset_sha256": (
+                        multiset_sha256(raw, element_width) if element_width is not None else None
+                    ),
+                    "fp32_ulp8_multiset_sha256": None,
+                    "fp32_ulp12_multiset_sha256": None,
+                    "float32_stats": None,
+                }
+                if type_name == "FLOAT32" and element_width == 4:
+                    record["fp32_ulp8_multiset_sha256"] = multiset_sha256(raw, 4, 0xFFFFFF00)
+                    record["fp32_ulp12_multiset_sha256"] = multiset_sha256(raw, 4, 0xFFFFF000)
+                    record["float32_stats"] = float32_stats(raw)
+                constant_records.append(record)
             descriptor = {
                 "name": name,
                 "shape": [int(tensor.Shape(j)) for j in range(tensor.ShapeLength())],
@@ -215,6 +306,10 @@ def model_fingerprint(path: Path) -> tuple[dict, list[dict]]:
         )
 
     constant_records.sort(key=lambda item: item["tensor"])
+    constant_identity = [
+        {"tensor": record["tensor"], "bytes": record["bytes"], "sha256": record["sha256"]}
+        for record in constant_records
+    ]
     semantic = {
         "schema": 1,
         "model_version": int(model.Version()),
@@ -234,7 +329,7 @@ def model_fingerprint(path: Path) -> tuple[dict, list[dict]]:
         "constant_tensor_count": len(constant_records),
         "constant_bytes": sum(record["bytes"] for record in constant_records),
         "structure_sha256": digest_json(structure),
-        "constants_sha256": digest_json(constant_records),
+        "constants_sha256": digest_json(constant_identity),
         "semantic_sha256": digest_json(semantic),
     }
     return fingerprint, constant_records
@@ -249,7 +344,7 @@ def main() -> int:
     if args.constants_output is not None:
         args.constants_output.parent.mkdir(parents=True, exist_ok=True)
         args.constants_output.write_text(
-            json.dumps({"schema": 1, "constants": constants}, indent=2, sort_keys=True) + "\n",
+            json.dumps({"schema": 2, "constants": constants}, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
     print("PHASE7_TFLITE_SEMANTIC_FINGERPRINT=" + json.dumps(fingerprint, sort_keys=True))

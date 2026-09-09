@@ -21,6 +21,7 @@ import base64
 import hashlib
 import importlib.metadata
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -376,13 +377,51 @@ def load_constant_manifest(path: Path) -> list[dict]:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except Exception as exc:
         fail("Phase 7 constant manifest invalid", f"{path}: {exc}")
-    if payload.get("schema") != 1 or not isinstance(payload.get("constants"), list):
+    if payload.get("schema") != 2 or not isinstance(payload.get("constants"), list):
         fail("Phase 7 constant manifest invalid", f"Unexpected schema in {path}")
     constants = payload["constants"]
+    required = {
+        "tensor",
+        "bytes",
+        "sha256",
+        "type",
+        "shape",
+        "element_width",
+        "multiset_sha256",
+        "fp32_ulp8_multiset_sha256",
+        "fp32_ulp12_multiset_sha256",
+        "float32_stats",
+    }
     for item in constants:
-        if not isinstance(item, dict) or set(item) != {"tensor", "bytes", "sha256"}:
+        if not isinstance(item, dict) or not required.issubset(item):
             fail("Phase 7 constant manifest invalid", f"Malformed constant record in {path}: {item!r}")
     return constants
+
+
+def float32_stats_delta(expected: dict | None, actual: dict | None) -> dict | None:
+    if not isinstance(expected, dict) or not isinstance(actual, dict):
+        return None
+    if expected.get("count") != actual.get("count"):
+        return {"count": [expected.get("count"), actual.get("count")]}
+
+    def rel_hex(key: str, sqrt: bool = False) -> float | None:
+        expected_hex = expected.get(key)
+        actual_hex = actual.get(key)
+        if not isinstance(expected_hex, str) or not isinstance(actual_hex, str):
+            return None
+        expected_value = float.fromhex(expected_hex)
+        actual_value = float.fromhex(actual_hex)
+        if sqrt:
+            expected_value = math.sqrt(max(0.0, expected_value))
+            actual_value = math.sqrt(max(0.0, actual_value))
+        return abs(actual_value - expected_value) / max(abs(expected_value), 1e-30)
+
+    return {
+        "sum_abs_rel": rel_hex("sum_abs_hex"),
+        "l2_rel": rel_hex("sum_sq_hex", sqrt=True),
+        "min": [expected.get("min_hex"), actual.get("min_hex")],
+        "max": [expected.get("max_hex"), actual.get("max_hex")],
+    }
 
 
 def compare_constant_manifests(expected: list[dict], actual: list[dict]) -> dict:
@@ -405,6 +444,31 @@ def compare_constant_manifests(expected: list[dict], actual: list[dict]) -> dict
                     "actual_bytes": int(actual_item["bytes"]),
                     "expected_sha256": str(expected_item["sha256"]),
                     "actual_sha256": str(actual_item["sha256"]),
+                    "type_shape_equal": (
+                        expected_item.get("type") == actual_item.get("type")
+                        and expected_item.get("shape") == actual_item.get("shape")
+                    ),
+                    "multiset_equal": (
+                        expected_item.get("multiset_sha256") is not None
+                        and expected_item.get("multiset_sha256") == actual_item.get("multiset_sha256")
+                    ),
+                    "fp32_ulp8_equal": (
+                        expected_item.get("fp32_ulp8_multiset_sha256") is not None
+                        and expected_item.get("fp32_ulp8_multiset_sha256")
+                        == actual_item.get("fp32_ulp8_multiset_sha256")
+                    ),
+                    "fp32_ulp12_equal": (
+                        expected_item.get("fp32_ulp12_multiset_sha256") is not None
+                        and expected_item.get("fp32_ulp12_multiset_sha256")
+                        == actual_item.get("fp32_ulp12_multiset_sha256")
+                    ),
+                    "float_stats_equal": (
+                        expected_item.get("float32_stats") is not None
+                        and expected_item.get("float32_stats") == actual_item.get("float32_stats")
+                    ),
+                    "float_stats_delta": float32_stats_delta(
+                        expected_item.get("float32_stats"), actual_item.get("float32_stats")
+                    ),
                 }
             )
     changed.sort(key=lambda item: max(item["bytes"], item["actual_bytes"]), reverse=True)
@@ -415,12 +479,23 @@ def compare_constant_manifests(expected: list[dict], actual: list[dict]) -> dict
             "actual_bytes": item["actual_bytes"],
             "expected": item["expected_sha256"][:16],
             "actual": item["actual_sha256"][:16],
+            "type_shape_equal": item["type_shape_equal"],
+            "multiset_equal": item["multiset_equal"],
+            "ulp8_equal": item["fp32_ulp8_equal"],
+            "ulp12_equal": item["fp32_ulp12_equal"],
+            "stats_equal": item["float_stats_equal"],
+            "stats_delta": item["float_stats_delta"],
         }
-        for item in changed[:12]
+        for item in changed[:8]
     ]
     return {
         "changed_count": len(changed),
         "changed_bytes": sum(max(item["bytes"], item["actual_bytes"]) for item in changed),
+        "type_shape_equal_count": sum(item["type_shape_equal"] for item in changed),
+        "multiset_equal_count": sum(item["multiset_equal"] for item in changed),
+        "fp32_ulp8_equal_count": sum(item["fp32_ulp8_equal"] for item in changed),
+        "fp32_ulp12_equal_count": sum(item["fp32_ulp12_equal"] for item in changed),
+        "float_stats_equal_count": sum(item["float_stats_equal"] for item in changed),
         "missing_count": len(missing),
         "extra_count": len(extra),
         "missing": [name[-220:] for name in missing[:8]],

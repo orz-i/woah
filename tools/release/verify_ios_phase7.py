@@ -220,6 +220,15 @@ def verify_model_contract() -> None:
 
     fingerprint_tool = ROOT / "tools/release/fingerprint_tflite_semantics.py"
     check(fingerprint_tool.is_file(), "Phase 7 TFLite semantic fingerprint tool is missing")
+    fingerprint_source = text(fingerprint_tool, "Phase 7 TFLite semantic fingerprint tool")
+    for token in (
+        "multiset_sha256",
+        "fp32_ulp8_multiset_sha256",
+        "fp32_ulp12_multiset_sha256",
+        "float32_stats",
+        '"schema": 2',
+    ):
+        check(token in fingerprint_source, f"Phase 7 constant diagnostic fingerprint contract missing: {token}")
     constant_manifest = ROOT / str(reproducibility.get("constant_manifest_path", ""))
     check(constant_manifest.is_file(), "Phase 7 canonical constant manifest is missing")
     if constant_manifest.is_file():
@@ -234,15 +243,57 @@ def verify_model_contract() -> None:
             manifest = {}
             check(False, "Phase 7 canonical constant manifest is invalid JSON")
         constants = manifest.get("constants") if isinstance(manifest, dict) else None
-        check(manifest.get("schema") == 1 if isinstance(manifest, dict) else False,
+        check(manifest.get("schema") == 2 if isinstance(manifest, dict) else False,
               "Phase 7 canonical constant manifest schema drifted")
         check(isinstance(constants, list) and len(constants) == 248,
               "Phase 7 canonical constant manifest entry count drifted")
         if isinstance(constants, list):
             check(sum(int(item.get("bytes", 0)) for item in constants if isinstance(item, dict)) == 11576060,
                   "Phase 7 canonical constant manifest byte total drifted")
+            required_constant_fields = {
+                "tensor",
+                "bytes",
+                "sha256",
+                "type",
+                "shape",
+                "element_width",
+                "multiset_sha256",
+                "fp32_ulp8_multiset_sha256",
+                "fp32_ulp12_multiset_sha256",
+                "float32_stats",
+            }
+            for item in constants:
+                check(
+                    isinstance(item, dict) and required_constant_fields.issubset(item),
+                    "Phase 7 canonical constant diagnostic record is incomplete",
+                )
+                if not isinstance(item, dict):
+                    continue
+                if item.get("element_width") is not None:
+                    check(
+                        isinstance(item.get("multiset_sha256"), str)
+                        and len(item.get("multiset_sha256", "")) == 64,
+                        "Phase 7 constant multiset fingerprint is missing",
+                    )
+                if item.get("type") == "FLOAT32":
+                    for field in ("fp32_ulp8_multiset_sha256", "fp32_ulp12_multiset_sha256"):
+                        check(
+                            isinstance(item.get(field), str) and len(item.get(field, "")) == 64,
+                            f"Phase 7 FLOAT32 diagnostic fingerprint is missing: {field}",
+                        )
+                    check(isinstance(item.get("float32_stats"), dict),
+                          "Phase 7 FLOAT32 diagnostic statistics are missing")
+            constant_identity = [
+                {
+                    "tensor": item.get("tensor"),
+                    "bytes": item.get("bytes"),
+                    "sha256": item.get("sha256"),
+                }
+                for item in constants
+                if isinstance(item, dict)
+            ]
             canonical_digest = hashlib.sha256(
-                json.dumps(constants, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+                json.dumps(constant_identity, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
             ).hexdigest()
             check(canonical_digest == semantic.get("constants_sha256"),
                   "Phase 7 canonical constant manifest aggregate hash drifted")
@@ -271,6 +322,10 @@ def verify_model_contract() -> None:
         "semantic_mismatches",
         "compare_constant_manifests",
         "constant_diff",
+        "multiset_equal_count",
+        "fp32_ulp8_equal_count",
+        "fp32_ulp12_equal_count",
+        "float_stats_equal_count",
         "PHASE7_MODEL_CHECKPOINT_SHA256",
         "PHASE7_MODEL_EXPORTER_VERSIONS",
         "PHASE7_MODEL_EXPORTER_ISOLATION=temporary_venv",
