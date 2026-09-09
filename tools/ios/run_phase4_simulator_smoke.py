@@ -104,48 +104,22 @@ def simulator_state(udid: str) -> str | None:
     return None
 
 
-def tolerate_degraded_bootstatus(
-    *,
-    name: str,
-    udid: str,
-    reason: str,
-) -> bool:
-    """Proceed only when bootstatus degraded but CoreSimulator is still Booted.
-
-    Hosted macOS runners occasionally finish a usable Simulator boot while a
-    migration plugin makes `simctl bootstatus -b` exit non-zero (or linger until
-    our stabilization timeout). This does not waive the actual gate: install,
-    app launch, Metal/export/FACE_ONLY markers, and media readback still run and
-    must succeed. If the device is not observably Booted, the runner falls back
-    to another iPhone candidate instead.
-    """
-    state = simulator_state(udid)
-    if state != "Booted":
-        return False
-    print(
-        f"SIMULATOR_BOOTSTATUS_DEGRADED_TOLERATED={name} "
-        f"state={state} reason={reason}",
-        file=sys.stderr,
-    )
-    return True
-
-
-def install_probe(udid: str, app: Path, *, attempts: int = 3) -> bool:
+def install_probe(udid: str, app: Path, *, attempts: int = 5) -> bool:
     """Use the operation we actually need as the final Simulator readiness probe.
 
-    `simctl bootstatus -b` is advisory on GitHub-hosted runners: migration
-    plugins can fail or stall even though CoreSimulator is already capable of
-    installing and launching an app. An install probe is therefore stricter and
-    more relevant than accepting a state string alone. It does not waive the
-    gate because the real launch plus all Phase 3/4/5 smoke markers still run
-    after this function returns true.
+    `simctl bootstatus -b` is not used here. GitHub-hosted runners can spend
+    minutes in CoreSimulator migration plugins even when the device is already
+    capable of installing and launching an app. The operation we actually need
+    is therefore the readiness probe. This does not waive the gate because the
+    real launch plus all Phase 3/4/5 smoke markers still run after this function
+    returns true.
     """
     for attempt in range(1, attempts + 1):
         try:
             completed = run(
                 ["xcrun", "simctl", "install", udid, str(app)],
                 check=False,
-                timeout=120,
+                timeout=30,
             )
         except subprocess.TimeoutExpired:
             print(
@@ -174,59 +148,28 @@ def boot_iphone(app: Path) -> tuple[str, str, str]:
         time.sleep(1)
         try:
             boot = run(["xcrun", "simctl", "boot", udid], check=False, timeout=30)
+            if boot.stdout:
+                print(boot.stdout, end="")
+            if boot.stderr:
+                print(boot.stderr, end="", file=sys.stderr)
             if boot.returncode != 0 and "current state: Booted" not in boot.stderr:
                 failures.append(f"{name}: boot exit={boot.returncode} {boot.stderr.strip()}")
                 continue
-            bootstatus = run(
-                ["xcrun", "simctl", "bootstatus", udid, "-b"],
-                check=False,
-                timeout=420,
-            )
-            if bootstatus.stdout:
-                print(bootstatus.stdout, end="")
-            if bootstatus.stderr:
-                print(bootstatus.stderr, end="", file=sys.stderr)
-            if bootstatus.returncode == 0:
-                if install_probe(udid, app):
-                    return runtime, name, udid
-                failures.append(f"{name}: bootstatus passed but install probe failed")
-                safe_run(["xcrun", "simctl", "shutdown", udid], timeout=30)
-                continue
-            reason = f"bootstatus_exit_{bootstatus.returncode}"
-            if tolerate_degraded_bootstatus(name=name, udid=udid, reason=reason):
-                if install_probe(udid, app):
-                    return runtime, name, udid
-            elif install_probe(udid, app):
+            if install_probe(udid, app):
                 print(
-                    f"SIMULATOR_BOOTSTATUS_DEGRADED_TOLERATED={name} "
+                    f"SIMULATOR_READY={name} "
                     f"state={simulator_state(udid) or 'unknown'} "
-                    f"reason={reason}_install_probe_passed",
-                    file=sys.stderr,
+                    "probe=install",
                 )
                 return runtime, name, udid
             failures.append(
-                f"{name}: bootstatus exit={bootstatus.returncode} "
+                f"{name}: install readiness probe failed "
                 f"state={simulator_state(udid) or 'unknown'}"
             )
             safe_run(["xcrun", "simctl", "shutdown", udid], timeout=30)
         except subprocess.TimeoutExpired:
-            if tolerate_degraded_bootstatus(
-                name=name,
-                udid=udid,
-                reason="bootstatus_timeout_420s",
-            ):
-                if install_probe(udid, app):
-                    return runtime, name, udid
-            elif install_probe(udid, app):
-                print(
-                    f"SIMULATOR_BOOTSTATUS_DEGRADED_TOLERATED={name} "
-                    f"state={simulator_state(udid) or 'unknown'} "
-                    "reason=bootstatus_timeout_420s_install_probe_passed",
-                    file=sys.stderr,
-                )
-                return runtime, name, udid
             failures.append(
-                f"{name}: bootstatus timed out after 420s "
+                f"{name}: boot command timed out "
                 f"state={simulator_state(udid) or 'unknown'}"
             )
             safe_run(["xcrun", "simctl", "shutdown", udid], timeout=30)
