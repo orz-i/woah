@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-enum IOSPrivacyClassPhase5Smoke {
+enum IOSPrivacyClassPhase6Smoke {
   static func run() throws -> [String: Any] {
     let preprocess = makePreprocess(width: 640, height: 640)
 
@@ -393,7 +393,7 @@ enum IOSPrivacyClassPhase5Smoke {
             shouldInterpolate: false,
             intent: .defaultIntent
           ) else {
-      throw failure("Could not create the Phase 5I privacy-class smoke image.")
+      throw failure("Could not create the Phase 6 privacy-class smoke image.")
     }
     return image
   }
@@ -426,7 +426,7 @@ enum IOSPrivacyClassPhase5Smoke {
       return true
     }
     guard rendered, x >= 0, x < width, y >= 0, y < height else {
-      throw failure("Could not read Phase 5I Metal output pixel.")
+      throw failure("Could not read Phase 6 Metal output pixel.")
     }
     let offset = (y * width + x) * 4
     return (
@@ -443,7 +443,7 @@ enum IOSPrivacyClassPhase5Smoke {
 
   private static func failure(_ message: String) -> PigeonError {
     PigeonError(
-      code: "IOS_PHASE5_PRIVACY_CLASS_SMOKE_FAILED",
+      code: "IOS_PHASE6_PRIVACY_CLASS_SMOKE_FAILED",
       message: message,
       details: nil
     )

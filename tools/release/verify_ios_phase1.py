@@ -256,11 +256,12 @@ def main() -> int:
     # The protected workflow already invokes this verifier on GitHub-hosted
     # macOS before the normal production iPhoneOS build. Use that stable hook to
     # run the strongest Apple-only gate without requiring workflow-file mutation
-    # from ordinary development tooling. Phase 4 preserves the Phase 3 offline
-    # Metal compile + Simulator GPU/export smoke before Phase 5 Golden Trace replay.
+    # from ordinary development tooling. Each later phase gate inherits the
+    # accepted earlier Apple-only lanes; Phase 6 currently owns the strongest
+    # contract while Phase 5 remains independently runnable and frozen at 5H.
     if sys.platform == "darwin" and os.environ.get("GITHUB_ACTIONS") == "true":
         subprocess.run(
-            [sys.executable, str(ROOT / "tools/ios/run_phase5_macos_gate.py")],
+            [sys.executable, str(ROOT / "tools/ios/run_phase6_macos_gate.py")],
             cwd=ROOT,
             check=True,
         )

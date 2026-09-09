@@ -164,7 +164,7 @@ def verify_metal_validation_lanes() -> None:
     compiler = ROOT / "tools/ios/compile_phase3_metal.py"
     simulator = ROOT / "tools/ios/run_phase3_simulator_smoke.py"
     macos_gate = ROOT / "tools/ios/run_phase3_macos_gate.py"
-    smoke_main = ROOT / "mobile/app/lib/ios_metal_smoke_main.dart"
+    smoke_main = ROOT / "mobile/app/lib/ios_phase3_smoke_main.dart"
     smoke_swift = SOURCES / "IOSMetalPhase3Smoke.swift"
     workflow = ROOT / ".github/workflows/ios-cloud.yml"
     phase1_verifier = ROOT / "tools/release/verify_ios_phase1.py"
@@ -226,6 +226,7 @@ def verify_metal_validation_lanes() -> None:
             "run_phase3_macos_gate.py" in phase1_text
             or "run_phase4_macos_gate.py" in phase1_text
             or "run_phase5_macos_gate.py" in phase1_text
+            or "run_phase6_macos_gate.py" in phase1_text
         )
         and 'GITHUB_ACTIONS' in phase1_text,
         "The GitHub macOS Phase 1 hook must invoke an Apple-only gate that preserves Phase 3",
@@ -238,7 +239,7 @@ def verify_metal_validation_lanes() -> None:
     )
     for token in (
         '"--simulator"',
-        "ios_metal_smoke_main.dart",
+        "ios_phase3_smoke_main.dart",
         "run_phase3_simulator_smoke.py",
     ):
         check(token in macos_gate_text, f"Phase 3 macOS gate missing validation step: {token}")

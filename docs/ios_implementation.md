@@ -251,7 +251,7 @@ extracts that exact embedded source, rather than maintaining a second shader
 copy, and `compile_phase3_metal.py` compiles it with Apple's `metal` and
 `metallib` tools for both `iphoneos` and `iphonesimulator` SDKs.
 
-The same macOS gate also builds `lib/ios_metal_smoke_main.dart` for an iPhone
+The same macOS gate also builds `lib/ios_phase3_smoke_main.dart` for an iPhone
 Simulator, boots an available iPhone simulator with `simctl`, installs the
 application, and invokes `runIOSMetalPhase3Smoke`. The native smoke path creates
 an `MTLDevice`, constructs the production `IOSMetalPreviewRenderer`, dispatches
@@ -712,7 +712,22 @@ workflow's production iPhoneOS no-codesign build/archive path. This remains
 Simulator/cloud-build evidence, not physical-iPhone visual or performance
 acceptance.
 
-### Phase 5I: identity-independent privacy-class prototypes
+### Phase 5 boundary (closed)
+
+Phase 5 ends at Phase 5H. Its engineering objective was temporal identity and
+FACE_ONLY privacy parity that can be validated without a physical iPhone:
+Golden Trace replay, protected identity recovery, temporal FACE_ONLY geometry,
+real-MP4 FACE_ONLY export, anonymous residual class fallback, and render-only
+fallback continuity. `296a4d0c` is the final Phase 5 product-code checkpoint;
+`37b0a688` records its cloud acceptance. New tracking/privacy subsystems are not
+added as further Phase 5 lettered slices.
+
+The privacy-class prototype work originally entered development under the
+temporary label "Phase 5I". That label was scope creep, not a meaningful phase
+boundary. The code is retained, but from this point it is classified and gated
+as Phase 6.
+
+### Phase 6: identity-independent privacy-class prototypes
 
 Android also maintains a selected/unselected temporal classifier whose state is
 deliberately independent of person IDs. iOS now mirrors that design with
@@ -740,11 +755,37 @@ fresh selected count is below the expected selected count, existing selected
 tracks fill the deficit. Mixed/FACE_ONLY rendering ignores this path even if a
 caller supplies evidence, preserving exact-ID semantics for face privacy.
 
+The initial Phase 6 implementation is commit
+`f42c5a1ae512ac302eb35534b5bccabe7a776bef`. GitHub Actions `iOS Cloud CI`
+run `34314346309` (#34) completed successfully for that implementation before
+the phase-boundary naming cleanup. The boundary cleanup gives Phase 6 its own
+smoke marker, static verifier, and macOS gate; a subsequent Phase 6 cloud run is
+required before the phase is considered structurally closed.
+
+Phase 6 has a finite exit contract:
+
+- immutable selected/unselected privacy-class roots and bounded prototype decay;
+- conservative UNKNOWN -> SELECTED rendering without prototype poisoning;
+- FULL_BODY-only fresh-primary composition with mixed/FACE_ONLY exclusion;
+- independent `verify_ios_phase6.py` and `IOS_PRIVACY_CLASS_PHASE6` Simulator
+  evidence while the Phase 5 verifier remains unchanged by future Phase 6 work;
+- successful GitHub macOS/iOS Simulator gate and production iPhoneOS no-codesign
+  build/archive path.
+
+Anything beyond this list is a later Phase, not another Phase 6 lettered slice.
+
+Validation entrypoints are phase-scoped rather than cumulative by accident:
+`ios_phase3_smoke_main.dart`, `ios_phase4_smoke_main.dart`,
+`ios_phase5_smoke_main.dart`, and `ios_phase6_smoke_main.dart` each stop at their
+own phase boundary. `run_phase6_macos_gate.py` is the strongest GitHub hook and
+inherits the accepted earlier gates, while `run_phase5_macos_gate.py` remains
+independently runnable without executing Phase 6.
+
 This is a substantial FACE_ONLY closure, but it is still not a claim of complete
 Android `FaceOnlyPrivacyFrameProcessor` parity. Android's local ROI detector
 budgeting, landmark/keypoint center refinement, pixel-motion prediction,
 dormancy/reactivation probes, deeper fresh-primary stale-mask replacement, and
-mature diagnostics remain reference work for later Phase 5 slices.
+mature diagnostics remain reference work for later phases.
 Vision-vs-MediaPipe visual quality and sustained face
 inference cost also require real-iPhone evidence before release parity can be
 claimed.
@@ -761,11 +802,11 @@ the reference contract for:
 - conservative fallback coverage;
 - false-mask suppression.
 
-Phase 5A establishes the first Golden Trace schema for person ID, lifecycle
+Phase 5A established the first Golden Trace schema for person ID, lifecycle
 state, privacy-selection class, protection class, observation age/fallback
-behavior, and fail-closed outcomes. Later Phase 5 slices should extend the same
-fixture family with explicit face ROI, occlusion-group state, scene motion,
-predicted bbox, and mask coverage/hash as those Android subsystems are ported.
+behavior, and fail-closed outcomes. Future phases may extend the fixture family
+with explicit face ROI, occlusion-group state, scene motion, predicted bbox, and
+mask coverage/hash when those subsystems receive their own bounded phase.
 
 ## Verification lanes
 
@@ -778,6 +819,7 @@ python tools/release/verify_ios_phase2.py
 python tools/release/verify_ios_phase3.py
 python tools/release/verify_ios_phase4.py
 python tools/release/verify_ios_phase5.py
+python tools/release/verify_ios_phase6.py
 ```
 
 Flutter regression gate:

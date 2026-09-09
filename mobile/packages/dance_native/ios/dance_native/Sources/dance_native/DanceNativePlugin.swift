@@ -247,6 +247,19 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
           await MainActor.run { result(flutterError) }
         }
       }
+    case "runIOSPrivacyClassPhase6Smoke":
+      Task {
+        do {
+          let report = try IOSPrivacyClassPhase6Smoke.run()
+          await MainActor.run { result(report) }
+        } catch {
+          let flutterError = Self.flutterError(
+            from: error,
+            fallbackCode: "IOS_PRIVACY_CLASS_PHASE6_SMOKE_FAILED"
+          )
+          await MainActor.run { result(flutterError) }
+        }
+      }
     default:
       result(FlutterMethodNotImplemented)
     }

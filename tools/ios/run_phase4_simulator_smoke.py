@@ -15,6 +15,7 @@ BUNDLE_ID = "art.gaoge.dance"
 METAL_PASS_MARKER = "WOAH_METAL_PHASE3_SMOKE=PASS"
 EXPORT_PASS_MARKER = "WOAH_EXPORT_PHASE4_SMOKE=PASS"
 GOLDEN_TRACE_PASS_MARKER = "WOAH_GOLDEN_TRACE_PHASE5_SMOKE=PASS"
+PRIVACY_CLASS_PHASE6_PASS_MARKER = "WOAH_PRIVACY_CLASS_PHASE6_SMOKE=PASS"
 
 
 def run(
@@ -180,6 +181,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--app", type=Path, required=True)
     parser.add_argument("--require-phase5", action="store_true")
+    parser.add_argument("--require-phase6", action="store_true")
     args = parser.parse_args()
     app = args.app.resolve()
     if not app.is_dir():
@@ -198,8 +200,10 @@ def main() -> int:
         output = launched.stdout + launched.stderr
         print(output, end="")
         required_markers = [METAL_PASS_MARKER, EXPORT_PASS_MARKER]
-        if args.require_phase5:
+        if args.require_phase5 or args.require_phase6:
             required_markers.append(GOLDEN_TRACE_PASS_MARKER)
+        if args.require_phase6:
+            required_markers.append(PRIVACY_CLASS_PHASE6_PASS_MARKER)
         missing = [
             marker
             for marker in required_markers
@@ -211,8 +215,10 @@ def main() -> int:
                 f"{missing}; launch_exit={launched.returncode}"
             )
         print("IOS_SIMULATOR_PHASE4_EXPORT_SMOKE=PASS")
-        if args.require_phase5:
+        if args.require_phase5 or args.require_phase6:
             print("IOS_SIMULATOR_PHASE5_GOLDEN_TRACE_SMOKE=PASS")
+        if args.require_phase6:
+            print("IOS_SIMULATOR_PHASE6_PRIVACY_CLASS_SMOKE=PASS")
         return 0
     finally:
         # Teardown is deliberately best-effort. Phase 3 CI demonstrated that a

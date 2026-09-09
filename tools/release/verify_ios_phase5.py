@@ -134,14 +134,6 @@ def verify_ios_replay_surface() -> None:
     smoke = text(SOURCES / "IOSGoldenTracePhase5Smoke.swift", "IOSGoldenTracePhase5Smoke.swift")
     face_pipeline = text(SOURCES / "IOSFacePrivacyPipeline.swift", "IOSFacePrivacyPipeline.swift")
     face_smoke = text(SOURCES / "IOSFacePrivacyPhase5Smoke.swift", "IOSFacePrivacyPhase5Smoke.swift")
-    privacy_class_tracker = text(
-        SOURCES / "IOSPrivacyClassTemporalTracker.swift",
-        "IOSPrivacyClassTemporalTracker.swift",
-    )
-    privacy_class_smoke = text(
-        SOURCES / "IOSPrivacyClassPhase5Smoke.swift",
-        "IOSPrivacyClassPhase5Smoke.swift",
-    )
     renderer = text(SOURCES / "IOSMetalPreviewRenderer.swift", "IOSMetalPreviewRenderer.swift")
     export = text(SOURCES / "IOSExportPipeline.swift", "IOSExportPipeline.swift")
     coordinator = text(SOURCES / "IOSExportCoordinator.swift", "IOSExportCoordinator.swift")
@@ -150,7 +142,7 @@ def verify_ios_replay_surface() -> None:
     resources = text(SOURCES / "IOSGoldenTraceResources.swift", "IOSGoldenTraceResources.swift")
     plugin = text(SOURCES / "DanceNativePlugin.swift", "DanceNativePlugin.swift")
     podspec = text(ROOT / "mobile/packages/dance_native/ios/dance_native.podspec", "dance_native.podspec")
-    dart = text(ROOT / "mobile/app/lib/ios_metal_smoke_main.dart", "combined iOS smoke entrypoint")
+    dart = text(ROOT / "mobile/app/lib/ios_phase5_smoke_main.dart", "combined iOS smoke entrypoint")
 
     for token in (
         "struct IOSTemporalTrackSnapshot",
@@ -200,52 +192,8 @@ def verify_ios_replay_surface() -> None:
         "occlusionGraceRemaining == expectedGrace",
         "maxPredictionTravelRatio",
         "protected prediction escaped anchor bound",
-        "IOSPrivacyClassPhase5Smoke.run()",
-        '"privacyClass": privacyClassReport',
     ):
         check(token in smoke, f"Phase 5 Golden Trace replay missing: {token}")
-
-    for token in (
-        "enum IOSPrivacySelectionClass: String",
-        "struct IOSFreshPrivacyClassEvidence",
-        "final class IOSPrivacyClassTemporalTracker",
-        "minClassScore: Float32 = 0.42",
-        "minSingleClassScore: Float32 = 0.65",
-        "minClassMargin: Float32 = 0.12",
-        "maxPrototypeMisses: Int = 4",
-        "if !rootSeeded && !hardClassByDetectionIndex.isEmpty",
-        "rootClassByDetectionIndex = hardClassByDetectionIndex",
-        "classified[index] ?? .selected",
-        "conservativeUnknown: classified[index] == nil",
-        "prototype.reliability *= 0.72",
-        "prototype.misses > maxPrototypeMisses",
-        "bbox * 0.40 + mask * 0.40 + distanceScore * 0.20",
-        "buildWarpedMaskSupport(",
-        "reuseFrameSimilarityCache",
-        "lastSimilarityEvaluationCount",
-    ):
-        check(token in privacy_class_tracker, f"Phase 5I privacy-class tracker missing: {token}")
-
-    for token in (
-        "IOSPrivacyClassTemporalTracker()",
-        "hardClassByDetectionIndex: [0: .selected, 1: .unselected]",
-        "hardClassByDetectionIndex: [0: .unselected, 1: .selected]",
-        "let crossingFrames = [",
-        "IOSPrivacyClassTemporalTracker(minClassMargin: 0.20)",
-        "requireClass(merged, index: 0, selectionClass: .selected, unknown: true)",
-        "requireClass(entrant, index: 0, selectionClass: .selected, unknown: true)",
-        "one_frame_occlusion_return",
-        "reuseFrameSimilarityCache: true",
-        "reuseFrameSimilarityCache: false",
-        "cachedEvaluations == 12",
-        "uncachedEvaluations == 18",
-        "Frame similarity cache changed privacy-class decisions",
-        "freshFullBodyPrivacyEvidence: evidence",
-        "preferFreshFullBodyClassPrimary: true",
-        "FULL_BODY-only fresh privacy-class primary rendered the wrong class",
-        "Mixed/FACE_ONLY composition consumed non-identity FULL_BODY class evidence",
-    ):
-        check(token in privacy_class_smoke, f"Phase 5I deterministic smoke missing: {token}")
 
     for token in (
         "import Vision",
@@ -387,15 +335,8 @@ def verify_ios_replay_surface() -> None:
         "faceRect(",
         "faceRegions.keys.filter({ $0 < 0 }).sorted()",
         "regionsToRender.append(region)",
-        "freshFullBodyPrivacyEvidence: [IOSFreshPrivacyClassEvidence] = []",
-        "preferFreshFullBodyClassPrimary: Bool = false",
-        "let freshSyntheticBase = Int.min / 4",
-        "evidence.selectionClass == .selected",
-        "&& faceOnlyIds.isEmpty",
-        "let fallbackDeficit = max(0, fullBodyIds.count - freshSelectedCount)",
-        "privacyPersons = freshPersons + fallbackSelectedArray",
     ):
-        check(token in renderer, f"Phase 5C-I Metal/privacy rendering missing: {token}")
+        check(token in renderer, f"Phase 5C-G Metal FACE_ONLY rendering missing: {token}")
 
     for token in (
         "IOSFacePrivacyTemporalResolver()",
@@ -407,17 +348,8 @@ def verify_ios_replay_surface() -> None:
         "preprocess: inference.preprocess",
         "freshPrivacyClassEvidence: tracker.facePrivacyClassEvidence()",
         "faceRegions: faceRegions",
-        "let privacyClassTracker = !fullBodyIds.isEmpty && faceOnlyIds.isEmpty",
-        "IOSPrivacyClassTemporalTracker()",
-        "var privacyClassHardRootsSent = false",
-        "let rootPersons = IOSPreviewIdentityMatcher.assign(",
-        "hardRoots[index] = fullBodyIds.contains(rootPersons[index].id)",
-        "privacyClassHardRootsSent = true",
-        "freshFullBodyPrivacyEvidence = privacyClassTracker.update(",
-        "freshFullBodyPrivacyEvidence: freshFullBodyPrivacyEvidence",
-        "preferFreshFullBodyClassPrimary: privacyClassTracker != nil",
     ):
-        check(token in export, f"Phase 5C-I export privacy wiring missing: {token}")
+        check(token in export, f"Phase 5C-G export FACE_ONLY wiring missing: {token}")
     check(
         "faceLocatorProvider: IOSExportPipeline.FaceLocatorProvider? = nil" in coordinator
         and "faceLocatorProvider: faceLocatorProvider" in coordinator,
@@ -663,52 +595,6 @@ def verify_android_reference_boundary() -> None:
     ):
         check(test_name in class_continuity_test, f"Android FACE_ONLY class-continuity regression test missing: {test_name}")
 
-    privacy_class_tracker = text(
-        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/com/danceanon/native/privacy/PrivacyClassTemporalTracker.kt",
-        "Android PrivacyClassTemporalTracker",
-    )
-    for token in (
-        "private val minClassScore: Float = 0.42f",
-        "private val minSingleClassScore: Float = 0.65f",
-        "private val minClassMargin: Float = 0.12f",
-        "private val maxPrototypeMisses: Int = 4",
-        "if (!rootSeeded && hardClassByDetectionIndex.isNotEmpty())",
-        "classified[index] ?: PrivacySelectionClass.SELECTED",
-        "conservativeUnknown = !classified.containsKey(index)",
-        "prototype.reliability *= 0.72f",
-        "0.40f * bboxIoU + 0.40f * maskIoU + 0.20f * distanceScore",
-        "TrackManager.computeWarpedMaskIoU(",
-        "runtime TrackManager IDs are not privacy-class truth",
-    ):
-        check(token in privacy_class_tracker, f"Android privacy-class tracker reference drifted: {token}")
-    privacy_class_test = text(
-        ROOT / "mobile/packages/dance_native/android/src/test/kotlin/com/danceanon/native/privacy/PrivacyClassTemporalTrackerTest.kt",
-        "Android PrivacyClassTemporalTrackerTest",
-    )
-    for test_name in (
-        "hardSeedsAllowFreshClassInferenceOnFollowingFrame",
-        "selectedAndUnselectedCrossWithoutExactIdentityCommits",
-        "mergedDetectionBetweenClassesRemainsUnknown",
-        "farNewEntrantWithoutHardEvidenceStaysUnknown",
-        "runtimeHardLabelsCannotOverwriteInitialPrivacyRoots",
-        "oneFrameOcclusionRetainsUnselectedClassOnReturn",
-        "frameSimilarityCachePreservesDecisionsAndEliminatesDuplicateEvaluations",
-    ):
-        check(test_name in privacy_class_test, f"Android privacy-class regression test missing: {test_name}")
-
-    export_pipeline = text(
-        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/com/danceanon/native/pipeline/ExportPipeline.kt",
-        "Android ExportPipeline",
-    )
-    for token in (
-        "shouldUseFreshFullBodyClassPrimary(",
-        "fullBodyPersonIds.isNotEmpty() && faceOnlyPersonIds.isEmpty()",
-        "Mixed / FACE_ONLY-only composition: never let",
-        "non-identity temporal class evidence become the",
-    ):
-        check(token in export_pipeline, f"Android FULL_BODY-only class-primary boundary drifted: {token}")
-
-
 def verify_cloud_gate() -> None:
     simulator = text(ROOT / "tools/ios/run_phase4_simulator_smoke.py", "hardened Simulator runner")
     macos = text(ROOT / "tools/ios/run_phase5_macos_gate.py", "Phase 5 macOS gate")
@@ -725,14 +611,18 @@ def verify_cloud_gate() -> None:
         "compile_phase3_metal.py",
         '"iphoneos"',
         '"iphonesimulator"',
-        "ios_metal_smoke_main.dart",
+        "ios_phase5_smoke_main.dart",
         "run_phase4_simulator_smoke.py",
         '"--require-phase5"',
     ):
         check(token in macos, f"Phase 5 macOS gate missing inherited/required lane: {token}")
     check(
-        "run_phase5_macos_gate.py" in phase1 and "GITHUB_ACTIONS" in phase1,
-        "Existing GitHub iOS workflow hook must invoke the strongest Phase 5 Apple-only gate",
+        (
+            "run_phase5_macos_gate.py" in phase1
+            or "run_phase6_macos_gate.py" in phase1
+        )
+        and "GITHUB_ACTIONS" in phase1,
+        "Existing GitHub iOS workflow hook must invoke Phase 5 or a stronger Apple-only gate",
     )
 
 

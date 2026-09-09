@@ -85,7 +85,7 @@ def main() -> int:
         "--simulator",
         "--debug",
         "--target",
-        "lib/ios_metal_smoke_main.dart",
+        "lib/ios_phase4_smoke_main.dart",
     ], cwd=APP, timeout=1800)
     run([
         sys.executable,
