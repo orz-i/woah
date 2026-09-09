@@ -902,7 +902,7 @@ the real `format=litert` exporter. Its exception arose while `litert-torch`
 imported TorchAO's PT2E stack. This disproved the remaining assumption that the
 canonical exporter inherited the application's root Torch `2.6.0` lock:
 TorchAO `0.18.0` targets newer PyTorch APIs, while the 2026-08-27 provenance
-cutoff already had PyTorch `2.13.0`, torchvision `0.28.0`, and NumPy `2.5.2`
+cutoff already had PyTorch `2.13.0`, torchvision `0.28.0`, and NumPy `2.4.6`
 available. Phase 7 model production is therefore now explicitly isolated in a
 temporary Python 3.11 venv with the CPU PyTorch pair and cutoff-pinned LiteRT
 stack. The Android/application root environment is not mutated or treated as

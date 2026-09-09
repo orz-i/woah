@@ -190,7 +190,7 @@ def verify_model_contract() -> None:
         ("torch_wheel_sha256", "6746dbcbeb526eb61330b76b41ff1b4eb848951103a892eeb080dfa2b264667b"),
         ("torchvision_version", "0.28.0+cpu"),
         ("torchvision_wheel_sha256", "1dad604dfc0177ecebe0891bd9701fe2c62ec3f7819a247be541b3fb6effee99"),
-        ("numpy_version", "2.5.2"),
+        ("numpy_version", "2.4.6"),
         ("litert_torch_version", "0.9.4"),
         ("ai_edge_litert_version", "2.2.0"),
         ("ai_edge_quantizer_version", "0.9.0"),
