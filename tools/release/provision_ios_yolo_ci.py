@@ -552,7 +552,6 @@ def reproduce_model(contract: dict, checkpoint: Path, exporter_python: Path, tem
     target = ROOT / contract["source"]
     target.parent.mkdir(parents=True, exist_ok=True)
     print("[iOS CI] Reproducing YOLO11n segmentation with Ultralytics LiteRT export...", flush=True)
-    verify_checkpoint(checkpoint, contract)
 
     reproducibility = contract["reproducibility"]
     environment = reproducibility["environment"]
@@ -656,6 +655,10 @@ def reproduce_model(contract: dict, checkpoint: Path, exporter_python: Path, tem
         export_candidate(str(cpu_capability), f"candidate-{cpu_capability}")
         for cpu_capability in environment["cpu_dispatch_candidates"]
     ]
+    # The first isolated worker owns checkpoint materialization on a clean
+    # runner and validates it before export. Re-check it in the parent only
+    # after the candidate workers have had that opportunity.
+    verify_checkpoint(checkpoint, contract)
     expected_core_size = int(reproducibility["expected_core_size_bytes"])
     expected_core_hash = str(reproducibility["expected_core_sha256"])
     exact = [

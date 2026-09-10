@@ -972,6 +972,15 @@ both candidate hashes and constant diagnostics in the same run. This is a
 finite reproducibility experiment, not a new product phase or an acceptance
 tolerance.
 
+The first Run #11 attempt (`34425316282`) did not reach either candidate. A
+parent-side checkpoint verification had been moved ahead of the isolated
+worker even though the worker is responsible for materializing the ignored
+`yolo11n-seg.pt` on a clean runner. The worker still verifies the checkpoint
+size/SHA before every export; the parent now performs its redundant verification
+after the candidate workers have had the documented materialization
+opportunity. This is an ordering correction only and does not change the
+checkpoint, core, or Release acceptance identities.
+
 Two subsequent legacy `iOS Cloud CI` runs provide intermediate Apple-only
 evidence while the independent Phase 7 Release workflow remains intentionally
 blocked on protected-path installation. Run `34334830050` (#40), job
