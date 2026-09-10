@@ -9,7 +9,7 @@ import 'package:go_router/go_router.dart';
 
 void main() {
   testWidgets(
-    'success result uses centered share action with four surrounding actions',
+    'success result prioritizes share with only user-facing surrounding actions',
     (tester) async {
       final repository = _ResultRepository();
       final container = ProviderContainer(
@@ -38,7 +38,7 @@ void main() {
       expect(find.byKey(const ValueKey('result-share-action')), findsOneWidget);
       expect(find.byKey(const ValueKey('result-next-action')), findsOneWidget);
       expect(find.byKey(const ValueKey('result-open-action')), findsOneWidget);
-      expect(find.byKey(const ValueKey('result-copy-action')), findsOneWidget);
+      expect(find.byKey(const ValueKey('result-copy-action')), findsNothing);
       expect(
         find.byKey(const ValueKey('result-diagnostics-action')),
         findsOneWidget,
@@ -48,14 +48,14 @@ void main() {
         find.byKey(const ValueKey('result-share-action')),
       );
       expect(
-        tester.getCenter(find.byKey(const ValueKey('result-open-action'))).dy,
-        lessThan(shareCenter.dy),
+        tester.getCenter(find.byKey(const ValueKey('result-open-action'))).dx,
+        greaterThan(shareCenter.dx),
       );
       expect(
         tester
             .getCenter(find.byKey(const ValueKey('result-diagnostics-action')))
-            .dx,
-        greaterThan(shareCenter.dx),
+            .dy,
+        lessThan(shareCenter.dy),
       );
       expect(
         tester.getCenter(find.byKey(const ValueKey('result-next-action'))).dx,
@@ -65,7 +65,7 @@ void main() {
   );
 
   testWidgets(
-    'success result keeps share open copy diagnostics and next actions',
+    'success result keeps share open diagnostics and next actions',
     (tester) async {
       final repository = _ResultRepository();
       final container = ProviderContainer(
@@ -95,9 +95,7 @@ void main() {
       await tester.pump();
       expect(repository.openedUris, contains('content://gallery/result.mp4'));
 
-      await tester.tap(find.byKey(const ValueKey('result-copy-action')));
-      await tester.pump(const Duration(milliseconds: 300));
-      expect(tester.takeException(), isNull);
+      expect(find.byKey(const ValueKey('result-copy-action')), findsNothing);
 
       await tester.tap(find.byKey(const ValueKey('result-diagnostics-action')));
       await tester.pump();
@@ -109,6 +107,40 @@ void main() {
       expect(router.routerDelegate.currentConfiguration.uri.path, '/');
     },
   );
+
+  testWidgets('success result remains stable on a compact phone screen', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final repository = _ResultRepository();
+    final container = ProviderContainer(
+      overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    final router = _buildRouter(_completedState());
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('result-share-action')), findsOneWidget);
+    expect(find.byKey(const ValueKey('result-next-action')), findsOneWidget);
+    expect(find.byKey(const ValueKey('result-open-action')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 GoRouter _buildRouter(ExportState state) {

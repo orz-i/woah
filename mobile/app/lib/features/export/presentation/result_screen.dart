@@ -37,20 +37,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     });
   }
 
-  Future<void> _copySavedUri() async {
-    if (!_isSaved || _savedUri == null || _savedUri!.isEmpty) {
-      await _saveToGallery();
-      if (!_isSaved || _savedUri == null || _savedUri!.isEmpty) return;
-    }
-
-    HapticFeedback.lightImpact();
-    await Clipboard.setData(ClipboardData(text: _savedUri!));
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('保存地址已复制')));
-  }
-
   Future<void> _openSavedVideo() async {
     if (_isOpening) return;
     if (!_isSaved || _savedUri == null || _savedUri!.isEmpty) {
@@ -176,7 +162,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             children: [
               SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(18, 14, 18, 190),
+                padding: EdgeInsets.fromLTRB(
+                  18,
+                  14,
+                  18,
+                  kDebugMode ? 176 : 116,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -222,14 +213,14 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final shareEnabled = !_isSharing && !_isSaving && _saveError == null;
     return Center(
       child: SizedBox(
-        width: 286,
-        height: 166,
+        width: 260,
+        height: kDebugMode ? 150 : 84,
         child: Stack(
           alignment: Alignment.bottomCenter,
           children: [
             Positioned(
-              left: 10,
-              bottom: 16,
+              left: 24,
+              bottom: 10,
               child: _ResultSatelliteAction(
                 key: const ValueKey('result-next-action'),
                 icon: Icons.add_rounded,
@@ -241,8 +232,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               ),
             ),
             Positioned(
-              left: 54,
-              bottom: 88,
+              right: 24,
+              bottom: 10,
               child: _ResultSatelliteAction(
                 key: const ValueKey('result-open-action'),
                 icon: Icons.folder_open_rounded,
@@ -250,20 +241,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 onTap: _isOpening ? null : _openSavedVideo,
               ),
             ),
-            Positioned(
-              right: 54,
-              bottom: 88,
-              child: _ResultSatelliteAction(
-                key: const ValueKey('result-copy-action'),
-                icon: Icons.link_rounded,
-                tooltip: '复制保存地址',
-                onTap: _isSaving ? null : _copySavedUri,
-              ),
-            ),
             if (kDebugMode)
               Positioned(
-                right: 10,
-                bottom: 16,
+                bottom: 94,
                 child: _ResultSatelliteAction(
                   key: const ValueKey('result-diagnostics-action'),
                   icon: Icons.bug_report_outlined,

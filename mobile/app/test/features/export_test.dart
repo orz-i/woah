@@ -241,7 +241,7 @@ void main() {
   );
 
   testWidgets(
-    'active export uses immersive circular cancel control without processing header',
+    'active export uses a single circular cancel control without processing header',
     (tester) async {
       final repository = _PreviewToggleRepository();
       addTearDown(repository.dispose);
@@ -261,10 +261,12 @@ void main() {
 
       expect(find.text('正在保护舞段'), findsNothing);
       expect(find.text('取消处理'), findsNothing);
-      expect(find.byKey(ImmersiveFlowAction.nextControlKey), findsOneWidget);
+      expect(find.byKey(const ValueKey('export-cancel-action')), findsOneWidget);
+      expect(find.byKey(ImmersiveFlowAction.nextControlKey), findsNothing);
       expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+      expect(find.bySemanticsLabel('取消处理'), findsOneWidget);
 
-      await tester.tap(find.byKey(ImmersiveFlowAction.nextControlKey));
+      await tester.tap(find.byKey(const ValueKey('export-cancel-action')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 250));
 
@@ -274,7 +276,7 @@ void main() {
   );
 
   testWidgets(
-    'dragging active export action upward opens the existing cancel confirmation',
+    'active export cancel action has no hidden drag-return target',
     (tester) async {
       final repository = _PreviewToggleRepository();
       addTearDown(repository.dispose);
@@ -292,20 +294,18 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      final action = find.byKey(ImmersiveFlowAction.nextControlKey);
+      final action = find.byKey(const ValueKey('export-cancel-action'));
       final gesture = await tester.startGesture(tester.getCenter(action));
       await tester.pump(const Duration(milliseconds: 650));
       await gesture.moveBy(const Offset(0, -108));
       await tester.pump();
 
-      expect(find.byKey(ImmersiveFlowAction.exitTargetKey), findsOneWidget);
-      expect(find.bySemanticsLabel('松开返回'), findsOneWidget);
+      expect(find.byKey(ImmersiveFlowAction.exitTargetKey), findsNothing);
+      expect(find.bySemanticsLabel('松开返回'), findsNothing);
 
-      await gesture.up();
+      await gesture.cancel();
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 250));
-
-      expect(find.text('取消处理？'), findsOneWidget);
+      expect(find.text('取消处理？'), findsNothing);
     },
   );
 
@@ -361,7 +361,7 @@ void main() {
   );
 
   testWidgets(
-    'failed export satellite actions keep copy and diagnostics available',
+    'failed export debug actions keep copy and diagnostics available',
     (tester) async {
       final repository = _PreviewToggleRepository();
       addTearDown(repository.dispose);

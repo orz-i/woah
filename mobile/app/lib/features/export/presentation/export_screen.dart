@@ -8,7 +8,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
-import '../../../core/widgets/immersive_flow_action.dart';
 import '../../../repositories/native_processing_repository.dart';
 import '../domain/export_state.dart';
 import 'export_controller.dart';
@@ -46,11 +45,61 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   static const _failedBackKey = ValueKey('export-failed-back');
   static const _failedCopyKey = ValueKey('export-failed-copy');
   static const _failedDiagnosticsKey = ValueKey('export-failed-diagnostics');
+  static const _cancelActionKey = ValueKey('export-cancel-action');
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _startExportJob());
+  }
+
+  Widget _buildCancelAction(
+    ExportController controller, {
+    required bool enabled,
+  }) {
+    return Center(
+      child: Semantics(
+        button: true,
+        enabled: enabled,
+        label: enabled ? '取消处理' : '处理暂不可取消',
+        child: Tooltip(
+          message: enabled ? '取消处理' : '处理暂不可取消',
+          child: Material(
+            key: _cancelActionKey,
+            color: Colors.transparent,
+            shape: const CircleBorder(),
+            child: InkWell(
+              onTap: enabled ? () => _confirmCancel(controller) : null,
+              customBorder: const CircleBorder(),
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 120),
+                opacity: enabled ? 1 : 0.42,
+                child: Ink(
+                  width: 62,
+                  height: 62,
+                  decoration: const BoxDecoration(
+                    gradient: AppTheme.coralActionGradient,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0x38F44848),
+                        blurRadius: 20,
+                        offset: Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.close_rounded,
+                    color: Colors.white,
+                    size: 30,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _startExportJob() {
@@ -107,7 +156,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                         24,
                         18,
                         24,
-                        isFailed ? 180 : 112,
+                        isFailed && kDebugMode ? 180 : 112,
                       ),
                       child: Column(
                         children: [
@@ -119,8 +168,10 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                           if (!isFailed) ...[
                             const SizedBox(height: 22),
                             _buildProgressCard(state),
-                            const SizedBox(height: 14),
-                            _buildBackgroundHint(),
+                            if (Platform.isAndroid) ...[
+                              const SizedBox(height: 14),
+                              _buildBackgroundHint(),
+                            ],
                           ],
                         ],
                       ),
@@ -140,15 +191,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                   left: 0,
                   right: 0,
                   bottom: 8,
-                  child: ImmersiveFlowAction(
-                    enabled: isActive,
-                    actionIcon: Icons.close_rounded,
-                    nextSemanticsLabel: '取消处理，长按并上拉可返回',
-                    onNext: () => _confirmCancel(controller),
-                    onReturn: () => isActive
-                        ? _confirmCancel(controller)
-                        : context.pop(),
-                  ),
+                  child: _buildCancelAction(controller, enabled: isActive),
                 ),
             ],
           ),
@@ -161,7 +204,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     return Center(
       child: SizedBox(
         width: 290,
-        height: 160,
+        height: kDebugMode ? 160 : 84,
         child: Stack(
           alignment: Alignment.bottomCenter,
           children: [
@@ -175,16 +218,17 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                 onTap: () => context.pop(),
               ),
             ),
-            Positioned(
-              left: 121,
-              bottom: 94,
-              child: _FailureSatelliteAction(
-                key: _failedCopyKey,
-                icon: Icons.content_copy_rounded,
-                tooltip: '复制错误详情',
-                onTap: () => _copyError(state.errorMessage),
+            if (kDebugMode)
+              Positioned(
+                left: 121,
+                bottom: 94,
+                child: _FailureSatelliteAction(
+                  key: _failedCopyKey,
+                  icon: Icons.content_copy_rounded,
+                  tooltip: '复制错误详情',
+                  onTap: () => _copyError(state.errorMessage),
+                ),
               ),
-            ),
             if (kDebugMode)
               Positioned(
                 right: 26,
