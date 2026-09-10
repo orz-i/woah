@@ -152,20 +152,27 @@ gate. It must remain separate from `verify_ios_phase5.py` and
 
 1. runs the Phase 0-7 static verifiers;
 2. inherits the accepted Phase 6 macOS/Simulator gate;
-3. builds the Phase 7 combined smoke entrypoint in **Release** mode, requires
-   the unchanged Phase 3/4/5/6 markers again, then requires the Phase 7 media
+3. builds the Phase 7 combined smoke entrypoint for a **Debug iOS Simulator**,
+   requires the unchanged Phase 3/4/5/6 markers again, then requires the Phase 7 media
    regression marker for no-audio, injected-failure cleanup,
    preferred-transform orientation, and VFR timestamp rebasing;
-4. builds and launches the production `lib/main.dart` Simulator app in Release
-   mode as a startup/crash smoke;
+4. builds and launches the production `lib/main.dart` Debug Simulator app as a
+   startup/crash smoke;
 5. builds production iPhoneOS in Release mode with `--no-codesign`;
 6. audits the built `Runner.app` and writes `phase7_release_audit.json`;
 7. archives the exact audited app for artifact upload.
 
+Flutter 3.44.2 does not support Release-mode iOS Simulator builds. Simulator
+steps are therefore Apple-runtime evidence only. The iPhoneOS no-codesign build
+is the actual Release-configuration compilation gate, and its bundle audit must
+prove `WoahEnableSmokeHooks` is disabled. Release runtime behavior remains on
+the physical-device acceptance checklist rather than being inferred from a
+Debug Simulator.
+
 The Phase 1 verifier historically auto-launches the Phase 6 Apple gate whenever
 it detects GitHub Actions on macOS. Phase 7 suppresses that inherited auto-hook
-only for its Phase 1 **static-verifier subprocess**, then explicitly executes the
-Phase 6 Apple gate once. This avoids duplicate expensive Simulator/Metal/media
+for both Phase 1 verifier invocations, then explicitly executes the Phase 6
+Apple gate once. This avoids duplicate expensive Simulator/Metal/media
 execution without weakening or bypassing any accepted gate.
 
 The dedicated GitHub workflow is `.github/workflows/ios-release.yml`. Its
@@ -180,10 +187,12 @@ lane.
 
 The machine-readable matrix lives at
 `tools/ios/phase7_regression_matrix.json`. It deliberately distinguishes
-release-mode CI evidence from deferred physical-device evidence.
+inherited Phase 6 Simulator runtime evidence, Phase 7 Simulator runtime
+evidence, iPhoneOS Release-build evidence, and deferred physical-device
+evidence.
 
-Release-mode Simulator/macOS must cover, either directly in the Phase 7 lane or
-by rerunning the accepted deterministic/real-media smoke under Release:
+The Phase 7 macOS lane must cover the following either through the Debug
+Simulator runtime smoke or the audited iPhoneOS Release build:
 
 - FULL_BODY export;
 - FACE_ONLY export;
@@ -200,9 +209,8 @@ by rerunning the accepted deterministic/real-media smoke under Release:
 - H.264 / 1920x1080 / 30fps output contract.
 
 All matrix cases remain on the physical-device checklist even when they also
-have Release Simulator evidence. Phase 7 does not pretend deterministic
-Simulator media checks are equivalent to visual playback on an iPhone.
-iPhone.
+have Simulator runtime evidence. Phase 7 does not pretend deterministic Debug
+Simulator media checks are equivalent to Release playback on an iPhone.
 
 ## Physical-device acceptance package
 
@@ -233,7 +241,7 @@ Phase 7 is implementation-complete only when all of the following are true:
 2. Local host-independent Phase 0-7 static verification, Flutter tests/analyze,
    Python compilation, and `git diff --check` pass without weakening Android.
 3. The dedicated GitHub macOS Phase 7 Release workflow succeeds, including
-   Release regression Simulator smoke, production Release Simulator startup,
+   Debug-Simulator regression smoke, production-entrypoint Simulator startup,
    Release no-codesign iPhoneOS build, bundle audit, archive, and artifact
    upload.
 4. The produced audit manifest records commit/version/model/dependency identity

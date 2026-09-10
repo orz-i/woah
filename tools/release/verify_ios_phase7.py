@@ -436,6 +436,17 @@ def verify_release_regression_contract() -> None:
         all(item.get("physical_device_required") is True for item in cases if isinstance(item, dict)),
         "Every Phase 7 release regression case must remain on the physical-device acceptance checklist",
     )
+    phase6_simulator_cases = {
+        "full_body_real_mp4",
+        "face_only_real_mp4",
+        "mixed_full_body_face_only",
+        "crossing_occlusion_reacquisition",
+        "trim",
+        "audio_preservation",
+        "cancel_cleanup",
+        "common_cfr_inputs",
+        "h264_1080p30_output",
+    }
     phase7_simulator_cases = {
         "no_audio_source",
         "failure_cleanup",
@@ -443,10 +454,15 @@ def verify_release_regression_contract() -> None:
         "vfr_timestamp_handling",
     }
     for item in cases:
+        if isinstance(item, dict) and item.get("id") in phase6_simulator_cases:
+            check(
+                item.get("release_ci_evidence") == "phase6_simulator_runtime_smoke",
+                f"{item.get('id')} must be backed by the inherited Phase 6 Simulator runtime smoke",
+            )
         if isinstance(item, dict) and item.get("id") in phase7_simulator_cases:
             check(
-                item.get("release_ci_evidence") == "phase7_release_simulator_smoke",
-                f"{item.get('id')} must be backed by the Phase 7 Release Simulator smoke",
+                item.get("release_ci_evidence") == "phase7_simulator_runtime_smoke",
+                f"{item.get('id')} must be backed by the Phase 7 Simulator runtime smoke",
             )
 
     smoke = text(SOURCES / "IOSExportPhase4Smoke.swift", "real-media export smoke")
@@ -540,13 +556,12 @@ def verify_release_tooling() -> None:
 
     production_smoke = text(
         ROOT / "tools/ios/run_phase7_production_simulator_smoke.py",
-        "production Release Simulator smoke",
+        "production entrypoint Simulator smoke",
     )
     for token in (
         "verify_production_bundle_contract(app)",
-        "WoahEnableSmokeHooks",
-        "Production Release Simulator must not enable iOS smoke MethodChannel hooks",
-        "IOS_PHASE7_PRODUCTION_SIMULATOR_SMOKE_HOOKS=DISABLED",
+        "Flutter supports only Debug runtime builds on iOS Simulator",
+        "IOS_PHASE7_PRODUCTION_SIMULATOR_ENTRYPOINT=VERIFIED",
         '"--console"',
         "IOS_PHASE7_PRODUCTION_SIMULATOR_LIVENESS=PASS",
         "boot_iphone(app)",
@@ -558,13 +573,15 @@ def verify_release_tooling() -> None:
     for token in (
         "for phase in range(0, 8)",
         'overrides = {"GITHUB_ACTIONS": "false"} if phase == 1 else None',
-        "enable_smoke_hooks=True",
+        'env_overrides={"GITHUB_ACTIONS": "false"}',
         "enable_smoke_hooks=False",
         "WOAH_ENABLE_SMOKE_HOOKS",
         "run_phase6_macos_gate.py",
         '"--enforce-lockfile"',
         '"--simulator"',
+        '"--debug"',
         '"--release"',
+        "Flutter does not support Release mode on Simulator",
         "lib/ios_phase7_smoke_main.dart",
         "run_phase7_simulator_smoke.py",
         "lib/main.dart",
@@ -576,18 +593,22 @@ def verify_release_tooling() -> None:
         "implementation complete pending physical-device acceptance",
     ):
         check(token in macos, f"Phase 7 macOS Release gate missing: {token}")
+    check(
+        re.search(r'"--simulator"\s*,\s*"--release"', macos) is None,
+        "Flutter iOS Simulator builds must not request unsupported Release mode",
+    )
 
-    simulator = text(ROOT / "tools/ios/run_phase7_simulator_smoke.py", "Phase 7 Release Simulator runner")
+    simulator = text(ROOT / "tools/ios/run_phase7_simulator_smoke.py", "Phase 7 Simulator runtime runner")
     for token in (
         "WOAH_METAL_PHASE3_SMOKE=PASS",
         "WOAH_EXPORT_PHASE4_SMOKE=PASS",
         "WOAH_GOLDEN_TRACE_PHASE5_SMOKE=PASS",
         "WOAH_PRIVACY_CLASS_PHASE6_SMOKE=PASS",
         "WOAH_RELEASE_PHASE7_SMOKE=PASS",
-        "IOS_SIMULATOR_PHASE7_RELEASE_REGRESSION=PASS",
+        "IOS_SIMULATOR_PHASE7_RUNTIME_REGRESSION=PASS",
         "boot_iphone(app)",
     ):
-        check(token in simulator, f"Phase 7 Release Simulator runner missing: {token}")
+        check(token in simulator, f"Phase 7 Simulator runtime runner missing: {token}")
 
     workflow_template = ROOT / "tools/ios/ios-release.phase7.workflow.yml"
     workflow = text(workflow_template, "Phase 7 GitHub workflow template")

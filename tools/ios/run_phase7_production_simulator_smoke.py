@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Launch the production Release entrypoint and require short Simulator liveness."""
+"""Launch the production app entrypoint and require short Simulator liveness.
+
+Flutter supports only Debug runtime builds on iOS Simulator. Release-specific
+smoke-hook fail-closed behavior is therefore audited on the iPhoneOS Release
+bundle, not inferred from this Simulator launch.
+"""
 
 from __future__ import annotations
 
@@ -13,16 +18,6 @@ from pathlib import Path
 from run_phase4_simulator_smoke import BUNDLE_ID, boot_iphone, safe_run
 
 
-def truthy_plist_value(value: object) -> bool:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, (int, float)):
-        return bool(value)
-    if isinstance(value, str):
-        return value.strip().lower() in {"1", "true", "yes", "on"}
-    return False
-
-
 def verify_production_bundle_contract(app: Path) -> None:
     info_path = app / "Info.plist"
     if not info_path.is_file():
@@ -31,9 +26,7 @@ def verify_production_bundle_contract(app: Path) -> None:
         info = plistlib.load(stream)
     if str(info.get("CFBundleIdentifier", "")) != BUNDLE_ID:
         raise SystemExit("Production Simulator bundle ID does not match art.gaoge.dance")
-    if truthy_plist_value(info.get("WoahEnableSmokeHooks")):
-        raise SystemExit("Production Release Simulator must not enable iOS smoke MethodChannel hooks")
-    print("IOS_PHASE7_PRODUCTION_SIMULATOR_SMOKE_HOOKS=DISABLED")
+    print("IOS_PHASE7_PRODUCTION_SIMULATOR_ENTRYPOINT=VERIFIED")
 
 
 def main() -> int:
@@ -70,7 +63,7 @@ def main() -> int:
             if stdout:
                 print(stdout, end="" if stdout.endswith("\n") else "\n")
             raise SystemExit(
-                "Production Release Simulator process exited before the liveness window: "
+                "Production Simulator process exited before the liveness window: "
                 f"launch_exit={process.returncode}"
             )
         finally:

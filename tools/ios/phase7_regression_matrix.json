@@ -5,67 +5,67 @@
   "cases": [
     {
       "id": "full_body_real_mp4",
-      "release_ci_evidence": "phase6_release_simulator_smoke",
+      "release_ci_evidence": "phase6_simulator_runtime_smoke",
       "physical_device_required": true
     },
     {
       "id": "face_only_real_mp4",
-      "release_ci_evidence": "phase6_release_simulator_smoke",
+      "release_ci_evidence": "phase6_simulator_runtime_smoke",
       "physical_device_required": true
     },
     {
       "id": "mixed_full_body_face_only",
-      "release_ci_evidence": "phase6_release_simulator_smoke",
+      "release_ci_evidence": "phase6_simulator_runtime_smoke",
       "physical_device_required": true
     },
     {
       "id": "crossing_occlusion_reacquisition",
-      "release_ci_evidence": "phase6_release_simulator_smoke",
+      "release_ci_evidence": "phase6_simulator_runtime_smoke",
       "physical_device_required": true
     },
     {
       "id": "trim",
-      "release_ci_evidence": "phase6_release_simulator_smoke",
+      "release_ci_evidence": "phase6_simulator_runtime_smoke",
       "physical_device_required": true
     },
     {
       "id": "audio_preservation",
-      "release_ci_evidence": "phase6_release_simulator_smoke",
+      "release_ci_evidence": "phase6_simulator_runtime_smoke",
       "physical_device_required": true
     },
     {
       "id": "no_audio_source",
-      "release_ci_evidence": "phase7_release_simulator_smoke",
+      "release_ci_evidence": "phase7_simulator_runtime_smoke",
       "physical_device_required": true
     },
     {
       "id": "cancel_cleanup",
-      "release_ci_evidence": "phase6_release_simulator_smoke",
+      "release_ci_evidence": "phase6_simulator_runtime_smoke",
       "physical_device_required": true
     },
     {
       "id": "failure_cleanup",
-      "release_ci_evidence": "phase7_release_simulator_smoke",
+      "release_ci_evidence": "phase7_simulator_runtime_smoke",
       "physical_device_required": true
     },
     {
       "id": "portrait_landscape_transform",
-      "release_ci_evidence": "phase7_release_simulator_smoke",
+      "release_ci_evidence": "phase7_simulator_runtime_smoke",
       "physical_device_required": true
     },
     {
       "id": "common_cfr_inputs",
-      "release_ci_evidence": "phase6_release_simulator_smoke",
+      "release_ci_evidence": "phase6_simulator_runtime_smoke",
       "physical_device_required": true
     },
     {
       "id": "vfr_timestamp_handling",
-      "release_ci_evidence": "phase7_release_simulator_smoke",
+      "release_ci_evidence": "phase7_simulator_runtime_smoke",
       "physical_device_required": true
     },
     {
       "id": "h264_1080p30_output",
-      "release_ci_evidence": "phase6_release_simulator_smoke",
+      "release_ci_evidence": "phase6_simulator_runtime_smoke",
       "physical_device_required": true
     }
   ]

@@ -108,25 +108,28 @@ def main() -> int:
     # A release artifact without the production model is not release-ready.
     # The workflow provisions the canonical source model before this gate.
     run([sys.executable, "tools/release/sync_ios_yolo_model.py", "--verify-only"])
-    run([sys.executable, "tools/release/verify_ios_phase1.py", "--require-model"])
+    run(
+        [sys.executable, "tools/release/verify_ios_phase1.py", "--require-model"],
+        env_overrides={"GITHUB_ACTIONS": "false"},
+    )
 
     commit = head()
-    write_release_identity(commit, enable_smoke_hooks=True)
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
 
     run(["flutter", "config", "--enable-swift-package-manager"], cwd=APP)
     run(["flutter", "pub", "get", "--enforce-lockfile"], cwd=APP)
 
-    # Re-run the complete Phase 3-6 stack plus the Phase 7-owned media
-    # regressions under Release optimization. Earlier phase smoke sources stay
-    # frozen; the Phase 7 entrypoint composes them without changing their gates.
+    # Flutter does not ship a Release engine for iOS Simulator. Re-run the
+    # complete Phase 3-6 stack plus the Phase 7-owned real-media regressions on
+    # a Debug Simulator for Apple-runtime evidence. Release compilation remains
+    # a separate iPhoneOS no-codesign gate below.
     run(
         [
             "flutter",
             "build",
             "ios",
             "--simulator",
-            "--release",
+            "--debug",
             "--target",
             "lib/ios_phase7_smoke_main.dart",
         ],
@@ -143,21 +146,17 @@ def main() -> int:
         timeout=1500,
     )
 
-    # Only the diagnostic Release smoke is allowed to expose runIOS* hooks.
-    # Flip the generated setting back to fail-closed before producing either
-    # production `main.dart` Release artifact.
-    write_release_identity(commit, enable_smoke_hooks=False)
-
-    # Then build the actual production entrypoint in Release mode and require a
-    # short launch/liveness smoke instead of using the diagnostic entrypoint as
-    # a substitute for production startup.
+    # Build the actual production entrypoint for Simulator and require a short
+    # launch/liveness smoke. This is still Debug-mode runtime evidence because
+    # Flutter does not support Release mode on Simulator; it must not be used as
+    # evidence that Release smoke hooks are disabled.
     run(
         [
             "flutter",
             "build",
             "ios",
             "--simulator",
-            "--release",
+            "--debug",
             "--target",
             "lib/main.dart",
         ],
@@ -174,6 +173,10 @@ def main() -> int:
         timeout=900,
     )
 
+    # The real production artifact is built for iPhoneOS Release. Release.xcconfig
+    # defaults smoke hooks to NO, and the generated identity explicitly keeps
+    # that fail-closed value before the audited no-codesign build.
+    write_release_identity(commit, enable_smoke_hooks=False)
     run(
         [
             "flutter",

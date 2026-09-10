@@ -815,16 +815,17 @@ algorithms, HEVC/4K60, delegate performance tuning, or any physical-device
 parity claim.
 
 The Phase 7 implementation adds an independent host verifier
-(`tools/release/verify_ios_phase7.py`), a Release-mode macOS gate
+(`tools/release/verify_ios_phase7.py`), a Release-readiness macOS gate
 (`tools/ios/run_phase7_macos_gate.py`), and a dedicated GitHub workflow
 (`.github/workflows/ios-release.yml`). The Apple-only lane reruns the accepted
-Phase 3-6 Simulator regressions under Release optimization and then executes a
-Phase 7-owned real-media smoke for video-only input, injected-failure cleanup,
-preferred-transform portrait/landscape output, and VFR timestamp rebasing into
-the fixed H.264/30fps contract. It separately launches
-the production `lib/main.dart` Release Simulator app, builds the production
-iPhoneOS target with `--release --no-codesign`, audits the exact resulting
-`Runner.app`, and archives that audited bundle. The audit records the Git
+Phase 3-6 Simulator regressions and then executes a Phase 7-owned real-media
+smoke for video-only input, injected-failure cleanup, preferred-transform
+portrait/landscape output, and VFR timestamp rebasing into the fixed
+H.264/30fps contract. Flutter 3.44.2 does not support Release mode on iOS
+Simulator, so these runtime regressions and the separate production
+`lib/main.dart` Simulator startup smoke run in Debug mode. The lane separately
+builds the production iPhoneOS target with `--release --no-codesign`, audits
+the exact resulting `Runner.app`, and archives that audited bundle. The audit records the Git
 commit, Flutter app version/build, app dependency-lock SHA-256, executable
 SHA-256, packaged model/contract SHA-256, bundled frameworks, and packaged
 privacy manifests. These remain macOS/Simulator/build facts, not physical-iPhone
@@ -1028,7 +1029,7 @@ added. Run `34336876495` (#41), job `102418230396`, completed successfully at
 `db384382e8061894f4754168fdf1434d2cb8b010` after the Release smoke-hook
 fail-closed guard and Phase 7 macOS-gate deduplication were added. These runs
 prove compatibility with the existing Apple-only Debug/Phase-6 lane; they are
-not the dedicated Phase 7 Release Simulator/no-codesign acceptance lane and do
+not the dedicated Phase 7 Simulator-runtime/iPhoneOS-Release acceptance lane and do
 not substitute for physical-iPhone evidence.
 
 ## Cross-platform privacy gate

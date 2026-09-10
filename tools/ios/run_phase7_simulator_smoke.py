@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Execute the Phase 7 Release regression app on an iPhone Simulator."""
+"""Execute the Phase 7 Apple-runtime regression app on an iPhone Simulator.
+
+Flutter does not support Release mode on iOS Simulator. This runner therefore
+provides Debug-Simulator runtime evidence only; Release compilation is proven by
+the separate no-codesign iPhoneOS build and audited bundle.
+"""
 
 from __future__ import annotations
 
@@ -41,10 +46,10 @@ def main() -> int:
         missing = [marker for marker in REQUIRED_MARKERS if marker not in output]
         if missing:
             raise SystemExit(
-                "Phase 7 Release Simulator smoke did not emit required markers "
+                "Phase 7 Simulator runtime smoke did not emit required markers "
                 f"{missing}; launch_exit={launched.returncode}"
             )
-        print("IOS_SIMULATOR_PHASE7_RELEASE_REGRESSION=PASS")
+        print("IOS_SIMULATOR_PHASE7_RUNTIME_REGRESSION=PASS")
         return 0
     finally:
         safe_run(["xcrun", "simctl", "terminate", udid, BUNDLE_ID], timeout=20)
