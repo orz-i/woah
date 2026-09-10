@@ -138,5 +138,6 @@ desktop/data/
 *.pte
 *.npy
 docs/session/
+.anchor/
 
 
