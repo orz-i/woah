@@ -1070,11 +1070,15 @@ bootstrap supplied ONNX while Gradle required the complete LiteRT model set.
 Those historical green Apple runs do not validate subsequent cleanup changes.
 
 The bounded follow-up fixes the Android source-root calculation and replaces
-ONNX bootstrapping with complete LiteRT staging, adds actual pinned CPU YOLO
-inference to the Phase 7 Simulator gate, and reconciles the evidence wording.
+ONNX bootstrapping with canonical YOLO/LiteRT staging, adds actual pinned CPU
+YOLO inference to the Phase 7 Simulator gate, and reconciles the evidence wording.
+The initial cleanup incorrectly treated unavailable SAM2 as a required model
+set. The user clarified that SAM2 is unavailable and ONNX is obsolete; neither
+is a provisioning requirement or merge blocker. The supported YOLO hash gate,
+separate face-model gate, native tests and APK build remain mandatory.
 It does not reopen Phase 5/6, create Phase 8, merge master, or mark physical
 acceptance complete. See `docs/ios_premerge_audit.md` for the explicit remaining
-asset/CI prerequisites and the local-versus-remote master merge scope.
+CI prerequisites and the local-versus-remote master merge scope.
 
 iOS is not accepted merely because YOLO runs. The current Android behavior is
 the reference contract for:

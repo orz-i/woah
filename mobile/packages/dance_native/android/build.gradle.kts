@@ -1,5 +1,6 @@
 import java.time.Instant
 import java.security.MessageDigest
+import groovy.json.JsonSlurper
 
 fun sha256(file: File): String {
     val digest = MessageDigest.getInstance("SHA-256")
@@ -186,10 +187,8 @@ val syncLiteRtModelAssets = tasks.register("syncLiteRtModelAssets") {
         val repoModelsDir = file("../../../../models/litert")
         if (repoModelsDir.exists()) {
             val litertFiles = listOf(
-                "yolo11n-seg-fp16.tflite",
-                "sam2_image_features.tflite",
-                "sam2_init_step.tflite",
-                "sam2_temporal_step.tflite"
+                // SAM2 is unavailable; only the supported YOLO model is staged.
+                "yolo11n-seg-fp16.tflite"
             )
             targetDir.mkdirs()
             for (fname in litertFiles) {
@@ -212,16 +211,27 @@ val verifyLiteRtModelAssets = tasks.register("verifyLiteRtModelAssets") {
     dependsOn(syncLiteRtModelAssets)
     doLast {
         val requiredModels = listOf(
-            "models/litert/yolo11n-seg-fp16.tflite",
-            "models/litert/sam2_image_features.tflite",
-            "models/litert/sam2_init_step.tflite",
-            "models/litert/sam2_temporal_step.tflite"
+            "models/litert/yolo11n-seg-fp16.tflite"
         )
+        // Direct Gradle/Flutter builds enforce the same canonical pin as the
+        // Python bootstrap, even when that bootstrap was not run beforehand.
+        val contractFile = file("../ios/dance_native/Sources/dance_native/Resources/yolo11n-seg-fp16.contract.json")
+        val contract = JsonSlurper().parse(contractFile) as Map<*, *>
+        val expectedSha256 = (contract["expected_sha256"] as? String)?.lowercase()
+        if (expectedSha256 == null || !expectedSha256.matches(Regex("[0-9a-f]{64}"))) {
+            throw GradleException("Canonical YOLO SHA-256 must be pinned before Android builds")
+        }
         for (m in requiredModels) {
             val modelFile = file("src/main/assets/$m")
             if (!modelFile.exists() || modelFile.length() == 0L) {
                 throw GradleException(
-                    "Missing required LiteRT model asset: ${modelFile.absolutePath}. Ensure Phase 2-6 exports are complete."
+                    "Missing required YOLO/LiteRT model asset: ${modelFile.absolutePath}. Run python tools/setup_models.py --android."
+                )
+            }
+            val actualSha256 = sha256(modelFile)
+            if (actualSha256 != expectedSha256) {
+                throw GradleException(
+                    "Unexpected YOLO model hash: expected=$expectedSha256 actual=$actualSha256"
                 )
             }
         }

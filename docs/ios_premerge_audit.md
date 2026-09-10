@@ -15,41 +15,37 @@ Remote master lacked 84 already-local mainline commits, so PR #1 contained
 counts at the eventual merge; do not squash that inherited mainline history
 under an iOS-only description or push master as an incidental cleanup action.
 
-## Android assets: no gate bypass
+## Android assets: supported YOLO/LiteRT contract
 
-`tools/setup_models.py --android` now validates and stages these four existing
-LiteRT exports from the repository-root `models/litert` directory:
+The user clarified on 2026-09-10 that SAM2 is currently unavailable and ONNX
+is obsolete. The initial cleanup at `10e5629bce5198fdc687d6c79db6a3504ea54f08`
+incorrectly carried forward a four-model prerequisite. That requirement and
+the instructions to locate/copy/publish SAM2 files are superseded. Missing
+SAM2 or ONNX files must not block the supported build or merge readiness.
 
-- `yolo11n-seg-fp16.tflite` (canonical SHA-256 from the shared YOLO contract);
-- `sam2_image_features.tflite`;
-- `sam2_init_step.tflite`;
-- `sam2_temporal_step.tflite`.
+`tools/setup_models.py --android` validates and stages only
+`models/litert/yolo11n-seg-fp16.tflite`, already tracked in Git and pinned by
+the shared YOLO contract. It does not inspect, copy, download, export or revive
+SAM2/ONNX models. Existing historical runtime/exporter code is left untouched;
+this cleanup does not claim that SAM2 works or remove its runtime safety gate.
 
-The Gradle sync path is anchored to the plugin project, fixing the old
-app-root-relative path. All four required-model checks, native tests and APK
-build steps remain mandatory. The legacy CI entrypoint stays compatible;
-it no longer downloads/re-exports an unrelated ONNX model.
+The Gradle sync path stays anchored to the plugin project. Its required LiteRT
+list is YOLO-only, and direct Gradle builds also verify the canonical YOLO
+SHA-256 rather than just file presence. The separately pinned face-detector
+model check, prohibition on ONNX Runtime/legacy TFLite dependencies, native
+tests and APK build steps all remain mandatory.
 
-This worktree contains the Git-tracked canonical YOLO model but no accepted
-SAM2 binaries. The bootstrap deliberately lists every missing SAM2 file and
-fails before staging any subset. A correct staging implementation is NOT a
-successful production CI run. SAM2 hashes printed by the tool identify the
-supplied bytes; they do not establish a newly accepted algorithm/model baseline.
-
-To complete provisioning, place the three previously accepted SAM2 exports in
-`models/litert` alongside the canonical YOLO file. Alternatively, an explicitly
-supplied local directory containing all four accepted exports can be staged:
+A clean checkout now has the supported provisioning inputs. No private SAM2
+artifact host or manual model copy is needed for this scope:
 
 ```text
-python tools/setup_models.py --android --source-dir <accepted-four-model-directory>
+python tools/setup_models.py --android
 ```
 
-A clean GitHub checkout also needs these accepted SAM2 bytes from an approved
-artifact source, with its immutable identity recorded and verified. Local
-ignored files do not automatically reach GitHub. No source URL or SAM2 hash
-was invented, and no placeholder, random model, or implicit model re-export
-was added to make the job green. Publishing or provisioning that accepted
-artifact is still required before claiming Android CI is fixed end-to-end.
+The optional `--source-dir` accepts a directory containing that same pinned
+YOLO file; other files in the directory are not processed. A successful
+staging result still does not substitute for native tests, an APK build, or
+the new Apple CI run.
 
 ## Real CPU inference versus media regression
 
@@ -72,13 +68,36 @@ cannot be reused as evidence for a probe that was not yet part of that run.
 
 ## Bounded verification and merge decision
 
-Local cleanup verification on 2026-09-10: model-staging unit tests 8/8;
+Initial cleanup verification on 2026-09-10: model-staging unit tests 8/8;
 Flutter app tests 45/45 (including six CPU-report contract tests), native Dart
 tests 3/3, domain tests 5/5 and UI tests 1/1; app analysis and the Phase 0-7 /
 cloud static verifiers passed. Domain/UI dependency caches were initialized
-offline; no tracked dependency lock was changed. Actual Android provisioning
-was executed and returned exit 1 for the three missing SAM2 files. No native
-Android test/APK build or new Apple CI success is claimed from these results.
+offline; no tracked dependency lock was changed. That earlier Android
+provisioning run failed only because the then-current contract required SAM2.
+It is historical evidence of the incorrect scope, not an outstanding model
+provisioning request. Re-run the corrected YOLO-only gate and native/build
+checks; do not reuse the earlier tests as evidence for subsequent changes.
+
+Supported-scope correction verified locally on 2026-09-10:
+
+- staging tests: 12/12, including missing/ignored SAM2 and obsolete ONNX cases;
+- actual `python tools/setup_models.py --android`: PASS with the existing
+  canonical YOLO hash, without supplying any SAM2 or ONNX model;
+- `:dance_native:testDebugUnitTest`: 351 tests across 89 suites, zero failures,
+  errors or skips (generated JUnit XML totals);
+- Flutter app tests: 45/45; Phase 7 static verifier and `git diff --check master`
+  passed;
+- `flutter build apk --debug --no-pub`: PASS;
+- built APK inspection: the YOLO and face-model SHA-256 values match their
+  pins; no SAM2 `.tflite`, ONNX model, or ONNX Runtime file entry was found.
+
+The APK build first failed because the optional toolchain selector injected a
+standalone platform-tools directory as ANDROID_HOME. Retrying without that
+selector let Flutter use its existing full Android SDK and succeeded. No SDK
+license acceptance, SDK installation command, model re-export or gate bypass
+was used. These are local candidate-working-tree results, not new GitHub Apple
+CI or physical-device evidence. The artifact is
+`mobile/app/build/app/outputs/flutter-apk/app-debug.apk`.
 
 ```text
 python -m unittest tools.test_setup_models -v
@@ -88,8 +107,7 @@ python tools/setup_models.py --android
 
 Also run the unchanged Phase 0-6 static verifiers, all Flutter tests/analyze,
 Android `:dance_native:testDebugUnitTest`, the Debug APK build, and the Apple
-Phase 7 lane on the exact candidate. The Android commands cannot pass on this
-checkout until the accepted SAM2 models are supplied. Retain that blocker.
+Phase 7 lane on the exact candidate. No SAM2 or ONNX provisioning is required.
 
 After the updated head has successful Production CI and Apple CI, the code
 may be merged as an implementation baseline with real-iPhone acceptance
@@ -107,8 +125,9 @@ Suggested body:
 > YOLO analyze, Metal preview, H.264/1080p30 export, temporal privacy semantics,
 > independent Release build/audit CI and a fixed physical-device acceptance
 > package. Pre-merge cleanup adds real CPU inference smoke and repairs Android
-> LiteRT staging without weakening Android gates. Actual model provisioning
-> and new Production/Apple CI results must be linked before merge.
+> YOLO/LiteRT staging with canonical hashes and existing face/native/build
+> gates. SAM2 is unavailable and ONNX obsolete; neither is a model prerequisite.
+> New Production/Apple CI results must be linked before merge.
 >
 > Simulator runtime checks are Debug evidence; the no-codesign iPhoneOS app
 > supplies Release compilation/audit evidence only. Real-iPhone acceptance is

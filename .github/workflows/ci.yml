@@ -62,9 +62,11 @@ jobs:
       - name: Verify Android LiteRT Staging Contract
         run: python -m unittest tools.test_setup_models -v
 
-      - name: Setup Android Model Asset
+      # SAM2 is unavailable and ONNX is obsolete. The tracked YOLO model is
+      # the only LiteRT provisioning input; the face-model gate stays in Gradle.
+      - name: Stage canonical Android YOLO LiteRT asset
         run: |
-          uv run python tools/setup_models.py --android
+          python tools/setup_models.py --android
 
       - name: Run Android Native Unit Tests
         run: |

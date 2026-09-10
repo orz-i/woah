@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Stage the complete, existing Android LiteRT model set without re-exporting it.
+"""Stage the supported Android YOLO/LiteRT model without re-exporting it.
 
-CI keeps using ``python tools/setup_models.py --android``. Provision all four
-accepted models under models/litert first, or supply --source-dir explicitly.
-Missing SAM2 models must not be replaced by ONNX exports or test placeholders.
+CI keeps using ``python tools/setup_models.py --android``. The canonical YOLO
+model is tracked under models/litert. SAM2 is unavailable and ONNX is obsolete:
+neither is required, inspected, copied, downloaded, or exported by this tool.
+The separate Gradle face-detector model gate remains mandatory.
 """
 from __future__ import annotations
 
@@ -19,9 +20,6 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 MODEL_NAMES = (
     "yolo11n-seg-fp16.tflite",
-    "sam2_image_features.tflite",
-    "sam2_init_step.tflite",
-    "sam2_temporal_step.tflite",
 )
 ASSET_PATH = Path("mobile/packages/dance_native/android/src/main/assets/models/litert")
 YOLO_CONTRACT = Path(
@@ -48,17 +46,21 @@ def model_identity(path: Path) -> dict[str, str | int]:
 
 
 def stage_android_models(root: Path, source_dir: Path | None = None) -> dict:
-    """Validate the entire set before staging; replace each file atomically.
+    """Validate the supported model before staging; replace it atomically.
 
-    SAM2 byte hashes are recorded, not invented or promoted to an accepted
-    baseline here. The caller must supply the previously accepted SAM2 exports.
+    Only MODEL_NAMES are read. Unavailable/obsolete model caches are left alone.
     """
     source = source_dir.resolve() if source_dir is not None else root / "models/litert"
     target = root / ASSET_PATH
     contract = json.loads((root / YOLO_CONTRACT).read_text(encoding="utf-8"))
     expected_yolo = contract.get("expected_sha256")
-    if not isinstance(expected_yolo, str) or len(expected_yolo) != 64:
+    if (
+        not isinstance(expected_yolo, str)
+        or len(expected_yolo) != 64
+        or any(c not in "0123456789abcdef" for c in expected_yolo.lower())
+    ):
         raise ValueError("Canonical YOLO SHA-256 must be pinned before Android staging")
+    expected_yolo = expected_yolo.lower()
 
     identities = {}
     errors = []
@@ -72,8 +74,8 @@ def stage_android_models(root: Path, source_dir: Path | None = None) -> dict:
     if errors:
         raise ValueError(
             "Android LiteRT provisioning is incomplete:\n - " + "\n - ".join(errors)
-            + "\nSupply the accepted four-model set in models/litert or via --source-dir."
-            + " No ONNX conversion, synthetic model, or Android gate bypass is allowed."
+            + "\nRestore the tracked canonical YOLO file in models/litert or supply --source-dir."
+            + " SAM2 and ONNX are outside the supported build contract; do not provision them."
         )
 
     target.mkdir(parents=True, exist_ok=True)
@@ -100,9 +102,9 @@ def stage_android_models(root: Path, source_dir: Path | None = None) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--android", action="store_true", help="Stage all required Android LiteRT models")
+    parser.add_argument("--android", action="store_true", help="Stage the supported canonical YOLO/LiteRT model")
     parser.add_argument("--all", action="store_true", help="Compatibility alias for --android")
-    parser.add_argument("--source-dir", type=Path, help="Directory containing the accepted four-model set")
+    parser.add_argument("--source-dir", type=Path, help="Directory containing the canonical YOLO/LiteRT model")
     args = parser.parse_args(argv)
     try:
         report = stage_android_models(ROOT, args.source_dir)
