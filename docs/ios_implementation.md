@@ -1060,6 +1060,22 @@ not substitute for physical-iPhone evidence.
 
 ## Cross-platform privacy gate
 
+### Pre-merge audit follow-up (2026-09-10)
+
+The accepted Phase 7 implementation at `4268798ef741a38f782663a95ee1748db8a6869d`
+also passed Release Run #16 (`34450033496`) and iOS Cloud Run #58
+(`34450033609`), as observed during the read-only audit. Production CI #117
+(`34450033503`) failed before Android native tests because the legacy asset
+bootstrap supplied ONNX while Gradle required the complete LiteRT model set.
+Those historical green Apple runs do not validate subsequent cleanup changes.
+
+The bounded follow-up fixes the Android source-root calculation and replaces
+ONNX bootstrapping with complete LiteRT staging, adds actual pinned CPU YOLO
+inference to the Phase 7 Simulator gate, and reconciles the evidence wording.
+It does not reopen Phase 5/6, create Phase 8, merge master, or mark physical
+acceptance complete. See `docs/ios_premerge_audit.md` for the explicit remaining
+asset/CI prerequisites and the local-versus-remote master merge scope.
+
 iOS is not accepted merely because YOLO runs. The current Android behavior is
 the reference contract for:
 

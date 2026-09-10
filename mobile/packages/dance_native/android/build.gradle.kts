@@ -181,7 +181,9 @@ val verifyFaceDetectorAsset = tasks.register("verifyFaceDetectorAsset") {
 val syncLiteRtModelAssets = tasks.register("syncLiteRtModelAssets") {
     doLast {
         val targetDir = file("src/main/assets/models/litert")
-        val repoModelsDir = rootProject.file("../../models/litert")
+        // Resolve from this plugin project, not the consuming app's Gradle root.
+        // mobile/packages/dance_native/android -> repository root is four levels.
+        val repoModelsDir = file("../../../../models/litert")
         if (repoModelsDir.exists()) {
             val litertFiles = listOf(
                 "yolo11n-seg-fp16.tflite",

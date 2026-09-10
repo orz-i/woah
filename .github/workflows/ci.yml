@@ -59,6 +59,9 @@ jobs:
           cd ../dance_native && flutter test
           cd ../../app && flutter test
 
+      - name: Verify Android LiteRT Staging Contract
+        run: python -m unittest tools.test_setup_models -v
+
       - name: Setup Android Model Asset
         run: |
           uv run python tools/setup_models.py --android

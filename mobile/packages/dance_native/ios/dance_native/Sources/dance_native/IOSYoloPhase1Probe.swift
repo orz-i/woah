@@ -1,4 +1,5 @@
 import AVFoundation
+import CryptoKit
 import Foundation
 import ImageIO
 
@@ -45,10 +46,18 @@ enum IOSYoloPhase1Probe {
     )
   }
 
+  private static func sha256(_ url: URL) throws -> String {
+    let data = try Data(contentsOf: url, options: .mappedIfSafe)
+    return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+  }
+
   static func runBundledFixture(
     requestedBackend: IOSYoloBackend?,
     runner: IOSYoloRunner
   ) throws -> [String: Any] {
+    guard let modelURL = IOSModelResources.yoloModelURL() else {
+      throw PigeonError(code: "MODEL_NOT_FOUND", message: "Bundled YOLO model is missing.", details: nil)
+    }
     guard let fixtureURL = IOSModelResources.yoloPhase1FixtureURL() else {
       throw PigeonError(
         code: "IOS_PHASE1_FIXTURE_NOT_FOUND",
@@ -74,6 +83,8 @@ enum IOSYoloPhase1Probe {
       requestedBackend: requestedBackend,
       metadata: [
         "fixture": fixtureURL.lastPathComponent,
+        "model_sha256": try sha256(modelURL),
+        "fixture_sha256": try sha256(fixtureURL),
         "requested_timestamp_ms": 0,
         "actual_timestamp_ms": 0,
         "frame_decode_ms": 0.0,

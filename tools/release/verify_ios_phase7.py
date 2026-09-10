@@ -639,6 +639,32 @@ def verify_release_tooling() -> None:
     check("run_phase7_macos_gate.py" not in legacy_cloud, "Phase 7 must remain an independent Release workflow")
 
 
+def verify_real_cpu_inference_smoke() -> None:
+    entrypoint = text(ROOT / "mobile/app/lib/ios_phase7_smoke_main.dart", "Phase 7 entrypoint")
+    for token in (
+        "runIOSYoloPhase1BundledProbe",
+        "'backend': 'tflite_xnnpack'",
+        "invocation < 2",
+        "verifyIOSYoloCpuSmokeReport(report)",
+        "WOAH_YOLO_CPU_REPORT=",
+        "WOAH_YOLO_CPU_SMOKE=PASS",
+    ):
+        check(token in entrypoint, f"Real CPU inference entrypoint missing: {token}")
+    native = text(SOURCES / "IOSYoloPhase1Probe.swift", "real native inference probe")
+    for token in ("try runner.run(", "preferredBackend: requestedBackend", "model_sha256", "fixture_sha256", "SHA256.hash(data: data)"):
+        check(token in native, f"Real native inference probe missing: {token}")
+    assertions = text(ROOT / "mobile/app/lib/core/diagnostics/ios_yolo_smoke_contract.dart", "CPU smoke assertions")
+    contract = json.loads(text(SOURCES / "Resources/yolo11n-seg-fp16.contract.json", "YOLO contract"))
+    fixture = SOURCES / "Resources/InferenceAssets/yolo_phase1_test_frame.jpg"
+    check(contract["expected_sha256"] in assertions, "CPU smoke must pin the canonical model hash")
+    check(hashlib.sha256(fixture.read_bytes()).hexdigest() in assertions, "CPU smoke must pin its fixture hash")
+    for token in ("effective_backend", "fallbacks.isNotEmpty", "input_shape", "output_shapes", "detections.isEmpty", "mask_nonzero", "mask_coverage"):
+        check(token in assertions, f"CPU smoke assertions missing: {token}")
+    simulator = text(ROOT / "tools/ios/run_phase7_simulator_smoke.py", "Phase 7 Simulator runner")
+    check('"WOAH_YOLO_CPU_SMOKE=PASS"' in simulator, "Simulator gate must require real CPU inference")
+    check("launched.returncode != 0" in simulator, "Simulator gate must reject nonzero launch exits")
+
+
 def verify_device_acceptance_package() -> None:
     runbook = text(ROOT / "docs/ios_phase7_device_acceptance.md", "physical-device acceptance runbook")
     for token in (
@@ -708,6 +734,7 @@ def main() -> int:
     verify_model_contract()
     verify_release_regression_contract()
     verify_release_tooling()
+    verify_real_cpu_inference_smoke()
     verify_device_acceptance_package()
 
     if FAILURES:
@@ -721,4 +748,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

@@ -41,9 +41,9 @@ The production release contract is:
 - iOS deployment target: `17.0`;
 - output device build: `flutter build ios --release --no-codesign --target
   lib/main.dart`;
-- production Simulator smoke build: `flutter build ios --simulator --release
+- production Simulator smoke build: `flutter build ios --simulator --debug
   --target lib/main.dart`;
-- release-regression Simulator build: `flutter build ios --simulator --release
+- release-regression Simulator build: `flutter build ios --simulator --debug
   --target lib/ios_phase7_smoke_main.dart`;
 - archive artifact: zipped release `Runner.app`, never a debug app relabeled as
   release.
@@ -109,13 +109,12 @@ product UI.
 All native `runIOS*` diagnostic/smoke MethodChannel hooks are fail-closed in
 Release builds. `Release.xcconfig` defaults `WOAH_ENABLE_SMOKE_HOOKS` to `NO`;
 Debug builds remain enabled for the already-accepted Phase 1-6 diagnostics.
-The Phase 7 macOS gate temporarily sets the Release value to `YES` only while
-building/running `ios_phase7_smoke_main.dart`, then rewrites it to `NO` before
-building either production `lib/main.dart` Simulator or iPhoneOS artifact. The
-production Simulator liveness runner inspects its built Info.plist before
-installation and rejects an enabled value. The final iPhoneOS bundle auditor
-repeats the same fail-closed assertion and records `smoke_hooks_enabled` in the
-audit manifest.
+The Phase 7 smoke and production-startup Simulator builds are Debug builds;
+their native diagnostic hooks are enabled by the existing Debug compile guard.
+Before building the production iPhoneOS Release artifact, the macOS gate writes
+`WOAH_ENABLE_SMOKE_HOOKS = NO`. The final iPhoneOS bundle auditor checks that
+fail-closed value and records `smoke_hooks_enabled` in the audit manifest.
+Debug Simulator startup is not evidence that Release hooks are disabled.
 
 ## Apple privacy and permission contract
 
@@ -153,7 +152,10 @@ gate. It must remain separate from `verify_ios_phase5.py` and
 1. runs the Phase 0-7 static verifiers;
 2. inherits the accepted Phase 6 macOS/Simulator gate;
 3. builds the Phase 7 combined smoke entrypoint for a **Debug iOS Simulator**,
-   requires the unchanged Phase 3/4/5/6 markers again, then requires the Phase 7 media
+   first invokes the actual bundled YOLO model twice through the existing
+   native probe with an explicitly selected CPU/XNNPack backend, checking the
+   model/fixture SHA-256, tensor shapes, finite positive timings, and nonempty
+   detections/masks; requires the unchanged Phase 3/4/5/6 markers again, then requires the Phase 7 media
    regression marker for no-audio, injected-failure cleanup,
    preferred-transform orientation, and VFR timestamp rebasing;
 4. builds and launches the production `lib/main.dart` Debug Simulator app as a
@@ -175,11 +177,11 @@ for both Phase 1 verifier invocations, then explicitly executes the Phase 6
 Apple gate once. This avoids duplicate expensive Simulator/Metal/media
 execution without weakening or bypassing any accepted gate.
 
-The dedicated GitHub workflow is `.github/workflows/ios-release.yml`. Its
-tracked source template is `tools/ios/ios-release.phase7.workflow.yml`, because
-the current local workspace security policy does not permit ordinary mutation
-of `.github/workflows/**`; Phase 7 remains fail-closed until a trusted GitHub
-write path commits the template at the protected workflow path. This lane is
+The dedicated GitHub workflow is `.github/workflows/ios-release.yml`, installed
+and accepted before the pre-merge audit. Its tracked source template is
+`tools/ios/ios-release.phase7.workflow.yml`; both copies must stay identical.
+When the workspace policy protects `.github/workflows/**`, update that path
+only through an authorized write mechanism. This lane is
 Apple-only implementation evidence. It is not a physical-device acceptance
 lane.
 
@@ -211,6 +213,15 @@ Simulator runtime smoke or the audited iPhoneOS Release build:
 All matrix cases remain on the physical-device checklist even when they also
 have Simulator runtime evidence. Phase 7 does not pretend deterministic Debug
 Simulator media checks are equivalent to Release playback on an iPhone.
+
+The Phase 4/7 MP4 media smokes inject deterministic detection/face results.
+They exercise real decoding, Metal composition and encoding, not an entire
+production-model video pipeline. The added `WOAH_YOLO_CPU_SMOKE=PASS` gate is
+separate real-model, fixed-image inference evidence; it does not establish
+real-video tracking quality, GPU/CoreML throughput or visual privacy acceptance.
+Neither a contract-parser unit test nor a source-token static verifier counts
+as a successful native inference run. Changes made during pre-merge cleanup
+must receive fresh Apple CI evidence before the updated head is merge-ready.
 
 ## Physical-device acceptance package
 
@@ -254,4 +265,3 @@ After item 1-5, the phase stops at
 performance, thermal/power, background/interruption, device-to-device
 Vision/Metal behavior, and final visual privacy remain intentionally unclaimed
 until the runbook is executed on real hardware.
-

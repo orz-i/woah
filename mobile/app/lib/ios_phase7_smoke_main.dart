@@ -1,7 +1,10 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import 'core/diagnostics/ios_yolo_smoke_contract.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,6 +29,17 @@ class _Phase7SmokeAppState extends State<_Phase7SmokeApp> {
 
   Future<void> _run() async {
     try {
+      final yoloReports = <Map<String, dynamic>>[];
+      for (var invocation = 0; invocation < 2; invocation++) {
+        final report = await _channel.invokeMapMethod<String, dynamic>(
+          'runIOSYoloPhase1BundledProbe',
+          {'backend': 'tflite_xnnpack'},
+        );
+        verifyIOSYoloCpuSmokeReport(report);
+        yoloReports.add(report!);
+      }
+      stdout.writeln('WOAH_YOLO_CPU_REPORT=${jsonEncode(yoloReports)}');
+      stdout.writeln('WOAH_YOLO_CPU_SMOKE=PASS');
       final metalReport = await _channel.invokeMapMethod<String, dynamic>(
         'runIOSMetalPhase3Smoke',
       );

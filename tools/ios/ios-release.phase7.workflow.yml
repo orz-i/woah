@@ -121,4 +121,3 @@ jobs:
             mobile/app/artifacts/phase7_release_audit.json
           if-no-files-found: error
           retention-days: 14
-

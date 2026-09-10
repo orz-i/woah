@@ -15,6 +15,7 @@ from run_phase4_simulator_smoke import BUNDLE_ID, boot_iphone, run, safe_run
 
 
 REQUIRED_MARKERS = (
+    "WOAH_YOLO_CPU_SMOKE=PASS",
     "WOAH_METAL_PHASE3_SMOKE=PASS",
     "WOAH_EXPORT_PHASE4_SMOKE=PASS",
     "WOAH_GOLDEN_TRACE_PHASE5_SMOKE=PASS",
@@ -44,7 +45,7 @@ def main() -> int:
         output = launched.stdout + launched.stderr
         print(output, end="")
         missing = [marker for marker in REQUIRED_MARKERS if marker not in output]
-        if missing:
+        if missing or launched.returncode != 0:
             raise SystemExit(
                 "Phase 7 Simulator runtime smoke did not emit required markers "
                 f"{missing}; launch_exit={launched.returncode}"

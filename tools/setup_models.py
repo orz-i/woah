@@ -1,143 +1,118 @@
 #!/usr/bin/env python3
-"""
-Model bootstrap and asset setup script for DanceAnon / Woah.
-Ensures required ONNX model assets are staged properly and verified for Android builds.
+"""Stage the complete, existing Android LiteRT model set without re-exporting it.
 
-Usage:
-    uv run python tools/setup_models.py --android
+CI keeps using ``python tools/setup_models.py --android``. Provision all four
+accepted models under models/litert first, or supply --source-dir explicitly.
+Missing SAM2 models must not be replaced by ONNX exports or test placeholders.
 """
-import os
-import sys
-import shutil
-import hashlib
+from __future__ import annotations
+
 import argparse
+import hashlib
+import json
+import os
 from pathlib import Path
+import shutil
+import sys
+import tempfile
 
-# Ensure UTF-8 output on Windows consoles
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8")
+ROOT = Path(__file__).resolve().parents[1]
+MODEL_NAMES = (
+    "yolo11n-seg-fp16.tflite",
+    "sam2_image_features.tflite",
+    "sam2_init_step.tflite",
+    "sam2_temporal_step.tflite",
+)
+ASSET_PATH = Path("mobile/packages/dance_native/android/src/main/assets/models/litert")
+YOLO_CONTRACT = Path(
+    "mobile/packages/dance_native/ios/dance_native/Sources/dance_native/Resources/"
+    "yolo11n-seg-fp16.contract.json"
+)
 
-# Expected model parameters
-MODEL_NAME = "yolo11n-seg"
-EXPECTED_SHA256 = "7175a9c69144f18bba913caba57c9ef89c9ef81c7efde2562c52f4eed8bfdff3"
-EXPECTED_INPUT_SIZE = 640
-EXPECTED_OPSET = 18
 
-project_root = Path(__file__).resolve().parent.parent
-if str(project_root) not in sys.path:
-    sys.path.insert(0, str(project_root))
+def compute_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
-def compute_sha256(file_path: Path) -> str:
-    hasher = hashlib.sha256()
-    with open(file_path, "rb") as f:
-        while chunk := f.read(65536):
-            hasher.update(chunk)
-    return hasher.hexdigest()
 
-def verify_onnx_contract(onnx_path: Path) -> bool:
-    """Verifies ONNX model integrity and exact input/output tensor contract for Android native pipeline."""
-    try:
-        import onnx
-        model = onnx.load(str(onnx_path))
-        onnx.checker.check_model(model)
+def model_identity(path: Path) -> dict[str, str | int]:
+    if not path.is_file() or path.stat().st_size < 8:
+        raise ValueError(f"Missing or empty required LiteRT model: {path}")
+    with path.open("rb") as stream:
+        if stream.read(8)[4:8] != b"TFL3":
+            raise ValueError(f"Not a LiteRT FlatBuffer (TFL3): {path}")
+    return {"bytes": path.stat().st_size, "sha256": compute_sha256(path)}
 
-        # 1. Verify inputs
-        inputs = model.graph.input
-        if not inputs:
-            print("  ❌ [ONNX Contract Error] Model has no inputs")
-            return False
 
-        input_names = [inp.name for inp in inputs]
-        if "images" not in input_names:
-            print(f"  ❌ [ONNX Contract Error] Expected input tensor 'images', got: {input_names}")
-            return False
+def stage_android_models(root: Path, source_dir: Path | None = None) -> dict:
+    """Validate the entire set before staging; replace each file atomically.
 
-        # 2. Verify outputs
-        outputs = model.graph.output
-        output_names = [out.name for out in outputs]
-        if "output0" not in output_names or "output1" not in output_names:
-            print(f"  ❌ [ONNX Contract Error] Expected outputs 'output0' and 'output1', got: {output_names}")
-            return False
+    SAM2 byte hashes are recorded, not invented or promoted to an accepted
+    baseline here. The caller must supply the previously accepted SAM2 exports.
+    """
+    source = source_dir.resolve() if source_dir is not None else root / "models/litert"
+    target = root / ASSET_PATH
+    contract = json.loads((root / YOLO_CONTRACT).read_text(encoding="utf-8"))
+    expected_yolo = contract.get("expected_sha256")
+    if not isinstance(expected_yolo, str) or len(expected_yolo) != 64:
+        raise ValueError("Canonical YOLO SHA-256 must be pinned before Android staging")
 
-        opset = model.opset_import[0].version if model.opset_import else "unknown"
-        print(f"  ✅ [ONNX Checker] Model contract verified successfully (opset: {opset}, inputs: {input_names}, outputs: {output_names})")
-        return True
-    except Exception as e:
-        print(f"  ❌ [ONNX Contract Error] Failed to verify ONNX graph: {e}")
-        return False
-
-def setup_android_model(root: Path) -> bool:
-    source_model = root / "models" / "litert" / f"{MODEL_NAME}.onnx"
-    target_asset_dir = (
-        root
-        / "mobile"
-        / "packages"
-        / "dance_native"
-        / "android"
-        / "src"
-        / "main"
-        / "assets"
-    )
-    target_model = target_asset_dir / f"{MODEL_NAME}.onnx"
-
-    target_asset_dir.mkdir(parents=True, exist_ok=True)
-
-    if source_model.exists() and source_model.stat().st_size > 0:
-        print(f"[CACHE] Found cached model at: {source_model}")
-        shutil.copy2(source_model, target_model)
-    elif target_model.exists() and target_model.stat().st_size > 0:
-        print(f"[OK] Target model asset already present at: {target_model}")
-        source_model.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(target_model, source_model)
-    else:
-        print("[WARN] Model not found in cache or assets. Attempting on-demand export...")
+    identities = {}
+    errors = []
+    for name in MODEL_NAMES:
         try:
-            from tools.export_yolo import export_single_model
-            export_single_model(MODEL_NAME, target_model)
-            source_model.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(target_model, source_model)
-        except Exception as e:
-            print(f"❌ Failed to export model: {e}")
-            print("Please run: uv run python tools/export_yolo.py --model yolo11n-seg --output models/litert/yolo11n-seg.onnx")
-            return False
+            identities[name] = model_identity(source / name)
+            if name == MODEL_NAMES[0] and identities[name]["sha256"] != expected_yolo:
+                raise ValueError(f"Canonical YOLO SHA-256 mismatch: {source / name}")
+        except (OSError, ValueError) as exc:
+            errors.append(str(exc))
+    if errors:
+        raise ValueError(
+            "Android LiteRT provisioning is incomplete:\n - " + "\n - ".join(errors)
+            + "\nSupply the accepted four-model set in models/litert or via --source-dir."
+            + " No ONNX conversion, synthetic model, or Android gate bypass is allowed."
+        )
 
-    if not target_model.exists() or target_model.stat().st_size == 0:
-        print(f"❌ Model verification failed: {target_model} is missing or empty.")
-        return False
+    target.mkdir(parents=True, exist_ok=True)
+    for name, identity in identities.items():
+        destination = target / name
+        if destination.is_file() and compute_sha256(destination) == identity["sha256"]:
+            continue
+        fd, temporary_name = tempfile.mkstemp(prefix=name + ".", suffix=".partial", dir=target)
+        temporary = Path(temporary_name)
+        os.close(fd)
+        try:
+            shutil.copyfile(source / name, temporary)
+            if model_identity(temporary) != identity:
+                raise ValueError(f"Model changed while staging: {name}")
+            os.replace(temporary, destination)
+        finally:
+            temporary.unlink(missing_ok=True)
+    # Verify the packaged copies, not only the cache files.
+    for name, identity in identities.items():
+        if model_identity(target / name) != identity:
+            raise ValueError(f"Packaged LiteRT model verification failed: {name}")
+    return {"source": str(source), "target": str(target), "models": identities}
 
-    file_size_mb = target_model.stat().st_size / (1024 * 1024)
-    sha256_hash = compute_sha256(target_model)
 
-    if not verify_onnx_contract(target_model):
-        print(f"❌ Model contract verification failed for: {target_model}")
-        return False
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--android", action="store_true", help="Stage all required Android LiteRT models")
+    parser.add_argument("--all", action="store_true", help="Compatibility alias for --android")
+    parser.add_argument("--source-dir", type=Path, help="Directory containing the accepted four-model set")
+    args = parser.parse_args(argv)
+    try:
+        report = stage_android_models(ROOT, args.source_dir)
+    except (OSError, ValueError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    print("ANDROID_LITERT_ASSETS=" + json.dumps(report, sort_keys=True))
+    print("ANDROID_LITERT_ASSETS=PASS")
+    return 0
 
-    print("\n==========================================")
-    print("SUCCESS: Android Model Asset Ready!")
-    print(f"  Path:     {target_model}")
-    print(f"  Size:     {file_size_mb:.2f} MB")
-    print(f"  SHA256:   {sha256_hash}")
-    print(f"  Contract: PASS")
-    print("==========================================\n")
-    return True
-
-
-
-def main():
-    parser = argparse.ArgumentParser(description="Model bootstrap script for Woah")
-    parser.add_argument("--android", action="store_true", help="Prepare model asset for Android build")
-    parser.add_argument("--all", action="store_true", help="Prepare all models")
-    args = parser.parse_args()
-
-    root = Path(__file__).resolve().parent.parent
-
-    if args.android or args.all or len(sys.argv) == 1:
-        success = setup_android_model(root)
-        if not success:
-            sys.exit(1)
-    else:
-        parser.print_help()
 
 if __name__ == "__main__":
-    main()
-
+    raise SystemExit(main())

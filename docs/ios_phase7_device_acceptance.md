@@ -73,7 +73,8 @@ Run every applicable media item through:
 - interruption scenarios available on the device (screen lock, audio/session
   interruption, app switch) without deliberately bypassing iOS restrictions.
 
-For every successful export verify H.264, 1920x1080, expected 30fps output
+For every successful export verify H.264, 1920x1080 landscape or 1080x1920
+portrait, expected 30fps output
 contract, expected trim duration, audio presence/absence, and that no final or
 partial file appears before successful completion.
 
@@ -143,4 +144,3 @@ maps back to one audited Release artifact.
 Until then the project status remains:
 
 `implementation complete pending physical-device acceptance`
-
