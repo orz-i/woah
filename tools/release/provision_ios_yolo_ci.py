@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
-"""Reproduce and provision the canonical iOS YOLO LiteRT model on clean CI.
+"""Verify/provision the canonical iOS YOLO LiteRT model on clean CI.
 
-The inference FlatBuffer is deterministic, but Ultralytics appends a ZIP
-``metadata.json`` entry containing export-time timestamps. Phase 7 therefore
-proves reproducibility against the pinned FlatBuffer-core SHA-256, then restores
-the 1 KiB historical metadata tail before enforcing the pinned whole-file SHA.
+Phase 7 release checkouts track the exact audited canonical model bytes. The
+normal Release path therefore verifies the pinned whole-file/core identities
+and stages that binary byte-for-byte for iOS. This is the release supply-chain
+authority.
 
-The repository root Python lock intentionally remains unchanged for Android and
-other tooling. On a cache miss this helper creates a throw-away Python 3.11
-virtual environment and resolves the historically pinned LiteRT exporter stack
-with a hard ``--exclude-newer`` cutoff matching the canonical export timestamp.
-The model-production interpreter is therefore independent of the app/root
-``uv.lock`` and is destroyed after the raw FlatBuffer core has been verified.
+The historical exporter implementation remains below as a diagnostic fallback
+for development checkouts that do not contain the canonical binary. It is not
+the Release artifact source: Runs #7-#12 demonstrated host-dependent low-order
+FLOAT32 differences during CPU model fusion even with pinned inputs and graph
+semantics. The root Python lock remains unchanged for Android and other tooling.
 """
 
 from __future__ import annotations

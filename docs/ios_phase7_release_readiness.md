@@ -54,36 +54,46 @@ pubspec version, dependency-lock SHA-256, app bundle metadata, app executable
 SHA-256, model contract/hash evidence, bundled frameworks, and bundled privacy
 manifests.
 
-The YOLO release artifact has two model identities. The complete packaged file
-remains pinned at SHA-256
-`ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340`.
-Clean-cloud reproducibility is proved against the inference FlatBuffer core,
-whose SHA-256 is
+The YOLO release artifact has two byte identities. The complete packaged file
+is pinned at SHA-256
+`ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340`,
+and its 11,798,720-byte inference FlatBuffer core is pinned at
 `881b3107910165066ba8ab8cd9c76bd5f51b781d1e224ccce91f60a904c0951c`.
-Ultralytics appends a ZIP `metadata.json` containing export-time timestamps, so
-that 1,005-byte non-inference tail is restored from tracked canonical evidence
-only *after* the generated core is byte-identical. This preserves the original
-whole-file identity without pretending timestamps are reproducible model
-content.
+Phase 7 tracks that single 11.8 MB canonical binary at
+`models/litert/yolo11n-seg-fp16.tflite`; Android and iOS continue to consume the
+same repository-root source. A clean Release checkout therefore starts from
+the exact audited production bytes rather than trying to recreate them with a
+host-dependent floating-point conversion step. The 1,005-byte metadata-tail
+evidence remains tracked separately so the historical file structure can still
+be audited.
 
 The canonical model metadata identifies Ultralytics `8.4.130` and its LiteRT
 argument set (`format=litert`, unquantized, 640 input). The historical `fp16`
 filename is retained for compatibility, but the graph tensors are float32;
 LiteRT GPU delegates may execute that graph with FP16 arithmetic at runtime.
-The model-production environment is isolated from the Android/application
-Python lock and uses a throw-away Python 3.11 virtual environment. At the
+The retained re-export diagnostic environment is isolated from the
+Android/application Python lock and uses a throw-away Python 3.11 virtual
+environment. At the
 canonical 2026-08-27 cutoff, that exporter environment resolves CPU
 PyTorch `2.13.0`, torchvision `0.28.0`, NumPy `2.4.6`, Ultralytics `8.4.130`,
 and the pinned LiteRT converter stack. The application/root `uv.lock` remains
 unchanged and is not used as evidence for model-production package identity.
 
-The canonical `yolo11n-seg-fp16.tflite` contract is pinned to
-`ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340`.
-That value was seeded from the existing repository-root model shared by the
-Android/iOS asset flow after exact byte-size, TFL3 magic, and iOS staged-copy
-equality checks. It is a candidate pin, not cloud acceptance: the dedicated
-Release model job must independently reproduce the same SHA-256 before Phase 7
-can satisfy its finite exit contract.
+The canonical `yolo11n-seg-fp16.tflite` contract remains pinned to the same
+full/core hashes. Runs #7-#12 showed why model *conversion* is not a valid
+bit-for-bit release-artifact source: with the same checkpoint and graph
+structure, clean hosts produced only low-order FLOAT32 fusion differences, and
+even explicit `ATEN_CPU_CAPABILITY=default` versus `avx2` produced the same
+non-historical core. Re-export remains a diagnostic for graph/weight semantics,
+not the mechanism that creates Release bytes. The dedicated Release model job
+must instead verify that the clean checkout contains the Git-tracked canonical
+file, stage it byte-identically for iOS, and report the pinned SHA-256 before
+the macOS Release job may start.
+
+The embedded canonical metadata identifies the model as Ultralytics AGPL-3.0,
+while this repository's source-code license is MIT. `models/litert/README.md`
+therefore scopes the third-party model separately and records its hashes and
+upstream license identity; the model is not represented as MIT-licensed code.
 
 Debug-only diagnostic entrypoints may remain in source for CI, but the
 production Release build must target `lib/main.dart`. Phase 7 does not add a

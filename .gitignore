@@ -39,6 +39,17 @@ htmlcov/
 *.data
 models/
 
+# Phase 7 release-critical canonical artifact. Keep every other production
+# model ignored, but track the single shared Android/iOS YOLO LiteRT binary so
+# a clean Release checkout uses byte-identical model bytes instead of relying
+# on host-dependent floating-point re-export.
+!models/
+models/*
+!models/litert/
+models/litert/*
+!models/litert/README.md
+!models/litert/yolo11n-seg-fp16.tflite
+
 # Benchmark-only face model fixture. Keep production model ignores intact while
 # allowing this small, source-pinned Apache-2.0 test asset to survive clean checkout.
 !testdata/models/

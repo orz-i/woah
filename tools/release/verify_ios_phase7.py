@@ -157,8 +157,48 @@ def verify_model_contract() -> None:
     expected_hash = contract.get("expected_sha256")
     pinned = isinstance(expected_hash, str) and re.fullmatch(r"[0-9a-f]{64}", expected_hash) is not None
     check(pinned, "Phase 7 Release acceptance requires a pinned YOLO expected_sha256")
+    check(
+        contract.get("source") == "models/litert/yolo11n-seg-fp16.tflite",
+        "Phase 7 canonical YOLO source path drifted",
+    )
     check(contract.get("expected_size_bytes") == 11799725, "Phase 7 YOLO byte-size contract drifted")
     check(contract.get("flatbuffer_magic") == "TFL3", "Phase 7 YOLO FlatBuffer contract drifted")
+    canonical_model = ROOT / str(contract.get("source", ""))
+    check(canonical_model.is_file(), "Phase 7 Release checkout must contain the canonical YOLO model")
+    check(is_git_tracked(canonical_model), "Phase 7 canonical YOLO model must be Git-tracked")
+    if canonical_model.is_file():
+        model_bytes = canonical_model.read_bytes()
+        check(len(model_bytes) == 11799725, "Tracked canonical YOLO model size drifted")
+        check(
+            hashlib.sha256(model_bytes).hexdigest() == expected_hash,
+            "Tracked canonical YOLO model whole-file SHA-256 drifted",
+        )
+        check(len(model_bytes) >= 8 and model_bytes[4:8] == b"TFL3", "Tracked canonical YOLO model is not TFL3")
+        zip_offset = model_bytes.find(b"PK\x03\x04", max(8, len(model_bytes) - 65536))
+        check(zip_offset == 11798720, "Tracked canonical YOLO model FlatBuffer/metadata boundary drifted")
+        if zip_offset >= 0:
+            check(
+                hashlib.sha256(model_bytes[:zip_offset]).hexdigest()
+                == "881b3107910165066ba8ab8cd9c76bd5f51b781d1e224ccce91f60a904c0951c",
+                "Tracked canonical YOLO model FlatBuffer core SHA-256 drifted",
+            )
+
+    model_notice = ROOT / "models/litert/README.md"
+    notice = text(model_notice, "canonical YOLO third-party model notice")
+    check(is_git_tracked(model_notice), "Canonical YOLO third-party model notice must be Git-tracked")
+    for token in (
+        "AGPL-3.0",
+        "not relicensed by",
+        "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "881b3107910165066ba8ab8cd9c76bd5f51b781d1e224ccce91f60a904c0951c",
+    ):
+        check(token in notice, f"Canonical YOLO third-party model notice missing: {token}")
+
+    gitignore = text(ROOT / ".gitignore", "repository ignore policy")
+    check(
+        "!models/litert/yolo11n-seg-fp16.tflite" in gitignore,
+        "Phase 7 canonical model must remain explicitly exempt from the global model ignore",
+    )
     checkpoint = contract.get("source_checkpoint") or {}
     check(checkpoint.get("path") == "models/pytorch/yolo11n-seg.pt", "Phase 7 YOLO checkpoint path drifted")
     check(checkpoint.get("expected_size_bytes") == 6182636, "Phase 7 YOLO checkpoint size drifted")

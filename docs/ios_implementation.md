@@ -981,6 +981,32 @@ after the candidate workers have had the documented materialization
 opportunity. This is an ordering correction only and does not change the
 checkpoint, core, or Release acceptance identities.
 
+Phase 7 Release Run #12 (`34425751917`) completed the bounded CPU-dispatch
+experiment. Both `ATEN_CPU_CAPABILITY=default` and `avx2`, with all tracked
+thread counts fixed to one, produced the same 11,798,720-byte core SHA
+`3d25c2be9f1d32bd843fd1ed502d960831e8304bc0d06b0d70fa0bed1f17937d`.
+Neither reproduced the historical
+`881b3107910165066ba8ab8cd9c76bd5f51b781d1e224ccce91f60a904c0951c`.
+That result closes the CPU-dispatch hypothesis: adding AVX512/thread/host
+combinations would turn release readiness into unbounded environment archaeology
+without improving the production artifact contract.
+
+The Release supply-chain contract is therefore separated from the retained
+re-export diagnostic. The single 11.8 MB canonical
+`models/litert/yolo11n-seg-fp16.tflite` is now Git-tracked as the exact shared
+Android/iOS production source. Clean Release checkouts verify its full SHA
+`ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340`,
+its historical core SHA, TFL3 identifier, and staged iOS byte equality before
+the macOS job can consume it. All other production model binaries remain
+ignored. The exporter/checkpoint/semantic diagnostics remain available for
+model provenance investigations, but they no longer manufacture Release bytes
+whose low-order FLOAT32 fusion result depends on the host.
+
+Because the repository source code is MIT while the canonical model's embedded
+Ultralytics metadata declares AGPL-3.0, `models/litert/README.md` explicitly
+scopes the third-party model and records its artifact identities instead of
+implicitly presenting the model as MIT-licensed source.
+
 Two subsequent legacy `iOS Cloud CI` runs provide intermediate Apple-only
 evidence while the independent Phase 7 Release workflow remains intentionally
 blocked on protected-path installation. Run `34334830050` (#40), job
