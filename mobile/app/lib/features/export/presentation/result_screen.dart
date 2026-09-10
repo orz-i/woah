@@ -202,25 +202,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                       ),
                     const SizedBox(height: 18),
                     _buildSaveStatus(fileSizeMb),
-                    const SizedBox(height: 26),
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.shield_outlined,
-                          size: 15,
-                          color: AppTheme.warmTextMuted,
-                        ),
-                        SizedBox(width: 6),
-                        Text(
-                          '视频已安全保存到你的设备',
-                          style: TextStyle(
-                            color: AppTheme.warmTextMuted,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
                   ],
                 ),
               ),

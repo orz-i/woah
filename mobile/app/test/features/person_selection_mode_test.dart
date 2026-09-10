@@ -232,6 +232,57 @@ void main() {
       expect(configured.persons.firstWhere((p) => p.id == 1).selected, isTrue);
     },
   );
+
+  testWidgets('person selection remains stable on a compact phone screen', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final now = DateTime.utc(2026, 9, 10);
+    final project = DanceProject(
+      id: 'privacy-mode-compact-ui',
+      sourceUri: 'file:///privacy-mode-compact-ui.mp4',
+      videoInfo: const VideoInfo(
+        codedWidth: 720,
+        codedHeight: 1280,
+        displayWidth: 720,
+        displayHeight: 1280,
+        fps: 30,
+        durationMs: 1000,
+        rotation: 0,
+        videoCodec: 'h264',
+        hasAudio: false,
+      ),
+      createdAt: now,
+      updatedAt: now,
+    );
+    final repository = _FakePersonSelectionRepository();
+    final container = ProviderContainer(
+      overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(home: PersonSelectionScreen(project: project)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('全身保护'), findsOneWidget);
+    expect(find.text('人脸保护'), findsOneWidget);
+    expect(find.text('质量'), findsOneWidget);
+    expect(find.text('均衡'), findsOneWidget);
+    expect(find.text('快速'), findsOneWidget);
+    expect(find.byKey(ImmersiveFlowAction.nextControlKey), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 class _FakePersonSelectionRepository implements NativeProcessingRepository {
