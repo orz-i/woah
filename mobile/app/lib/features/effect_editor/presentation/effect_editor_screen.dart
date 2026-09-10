@@ -15,21 +15,25 @@ import 'effect_editor_controller.dart';
 class EffectEditorArgs {
   final DanceProject project;
   final String? initialPreviewPath;
+  final String processingProfile;
 
   const EffectEditorArgs({
     required this.project,
     this.initialPreviewPath,
+    this.processingProfile = 'quality',
   });
 }
 
 class EffectEditorScreen extends ConsumerStatefulWidget {
   final DanceProject project;
   final String? initialPreviewPath;
+  final String processingProfile;
 
   const EffectEditorScreen({
     super.key,
     required this.project,
     this.initialPreviewPath,
+    this.processingProfile = 'quality',
   });
 
   @override
@@ -46,10 +50,9 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ref.read(effectEditorControllerProvider.notifier).init(
-            widget.project,
-            initialPreviewPath: widget.initialPreviewPath,
-          );
+      ref
+          .read(effectEditorControllerProvider.notifier)
+          .init(widget.project, initialPreviewPath: widget.initialPreviewPath);
     });
   }
 
@@ -203,7 +206,8 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
   }
 
   Widget _buildStagePreview(EffectEditorState state) {
-    final displayPath = state.previewPath ??
+    final displayPath =
+        state.previewPath ??
         state.previewThumbnailPath ??
         widget.initialPreviewPath;
     final hasImage = displayPath != null && displayPath.isNotEmpty;
@@ -306,10 +310,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
         SizedBox(height: 12),
         Text(
           '正在准备效果预览',
-          style: TextStyle(
-            color: AppTheme.warmTextSecondary,
-            fontSize: 13,
-          ),
+          style: TextStyle(color: AppTheme.warmTextSecondary, fontSize: 13),
         ),
       ],
     );
@@ -497,106 +498,6 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
   Future<void> _handleNextAction(EffectEditorController controller) async {
     final project = controller.buildConfiguredProject();
     if (project == null) return;
-    await _showExportSettings(project);
-  }
-
-  Future<void> _showExportSettings(DanceProject project) async {
-    var selectedProfile = 'quality';
-    final profile = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      showDragHandle: true,
-      backgroundColor: AppTheme.warmSurface,
-      builder: (sheetContext) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    '导出设置',
-                    style: TextStyle(
-                      color: AppTheme.warmTextPrimary,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    '选择效果与处理时间的平衡',
-                    style: TextStyle(
-                      color: AppTheme.warmTextSecondary,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  _ExportProfileCard(
-                    icon: Icons.diamond_outlined,
-                    title: '最佳效果',
-                    subtitle: '效果优先，耗时较长',
-                    selected: selectedProfile == 'quality',
-                    onTap: () =>
-                        setSheetState(() => selectedProfile = 'quality'),
-                  ),
-                  const SizedBox(height: 10),
-                  _ExportProfileCard(
-                    icon: Icons.balance_rounded,
-                    title: '均衡',
-                    subtitle: '效果与速度平衡',
-                    selected: selectedProfile == 'balanced',
-                    onTap: () =>
-                        setSheetState(() => selectedProfile = 'balanced'),
-                  ),
-                  const SizedBox(height: 10),
-                  _ExportProfileCard(
-                    icon: Icons.bolt_rounded,
-                    title: '最快',
-                    subtitle: '缩短等待时间',
-                    selected: selectedProfile == 'speed',
-                    onTap: () => setSheetState(() => selectedProfile = 'speed'),
-                  ),
-                  const SizedBox(height: 22),
-                  SizedBox(
-                    height: 56,
-                    child: Material(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(18),
-                      child: InkWell(
-                        onTap: () =>
-                            Navigator.of(sheetContext).pop(selectedProfile),
-                        borderRadius: BorderRadius.circular(18),
-                        child: Ink(
-                          decoration: BoxDecoration(
-                            gradient: AppTheme.coralActionGradient,
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              '开始导出',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-
-    if (!mounted || profile == null) return;
     final editorState = ref.read(effectEditorControllerProvider);
     final initialPreviewPath =
         editorState.previewPath ?? editorState.previewThumbnailPath;
@@ -604,7 +505,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
       '/export',
       extra: ExportArgs(
         project: project,
-        processingProfile: profile,
+        processingProfile: widget.processingProfile,
         initialPreviewPath: initialPreviewPath,
       ),
     );
@@ -646,10 +547,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 160),
                 width: 68,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 8,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
                 decoration: BoxDecoration(
                   color: selected
                       ? AppTheme.coralPale
@@ -899,84 +797,5 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
       FillMode.mosaic => '马赛克',
       FillMode.sticker => '贴纸',
     };
-  }
-}
-
-class _ExportProfileCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _ExportProfileCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: selected ? AppTheme.coralPale : AppTheme.warmSurfaceSoft,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 78),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: selected ? AppTheme.coral : AppTheme.warmBorder,
-              width: selected ? 1.5 : 1,
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                color: selected ? AppTheme.coral : AppTheme.warmTextSecondary,
-                size: 24,
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: AppTheme.warmTextPrimary,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        color: AppTheme.warmTextSecondary,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (selected)
-                const Icon(
-                  Icons.check_circle_rounded,
-                  color: AppTheme.coral,
-                  size: 21,
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

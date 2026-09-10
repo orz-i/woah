@@ -1,9 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dance_domain/dance_domain.dart';
+import 'package:app/features/import_video/presentation/import_video_screen.dart';
 import 'package:app/features/import_video/presentation/widgets/video_metadata_card.dart';
 
 void main() {
+  testWidgets('import home is immersive without an app close control', (tester) async {
+    await tester.pumpWidget(
+      const ProviderScope(child: MaterialApp(home: ImportVideoScreen())),
+    );
+    await tester.pump();
+
+    expect(find.byIcon(Icons.close_rounded), findsNothing);
+    expect(find.byTooltip('关闭'), findsNothing);
+    expect(find.text('导入舞段'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   group('VideoMetadataCard Widget Tests', () {
     testWidgets('Displays horizontal video parameters properly', (tester) async {
       const horizontalInfo = VideoInfo(

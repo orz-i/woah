@@ -45,6 +45,7 @@ final appRouter = GoRouter(
           return EffectEditorScreen(
             project: extra.project,
             initialPreviewPath: extra.initialPreviewPath,
+            processingProfile: extra.processingProfile,
           );
         }
         final project = extra as DanceProject;

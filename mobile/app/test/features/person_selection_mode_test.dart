@@ -154,6 +154,13 @@ void main() {
       );
       expect(find.text('全身保护'), findsWidgets);
       expect(find.text('人脸保护'), findsWidgets);
+      expect(find.text('质量'), findsOneWidget);
+      expect(find.text('均衡'), findsOneWidget);
+      expect(find.text('快速'), findsOneWidget);
+      await tester.tap(find.text('均衡'));
+      await tester.pump();
+      final balancedLabel = tester.widget<Text>(find.text('均衡'));
+      expect(balancedLabel.style?.fontWeight, FontWeight.w700);
       expect(find.text('选择要保护的人'), findsNothing);
       expect(
         find.byKey(ImmersiveFlowAction.nextControlKey),

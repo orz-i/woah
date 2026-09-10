@@ -7,6 +7,7 @@ import 'package:app/repositories/native_processing_repository.dart';
 import 'package:app/core/widgets/immersive_flow_action.dart';
 import 'package:app/features/effect_editor/presentation/effect_editor_controller.dart';
 import 'package:app/features/effect_editor/presentation/effect_editor_screen.dart';
+import 'package:app/features/export/presentation/export_screen.dart';
 import 'package:go_router/go_router.dart';
 
 
@@ -274,19 +275,40 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('floating next control opens export settings on tap', (tester) async {
+    testWidgets('floating next control goes directly to export with profile', (tester) async {
       final repo = _FakeNativeRepository();
       final container = ProviderContainer(
         overrides: [nativeRepositoryProvider.overrideWithValue(repo)],
       );
       addTearDown(container.dispose);
 
+      final router = GoRouter(
+        initialLocation: '/edit',
+        routes: [
+          GoRoute(
+            path: '/edit',
+            builder: (context, state) => EffectEditorScreen(
+              project: testProject,
+              processingProfile: 'balanced',
+            ),
+          ),
+          GoRoute(
+            path: '/export',
+            builder: (context, state) {
+              final args = state.extra! as ExportArgs;
+              return Scaffold(
+                body: Center(child: Text('export-${args.processingProfile}')),
+              );
+            },
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
-          child: MaterialApp(
-            home: EffectEditorScreen(project: testProject),
-          ),
+          child: MaterialApp.router(routerConfig: router),
         ),
       );
       await tester.pumpAndSettle();
@@ -296,8 +318,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('导出设置'), findsOneWidget);
-      expect(find.text('开始导出'), findsOneWidget);
+      expect(find.text('导出设置'), findsNothing);
+      expect(find.text('export-balanced'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

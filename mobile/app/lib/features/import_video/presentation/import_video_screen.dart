@@ -16,11 +16,6 @@ class ImportVideoScreen extends ConsumerStatefulWidget {
 }
 
 class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
-  void _closeApp() {
-    HapticFeedback.lightImpact();
-    SystemNavigator.pop();
-  }
-
   Future<void> _pickVideoAndContinue() async {
     HapticFeedback.mediumImpact();
     final controller = ref.read(importVideoControllerProvider.notifier);
@@ -58,11 +53,6 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
         body: SafeArea(
           child: Stack(
             children: [
-              Positioned(
-                top: 10,
-                left: 18,
-                child: _CloseButton(onPressed: _closeApp),
-              ),
               Positioned.fill(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
@@ -243,30 +233,6 @@ class _DanceClipImportCard extends StatelessWidget {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CloseButton extends StatelessWidget {
-  final VoidCallback onPressed;
-
-  const _CloseButton({required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 48,
-      height: 48,
-      child: IconButton(
-        tooltip: '关闭',
-        onPressed: onPressed,
-        padding: EdgeInsets.zero,
-        icon: const Icon(
-          Icons.close_rounded,
-          size: 28,
-          color: Color(0xFF161616),
         ),
       ),
     );
