@@ -651,14 +651,19 @@ def verify_real_cpu_inference_smoke() -> None:
     ):
         check(token in entrypoint, f"Real CPU inference entrypoint missing: {token}")
     native = text(SOURCES / "IOSYoloPhase1Probe.swift", "real native inference probe")
-    for token in ("try runner.run(", "preferredBackend: requestedBackend", "model_sha256", "fixture_sha256", "SHA256.hash(data: data)"):
+    for token in ("try runner.run(", "preferredBackend: requestedBackend", "bundledFixtureConfidenceThreshold: Float32 = 0.001", "confidenceThreshold: Self.bundledFixtureConfidenceThreshold", "model_sha256", "fixture_sha256", "SHA256.hash(data: data)"):
         check(token in native, f"Real native inference probe missing: {token}")
+    runner = text(SOURCES / "IOSYoloRunner.swift", "real native inference runner")
+    check("defaultConfidenceThreshold: Float32 = 0.25" in runner,
+          "Production YOLO confidence threshold must remain 0.25")
+    check("confidenceThreshold: confidenceThreshold" in runner,
+          "YOLO runner must forward the explicit diagnostic confidence threshold")
     assertions = text(ROOT / "mobile/app/lib/core/diagnostics/ios_yolo_smoke_contract.dart", "CPU smoke assertions")
     contract = json.loads(text(SOURCES / "Resources/yolo11n-seg-fp16.contract.json", "YOLO contract"))
     fixture = SOURCES / "Resources/InferenceAssets/yolo_phase1_test_frame.jpg"
     check(contract["expected_sha256"] in assertions, "CPU smoke must pin the canonical model hash")
     check(hashlib.sha256(fixture.read_bytes()).hexdigest() in assertions, "CPU smoke must pin its fixture hash")
-    for token in ("effective_backend", "fallbacks.isNotEmpty", "input_shape", "output_shapes", "detections.isEmpty", "mask_nonzero", "mask_coverage"):
+    for token in ("effective_backend", "confidence_threshold", "0.001", "fallbacks.isNotEmpty", "input_shape", "output_shapes", "detections.isEmpty", "mask_nonzero", "mask_coverage"):
         check(token in assertions, f"CPU smoke assertions missing: {token}")
     simulator = text(ROOT / "tools/ios/run_phase7_simulator_smoke.py", "Phase 7 Simulator runner")
     check('"WOAH_YOLO_CPU_SMOKE=PASS"' in simulator, "Simulator gate must require real CPU inference")

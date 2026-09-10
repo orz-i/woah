@@ -115,6 +115,16 @@ pending. No merge-readiness or release-readiness claim follows from parser
 tests alone. Use `docs/ios_phase7_device_acceptance.md` for the separate
 physical-device gate.
 
+Final cleanup follow-up: Phase 7 Release Run #18 (`34458560785`) reached the
+real CPU/XNNPack Simulator probe but failed before the inherited Phase 3-7
+markers because the synthetic Phase 1 parity fixture produced no detections at
+the production `0.25` confidence threshold. The tracked parity harness already
+uses a low diagnostic threshold for this synthetic fixture. The bounded fix
+therefore makes `0.001` explicit only for `runBundledFixture`, records and
+validates that threshold in the smoke report, and keeps the production runner
+default pinned at `0.25`. A fresh Phase 7 Release run must pass before merge;
+Run #18 is not accepted evidence.
+
 ## PR #1 description for synchronization
 
 Suggested title: `feat(ios): implement Phase 0-7 baseline; device acceptance pending`

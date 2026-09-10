@@ -11,6 +11,7 @@ Map<String, dynamic> validReport() => {
       '0ebb17a79fa4ebd0ebcb74ecd71642d74048097a2a05dabadd596d4debb521a1',
   'requested_backend': 'tflite_xnnpack',
   'effective_backend': 'tflite_xnnpack',
+  'confidence_threshold': 0.001,
   'fallback_reasons': <String>[],
   'frame_width': 320,
   'frame_height': 180,
@@ -41,6 +42,13 @@ void main() {
       [1, 160, 160, 32],
     ];
     verifyIOSYoloCpuSmokeReport(report);
+  });
+
+  test('rejects production or unpinned confidence thresholds', () {
+    for (final value in [0.25, 0, -1, double.nan, double.infinity]) {
+      final report = validReport()..['confidence_threshold'] = value;
+      expect(() => verifyIOSYoloCpuSmokeReport(report), throwsStateError);
+    }
   });
 
   test('rejects absent and incomplete reports', () {

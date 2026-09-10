@@ -19,6 +19,12 @@ void verifyIOSYoloCpuSmokeReport(Map<Object?, Object?>? report) {
       report['effective_backend'] != 'tflite_xnnpack') {
     reject('CPU backend');
   }
+  final confidenceThreshold = report['confidence_threshold'];
+  if (confidenceThreshold is! num ||
+      !confidenceThreshold.isFinite ||
+      (confidenceThreshold - 0.001).abs() > 1e-9) {
+    reject('diagnostic confidence threshold');
+  }
   final fallbacks = report['fallback_reasons'];
   if (fallbacks is! List || fallbacks.isNotEmpty) reject('fallbacks');
 

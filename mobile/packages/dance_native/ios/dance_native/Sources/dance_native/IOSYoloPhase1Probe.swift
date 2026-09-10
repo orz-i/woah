@@ -4,6 +4,12 @@ import Foundation
 import ImageIO
 
 enum IOSYoloPhase1Probe {
+  // The synthetic Phase 1 parity fixture is intentionally not a natural
+  // photograph. Its tracked LiteRT parity gate uses 0.001 to obtain a stable
+  // person-class candidate. Keep this diagnostic threshold isolated from the
+  // production runner default (0.25).
+  static let bundledFixtureConfidenceThreshold: Float32 = 0.001
+
   static func run(
     videoUri: String,
     timestampMs: Int64,
@@ -31,12 +37,14 @@ enum IOSYoloPhase1Probe {
 
     let inference = try runner.run(
       image: generated.image,
-      preferredBackend: requestedBackend
+      preferredBackend: requestedBackend,
+      confidenceThreshold: IOSYoloRunner.defaultConfidenceThreshold
     )
     return makeReport(
       image: generated.image,
       inference: inference,
       requestedBackend: requestedBackend,
+      confidenceThreshold: IOSYoloRunner.defaultConfidenceThreshold,
       metadata: [
         "fixture": "video",
         "requested_timestamp_ms": timestampMs,
@@ -75,12 +83,14 @@ enum IOSYoloPhase1Probe {
     }
     let inference = try runner.run(
       image: image,
-      preferredBackend: requestedBackend
+      preferredBackend: requestedBackend,
+      confidenceThreshold: Self.bundledFixtureConfidenceThreshold
     )
     return makeReport(
       image: image,
       inference: inference,
       requestedBackend: requestedBackend,
+      confidenceThreshold: Self.bundledFixtureConfidenceThreshold,
       metadata: [
         "fixture": fixtureURL.lastPathComponent,
         "model_sha256": try sha256(modelURL),
@@ -96,6 +106,7 @@ enum IOSYoloPhase1Probe {
     image: CGImage,
     inference: IOSYoloInferenceResult,
     requestedBackend: IOSYoloBackend?,
+    confidenceThreshold: Float32,
     metadata: [String: Any]
   ) -> [String: Any] {
     let width = max(1, image.width)
@@ -128,6 +139,7 @@ enum IOSYoloPhase1Probe {
     var report: [String: Any] = [
       "phase": "ios_yolo_phase1",
       "requested_backend": requestedBackend?.rawValue ?? "auto",
+      "confidence_threshold": Double(confidenceThreshold),
       "frame_width": width,
       "frame_height": height,
       "effective_backend": inference.runtime.effectiveBackend.rawValue,

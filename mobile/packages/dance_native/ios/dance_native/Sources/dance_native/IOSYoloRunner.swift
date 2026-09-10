@@ -47,6 +47,8 @@ enum IOSYoloRuntimeSupport {
 }
 
 final class IOSYoloRunner {
+  static let defaultConfidenceThreshold: Float32 = 0.25
+
   private let queue = DispatchQueue(label: "art.gaoge.dance.ios-yolo")
   private(set) var lastRuntimeInfo: IOSYoloRuntimeInfo?
 
@@ -65,14 +67,16 @@ final class IOSYoloRunner {
 
   func run(
     image: CGImage,
-    preferredBackend: IOSYoloBackend? = nil
+    preferredBackend: IOSYoloBackend? = nil,
+    confidenceThreshold: Float32 = IOSYoloRunner.defaultConfidenceThreshold
   ) throws -> IOSYoloInferenceResult {
     try queue.sync {
       let preprocess = try IOSYoloPreprocessor.process(image: image)
 #if canImport(TensorFlowLite)
       return try runWithTensorFlowLite(
         preprocess: preprocess,
-        preferredBackend: preferredBackend
+        preferredBackend: preferredBackend,
+        confidenceThreshold: confidenceThreshold
       )
 #else
       throw PigeonError(
@@ -87,7 +91,8 @@ final class IOSYoloRunner {
 #if canImport(TensorFlowLite)
   private func runWithTensorFlowLite(
     preprocess: IOSYoloPreprocessResult,
-    preferredBackend: IOSYoloBackend?
+    preferredBackend: IOSYoloBackend?,
+    confidenceThreshold: Float32
   ) throws -> IOSYoloInferenceResult {
     let requestedOrder: [IOSYoloBackend] = preferredBackend.map { [$0] }
       ?? [.coreML, .metal, .xnnpack]
@@ -125,7 +130,8 @@ final class IOSYoloRunner {
         let detections = try postprocessor.parse(
           output0: output0,
           output1: output1,
-          preprocess: preprocess
+          preprocess: preprocess,
+          confidenceThreshold: confidenceThreshold
         )
         let info = IOSYoloRuntimeInfo(
           effectiveBackend: backend,
