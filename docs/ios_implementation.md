@@ -1018,6 +1018,32 @@ schema/entry/byte-count and canonical constant-identity validation, so Phase 7
 removes only that redundant raw-text hash; release model full/core SHA gates
 remain exact and unchanged.
 
+Run #14 (`34427291377`) then reached the Apple gate and exposed a platform
+contract error rather than a native-code failure: Flutter 3.44.2 rejects
+`flutter build ios --simulator --release` because Release mode is not supported
+for iOS Simulator. Phase 7 therefore separates Debug-Simulator runtime evidence
+from the real iPhoneOS Release compile/audit gate instead of pretending a
+Release Simulator exists. All regression cases remain on the physical-device
+acceptance checklist.
+
+Phase 7 Release Run #15 (`34447086069`) is the finite repository-implementation
+acceptance run for branch head
+`037c0735e12a67053683db4d919f645adaa88234`. The pinned-model job
+`102774130636` completed successfully, and the Xcode 26/macOS Release-readiness
+job `102774193645` completed successfully. Inside that job, both
+`Run Phase 7 Release gate` and `Upload audited Release artifact` completed
+successfully. GitHub artifact `10140899500` is
+`woah-ios-release-156844871d80515e1e089b62ec22e9e85013d09f`, size 20,885,583
+bytes, with Actions digest
+`sha256:3b8f4334558bbbe960b9a1dce9df49287096e2f6e13d879ae30bd6ecabaf5ed6`.
+The artifact name uses GitHub's pull-request merge snapshot SHA; the source
+branch head for the accepted implementation remains `037c073...`. The separate
+canonical-model artifact is `10140051107`. These are Apple-only
+build/Simulator/audit facts, not physical-iPhone acceptance. Phase 7 repository
+implementation therefore stops at
+`implementation complete pending physical-device acceptance`; no Phase 8 is
+created to replace the remaining real-device gate.
+
 Two subsequent legacy `iOS Cloud CI` runs provide intermediate Apple-only
 evidence while the independent Phase 7 Release workflow remains intentionally
 blocked on protected-path installation. Run `34334830050` (#40), job
