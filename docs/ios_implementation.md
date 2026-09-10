@@ -947,6 +947,31 @@ total bytes, and largest named tensors that differ. The raw historical core
 hash remains blocking until those constant differences are explained; no model
 identity or acceptance threshold is relaxed by this diagnostic.
 
+Phase 7 Release Run #10 (`34365257098`) then refined the constant drift to
+FLOAT32 low-bit reproducibility rather than model-weight or tensor-layout
+drift. The clean-cloud export kept the exact historical graph structure and
+constant shapes. Of the 46 constants whose raw bytes differed, 43 became
+identical after clearing the lowest 12 mantissa bits and 32 already matched
+after clearing only the lowest 8 bits. The largest convolution constants kept
+identical min/max values, while aggregate L2 and absolute-sum relative deltas
+were on the order of 1e-9. The same runner reproduced its own raw core exactly,
+but different GitHub runners produced different raw core hashes. Ultralytics
+8.4.130 performs `model.float()` followed by CPU `model.fuse(...)` before
+serialization, so Phase 7 treats host CPU dispatch during Conv/BN fusion as the
+remaining bounded hypothesis instead of relaxing the historical core identity.
+
+Run #11 therefore tests exactly two PyTorch CPU dispatch candidates in one
+clean-cloud job: `ATEN_CPU_CAPABILITY=default` and `ATEN_CPU_CAPABILITY=avx2`.
+Both paths are single-threaded (`torch_num_threads=1`, inter-op threads 1, and
+the common OMP/MKL/OpenBLAS/NumExpr/vecLib thread variables set to 1). A
+candidate is accepted only if it reproduces the historical 11,798,720-byte core
+and SHA-256 exactly; the selected capability must then reproduce that core a
+second time byte-for-byte before the canonical metadata tail is restored. If
+neither candidate matches, the Release lane remains fail-closed and reports
+both candidate hashes and constant diagnostics in the same run. This is a
+finite reproducibility experiment, not a new product phase or an acceptance
+tolerance.
+
 Two subsequent legacy `iOS Cloud CI` runs provide intermediate Apple-only
 evidence while the independent Phase 7 Release workflow remains intentionally
 blocked on protected-path installation. Run `34334830050` (#40), job

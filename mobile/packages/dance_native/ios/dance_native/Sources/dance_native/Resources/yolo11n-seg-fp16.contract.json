@@ -40,6 +40,17 @@
       "isolation": "temporary_venv",
       "platform": "linux_x86_64",
       "python_major_minor": "3.11",
+      "cpu_dispatch_candidates": ["default", "avx2"],
+      "torch_num_threads": 1,
+      "torch_num_interop_threads": 1,
+      "process_thread_env": {
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "NUMEXPR_NUM_THREADS": "1",
+        "VECLIB_MAXIMUM_THREADS": "1",
+        "PYTHONHASHSEED": "0"
+      },
       "torch_version": "2.13.0+cpu",
       "torch_wheel_url": "https://download-r2.pytorch.org/whl/cpu/torch-2.13.0%2Bcpu-cp311-cp311-manylinux_2_28_x86_64.whl",
       "torch_wheel_sha256": "6746dbcbeb526eb61330b76b41ff1b4eb848951103a892eeb080dfa2b264667b",

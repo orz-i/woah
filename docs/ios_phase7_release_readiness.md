@@ -73,7 +73,7 @@ LiteRT GPU delegates may execute that graph with FP16 arithmetic at runtime.
 The model-production environment is isolated from the Android/application
 Python lock and uses a throw-away Python 3.11 virtual environment. At the
 canonical 2026-08-27 cutoff, that exporter environment resolves CPU
-PyTorch `2.13.0`, torchvision `0.28.0`, NumPy `2.5.2`, Ultralytics `8.4.130`,
+PyTorch `2.13.0`, torchvision `0.28.0`, NumPy `2.4.6`, Ultralytics `8.4.130`,
 and the pinned LiteRT converter stack. The application/root `uv.lock` remains
 unchanged and is not used as evidence for model-production package identity.
 

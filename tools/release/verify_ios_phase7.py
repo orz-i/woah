@@ -183,6 +183,27 @@ def verify_model_contract() -> None:
     check(exporter.get("quantize") is None, "Phase 7 canonical LiteRT export must remain unquantized")
     check(exporter.get("graph_precision") == "float32", "Phase 7 canonical graph precision contract drifted")
     environment = reproducibility.get("environment") or {}
+    check(
+        environment.get("cpu_dispatch_candidates") == ["default", "avx2"],
+        "Phase 7 CPU dispatch candidate set drifted",
+    )
+    check(environment.get("torch_num_threads") == 1, "Phase 7 exporter torch_num_threads must remain 1")
+    check(
+        environment.get("torch_num_interop_threads") == 1,
+        "Phase 7 exporter torch_num_interop_threads must remain 1",
+    )
+    check(
+        environment.get("process_thread_env")
+        == {
+            "OMP_NUM_THREADS": "1",
+            "MKL_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1",
+            "NUMEXPR_NUM_THREADS": "1",
+            "VECLIB_MAXIMUM_THREADS": "1",
+            "PYTHONHASHSEED": "0",
+        },
+        "Phase 7 exporter process-thread environment drifted",
+    )
     for key, expected in (
         ("isolation", "temporary_venv"),
         ("platform", "linux_x86_64"),
@@ -326,11 +347,18 @@ def verify_model_contract() -> None:
         "fp32_ulp8_equal_count",
         "fp32_ulp12_equal_count",
         "float_stats_equal_count",
+        "ATEN_CPU_CAPABILITY",
+        "cpu_dispatch_candidates",
+        "torch_num_threads",
+        "torch_num_interop_threads",
+        "PHASE7_MODEL_CPU_RUNTIME",
+        "PHASE7_MODEL_CPU_CANDIDATE",
+        "Phase 7 LiteRT CPU dispatch reproducibility failure",
+        "Phase 7 selected CPU dispatch repeat failure",
         "PHASE7_MODEL_CHECKPOINT_SHA256",
         "PHASE7_MODEL_EXPORTER_VERSIONS",
         "PHASE7_MODEL_EXPORTER_ISOLATION=temporary_venv",
         "PHASE7_MODEL_GENERATED",
-        "Phase 7 LiteRT core reproducibility failure",
         '"--worker-export"',
         '"--worker-versions"',
         '"-m", "venv"',

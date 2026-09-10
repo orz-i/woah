@@ -61,7 +61,11 @@ def fail(title: str, message: str) -> "NoReturn":
     raise SystemExit(message)
 
 
-def run_checked(command: list[str], *, title: str) -> str:
+def run_checked(command: list[str], *, title: str, env: dict[str, str] | None = None) -> str:
+    process_env = None
+    if env is not None:
+        process_env = os.environ.copy()
+        process_env.update(env)
     completed = subprocess.run(
         command,
         cwd=ROOT,
@@ -69,6 +73,7 @@ def run_checked(command: list[str], *, title: str) -> str:
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
+        env=process_env,
     )
     output = completed.stdout or ""
     if output:
@@ -79,6 +84,22 @@ def run_checked(command: list[str], *, title: str) -> str:
             f"exit={completed.returncode}\ncommand={' '.join(command)}\n{output[-3000:]}",
         )
     return output
+
+
+def deterministic_export_env(contract: dict, cpu_capability: str) -> dict[str, str]:
+    environment = contract["reproducibility"]["environment"]
+    candidates = [str(value) for value in environment["cpu_dispatch_candidates"]]
+    if cpu_capability not in candidates:
+        fail(
+            "Phase 7 CPU dispatch candidate",
+            f"Unexpected cpu_capability={cpu_capability!r}; allowed={candidates}",
+        )
+    result = {
+        str(key): str(value)
+        for key, value in environment["process_thread_env"].items()
+    }
+    result["ATEN_CPU_CAPABILITY"] = cpu_capability
+    return result
 
 
 def distribution_version(name: str) -> str | None:
@@ -252,6 +273,29 @@ def checkpoint_path(contract: dict) -> Path:
 
 
 def worker_export(contract: dict, checkpoint: Path, output: Path) -> int:
+    import torch
+
+    environment = contract["reproducibility"]["environment"]
+    torch.set_num_threads(int(environment["torch_num_threads"]))
+    torch.set_num_interop_threads(int(environment["torch_num_interop_threads"]))
+    capability_reader = getattr(torch.backends.cpu, "get_cpu_capability", None)
+    effective_capability = capability_reader() if callable(capability_reader) else None
+    print(
+        "PHASE7_MODEL_CPU_RUNTIME="
+        + json.dumps(
+            {
+                "requested_capability": os.environ.get("ATEN_CPU_CAPABILITY"),
+                "effective_capability": effective_capability,
+                "torch_num_threads": torch.get_num_threads(),
+                "torch_num_interop_threads": torch.get_num_interop_threads(),
+                "omp_num_threads": os.environ.get("OMP_NUM_THREADS"),
+                "mkl_num_threads": os.environ.get("MKL_NUM_THREADS"),
+            },
+            sort_keys=True,
+        ),
+        flush=True,
+    )
+
     from ultralytics import YOLO
 
     if not checkpoint.is_file():
@@ -508,12 +552,20 @@ def reproduce_model(contract: dict, checkpoint: Path, exporter_python: Path, tem
     target = ROOT / contract["source"]
     target.parent.mkdir(parents=True, exist_ok=True)
     print("[iOS CI] Reproducing YOLO11n segmentation with Ultralytics LiteRT export...", flush=True)
-    results = [
-        temporary_root / "generated-yolo11n-seg-a.tflite",
-        temporary_root / "generated-yolo11n-seg-b.tflite",
-    ]
-    for index, result in enumerate(results, start=1):
-        run_checked(
+    verify_checkpoint(checkpoint, contract)
+
+    reproducibility = contract["reproducibility"]
+    environment = reproducibility["environment"]
+    semantic_tool = ROOT / "tools/release/fingerprint_tflite_semantics.py"
+    expected_semantic = reproducibility["semantic_fingerprint"]
+    canonical_manifest_path = ROOT / reproducibility["constant_manifest_path"]
+    canonical_constants = load_constant_manifest(canonical_manifest_path)
+    fingerprint_marker = "PHASE7_TFLITE_SEMANTIC_FINGERPRINT="
+    runtime_marker = "PHASE7_MODEL_CPU_RUNTIME="
+
+    def export_candidate(cpu_capability: str, label: str) -> dict:
+        result = temporary_root / f"generated-yolo11n-seg-{label}.tflite"
+        worker_output = run_checked(
             [
                 str(exporter_python),
                 str(Path(__file__).resolve()),
@@ -521,17 +573,18 @@ def reproduce_model(contract: dict, checkpoint: Path, exporter_python: Path, tem
                 str(checkpoint),
                 str(result),
             ],
-            title=f"Phase 7 isolated LiteRT export #{index} failed",
+            title=f"Phase 7 isolated LiteRT export ({label}) failed",
+            env=deterministic_export_env(contract, cpu_capability),
         )
-    verify_checkpoint(checkpoint, contract)
-
-    generated: list[dict] = []
-    semantic_tool = ROOT / "tools/release/fingerprint_tflite_semantics.py"
-    for index, result in enumerate(results, start=1):
+        runtime_lines = [line for line in worker_output.splitlines() if line.startswith(runtime_marker)]
+        runtime = json.loads(runtime_lines[-1][len(runtime_marker) :]) if runtime_lines else {
+            "requested_capability": cpu_capability,
+            "effective_capability": None,
+        }
         metadata = load_export_metadata(result)
         validate_export_metadata(metadata, contract)
         core, generated_tail = split_core(result)
-        constants_output = temporary_root / f"generated-{index}.constants.json"
+        constants_output = temporary_root / f"generated-{label}.constants.json"
         fingerprint_output = run_checked(
             [
                 str(exporter_python),
@@ -540,94 +593,148 @@ def reproduce_model(contract: dict, checkpoint: Path, exporter_python: Path, tem
                 "--constants-output",
                 str(constants_output),
             ],
-            title="Phase 7 generated LiteRT semantic fingerprint failed",
+            title=f"Phase 7 generated LiteRT semantic fingerprint ({label}) failed",
         )
-        marker = "PHASE7_TFLITE_SEMANTIC_FINGERPRINT="
-        marker_lines = [line for line in fingerprint_output.splitlines() if line.startswith(marker)]
+        marker_lines = [
+            line for line in fingerprint_output.splitlines() if line.startswith(fingerprint_marker)
+        ]
         if len(marker_lines) != 1:
             fail(
                 "Phase 7 generated LiteRT semantic fingerprint",
                 f"Missing semantic marker in output for {result}:\n{fingerprint_output[-2000:]}",
             )
-        fingerprint = json.loads(marker_lines[0][len(marker) :])
-        generated.append(
-            {
-                "path": result,
-                "metadata": metadata,
-                "core": core,
-                "generated_tail": generated_tail,
-                "fingerprint": fingerprint,
-                "constants": load_constant_manifest(constants_output),
-            }
+        fingerprint = json.loads(marker_lines[0][len(fingerprint_marker) :])
+        constants = load_constant_manifest(constants_output)
+        constant_diff = compare_constant_manifests(canonical_constants, constants)
+        semantic_mismatches = {
+            key: {"expected": expected_semantic[key], "actual": fingerprint.get(key)}
+            for key in (
+                "tensor_count",
+                "operator_count",
+                "constant_tensor_count",
+                "constant_bytes",
+                "structure_sha256",
+                "constants_sha256",
+                "semantic_sha256",
+            )
+            if fingerprint.get(key) != expected_semantic[key]
+        }
+        candidate = {
+            "cpu_capability": cpu_capability,
+            "runtime": runtime,
+            "path": result,
+            "metadata": metadata,
+            "core": core,
+            "generated_tail": generated_tail,
+            "fingerprint": fingerprint,
+            "constants": constants,
+            "constant_diff": constant_diff,
+            "semantic_mismatches": semantic_mismatches,
+            "core_sha256": sha256_bytes(core),
+        }
+        print(
+            "PHASE7_MODEL_CPU_CANDIDATE="
+            + json.dumps(
+                {
+                    "cpu_capability": cpu_capability,
+                    "runtime": runtime,
+                    "core_size": len(core),
+                    "core_sha256": candidate["core_sha256"],
+                    "structure_sha256": fingerprint["structure_sha256"],
+                    "constants_sha256": fingerprint["constants_sha256"],
+                    "semantic_sha256": fingerprint["semantic_sha256"],
+                    "semantic_mismatches": semantic_mismatches,
+                    "constant_diff": constant_diff,
+                },
+                sort_keys=True,
+            ),
+            flush=True,
+        )
+        return candidate
+
+    candidates = [
+        export_candidate(str(cpu_capability), f"candidate-{cpu_capability}")
+        for cpu_capability in environment["cpu_dispatch_candidates"]
+    ]
+    expected_core_size = int(reproducibility["expected_core_size_bytes"])
+    expected_core_hash = str(reproducibility["expected_core_sha256"])
+    exact = [
+        candidate
+        for candidate in candidates
+        if len(candidate["core"]) == expected_core_size
+        and candidate["core_sha256"] == expected_core_hash
+    ]
+    if not exact:
+        compact_candidates = []
+        for candidate in candidates:
+            diff = candidate["constant_diff"]
+            compact_candidates.append(
+                {
+                    "cpu_capability": candidate["cpu_capability"],
+                    "runtime": candidate["runtime"],
+                    "core_size": len(candidate["core"]),
+                    "core_sha256": candidate["core_sha256"],
+                    "semantic_mismatches": candidate["semantic_mismatches"],
+                    "constant_diff": {
+                        key: value
+                        for key, value in diff.items()
+                        if key != "largest_changed"
+                    }
+                    | {"largest_changed": diff["largest_changed"][:2]},
+                }
+            )
+        fail(
+            "Phase 7 LiteRT CPU dispatch reproducibility failure",
+            f"expected_size={expected_core_size} expected_sha256={expected_core_hash} "
+            f"candidates={json.dumps(compact_candidates, sort_keys=True)}",
         )
 
-    first = generated[0]
-    second = generated[1]
-    result = first["path"]
-    metadata = first["metadata"]
-    core = first["core"]
-    generated_tail = first["generated_tail"]
-    first_fingerprint = first["fingerprint"]
-    second_fingerprint = second["fingerprint"]
-    reproducibility = contract["reproducibility"]
-    core_hash = sha256_bytes(core)
-    repeated_core_hash = sha256_bytes(second["core"])
-    repeat_core_equal = core == second["core"]
+    selected = exact[0]
+    selected_capability = str(selected["cpu_capability"])
+    repeated = export_candidate(selected_capability, f"repeat-{selected_capability}")
+    repeat_core_equal = selected["core"] == repeated["core"]
     repeat_semantic_equal = (
-        first_fingerprint["semantic_sha256"] == second_fingerprint["semantic_sha256"]
+        selected["fingerprint"]["semantic_sha256"]
+        == repeated["fingerprint"]["semantic_sha256"]
     )
+    if (
+        not repeat_core_equal
+        or len(repeated["core"]) != expected_core_size
+        or repeated["core_sha256"] != expected_core_hash
+    ):
+        fail(
+            "Phase 7 selected CPU dispatch repeat failure",
+            f"cpu_capability={selected_capability} expected_sha256={expected_core_hash} "
+            f"first_sha256={selected['core_sha256']} repeat_sha256={repeated['core_sha256']} "
+            f"repeat_core_equal={repeat_core_equal} repeat_semantic_equal={repeat_semantic_equal}",
+        )
+
     print(
         "PHASE7_MODEL_GENERATED="
         + json.dumps(
             {
-                "raw_size": result.stat().st_size,
-                "raw_sha256": sha256(result),
-                "core_size": len(core),
-                "core_sha256": core_hash,
-                "repeat_core_sha256": repeated_core_hash,
+                "selected_cpu_capability": selected_capability,
+                "runtime": selected["runtime"],
+                "raw_size": selected["path"].stat().st_size,
+                "raw_sha256": sha256(selected["path"]),
+                "core_size": len(selected["core"]),
+                "core_sha256": selected["core_sha256"],
+                "repeat_core_sha256": repeated["core_sha256"],
                 "repeat_core_equal": repeat_core_equal,
-                "semantic_sha256": first_fingerprint["semantic_sha256"],
-                "repeat_semantic_sha256": second_fingerprint["semantic_sha256"],
+                "semantic_sha256": selected["fingerprint"]["semantic_sha256"],
+                "repeat_semantic_sha256": repeated["fingerprint"]["semantic_sha256"],
                 "repeat_semantic_equal": repeat_semantic_equal,
-                "structure_sha256": first_fingerprint["structure_sha256"],
-                "constants_sha256": first_fingerprint["constants_sha256"],
-                "generated_tail_size": len(generated_tail),
-                "metadata_version": metadata.get("version"),
-                "metadata_args": metadata.get("args"),
+                "structure_sha256": selected["fingerprint"]["structure_sha256"],
+                "constants_sha256": selected["fingerprint"]["constants_sha256"],
+                "generated_tail_size": len(selected["generated_tail"]),
+                "metadata_version": selected["metadata"].get("version"),
+                "metadata_args": selected["metadata"].get("args"),
             },
             sort_keys=True,
         ),
         flush=True,
     )
-    expected_semantic = reproducibility["semantic_fingerprint"]
-    canonical_manifest_path = ROOT / reproducibility["constant_manifest_path"]
-    canonical_constants = load_constant_manifest(canonical_manifest_path)
-    constant_diff = compare_constant_manifests(canonical_constants, first["constants"])
-    semantic_mismatches = {
-        key: {"expected": expected_semantic[key], "actual": first_fingerprint.get(key)}
-        for key in (
-            "tensor_count",
-            "operator_count",
-            "constant_tensor_count",
-            "constant_bytes",
-            "structure_sha256",
-            "constants_sha256",
-            "semantic_sha256",
-        )
-        if first_fingerprint.get(key) != expected_semantic[key]
-    }
-    if len(core) != int(reproducibility["expected_core_size_bytes"]) or core_hash != reproducibility["expected_core_sha256"]:
-        fail(
-            "Phase 7 LiteRT core reproducibility failure",
-            f"expected_size={reproducibility['expected_core_size_bytes']} actual_size={len(core)} "
-            f"expected_sha256={reproducibility['expected_core_sha256']} actual_sha256={core_hash} "
-            f"repeat_sha256={repeated_core_hash} repeat_core_equal={repeat_core_equal} "
-            f"repeat_semantic_equal={repeat_semantic_equal} semantic_mismatches="
-            f"{json.dumps(semantic_mismatches, sort_keys=True)} constant_diff="
-            f"{json.dumps(constant_diff, sort_keys=True)}",
-        )
-
-    target.write_bytes(core + canonical_tail(contract))
+    target.write_bytes(selected["core"] + canonical_tail(contract))
     return target
 
 
