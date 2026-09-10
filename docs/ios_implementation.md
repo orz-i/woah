@@ -1007,6 +1007,16 @@ Ultralytics metadata declares AGPL-3.0, `models/litert/README.md` explicitly
 scopes the third-party model and records its artifact identities instead of
 implicitly presenting the model as MIT-licensed source.
 
+Phase 7 Release Run #13 (`34426775414`) validated the new binary supply-chain
+boundary: the clean Ubuntu `release-model` job succeeded, uploaded the exact
+canonical artifact, and the macOS job successfully downloaded and staged it.
+The first macOS gate then failed before Xcode work because the diagnostic
+constant-manifest verifier hashed raw JSON file bytes. Windows had recorded
+CRLF bytes while the macOS Git checkout used LF. The manifest already has
+schema/entry/byte-count and canonical constant-identity validation, so Phase 7
+removes only that redundant raw-text hash; release model full/core SHA gates
+remain exact and unchanged.
+
 Two subsequent legacy `iOS Cloud CI` runs provide intermediate Apple-only
 evidence while the independent Phase 7 Release workflow remains intentionally
 blocked on protected-path installation. Run `34334830050` (#40), job

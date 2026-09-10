@@ -90,6 +90,12 @@ must instead verify that the clean checkout contains the Git-tracked canonical
 file, stage it byte-identically for iOS, and report the pinned SHA-256 before
 the macOS Release job may start.
 
+The tracked constant manifest is diagnostic JSON, not a release binary. Phase 7
+validates its schema, 248-entry/byte totals, required diagnostic fields, and the
+canonical `{tensor, bytes, sha256}` aggregate identity. It intentionally does
+not hash raw text bytes, because CRLF/LF checkout conversion has no model
+semantics and must not make a macOS Release checkout disagree with Windows.
+
 The embedded canonical metadata identifies the model as Ultralytics AGPL-3.0,
 while this repository's source-code license is MIT. `models/litert/README.md`
 therefore scopes the third-party model separately and records its hashes and

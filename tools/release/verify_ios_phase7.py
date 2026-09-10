@@ -294,10 +294,6 @@ def verify_model_contract() -> None:
     check(constant_manifest.is_file(), "Phase 7 canonical constant manifest is missing")
     if constant_manifest.is_file():
         manifest_bytes = constant_manifest.read_bytes()
-        check(
-            hashlib.sha256(manifest_bytes).hexdigest() == reproducibility.get("constant_manifest_sha256"),
-            "Phase 7 canonical constant manifest file hash drifted",
-        )
         try:
             manifest = json.loads(manifest_bytes.decode("utf-8"))
         except Exception:
