@@ -40,16 +40,16 @@
          │      ├─ [Every Stride Frames] ──> InferenceRenderer (GPU Letterbox 640x640)
          │      │                                  │
          │      │                                  ▼
-         │      │                            YoloSegmenter (ONNX Runtime)
+         │      │                            YoloLiteRtSegmenter (LiteRT)
          │      │                                  │
          │      │                                  ▼
-         │      │                            PrivacySegmentationProcessor (+10px Dilation)
+         │      ├──────────────────────────> TrackManager (Raw Mask + Kalman + Hungarian + Lost Safety)
          │      │                                  │
          │      │                                  ▼
-         │      ├─ [Skipped Frames] ───────> TrackManager (Kalman + Hungarian + Lost Safety)
-         │      │                                  │
-         │      │                                  ▼
-         │      └──────────────────────────> GlRenderer (Effects + Sticker + Smooth Follow)
+         │      └──────────────────────────> PrivacyOcclusionResolver (Single Dilation)
+         │                                         │
+         │                                         ▼
+         │                                   GlRenderer (Effects + Sticker + Smooth Follow)
          │                                         │
          │                                         ▼
          └── VideoEncoder (MediaCodec Surface + MediaMuxer)
@@ -120,13 +120,13 @@
    - `KalmanFilterTest`: 4/4 passed
    - `HungarianSolverTest`: 4/4 passed
    - `ModelCoordinateMapperTest`: 3/3 passed
-   - `PrivacySegmentationProcessorTest`: 2/2 passed
+   - `PrivacyRawMaskOwnershipTest`: 1/1 passed
    - `SelectionSemanticsTest`: 3/3 passed
    - `PreviewAnalysisCacheTest`: 2/2 passed
    - `AnalysisIdMappingTest`: 1/1 passed
    - `MaskPrivacyProcessorTest`: 1/1 passed
    - `YoloPreprocessorOrientationTest`: 1/1 passed
-   - **Android 总计**：47/47 PASSED (100%)
+   - **Android 总计**：46/46 PASSED (100%)
 
 3. **Python 验证工具套件**：
    - `tools/evaluate_tracking.py`: MOTA = 100.0%, IDF1 = 100.0% (PASSED)

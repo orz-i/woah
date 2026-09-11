@@ -26,9 +26,9 @@ Android Native Engine
 ├── Video Analysis (AnalyzePipeline.kt)
 ├── Real-time Preview (PreviewPipeline.kt + PreviewAnalysisCache)
 ├── Background Export (ExportForegroundService + ExportPipeline)
-├── Segmentation Inference (YoloOnnxSegmenter + YOLOv11-seg)
+├── Segmentation Inference (YoloLiteRtSegmenter + YOLO11-seg LiteRT)
 ├── Multi-Object Tracking (TrackManager: 8D Kalman + Hungarian + warpMask)
-├── Privacy Guard (PrivacySegmentationProcessor: Dilation Safety)
+├── Privacy Guard (PrivacyOcclusionResolver: Single Dilation + Occlusion Ownership)
 ├── Hardware Rendering (GlRenderer + GlShaders + InferenceRenderer)
 └── Media Codec & Muxing (MediaCodec + MediaExtractor + MediaMuxer)
 ```
@@ -42,9 +42,9 @@ Android Native Engine
 2. **处理流程**：
    - 探测视频元数据（`VideoProbe.probe`），获取正向宽高、时长与旋转角。
    - 使用 `MediaMetadataRetriever` 提取首帧 Bitmap（或通过 OpenGL 解码）。
-   - 将画面送入 `YoloOnnxSegmenter.segmentBitmapSync`。
+   - 将画面送入 `YoloLiteRtSegmenter.segmentBitmapSync`。
    - 经 `YoloPostprocessor` 计算所有人物的 Bounding Box、Mask 及脚底参考点。
-   - 经 `PrivacySegmentationProcessor.DEFAULT.applyPrivacySafety` 应用安全膨胀。
+   - 保留 YOLO 原始 Mask；分析阶段不执行隐私膨胀，避免污染后续身份/几何基准。
    - 提取各人物的头像缩略图保存在本地缓存目录。
    - 结果写入 `AnalysisResultDto` 返回 Flutter，供用户选择需要保护的人物。
 
@@ -55,6 +55,7 @@ Android Native Engine
 2. **V1 稳定性约束**：
    - EffectEditor V1 严格限制 `timestampMs = 0` 进行首帧预览，彻底规避任意时间戳单帧匈牙利匹配导致的身份漂移。
    - 架构预留 `TrackingSnapshotCache` 规范接口，为未来任意时间戳追踪预览奠定演进基础。
+   - Preview 与 Export 一致：YOLO 原始 Mask 直接进入 `TrackManager`，仅在最终隐私合成阶段由 `PrivacyOcclusionResolver` 执行一次安全膨胀。
 3. **LRU 缓存机制 (`PreviewAnalysisCache`)**：
    - 采用最大容量限制（3~5 个条目）的线程安全 LRU 缓存。
    - 淘汰条目时自动触发底层 `Bitmap.recycle()`，杜绝 Native 内存泄漏。
@@ -130,8 +131,9 @@ Android Native Engine
 1. **Strict Person-Only 遮挡与特效**：
    - 严禁对背景执行无区别变形或处理。
    - 在 `GlShaders.kt` 中，Leg Stretch（拉腿）严格限制在人体 Mask 内部，背景像素坐标保持绝对不变，杜绝背景门框、地砖线条弯曲畸变。
-2. **统一隐私安全管线 (`PrivacySegmentationProcessor`)**：
-   - 全系统（分析、预览、导出）统一接入隐私膨胀策略（默认对 Proto Mask 进行 1 像素安全外扩，对应物理原图数像素外延）。
+2. **单一 Mask 所有权与隐私安全边界 (`PrivacyOcclusionResolver`)**：
+   - 分割与跟踪阶段始终保留 YOLO 原始 Mask；只有最终隐私合成阶段默认对目标 Proto Mask 执行一次 1 像素安全外扩。
+   - Preview 与 Export 共享这一契约，禁止在进入 `TrackManager` 前预膨胀，避免重复 dilation 导致人物遮罩明显变胖。
    - 任何情况下绝不为了性能降低隐私遮盖完整性——允许轻微多遮，严禁露体。
 3. **能力诚实原则**：
    - 真实汇报设备参数，文案采用“本地端侧处理中”，明确区分图形 GPU、AI 推理后端与硬件编解码器。

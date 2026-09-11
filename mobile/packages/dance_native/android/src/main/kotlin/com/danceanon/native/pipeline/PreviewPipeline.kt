@@ -146,7 +146,10 @@ class PreviewPipeline(
             // 2. Perform AI Segmentation
             segmenter.initialize()
             val segResult = segmenter.segmentBitmapSync(baseRotatedBitmap, request.timestampMs * 1000L)
-            val detections = com.danceanon.native.privacy.PrivacySegmentationProcessor.DEFAULT.applyPrivacySafety(segResult.persons)
+            // Keep YOLO's canonical organic mask untouched through identity tracking.
+            // Full-body privacy safety dilation is applied exactly once later by
+            // PrivacyOcclusionResolver during composition, matching ExportPipeline.
+            val detections = segResult.persons
 
 
             // 3. Assign stable IDs matching analysis cache

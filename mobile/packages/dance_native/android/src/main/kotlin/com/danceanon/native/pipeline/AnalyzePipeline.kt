@@ -157,7 +157,10 @@ class AnalyzePipeline(
             try { selectionSegmenter.close() } catch (_: Throwable) {}
             try { canonicalDecoder?.close() } catch (_: Throwable) {}
         }
-        val safePersons = com.danceanon.native.privacy.PrivacySegmentationProcessor.DEFAULT.applyPrivacySafety(segFrame.persons)
+        // Analysis persists identity geometry (bbox/confidence), not privacy-render masks.
+        // Preserve the canonical YOLO masks here as well so no pre-dilated mask can leak
+        // into a future tracking/render path. Privacy dilation belongs to composition.
+        val canonicalPersons = segFrame.persons
 
         NativeDiagnostics.event(
             level = "INFO",
@@ -177,11 +180,11 @@ class AnalyzePipeline(
                 "yolo_requested_accelerator" to LiteRtAccelerator.CPU.name,
                 "yolo_effective_accelerator" to selectionEffectiveAccelerator,
                 "cpu_num_threads" to 4,
-                "detection_count" to safePersons.size,
-                "diagnostic_candidate_ids_ge_0_60" to safePersons.mapIndexedNotNull { index, person ->
+                "detection_count" to canonicalPersons.size,
+                "diagnostic_candidate_ids_ge_0_60" to canonicalPersons.mapIndexedNotNull { index, person ->
                     index.takeIf { person.confidence >= 0.60f }
                 },
-                "detections" to safePersons.mapIndexed { index, person ->
+                "detections" to canonicalPersons.mapIndexed { index, person ->
                     mapOf(
                         "index" to index,
                         "confidence_q1e4" to (person.confidence * 10_000f).roundToInt(),
@@ -200,7 +203,7 @@ class AnalyzePipeline(
         val detectedPersons = mutableListOf<DetectedPersonDto>()
         val cachedPersons = mutableListOf<com.danceanon.native.storage.CachedPerson>()
 
-        for ((index, person) in safePersons.withIndex()) {
+        for ((index, person) in canonicalPersons.withIndex()) {
             val thumbnailBbox = if (canonicalFrame != null) {
                 scaleBbox(
                     bbox = person.bbox,
