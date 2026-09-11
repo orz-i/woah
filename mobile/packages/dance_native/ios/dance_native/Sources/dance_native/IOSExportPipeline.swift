@@ -305,6 +305,7 @@ final class IOSExportPipeline {
           freshFullBodyPrivacyEvidence: freshFullBodyPrivacyEvidence,
           preferFreshFullBodyClassPrimary: privacyClassTracker != nil
             && !freshFullBodyPrivacyEvidence.isEmpty,
+          tightMask: !fullBodyIds.isEmpty,
           outputWidth: target.width,
           outputHeight: target.height
         )

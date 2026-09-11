@@ -147,9 +147,8 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
         faceOnlyPersonIds: faceOnlyPersonIds,
         effects: selectionMaskEffect,
         follow: const FollowConfig(),
-        // Selection is an identity/shape affordance, not the final privacy output.
-        // Show the canonical 0.5 YOLO contour instead of the conservative export
-        // safety margin so the highlight visually hugs the selected dancer.
+        // Show the canonical 0.5 YOLO contour used by tight full-body rendering
+        // so the selection highlight matches effect preview and final export.
         tightMaskPreview: true,
       );
 

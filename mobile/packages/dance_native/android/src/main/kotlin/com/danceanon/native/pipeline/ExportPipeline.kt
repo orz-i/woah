@@ -1837,7 +1837,8 @@ class ExportPipeline(
                                 expectedSelectedPrivacyCount = selectedIds.size,
                                 maxFallbackObservationAgeFrames = trackManager.getMaxMissedFrames(),
                                 additionalResolvedPrivacy = faceOnlyFrameResult?.resolvedPrivacy,
-                                faceStickerPlacements = faceOnlyFrameResult?.stickerPlacements.orEmpty()
+                                faceStickerPlacements = faceOnlyFrameResult?.stickerPlacements.orEmpty(),
+                                tightMask = shouldUseTightFullBodyMaskForExport(selectedIds)
                             )
                             renderedFrameCount++
                         }
@@ -2390,6 +2391,10 @@ class ExportPipeline(
             fullBodyPersonIds: Set<Int>,
             faceOnlyPersonIds: Set<Int>
         ): Boolean = fullBodyPersonIds.isNotEmpty() && faceOnlyPersonIds.isEmpty()
+
+        internal fun shouldUseTightFullBodyMaskForExport(
+            fullBodyPersonIds: Set<Int>
+        ): Boolean = fullBodyPersonIds.isNotEmpty()
 
         internal fun shouldPreferDebugFaceDeterministicCpuPrimary(
             isDebugBuild: Boolean,

@@ -293,7 +293,7 @@ class PreviewPipeline(
                 expectedSelectedPrivacyCount = fullBodyPersonIds.size,
                 additionalResolvedPrivacy = faceOnlyFrameResult?.resolvedPrivacy,
                 faceStickerPlacements = faceOnlyFrameResult?.stickerPlacements.orEmpty(),
-                tightMaskPreview = request.tightMaskPreview ?: false
+                tightMask = request.tightMaskPreview ?: false
             )
 
             renderedBitmap = glRenderer.captureRenderedFrame()

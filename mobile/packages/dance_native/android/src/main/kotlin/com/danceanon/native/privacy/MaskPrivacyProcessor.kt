@@ -8,8 +8,8 @@ object MaskPrivacyProcessor {
 
     /**
      * Converts a soft segmentation mask into its canonical binary contour.
-     * This is intended for tight selection visualization only; export privacy
-     * keeps the soft mask plus the conservative dilation path.
+     * This is the shared tight full-body contour used by selection, effect
+     * rendering, and final export when tight-mask rendering is enabled.
      */
     fun threshold(mask: NativeMask, thresholdByte: Int = 128): NativeMask {
         val threshold = thresholdByte.coerceIn(0, 255)

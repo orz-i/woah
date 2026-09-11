@@ -185,9 +185,8 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
           faceOnlyPersonIds: currentProj.faceOnlyPersonIds.toList(),
           effects: state.effects,
           follow: currentProj.follow,
-          // Effect editing should preview the same tight person contour used by
-          // selection. The conservative privacy safety margin remains an export
-          // concern and must not make the editable visual effect look inflated.
+          // Effect editing uses the same tight full-body contour as selection
+          // and final export so the rendered shape does not change at handoff.
           tightMaskPreview: true,
         );
 

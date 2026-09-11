@@ -13,6 +13,20 @@ import org.junit.jupiter.api.Test
 
 class ExportPipelinePrivacyModePolicyTest {
     @Test
+    fun `final export uses tight mask whenever full body privacy is selected`() {
+        assertTrue(
+            ExportPipeline.shouldUseTightFullBodyMaskForExport(
+                fullBodyPersonIds = setOf(1, 4)
+            )
+        )
+        assertFalse(
+            ExportPipeline.shouldUseTightFullBodyMaskForExport(
+                fullBodyPersonIds = emptySet()
+            )
+        )
+    }
+
+    @Test
     fun `fresh full body class primary is restricted to full body only exports`() {
         assertTrue(
             ExportPipeline.shouldUseFreshFullBodyClassPrimary(

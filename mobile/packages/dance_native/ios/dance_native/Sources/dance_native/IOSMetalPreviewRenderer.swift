@@ -75,7 +75,7 @@ final class IOSMetalPreviewRenderer {
     faceRegions: [Int: IOSFacePrivacyEllipse] = [:],
     freshFullBodyPrivacyEvidence: [IOSFreshPrivacyClassEvidence] = [],
     preferFreshFullBodyClassPrimary: Bool = false,
-    tightMaskPreview: Bool = false,
+    tightMask: Bool = false,
     outputWidth: Int? = nil,
     outputHeight: Int? = nil
   ) throws -> CGImage {
@@ -320,7 +320,7 @@ final class IOSMetalPreviewRenderer {
         for: target,
         allPersons: privacyPersons,
         fullBodyIds: effectiveFullBodyIds,
-        tightMaskPreview: tightMaskPreview
+        tightMask: tightMask
       )
     }
 
@@ -404,9 +404,9 @@ final class IOSMetalPreviewRenderer {
     for target: IOSPreviewPerson,
     allPersons: [IOSPreviewPerson],
     fullBodyIds: Set<Int>,
-    tightMaskPreview: Bool = false
+    tightMask: Bool = false
   ) -> [UInt8] {
-    var effective = tightMaskPreview && !target.conservativePrivacyFallback
+    var effective = tightMask && !target.conservativePrivacyFallback
       ? threshold(target.detection.mask, threshold: 128)
       : dilate(target.detection.mask, radius: 1)
     // A temporal predicted fallback is already the conservative privacy
