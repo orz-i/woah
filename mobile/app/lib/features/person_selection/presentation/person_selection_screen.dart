@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
 import '../../../core/widgets/immersive_flow_action.dart';
+import '../../../core/widgets/stage_viewport.dart';
 import '../../effect_editor/presentation/effect_editor_screen.dart';
 import '../domain/person_selection_state.dart';
 import 'person_selection_controller.dart';
@@ -162,30 +163,44 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
       child: Scaffold(
         backgroundColor: AppTheme.warmBackground,
         body: SafeArea(
-          child: Stack(
-            children: [
-              Column(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final stageMaxHeight =
+                  constraints.maxHeight * (showControls ? 0.43 : 0.68);
+              return Stack(
                 children: [
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-                      child: _buildStage(state, controller),
+                  Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                        child: _buildStage(
+                          state,
+                          controller,
+                          maxHeight: stageMaxHeight,
+                        ),
+                      ),
+                      if (showControls) ...[
+                        const SizedBox(height: 12),
+                        Expanded(
+                          child: _buildBottomControlPanel(state, controller),
+                        ),
+                      ] else
+                        const Spacer(),
+                    ],
+                  ),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 8,
+                    child: ImmersiveFlowAction(
+                      enabled: nextEnabled,
+                      onNext: () => _continueToEditor(controller),
+                      onReturn: () => context.pop(),
                     ),
                   ),
-                  if (showControls) _buildBottomControlPanel(state, controller),
                 ],
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 8,
-                child: ImmersiveFlowAction(
-                  enabled: nextEnabled,
-                  onNext: () => _continueToEditor(controller),
-                  onReturn: () => context.pop(),
-                ),
-              ),
-            ],
+              );
+            },
           ),
         ),
       ),
@@ -194,32 +209,45 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
 
   Widget _buildStage(
     PersonSelectionState state,
-    PersonSelectionController controller,
-  ) {
+    PersonSelectionController controller, {
+    required double maxHeight,
+  }) {
     if (state.isAnalyzing) {
-      return const _CenteredStatus(
-        icon: Icons.person_search_rounded,
-        title: '正在识别人…',
-        subtitle: '分析首帧人物位置',
-        loading: true,
+      return SizedBox(
+        height: maxHeight,
+        width: double.infinity,
+        child: const _CenteredStatus(
+          icon: Icons.person_search_rounded,
+          title: '正在识别人…',
+          subtitle: '分析首帧人物位置',
+          loading: true,
+        ),
       );
     }
 
     if (state.status == PersonSelectionStatus.error) {
-      return _CenteredStatus(
-        icon: Icons.error_outline_rounded,
-        title: '人物识别失败',
-        subtitle: state.errorMessage ?? '请稍后重试',
-        actionLabel: '重新识别',
-        onAction: () => controller.analyzeProject(widget.project),
+      return SizedBox(
+        height: maxHeight,
+        width: double.infinity,
+        child: _CenteredStatus(
+          icon: Icons.error_outline_rounded,
+          title: '人物识别失败',
+          subtitle: state.errorMessage ?? '请稍后重试',
+          actionLabel: '重新识别',
+          onAction: () => controller.analyzeProject(widget.project),
+        ),
       );
     }
 
     if (state.persons.isEmpty) {
-      return const _CenteredStatus(
-        icon: Icons.person_off_outlined,
-        title: '没有找到可选择的人物',
-        subtitle: '请返回并尝试其他视频',
+      return SizedBox(
+        height: maxHeight,
+        width: double.infinity,
+        child: const _CenteredStatus(
+          icon: Icons.person_off_outlined,
+          title: '没有找到可选择的人物',
+          subtitle: '请返回并尝试其他视频',
+        ),
       );
     }
 
@@ -228,10 +256,17 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
         ? videoInfo.aspectRatio
         : 9 / 16;
 
-    return Center(
-      child: AspectRatio(
-        aspectRatio: aspectRatio,
-        child: _buildSelectableFrame(state, controller),
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        child: AspectRatio(
+          aspectRatio: aspectRatio,
+          child: MediaStageFrame(
+            key: const ValueKey('person-selection-media-stage'),
+            child: _buildSelectableFrame(state, controller),
+          ),
+        ),
       ),
     );
   }
@@ -252,7 +287,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
         final height = constraints.maxHeight;
 
         return ClipRRect(
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(26),
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -329,7 +364,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       border: Border.all(color: AppTheme.warmBorder),
-                      borderRadius: BorderRadius.circular(28),
+                      borderRadius: BorderRadius.circular(26),
                     ),
                   ),
                 ),
@@ -380,8 +415,22 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
     PersonSelectionState state,
     PersonSelectionController controller,
   ) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 92),
+    return Container(
+      key: const ValueKey('person-selection-tool-deck'),
+      margin: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 92),
+      decoration: BoxDecoration(
+        color: AppTheme.warmSurface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+        border: Border.all(color: AppTheme.warmBorder),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x10000000),
+            blurRadius: 18,
+            offset: Offset(0, -4),
+          ),
+        ],
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,

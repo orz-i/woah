@@ -35,6 +35,8 @@ void main() {
       expect(find.text('更多选项'), findsNothing);
       expect(find.text('视频已安全保存到你的设备'), findsNothing);
 
+      expect(find.byKey(const ValueKey('result-media-stage')), findsOneWidget);
+
       expect(find.byKey(const ValueKey('result-share-action')), findsOneWidget);
       expect(find.byKey(const ValueKey('result-next-action')), findsOneWidget);
       expect(find.byKey(const ValueKey('result-open-action')), findsOneWidget);

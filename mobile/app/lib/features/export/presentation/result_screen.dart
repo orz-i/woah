@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/widgets/stage_viewport.dart';
 import '../../../repositories/native_processing_repository.dart';
 import '../../import_video/presentation/widgets/video_preview_player.dart';
 import '../domain/export_state.dart';
@@ -172,20 +173,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (outputPath.isNotEmpty)
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black,
-                          borderRadius: BorderRadius.circular(28),
-                          border: Border.all(color: AppTheme.warmBorder),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x16000000),
-                              blurRadius: 26,
-                              offset: Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        clipBehavior: Clip.antiAlias,
+                      MediaStageFrame(
+                        key: const ValueKey('result-media-stage'),
+                        backgroundColor: Colors.black,
                         child: VideoPreviewPlayer(
                           videoPath: outputPath,
                           aspectRatio: project?.videoInfo.aspectRatio ?? 16 / 9,

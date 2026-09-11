@@ -1,5 +1,52 @@
 import 'package:flutter/material.dart';
 
+import '../../app/theme.dart';
+
+/// Shared warm-flow media stage surface.
+///
+/// The main flow should keep the media itself visually stable while each step
+/// swaps the tools below it. This wrapper centralizes the rounded frame,
+/// border, clipping, and elevation used by those stages.
+class MediaStageFrame extends StatelessWidget {
+  final Widget child;
+  final double radius;
+  final Color backgroundColor;
+  final bool elevated;
+
+  const MediaStageFrame({
+    super.key,
+    required this.child,
+    this.radius = 26,
+    this.backgroundColor = const Color(0xFFF1E7E1),
+    this.elevated = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(radius),
+        boxShadow: elevated
+            ? const [
+                BoxShadow(
+                  color: Color(0x14000000),
+                  blurRadius: 22,
+                  offset: Offset(0, 7),
+                ),
+              ]
+            : null,
+      ),
+      foregroundDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: AppTheme.warmBorder),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: child,
+    );
+  }
+}
+
 /// 全屏多媒体主舞台组件
 ///
 /// 提供沉浸式无黑边/智能 Letterbox 的全屏视口，支持双指捏合缩放（Pinch-to-zoom）、

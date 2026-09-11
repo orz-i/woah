@@ -11,6 +11,7 @@ import 'package:video_player/video_player.dart';
 
 import '../../../app/theme.dart';
 import '../../../core/widgets/immersive_flow_action.dart';
+import '../../../core/widgets/stage_viewport.dart';
 import '../../../repositories/native_processing_repository.dart';
 
 class TrimVideoScreen extends ConsumerStatefulWidget {
@@ -254,13 +255,13 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
               Positioned.fill(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 112),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 112),
                   child: Column(
                     children: [
                       _buildPreview(),
-                      const SizedBox(height: 16),
-                      _buildTimeline(),
                       const SizedBox(height: 14),
+                      _buildTimeline(),
+                      const SizedBox(height: 12),
                       _buildTimeSummary(),
                     ],
                   ),
@@ -288,10 +289,10 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
     final aspect = widget.project.videoInfo.aspectRatio > 0
         ? widget.project.videoInfo.aspectRatio
         : 16 / 9;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(26),
-      child: AspectRatio(
-        aspectRatio: aspect,
+    return AspectRatio(
+      aspectRatio: aspect,
+      child: MediaStageFrame(
+        key: const ValueKey('trim-media-stage'),
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -448,54 +449,36 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
 
   Widget _buildTimeSummary() {
     final duration = math.max(_trimEndMs - _trimStartMs, 0);
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _TimeCard(
-                label: '开始时间',
-                value: _formatPrecise(_trimStartMs),
-              ),
+    return Container(
+      key: const ValueKey('trim-time-summary'),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.warmSurface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.warmBorder),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _TimeMetric(
+              label: '开始',
+              value: _formatPrecise(_trimStartMs),
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 14),
-              child: Icon(
-                Icons.arrow_forward_rounded,
-                color: AppTheme.coralSoft,
-                size: 24,
-              ),
-            ),
-            Expanded(
-              child: _TimeCard(
-                label: '结束时间',
-                value: _formatPrecise(_trimEndMs),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Text.rich(
-          TextSpan(
-            text: '片段时长 ',
-            style: const TextStyle(
-              color: AppTheme.warmTextSecondary,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-            children: [
-              TextSpan(
-                text: _formatPrecise(duration),
-                style: const TextStyle(
-                  color: AppTheme.warmTextPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
           ),
-        ),
-      ],
+          const _TimeMetricDivider(),
+          Expanded(
+            child: _TimeMetric(label: '结束', value: _formatPrecise(_trimEndMs)),
+          ),
+          const _TimeMetricDivider(),
+          Expanded(
+            child: _TimeMetric(
+              label: '时长',
+              value: _formatPrecise(duration),
+              emphasize: true,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -930,42 +913,55 @@ class _TrimHandle extends StatelessWidget {
   }
 }
 
-class _TimeCard extends StatelessWidget {
+class _TimeMetric extends StatelessWidget {
   final String label;
   final String value;
+  final bool emphasize;
 
-  const _TimeCard({required this.label, required this.value});
+  const _TimeMetric({
+    required this.label,
+    required this.value,
+    this.emphasize = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppTheme.warmTextSecondary,
+            fontSize: 11.5,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          value,
+          style: TextStyle(
+            color: emphasize ? AppTheme.coralStrong : AppTheme.warmTextPrimary,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TimeMetricDivider extends StatelessWidget {
+  const _TimeMetricDivider();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 76,
-      decoration: BoxDecoration(
-        color: AppTheme.warmSurfaceSoft,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      alignment: Alignment.center,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: AppTheme.warmTextSecondary,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              color: AppTheme.warmTextPrimary,
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
+      width: 1,
+      height: 30,
+      margin: const EdgeInsets.symmetric(horizontal: 6),
+      color: AppTheme.warmBorder,
     );
   }
 }

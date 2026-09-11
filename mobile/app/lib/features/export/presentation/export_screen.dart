@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/widgets/stage_viewport.dart';
 import '../../../repositories/native_processing_repository.dart';
 import '../domain/export_state.dart';
 import 'export_controller.dart';
@@ -153,9 +154,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                     child: SingleChildScrollView(
                       physics: const BouncingScrollPhysics(),
                       padding: EdgeInsets.fromLTRB(
-                        24,
                         18,
-                        24,
+                        10,
+                        18,
                         isFailed && kDebugMode ? 180 : 112,
                       ),
                       child: Column(
@@ -166,12 +167,11 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                             livePreviewToggleEnabled: isActive,
                           ),
                           if (!isFailed) ...[
-                            const SizedBox(height: 22),
-                            _buildProgressCard(state),
-                            if (Platform.isAndroid) ...[
-                              const SizedBox(height: 14),
-                              _buildBackgroundHint(),
-                            ],
+                            const SizedBox(height: 14),
+                            _buildProgressCard(
+                              state,
+                              showBackgroundHint: Platform.isAndroid,
+                            ),
                           ],
                         ],
                       ),
@@ -319,20 +319,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
             : null,
         child: AspectRatio(
           aspectRatio: aspect,
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFF0E6E0),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: AppTheme.warmBorder),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x12000000),
-                  blurRadius: 24,
-                  offset: Offset(0, 8),
-                ),
-              ],
-            ),
-            clipBehavior: Clip.antiAlias,
+          child: MediaStageFrame(
+            key: const ValueKey('export-media-stage'),
+            backgroundColor: const Color(0xFFF0E6E0),
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -516,12 +505,16 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     );
   }
 
-  Widget _buildProgressCard(ExportState state) {
+  Widget _buildProgressCard(
+    ExportState state, {
+    required bool showBackgroundHint,
+  }) {
     final progress = state.progress.clamp(0.0, 1.0);
     final percent = (progress * 100).round();
     return Container(
+      key: const ValueKey('export-progress-deck'),
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
       decoration: BoxDecoration(
         color: AppTheme.warmSurface,
         borderRadius: BorderRadius.circular(24),
@@ -609,62 +602,31 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBackgroundHint() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-      decoration: BoxDecoration(
-        color: AppTheme.warmSurface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppTheme.warmBorder),
-      ),
-      child: const Row(
-        children: [
-          SizedBox(
-            width: 46,
-            height: 46,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: AppTheme.warmSurfaceSoft,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.phone_android_rounded,
-                size: 23,
-                color: AppTheme.warmTextPrimary,
-              ),
-            ),
-          ),
-          SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          if (showBackgroundHint) ...[
+            const SizedBox(height: 16),
+            const Divider(height: 1, color: AppTheme.warmBorder),
+            const SizedBox(height: 12),
+            const Row(
               children: [
-                Text(
-                  '处理将在后台继续',
-                  style: TextStyle(
-                    color: AppTheme.warmTextPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
+                Icon(
+                  Icons.phone_android_rounded,
+                  size: 19,
+                  color: AppTheme.warmTextSecondary,
                 ),
-                SizedBox(height: 4),
-                Text(
-                  '你可以切换应用，处理完成后我们会在通知中提醒你。',
-                  style: TextStyle(
-                    color: AppTheme.warmTextSecondary,
-                    fontSize: 12,
-                    height: 1.4,
+                SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    '可切换应用，完成后会通过通知提醒你',
+                    style: TextStyle(
+                      color: AppTheme.warmTextSecondary,
+                      fontSize: 11.5,
+                      height: 1.35,
+                    ),
                   ),
                 ),
               ],
             ),
-          ),
+          ],
         ],
       ),
     );

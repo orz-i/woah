@@ -266,6 +266,15 @@ void main() {
       expect(find.byIcon(Icons.close_rounded), findsOneWidget);
       expect(find.bySemanticsLabel('取消处理'), findsOneWidget);
 
+      final stage = find.byKey(const ValueKey('export-media-stage'));
+      final progressDeck = find.byKey(const ValueKey('export-progress-deck'));
+      expect(stage, findsOneWidget);
+      expect(progressDeck, findsOneWidget);
+      final stageRect = tester.getRect(stage);
+      final progressRect = tester.getRect(progressDeck);
+      expect(stageRect.top, lessThan(progressRect.top));
+      expect(progressRect.top - stageRect.bottom, lessThanOrEqualTo(18));
+
       await tester.tap(find.byKey(const ValueKey('export-cancel-action')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 250));

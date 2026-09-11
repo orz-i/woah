@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
 import '../../../core/widgets/immersive_flow_action.dart';
+import '../../../core/widgets/stage_viewport.dart';
 import '../../export/presentation/export_screen.dart';
 import '../domain/effect_editor_state.dart';
 import 'effect_editor_controller.dart';
@@ -147,57 +148,52 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
           backgroundColor: AppTheme.warmBackground,
           resizeToAvoidBottomInset: false,
           body: SafeArea(
-            child: Stack(
-              children: [
-                Column(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final stageMaxHeight = constraints.maxHeight * 0.42;
+                return Stack(
                   children: [
-                    // 沉浸式主舞台：移除独立顶栏后直接从可用顶部空间开始。
-                    Expanded(
-                      flex: 11,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                        child: Center(
-                          child: AspectRatio(
-                            aspectRatio: aspectRatio,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF1E7E1),
-                                borderRadius: BorderRadius.circular(24),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Color(0x14000000),
-                                    blurRadius: 20,
-                                    offset: Offset(0, 6),
-                                  ),
-                                ],
+                    Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                          child: Align(
+                            alignment: Alignment.topCenter,
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxHeight: stageMaxHeight,
                               ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(24),
-                                child: _buildStagePreview(state),
+                              child: AspectRatio(
+                                aspectRatio: aspectRatio,
+                                child: MediaStageFrame(
+                                  key: const ValueKey(
+                                    'effect-editor-media-stage',
+                                  ),
+                                  child: _buildStagePreview(state),
+                                ),
                               ),
                             ),
                           ),
                         ),
+                        const SizedBox(height: 10),
+                        Expanded(
+                          child: _buildBottomControlPanel(state, controller),
+                        ),
+                      ],
+                    ),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 10,
+                      child: ImmersiveFlowAction(
+                        enabled: state.project != null,
+                        onNext: () => _handleNextAction(controller),
+                        onReturn: () => _requestReturn(controller),
                       ),
                     ),
-                    // 底部常驻控制工作区；圆形下一步按钮悬浮在其上方。
-                    Expanded(
-                      flex: 10,
-                      child: _buildBottomControlPanel(state, controller),
-                    ),
                   ],
-                ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 10,
-                  child: ImmersiveFlowAction(
-                    enabled: state.project != null,
-                    onNext: () => _handleNextAction(controller),
-                    onReturn: () => _requestReturn(controller),
-                  ),
-                ),
-              ],
+                );
+              },
             ),
           ),
         ),
@@ -326,6 +322,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
         ? FillMode.sticker
         : effects.fillMode;
     return Container(
+      key: const ValueKey('effect-editor-tool-deck'),
       decoration: const BoxDecoration(
         color: AppTheme.warmSurface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),

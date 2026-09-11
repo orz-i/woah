@@ -282,6 +282,15 @@ void main() {
     expect(find.text('均衡'), findsOneWidget);
     expect(find.text('快速'), findsOneWidget);
     expect(find.byKey(ImmersiveFlowAction.nextControlKey), findsOneWidget);
+
+    final stage = find.byKey(const ValueKey('person-selection-media-stage'));
+    final toolDeck = find.byKey(const ValueKey('person-selection-tool-deck'));
+    expect(stage, findsOneWidget);
+    expect(toolDeck, findsOneWidget);
+    final stageRect = tester.getRect(stage);
+    final toolDeckRect = tester.getRect(toolDeck);
+    expect(stageRect.top, lessThan(toolDeckRect.top));
+    expect(toolDeckRect.top - stageRect.bottom, lessThanOrEqualTo(16));
     expect(tester.takeException(), isNull);
   });
 }

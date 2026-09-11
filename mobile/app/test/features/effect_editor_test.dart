@@ -254,6 +254,15 @@ void main() {
       expect(stageSize.height, greaterThan(150));
       expect(stageSize.width, greaterThan(100));
 
+      final stage = find.byKey(const ValueKey('effect-editor-media-stage'));
+      final toolDeck = find.byKey(const ValueKey('effect-editor-tool-deck'));
+      expect(stage, findsOneWidget);
+      expect(toolDeck, findsOneWidget);
+      final stageRect = tester.getRect(stage);
+      final toolDeckRect = tester.getRect(toolDeck);
+      expect(stageRect.top, lessThan(toolDeckRect.top));
+      expect(toolDeckRect.top - stageRect.bottom, lessThanOrEqualTo(14));
+
       // In unified panel, verify mode chips and sliders exist
       expect(find.text('马赛克'), findsOneWidget);
       expect(find.text('模糊'), findsOneWidget);
