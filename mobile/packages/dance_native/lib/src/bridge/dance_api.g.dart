@@ -655,6 +655,7 @@ class PreviewRequestDto {
     required this.effects,
     required this.follow,
     this.faceOnlyPersonIds,
+    this.tightMaskPreview,
   });
 
   String analysisCacheId;
@@ -669,6 +670,8 @@ class PreviewRequestDto {
 
   List<int>? faceOnlyPersonIds;
 
+  bool? tightMaskPreview;
+
   List<Object?> _toList() {
     return <Object?>[
       analysisCacheId,
@@ -677,6 +680,7 @@ class PreviewRequestDto {
       effects,
       follow,
       faceOnlyPersonIds,
+      tightMaskPreview,
     ];
   }
 
@@ -692,6 +696,7 @@ class PreviewRequestDto {
       effects: result[3]! as EffectConfigDto,
       follow: result[4]! as FollowConfigDto,
       faceOnlyPersonIds: (result[5] as List<Object?>?)?.cast<int>(),
+      tightMaskPreview: result[6] as bool?,
     );
   }
 
@@ -704,7 +709,7 @@ class PreviewRequestDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(analysisCacheId, other.analysisCacheId) && _deepEquals(timestampMs, other.timestampMs) && _deepEquals(selectedPersonIds, other.selectedPersonIds) && _deepEquals(effects, other.effects) && _deepEquals(follow, other.follow) && _deepEquals(faceOnlyPersonIds, other.faceOnlyPersonIds);
+    return _deepEquals(analysisCacheId, other.analysisCacheId) && _deepEquals(timestampMs, other.timestampMs) && _deepEquals(selectedPersonIds, other.selectedPersonIds) && _deepEquals(effects, other.effects) && _deepEquals(follow, other.follow) && _deepEquals(faceOnlyPersonIds, other.faceOnlyPersonIds) && _deepEquals(tightMaskPreview, other.tightMaskPreview);
   }
 
   @override
@@ -713,7 +718,7 @@ class PreviewRequestDto {
 
   @override
   String toString() {
-    return 'PreviewRequestDto(analysisCacheId: $analysisCacheId, timestampMs: $timestampMs, selectedPersonIds: $selectedPersonIds, effects: $effects, follow: $follow, faceOnlyPersonIds: $faceOnlyPersonIds)';
+    return 'PreviewRequestDto(analysisCacheId: $analysisCacheId, timestampMs: $timestampMs, selectedPersonIds: $selectedPersonIds, effects: $effects, follow: $follow, faceOnlyPersonIds: $faceOnlyPersonIds, tightMaskPreview: $tightMaskPreview)';
   }
 }
 

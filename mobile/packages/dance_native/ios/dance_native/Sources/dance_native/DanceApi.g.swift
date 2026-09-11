@@ -666,6 +666,7 @@ struct PreviewRequestDto: Hashable, CustomStringConvertible {
   var effects: EffectConfigDto
   var follow: FollowConfigDto
   var faceOnlyPersonIds: [Int64]? = nil
+  var tightMaskPreview: Bool? = nil
 
 
   // swift-format-ignore: AlwaysUseLowerCamelCase
@@ -676,6 +677,7 @@ struct PreviewRequestDto: Hashable, CustomStringConvertible {
     let effects = pigeonVar_list[3] as! EffectConfigDto
     let follow = pigeonVar_list[4] as! FollowConfigDto
     let faceOnlyPersonIds: [Int64]? = nilOrValue(pigeonVar_list[5])
+    let tightMaskPreview: Bool? = nilOrValue(pigeonVar_list[6])
 
     return PreviewRequestDto(
       analysisCacheId: analysisCacheId,
@@ -683,7 +685,8 @@ struct PreviewRequestDto: Hashable, CustomStringConvertible {
       selectedPersonIds: selectedPersonIds,
       effects: effects,
       follow: follow,
-      faceOnlyPersonIds: faceOnlyPersonIds
+      faceOnlyPersonIds: faceOnlyPersonIds,
+      tightMaskPreview: tightMaskPreview
     )
   }
   func toList() -> [Any?] {
@@ -694,13 +697,14 @@ struct PreviewRequestDto: Hashable, CustomStringConvertible {
       effects,
       follow,
       faceOnlyPersonIds,
+      tightMaskPreview,
     ]
   }
   static func == (lhs: PreviewRequestDto, rhs: PreviewRequestDto) -> Bool {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return DanceApiPigeonInternal.deepEquals(lhs.analysisCacheId, rhs.analysisCacheId) && DanceApiPigeonInternal.deepEquals(lhs.timestampMs, rhs.timestampMs) && DanceApiPigeonInternal.deepEquals(lhs.selectedPersonIds, rhs.selectedPersonIds) && DanceApiPigeonInternal.deepEquals(lhs.effects, rhs.effects) && DanceApiPigeonInternal.deepEquals(lhs.follow, rhs.follow) && DanceApiPigeonInternal.deepEquals(lhs.faceOnlyPersonIds, rhs.faceOnlyPersonIds)
+    return DanceApiPigeonInternal.deepEquals(lhs.analysisCacheId, rhs.analysisCacheId) && DanceApiPigeonInternal.deepEquals(lhs.timestampMs, rhs.timestampMs) && DanceApiPigeonInternal.deepEquals(lhs.selectedPersonIds, rhs.selectedPersonIds) && DanceApiPigeonInternal.deepEquals(lhs.effects, rhs.effects) && DanceApiPigeonInternal.deepEquals(lhs.follow, rhs.follow) && DanceApiPigeonInternal.deepEquals(lhs.faceOnlyPersonIds, rhs.faceOnlyPersonIds) && DanceApiPigeonInternal.deepEquals(lhs.tightMaskPreview, rhs.tightMaskPreview)
   }
 
   func hash(into hasher: inout Hasher) {
@@ -711,10 +715,11 @@ struct PreviewRequestDto: Hashable, CustomStringConvertible {
     DanceApiPigeonInternal.deepHash(value: effects, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: follow, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: faceOnlyPersonIds, hasher: &hasher)
+    DanceApiPigeonInternal.deepHash(value: tightMaskPreview, hasher: &hasher)
   }
 
   public var description: String {
-    return "PreviewRequestDto(analysisCacheId: \(String(describing: analysisCacheId)), timestampMs: \(String(describing: timestampMs)), selectedPersonIds: \(String(describing: selectedPersonIds)), effects: \(String(describing: effects)), follow: \(String(describing: follow)), faceOnlyPersonIds: \(String(describing: faceOnlyPersonIds)))"
+    return "PreviewRequestDto(analysisCacheId: \(String(describing: analysisCacheId)), timestampMs: \(String(describing: timestampMs)), selectedPersonIds: \(String(describing: selectedPersonIds)), effects: \(String(describing: effects)), follow: \(String(describing: follow)), faceOnlyPersonIds: \(String(describing: faceOnlyPersonIds)), tightMaskPreview: \(String(describing: tightMaskPreview)))"
   }
 }
 

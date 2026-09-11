@@ -647,7 +647,8 @@ data class PreviewRequestDto (
   val selectedPersonIds: List<Long>,
   val effects: EffectConfigDto,
   val follow: FollowConfigDto,
-  val faceOnlyPersonIds: List<Long>? = null
+  val faceOnlyPersonIds: List<Long>? = null,
+  val tightMaskPreview: Boolean? = null
 )
  {
   companion object {
@@ -658,7 +659,8 @@ data class PreviewRequestDto (
       val effects = pigeonVar_list[3] as EffectConfigDto
       val follow = pigeonVar_list[4] as FollowConfigDto
       val faceOnlyPersonIds = pigeonVar_list[5] as List<Long>?
-      return PreviewRequestDto(analysisCacheId, timestampMs, selectedPersonIds, effects, follow, faceOnlyPersonIds)
+      val tightMaskPreview = pigeonVar_list[6] as Boolean?
+      return PreviewRequestDto(analysisCacheId, timestampMs, selectedPersonIds, effects, follow, faceOnlyPersonIds, tightMaskPreview)
     }
   }
   fun toList(): List<Any?> {
@@ -669,6 +671,7 @@ data class PreviewRequestDto (
       effects,
       follow,
       faceOnlyPersonIds,
+      tightMaskPreview,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -679,7 +682,7 @@ data class PreviewRequestDto (
       return true
     }
     val other = other as PreviewRequestDto
-    return DanceApiPigeonUtils.deepEquals(this.analysisCacheId, other.analysisCacheId) && DanceApiPigeonUtils.deepEquals(this.timestampMs, other.timestampMs) && DanceApiPigeonUtils.deepEquals(this.selectedPersonIds, other.selectedPersonIds) && DanceApiPigeonUtils.deepEquals(this.effects, other.effects) && DanceApiPigeonUtils.deepEquals(this.follow, other.follow) && DanceApiPigeonUtils.deepEquals(this.faceOnlyPersonIds, other.faceOnlyPersonIds)
+    return DanceApiPigeonUtils.deepEquals(this.analysisCacheId, other.analysisCacheId) && DanceApiPigeonUtils.deepEquals(this.timestampMs, other.timestampMs) && DanceApiPigeonUtils.deepEquals(this.selectedPersonIds, other.selectedPersonIds) && DanceApiPigeonUtils.deepEquals(this.effects, other.effects) && DanceApiPigeonUtils.deepEquals(this.follow, other.follow) && DanceApiPigeonUtils.deepEquals(this.faceOnlyPersonIds, other.faceOnlyPersonIds) && DanceApiPigeonUtils.deepEquals(this.tightMaskPreview, other.tightMaskPreview)
   }
 
   override fun hashCode(): Int {
@@ -690,10 +693,11 @@ data class PreviewRequestDto (
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.effects)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.follow)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.faceOnlyPersonIds)
+    result = 31 * result + DanceApiPigeonUtils.deepHash(this.tightMaskPreview)
     return result
   }
   override fun toString(): String {
-    return "PreviewRequestDto(analysisCacheId=$analysisCacheId, timestampMs=$timestampMs, selectedPersonIds=$selectedPersonIds, effects=$effects, follow=$follow, faceOnlyPersonIds=$faceOnlyPersonIds)"
+    return "PreviewRequestDto(analysisCacheId=$analysisCacheId, timestampMs=$timestampMs, selectedPersonIds=$selectedPersonIds, effects=$effects, follow=$follow, faceOnlyPersonIds=$faceOnlyPersonIds, tightMaskPreview=$tightMaskPreview)"
   }
 }
 

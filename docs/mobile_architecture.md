@@ -55,7 +55,7 @@ Android Native Engine
 2. **V1 稳定性约束**：
    - EffectEditor V1 严格限制 `timestampMs = 0` 进行首帧预览，彻底规避任意时间戳单帧匈牙利匹配导致的身份漂移。
    - 架构预留 `TrackingSnapshotCache` 规范接口，为未来任意时间戳追踪预览奠定演进基础。
-   - Preview 与 Export 一致：YOLO 原始 Mask 直接进入 `TrackManager`，仅在最终隐私合成阶段由 `PrivacyOcclusionResolver` 执行一次安全膨胀。
+   - Effect Preview 与 Export 保持一致：YOLO 原始 Mask 直接进入 `TrackManager`，仅在最终隐私合成阶段由 `PrivacyOcclusionResolver` 执行一次安全膨胀；人物选择页通过 `tightMaskPreview` 单独显示 0.5 阈值的 canonical 轮廓，不改变最终导出的隐私安全边界。
 3. **LRU 缓存机制 (`PreviewAnalysisCache`)**：
    - 采用最大容量限制（3~5 个条目）的线程安全 LRU 缓存。
    - 淘汰条目时自动触发底层 `Bitmap.recycle()`，杜绝 Native 内存泄漏。

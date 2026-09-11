@@ -75,6 +75,7 @@ final class IOSMetalPreviewRenderer {
     faceRegions: [Int: IOSFacePrivacyEllipse] = [:],
     freshFullBodyPrivacyEvidence: [IOSFreshPrivacyClassEvidence] = [],
     preferFreshFullBodyClassPrimary: Bool = false,
+    tightMaskPreview: Bool = false,
     outputWidth: Int? = nil,
     outputHeight: Int? = nil
   ) throws -> CGImage {
@@ -318,7 +319,8 @@ final class IOSMetalPreviewRenderer {
       effectivePrivacyMask(
         for: target,
         allPersons: privacyPersons,
-        fullBodyIds: effectiveFullBodyIds
+        fullBodyIds: effectiveFullBodyIds,
+        tightMaskPreview: tightMaskPreview
       )
     }
 
@@ -401,9 +403,12 @@ final class IOSMetalPreviewRenderer {
   private static func effectivePrivacyMask(
     for target: IOSPreviewPerson,
     allPersons: [IOSPreviewPerson],
-    fullBodyIds: Set<Int>
+    fullBodyIds: Set<Int>,
+    tightMaskPreview: Bool = false
   ) -> [UInt8] {
-    var effective = dilate(target.detection.mask, radius: 1)
+    var effective = tightMaskPreview && !target.conservativePrivacyFallback
+      ? threshold(target.detection.mask, threshold: 128)
+      : dilate(target.detection.mask, radius: 1)
     // A temporal predicted fallback is already the conservative privacy
     // boundary for an unresolved selected identity. Do not let the preview-only
     // single-frame foreground carve punch holes into that fail-closed mask.
@@ -428,6 +433,10 @@ final class IOSMetalPreviewRenderer {
       }
     }
     return effective
+  }
+
+  private static func threshold(_ input: [UInt8], threshold: UInt8) -> [UInt8] {
+    input.map { $0 >= threshold ? 255 : 0 }
   }
 
   private static func bboxOverlapRatio(

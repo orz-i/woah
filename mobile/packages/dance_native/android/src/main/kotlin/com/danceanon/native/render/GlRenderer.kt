@@ -477,7 +477,8 @@ class GlRenderer : FrameRenderer {
         maxFallbackObservationAgeFrames: Int = 15,
         conservativePrimaryUnobservedOccluderPolicy: Boolean = false,
         additionalResolvedPrivacy: com.danceanon.native.privacy.ResolvedCompositorMasks? = null,
-        faceStickerPlacements: List<FaceStickerPlacement> = emptyList()
+        faceStickerPlacements: List<FaceStickerPlacement> = emptyList(),
+        tightMaskPreview: Boolean = false
     ) {
         GLES20.glViewport(0, 0, width, height)
         GLES20.glClearColor(0f, 0f, 0f, 1f)
@@ -556,9 +557,10 @@ class GlRenderer : FrameRenderer {
             )
         }
 
-        val primaryResolved = com.danceanon.native.privacy.PrivacyOcclusionResolver.resolveMasks(
+        val primaryResolvedRaw = com.danceanon.native.privacy.PrivacyOcclusionResolver.resolveMasks(
             persons = persons,
             selectedPersonIds = selectedPersonIds,
+            applyDilationToPrivacyTargets = !tightMaskPreview,
             ptsUs = presentationTimeUs,
             freshClassEvidence = freshPrivacyClassEvidence,
             freshSelectedCoveredTrackIds = freshSelectedCoveredTrackIds,
@@ -568,6 +570,16 @@ class GlRenderer : FrameRenderer {
             maxFallbackObservationAgeFrames = maxFallbackObservationAgeFrames,
             conservativeUnobservedOccluderPolicy = conservativePrimaryUnobservedOccluderPolicy
         )
+        val primaryResolved = if (tightMaskPreview && primaryResolvedRaw.privacyMask != null) {
+            primaryResolvedRaw.copy(
+                privacyMask = com.danceanon.native.privacy.MaskPrivacyProcessor.threshold(
+                    primaryResolvedRaw.privacyMask,
+                    thresholdByte = 128
+                )
+            )
+        } else {
+            primaryResolvedRaw
+        }
         val mergedResolved = if (additionalResolvedPrivacy == null) {
             primaryResolved
         } else {

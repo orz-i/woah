@@ -47,6 +47,7 @@ void main() {
       expect(controller.state.privacyModeForPerson(2), PersonPrivacyMode.none);
       expect(repository.lastAnalyzeTrimStartMs, 240);
       expect(repository.lastPreviewTimestampMs, 240);
+      expect(repository.lastTightMaskPreview, isTrue);
 
       controller.setPrivacyMode(1, PersonPrivacyMode.fullBody);
       expect(controller.state.selectedPersonIds, equals({0, 3}));
@@ -289,6 +290,7 @@ class _FakePersonSelectionRepository implements NativeProcessingRepository {
   final List<double> confidences;
   int? lastAnalyzeTrimStartMs;
   int? lastPreviewTimestampMs;
+  bool? lastTightMaskPreview;
 
   _FakePersonSelectionRepository({this.confidences = const [0.94, 0.91]});
 
@@ -336,8 +338,10 @@ class _FakePersonSelectionRepository implements NativeProcessingRepository {
     List<int> faceOnlyPersonIds = const [],
     required EffectConfig effects,
     FollowConfig follow = const FollowConfig(),
+    bool tightMaskPreview = false,
   }) async {
     lastPreviewTimestampMs = timestampMs;
+    lastTightMaskPreview = tightMaskPreview;
     return PreviewFrameDto(
       thumbnailPath: '',
       renderTimeMs: 1,

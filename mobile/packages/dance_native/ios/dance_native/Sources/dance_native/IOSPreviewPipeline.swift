@@ -92,7 +92,8 @@ final class IOSPreviewPipeline {
       fullBodyIds: fullBodyIds,
       faceOnlyIds: faceOnlyIds,
       effects: request.effects,
-      faceRegions: faceRegions
+      faceRegions: faceRegions,
+      tightMaskPreview: request.tightMaskPreview ?? false
     )
     let previewPath = try savePreview(
       rendered,

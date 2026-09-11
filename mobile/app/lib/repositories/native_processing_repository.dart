@@ -54,6 +54,7 @@ class NativeProcessingRepository {
     List<int> faceOnlyPersonIds = const [],
     required EffectConfig effects,
     FollowConfig follow = const FollowConfig(),
+    bool tightMaskPreview = false,
   }) {
     return _client.getPreviewFrame(
       analysisCacheId: analysisCacheId,
@@ -62,6 +63,7 @@ class NativeProcessingRepository {
       faceOnlyPersonIds: faceOnlyPersonIds,
       effects: effects,
       follow: follow,
+      tightMaskPreview: tightMaskPreview,
     );
   }
 

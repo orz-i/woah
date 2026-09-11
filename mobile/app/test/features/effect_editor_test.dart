@@ -101,6 +101,7 @@ void main() {
       expect(controller.state.previewLoading, isFalse);
       expect(controller.state.previewPath, equals('/path/to/rendered_preview.jpg'));
       expect(repo.lastTimestampMs, equals(0));
+      expect(repo.lastTightMaskPreview, isTrue);
 
       // Trigger debounced update
       controller.updateOpacity(0.5);
@@ -417,6 +418,7 @@ void main() {
 
 class _FakeNativeRepository implements NativeProcessingRepository {
   int? lastTimestampMs;
+  bool? lastTightMaskPreview;
 
   @override
   Future<PreviewFrameDto> getPreviewFrame({
@@ -426,8 +428,10 @@ class _FakeNativeRepository implements NativeProcessingRepository {
     List<int> faceOnlyPersonIds = const [],
     required EffectConfig effects,
     FollowConfig follow = const FollowConfig(),
+    bool tightMaskPreview = false,
   }) async {
     lastTimestampMs = timestampMs;
+    lastTightMaskPreview = tightMaskPreview;
     return PreviewFrameDto(
       thumbnailPath: '/path/to/rendered_preview.jpg',
       renderTimeMs: 12,

@@ -70,6 +70,7 @@ class DanceNativeClient implements DanceProcessingEvents {
     List<int> faceOnlyPersonIds = const [],
     required EffectConfig effects,
     FollowConfig follow = const FollowConfig(),
+    bool tightMaskPreview = false,
   }) {
     return _api.getPreviewFrame(
       PreviewRequestDto(
@@ -79,6 +80,7 @@ class DanceNativeClient implements DanceProcessingEvents {
         effects: effects.toDto(),
         follow: follow.toDto(),
         faceOnlyPersonIds: faceOnlyPersonIds,
+        tightMaskPreview: tightMaskPreview,
       ),
     );
   }

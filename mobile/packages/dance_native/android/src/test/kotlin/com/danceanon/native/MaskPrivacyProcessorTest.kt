@@ -10,6 +10,31 @@ import java.nio.ByteOrder
 class MaskPrivacyProcessorTest {
 
     @Test
+    fun thresholdProducesCanonicalBinaryContour() {
+        val buf = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).apply {
+            put(0.toByte())
+            put(127.toByte())
+            put(128.toByte())
+            put(255.toByte())
+            rewind()
+        }
+        val mask = NativeMask(
+            width = 2,
+            height = 2,
+            buffer = buf,
+            originalWidth = 20,
+            originalHeight = 20
+        )
+
+        val thresholded = MaskPrivacyProcessor.threshold(mask, thresholdByte = 128)
+        val out = thresholded.buffer.apply { rewind() }
+        assertEquals(0, out.get().toInt() and 0xFF)
+        assertEquals(0, out.get().toInt() and 0xFF)
+        assertEquals(255, out.get().toInt() and 0xFF)
+        assertEquals(255, out.get().toInt() and 0xFF)
+    }
+
+    @Test
     fun testDilationExpandsSinglePixel() {
         val size = 5
         val buf = ByteBuffer.allocateDirect(size * size).order(ByteOrder.nativeOrder())

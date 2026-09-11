@@ -7,6 +7,38 @@ import java.nio.ByteOrder
 object MaskPrivacyProcessor {
 
     /**
+     * Converts a soft segmentation mask into its canonical binary contour.
+     * This is intended for tight selection visualization only; export privacy
+     * keeps the soft mask plus the conservative dilation path.
+     */
+    fun threshold(mask: NativeMask, thresholdByte: Int = 128): NativeMask {
+        val threshold = thresholdByte.coerceIn(0, 255)
+        val w = mask.width
+        val h = mask.height
+        val srcBuf = mask.buffer
+        srcBuf.rewind()
+        val dstBuf = ByteBuffer.allocateDirect(w * h).apply {
+            order(ByteOrder.nativeOrder())
+            for (i in 0 until w * h) {
+                val value = srcBuf.get().toInt() and 0xFF
+                put(if (value >= threshold) 255.toByte() else 0.toByte())
+            }
+            rewind()
+        }
+        srcBuf.rewind()
+        return NativeMask(
+            width = w,
+            height = h,
+            buffer = dstBuf,
+            originalWidth = mask.originalWidth,
+            originalHeight = mask.originalHeight,
+            mapper = mask.mapper,
+            roiInProto = mask.roiInProto,
+            samplingRect = mask.samplingRect
+        )
+    }
+
+    /**
      * Dilates the binary/grayscale mask by [radius] pixels to eliminate edge under-anonymization
      * caused by fast dance movements or OpenGL linear interpolation.
      */

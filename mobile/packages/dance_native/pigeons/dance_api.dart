@@ -164,6 +164,7 @@ class PreviewRequestDto {
   final EffectConfigDto effects;
   final FollowConfigDto follow;
   final List<int>? faceOnlyPersonIds;
+  final bool? tightMaskPreview;
 
   PreviewRequestDto({
     required this.analysisCacheId,
@@ -172,6 +173,7 @@ class PreviewRequestDto {
     required this.effects,
     required this.follow,
     this.faceOnlyPersonIds,
+    this.tightMaskPreview,
   });
 }
 
