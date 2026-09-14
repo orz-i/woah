@@ -357,25 +357,6 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
           _buildTimeline(),
           const SizedBox(height: 14),
           _buildTimeSummary(),
-          const SizedBox(height: 14),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.tune_rounded,
-                size: 14,
-                color: AppTheme.warmTextMuted,
-              ),
-              SizedBox(width: 6),
-              Text(
-                '拖动两侧滑柄截取高光舞段，最少保留 1 秒',
-                style: TextStyle(
-                  color: AppTheme.warmTextMuted,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -449,9 +430,9 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
             Positioned(
               left: 14,
               right: 14,
-              bottom: 12,
+              bottom: 6,
               child: SizedBox(
-                height: 36,
+                height: AppTheme.minTouchTarget,
                 child: Stack(
                   children: [
                     // 左侧：时间显示（背景透明，纯文字 + 阴影）
@@ -482,8 +463,8 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
                           behavior: HitTestBehavior.opaque,
                           onTap: _togglePlayback,
                           child: SizedBox(
-                            width: 36,
-                            height: 36,
+                            width: AppTheme.minTouchTarget,
+                            height: AppTheme.minTouchTarget,
                             child: Center(
                               child: Icon(
                                 controller.value.isPlaying
@@ -514,8 +495,8 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
                             _seekTo(_trimStartMs);
                           },
                           child: const SizedBox(
-                            width: 36,
-                            height: 36,
+                            width: AppTheme.minTouchTarget,
+                            height: AppTheme.minTouchTarget,
                             child: Center(
                               child: Icon(
                                 Icons.replay_rounded,

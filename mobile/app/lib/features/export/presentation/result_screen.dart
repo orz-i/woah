@@ -332,7 +332,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             onTap: enabled ? onTap : null,
             borderRadius: BorderRadius.circular(16),
             child: Ink(
-              height: 46,
+              height: AppTheme.minTouchTarget,
               decoration: BoxDecoration(
                 color: AppTheme.warmSurface,
                 borderRadius: BorderRadius.circular(16),

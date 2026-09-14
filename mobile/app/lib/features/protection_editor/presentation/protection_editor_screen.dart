@@ -73,6 +73,7 @@ class _ProtectionEditorScreenState
   EffectConfig? _faceOnlyDraft;
   bool _allowRoutePop = false;
   bool _returnRequested = false;
+  bool _advancedEffectExpanded = false;
 
   @override
   void initState() {
@@ -542,6 +543,10 @@ class _ProtectionEditorScreenState
                   const SizedBox(height: 8),
                   _buildPrivacyModeSwitch(selectionState, effectController),
                   const SizedBox(height: 14),
+                  _buildSectionLabel('处理策略', subdued: true),
+                  const SizedBox(height: 8),
+                  _buildProcessingProfileSwitch(),
+                  const SizedBox(height: 14),
                   Row(
                     children: [
                       Expanded(child: _buildSectionLabel('特效')),
@@ -643,41 +648,14 @@ class _ProtectionEditorScreenState
                       onChanged: effectController.updateBlurStrength,
                     ),
                   ],
-                  const SizedBox(height: 10),
-                  _buildStepSlider(
-                    label: '描边宽度',
-                    value: effects.borderWidth,
-                    min: 0,
-                    max: 20,
-                    step: 1,
-                    displayValue: '${effects.borderWidth.round()} px',
-                    onChanged: effectController.updateBorderWidth,
-                  ),
-                  if (effects.borderWidth > 0) ...[
-                    const SizedBox(height: 8),
-                    const Text(
-                      '描边颜色',
-                      style: TextStyle(
-                        color: AppTheme.warmTextPrimary,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    _buildColorPalette(
-                      effects.borderColorArgb,
-                      effectController.updateBorderColor,
-                    ),
-                  ],
                   const SizedBox(height: 16),
-                  _buildSectionLabel('处理策略', subdued: true),
-                  const SizedBox(height: 8),
-                  _buildProcessingProfileSwitch(),
+                  _buildAdvancedEffectSection(effects, effectController),
                 ],
               ),
             ),
           ),
           Container(
+            height: 82,
             padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
             decoration: BoxDecoration(
               color: AppTheme.warmSurface,
@@ -688,11 +666,16 @@ class _ProtectionEditorScreenState
                 ),
               ),
             ),
-            child: Center(
-              child: ImmersiveFlowAction(
-                enabled: nextEnabled,
-                onNext: _continueToExport,
-                onReturn: _requestReturn,
+            child: OverflowBox(
+              alignment: Alignment.bottomCenter,
+              minHeight: 0,
+              maxHeight: 176,
+              child: Center(
+                child: ImmersiveFlowAction(
+                  enabled: nextEnabled,
+                  onNext: _continueToExport,
+                  onReturn: _requestReturn,
+                ),
               ),
             ),
           ),
@@ -727,9 +710,10 @@ class _ProtectionEditorScreenState
                 ],
               ),
             ),
-            _TargetAction(
+            _TargetTextAction(
               icon: Icons.done_all_rounded,
-              tooltip: '全选',
+              label: '全选',
+              enabled: selected < total,
               onPressed: () {
                 controller.selectAll();
                 _syncSelectionToEffect(
@@ -737,9 +721,10 @@ class _ProtectionEditorScreenState
                 );
               },
             ),
-            _TargetAction(
+            const SizedBox(width: 2),
+            _TargetTextAction(
               icon: Icons.refresh_rounded,
-              tooltip: '重置',
+              label: '恢复',
               onPressed: () {
                 controller.resetSelection();
                 _syncSelectionToEffect(
@@ -747,9 +732,11 @@ class _ProtectionEditorScreenState
                 );
               },
             ),
-            _TargetAction(
+            const SizedBox(width: 2),
+            _TargetTextAction(
               icon: Icons.remove_done_rounded,
-              tooltip: '清空',
+              label: '清空',
+              enabled: selected > 0,
               onPressed: () {
                 controller.deselectAll();
                 _syncSelectionToEffect(
@@ -759,12 +746,138 @@ class _ProtectionEditorScreenState
             ),
           ],
         ),
-        const SizedBox(height: 5),
-        const Text(
-          '直接轻触上方画面中的人物即可增减保护对象',
-          style: TextStyle(color: AppTheme.warmTextSecondary, fontSize: 11.5),
+        const SizedBox(height: 4),
+        Text(
+          selected == 0 ? '至少选择 1 位人物后才能继续' : '轻触上方画面中的人物可调整保护对象',
+          style: TextStyle(
+            color: selected == 0
+                ? AppTheme.coralStrong
+                : AppTheme.warmTextSecondary,
+            fontSize: 11.5,
+            fontWeight: selected == 0 ? FontWeight.w600 : FontWeight.w400,
+          ),
         ),
       ],
+    );
+  }
+
+  Widget _buildAdvancedEffectSection(
+    EffectConfig effects,
+    EffectEditorController effectController,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.warmSurfaceSoft.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.warmBorder.withValues(alpha: 0.72)),
+      ),
+      child: Column(
+        children: [
+          Semantics(
+            button: true,
+            expanded: _advancedEffectExpanded,
+            label: _advancedEffectExpanded ? '收起高级效果' : '展开高级效果',
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(
+                  () => _advancedEffectExpanded = !_advancedEffectExpanded,
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 11,
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.tune_rounded,
+                      size: 17,
+                      color: AppTheme.warmTextSecondary,
+                    ),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        '高级效果',
+                        style: TextStyle(
+                          color: AppTheme.warmTextSecondary,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    if (effects.borderWidth > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Text(
+                          '描边 ${effects.borderWidth.round()} px',
+                          style: const TextStyle(
+                            color: AppTheme.coral,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    AnimatedRotation(
+                      turns: _advancedEffectExpanded ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 160),
+                      child: const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 20,
+                        color: AppTheme.warmTextMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          AnimatedCrossFade(
+            duration: const Duration(milliseconds: 180),
+            crossFadeState: _advancedEffectExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            firstChild: const SizedBox(width: double.infinity),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Divider(height: 1, color: AppTheme.warmBorder),
+                  const SizedBox(height: 12),
+                  _buildStepSlider(
+                    label: '描边宽度',
+                    value: effects.borderWidth,
+                    min: 0,
+                    max: 20,
+                    step: 1,
+                    displayValue: '${effects.borderWidth.round()} px',
+                    onChanged: effectController.updateBorderWidth,
+                  ),
+                  if (effects.borderWidth > 0) ...[
+                    const SizedBox(height: 8),
+                    const Text(
+                      '描边颜色',
+                      style: TextStyle(
+                        color: AppTheme.warmTextPrimary,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    _buildColorPalette(
+                      effects.borderColorArgb,
+                      effectController.updateBorderColor,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1443,28 +1556,58 @@ class _ProtectionEditorScreenState
   }
 }
 
-class _TargetAction extends StatelessWidget {
+class _TargetTextAction extends StatelessWidget {
   final IconData icon;
-  final String tooltip;
+  final String label;
   final VoidCallback onPressed;
+  final bool enabled;
 
-  const _TargetAction({
+  const _TargetTextAction({
     required this.icon,
-    required this.tooltip,
+    required this.label,
     required this.onPressed,
+    this.enabled = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: IconButton(
-        visualDensity: VisualDensity.compact,
-        onPressed: () {
-          HapticFeedback.selectionClick();
-          onPressed();
-        },
-        icon: Icon(icon, size: 18, color: AppTheme.warmTextSecondary),
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: label,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: enabled
+            ? () {
+                HapticFeedback.selectionClick();
+                onPressed();
+              }
+            : null,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 120),
+          opacity: enabled ? 1 : 0.38,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 44),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 15, color: AppTheme.warmTextSecondary),
+                  const SizedBox(width: 3),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: AppTheme.warmTextSecondary,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
