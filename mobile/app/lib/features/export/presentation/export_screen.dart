@@ -65,31 +65,29 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         label: enabled ? '取消处理' : '处理暂不可取消',
         child: Tooltip(
           message: enabled ? '取消处理' : '处理暂不可取消',
-          child: Material(
+          child: GestureDetector(
             key: _cancelActionKey,
-            color: Colors.transparent,
-            shape: const CircleBorder(),
-            child: InkWell(
-              onTap: enabled ? () => _confirmCancel(controller) : null,
-              customBorder: const CircleBorder(),
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 120),
-                opacity: enabled ? 1 : 0.42,
-                child: Ink(
-                  width: 62,
-                  height: 62,
-                  decoration: const BoxDecoration(
-                    gradient: AppTheme.coralActionGradient,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(0x38F44848),
-                        blurRadius: 20,
-                        offset: Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
+            behavior: HitTestBehavior.opaque,
+            onTap: enabled ? () => _confirmCancel(controller) : null,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 120),
+              opacity: enabled ? 1.0 : 0.42,
+              child: Container(
+                width: 62,
+                height: 62,
+                decoration: const BoxDecoration(
+                  gradient: AppTheme.coralActionGradient,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x38F44848),
+                      blurRadius: 18,
+                      offset: Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Icon(
                     Icons.close_rounded,
                     color: Colors.white,
                     size: 30,
@@ -602,18 +600,38 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 14),
+          const Divider(height: 1, color: AppTheme.warmBorder),
+          const SizedBox(height: 12),
+          const Row(
+            children: [
+              Icon(
+                Icons.verified_user_outlined,
+                size: 17,
+                color: AppTheme.warmTextMuted,
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '纯端侧离线安全处理，视频数据绝不离开本地',
+                  style: TextStyle(
+                    color: AppTheme.warmTextMuted,
+                    fontSize: 11.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
           if (showBackgroundHint) ...[
-            const SizedBox(height: 16),
-            const Divider(height: 1, color: AppTheme.warmBorder),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             const Row(
               children: [
                 Icon(
                   Icons.phone_android_rounded,
-                  size: 19,
+                  size: 17,
                   color: AppTheme.warmTextSecondary,
                 ),
-                SizedBox(width: 9),
+                SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     '可切换应用，完成后会通过通知提醒你',

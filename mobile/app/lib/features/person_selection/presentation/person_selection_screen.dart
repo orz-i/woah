@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:dance_domain/dance_domain.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/widgets/flow_back_button.dart';
 import '../../../core/widgets/immersive_flow_action.dart';
 import '../../../core/widgets/stage_viewport.dart';
 import '../../effect_editor/presentation/effect_editor_screen.dart';
@@ -165,14 +167,32 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
+              final availableHeight =
+                  (constraints.maxHeight - 48).clamp(0.0, double.infinity);
               final stageMaxHeight =
-                  constraints.maxHeight * (showControls ? 0.43 : 0.68);
+                  availableHeight * (showControls ? 0.38 : 0.65);
               return Stack(
                 children: [
                   Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+                        child: SizedBox(
+                          height: 38,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: FlowBackButton(
+                              onPressed: () {
+                                HapticFeedback.lightImpact();
+                                context.pop();
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: _buildStage(
                           state,
                           controller,
@@ -393,11 +413,22 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
         .clamp(0.0, stageHeight - top)
         .toDouble();
 
+    // 智能外扩触控热区（移动端推荐最小物理尺寸 48dp），防止远景群舞小人物点不中
+    const minHitSize = 48.0;
+    final hitWidth = math.max(width, minHitSize);
+    final hitHeight = math.max(height, minHitSize);
+    final hitLeft = (left - (hitWidth - width) / 2)
+        .clamp(0.0, math.max(0.0, stageWidth - hitWidth))
+        .toDouble();
+    final hitTop = (top - (hitHeight - height) / 2)
+        .clamp(0.0, math.max(0.0, stageHeight - hitHeight))
+        .toDouble();
+
     return Positioned(
-      left: left,
-      top: top,
-      width: width,
-      height: height,
+      left: hitLeft,
+      top: hitTop,
+      width: hitWidth,
+      height: hitHeight,
       child: Semantics(
         button: true,
         selected: selected,
@@ -465,6 +496,36 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppTheme.warmSurfaceSoft,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: AppTheme.warmBorder.withValues(alpha: 0.6),
+              ),
+            ),
+            child: const Row(
+              children: [
+                Icon(
+                  Icons.touch_app_rounded,
+                  size: 16,
+                  color: AppTheme.coral,
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '轻触上方画面中的人物可切换单个保护目标',
+                    style: TextStyle(
+                      color: AppTheme.warmTextSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

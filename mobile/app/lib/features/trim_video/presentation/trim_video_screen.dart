@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/widgets/flow_back_button.dart';
 import '../../../core/widgets/immersive_flow_action.dart';
 import '../../../core/widgets/stage_viewport.dart';
 import '../../../repositories/native_processing_repository.dart';
@@ -255,14 +256,15 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
               Positioned.fill(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 112),
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 112),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      _buildTopBar(),
+                      const SizedBox(height: 6),
                       _buildPreview(),
                       const SizedBox(height: 14),
-                      _buildTimeline(),
-                      const SizedBox(height: 12),
-                      _buildTimeSummary(),
+                      _buildEditingDeck(),
                     ],
                   ),
                 ),
@@ -280,6 +282,65 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTopBar() {
+    return SizedBox(
+      height: 38,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: FlowBackButton(
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            context.pop();
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEditingDeck() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
+      decoration: BoxDecoration(
+        color: AppTheme.warmSurface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.warmBorder),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0C000000),
+            blurRadius: 16,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          _buildTimeline(),
+          const SizedBox(height: 14),
+          _buildTimeSummary(),
+          const SizedBox(height: 14),
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.tune_rounded,
+                size: 14,
+                color: AppTheme.warmTextMuted,
+              ),
+              SizedBox(width: 6),
+              Text(
+                '拖动两侧滑柄截取高光舞段，最少保留 1 秒',
+                style: TextStyle(
+                  color: AppTheme.warmTextMuted,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -327,6 +388,27 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
                   ),
                 ),
               ),
+            // 底部微暗渐变：增强高亮或纯白舞房背景下文字与图标的对比度
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 56,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Color(0x52000000),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
             // 底部控制条：背景透明，仅纯文字与纯图标，大小水平位置绝对对齐
             Positioned(
               left: 14,

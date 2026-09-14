@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/widgets/flow_back_button.dart';
 import '../../../core/widgets/immersive_flow_action.dart';
 import '../../../core/widgets/stage_viewport.dart';
 import '../../export/presentation/export_screen.dart';
@@ -151,45 +152,44 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final stageMaxHeight = constraints.maxHeight * 0.42;
-                return Stack(
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                          child: Align(
-                            alignment: Alignment.topCenter,
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxHeight: stageMaxHeight,
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+                      child: SizedBox(
+                        height: 38,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: FlowBackButton(
+                            onPressed: () => _requestReturn(controller),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Align(
+                        alignment: Alignment.topCenter,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxHeight: stageMaxHeight,
+                          ),
+                          child: AspectRatio(
+                            aspectRatio: aspectRatio,
+                            child: MediaStageFrame(
+                              key: const ValueKey(
+                                'effect-editor-media-stage',
                               ),
-                              child: AspectRatio(
-                                aspectRatio: aspectRatio,
-                                child: MediaStageFrame(
-                                  key: const ValueKey(
-                                    'effect-editor-media-stage',
-                                  ),
-                                  child: _buildStagePreview(state),
-                                ),
-                              ),
+                              child: _buildStagePreview(state),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 10),
-                        Expanded(
-                          child: _buildBottomControlPanel(state, controller),
-                        ),
-                      ],
-                    ),
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 10,
-                      child: ImmersiveFlowAction(
-                        enabled: state.project != null,
-                        onNext: () => _handleNextAction(controller),
-                        onReturn: () => _requestReturn(controller),
                       ),
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: _buildBottomControlPanel(state, controller),
                     ),
                   ],
                 );
@@ -341,7 +341,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
             child: SingleChildScrollView(
               controller: _scrollController,
               physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 96),
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -484,6 +484,26 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
                   ],
                   const SizedBox(height: 8),
                 ],
+              ),
+            ),
+          ),
+          // 4. 固定操作底栏 (Docked Action)：彻底杜绝悬浮主按钮直接遮挡滑块
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+            decoration: BoxDecoration(
+              color: AppTheme.warmSurface,
+              border: Border(
+                top: BorderSide(
+                  color: AppTheme.warmBorder.withValues(alpha: 0.5),
+                  width: 0.8,
+                ),
+              ),
+            ),
+            child: Center(
+              child: ImmersiveFlowAction(
+                enabled: state.project != null,
+                onNext: () => _handleNextAction(controller),
+                onReturn: () => _requestReturn(controller),
               ),
             ),
           ),

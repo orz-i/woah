@@ -159,192 +159,256 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       child: Scaffold(
         backgroundColor: AppTheme.warmBackground,
         body: SafeArea(
-          child: Stack(
-            children: [
-              SingleChildScrollView(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: EdgeInsets.fromLTRB(
-                  18,
-                  14,
-                  18,
-                  kDebugMode ? 176 : 116,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (outputPath.isNotEmpty)
-                      MediaStageFrame(
-                        key: const ValueKey('result-media-stage'),
-                        backgroundColor: Colors.black,
-                        child: VideoPreviewPlayer(
-                          videoPath: outputPath,
-                          aspectRatio: project?.videoInfo.aspectRatio ?? 16 / 9,
-                        ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (outputPath.isNotEmpty)
+                            MediaStageFrame(
+                              key: const ValueKey('result-media-stage'),
+                              backgroundColor: Colors.black,
+                              child: VideoPreviewPlayer(
+                                videoPath: outputPath,
+                                aspectRatio:
+                                    project?.videoInfo.aspectRatio ?? 16 / 9,
+                              ),
+                            ),
+                          const SizedBox(height: 14),
+                          _buildSaveStatus(fileSizeMb),
+                          const Spacer(),
+                          const SizedBox(height: 18),
+                          _buildActionCluster(),
+                        ],
                       ),
-                    const SizedBox(height: 18),
-                    _buildSaveStatus(fileSizeMb),
-                  ],
+                    ),
+                  ),
                 ),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 8,
-                child: _buildSuccessActionCluster(),
-              ),
-            ],
+              );
+            },
           ),
         ),
       ),
     );
   }
 
-  Widget _buildSuccessActionCluster() {
+  Widget _buildActionCluster() {
     final shareEnabled = !_isSharing && !_isSaving && _saveError == null;
-    return Center(
-      child: SizedBox(
-        width: 260,
-        height: kDebugMode ? 150 : 84,
-        child: Stack(
-          alignment: Alignment.bottomCenter,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (kDebugMode) ...[
+          Align(
+            alignment: Alignment.centerRight,
+            child: _ResultDiagnosticsButton(
+              key: const ValueKey('result-diagnostics-action'),
+              isExporting: _isExportingDiagnostics,
+              onTap: _isExportingDiagnostics ? null : _exportDiagnostics,
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+        _buildShareButton(shareEnabled),
+        const SizedBox(height: 10),
+        Row(
           children: [
-            Positioned(
-              left: 24,
-              bottom: 10,
-              child: _ResultSatelliteAction(
+            Expanded(
+              child: _buildSecondaryButton(
                 key: const ValueKey('result-next-action'),
                 icon: Icons.add_rounded,
-                tooltip: '制作下一个',
+                label: '制作下一个',
                 onTap: () {
                   HapticFeedback.mediumImpact();
                   context.go('/');
                 },
               ),
             ),
-            Positioned(
-              right: 24,
-              bottom: 10,
-              child: _ResultSatelliteAction(
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildSecondaryButton(
                 key: const ValueKey('result-open-action'),
                 icon: Icons.folder_open_rounded,
-                tooltip: _isOpening ? '正在打开' : '查看文件',
+                label: _isOpening ? '正在打开…' : '查看视频',
                 onTap: _isOpening ? null : _openSavedVideo,
               ),
             ),
-            if (kDebugMode)
-              Positioned(
-                bottom: 94,
-                child: _ResultSatelliteAction(
-                  key: const ValueKey('result-diagnostics-action'),
-                  icon: Icons.bug_report_outlined,
-                  tooltip: _isExportingDiagnostics ? '正在准备诊断包' : '导出诊断包',
-                  onTap: _isExportingDiagnostics ? null : _exportDiagnostics,
-                ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildShareButton(bool shareEnabled) {
+    return Semantics(
+      button: true,
+      enabled: shareEnabled,
+      label: _isSharing ? '正在分享视频' : '分享视频',
+      child: Tooltip(
+        message: _isSharing ? '正在分享视频' : '分享视频',
+        child: GestureDetector(
+          key: const ValueKey('result-share-action'),
+          behavior: HitTestBehavior.opaque,
+          onTap: shareEnabled ? _shareVideo : null,
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 120),
+            opacity: shareEnabled ? 1 : 0.46,
+            child: Container(
+              height: 52,
+              decoration: BoxDecoration(
+                gradient: AppTheme.coralActionGradient,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x38F44848),
+                    blurRadius: 16,
+                    offset: Offset(0, 6),
+                  ),
+                ],
               ),
-            Positioned(
-              bottom: 0,
-              child: Semantics(
-                button: true,
-                enabled: shareEnabled,
-                label: _isSharing ? '正在分享视频' : '分享视频',
-                child: Tooltip(
-                  message: _isSharing ? '正在分享视频' : '分享视频',
-                  child: GestureDetector(
-                    key: const ValueKey('result-share-action'),
-                    behavior: HitTestBehavior.opaque,
-                    onTap: shareEnabled ? _shareVideo : null,
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 120),
-                      opacity: shareEnabled ? 1 : 0.46,
-                      child: Container(
-                        width: 70,
-                        height: 70,
-                        decoration: const BoxDecoration(
-                          gradient: AppTheme.coralActionGradient,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Color(0x38F44848),
-                              blurRadius: 22,
-                              offset: Offset(0, 9),
-                            ),
-                          ],
+              child: Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (_isSharing)
+                      const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          color: Colors.white,
                         ),
-                        child: Center(
-                          child: _isSharing
-                              ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Icon(
-                                  Icons.ios_share_rounded,
-                                  color: Colors.white,
-                                  size: 30,
-                                ),
-                        ),
+                      )
+                    else
+                      const Icon(
+                        Icons.ios_share_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _isSharing ? '正在打开分享…' : '分享视频',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.3,
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),
-          ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSecondaryButton({
+    required Key key,
+    required IconData icon,
+    required String label,
+    required VoidCallback? onTap,
+  }) {
+    final enabled = onTap != null;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: label,
+      child: Tooltip(
+        message: label,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            key: key,
+            onTap: enabled ? onTap : null,
+            borderRadius: BorderRadius.circular(16),
+            child: Ink(
+              height: 46,
+              decoration: BoxDecoration(
+                color: AppTheme.warmSurface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.warmBorder, width: 1.0),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x0A000000),
+                    blurRadius: 6,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      icon,
+                      size: 18,
+                      color: AppTheme.warmTextPrimary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        color: AppTheme.warmTextPrimary,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
   }
 
   Widget _buildSaveStatus(String? fileSizeMb) {
-    final IconData icon;
     final String title;
     final String subtitle;
+    final String statusLabel;
 
     if (_isSaving) {
-      icon = Icons.downloading_rounded;
       title = '正在保存到相册';
       subtitle = '保存完成后即可直接分享';
+      statusLabel = '保存中';
     } else if (_isSaved) {
-      icon = Icons.check_circle_outline_rounded;
-      title = '已自动保存到相册';
+      title = '已保存至系统相册';
       subtitle = fileSizeMb == null
-          ? '视频已安全保存到系统媒体库'
-          : '视频已安全保存 · $fileSizeMb MB';
+          ? '视频已安全脱敏存储'
+          : '视频已安全脱敏 · $fileSizeMb MB';
+      statusLabel = '脱敏完成';
     } else if (_saveError != null) {
-      icon = Icons.error_outline_rounded;
-      title = '尚未保存到相册';
-      subtitle = '成品仍保留在应用中，可以重新保存';
+      title = '尚未存入系统相册';
+      subtitle = '视频数据保留在设备中，可重新保存';
+      statusLabel = '保存失败';
     } else {
-      icon = Icons.check_circle_outline_rounded;
       title = '视频处理完成';
-      subtitle = '正在准备保存';
+      subtitle = '正在准备写入媒体库';
+      statusLabel = '就绪';
     }
 
-    final statusLabel = _isSaving
-        ? '保存中'
-        : _isSaved
-        ? '保存成功'
-        : _saveError != null
-        ? '保存失败'
-        : '处理中';
-    final statusColor = _saveError != null
-        ? AppTheme.coral
-        : const Color(0xFF5EA56B);
-
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: AppTheme.warmSurface,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppTheme.warmBorder),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x10000000),
-            blurRadius: 20,
-            offset: Offset(0, 7),
+            color: Color(0x0A000000),
+            blurRadius: 14,
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -352,34 +416,49 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         children: [
           if (_isSaving)
             const SizedBox(
-              width: 44,
-              height: 44,
+              width: 40,
+              height: 40,
               child: Padding(
-                padding: EdgeInsets.all(10),
+                padding: EdgeInsets.all(8),
                 child: CircularProgressIndicator(
                   strokeWidth: 2.5,
                   color: AppTheme.coral,
                 ),
               ),
             )
-          else
+          else if (_saveError != null)
             Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                gradient: _saveError == null
-                    ? AppTheme.coralActionGradient
-                    : null,
-                color: _saveError != null ? AppTheme.coralPale : null,
+              width: 40,
+              height: 40,
+              decoration: const BoxDecoration(
+                color: AppTheme.coralPale,
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                icon,
-                size: 24,
-                color: _saveError != null ? AppTheme.coral : Colors.white,
+              child: const Icon(
+                Icons.error_outline_rounded,
+                size: 22,
+                color: AppTheme.coral,
+              ),
+            )
+          else
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEAF5EE),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: const Color(0xFFC3E4CD),
+                  width: 1.0,
+                ),
+              ),
+              child: const Icon(
+                Icons.check_rounded,
+                size: 22,
+                color: Color(0xFF2E7D46),
               ),
             ),
-          const SizedBox(width: 13),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -392,7 +471,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 2),
                 Text(
                   subtitle,
                   style: const TextStyle(
@@ -410,15 +489,15 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             )
           else
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
               decoration: BoxDecoration(
-                color: statusColor.withAlpha(24),
-                borderRadius: BorderRadius.circular(14),
+                color: const Color(0xFFEAF5EE),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
                 statusLabel,
-                style: TextStyle(
-                  color: statusColor,
+                style: const TextStyle(
+                  color: Color(0xFF2E7D46),
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                 ),
@@ -430,52 +509,47 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   }
 }
 
-class _ResultSatelliteAction extends StatelessWidget {
-  final IconData icon;
-  final String tooltip;
+class _ResultDiagnosticsButton extends StatelessWidget {
+  final bool isExporting;
   final VoidCallback? onTap;
 
-  const _ResultSatelliteAction({
+  const _ResultDiagnosticsButton({
     super.key,
-    required this.icon,
-    required this.tooltip,
+    required this.isExporting,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final enabled = onTap != null;
     return Semantics(
       button: true,
-      enabled: enabled,
-      label: tooltip,
+      label: isExporting ? '正在准备诊断包' : '导出诊断包',
       child: Tooltip(
-        message: tooltip,
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 120),
-          opacity: enabled ? 1 : 0.42,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: enabled ? onTap : null,
-            child: Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: AppTheme.warmSurface.withValues(alpha: 0.96),
-                shape: BoxShape.circle,
-                border: Border.all(color: AppTheme.warmBorder, width: 1.2),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x1E000000),
-                    blurRadius: 14,
-                    offset: Offset(0, 5),
+        message: isExporting ? '正在准备诊断包' : '导出诊断包',
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(10),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.bug_report_outlined,
+                    size: 14,
+                    color: AppTheme.warmTextMuted,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    isExporting ? '正在导出…' : '导出诊断包',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.warmTextMuted,
+                    ),
                   ),
                 ],
-              ),
-              child: Icon(
-                icon,
-                size: 22,
-                color: AppTheme.warmTextPrimary,
               ),
             ),
           ),
