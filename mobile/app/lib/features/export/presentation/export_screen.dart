@@ -47,6 +47,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   static const _failedCopyKey = ValueKey('export-failed-copy');
   static const _failedDiagnosticsKey = ValueKey('export-failed-diagnostics');
   static const _cancelActionKey = ValueKey('export-cancel-action');
+  bool _cancelInFlight = false;
 
   @override
   void initState() {
@@ -54,21 +55,92 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _startExportJob());
   }
 
+  Widget _buildFailureSummary() {
+    return Container(
+      key: const ValueKey('export-failure-summary'),
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(18, 17, 18, 16),
+      decoration: BoxDecoration(
+        color: AppTheme.warmSurface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppTheme.warmBorder),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0E000000),
+            blurRadius: 18,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 38,
+            height: 38,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppTheme.coralPale,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.error_outline_rounded,
+                color: AppTheme.coralStrong,
+                size: 21,
+              ),
+            ),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '这次没有生成视频',
+                  style: TextStyle(
+                    color: AppTheme.warmTextPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  '当前编辑内容仍然保留。可以直接重试，或返回编辑后再尝试。',
+                  style: TextStyle(
+                    color: AppTheme.warmTextSecondary,
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCancelAction(
     ExportController controller, {
     required bool enabled,
   }) {
+    final actionEnabled = enabled && !_cancelInFlight;
+    final actionLabel = _cancelInFlight
+        ? '正在取消处理'
+        : actionEnabled
+        ? '取消处理'
+        : '处理暂不可取消';
     return Center(
       child: Semantics(
         button: true,
-        enabled: enabled,
-        label: enabled ? '取消处理' : '处理暂不可取消',
+        enabled: actionEnabled,
+        label: actionLabel,
         child: Tooltip(
-          message: enabled ? '取消处理' : '处理暂不可取消',
+          message: actionLabel,
           child: GestureDetector(
             key: _cancelActionKey,
             behavior: HitTestBehavior.opaque,
-            onTap: enabled ? () => _confirmCancel(controller) : null,
+            onTap: actionEnabled ? () => _confirmCancel(controller) : null,
             child: AnimatedOpacity(
               duration: const Duration(milliseconds: 120),
               opacity: enabled ? 1.0 : 0.42,
@@ -86,12 +158,21 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                     ),
                   ],
                 ),
-                child: const Center(
-                  child: Icon(
-                    Icons.close_rounded,
-                    color: Colors.white,
-                    size: 30,
-                  ),
+                child: Center(
+                  child: _cancelInFlight
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.4,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.close_rounded,
+                          color: Colors.white,
+                          size: 30,
+                        ),
                 ),
               ),
             ),
@@ -164,13 +245,14 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                             controller,
                             livePreviewToggleEnabled: isActive,
                           ),
-                          if (!isFailed) ...[
-                            const SizedBox(height: 14),
+                          const SizedBox(height: 14),
+                          if (isFailed)
+                            _buildFailureSummary()
+                          else
                             _buildProgressCard(
                               state,
                               showBackgroundHint: Platform.isAndroid,
                             ),
-                          ],
                         ],
                       ),
                     ),
@@ -189,7 +271,10 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                   left: 0,
                   right: 0,
                   bottom: 8,
-                  child: _buildCancelAction(controller, enabled: isActive),
+                  child: _buildCancelAction(
+                    controller,
+                    enabled: isActive && state.jobId != null,
+                  ),
                 ),
             ],
           ),
@@ -803,8 +888,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                 child: OutlinedButton(
                   onPressed: () {
                     Navigator.of(dialogContext).pop();
-                    controller.cancelExport();
-                    context.pop();
+                    _cancelAndReturn(controller);
                   },
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppTheme.coralStrong,
@@ -824,6 +908,22 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _cancelAndReturn(ExportController controller) async {
+    if (_cancelInFlight || !mounted) return;
+    setState(() => _cancelInFlight = true);
+    try {
+      await controller.cancelExport();
+      if (!mounted) return;
+      context.pop();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _cancelInFlight = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('暂时无法取消，处理仍在继续')));
+    }
   }
 }
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:app/features/export/domain/export_state.dart';
 import 'package:app/features/export/presentation/result_screen.dart';
 import 'package:app/repositories/native_processing_repository.dart';
@@ -67,49 +69,48 @@ void main() {
     },
   );
 
-  testWidgets(
-    'success result keeps share open diagnostics and next actions',
-    (tester) async {
-      final repository = _ResultRepository();
-      final container = ProviderContainer(
-        overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
-      );
-      addTearDown(container.dispose);
+  testWidgets('success result keeps share open diagnostics and next actions', (
+    tester,
+  ) async {
+    final repository = _ResultRepository();
+    final container = ProviderContainer(
+      overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
 
-      final router = _buildRouter(_completedState());
-      addTearDown(router.dispose);
+    final router = _buildRouter(_completedState());
+    addTearDown(router.dispose);
 
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: MaterialApp.router(routerConfig: router),
-        ),
-      );
-      await tester.pump();
-      await tester.pump();
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
 
-      expect(repository.savedPaths, contains('/tmp/result.mp4'));
+    expect(repository.savedPaths, contains('/tmp/result.mp4'));
 
-      await tester.tap(find.byKey(const ValueKey('result-share-action')));
-      await tester.pump();
-      expect(repository.sharedUris, contains('content://gallery/result.mp4'));
+    await tester.tap(find.byKey(const ValueKey('result-share-action')));
+    await tester.pump();
+    expect(repository.sharedUris, contains('content://gallery/result.mp4'));
 
-      await tester.tap(find.byKey(const ValueKey('result-open-action')));
-      await tester.pump();
-      expect(repository.openedUris, contains('content://gallery/result.mp4'));
+    await tester.tap(find.byKey(const ValueKey('result-open-action')));
+    await tester.pump();
+    expect(repository.openedUris, contains('content://gallery/result.mp4'));
 
-      expect(find.byKey(const ValueKey('result-copy-action')), findsNothing);
+    expect(find.byKey(const ValueKey('result-copy-action')), findsNothing);
 
-      await tester.tap(find.byKey(const ValueKey('result-diagnostics-action')));
-      await tester.pump();
-      await tester.pump();
-      expect(repository.diagnosticShareCount, 1);
+    await tester.tap(find.byKey(const ValueKey('result-diagnostics-action')));
+    await tester.pump();
+    await tester.pump();
+    expect(repository.diagnosticShareCount, 1);
 
-      await tester.tap(find.byKey(const ValueKey('result-next-action')));
-      await tester.pump();
-      expect(router.routerDelegate.currentConfiguration.uri.path, '/');
-    },
-  );
+    await tester.tap(find.byKey(const ValueKey('result-next-action')));
+    await tester.pump();
+    expect(router.routerDelegate.currentConfiguration.uri.path, '/');
+  });
 
   testWidgets('success result remains stable on a compact phone screen', (
     tester,
@@ -143,6 +144,56 @@ void main() {
     expect(find.byKey(const ValueKey('result-next-action')), findsOneWidget);
     expect(find.byKey(const ValueKey('result-open-action')), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('auto-save temporarily blocks navigation and open actions', (
+    tester,
+  ) async {
+    final repository = _DeferredSaveResultRepository();
+    final container = ProviderContainer(
+      overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    final router = _buildRouter(_completedState());
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('正在保存到相册'), findsOneWidget);
+    expect(
+      tester
+          .widget<InkWell>(find.byKey(const ValueKey('result-next-action')))
+          .onTap,
+      isNull,
+    );
+    expect(
+      tester
+          .widget<InkWell>(find.byKey(const ValueKey('result-open-action')))
+          .onTap,
+      isNull,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('result-next-action')));
+    await tester.tap(find.byKey(const ValueKey('result-open-action')));
+    await tester.pump();
+    expect(router.routerDelegate.currentConfiguration.uri.path, '/result');
+    expect(repository.openedUris, isEmpty);
+
+    repository.completeSave();
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('已保存至系统相册'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('result-open-action')));
+    await tester.pump();
+    expect(repository.openedUris, contains('content://gallery/result.mp4'));
   });
 }
 
@@ -229,4 +280,20 @@ class _ResultRepository implements NativeProcessingRepository {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _DeferredSaveResultRepository extends _ResultRepository {
+  final Completer<String?> _saveCompleter = Completer<String?>();
+
+  @override
+  Future<String?> saveVideoToGallery(String filePath) {
+    savedPaths.add(filePath);
+    return _saveCompleter.future;
+  }
+
+  void completeSave() {
+    if (!_saveCompleter.isCompleted) {
+      _saveCompleter.complete('content://gallery/result.mp4');
+    }
+  }
 }

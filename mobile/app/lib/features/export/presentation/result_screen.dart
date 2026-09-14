@@ -201,6 +201,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 
   Widget _buildActionCluster() {
     final shareEnabled = !_isSharing && !_isSaving && _saveError == null;
+    final secondaryEnabled = !_isSaving;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -225,10 +226,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 key: const ValueKey('result-next-action'),
                 icon: Icons.add_rounded,
                 label: '制作下一个',
-                onTap: () {
-                  HapticFeedback.mediumImpact();
-                  context.go('/');
-                },
+                onTap: secondaryEnabled
+                    ? () {
+                        HapticFeedback.mediumImpact();
+                        context.go('/');
+                      }
+                    : null,
               ),
             ),
             const SizedBox(width: 10),
@@ -237,7 +240,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 key: const ValueKey('result-open-action'),
                 icon: Icons.folder_open_rounded,
                 label: _isOpening ? '正在打开…' : '查看视频',
-                onTap: _isOpening ? null : _openSavedVideo,
+                onTap: !secondaryEnabled || _isOpening ? null : _openSavedVideo,
               ),
             ),
           ],
@@ -331,39 +334,39 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             key: key,
             onTap: enabled ? onTap : null,
             borderRadius: BorderRadius.circular(16),
-            child: Ink(
-              height: AppTheme.minTouchTarget,
-              decoration: BoxDecoration(
-                color: AppTheme.warmSurface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.warmBorder, width: 1.0),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x0A000000),
-                    blurRadius: 6,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      icon,
-                      size: 18,
-                      color: AppTheme.warmTextPrimary,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        color: AppTheme.warmTextPrimary,
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w600,
-                      ),
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 120),
+              opacity: enabled ? 1 : 0.42,
+              child: Ink(
+                height: AppTheme.minTouchTarget,
+                decoration: BoxDecoration(
+                  color: AppTheme.warmSurface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.warmBorder, width: 1.0),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x0A000000),
+                      blurRadius: 6,
+                      offset: Offset(0, 2),
                     ),
                   ],
+                ),
+                child: Center(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(icon, size: 18, color: AppTheme.warmTextPrimary),
+                      const SizedBox(width: 6),
+                      Text(
+                        label,
+                        style: const TextStyle(
+                          color: AppTheme.warmTextPrimary,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -384,9 +387,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       statusLabel = '保存中';
     } else if (_isSaved) {
       title = '已保存至系统相册';
-      subtitle = fileSizeMb == null
-          ? '视频已安全脱敏存储'
-          : '视频已安全脱敏 · $fileSizeMb MB';
+      subtitle = fileSizeMb == null ? '视频已安全脱敏存储' : '视频已安全脱敏 · $fileSizeMb MB';
       statusLabel = '脱敏完成';
     } else if (_saveError != null) {
       title = '尚未存入系统相册';
@@ -447,10 +448,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFFEAF5EE),
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: const Color(0xFFC3E4CD),
-                  width: 1.0,
-                ),
+                border: Border.all(color: const Color(0xFFC3E4CD), width: 1.0),
               ),
               child: const Icon(
                 Icons.check_rounded,

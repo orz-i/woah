@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:app/features/export/domain/export_state.dart';
 import 'package:app/features/export/presentation/export_controller.dart';
 import 'package:app/features/export/presentation/export_screen.dart';
@@ -261,7 +262,10 @@ void main() {
 
       expect(find.text('正在保护舞段'), findsNothing);
       expect(find.text('取消处理'), findsNothing);
-      expect(find.byKey(const ValueKey('export-cancel-action')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('export-cancel-action')),
+        findsOneWidget,
+      );
       expect(find.byKey(ImmersiveFlowAction.nextControlKey), findsNothing);
       expect(find.byIcon(Icons.close_rounded), findsOneWidget);
       expect(find.bySemanticsLabel('取消处理'), findsOneWidget);
@@ -284,37 +288,165 @@ void main() {
     },
   );
 
+  testWidgets('cancel stays disabled until the native export job exists', (
+    tester,
+  ) async {
+    final repository = _PreviewToggleRepository()
+      ..startCompleter = Completer<String>();
+    addTearDown(repository.dispose);
+    final container = ProviderContainer(
+      overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(home: ExportScreen(project: _testProject())),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(container.read(exportControllerProvider).jobId, isNull);
+    expect(
+      tester
+          .widget<GestureDetector>(
+            find.byKey(const ValueKey('export-cancel-action')),
+          )
+          .onTap,
+      isNull,
+    );
+
+    repository.startCompleter!.complete('preview-toggle-job');
+    await tester.pump();
+    await tester.pump();
+
+    expect(container.read(exportControllerProvider).jobId, 'preview-toggle-job');
+    expect(
+      tester
+          .widget<GestureDetector>(
+            find.byKey(const ValueKey('export-cancel-action')),
+          )
+          .onTap,
+      isNotNull,
+    );
+  });
+
+  testWidgets('active export cancel action has no hidden drag-return target', (
+    tester,
+  ) async {
+    final repository = _PreviewToggleRepository();
+    addTearDown(repository.dispose);
+    final container = ProviderContainer(
+      overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(home: ExportScreen(project: _testProject())),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final action = find.byKey(const ValueKey('export-cancel-action'));
+    final gesture = await tester.startGesture(tester.getCenter(action));
+    await tester.pump(const Duration(milliseconds: 650));
+    await gesture.moveBy(const Offset(0, -108));
+    await tester.pump();
+
+    expect(find.byKey(ImmersiveFlowAction.exitTargetKey), findsNothing);
+    expect(find.bySemanticsLabel('松开返回'), findsNothing);
+
+    await gesture.cancel();
+    await tester.pump();
+    expect(find.text('取消处理？'), findsNothing);
+  });
+
   testWidgets(
-    'active export cancel action has no hidden drag-return target',
+    'confirmed cancel waits for native cancellation before returning',
     (tester) async {
-      final repository = _PreviewToggleRepository();
+      final repository = _PreviewToggleRepository()
+        ..cancelCompleter = Completer<void>();
       addTearDown(repository.dispose);
       final container = ProviderContainer(
         overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
       );
       addTearDown(container.dispose);
 
+      final router = GoRouter(
+        initialLocation: '/edit',
+        routes: [
+          GoRoute(
+            path: '/edit',
+            builder: (context, state) =>
+                const Scaffold(body: Center(child: Text('edit-marker'))),
+          ),
+          GoRoute(
+            path: '/export',
+            builder: (context, state) => ExportScreen(project: _testProject()),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
-          child: MaterialApp(home: ExportScreen(project: _testProject())),
+          child: MaterialApp.router(routerConfig: router),
         ),
       );
+      router.push('/export');
+      await tester.pump();
+      await tester.pump();
+      for (
+        var attempt = 0;
+        attempt < 4 && container.read(exportControllerProvider).jobId == null;
+        attempt++
+      ) {
+        await tester.pump(const Duration(milliseconds: 1));
+      }
+      expect(container.read(exportControllerProvider).jobId, isNotNull);
+
+      await tester.tap(find.byKey(const ValueKey('export-cancel-action')));
+      await tester.pump();
+      await tester.tap(find.text('取消处理'));
+      await tester.pump();
+
+      expect(repository.cancelCalls, 1);
+      expect(
+        find.byKey(const ValueKey('export-cancel-action')).hitTestable(),
+        findsOneWidget,
+      );
+      expect(find.text('edit-marker').hitTestable(), findsNothing);
+      expect(
+        tester
+            .widget<GestureDetector>(
+              find.byKey(const ValueKey('export-cancel-action')),
+            )
+            .onTap,
+        isNull,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('export-cancel-action')),
+          matching: find.byType(CircularProgressIndicator),
+        ),
+        findsOneWidget,
+      );
+
+      repository.cancelCompleter!.complete();
       await tester.pump();
       await tester.pump();
 
-      final action = find.byKey(const ValueKey('export-cancel-action'));
-      final gesture = await tester.startGesture(tester.getCenter(action));
-      await tester.pump(const Duration(milliseconds: 650));
-      await gesture.moveBy(const Offset(0, -108));
-      await tester.pump();
-
-      expect(find.byKey(ImmersiveFlowAction.exitTargetKey), findsNothing);
-      expect(find.bySemanticsLabel('松开返回'), findsNothing);
-
-      await gesture.cancel();
-      await tester.pump();
-      expect(find.text('取消处理？'), findsNothing);
+      expect(find.text('edit-marker').hitTestable(), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('export-cancel-action')).hitTestable(),
+        findsNothing,
+      );
     },
   );
 
@@ -351,6 +483,12 @@ void main() {
       expect(back, findsOneWidget);
       expect(copy, findsOneWidget);
       expect(diagnostics, findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('export-failure-summary')),
+        findsOneWidget,
+      );
+      expect(find.text('这次没有生成视频'), findsOneWidget);
+      expect(find.textContaining('当前编辑内容仍然保留'), findsOneWidget);
       expect(find.text('重试导出'), findsNothing);
       expect(find.text('返回编辑'), findsNothing);
 
@@ -394,9 +532,7 @@ void main() {
       await tester.pump();
       expect(find.text('错误详情已复制'), findsOneWidget);
 
-      await tester.tap(
-        find.byKey(const ValueKey('export-failed-diagnostics')),
-      );
+      await tester.tap(find.byKey(const ValueKey('export-failed-diagnostics')));
       await tester.pump();
       await tester.pump();
       expect(repository.diagnosticShared, isTrue);
@@ -467,6 +603,9 @@ class _PreviewToggleRepository implements NativeProcessingRepository {
   final List<bool> livePreviewToggles = [];
   int startExportCalls = 0;
   bool diagnosticShared = false;
+  int cancelCalls = 0;
+  Completer<String>? startCompleter;
+  Completer<void>? cancelCompleter;
 
   @override
   Stream<JobStatusDto> get progressStream => _progress.stream;
@@ -488,9 +627,9 @@ class _PreviewToggleRepository implements NativeProcessingRepository {
     bool enableLivePreview = false,
     int trimStartMs = 0,
     int? trimEndMs,
-  }) async {
+  }) {
     startExportCalls++;
-    return 'preview-toggle-job';
+    return startCompleter?.future ?? Future<String>.value('preview-toggle-job');
   }
 
   @override
@@ -499,6 +638,12 @@ class _PreviewToggleRepository implements NativeProcessingRepository {
     required bool enabled,
   }) async {
     livePreviewToggles.add(enabled);
+  }
+
+  @override
+  Future<void> cancelJob(String jobId) {
+    cancelCalls += 1;
+    return cancelCompleter?.future ?? Future<void>.value();
   }
 
   void emitPreview(String path, {required int frame}) {
