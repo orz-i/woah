@@ -24,6 +24,9 @@ void main() {
     expect(find.byIcon(Icons.arrow_back_ios_new_rounded), findsOneWidget);
     expect(find.byTooltip('返回上一步'), findsOneWidget);
     expect(find.bySemanticsLabel('返回上一步'), findsOneWidget);
+    final hitSize = tester.getSize(find.byKey(FlowBackButton.backButtonKey));
+    expect(hitSize.width, greaterThanOrEqualTo(48));
+    expect(hitSize.height, greaterThanOrEqualTo(48));
 
     await tester.tap(find.byKey(FlowBackButton.backButtonKey));
     await tester.pump();

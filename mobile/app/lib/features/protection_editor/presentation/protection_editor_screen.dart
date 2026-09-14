@@ -168,15 +168,21 @@ class _ProtectionEditorScreenState
                   0.0,
                   double.infinity,
                 );
-                final stageMaxHeight =
-                    availableHeight * (showControls ? 0.38 : 0.64);
+                final stageFraction = !showControls
+                    ? 0.64
+                    : aspectRatio < 0.75
+                    ? 0.56
+                    : aspectRatio < 1.25
+                    ? 0.46
+                    : 0.38;
+                final stageMaxHeight = availableHeight * stageFraction;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: SizedBox(
-                        height: 38,
+                        height: AppTheme.minTouchTarget,
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: FlowBackButton(onPressed: _requestReturn),
@@ -785,51 +791,53 @@ class _ProtectionEditorScreenState
                   () => _advancedEffectExpanded = !_advancedEffectExpanded,
                 );
               },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 11,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  minHeight: AppTheme.minTouchTarget,
                 ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.tune_rounded,
-                      size: 17,
-                      color: AppTheme.warmTextSecondary,
-                    ),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        '高级效果',
-                        style: TextStyle(
-                          color: AppTheme.warmTextSecondary,
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
-                        ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.tune_rounded,
+                        size: 17,
+                        color: AppTheme.warmTextSecondary,
                       ),
-                    ),
-                    if (effects.borderWidth > 0)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
+                      const SizedBox(width: 8),
+                      const Expanded(
                         child: Text(
-                          '描边 ${effects.borderWidth.round()} px',
-                          style: const TextStyle(
-                            color: AppTheme.coral,
-                            fontSize: 11.5,
+                          '高级效果',
+                          style: TextStyle(
+                            color: AppTheme.warmTextSecondary,
+                            fontSize: 12.5,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
-                    AnimatedRotation(
-                      turns: _advancedEffectExpanded ? 0.5 : 0,
-                      duration: const Duration(milliseconds: 160),
-                      child: const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        size: 20,
-                        color: AppTheme.warmTextMuted,
+                      if (effects.borderWidth > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: Text(
+                            '描边 ${effects.borderWidth.round()} px',
+                            style: const TextStyle(
+                              color: AppTheme.coral,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      AnimatedRotation(
+                        turns: _advancedEffectExpanded ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 160),
+                        child: const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 20,
+                          color: AppTheme.warmTextMuted,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -898,11 +906,11 @@ class _ProtectionEditorScreenState
   ) {
     final isFaceOnly = state.privacyMode == ProjectPrivacyMode.faceOnly;
     return Container(
-      height: 44,
+      height: AppTheme.minTouchTarget,
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: const Color(0xFFECE3DE),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(24),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -920,7 +928,7 @@ class _ProtectionEditorScreenState
                   height: double.infinity,
                   decoration: BoxDecoration(
                     gradient: AppTheme.coralActionGradient,
-                    borderRadius: BorderRadius.circular(19),
+                    borderRadius: BorderRadius.circular(21),
                     boxShadow: const [
                       BoxShadow(
                         color: Color(0x33F44848),
@@ -1201,8 +1209,8 @@ class _ProtectionEditorScreenState
     ];
 
     return Wrap(
-      spacing: 12,
-      runSpacing: 10,
+      spacing: 6,
+      runSpacing: 6,
       children: colors.map((argb) {
         final selected = currentArgb == argb;
         return Semantics(
@@ -1210,31 +1218,38 @@ class _ProtectionEditorScreenState
           selected: selected,
           label: '颜色选项',
           child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: () {
               HapticFeedback.selectionClick();
               onSelect(argb);
             },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Color(argb),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: selected ? AppTheme.coral : AppTheme.warmBorder,
-                  width: selected ? 3 : 1,
+            child: SizedBox(
+              width: AppTheme.minTouchTarget,
+              height: AppTheme.minTouchTarget,
+              child: Center(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Color(argb),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: selected ? AppTheme.coral : AppTheme.warmBorder,
+                      width: selected ? 3 : 1,
+                    ),
+                  ),
+                  child: selected
+                      ? Icon(
+                          Icons.check_rounded,
+                          size: 20,
+                          color: argb == 0xFFFFFFFF
+                              ? AppTheme.warmTextPrimary
+                              : Colors.white,
+                        )
+                      : null,
                 ),
               ),
-              child: selected
-                  ? Icon(
-                      Icons.check_rounded,
-                      size: 20,
-                      color: argb == 0xFFFFFFFF
-                          ? AppTheme.warmTextPrimary
-                          : Colors.white,
-                    )
-                  : null,
             ),
           ),
         );
@@ -1250,11 +1265,11 @@ class _ProtectionEditorScreenState
     ];
 
     return Container(
-      height: 42,
+      height: AppTheme.minTouchTarget,
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: const Color(0xFFF2ECE7),
-        borderRadius: BorderRadius.circular(21),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppTheme.warmBorder.withValues(alpha: 0.6)),
       ),
       child: LayoutBuilder(
@@ -1280,7 +1295,7 @@ class _ProtectionEditorScreenState
                   height: double.infinity,
                   decoration: BoxDecoration(
                     color: AppTheme.warmSurface,
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(21),
                     boxShadow: const [
                       BoxShadow(
                         color: Color(0x12000000),
@@ -1587,7 +1602,9 @@ class _TargetTextAction extends StatelessWidget {
           duration: const Duration(milliseconds: 120),
           opacity: enabled ? 1 : 0.38,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 44),
+            constraints: const BoxConstraints(
+              minHeight: AppTheme.minTouchTarget,
+            ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 6),
               child: Row(

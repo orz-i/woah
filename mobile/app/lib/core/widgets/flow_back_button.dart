@@ -18,7 +18,7 @@ class FlowBackButton extends StatelessWidget {
     super.key,
     required this.onPressed,
     this.tooltip = '返回上一步',
-    this.size = 38.0,
+    this.size = AppTheme.minTouchTarget,
   });
 
   @override
@@ -38,14 +38,20 @@ class FlowBackButton extends StatelessWidget {
               onPressed();
             },
             customBorder: const CircleBorder(),
-            child: SizedBox(
-              width: size,
-              height: size,
-              child: const Center(
-                child: Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  size: 20,
-                  color: AppTheme.warmTextPrimary,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                minWidth: AppTheme.minTouchTarget,
+                minHeight: AppTheme.minTouchTarget,
+              ),
+              child: SizedBox(
+                width: size,
+                height: size,
+                child: const Center(
+                  child: Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    size: 20,
+                    color: AppTheme.warmTextPrimary,
+                  ),
                 ),
               ),
             ),

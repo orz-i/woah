@@ -324,7 +324,7 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
 
   Widget _buildTopBar() {
     return SizedBox(
-      height: 38,
+      height: AppTheme.minTouchTarget,
       child: Align(
         alignment: Alignment.centerLeft,
         child: FlowBackButton(

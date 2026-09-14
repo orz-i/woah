@@ -156,9 +156,9 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: SizedBox(
-                        height: 38,
+                        height: AppTheme.minTouchTarget,
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: FlowBackButton(

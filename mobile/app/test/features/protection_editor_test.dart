@@ -61,6 +61,11 @@ void main() {
       find.byKey(const ValueKey('protection-editor-media-stage')),
       findsOneWidget,
     );
+    final stageSize = tester.getSize(
+      find.byKey(const ValueKey('protection-editor-media-stage')),
+    );
+    expect(stageSize.width, greaterThanOrEqualTo(180));
+    expect(stageSize.height, greaterThan(stageSize.width));
     expect(
       find.byKey(const ValueKey('protection-editor-tool-deck')),
       findsOneWidget,
