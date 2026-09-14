@@ -21,11 +21,46 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
   static const double selectionCandidateMinConfidence = 0.60;
 
   final NativeProcessingRepository _repository;
+  bool _selectionPreviewEnabled = true;
 
   PersonSelectionController(this._repository)
     : super(const PersonSelectionState());
 
-  Future<void> analyzeProject(DanceProject project) async {
+  Future<void> prepareProject(
+    DanceProject project, {
+    bool selectionPreviewEnabled = true,
+  }) async {
+    _selectionPreviewEnabled = selectionPreviewEnabled;
+
+    final cacheId = project.analysisCacheId;
+    if (cacheId != null && cacheId.isNotEmpty && project.persons.isNotEmpty) {
+      final persons = project.persons
+          .where(
+            (person) => person.confidence >= selectionCandidateMinConfidence,
+          )
+          .toList();
+      _applyReadyState(
+        project: project,
+        persons: persons,
+        analysisCacheId: cacheId,
+      );
+      if (_selectionPreviewEnabled) {
+        await _executePreviewRequest();
+      }
+      return;
+    }
+
+    await analyzeProject(
+      project,
+      selectionPreviewEnabled: selectionPreviewEnabled,
+    );
+  }
+
+  Future<void> analyzeProject(
+    DanceProject project, {
+    bool selectionPreviewEnabled = true,
+  }) async {
+    _selectionPreviewEnabled = selectionPreviewEnabled;
     try {
       state = state.copyWith(
         status: PersonSelectionStatus.analyzing,
@@ -68,39 +103,15 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
         );
       }
 
-      final personIds = persons.map((person) => person.id).toSet();
-      final storedTargets = {
-        ...project.selectedPersonIds,
-        ...project.faceOnlyPersonIds,
-      }.intersection(personIds);
-      final hasStoredTargets =
-          project.selectedPersonIds.isNotEmpty ||
-          project.faceOnlyPersonIds.isNotEmpty;
-      final targetIds = hasStoredTargets ? storedTargets : personIds;
-
-      // Legacy mixed projects are normalized to full-body for privacy safety.
-      // A pure face-only project remains face-only when revisited.
-      final initialMode =
-          project.selectedPersonIds.isEmpty &&
-              project.faceOnlyPersonIds.isNotEmpty
-          ? ProjectPrivacyMode.faceOnly
-          : ProjectPrivacyMode.fullBody;
-
-      state = state.copyWith(
-        status: PersonSelectionStatus.ready,
+      _applyReadyState(
+        project: project,
         persons: persons,
-        selectedPersonIds: initialMode == ProjectPrivacyMode.fullBody
-            ? targetIds
-            : <int>{},
-        faceOnlyPersonIds: initialMode == ProjectPrivacyMode.faceOnly
-            ? targetIds
-            : <int>{},
-        privacyMode: initialMode,
         analysisCacheId: result.analysisCacheId,
-        selectionPreviewLoading: true,
       );
 
-      await _executePreviewRequest();
+      if (_selectionPreviewEnabled) {
+        await _executePreviewRequest();
+      }
     } catch (e, stack) {
       AppLogger.e('PersonSelectionController', 'Analysis failed', e, stack);
       state = state.copyWith(
@@ -121,7 +132,49 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
   int _previewRequestId = 0;
 
   void _requestSelectionPreview() {
+    if (!_selectionPreviewEnabled) return;
     _executePreviewRequest();
+  }
+
+  void _applyReadyState({
+    required DanceProject project,
+    required List<PersonTrack> persons,
+    required String analysisCacheId,
+  }) {
+    final personIds = persons.map((person) => person.id).toSet();
+    final storedTargets = {
+      ...project.selectedPersonIds,
+      ...project.faceOnlyPersonIds,
+    }.intersection(personIds);
+    final hasStoredTargets =
+        project.selectedPersonIds.isNotEmpty ||
+        project.faceOnlyPersonIds.isNotEmpty;
+    final targetIds = hasStoredTargets ? storedTargets : personIds;
+
+    // Legacy mixed projects are normalized to full-body for privacy safety.
+    // A pure face-only project remains face-only when revisited.
+    final initialMode =
+        project.selectedPersonIds.isEmpty &&
+            project.faceOnlyPersonIds.isNotEmpty
+        ? ProjectPrivacyMode.faceOnly
+        : ProjectPrivacyMode.fullBody;
+
+    state = state.copyWith(
+      status: PersonSelectionStatus.ready,
+      project: project,
+      persons: persons,
+      selectedPersonIds: initialMode == ProjectPrivacyMode.fullBody
+          ? targetIds
+          : <int>{},
+      faceOnlyPersonIds: initialMode == ProjectPrivacyMode.faceOnly
+          ? targetIds
+          : <int>{},
+      privacyMode: initialMode,
+      analysisCacheId: analysisCacheId,
+      clearSelectionPreviewPath: true,
+      selectionPreviewLoading: _selectionPreviewEnabled,
+      errorMessage: null,
+    );
   }
 
   Future<void> _executePreviewRequest() async {

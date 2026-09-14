@@ -29,6 +29,19 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
     _requestPreview(debounce: false);
   }
 
+  void updateEditingContext({
+    required DanceProject project,
+    EffectConfig? effects,
+    bool debounce = false,
+  }) {
+    final activeEffects = effects ?? state.effects;
+    state = state.copyWith(
+      project: project.copyWith(effects: activeEffects),
+      effects: activeEffects,
+    );
+    _requestPreview(debounce: debounce);
+  }
+
   void updateFillMode(FillMode mode) {
     state = state.copyWith(
       effects: state.effects.copyWith(fillMode: mode),

@@ -14,6 +14,7 @@ import '../../../core/widgets/flow_back_button.dart';
 import '../../../core/widgets/immersive_flow_action.dart';
 import '../../../core/widgets/stage_viewport.dart';
 import '../../../repositories/native_processing_repository.dart';
+import '../../protection_editor/presentation/protection_editor_screen.dart';
 
 class TrimVideoScreen extends ConsumerStatefulWidget {
   final DanceProject project;
@@ -38,6 +39,10 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
   bool _seekingFromListener = false;
   bool _seekInFlight = false;
   int? _pendingSeekMs;
+  DanceProject? _protectionProject;
+  EffectConfig? _fullBodyDraft;
+  EffectConfig? _faceOnlyDraft;
+  String _processingProfile = 'quality';
 
   int get _durationMs => math.max(widget.project.videoInfo.durationMs, 1);
 
@@ -227,12 +232,43 @@ class _TrimVideoScreenState extends ConsumerState<TrimVideoScreen> {
     final controller = _videoController;
     if (controller?.value.isPlaying == true) await controller?.pause();
     if (!mounted) return;
-    final trimmedProject = widget.project.copyWith(
+    final previousProtectionProject = _protectionProject;
+    final trimChanged =
+        previousProtectionProject == null ||
+        previousProtectionProject.trimStartMs != _trimStartMs ||
+        previousProtectionProject.effectiveTrimEndMs != _trimEndMs;
+    final sourceProject = trimChanged
+        ? widget.project
+        : previousProtectionProject;
+    final trimmedProject = sourceProject.copyWith(
       trimStartMs: _trimStartMs,
       trimEndMs: _trimEndMs,
+      persons: trimChanged ? const [] : sourceProject.persons,
+      selectedPersonIds: trimChanged
+          ? const {}
+          : sourceProject.selectedPersonIds,
+      faceOnlyPersonIds: trimChanged
+          ? const {}
+          : sourceProject.faceOnlyPersonIds,
+      analysisCacheId: trimChanged ? '' : sourceProject.analysisCacheId,
       updatedAt: DateTime.now(),
     );
-    await context.push('/person_selection', extra: trimmedProject);
+    final result = await context.push<ProtectionEditorResult>(
+      '/protection_editor',
+      extra: ProtectionEditorArgs(
+        project: trimmedProject,
+        fullBodyDraft: trimChanged ? null : _fullBodyDraft,
+        faceOnlyDraft: trimChanged ? null : _faceOnlyDraft,
+        processingProfile: _processingProfile,
+      ),
+    );
+    if (!mounted || result == null) return;
+    setState(() {
+      _protectionProject = result.project;
+      _fullBodyDraft = result.fullBodyDraft;
+      _faceOnlyDraft = result.faceOnlyDraft;
+      _processingProfile = result.processingProfile;
+    });
   }
 
   @override
