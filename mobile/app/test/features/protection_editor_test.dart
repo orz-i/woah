@@ -158,6 +158,17 @@ void main() {
     expect(repository.lastPreviewTimestampMs, 400);
     expect(repository.lastTightMaskPreview, isTrue);
 
+    final firstTarget = find.byKey(
+      const ValueKey('protection-person-target-0'),
+    );
+    expect(firstTarget, findsOneWidget);
+    final firstTargetWidget = tester.widget<GestureDetector>(firstTarget);
+    expect(firstTargetWidget.child, isA<SizedBox>());
+    expect(
+      find.descendant(of: firstTarget, matching: find.byIcon(Icons.check_rounded)),
+      findsNothing,
+    );
+
     await tester.tap(find.bySemanticsLabel('已保护人物').first);
     await tester.pumpAndSettle();
 

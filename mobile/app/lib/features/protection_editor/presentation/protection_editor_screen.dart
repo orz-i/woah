@@ -459,48 +459,13 @@ class _ProtectionEditorScreenState
         selected: selected,
         label: selected ? '已保护人物' : '未保护人物',
         child: GestureDetector(
+          key: ValueKey('protection-person-target-${person.id}'),
           behavior: HitTestBehavior.opaque,
           onTap: onTap,
-          child: Stack(
-            children: [
-              Positioned(
-                left: math.max(0, (hitWidth - width) / 2),
-                top: math.max(0, (hitHeight - height) / 2),
-                width: width,
-                height: height,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 140),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: selected
-                          ? AppTheme.coral.withValues(alpha: 0.62)
-                          : Colors.transparent,
-                      width: 1.5,
-                    ),
-                  ),
-                ),
-              ),
-              if (selected)
-                Positioned(
-                  right: math.max(0, (hitWidth - width) / 2 - 5),
-                  top: math.max(0, (hitHeight - height) / 2 - 5),
-                  child: Container(
-                    width: 22,
-                    height: 22,
-                    decoration: const BoxDecoration(
-                      color: AppTheme.coral,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.check_rounded,
-                      color: Colors.white,
-                      size: 15,
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          // Selection state is already communicated by the rendered mask.
+          // Keep this overlay visually transparent so small/distant dancers are
+          // not obscured by bounding boxes or selection badges.
+          child: const SizedBox.expand(),
         ),
       ),
     );
