@@ -26,8 +26,6 @@ class PersonSelectionScreen extends ConsumerStatefulWidget {
 }
 
 class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
-  String _processingProfile = 'quality';
-
   @override
   void initState() {
     super.initState();
@@ -36,110 +34,6 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
           .read(personSelectionControllerProvider.notifier)
           .analyzeProject(widget.project);
     });
-  }
-
-  Widget _buildProcessingProfileSwitch() {
-    const options = <(String, String, IconData)>[
-      ('quality', '质量', Icons.diamond_outlined),
-      ('balanced', '均衡', Icons.balance_rounded),
-      ('speed', '快速', Icons.bolt_rounded),
-    ];
-
-    return Container(
-      height: 42,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF2ECE7),
-        borderRadius: BorderRadius.circular(21),
-        border: Border.all(color: AppTheme.warmBorder.withValues(alpha: 0.6)),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final itemWidth = (constraints.maxWidth - 4) / options.length;
-          final selectedIndex = options.indexWhere(
-            (option) => option.$1 == _processingProfile,
-          );
-          final safeIndex = selectedIndex < 0 ? 0 : selectedIndex;
-          final alignment = switch (safeIndex) {
-            0 => Alignment.centerLeft,
-            1 => Alignment.center,
-            _ => Alignment.centerRight,
-          };
-
-          return Stack(
-            children: [
-              AnimatedAlign(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOutCubic,
-                alignment: alignment,
-                child: Container(
-                  width: itemWidth,
-                  height: double.infinity,
-                  decoration: BoxDecoration(
-                    color: AppTheme.warmSurface,
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x12000000),
-                        blurRadius: 7,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Row(
-                children: options.map((option) {
-                  final selected = _processingProfile == option.$1;
-                  return Expanded(
-                    child: Semantics(
-                      button: true,
-                      selected: selected,
-                      label: '${option.$2}处理',
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () {
-                          if (selected) return;
-                          HapticFeedback.selectionClick();
-                          setState(() => _processingProfile = option.$1);
-                        },
-                        child: Center(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                option.$3,
-                                size: 15,
-                                color: selected
-                                    ? AppTheme.coral
-                                    : AppTheme.warmTextMuted,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                option.$2,
-                                style: TextStyle(
-                                  color: selected
-                                      ? AppTheme.warmTextPrimary
-                                      : AppTheme.warmTextSecondary,
-                                  fontSize: 12.5,
-                                  fontWeight: selected
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-          );
-        },
-      ),
-    );
   }
 
   @override
@@ -167,8 +61,10 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final availableHeight =
-                  (constraints.maxHeight - 48).clamp(0.0, double.infinity);
+              final availableHeight = (constraints.maxHeight - 48).clamp(
+                0.0,
+                double.infinity,
+              );
               final stageMaxHeight =
                   availableHeight * (showControls ? 0.38 : 0.65);
               return Stack(
@@ -468,8 +364,6 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
         children: [
           _buildPrivacyModeSwitch(state, controller),
           const SizedBox(height: 10),
-          _buildProcessingProfileSwitch(),
-          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
@@ -509,11 +403,7 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
             ),
             child: const Row(
               children: [
-                Icon(
-                  Icons.touch_app_rounded,
-                  size: 16,
-                  color: AppTheme.coral,
-                ),
+                Icon(Icons.touch_app_rounded, size: 16, color: AppTheme.coral),
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -672,7 +562,6 @@ class _PersonSelectionScreenState extends ConsumerState<PersonSelectionScreen> {
       extra: EffectEditorArgs(
         project: configured,
         initialPreviewPath: initialPreviewPath,
-        processingProfile: _processingProfile,
       ),
     );
     if (updated != null) controller.updateProject(updated);

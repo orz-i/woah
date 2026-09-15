@@ -15,25 +15,18 @@ import 'export_controller.dart';
 
 class ExportArgs {
   final DanceProject project;
-  final String processingProfile;
   final String? initialPreviewPath;
 
-  const ExportArgs({
-    required this.project,
-    this.processingProfile = 'quality',
-    this.initialPreviewPath,
-  });
+  const ExportArgs({required this.project, this.initialPreviewPath});
 }
 
 class ExportScreen extends ConsumerStatefulWidget {
   final DanceProject project;
-  final String processingProfile;
   final String? initialPreviewPath;
 
   const ExportScreen({
     super.key,
     required this.project,
-    this.processingProfile = 'quality',
     this.initialPreviewPath,
   });
 
@@ -186,11 +179,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     ref
         .read(exportControllerProvider.notifier)
-        .startExport(
-          widget.project,
-          'export_$timestamp.mp4',
-          processingProfile: widget.processingProfile,
-        );
+        .startExport(widget.project, 'export_$timestamp.mp4');
   }
 
   @override

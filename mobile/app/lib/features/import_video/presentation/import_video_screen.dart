@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
+import '../../protection_editor/presentation/protection_editor_screen.dart';
 import '../domain/video_import_state.dart';
 import 'import_video_controller.dart';
 import 'woah_easter_egg_screen.dart';
@@ -25,7 +26,10 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
     final project = controller.createProject();
     if (project == null) return;
 
-    await context.push('/trim_video', extra: project);
+    await context.push(
+      '/protection_editor',
+      extra: ProtectionEditorArgs(project: project),
+    );
     if (!mounted) return;
     controller.reset();
   }

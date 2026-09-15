@@ -150,6 +150,7 @@ void main() {
 
     expect(repository.lastTrimStartMs, 2300);
     expect(repository.lastTrimEndMs, 8700);
+    expect(repository.lastProcessingProfile, 'quality');
     expect(controller.state.jobId, 'trim-job');
   });
 
@@ -622,6 +623,7 @@ DanceProject _testProject() {
 class _TrimCaptureRepository implements NativeProcessingRepository {
   int? lastTrimStartMs;
   int? lastTrimEndMs;
+  String? lastProcessingProfile;
   int? lastTargetWidth;
   int? lastTargetHeight;
   FollowConfig lastFollow = const FollowConfig();
@@ -649,6 +651,7 @@ class _TrimCaptureRepository implements NativeProcessingRepository {
   }) async {
     lastTrimStartMs = trimStartMs;
     lastTrimEndMs = trimEndMs;
+    lastProcessingProfile = processingProfile;
     lastTargetWidth = targetWidth;
     lastTargetHeight = targetHeight;
     lastFollow = follow;

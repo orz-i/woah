@@ -10,7 +10,6 @@ import 'package:app/features/effect_editor/presentation/effect_editor_screen.dar
 import 'package:app/features/export/presentation/export_screen.dart';
 import 'package:go_router/go_router.dart';
 
-
 void main() {
   group('EffectEditorController Tests', () {
     final testProject = DanceProject(
@@ -88,61 +87,75 @@ void main() {
       expect(configured.effects.stickerAssetId, equals('disabled'));
     });
 
-    test('Initializes preview and guards against out-of-order responses with sequence ID', () async {
-      final repo = _FakeNativeRepository();
-      final projectWithCache = testProject.copyWith(analysisCacheId: 'cache_123');
-      final controller = EffectEditorController(repository: repo);
+    test(
+      'Initializes preview and guards against out-of-order responses with sequence ID',
+      () async {
+        final repo = _FakeNativeRepository();
+        final projectWithCache = testProject.copyWith(
+          analysisCacheId: 'cache_123',
+        );
+        final controller = EffectEditorController(repository: repo);
 
-      controller.init(projectWithCache);
-      expect(controller.state.previewLoading, isTrue);
+        controller.init(projectWithCache);
+        expect(controller.state.previewLoading, isTrue);
 
-      // Await initial preview completion
-      await Future.delayed(const Duration(milliseconds: 50));
-      expect(controller.state.previewLoading, isFalse);
-      expect(controller.state.previewPath, equals('/path/to/rendered_preview.jpg'));
-      expect(repo.lastTimestampMs, equals(0));
-      expect(repo.lastTightMaskPreview, isTrue);
+        // Await initial preview completion
+        await Future.delayed(const Duration(milliseconds: 50));
+        expect(controller.state.previewLoading, isFalse);
+        expect(
+          controller.state.previewPath,
+          equals('/path/to/rendered_preview.jpg'),
+        );
+        expect(repo.lastTimestampMs, equals(0));
+        expect(repo.lastTightMaskPreview, isTrue);
 
-      // Trigger debounced update
-      controller.updateOpacity(0.5);
+        // Trigger debounced update
+        controller.updateOpacity(0.5);
 
-      // Wait for debounce timer (200ms)
-      await Future.delayed(const Duration(milliseconds: 250));
-      expect(controller.state.previewRequestId, greaterThan(1));
-      expect(controller.state.previewPath, equals('/path/to/rendered_preview.jpg'));
-      controller.dispose();
-    });
+        // Wait for debounce timer (200ms)
+        await Future.delayed(const Duration(milliseconds: 250));
+        expect(controller.state.previewRequestId, greaterThan(1));
+        expect(
+          controller.state.previewPath,
+          equals('/path/to/rendered_preview.jpg'),
+        );
+        controller.dispose();
+      },
+    );
 
-    test('uses only a full-frame handoff preview and never a person crop fallback', () {
-      const personCrop = '/path/to/person_crop.jpg';
-      const handoffPreview = '/path/to/selection_preview.jpg';
-      final projectWithPerson = testProject.copyWith(
-        persons: const [
-          PersonTrack(
-            id: 7,
-            normalizedInitialBox: NormalizedRect(
-              left: 0.1,
-              top: 0.1,
-              right: 0.4,
-              bottom: 0.9,
+    test(
+      'uses only a full-frame handoff preview and never a person crop fallback',
+      () {
+        const personCrop = '/path/to/person_crop.jpg';
+        const handoffPreview = '/path/to/selection_preview.jpg';
+        final projectWithPerson = testProject.copyWith(
+          persons: const [
+            PersonTrack(
+              id: 7,
+              normalizedInitialBox: NormalizedRect(
+                left: 0.1,
+                top: 0.1,
+                right: 0.4,
+                bottom: 0.9,
+              ),
+              thumbnailPath: personCrop,
+              confidence: 0.95,
             ),
-            thumbnailPath: personCrop,
-            confidence: 0.95,
-          ),
-        ],
-      );
+          ],
+        );
 
-      final withHandoff = EffectEditorController();
-      addTearDown(withHandoff.dispose);
-      withHandoff.init(projectWithPerson, initialPreviewPath: handoffPreview);
-      expect(withHandoff.state.previewThumbnailPath, handoffPreview);
-      expect(withHandoff.state.previewThumbnailPath, isNot(personCrop));
+        final withHandoff = EffectEditorController();
+        addTearDown(withHandoff.dispose);
+        withHandoff.init(projectWithPerson, initialPreviewPath: handoffPreview);
+        expect(withHandoff.state.previewThumbnailPath, handoffPreview);
+        expect(withHandoff.state.previewThumbnailPath, isNot(personCrop));
 
-      final withoutHandoff = EffectEditorController();
-      addTearDown(withoutHandoff.dispose);
-      withoutHandoff.init(projectWithPerson);
-      expect(withoutHandoff.state.previewThumbnailPath, isNull);
-    });
+        final withoutHandoff = EffectEditorController();
+        addTearDown(withoutHandoff.dispose);
+        withoutHandoff.init(projectWithPerson);
+        expect(withoutHandoff.state.previewThumbnailPath, isNull);
+      },
+    );
   });
 
   group('EffectEditorScreen Widget Tests', () {
@@ -164,128 +177,128 @@ void main() {
       ),
     );
 
-    testWidgets('first frame keeps the full-frame handoff preview instead of a person crop', (tester) async {
-      const handoffPreview = '/path/to/selection_preview.jpg';
-      const personCrop = '/path/to/person_crop.jpg';
-      final projectWithPerson = testProject.copyWith(
-        persons: const [
-          PersonTrack(
-            id: 3,
-            normalizedInitialBox: NormalizedRect(
-              left: 0.1,
-              top: 0.1,
-              right: 0.4,
-              bottom: 0.9,
+    testWidgets(
+      'first frame keeps the full-frame handoff preview instead of a person crop',
+      (tester) async {
+        const handoffPreview = '/path/to/selection_preview.jpg';
+        const personCrop = '/path/to/person_crop.jpg';
+        final projectWithPerson = testProject.copyWith(
+          persons: const [
+            PersonTrack(
+              id: 3,
+              normalizedInitialBox: NormalizedRect(
+                left: 0.1,
+                top: 0.1,
+                right: 0.4,
+                bottom: 0.9,
+              ),
+              thumbnailPath: personCrop,
+              confidence: 0.96,
             ),
-            thumbnailPath: personCrop,
-            confidence: 0.96,
-          ),
-        ],
-      );
-      final repo = _FakeNativeRepository();
-      final container = ProviderContainer(
-        overrides: [nativeRepositoryProvider.overrideWithValue(repo)],
-      );
-      addTearDown(container.dispose);
+          ],
+        );
+        final repo = _FakeNativeRepository();
+        final container = ProviderContainer(
+          overrides: [nativeRepositoryProvider.overrideWithValue(repo)],
+        );
+        addTearDown(container.dispose);
 
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: MaterialApp(
-            home: EffectEditorScreen(
-              project: projectWithPerson,
-              initialPreviewPath: handoffPreview,
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              home: EffectEditorScreen(
+                project: projectWithPerson,
+                initialPreviewPath: handoffPreview,
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      final stageImage = tester.widget<Image>(find.byType(Image).first);
-      final provider = stageImage.image as FileImage;
-      expect(provider.file.path, handoffPreview);
-      expect(provider.file.path, isNot(personCrop));
-      expect(stageImage.key, isNull);
+        final stageImage = tester.widget<Image>(find.byType(Image).first);
+        final provider = stageImage.image as FileImage;
+        expect(provider.file.path, handoffPreview);
+        expect(provider.file.path, isNot(personCrop));
+        expect(stageImage.key, isNull);
 
-      await tester.pump();
-      expect(
-        container.read(effectEditorControllerProvider).previewThumbnailPath,
-        handoffPreview,
-      );
-    });
+        await tester.pump();
+        expect(
+          container.read(effectEditorControllerProvider).previewThumbnailPath,
+          handoffPreview,
+        );
+      },
+    );
 
-    testWidgets('renders stably without overflow on standard and small screens', (tester) async {
-      tester.view.physicalSize = const Size(360, 640);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
+    testWidgets(
+      'renders stably without overflow on standard and small screens',
+      (tester) async {
+        tester.view.physicalSize = const Size(360, 640);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
 
-      final repo = _FakeNativeRepository();
-      final container = ProviderContainer(
-        overrides: [nativeRepositoryProvider.overrideWithValue(repo)],
-      );
-      addTearDown(container.dispose);
+        final repo = _FakeNativeRepository();
+        final container = ProviderContainer(
+          overrides: [nativeRepositoryProvider.overrideWithValue(repo)],
+        );
+        addTearDown(container.dispose);
 
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: MaterialApp(
-            home: EffectEditorScreen(project: testProject),
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(home: EffectEditorScreen(project: testProject)),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
+        );
+        await tester.pumpAndSettle();
 
-      expect(tester.takeException(), isNull);
-      expect(find.text('编辑效果'), findsNothing);
-      expect(find.text('下一步: 导出'), findsNothing);
-      expect(
-        find.byKey(ImmersiveFlowAction.nextControlKey),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(ImmersiveFlowAction.exitTargetKey),
-        findsNothing,
-      );
-      expect(find.textContaining('遮挡'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        expect(find.text('编辑效果'), findsNothing);
+        expect(find.text('下一步: 导出'), findsNothing);
+        expect(find.byKey(ImmersiveFlowAction.nextControlKey), findsOneWidget);
+        expect(find.byKey(ImmersiveFlowAction.exitTargetKey), findsNothing);
+        expect(find.textContaining('遮挡'), findsOneWidget);
 
-      // Verify stage preview exists and has prominent non-zero height
-      final stageFinder = find.byType(AspectRatio).first;
-      expect(stageFinder, findsOneWidget);
-      final stageSize = tester.getSize(stageFinder);
-      expect(stageSize.height, greaterThan(150));
-      expect(stageSize.width, greaterThan(100));
+        // Verify stage preview exists and has prominent non-zero height
+        final stageFinder = find.byType(AspectRatio).first;
+        expect(stageFinder, findsOneWidget);
+        final stageSize = tester.getSize(stageFinder);
+        expect(stageSize.height, greaterThan(150));
+        expect(stageSize.width, greaterThan(100));
 
-      final stage = find.byKey(const ValueKey('effect-editor-media-stage'));
-      final toolDeck = find.byKey(const ValueKey('effect-editor-tool-deck'));
-      expect(stage, findsOneWidget);
-      expect(toolDeck, findsOneWidget);
-      final stageRect = tester.getRect(stage);
-      final toolDeckRect = tester.getRect(toolDeck);
-      expect(stageRect.top, lessThan(toolDeckRect.top));
-      expect(toolDeckRect.top - stageRect.bottom, lessThanOrEqualTo(14));
+        final stage = find.byKey(const ValueKey('effect-editor-media-stage'));
+        final toolDeck = find.byKey(const ValueKey('effect-editor-tool-deck'));
+        expect(stage, findsOneWidget);
+        expect(toolDeck, findsOneWidget);
+        final stageRect = tester.getRect(stage);
+        final toolDeckRect = tester.getRect(toolDeck);
+        expect(stageRect.top, lessThan(toolDeckRect.top));
+        expect(toolDeckRect.top - stageRect.bottom, lessThanOrEqualTo(14));
 
-      // In unified panel, verify mode chips and sliders exist
-      expect(find.text('马赛克'), findsOneWidget);
-      expect(find.text('模糊'), findsOneWidget);
-      expect(find.text('强度'), findsOneWidget);
+        // In unified panel, verify mode chips and sliders exist
+        expect(find.text('马赛克'), findsOneWidget);
+        expect(find.text('模糊'), findsOneWidget);
+        expect(find.text('强度'), findsOneWidget);
 
-      // Verify retained controls remain available in the same panel
-      final verticalScrollable = find.byType(Scrollable).last;
-      await tester.scrollUntilVisible(
-        find.text('描边宽度'),
-        100,
-        scrollable: verticalScrollable,
-      );
-      expect(find.text('描边宽度'), findsOneWidget);
-      expect(find.text('人像提亮'), findsNothing);
-      expect(find.text('主角跟随画面裁剪'), findsNothing);
-      expect(find.text('自动运镜保持主角居中'), findsNothing);
-      expect(find.text('特写放大'), findsNothing);
-      expect(find.text('下一步: 导出'), findsNothing);
+        // Verify retained controls remain available in the same panel
+        final verticalScrollable = find.byType(Scrollable).last;
+        await tester.scrollUntilVisible(
+          find.text('描边宽度'),
+          100,
+          scrollable: verticalScrollable,
+        );
+        expect(find.text('描边宽度'), findsOneWidget);
+        expect(find.text('人像提亮'), findsNothing);
+        expect(find.text('主角跟随画面裁剪'), findsNothing);
+        expect(find.text('自动运镜保持主角居中'), findsNothing);
+        expect(find.text('特写放大'), findsNothing);
+        expect(find.text('下一步: 导出'), findsNothing);
 
-      expect(tester.takeException(), isNull);
-    });
+        expect(tester.takeException(), isNull);
+      },
+    );
 
-    testWidgets('floating next control goes directly to export with profile', (tester) async {
+    testWidgets('floating next control goes directly to export', (
+      tester,
+    ) async {
       final repo = _FakeNativeRepository();
       final container = ProviderContainer(
         overrides: [nativeRepositoryProvider.overrideWithValue(repo)],
@@ -297,17 +310,15 @@ void main() {
         routes: [
           GoRoute(
             path: '/edit',
-            builder: (context, state) => EffectEditorScreen(
-              project: testProject,
-              processingProfile: 'balanced',
-            ),
+            builder: (context, state) =>
+                EffectEditorScreen(project: testProject),
           ),
           GoRoute(
             path: '/export',
             builder: (context, state) {
               final args = state.extra! as ExportArgs;
               return Scaffold(
-                body: Center(child: Text('export-${args.processingProfile}')),
+                body: Center(child: Text('export-${args.project.id}')),
               );
             },
           ),
@@ -323,77 +334,71 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(
-        find.byKey(ImmersiveFlowAction.nextControlKey),
-      );
+      await tester.tap(find.byKey(ImmersiveFlowAction.nextControlKey));
       await tester.pumpAndSettle();
 
       expect(find.text('导出设置'), findsNothing);
-      expect(find.text('export-balanced'), findsOneWidget);
+      expect(find.text('export-proj_widget_test'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('long press and drag next control upward reveals return and pops',
-        (tester) async {
-      final repo = _FakeNativeRepository();
-      final container = ProviderContainer(
-        overrides: [nativeRepositoryProvider.overrideWithValue(repo)],
-      );
-      addTearDown(container.dispose);
+    testWidgets(
+      'long press and drag next control upward reveals return and pops',
+      (tester) async {
+        final repo = _FakeNativeRepository();
+        final container = ProviderContainer(
+          overrides: [nativeRepositoryProvider.overrideWithValue(repo)],
+        );
+        addTearDown(container.dispose);
 
-      final router = GoRouter(
-        initialLocation: '/',
-        routes: [
-          GoRoute(
-            path: '/',
-            builder: (context, state) => const Scaffold(
-              body: Center(child: Text('editor-entry')),
+        final router = GoRouter(
+          initialLocation: '/',
+          routes: [
+            GoRoute(
+              path: '/',
+              builder: (context, state) =>
+                  const Scaffold(body: Center(child: Text('editor-entry'))),
             ),
+            GoRoute(
+              path: '/edit',
+              builder: (context, state) =>
+                  EffectEditorScreen(project: testProject),
+            ),
+          ],
+        );
+        addTearDown(router.dispose);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp.router(routerConfig: router),
           ),
-          GoRoute(
-            path: '/edit',
-            builder: (context, state) =>
-                EffectEditorScreen(project: testProject),
-          ),
-        ],
-      );
-      addTearDown(router.dispose);
+        );
+        router.push('/edit');
+        await tester.pumpAndSettle();
 
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: MaterialApp.router(routerConfig: router),
-        ),
-      );
-      router.push('/edit');
-      await tester.pumpAndSettle();
+        final nextFinder = find.byKey(ImmersiveFlowAction.nextControlKey);
+        final gesture = await tester.startGesture(tester.getCenter(nextFinder));
+        await tester.pump(const Duration(milliseconds: 650));
 
-      final nextFinder =
-          find.byKey(ImmersiveFlowAction.nextControlKey);
-      final gesture = await tester.startGesture(tester.getCenter(nextFinder));
-      await tester.pump(const Duration(milliseconds: 650));
+        expect(find.byKey(ImmersiveFlowAction.exitTargetKey), findsNothing);
 
-      expect(
-        find.byKey(ImmersiveFlowAction.exitTargetKey),
-        findsNothing,
-      );
+        await gesture.moveBy(const Offset(0, -108));
+        await tester.pump();
+        expect(find.byKey(ImmersiveFlowAction.exitTargetKey), findsOneWidget);
+        expect(find.bySemanticsLabel('松开返回'), findsOneWidget);
+        await gesture.up();
+        await tester.pumpAndSettle();
 
-      await gesture.moveBy(const Offset(0, -108));
-      await tester.pump();
-      expect(
-        find.byKey(ImmersiveFlowAction.exitTargetKey),
-        findsOneWidget,
-      );
-      expect(find.bySemanticsLabel('松开返回'), findsOneWidget);
-      await gesture.up();
-      await tester.pumpAndSettle();
+        expect(find.text('editor-entry'), findsOneWidget);
+        expect(find.text('导出设置'), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
 
-      expect(find.text('editor-entry'), findsOneWidget);
-      expect(find.text('导出设置'), findsNothing);
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets('mode chip switching updates active protection style', (tester) async {
+    testWidgets('mode chip switching updates active protection style', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -407,9 +412,7 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
-          child: MaterialApp(
-            home: EffectEditorScreen(project: testProject),
-          ),
+          child: MaterialApp(home: EffectEditorScreen(project: testProject)),
         ),
       );
       await tester.pumpAndSettle();
@@ -418,7 +421,9 @@ void main() {
       await tester.tap(find.text('马赛克'));
       await tester.pumpAndSettle();
 
-      final controller = container.read(effectEditorControllerProvider.notifier);
+      final controller = container.read(
+        effectEditorControllerProvider.notifier,
+      );
       expect(controller.state.effects.fillMode, equals(FillMode.mosaic));
       expect(tester.takeException(), isNull);
     });
@@ -446,10 +451,8 @@ class _FakeNativeRepository implements NativeProcessingRepository {
       renderTimeMs: 12,
       timestampMs: 0,
     );
-
   }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
-

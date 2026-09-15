@@ -155,18 +155,11 @@ void main() {
       );
       expect(find.text('全身保护'), findsWidgets);
       expect(find.text('人脸保护'), findsWidgets);
-      expect(find.text('质量'), findsOneWidget);
-      expect(find.text('均衡'), findsOneWidget);
-      expect(find.text('快速'), findsOneWidget);
-      await tester.tap(find.text('均衡'));
-      await tester.pump();
-      final balancedLabel = tester.widget<Text>(find.text('均衡'));
-      expect(balancedLabel.style?.fontWeight, FontWeight.w700);
+      expect(find.text('质量'), findsNothing);
+      expect(find.text('均衡'), findsNothing);
+      expect(find.text('快速'), findsNothing);
       expect(find.text('选择要保护的人'), findsNothing);
-      expect(
-        find.byKey(ImmersiveFlowAction.nextControlKey),
-        findsOneWidget,
-      );
+      expect(find.byKey(ImmersiveFlowAction.nextControlKey), findsOneWidget);
       expect(find.text('点击画面中的人物可取消或重新选中'), findsNothing);
       expect(find.textContaining('已选择'), findsNothing);
       expect(find.byIcon(Icons.refresh_rounded), findsOneWidget);
@@ -278,9 +271,9 @@ void main() {
 
     expect(find.text('全身保护'), findsOneWidget);
     expect(find.text('人脸保护'), findsOneWidget);
-    expect(find.text('质量'), findsOneWidget);
-    expect(find.text('均衡'), findsOneWidget);
-    expect(find.text('快速'), findsOneWidget);
+    expect(find.text('质量'), findsNothing);
+    expect(find.text('均衡'), findsNothing);
+    expect(find.text('快速'), findsNothing);
     expect(find.byKey(ImmersiveFlowAction.nextControlKey), findsOneWidget);
 
     final stage = find.byKey(const ValueKey('person-selection-media-stage'));

@@ -65,6 +65,10 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
       state = state.copyWith(
         status: PersonSelectionStatus.analyzing,
         project: project,
+        persons: const [],
+        selectedPersonIds: const {},
+        faceOnlyPersonIds: const {},
+        privacyMode: ProjectPrivacyMode.fullBody,
         errorMessage: null,
         clearAnalysisCacheId: true,
         clearSelectionPreviewPath: true,

@@ -74,7 +74,51 @@ void main() {
     expect(find.text('全身保护'), findsOneWidget);
     expect(find.text('人脸保护'), findsOneWidget);
     expect(find.text('马赛克'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('integrated-video-trim-control')),
+      findsOneWidget,
+    );
+    expect(find.text('质量'), findsNothing);
+    expect(find.text('均衡'), findsNothing);
+    expect(find.text('快速'), findsNothing);
     expect(find.byKey(ImmersiveFlowAction.nextControlKey), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('temporal trim change reanalyzes from the new first frame', (
+    tester,
+  ) async {
+    final repository = _FakeProtectionRepository();
+    final container = ProviderContainer(
+      overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(home: ProtectionEditorScreen(project: project)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(repository.analyzeRequestCount, 1);
+    expect(repository.lastAnalyzeTrimStartMs, 400);
+
+    final startHandle = find.byKey(const ValueKey('trim-start-handle'));
+    await tester.ensureVisible(startHandle);
+    await tester.pumpAndSettle();
+    await tester.drag(startHandle, const Offset(48, 0), warnIfMissed: false);
+    await tester.pumpAndSettle();
+
+    expect(repository.analyzeRequestCount, 2);
+    expect(repository.lastAnalyzeTrimStartMs, greaterThan(400));
+    final selectionState = container.read(personSelectionControllerProvider);
+    expect(
+      selectionState.project?.trimStartMs,
+      repository.lastAnalyzeTrimStartMs,
+    );
+    expect(selectionState.selectedPersonIds, equals({0, 1}));
     expect(tester.takeException(), isNull);
   });
 
@@ -529,9 +573,7 @@ void main() {
     },
   );
 
-  testWidgets('single next action goes directly to export with profile', (
-    tester,
-  ) async {
+  testWidgets('single next action goes directly to export', (tester) async {
     final repository = _FakeProtectionRepository();
     final container = ProviderContainer(
       overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
@@ -543,17 +585,14 @@ void main() {
       routes: [
         GoRoute(
           path: '/protect',
-          builder: (context, state) => ProtectionEditorScreen(
-            project: project,
-            processingProfile: 'balanced',
-          ),
+          builder: (context, state) => ProtectionEditorScreen(project: project),
         ),
         GoRoute(
           path: '/export',
           builder: (context, state) {
             final args = state.extra! as ExportArgs;
             return Scaffold(
-              body: Center(child: Text('export-${args.processingProfile}')),
+              body: Center(child: Text('export-${args.project.id}')),
             );
           },
         ),
@@ -572,7 +611,7 @@ void main() {
     await tester.tap(find.byKey(ImmersiveFlowAction.nextControlKey));
     await tester.pumpAndSettle();
 
-    expect(find.text('export-balanced'), findsOneWidget);
+    expect(find.text('export-unified-protection-test'), findsOneWidget);
     expect(find.text('编辑效果'), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -580,6 +619,7 @@ void main() {
 
 class _FakeProtectionRepository implements NativeProcessingRepository {
   int analyzeRequestCount = 0;
+  int? lastAnalyzeTrimStartMs;
   Set<int> lastSelectedPersonIds = const {};
   Set<int> lastFaceOnlyPersonIds = const {};
   int? lastPreviewTimestampMs;
@@ -594,6 +634,7 @@ class _FakeProtectionRepository implements NativeProcessingRepository {
     int trimStartMs = 0,
   }) async {
     analyzeRequestCount += 1;
+    lastAnalyzeTrimStartMs = trimStartMs;
     return AnalyzeResultDto(
       analysisCacheId: 'unified-cache',
       videoInfo: VideoInfoDto(

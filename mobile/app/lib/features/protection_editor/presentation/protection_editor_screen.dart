@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
@@ -11,6 +12,8 @@ import '../../../app/theme.dart';
 import '../../../core/widgets/flow_back_button.dart';
 import '../../../core/widgets/immersive_flow_action.dart';
 import '../../../core/widgets/stage_viewport.dart';
+import '../../../core/widgets/video_trim_control.dart';
+import '../../../repositories/native_processing_repository.dart';
 import '../../effect_editor/domain/effect_editor_state.dart';
 import '../../effect_editor/presentation/effect_editor_controller.dart';
 import '../../export/presentation/export_screen.dart';
@@ -21,13 +24,11 @@ class ProtectionEditorArgs {
   final DanceProject project;
   final EffectConfig? fullBodyDraft;
   final EffectConfig? faceOnlyDraft;
-  final String processingProfile;
 
   const ProtectionEditorArgs({
     required this.project,
     this.fullBodyDraft,
     this.faceOnlyDraft,
-    this.processingProfile = 'quality',
   });
 }
 
@@ -35,13 +36,11 @@ class ProtectionEditorResult {
   final DanceProject project;
   final EffectConfig fullBodyDraft;
   final EffectConfig faceOnlyDraft;
-  final String processingProfile;
 
   const ProtectionEditorResult({
     required this.project,
     required this.fullBodyDraft,
     required this.faceOnlyDraft,
-    required this.processingProfile,
   });
 }
 
@@ -49,14 +48,12 @@ class ProtectionEditorScreen extends ConsumerStatefulWidget {
   final DanceProject project;
   final EffectConfig? fullBodyDraft;
   final EffectConfig? faceOnlyDraft;
-  final String processingProfile;
 
   const ProtectionEditorScreen({
     super.key,
     required this.project,
     this.fullBodyDraft,
     this.faceOnlyDraft,
-    this.processingProfile = 'quality',
   });
 
   @override
@@ -66,11 +63,19 @@ class ProtectionEditorScreen extends ConsumerStatefulWidget {
 
 class _ProtectionEditorScreenState
     extends ConsumerState<ProtectionEditorScreen> {
+  static const int _minimumClipMs = 1000;
+  static const int _thumbnailCount = 10;
+
   final ScrollController _scrollController = ScrollController();
 
-  late String _processingProfile;
   EffectConfig? _fullBodyDraft;
   EffectConfig? _faceOnlyDraft;
+  List<String> _trimThumbnailPaths = const [];
+  late int _trimStartMs;
+  late int _trimEndMs;
+  int _committedTrimStartMs = 0;
+  int _committedTrimEndMs = 0;
+  bool _trimApplying = false;
   bool _allowRoutePop = false;
   bool _returnRequested = false;
   bool _advancedEffectExpanded = false;
@@ -79,18 +84,35 @@ class _ProtectionEditorScreenState
   @override
   void initState() {
     super.initState();
-    _processingProfile = widget.processingProfile;
     _fullBodyDraft = widget.fullBodyDraft;
     _faceOnlyDraft = widget.faceOnlyDraft;
-    WidgetsBinding.instance.addPostFrameCallback((_) => _initializeEditor());
+    final durationMs = math.max(widget.project.videoInfo.durationMs, 1);
+    _trimStartMs = widget.project.trimStartMs.clamp(0, durationMs);
+    _trimEndMs = widget.project.effectiveTrimEndMs.clamp(
+      _trimStartMs,
+      durationMs,
+    );
+    if (_trimEndMs - _trimStartMs < _minimumClipMs &&
+        durationMs >= _minimumClipMs) {
+      _trimEndMs = (_trimStartMs + _minimumClipMs).clamp(0, durationMs);
+      if (_trimEndMs - _trimStartMs < _minimumClipMs) {
+        _trimStartMs = (_trimEndMs - _minimumClipMs).clamp(0, durationMs);
+      }
+    }
+    _committedTrimStartMs = _trimStartMs;
+    _committedTrimEndMs = _trimEndMs;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_initializeEditor());
+      unawaited(_loadTrimThumbnails());
+    });
   }
 
-  Future<void> _initializeEditor() async {
+  Future<void> _initializeEditor({DanceProject? project}) async {
     final selectionController = ref.read(
       personSelectionControllerProvider.notifier,
     );
     await selectionController.prepareProject(
-      widget.project,
+      project ?? widget.project,
       selectionPreviewEnabled: false,
     );
     if (!mounted) return;
@@ -113,6 +135,102 @@ class _ProtectionEditorScreenState
     ref
         .read(effectEditorControllerProvider.notifier)
         .init(configured.copyWith(effects: activeEffects));
+  }
+
+  int get _sourceDurationMs => math.max(widget.project.videoInfo.durationMs, 1);
+
+  Future<void> _loadTrimThumbnails() async {
+    try {
+      final timestamps = List<int>.generate(_thumbnailCount, (index) {
+        if (_thumbnailCount == 1) return 0;
+        return ((_sourceDurationMs * index) / (_thumbnailCount - 1)).round();
+      });
+      final thumbnails = await ref
+          .read(nativeRepositoryProvider)
+          .getVideoFrameThumbnails(
+            videoUri: widget.project.sourceUri,
+            timestampsMs: timestamps,
+          );
+      if (!mounted) return;
+      setState(() => _trimThumbnailPaths = thumbnails);
+    } catch (_) {
+      // Thumbnail extraction is optional; the trim track remains usable with
+      // lightweight placeholders when a platform cannot provide thumbnails.
+    }
+  }
+
+  void _setTrimStart(int valueMs) {
+    final maxStart = (_trimEndMs - _minimumClipMs).clamp(0, _sourceDurationMs);
+    final value = valueMs.clamp(0, maxStart);
+    if (value == _trimStartMs) return;
+    setState(() => _trimStartMs = value);
+  }
+
+  void _setTrimEnd(int valueMs) {
+    final minEnd = (_trimStartMs + _minimumClipMs).clamp(0, _sourceDurationMs);
+    final value = valueMs.clamp(minEnd, _sourceDurationMs);
+    if (value == _trimEndMs) return;
+    setState(() => _trimEndMs = value);
+  }
+
+  Future<void> _applyTrimChange() async {
+    if (_trimApplying ||
+        (_trimStartMs == _committedTrimStartMs &&
+            _trimEndMs == _committedTrimEndMs)) {
+      return;
+    }
+
+    _captureActiveDraft();
+    final currentProject = _buildCurrentProject();
+    final trimmedProject = currentProject.copyWith(
+      trimStartMs: _trimStartMs,
+      trimEndMs: _trimEndMs,
+      persons: const [],
+      selectedPersonIds: const {},
+      faceOnlyPersonIds: const {},
+      analysisCacheId: '',
+      // Person IDs are scoped to the analyzed first frame. A temporal trim can
+      // move that frame, so subject-follow must be explicitly reselected.
+      follow: const FollowConfig(),
+      updatedAt: DateTime.now(),
+    );
+
+    setState(() {
+      _trimApplying = true;
+      _selectingFollowTarget = false;
+    });
+
+    final selectionController = ref.read(
+      personSelectionControllerProvider.notifier,
+    );
+    await selectionController.analyzeProject(
+      trimmedProject,
+      selectionPreviewEnabled: false,
+    );
+    if (!mounted) return;
+
+    final selectionState = ref.read(personSelectionControllerProvider);
+    final configured = selectionController.buildConfiguredProject();
+    if (selectionState.status == PersonSelectionStatus.ready &&
+        configured != null &&
+        selectionState.persons.isNotEmpty) {
+      final faceMode =
+          selectionState.privacyMode == ProjectPrivacyMode.faceOnly;
+      final activeEffects = faceMode
+          ? (_faceOnlyDraft ?? _normalizeFaceDraft(configured.effects))
+          : (_fullBodyDraft ?? _normalizeFullBodyDraft(configured.effects));
+      ref
+          .read(effectEditorControllerProvider.notifier)
+          .init(configured.copyWith(effects: activeEffects));
+      setState(() {
+        _committedTrimStartMs = _trimStartMs;
+        _committedTrimEndMs = _trimEndMs;
+        _trimApplying = false;
+      });
+      return;
+    }
+
+    setState(() => _trimApplying = false);
   }
 
   @override
@@ -537,10 +655,6 @@ class _ProtectionEditorScreenState
                   const SizedBox(height: 14),
                   _buildReframeControls(effectState, effectController),
                   const SizedBox(height: 14),
-                  _buildSectionLabel('处理策略', subdued: true),
-                  const SizedBox(height: 8),
-                  _buildProcessingProfileSwitch(),
-                  const SizedBox(height: 14),
                   Row(
                     children: [
                       Expanded(child: _buildSectionLabel('特效')),
@@ -644,6 +758,8 @@ class _ProtectionEditorScreenState
                   ],
                   const SizedBox(height: 16),
                   _buildAdvancedEffectSection(effects, effectController),
+                  const SizedBox(height: 16),
+                  _buildTrimSection(),
                 ],
               ),
             ),
@@ -675,6 +791,57 @@ class _ProtectionEditorScreenState
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTrimSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildSectionLabel('舞段裁切', subdued: true),
+        const SizedBox(height: 4),
+        const Text(
+          '拖动两侧边缘选择保留舞段；调整完成后会按新的起点重新识别人。',
+          style: TextStyle(
+            color: AppTheme.warmTextSecondary,
+            fontSize: 11.5,
+            height: 1.35,
+          ),
+        ),
+        const SizedBox(height: 8),
+        VideoTrimControl(
+          durationMs: _sourceDurationMs,
+          trimStartMs: _trimStartMs,
+          trimEndMs: _trimEndMs,
+          thumbnailPaths: _trimThumbnailPaths,
+          onStartChanged: _setTrimStart,
+          onEndChanged: _setTrimEnd,
+          onTrimChangeEnd: () => unawaited(_applyTrimChange()),
+        ),
+        if (_trimApplying) ...[
+          const SizedBox(height: 8),
+          const Row(
+            children: [
+              SizedBox(
+                width: 13,
+                height: 13,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.7,
+                  color: AppTheme.coral,
+                ),
+              ),
+              SizedBox(width: 7),
+              Text(
+                '正在按新舞段重新识别人…',
+                style: TextStyle(
+                  color: AppTheme.warmTextSecondary,
+                  fontSize: 11.5,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 
@@ -1342,112 +1509,10 @@ class _ProtectionEditorScreenState
     );
   }
 
-  Widget _buildProcessingProfileSwitch() {
-    const options = <(String, String, IconData)>[
-      ('quality', '质量', Icons.diamond_outlined),
-      ('balanced', '均衡', Icons.balance_rounded),
-      ('speed', '快速', Icons.bolt_rounded),
-    ];
-
-    return Container(
-      height: AppTheme.minTouchTarget,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF2ECE7),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppTheme.warmBorder.withValues(alpha: 0.6)),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final itemWidth = (constraints.maxWidth - 4) / options.length;
-          final selectedIndex = options.indexWhere(
-            (option) => option.$1 == _processingProfile,
-          );
-          final safeIndex = selectedIndex < 0 ? 0 : selectedIndex;
-          final alignment = switch (safeIndex) {
-            0 => Alignment.centerLeft,
-            1 => Alignment.center,
-            _ => Alignment.centerRight,
-          };
-          return Stack(
-            children: [
-              AnimatedAlign(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOutCubic,
-                alignment: alignment,
-                child: Container(
-                  width: itemWidth,
-                  height: double.infinity,
-                  decoration: BoxDecoration(
-                    color: AppTheme.warmSurface,
-                    borderRadius: BorderRadius.circular(21),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x12000000),
-                        blurRadius: 7,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Row(
-                children: options.map((option) {
-                  final selected = _processingProfile == option.$1;
-                  return Expanded(
-                    child: Semantics(
-                      button: true,
-                      selected: selected,
-                      label: '${option.$2}处理',
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () {
-                          if (selected) return;
-                          HapticFeedback.selectionClick();
-                          setState(() => _processingProfile = option.$1);
-                        },
-                        child: Center(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                option.$3,
-                                size: 15,
-                                color: selected
-                                    ? AppTheme.coral
-                                    : AppTheme.warmTextMuted,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                option.$2,
-                                style: TextStyle(
-                                  color: selected
-                                      ? AppTheme.warmTextPrimary
-                                      : AppTheme.warmTextSecondary,
-                                  fontSize: 12.5,
-                                  fontWeight: selected
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
   Future<void> _reanalyze(PersonSelectionController selectionController) async {
+    final project = ref.read(personSelectionControllerProvider).project;
     await selectionController.analyzeProject(
-      widget.project,
+      project ?? widget.project,
       selectionPreviewEnabled: false,
     );
     if (!mounted) return;
@@ -1628,7 +1693,6 @@ class _ProtectionEditorScreenState
       project: project,
       fullBodyDraft: fullBodyDraft,
       faceOnlyDraft: faceOnlyDraft,
-      processingProfile: _processingProfile,
     );
   }
 
@@ -1644,6 +1708,12 @@ class _ProtectionEditorScreenState
   }
 
   Future<void> _continueToExport() async {
+    await _applyTrimChange();
+    if (!mounted ||
+        ref.read(personSelectionControllerProvider).status !=
+            PersonSelectionStatus.ready) {
+      return;
+    }
     _captureActiveDraft();
     final project = _buildCurrentProject();
     final effectState = ref.read(effectEditorControllerProvider);
@@ -1655,7 +1725,6 @@ class _ProtectionEditorScreenState
       '/export',
       extra: ExportArgs(
         project: project,
-        processingProfile: _processingProfile,
         initialPreviewPath: initialPreviewPath,
       ),
     );

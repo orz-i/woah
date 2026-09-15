@@ -77,11 +77,7 @@ class ExportController extends StateNotifier<ExportState> {
   }
 
   /// Launch export pipeline
-  Future<void> startExport(
-    DanceProject project,
-    String outputPath, {
-    String processingProfile = 'quality',
-  }) async {
+  Future<void> startExport(DanceProject project, String outputPath) async {
     try {
       state = state.copyWith(
         status: ExportJobState.preparing,
@@ -92,7 +88,7 @@ class ExportController extends StateNotifier<ExportState> {
 
       AppLogger.d(
         'ExportController',
-        'Starting export for project ${project.id} (profile: $processingProfile)',
+        'Starting export for project ${project.id} (profile: quality)',
       );
       final livePreviewAtLaunch = state.showLivePreview;
       final jobId = await _repository.startExport(
@@ -106,7 +102,7 @@ class ExportController extends StateNotifier<ExportState> {
         targetWidth: project.outputSize.width,
         targetHeight: project.outputSize.height,
         targetFps: project.videoInfo.fps,
-        processingProfile: processingProfile,
+        processingProfile: 'quality',
         // Android supports a runtime capture gate and starts with it disabled.
         // Other platforms keep the previous eager-capture behavior so their
         // UI toggle remains backwards-compatible.

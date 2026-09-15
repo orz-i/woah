@@ -17,25 +17,18 @@ import 'effect_editor_controller.dart';
 class EffectEditorArgs {
   final DanceProject project;
   final String? initialPreviewPath;
-  final String processingProfile;
 
-  const EffectEditorArgs({
-    required this.project,
-    this.initialPreviewPath,
-    this.processingProfile = 'quality',
-  });
+  const EffectEditorArgs({required this.project, this.initialPreviewPath});
 }
 
 class EffectEditorScreen extends ConsumerStatefulWidget {
   final DanceProject project;
   final String? initialPreviewPath;
-  final String processingProfile;
 
   const EffectEditorScreen({
     super.key,
     required this.project,
     this.initialPreviewPath,
-    this.processingProfile = 'quality',
   });
 
   @override
@@ -178,9 +171,7 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
                           child: AspectRatio(
                             aspectRatio: aspectRatio,
                             child: MediaStageFrame(
-                              key: const ValueKey(
-                                'effect-editor-media-stage',
-                              ),
+                              key: const ValueKey('effect-editor-media-stage'),
                               child: _buildStagePreview(state),
                             ),
                           ),
@@ -522,7 +513,6 @@ class _EffectEditorScreenState extends ConsumerState<EffectEditorScreen> {
       '/export',
       extra: ExportArgs(
         project: project,
-        processingProfile: widget.processingProfile,
         initialPreviewPath: initialPreviewPath,
       ),
     );
