@@ -8,6 +8,7 @@ class EffectEditorState {
   final bool previewLoading;
   final String? previewError;
   final int previewRequestId;
+  final bool showSourcePreview;
 
   const EffectEditorState({
     this.project,
@@ -17,6 +18,7 @@ class EffectEditorState {
     this.previewLoading = false,
     this.previewError,
     this.previewRequestId = 0,
+    this.showSourcePreview = false,
   });
 
   EffectEditorState copyWith({
@@ -27,15 +29,23 @@ class EffectEditorState {
     bool? previewLoading,
     String? previewError,
     int? previewRequestId,
+    bool? showSourcePreview,
+    bool clearPreview = false,
+    bool clearPreviewError = false,
   }) {
     return EffectEditorState(
       project: project ?? this.project,
       effects: effects ?? this.effects,
-      previewThumbnailPath: previewThumbnailPath ?? this.previewThumbnailPath,
-      previewPath: previewPath ?? this.previewPath,
+      previewThumbnailPath: clearPreview
+          ? null
+          : previewThumbnailPath ?? this.previewThumbnailPath,
+      previewPath: clearPreview ? null : previewPath ?? this.previewPath,
       previewLoading: previewLoading ?? this.previewLoading,
-      previewError: previewError ?? this.previewError,
+      previewError: clearPreviewError
+          ? null
+          : previewError ?? this.previewError,
       previewRequestId: previewRequestId ?? this.previewRequestId,
+      showSourcePreview: showSourcePreview ?? this.showSourcePreview,
     );
   }
 }

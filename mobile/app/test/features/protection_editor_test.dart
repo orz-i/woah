@@ -165,7 +165,10 @@ void main() {
     final firstTargetWidget = tester.widget<GestureDetector>(firstTarget);
     expect(firstTargetWidget.child, isA<SizedBox>());
     expect(
-      find.descendant(of: firstTarget, matching: find.byIcon(Icons.check_rounded)),
+      find.descendant(
+        of: firstTarget,
+        matching: find.byIcon(Icons.check_rounded),
+      ),
       findsNothing,
     );
 
@@ -242,6 +245,290 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'portrait subject is independent of privacy and survives export',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+      final repository = _FakeProtectionRepository();
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+      final landscape = project.copyWith(
+        videoInfo: const VideoInfo(
+          codedWidth: 1920,
+          codedHeight: 1080,
+          displayWidth: 1920,
+          displayHeight: 1080,
+          fps: 30,
+          durationMs: 4000,
+          rotation: 0,
+          videoCodec: 'h264',
+          hasAudio: true,
+        ),
+        analysisCacheId: 'cached',
+        selectedPersonIds: {0, 1},
+        persons: const [
+          PersonTrack(
+            id: 0,
+            normalizedInitialBox: NormalizedRect(
+              left: .1,
+              top: .1,
+              right: .3,
+              bottom: .9,
+            ),
+            thumbnailPath: '',
+            confidence: .95,
+          ),
+          PersonTrack(
+            id: 1,
+            normalizedInitialBox: NormalizedRect(
+              left: .65,
+              top: .1,
+              right: .85,
+              bottom: .9,
+            ),
+            thumbnailPath: '',
+            confidence: .95,
+          ),
+        ],
+      );
+      ExportArgs? exported;
+      final router = GoRouter(
+        initialLocation: '/protect',
+        routes: [
+          GoRoute(
+            path: '/protect',
+            builder: (_, state) => ProtectionEditorScreen(project: landscape),
+          ),
+          GoRoute(
+            path: '/export',
+            builder: (_, state) {
+              exported = state.extra as ExportArgs;
+              return const Scaffold(body: Text('portrait-export'));
+            },
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const ValueKey('reframe-mode')));
+      await tester.tap(find.text('竖屏 9:16'));
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('选择人物 2 为主角'), findsOneWidget);
+      await tester.tap(
+        find.byKey(const ValueKey('protection-person-target-1')),
+      );
+      await tester.pumpAndSettle();
+      expect(repository.lastFollow.enabled, isTrue);
+      expect(repository.lastFollow.targetPersonId, 1);
+      expect(repository.lastFollow.outputAspectRatio, 9 / 16);
+      expect(repository.lastSelectedPersonIds, {0, 1});
+      expect(
+        find.byKey(const ValueKey('protection-person-target-0')),
+        findsNothing,
+      );
+      var stageSize = tester.getSize(
+        find.byKey(const ValueKey('protection-editor-media-stage')),
+      );
+      expect(stageSize.width / stageSize.height, closeTo(9 / 16, .001));
+
+      // Source preview is a view mode, not a change to the saved export config.
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('reframe-source-toggle')),
+      );
+      await tester.tap(find.byKey(const ValueKey('reframe-source-toggle')));
+      await tester.pumpAndSettle();
+      expect(repository.lastFollow.enabled, isFalse);
+      expect(
+        container.read(effectEditorControllerProvider).project!.follow.enabled,
+        isTrue,
+      );
+      stageSize = tester.getSize(
+        find.byKey(const ValueKey('protection-editor-media-stage')),
+      );
+      expect(stageSize.width / stageSize.height, closeTo(16 / 9, .001));
+      await tester.ensureVisible(find.text('人脸保护'));
+      await tester.tap(find.text('人脸保护'));
+      await tester.pumpAndSettle();
+      expect(
+        container
+            .read(effectEditorControllerProvider)
+            .project!
+            .follow
+            .targetPersonId,
+        1,
+      );
+      await tester.ensureVisible(find.text('清空'));
+      await tester.tap(find.text('清空'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ImmersiveFlowAction.nextControlKey));
+      await tester.pumpAndSettle();
+      expect(exported, isNotNull);
+      expect(exported!.project.follow.enabled, isTrue);
+      expect(exported!.project.follow.targetPersonId, 1);
+      expect(exported!.project.selectedPersonIds, isEmpty);
+      expect(exported!.project.faceOnlyPersonIds, isEmpty);
+      expect(exported!.project.outputSize, (width: 594, height: 1056));
+      expect(exported!.project.trimStartMs, 400);
+      expect(exported!.initialPreviewPath, isNull);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'cancel subject selection leaves original privacy and framing intact',
+    (tester) async {
+      final repository = _FakeProtectionRepository();
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(home: ProtectionEditorScreen(project: project)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const ValueKey('reframe-mode')));
+      await tester.tap(find.text('竖屏 9:16'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('reframe-cancel-selection')),
+      );
+      await tester.tap(find.byKey(const ValueKey('reframe-cancel-selection')));
+      await tester.pumpAndSettle();
+      expect(
+        container.read(effectEditorControllerProvider).project!.follow.enabled,
+        isFalse,
+      );
+      expect(repository.lastSelectedPersonIds, {0, 1});
+      expect(find.bySemanticsLabel('选择人物 2 为主角'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'reopening a crop-only project does not silently restore privacy targets',
+    (tester) async {
+      final repository = _FakeProtectionRepository();
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+      final cropOnlyProject = project.copyWith(
+        videoInfo: const VideoInfo(
+          codedWidth: 1920,
+          codedHeight: 1080,
+          displayWidth: 1920,
+          displayHeight: 1080,
+          fps: 30,
+          durationMs: 4000,
+          rotation: 0,
+          videoCodec: 'h264',
+          hasAudio: true,
+        ),
+        analysisCacheId: 'crop-only-cache',
+        persons: const [
+          PersonTrack(
+            id: 0,
+            normalizedInitialBox: NormalizedRect(
+              left: .1,
+              top: .1,
+              right: .3,
+              bottom: .9,
+            ),
+            thumbnailPath: '',
+            confidence: .95,
+          ),
+          PersonTrack(
+            id: 1,
+            normalizedInitialBox: NormalizedRect(
+              left: .65,
+              top: .1,
+              right: .85,
+              bottom: .9,
+            ),
+            thumbnailPath: '',
+            confidence: .95,
+          ),
+        ],
+        selectedPersonIds: <int>{},
+        faceOnlyPersonIds: <int>{},
+        follow: const FollowConfig(
+          enabled: true,
+          targetPersonId: 1,
+          outputAspectRatio: 9 / 16,
+        ),
+      );
+      ExportArgs? exported;
+      final router = GoRouter(
+        initialLocation: '/protect',
+        routes: [
+          GoRoute(
+            path: '/protect',
+            builder: (_, state) =>
+                ProtectionEditorScreen(project: cropOnlyProject),
+          ),
+          GoRoute(
+            path: '/export',
+            builder: (_, state) {
+              exported = state.extra as ExportArgs;
+              return const Scaffold(body: Text('crop-only-export'));
+            },
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(repository.analyzeRequestCount, 0);
+      expect(
+        container.read(personSelectionControllerProvider).privacyTargetIds,
+        isEmpty,
+      );
+      expect(
+        container
+            .read(effectEditorControllerProvider)
+            .project!
+            .follow
+            .targetPersonId,
+        1,
+      );
+      final stageSize = tester.getSize(
+        find.byKey(const ValueKey('protection-editor-media-stage')),
+      );
+      expect(stageSize.width / stageSize.height, closeTo(9 / 16, .001));
+
+      await tester.tap(find.byKey(ImmersiveFlowAction.nextControlKey));
+      await tester.pumpAndSettle();
+      expect(exported, isNotNull);
+      expect(exported!.project.selectedPersonIds, isEmpty);
+      expect(exported!.project.faceOnlyPersonIds, isEmpty);
+      expect(exported!.project.follow.targetPersonId, 1);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('single next action goes directly to export with profile', (
     tester,
   ) async {
@@ -298,6 +585,7 @@ class _FakeProtectionRepository implements NativeProcessingRepository {
   int? lastPreviewTimestampMs;
   bool? lastTightMaskPreview;
   int previewRequestCount = 0;
+  FollowConfig lastFollow = const FollowConfig();
 
   @override
   Future<AnalyzeResultDto> analyzeVideo({
@@ -358,6 +646,7 @@ class _FakeProtectionRepository implements NativeProcessingRepository {
     lastFaceOnlyPersonIds = faceOnlyPersonIds.toSet();
     lastPreviewTimestampMs = timestampMs;
     lastTightMaskPreview = tightMaskPreview;
+    lastFollow = follow;
     return PreviewFrameDto(
       thumbnailPath: '',
       renderTimeMs: 2,

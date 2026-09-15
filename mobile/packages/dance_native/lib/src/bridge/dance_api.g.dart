@@ -593,6 +593,7 @@ class FollowConfigDto {
     this.targetPersonId,
     required this.zoom,
     required this.smoothFactor,
+    this.outputAspectRatio,
   });
 
   bool enabled;
@@ -603,12 +604,15 @@ class FollowConfigDto {
 
   double smoothFactor;
 
+  double? outputAspectRatio;
+
   List<Object?> _toList() {
     return <Object?>[
       enabled,
       targetPersonId,
       zoom,
       smoothFactor,
+      outputAspectRatio,
     ];
   }
 
@@ -622,6 +626,7 @@ class FollowConfigDto {
       targetPersonId: result[1] as int?,
       zoom: result[2]! as double,
       smoothFactor: result[3]! as double,
+      outputAspectRatio: result[4] as double?,
     );
   }
 
@@ -634,7 +639,7 @@ class FollowConfigDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(enabled, other.enabled) && _deepEquals(targetPersonId, other.targetPersonId) && _deepEquals(zoom, other.zoom) && _deepEquals(smoothFactor, other.smoothFactor);
+    return _deepEquals(enabled, other.enabled) && _deepEquals(targetPersonId, other.targetPersonId) && _deepEquals(zoom, other.zoom) && _deepEquals(smoothFactor, other.smoothFactor) && _deepEquals(outputAspectRatio, other.outputAspectRatio);
   }
 
   @override
@@ -643,7 +648,7 @@ class FollowConfigDto {
 
   @override
   String toString() {
-    return 'FollowConfigDto(enabled: $enabled, targetPersonId: $targetPersonId, zoom: $zoom, smoothFactor: $smoothFactor)';
+    return 'FollowConfigDto(enabled: $enabled, targetPersonId: $targetPersonId, zoom: $zoom, smoothFactor: $smoothFactor, outputAspectRatio: $outputAspectRatio)';
   }
 }
 

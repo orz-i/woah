@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:app/features/export/domain/export_state.dart';
 import 'package:app/features/export/presentation/result_screen.dart';
+import 'package:app/features/import_video/presentation/widgets/video_preview_player.dart';
 import 'package:app/repositories/native_processing_repository.dart';
 import 'package:dance_domain/dance_domain.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,44 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 void main() {
+  testWidgets(
+    'portrait reframe result uses output aspect instead of source aspect',
+    (tester) async {
+      final repository = _ResultRepository();
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+      final initial = _completedState();
+      final state = initial.copyWith(
+        project: initial.project!.copyWith(
+          follow: const FollowConfig(
+            enabled: true,
+            targetPersonId: 1,
+            outputAspectRatio: 9 / 16,
+          ),
+        ),
+      );
+      final router = _buildRouter(state);
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      expect(
+        tester
+            .widget<VideoPreviewPlayer>(find.byType(VideoPreviewPlayer))
+            .aspectRatio,
+        9 / 16,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets(
     'success result prioritizes share with only user-facing surrounding actions',
     (tester) async {

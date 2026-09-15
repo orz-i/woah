@@ -74,6 +74,7 @@ class _ProtectionEditorScreenState
   bool _allowRoutePop = false;
   bool _returnRequested = false;
   bool _advancedEffectExpanded = false;
+  bool _selectingFollowTarget = false;
 
   @override
   void initState() {
@@ -134,12 +135,16 @@ class _ProtectionEditorScreenState
         selectionState.persons.isNotEmpty &&
         effectState.project != null;
     final nextEnabled =
-        showControls && selectionState.privacyTargetIds.isNotEmpty;
+        showControls &&
+        !_selectingFollowTarget &&
+        (selectionState.privacyTargetIds.isNotEmpty ||
+            (effectState.project?.hasFollowTarget ?? false));
     final project =
         effectState.project ?? selectionState.project ?? widget.project;
-    final aspectRatio = project.videoInfo.aspectRatio > 0
+    final desiredAspect = effectState.showSourcePreview
         ? project.videoInfo.aspectRatio
-        : 9 / 16;
+        : project.outputAspectRatio;
+    final aspectRatio = desiredAspect > 0 ? desiredAspect : 9 / 16;
 
     return PopScope(
       canPop: _allowRoutePop,
@@ -319,18 +324,30 @@ class _ProtectionEditorScreenState
               )
             else
               _buildPreviewPlaceholder(),
-            for (final person in selectionState.persons)
-              _buildPersonTarget(
-                person,
-                stageWidth,
-                stageHeight,
-                selectionState.isPersonSelected(person.id),
-                () {
-                  HapticFeedback.selectionClick();
-                  selectionController.togglePerson(person.id);
-                  _syncSelectionToEffect(effectController);
-                },
-              ),
+            if (effectState.project?.follow.enabled != true ||
+                effectState.showSourcePreview)
+              for (final person in selectionState.persons)
+                _buildPersonTarget(
+                  person,
+                  stageWidth,
+                  stageHeight,
+                  selectionState.isPersonSelected(person.id),
+                  () {
+                    HapticFeedback.selectionClick();
+                    if (_selectingFollowTarget) {
+                      setState(() => _selectingFollowTarget = false);
+                      effectController.updateFollowConfig(
+                        enabled: true,
+                        targetPersonId: person.id,
+                        outputAspectRatio: 9 / 16,
+                        zoom: 1,
+                      );
+                    } else {
+                      selectionController.togglePerson(person.id);
+                      _syncSelectionToEffect(effectController);
+                    }
+                  },
+                ),
             if (effectState.previewLoading)
               Positioned(
                 top: 12,
@@ -457,7 +474,11 @@ class _ProtectionEditorScreenState
       child: Semantics(
         button: true,
         selected: selected,
-        label: selected ? '已保护人物' : '未保护人物',
+        label: _selectingFollowTarget
+            ? '选择人物 ${person.id + 1} 为主角'
+            : selected
+            ? '已保护人物'
+            : '未保护人物',
         child: GestureDetector(
           key: ValueKey('protection-person-target-${person.id}'),
           behavior: HitTestBehavior.opaque,
@@ -513,6 +534,8 @@ class _ProtectionEditorScreenState
                   _buildSectionLabel('保护方式'),
                   const SizedBox(height: 8),
                   _buildPrivacyModeSwitch(selectionState, effectController),
+                  const SizedBox(height: 14),
+                  _buildReframeControls(effectState, effectController),
                   const SizedBox(height: 14),
                   _buildSectionLabel('处理策略', subdued: true),
                   const SizedBox(height: 8),
@@ -655,6 +678,103 @@ class _ProtectionEditorScreenState
     );
   }
 
+  Widget _buildReframeControls(
+    EffectEditorState state,
+    EffectEditorController controller,
+  ) {
+    final follow = state.project?.follow ?? const FollowConfig();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildSectionLabel('画面裁切'),
+        const SizedBox(height: 8),
+        SegmentedButton<bool>(
+          key: const ValueKey('reframe-mode'),
+          showSelectedIcon: false,
+          segments: const [
+            ButtonSegment(
+              value: false,
+              label: Text('原画'),
+              icon: Icon(Icons.crop_original),
+            ),
+            ButtonSegment(
+              value: true,
+              label: Text('竖屏 9:16'),
+              icon: Icon(Icons.crop_portrait),
+            ),
+          ],
+          selected: {follow.enabled || _selectingFollowTarget},
+          onSelectionChanged: (values) {
+            if (values.single) {
+              setState(() => _selectingFollowTarget = true);
+              controller.showSourceFrame(true);
+            } else {
+              setState(() => _selectingFollowTarget = false);
+              controller.updateFollowConfig(enabled: false);
+            }
+          },
+        ),
+        if (_selectingFollowTarget) ...[
+          const SizedBox(height: 8),
+          const Text(
+            '轻触画面中的主角，不会改变保护对象。',
+            style: TextStyle(fontSize: 12, color: AppTheme.warmTextSecondary),
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              key: const ValueKey('reframe-cancel-selection'),
+              onPressed: () {
+                setState(() => _selectingFollowTarget = false);
+                controller.showSourceFrame(false);
+              },
+              child: const Text('取消选主角'),
+            ),
+          ),
+        ] else if (follow.enabled) ...[
+          const SizedBox(height: 8),
+          Text(
+            '主角：人物 ${(follow.targetPersonId ?? 0) + 1} · 自动平滑跟随',
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppTheme.warmTextSecondary,
+            ),
+          ),
+          Wrap(
+            spacing: 8,
+            children: [
+              TextButton.icon(
+                key: const ValueKey('reframe-change-subject'),
+                onPressed: () {
+                  setState(() => _selectingFollowTarget = true);
+                  controller.showSourceFrame(true);
+                },
+                icon: const Icon(Icons.person_search_outlined, size: 18),
+                label: const Text('更换主角'),
+              ),
+              TextButton.icon(
+                key: const ValueKey('reframe-source-toggle'),
+                onPressed: () =>
+                    controller.showSourceFrame(!state.showSourcePreview),
+                icon: Icon(
+                  state.showSourcePreview
+                      ? Icons.crop_portrait
+                      : Icons.people_outline,
+                  size: 18,
+                ),
+                label: Text(state.showSourcePreview ? '裁切预览' : '原画选保护对象'),
+              ),
+            ],
+          ),
+          const Text(
+            '当前为首帧构图；导出时跟随主角。清空保护对象可仅裁切。',
+            style: TextStyle(fontSize: 11, color: AppTheme.warmTextSecondary),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildTargetSection(
     PersonSelectionState state,
     PersonSelectionController controller,
@@ -719,7 +839,7 @@ class _ProtectionEditorScreenState
         ),
         const SizedBox(height: 4),
         Text(
-          selected == 0 ? '至少选择 1 位人物后才能继续' : '轻触上方画面中的人物可调整保护对象',
+          selected == 0 ? '选择保护对象，或开启竖屏跟随以仅裁切视频' : '轻触原画中的人物可调整保护对象',
           style: TextStyle(
             color: selected == 0
                 ? AppTheme.coralStrong
@@ -1481,7 +1601,11 @@ class _ProtectionEditorScreenState
     final effects = effectState.project == null
         ? base.effects
         : effectState.effects;
-    return base.copyWith(effects: effects, updatedAt: DateTime.now());
+    return base.copyWith(
+      effects: effects,
+      follow: effectState.project?.follow ?? base.follow,
+      updatedAt: DateTime.now(),
+    );
   }
 
   ProtectionEditorResult _buildResult() {
@@ -1524,7 +1648,9 @@ class _ProtectionEditorScreenState
     final project = _buildCurrentProject();
     final effectState = ref.read(effectEditorControllerProvider);
     final initialPreviewPath =
-        effectState.previewPath ?? effectState.previewThumbnailPath;
+        effectState.showSourcePreview && project.follow.enabled
+        ? null
+        : effectState.previewPath ?? effectState.previewThumbnailPath;
     await context.push(
       '/export',
       extra: ExportArgs(

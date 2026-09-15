@@ -85,6 +85,41 @@ final class IOSPreviewPipeline {
         timestampUs: requestedTimestampMs * 1_000
       )
     let renderer = try renderer()
+    let frameWidth = frameAnalysis.image.width
+    let frameHeight = frameAnalysis.image.height
+    var sourceCrop = SIMD4<Float>(0, 0, 1, 1)
+    var outputWidth: Int?
+    var outputHeight: Int?
+    if request.follow.enabled {
+      guard let targetId = request.follow.targetPersonId,
+            let target = frameAnalysis.persons.first(where: { $0.id == Int(targetId) }) else {
+        throw PigeonError(code: "FOLLOW_TARGET_UNRESOLVED", message: "所选主角暂时无法定位，请返回原画重新选择", details: nil)
+      }
+      let sourceAspect = Float(frameWidth) / Float(frameHeight)
+      let aspect = request.follow.outputAspectRatio.map { Float($0) } ?? sourceAspect
+      guard aspect.isFinite, aspect > 0 else {
+        throw PigeonError(code: "INVALID_ARGUMENT", message: "Invalid follow output aspect ratio", details: nil)
+      }
+      let box = target.detection
+      sourceCrop = IOSSubjectReframer().crop(
+        target: SIMD4<Float>(box.x1 / Float(frameWidth), box.y1 / Float(frameHeight), box.x2 / Float(frameWidth), box.y2 / Float(frameHeight)),
+        presentationTimeUs: requestedTimestampMs * 1_000,
+        sourceAspectRatio: sourceAspect,
+        outputAspectRatio: aspect,
+        zoom: Float(request.follow.zoom),
+        smoothFactor: Float(request.follow.smoothFactor)
+      )
+      if request.follow.outputAspectRatio == 9.0 / 16.0 {
+        if let size = IOSSubjectReframer.exactNineSixteenSize(
+          sourceWidth: frameWidth,
+          sourceHeight: frameHeight,
+          maxHeight: 1280
+        ) {
+          outputWidth = size.width
+          outputHeight = size.height
+        }
+      }
+    }
     let rendered = try renderer.render(
       source: frameAnalysis.image,
       persons: frameAnalysis.persons,
@@ -93,7 +128,10 @@ final class IOSPreviewPipeline {
       faceOnlyIds: faceOnlyIds,
       effects: request.effects,
       faceRegions: faceRegions,
-      tightMask: request.tightMaskPreview ?? false
+      tightMask: request.tightMaskPreview ?? false,
+      outputWidth: outputWidth,
+      outputHeight: outputHeight,
+      sourceCrop: sourceCrop
     )
     let previewPath = try savePreview(
       rendered,

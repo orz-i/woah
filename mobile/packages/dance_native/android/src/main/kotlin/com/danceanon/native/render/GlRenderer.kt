@@ -6,6 +6,7 @@ import android.opengl.GLES11Ext
 import android.opengl.GLES20
 import com.danceanon.native.bridge.EffectConfigDto
 import com.danceanon.native.bridge.FollowConfigDto
+import com.danceanon.native.camera.ReframeGeometry
 import com.danceanon.native.tracking.TrackedPerson
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -62,6 +63,8 @@ class GlRenderer : FrameRenderer {
     private var mergedMaskCapacity = 0
 
     private val follower = com.danceanon.native.camera.SmoothFollower()
+    private var followTargetId: Long? = null
+    private var lastFollowPresentationUs: Long? = null
     private val identityMatrix = floatArrayOf(
         1f, 0f, 0f, 0f,
         0f, 1f, 0f, 0f,
@@ -478,7 +481,10 @@ class GlRenderer : FrameRenderer {
         conservativePrimaryUnobservedOccluderPolicy: Boolean = false,
         additionalResolvedPrivacy: com.danceanon.native.privacy.ResolvedCompositorMasks? = null,
         faceStickerPlacements: List<FaceStickerPlacement> = emptyList(),
-        tightMask: Boolean = false
+        tightMask: Boolean = false,
+        sourceWidth: Int? = null,
+        sourceHeight: Int? = null,
+        initialFollowTarget: com.danceanon.native.inference.FloatRect? = null
     ) {
         GLES20.glViewport(0, 0, width, height)
         GLES20.glClearColor(0f, 0f, 0f, 1f)
@@ -536,24 +542,47 @@ class GlRenderer : FrameRenderer {
 
         // Follow Crop Mapping
         val cropRect = if (follow.enabled) {
-            val targetId = follow.targetPersonId?.toInt() ?: selectedPersonIds.firstOrNull() ?: persons.firstOrNull()?.id
-            val target = persons.firstOrNull { it.id == targetId }
-            if (target != null) {
-                val refW = maxOf(1, target.mask?.originalWidth ?: width)
-                val refH = maxOf(1, target.mask?.originalHeight ?: height)
-                val cx = (target.bbox.centerX / refW.toFloat()).coerceIn(0f, 1f)
-                val cy = (target.bbox.centerY / refH.toFloat()).coerceIn(0f, 1f)
-                follower.update(cx, cy, follow.smoothFactor.toFloat())
+            requireNotNull(follow.targetPersonId) { "Follow requires an explicit target person" }
+            if (followTargetId != follow.targetPersonId ||
+                lastFollowPresentationUs?.let { presentationTimeUs < it } == true) {
+                follower.reset()
+                followTargetId = follow.targetPersonId
+                lastFollowPresentationUs = null
             }
-            follower.computeCropRect(follow.zoom.toFloat())
+            val target = persons.firstOrNull {
+                it.id.toLong() == follow.targetPersonId && it.observedThisFrame
+            }
+            val refW = maxOf(1, sourceWidth ?: target?.mask?.originalWidth ?: width).toFloat()
+            val refH = maxOf(1, sourceHeight ?: target?.mask?.originalHeight ?: height).toFloat()
+            val box = target?.bbox?.let {
+                com.danceanon.native.inference.FloatRect(it.left / refW, it.top / refH, it.right / refW, it.bottom / refH)
+            }
+            // Only seed before the first observation; never drift back to frame one.
+            val seed = if (lastFollowPresentationUs == null) initialFollowTarget else null
+            lastFollowPresentationUs = presentationTimeUs
+            follower.cropForFrame(
+                target = box ?: seed,
+                presentationTimeUs = presentationTimeUs,
+                sourceAspectRatio = refW / refH,
+                outputAspectRatio = follow.outputAspectRatio?.toFloat() ?: (refW / refH),
+                zoom = follow.zoom.toFloat(),
+                smoothFactor = follow.smoothFactor.toFloat()
+            )
         } else {
+            follower.reset()
+            followTargetId = null
+            lastFollowPresentationUs = null
             com.danceanon.native.inference.FloatRect(0f, 0f, 1f, 1f)
         }
 
+        val screenGlCropRect = ReframeGeometry.visualTopLeftToScreenGl(cropRect)
         if (prog.uCropRectLoc >= 0) {
             GLES20.glUniform4f(
                 prog.uCropRectLoc,
-                cropRect.left, cropRect.top, cropRect.right, cropRect.bottom
+                screenGlCropRect.left,
+                screenGlCropRect.top,
+                screenGlCropRect.right,
+                screenGlCropRect.bottom
             )
         }
 
@@ -602,7 +631,10 @@ class GlRenderer : FrameRenderer {
 
         // Mask sampling rect for privacyMask
         val privacySamplingRect = resolved.privacyMask?.samplingRect
-            ?: defaultLetterboxSamplingRect(width, height)
+            ?: defaultLetterboxSamplingRect(
+                resolved.privacyMask?.originalWidth?.takeIf { it > 0 } ?: sourceWidth ?: width,
+                resolved.privacyMask?.originalHeight?.takeIf { it > 0 } ?: sourceHeight ?: height
+            )
         if (prog.uMaskCropRectLoc >= 0) {
             GLES20.glUniform4f(
                 prog.uMaskCropRectLoc,
@@ -615,7 +647,10 @@ class GlRenderer : FrameRenderer {
 
         // Mask sampling rect for occluderMask
         val occluderSamplingRect = resolved.occluderMask?.samplingRect
-            ?: defaultLetterboxSamplingRect(width, height)
+            ?: defaultLetterboxSamplingRect(
+                resolved.occluderMask?.originalWidth?.takeIf { it > 0 } ?: sourceWidth ?: width,
+                resolved.occluderMask?.originalHeight?.takeIf { it > 0 } ?: sourceHeight ?: height
+            )
         if (prog.uOccluderCropRectLoc >= 0) {
             GLES20.glUniform4f(
                 prog.uOccluderCropRectLoc,
@@ -737,7 +772,14 @@ class GlRenderer : FrameRenderer {
             GLES20.glUniformMatrix4fv(prog.uTexMatrixLoc, 1, false, textureMatrix, 0)
         }
         if (prog.uCropRectLoc >= 0) {
-            GLES20.glUniform4f(prog.uCropRectLoc, cropRect.left, cropRect.top, cropRect.right, cropRect.bottom)
+            val screenGlCropRect = ReframeGeometry.visualTopLeftToScreenGl(cropRect)
+            GLES20.glUniform4f(
+                prog.uCropRectLoc,
+                screenGlCropRect.left,
+                screenGlCropRect.top,
+                screenGlCropRect.right,
+                screenGlCropRect.bottom
+            )
         }
         val maskRect = privacyMask.samplingRect
             ?: defaultLetterboxSamplingRect(privacyMask.originalWidth, privacyMask.originalHeight)

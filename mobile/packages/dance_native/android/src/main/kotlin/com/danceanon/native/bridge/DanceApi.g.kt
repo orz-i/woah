@@ -596,7 +596,8 @@ data class FollowConfigDto (
   val enabled: Boolean,
   val targetPersonId: Long? = null,
   val zoom: Double,
-  val smoothFactor: Double
+  val smoothFactor: Double,
+  val outputAspectRatio: Double? = null
 )
  {
   companion object {
@@ -605,7 +606,8 @@ data class FollowConfigDto (
       val targetPersonId = pigeonVar_list[1] as Long?
       val zoom = pigeonVar_list[2] as Double
       val smoothFactor = pigeonVar_list[3] as Double
-      return FollowConfigDto(enabled, targetPersonId, zoom, smoothFactor)
+      val outputAspectRatio = pigeonVar_list[4] as Double?
+      return FollowConfigDto(enabled, targetPersonId, zoom, smoothFactor, outputAspectRatio)
     }
   }
   fun toList(): List<Any?> {
@@ -614,6 +616,7 @@ data class FollowConfigDto (
       targetPersonId,
       zoom,
       smoothFactor,
+      outputAspectRatio,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -624,7 +627,7 @@ data class FollowConfigDto (
       return true
     }
     val other = other as FollowConfigDto
-    return DanceApiPigeonUtils.deepEquals(this.enabled, other.enabled) && DanceApiPigeonUtils.deepEquals(this.targetPersonId, other.targetPersonId) && DanceApiPigeonUtils.deepEquals(this.zoom, other.zoom) && DanceApiPigeonUtils.deepEquals(this.smoothFactor, other.smoothFactor)
+    return DanceApiPigeonUtils.deepEquals(this.enabled, other.enabled) && DanceApiPigeonUtils.deepEquals(this.targetPersonId, other.targetPersonId) && DanceApiPigeonUtils.deepEquals(this.zoom, other.zoom) && DanceApiPigeonUtils.deepEquals(this.smoothFactor, other.smoothFactor) && DanceApiPigeonUtils.deepEquals(this.outputAspectRatio, other.outputAspectRatio)
   }
 
   override fun hashCode(): Int {
@@ -633,10 +636,11 @@ data class FollowConfigDto (
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.targetPersonId)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.zoom)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.smoothFactor)
+    result = 31 * result + DanceApiPigeonUtils.deepHash(this.outputAspectRatio)
     return result
   }
   override fun toString(): String {
-    return "FollowConfigDto(enabled=$enabled, targetPersonId=$targetPersonId, zoom=$zoom, smoothFactor=$smoothFactor)"
+    return "FollowConfigDto(enabled=$enabled, targetPersonId=$targetPersonId, zoom=$zoom, smoothFactor=$smoothFactor, outputAspectRatio=$outputAspectRatio)"
   }
 }
 

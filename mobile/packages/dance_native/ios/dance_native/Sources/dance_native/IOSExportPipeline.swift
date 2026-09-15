@@ -193,12 +193,24 @@ final class IOSExportPipeline {
         .subtracting(fullBodyIds)
       let identityFrameWidth = max(1, Int(displaySize.width.rounded()))
       let identityFrameHeight = max(1, Int(displaySize.height.rounded()))
+      let followTargetId = request.follow.enabled ? request.follow.targetPersonId.map { Int($0) } : nil
+      let camera = IOSSubjectReframer()
+      var cameraHasFrame = false
+      var followSeed: SIMD4<Float>?
+      if request.follow.enabled {
+        guard let followTargetId,
+              let root = metadata?.persons.first(where: { $0.id == followTargetId }) else {
+          throw exportError("FOLLOW_TARGET_UNRESOLVED", "Follow target is missing from the analysis cache.")
+        }
+        followSeed = SIMD4<Float>(Float(root.bbox.left), Float(root.bbox.top), Float(root.bbox.right), Float(root.bbox.bottom))
+      }
       let tracker = IOSTemporalIdentityTracker(
         metadata: metadata,
         fullBodyIds: fullBodyIds,
         faceOnlyIds: faceOnlyIds,
         frameWidth: identityFrameWidth,
-        frameHeight: identityFrameHeight
+        frameHeight: identityFrameHeight,
+        followTargetId: followTargetId
       )
       // Match Android's production boundary: identity-independent privacy-class
       // continuity may drive only the FULL_BODY-only compositor. Mixed/FACE_ONLY
@@ -294,6 +306,22 @@ final class IOSExportPipeline {
           freshPrivacyClassEvidence: tracker.facePrivacyClassEvidence(),
           timestampUs: timestampUs
         ) ?? [:]
+        var sourceCrop = SIMD4<Float>(0, 0, 1, 1)
+        if let followTargetId {
+          let sourceAspect = Float(frame.width) / Float(frame.height)
+          let observed = tracker.observedBounds(for: followTargetId).map { box in
+            SIMD4<Float>(box.x / Float(frame.width), box.y / Float(frame.height), box.z / Float(frame.width), box.w / Float(frame.height))
+          }
+          sourceCrop = camera.crop(
+            target: observed ?? (cameraHasFrame ? nil : followSeed),
+            presentationTimeUs: timestampUs,
+            sourceAspectRatio: sourceAspect,
+            outputAspectRatio: request.follow.outputAspectRatio.map { Float($0) } ?? sourceAspect,
+            zoom: Float(request.follow.zoom),
+            smoothFactor: Float(request.follow.smoothFactor)
+          )
+          cameraHasFrame = true
+        }
         let rendered = try renderer.render(
           source: frame,
           persons: tracked,
@@ -307,7 +335,8 @@ final class IOSExportPipeline {
             && !freshFullBodyPrivacyEvidence.isEmpty,
           tightMask: !fullBodyIds.isEmpty,
           outputWidth: target.width,
-          outputHeight: target.height
+          outputHeight: target.height,
+          sourceCrop: sourceCrop
         )
         let outputPixelBuffer = try makePixelBuffer(
           adaptor: adaptor,
@@ -399,10 +428,14 @@ final class IOSExportPipeline {
     }
     // Do not silently downgrade Android-only transform semantics in the first
     // iOS export closure. Unsupported effects are rejected explicitly.
-    if request.follow.enabled || request.effects.skinWhiten > 0 || request.effects.legStretchEnabled {
+    if request.follow.enabled, let ratio = request.follow.outputAspectRatio,
+       !ratio.isFinite || ratio <= 0 {
+      throw exportError("INVALID_ARGUMENT", "Invalid follow output aspect ratio.")
+    }
+    if request.effects.skinWhiten > 0 || request.effects.legStretchEnabled {
       throw exportError(
         "PLATFORM_NOT_SUPPORTED",
-        "iOS Phase 4 does not yet support follow, skin whitening, or leg stretch during export."
+        "iOS does not yet support skin whitening or leg stretch during export."
       )
     }
   }

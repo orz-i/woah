@@ -10,6 +10,19 @@ void main() {
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       selectedPersonIds: {1},
+      persons: const [
+        PersonTrack(
+          id: 1,
+          normalizedInitialBox: NormalizedRect(
+            left: .2,
+            top: .1,
+            right: .5,
+            bottom: .9,
+          ),
+          thumbnailPath: '',
+          confidence: .95,
+        ),
+      ],
       videoInfo: const VideoInfo(
         codedWidth: 1920,
         codedHeight: 1080,
@@ -21,11 +34,7 @@ void main() {
         videoCodec: 'video/avc',
         hasAudio: true,
       ),
-      follow: const FollowConfig(
-        enabled: false,
-        zoom: 1.0,
-        smoothFactor: 0.1,
-      ),
+      follow: const FollowConfig(enabled: false, zoom: 1.0, smoothFactor: 0.1),
     );
 
     test('Updates follow configuration in controller', () {
@@ -47,6 +56,44 @@ void main() {
       expect(configured.follow.targetPersonId, equals(1));
       expect(configured.follow.zoom, equals(1.5));
       expect(configured.follow.smoothFactor, equals(0.15));
+    });
+
+    test('does not silently choose a camera subject when enabling follow', () {
+      final projectWithPeople = testProject.copyWith(
+        selectedPersonIds: {1},
+        persons: const [
+          PersonTrack(
+            id: 1,
+            normalizedInitialBox: NormalizedRect(
+              left: .1,
+              top: .1,
+              right: .4,
+              bottom: .9,
+            ),
+            thumbnailPath: '',
+            confidence: .95,
+          ),
+          PersonTrack(
+            id: 2,
+            normalizedInitialBox: NormalizedRect(
+              left: .6,
+              top: .1,
+              right: .9,
+              bottom: .9,
+            ),
+            thumbnailPath: '',
+            confidence: .95,
+          ),
+        ],
+      );
+      final controller = EffectEditorController();
+      controller.init(projectWithPeople);
+
+      controller.updateFollowConfig(enabled: true, outputAspectRatio: 9 / 16);
+
+      final configured = controller.buildConfiguredProject()!;
+      expect(configured.follow.enabled, isFalse);
+      expect(configured.follow.targetPersonId, isNull);
     });
   });
 }

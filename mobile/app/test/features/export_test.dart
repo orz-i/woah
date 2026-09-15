@@ -154,6 +154,59 @@ void main() {
   });
 
   test(
+    'ExportController forwards portrait reframe output dimensions',
+    () async {
+      final repository = _TrimCaptureRepository();
+      final controller = ExportController(repository);
+      addTearDown(controller.dispose);
+      final now = DateTime.utc(2026, 9, 15);
+      final project = DanceProject(
+        id: 'portrait-export',
+        sourceUri: '/portrait-export.mp4',
+        videoInfo: const VideoInfo(
+          codedWidth: 1920,
+          codedHeight: 1080,
+          displayWidth: 1920,
+          displayHeight: 1080,
+          fps: 30,
+          durationMs: 5000,
+          rotation: 0,
+          videoCodec: 'h264',
+          hasAudio: true,
+        ),
+        analysisCacheId: 'cache-portrait',
+        persons: const [
+          PersonTrack(
+            id: 2,
+            normalizedInitialBox: NormalizedRect(
+              left: 0.4,
+              top: 0.1,
+              right: 0.6,
+              bottom: 0.9,
+            ),
+            thumbnailPath: '',
+            confidence: 0.95,
+          ),
+        ],
+        follow: const FollowConfig(
+          enabled: true,
+          targetPersonId: 2,
+          outputAspectRatio: 9 / 16,
+        ),
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      await controller.startExport(project, 'portrait.mp4');
+
+      expect(repository.lastTargetWidth, 594);
+      expect(repository.lastTargetHeight, 1056);
+      expect(repository.lastFollow.targetPersonId, 2);
+      expect(repository.lastFollow.outputAspectRatio, 9 / 16);
+    },
+  );
+
+  test(
     'ExportController ignores preview frames while live preview is off',
     () async {
       final repository = _PreviewToggleRepository();
@@ -322,7 +375,10 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(container.read(exportControllerProvider).jobId, 'preview-toggle-job');
+    expect(
+      container.read(exportControllerProvider).jobId,
+      'preview-toggle-job',
+    );
     expect(
       tester
           .widget<GestureDetector>(
@@ -566,6 +622,9 @@ DanceProject _testProject() {
 class _TrimCaptureRepository implements NativeProcessingRepository {
   int? lastTrimStartMs;
   int? lastTrimEndMs;
+  int? lastTargetWidth;
+  int? lastTargetHeight;
+  FollowConfig lastFollow = const FollowConfig();
 
   @override
   Stream<JobStatusDto> get progressStream => const Stream.empty();
@@ -590,6 +649,9 @@ class _TrimCaptureRepository implements NativeProcessingRepository {
   }) async {
     lastTrimStartMs = trimStartMs;
     lastTrimEndMs = trimEndMs;
+    lastTargetWidth = targetWidth;
+    lastTargetHeight = targetHeight;
+    lastFollow = follow;
     return 'trim-job';
   }
 

@@ -10,6 +10,7 @@ import android.opengl.GLUtils
 import com.danceanon.native.bridge.DanceNativeException
 import com.danceanon.native.bridge.PreviewFrameDto
 import com.danceanon.native.bridge.PreviewRequestDto
+import com.danceanon.native.camera.ReframeGeometry
 import com.danceanon.native.inference.FloatRect
 import com.danceanon.native.inference.YoloLiteRtSegmenter
 import com.danceanon.native.media.VideoProbe
@@ -20,6 +21,7 @@ import com.danceanon.native.render.EglCore
 import com.danceanon.native.render.GlRenderer
 import com.danceanon.native.render.RenderCoordinateConvention
 import com.danceanon.native.render.SourceTextureType
+import com.danceanon.native.render.TextureRenderTarget
 import com.danceanon.native.storage.CacheManager
 import com.danceanon.native.tracking.HungarianSolver
 import com.danceanon.native.tracking.TrackManager
@@ -208,8 +210,36 @@ class PreviewPipeline(
         // 4. Offscreen GL Rendering with EGL Core
         val sourceFrameWidth = rotatedBitmap.width
         val sourceFrameHeight = rotatedBitmap.height
-        val previewWidth = minOf(sourceFrameWidth, 1280)
-        val previewHeight = (previewWidth * (sourceFrameHeight.toFloat() / sourceFrameWidth)).toInt().coerceAtLeast(1)
+        val reframeAspect = request.follow.outputAspectRatio?.takeIf {
+            request.follow.enabled && it.isFinite() && it > 0.0
+        }
+        if (request.follow.enabled && trackedPersons.none {
+                it.id.toLong() == request.follow.targetPersonId
+            }) {
+            rotatedBitmap.recycle()
+            throw DanceNativeException(DanceNativeException.RENDER_FAILED, "所选主角暂时无法定位，请返回原画重新选择")
+        }
+        val exactPortraitPreview = if (reframeAspect == 9.0 / 16.0) {
+            ReframeGeometry.exactNineSixteenSize(
+                sourceWidth = sourceFrameWidth,
+                sourceHeight = sourceFrameHeight,
+                maxHeight = 1280
+            )
+        } else null
+        val previewWidth = when {
+            exactPortraitPreview != null -> exactPortraitPreview.first
+            reframeAspect != null -> minOf(
+                sourceFrameWidth,
+                (sourceFrameHeight * reframeAspect).toInt(),
+                720
+            ).coerceAtLeast(2)
+            else -> minOf(sourceFrameWidth, 1280)
+        }
+        val previewHeight = when {
+            exactPortraitPreview != null -> exactPortraitPreview.second
+            reframeAspect != null -> (previewWidth / reframeAspect).toInt().coerceAtLeast(2)
+            else -> (previewWidth * (sourceFrameHeight.toFloat() / sourceFrameWidth)).toInt().coerceAtLeast(1)
+        }
 
         val privacyModeByTrackId = PersonPrivacyModeResolver.resolve(
             fullBodyPersonIds = request.selectedPersonIds.map { it.toInt() },
@@ -230,6 +260,24 @@ class PreviewPipeline(
 
         val glRenderer = GlRenderer()
         glRenderer.initialize(previewWidth, previewHeight)
+        val postCropEnabled = reframeAspect != null
+        val privacyCompositionSize = if (postCropEnabled) {
+            ReframeGeometry.postCropCompositionSize(
+                sourceWidth = sourceFrameWidth,
+                sourceHeight = sourceFrameHeight,
+                targetWidth = previewWidth,
+                targetHeight = previewHeight
+            ) ?: throw DanceNativeException(
+                DanceNativeException.RENDER_FAILED,
+                "Unable to compute preview post-crop composition size"
+            )
+        } else null
+        val privacyRenderer = privacyCompositionSize?.let { (w, h) ->
+            GlRenderer().also { it.initialize(w, h) }
+        }
+        val privacyRenderTarget = privacyCompositionSize?.let { (w, h) ->
+            TextureRenderTarget(w, h)
+        }
 
         // Upload frame texture
         val frameTextures = IntArray(1)
@@ -281,26 +329,79 @@ class PreviewPipeline(
                 null
             }
 
-            glRenderer.render(
-                frameTexture = frameTextureId,
-                texMatrix = null,
-                persons = trackedPersons,
-                selectedPersonIds = fullBodyPersonIds,
-                effects = request.effects,
-                follow = request.follow,
-                presentationTimeUs = request.timestampMs * 1000L,
-                textureType = SourceTextureType.TEXTURE_2D,
-                expectedSelectedPrivacyCount = fullBodyPersonIds.size,
-                additionalResolvedPrivacy = faceOnlyFrameResult?.resolvedPrivacy,
-                faceStickerPlacements = faceOnlyFrameResult?.stickerPlacements.orEmpty(),
-                tightMask = request.tightMaskPreview ?: false
-            )
+            if (postCropEnabled) {
+                val target = requireNotNull(privacyRenderTarget)
+                val compositor = requireNotNull(privacyRenderer)
+                val previousFramebuffer = target.bind()
+                try {
+                    compositor.render(
+                        frameTexture = frameTextureId,
+                        texMatrix = null,
+                        persons = trackedPersons,
+                        selectedPersonIds = fullBodyPersonIds,
+                        effects = request.effects,
+                        follow = request.follow.copy(enabled = false),
+                        presentationTimeUs = request.timestampMs * 1000L,
+                        textureType = SourceTextureType.TEXTURE_2D,
+                        expectedSelectedPrivacyCount = fullBodyPersonIds.size,
+                        additionalResolvedPrivacy = faceOnlyFrameResult?.resolvedPrivacy,
+                        faceStickerPlacements = faceOnlyFrameResult?.stickerPlacements.orEmpty(),
+                        tightMask = request.tightMaskPreview ?: false,
+                        sourceWidth = sourceFrameWidth,
+                        sourceHeight = sourceFrameHeight
+                    )
+                } finally {
+                    target.restore(previousFramebuffer)
+                }
+
+                val targetId = requireNotNull(request.follow.targetPersonId).toInt()
+                val person = trackedPersons.first { it.id == targetId }
+                val normalizedTarget = FloatRect(
+                    left = person.bbox.left / sourceFrameWidth.toFloat(),
+                    top = person.bbox.top / sourceFrameHeight.toFloat(),
+                    right = person.bbox.right / sourceFrameWidth.toFloat(),
+                    bottom = person.bbox.bottom / sourceFrameHeight.toFloat()
+                )
+                val visualCrop = com.danceanon.native.camera.SmoothFollower().cropForFrame(
+                    target = normalizedTarget,
+                    presentationTimeUs = request.timestampMs * 1000L,
+                    sourceAspectRatio = sourceFrameWidth.toFloat() / sourceFrameHeight.toFloat(),
+                    outputAspectRatio = requireNotNull(reframeAspect).toFloat(),
+                    zoom = request.follow.zoom.toFloat(),
+                    smoothFactor = request.follow.smoothFactor.toFloat()
+                )
+                val glCrop = ReframeGeometry.visualTopLeftToScreenGl(visualCrop)
+                glRenderer.renderBase(
+                    frameTexture = target.textureId,
+                    texMatrix = ReframeGeometry.textureMatrixForScreenGlCrop(glCrop),
+                    textureType = SourceTextureType.TEXTURE_2D
+                )
+            } else {
+                glRenderer.render(
+                    frameTexture = frameTextureId,
+                    texMatrix = null,
+                    persons = trackedPersons,
+                    selectedPersonIds = fullBodyPersonIds,
+                    effects = request.effects,
+                    follow = request.follow,
+                    presentationTimeUs = request.timestampMs * 1000L,
+                    textureType = SourceTextureType.TEXTURE_2D,
+                    expectedSelectedPrivacyCount = fullBodyPersonIds.size,
+                    additionalResolvedPrivacy = faceOnlyFrameResult?.resolvedPrivacy,
+                    faceStickerPlacements = faceOnlyFrameResult?.stickerPlacements.orEmpty(),
+                    tightMask = request.tightMaskPreview ?: false,
+                    sourceWidth = sourceFrameWidth,
+                    sourceHeight = sourceFrameHeight
+                )
+            }
 
             renderedBitmap = glRenderer.captureRenderedFrame()
                 ?: throw DanceNativeException(DanceNativeException.RENDER_FAILED, "Failed to capture rendered preview frame")
         } finally {
             try { faceOnlyPrivacyProcessor?.close() } catch (_: Throwable) {}
             GLES20.glDeleteTextures(1, frameTextures, 0)
+            try { privacyRenderTarget?.close() } catch (_: Throwable) {}
+            try { privacyRenderer?.close() } catch (_: Throwable) {}
             glRenderer.close()
             eglCore.releaseSurface(eglSurface)
             eglCore.close()

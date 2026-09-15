@@ -178,7 +178,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                               child: VideoPreviewPlayer(
                                 videoPath: outputPath,
                                 aspectRatio:
-                                    project?.videoInfo.aspectRatio ?? 16 / 9,
+                                    project?.outputAspectRatio ?? 16 / 9,
                               ),
                             ),
                           const SizedBox(height: 14),

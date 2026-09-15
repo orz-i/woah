@@ -4,11 +4,14 @@ import 'package:dance_domain/dance_domain.dart';
 import '../../../repositories/native_processing_repository.dart';
 import '../domain/effect_editor_state.dart';
 
-final effectEditorControllerProvider = StateNotifierProvider.autoDispose<
-    EffectEditorController, EffectEditorState>((ref) {
-  final repository = ref.watch(nativeRepositoryProvider);
-  return EffectEditorController(repository: repository);
-});
+final effectEditorControllerProvider =
+    StateNotifierProvider.autoDispose<
+      EffectEditorController,
+      EffectEditorState
+    >((ref) {
+      final repository = ref.watch(nativeRepositoryProvider);
+      return EffectEditorController(repository: repository);
+    });
 
 class EffectEditorController extends StateNotifier<EffectEditorState> {
   final NativeProcessingRepository? _repository;
@@ -16,11 +19,13 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
   int _nextRequestId = 0;
 
   EffectEditorController({NativeProcessingRepository? repository})
-      // ignore: prefer_initializing_formals
-      : _repository = repository,
-        super(const EffectEditorState());
+    // ignore: prefer_initializing_formals
+    : _repository = repository,
+      super(const EffectEditorState());
 
   void init(DanceProject project, {String? initialPreviewPath}) {
+    _debounceTimer?.cancel();
+    ++_nextRequestId;
     state = EffectEditorState(
       project: project,
       effects: project.effects,
@@ -36,16 +41,19 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
   }) {
     final activeEffects = effects ?? state.effects;
     state = state.copyWith(
-      project: project.copyWith(effects: activeEffects),
+      project: project.copyWith(
+        effects: activeEffects,
+        follow: state.project?.id == project.id
+            ? state.project!.follow
+            : project.follow,
+      ),
       effects: activeEffects,
     );
     _requestPreview(debounce: debounce);
   }
 
   void updateFillMode(FillMode mode) {
-    state = state.copyWith(
-      effects: state.effects.copyWith(fillMode: mode),
-    );
+    state = state.copyWith(effects: state.effects.copyWith(fillMode: mode));
     _requestPreview(debounce: true);
   }
 
@@ -85,9 +93,7 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
   }
 
   void updateOpacity(double opacity) {
-    state = state.copyWith(
-      effects: state.effects.copyWith(opacity: opacity),
-    );
+    state = state.copyWith(effects: state.effects.copyWith(opacity: opacity));
     _requestPreview(debounce: true);
   }
 
@@ -106,9 +112,7 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
   }
 
   void updateBorderWidth(double width) {
-    state = state.copyWith(
-      effects: state.effects.copyWith(borderWidth: width),
-    );
+    state = state.copyWith(effects: state.effects.copyWith(borderWidth: width));
     _requestPreview(debounce: true);
   }
 
@@ -141,27 +145,41 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
     int? targetPersonId,
     double? zoom,
     double? smoothFactor,
+    double? outputAspectRatio,
   }) {
     final proj = state.project;
     if (proj == null) return;
 
     final currentFollow = proj.follow;
-    final defaultTargetId = targetPersonId ??
-        currentFollow.targetPersonId ??
-        proj.selectedPersonIds.firstOrNull ??
-        proj.persons.firstOrNull?.id;
+    final requestedEnabled = enabled ?? currentFollow.enabled;
+    final resolvedTargetId = targetPersonId ?? currentFollow.targetPersonId;
+    if (requestedEnabled &&
+        (resolvedTargetId == null ||
+            !proj.persons.any((person) => person.id == resolvedTargetId))) {
+      return;
+    }
 
     final updatedFollow = currentFollow.copyWith(
-      enabled: enabled ?? currentFollow.enabled,
-      targetPersonId: defaultTargetId,
+      enabled: requestedEnabled,
+      targetPersonId: resolvedTargetId,
       zoom: zoom ?? currentFollow.zoom,
       smoothFactor: smoothFactor ?? currentFollow.smoothFactor,
+      outputAspectRatio: outputAspectRatio,
     );
 
     state = state.copyWith(
       project: proj.copyWith(follow: updatedFollow),
+      showSourcePreview: false,
+      clearPreview: true,
     );
-    _requestPreview(debounce: true);
+    _requestPreview(debounce: false);
+  }
+
+  /// Source-space hit targets must never be overlaid on a cropped image.
+  void showSourceFrame(bool enabled) {
+    if (state.showSourcePreview == enabled) return;
+    state = state.copyWith(showSourcePreview: enabled, clearPreview: true);
+    _requestPreview(debounce: false);
   }
 
   void refreshPreview() {
@@ -177,13 +195,15 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
     if (cacheId == null || cacheId.isEmpty) return;
 
     _debounceTimer?.cancel();
+    // Invalidate immediately, including while the next request is debounced.
+    final currentRequestId = ++_nextRequestId;
+    state = state.copyWith(previewRequestId: currentRequestId);
 
     void executeRequest() async {
       if (!mounted) return;
-      final currentRequestId = ++_nextRequestId;
       state = state.copyWith(
         previewLoading: true,
-        previewError: null,
+        clearPreviewError: true,
         previewRequestId: currentRequestId,
       );
 
@@ -197,7 +217,9 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
           selectedPersonIds: currentProj.selectedPersonIds.toList(),
           faceOnlyPersonIds: currentProj.faceOnlyPersonIds.toList(),
           effects: state.effects,
-          follow: currentProj.follow,
+          follow: state.showSourcePreview
+              ? currentProj.follow.copyWith(enabled: false)
+              : currentProj.follow,
           // Effect editing uses the same tight full-body contour as selection
           // and final export so the rendered shape does not change at handoff.
           tightMaskPreview: true,
@@ -210,7 +232,7 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
           state = state.copyWith(
             previewPath: result.thumbnailPath,
             previewLoading: false,
-            previewError: null,
+            clearPreviewError: true,
           );
         }
       } catch (e) {
@@ -235,10 +257,7 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
     final proj = state.project;
     if (proj == null) return null;
 
-    return proj.copyWith(
-      effects: state.effects,
-      updatedAt: DateTime.now(),
-    );
+    return proj.copyWith(effects: state.effects, updatedAt: DateTime.now());
   }
 
   @override

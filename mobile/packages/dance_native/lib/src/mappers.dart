@@ -81,6 +81,7 @@ extension FollowConfigMapper on FollowConfig {
       targetPersonId: targetPersonId,
       zoom: zoom,
       smoothFactor: smoothFactor,
+      outputAspectRatio: outputAspectRatio,
     );
   }
 }

@@ -77,10 +77,18 @@ final class IOSMetalPreviewRenderer {
     preferFreshFullBodyClassPrimary: Bool = false,
     tightMask: Bool = false,
     outputWidth: Int? = nil,
-    outputHeight: Int? = nil
+    outputHeight: Int? = nil,
+    sourceCrop: SIMD4<Float> = SIMD4<Float>(0, 0, 1, 1)
   ) throws -> CGImage {
     let sourceWidth = max(1, source.width)
     let sourceHeight = max(1, source.height)
+    guard sourceCrop.x.isFinite, sourceCrop.y.isFinite,
+          sourceCrop.z.isFinite, sourceCrop.w.isFinite,
+          sourceCrop.x >= 0, sourceCrop.y >= 0,
+          sourceCrop.z <= 1, sourceCrop.w <= 1,
+          sourceCrop.z > sourceCrop.x, sourceCrop.w > sourceCrop.y else {
+      throw renderError("Invalid source crop for iOS Metal rendering.")
+    }
     let previewWidth: Int
     let previewHeight: Int
     if let outputWidth, let outputHeight, outputWidth > 0, outputHeight > 0 {
@@ -97,7 +105,8 @@ final class IOSMetalPreviewRenderer {
     let sourceBytes = try Self.rgbaBytes(
       image: source,
       width: previewWidth,
-      height: previewHeight
+      height: previewHeight,
+      sourceCrop: sourceCrop
     )
     let renderInputs = Self.buildPrivacyInputs(
       persons: persons,
@@ -110,7 +119,9 @@ final class IOSMetalPreviewRenderer {
       sourceWidth: sourceWidth,
       sourceHeight: sourceHeight,
       previewWidth: previewWidth,
-      previewHeight: previewHeight
+      previewHeight: previewHeight,
+      tightMask: tightMask,
+      sourceCrop: sourceCrop
     )
 
     let sourceTexture = try makeTexture(
@@ -269,8 +280,12 @@ final class IOSMetalPreviewRenderer {
     sourceWidth: Int,
     sourceHeight: Int,
     previewWidth: Int,
-    previewHeight: Int
+    previewHeight: Int,
+    tightMask: Bool,
+    sourceCrop: SIMD4<Float>
   ) -> PrivacyInputs {
+    let cropWidth = sourceCrop.z - sourceCrop.x
+    let cropHeight = sourceCrop.w - sourceCrop.y
     let trackedFullBodyPersons = persons.filter { fullBodyIds.contains($0.id) }
     let effectiveFaceOnlyIds = faceOnlyIds.subtracting(fullBodyIds)
     let facePersons = persons.filter { effectiveFaceOnlyIds.contains($0.id) }
@@ -328,7 +343,7 @@ final class IOSMetalPreviewRenderer {
     if !fullBodyPersons.isEmpty {
       for previewY in 0..<previewHeight {
         let sourceY = (Float32(previewY) + 0.5)
-          * Float32(sourceHeight) / Float32(previewHeight)
+          * Float32(sourceHeight) / Float32(previewHeight) * cropHeight + sourceCrop.y * Float32(sourceHeight)
         let modelY = sourceY * preprocess.scale + preprocess.padTop
         let protoY = Int(floor(
           Double(modelY / Float32(preprocess.inputSize) * Float32(IOSYoloPostprocessor.protoSize))
@@ -336,7 +351,7 @@ final class IOSMetalPreviewRenderer {
         guard protoY >= 0, protoY < IOSYoloPostprocessor.protoSize else { continue }
         for previewX in 0..<previewWidth {
           let sourceX = (Float32(previewX) + 0.5)
-            * Float32(sourceWidth) / Float32(previewWidth)
+            * Float32(sourceWidth) / Float32(previewWidth) * cropWidth + sourceCrop.x * Float32(sourceWidth)
           let modelX = sourceX * preprocess.scale + preprocess.padLeft
           let protoX = Int(floor(
             Double(modelX / Float32(preprocess.inputSize) * Float32(IOSYoloPostprocessor.protoSize))
@@ -369,10 +384,16 @@ final class IOSMetalPreviewRenderer {
     var faceRects: [SIMD4<Float>] = []
     faceRects.reserveCapacity(regionsToRender.count)
     for region in regionsToRender {
-      let rect = faceRect(
+      let sourceRect = faceRect(
         region,
         sourceWidth: sourceWidth,
         sourceHeight: sourceHeight
+      )
+      let rect = SIMD4<Float>(
+        (sourceRect.x - sourceCrop.x) / cropWidth,
+        (sourceRect.y - sourceCrop.y) / cropHeight,
+        (sourceRect.z - sourceCrop.x) / cropWidth,
+        (sourceRect.w - sourceCrop.y) / cropHeight
       )
       faceRects.append(rect)
       let x1 = max(0, min(previewWidth, Int(floor(Double(rect.x) * Double(previewWidth)))))
@@ -381,10 +402,10 @@ final class IOSMetalPreviewRenderer {
       let y2 = max(y1, min(previewHeight, Int(ceil(Double(rect.w) * Double(previewHeight)))))
       for y in y1..<y2 {
         let row = y * previewWidth
-        let sourceY = (Float32(y) + 0.5) * Float32(sourceHeight) / Float32(previewHeight)
+        let sourceY = ((Float32(y) + 0.5) / Float32(previewHeight) * cropHeight + sourceCrop.y) * Float32(sourceHeight)
         let dy = (sourceY - region.centerY) / max(1, region.radiusY)
         for x in x1..<x2 {
-          let sourceX = (Float32(x) + 0.5) * Float32(sourceWidth) / Float32(previewWidth)
+          let sourceX = ((Float32(x) + 0.5) / Float32(previewWidth) * cropWidth + sourceCrop.x) * Float32(sourceWidth)
           let dx = (sourceX - region.centerX) / max(1, region.radiusX)
           if dx * dx + dy * dy <= 1 {
             mask[row + x] = 255
@@ -562,7 +583,8 @@ final class IOSMetalPreviewRenderer {
   private static func rgbaBytes(
     image: CGImage,
     width: Int,
-    height: Int
+    height: Int,
+    sourceCrop: SIMD4<Float> = SIMD4<Float>(0, 0, 1, 1)
   ) throws -> [UInt8] {
     var bytes = [UInt8](repeating: 0, count: width * height * 4)
     let created = bytes.withUnsafeMutableBytes { raw -> Bool in
@@ -582,7 +604,16 @@ final class IOSMetalPreviewRenderer {
       context.translateBy(x: 0, y: CGFloat(height))
       context.scaleBy(x: 1, y: -1)
       context.interpolationQuality = .high
-      context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+      // Crop the original image directly at output resolution, without first
+      // stretching the full landscape frame into a portrait intermediate.
+      let drawWidth = CGFloat(width) / CGFloat(sourceCrop.z - sourceCrop.x)
+      let drawHeight = CGFloat(height) / CGFloat(sourceCrop.w - sourceCrop.y)
+      context.draw(image, in: CGRect(
+        x: -CGFloat(sourceCrop.x) * drawWidth,
+        y: -CGFloat(sourceCrop.y) * drawHeight,
+        width: drawWidth,
+        height: drawHeight
+      ))
       return true
     }
     guard created else {

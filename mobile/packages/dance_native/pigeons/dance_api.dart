@@ -148,12 +148,14 @@ class FollowConfigDto {
   final int? targetPersonId;
   final double zoom;
   final double smoothFactor;
+  final double? outputAspectRatio;
 
   FollowConfigDto({
     required this.enabled,
     this.targetPersonId,
     required this.zoom,
     required this.smoothFactor,
+    this.outputAspectRatio,
   });
 }
 

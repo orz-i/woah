@@ -383,10 +383,12 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     final displayPath = hasLivePreview
         ? livePath
         : (hasFallbackPreview ? fallbackPath : null);
-    final rawAspect = widget.project.videoInfo.aspectRatio > 0
-        ? widget.project.videoInfo.aspectRatio
+    final rawAspect = widget.project.outputAspectRatio > 0
+        ? widget.project.outputAspectRatio
         : 16 / 9;
-    final aspect = rawAspect.clamp(0.65, 1.8).toDouble();
+    final aspect = widget.project.follow.enabled
+        ? rawAspect
+        : rawAspect.clamp(0.65, 1.8).toDouble();
 
     return Semantics(
       button: livePreviewToggleEnabled,

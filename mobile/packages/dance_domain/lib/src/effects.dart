@@ -75,38 +75,38 @@ class EffectConfig {
   });
 
   Map<String, dynamic> toJson() => {
-        'fillMode': fillMode.name,
-        'fillColorArgb': fillColorArgb,
-        'borderColorArgb': borderColorArgb,
-        'opacity': opacity,
-        'borderWidth': borderWidth,
-        'blurStrength': blurStrength,
-        'faceStickerEnabled': faceStickerEnabled,
-        'stickerAssetId': stickerAssetId,
-        'stickerScale': stickerScale,
-        'skinWhiten': skinWhiten,
-        'legStretchEnabled': legStretchEnabled,
-        'legStretch': legStretch,
-        'legZoneTop': legZoneTop,
-        'legZoneBottom': legZoneBottom,
-      };
+    'fillMode': fillMode.name,
+    'fillColorArgb': fillColorArgb,
+    'borderColorArgb': borderColorArgb,
+    'opacity': opacity,
+    'borderWidth': borderWidth,
+    'blurStrength': blurStrength,
+    'faceStickerEnabled': faceStickerEnabled,
+    'stickerAssetId': stickerAssetId,
+    'stickerScale': stickerScale,
+    'skinWhiten': skinWhiten,
+    'legStretchEnabled': legStretchEnabled,
+    'legStretch': legStretch,
+    'legZoneTop': legZoneTop,
+    'legZoneBottom': legZoneBottom,
+  };
 
   factory EffectConfig.fromJson(Map<String, dynamic> json) => EffectConfig(
-        fillMode: FillMode.fromString(json['fillMode'] as String? ?? 'solid'),
-        fillColorArgb: json['fillColorArgb'] as int? ?? 0xFF000000,
-        borderColorArgb: json['borderColorArgb'] as int? ?? 0xFF00FF00,
-        opacity: (json['opacity'] as num?)?.toDouble() ?? 1.0,
-        borderWidth: (json['borderWidth'] as num?)?.toDouble() ?? 0.0,
-        blurStrength: (json['blurStrength'] as num?)?.toDouble() ?? 15.0,
-        faceStickerEnabled: json['faceStickerEnabled'] as bool? ?? false,
-        stickerAssetId: json['stickerAssetId'] as String?,
-        stickerScale: (json['stickerScale'] as num?)?.toDouble() ?? 1.0,
-        skinWhiten: (json['skinWhiten'] as num?)?.toDouble() ?? 0.0,
-        legStretchEnabled: json['legStretchEnabled'] as bool? ?? false,
-        legStretch: (json['legStretch'] as num?)?.toDouble() ?? 0.0,
-        legZoneTop: (json['legZoneTop'] as num?)?.toDouble() ?? 0.55,
-        legZoneBottom: (json['legZoneBottom'] as num?)?.toDouble() ?? 0.95,
-      );
+    fillMode: FillMode.fromString(json['fillMode'] as String? ?? 'solid'),
+    fillColorArgb: json['fillColorArgb'] as int? ?? 0xFF000000,
+    borderColorArgb: json['borderColorArgb'] as int? ?? 0xFF00FF00,
+    opacity: (json['opacity'] as num?)?.toDouble() ?? 1.0,
+    borderWidth: (json['borderWidth'] as num?)?.toDouble() ?? 0.0,
+    blurStrength: (json['blurStrength'] as num?)?.toDouble() ?? 15.0,
+    faceStickerEnabled: json['faceStickerEnabled'] as bool? ?? false,
+    stickerAssetId: json['stickerAssetId'] as String?,
+    stickerScale: (json['stickerScale'] as num?)?.toDouble() ?? 1.0,
+    skinWhiten: (json['skinWhiten'] as num?)?.toDouble() ?? 0.0,
+    legStretchEnabled: json['legStretchEnabled'] as bool? ?? false,
+    legStretch: (json['legStretch'] as num?)?.toDouble() ?? 0.0,
+    legZoneTop: (json['legZoneTop'] as num?)?.toDouble() ?? 0.55,
+    legZoneBottom: (json['legZoneBottom'] as num?)?.toDouble() ?? 0.95,
+  );
 
   EffectConfig copyWith({
     FillMode? fillMode,
@@ -150,38 +150,46 @@ class FollowConfig {
   final double zoom;
   final double smoothFactor;
 
+  /// Null preserves legacy source-aspect zoom. The editor uses 9:16.
+  final double? outputAspectRatio;
+
   const FollowConfig({
     this.enabled = false,
     this.targetPersonId,
     this.zoom = 1.0,
     this.smoothFactor = 0.1,
+    this.outputAspectRatio,
   });
 
   Map<String, dynamic> toJson() => {
-        'enabled': enabled,
-        'targetPersonId': targetPersonId,
-        'zoom': zoom,
-        'smoothFactor': smoothFactor,
-      };
+    'enabled': enabled,
+    'targetPersonId': targetPersonId,
+    'zoom': zoom,
+    'smoothFactor': smoothFactor,
+    'outputAspectRatio': outputAspectRatio,
+  };
 
   factory FollowConfig.fromJson(Map<String, dynamic> json) => FollowConfig(
-        enabled: json['enabled'] as bool? ?? false,
-        targetPersonId: json['targetPersonId'] as int?,
-        zoom: (json['zoom'] as num?)?.toDouble() ?? 1.0,
-        smoothFactor: (json['smoothFactor'] as num?)?.toDouble() ?? 0.1,
-      );
+    enabled: json['enabled'] as bool? ?? false,
+    targetPersonId: json['targetPersonId'] as int?,
+    zoom: (json['zoom'] as num?)?.toDouble() ?? 1.0,
+    smoothFactor: (json['smoothFactor'] as num?)?.toDouble() ?? 0.1,
+    outputAspectRatio: (json['outputAspectRatio'] as num?)?.toDouble(),
+  );
 
   FollowConfig copyWith({
     bool? enabled,
     int? targetPersonId,
     double? zoom,
     double? smoothFactor,
+    double? outputAspectRatio,
   }) {
     return FollowConfig(
       enabled: enabled ?? this.enabled,
       targetPersonId: targetPersonId ?? this.targetPersonId,
       zoom: zoom ?? this.zoom,
       smoothFactor: smoothFactor ?? this.smoothFactor,
+      outputAspectRatio: outputAspectRatio ?? this.outputAspectRatio,
     );
   }
 }
@@ -201,16 +209,16 @@ class CropConfig {
   });
 
   Map<String, dynamic> toJson() => {
-        'x': x,
-        'y': y,
-        'width': width,
-        'height': height,
-      };
+    'x': x,
+    'y': y,
+    'width': width,
+    'height': height,
+  };
 
   factory CropConfig.fromJson(Map<String, dynamic> json) => CropConfig(
-        x: (json['x'] as num).toDouble(),
-        y: (json['y'] as num).toDouble(),
-        width: (json['width'] as num).toDouble(),
-        height: (json['height'] as num).toDouble(),
-      );
+    x: (json['x'] as num).toDouble(),
+    y: (json['y'] as num).toDouble(),
+    width: (json['width'] as num).toDouble(),
+    height: (json['height'] as num).toDouble(),
+  );
 }

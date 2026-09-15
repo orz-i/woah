@@ -7,11 +7,7 @@ import 'effects.dart';
 /// [selectedPersonIds] remains the persisted legacy FULL_BODY set. The optional
 /// FACE_ONLY set is additive, and FULL_BODY always wins when an ID is present in
 /// both sets so old projects and old selection flows remain deterministic.
-enum PersonPrivacyMode {
-  none,
-  faceOnly,
-  fullBody,
-}
+enum PersonPrivacyMode { none, faceOnly, fullBody }
 
 /// Top-level project state representing a user editing session
 class DanceProject {
@@ -25,6 +21,31 @@ class DanceProject {
 
   final EffectConfig effects;
   final FollowConfig follow;
+
+  bool get hasFollowTarget =>
+      follow.enabled &&
+      persons.any((person) => person.id == follow.targetPersonId);
+
+  double get outputAspectRatio {
+    final ratio = follow.enabled ? follow.outputAspectRatio : null;
+    return ratio != null && ratio.isFinite && ratio > 0
+        ? ratio
+        : videoInfo.aspectRatio;
+  }
+
+  /// Exact 9:16, even encoder dimensions, without enlarging source pixels.
+  /// Original-aspect exports retain their existing size policy.
+  ({int width, int height}) get outputSize {
+    if (!follow.enabled || follow.outputAspectRatio != 9 / 16) {
+      return (width: videoInfo.width, height: videoInfo.height);
+    }
+    final units = (videoInfo.width ~/ 18).clamp(
+      1,
+      (videoInfo.height ~/ 32).clamp(1, 60),
+    );
+    return (width: units * 18, height: units * 32);
+  }
+
   final CropConfig? crop;
 
   /// Optional temporal trim bounds in the original source timeline.
@@ -56,53 +77,56 @@ class DanceProject {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'sourceUri': sourceUri,
-        'videoInfo': videoInfo.toJson(),
-        'persons': persons.map((p) => p.toJson()).toList(),
-        'selectedPersonIds': selectedPersonIds.toList(),
-        'faceOnlyPersonIds': faceOnlyPersonIds.toList(),
-        'effects': effects.toJson(),
-        'follow': follow.toJson(),
-        'crop': crop?.toJson(),
-        'trimStartMs': trimStartMs,
-        'trimEndMs': trimEndMs,
-        'analysisCacheId': analysisCacheId,
-        'createdAt': createdAt.toIso8601String(),
-        'updatedAt': updatedAt.toIso8601String(),
-      };
+    'id': id,
+    'sourceUri': sourceUri,
+    'videoInfo': videoInfo.toJson(),
+    'persons': persons.map((p) => p.toJson()).toList(),
+    'selectedPersonIds': selectedPersonIds.toList(),
+    'faceOnlyPersonIds': faceOnlyPersonIds.toList(),
+    'effects': effects.toJson(),
+    'follow': follow.toJson(),
+    'crop': crop?.toJson(),
+    'trimStartMs': trimStartMs,
+    'trimEndMs': trimEndMs,
+    'analysisCacheId': analysisCacheId,
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
+  };
 
   factory DanceProject.fromJson(Map<String, dynamic> json) => DanceProject(
-        id: json['id'] as String,
-        sourceUri: json['sourceUri'] as String,
-        videoInfo: VideoInfo.fromJson(json['videoInfo'] as Map<String, dynamic>),
-        persons: (json['persons'] as List<dynamic>?)
-                ?.map((e) => PersonTrack.fromJson(e as Map<String, dynamic>))
-                .toList() ??
-            const [],
-        selectedPersonIds: (json['selectedPersonIds'] as List<dynamic>?)
-                ?.map((e) => e as int)
-                .toSet() ??
-            const {},
-        faceOnlyPersonIds: (json['faceOnlyPersonIds'] as List<dynamic>?)
-                ?.map((e) => e as int)
-                .toSet() ??
-            const {},
-        effects: json['effects'] != null
-            ? EffectConfig.fromJson(json['effects'] as Map<String, dynamic>)
-            : const EffectConfig(),
-        follow: json['follow'] != null
-            ? FollowConfig.fromJson(json['follow'] as Map<String, dynamic>)
-            : const FollowConfig(),
-        crop: json['crop'] != null
-            ? CropConfig.fromJson(json['crop'] as Map<String, dynamic>)
-            : null,
-        trimStartMs: (json['trimStartMs'] as num?)?.toInt() ?? 0,
-        trimEndMs: (json['trimEndMs'] as num?)?.toInt(),
-        analysisCacheId: json['analysisCacheId'] as String?,
-        createdAt: DateTime.parse(json['createdAt'] as String),
-        updatedAt: DateTime.parse(json['updatedAt'] as String),
-      );
+    id: json['id'] as String,
+    sourceUri: json['sourceUri'] as String,
+    videoInfo: VideoInfo.fromJson(json['videoInfo'] as Map<String, dynamic>),
+    persons:
+        (json['persons'] as List<dynamic>?)
+            ?.map((e) => PersonTrack.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        const [],
+    selectedPersonIds:
+        (json['selectedPersonIds'] as List<dynamic>?)
+            ?.map((e) => e as int)
+            .toSet() ??
+        const {},
+    faceOnlyPersonIds:
+        (json['faceOnlyPersonIds'] as List<dynamic>?)
+            ?.map((e) => e as int)
+            .toSet() ??
+        const {},
+    effects: json['effects'] != null
+        ? EffectConfig.fromJson(json['effects'] as Map<String, dynamic>)
+        : const EffectConfig(),
+    follow: json['follow'] != null
+        ? FollowConfig.fromJson(json['follow'] as Map<String, dynamic>)
+        : const FollowConfig(),
+    crop: json['crop'] != null
+        ? CropConfig.fromJson(json['crop'] as Map<String, dynamic>)
+        : null,
+    trimStartMs: (json['trimStartMs'] as num?)?.toInt() ?? 0,
+    trimEndMs: (json['trimEndMs'] as num?)?.toInt(),
+    analysisCacheId: json['analysisCacheId'] as String?,
+    createdAt: DateTime.parse(json['createdAt'] as String),
+    updatedAt: DateTime.parse(json['updatedAt'] as String),
+  );
 
   DanceProject copyWith({
     String? id,
@@ -148,13 +172,12 @@ class DanceProject {
   }
 
   /// All people receiving any privacy treatment, independent of mode.
-  Set<int> get privacyTargetIds => {
-        ...faceOnlyPersonIds,
-        ...selectedPersonIds,
-      };
+  Set<int> get privacyTargetIds => {...faceOnlyPersonIds, ...selectedPersonIds};
 
-  int get effectiveTrimEndMs =>
-      (trimEndMs ?? videoInfo.durationMs).clamp(trimStartMs, videoInfo.durationMs);
+  int get effectiveTrimEndMs => (trimEndMs ?? videoInfo.durationMs).clamp(
+    trimStartMs,
+    videoInfo.durationMs,
+  );
 
   int get trimmedDurationMs =>
       (effectiveTrimEndMs - trimStartMs).clamp(0, videoInfo.durationMs);

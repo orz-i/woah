@@ -148,7 +148,8 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
     }.intersection(personIds);
     final hasStoredTargets =
         project.selectedPersonIds.isNotEmpty ||
-        project.faceOnlyPersonIds.isNotEmpty;
+        project.faceOnlyPersonIds.isNotEmpty ||
+        project.follow.enabled;
     final targetIds = hasStoredTargets ? storedTargets : personIds;
 
     // Legacy mixed projects are normalized to full-body for privacy safety.
@@ -267,7 +268,9 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
         ...project.selectedPersonIds,
         ...project.faceOnlyPersonIds,
       }.intersection(personIds);
-      final targets = storedTargets.isNotEmpty ? storedTargets : personIds;
+      final targets = storedTargets.isNotEmpty || project.follow.enabled
+          ? storedTargets
+          : personIds;
       final mode =
           project.selectedPersonIds.isEmpty &&
               project.faceOnlyPersonIds.isNotEmpty

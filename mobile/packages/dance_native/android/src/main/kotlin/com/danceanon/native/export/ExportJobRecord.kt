@@ -128,6 +128,7 @@ data class ExportJobRecord(
                 put("targetPersonId", request.follow.targetPersonId ?: JSONObject.NULL)
                 put("zoom", request.follow.zoom)
                 put("smoothFactor", request.follow.smoothFactor)
+                put("outputAspectRatio", request.follow.outputAspectRatio ?: JSONObject.NULL)
             }
             return ExportJobRecord(
                 jobId = jobId,

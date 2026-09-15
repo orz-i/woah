@@ -614,6 +614,7 @@ struct FollowConfigDto: Hashable, CustomStringConvertible {
   var targetPersonId: Int64? = nil
   var zoom: Double
   var smoothFactor: Double
+  var outputAspectRatio: Double? = nil
 
 
   // swift-format-ignore: AlwaysUseLowerCamelCase
@@ -622,12 +623,14 @@ struct FollowConfigDto: Hashable, CustomStringConvertible {
     let targetPersonId: Int64? = nilOrValue(pigeonVar_list[1])
     let zoom = pigeonVar_list[2] as! Double
     let smoothFactor = pigeonVar_list[3] as! Double
+    let outputAspectRatio: Double? = nilOrValue(pigeonVar_list[4])
 
     return FollowConfigDto(
       enabled: enabled,
       targetPersonId: targetPersonId,
       zoom: zoom,
-      smoothFactor: smoothFactor
+      smoothFactor: smoothFactor,
+      outputAspectRatio: outputAspectRatio
     )
   }
   func toList() -> [Any?] {
@@ -636,13 +639,14 @@ struct FollowConfigDto: Hashable, CustomStringConvertible {
       targetPersonId,
       zoom,
       smoothFactor,
+      outputAspectRatio,
     ]
   }
   static func == (lhs: FollowConfigDto, rhs: FollowConfigDto) -> Bool {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return DanceApiPigeonInternal.deepEquals(lhs.enabled, rhs.enabled) && DanceApiPigeonInternal.deepEquals(lhs.targetPersonId, rhs.targetPersonId) && DanceApiPigeonInternal.deepEquals(lhs.zoom, rhs.zoom) && DanceApiPigeonInternal.deepEquals(lhs.smoothFactor, rhs.smoothFactor)
+    return DanceApiPigeonInternal.deepEquals(lhs.enabled, rhs.enabled) && DanceApiPigeonInternal.deepEquals(lhs.targetPersonId, rhs.targetPersonId) && DanceApiPigeonInternal.deepEquals(lhs.zoom, rhs.zoom) && DanceApiPigeonInternal.deepEquals(lhs.smoothFactor, rhs.smoothFactor) && DanceApiPigeonInternal.deepEquals(lhs.outputAspectRatio, rhs.outputAspectRatio)
   }
 
   func hash(into hasher: inout Hasher) {
@@ -651,10 +655,11 @@ struct FollowConfigDto: Hashable, CustomStringConvertible {
     DanceApiPigeonInternal.deepHash(value: targetPersonId, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: zoom, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: smoothFactor, hasher: &hasher)
+    DanceApiPigeonInternal.deepHash(value: outputAspectRatio, hasher: &hasher)
   }
 
   public var description: String {
-    return "FollowConfigDto(enabled: \(String(describing: enabled)), targetPersonId: \(String(describing: targetPersonId)), zoom: \(String(describing: zoom)), smoothFactor: \(String(describing: smoothFactor)))"
+    return "FollowConfigDto(enabled: \(String(describing: enabled)), targetPersonId: \(String(describing: targetPersonId)), zoom: \(String(describing: zoom)), smoothFactor: \(String(describing: smoothFactor)), outputAspectRatio: \(String(describing: outputAspectRatio)))"
   }
 }
 

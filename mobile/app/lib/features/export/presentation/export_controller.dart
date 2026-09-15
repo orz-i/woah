@@ -103,8 +103,8 @@ class ExportController extends StateNotifier<ExportState> {
         faceOnlyPersonIds: project.faceOnlyPersonIds.toList(),
         effects: project.effects,
         follow: project.follow,
-        targetWidth: project.videoInfo.width,
-        targetHeight: project.videoInfo.height,
+        targetWidth: project.outputSize.width,
+        targetHeight: project.outputSize.height,
         targetFps: project.videoInfo.fps,
         processingProfile: processingProfile,
         // Android supports a runtime capture gate and starts with it disabled.

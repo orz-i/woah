@@ -6,6 +6,31 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('DanceNative DTO Mappers', () {
+    test(
+      'portrait follow preserves target and aspect through generated wire DTO',
+      () {
+        const follow = FollowConfig(
+          enabled: true,
+          targetPersonId: 7,
+          outputAspectRatio: 9 / 16,
+        );
+        final encoded = follow.toDto().encode();
+        final decoded = FollowConfigDto.decode(encoded);
+        expect(decoded.enabled, isTrue);
+        expect(decoded.targetPersonId, 7);
+        expect(decoded.outputAspectRatio, 9 / 16);
+        expect(decoded.zoom, 1);
+        expect(decoded.smoothFactor, .1);
+      },
+    );
+
+    test('disabled legacy follow has no requested output aspect', () {
+      final dto = const FollowConfig().toDto();
+      expect(dto.enabled, isFalse);
+      expect(dto.targetPersonId, isNull);
+      expect(dto.outputAspectRatio, isNull);
+    });
+
     test('VideoInfoDto toDomain mapper', () {
       final dto = VideoInfoDto(
         codedWidth: 1920,

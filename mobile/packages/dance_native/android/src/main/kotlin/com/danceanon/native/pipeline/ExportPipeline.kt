@@ -273,6 +273,8 @@ class ExportPipeline(
             var eglCore: EglCore? = null
             var eglSurface: android.opengl.EGLSurface? = null
             var glRenderer: GlRenderer? = null
+            var privacyRenderer: GlRenderer? = null
+            var privacyRenderTarget: com.danceanon.native.render.TextureRenderTarget? = null
             var surfaceTexture: SurfaceTexture? = null
             var decoder: VideoDecoder? = null
             var canonicalInferenceDecoder: CanonicalYuvInferenceDecoder? = null
@@ -317,8 +319,42 @@ class ExportPipeline(
                 eglSurface = surf
                 eglCore.makeCurrent(surf)
 
+                val trackingWidth = if (request.follow.enabled) videoInfo.displayWidth.toInt() else targetWidth
+                val trackingHeight = if (request.follow.enabled) videoInfo.displayHeight.toInt() else targetHeight
+                val postCropEnabled = request.follow.enabled &&
+                    request.follow.outputAspectRatio?.let { it.isFinite() && it > 0.0 } == true
+
                 glRenderer = GlRenderer()
                 glRenderer.initialize(targetWidth, targetHeight)
+
+                if (postCropEnabled) {
+                    val compositionSize = com.danceanon.native.camera.ReframeGeometry.postCropCompositionSize(
+                        sourceWidth = trackingWidth,
+                        sourceHeight = trackingHeight,
+                        targetWidth = targetWidth,
+                        targetHeight = targetHeight
+                    ) ?: throw IllegalArgumentException("Unable to compute post-crop composition size")
+                    privacyRenderer = GlRenderer().also {
+                        it.initialize(compositionSize.first, compositionSize.second)
+                    }
+                    privacyRenderTarget = com.danceanon.native.render.TextureRenderTarget(
+                        compositionSize.first,
+                        compositionSize.second
+                    )
+                    com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                        level = "INFO",
+                        component = "ExportPipeline",
+                        event = "POST_CROP_PRIVACY_COMPOSITION_ENABLED",
+                        fields = mapOf(
+                            "source_width" to trackingWidth,
+                            "source_height" to trackingHeight,
+                            "composition_width" to compositionSize.first,
+                            "composition_height" to compositionSize.second,
+                            "target_width" to targetWidth,
+                            "target_height" to targetHeight
+                        )
+                    )
+                }
 
                 val oesTextures = IntArray(1)
                 android.opengl.GLES20.glGenTextures(1, oesTextures, 0)
@@ -333,7 +369,9 @@ class ExportPipeline(
 
                 val inferenceFbo = com.danceanon.native.render.InferenceFbo(640)
                 val inferenceRenderer = com.danceanon.native.render.InferenceRenderer()
-                val mapper = com.danceanon.native.geometry.ModelCoordinateMapper(targetWidth, targetHeight, 640)
+                // Reframing changes only final composition. Inference and identity
+                // stay in the full visual source space, never in portrait output.
+                val mapper = com.danceanon.native.geometry.ModelCoordinateMapper(trackingWidth, trackingHeight, 640)
                 val profiler = com.danceanon.native.profiler.PipelineProfiler()
                 val inferencePixelDiagnostics = if (com.danceanon.native.diagnostics.DiagnosticsBuild.ENABLED) {
                     com.danceanon.native.diagnostics.InferencePixelDiagnostics(
@@ -381,6 +419,8 @@ class ExportPipeline(
                 var basePtsUs = -1L
                 var lastPresentationNs = -1L
                 val trackManager = TrackManager()
+                val reframeFollower = com.danceanon.native.camera.SmoothFollower()
+                var reframeInitialized = false
                 // Temporal fresh-class evidence has no exact person ID. It is safe
                 // only for the historical FULL_BODY-only compositor. In mixed mode
                 // it can label nearby FACE_ONLY detections as SELECTED and turn
@@ -423,6 +463,20 @@ class ExportPipeline(
                     }
                 }
                 val privacyClassTemporalTracker = com.danceanon.native.privacy.PrivacyClassTemporalTracker()
+                val followSeed = if (request.follow.enabled) {
+                    val targetId = request.follow.targetPersonId
+                        ?: throw IllegalArgumentException("Follow requires an explicit target person")
+                    val root = analysisMetadata?.persons?.firstOrNull { it.id.toLong() == targetId }
+                        ?: throw IllegalArgumentException("Follow target is missing from the analysis cache")
+                    val protectedIds = if (faceOnlyPersonIds.isEmpty()) fullBodyPersonIds else faceOnlyIdentityProtectedIds
+                    trackManager.setIdentityProtectedTrackIds(protectedIds + targetId.toInt())
+                    // Selecting a camera subject must never add a privacy mask.
+                    trackManager.setPrivacySelectedTrackIds(fullBodyPersonIds)
+                    com.danceanon.native.inference.FloatRect(
+                        root.bbox.left.toFloat(), root.bbox.top.toFloat(),
+                        root.bbox.right.toFloat(), root.bbox.bottom.toFloat()
+                    )
+                } else null
                 val profile = ProcessingProfile.fromName(request.processingProfile)
                 val frameStride = profile.inferenceStride
                 var lastProgressEmitTime = 0L
@@ -998,8 +1052,8 @@ class ExportPipeline(
                                                 resolveInitialTrackIdsFromAnalysis(
                                                     metadata = analysisMetadata,
                                                     detections = detections,
-                                                    targetWidth = targetWidth,
-                                                    targetHeight = targetHeight
+                                                    targetWidth = trackingWidth,
+                                                    targetHeight = trackingHeight
                                                 )
                                             } else {
                                                 null
@@ -1026,10 +1080,10 @@ class ExportPipeline(
                                         val cached = metadata.persons
                                         val costMatrix = Array(cached.size) { r ->
                                             val cPerson = cached[r]
-                                            val cLeft = (cPerson.bbox.left * targetWidth).toFloat()
-                                            val cTop = (cPerson.bbox.top * targetHeight).toFloat()
-                                            val cRight = (cPerson.bbox.right * targetWidth).toFloat()
-                                            val cBottom = (cPerson.bbox.bottom * targetHeight).toFloat()
+                                            val cLeft = (cPerson.bbox.left * trackingWidth).toFloat()
+                                            val cTop = (cPerson.bbox.top * trackingHeight).toFloat()
+                                            val cRight = (cPerson.bbox.right * trackingWidth).toFloat()
+                                            val cBottom = (cPerson.bbox.bottom * trackingHeight).toFloat()
                                             val cBox = com.danceanon.native.inference.FloatRect(cLeft, cTop, cRight, cBottom)
 
                                             FloatArray(detections.size) { c ->
@@ -1628,27 +1682,107 @@ class ExportPipeline(
                             }
                         }
 
-                        // 4. Render final anonymized frame to EGL surface (encoder input)
+                        // 4. Render privacy in full-frame source aspect first. Auto-reframe
+                        // is a second GPU pass over the already-protected RGBA frame so
+                        // crop geometry can never alter mask/sticker coordinates.
                         profiler.recordStage("renderEffects") {
-                            glRenderer.render(
-                                frameTexture = renderTexId,
-                                texMatrix = renderTexMatrix,
-                                persons = trackedList,
-                                selectedPersonIds = selectedIds,
-                                effects = request.effects,
-                                follow = request.follow,
-                                presentationTimeUs = ptsUs,
-                                textureType = renderTexType,
-                                freshPrivacyClassEvidence = freshPrivacyClassEvidence,
-                                freshSelectedCoveredTrackIds = freshSelectedCoveredTrackIds,
-                                suppressedSelectedPrivacyTrackIds = suppressedSelectedPrivacyTrackIds,
-                                preferFreshPrivacyClassPrimary = preferFreshPrivacyClassPrimary,
-                                expectedSelectedPrivacyCount = selectedIds.size,
-                                maxFallbackObservationAgeFrames = trackManager.getMaxMissedFrames(),
-                                additionalResolvedPrivacy = faceOnlyFrameResult?.resolvedPrivacy,
-                                faceStickerPlacements = faceOnlyFrameResult?.stickerPlacements.orEmpty(),
-                                tightMask = shouldUseTightFullBodyMaskForExport(selectedIds)
-                            )
+                            if (postCropEnabled) {
+                                val target = requireNotNull(privacyRenderTarget)
+                                val compositor = requireNotNull(privacyRenderer)
+                                val previousFramebuffer = target.bind()
+                                try {
+                                    compositor.render(
+                                        frameTexture = renderTexId,
+                                        texMatrix = renderTexMatrix,
+                                        persons = trackedList,
+                                        selectedPersonIds = selectedIds,
+                                        effects = request.effects,
+                                        follow = request.follow.copy(enabled = false),
+                                        presentationTimeUs = ptsUs,
+                                        textureType = renderTexType,
+                                        freshPrivacyClassEvidence = freshPrivacyClassEvidence,
+                                        freshSelectedCoveredTrackIds = freshSelectedCoveredTrackIds,
+                                        suppressedSelectedPrivacyTrackIds = suppressedSelectedPrivacyTrackIds,
+                                        preferFreshPrivacyClassPrimary = preferFreshPrivacyClassPrimary,
+                                        expectedSelectedPrivacyCount = selectedIds.size,
+                                        maxFallbackObservationAgeFrames = trackManager.getMaxMissedFrames(),
+                                        additionalResolvedPrivacy = faceOnlyFrameResult?.resolvedPrivacy,
+                                        faceStickerPlacements = faceOnlyFrameResult?.stickerPlacements.orEmpty(),
+                                        tightMask = shouldUseTightFullBodyMaskForExport(selectedIds),
+                                        sourceWidth = trackingWidth,
+                                        sourceHeight = trackingHeight
+                                    )
+                                } finally {
+                                    target.restore(previousFramebuffer)
+                                }
+
+                                val followTargetId = requireNotNull(request.follow.targetPersonId).toInt()
+                                val observed = trackedList.firstOrNull {
+                                    it.id == followTargetId && it.observedThisFrame
+                                }?.bbox?.let { box ->
+                                    com.danceanon.native.inference.FloatRect(
+                                        box.left / trackingWidth.toFloat(),
+                                        box.top / trackingHeight.toFloat(),
+                                        box.right / trackingWidth.toFloat(),
+                                        box.bottom / trackingHeight.toFloat()
+                                    )
+                                }
+                                val visualCrop = reframeFollower.cropForFrame(
+                                    target = observed ?: if (!reframeInitialized) followSeed else null,
+                                    presentationTimeUs = ptsUs,
+                                    sourceAspectRatio = trackingWidth.toFloat() / trackingHeight.toFloat(),
+                                    outputAspectRatio = requireNotNull(request.follow.outputAspectRatio).toFloat(),
+                                    zoom = request.follow.zoom.toFloat(),
+                                    smoothFactor = request.follow.smoothFactor.toFloat()
+                                )
+                                if (!reframeInitialized) {
+                                    com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                                        level = "INFO",
+                                        component = "ExportPipeline",
+                                        event = "POST_CROP_FIRST_FRAME",
+                                        fields = mapOf(
+                                            "target_person_id" to followTargetId,
+                                            "observed_target" to (observed != null),
+                                            "crop_left" to visualCrop.left,
+                                            "crop_top" to visualCrop.top,
+                                            "crop_right" to visualCrop.right,
+                                            "crop_bottom" to visualCrop.bottom
+                                        )
+                                    )
+                                }
+                                reframeInitialized = true
+                                val glCrop = com.danceanon.native.camera.ReframeGeometry
+                                    .visualTopLeftToScreenGl(visualCrop)
+                                glRenderer.renderBase(
+                                    frameTexture = target.textureId,
+                                    texMatrix = com.danceanon.native.camera.ReframeGeometry
+                                        .textureMatrixForScreenGlCrop(glCrop),
+                                    textureType = com.danceanon.native.render.SourceTextureType.TEXTURE_2D
+                                )
+                            } else {
+                                glRenderer.render(
+                                    frameTexture = renderTexId,
+                                    texMatrix = renderTexMatrix,
+                                    persons = trackedList,
+                                    selectedPersonIds = selectedIds,
+                                    effects = request.effects,
+                                    follow = request.follow,
+                                    presentationTimeUs = ptsUs,
+                                    textureType = renderTexType,
+                                    freshPrivacyClassEvidence = freshPrivacyClassEvidence,
+                                    freshSelectedCoveredTrackIds = freshSelectedCoveredTrackIds,
+                                    suppressedSelectedPrivacyTrackIds = suppressedSelectedPrivacyTrackIds,
+                                    preferFreshPrivacyClassPrimary = preferFreshPrivacyClassPrimary,
+                                    expectedSelectedPrivacyCount = selectedIds.size,
+                                    maxFallbackObservationAgeFrames = trackManager.getMaxMissedFrames(),
+                                    additionalResolvedPrivacy = faceOnlyFrameResult?.resolvedPrivacy,
+                                    faceStickerPlacements = faceOnlyFrameResult?.stickerPlacements.orEmpty(),
+                                    tightMask = shouldUseTightFullBodyMaskForExport(selectedIds),
+                                    sourceWidth = trackingWidth,
+                                    sourceHeight = trackingHeight,
+                                    initialFollowTarget = followSeed
+                                )
+                            }
                             renderedFrameCount++
                         }
 
@@ -2064,6 +2198,8 @@ class ExportPipeline(
                 try { audioCopier?.close() } catch (_: Throwable) {}
                 try { encoder?.close() } catch (_: Throwable) {}
                 try { faceOnlyPrivacyProcessor?.close() } catch (_: Throwable) {}
+                try { privacyRenderTarget?.close() } catch (_: Throwable) {}
+                try { privacyRenderer?.close() } catch (_: Throwable) {}
                 try { glRenderer?.close() } catch (_: Throwable) {}
                 try { eglCore?.close() } catch (_: Throwable) {}
                 try {
