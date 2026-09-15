@@ -21,10 +21,10 @@
 - 🎥 **智能镜头跟随 (Camera Follow)**：锁定指定舞者，利用平滑阻尼算法自动运镜缩放与居中构图。
 - ⚡ **移动端纯本地原生端侧引擎**：
   - **零云端依赖**：视频无需上传服务器，保护隐私且离线可用；
-  - **硬件加速链路**：`MediaCodec` 硬件解码/编码 + `OpenGL ES 2.0` 定制着色器流水线 + `ONNX Runtime` 神经网络加速；
+  - **硬件加速链路**：`MediaCodec` 硬件解码/编码 + `OpenGL ES 2.0` 定制着色器流水线 + `LiteRT` 端侧推理；
   - **实时渲染监看视窗**：在视频导出过程中支持静态帧实时监看与 FPS 性能显示。
 - 🖥️ **桌面与 Web 高精度引擎**：
-  - 基于 FastAPI + PyTorch + CUTIE / SAM2 的高精度分割追踪系统，支持交互式选人、首帧精修与批量渲染导出。
+  - 基于 FastAPI + PyTorch + CUTIE 的视频目标分割追踪系统，支持交互式选人、YOLO 首帧初始化与批量渲染导出。
 
 ---
 
@@ -45,7 +45,7 @@ dance-anonymizer/
 │   └── vendor/              # 第三方算法库 (CUTIE 等)
 ├── models/                  # 🧠 模型权重与导出脚本
 │   ├── pytorch/             # PyTorch 原生权重 (.pt)
-│   └── litert/              # 移动端优化 ONNX / TFLite 模型
+│   └── litert/              # 移动端 LiteRT / TFLite 模型
 ├── tools/                   # 🛠️ 辅助脚本 (模型导出、量化、基准测试)
 ├── testdata/                # 🧪 测试视频与 Golden 校验样本
 └── LICENSE                  # 📄 MIT 开源许可证书
@@ -66,8 +66,8 @@ dance-anonymizer/
 cd mobile/app
 flutter pub get
 
-# 确保移动端已置入 yolo11n-seg.onnx 资源
-# 位置：mobile/packages/dance_native/android/src/main/assets/yolo11n-seg.onnx
+# 将仓库中的 canonical YOLO LiteRT 模型同步到 Android assets
+python ../../tools/setup_models.py --android
 ```
 
 #### 3. 运行与构建
@@ -117,9 +117,9 @@ python desktop/app.py
 |---|---|
 | **移动端界面** | Flutter 3.x, Dart 3.x, Riverpod / Bloc, Pigeon IPC |
 | **移动端原生渲染** | Android MediaCodec, OpenGL ES 2.0 (GLSL), EGL, Kotlin Coroutines |
-| **移动端端侧推理** | ONNX Runtime Mobile, YOLOv11 Nano Segmentation, Kalman Filter |
+| **移动端端侧推理** | LiteRT, YOLOv11 Nano Segmentation, Kalman Filter |
 | **服务端 / 桌面端** | Python 3.10+, FastAPI, OpenCV, PyTorch, TorchVision |
-| **高精度追踪算法** | CUTIE (Video Object Segmentation), SAM2 (Segment Anything 2) |
+| **高精度追踪算法** | CUTIE (Video Object Segmentation) |
 
 ---
 

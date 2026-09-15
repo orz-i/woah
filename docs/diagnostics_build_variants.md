@@ -9,7 +9,6 @@ Woah diagnostics are a build capability, not a production algorithm feature.
 | Native diagnostics backend | Full writer, bundle exporter, artifact capture, tensor/YUV probes, cross-device reference diagnostics | Minimal no-op contract only where main code needs a type |
 | MethodChannel diagnostics | `DiagnosticsChannelBridge` handles create/share/clear bundle methods | Bridge always returns `false`; diagnostic method names are absent from the release implementation |
 | Export artifacts | `diagnosticJobId` is populated; pixel/tensor/Face diagnostics may run | `diagnosticJobId = null`; capture objects are not created |
-| SAM2 native log capture | Enabled for diagnostic builds | No diagnostics directory or process log capture |
 | Flutter diagnostic actions | Visible through `kDebugMode` | Compile-time unreachable and tree-shaken |
 
 Android variant implementations live under:

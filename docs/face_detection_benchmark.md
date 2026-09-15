@@ -2,7 +2,6 @@
 
 ## Status
 
-- SAM2: **BLOCKED**. Do not advance or unhide it.
 - YOLO: the only stable person detection/segmentation and identity baseline.
 - FULL_BODY production behavior remains on the existing YOLO/TrackManager compositor path.
 - Android FACE_ONLY is now production-wired for Preview and Export behind explicit

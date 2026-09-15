@@ -41,15 +41,14 @@ class AndroidModelStagingTest(unittest.TestCase):
             stage_android_models(self.root)
         self.assertFalse((self.root / ASSET_PATH).exists())
 
-    def test_absent_sam2_and_onnx_are_not_prerequisites(self):
+    def test_only_canonical_yolo_is_a_prerequisite(self):
         self.assertEqual({p.name for p in self.source.iterdir()}, {MODEL_NAMES[0]})
         report = stage_android_models(self.root)
         self.assertEqual(set(report["models"]), {MODEL_NAMES[0]})
 
     def test_unavailable_and_obsolete_source_files_are_not_processed(self):
         unused = (
-            "sam2_image_features.tflite", "sam2_init_step.tflite",
-            "sam2_temporal_step.tflite", "yolo11n-seg.onnx",
+            "legacy-video-segmentation.tflite", "yolo11n-seg.onnx",
         )
         for name in unused:
             (self.source / name).write_bytes(b"unavailable/obsolete: do not inspect or copy")
@@ -129,8 +128,6 @@ class AndroidModelStagingTest(unittest.TestCase):
         self.assertIn("python tools/setup_models.py --android", ci)
         self.assertIn("./gradlew :dance_native:testDebugUnitTest", ci)
         self.assertIn("flutter build apk --debug", ci)
-        self.assertNotIn("export_sam2", ci)
-        self.assertNotIn("export_yolo.py", ci)
         bootstrap = (root / "tools/setup_models.py").read_text(encoding="utf-8")
         self.assertNotIn("import onnx", bootstrap)
         self.assertNotIn("export_single_model", bootstrap)

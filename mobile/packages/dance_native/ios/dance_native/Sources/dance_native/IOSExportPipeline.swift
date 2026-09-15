@@ -397,12 +397,6 @@ final class IOSExportPipeline {
     guard !request.outputFilePath.isEmpty else {
       throw exportError("INVALID_ARGUMENT", "outputFilePath is required.")
     }
-    guard request.processingProfile.lowercased() != "sam2" else {
-      throw exportError(
-        "PLATFORM_NOT_SUPPORTED",
-        "iOS Phase 4 export currently supports the stable YOLO profile only."
-      )
-    }
     // Do not silently downgrade Android-only transform semantics in the first
     // iOS export closure. Unsupported effects are rejected explicitly.
     if request.follow.enabled || request.effects.skinWhiten > 0 || request.effects.legStretchEnabled {

@@ -187,7 +187,7 @@ val syncLiteRtModelAssets = tasks.register("syncLiteRtModelAssets") {
         val repoModelsDir = file("../../../../models/litert")
         if (repoModelsDir.exists()) {
             val litertFiles = listOf(
-                // SAM2 is unavailable; only the supported YOLO model is staged.
+                // Only the supported YOLO LiteRT model is staged.
                 "yolo11n-seg-fp16.tflite"
             )
             targetDir.mkdirs()

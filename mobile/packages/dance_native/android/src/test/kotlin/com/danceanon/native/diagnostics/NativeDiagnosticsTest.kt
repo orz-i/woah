@@ -127,9 +127,9 @@ class NativeDiagnosticsTest {
         NativeDiagnostics.initialize(mockContext)
 
         NativeDiagnostics.breadcrumb(
-            component = "SAM2",
+            component = "YOLO",
             stage = "SAM_GPU_COMPILE",
-            fields = mapOf("model" to "sam2_image_features.tflite")
+            fields = mapOf("model" to "yolo11n-seg-fp16.tflite")
         )
 
         val diagDir = NativeDiagnostics.getDiagnosticsDir()
@@ -139,9 +139,9 @@ class NativeDiagnosticsTest {
         assertTrue(breadcrumbFile.exists())
 
         val json = JSONObject(breadcrumbFile.readText())
-        assertEquals("SAM2", json.getString("component"))
+        assertEquals("YOLO", json.getString("component"))
         assertEquals("SAM_GPU_COMPILE", json.getString("stage"))
-        assertEquals("sam2_image_features.tflite", json.getJSONObject("fields").getString("model"))
+        assertEquals("yolo11n-seg-fp16.tflite", json.getJSONObject("fields").getString("model"))
     }
 
     @Test

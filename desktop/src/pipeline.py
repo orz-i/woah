@@ -1,9 +1,5 @@
-"""
-Phase 4a: 处理流水线 — YOLO + 可切换追踪引擎
-================================================
-追踪引擎: SAM 2 (默认) | Cutie (备选)
-"""
-import os, time, shutil
+"""桌面处理流水线 — YOLO 首帧检测 + Cutie 视频目标分割。"""
+import os, time
 from typing import List, Optional
 
 import cv2
@@ -69,13 +65,13 @@ class DanceAnonymizerPipeline:
         # ---- 配置 ----
         dilate_kernel_size = self.effect_config.get("dilate_kernel_size", 3)
         temporal_window = self.effect_config.get("temporal_window", 2)
-        engine_type = self.engine_config.get("type", "sam2")
+        engine_type = self.engine_config.get("type", "cutie")
         engine_model = self.engine_config.get("model_path",
-                         os.path.join(os.path.dirname(__file__), "..", "sam2_hiera_tiny.pt"))
+                         os.path.join(os.path.dirname(__file__), "..", "weights", "cutie-base-mega.pth"))
         if show_progress:
             print(f"[Pipeline] 追踪引擎: {engine_type}")
 
-        # ---- 步骤 1: 获取首帧 + 抽帧(仅SAM2) ----
+        # ---- 步骤 1: 获取首帧 ----
         if show_progress:
             print("[Pipeline] 步骤 1/4: 读取视频...")
         if progress_callback:
@@ -87,37 +83,13 @@ class DanceAnonymizerPipeline:
             cap.release()
             raise RuntimeError("无法读取首帧")
 
-        frames_dir = None
         actual_frames = total_frames
         if max_frames is not None and max_frames < total_frames:
             actual_frames = max_frames
-
-        if engine_type == "sam2":
-            task_dir = os.path.join(os.path.dirname(output_path) or "data/output")
-            frames_dir = os.path.join(task_dir, "_frames")
-            if os.path.exists(frames_dir):
-                shutil.rmtree(frames_dir, ignore_errors=True)
-            os.makedirs(frames_dir, exist_ok=True)
-            cv2.imwrite(os.path.join(frames_dir, "00000.jpg"),
-                        first_frame, [cv2.IMWRITE_JPEG_QUALITY, 95])
-            frame_idx = 1
-            while True:
-                if max_frames is not None and frame_idx >= max_frames: break
-                ret, frame = cap.read()
-                if not ret: break
-                cv2.imwrite(os.path.join(frames_dir, f"{frame_idx:05d}.jpg"),
-                            frame, [cv2.IMWRITE_JPEG_QUALITY, 95])
-                frame_idx += 1
-            cap.release()
-            actual_frames = frame_idx
-            cap = None
-            if show_progress:
-                print(f"[Pipeline]   抽帧: {actual_frames} 张 → {frames_dir}")
-        else:
-            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-            cap.read()
-            if show_progress:
-                print(f"[Pipeline]   Cutie 流式处理, 共 {actual_frames} 帧")
+        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+        cap.read()
+        if show_progress:
+            print(f"[Pipeline]   Cutie 流式处理, 共 {actual_frames} 帧")
 
         # ---- 步骤 2: 首帧检测 + 引擎初始化 ----
         if show_progress:
@@ -125,12 +97,10 @@ class DanceAnonymizerPipeline:
         if progress_callback:
             progress_callback({"step": 2, "step_name": "分析人物", "step_total": 4})
 
-        sam2_already_refined = False
         if precomputed_detections is not None:
             detections = precomputed_detections
-            sam2_already_refined = True
             if show_progress:
-                print(f"[Pipeline]   复用首帧检测: {len(detections)} 人 (含 SAM2 精修)")
+                print(f"[Pipeline]   复用首帧检测: {len(detections)} 人")
         else:
             detections = self._tracker.detect_first_frame(first_frame)
             if show_progress:
@@ -182,13 +152,7 @@ class DanceAnonymizerPipeline:
                     confidence=det.confidence, mask=mask_cropped, foot_y=det.foot_y))
             detections = adjusted_dets
 
-        if engine_type == "sam2":
-            engine.initialize_from_dir(frames_dir, init_frame,
-                                        detections, all_tracked_ids)
-        else:
-            if sam2_already_refined and hasattr(engine, '_sam2_ckpt'):
-                engine._sam2_ckpt = None
-            engine.initialize(init_frame, detections, all_tracked_ids)
+        engine.initialize(init_frame, detections, all_tracked_ids)
 
         # ---- 步骤 3: 追踪 + 渲染 ----
         if show_progress:
@@ -228,13 +192,8 @@ class DanceAnonymizerPipeline:
                     tqdm.write("  [取消]") if show_progress else None
                     break
 
-                if cap is not None:
-                    ret, frame = cap.read()
-                    if not ret: break
-                else:
-                    jpg_path = os.path.join(frames_dir, f"{f_idx:05d}.jpg")
-                    frame = cv2.imread(jpg_path)
-                    if frame is None: continue
+                ret, frame = cap.read()
+                if not ret: break
 
                 # 先跟随裁切，再 CUTIE/效果
                 work_frame = frame
@@ -377,11 +336,6 @@ class DanceAnonymizerPipeline:
                 os.remove(tmp_video)
             except OSError:
                 pass
-        if frames_dir and os.path.exists(frames_dir):
-            shutil.rmtree(frames_dir, ignore_errors=True)
-            if show_progress:
-                print(f"[Pipeline]   已清理: {frames_dir}")
-
         return output_path
 
     def reset(self):

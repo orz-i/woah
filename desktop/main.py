@@ -76,10 +76,10 @@ def main():
     }
 
     engine_config = {
-        "type": engine_cfg.get("engine", "sam2"),
+        "type": engine_cfg.get("engine", "cutie"),
         "model_path": engine_cfg.get("model_path",
                          os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                      "sam2_hiera_tiny.pt")),
+                                      "weights", "cutie-base-mega.pth")),
     }
 
     target_ids = None

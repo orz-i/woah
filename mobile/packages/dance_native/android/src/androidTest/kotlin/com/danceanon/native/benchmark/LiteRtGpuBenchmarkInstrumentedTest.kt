@@ -8,7 +8,6 @@ import com.danceanon.native.inference.YoloLiteRtSegmenter
 import com.danceanon.native.litert.LiteRtAccelerator
 import com.danceanon.native.litert.LiteRtModelRunner
 import com.danceanon.native.litert.LiteRtRunnerPolicy
-import com.danceanon.native.sam2.Sam2TensorContract
 import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith
 import kotlin.test.Test
@@ -214,89 +213,4 @@ class LiteRtGpuBenchmarkInstrumentedTest {
         )
     }
 
-    @Test
-    fun benchmarkSam2ImageFeaturesGpuVsCpu() = runBlocking {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        val dummyInput = FloatArray(1 * 3 * 1024 * 1024) { 0.5f }
-
-        // 1. Benchmark SAM2 Image Features STRICT_GPU
-        var gpuStats: BenchmarkStats? = null
-        try {
-            val runnerGpu = LiteRtModelRunner.fromAsset(
-                context = context,
-                assetPath = Sam2TensorContract.MODEL_IMAGE_FEATURES,
-                policy = LiteRtRunnerPolicy.STRICT_GPU
-            )
-            runnerGpu.initialize()
-            val inBufs = runnerGpu.getInputBuffers()
-            inBufs[0].writeFloat(dummyInput)
-
-            for (i in 0 until 2) {
-                runnerGpu.runInference()
-            }
-
-            val latencies = mutableListOf<Double>()
-            for (i in 0 until 10) {
-                val t0 = System.nanoTime()
-                runnerGpu.runInference()
-                val elapsedMs = (System.nanoTime() - t0) / 1_000_000.0
-                latencies.add(elapsedMs)
-            }
-
-            val compileMs = runnerGpu.runtimeInfo?.compileMs ?: 0L
-            val warmupMs = runnerGpu.runtimeInfo?.warmupMs ?: 0L
-            gpuStats = calculateStats(
-                modelName = "sam2_image_features.tflite",
-                requested = LiteRtAccelerator.GPU,
-                effective = runnerGpu.effectiveAccelerator,
-                compileMs = compileMs,
-                warmupMs = warmupMs,
-                latencies = latencies
-            )
-            Log.i("GPU_BENCHMARK", gpuStats.toString())
-            runnerGpu.close()
-        } catch (t: Throwable) {
-            Log.w("GPU_BENCHMARK", "SAM2 image_features STRICT_GPU failed: ${t.message}")
-        }
-
-        // 2. Benchmark SAM2 Image Features STRICT_CPU
-        val runnerCpu = LiteRtModelRunner.fromAsset(
-            context = context,
-            assetPath = Sam2TensorContract.MODEL_IMAGE_FEATURES,
-            policy = LiteRtRunnerPolicy.STRICT_CPU
-        )
-        runnerCpu.initialize()
-        val inBufsCpu = runnerCpu.getInputBuffers()
-        inBufsCpu[0].writeFloat(dummyInput)
-
-        for (i in 0 until 2) {
-            runnerCpu.runInference()
-        }
-
-        val cpuLatencies = mutableListOf<Double>()
-        for (i in 0 until 10) {
-            val t0 = System.nanoTime()
-            runnerCpu.runInference()
-            val elapsedMs = (System.nanoTime() - t0) / 1_000_000.0
-            cpuLatencies.add(elapsedMs)
-        }
-
-        val cpuCompileMs = runnerCpu.runtimeInfo?.compileMs ?: 0L
-        val cpuWarmupMs = runnerCpu.runtimeInfo?.warmupMs ?: 0L
-        val cpuStats = calculateStats(
-            modelName = "sam2_image_features.tflite",
-            requested = LiteRtAccelerator.CPU,
-            effective = runnerCpu.effectiveAccelerator,
-            compileMs = cpuCompileMs,
-            warmupMs = cpuWarmupMs,
-            latencies = cpuLatencies
-        )
-        Log.i("GPU_BENCHMARK", cpuStats.toString())
-        runnerCpu.close()
-
-        if (gpuStats != null) {
-            val speedup = if (gpuStats.p50Ms > 0) cpuStats.p50Ms / gpuStats.p50Ms else 0.0
-            Log.i("GPU_BENCHMARK", "[SAM2 Image Speedup] CPU p50: ${cpuStats.p50Ms}ms / GPU p50: ${gpuStats.p50Ms}ms = ${"%.2f".format(speedup)}x")
-        }
-    }
 }

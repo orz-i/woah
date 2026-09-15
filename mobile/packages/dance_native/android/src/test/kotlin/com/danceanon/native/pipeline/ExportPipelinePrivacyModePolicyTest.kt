@@ -59,7 +59,6 @@ class ExportPipelinePrivacyModePolicyTest {
         assertTrue(
             ExportPipeline.shouldReuseProductionCpuFallbackForCpuMt4Reference(
                 isDebugBuild = true,
-                isSam2Mode = false,
                 fullBodyPersonIds = setOf(1, 3),
                 faceOnlyPersonIds = emptySet(),
                 effectiveAccelerator = LiteRtAccelerator.CPU,
@@ -69,7 +68,6 @@ class ExportPipelinePrivacyModePolicyTest {
         assertFalse(
             ExportPipeline.shouldReuseProductionCpuFallbackForCpuMt4Reference(
                 isDebugBuild = true,
-                isSam2Mode = false,
                 fullBodyPersonIds = setOf(1, 3),
                 faceOnlyPersonIds = emptySet(),
                 effectiveAccelerator = LiteRtAccelerator.GPU,
@@ -79,7 +77,6 @@ class ExportPipelinePrivacyModePolicyTest {
         assertFalse(
             ExportPipeline.shouldReuseProductionCpuFallbackForCpuMt4Reference(
                 isDebugBuild = true,
-                isSam2Mode = false,
                 fullBodyPersonIds = setOf(1),
                 faceOnlyPersonIds = setOf(3),
                 effectiveAccelerator = LiteRtAccelerator.CPU,
@@ -89,7 +86,6 @@ class ExportPipelinePrivacyModePolicyTest {
         assertFalse(
             ExportPipeline.shouldReuseProductionCpuFallbackForCpuMt4Reference(
                 isDebugBuild = false,
-                isSam2Mode = false,
                 fullBodyPersonIds = setOf(1),
                 faceOnlyPersonIds = emptySet(),
                 effectiveAccelerator = LiteRtAccelerator.CPU,
@@ -99,17 +95,6 @@ class ExportPipelinePrivacyModePolicyTest {
         assertFalse(
             ExportPipeline.shouldReuseProductionCpuFallbackForCpuMt4Reference(
                 isDebugBuild = true,
-                isSam2Mode = true,
-                fullBodyPersonIds = setOf(1),
-                faceOnlyPersonIds = emptySet(),
-                effectiveAccelerator = LiteRtAccelerator.CPU,
-                effectiveCpuNumThreads = 4
-            )
-        )
-        assertFalse(
-            ExportPipeline.shouldReuseProductionCpuFallbackForCpuMt4Reference(
-                isDebugBuild = true,
-                isSam2Mode = false,
                 fullBodyPersonIds = setOf(1),
                 faceOnlyPersonIds = emptySet(),
                 effectiveAccelerator = LiteRtAccelerator.CPU,
@@ -123,7 +108,6 @@ class ExportPipelinePrivacyModePolicyTest {
         assertTrue(
             ExportPipeline.shouldPreferDebugFaceDeterministicCpuPrimary(
                 isDebugBuild = true,
-                isSam2Mode = false,
                 fullBodyPersonIds = emptySet(),
                 faceOnlyPersonIds = setOf(1, 3, 6)
             )
@@ -131,7 +115,6 @@ class ExportPipelinePrivacyModePolicyTest {
         assertFalse(
             ExportPipeline.shouldPreferDebugFaceDeterministicCpuPrimary(
                 isDebugBuild = false,
-                isSam2Mode = false,
                 fullBodyPersonIds = emptySet(),
                 faceOnlyPersonIds = setOf(1)
             )
@@ -139,15 +122,6 @@ class ExportPipelinePrivacyModePolicyTest {
         assertFalse(
             ExportPipeline.shouldPreferDebugFaceDeterministicCpuPrimary(
                 isDebugBuild = true,
-                isSam2Mode = true,
-                fullBodyPersonIds = emptySet(),
-                faceOnlyPersonIds = setOf(1)
-            )
-        )
-        assertFalse(
-            ExportPipeline.shouldPreferDebugFaceDeterministicCpuPrimary(
-                isDebugBuild = true,
-                isSam2Mode = false,
                 fullBodyPersonIds = setOf(4),
                 faceOnlyPersonIds = setOf(1)
             )
@@ -155,7 +129,6 @@ class ExportPipelinePrivacyModePolicyTest {
         assertFalse(
             ExportPipeline.shouldPreferDebugFaceDeterministicCpuPrimary(
                 isDebugBuild = true,
-                isSam2Mode = false,
                 fullBodyPersonIds = emptySet(),
                 faceOnlyPersonIds = emptySet()
             )

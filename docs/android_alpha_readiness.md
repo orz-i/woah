@@ -17,7 +17,7 @@
   - Flutter 单元与 Widget 测试：22/22 PASS
   - Android JVM 单元测试：53/53 PASS (含坐标约定与回归防护测试)
   - Python 跟踪与隐私度量：MOTA 100%, IDF1 100%, Exposure Frames = 0 (100% Coverage)
-  - Production CI：Model provisioning 确定性通过，ONNX 契约真实校验，Android Native 测试与 Debug APK 构建全绿。
+  - Production CI：Model provisioning 与 LiteRT 模型契约校验确定性通过，Android Native 测试与 Debug APK 构建全绿。
 
 
 ---
@@ -162,7 +162,7 @@
 - [ ] 接入 Firebase Crashlytics / Sentry 捕获 Native 与 Flutter 未捕获异常；
 - [ ] 针对 Android 13+ (`POST_NOTIFICATIONS`) 与 Android 14+ (`FOREGROUND_SERVICE_MEDIA_PROCESSING`) 权限进行真机动态授权验证；
 - [ ] 针对 5 款主流芯片平台 (Snapdragon 8 Gen 2/3, Dimensity 9200, Tensor G3, Exynos, 中端骁龙 6/7 系) 进行 4K 60fps 导出性能压测；
-- [ ] 完善 ProGuard / R8 混淆规则（重点保护 ONNX Runtime JNI、Pigeon 生成类与 MediaCodec 相关回调）。
+- [ ] 完善 ProGuard / R8 混淆规则（重点保护 Pigeon 生成类、LiteRT 运行时与 MediaCodec 相关回调）。
 
 ---
 

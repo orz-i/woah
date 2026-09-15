@@ -1,5 +1,5 @@
 """
-舞蹈视频智能打码/特效渲染系统 — FastAPI v5 (YOLO+SAM2)
+舞蹈视频智能打码/特效渲染系统 — FastAPI v5 (YOLO+Cutie)
 =========================================================
 交互: 上传 → 裁剪时长 → 调参预览 → 全片渲染
 启动: uvicorn api:app --host 0.0.0.0 --port 8002
@@ -12,7 +12,6 @@ from fastapi import FastAPI, UploadFile, File, Form, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "vendor", "sam2"))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "vendor", "Cutie"))
 
 from src.tracker import DanceTracker, TrackerConfig, TrackResult, auto_device
@@ -227,40 +226,11 @@ async def analyze(file: UploadFile = File(...), trim_start: float = Form(0), tri
         raw_results = tracker.detect_first_frame(best_frame)
         raw_results.sort(key=lambda t: (t.bbox[0] + t.bbox[2]) / 2.0)
 
-        # SAM 2 精修首帧 mask
-        sam2_masks = {}
-        try:
-            import torch as _torch
-            _orig_load = _torch.load
-            if not _torch.cuda.is_available():
-                _torch.load = lambda *a, **kw: _orig_load(*a, **{**kw, 'map_location': 'cpu'})
-            from hydra.core.global_hydra import GlobalHydra
-            if GlobalHydra.instance().is_initialized():
-                GlobalHydra.instance().clear()
-            from sam2.build_sam import build_sam2
-            from sam2.sam2_image_predictor import SAM2ImagePredictor
-            sam2_ckpt = os.path.join(BASE_DIR, "sam2_hiera_tiny.pt")
-            sam2 = build_sam2("sam2_hiera_t.yaml", ckpt_path=sam2_ckpt, device=auto_device())
-            predictor = SAM2ImagePredictor(sam2)
-            predictor.set_image(best_frame)
-            for tr in raw_results:
-                x1, y1, x2, y2 = tr.bbox
-                masks, _, _ = predictor.predict(
-                    box=np.array([[x1, y1, x2, y2]]), multimask_output=False)
-                sam2_masks[tr.track_id] = masks[0].astype(np.float32)
-            del sam2, predictor
-            if _torch.backends.mps.is_available():
-                _torch.mps.empty_cache()
-            _torch.load = _orig_load
-        except Exception as e:
-            pass  # SAM 2 精修跳过
-
         track_results = []
         for new_id, tr in enumerate(raw_results):
-            mask = sam2_masks.get(tr.track_id, tr.mask)
             track_results.append(TrackResult(
                 track_id=new_id, bbox=tr.bbox,
-                confidence=tr.confidence, mask=mask, foot_y=tr.foot_y,
+                confidence=tr.confidence, mask=tr.mask, foot_y=tr.foot_y,
             ))
         if not track_results:
             return JSONResponse({"error": "未检测到人物，请确保首帧画面中有人物出现"}, 400)
@@ -405,7 +375,7 @@ async def render(
                                           device=device or auto_device(), conf_threshold=0.3,
                                           verbose=False),
             effect_config={"dilate_kernel_size": max(1, min(thickness, 15))},
-            engine_config={"type": "cutie", "model_path": "sam2_hiera_tiny.pt"},
+            engine_config={"type": "cutie", "model_path": "weights/cutie-base-mega.pth"},
         )
 
         result = {}

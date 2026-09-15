@@ -22,10 +22,6 @@
     public <init>(android.content.Context, androidx.work.WorkerParameters);
 }
 
-# ONNX Runtime (CRITICAL: JNI symbols must be preserved)
--keep class ai.onnxruntime.** { *; }
--dontwarn ai.onnxruntime.**
-
 # Woah / Dance Native Bridge & DTOs
 -keep class com.danceanon.native.** { *; }
 -keep class com.danceanon.dance_native.** { *; }

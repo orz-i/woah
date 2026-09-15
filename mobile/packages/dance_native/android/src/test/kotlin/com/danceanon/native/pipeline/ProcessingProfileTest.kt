@@ -37,26 +37,6 @@ class ProcessingProfileTest {
     }
 
     @Test
-    fun testSam2ProfileUsesDynamicImageSizeAndStride() {
-        val profileDefault = ProcessingProfile.fromName("sam2")
-        assertEquals("sam2_balanced", profileDefault.name)
-        assertEquals(2, profileDefault.inferenceStride)
-        assertEquals(com.danceanon.native.sam2.Sam2TensorContract.IMAGE_SIZE, profileDefault.inputSize)
-        assertTrue(profileDefault.useSam2)
-
-        val profileQuality = ProcessingProfile.fromName("sam2_quality")
-        assertEquals("sam2_quality", profileQuality.name)
-        assertEquals(1, profileQuality.inferenceStride)
-        assertTrue(profileQuality.useSam2)
-
-        val profileSpeed = ProcessingProfile.fromName("sam2_speed")
-        assertEquals("sam2_speed", profileSpeed.name)
-        assertEquals(3, profileSpeed.inferenceStride)
-        assertTrue(profileSpeed.useSam2)
-    }
-
-
-    @Test
     fun testDefaultFallbackToQuality() {
         val nullProfile = ProcessingProfile.fromName(null)
         assertEquals(ProcessingProfile.QUALITY, nullProfile)

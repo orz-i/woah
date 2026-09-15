@@ -1,21 +1,11 @@
 package com.danceanon.native.litert
 
 import com.danceanon.native.bridge.DanceNativeException
-import com.danceanon.native.sam2.Sam2GpuCapabilityManager
-import com.danceanon.native.sam2.Sam2GpuState
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class LiteRtTelemetryTest {
-
-    @BeforeTest
-    fun setUp() {
-        Sam2GpuCapabilityManager.resetForTesting()
-    }
-
     @Test
     fun testLiteRtRuntimeInfoFields() {
         val info = LiteRtRuntimeInfo(
@@ -42,23 +32,14 @@ class LiteRtTelemetryTest {
     }
 
     @Test
-    fun testSam2GpuCapabilityManagerTelemetry() {
-        Sam2GpuCapabilityManager.markUnavailable("Driver unsupported: OpenCL error -1001")
-        assertEquals(Sam2GpuState.UNAVAILABLE, Sam2GpuCapabilityManager.getState())
-        val reason = Sam2GpuCapabilityManager.getUnavailableReason()
-        assertNotNull(reason)
-        assertTrue(reason!!.contains("Driver unsupported"))
-    }
-
-    @Test
     fun testStrictGpuExceptionMessagePreservesModelNameAndDetails() {
         val cause = RuntimeException("clCreateContext failed with -1")
         val ex = DanceNativeException(
             DanceNativeException.MODEL_INIT_FAILED,
-            "Failed strict GPU initialization for LiteRT model 'sam2_image_features.tflite': ${cause.message}",
+            "Failed strict GPU initialization for LiteRT model 'yolo11n-seg-fp16.tflite': ${cause.message}",
             cause
         )
-        assertTrue(ex.message!!.contains("sam2_image_features.tflite"))
+        assertTrue(ex.message!!.contains("yolo11n-seg-fp16.tflite"))
         assertTrue(ex.message!!.contains("clCreateContext failed with -1"))
         assertTrue(ex.message!!.contains("MODEL_INIT_FAILED"))
     }

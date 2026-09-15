@@ -747,28 +747,6 @@ object NativeDiagnostics {
 
         val ml = JSONObject().apply {
             put("litert_version", "2.1.5")
-            val modelsDir = File(context.filesDir, "litert_models")
-            val sam2ImgFile = File(modelsDir, "sam2_image_features.tflite")
-            val sam2Info = JSONObject().apply {
-                put("asset_path", "models/litert/sam2_image_features.tflite")
-                put("extracted_path", sam2ImgFile.absolutePath)
-                put("exists", sam2ImgFile.exists())
-                put("length", if (sam2ImgFile.exists()) sam2ImgFile.length() else 0L)
-                put("readable", sam2ImgFile.canRead())
-                put("last_modified", sam2ImgFile.lastModified())
-                put("extracted_sha256", if (sam2ImgFile.exists()) sha256(sam2ImgFile.inputStream()) else "")
-                val assetSha = try {
-                    context.assets.open("models/litert/sam2_image_features.tflite").use { sha256(it) }
-                } catch (_: Throwable) {
-                    ""
-                }
-                put("asset_sha256", assetSha)
-                put(
-                    "asset_matches_extracted",
-                    assetSha.isNotEmpty() && sam2ImgFile.exists() && assetSha == getString("extracted_sha256")
-                )
-            }
-            put("sam2_image_features", sam2Info)
         }
         json.put("ml_environment", ml)
 

@@ -2,8 +2,8 @@
 """Stage the supported Android YOLO/LiteRT model without re-exporting it.
 
 CI keeps using ``python tools/setup_models.py --android``. The canonical YOLO
-model is tracked under models/litert. SAM2 is unavailable and ONNX is obsolete:
-neither is required, inspected, copied, downloaded, or exported by this tool.
+model is tracked under models/litert. Legacy model families and conversion
+artifacts are not required, inspected, copied, downloaded, or exported by this tool.
 The separate Gradle face-detector model gate remains mandatory.
 """
 from __future__ import annotations
@@ -75,7 +75,7 @@ def stage_android_models(root: Path, source_dir: Path | None = None) -> dict:
         raise ValueError(
             "Android LiteRT provisioning is incomplete:\n - " + "\n - ".join(errors)
             + "\nRestore the tracked canonical YOLO file in models/litert or supply --source-dir."
-            + " SAM2 and ONNX are outside the supported build contract; do not provision them."
+            + " Only the canonical YOLO LiteRT model is part of the supported build contract."
         )
 
     target.mkdir(parents=True, exist_ok=True)
