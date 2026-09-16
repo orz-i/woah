@@ -8,7 +8,6 @@ import 'package:app/features/export/domain/export_state.dart';
 import 'package:app/features/export/presentation/export_controller.dart';
 import 'package:app/features/export/presentation/export_screen.dart';
 import 'package:app/repositories/native_processing_repository.dart';
-import 'package:app/core/widgets/immersive_flow_action.dart';
 import 'package:dance_domain/dance_domain.dart';
 import 'package:dance_native/dance_native.dart';
 
@@ -478,7 +477,10 @@ void main() {
         find.byKey(const ValueKey('export-cancel-action')),
         findsOneWidget,
       );
-      expect(find.byKey(ImmersiveFlowAction.nextControlKey), findsNothing);
+      expect(
+        find.byKey(const ValueKey('immersive-flow-next-control')),
+        findsNothing,
+      );
       expect(find.byIcon(Icons.close_rounded), findsOneWidget);
       expect(find.bySemanticsLabel('取消处理'), findsOneWidget);
 
@@ -573,7 +575,10 @@ void main() {
     await gesture.moveBy(const Offset(0, -108));
     await tester.pump();
 
-    expect(find.byKey(ImmersiveFlowAction.exitTargetKey), findsNothing);
+    expect(
+      find.byKey(const ValueKey('immersive-flow-exit-target')),
+      findsNothing,
+    );
     expect(find.bySemanticsLabel('松开返回'), findsNothing);
 
     await gesture.cancel();

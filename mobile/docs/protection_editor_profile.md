@@ -1,29 +1,26 @@
 # Protection Editor Profile
 
 The unified protection editor keeps reusable editing preferences in one local
-Profile so the normal workflow stays media-first instead of repeatedly exposing
-all controls.
+Profile, but Profile is no longer a visible editor section. The editor UI is
+organized by the real task the user is doing, while reusable defaults persist
+silently in the background.
 
 ## UX
 
-- The editor is a full-screen black media workspace. The entire screen carries
-  media context: a dimmed/blurred cover layer fills the background while an
-  uncropped foreground frame remains fully visible above the active drawer.
-- The default drawer snap is compact (about 24% of the viewport) and shows only
-  the current protection summary. The full tool deck is not built until the
-  user taps the handle/summary or pulls the drawer upward.
-- Export is a floating bottom action rather than an opaque drawer footer, so it
-  never consumes scroll height or clips Profile/trim controls.
-- `默认 Profile` is collapsed inside the tool drawer and shows a one-line
-  summary. Expanding it moves the drawer to the full editing snap and exposes
-  protection scope, effect style, parameters, output framing, resolution and
-  advanced effects.
-- Protection targets and trim remain outside the Profile because they are
-  video-specific actions.
-- Entering subject selection or switching to the full source view automatically
-  returns the drawer to the compact snap so the media becomes primary again.
-  Subject-selection guidance and cancel live in the media HUD rather than inside
-  the Profile form.
+- The page is a black media workspace with no page title.
+- Top chrome is limited to return on the left and a compact `导出` action on the
+  right. There is no large bottom primary button.
+- The media preview stays in a stable area above the editor controls and uses
+  the exact current output/source aspect without decorative blurred cover fill.
+- The lower workspace has four fixed tools: `保护`, `遮挡`, `画幅`, `舞段`.
+  Switching tools replaces the lower control content; it never opens a drawer or
+  expands/collapses a card.
+- `保护` owns person targets and FULL_BODY/FACE_ONLY scope.
+- `遮挡` owns mask/sticker style, strength, color, blur/mosaic detail and border.
+- `画幅` owns source vs 9:16 subject follow and source/FHD/HD resolution.
+- `舞段` always shows the trim range and timeline directly.
+- Subject-selection guidance and cancel live in the media HUD because choosing a
+  subject is an operation on the picture, not a settings form.
 
 ## Persisted fields
 
@@ -35,6 +32,9 @@ videos:
 - face-only effect configuration
 - output resolution preset (`source` / `FHD` / `HD`)
 - source vs 9:16 framing preference
+
+These saved values are distributed back into their corresponding tools. There
+is deliberately no Profile card or Profile settings screen in the editor.
 
 The Profile intentionally never stores person IDs, analysis cache IDs, trim
 bounds, or a follow target. If 9:16 is the saved preference, the next fresh
