@@ -4,6 +4,8 @@ import 'package:app/features/effect_editor/presentation/effect_editor_controller
 import 'package:app/features/export/presentation/export_screen.dart';
 import 'package:app/features/person_selection/domain/person_selection_state.dart';
 import 'package:app/features/person_selection/presentation/person_selection_controller.dart';
+import 'package:app/features/protection_editor/data/protection_profile_store.dart';
+import 'package:app/features/protection_editor/domain/protection_profile.dart';
 import 'package:app/features/protection_editor/presentation/protection_editor_screen.dart';
 import 'package:app/repositories/native_processing_repository.dart';
 import 'package:dance_domain/dance_domain.dart';
@@ -12,8 +14,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+Future<void> _expandProfile(WidgetTester tester) async {
+  final toggle = find.byKey(const ValueKey('protection-profile-toggle'));
+  await tester.ensureVisible(toggle);
+  await tester.pumpAndSettle();
+  await tester.tap(toggle);
+  await tester.pumpAndSettle();
+}
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+  });
+
   final now = DateTime.utc(2026, 9, 14);
   final project = DanceProject(
     id: 'unified-protection-test',
@@ -66,23 +81,41 @@ void main() {
     final stageSize = tester.getSize(
       find.byKey(const ValueKey('protection-editor-media-stage')),
     );
-    expect(stageSize.width, greaterThanOrEqualTo(180));
-    expect(stageSize.height, greaterThan(stageSize.width));
+    expect(stageSize.width, closeTo(360, 0.01));
+    expect(stageSize.height, closeTo(640, 0.01));
+    expect(
+      find.byKey(const ValueKey('protection-editor-fullscreen-canvas')),
+      findsOneWidget,
+    );
     expect(
       find.byKey(const ValueKey('protection-editor-tool-deck')),
       findsOneWidget,
     );
     expect(find.text('保护对象'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('protection-profile-section')),
+      findsOneWidget,
+    );
+    expect(find.text('默认 Profile'), findsOneWidget);
+    expect(find.text('全身 · 色块 · 原画 · 原画'), findsOneWidget);
+    expect(
+      find
+          .byKey(const ValueKey('protection-profile-config-body'))
+          .hitTestable(),
+      findsNothing,
+    );
+    final moreActions = tester.widget<PopupMenuButton<String>>(
+      find.byKey(const ValueKey('protection-target-more-actions')),
+    );
+    expect(moreActions.color, AppTheme.surfaceElevated);
+    expect(moreActions.surfaceTintColor, Colors.transparent);
+
+    await _expandProfile(tester);
     expect(find.text('保护范围'), findsOneWidget);
     expect(find.text('遮挡样式'), findsOneWidget);
     expect(find.text('全身保护'), findsOneWidget);
     expect(find.text('人脸保护'), findsOneWidget);
     expect(find.text('马赛克'), findsOneWidget);
-    final moreActions = tester.widget<PopupMenuButton<String>>(
-      find.byKey(const ValueKey('protection-target-more-actions')),
-    );
-    expect(moreActions.color, AppTheme.warmSurface);
-    expect(moreActions.surfaceTintColor, Colors.transparent);
     expect(find.text('分辨率'), findsOneWidget);
     expect(find.text('FHD'), findsOneWidget);
     expect(find.text('HD'), findsOneWidget);
@@ -94,11 +127,11 @@ void main() {
         .widget<SegmentedButton<OutputResolutionPreset>>(outputResolution);
     expect(
       resolutionControl.style?.backgroundColor?.resolve({WidgetState.selected}),
-      AppTheme.coralPale,
+      AppTheme.surfaceHigh,
     );
     expect(
       resolutionControl.style?.foregroundColor?.resolve({WidgetState.selected}),
-      AppTheme.coralStrong,
+      AppTheme.coral,
     );
     expect(
       find.byKey(const ValueKey('protection-editor-drawer-summary')),
@@ -122,6 +155,174 @@ void main() {
     expect(find.text('均衡'), findsNothing);
     expect(find.text('快速'), findsNothing);
     expect(find.byKey(ImmersiveFlowAction.nextControlKey), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('saved Profile applies to a fresh video and stays collapsed', (
+    tester,
+  ) async {
+    final repository = _FakeProtectionRepository();
+    final profileStore = _MemoryProtectionProfileStore(
+      profile: const ProtectionProfile(
+        privacyMode: ProjectPrivacyMode.faceOnly,
+        fullBodyEffects: EffectConfig(fillMode: FillMode.mosaic, opacity: 0.7),
+        faceOnlyEffects: EffectConfig(
+          fillMode: FillMode.blur,
+          blurStrength: 9,
+          faceStickerEnabled: false,
+        ),
+        outputResolutionPreset: OutputResolutionPreset.fhd,
+        portraitReframe: true,
+      ),
+    );
+    final container = ProviderContainer(
+      overrides: [
+        nativeRepositoryProvider.overrideWithValue(repository),
+        protectionProfileStoreProvider.overrideWithValue(profileStore),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(home: ProtectionEditorScreen(project: project)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final selection = container.read(personSelectionControllerProvider);
+    final effectState = container.read(effectEditorControllerProvider);
+    expect(profileStore.loadCount, 1);
+    expect(selection.privacyMode, ProjectPrivacyMode.faceOnly);
+    expect(selection.selectedPersonIds, isEmpty);
+    expect(selection.faceOnlyPersonIds, {0, 1});
+    expect(effectState.effects.fillMode, FillMode.blur);
+    expect(effectState.effects.blurStrength, 9);
+    expect(
+      effectState.project!.outputResolutionPreset,
+      OutputResolutionPreset.fhd,
+    );
+    expect(find.text('人脸 · 模糊 · 9:16 · FHD'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('reframe-subject-prompt')),
+      findsOneWidget,
+    );
+    expect(
+      find
+          .byKey(const ValueKey('protection-profile-config-body'))
+          .hitTestable(),
+      findsNothing,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Profile changes are persisted for the next video', (
+    tester,
+  ) async {
+    final repository = _FakeProtectionRepository();
+    final profileStore = _MemoryProtectionProfileStore();
+    final container = ProviderContainer(
+      overrides: [
+        nativeRepositoryProvider.overrideWithValue(repository),
+        protectionProfileStoreProvider.overrideWithValue(profileStore),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(home: ProtectionEditorScreen(project: project)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    container
+        .read(personSelectionControllerProvider.notifier)
+        .setProjectPrivacyMode(ProjectPrivacyMode.faceOnly);
+    final effectController = container.read(
+      effectEditorControllerProvider.notifier,
+    );
+    effectController.updateProtectionStyle(FillMode.blur);
+    effectController.updateBlurStrength(11);
+    effectController.updateOutputResolutionPreset(OutputResolutionPreset.hd);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(profileStore.saveCount, greaterThanOrEqualTo(1));
+    final saved = profileStore.profile!;
+    expect(saved.privacyMode, ProjectPrivacyMode.faceOnly);
+    expect(saved.faceOnlyEffects.fillMode, FillMode.blur);
+    expect(saved.faceOnlyEffects.blurStrength, 11);
+    expect(saved.outputResolutionPreset, OutputResolutionPreset.hd);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('saved Profile never overrides an existing configured project', (
+    tester,
+  ) async {
+    final repository = _FakeProtectionRepository();
+    final profileStore = _MemoryProtectionProfileStore(
+      profile: const ProtectionProfile(
+        privacyMode: ProjectPrivacyMode.faceOnly,
+        fullBodyEffects: EffectConfig(fillMode: FillMode.blur),
+        faceOnlyEffects: EffectConfig(
+          fillMode: FillMode.sticker,
+          faceStickerEnabled: true,
+          stickerAssetId: 'builtin:panda',
+        ),
+        outputResolutionPreset: OutputResolutionPreset.fhd,
+      ),
+    );
+    final cachedProject = project.copyWith(
+      analysisCacheId: 'existing-cache',
+      persons: const [
+        PersonTrack(
+          id: 0,
+          normalizedInitialBox: NormalizedRect(
+            left: .1,
+            top: .1,
+            right: .4,
+            bottom: .9,
+          ),
+          thumbnailPath: '',
+          confidence: .95,
+        ),
+      ],
+      selectedPersonIds: const {0},
+      effects: const EffectConfig(fillMode: FillMode.mosaic, opacity: .6),
+      outputResolutionPreset: OutputResolutionPreset.source,
+    );
+    final container = ProviderContainer(
+      overrides: [
+        nativeRepositoryProvider.overrideWithValue(repository),
+        protectionProfileStoreProvider.overrideWithValue(profileStore),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          home: ProtectionEditorScreen(project: cachedProject),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(profileStore.loadCount, 0);
+    final selection = container.read(personSelectionControllerProvider);
+    final effectState = container.read(effectEditorControllerProvider);
+    expect(selection.privacyMode, ProjectPrivacyMode.fullBody);
+    expect(selection.selectedPersonIds, {0});
+    expect(effectState.effects.fillMode, FillMode.mosaic);
+    expect(effectState.effects.opacity, .6);
+    expect(
+      effectState.project!.outputResolutionPreset,
+      OutputResolutionPreset.source,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -193,12 +394,14 @@ void main() {
     final handle = find.byKey(const ValueKey('bottom_control_drawer_handle'));
     expect(handle, findsOneWidget);
     final initialTop = tester.getTopLeft(handle).dy;
-    expect(initialTop, lessThan(450));
+    expect(initialTop, inInclusiveRange(470, 560));
     final stageRect = tester.getRect(
       find.byKey(const ValueKey('protection-editor-media-stage')),
     );
-    expect(stageRect.bottom, lessThan(initialTop));
-    expect(initialTop - stageRect.bottom, lessThan(120));
+    expect(stageRect.width, closeTo(390, 0.01));
+    // Player-style controls overlay the media instead of allocating a separate
+    // white editing area above the drawer.
+    expect(stageRect.bottom, greaterThan(initialTop));
 
     await tester.drag(handle, const Offset(0, 320));
     await tester.pumpAndSettle();
@@ -232,6 +435,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await _expandProfile(tester);
 
       final resolution = find.byKey(const ValueKey('output-resolution-preset'));
       await tester.ensureVisible(resolution);
@@ -449,6 +653,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await _expandProfile(tester);
 
     final effectController = container.read(
       effectEditorControllerProvider.notifier,
@@ -457,6 +662,7 @@ void main() {
     effectController.updateOpacity(0.55);
     await tester.pump(const Duration(milliseconds: 250));
 
+    await tester.ensureVisible(find.text('人脸保护'));
     await tester.tap(find.text('人脸保护'));
     await tester.pumpAndSettle();
     expect(
@@ -472,12 +678,14 @@ void main() {
     effectController.updateStickerScale(1.4);
     await tester.pump(const Duration(milliseconds: 250));
 
+    await tester.ensureVisible(find.text('全身保护'));
     await tester.tap(find.text('全身保护'));
     await tester.pumpAndSettle();
     var effects = container.read(effectEditorControllerProvider).effects;
     expect(effects.fillMode, FillMode.mosaic);
     expect(effects.opacity, 0.55);
 
+    await tester.ensureVisible(find.text('人脸保护'));
     await tester.tap(find.text('人脸保护'));
     await tester.pumpAndSettle();
     effects = container.read(effectEditorControllerProvider).effects;
@@ -510,7 +718,9 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await _expandProfile(tester);
 
+      await tester.ensureVisible(find.text('人脸保护'));
       await tester.tap(find.text('人脸保护'));
       await tester.pumpAndSettle();
       var selection = container.read(personSelectionControllerProvider);
@@ -632,6 +842,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await _expandProfile(tester);
       await tester.ensureVisible(find.byKey(const ValueKey('reframe-mode')));
       await tester.tap(find.text('竖屏 9:16'));
       await tester.pumpAndSettle();
@@ -786,6 +997,7 @@ void main() {
     expect(selection.privacyMode, ProjectPrivacyMode.faceOnly);
     expect(selection.faceOnlyPersonIds, {0, 1});
 
+    await _expandProfile(tester);
     await tester.ensureVisible(find.byKey(const ValueKey('reframe-mode')));
     await tester.tap(find.text('竖屏 9:16'));
     await tester.pumpAndSettle();
@@ -823,6 +1035,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await _expandProfile(tester);
       await tester.ensureVisible(find.byKey(const ValueKey('reframe-mode')));
       await tester.tap(find.text('竖屏 9:16'));
       await tester.pumpAndSettle();
@@ -992,6 +1205,26 @@ void main() {
     expect(find.text('编辑效果'), findsNothing);
     expect(tester.takeException(), isNull);
   });
+}
+
+class _MemoryProtectionProfileStore implements ProtectionProfileStore {
+  ProtectionProfile? profile;
+  int loadCount = 0;
+  int saveCount = 0;
+
+  _MemoryProtectionProfileStore({this.profile});
+
+  @override
+  Future<ProtectionProfile?> load() async {
+    loadCount += 1;
+    return profile;
+  }
+
+  @override
+  Future<void> save(ProtectionProfile profile) async {
+    saveCount += 1;
+    this.profile = profile;
+  }
 }
 
 class _FakeProtectionRepository implements NativeProcessingRepository {

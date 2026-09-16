@@ -13,12 +13,16 @@ class FlowBackButton extends StatelessWidget {
   final VoidCallback onPressed;
   final String tooltip;
   final double size;
+  final Color foregroundColor;
+  final Color backgroundColor;
 
   const FlowBackButton({
     super.key,
     required this.onPressed,
     this.tooltip = '返回上一步',
     this.size = AppTheme.minTouchTarget,
+    this.foregroundColor = AppTheme.warmTextPrimary,
+    this.backgroundColor = Colors.transparent,
   });
 
   @override
@@ -29,7 +33,7 @@ class FlowBackButton extends StatelessWidget {
       child: Tooltip(
         message: tooltip,
         child: Material(
-          color: Colors.transparent,
+          color: backgroundColor,
           shape: const CircleBorder(),
           child: InkWell(
             key: backButtonKey,
@@ -46,11 +50,11 @@ class FlowBackButton extends StatelessWidget {
               child: SizedBox(
                 width: size,
                 height: size,
-                child: const Center(
+                child: Center(
                   child: Icon(
                     Icons.arrow_back_ios_new_rounded,
                     size: 20,
-                    color: AppTheme.warmTextPrimary,
+                    color: foregroundColor,
                   ),
                 ),
               ),

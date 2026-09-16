@@ -17,6 +17,10 @@ class ImmersiveFlowAction extends StatefulWidget {
   final String nextSemanticsLabel;
   final IconData actionIcon;
   final String? actionCaption;
+  final Color actionCaptionColor;
+  final Color returnTargetBackgroundColor;
+  final Color returnTargetBorderColor;
+  final Color returnTargetForegroundColor;
 
   const ImmersiveFlowAction({
     super.key,
@@ -26,6 +30,10 @@ class ImmersiveFlowAction extends StatefulWidget {
     this.nextSemanticsLabel = '下一步，长按并上拉可返回',
     this.actionIcon = Icons.arrow_forward_rounded,
     this.actionCaption,
+    this.actionCaptionColor = AppTheme.warmTextSecondary,
+    this.returnTargetBackgroundColor = AppTheme.warmSurface,
+    this.returnTargetBorderColor = AppTheme.warmBorder,
+    this.returnTargetForegroundColor = AppTheme.warmTextPrimary,
   });
 
   @override
@@ -70,12 +78,12 @@ class _ImmersiveFlowActionState extends State<ImmersiveFlowAction> {
                         decoration: BoxDecoration(
                           color: _exitTargetArmed
                               ? AppTheme.coral
-                              : AppTheme.warmSurface.withValues(alpha: 0.96),
+                              : widget.returnTargetBackgroundColor,
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: _exitTargetArmed
                                 ? AppTheme.coral
-                                : AppTheme.warmBorder,
+                                : widget.returnTargetBorderColor,
                             width: 1.5,
                           ),
                           boxShadow: const [
@@ -90,7 +98,7 @@ class _ImmersiveFlowActionState extends State<ImmersiveFlowAction> {
                           Icons.arrow_back_rounded,
                           color: _exitTargetArmed
                               ? Colors.white
-                              : AppTheme.warmTextPrimary,
+                              : widget.returnTargetForegroundColor,
                           size: 28,
                         ),
                       ),
@@ -104,8 +112,8 @@ class _ImmersiveFlowActionState extends State<ImmersiveFlowAction> {
                 child: IgnorePointer(
                   child: Text(
                     widget.actionCaption!,
-                    style: const TextStyle(
-                      color: AppTheme.warmTextSecondary,
+                    style: TextStyle(
+                      color: widget.actionCaptionColor,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
