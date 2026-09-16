@@ -11,8 +11,8 @@ data class DeviceCapabilities(
     val gpuSupported: Boolean = true,
     val h264Encoder: Boolean = true,
     val hevcEncoder: Boolean = true,
-    val maxEncodeWidth: Int = 1920,
-    val maxEncodeHeight: Int = 1080,
+    val maxEncodeWidth: Int = 0,
+    val maxEncodeHeight: Int = 0,
     val cpuCores: Int = Runtime.getRuntime().availableProcessors(),
     val recommendedProfile: String = "balanced",
     val supportedProfiles: List<String> = listOf("balanced"),
@@ -36,8 +36,8 @@ data class DeviceCapabilities(
             // 2. Query hardware encoder capabilities via MediaCodecList
             var hasH264 = false
             var hasHevc = false
-            var maxWidth = 1920
-            var maxHeight = 1080
+            var maxWidth = 0
+            var maxHeight = 0
 
             try {
                 val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
@@ -62,8 +62,14 @@ data class DeviceCapabilities(
                 }
             } catch (e: Throwable) {
                 android.util.Log.w("DeviceCapabilities", "Failed to query MediaCodecList: ${e.message}")
-                hasH264 = true
-                hasHevc = api >= Build.VERSION_CODES.LOLLIPOP
+                // Unknown capability must stay unknown. ExportPlan treats zero
+                // dimensions as "no reliable cap" and preserves the requested
+                // contract so encoder failure is explicit rather than assuming
+                // a silent 1080p downgrade.
+                hasH264 = false
+                hasHevc = false
+                maxWidth = 0
+                maxHeight = 0
             }
 
             val recProfile = if (cores >= 8) "balanced" else "speed"

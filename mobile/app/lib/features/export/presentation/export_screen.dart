@@ -676,6 +676,31 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               ),
             ],
           ),
+          if (state.exportPlan?.hasFallback == true) ...[
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.high_quality_outlined,
+                  size: 17,
+                  color: AppTheme.warmTextSecondary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '设备编码能力限制，输出分辨率调整为 '
+                    '${state.exportPlan!.width}×${state.exportPlan!.height}；帧时间保持源视频。',
+                    style: const TextStyle(
+                      color: AppTheme.warmTextSecondary,
+                      fontSize: 12,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 14),
           const Divider(height: 1, color: AppTheme.warmBorder),
           const SizedBox(height: 12),

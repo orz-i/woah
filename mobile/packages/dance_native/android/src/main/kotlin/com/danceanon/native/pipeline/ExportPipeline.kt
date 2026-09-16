@@ -92,18 +92,18 @@ class ExportPipeline(
         val diagnosticJobId = if (com.danceanon.native.diagnostics.DiagnosticsBuild.ENABLED) jobId else null
         val videoInfo = VideoProbe.probe(context, sourceUri)
 
-        var w = if (request.targetWidth > 0) request.targetWidth.toInt() else videoInfo.displayWidth.toInt()
-        var h = if (request.targetHeight > 0) request.targetHeight.toInt() else videoInfo.displayHeight.toInt()
-
-        val maxDim = kotlin.math.max(w, h)
-        if (maxDim > 1920) {
-            val scale = 1920f / maxDim
-            w = (w * scale).toInt()
-            h = (h * scale).toInt()
+        val requestedWidth = if (request.targetWidth > 0) request.targetWidth.toInt() else videoInfo.displayWidth.toInt()
+        val requestedHeight = if (request.targetHeight > 0) request.targetHeight.toInt() else videoInfo.displayHeight.toInt()
+        // Flutter's shared ExportPlan owns capability fallback. Native export
+        // only normalizes to encoder-even dimensions and never applies a hidden
+        // 1080p/1920-long-edge downgrade.
+        val targetWidth = (requestedWidth - (requestedWidth and 1)).coerceAtLeast(2)
+        val targetHeight = (requestedHeight - (requestedHeight and 1)).coerceAtLeast(2)
+        val nominalOutputFps = when {
+            request.targetFps.isFinite() && request.targetFps > 0.0 -> request.targetFps
+            videoInfo.fps.isFinite() && videoInfo.fps > 0.0 -> videoInfo.fps
+            else -> 30.0
         }
-        val targetWidth = ((w + 1) / 2) * 2
-        val targetHeight = ((h + 1) / 2) * 2
-        val targetFps = if (request.targetFps in 1.0..60.0) request.targetFps.toFloat() else 30.0f
 
         val finalOutFile = if (request.outputFilePath.startsWith("/tmp") || !request.outputFilePath.startsWith("/")) {
             val exportDir = File(context.cacheDir, "exports")
@@ -121,7 +121,7 @@ class ExportPipeline(
         val trimStartUs = trimStartMs * 1000L
         val trimEndUs = trimEndMs * 1000L
         val trimmedDurationMs = (trimEndMs - trimStartMs).coerceAtLeast(1L)
-        val totalFrames = if (videoInfo.fps > 0) ((trimmedDurationMs / 1000.0) * videoInfo.fps).toInt().coerceAtLeast(1) else 300
+        val totalFrames = ((trimmedDurationMs / 1000.0) * nominalOutputFps).toInt().coerceAtLeast(1)
         val privacyModeByTrackId = com.danceanon.native.privacy.PersonPrivacyModeResolver.resolve(
             fullBodyPersonIds = request.selectedPersonIds.map { it.toInt() },
             faceOnlyPersonIds = request.faceOnlyPersonIds?.map { it.toInt() }
@@ -309,8 +309,8 @@ class ExportPipeline(
                 encoder = VideoEncoder(
                     width = targetWidth,
                     height = targetHeight,
-                    bitrate = request.videoBitrate.toInt().coerceAtLeast(4_000_000),
-                    fps = targetFps
+                    bitrate = request.videoBitrate.coerceIn(2_000_000L, 80_000_000L).toInt(),
+                    fps = nominalOutputFps.toFloat()
                 )
 
                 val inputSurface = encoder.prepare()
@@ -410,13 +410,13 @@ class ExportPipeline(
                 decoder.prepare()
 
                 var processedFrames = 0
-                val targetFps = if (videoInfo.fps > 0) videoInfo.fps else 30.0
-                val totalEstFrames = ((trimmedDurationMs / 1000.0) * targetFps).toLong().coerceAtLeast(1L)
-                val frameDurationNs = (1_000_000_000.0 / targetFps).toLong().coerceAtLeast(1_000_000L)
+                val totalEstFrames = ((trimmedDurationMs / 1000.0) * nominalOutputFps).toLong().coerceAtLeast(1L)
+                // Source PTS remains authoritative. This duration is only a
+                // deterministic monotonic fallback for duplicate/broken PTS.
+                val frameDurationNs = (1_000_000_000.0 / nominalOutputFps).toLong().coerceAtLeast(1_000L)
                 val stMatrix = FloatArray(16).apply {
                     android.opengl.Matrix.setIdentityM(this, 0)
                 }
-                var basePtsUs = -1L
                 var lastPresentationNs = -1L
                 val trackManager = TrackManager()
                 val reframeFollower = com.danceanon.native.camera.SmoothFollower()
@@ -679,7 +679,7 @@ class ExportPipeline(
                     fields = mapOf(
                         "target_width" to targetWidth,
                         "target_height" to targetHeight,
-                        "target_fps" to targetFps,
+                        "target_fps" to nominalOutputFps,
                         "yolo_requested_accelerator" to yoloRequestedAccelerator,
                         "yolo_effective_accelerator" to yoloEffectiveAccelerator.name,
                         "yolo_gpu_fallback_reason" to yoloFallbackReason
@@ -1848,10 +1848,10 @@ class ExportPipeline(
 
                     // 2. Swap buffers to push rendered frame to hardware encoder with smooth monotonic PTS
                     if (eglSurface != null) {
-                        if (basePtsUs < 0L) {
-                            basePtsUs = ptsUs
-                        }
-                        val relPtsNs = (ptsUs - basePtsUs).coerceAtLeast(0L) * 1000L
+                        // Keep video on the same trim-rebased source timeline as
+                        // AudioTrackCopier instead of shifting the first decoded
+                        // frame to t=0 independently.
+                        val relPtsNs = (ptsUs - trimStartUs).coerceAtLeast(0L) * 1000L
                         val presentationNs = if (relPtsNs > lastPresentationNs) {
                             relPtsNs
                         } else {
@@ -1881,9 +1881,9 @@ class ExportPipeline(
                         lastProgressEmitTime = now
                         val elapsedSec = (now - startTime) / 1000.0
                         val currentFps = if (elapsedSec > 0) processedFrames / elapsedSec else 0.0
-                        val durationUs = videoInfo.durationMs * 1000L
-                        val progress = if (durationUs > 0) {
-                            (ptsUs.toDouble() / durationUs).coerceIn(0.0, 0.99)
+                        val trimmedDurationUs = (trimEndUs - trimStartUs).coerceAtLeast(1L)
+                        val progress = if (ptsUs >= trimStartUs) {
+                            ((ptsUs - trimStartUs).toDouble() / trimmedDurationUs).coerceIn(0.0, 0.99)
                         } else {
                             (processedFrames.toDouble() / totalEstFrames).coerceIn(0.0, 0.99)
                         }
@@ -2001,7 +2001,7 @@ class ExportPipeline(
                             "source_fps" to videoInfo.fps,
                             "target_width" to targetWidth,
                             "target_height" to targetHeight,
-                            "target_fps" to targetFps,
+                            "target_fps" to nominalOutputFps,
                             "selected_ids" to fullBodyPersonIds.sorted(),
                             "face_only_ids" to faceOnlyPersonIds.sorted(),
                             "decoded_frames" to decodedFrameCount,

@@ -208,6 +208,80 @@ void main() {
   );
 
   test(
+    'ExportController preserves 4K 59.94 media contract when capability allows it',
+    () async {
+      final repository = _TrimCaptureRepository();
+      final controller = ExportController(repository);
+      addTearDown(controller.dispose);
+      final now = DateTime.utc(2026, 9, 16);
+      final project = DanceProject(
+        id: '4k-contract',
+        sourceUri: '/4k.mp4',
+        videoInfo: const VideoInfo(
+          codedWidth: 3840,
+          codedHeight: 2160,
+          displayWidth: 3840,
+          displayHeight: 2160,
+          fps: 59.94,
+          durationMs: 5000,
+          rotation: 0,
+          videoCodec: 'h264',
+          hasAudio: true,
+        ),
+        analysisCacheId: 'cache-4k',
+        selectedPersonIds: const {0},
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      await controller.startExport(project, '4k.mp4');
+
+      expect(repository.lastTargetWidth, 3840);
+      expect(repository.lastTargetHeight, 2160);
+      expect(repository.lastTargetFps, 59.94);
+      expect(repository.lastVideoBitrate, greaterThan(8_000_000));
+    },
+  );
+
+  test(
+    'ExportController applies encoder dimension capability explicitly',
+    () async {
+      final repository = _TrimCaptureRepository(
+        maxEncodeWidth: 1920,
+        maxEncodeHeight: 1080,
+      );
+      final controller = ExportController(repository);
+      addTearDown(controller.dispose);
+      final now = DateTime.utc(2026, 9, 16);
+      final project = DanceProject(
+        id: '4k-fallback',
+        sourceUri: '/4k.mp4',
+        videoInfo: const VideoInfo(
+          codedWidth: 3840,
+          codedHeight: 2160,
+          displayWidth: 3840,
+          displayHeight: 2160,
+          fps: 60,
+          durationMs: 5000,
+          rotation: 0,
+          videoCodec: 'h264',
+          hasAudio: true,
+        ),
+        analysisCacheId: 'cache-4k',
+        selectedPersonIds: const {0},
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      await controller.startExport(project, '4k-fallback.mp4');
+
+      expect(repository.lastTargetWidth, 1920);
+      expect(repository.lastTargetHeight, 1080);
+      expect(repository.lastTargetFps, 60);
+    },
+  );
+
+  test(
     'ExportController ignores preview frames while live preview is off',
     () async {
       final repository = _PreviewToggleRepository();
@@ -292,6 +366,50 @@ void main() {
       );
       expect(repository.livePreviewToggles.last, isFalse);
       expect(find.text('点击查看实时画面'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'export surfaces encoder resolution fallback instead of hiding it',
+    (tester) async {
+      final repository = _PreviewToggleRepository(
+        maxEncodeWidth: 1920,
+        maxEncodeHeight: 1080,
+      );
+      addTearDown(repository.dispose);
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+      final project = _testProject().copyWith(
+        videoInfo: const VideoInfo(
+          codedWidth: 3840,
+          codedHeight: 2160,
+          displayWidth: 3840,
+          displayHeight: 2160,
+          fps: 60,
+          durationMs: 12000,
+          rotation: 0,
+          videoCodec: 'h264',
+          hasAudio: true,
+        ),
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(home: ExportScreen(project: project)),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final plan = container.read(exportControllerProvider).exportPlan;
+      expect(plan?.fallbackReason, ExportFallbackReason.encoderDimensionLimit);
+      expect(plan?.width, 1920);
+      expect(plan?.height, 1080);
+      expect(find.textContaining('设备编码能力限制'), findsOneWidget);
+      expect(find.textContaining('1920×1080'), findsOneWidget);
     },
   );
 
@@ -621,12 +739,37 @@ DanceProject _testProject() {
 }
 
 class _TrimCaptureRepository implements NativeProcessingRepository {
+  final int maxEncodeWidth;
+  final int maxEncodeHeight;
   int? lastTrimStartMs;
   int? lastTrimEndMs;
   String? lastProcessingProfile;
   int? lastTargetWidth;
   int? lastTargetHeight;
+  double? lastTargetFps;
+  int? lastVideoBitrate;
   FollowConfig lastFollow = const FollowConfig();
+
+  _TrimCaptureRepository({
+    this.maxEncodeWidth = 3840,
+    this.maxEncodeHeight = 2160,
+  });
+
+  @override
+  Future<NativeCapabilitiesDto> getCapabilities() async =>
+      NativeCapabilitiesDto(
+        platform: 'test',
+        osVersion: '1',
+        gpuSupported: true,
+        h264Encoder: true,
+        hevcEncoder: true,
+        maxEncodeWidth: maxEncodeWidth,
+        maxEncodeHeight: maxEncodeHeight,
+        cpuCores: 8,
+        recommendedProfile: 'quality',
+        supportedProfiles: const ['quality'],
+        inferenceBackends: const ['test'],
+      );
 
   @override
   Stream<JobStatusDto> get progressStream => const Stream.empty();
@@ -654,6 +797,8 @@ class _TrimCaptureRepository implements NativeProcessingRepository {
     lastProcessingProfile = processingProfile;
     lastTargetWidth = targetWidth;
     lastTargetHeight = targetHeight;
+    lastTargetFps = targetFps;
+    lastVideoBitrate = videoBitrate;
     lastFollow = follow;
     return 'trim-job';
   }
@@ -663,6 +808,8 @@ class _TrimCaptureRepository implements NativeProcessingRepository {
 }
 
 class _PreviewToggleRepository implements NativeProcessingRepository {
+  final int maxEncodeWidth;
+  final int maxEncodeHeight;
   final StreamController<JobStatusDto> _progress =
       StreamController<JobStatusDto>.broadcast();
   final List<bool> livePreviewToggles = [];
@@ -672,8 +819,29 @@ class _PreviewToggleRepository implements NativeProcessingRepository {
   Completer<String>? startCompleter;
   Completer<void>? cancelCompleter;
 
+  _PreviewToggleRepository({
+    this.maxEncodeWidth = 3840,
+    this.maxEncodeHeight = 2160,
+  });
+
   @override
   Stream<JobStatusDto> get progressStream => _progress.stream;
+
+  @override
+  Future<NativeCapabilitiesDto> getCapabilities() async =>
+      NativeCapabilitiesDto(
+        platform: 'test',
+        osVersion: '1',
+        gpuSupported: true,
+        h264Encoder: true,
+        hevcEncoder: true,
+        maxEncodeWidth: maxEncodeWidth,
+        maxEncodeHeight: maxEncodeHeight,
+        cpuCores: 8,
+        recommendedProfile: 'quality',
+        supportedProfiles: const ['quality'],
+        inferenceBackends: const ['test'],
+      );
 
   @override
   Future<String> startExport({

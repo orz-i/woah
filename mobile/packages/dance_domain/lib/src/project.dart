@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'video_info.dart';
 import 'person_track.dart';
 import 'effects.dart';
@@ -33,17 +35,18 @@ class DanceProject {
         : videoInfo.aspectRatio;
   }
 
-  /// Exact 9:16, even encoder dimensions, without enlarging source pixels.
-  /// Original-aspect exports retain their existing size policy.
+  /// Ideal output geometry before encoder capability constraints are applied.
+  ///
+  /// Exact 9:16 reframing uses 18x32 integer units so it never enlarges source
+  /// pixels and always remains encoder-even. Resolution limits belong to the
+  /// shared ExportPlan rather than being silently hard-coded into this model.
   ({int width, int height}) get outputSize {
     if (!follow.enabled || follow.outputAspectRatio != 9 / 16) {
       return (width: videoInfo.width, height: videoInfo.height);
     }
-    final units = (videoInfo.width ~/ 18).clamp(
-      1,
-      (videoInfo.height ~/ 32).clamp(1, 60),
-    );
-    return (width: units * 18, height: units * 32);
+    final units = math.min(videoInfo.width ~/ 18, videoInfo.height ~/ 32);
+    final safeUnits = units.clamp(1, 1 << 20);
+    return (width: safeUnits * 18, height: safeUnits * 32);
   }
 
   final CropConfig? crop;

@@ -32,6 +32,8 @@ jobs:
           uv run python tools/evaluate_tracking.py
           uv run python tools/verify_video.py
 
+      - name: Verify shared export media contract
+        run: python tools/release/verify_export_media_contract.py
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4

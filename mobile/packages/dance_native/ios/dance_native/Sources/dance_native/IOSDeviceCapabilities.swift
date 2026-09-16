@@ -18,9 +18,13 @@ enum IOSDeviceCapabilities {
 
   static func detect() -> NativeCapabilitiesDto {
     let hardwareEncoders = availableHardwareEncoders()
-    let h264Supported = hardwareEncoders.contains { $0.codec == kCMVideoCodecType_H264 }
+    let h264Encoders = hardwareEncoders.filter { $0.codec == kCMVideoCodecType_H264 }
+    let h264Supported = !h264Encoders.isEmpty
     let hevcSupported = hardwareEncoders.contains { $0.codec == kCMVideoCodecType_HEVC }
-    let maxSize = maximumHardwareEncodeSize(for: hardwareEncoders)
+    // Export currently writes H.264, so the advertised geometry limit must be
+    // derived from H.264 hardware rather than a potentially more capable HEVC
+    // encoder that the export pipeline does not use.
+    let maxSize = maximumHardwareEncodeSize(for: h264Encoders)
     let inferenceBackends = IOSYoloRuntimeSupport.candidateBackendNames()
 
     return NativeCapabilitiesDto(

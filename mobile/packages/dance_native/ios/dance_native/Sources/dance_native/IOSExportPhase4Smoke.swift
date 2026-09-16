@@ -9,11 +9,11 @@ import ImageIO
 enum IOSExportPhase4Smoke {
   private static let sourceWidth = 320
   private static let sourceHeight = 180
-  private static let sourceFps: Int32 = 30
+  private static let sourceFps: Int32 = 60
   private static let sourceDurationSeconds = 1.0
   private static let trimStartMs: Int64 = 200
   private static let trimEndMs: Int64 = 800
-  private static let expectedOutputFrames: Int64 = 18
+  private static let expectedOutputFrames: Int64 = 36
 
   static func run() async throws -> [String: Any] {
     let fileManager = FileManager.default
@@ -164,24 +164,24 @@ enum IOSExportPhase4Smoke {
     let measuredFps = outputInfo.averageFrameIntervalSeconds > 0
       ? 1.0 / outputInfo.averageFrameIntervalSeconds
       : 0
-    guard measuredFps >= 28.5, measuredFps <= 31.5 else {
+    guard measuredFps >= 58.0, measuredFps <= 62.0 else {
       throw smokeError(
         "EXPORT_SMOKE_FPS_MISMATCH",
-        "Phase 4 measured output FPS \(measuredFps) is outside the 30fps gate."
+        "Phase 4 measured output FPS \(measuredFps) is outside the source-timing 60fps gate."
       )
     }
-    guard outputInfo.nominalFrameRate >= 29.0,
-          outputInfo.nominalFrameRate <= 31.0 else {
+    guard outputInfo.nominalFrameRate >= 58.0,
+          outputInfo.nominalFrameRate <= 62.0 else {
       throw smokeError(
         "EXPORT_SMOKE_NOMINAL_FPS_MISMATCH",
-        "Phase 4 nominal frame rate \(outputInfo.nominalFrameRate) is outside the 30fps gate."
+        "Phase 4 nominal frame rate \(outputInfo.nominalFrameRate) is outside the source-timing 60fps gate."
       )
     }
-    guard outputInfo.minFrameDurationSeconds >= 0.030,
-          outputInfo.minFrameDurationSeconds <= 0.037 else {
+    guard outputInfo.minFrameDurationSeconds >= 0.015,
+          outputInfo.minFrameDurationSeconds <= 0.0185 else {
       throw smokeError(
         "EXPORT_SMOKE_FRAME_DURATION_MISMATCH",
-        "Phase 4 minimum frame duration \(outputInfo.minFrameDurationSeconds)s is outside the 30fps gate."
+        "Phase 4 minimum frame duration \(outputInfo.minFrameDurationSeconds)s is outside the source-timing 60fps gate."
       )
     }
 
@@ -308,7 +308,7 @@ enum IOSExportPhase4Smoke {
       ),
       targetWidth: 1920,
       targetHeight: 1080,
-      targetFps: 30,
+      targetFps: Double(sourceFps),
       videoBitrate: 8_000_000,
       processingProfile: "quality",
       enableLivePreview: false,
@@ -396,7 +396,7 @@ enum IOSExportPhase4Smoke {
           outputInfo.hasAudio else {
       throw smokeError(
         "FACE_ONLY_EXPORT_SMOKE_MEDIA_MISMATCH",
-        "Phase 5 FACE_ONLY real-media output did not preserve the Phase 4 H.264/1080p30/audio contract."
+        "Phase 5 FACE_ONLY real-media output did not preserve the H.264/1080p/source-timing/audio contract."
       )
     }
 
@@ -493,7 +493,7 @@ enum IOSExportPhase4Smoke {
       ),
       targetWidth: 1920,
       targetHeight: 1080,
-      targetFps: 30,
+      targetFps: Double(sourceFps),
       videoBitrate: 8_000_000,
       processingProfile: "quality",
       enableLivePreview: false,
@@ -749,8 +749,8 @@ enum IOSExportPhase4Smoke {
         AVVideoHeightKey: sourceHeight,
         AVVideoCompressionPropertiesKey: [
           AVVideoAverageBitRateKey: 700_000,
-          AVVideoExpectedSourceFrameRateKey: 30,
-          AVVideoMaxKeyFrameIntervalKey: 30,
+          AVVideoExpectedSourceFrameRateKey: Int(sourceFps),
+          AVVideoMaxKeyFrameIntervalKey: Int(sourceFps),
         ],
       ]
     )

@@ -86,9 +86,11 @@ class ExportController extends StateNotifier<ExportState> {
         clearErrorMessage: true,
       );
 
+      final plan = await _resolveExportPlan(project);
+      state = state.copyWith(exportPlan: plan);
       AppLogger.d(
         'ExportController',
-        'Starting export for project ${project.id} (profile: quality)',
+        'Starting export for project ${project.id} with $plan (profile: quality)',
       );
       final livePreviewAtLaunch = state.showLivePreview;
       final jobId = await _repository.startExport(
@@ -99,9 +101,10 @@ class ExportController extends StateNotifier<ExportState> {
         faceOnlyPersonIds: project.faceOnlyPersonIds.toList(),
         effects: project.effects,
         follow: project.follow,
-        targetWidth: project.outputSize.width,
-        targetHeight: project.outputSize.height,
-        targetFps: project.videoInfo.fps,
+        targetWidth: plan.width,
+        targetHeight: plan.height,
+        targetFps: plan.nominalFps,
+        videoBitrate: plan.videoBitrate,
         processingProfile: 'quality',
         // Android supports a runtime capture gate and starts with it disabled.
         // Other platforms keep the previous eager-capture behavior so their
@@ -122,6 +125,26 @@ class ExportController extends StateNotifier<ExportState> {
         status: ExportJobState.failed,
         errorMessage: '启动导出失败: $e',
       );
+    }
+  }
+
+  Future<ExportPlan> _resolveExportPlan(DanceProject project) async {
+    try {
+      final capabilities = await _repository.getCapabilities();
+      return ExportPlan.forProject(
+        project,
+        maxEncodeWidth: capabilities.maxEncodeWidth.toInt(),
+        maxEncodeHeight: capabilities.maxEncodeHeight.toInt(),
+      );
+    } catch (error) {
+      // Capability discovery is advisory. If it is unavailable, keep the ideal
+      // source-derived contract and let the encoder fail explicitly rather than
+      // silently degrading resolution or frame timing.
+      AppLogger.w(
+        'ExportController',
+        'Encoder capability probe unavailable; preserving requested media contract: $error',
+      );
+      return ExportPlan.forProject(project);
     }
   }
 

@@ -21,6 +21,7 @@ class ExportState {
   final ExportJobState status;
   final String? jobId;
   final DanceProject? project;
+  final ExportPlan? exportPlan;
   final double progress;
   final int currentFrame;
   final int totalFrames;
@@ -34,6 +35,7 @@ class ExportState {
     this.status = ExportJobState.preparing,
     this.jobId,
     this.project,
+    this.exportPlan,
     this.progress = 0.0,
     this.currentFrame = 0,
     this.totalFrames = 0,
@@ -58,6 +60,7 @@ class ExportState {
     ExportJobState? status,
     String? jobId,
     DanceProject? project,
+    ExportPlan? exportPlan,
     double? progress,
     int? currentFrame,
     int? totalFrames,
@@ -73,6 +76,7 @@ class ExportState {
       status: status ?? this.status,
       jobId: jobId ?? this.jobId,
       project: project ?? this.project,
+      exportPlan: exportPlan ?? this.exportPlan,
       progress: progress ?? this.progress,
       currentFrame: currentFrame ?? this.currentFrame,
       totalFrames: totalFrames ?? this.totalFrames,

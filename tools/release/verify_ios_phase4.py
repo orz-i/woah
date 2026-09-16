@@ -40,15 +40,16 @@ def verify_media_pipeline() -> None:
         "AVAssetWriter",
         "AVAssetWriterInputPixelBufferAdaptor",
         "AVVideoCodecType.h264",
-        "let targetFps = 30.0",
-        "AVVideoExpectedSourceFrameRateKey: 30",
+        "request.targetFps.isFinite",
+        "AVVideoExpectedSourceFrameRateKey: expectedFrameRate",
         "AVVideoProfileLevelH264HighAutoLevel",
         "kAudioFormatMPEG4AAC",
         "kAudioFormatLinearPCM",
         "reader.timeRange = timeRange",
         "trimStartMs",
         "trimEndMs",
-        "CMTimeSubtract(",
+        "CMTimeSubtract(sourcePTS, trimStart)",
+        "withPresentationTime: presentation",
         "CMSampleBufferCreateCopyWithNewTiming",
         "preferredTransform",
         "IOSYoloRunner()",
@@ -68,6 +69,12 @@ def verify_media_pipeline() -> None:
     ):
         check(token in pipeline, f"Phase 4 export pipeline missing: {token}")
 
+    check(
+        "let targetFps = 30.0" not in pipeline
+        and "timescale: 30" not in pipeline
+        and "longest > 1920" not in pipeline,
+        "iOS export must not reintroduce fixed 30fps timing or a hidden 1920-pixel cap",
+    )
     check(
         "typealias InferenceProvider" in pipeline
         and "if let inferenceProvider" in pipeline
@@ -202,10 +209,10 @@ def verify_real_video_gate() -> None:
         "inferenceProvider: provider",
         "targetWidth: 1920",
         "targetHeight: 1080",
-        "targetFps: 30",
+        "targetFps: Double(sourceFps)",
         "trimStartMs: trimStartMs",
         "trimEndMs: trimEndMs",
-        "expectedOutputFrames: Int64 = 18",
+        "expectedOutputFrames: Int64 = 36",
         "finalStayedHiddenDuringProgress",
         "outputInfo.hasAudio",
         "outputInfo.audioDurationSeconds >= 0.50",
@@ -214,8 +221,8 @@ def verify_real_video_gate() -> None:
         "kCVPixelFormatType_32BGRA",
         "CMSampleBufferGetPresentationTimeStamp",
         "timestamps[index] <= timestamps[index - 1]",
-        "outputInfo.nominalFrameRate >= 29.0",
-        "outputInfo.minFrameDurationSeconds >= 0.030",
+        "outputInfo.nominalFrameRate >= 58.0",
+        "outputInfo.minFrameDurationSeconds >= 0.015",
         "readOutputCenterPixel",
         "missingObservationCount",
         "coordinator.cancel(jobId: cancelJobId)",
@@ -235,6 +242,7 @@ def verify_real_video_gate() -> None:
         "Phase 4 Simulator runner must require both GPU and real-video export markers",
     )
     for token in (
+        "verify_export_media_contract.py",
         "verify_ios_phase3.py",
         "verify_ios_phase4.py",
         "compile_phase3_metal.py",

@@ -5,6 +5,7 @@ import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.view.Surface
 import java.nio.ByteBuffer
+import kotlin.math.roundToInt
 
 class VideoEncoder(
     private val width: Int,
@@ -23,7 +24,10 @@ class VideoEncoder(
         val format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height).apply {
             setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
             setInteger(MediaFormat.KEY_BIT_RATE, bitrate)
-            setInteger(MediaFormat.KEY_FRAME_RATE, fps.toInt().coerceAtLeast(1))
+            // MediaCodec exposes an integer nominal frame-rate hint. Round
+            // 29.97/59.94 to 30/60 instead of truncating to 29/59; actual frame
+            // timing remains driven by source presentation timestamps.
+            setInteger(MediaFormat.KEY_FRAME_RATE, fps.roundToInt().coerceAtLeast(1))
             setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, iFrameInterval)
         }
 

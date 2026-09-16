@@ -59,6 +59,7 @@ def main() -> int:
         raise SystemExit("Phase 4 macOS gate must run on macOS")
 
     for verifier in (
+        "tools/release/verify_export_media_contract.py",
         "tools/release/verify_ios_phase2.py",
         "tools/release/verify_ios_phase3.py",
         "tools/release/verify_ios_phase4.py",

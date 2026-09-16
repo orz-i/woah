@@ -63,7 +63,6 @@ void main() {
         expect(output.width * 16, output.height * 9);
         expect(output.width, lessThanOrEqualTo(size.$1));
         expect(output.height, lessThanOrEqualTo(size.$2));
-        expect(output.height, lessThanOrEqualTo(1920));
       }
     },
   );

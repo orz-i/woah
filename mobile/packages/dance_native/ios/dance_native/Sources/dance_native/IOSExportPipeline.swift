@@ -88,6 +88,7 @@ final class IOSExportPipeline {
     let audioTrack = try await asset.loadTracks(withMediaType: .audio).first
     let naturalSize = try await videoTrack.load(.naturalSize)
     let preferredTransform = try await videoTrack.load(.preferredTransform)
+    let sourceNominalFrameRate = Double(try await videoTrack.load(.nominalFrameRate))
     let displaySize = transformedSize(naturalSize, transform: preferredTransform)
 
     let durationMs = Int64((durationSeconds * 1000.0).rounded())
@@ -105,9 +106,17 @@ final class IOSExportPipeline {
       request: request,
       displaySize: displaySize
     )
-    let targetFps = 30.0
+    let targetFps: Double
+    if request.targetFps.isFinite, request.targetFps > 0 {
+      targetFps = request.targetFps
+    } else if sourceNominalFrameRate.isFinite, sourceNominalFrameRate > 0 {
+      targetFps = sourceNominalFrameRate
+    } else {
+      targetFps = 30.0
+    }
     let totalFrames = max(1, Int64(floor(trimmedDurationSeconds * targetFps + 0.0001)))
-    let bitrate = max(2_000_000, min(20_000_000, Int(request.videoBitrate)))
+    let bitrate = max(2_000_000, min(80_000_000, Int(request.videoBitrate)))
+    let expectedFrameRate = max(1, Int(targetFps.rounded()))
     let output = try outputURLs(request: request)
     try? fileManager.removeItem(at: output.temp)
 
@@ -121,8 +130,8 @@ final class IOSExportPipeline {
         AVVideoHeightKey: target.height,
         AVVideoCompressionPropertiesKey: [
           AVVideoAverageBitRateKey: bitrate,
-          AVVideoExpectedSourceFrameRateKey: 30,
-          AVVideoMaxKeyFrameIntervalKey: 60,
+          AVVideoExpectedSourceFrameRateKey: expectedFrameRate,
+          AVVideoMaxKeyFrameIntervalKey: max(1, expectedFrameRate * 2),
           AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel,
         ],
       ]
@@ -239,17 +248,23 @@ final class IOSExportPipeline {
 
       let startedAt = CFAbsoluteTimeGetCurrent()
       var outputFrameIndex: Int64 = 0
-      var lastPixelBuffer: CVPixelBuffer?
+      var sawVideoFrame = false
+      var lastPresentation = CMTime.invalid
+      let fallbackFrameDuration = CMTime(
+        seconds: 1.0 / targetFps,
+        preferredTimescale: 60_000
+      )
       while let sample = videoReader.output.copyNextSampleBuffer() {
         if cancellation.isCancelled { throw IOSExportPipelineError.cancelled }
         let sourcePTS = CMSampleBufferGetPresentationTimeStamp(sample)
-        let relative = CMTimeSubtract(sourcePTS, trimStart)
-        let relativeSeconds = max(0, CMTimeGetSeconds(relative))
-        let dueIndex = min(
-          totalFrames - 1,
-          Int64(floor(relativeSeconds * targetFps + 0.0001))
-        )
-        guard dueIndex >= outputFrameIndex else { continue }
+        var presentation = CMTimeSubtract(sourcePTS, trimStart)
+        if !presentation.isValid || CMTimeCompare(presentation, .zero) < 0 {
+          presentation = .zero
+        }
+        if CMTimeCompare(presentation, trimmedDuration) >= 0 { continue }
+        if lastPresentation.isValid, CMTimeCompare(presentation, lastPresentation) <= 0 {
+          presentation = CMTimeAdd(lastPresentation, fallbackFrameDuration)
+        }
         guard let sourcePixelBuffer = CMSampleBufferGetImageBuffer(sample) else { continue }
         let frame = try orientedImage(
           pixelBuffer: sourcePixelBuffer,
@@ -344,45 +359,31 @@ final class IOSExportPipeline {
           width: target.width,
           height: target.height
         )
-        lastPixelBuffer = outputPixelBuffer
 
-        while outputFrameIndex <= dueIndex && outputFrameIndex < totalFrames {
-          try waitUntilReady(videoInput, cancellation: cancellation)
-          let presentation = CMTime(value: outputFrameIndex, timescale: 30)
-          guard adaptor.append(outputPixelBuffer, withPresentationTime: presentation) else {
-            throw writerError(writer, fallback: "Failed to append an iOS export video frame.")
-          }
-          outputFrameIndex += 1
-          emitProgress(
-            jobId: jobId,
-            currentFrame: outputFrameIndex,
-            totalFrames: totalFrames,
-            startedAt: startedAt,
-            onStatus: onStatus
-          )
-        }
-      }
-      if videoReader.reader.status == .failed {
-        throw readerError(videoReader.reader, fallback: "iOS video decoding failed.")
-      }
-      guard let lastPixelBuffer else {
-        throw exportError("DECODE_FRAME_FAILED", "No video frames were decoded in the trim range.")
-      }
-      while outputFrameIndex < totalFrames {
-        if cancellation.isCancelled { throw IOSExportPipelineError.cancelled }
         try waitUntilReady(videoInput, cancellation: cancellation)
-        let presentation = CMTime(value: outputFrameIndex, timescale: 30)
-        guard adaptor.append(lastPixelBuffer, withPresentationTime: presentation) else {
-          throw writerError(writer, fallback: "Failed to pad the final iOS export frame.")
+        guard adaptor.append(outputPixelBuffer, withPresentationTime: presentation) else {
+          throw writerError(writer, fallback: "Failed to append an iOS export video frame.")
         }
+        lastPresentation = presentation
+        sawVideoFrame = true
         outputFrameIndex += 1
         emitProgress(
           jobId: jobId,
           currentFrame: outputFrameIndex,
           totalFrames: totalFrames,
+          mediaProgress: min(
+            0.99,
+            max(0, CMTimeGetSeconds(presentation) / trimmedDurationSeconds)
+          ),
           startedAt: startedAt,
           onStatus: onStatus
         )
+      }
+      if videoReader.reader.status == .failed {
+        throw readerError(videoReader.reader, fallback: "iOS video decoding failed.")
+      }
+      guard sawVideoFrame else {
+        throw exportError("DECODE_FRAME_FAILED", "No video frames were decoded in the trim range.")
       }
       videoInput.markAsFinished()
 
@@ -447,20 +448,11 @@ final class IOSExportPipeline {
     var width = Int(request.targetWidth)
     var height = Int(request.targetHeight)
     if width <= 0 || height <= 0 {
-      if displaySize.height > displaySize.width {
-        width = 1080
-        height = 1920
-      } else {
-        width = 1920
-        height = 1080
-      }
+      width = max(2, Int(abs(displaySize.width).rounded(.down)))
+      height = max(2, Int(abs(displaySize.height).rounded(.down)))
     }
-    let longest = max(width, height)
-    if longest > 1920 {
-      let scale = 1920.0 / Double(longest)
-      width = max(2, Int((Double(width) * scale).rounded()))
-      height = max(2, Int((Double(height) * scale).rounded()))
-    }
+    // The shared ExportPlan already applies encoder capability fallback. Keep
+    // this layer deterministic and only normalize to even H.264 dimensions.
     width = max(2, (width / 2) * 2)
     height = max(2, (height / 2) * 2)
     return (width, height)
@@ -707,6 +699,7 @@ final class IOSExportPipeline {
     jobId: String,
     currentFrame: Int64,
     totalFrames: Int64,
+    mediaProgress: Double? = nil,
     startedAt: CFAbsoluteTime,
     onStatus: (JobStatusDto) -> Void
   ) {
@@ -717,7 +710,7 @@ final class IOSExportPipeline {
       currentFrame: currentFrame,
       totalFrames: totalFrames,
       fps: Double(currentFrame) / elapsed,
-      progress: min(1, Double(currentFrame) / Double(max(1, totalFrames))),
+      progress: mediaProgress ?? min(1, Double(currentFrame) / Double(max(1, totalFrames))),
       outputUri: nil,
       currentPreviewPath: nil,
       errorCode: nil,

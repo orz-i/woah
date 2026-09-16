@@ -6,6 +6,8 @@ on:
     paths:
       - 'mobile/app/**'
       - 'mobile/packages/dance_native/**'
+      - 'mobile/packages/dance_domain/**'
+      - 'tools/release/verify_export_media_contract.py'
       - 'tools/release/verify_ios_phase0.py'
       - 'tools/release/verify_ios_phase1.py'
       - '.github/workflows/ios-cloud.yml'
@@ -14,6 +16,8 @@ on:
     paths:
       - 'mobile/app/**'
       - 'mobile/packages/dance_native/**'
+      - 'mobile/packages/dance_domain/**'
+      - 'tools/release/verify_export_media_contract.py'
       - 'tools/release/verify_ios_phase0.py'
       - 'tools/release/verify_ios_phase1.py'
       - '.github/workflows/ios-cloud.yml'
@@ -55,6 +59,7 @@ jobs:
 
       - name: Verify repository iOS contracts
         run: |
+          python tools/release/verify_export_media_contract.py
           python tools/release/verify_ios_phase0.py
           python tools/release/verify_ios_phase1.py
 

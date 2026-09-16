@@ -986,3 +986,23 @@ battery draw, long-video background transitions, or performance tuning because
 shared remote-device conditions introduce noise. Those items can remain a
 later release-candidate gate when physical Apple hardware becomes available;
 they do not block architecture/feature implementation now.
+
+## Current export media contract (post-Phase 7)
+
+The original Phase 4 `1080p/30` limit above is historical acceptance scope, not
+the current product policy. Mobile export now uses the shared `ExportPlan`
+documented in `mobile/docs/export_media_contract.md`:
+
+- desired output geometry is source-derived and constrained once by reported
+  encoder capability;
+- iOS no longer applies an independent 1920-pixel long-edge cap;
+- each decoded source video sample is encoded once with its trim-rebased source
+  PTS, so 24/25/29.97/50/59.94/60 and VFR input are not synthesized onto a
+  fixed 30fps timeline;
+- `targetFps` is only the nominal encoder/progress hint and invalid values fall
+  back to the source nominal rate, then 30 if unavailable;
+- H.264 bitrate scales with planned resolution and cadence up to the current
+  80 Mbps quality ceiling.
+
+The Phase 4 real-media Simulator fixture now runs at 60fps specifically to guard
+against accidentally restoring the original fixed-30fps writer behavior.
