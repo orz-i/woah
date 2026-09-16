@@ -25,7 +25,8 @@ def main() -> int:
     metal = args.output_dir / "WoahPhase3Preview.metal"
     air = args.output_dir / "WoahPhase3Preview.air"
     metallib = args.output_dir / "WoahPhase3Preview.metallib"
-    metal.write_text(extract(), encoding="utf-8", newline="\n")
+    with metal.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(extract())
 
     run([
         "xcrun",

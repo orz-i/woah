@@ -347,7 +347,7 @@ def main() -> int:
             json.dumps({"schema": 2, "constants": constants}, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
-    print("PHASE7_TFLITE_SEMANTIC_FINGERPRINT=" + json.dumps(fingerprint, sort_keys=True))
+    print("IOS_TFLITE_SEMANTIC_FINGERPRINT=" + json.dumps(fingerprint, sort_keys=True))
     return 0
 
 

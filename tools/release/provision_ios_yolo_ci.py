@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Verify/provision the canonical iOS YOLO LiteRT model on clean CI.
 
-Phase 7 release checkouts track the exact audited canonical model bytes. The
+iOS YOLO release checkouts track the exact audited canonical model bytes. The
 normal Release path therefore verifies the pinned whole-file/core identities
 and stages that binary byte-for-byte for iOS. This is the release supply-chain
 authority.
@@ -90,7 +90,7 @@ def deterministic_export_env(contract: dict, cpu_capability: str) -> dict[str, s
     candidates = [str(value) for value in environment["cpu_dispatch_candidates"]]
     if cpu_capability not in candidates:
         fail(
-            "Phase 7 CPU dispatch candidate",
+            "iOS YOLO CPU dispatch candidate",
             f"Unexpected cpu_capability={cpu_capability!r}; allowed={candidates}",
         )
     result = {
@@ -153,39 +153,39 @@ def isolated_python(venv: Path) -> Path:
 def worker_version_report(python: Path) -> dict[str, str | None]:
     output = run_checked(
         [str(python), str(Path(__file__).resolve()), "--worker-versions"],
-        title="Phase 7 isolated exporter version probe failed",
+        title="iOS YOLO isolated exporter version probe failed",
     )
-    marker = "PHASE7_MODEL_EXPORTER_VERSIONS="
+    marker = "IOS_MODEL_EXPORTER_VERSIONS="
     lines = [line for line in output.splitlines() if line.startswith(marker)]
     if len(lines) != 1:
-        fail("Phase 7 isolated exporter version probe", f"Missing version marker in:\n{output[-2000:]}")
+        fail("iOS YOLO isolated exporter version probe", f"Missing version marker in:\n{output[-2000:]}")
     return json.loads(lines[0][len(marker) :])
 
 
 def create_exporter_environment(contract: dict, root: Path) -> Path:
     environment = contract["reproducibility"]["environment"]
     if environment.get("isolation") != "temporary_venv":
-        fail("Phase 7 model exporter isolation", f"Unsupported isolation={environment.get('isolation')!r}")
+        fail("iOS YOLO model exporter isolation", f"Unsupported isolation={environment.get('isolation')!r}")
     if environment.get("platform") != "linux_x86_64":
-        fail("Phase 7 model exporter platform", f"Unsupported platform={environment.get('platform')!r}")
+        fail("iOS YOLO model exporter platform", f"Unsupported platform={environment.get('platform')!r}")
     if sys.platform != "linux":
-        fail("Phase 7 model exporter platform", f"Clean-cloud reproduction requires Linux, actual={sys.platform}")
+        fail("iOS YOLO model exporter platform", f"Clean-cloud reproduction requires Linux, actual={sys.platform}")
     python_expected = environment["python_major_minor"]
     if f"{sys.version_info.major}.{sys.version_info.minor}" != python_expected:
         fail(
-            "Phase 7 model exporter Python drift",
+            "iOS YOLO model exporter Python drift",
             f"expected={python_expected} actual={sys.version_info.major}.{sys.version_info.minor}",
         )
 
     venv = root / "venv"
     run_checked(
         [sys.executable, "-m", "venv", str(venv)],
-        title="Phase 7 isolated exporter venv creation failed",
+        title="iOS YOLO isolated exporter venv creation failed",
     )
     python = isolated_python(venv)
     uv = shutil.which("uv")
     if not uv:
-        fail("Phase 7 model exporter environment", "uv is required to provision the isolated LiteRT exporter stack")
+        fail("iOS YOLO model exporter environment", "uv is required to provision the isolated LiteRT exporter stack")
 
     torch_packages = [
         f"{environment['torch_wheel_url']}#sha256={environment['torch_wheel_sha256']}",
@@ -202,7 +202,7 @@ def create_exporter_environment(contract: dict, root: Path) -> Path:
             environment["exclude_newer_utc"],
             *torch_packages,
         ],
-        title="Phase 7 isolated CPU Torch install failed",
+        title="iOS YOLO isolated CPU Torch install failed",
     )
 
     expected = expected_exporter_versions(contract)
@@ -220,7 +220,7 @@ def create_exporter_environment(contract: dict, root: Path) -> Path:
     )
     packages = [f"{name}=={expected[name]}" for name in install_names]
     cutoff = environment["exclude_newer_utc"]
-    print("[iOS CI] Installing isolated Phase 7 LiteRT exporter stack:", " ".join(packages), flush=True)
+    print("[iOS CI] Installing isolated iOS YOLO LiteRT exporter stack:", " ".join(packages), flush=True)
     run_checked(
         [
             uv,
@@ -232,7 +232,7 @@ def create_exporter_environment(contract: dict, root: Path) -> Path:
             cutoff,
             *packages,
         ],
-        title="Phase 7 isolated exporter dependency install failed",
+        title="iOS YOLO isolated exporter dependency install failed",
     )
 
     observed = worker_version_report(python)
@@ -244,25 +244,25 @@ def create_exporter_environment(contract: dict, root: Path) -> Path:
     if not str(observed.get("python", "")).startswith(python_expected + "."):
         mismatches["python"] = {"expected": python_expected, "actual": observed.get("python")}
     if mismatches:
-        fail("Phase 7 model exporter version drift", json.dumps(mismatches, sort_keys=True))
-    print("PHASE7_MODEL_EXPORTER_ISOLATION=temporary_venv", flush=True)
-    print("PHASE7_MODEL_EXPORTER_VERSIONS=" + json.dumps(observed, sort_keys=True), flush=True)
+        fail("iOS YOLO model exporter version drift", json.dumps(mismatches, sort_keys=True))
+    print("IOS_MODEL_EXPORTER_ISOLATION=temporary_venv", flush=True)
+    print("IOS_MODEL_EXPORTER_VERSIONS=" + json.dumps(observed, sort_keys=True), flush=True)
     return python
 
 
 def verify_checkpoint(path: Path, contract: dict) -> None:
     checkpoint = contract["source_checkpoint"]
     if not path.is_file():
-        fail("Phase 7 YOLO checkpoint missing", str(path))
+        fail("iOS YOLO YOLO checkpoint missing", str(path))
     actual_size = path.stat().st_size
     actual_hash = sha256(path)
     if actual_size != int(checkpoint["expected_size_bytes"]) or actual_hash != checkpoint["expected_sha256"]:
         fail(
-            "Phase 7 YOLO checkpoint drift",
+            "iOS YOLO YOLO checkpoint drift",
             f"expected_size={checkpoint['expected_size_bytes']} actual_size={actual_size} "
             f"expected_sha256={checkpoint['expected_sha256']} actual_sha256={actual_hash}",
         )
-    print(f"PHASE7_MODEL_CHECKPOINT_SHA256={actual_hash}", flush=True)
+    print(f"IOS_MODEL_CHECKPOINT_SHA256={actual_hash}", flush=True)
 
 
 def checkpoint_path(contract: dict) -> Path:
@@ -280,7 +280,7 @@ def worker_export(contract: dict, checkpoint: Path, output: Path) -> int:
     capability_reader = getattr(torch.backends.cpu, "get_cpu_capability", None)
     effective_capability = capability_reader() if callable(capability_reader) else None
     print(
-        "PHASE7_MODEL_CPU_RUNTIME="
+        "IOS_MODEL_CPU_RUNTIME="
         + json.dumps(
             {
                 "requested_capability": os.environ.get("ATEN_CPU_CAPABILITY"),
@@ -306,7 +306,7 @@ def worker_export(contract: dict, checkpoint: Path, output: Path) -> int:
             candidates.insert(0, Path(str(ckpt_path)))
         downloaded = next((item for item in candidates if item.is_file()), None)
         if downloaded is None:
-            fail("Phase 7 YOLO checkpoint download", "Ultralytics did not materialize yolo11n-seg.pt")
+            fail("iOS YOLO YOLO checkpoint download", "Ultralytics did not materialize yolo11n-seg.pt")
         if downloaded.resolve() != checkpoint.resolve():
             shutil.move(str(downloaded), checkpoint)
     verify_checkpoint(checkpoint, contract)
@@ -330,7 +330,7 @@ def worker_export(contract: dict, checkpoint: Path, output: Path) -> int:
         raise RuntimeError(f"Exporter did not produce a file: {result}")
     output.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(result, output)
-    print(f"PHASE7_MODEL_WORKER_OUTPUT={output}", flush=True)
+    print(f"IOS_MODEL_WORKER_OUTPUT={output}", flush=True)
     return 0
 
 
@@ -345,7 +345,7 @@ def cli() -> int:
     )
     args = parser.parse_args()
     if args.worker_versions:
-        print("PHASE7_MODEL_EXPORTER_VERSIONS=" + json.dumps(exporter_versions(), sort_keys=True))
+        print("IOS_MODEL_EXPORTER_VERSIONS=" + json.dumps(exporter_versions(), sort_keys=True))
         return 0
     if args.worker_export:
         contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
@@ -359,7 +359,7 @@ def cli() -> int:
             traceback.print_exc()
             # Keep the concise exception marker last so the parent annotation's
             # tail survives GitHub's 4096-byte annotation limit.
-            print(f"PHASE7_WORKER_EXCEPTION={type(exc).__name__}: {exc}", flush=True)
+            print(f"IOS_WORKER_EXCEPTION={type(exc).__name__}: {exc}", flush=True)
             return 1
     return main()
 
@@ -369,7 +369,7 @@ def load_export_metadata(path: Path) -> dict:
         with zipfile.ZipFile(path) as archive:
             return json.loads(archive.read("metadata.json").decode("utf-8"))
     except Exception as exc:
-        fail("Phase 7 LiteRT metadata missing", f"{path}: {exc}")
+        fail("iOS YOLO LiteRT metadata missing", f"{path}: {exc}")
 
 
 def split_core(path: Path) -> tuple[bytes, bytes]:
@@ -377,7 +377,7 @@ def split_core(path: Path) -> tuple[bytes, bytes]:
     search_start = max(8, len(data) - 64 * 1024)
     offset = data.find(b"PK\x03\x04", search_start)
     if offset < 0:
-        fail("Phase 7 LiteRT metadata container", f"No appended ZIP metadata found in {path}")
+        fail("iOS YOLO LiteRT metadata container", f"No appended ZIP metadata found in {path}")
     return data[:offset], data[offset:]
 
 
@@ -392,24 +392,24 @@ def validate_export_metadata(metadata: dict, contract: dict) -> None:
     }
     mismatches = {key: {"expected": value, "actual": checks.get(key)} for key, value in expected.items() if checks.get(key) != value}
     if mismatches:
-        fail("Phase 7 LiteRT embedded metadata drift", json.dumps(mismatches, sort_keys=True))
+        fail("iOS YOLO LiteRT embedded metadata drift", json.dumps(mismatches, sort_keys=True))
 
 
 def canonical_tail(contract: dict) -> bytes:
     reproducibility = contract["reproducibility"]
     tail_path = ROOT / reproducibility["canonical_metadata_tail_path"]
     if not tail_path.is_file():
-        fail("Phase 7 canonical metadata tail missing", str(tail_path))
+        fail("iOS YOLO canonical metadata tail missing", str(tail_path))
     try:
         tail = base64.b64decode(tail_path.read_text(encoding="ascii").strip(), validate=True)
     except Exception as exc:
-        fail("Phase 7 canonical metadata tail invalid", str(exc))
+        fail("iOS YOLO canonical metadata tail invalid", str(exc))
     if len(tail) != int(reproducibility["canonical_metadata_tail_size_bytes"]):
-        fail("Phase 7 canonical metadata tail size drift", f"actual={len(tail)}")
+        fail("iOS YOLO canonical metadata tail size drift", f"actual={len(tail)}")
     actual_hash = sha256_bytes(tail)
     if actual_hash != reproducibility["canonical_metadata_tail_sha256"]:
         fail(
-            "Phase 7 canonical metadata tail hash drift",
+            "iOS YOLO canonical metadata tail hash drift",
             f"expected={reproducibility['canonical_metadata_tail_sha256']} actual={actual_hash}",
         )
     return tail
@@ -419,9 +419,9 @@ def load_constant_manifest(path: Path) -> list[dict]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except Exception as exc:
-        fail("Phase 7 constant manifest invalid", f"{path}: {exc}")
+        fail("iOS YOLO constant manifest invalid", f"{path}: {exc}")
     if payload.get("schema") != 2 or not isinstance(payload.get("constants"), list):
-        fail("Phase 7 constant manifest invalid", f"Unexpected schema in {path}")
+        fail("iOS YOLO constant manifest invalid", f"Unexpected schema in {path}")
     constants = payload["constants"]
     required = {
         "tensor",
@@ -437,7 +437,7 @@ def load_constant_manifest(path: Path) -> list[dict]:
     }
     for item in constants:
         if not isinstance(item, dict) or not required.issubset(item):
-            fail("Phase 7 constant manifest invalid", f"Malformed constant record in {path}: {item!r}")
+            fail("iOS YOLO constant manifest invalid", f"Malformed constant record in {path}: {item!r}")
     return constants
 
 
@@ -558,8 +558,8 @@ def reproduce_model(contract: dict, checkpoint: Path, exporter_python: Path, tem
     expected_semantic = reproducibility["semantic_fingerprint"]
     canonical_manifest_path = ROOT / reproducibility["constant_manifest_path"]
     canonical_constants = load_constant_manifest(canonical_manifest_path)
-    fingerprint_marker = "PHASE7_TFLITE_SEMANTIC_FINGERPRINT="
-    runtime_marker = "PHASE7_MODEL_CPU_RUNTIME="
+    fingerprint_marker = "IOS_TFLITE_SEMANTIC_FINGERPRINT="
+    runtime_marker = "IOS_MODEL_CPU_RUNTIME="
 
     def export_candidate(cpu_capability: str, label: str) -> dict:
         result = temporary_root / f"generated-yolo11n-seg-{label}.tflite"
@@ -571,7 +571,7 @@ def reproduce_model(contract: dict, checkpoint: Path, exporter_python: Path, tem
                 str(checkpoint),
                 str(result),
             ],
-            title=f"Phase 7 isolated LiteRT export ({label}) failed",
+            title=f"iOS YOLO isolated LiteRT export ({label}) failed",
             env=deterministic_export_env(contract, cpu_capability),
         )
         runtime_lines = [line for line in worker_output.splitlines() if line.startswith(runtime_marker)]
@@ -591,14 +591,14 @@ def reproduce_model(contract: dict, checkpoint: Path, exporter_python: Path, tem
                 "--constants-output",
                 str(constants_output),
             ],
-            title=f"Phase 7 generated LiteRT semantic fingerprint ({label}) failed",
+            title=f"iOS YOLO generated LiteRT semantic fingerprint ({label}) failed",
         )
         marker_lines = [
             line for line in fingerprint_output.splitlines() if line.startswith(fingerprint_marker)
         ]
         if len(marker_lines) != 1:
             fail(
-                "Phase 7 generated LiteRT semantic fingerprint",
+                "iOS YOLO generated LiteRT semantic fingerprint",
                 f"Missing semantic marker in output for {result}:\n{fingerprint_output[-2000:]}",
             )
         fingerprint = json.loads(marker_lines[0][len(fingerprint_marker) :])
@@ -631,7 +631,7 @@ def reproduce_model(contract: dict, checkpoint: Path, exporter_python: Path, tem
             "core_sha256": sha256_bytes(core),
         }
         print(
-            "PHASE7_MODEL_CPU_CANDIDATE="
+            "IOS_MODEL_CPU_CANDIDATE="
             + json.dumps(
                 {
                     "cpu_capability": cpu_capability,
@@ -686,7 +686,7 @@ def reproduce_model(contract: dict, checkpoint: Path, exporter_python: Path, tem
                 }
             )
         fail(
-            "Phase 7 LiteRT CPU dispatch reproducibility failure",
+            "iOS YOLO LiteRT CPU dispatch reproducibility failure",
             f"expected_size={expected_core_size} expected_sha256={expected_core_hash} "
             f"candidates={json.dumps(compact_candidates, sort_keys=True)}",
         )
@@ -705,14 +705,14 @@ def reproduce_model(contract: dict, checkpoint: Path, exporter_python: Path, tem
         or repeated["core_sha256"] != expected_core_hash
     ):
         fail(
-            "Phase 7 selected CPU dispatch repeat failure",
+            "iOS YOLO selected CPU dispatch repeat failure",
             f"cpu_capability={selected_capability} expected_sha256={expected_core_hash} "
             f"first_sha256={selected['core_sha256']} repeat_sha256={repeated['core_sha256']} "
             f"repeat_core_equal={repeat_core_equal} repeat_semantic_equal={repeat_semantic_equal}",
         )
 
     print(
-        "PHASE7_MODEL_GENERATED="
+        "IOS_MODEL_GENERATED="
         + json.dumps(
             {
                 "selected_cpu_capability": selected_capability,
@@ -742,26 +742,26 @@ def reproduce_model(contract: dict, checkpoint: Path, exporter_python: Path, tem
 
 def verify_canonical_model(path: Path, contract: dict) -> str:
     if not path.is_file():
-        fail("Phase 7 canonical model missing", str(path))
+        fail("iOS YOLO canonical model missing", str(path))
     size = path.stat().st_size
     if size != int(contract["expected_size_bytes"]):
-        fail("Phase 7 canonical model size drift", f"expected={contract['expected_size_bytes']} actual={size}")
+        fail("iOS YOLO canonical model size drift", f"expected={contract['expected_size_bytes']} actual={size}")
     with path.open("rb") as stream:
         header = stream.read(8)
     if header[4:8] != contract["flatbuffer_magic"].encode("ascii"):
-        fail("Phase 7 canonical model format drift", "Expected TFL3 FlatBuffer identifier")
+        fail("iOS YOLO canonical model format drift", "Expected TFL3 FlatBuffer identifier")
     observed_hash = sha256(path)
     if observed_hash != contract["expected_sha256"]:
         fail(
-            "Phase 7 canonical model whole-file hash drift",
+            "iOS YOLO canonical model whole-file hash drift",
             f"expected={contract['expected_sha256']} actual={observed_hash}",
         )
     core, tail = split_core(path)
     reproducibility = contract["reproducibility"]
     if len(core) != int(reproducibility["expected_core_size_bytes"]) or sha256_bytes(core) != reproducibility["expected_core_sha256"]:
-        fail("Phase 7 canonical model core drift", f"size={len(core)} sha256={sha256_bytes(core)}")
+        fail("iOS YOLO canonical model core drift", f"size={len(core)} sha256={sha256_bytes(core)}")
     if sha256_bytes(tail) != reproducibility["canonical_metadata_tail_sha256"]:
-        fail("Phase 7 canonical model metadata tail drift", sha256_bytes(tail))
+        fail("iOS YOLO canonical model metadata tail drift", sha256_bytes(tail))
     return observed_hash
 
 
@@ -778,7 +778,7 @@ def main() -> int:
     if target.is_file() and sha256(target) == contract["expected_sha256"]:
         print("[iOS CI] Reusing exact cached canonical YOLO model.", flush=True)
     else:
-        with tempfile.TemporaryDirectory(prefix="woah-phase7-model-export-") as temporary:
+        with tempfile.TemporaryDirectory(prefix="woah-ios-model-export-") as temporary:
             temporary_root = Path(temporary)
             exporter_python = create_exporter_environment(contract, temporary_root)
             checkpoint = checkpoint_path(contract)
@@ -787,7 +787,7 @@ def main() -> int:
     observed_hash = verify_canonical_model(target, contract)
     run_checked(
         [sys.executable, str(ROOT / "tools/release/sync_ios_yolo_model.py")],
-        title="Phase 7 canonical model staging failed",
+        title="iOS YOLO canonical model staging failed",
     )
     print(f"IOS_YOLO_SHA256={observed_hash}")
     print(f"IOS_YOLO_CORE_SHA256={contract['reproducibility']['expected_core_sha256']}")
@@ -800,4 +800,4 @@ if __name__ == "__main__":
     except SystemExit:
         raise
     except Exception:
-        fail("Phase 7 model provisioner unhandled exception", traceback.format_exc()[-10000:])
+        fail("iOS YOLO model provisioner unhandled exception", traceback.format_exc()[-10000:])

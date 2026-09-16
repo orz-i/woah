@@ -805,280 +805,7 @@ Vision-vs-MediaPipe visual quality and sustained face
 inference cost also require real-iPhone evidence before release parity can be
 claimed.
 
-### Phase 7: iOS Pre-Release Readiness
-
-Phase 7 is deliberately finite and release-shaped rather than another tracking
-phase. Its contract is maintained in `docs/ios_phase7_release_readiness.md`.
-Phase 5 remains closed at 5H and Phase 6 remains closed at the privacy-class
-prototype boundary above; Phase 7 does not add new tracking/FACE_ONLY
-algorithms, HEVC/4K60, delegate performance tuning, or any physical-device
-parity claim.
-
-The Phase 7 implementation adds an independent host verifier
-(`tools/release/verify_ios_phase7.py`), a Release-readiness macOS gate
-(`tools/ios/run_phase7_macos_gate.py`), and a dedicated GitHub workflow
-(`.github/workflows/ios-release.yml`). The Apple-only lane reruns the accepted
-Phase 3-6 Simulator regressions and then executes a Phase 7-owned real-media
-smoke for video-only input, injected-failure cleanup, preferred-transform
-portrait/landscape output, and VFR timestamp rebasing into the fixed
-H.264/30fps contract. Flutter 3.44.2 does not support Release mode on iOS
-Simulator, so these runtime regressions and the separate production
-`lib/main.dart` Simulator startup smoke run in Debug mode. The lane separately
-builds the production iPhoneOS target with `--release --no-codesign`, audits
-the exact resulting `Runner.app`, and archives that audited bundle. The audit records the Git
-commit, Flutter app version/build, app dependency-lock SHA-256, executable
-SHA-256, packaged model/contract SHA-256, bundled frameworks, and packaged
-privacy manifests. These remain macOS/Simulator/build facts, not physical-iPhone
-acceptance.
-
-Release reproducibility now includes a tracked `mobile/app/pubspec.lock` while
-package-level Flutter lockfiles remain ignored. The production Release build
-also receives the exact Git commit through the ignored/generated
-`Flutter/Phase7Release.xcconfig`; the built `WoahGitCommit` must match the source
-HEAD during bundle audit.
-
-Apple privacy behavior remains intentionally narrow: both app and native
-privacy manifests declare no tracking/collected-data/required-reason API
-categories, and saving an export continues to request Photos `.addOnly` access.
-Denied or unavailable add-only permission fails closed with
-`PHOTO_LIBRARY_PERMISSION_DENIED`; Phase 7 does not add broad Photos read
-permission. Final third-party manifest evidence is taken from the built Release
-`.app` inventory and tied to the tracked dependency lock rather than inferred
-only from source package names.
-
-The finite release-regression matrix is
-`tools/ios/phase7_regression_matrix.json`, and the predesigned real-device
-runbook is `docs/ios_phase7_device_acceptance.md`. Once the independent Phase 7
-Release CI lane succeeds and the fixed handoff package is complete, the iOS
-implementation status stops at:
-
-`implementation complete pending physical-device acceptance`
-
-Physical-iPhone visual privacy, sustained throughput, memory, thermal/power,
-background/interruption behavior, and cross-device Vision/Metal behavior remain
-unclaimed until that runbook is executed on real hardware. No Phase 8/9 is
-created merely to avoid this device gate.
-
-Phase 7 now pins the canonical shared Android/iOS FP16 TFLite source at
-`ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340`.
-The candidate pin was taken from the repository-root
-`models/litert/yolo11n-seg-fp16.tflite` after verifying the existing
-11,799,725-byte / TFL3 contract and byte-identical iOS staging. This pin is not
-itself clean-cloud acceptance: the dedicated Phase 7 `release-model` job must
-reproduce exactly the same hash in the locked model-export environment or the
-Release lane fails closed.
-
-The first independent Phase 7 Release workflow run (`34339971155`) exposed a
-model-production provenance bug before any Xcode Release job started. The
-historical file's embedded `metadata.json` records Ultralytics `8.4.130`, while
-the repository application lock still pins `8.3.82`. The same metadata argument
-set matches the `8.4.130` direct LiteRT exporter (`format=litert`,
-`quantize=null`), not the old TensorFlow/TFLite recipe. The canonical file is
-therefore now contracted as a deterministic 11,798,720-byte FlatBuffer core
-(`881b3107910165066ba8ab8cd9c76bd5f51b781d1e224ccce91f60a904c0951c`)
-plus a 1,005-byte historical ZIP metadata tail. Clean-cloud CI must reproduce
-the core from the pinned `yolo11n-seg.pt` checkpoint before restoring that tail
-and re-establishing the original whole-file hash. This fixes reproducibility
-without changing the inference graph or Android runtime behavior.
-
-Phase 7 Release Run #2 (`34344338654`) still failed inside the clean Ubuntu
-`Generate canonical model` step before the core comparison produced an
-annotation. The provisioner therefore now pins the cutoff-era
-`litert-lm-builder==0.16.1` transitive dependency and converts exporter-package
-installation, LiteRT export exceptions, and staging failures into explicit
-GitHub annotations. Hash gates remain unchanged; this is diagnostic hardening,
-not an acceptance relaxation.
-
-Phase 7 Release Run #3 (`34344945710`) confirmed the pinned exporter stack was
-installed and surfaced the intended annotation path. Its only reported drift
-was `litert-lm-builder actual=null`; inspection found a local diagnostic bug:
-the dependency was present in both the expected and install lists but omitted
-from `exporter_versions()`. The package's published wheel metadata confirms the
-distribution name `litert-lm-builder`. Run #4 therefore changes only that
-version-observation omission; all model/checkpoint/core/full-file hash gates
-remain unchanged.
-
-Phase 7 Release Run #4 (`34345293459`) then crossed the version gate and reached
-the real `format=litert` exporter. Its exception arose while `litert-torch`
-imported TorchAO's PT2E stack. This disproved the remaining assumption that the
-canonical exporter inherited the application's root Torch `2.6.0` lock:
-TorchAO `0.18.0` targets newer PyTorch APIs, while the 2026-08-27 provenance
-cutoff already had PyTorch `2.13.0`, torchvision `0.28.0`, and NumPy `2.4.6`
-available. Phase 7 model production is therefore now explicitly isolated in a
-temporary Python 3.11 venv with the CPU PyTorch pair and cutoff-pinned LiteRT
-stack. The Android/application root environment is not mutated or treated as
-model-export provenance; the generated FlatBuffer core hash remains the final
-acceptance authority.
-
-Phase 7 Release Run #5 (`34346445889`) validated the isolation boundary but
-failed before package installation because `uv` correctly refused to search a
-second index for `torch==2.13.0+cpu` under its dependency-confusion protection.
-Rather than enable `unsafe-best-match`, the contract now pins the official
-PyTorch and torchvision cp311/Linux x86_64 CPU wheel URLs and their SHA-256
-digests directly. PyPI is used only for their ordinary dependencies and the
-cutoff-pinned LiteRT exporter stack.
-
-Phase 7 Release Run #6 (`34346810849`) then exposed an isolated-environment
-resolver error rather than a model error: the provisional NumPy `2.5.2` pin
-requires Python 3.12+, while the release workflow intentionally uses Python
-3.11. The pin was corrected to cutoff-era NumPy `2.4.6`, for which a cp311 Linux
-x86_64 wheel exists and which is also present in the surviving historical
-LiteRT environment residue.
-
-Phase 7 Release Run #7 (`34357948244`) was the first clean-cloud attempt to
-complete dependency installation and a real LiteRT export. The generated core
-had the exact historical size (11,798,720 bytes) but a different raw SHA-256
-(`3d25c2be9f1d32bd843fd1ed502d960831e8304bc0d06b0d70fa0bed1f17937d`
-instead of `881b3107910165066ba8ab8cd9c76bd5f51b781d1e224ccce91f60a904c0951c`).
-The raw core hash remains blocking. Before any acceptance rule can be changed,
-Phase 7 now records a serialization-order-resistant semantic fingerprint over
-643 tensors, 394 operators, operator options/wiring, and 248 constant tensors,
-and exports the model twice in the same isolated environment. This diagnostic
-will distinguish a serializer/layout difference from a real graph or weight
-drift without weakening the historical whole-file or core identities.
-
-Phase 7 Release Run #8 (`34360135588`) showed the new exporter is fully
-deterministic: two clean-cloud exports produced the same raw core SHA
-`3d25c2be9f1d32bd843fd1ed502d960831e8304bc0d06b0d70fa0bed1f17937d`
-and the same semantic fingerprint. The historical and clean-cloud structures
-match exactly (643 tensors, 394 operators, identical shapes/wiring/options),
-but the aggregate constant-tensor fingerprint differs. Phase 7 therefore now
-tracks the historical 248 constant tensors individually and reports the count,
-total bytes, and largest named tensors that differ. The raw historical core
-hash remains blocking until those constant differences are explained; no model
-identity or acceptance threshold is relaxed by this diagnostic.
-
-Phase 7 Release Run #10 (`34365257098`) then refined the constant drift to
-FLOAT32 low-bit reproducibility rather than model-weight or tensor-layout
-drift. The clean-cloud export kept the exact historical graph structure and
-constant shapes. Of the 46 constants whose raw bytes differed, 43 became
-identical after clearing the lowest 12 mantissa bits and 32 already matched
-after clearing only the lowest 8 bits. The largest convolution constants kept
-identical min/max values, while aggregate L2 and absolute-sum relative deltas
-were on the order of 1e-9. The same runner reproduced its own raw core exactly,
-but different GitHub runners produced different raw core hashes. Ultralytics
-8.4.130 performs `model.float()` followed by CPU `model.fuse(...)` before
-serialization, so Phase 7 treats host CPU dispatch during Conv/BN fusion as the
-remaining bounded hypothesis instead of relaxing the historical core identity.
-
-Run #11 therefore tests exactly two PyTorch CPU dispatch candidates in one
-clean-cloud job: `ATEN_CPU_CAPABILITY=default` and `ATEN_CPU_CAPABILITY=avx2`.
-Both paths are single-threaded (`torch_num_threads=1`, inter-op threads 1, and
-the common OMP/MKL/OpenBLAS/NumExpr/vecLib thread variables set to 1). A
-candidate is accepted only if it reproduces the historical 11,798,720-byte core
-and SHA-256 exactly; the selected capability must then reproduce that core a
-second time byte-for-byte before the canonical metadata tail is restored. If
-neither candidate matches, the Release lane remains fail-closed and reports
-both candidate hashes and constant diagnostics in the same run. This is a
-finite reproducibility experiment, not a new product phase or an acceptance
-tolerance.
-
-The first Run #11 attempt (`34425316282`) did not reach either candidate. A
-parent-side checkpoint verification had been moved ahead of the isolated
-worker even though the worker is responsible for materializing the ignored
-`yolo11n-seg.pt` on a clean runner. The worker still verifies the checkpoint
-size/SHA before every export; the parent now performs its redundant verification
-after the candidate workers have had the documented materialization
-opportunity. This is an ordering correction only and does not change the
-checkpoint, core, or Release acceptance identities.
-
-Phase 7 Release Run #12 (`34425751917`) completed the bounded CPU-dispatch
-experiment. Both `ATEN_CPU_CAPABILITY=default` and `avx2`, with all tracked
-thread counts fixed to one, produced the same 11,798,720-byte core SHA
-`3d25c2be9f1d32bd843fd1ed502d960831e8304bc0d06b0d70fa0bed1f17937d`.
-Neither reproduced the historical
-`881b3107910165066ba8ab8cd9c76bd5f51b781d1e224ccce91f60a904c0951c`.
-That result closes the CPU-dispatch hypothesis: adding AVX512/thread/host
-combinations would turn release readiness into unbounded environment archaeology
-without improving the production artifact contract.
-
-The Release supply-chain contract is therefore separated from the retained
-re-export diagnostic. The single 11.8 MB canonical
-`models/litert/yolo11n-seg-fp16.tflite` is now Git-tracked as the exact shared
-Android/iOS production source. Clean Release checkouts verify its full SHA
-`ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340`,
-its historical core SHA, TFL3 identifier, and staged iOS byte equality before
-the macOS job can consume it. All other production model binaries remain
-ignored. The exporter/checkpoint/semantic diagnostics remain available for
-model provenance investigations, but they no longer manufacture Release bytes
-whose low-order FLOAT32 fusion result depends on the host.
-
-Because the repository source code is MIT while the canonical model's embedded
-Ultralytics metadata declares AGPL-3.0, `models/litert/README.md` explicitly
-scopes the third-party model and records its artifact identities instead of
-implicitly presenting the model as MIT-licensed source.
-
-Phase 7 Release Run #13 (`34426775414`) validated the new binary supply-chain
-boundary: the clean Ubuntu `release-model` job succeeded, uploaded the exact
-canonical artifact, and the macOS job successfully downloaded and staged it.
-The first macOS gate then failed before Xcode work because the diagnostic
-constant-manifest verifier hashed raw JSON file bytes. Windows had recorded
-CRLF bytes while the macOS Git checkout used LF. The manifest already has
-schema/entry/byte-count and canonical constant-identity validation, so Phase 7
-removes only that redundant raw-text hash; release model full/core SHA gates
-remain exact and unchanged.
-
-Run #14 (`34427291377`) then reached the Apple gate and exposed a platform
-contract error rather than a native-code failure: Flutter 3.44.2 rejects
-`flutter build ios --simulator --release` because Release mode is not supported
-for iOS Simulator. Phase 7 therefore separates Debug-Simulator runtime evidence
-from the real iPhoneOS Release compile/audit gate instead of pretending a
-Release Simulator exists. All regression cases remain on the physical-device
-acceptance checklist.
-
-Phase 7 Release Run #15 (`34447086069`) is the finite repository-implementation
-acceptance run for branch head
-`037c0735e12a67053683db4d919f645adaa88234`. The pinned-model job
-`102774130636` completed successfully, and the Xcode 26/macOS Release-readiness
-job `102774193645` completed successfully. Inside that job, both
-`Run Phase 7 Release gate` and `Upload audited Release artifact` completed
-successfully. GitHub artifact `10140899500` is
-`woah-ios-release-156844871d80515e1e089b62ec22e9e85013d09f`, size 20,885,583
-bytes, with Actions digest
-`sha256:3b8f4334558bbbe960b9a1dce9df49287096e2f6e13d879ae30bd6ecabaf5ed6`.
-The artifact name uses GitHub's pull-request merge snapshot SHA; the source
-branch head for the accepted implementation remains `037c073...`. The separate
-canonical-model artifact is `10140051107`. These are Apple-only
-build/Simulator/audit facts, not physical-iPhone acceptance. Phase 7 repository
-implementation therefore stops at
-`implementation complete pending physical-device acceptance`; no Phase 8 is
-created to replace the remaining real-device gate.
-
-Two subsequent legacy `iOS Cloud CI` runs provide intermediate Apple-only
-evidence while the independent Phase 7 Release workflow remains intentionally
-blocked on protected-path installation. Run `34334830050` (#40), job
-`102411798459`, completed successfully at
-`af7df52fa153ba252d630b6daed663c2e6c8322c`; repository iOS contracts,
-production iPhoneOS build, no-codesign archive, and artifact upload all passed
-after the candidate model pin and Phase 7 Release-regression Swift sources were
-added. Run `34336876495` (#41), job `102418230396`, completed successfully at
-`db384382e8061894f4754168fdf1434d2cb8b010` after the Release smoke-hook
-fail-closed guard and Phase 7 macOS-gate deduplication were added. These runs
-prove compatibility with the existing Apple-only Debug/Phase-6 lane; they are
-not the dedicated Phase 7 Simulator-runtime/iPhoneOS-Release acceptance lane and do
-not substitute for physical-iPhone evidence.
-
 ## Cross-platform privacy gate
-
-### Pre-merge audit follow-up (2026-09-10)
-
-The accepted Phase 7 implementation at `4268798ef741a38f782663a95ee1748db8a6869d`
-also passed Release Run #16 (`34450033496`) and iOS Cloud Run #58
-(`34450033609`), as observed during the read-only audit. Production CI #117
-(`34450033503`) failed before Android native tests because the legacy asset
-bootstrap supplied ONNX while Gradle required the complete LiteRT model set.
-Those historical green Apple runs do not validate subsequent cleanup changes.
-
-The bounded follow-up fixes the Android source-root calculation and replaces
-ONNX bootstrapping with canonical YOLO/LiteRT staging, adds actual pinned CPU
-YOLO inference to the Phase 7 Simulator gate, and reconciles the evidence wording.
-The initial cleanup incorrectly treated unavailable SAM2 as a required model
-set. The user clarified that SAM2 is unavailable and ONNX is obsolete; neither
-is a provisioning requirement or merge blocker. The supported YOLO hash gate,
-separate face-model gate, native tests and APK build remain mandatory.
-It does not reopen Phase 5/6, create Phase 8, merge master, or mark physical
-acceptance complete. See `docs/ios_premerge_audit.md` for the explicit remaining
-CI prerequisites and the local-versus-remote master merge scope.
 
 iOS is not accepted merely because YOLO runs. The current Android behavior is
 the reference contract for:
@@ -1108,7 +835,6 @@ python tools/release/verify_ios_phase3.py
 python tools/release/verify_ios_phase4.py
 python tools/release/verify_ios_phase5.py
 python tools/release/verify_ios_phase6.py
-python tools/release/verify_ios_phase7.py
 ```
 
 Flutter regression gate:
@@ -1237,26 +963,20 @@ cloud gate if that count drifts or their bbox/confidence/mask coverage diverges
 from the XNNPACK reference beyond the initial tolerances encoded in
 `tools/ios/browserstack/phase1_report.py`.
 
-### Model hash bootstrap
+### Model provisioning
 
-The repository intentionally still does not commit the 11+ MB model binary.
-On a clean cloud runner, `tools/release/provision_ios_yolo_ci.py` can download
-the pinned YOLO11n segmentation checkpoint through the locked Python
-environment and reproduce the FP16 TFLite export recipe. The generated file
-must still match the tracked byte size and TFL3 contract.
+The canonical LiteRT model is tracked at
+`models/litert/yolo11n-seg-fp16.tflite` and pinned by the shared iOS/Android
+model contract. `tools/release/sync_ios_yolo_model.py` stages the same bytes into
+the ignored iOS resource directory before an Apple build. Cloud-device lanes may
+use `tools/release/provision_ios_yolo_ci.py` to verify/provision that same model;
+no release-phase-specific workflow is required.
 
-The Phase 7 candidate contract now pins:
+Canonical SHA-256:
 
 ```text
 ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340
 ```
-
-It was seeded from the existing repository-root Android/iOS source after
-byte-size, TFL3 magic, and iOS staged-copy equality checks. The clean-cloud
-Phase 7 model job remains the independent reproduction authority: it must
-generate the same SHA-256 before the Release lane can pass. Historical
-`--allow-unpinned-hash` support remains only for older bootstrap workflows; the
-Phase 7 Release workflow does not use it.
 
 ### What cloud devices still do not replace
 

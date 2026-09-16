@@ -43,7 +43,8 @@ def main() -> int:
     args = parser.parse_args()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     shader = extract()
-    args.output.write_text(shader, encoding="utf-8", newline="\n")
+    with args.output.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(shader)
     print(f"METAL_SOURCE={args.output}")
     print(f"METAL_SOURCE_BYTES={len(shader.encode('utf-8'))}")
     return 0

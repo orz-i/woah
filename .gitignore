@@ -39,10 +39,9 @@ htmlcov/
 *.data
 models/
 
-# Phase 7 release-critical canonical artifact. Keep every other production
-# model ignored, but track the single shared Android/iOS YOLO LiteRT binary so
-# a clean Release checkout uses byte-identical model bytes instead of relying
-# on host-dependent floating-point re-export.
+# Canonical shared Android/iOS YOLO LiteRT artifact. Keep every other production
+# model ignored, but track this byte-pinned binary instead of relying on
+# host-dependent floating-point re-export.
 !models/
 models/*
 !models/litert/
@@ -66,7 +65,6 @@ models/litert/*
 **/build/
 pubspec.lock
 !mobile/app/pubspec.lock
-mobile/app/ios/Flutter/Phase7Release.xcconfig
 !uv.lock
 
 

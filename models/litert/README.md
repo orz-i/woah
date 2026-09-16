@@ -2,7 +2,7 @@
 
 `yolo11n-seg-fp16.tflite` is the byte-pinned canonical YOLO11n segmentation
 artifact shared by the Android and iOS release paths. It is tracked because the
-Phase 7 release investigation demonstrated that re-running Ultralytics' CPU
+release reproducibility work demonstrated that re-running Ultralytics' CPU
 Conv/BN fusion can produce host-dependent low-order FLOAT32 differences even
 when the checkpoint, exporter versions, graph structure, tensor shapes, and
 high-order weight values agree.
@@ -21,5 +21,5 @@ upstream license terms. See the embedded model metadata and the Ultralytics
 license reference recorded there.
 
 All other production model binaries remain ignored. Do not replace this file
-without updating the tracked iOS model contract, graph/semantic evidence, and
-release acceptance evidence together.
+without updating the tracked iOS model contract and graph/semantic evidence
+together.

@@ -1,4 +1,5 @@
 import CoreGraphics
+import CoreML
 import Foundation
 import Vision
 
@@ -369,6 +370,15 @@ protocol IOSFaceLocating {
 final class IOSVisionFaceLocator: IOSFaceLocating {
   func locateFaces(in image: CGImage) throws -> [IOSFaceCandidate] {
     let request = VNDetectFaceRectanglesRequest()
+#if targetEnvironment(simulator)
+    if #available(iOS 17.0, *),
+       let cpuDevice = MLComputeDevice.allComputeDevices.first(where: { device in
+         if case .cpu = device { return true }
+         return false
+       }) {
+      request.setComputeDevice(cpuDevice, for: .main)
+    }
+#endif
     let handler = VNImageRequestHandler(cgImage: image, orientation: .up, options: [:])
     try handler.perform([request])
     let width = Float32(image.width)

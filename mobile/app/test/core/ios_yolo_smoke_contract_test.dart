@@ -79,7 +79,7 @@ void main() {
 
   test('rejects injected-fixture fallback and fake zero timings', () {
     final report = validReport();
-    report['fallback_reasons'] = ['phase7_release_deterministic_fixture'];
+    report['fallback_reasons'] = ['deterministic_fixture_fallback'];
     expect(() => verifyIOSYoloCpuSmokeReport(report), throwsStateError);
     for (final value in [0, -1, double.nan, double.infinity]) {
       final timed = validReport()..['inference_ms'] = value;
