@@ -1799,11 +1799,23 @@ class _ProtectionEditorScreenState
     );
     final configured = selectionController.buildConfiguredProject();
     if (configured == null) return;
+    final selectionState = ref.read(personSelectionControllerProvider);
     final effectState = ref.read(effectEditorControllerProvider);
     if (effectState.project == null) return;
+
+    // Target-only operations must never create an impossible cross-mode effect
+    // state. In particular FULL_BODY + faceStickerEnabled makes the native
+    // renderer draw both the body mask and a face sticker on the same person.
+    final effects = selectionState.privacyMode == ProjectPrivacyMode.fullBody
+        ? _normalizeFullBodyDraft(effectState.effects)
+        : effectState.effects;
+    if (selectionState.privacyMode == ProjectPrivacyMode.fullBody) {
+      _fullBodyDraft = effects;
+    }
+
     effectController.updateEditingContext(
       project: configured,
-      effects: effectState.effects,
+      effects: effects,
       debounce: true,
     );
   }

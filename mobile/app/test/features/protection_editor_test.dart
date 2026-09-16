@@ -1,6 +1,7 @@
 import 'package:app/core/widgets/immersive_flow_action.dart';
 import 'package:app/features/effect_editor/presentation/effect_editor_controller.dart';
 import 'package:app/features/export/presentation/export_screen.dart';
+import 'package:app/features/person_selection/domain/person_selection_state.dart';
 import 'package:app/features/person_selection/presentation/person_selection_controller.dart';
 import 'package:app/features/protection_editor/presentation/protection_editor_screen.dart';
 import 'package:app/repositories/native_processing_repository.dart';
@@ -414,6 +415,73 @@ void main() {
     expect(effects.stickerScale, 1.4);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'restore default targets preserves face-only scope without mixed rendering',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final repository = _FakeProtectionRepository();
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(home: ProtectionEditorScreen(project: project)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('人脸保护'));
+      await tester.pumpAndSettle();
+      var selection = container.read(personSelectionControllerProvider);
+      expect(selection.privacyMode, ProjectPrivacyMode.faceOnly);
+      expect(selection.selectedPersonIds, isEmpty);
+      expect(selection.faceOnlyPersonIds, equals({0, 1}));
+      expect(
+        container
+            .read(effectEditorControllerProvider)
+            .effects
+            .faceStickerEnabled,
+        isTrue,
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey('protection-person-target-0')),
+      );
+      await tester.pumpAndSettle();
+      selection = container.read(personSelectionControllerProvider);
+      expect(selection.faceOnlyPersonIds, equals({1}));
+
+      final moreActions = find.byKey(
+        const ValueKey('protection-target-more-actions'),
+      );
+      await tester.ensureVisible(moreActions);
+      await tester.tap(moreActions);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('恢复默认选择'));
+      await tester.pumpAndSettle();
+
+      selection = container.read(personSelectionControllerProvider);
+      final effects = container.read(effectEditorControllerProvider).effects;
+      expect(selection.privacyMode, ProjectPrivacyMode.faceOnly);
+      expect(selection.selectedPersonIds, isEmpty);
+      expect(selection.faceOnlyPersonIds, equals({0, 1}));
+      expect(effects.faceStickerEnabled, isTrue);
+      expect(effects.fillMode, FillMode.sticker);
+      expect(repository.lastSelectedPersonIds, isEmpty);
+      expect(repository.lastFaceOnlyPersonIds, equals({0, 1}));
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     'portrait subject is independent of privacy and survives export',

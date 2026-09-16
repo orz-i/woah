@@ -275,14 +275,12 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
       final targets = storedTargets.isNotEmpty || project.follow.enabled
           ? storedTargets
           : personIds;
-      final mode =
-          project.selectedPersonIds.isEmpty &&
-              project.faceOnlyPersonIds.isNotEmpty
-          ? ProjectPrivacyMode.faceOnly
-          : ProjectPrivacyMode.fullBody;
-      _applyTargets(targets, mode: mode);
+      // "恢复默认选择" belongs to the target-selection section. It restores
+      // which people are protected but must not silently change the separate
+      // project-wide privacy scope (FULL_BODY vs FACE_ONLY).
+      _applyTargets(targets, mode: state.privacyMode);
     } else {
-      _applyTargets(personIds, mode: ProjectPrivacyMode.fullBody);
+      _applyTargets(personIds, mode: state.privacyMode);
     }
   }
 
