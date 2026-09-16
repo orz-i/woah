@@ -25,6 +25,7 @@ class BottomControlDrawer extends StatefulWidget {
   final double panelRadius;
   final Color? bottomActionBorderColor;
   final bool allowHandleOnlyCollapse;
+  final double? compactContentMaxSize;
 
   const BottomControlDrawer({
     super.key,
@@ -45,6 +46,7 @@ class BottomControlDrawer extends StatefulWidget {
     this.panelRadius = AppTheme.radiusSheet,
     this.bottomActionBorderColor,
     this.allowHandleOnlyCollapse = true,
+    this.compactContentMaxSize,
   });
 
   @override
@@ -73,24 +75,6 @@ class _BottomControlDrawerState extends State<BottomControlDrawer> {
       _sheetController.dispose();
     }
     super.dispose();
-  }
-
-  void _collapseCompletely() {
-    HapticFeedback.lightImpact();
-    _sheetController.animateTo(
-      widget.minChildSize,
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeOutCubic,
-    );
-  }
-
-  void _expandToInitial() {
-    HapticFeedback.lightImpact();
-    _sheetController.animateTo(
-      widget.initialChildSize,
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeOutCubic,
-    );
   }
 
   void _animateToNearestSnap({double velocity = 0}) {
@@ -145,20 +129,20 @@ class _BottomControlDrawerState extends State<BottomControlDrawer> {
       onTap: () {
         if (!_sheetController.isAttached) return;
         final current = _sheetController.size;
-        if (current <= widget.minChildSize * 1.5) {
-          _expandToInitial();
-        } else if (current < widget.initialChildSize * 0.9) {
-          _expandToInitial();
-        } else if (current < widget.maxChildSize * 0.9) {
-          HapticFeedback.lightImpact();
-          _sheetController.animateTo(
-            widget.maxChildSize,
-            duration: const Duration(milliseconds: 260),
-            curve: Curves.easeOutCubic,
-          );
-        } else {
-          _collapseCompletely();
-        }
+        final snapSizes = _effectiveSnapSizes;
+        final atTop = current >= snapSizes.last - 0.015;
+        final target = atTop
+            ? snapSizes.first
+            : snapSizes.firstWhere(
+                (size) => size > current + 0.015,
+                orElse: () => snapSizes.last,
+              );
+        HapticFeedback.lightImpact();
+        _sheetController.animateTo(
+          target,
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutCubic,
+        );
       },
       child: SizedBox(
         key: const ValueKey('bottom_control_drawer_handle'),
@@ -211,7 +195,14 @@ class _BottomControlDrawerState extends State<BottomControlDrawer> {
             final isCollapsed =
                 widget.allowHandleOnlyCollapse &&
                 height <= collapsedHeight + 28;
-            final showBottomAction = !isCollapsed && height >= 160;
+            final currentSize = viewportHeight <= 0
+                ? 1.0
+                : height / viewportHeight;
+            final compactContent =
+                widget.compactContentMaxSize != null &&
+                currentSize <= widget.compactContentMaxSize! + 0.005;
+            final showBottomAction =
+                !isCollapsed && !compactContent && height >= 160;
 
             return Container(
               decoration: BoxDecoration(
@@ -256,6 +247,18 @@ class _BottomControlDrawerState extends State<BottomControlDrawer> {
                           alignment: Alignment.topCenter,
                           child: _buildDragHandle(),
                         ),
+                      ),
+                    )
+                  : compactContent
+                  ? SingleChildScrollView(
+                      controller: scrollController,
+                      physics: const ClampingScrollPhysics(),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildDragHandle(),
+                          if (widget.peekHeader != null) widget.peekHeader!,
+                        ],
                       ),
                     )
                   : Column(

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:dance_domain/dance_domain.dart';
 import 'package:flutter/material.dart';
@@ -84,10 +85,12 @@ class _ProtectionEditorScreenState
   bool _selectingFollowTarget = false;
   bool _profileReady = false;
   Timer? _profileSaveDebounce;
+  late final DraggableScrollableController _drawerController;
 
   @override
   void initState() {
     super.initState();
+    _drawerController = DraggableScrollableController();
     _fullBodyDraft = widget.fullBodyDraft;
     _faceOnlyDraft = widget.faceOnlyDraft;
     final durationMs = math.max(widget.project.videoInfo.durationMs, 1);
@@ -230,6 +233,7 @@ class _ProtectionEditorScreenState
   @override
   void dispose() {
     _profileSaveDebounce?.cancel();
+    _drawerController.dispose();
     super.dispose();
   }
 
@@ -400,7 +404,7 @@ class _ProtectionEditorScreenState
           resizeToAvoidBottomInset: false,
           body: LayoutBuilder(
             builder: (context, constraints) {
-              final drawerInitialSize = aspectRatio >= 1 ? 0.40 : 0.38;
+              const drawerInitialSize = 0.24;
 
               return Stack(
                 fit: StackFit.expand,
@@ -409,15 +413,24 @@ class _ProtectionEditorScreenState
                     key: ValueKey('protection-editor-fullscreen-canvas'),
                     color: Color(0xFF050506),
                   ),
-                  Center(
-                    child: _buildStage(
-                      selectionState,
-                      selectionController,
-                      effectState,
-                      effectController,
-                      aspectRatio: aspectRatio,
-                      viewportSize: constraints.biggest,
-                    ),
+                  AnimatedBuilder(
+                    animation: _drawerController,
+                    builder: (context, _) {
+                      final drawerSize = _drawerController.isAttached
+                          ? _drawerController.size
+                          : drawerInitialSize;
+                      final unobscuredHeight =
+                          constraints.maxHeight * (1 - drawerSize);
+                      return _buildStage(
+                        selectionState,
+                        selectionController,
+                        effectState,
+                        effectController,
+                        aspectRatio: aspectRatio,
+                        viewportSize: constraints.biggest,
+                        unobscuredHeight: unobscuredHeight,
+                      );
+                    },
                   ),
                   const IgnorePointer(
                     child: Align(
@@ -429,7 +442,7 @@ class _ProtectionEditorScreenState
                             gradient: LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [Color(0xA6000000), Color(0x00000000)],
+                              colors: [Color(0xB3000000), Color(0x00000000)],
                             ),
                           ),
                         ),
@@ -452,19 +465,20 @@ class _ProtectionEditorScreenState
                   if (showControls)
                     BottomControlDrawer(
                       key: const ValueKey('protection-editor-control-drawer'),
+                      controller: _drawerController,
                       minChildSize: 0.11,
                       initialChildSize: drawerInitialSize,
-                      maxChildSize: 0.84,
-                      snapSizes: [0.11, drawerInitialSize, 0.84],
+                      maxChildSize: 0.88,
+                      snapSizes: const [0.11, 0.24, 0.58, 0.88],
+                      compactContentMaxSize: 0.27,
                       allowHandleOnlyCollapse: false,
                       panelRadius: 28,
-                      panelColor: AppTheme.surface.withValues(alpha: 0.97),
+                      panelColor: AppTheme.surface.withValues(alpha: 0.94),
                       panelBorderColor: AppTheme.surfaceBorder,
                       handleColor: AppTheme.textMuted,
-                      bottomActionBorderColor: AppTheme.surfaceBorder,
                       panelShadow: const [
                         BoxShadow(
-                          color: Color(0x44000000),
+                          color: Color(0x66000000),
                           blurRadius: 32,
                           offset: Offset(0, -10),
                         ),
@@ -473,12 +487,29 @@ class _ProtectionEditorScreenState
                         selectionState,
                         effectState,
                       ),
-                      bottomActionBar: _buildExportAction(nextEnabled),
                       child: _buildToolDeck(
                         selectionState,
                         selectionController,
                         effectState,
                         effectController,
+                      ),
+                    ),
+                  if (showControls)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      height: 108,
+                      child: SafeArea(
+                        top: false,
+                        child: Align(
+                          alignment: Alignment.bottomCenter,
+                          child: SizedBox(
+                            width: double.infinity,
+                            height: 96,
+                            child: _buildExportAction(nextEnabled),
+                          ),
+                        ),
                       ),
                     ),
                 ],
@@ -497,6 +528,7 @@ class _ProtectionEditorScreenState
     EffectEditorController effectController, {
     required double aspectRatio,
     required Size viewportSize,
+    required double unobscuredHeight,
   }) {
     if (selectionState.isAnalyzing) {
       return SizedBox(
@@ -537,29 +569,177 @@ class _ProtectionEditorScreenState
       );
     }
 
-    final viewportAspect = viewportSize.width / viewportSize.height;
-    final stageWidth = viewportAspect > aspectRatio
-        ? viewportSize.height * aspectRatio
-        : viewportSize.width;
-    final stageHeight = stageWidth / aspectRatio;
-
     return SizedBox(
       key: const ValueKey('protection-editor-media-stage'),
-      width: stageWidth,
-      height: stageHeight,
-      child: ColoredBox(
-        color: Colors.black,
-        child: _buildInteractivePreview(
-          selectionState,
-          selectionController,
-          effectState,
-          effectController,
-        ),
+      width: viewportSize.width,
+      height: viewportSize.height,
+      child: _buildInteractivePreview(
+        selectionState,
+        selectionController,
+        effectState,
+        effectController,
+        aspectRatio: aspectRatio,
+        unobscuredHeight: unobscuredHeight,
       ),
     );
   }
 
   Widget _buildInteractivePreview(
+    PersonSelectionState selectionState,
+    PersonSelectionController selectionController,
+    EffectEditorState effectState,
+    EffectEditorController effectController, {
+    required double aspectRatio,
+    required double unobscuredHeight,
+  }) {
+    final displayPath =
+        effectState.previewPath ?? effectState.previewThumbnailPath;
+    final hasImage = displayPath != null && displayPath.isNotEmpty;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final stageWidth = constraints.maxWidth;
+        final stageHeight = constraints.maxHeight;
+        final visibleHeight = unobscuredHeight
+            .clamp(math.min(96.0, stageHeight), stageHeight)
+            .toDouble();
+        final visibleAspect = stageWidth / math.max(visibleHeight, 1.0);
+        final mediaWidth = visibleAspect > aspectRatio
+            ? visibleHeight * aspectRatio
+            : stageWidth;
+        final mediaHeight = mediaWidth / aspectRatio;
+        final mediaLeft = (stageWidth - mediaWidth) / 2;
+        final mediaTop = math.max(0.0, (visibleHeight - mediaHeight) / 2);
+
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            if (hasImage)
+              Positioned.fill(
+                child: ClipRect(
+                  child: ImageFiltered(
+                    imageFilter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                    child: Transform.scale(
+                      scale: 1.08,
+                      child: Image.file(
+                        File(displayPath),
+                        fit: BoxFit.cover,
+                        gaplessPlayback: true,
+                        filterQuality: FilterQuality.low,
+                        color: const Color(0x99000000),
+                        colorBlendMode: BlendMode.darken,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const ColoredBox(color: Color(0xFF050506)),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            else
+              const ColoredBox(color: Color(0xFF050506)),
+            const Positioned.fill(child: ColoredBox(color: Color(0x33000000))),
+            Positioned(
+              key: const ValueKey('protection-editor-media-frame'),
+              left: mediaLeft,
+              top: mediaTop,
+              width: mediaWidth,
+              height: mediaHeight,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  border: Border.all(color: const Color(0x26FFFFFF)),
+                ),
+                child: _buildMediaContent(
+                  selectionState,
+                  selectionController,
+                  effectState,
+                  effectController,
+                ),
+              ),
+            ),
+            if (_selectingFollowTarget)
+              Positioned(
+                key: const ValueKey('reframe-subject-prompt'),
+                left: 72,
+                right: 16,
+                top: 0,
+                child: SafeArea(
+                  bottom: false,
+                  child: Align(
+                    alignment: Alignment.topRight,
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      padding: const EdgeInsets.fromLTRB(14, 7, 6, 7),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceElevated.withValues(alpha: 0.94),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: AppTheme.coral.withAlpha(110),
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x26000000),
+                            blurRadius: 14,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.person_search_outlined,
+                            size: 18,
+                            color: AppTheme.coral,
+                          ),
+                          const SizedBox(width: 6),
+                          const Flexible(
+                            child: Text(
+                              '轻触人物选择主角',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: AppTheme.textPrimary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          IconButton(
+                            key: const ValueKey('reframe-cancel-selection'),
+                            tooltip: '取消选择主角',
+                            visualDensity: VisualDensity.compact,
+                            constraints: const BoxConstraints(
+                              minWidth: 34,
+                              minHeight: 34,
+                            ),
+                            padding: EdgeInsets.zero,
+                            onPressed: () {
+                              HapticFeedback.selectionClick();
+                              setState(() => _selectingFollowTarget = false);
+                              effectController.showSourceFrame(false);
+                              _scheduleProfilePersist();
+                            },
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              size: 18,
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildMediaContent(
     PersonSelectionState selectionState,
     PersonSelectionController selectionController,
     EffectEditorState effectState,
@@ -620,60 +800,6 @@ class _ProtectionEditorScreenState
                     }
                   },
                 ),
-            if (_selectingFollowTarget)
-              Positioned(
-                key: const ValueKey('reframe-subject-prompt'),
-                left: 14,
-                right: 14,
-                top: 12,
-                child: IgnorePointer(
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 9,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceElevated.withValues(alpha: 0.96),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: AppTheme.coral.withAlpha(110),
-                        ),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x18000000),
-                            blurRadius: 12,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.person_search_outlined,
-                            size: 18,
-                            color: AppTheme.coral,
-                          ),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              stageWidth < 220 ? '轻触选主角' : '轻触人物选择主角',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppTheme.textPrimary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
             if (effectState.previewLoading)
               Positioned(
                 bottom: 12,
@@ -782,7 +908,10 @@ class _ProtectionEditorScreenState
         .clamp(0.0, stageHeight - top)
         .toDouble();
 
-    const minHitSize = 48.0;
+    final minHitSize = math.min(
+      48.0,
+      math.max(20.0, math.min(stageWidth, stageHeight) * 0.42),
+    );
     final hitWidth = math.max(width, minHitSize);
     final hitHeight = math.max(height, minHitSize);
     final hitLeft = (left - (hitWidth - width) / 2)
@@ -818,6 +947,23 @@ class _ProtectionEditorScreenState
     );
   }
 
+  void _animateDrawerTo(double size) {
+    void run() {
+      if (!mounted || !_drawerController.isAttached) return;
+      _drawerController.animateTo(
+        size.clamp(0.11, 0.88),
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+      );
+    }
+
+    if (_drawerController.isAttached) {
+      run();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => run());
+    }
+  }
+
   Widget _buildDrawerSummary(
     PersonSelectionState selectionState,
     EffectEditorState effectState,
@@ -833,33 +979,42 @@ class _ProtectionEditorScreenState
           : effectState.effects.fillMode,
     );
 
-    return Container(
+    return InkWell(
       key: const ValueKey('protection-editor-drawer-summary'),
-      padding: const EdgeInsets.fromLTRB(18, 2, 18, 10),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              '保护 $selected/$total 人 · $scope · $style',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+      onTap: () => _animateDrawerTo(0.58),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 2, 18, 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                '保护 $selected/$total · $scope · $style',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 10),
-          const Text(
-            '上拉调整',
-            style: TextStyle(
-              color: AppTheme.textMuted,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
+            const SizedBox(width: 10),
+            const Text(
+              '上拉工具',
+              style: TextStyle(
+                color: AppTheme.textMuted,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 2),
+            const Icon(
+              Icons.keyboard_arrow_up_rounded,
+              color: AppTheme.textMuted,
+              size: 18,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -901,7 +1056,7 @@ class _ProtectionEditorScreenState
 
     return Container(
       key: const ValueKey('protection-editor-tool-deck'),
-      padding: const EdgeInsets.only(top: 4, bottom: 8),
+      padding: const EdgeInsets.only(top: 4, bottom: 126),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -966,7 +1121,9 @@ class _ProtectionEditorScreenState
               borderRadius: BorderRadius.circular(18),
               onTap: () {
                 HapticFeedback.selectionClick();
-                setState(() => _profileExpanded = !_profileExpanded);
+                final next = !_profileExpanded;
+                setState(() => _profileExpanded = next);
+                if (next) _animateDrawerTo(0.88);
               },
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(14, 11, 12, 11),
@@ -1037,13 +1194,8 @@ class _ProtectionEditorScreenState
               ),
             ),
           ),
-          AnimatedCrossFade(
-            duration: const Duration(milliseconds: 180),
-            crossFadeState: _profileExpanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-            firstChild: const SizedBox(width: double.infinity),
-            secondChild: Padding(
+          if (_profileExpanded)
+            Padding(
               key: const ValueKey('protection-profile-config-body'),
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
               child: Column(
@@ -1172,7 +1324,6 @@ class _ProtectionEditorScreenState
                 ],
               ),
             ),
-          ),
         ],
       ),
     );
@@ -1204,7 +1355,9 @@ class _ProtectionEditorScreenState
               borderRadius: BorderRadius.circular(16),
               onTap: () {
                 HapticFeedback.selectionClick();
-                setState(() => _trimExpanded = !_trimExpanded);
+                final next = !_trimExpanded;
+                setState(() => _trimExpanded = next);
+                if (next) _animateDrawerTo(0.58);
               },
               child: ConstrainedBox(
                 constraints: const BoxConstraints(
@@ -1391,6 +1544,7 @@ class _ProtectionEditorScreenState
           onSelectionChanged: (values) {
             if (values.single) {
               setState(() => _selectingFollowTarget = true);
+              _animateDrawerTo(0.24);
               controller.showSourceFrame(true);
             } else {
               setState(() => _selectingFollowTarget = false);
@@ -1453,18 +1607,6 @@ class _ProtectionEditorScreenState
             '轻触画面选择主角；若主角已被保护，会自动取消其保护。',
             style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
           ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton(
-              key: const ValueKey('reframe-cancel-selection'),
-              onPressed: () {
-                setState(() => _selectingFollowTarget = false);
-                controller.showSourceFrame(false);
-                _scheduleProfilePersist();
-              },
-              child: const Text('取消选主角'),
-            ),
-          ),
         ] else if (follow.enabled) ...[
           const SizedBox(height: 8),
           Text(
@@ -1478,6 +1620,7 @@ class _ProtectionEditorScreenState
                 key: const ValueKey('reframe-change-subject'),
                 onPressed: () {
                   setState(() => _selectingFollowTarget = true);
+                  _animateDrawerTo(0.24);
                   controller.showSourceFrame(true);
                 },
                 icon: const Icon(Icons.person_search_outlined, size: 18),
@@ -1485,8 +1628,11 @@ class _ProtectionEditorScreenState
               ),
               TextButton.icon(
                 key: const ValueKey('reframe-source-toggle'),
-                onPressed: () =>
-                    controller.showSourceFrame(!state.showSourcePreview),
+                onPressed: () {
+                  final showSource = !state.showSourcePreview;
+                  if (showSource) _animateDrawerTo(0.24);
+                  controller.showSourceFrame(showSource);
+                },
                 icon: Icon(
                   state.showSourcePreview
                       ? Icons.crop_portrait
@@ -1849,6 +1995,7 @@ class _ProtectionEditorScreenState
                 children: [
                   Expanded(
                     child: _PrivacyModeOption(
+                      key: const ValueKey('privacy-mode-full-body'),
                       label: '全身保护',
                       icon: Icons.accessibility_new_rounded,
                       selected: !isFaceOnly,
@@ -1860,6 +2007,7 @@ class _ProtectionEditorScreenState
                   ),
                   Expanded(
                     child: _PrivacyModeOption(
+                      key: const ValueKey('privacy-mode-face-only'),
                       label: '人脸保护',
                       icon: Icons.face_retouching_off_rounded,
                       selected: isFaceOnly,
@@ -2111,8 +2259,8 @@ class _ProtectionEditorScreenState
     ];
 
     return Wrap(
-      spacing: 6,
-      runSpacing: 6,
+      spacing: 4,
+      runSpacing: 4,
       children: colors.map((item) {
         final argb = item.$1;
         final name = item.$2;
@@ -2128,13 +2276,13 @@ class _ProtectionEditorScreenState
               onSelect(argb);
             },
             child: SizedBox(
-              width: AppTheme.minTouchTarget,
-              height: AppTheme.minTouchTarget,
+              width: 44,
+              height: 44,
               child: Center(
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 160),
-                  width: 40,
-                  height: 40,
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
                     color: Color(argb),
                     shape: BoxShape.circle,
@@ -2456,6 +2604,7 @@ class _PrivacyModeOption extends StatelessWidget {
   final VoidCallback onTap;
 
   const _PrivacyModeOption({
+    super.key,
     required this.label,
     required this.icon,
     required this.selected,

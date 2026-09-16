@@ -16,7 +16,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+Future<void> _expandToolsDrawer(WidgetTester tester) async {
+  final toolDeck = find.byKey(const ValueKey('protection-editor-tool-deck'));
+  if (toolDeck.evaluate().isNotEmpty) return;
+  final handle = find.byKey(const ValueKey('bottom_control_drawer_handle'));
+  await tester.tap(handle);
+  await tester.pumpAndSettle();
+  expect(toolDeck, findsOneWidget);
+}
+
 Future<void> _expandProfile(WidgetTester tester) async {
+  await _expandToolsDrawer(tester);
+  final body = find.byKey(const ValueKey('protection-profile-config-body'));
+  if (body.evaluate().isNotEmpty) return;
   final toggle = find.byKey(const ValueKey('protection-profile-toggle'));
   await tester.ensureVisible(toggle);
   await tester.pumpAndSettle();
@@ -89,21 +101,23 @@ void main() {
     );
     expect(
       find.byKey(const ValueKey('protection-editor-tool-deck')),
-      findsOneWidget,
-    );
-    expect(find.text('保护对象'), findsOneWidget);
-    expect(
-      find.byKey(const ValueKey('protection-profile-section')),
-      findsOneWidget,
-    );
-    expect(find.text('默认 Profile'), findsOneWidget);
-    expect(find.text('全身 · 色块 · 原画 · 原画'), findsOneWidget);
-    expect(
-      find
-          .byKey(const ValueKey('protection-profile-config-body'))
-          .hitTestable(),
       findsNothing,
     );
+    expect(find.text('保护对象'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('protection-profile-section')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('protection-editor-drawer-summary')),
+      findsOneWidget,
+    );
+    expect(find.text('导出'), findsOneWidget);
+
+    await _expandToolsDrawer(tester);
+    expect(find.text('保护对象'), findsOneWidget);
+    expect(find.text('默认 Profile'), findsOneWidget);
+    expect(find.text('全身 · 色块 · 原画 · 原画'), findsOneWidget);
     final moreActions = tester.widget<PopupMenuButton<String>>(
       find.byKey(const ValueKey('protection-target-more-actions')),
     );
@@ -203,11 +217,16 @@ void main() {
       effectState.project!.outputResolutionPreset,
       OutputResolutionPreset.fhd,
     );
-    expect(find.text('人脸 · 模糊 · 9:16 · FHD'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('reframe-subject-prompt')),
       findsOneWidget,
     );
+    expect(
+      find.byKey(const ValueKey('protection-editor-tool-deck')),
+      findsNothing,
+    );
+    await _expandToolsDrawer(tester);
+    expect(find.text('人脸 · 模糊 · 9:16 · FHD'), findsOneWidget);
     expect(
       find
           .byKey(const ValueKey('protection-profile-config-body'))
@@ -394,14 +413,19 @@ void main() {
     final handle = find.byKey(const ValueKey('bottom_control_drawer_handle'));
     expect(handle, findsOneWidget);
     final initialTop = tester.getTopLeft(handle).dy;
-    expect(initialTop, inInclusiveRange(470, 560));
+    expect(initialTop, inInclusiveRange(620, 660));
     final stageRect = tester.getRect(
       find.byKey(const ValueKey('protection-editor-media-stage')),
     );
+    final mediaRect = tester.getRect(
+      find.byKey(const ValueKey('protection-editor-media-frame')),
+    );
     expect(stageRect.width, closeTo(390, 0.01));
-    // Player-style controls overlay the media instead of allocating a separate
-    // white editing area above the drawer.
+    expect(stageRect.height, closeTo(844, 0.01));
+    // The full-screen media ambience continues behind the compact drawer while
+    // the uncropped foreground frame remains completely visible above it.
     expect(stageRect.bottom, greaterThan(initialTop));
+    expect(mediaRect.bottom, lessThanOrEqualTo(initialTop + 0.5));
 
     await tester.drag(handle, const Offset(0, 320));
     await tester.pumpAndSettle();
@@ -496,6 +520,7 @@ void main() {
     expect(repository.analyzeRequestCount, 1);
     expect(repository.lastAnalyzeTrimStartMs, 400);
 
+    await _expandToolsDrawer(tester);
     final trimToggle = find.byKey(const ValueKey('trim-range-toggle'));
     await tester.ensureVisible(trimToggle);
     await tester.tap(trimToggle);
@@ -663,7 +688,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 250));
 
     await tester.ensureVisible(find.text('人脸保护'));
-    await tester.tap(find.text('人脸保护'));
+    await tester.tap(find.byKey(const ValueKey('privacy-mode-face-only')));
     await tester.pumpAndSettle();
     expect(
       container.read(personSelectionControllerProvider).faceOnlyPersonIds,
@@ -679,14 +704,14 @@ void main() {
     await tester.pump(const Duration(milliseconds: 250));
 
     await tester.ensureVisible(find.text('全身保护'));
-    await tester.tap(find.text('全身保护'));
+    await tester.tap(find.byKey(const ValueKey('privacy-mode-full-body')));
     await tester.pumpAndSettle();
     var effects = container.read(effectEditorControllerProvider).effects;
     expect(effects.fillMode, FillMode.mosaic);
     expect(effects.opacity, 0.55);
 
     await tester.ensureVisible(find.text('人脸保护'));
-    await tester.tap(find.text('人脸保护'));
+    await tester.tap(find.byKey(const ValueKey('privacy-mode-face-only')));
     await tester.pumpAndSettle();
     effects = container.read(effectEditorControllerProvider).effects;
     expect(effects.fillMode, FillMode.sticker);
@@ -721,7 +746,7 @@ void main() {
       await _expandProfile(tester);
 
       await tester.ensureVisible(find.text('人脸保护'));
-      await tester.tap(find.text('人脸保护'));
+      await tester.tap(find.byKey(const ValueKey('privacy-mode-face-only')));
       await tester.pumpAndSettle();
       var selection = container.read(personSelectionControllerProvider);
       expect(selection.privacyMode, ProjectPrivacyMode.faceOnly);
@@ -875,11 +900,14 @@ void main() {
         findsNothing,
       );
       var stageSize = tester.getSize(
-        find.byKey(const ValueKey('protection-editor-media-stage')),
+        find.byKey(const ValueKey('protection-editor-media-frame')),
       );
       expect(stageSize.width / stageSize.height, closeTo(9 / 16, .001));
 
-      // Source preview is a view mode, not a change to the saved export config.
+      // Source preview lives in the tool drawer. Subject selection collapses
+      // the drawer so the media can dominate the screen, therefore reopen the
+      // tools before toggling back to the source view.
+      await _expandToolsDrawer(tester);
       await tester.ensureVisible(
         find.byKey(const ValueKey('reframe-source-toggle')),
       );
@@ -891,12 +919,24 @@ void main() {
         isTrue,
       );
       stageSize = tester.getSize(
-        find.byKey(const ValueKey('protection-editor-media-stage')),
+        find.byKey(const ValueKey('protection-editor-media-frame')),
       );
       expect(stageSize.width / stageSize.height, closeTo(16 / 9, .001));
-      await tester.ensureVisible(find.text('人脸保护'));
-      await tester.tap(find.text('人脸保护'));
+      await _expandProfile(tester);
+      final faceModeOption = find.byKey(
+        const ValueKey('privacy-mode-face-only'),
+      );
+      await tester.ensureVisible(faceModeOption);
+      final faceModeGesture = find.descendant(
+        of: faceModeOption,
+        matching: find.byType(GestureDetector),
+      );
+      await tester.tap(faceModeGesture);
       await tester.pumpAndSettle();
+      expect(
+        container.read(personSelectionControllerProvider).privacyMode,
+        ProjectPrivacyMode.faceOnly,
+      );
       expect(
         container
             .read(effectEditorControllerProvider)
@@ -1149,7 +1189,7 @@ void main() {
         1,
       );
       final stageSize = tester.getSize(
-        find.byKey(const ValueKey('protection-editor-media-stage')),
+        find.byKey(const ValueKey('protection-editor-media-frame')),
       );
       expect(stageSize.width / stageSize.height, closeTo(9 / 16, .001));
 

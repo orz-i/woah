@@ -6,13 +6,24 @@ all controls.
 
 ## UX
 
-- The editor is a full-screen black media workspace with the control drawer
-  overlaid on the video.
-- `默认 Profile` is collapsed by default and shows a one-line summary.
-- Expanding it exposes protection scope, effect style, effect parameters,
-  output framing, resolution and advanced effect controls.
+- The editor is a full-screen black media workspace. The entire screen carries
+  media context: a dimmed/blurred cover layer fills the background while an
+  uncropped foreground frame remains fully visible above the active drawer.
+- The default drawer snap is compact (about 24% of the viewport) and shows only
+  the current protection summary. The full tool deck is not built until the
+  user taps the handle/summary or pulls the drawer upward.
+- Export is a floating bottom action rather than an opaque drawer footer, so it
+  never consumes scroll height or clips Profile/trim controls.
+- `默认 Profile` is collapsed inside the tool drawer and shows a one-line
+  summary. Expanding it moves the drawer to the full editing snap and exposes
+  protection scope, effect style, parameters, output framing, resolution and
+  advanced effects.
 - Protection targets and trim remain outside the Profile because they are
   video-specific actions.
+- Entering subject selection or switching to the full source view automatically
+  returns the drawer to the compact snap so the media becomes primary again.
+  Subject-selection guidance and cancel live in the media HUD rather than inside
+  the Profile form.
 
 ## Persisted fields
 
