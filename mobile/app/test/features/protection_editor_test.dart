@@ -71,17 +71,69 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('保护对象'), findsOneWidget);
+    expect(find.text('保护范围'), findsOneWidget);
+    expect(find.text('遮挡样式'), findsOneWidget);
     expect(find.text('全身保护'), findsOneWidget);
     expect(find.text('人脸保护'), findsOneWidget);
     expect(find.text('马赛克'), findsOneWidget);
     expect(
-      find.byKey(const ValueKey('integrated-video-trim-control')),
+      find.byKey(const ValueKey('protection-editor-drawer-summary')),
       findsOneWidget,
+    );
+    expect(find.text('导出'), findsOneWidget);
+    expect(find.byKey(const ValueKey('trim-range-section')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('integrated-video-trim-control')).hitTestable(),
+      findsNothing,
     );
     expect(find.text('质量'), findsNothing);
     expect(find.text('均衡'), findsNothing);
     expect(find.text('快速'), findsNothing);
     expect(find.byKey(ImmersiveFlowAction.nextControlKey), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('control drawer snaps between compact and expanded states', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final repository = _FakeProtectionRepository();
+    final container = ProviderContainer(
+      overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(home: ProtectionEditorScreen(project: project)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final handle = find.byKey(const ValueKey('bottom_control_drawer_handle'));
+    expect(handle, findsOneWidget);
+    final initialTop = tester.getTopLeft(handle).dy;
+
+    await tester.drag(handle, const Offset(0, 320));
+    await tester.pumpAndSettle();
+    final compactTop = tester.getTopLeft(handle).dy;
+    expect(compactTop, greaterThan(initialTop));
+    expect(
+      find.byKey(const ValueKey('protection-editor-drawer-summary')),
+      findsOneWidget,
+    );
+
+    await tester.drag(handle, const Offset(0, -560));
+    await tester.pumpAndSettle();
+    final expandedTop = tester.getTopLeft(handle).dy;
+    expect(expandedTop, lessThan(compactTop));
     expect(tester.takeException(), isNull);
   });
 
@@ -104,6 +156,15 @@ void main() {
 
     expect(repository.analyzeRequestCount, 1);
     expect(repository.lastAnalyzeTrimStartMs, 400);
+
+    final trimToggle = find.byKey(const ValueKey('trim-range-toggle'));
+    await tester.ensureVisible(trimToggle);
+    await tester.tap(trimToggle);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('integrated-video-trim-control')),
+      findsOneWidget,
+    );
 
     final startHandle = find.byKey(const ValueKey('trim-start-handle'));
     await tester.ensureVisible(startHandle);
@@ -216,7 +277,9 @@ void main() {
       findsNothing,
     );
 
-    await tester.tap(find.bySemanticsLabel('已保护人物').first);
+    expect(find.bySemanticsLabel('人物 1，已保护'), findsOneWidget);
+    await tester.tap(firstTarget);
+    await tester.pump(const Duration(milliseconds: 250));
     await tester.pumpAndSettle();
 
     expect(
@@ -370,6 +433,11 @@ void main() {
       await tester.ensureVisible(find.byKey(const ValueKey('reframe-mode')));
       await tester.tap(find.text('竖屏 9:16'));
       await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('reframe-subject-prompt')),
+        findsOneWidget,
+      );
+      expect(find.text('轻触人物选择主角'), findsOneWidget);
       expect(find.bySemanticsLabel('选择人物 2 为主角'), findsOneWidget);
       await tester.tap(
         find.byKey(const ValueKey('protection-person-target-1')),
@@ -414,8 +482,13 @@ void main() {
             .targetPersonId,
         1,
       );
-      await tester.ensureVisible(find.text('清空'));
-      await tester.tap(find.text('清空'));
+      final moreActions = find.byKey(
+        const ValueKey('protection-target-more-actions'),
+      );
+      await tester.ensureVisible(moreActions);
+      await tester.tap(moreActions);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('清空保护对象'));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(ImmersiveFlowAction.nextControlKey));
       await tester.pumpAndSettle();

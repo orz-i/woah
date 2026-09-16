@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/widgets/bottom_control_drawer.dart';
 import '../../../core/widgets/flow_back_button.dart';
 import '../../../core/widgets/immersive_flow_action.dart';
 import '../../../core/widgets/stage_viewport.dart';
@@ -66,8 +67,6 @@ class _ProtectionEditorScreenState
   static const int _minimumClipMs = 1000;
   static const int _thumbnailCount = 10;
 
-  final ScrollController _scrollController = ScrollController();
-
   EffectConfig? _fullBodyDraft;
   EffectConfig? _faceOnlyDraft;
   List<String> _trimThumbnailPaths = const [];
@@ -79,6 +78,7 @@ class _ProtectionEditorScreenState
   bool _allowRoutePop = false;
   bool _returnRequested = false;
   bool _advancedEffectExpanded = false;
+  bool _trimExpanded = false;
   bool _selectingFollowTarget = false;
 
   @override
@@ -234,12 +234,6 @@ class _ProtectionEditorScreenState
   }
 
   @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final selectionState = ref.watch(personSelectionControllerProvider);
     final selectionController = ref.read(
@@ -287,55 +281,77 @@ class _ProtectionEditorScreenState
           body: SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final availableHeight = (constraints.maxHeight - 48).clamp(
-                  0.0,
-                  double.infinity,
+                final stageMaxHeight = math.max(
+                  180.0,
+                  math.min(
+                    constraints.maxHeight * 0.60,
+                    constraints.maxHeight * 0.62 - AppTheme.minTouchTarget,
+                  ),
                 );
-                final stageFraction = !showControls
-                    ? 0.64
-                    : aspectRatio < 0.75
-                    ? 0.56
-                    : aspectRatio < 1.25
-                    ? 0.46
-                    : 0.38;
-                final stageMaxHeight = availableHeight * stageFraction;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+
+                return Stack(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: SizedBox(
-                        height: AppTheme.minTouchTarget,
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: FlowBackButton(onPressed: _requestReturn),
+                    Positioned.fill(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: SizedBox(
+                              height: AppTheme.minTouchTarget,
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: FlowBackButton(
+                                  onPressed: _requestReturn,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: _buildStage(
+                              selectionState,
+                              selectionController,
+                              effectState,
+                              effectController,
+                              aspectRatio: aspectRatio,
+                              maxHeight: stageMaxHeight,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (showControls)
+                      BottomControlDrawer(
+                        key: const ValueKey('protection-editor-control-drawer'),
+                        minChildSize: 0.14,
+                        initialChildSize: 0.44,
+                        maxChildSize: 0.82,
+                        snapSizes: const [0.14, 0.44, 0.82],
+                        allowHandleOnlyCollapse: false,
+                        panelColor: AppTheme.warmSurface,
+                        panelBorderColor: AppTheme.warmBorder,
+                        handleColor: AppTheme.warmTextMuted,
+                        bottomActionBorderColor: AppTheme.warmBorder,
+                        panelShadow: const [
+                          BoxShadow(
+                            color: Color(0x18000000),
+                            blurRadius: 26,
+                            offset: Offset(0, -8),
+                          ),
+                        ],
+                        peekHeader: _buildDrawerSummary(
+                          selectionState,
+                          effectState,
                         ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: _buildStage(
-                        selectionState,
-                        selectionController,
-                        effectState,
-                        effectController,
-                        aspectRatio: aspectRatio,
-                        maxHeight: stageMaxHeight,
-                      ),
-                    ),
-                    if (showControls) ...[
-                      const SizedBox(height: 10),
-                      Expanded(
+                        bottomActionBar: _buildExportAction(nextEnabled),
                         child: _buildToolDeck(
                           selectionState,
                           selectionController,
                           effectState,
                           effectController,
-                          nextEnabled: nextEnabled,
                         ),
                       ),
-                    ] else
-                      const Spacer(),
                   ],
                 );
               },
@@ -466,9 +482,59 @@ class _ProtectionEditorScreenState
                     }
                   },
                 ),
+            if (_selectingFollowTarget)
+              Positioned(
+                key: const ValueKey('reframe-subject-prompt'),
+                left: 14,
+                right: 14,
+                top: 12,
+                child: IgnorePointer(
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 9,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.warmSurface.withValues(alpha: 0.96),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: AppTheme.coral.withAlpha(110),
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x18000000),
+                            blurRadius: 12,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.person_search_outlined,
+                            size: 18,
+                            color: AppTheme.coral,
+                          ),
+                          SizedBox(width: 7),
+                          Text(
+                            '轻触人物选择主角',
+                            style: TextStyle(
+                              color: AppTheme.warmTextPrimary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             if (effectState.previewLoading)
               Positioned(
-                top: 12,
+                bottom: 12,
                 child: IgnorePointer(
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -496,7 +562,7 @@ class _ProtectionEditorScreenState
                           '更新预览…',
                           style: TextStyle(
                             color: AppTheme.warmTextSecondary,
-                            fontSize: 11.5,
+                            fontSize: 12,
                           ),
                         ),
                       ],
@@ -508,7 +574,7 @@ class _ProtectionEditorScreenState
               Positioned(
                 left: 14,
                 right: 14,
-                top: 12,
+                bottom: 12,
                 child: IgnorePointer(
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -525,7 +591,7 @@ class _ProtectionEditorScreenState
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: AppTheme.warmTextSecondary,
-                        fontSize: 11.5,
+                        fontSize: 12,
                       ),
                     ),
                   ),
@@ -595,8 +661,8 @@ class _ProtectionEditorScreenState
         label: _selectingFollowTarget
             ? '选择人物 ${person.id + 1} 为主角'
             : selected
-            ? '已保护人物'
-            : '未保护人物',
+            ? '人物 ${person.id + 1}，已保护'
+            : '人物 ${person.id + 1}，未保护',
         child: GestureDetector(
           key: ValueKey('protection-person-target-${person.id}'),
           behavior: HitTestBehavior.opaque,
@@ -610,13 +676,76 @@ class _ProtectionEditorScreenState
     );
   }
 
+  Widget _buildDrawerSummary(
+    PersonSelectionState selectionState,
+    EffectEditorState effectState,
+  ) {
+    final selected = selectionState.privacyTargetIds.length;
+    final total = selectionState.persons.length;
+    final scope = selectionState.privacyMode == ProjectPrivacyMode.faceOnly
+        ? '人脸'
+        : '全身';
+    final style = _fillModeLabel(
+      effectState.effects.faceStickerEnabled
+          ? FillMode.sticker
+          : effectState.effects.fillMode,
+    );
+
+    return Container(
+      key: const ValueKey('protection-editor-drawer-summary'),
+      padding: const EdgeInsets.fromLTRB(18, 2, 18, 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              '保护 $selected/$total 人 · $scope · $style',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppTheme.warmTextPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          const Text(
+            '上拉调整',
+            style: TextStyle(
+              color: AppTheme.warmTextMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExportAction(bool nextEnabled) {
+    return SizedBox(
+      height: 76,
+      child: OverflowBox(
+        alignment: Alignment.bottomCenter,
+        minHeight: 0,
+        maxHeight: 176,
+        child: ImmersiveFlowAction(
+          enabled: nextEnabled,
+          onNext: _continueToExport,
+          onReturn: _requestReturn,
+          actionCaption: '导出',
+          nextSemanticsLabel: '导出视频，长按并上拉可返回',
+        ),
+      ),
+    );
+  }
+
   Widget _buildToolDeck(
     PersonSelectionState selectionState,
     PersonSelectionController selectionController,
     EffectEditorState effectState,
-    EffectEditorController effectController, {
-    required bool nextEnabled,
-  }) {
+    EffectEditorController effectController,
+  ) {
     final effects = effectState.effects;
     final faceMode = selectionState.privacyMode == ProjectPrivacyMode.faceOnly;
     final activeMode = effects.faceStickerEnabled
@@ -625,167 +754,254 @@ class _ProtectionEditorScreenState
 
     return Container(
       key: const ValueKey('protection-editor-tool-deck'),
-      decoration: const BoxDecoration(
-        color: AppTheme.warmSurface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 24,
-            offset: Offset(0, -6),
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.only(top: 4, bottom: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildTargetSection(selectionState, selectionController),
-                  const SizedBox(height: 14),
-                  _buildSectionLabel('保护方式'),
-                  const SizedBox(height: 8),
-                  _buildPrivacyModeSwitch(selectionState, effectController),
-                  const SizedBox(height: 14),
-                  _buildReframeControls(effectState, effectController),
-                  const SizedBox(height: 14),
-                  Row(
+          _buildTargetSection(selectionState, selectionController),
+          const SizedBox(height: 16),
+          _buildSectionLabel('保护范围'),
+          const SizedBox(height: 8),
+          _buildPrivacyModeSwitch(selectionState, effectController),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(child: _buildSectionLabel('遮挡样式')),
+              InkWell(
+                onTap: () =>
+                    _resetCurrentEffect(selectionState, effectController),
+                borderRadius: BorderRadius.circular(12),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Expanded(child: _buildSectionLabel('特效')),
-                      InkWell(
-                        onTap: () => _resetCurrentEffect(
-                          selectionState,
-                          effectController,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 4,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.restart_alt_rounded,
-                                size: 16,
-                                color: AppTheme.warmTextSecondary,
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                '恢复默认',
-                                style: TextStyle(
-                                  color: AppTheme.warmTextSecondary,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
+                      Icon(
+                        Icons.restart_alt_rounded,
+                        size: 16,
+                        color: AppTheme.warmTextSecondary,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        '恢复默认',
+                        style: TextStyle(
+                          color: AppTheme.warmTextSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  _buildModeChips(
-                    activeMode,
-                    effectController,
-                    faceMode: faceMode,
-                  ),
-                  const SizedBox(height: 12),
-                  if (faceMode && effects.faceStickerEnabled) ...[
-                    _buildStickerPicker(effects, effectController),
-                    const SizedBox(height: 10),
-                    _buildStepSlider(
-                      label: '贴纸大小',
-                      value: effects.stickerScale,
-                      min: 1.0,
-                      max: 2.0,
-                      step: 0.1,
-                      displayValue: '${(effects.stickerScale * 100).round()}%',
-                      onChanged: effectController.updateStickerScale,
-                    ),
-                  ] else ...[
-                    _buildStepSlider(
-                      label: '强度',
-                      value: effects.opacity,
-                      min: 0.1,
-                      max: 1.0,
-                      step: 0.05,
-                      displayValue: '${(effects.opacity * 100).round()}%',
-                      onChanged: effectController.updateOpacity,
-                    ),
-                  ],
-                  if (effects.fillMode == FillMode.solid ||
-                      (effects.fillMode == FillMode.gradient &&
-                          !effects.faceStickerEnabled)) ...[
-                    const SizedBox(height: 10),
-                    const Text(
-                      '颜色',
-                      style: TextStyle(
-                        color: AppTheme.warmTextPrimary,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _buildModeChips(activeMode, effectController, faceMode: faceMode),
+          const SizedBox(height: 12),
+          if (faceMode && effects.faceStickerEnabled) ...[
+            _buildStickerPicker(effects, effectController),
+            const SizedBox(height: 10),
+            _buildStepSlider(
+              label: '贴纸大小',
+              value: effects.stickerScale,
+              min: 1.0,
+              max: 2.0,
+              step: 0.1,
+              displayValue: '${(effects.stickerScale * 100).round()}%',
+              onChanged: effectController.updateStickerScale,
+            ),
+          ] else ...[
+            _buildStepSlider(
+              label: '强度',
+              value: effects.opacity,
+              min: 0.1,
+              max: 1.0,
+              step: 0.05,
+              displayValue: '${(effects.opacity * 100).round()}%',
+              onChanged: effectController.updateOpacity,
+            ),
+          ],
+          if (effects.fillMode == FillMode.solid ||
+              (effects.fillMode == FillMode.gradient &&
+                  !effects.faceStickerEnabled)) ...[
+            const SizedBox(height: 10),
+            const Text(
+              '颜色',
+              style: TextStyle(
+                color: AppTheme.warmTextPrimary,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildColorPalette(
+              effects.fillColorArgb,
+              effectController.updateFillColor,
+            ),
+          ],
+          if ((effects.fillMode == FillMode.blur ||
+                  effects.fillMode == FillMode.mosaic) &&
+              !effects.faceStickerEnabled) ...[
+            const SizedBox(height: 10),
+            _buildStepSlider(
+              label: effects.fillMode == FillMode.mosaic ? '马赛克颗粒' : '模糊程度',
+              value: effects.blurStrength,
+              min: 1,
+              max: 30,
+              step: 1,
+              displayValue: '${effects.blurStrength.round()}',
+              onChanged: effectController.updateBlurStrength,
+            ),
+          ],
+          const SizedBox(height: 18),
+          _buildReframeControls(effectState, effectController),
+          const SizedBox(height: 16),
+          _buildTrimSection(),
+          const SizedBox(height: 16),
+          _buildAdvancedEffectSection(effects, effectController),
+          const SizedBox(height: 18),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrimSection() {
+    final duration = math.max(_trimEndMs - _trimStartMs, 0);
+    final summary =
+        '${_formatRangeTimestamp(_trimStartMs)}–${_formatRangeTimestamp(_trimEndMs)} · ${_formatRangeDuration(duration)}';
+
+    return Container(
+      key: const ValueKey('trim-range-section'),
+      decoration: BoxDecoration(
+        color: AppTheme.warmSurfaceSoft.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.warmBorder.withValues(alpha: 0.72)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Semantics(
+            button: true,
+            expanded: _trimExpanded,
+            label: _trimExpanded ? '收起舞段范围' : '展开舞段范围，当前 $summary',
+            child: InkWell(
+              key: const ValueKey('trim-range-toggle'),
+              borderRadius: BorderRadius.circular(16),
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _trimExpanded = !_trimExpanded);
+              },
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  minHeight: AppTheme.minTouchTarget,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.content_cut_rounded,
+                        size: 18,
+                        color: AppTheme.warmTextSecondary,
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildColorPalette(
-                      effects.fillColorArgb,
-                      effectController.updateFillColor,
-                    ),
-                  ],
-                  if ((effects.fillMode == FillMode.blur ||
-                          effects.fillMode == FillMode.mosaic) &&
-                      !effects.faceStickerEnabled) ...[
-                    const SizedBox(height: 10),
-                    _buildStepSlider(
-                      label: effects.fillMode == FillMode.mosaic
-                          ? '马赛克颗粒'
-                          : '模糊程度',
-                      value: effects.blurStrength,
-                      min: 1,
-                      max: 30,
-                      step: 1,
-                      displayValue: '${effects.blurStrength.round()}',
-                      onChanged: effectController.updateBlurStrength,
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  _buildAdvancedEffectSection(effects, effectController),
-                  const SizedBox(height: 16),
-                  _buildTrimSection(),
-                ],
+                      const SizedBox(width: 8),
+                      const Text(
+                        '舞段范围',
+                        style: TextStyle(
+                          color: AppTheme.warmTextPrimary,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          summary,
+                          textAlign: TextAlign.end,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppTheme.warmTextSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            fontFeatures: [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      AnimatedRotation(
+                        turns: _trimExpanded ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 160),
+                        child: const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: AppTheme.warmTextMuted,
+                          size: 20,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
-          Container(
-            height: 82,
-            padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
-            decoration: BoxDecoration(
-              color: AppTheme.warmSurface,
-              border: Border(
-                top: BorderSide(
-                  color: AppTheme.warmBorder.withValues(alpha: 0.5),
-                  width: 0.8,
-                ),
-              ),
-            ),
-            child: OverflowBox(
-              alignment: Alignment.bottomCenter,
-              minHeight: 0,
-              maxHeight: 176,
-              child: Center(
-                child: ImmersiveFlowAction(
-                  enabled: nextEnabled,
-                  onNext: _continueToExport,
-                  onReturn: _requestReturn,
-                ),
+          AnimatedCrossFade(
+            duration: const Duration(milliseconds: 180),
+            crossFadeState: _trimExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            firstChild: const SizedBox(width: double.infinity),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Divider(height: 1, color: AppTheme.warmBorder),
+                  const SizedBox(height: 10),
+                  const Text(
+                    '拖动两侧边缘选择保留舞段。修改起点后会重新识别人，并需要重新选择竖屏主角。',
+                    style: TextStyle(
+                      color: AppTheme.warmTextSecondary,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  VideoTrimControl(
+                    durationMs: _sourceDurationMs,
+                    trimStartMs: _trimStartMs,
+                    trimEndMs: _trimEndMs,
+                    thumbnailPaths: _trimThumbnailPaths,
+                    onStartChanged: _setTrimStart,
+                    onEndChanged: _setTrimEnd,
+                    onTrimChangeEnd: () => unawaited(_applyTrimChange()),
+                  ),
+                  if (_trimApplying) ...[
+                    const SizedBox(height: 8),
+                    const Row(
+                      children: [
+                        SizedBox(
+                          width: 13,
+                          height: 13,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 1.7,
+                            color: AppTheme.coral,
+                          ),
+                        ),
+                        SizedBox(width: 7),
+                        Expanded(
+                          child: Text(
+                            '正在按新舞段重新识别人…',
+                            style: TextStyle(
+                              color: AppTheme.warmTextSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
@@ -794,55 +1010,29 @@ class _ProtectionEditorScreenState
     );
   }
 
-  Widget _buildTrimSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildSectionLabel('舞段裁切', subdued: true),
-        const SizedBox(height: 4),
-        const Text(
-          '拖动两侧边缘选择保留舞段；调整完成后会按新的起点重新识别人。',
-          style: TextStyle(
-            color: AppTheme.warmTextSecondary,
-            fontSize: 11.5,
-            height: 1.35,
-          ),
-        ),
-        const SizedBox(height: 8),
-        VideoTrimControl(
-          durationMs: _sourceDurationMs,
-          trimStartMs: _trimStartMs,
-          trimEndMs: _trimEndMs,
-          thumbnailPaths: _trimThumbnailPaths,
-          onStartChanged: _setTrimStart,
-          onEndChanged: _setTrimEnd,
-          onTrimChangeEnd: () => unawaited(_applyTrimChange()),
-        ),
-        if (_trimApplying) ...[
-          const SizedBox(height: 8),
-          const Row(
-            children: [
-              SizedBox(
-                width: 13,
-                height: 13,
-                child: CircularProgressIndicator(
-                  strokeWidth: 1.7,
-                  color: AppTheme.coral,
-                ),
-              ),
-              SizedBox(width: 7),
-              Text(
-                '正在按新舞段重新识别人…',
-                style: TextStyle(
-                  color: AppTheme.warmTextSecondary,
-                  fontSize: 11.5,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ],
-    );
+  String _formatRangeTimestamp(int ms) {
+    final totalSeconds = ms / 1000.0;
+    final minutes = totalSeconds ~/ 60;
+    final seconds = totalSeconds - minutes * 60;
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toStringAsFixed(1).padLeft(4, '0')}';
+  }
+
+  String _formatRangeDuration(int ms) {
+    final seconds = ms / 1000.0;
+    if (seconds < 60) return '${seconds.toStringAsFixed(1)} 秒';
+    final minutes = seconds ~/ 60;
+    final remainder = seconds - minutes * 60;
+    return '$minutes 分 ${remainder.toStringAsFixed(0)} 秒';
+  }
+
+  String _fillModeLabel(FillMode mode) {
+    return switch (mode) {
+      FillMode.sticker => '贴纸',
+      FillMode.mosaic => '马赛克',
+      FillMode.blur => '模糊',
+      FillMode.solid => '色块',
+      FillMode.gradient => '渐变',
+    };
   }
 
   Widget _buildReframeControls(
@@ -853,7 +1043,7 @@ class _ProtectionEditorScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildSectionLabel('画面裁切'),
+        _buildSectionLabel('输出画幅'),
         const SizedBox(height: 8),
         SegmentedButton<bool>(
           key: const ValueKey('reframe-mode'),
@@ -935,7 +1125,7 @@ class _ProtectionEditorScreenState
           ),
           const Text(
             '当前为首帧构图；导出时跟随主角。清空保护对象可仅裁切。',
-            style: TextStyle(fontSize: 11, color: AppTheme.warmTextSecondary),
+            style: TextStyle(fontSize: 12, color: AppTheme.warmTextSecondary),
           ),
         ],
       ],
@@ -953,65 +1143,82 @@ class _ProtectionEditorScreenState
       children: [
         Row(
           children: [
-            Expanded(
-              child: Row(
-                children: [
-                  _buildSectionLabel('保护对象'),
-                  const SizedBox(width: 7),
-                  Text(
-                    '$selected / $total',
-                    style: const TextStyle(
-                      color: AppTheme.warmTextMuted,
-                      fontSize: 11.5,
-                    ),
-                  ),
-                ],
+            _buildSectionLabel('保护对象'),
+            const SizedBox(width: 7),
+            Text(
+              '$selected / $total',
+              style: const TextStyle(
+                color: AppTheme.warmTextMuted,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
               ),
             ),
-            _TargetTextAction(
-              icon: Icons.done_all_rounded,
-              label: '全选',
-              enabled: selected < total,
-              onPressed: () {
-                controller.selectAll();
+            const Spacer(),
+            if (selected < total)
+              _TargetTextAction(
+                icon: Icons.done_all_rounded,
+                label: '全选',
+                onPressed: () {
+                  controller.selectAll();
+                  _syncSelectionToEffect(
+                    ref.read(effectEditorControllerProvider.notifier),
+                  );
+                },
+              ),
+            PopupMenuButton<String>(
+              key: const ValueKey('protection-target-more-actions'),
+              tooltip: '更多保护对象操作',
+              icon: const Icon(
+                Icons.more_horiz_rounded,
+                size: 20,
+                color: AppTheme.warmTextSecondary,
+              ),
+              onSelected: (value) {
+                HapticFeedback.selectionClick();
+                if (value == 'reset') {
+                  controller.resetSelection();
+                } else if (value == 'clear') {
+                  controller.deselectAll();
+                }
                 _syncSelectionToEffect(
                   ref.read(effectEditorControllerProvider.notifier),
                 );
               },
-            ),
-            const SizedBox(width: 2),
-            _TargetTextAction(
-              icon: Icons.refresh_rounded,
-              label: '恢复',
-              onPressed: () {
-                controller.resetSelection();
-                _syncSelectionToEffect(
-                  ref.read(effectEditorControllerProvider.notifier),
-                );
-              },
-            ),
-            const SizedBox(width: 2),
-            _TargetTextAction(
-              icon: Icons.remove_done_rounded,
-              label: '清空',
-              enabled: selected > 0,
-              onPressed: () {
-                controller.deselectAll();
-                _syncSelectionToEffect(
-                  ref.read(effectEditorControllerProvider.notifier),
-                );
-              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'reset',
+                  child: Row(
+                    children: [
+                      Icon(Icons.refresh_rounded, size: 18),
+                      SizedBox(width: 8),
+                      Text('恢复默认选择'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'clear',
+                  enabled: selected > 0,
+                  child: const Row(
+                    children: [
+                      Icon(Icons.remove_done_rounded, size: 18),
+                      SizedBox(width: 8),
+                      Text('清空保护对象'),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         Text(
-          selected == 0 ? '选择保护对象，或开启竖屏跟随以仅裁切视频' : '轻触原画中的人物可调整保护对象',
+          selected == 0 ? '选择保护对象，或开启竖屏跟随以仅调整画幅' : '轻触画面中的人物可调整保护对象',
           style: TextStyle(
             color: selected == 0
                 ? AppTheme.coralStrong
                 : AppTheme.warmTextSecondary,
-            fontSize: 11.5,
+            fontSize: 12,
+            height: 1.35,
             fontWeight: selected == 0 ? FontWeight.w600 : FontWeight.w400,
           ),
         ),
@@ -1074,7 +1281,7 @@ class _ProtectionEditorScreenState
                             '描边 ${effects.borderWidth.round()} px',
                             style: const TextStyle(
                               color: AppTheme.coral,
-                              fontSize: 11.5,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -1288,7 +1495,7 @@ class _ProtectionEditorScreenState
                         color: selected
                             ? AppTheme.coralStrong
                             : AppTheme.warmTextPrimary,
-                        fontSize: 11.5,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1451,24 +1658,26 @@ class _ProtectionEditorScreenState
   }
 
   Widget _buildColorPalette(int currentArgb, ValueChanged<int> onSelect) {
-    const colors = [
-      0xFF000000,
-      0xFFFF5E5B,
-      0xFFFF9EAA,
-      0xFF7D9CFF,
-      0xFF71C991,
-      0xFFFFFFFF,
+    const colors = <(int, String)>[
+      (0xFF000000, '黑色'),
+      (0xFFFF5E5B, '珊瑚红'),
+      (0xFFFF9EAA, '粉色'),
+      (0xFF7D9CFF, '蓝紫色'),
+      (0xFF71C991, '绿色'),
+      (0xFFFFFFFF, '白色'),
     ];
 
     return Wrap(
       spacing: 6,
       runSpacing: 6,
-      children: colors.map((argb) {
+      children: colors.map((item) {
+        final argb = item.$1;
+        final name = item.$2;
         final selected = currentArgb == argb;
         return Semantics(
           button: true,
           selected: selected,
-          label: '颜色选项',
+          label: '$name${selected ? '，已选择' : ''}',
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () {
@@ -1735,53 +1944,42 @@ class _TargetTextAction extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onPressed;
-  final bool enabled;
 
   const _TargetTextAction({
     required this.icon,
     required this.label,
     required this.onPressed,
-    this.enabled = true,
   });
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      enabled: enabled,
       label: label,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: enabled
-            ? () {
-                HapticFeedback.selectionClick();
-                onPressed();
-              }
-            : null,
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 120),
-          opacity: enabled ? 1 : 0.38,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              minHeight: AppTheme.minTouchTarget,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icon, size: 15, color: AppTheme.warmTextSecondary),
-                  const SizedBox(width: 3),
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      color: AppTheme.warmTextSecondary,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                    ),
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onPressed();
+        },
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: AppTheme.minTouchTarget),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 15, color: AppTheme.warmTextSecondary),
+                const SizedBox(width: 3),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: AppTheme.warmTextSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),

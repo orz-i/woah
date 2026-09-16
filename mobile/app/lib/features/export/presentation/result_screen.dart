@@ -161,6 +161,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
+              final stageHeight = (constraints.maxHeight * 0.44).clamp(
+                240.0,
+                360.0,
+              );
               return SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
                 child: ConstrainedBox(
@@ -169,21 +173,27 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),
                       child: Column(
+                        key: const ValueKey('result-content-stack'),
+                        mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           if (outputPath.isNotEmpty)
-                            MediaStageFrame(
-                              key: const ValueKey('result-media-stage'),
-                              backgroundColor: Colors.black,
-                              child: VideoPreviewPlayer(
-                                videoPath: outputPath,
-                                aspectRatio:
-                                    project?.outputAspectRatio ?? 16 / 9,
+                            SizedBox(
+                              height: stageHeight,
+                              child: MediaStageFrame(
+                                key: const ValueKey('result-media-stage'),
+                                backgroundColor: Colors.black,
+                                child: Center(
+                                  child: VideoPreviewPlayer(
+                                    videoPath: outputPath,
+                                    aspectRatio:
+                                        project?.outputAspectRatio ?? 16 / 9,
+                                  ),
+                                ),
                               ),
                             ),
                           const SizedBox(height: 14),
                           _buildSaveStatus(fileSizeMb),
-                          const Spacer(),
                           const SizedBox(height: 18),
                           _buildActionCluster(),
                         ],
@@ -496,7 +506,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 statusLabel,
                 style: const TextStyle(
                   color: Color(0xFF2E7D46),
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -543,7 +553,7 @@ class _ResultDiagnosticsButton extends StatelessWidget {
                   Text(
                     isExporting ? '正在导出…' : '导出诊断包',
                     style: const TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       color: AppTheme.warmTextMuted,
                     ),
                   ),

@@ -450,7 +450,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                             '实时画面 · 点击关闭',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 11.5,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -690,10 +690,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               Expanded(
                 child: Text(
                   '纯端侧离线安全处理，视频数据绝不离开本地',
-                  style: TextStyle(
-                    color: AppTheme.warmTextMuted,
-                    fontSize: 11.5,
-                  ),
+                  style: TextStyle(color: AppTheme.warmTextMuted, fontSize: 12),
                 ),
               ),
             ],
@@ -713,7 +710,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                     '可切换应用，完成后会通过通知提醒你',
                     style: TextStyle(
                       color: AppTheme.warmTextSecondary,
-                      fontSize: 11.5,
+                      fontSize: 12,
                       height: 1.35,
                     ),
                   ),

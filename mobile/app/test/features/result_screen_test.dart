@@ -182,6 +182,11 @@ void main() {
     expect(find.byKey(const ValueKey('result-share-action')), findsOneWidget);
     expect(find.byKey(const ValueKey('result-next-action')), findsOneWidget);
     expect(find.byKey(const ValueKey('result-open-action')), findsOneWidget);
+    expect(find.byKey(const ValueKey('result-content-stack')), findsOneWidget);
+    final stageSize = tester.getSize(
+      find.byKey(const ValueKey('result-media-stage')),
+    );
+    expect(stageSize.height, greaterThanOrEqualTo(240));
     expect(tester.takeException(), isNull);
   });
 
