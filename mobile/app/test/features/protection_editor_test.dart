@@ -1,3 +1,4 @@
+import 'package:app/app/theme.dart';
 import 'package:app/core/widgets/immersive_flow_action.dart';
 import 'package:app/features/effect_editor/presentation/effect_editor_controller.dart';
 import 'package:app/features/export/presentation/export_screen.dart';
@@ -77,18 +78,41 @@ void main() {
     expect(find.text('全身保护'), findsOneWidget);
     expect(find.text('人脸保护'), findsOneWidget);
     expect(find.text('马赛克'), findsOneWidget);
+    final moreActions = tester.widget<PopupMenuButton<String>>(
+      find.byKey(const ValueKey('protection-target-more-actions')),
+    );
+    expect(moreActions.color, AppTheme.warmSurface);
+    expect(moreActions.surfaceTintColor, Colors.transparent);
     expect(find.text('分辨率'), findsOneWidget);
     expect(find.text('FHD'), findsOneWidget);
     expect(find.text('HD'), findsOneWidget);
+    final outputResolution = find.byKey(
+      const ValueKey('output-resolution-preset'),
+    );
+    expect(outputResolution, findsOneWidget);
+    final resolutionControl = tester
+        .widget<SegmentedButton<OutputResolutionPreset>>(outputResolution);
     expect(
-      find.byKey(const ValueKey('output-resolution-preset')),
-      findsOneWidget,
+      resolutionControl.style?.backgroundColor?.resolve({WidgetState.selected}),
+      AppTheme.coralPale,
+    );
+    expect(
+      resolutionControl.style?.foregroundColor?.resolve({WidgetState.selected}),
+      AppTheme.coralStrong,
     );
     expect(
       find.byKey(const ValueKey('protection-editor-drawer-summary')),
       findsOneWidget,
     );
     expect(find.text('导出'), findsOneWidget);
+    expect(
+      tester
+          .getSize(
+            find.byKey(const ValueKey('protection-editor-export-action-slot')),
+          )
+          .height,
+      96,
+    );
     expect(find.byKey(const ValueKey('trim-range-section')), findsOneWidget);
     expect(
       find.byKey(const ValueKey('integrated-video-trim-control')).hitTestable(),
@@ -116,11 +140,52 @@ void main() {
       overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
     );
     addTearDown(container.dispose);
+    final landscapeProject = project.copyWith(
+      videoInfo: const VideoInfo(
+        codedWidth: 1920,
+        codedHeight: 1080,
+        displayWidth: 1920,
+        displayHeight: 1080,
+        fps: 30,
+        durationMs: 4000,
+        rotation: 0,
+        videoCodec: 'h264',
+        hasAudio: false,
+      ),
+      analysisCacheId: 'cached-landscape',
+      persons: const [
+        PersonTrack(
+          id: 0,
+          normalizedInitialBox: NormalizedRect(
+            left: 0.12,
+            top: 0.12,
+            right: 0.36,
+            bottom: 0.90,
+          ),
+          thumbnailPath: '',
+          confidence: 0.94,
+        ),
+        PersonTrack(
+          id: 1,
+          normalizedInitialBox: NormalizedRect(
+            left: 0.62,
+            top: 0.12,
+            right: 0.86,
+            bottom: 0.90,
+          ),
+          thumbnailPath: '',
+          confidence: 0.92,
+        ),
+      ],
+      selectedPersonIds: const {0, 1},
+    );
 
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: MaterialApp(home: ProtectionEditorScreen(project: project)),
+        child: MaterialApp(
+          home: ProtectionEditorScreen(project: landscapeProject),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -128,6 +193,12 @@ void main() {
     final handle = find.byKey(const ValueKey('bottom_control_drawer_handle'));
     expect(handle, findsOneWidget);
     final initialTop = tester.getTopLeft(handle).dy;
+    expect(initialTop, lessThan(450));
+    final stageRect = tester.getRect(
+      find.byKey(const ValueKey('protection-editor-media-stage')),
+    );
+    expect(stageRect.bottom, lessThan(initialTop));
+    expect(initialTop - stageRect.bottom, lessThan(120));
 
     await tester.drag(handle, const Offset(0, 320));
     await tester.pumpAndSettle();

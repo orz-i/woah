@@ -281,17 +281,24 @@ class _ProtectionEditorScreenState
           body: SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) {
+                final drawerInitialSize = aspectRatio >= 1 ? 0.50 : 0.40;
+                final mediaWorkspaceHeight =
+                    constraints.maxHeight * (1 - drawerInitialSize);
                 final stageMaxHeight = math.max(
                   180.0,
                   math.min(
                     constraints.maxHeight * 0.60,
-                    constraints.maxHeight * 0.62 - AppTheme.minTouchTarget,
+                    mediaWorkspaceHeight - AppTheme.minTouchTarget - 12,
                   ),
                 );
 
                 return Stack(
                   children: [
-                    Positioned.fill(
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      top: 0,
+                      height: mediaWorkspaceHeight,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -307,15 +314,22 @@ class _ProtectionEditorScreenState
                               ),
                             ),
                           ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: _buildStage(
-                              selectionState,
-                              selectionController,
-                              effectState,
-                              effectController,
-                              aspectRatio: aspectRatio,
-                              maxHeight: stageMaxHeight,
+                          Expanded(
+                            child: Center(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 6,
+                                ),
+                                child: _buildStage(
+                                  selectionState,
+                                  selectionController,
+                                  effectState,
+                                  effectController,
+                                  aspectRatio: aspectRatio,
+                                  maxHeight: stageMaxHeight,
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -325,9 +339,9 @@ class _ProtectionEditorScreenState
                       BottomControlDrawer(
                         key: const ValueKey('protection-editor-control-drawer'),
                         minChildSize: 0.14,
-                        initialChildSize: 0.44,
+                        initialChildSize: drawerInitialSize,
                         maxChildSize: 0.82,
-                        snapSizes: const [0.14, 0.44, 0.82],
+                        snapSizes: [0.14, drawerInitialSize, 0.82],
                         allowHandleOnlyCollapse: false,
                         panelColor: AppTheme.warmSurface,
                         panelBorderColor: AppTheme.warmBorder,
@@ -409,20 +423,17 @@ class _ProtectionEditorScreenState
       );
     }
 
-    return Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: maxHeight),
-        child: AspectRatio(
-          aspectRatio: aspectRatio,
-          child: MediaStageFrame(
-            key: const ValueKey('protection-editor-media-stage'),
-            child: _buildInteractivePreview(
-              selectionState,
-              selectionController,
-              effectState,
-              effectController,
-            ),
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: maxHeight),
+      child: AspectRatio(
+        aspectRatio: aspectRatio,
+        child: MediaStageFrame(
+          key: const ValueKey('protection-editor-media-stage'),
+          child: _buildInteractivePreview(
+            selectionState,
+            selectionController,
+            effectState,
+            effectController,
           ),
         ),
       ),
@@ -509,21 +520,25 @@ class _ProtectionEditorScreenState
                           ),
                         ],
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.person_search_outlined,
                             size: 18,
                             color: AppTheme.coral,
                           ),
-                          SizedBox(width: 7),
-                          Text(
-                            '轻触人物选择主角',
-                            style: TextStyle(
-                              color: AppTheme.warmTextPrimary,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              stageWidth < 220 ? '轻触选主角' : '轻触人物选择主角',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppTheme.warmTextPrimary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ],
@@ -724,7 +739,8 @@ class _ProtectionEditorScreenState
 
   Widget _buildExportAction(bool nextEnabled) {
     return SizedBox(
-      height: 76,
+      key: const ValueKey('protection-editor-export-action-slot'),
+      height: 96,
       child: OverflowBox(
         alignment: Alignment.bottomCenter,
         minHeight: 0,
@@ -1059,16 +1075,18 @@ class _ProtectionEditorScreenState
         SegmentedButton<bool>(
           key: const ValueKey('reframe-mode'),
           showSelectedIcon: false,
+          expandedInsets: EdgeInsets.zero,
+          style: _warmSegmentedButtonStyle(),
           segments: const [
             ButtonSegment(
               value: false,
               label: Text('原画'),
-              icon: Icon(Icons.crop_original),
+              icon: Icon(Icons.crop_original, size: 18),
             ),
             ButtonSegment(
               value: true,
               label: Text('竖屏 9:16'),
-              icon: Icon(Icons.crop_portrait),
+              icon: Icon(Icons.crop_portrait, size: 18),
             ),
           ],
           selected: {follow.enabled || _selectingFollowTarget},
@@ -1102,6 +1120,8 @@ class _ProtectionEditorScreenState
         SegmentedButton<OutputResolutionPreset>(
           key: const ValueKey('output-resolution-preset'),
           showSelectedIcon: false,
+          expandedInsets: EdgeInsets.zero,
+          style: _warmSegmentedButtonStyle(),
           segments: const [
             ButtonSegment(
               value: OutputResolutionPreset.source,
@@ -1225,6 +1245,16 @@ class _ProtectionEditorScreenState
             PopupMenuButton<String>(
               key: const ValueKey('protection-target-more-actions'),
               tooltip: '更多保护对象操作',
+              position: PopupMenuPosition.under,
+              color: AppTheme.warmSurface,
+              surfaceTintColor: Colors.transparent,
+              shadowColor: const Color(0x24000000),
+              elevation: 8,
+              constraints: const BoxConstraints(minWidth: 184, maxWidth: 220),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: const BorderSide(color: AppTheme.warmBorder),
+              ),
               icon: const Icon(
                 Icons.more_horiz_rounded,
                 size: 20,
@@ -1246,20 +1276,46 @@ class _ProtectionEditorScreenState
                   value: 'reset',
                   child: Row(
                     children: [
-                      Icon(Icons.refresh_rounded, size: 18),
-                      SizedBox(width: 8),
-                      Text('恢复默认选择'),
+                      Icon(
+                        Icons.refresh_rounded,
+                        size: 18,
+                        color: AppTheme.warmTextSecondary,
+                      ),
+                      SizedBox(width: 10),
+                      Text(
+                        '恢复默认选择',
+                        style: TextStyle(
+                          color: AppTheme.warmTextPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 PopupMenuItem(
                   value: 'clear',
                   enabled: selected > 0,
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.remove_done_rounded, size: 18),
-                      SizedBox(width: 8),
-                      Text('清空保护对象'),
+                      Icon(
+                        Icons.remove_done_rounded,
+                        size: 18,
+                        color: selected > 0
+                            ? AppTheme.warmTextSecondary
+                            : AppTheme.warmTextMuted,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        '清空保护对象',
+                        style: TextStyle(
+                          color: selected > 0
+                              ? AppTheme.warmTextPrimary
+                              : AppTheme.warmTextMuted,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -1412,6 +1468,43 @@ class _ProtectionEditorScreenState
         color: subdued ? AppTheme.warmTextSecondary : AppTheme.warmTextPrimary,
         fontSize: subdued ? 12.5 : 13.5,
         fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+
+  ButtonStyle _warmSegmentedButtonStyle() {
+    return ButtonStyle(
+      minimumSize: WidgetStateProperty.all(
+        const Size(0, AppTheme.minTouchTarget),
+      ),
+      padding: WidgetStateProperty.all(
+        const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      ),
+      visualDensity: const VisualDensity(horizontal: -2, vertical: -1),
+      backgroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return AppTheme.coralPale;
+        return AppTheme.warmSurface;
+      }),
+      foregroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return AppTheme.coralStrong;
+        return AppTheme.warmTextPrimary;
+      }),
+      iconColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return AppTheme.coralStrong;
+        return AppTheme.warmTextSecondary;
+      }),
+      side: WidgetStateProperty.resolveWith((states) {
+        final selected = states.contains(WidgetState.selected);
+        return BorderSide(
+          color: selected ? AppTheme.coral : AppTheme.warmBorder,
+          width: selected ? 1.4 : 1,
+        );
+      }),
+      overlayColor: WidgetStateProperty.all(
+        AppTheme.coralPale.withValues(alpha: 0.45),
+      ),
+      textStyle: WidgetStateProperty.all(
+        const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
       ),
     );
   }
