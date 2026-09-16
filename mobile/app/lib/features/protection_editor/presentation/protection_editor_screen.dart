@@ -480,6 +480,14 @@ class _ProtectionEditorScreenState
                   () {
                     HapticFeedback.selectionClick();
                     if (_selectingFollowTarget) {
+                      // The camera subject should stay visible. If the chosen
+                      // person is currently protected, remove only that person
+                      // from the active FULL_BODY/FACE_ONLY target set before
+                      // enabling follow. Unprotected subjects are left alone.
+                      if (selectionState.isPersonSelected(person.id)) {
+                        selectionController.deselectPerson(person.id);
+                        _syncSelectionToEffect(effectController);
+                      }
                       setState(() => _selectingFollowTarget = false);
                       effectController.updateFollowConfig(
                         enabled: true,
@@ -1151,7 +1159,7 @@ class _ProtectionEditorScreenState
         if (_selectingFollowTarget) ...[
           const SizedBox(height: 8),
           const Text(
-            '轻触画面中的主角，不会改变保护对象。',
+            '轻触画面选择主角；若主角已被保护，会自动取消其保护。',
             style: TextStyle(fontSize: 12, color: AppTheme.warmTextSecondary),
           ),
           Align(

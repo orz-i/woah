@@ -242,6 +242,20 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
     _applyTargets(targets);
   }
 
+  /// Removes one person from privacy without ever toggling them on.
+  ///
+  /// Subject-follow selection uses this one-way operation so choosing a camera
+  /// subject can reveal an already-protected person but can never accidentally
+  /// add privacy to an unprotected subject.
+  void deselectPerson(int id) {
+    if (!state.persons.any((person) => person.id == id) ||
+        !state.isPersonSelected(id)) {
+      return;
+    }
+    final targets = Set<int>.from(state.privacyTargetIds)..remove(id);
+    _applyTargets(targets);
+  }
+
   /// Compatibility entry point for older callers/tests. V2 intentionally turns
   /// any non-none choice into a project-wide mode rather than a per-person mode.
   void setPrivacyMode(int id, PersonPrivacyMode mode) {

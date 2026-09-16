@@ -555,7 +555,7 @@ void main() {
   );
 
   testWidgets(
-    'portrait subject is independent of privacy and survives export',
+    'portrait subject auto-removes full-body privacy and survives export',
     (tester) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
@@ -648,7 +648,17 @@ void main() {
       expect(repository.lastFollow.enabled, isTrue);
       expect(repository.lastFollow.targetPersonId, 1);
       expect(repository.lastFollow.outputAspectRatio, 9 / 16);
-      expect(repository.lastSelectedPersonIds, {0, 1});
+      expect(repository.lastSelectedPersonIds, {0});
+      var selection = container.read(personSelectionControllerProvider);
+      expect(selection.selectedPersonIds, {0});
+      expect(selection.faceOnlyPersonIds, isEmpty);
+      expect(
+        container
+            .read(effectEditorControllerProvider)
+            .project!
+            .selectedPersonIds,
+        {0},
+      );
       expect(
         find.byKey(const ValueKey('protection-person-target-0')),
         findsNothing,
@@ -705,6 +715,98 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('portrait subject auto-removes face-only privacy', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final repository = _FakeProtectionRepository();
+    final container = ProviderContainer(
+      overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+    final faceOnlyProject = project.copyWith(
+      videoInfo: const VideoInfo(
+        codedWidth: 1920,
+        codedHeight: 1080,
+        displayWidth: 1920,
+        displayHeight: 1080,
+        fps: 30,
+        durationMs: 4000,
+        rotation: 0,
+        videoCodec: 'h264',
+        hasAudio: true,
+      ),
+      analysisCacheId: 'cached-face-only',
+      selectedPersonIds: const {},
+      faceOnlyPersonIds: const {0, 1},
+      persons: const [
+        PersonTrack(
+          id: 0,
+          normalizedInitialBox: NormalizedRect(
+            left: .1,
+            top: .1,
+            right: .3,
+            bottom: .9,
+          ),
+          thumbnailPath: '',
+          confidence: .95,
+        ),
+        PersonTrack(
+          id: 1,
+          normalizedInitialBox: NormalizedRect(
+            left: .65,
+            top: .1,
+            right: .85,
+            bottom: .9,
+          ),
+          thumbnailPath: '',
+          confidence: .95,
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          home: ProtectionEditorScreen(project: faceOnlyProject),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    var selection = container.read(personSelectionControllerProvider);
+    expect(selection.privacyMode, ProjectPrivacyMode.faceOnly);
+    expect(selection.faceOnlyPersonIds, {0, 1});
+
+    await tester.ensureVisible(find.byKey(const ValueKey('reframe-mode')));
+    await tester.tap(find.text('竖屏 9:16'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('protection-person-target-0')));
+    await tester.pumpAndSettle();
+
+    selection = container.read(personSelectionControllerProvider);
+    expect(selection.privacyMode, ProjectPrivacyMode.faceOnly);
+    expect(selection.selectedPersonIds, isEmpty);
+    expect(selection.faceOnlyPersonIds, {1});
+    final effectProject = container
+        .read(effectEditorControllerProvider)
+        .project!;
+    expect(effectProject.faceOnlyPersonIds, {1});
+    expect(effectProject.follow.enabled, isTrue);
+    expect(effectProject.follow.targetPersonId, 0);
+    expect(repository.lastSelectedPersonIds, isEmpty);
+    expect(repository.lastFaceOnlyPersonIds, {1});
+    expect(repository.lastFollow.targetPersonId, 0);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'cancel subject selection leaves original privacy and framing intact',
