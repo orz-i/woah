@@ -7,6 +7,7 @@ void main() {
     required int height,
     double fps = 30,
     FollowConfig follow = const FollowConfig(),
+    OutputResolutionPreset resolution = OutputResolutionPreset.source,
   }) => DanceProject(
     id: 'export-plan',
     sourceUri: '/dance.mp4',
@@ -24,6 +25,7 @@ void main() {
     createdAt: DateTime.utc(2026),
     updatedAt: DateTime.utc(2026),
     follow: follow,
+    outputResolutionPreset: resolution,
   );
 
   test('preserves 4K source geometry when encoder capability allows it', () {
@@ -117,6 +119,80 @@ void main() {
     expect(plan.height, 1920);
     expect(plan.width * 16, plan.height * 9);
     expect(plan.fallbackReason, ExportFallbackReason.encoderDimensionLimit);
+  });
+
+  test('FHD caps 4K without upscaling smaller sources', () {
+    final fourK = ExportPlan.forProject(
+      project(
+        width: 3840,
+        height: 2160,
+        resolution: OutputResolutionPreset.fhd,
+      ),
+    );
+    expect(fourK.width, 1920);
+    expect(fourK.height, 1080);
+    expect(fourK.resolutionPreset, OutputResolutionPreset.fhd);
+
+    final alreadyHd = ExportPlan.forProject(
+      project(width: 1280, height: 720, resolution: OutputResolutionPreset.fhd),
+    );
+    expect(alreadyHd.width, 1280);
+    expect(alreadyHd.height, 720);
+  });
+
+  test('HD caps 16:9 4K to 1280x720', () {
+    final plan = ExportPlan.forProject(
+      project(width: 3840, height: 2160, resolution: OutputResolutionPreset.hd),
+    );
+    expect(plan.width, 1280);
+    expect(plan.height, 720);
+  });
+
+  test('FHD fits non-16:9 material inside the standard envelope', () {
+    final fourThree = ExportPlan.forProject(
+      project(
+        width: 3840,
+        height: 2880,
+        resolution: OutputResolutionPreset.fhd,
+      ),
+    );
+    final square = ExportPlan.forProject(
+      project(
+        width: 2160,
+        height: 2160,
+        resolution: OutputResolutionPreset.fhd,
+      ),
+    );
+
+    expect((fourThree.width, fourThree.height), (1440, 1080));
+    expect((square.width, square.height), (1080, 1080));
+  });
+
+  test('9:16 FHD and HD keep exact portrait ratios', () {
+    const follow = FollowConfig(
+      enabled: true,
+      targetPersonId: 1,
+      outputAspectRatio: 9 / 16,
+    );
+    final fhd = ExportPlan.forProject(
+      project(
+        width: 3840,
+        height: 2160,
+        follow: follow,
+        resolution: OutputResolutionPreset.fhd,
+      ),
+    );
+    final hd = ExportPlan.forProject(
+      project(
+        width: 3840,
+        height: 2160,
+        follow: follow,
+        resolution: OutputResolutionPreset.hd,
+      ),
+    );
+
+    expect((fhd.width, fhd.height), (1080, 1920));
+    expect((hd.width, hd.height), (720, 1280));
   });
 
   test('normalizes odd source geometry downward and never enlarges it', () {

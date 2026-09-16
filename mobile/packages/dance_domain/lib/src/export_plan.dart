@@ -15,6 +15,7 @@ class ExportPlan {
   final int height;
   final double nominalFps;
   final int videoBitrate;
+  final OutputResolutionPreset resolutionPreset;
   final ExportTimingPolicy timingPolicy;
   final ExportFallbackReason? fallbackReason;
 
@@ -23,6 +24,7 @@ class ExportPlan {
     required this.height,
     required this.nominalFps,
     required this.videoBitrate,
+    this.resolutionPreset = OutputResolutionPreset.source,
     this.timingPolicy = ExportTimingPolicy.preserveSourcePts,
     this.fallbackReason,
   });
@@ -35,8 +37,13 @@ class ExportPlan {
     int? maxEncodeHeight,
   }) {
     final desired = project.outputSize;
-    var width = _evenFloor(desired.width);
-    var height = _evenFloor(desired.height);
+    final userBounded = _applyResolutionPreset(
+      project,
+      width: desired.width,
+      height: desired.height,
+    );
+    var width = _evenFloor(userBounded.width);
+    var height = _evenFloor(userBounded.height);
     ExportFallbackReason? fallbackReason;
 
     final maxWidth = maxEncodeWidth ?? 0;
@@ -81,7 +88,47 @@ class ExportPlan {
       height: height,
       nominalFps: nominalFps,
       videoBitrate: bitrate,
+      resolutionPreset: project.outputResolutionPreset,
       fallbackReason: fallbackReason,
+    );
+  }
+
+  static ({int width, int height}) _applyResolutionPreset(
+    DanceProject project, {
+    required int width,
+    required int height,
+  }) {
+    final landscapeBounds = switch (project.outputResolutionPreset) {
+      OutputResolutionPreset.source => null,
+      OutputResolutionPreset.fhd => (width: 1920, height: 1080),
+      OutputResolutionPreset.hd => (width: 1280, height: 720),
+    };
+    if (landscapeBounds == null) {
+      return (width: width, height: height);
+    }
+
+    final portrait = height > width;
+    final capWidth = portrait ? landscapeBounds.height : landscapeBounds.width;
+    final capHeight = portrait ? landscapeBounds.width : landscapeBounds.height;
+    if (width <= capWidth && height <= capHeight) {
+      return (width: width, height: height);
+    }
+
+    final exactNineSixteen =
+        project.follow.enabled && project.follow.outputAspectRatio == 9 / 16;
+    if (exactNineSixteen) {
+      final units = math.min(
+        math.min(width ~/ 18, height ~/ 32),
+        math.min(capWidth ~/ 18, capHeight ~/ 32),
+      );
+      final safeUnits = math.max(1, units);
+      return (width: safeUnits * 18, height: safeUnits * 32);
+    }
+
+    final scale = math.min(capWidth / width, capHeight / height);
+    return (
+      width: _evenFloor(width * scale),
+      height: _evenFloor(height * scale),
     );
   }
 
@@ -95,6 +142,7 @@ class ExportPlan {
   String toString() {
     final fallback = fallbackReason == null ? 'none' : fallbackReason!.name;
     return 'ExportPlan(${width}x$height @ ${nominalFps.toStringAsFixed(3)}fps, '
-        'bitrate=$videoBitrate, timing=${timingPolicy.name}, fallback=$fallback)';
+        'preset=${resolutionPreset.name}, bitrate=$videoBitrate, '
+        'timing=${timingPolicy.name}, fallback=$fallback)';
   }
 }

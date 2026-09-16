@@ -76,6 +76,13 @@ void main() {
     expect(find.text('全身保护'), findsOneWidget);
     expect(find.text('人脸保护'), findsOneWidget);
     expect(find.text('马赛克'), findsOneWidget);
+    expect(find.text('分辨率'), findsOneWidget);
+    expect(find.text('FHD'), findsOneWidget);
+    expect(find.text('HD'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('output-resolution-preset')),
+      findsOneWidget,
+    );
     expect(
       find.byKey(const ValueKey('protection-editor-drawer-summary')),
       findsOneWidget,
@@ -136,6 +143,62 @@ void main() {
     expect(expandedTop, lessThan(compactTop));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'resolution preset updates project and survives trim reanalysis',
+    (tester) async {
+      final repository = _FakeProtectionRepository();
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(home: ProtectionEditorScreen(project: project)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final resolution = find.byKey(const ValueKey('output-resolution-preset'));
+      await tester.ensureVisible(resolution);
+      await tester.tap(find.text('FHD'));
+      await tester.pumpAndSettle();
+      expect(
+        container
+            .read(effectEditorControllerProvider)
+            .project!
+            .outputResolutionPreset,
+        OutputResolutionPreset.fhd,
+      );
+
+      final trimToggle = find.byKey(const ValueKey('trim-range-toggle'));
+      await tester.ensureVisible(trimToggle);
+      await tester.tap(trimToggle);
+      await tester.pumpAndSettle();
+      final startHandle = find.byKey(const ValueKey('trim-start-handle'));
+      await tester.ensureVisible(startHandle);
+      await tester.drag(startHandle, const Offset(48, 0), warnIfMissed: false);
+      await tester.pumpAndSettle();
+
+      expect(
+        container
+            .read(effectEditorControllerProvider)
+            .project!
+            .outputResolutionPreset,
+        OutputResolutionPreset.fhd,
+      );
+      expect(
+        container
+            .read(personSelectionControllerProvider)
+            .project!
+            .outputResolutionPreset,
+        OutputResolutionPreset.fhd,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('temporal trim change reanalyzes from the new first frame', (
     tester,

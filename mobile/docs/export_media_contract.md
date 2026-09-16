@@ -11,11 +11,18 @@ forwarded through the existing Pigeon export request.
 ## Resolution
 
 - Original-aspect export starts from the source display width/height.
+- The unified editor exposes a persisted `OutputResolutionPreset`: `source`,
+  `fhd`, or `hd`. `source` keeps all source-derived pixels; `fhd` fits output
+  inside a 1920x1080 landscape / 1080x1920 portrait envelope, while `hd` uses
+  1280x720 / 720x1280.
+- FHD/HD are upper bounds, not upscale requests. A 1280x720 source remains
+  1280x720 when FHD is selected. Non-16:9 material keeps its aspect ratio while
+  fitting inside the chosen envelope (for example 4:3 FHD becomes 1440x1080).
 - Output dimensions are normalized downward to even encoder dimensions; source
   pixels are never enlarged just to satisfy an encoder shape.
-- 9:16 subject reframe keeps exact 18x32 integer units and uses the largest
-  source-derived crop size. It no longer has a hard-coded 1920-pixel long-edge
-  cap.
+- 9:16 subject reframe keeps exact 18x32 integer units. Resolution presets are
+  applied after the source-derived crop geometry, so a 4K landscape source can
+  produce 1206x2144 at `source`, 1080x1920 at `fhd`, or 720x1280 at `hd`.
 - Flutter queries `NativeCapabilitiesDto.maxEncodeWidth/maxEncodeHeight` before
   export. If the desired geometry exceeds that encoder capability, `ExportPlan`
   performs one proportional downgrade and records
@@ -26,10 +33,14 @@ forwarded through the existing Pigeon export request.
 
 Examples before device capability fallback:
 
-- 1920x1080 original -> 1920x1080
-- 3840x2160 original -> 3840x2160
-- 1920x1080 reframe 9:16 -> 594x1056
-- 3840x2160 reframe 9:16 -> 1206x2144
+- 1920x1080 original + source -> 1920x1080
+- 3840x2160 original + source -> 3840x2160
+- 3840x2160 original + FHD -> 1920x1080
+- 3840x2160 original + HD -> 1280x720
+- 1920x1080 reframe 9:16 + FHD -> 594x1056 (no upscale)
+- 3840x2160 reframe 9:16 + source -> 1206x2144
+- 3840x2160 reframe 9:16 + FHD -> 1080x1920
+- 3840x2160 reframe 9:16 + HD -> 720x1280
 
 ## Frame timing
 

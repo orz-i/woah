@@ -30,6 +30,9 @@ def main() -> int:
     plan = read("mobile/packages/dance_domain/lib/src/export_plan.dart")
     project = read("mobile/packages/dance_domain/lib/src/project.dart")
     controller = read("mobile/app/lib/features/export/presentation/export_controller.dart")
+    protection_editor = read(
+        "mobile/app/lib/features/protection_editor/presentation/protection_editor_screen.dart"
+    )
     android = read(
         "mobile/packages/dance_native/android/src/main/kotlin/com/danceanon/native/pipeline/ExportPipeline.kt"
     )
@@ -52,12 +55,16 @@ def main() -> int:
     for token in (
         "ExportTimingPolicy { preserveSourcePts }",
         "ExportFallbackReason { encoderDimensionLimit }",
+        "OutputResolutionPreset.fhd => (width: 1920, height: 1080)",
+        "OutputResolutionPreset.hd => (width: 1280, height: 720)",
         "maxEncodeWidth",
         "maxEncodeHeight",
         "0.13",
         "80_000_000",
     ):
         require(plan, token, "ExportPlan")
+    require(project, "enum OutputResolutionPreset { source, fhd, hd }", "DanceProject")
+    require(project, "outputResolutionPreset.name", "DanceProject")
     require(project, "Resolution limits belong to the", "DanceProject")
     forbid(project, "clamp(1, 60)", "DanceProject")
 
@@ -70,6 +77,15 @@ def main() -> int:
         "videoBitrate: plan.videoBitrate",
     ):
         require(controller, token, "ExportController")
+
+    for token in (
+        "output-resolution-preset",
+        "OutputResolutionPreset.source",
+        "OutputResolutionPreset.fhd",
+        "OutputResolutionPreset.hd",
+        "FHD / HD 只限制最大输出尺寸，不会放大低分辨率素材",
+    ):
+        require(protection_editor, token, "Protection editor resolution UI")
 
     for token in (
         "nominalOutputFps",

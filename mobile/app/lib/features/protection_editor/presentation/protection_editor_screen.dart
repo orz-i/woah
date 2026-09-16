@@ -1039,7 +1039,18 @@ class _ProtectionEditorScreenState
     EffectEditorState state,
     EffectEditorController controller,
   ) {
-    final follow = state.project?.follow ?? const FollowConfig();
+    final project = state.project;
+    final follow = project?.follow ?? const FollowConfig();
+    final resolutionPreset =
+        project?.outputResolutionPreset ?? OutputResolutionPreset.source;
+    final resolutionPlan = project == null || _selectingFollowTarget
+        ? null
+        : ExportPlan.forProject(project);
+    final resolutionSummary = _selectingFollowTarget
+        ? '选择主角后计算尺寸'
+        : resolutionPlan == null
+        ? ''
+        : '${resolutionPlan.width} × ${resolutionPlan.height}';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1070,6 +1081,52 @@ class _ProtectionEditorScreenState
               controller.updateFollowConfig(enabled: false);
             }
           },
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(child: _buildSectionLabel('分辨率')),
+            if (resolutionSummary.isNotEmpty)
+              Text(
+                resolutionSummary,
+                style: const TextStyle(
+                  color: AppTheme.warmTextSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SegmentedButton<OutputResolutionPreset>(
+          key: const ValueKey('output-resolution-preset'),
+          showSelectedIcon: false,
+          segments: const [
+            ButtonSegment(
+              value: OutputResolutionPreset.source,
+              label: Text('原画'),
+            ),
+            ButtonSegment(
+              value: OutputResolutionPreset.fhd,
+              label: Text('FHD'),
+            ),
+            ButtonSegment(value: OutputResolutionPreset.hd, label: Text('HD')),
+          ],
+          selected: {resolutionPreset},
+          onSelectionChanged: (values) {
+            HapticFeedback.selectionClick();
+            controller.updateOutputResolutionPreset(values.single);
+          },
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'FHD / HD 只限制最大输出尺寸，不会放大低分辨率素材。',
+          style: TextStyle(
+            color: AppTheme.warmTextSecondary,
+            fontSize: 12,
+            height: 1.35,
+          ),
         ),
         if (_selectingFollowTarget) ...[
           const SizedBox(height: 8),
@@ -1878,6 +1935,9 @@ class _ProtectionEditorScreenState
     return base.copyWith(
       effects: effects,
       follow: effectState.project?.follow ?? base.follow,
+      outputResolutionPreset:
+          effectState.project?.outputResolutionPreset ??
+          base.outputResolutionPreset,
       updatedAt: DateTime.now(),
     );
   }

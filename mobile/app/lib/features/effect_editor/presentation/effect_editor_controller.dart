@@ -46,6 +46,9 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
         follow: state.project?.id == project.id
             ? state.project!.follow
             : project.follow,
+        outputResolutionPreset: state.project?.id == project.id
+            ? state.project!.outputResolutionPreset
+            : project.outputResolutionPreset,
       ),
       effects: activeEffects,
     );
@@ -173,6 +176,14 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
       clearPreview: true,
     );
     _requestPreview(debounce: false);
+  }
+
+  void updateOutputResolutionPreset(OutputResolutionPreset preset) {
+    final proj = state.project;
+    if (proj == null || proj.outputResolutionPreset == preset) return;
+    state = state.copyWith(
+      project: proj.copyWith(outputResolutionPreset: preset),
+    );
   }
 
   /// Source-space hit targets must never be overlaid on a cropped image.

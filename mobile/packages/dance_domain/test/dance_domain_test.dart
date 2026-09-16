@@ -80,6 +80,7 @@ void main() {
           borderColorArgb: 0xFF00FF00,
           borderWidth: 4.0,
         ),
+        outputResolutionPreset: OutputResolutionPreset.fhd,
         trimStartMs: 1200,
         trimEndMs: 7600,
         createdAt: now,
@@ -103,6 +104,7 @@ void main() {
       );
       expect(reconstructed.privacyTargetIds, equals({0, 1}));
       expect(reconstructed.effects.fillMode, equals(FillMode.blur));
+      expect(reconstructed.outputResolutionPreset, OutputResolutionPreset.fhd);
       expect(reconstructed.trimStartMs, 1200);
       expect(reconstructed.trimEndMs, 7600);
       expect(reconstructed.trimmedDurationMs, 6400);
@@ -110,27 +112,34 @@ void main() {
 
     test('DanceProject legacy JSON defaults face-only to empty', () {
       final now = DateTime.now().toUtc();
-      final json = DanceProject(
-        id: 'legacy',
-        sourceUri: '/legacy.mp4',
-        videoInfo: const VideoInfo(
-          codedWidth: 640,
-          codedHeight: 480,
-          displayWidth: 640,
-          displayHeight: 480,
-          fps: 30.0,
-          durationMs: 1000,
-          rotation: 0,
-          videoCodec: 'h264',
-          hasAudio: false,
-        ),
-        selectedPersonIds: const {3},
-        createdAt: now,
-        updatedAt: now,
-      ).toJson()..remove('faceOnlyPersonIds');
+      final json =
+          DanceProject(
+              id: 'legacy',
+              sourceUri: '/legacy.mp4',
+              videoInfo: const VideoInfo(
+                codedWidth: 640,
+                codedHeight: 480,
+                displayWidth: 640,
+                displayHeight: 480,
+                fps: 30.0,
+                durationMs: 1000,
+                rotation: 0,
+                videoCodec: 'h264',
+                hasAudio: false,
+              ),
+              selectedPersonIds: const {3},
+              createdAt: now,
+              updatedAt: now,
+            ).toJson()
+            ..remove('faceOnlyPersonIds')
+            ..remove('outputResolutionPreset');
 
       final reconstructed = DanceProject.fromJson(json);
       expect(reconstructed.faceOnlyPersonIds, isEmpty);
+      expect(
+        reconstructed.outputResolutionPreset,
+        OutputResolutionPreset.source,
+      );
       expect(reconstructed.trimStartMs, 0);
       expect(reconstructed.trimEndMs, isNull);
       expect(reconstructed.trimmedDurationMs, 1000);

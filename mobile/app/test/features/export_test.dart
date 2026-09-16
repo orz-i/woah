@@ -244,6 +244,46 @@ void main() {
   );
 
   test(
+    'ExportController applies user FHD preference before device fallback',
+    () async {
+      final repository = _TrimCaptureRepository();
+      final controller = ExportController(repository);
+      addTearDown(controller.dispose);
+      final now = DateTime.utc(2026, 9, 16);
+      final project = DanceProject(
+        id: '4k-fhd',
+        sourceUri: '/4k.mp4',
+        videoInfo: const VideoInfo(
+          codedWidth: 3840,
+          codedHeight: 2160,
+          displayWidth: 3840,
+          displayHeight: 2160,
+          fps: 60,
+          durationMs: 5000,
+          rotation: 0,
+          videoCodec: 'h264',
+          hasAudio: true,
+        ),
+        outputResolutionPreset: OutputResolutionPreset.fhd,
+        analysisCacheId: 'cache-4k',
+        selectedPersonIds: const {0},
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      await controller.startExport(project, '4k-fhd.mp4');
+
+      expect(repository.lastTargetWidth, 1920);
+      expect(repository.lastTargetHeight, 1080);
+      expect(
+        controller.state.exportPlan!.resolutionPreset,
+        OutputResolutionPreset.fhd,
+      );
+      expect(controller.state.exportPlan!.fallbackReason, isNull);
+    },
+  );
+
+  test(
     'ExportController applies encoder dimension capability explicitly',
     () async {
       final repository = _TrimCaptureRepository(

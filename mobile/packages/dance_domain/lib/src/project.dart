@@ -11,6 +11,12 @@ import 'effects.dart';
 /// both sets so old projects and old selection flows remain deterministic.
 enum PersonPrivacyMode { none, faceOnly, fullBody }
 
+/// User-visible output resolution policy.
+///
+/// [source] keeps all source-derived pixels. [fhd] and [hd] are upper bounds,
+/// never requests to enlarge lower-resolution material.
+enum OutputResolutionPreset { source, fhd, hd }
+
 /// Top-level project state representing a user editing session
 class DanceProject {
   final String id;
@@ -23,6 +29,7 @@ class DanceProject {
 
   final EffectConfig effects;
   final FollowConfig follow;
+  final OutputResolutionPreset outputResolutionPreset;
 
   bool get hasFollowTarget =>
       follow.enabled &&
@@ -71,6 +78,7 @@ class DanceProject {
     this.faceOnlyPersonIds = const {},
     this.effects = const EffectConfig(),
     this.follow = const FollowConfig(),
+    this.outputResolutionPreset = OutputResolutionPreset.source,
     this.crop,
     this.trimStartMs = 0,
     this.trimEndMs,
@@ -88,6 +96,7 @@ class DanceProject {
     'faceOnlyPersonIds': faceOnlyPersonIds.toList(),
     'effects': effects.toJson(),
     'follow': follow.toJson(),
+    'outputResolutionPreset': outputResolutionPreset.name,
     'crop': crop?.toJson(),
     'trimStartMs': trimStartMs,
     'trimEndMs': trimEndMs,
@@ -121,6 +130,10 @@ class DanceProject {
     follow: json['follow'] != null
         ? FollowConfig.fromJson(json['follow'] as Map<String, dynamic>)
         : const FollowConfig(),
+    outputResolutionPreset: OutputResolutionPreset.values.firstWhere(
+      (value) => value.name == json['outputResolutionPreset'],
+      orElse: () => OutputResolutionPreset.source,
+    ),
     crop: json['crop'] != null
         ? CropConfig.fromJson(json['crop'] as Map<String, dynamic>)
         : null,
@@ -140,6 +153,7 @@ class DanceProject {
     Set<int>? faceOnlyPersonIds,
     EffectConfig? effects,
     FollowConfig? follow,
+    OutputResolutionPreset? outputResolutionPreset,
     CropConfig? crop,
     int? trimStartMs,
     int? trimEndMs,
@@ -157,6 +171,8 @@ class DanceProject {
       faceOnlyPersonIds: faceOnlyPersonIds ?? this.faceOnlyPersonIds,
       effects: effects ?? this.effects,
       follow: follow ?? this.follow,
+      outputResolutionPreset:
+          outputResolutionPreset ?? this.outputResolutionPreset,
       crop: crop ?? this.crop,
       trimStartMs: trimStartMs ?? this.trimStartMs,
       trimEndMs: clearTrimEnd ? null : (trimEndMs ?? this.trimEndMs),
