@@ -44,16 +44,16 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-        statusBarBrightness: Brightness.light,
-        systemNavigationBarColor: AppTheme.warmBackground,
-        systemNavigationBarIconBrightness: Brightness.dark,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: AppTheme.flowBackground,
+        systemNavigationBarIconBrightness: Brightness.light,
         systemNavigationBarDividerColor: Colors.transparent,
         systemStatusBarContrastEnforced: false,
         systemNavigationBarContrastEnforced: false,
       ),
       child: Scaffold(
-        backgroundColor: AppTheme.warmBackground,
+        backgroundColor: AppTheme.flowBackground,
         body: SafeArea(
           child: Stack(
             children: [
@@ -81,9 +81,7 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
                             left: 36,
                             right: 36,
                             bottom: 138,
-                            child: _LightErrorNotice(
-                              message: state.errorMessage!,
-                            ),
+                            child: _ErrorNotice(message: state.errorMessage!),
                           ),
                         Positioned(
                           left: 0,
@@ -261,7 +259,7 @@ class _ImportBrandSignature extends StatelessWidget {
             Text(
               'Woah',
               style: TextStyle(
-                color: Color(0xFFB0ACAA),
+                color: AppTheme.flowTextSecondary,
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
                 letterSpacing: 5.2,
@@ -271,7 +269,7 @@ class _ImportBrandSignature extends StatelessWidget {
             Text(
               '记录每一个舞动瞬间',
               style: TextStyle(
-                color: Color(0xFFBDB9B7),
+                color: AppTheme.flowTextMuted,
                 fontSize: 11,
                 fontWeight: FontWeight.w400,
                 letterSpacing: 3.0,
@@ -284,10 +282,10 @@ class _ImportBrandSignature extends StatelessWidget {
   }
 }
 
-class _LightErrorNotice extends StatelessWidget {
+class _ErrorNotice extends StatelessWidget {
   final String message;
 
-  const _LightErrorNotice({required this.message});
+  const _ErrorNotice({required this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -295,16 +293,16 @@ class _LightErrorNotice extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF5F3),
+        color: AppTheme.flowSurfaceSoft,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0x33B93438)),
+        border: Border.all(color: AppTheme.coralStrong.withAlpha(88)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(
             Icons.error_outline_rounded,
-            color: Color(0xFFB93438),
+            color: AppTheme.coralStrong,
             size: 18,
           ),
           const SizedBox(width: 10),
@@ -312,7 +310,7 @@ class _LightErrorNotice extends StatelessWidget {
             child: Text(
               message,
               style: const TextStyle(
-                color: Color(0xFF7A4648),
+                color: AppTheme.flowTextSecondary,
                 fontSize: 12,
                 height: 1.4,
               ),

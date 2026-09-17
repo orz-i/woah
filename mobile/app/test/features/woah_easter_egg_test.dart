@@ -36,7 +36,14 @@ void main() {
     expect(find.text('设备与诊断'), findsNothing);
     expect(find.text('加速能力'), findsNothing);
     expect(find.byKey(WoahEasterEggScreen.creditsRollKey), findsOneWidget);
-    expect(find.byKey(WoahEasterEggScreen.closeButtonKey), findsOneWidget);
+    expect(find.byIcon(Icons.close_rounded), findsNothing);
+
+    final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
+    expect(scaffold.backgroundColor, const Color(0xFF050506));
+    expect(
+      tester.widget<Text>(find.text('作者  CJ')).style?.color,
+      const Color(0xFFF4F4F5),
+    );
 
     final initialTop = tester.getTopLeft(find.text('作者  CJ')).dy;
     await tester.pump(const Duration(seconds: 2));
@@ -45,7 +52,7 @@ void main() {
   });
 
   testWidgets(
-    'long pressing home Woah opens full-screen easter egg and closes',
+    'long pressing home Woah opens full-screen easter egg and system back exits',
     (tester) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -67,10 +74,10 @@ void main() {
       expect(find.text('作者  CJ'), findsOneWidget);
       expect(find.text('本程序免费开源'), findsOneWidget);
       expect(find.text('谨防上当受骗'), findsOneWidget);
-      expect(find.byKey(WoahEasterEggScreen.closeButtonKey), findsOneWidget);
+      expect(find.byIcon(Icons.close_rounded), findsNothing);
       expect(find.text('设备与诊断'), findsNothing);
 
-      await tester.tap(find.byKey(WoahEasterEggScreen.closeButtonKey));
+      await tester.binding.handlePopRoute();
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 700));
 

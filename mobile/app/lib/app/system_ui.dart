@@ -5,10 +5,10 @@ import 'theme.dart';
 
 const appSystemUiStyle = SystemUiOverlayStyle(
   statusBarColor: Colors.transparent,
-  statusBarIconBrightness: Brightness.dark,
-  statusBarBrightness: Brightness.light,
-  systemNavigationBarColor: AppTheme.warmBackground,
-  systemNavigationBarIconBrightness: Brightness.dark,
+  statusBarIconBrightness: Brightness.light,
+  statusBarBrightness: Brightness.dark,
+  systemNavigationBarColor: AppTheme.flowBackground,
+  systemNavigationBarIconBrightness: Brightness.light,
   systemNavigationBarDividerColor: Colors.transparent,
   systemStatusBarContrastEnforced: false,
   systemNavigationBarContrastEnforced: false,

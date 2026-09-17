@@ -5,7 +5,6 @@ import '../../../app/theme.dart';
 import '../../../core/metadata/woah_build_info.dart';
 
 class WoahEasterEggScreen extends StatefulWidget {
-  static const closeButtonKey = ValueKey('woah-easter-egg-close');
   static const creditsRollKey = ValueKey('woah-easter-egg-credits-roll');
 
   final Future<WoahBuildInfo> Function()? buildInfoLoader;
@@ -44,74 +43,24 @@ class _WoahEasterEggScreenState extends State<WoahEasterEggScreen>
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-        statusBarBrightness: Brightness.light,
-        systemNavigationBarColor: Colors.white,
-        systemNavigationBarIconBrightness: Brightness.dark,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: AppTheme.background,
+        systemNavigationBarIconBrightness: Brightness.light,
         systemNavigationBarDividerColor: Colors.transparent,
         systemStatusBarContrastEnforced: false,
         systemNavigationBarContrastEnforced: false,
       ),
       child: Scaffold(
-        backgroundColor: Colors.white,
-        body: Stack(
-          children: [
-            Positioned.fill(
-              child: FutureBuilder<WoahBuildInfo>(
-                future: _buildInfoFuture,
-                builder: (context, snapshot) {
-                  return _RollingCredits(
-                    controller: _creditsController,
-                    info: snapshot.data,
-                  );
-                },
-              ),
-            ),
-            SafeArea(
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 18),
-                  child: Semantics(
-                    button: true,
-                    label: '关闭彩蛋',
-                    child: Material(
-                      color: Colors.transparent,
-                      shape: const CircleBorder(),
-                      child: InkWell(
-                        key: WoahEasterEggScreen.closeButtonKey,
-                        customBorder: const CircleBorder(),
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          Navigator.of(context).pop();
-                        },
-                        child: Ink(
-                          width: 62,
-                          height: 62,
-                          decoration: const BoxDecoration(
-                            gradient: AppTheme.coralActionGradient,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Color(0x38F44848),
-                                blurRadius: 20,
-                                offset: Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.close_rounded,
-                            color: Colors.white,
-                            size: 30,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
+        backgroundColor: AppTheme.background,
+        body: FutureBuilder<WoahBuildInfo>(
+          future: _buildInfoFuture,
+          builder: (context, snapshot) {
+            return _RollingCredits(
+              controller: _creditsController,
+              info: snapshot.data,
+            );
+          },
         ),
       ),
     );
@@ -120,7 +69,6 @@ class _WoahEasterEggScreenState extends State<WoahEasterEggScreen>
 
 class _RollingCredits extends StatelessWidget {
   static const _lineExtent = 68.0;
-  static const _coralPink = AppTheme.coralSoft;
 
   final Animation<double> controller;
   final WoahBuildInfo? info;
@@ -225,7 +173,7 @@ class _CreditLine extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         textAlign: TextAlign.center,
         style: TextStyle(
-          color: _RollingCredits._coralPink,
+          color: AppTheme.textPrimary,
           fontSize: fontSize,
           height: 1.1,
           fontWeight: fontWeight,

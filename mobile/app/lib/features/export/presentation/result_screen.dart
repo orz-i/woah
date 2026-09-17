@@ -148,16 +148,16 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-        statusBarBrightness: Brightness.light,
-        systemNavigationBarColor: AppTheme.warmBackground,
-        systemNavigationBarIconBrightness: Brightness.dark,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: AppTheme.flowBackground,
+        systemNavigationBarIconBrightness: Brightness.light,
         systemNavigationBarDividerColor: Colors.transparent,
         systemStatusBarContrastEnforced: false,
         systemNavigationBarContrastEnforced: false,
       ),
       child: Scaffold(
-        backgroundColor: AppTheme.warmBackground,
+        backgroundColor: AppTheme.flowBackground,
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -350,9 +350,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               child: Ink(
                 height: AppTheme.minTouchTarget,
                 decoration: BoxDecoration(
-                  color: AppTheme.warmSurface,
+                  color: AppTheme.flowSurface,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppTheme.warmBorder, width: 1.0),
+                  border: Border.all(color: AppTheme.flowBorder, width: 1.0),
                   boxShadow: const [
                     BoxShadow(
                       color: Color(0x0A000000),
@@ -365,12 +365,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(icon, size: 18, color: AppTheme.warmTextPrimary),
+                      Icon(icon, size: 18, color: AppTheme.flowTextPrimary),
                       const SizedBox(width: 6),
                       Text(
                         label,
                         style: const TextStyle(
-                          color: AppTheme.warmTextPrimary,
+                          color: AppTheme.flowTextPrimary,
                           fontSize: 13.5,
                           fontWeight: FontWeight.w600,
                         ),
@@ -412,9 +412,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: AppTheme.warmSurface,
+        color: AppTheme.flowSurface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.warmBorder),
+        border: Border.all(color: AppTheme.flowBorder),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0A000000),
@@ -474,7 +474,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 Text(
                   title,
                   style: const TextStyle(
-                    color: AppTheme.warmTextPrimary,
+                    color: AppTheme.flowTextPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
@@ -483,7 +483,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 Text(
                   subtitle,
                   style: const TextStyle(
-                    color: AppTheme.warmTextSecondary,
+                    color: AppTheme.flowTextSecondary,
                     fontSize: 12,
                   ),
                 ),
@@ -547,14 +547,14 @@ class _ResultDiagnosticsButton extends StatelessWidget {
                   const Icon(
                     Icons.bug_report_outlined,
                     size: 14,
-                    color: AppTheme.warmTextMuted,
+                    color: AppTheme.flowTextMuted,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     isExporting ? '正在导出…' : '导出诊断包',
                     style: const TextStyle(
                       fontSize: 12,
-                      color: AppTheme.warmTextMuted,
+                      color: AppTheme.flowTextMuted,
                     ),
                   ),
                 ],

@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../app/theme.dart';
 
-/// Floating back button aligned with the Warm Flow visual system.
+/// Floating back button aligned with the graphite main-flow visual system.
 ///
 /// Provides an accessible, familiar top-left return affordance while the media
 /// stage remains the visual center.
@@ -21,7 +21,7 @@ class FlowBackButton extends StatelessWidget {
     required this.onPressed,
     this.tooltip = '返回上一步',
     this.size = AppTheme.minTouchTarget,
-    this.foregroundColor = AppTheme.warmTextPrimary,
+    this.foregroundColor = AppTheme.flowTextPrimary,
     this.backgroundColor = Colors.transparent,
   });
 

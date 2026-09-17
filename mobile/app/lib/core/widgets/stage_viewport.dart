@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme.dart';
 
-/// Shared warm-flow media stage surface.
+/// Shared main-flow media stage surface.
 ///
 /// The main flow should keep the media itself visually stable while each step
 /// swaps the tools below it. This wrapper centralizes the rounded frame,
@@ -17,7 +17,7 @@ class MediaStageFrame extends StatelessWidget {
     super.key,
     required this.child,
     this.radius = 26,
-    this.backgroundColor = const Color(0xFFF1E7E1),
+    this.backgroundColor = AppTheme.flowSurfaceSoft,
     this.elevated = true,
   });
 
@@ -39,7 +39,7 @@ class MediaStageFrame extends StatelessWidget {
       ),
       foregroundDecoration: BoxDecoration(
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: AppTheme.warmBorder),
+        border: Border.all(color: AppTheme.flowBorder),
       ),
       clipBehavior: Clip.antiAlias,
       child: child,
