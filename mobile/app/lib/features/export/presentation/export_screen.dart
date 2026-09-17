@@ -144,12 +144,6 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               const _StatusPill(
                 icon: Icons.radio_button_checked_rounded,
                 label: '实时画面',
-              )
-            else if (isFailed)
-              const _StatusPill(
-                icon: Icons.error_outline_rounded,
-                label: '未完成',
-                accent: true,
               ),
           ],
         ),
@@ -354,7 +348,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
             ),
             const SizedBox(height: 9),
             Text(
-              state.isFailed ? '保留最后可用画面' : '实时画面已关闭',
+              state.isFailed ? '没有可用的失败预览' : '实时画面已关闭',
               style: const TextStyle(
                 color: AppTheme.flowTextSecondary,
                 fontSize: 12.5,

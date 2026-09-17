@@ -247,6 +247,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     }
 
     return Container(
+      key: const ValueKey('result-status-panel'),
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
       decoration: const BoxDecoration(

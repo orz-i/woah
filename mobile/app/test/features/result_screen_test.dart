@@ -192,7 +192,11 @@ void main() {
     final stageSize = tester.getSize(
       find.byKey(const ValueKey('result-media-stage')),
     );
+    final statusSize = tester.getSize(
+      find.byKey(const ValueKey('result-status-panel')),
+    );
     expect(stageSize.height, greaterThanOrEqualTo(240));
+    expect(stageSize.height, greaterThan(statusSize.height));
     expect(tester.takeException(), isNull);
   });
 

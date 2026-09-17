@@ -718,6 +718,13 @@ void main() {
   testWidgets(
     'failed export keeps the media stage and exposes explicit inline actions',
     (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
       final repository = _PreviewToggleRepository();
       addTearDown(repository.dispose);
       final container = ProviderContainer(
@@ -757,7 +764,17 @@ void main() {
       expect(find.textContaining('当前编辑内容仍然保留'), findsOneWidget);
       expect(find.text('重试导出'), findsOneWidget);
       expect(find.text('返回编辑'), findsOneWidget);
+      expect(find.text('未完成'), findsNothing);
+      expect(find.text('导出失败'), findsOneWidget);
+      expect(find.text('没有可用的失败预览'), findsOneWidget);
 
+      final stageSize = tester.getSize(
+        find.byKey(const ValueKey('export-media-stage')),
+      );
+      final failureSize = tester.getSize(
+        find.byKey(const ValueKey('export-failure-summary')),
+      );
+      expect(stageSize.height, greaterThan(failureSize.height));
       expect(tester.getTopLeft(back).dy, lessThan(tester.getTopLeft(retry).dy));
       expect(tester.getCenter(copy).dy, closeTo(tester.getCenter(retry).dy, 2));
       expect(
