@@ -1,12 +1,15 @@
+import 'package:app/app/theme.dart';
+import 'package:app/features/import_video/presentation/import_video_screen.dart';
+import 'package:app/features/import_video/presentation/widgets/video_metadata_card.dart';
+import 'package:dance_domain/dance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:dance_domain/dance_domain.dart';
-import 'package:app/features/import_video/presentation/import_video_screen.dart';
-import 'package:app/features/import_video/presentation/widgets/video_metadata_card.dart';
 
 void main() {
-  testWidgets('import home is immersive without an app close control', (tester) async {
+  testWidgets('import home is immersive without an app close control', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       const ProviderScope(child: MaterialApp(home: ImportVideoScreen())),
     );
@@ -15,11 +18,33 @@ void main() {
     expect(find.byIcon(Icons.close_rounded), findsNothing);
     expect(find.byTooltip('关闭'), findsNothing);
     expect(find.text('导入舞段'), findsOneWidget);
+    expect(find.text('从设备中选择一个视频'), findsOneWidget);
+
+    final pickerCard = tester.widget<Container>(
+      find.byKey(const ValueKey('media-picker-card')),
+    );
+    final decoration = pickerCard.decoration! as BoxDecoration;
+    expect(decoration.gradient, AppTheme.mediaPickerGradient);
+    expect(decoration.border?.top.color, AppTheme.flowBorder);
+    expect(
+      tester.widget<Icon>(find.byIcon(Icons.add_rounded)).color,
+      AppTheme.coral,
+    );
+    expect(
+      tester.widget<Text>(find.text('导入舞段')).style?.color,
+      AppTheme.flowTextPrimary,
+    );
+    expect(
+      tester.widget<Text>(find.text('从设备中选择一个视频')).style?.color,
+      AppTheme.flowTextMuted,
+    );
     expect(tester.takeException(), isNull);
   });
 
   group('VideoMetadataCard Widget Tests', () {
-    testWidgets('Displays horizontal video parameters properly', (tester) async {
+    testWidgets('Displays horizontal video parameters properly', (
+      tester,
+    ) async {
       const horizontalInfo = VideoInfo(
         codedWidth: 1920,
         codedHeight: 1080,
@@ -51,40 +76,50 @@ void main() {
       expect(find.text('15.4 秒'), findsOneWidget);
       expect(find.text('H.264 (AVC)'), findsOneWidget);
       expect(find.text('AAC'), findsOneWidget);
+
+      final metadataCard = tester.widget<Container>(
+        find.byKey(const ValueKey('video-metadata-card')),
+      );
+      final decoration = metadataCard.decoration! as BoxDecoration;
+      expect(decoration.color, AppTheme.flowSurface);
+      expect(decoration.border?.top.color, AppTheme.flowBorder);
     });
 
-    testWidgets('Displays rotated vertical video warning and auto-corrected resolution', (tester) async {
-      const verticalRotatedInfo = VideoInfo(
-        codedWidth: 1920,
-        codedHeight: 1080,
-        displayWidth: 1080,
-        displayHeight: 1920,
-        fps: 60.0,
-        durationMs: 8200,
-        rotation: 90,
-        videoCodec: 'video/hevc',
-        hasAudio: false,
-      );
+    testWidgets(
+      'Displays rotated vertical video warning and auto-corrected resolution',
+      (tester) async {
+        const verticalRotatedInfo = VideoInfo(
+          codedWidth: 1920,
+          codedHeight: 1080,
+          displayWidth: 1080,
+          displayHeight: 1920,
+          fps: 60.0,
+          durationMs: 8200,
+          rotation: 90,
+          videoCodec: 'video/hevc',
+          hasAudio: false,
+        );
 
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: VideoMetadataCard(
-              info: verticalRotatedInfo,
-              fileName: 'phone_recorded_dance.mp4',
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: VideoMetadataCard(
+                info: verticalRotatedInfo,
+                fileName: 'phone_recorded_dance.mp4',
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      expect(find.text('phone_recorded_dance.mp4'), findsOneWidget);
-      expect(find.text('竖屏'), findsOneWidget);
-      expect(find.text('1080 × 1920'), findsOneWidget);
-      expect(find.text('90°'), findsOneWidget);
-      expect(find.text('60.0 fps'), findsOneWidget);
-      expect(find.text('H.265 (HEVC)'), findsOneWidget);
-      expect(find.text('无音频'), findsOneWidget);
-      expect(find.textContaining('检测到录制朝向 90°'), findsOneWidget);
-    });
+        expect(find.text('phone_recorded_dance.mp4'), findsOneWidget);
+        expect(find.text('竖屏'), findsOneWidget);
+        expect(find.text('1080 × 1920'), findsOneWidget);
+        expect(find.text('90°'), findsOneWidget);
+        expect(find.text('60.0 fps'), findsOneWidget);
+        expect(find.text('H.265 (HEVC)'), findsOneWidget);
+        expect(find.text('无音频'), findsOneWidget);
+        expect(find.textContaining('检测到录制朝向 90°'), findsOneWidget);
+      },
+    );
   });
 }

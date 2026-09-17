@@ -27,17 +27,11 @@ class AppTheme {
     colors: [coralStrong, coral, coralSoft],
   );
 
-  static const LinearGradient importCardGradient = LinearGradient(
+  static const LinearGradient mediaPickerGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [
-      Color(0xFF26262B),
-      Color(0xFF1C1C20),
-      Color(0xFF17171A),
-      Color(0xFF231719),
-      Color(0xFF321719),
-    ],
-    stops: [0.0, 0.26, 0.52, 0.76, 1.0],
+    colors: [surfaceHigh, flowSurfaceSoft, flowSurface],
+    stops: [0.0, 0.48, 1.0],
   );
 
   static const Color background = Color(0xFF050506);

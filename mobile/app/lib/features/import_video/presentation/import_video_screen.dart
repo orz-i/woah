@@ -144,95 +144,74 @@ class _DanceClipImportCard extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           opacity: isBusy ? 0.92 : 1,
           child: Container(
+            key: const ValueKey('media-picker-card'),
             width: width,
             height: width / 0.75,
             decoration: BoxDecoration(
+              gradient: AppTheme.mediaPickerGradient,
               borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: AppTheme.flowBorder),
               boxShadow: const [
                 BoxShadow(
-                  color: Color(0x16000000),
-                  blurRadius: 28,
-                  offset: Offset(0, 14),
+                  color: Color(0x33000000),
+                  blurRadius: 24,
+                  offset: Offset(0, 12),
                 ),
               ],
             ),
             clipBehavior: Clip.antiAlias,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                const DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.importCardGradient,
-                  ),
-                ),
-                const DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: RadialGradient(
-                      center: Alignment(-0.86, 0.98),
-                      radius: 0.88,
-                      colors: [Color(0xAA780524), Color(0x00780524)],
-                      stops: [0.0, 1.0],
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 54,
+                    height: 54,
+                    decoration: BoxDecoration(
+                      color: AppTheme.flowSurfaceSoft,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppTheme.flowBorder),
                     ),
-                  ),
-                ),
-                const DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: RadialGradient(
-                      center: Alignment(0.82, 0.72),
-                      radius: 0.82,
-                      colors: [Color(0x55FF726B), Color(0x00FF726B)],
-                      stops: [0.0, 1.0],
-                    ),
-                  ),
-                ),
-                Align(
-                  alignment: const Alignment(0, -0.10),
-                  child: isBusy
-                      ? const SizedBox(
-                          width: 28,
-                          height: 28,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(
-                          Icons.add_rounded,
-                          color: Colors.white,
-                          size: 36,
-                          shadows: [
-                            Shadow(
-                              color: Color(0x28000000),
-                              blurRadius: 5,
-                              offset: Offset(0, 1),
+                    child: Center(
+                      child: isBusy
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppTheme.coral,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.add_rounded,
+                              color: AppTheme.coral,
+                              size: 30,
                             ),
-                          ],
-                        ),
-                ),
-                Positioned(
-                  left: 16,
-                  right: 16,
-                  bottom: 20,
-                  child: Text(
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
                     label,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: AppTheme.flowTextPrimary,
                       fontSize: 14,
                       height: 1.2,
-                      fontWeight: FontWeight.w400,
-                      letterSpacing: 0.6,
-                      shadows: [
-                        Shadow(
-                          color: Color(0x22000000),
-                          blurRadius: 4,
-                          offset: Offset(0, 1),
-                        ),
-                      ],
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.2,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 6),
+                  Text(
+                    isBusy ? '请稍候' : '从设备中选择一个视频',
+                    style: const TextStyle(
+                      color: AppTheme.flowTextMuted,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

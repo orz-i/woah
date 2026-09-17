@@ -1,22 +1,26 @@
-import 'package:flutter/material.dart';
 import 'package:dance_domain/dance_domain.dart';
+import 'package:flutter/material.dart';
+
+import '../../../../app/theme.dart';
 
 class VideoMetadataCard extends StatelessWidget {
   final VideoInfo info;
   final String? fileName;
 
-  const VideoMetadataCard({
-    super.key,
-    required this.info,
-    this.fileName,
-  });
+  const VideoMetadataCard({super.key, required this.info, this.fileName});
 
   @override
   Widget build(BuildContext context) {
     final isVertical = info.height > info.width;
     final durationSec = (info.durationMs / 1000.0).toStringAsFixed(1);
 
-    return Card(
+    return Container(
+      key: const ValueKey('video-metadata-card'),
+      decoration: BoxDecoration(
+        color: AppTheme.flowSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.flowBorder),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -24,29 +28,40 @@ class VideoMetadataCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.movie_outlined, color: Colors.white70, size: 20),
+                const Icon(
+                  Icons.movie_outlined,
+                  color: AppTheme.flowTextSecondary,
+                  size: 20,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     fileName ?? '视频基本信息',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.flowTextPrimary,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF222228),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.white24),
+                    color: AppTheme.flowSurfaceSoft,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppTheme.flowBorder),
                   ),
                   child: Text(
                     isVertical ? '竖屏' : '横屏',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.flowTextPrimary,
+                    ),
                   ),
                 ),
               ],
@@ -80,7 +95,9 @@ class VideoMetadataCard extends StatelessWidget {
               icon2: Icons.audiotrack,
               label2: '音频声道',
               value2: info.hasAudio
-                  ? (info.audioCodec != null ? _formatCodec(info.audioCodec!) : '包含音频')
+                  ? (info.audioCodec != null
+                        ? _formatCodec(info.audioCodec!)
+                        : '包含音频')
                   : '无音频',
             ),
             if (info.rotation != 0) ...[
@@ -88,18 +105,25 @@ class VideoMetadataCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(10),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.white12),
+                  color: AppTheme.flowSurfaceSoft,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.flowBorder),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.info_outline, color: Colors.white70, size: 18),
+                    const Icon(
+                      Icons.info_outline,
+                      color: AppTheme.flowTextSecondary,
+                      size: 18,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         '检测到录制朝向 ${info.rotation}°，画面已自动校准为最佳播放方向。',
-                        style: const TextStyle(fontSize: 12, color: Colors.white70),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.flowTextSecondary,
+                        ),
                       ),
                     ),
                   ],
@@ -130,16 +154,34 @@ class VideoMetadataCard extends StatelessWidget {
     );
   }
 
-  Widget _buildItem(BuildContext context, IconData icon, String label, String value) {
+  Widget _buildItem(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+  ) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: Colors.white60),
+        Icon(icon, size: 18, color: AppTheme.flowTextMuted),
         const SizedBox(width: 6),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(fontSize: 11, color: Colors.white54)),
-            Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppTheme.flowTextMuted,
+              ),
+            ),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.flowTextPrimary,
+              ),
+            ),
           ],
         ),
       ],

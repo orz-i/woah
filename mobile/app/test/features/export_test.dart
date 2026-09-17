@@ -501,6 +501,23 @@ void main() {
 
       expect(find.text('取消处理？'), findsOneWidget);
       expect(find.text('继续处理'), findsOneWidget);
+      expect(find.text('取消处理'), findsOneWidget);
+
+      final dialogRect = tester.getRect(
+        find.byKey(const ValueKey('export-cancel-confirm-dialog')),
+      );
+      final continueRect = tester.getRect(
+        find.byKey(const ValueKey('export-cancel-continue')),
+      );
+      final confirmRect = tester.getRect(
+        find.byKey(const ValueKey('export-cancel-confirm')),
+      );
+      expect(dialogRect.width, lessThanOrEqualTo(320));
+      expect(continueRect.height, lessThanOrEqualTo(48));
+      expect(confirmRect.height, lessThanOrEqualTo(48));
+      expect(continueRect.center.dy, closeTo(confirmRect.center.dy, 0.5));
+      expect(continueRect.width, lessThan(dialogRect.width / 2));
+      expect(confirmRect.width, lessThan(dialogRect.width / 2));
     },
   );
 

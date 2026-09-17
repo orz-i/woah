@@ -1,7 +1,10 @@
 import 'dart:io';
+
+import 'package:app/app/router.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
-import 'package:app/app/router.dart';
+
+import '../../../../app/theme.dart';
 
 class VideoPreviewPlayer extends StatefulWidget {
   final String videoPath;
@@ -122,10 +125,14 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer>
         height: 220,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: Colors.black26,
+          color: AppTheme.flowSurface,
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.flowBorder),
         ),
-        child: Text(_errorMessage!, style: const TextStyle(color: Colors.redAccent)),
+        child: Text(
+          _errorMessage!,
+          style: const TextStyle(color: AppTheme.coral),
+        ),
       );
     }
 
@@ -134,15 +141,19 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer>
         height: 220,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: Colors.black26,
+          color: AppTheme.flowSurface,
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.flowBorder),
         ),
         child: const Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(strokeWidth: 2),
+            CircularProgressIndicator(strokeWidth: 2, color: AppTheme.coral),
             SizedBox(height: 12),
-            Text('加载视频流中...'),
+            Text(
+              '加载视频流中...',
+              style: TextStyle(color: AppTheme.flowTextSecondary),
+            ),
           ],
         ),
       );
@@ -152,7 +163,7 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer>
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        color: Colors.black,
+        color: AppTheme.canvas,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -182,14 +193,16 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer>
                             duration: const Duration(milliseconds: 200),
                             child: Container(
                               padding: const EdgeInsets.all(12),
-                              decoration: const BoxDecoration(
-                                color: Colors.black54,
+                              decoration: BoxDecoration(
+                                color: AppTheme.background.withValues(
+                                  alpha: 0.72,
+                                ),
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
                                 Icons.play_arrow,
                                 size: 48,
-                                color: Colors.white,
+                                color: AppTheme.flowTextPrimary,
                               ),
                             ),
                           ),
@@ -204,9 +217,9 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer>
               controller,
               allowScrubbing: true,
               colors: const VideoProgressColors(
-                playedColor: Colors.white,
-                bufferedColor: Colors.white30,
-                backgroundColor: Colors.black54,
+                playedColor: AppTheme.coral,
+                bufferedColor: AppTheme.flowTextMuted,
+                backgroundColor: AppTheme.surfaceHigh,
               ),
             ),
           ],

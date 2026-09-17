@@ -39,6 +39,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   static const _failedCopyKey = ValueKey('export-failed-copy');
   static const _failedDiagnosticsKey = ValueKey('export-failed-diagnostics');
   static const _cancelActionKey = ValueKey('export-cancel-action');
+  static const _cancelDialogKey = ValueKey('export-cancel-confirm-dialog');
+  static const _cancelContinueKey = ValueKey('export-cancel-continue');
+  static const _cancelConfirmKey = ValueKey('export-cancel-confirm');
   bool _cancelInFlight = false;
 
   @override
@@ -646,109 +649,116 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     HapticFeedback.lightImpact();
     showDialog<void>(
       context: context,
-      barrierColor: const Color(0x52000000),
+      barrierColor: const Color(0x66000000),
       builder: (dialogContext) => Dialog(
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 30),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
-          decoration: BoxDecoration(
-            color: AppTheme.flowSurface,
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(color: AppTheme.flowBorder),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x22000000),
-                blurRadius: 30,
-                offset: Offset(0, 12),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: const BoxDecoration(
-                  color: AppTheme.coralPale,
-                  shape: BoxShape.circle,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 320),
+          child: Container(
+            key: _cancelDialogKey,
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+            decoration: BoxDecoration(
+              color: AppTheme.flowSurface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppTheme.flowBorder),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x38000000),
+                  blurRadius: 28,
+                  offset: Offset(0, 12),
                 ),
-                child: const Icon(
-                  Icons.close_rounded,
-                  color: AppTheme.coral,
-                  size: 26,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                '取消处理？',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppTheme.flowTextPrimary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                '当前处理进度不会保留。',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppTheme.flowTextSecondary,
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(height: 22),
-              Material(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
-                child: InkWell(
-                  onTap: () => Navigator.of(dialogContext).pop(),
-                  borderRadius: BorderRadius.circular(16),
-                  child: Ink(
-                    height: 54,
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.coralActionGradient,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        '继续处理',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 34,
+                      height: 34,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: AppTheme.coralPale,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.close_rounded,
+                          color: AppTheme.coral,
+                          size: 19,
                         ),
                       ),
                     ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: OutlinedButton(
-                  onPressed: () {
-                    Navigator.of(dialogContext).pop();
-                    _cancelAndReturn(controller);
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.coralStrong,
-                    side: const BorderSide(color: AppTheme.flowBorder),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                    SizedBox(width: 11),
+                    Expanded(
+                      child: Text(
+                        '取消处理？',
+                        style: TextStyle(
+                          color: AppTheme.flowTextPrimary,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
-                  ),
-                  child: const Text(
-                    '取消处理',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  '当前处理进度不会保留。',
+                  style: TextStyle(
+                    color: AppTheme.flowTextSecondary,
+                    fontSize: 12.5,
+                    height: 1.4,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 14),
+                const Divider(height: 1, color: AppTheme.flowBorder),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      key: _cancelContinueKey,
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size(72, 44),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        foregroundColor: AppTheme.flowTextSecondary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('继续处理'),
+                    ),
+                    const SizedBox(width: 6),
+                    TextButton(
+                      key: _cancelConfirmKey,
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop();
+                        _cancelAndReturn(controller);
+                      },
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size(84, 44),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        foregroundColor: AppTheme.coralStrong,
+                        backgroundColor: AppTheme.coralPale,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        '取消处理',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
