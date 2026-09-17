@@ -9,23 +9,35 @@ class AppTheme {
   // Main-flow chrome shared by import, editor, export and result. Media stays
   // visually dominant while every transition remains in the same graphite
   // luminance family.
-  static const Color flowBackground = Color(0xFF080809);
-  static const Color flowSurface = Color(0xFF121214);
+  // Professional Video Editor Visual System Tokens
+  // Immersive black canvas with amber-gold accent hierarchy
+  static const Color flowBackground = Color(0xFF0C0C0E);
+  static const Color flowSurface = Color(0xFF161618);
   static const Color flowSurfaceSoft = Color(0xFF18181B);
   static const Color flowTextPrimary = Color(0xFFF4F4F5);
   static const Color flowTextSecondary = Color(0xFFB3B3B8);
   static const Color flowTextMuted = Color(0xFF77777D);
-  static const Color flowBorder = Color(0xFF2D2D31);
-  static const Color coral = Color(0xFFFF5E5B);
-  static const Color coralStrong = Color(0xFFF44848);
-  static const Color coralSoft = Color(0xFFFF8176);
-  static const Color coralPale = Color(0xFF351A1B);
+  static const Color flowBorder = Color(0xFF262628);
 
-  static const LinearGradient coralActionGradient = LinearGradient(
+  // Amber Gold Accent Hierarchy
+  static const Color gold = Color(0xFFF5A623);
+  static const Color goldStrong = Color(0xFFE59800);
+  static const Color goldLight = Color(0xFFFFC043);
+  static const Color goldPale = Color(0xFF332612);
+
+  // Compatibility aliases
+  static const Color coral = gold;
+  static const Color coralStrong = goldStrong;
+  static const Color coralSoft = goldLight;
+  static const Color coralPale = goldPale;
+
+  static const LinearGradient goldActionGradient = LinearGradient(
     begin: Alignment.centerLeft,
     end: Alignment.centerRight,
-    colors: [coralStrong, coral, coralSoft],
+    colors: [goldStrong, gold, goldLight],
   );
+
+  static const LinearGradient coralActionGradient = goldActionGradient;
 
   static const LinearGradient mediaPickerGradient = LinearGradient(
     begin: Alignment.topLeft,
@@ -35,11 +47,13 @@ class AppTheme {
   );
 
   static const Color background = Color(0xFF050506);
-  static const Color canvas = Color(0xFF09090B);
-  static const Color surface = Color(0xFF111113);
-  static const Color surfaceElevated = Color(0xFF19191C);
-  static const Color surfaceHigh = Color(0xFF222225);
-  static const Color surfaceBorder = Color(0xFF303034);
+  static const Color canvas = Color(0xFF000000);
+  static const Color surface = Color(0xFF141416);
+  static const Color surfaceElevated = Color(0xFF1C1C1E);
+  static const Color surfaceHigh = Color(0xFF262628);
+  static const Color surfacePill = Color(0xFF2A2A2C);
+  static const Color surfaceBorder = Color(0xFF2A2A2E);
+  static const Color sliderTrackInactive = Color(0xFF38383A);
 
   static const Color metalHigh = Color(0xFFE6E6E9);
   static const Color metalMid = Color(0xFFA8A8AE);
@@ -48,11 +62,13 @@ class AppTheme {
   static const Color textPrimary = Color(0xFFF4F4F5);
   static const Color textSecondary = Color(0xFFB3B3B8);
   static const Color textMuted = Color(0xFF77777D);
+  static const Color textOnAccent = Color(0xFF111111);
   static const Color error = Color(0xFFEF5350);
 
-  static const double radiusSmall = 10;
-  static const double radiusMedium = 14;
-  static const double radiusLarge = 20;
+  static const double radiusSmall = 8;
+  static const double radiusMedium = 12;
+  static const double radiusLarge = 18;
+  static const double radiusCapsule = 22;
   static const double radiusSheet = 24;
   static const double minTouchTarget = 48;
 
@@ -192,12 +208,12 @@ class AppTheme {
         thickness: 1,
         space: 24,
       ),
-      sliderTheme: SliderThemeData(
-        activeTrackColor: coral,
-        inactiveTrackColor: surfaceHigh,
-        thumbColor: coral,
-        overlayColor: coral.withAlpha(24),
-        trackHeight: 3,
+      sliderTheme: const SliderThemeData(
+        activeTrackColor: gold,
+        inactiveTrackColor: sliderTrackInactive,
+        thumbColor: gold,
+        overlayColor: Color(0x33F5A623),
+        trackHeight: 4,
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {

@@ -7,11 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../../app/theme.dart';
-import '../../../core/widgets/flow_back_button.dart';
-import '../../../core/widgets/video_trim_control.dart';
-import '../../../repositories/native_processing_repository.dart';
 import '../../effect_editor/domain/effect_editor_state.dart';
 import '../../effect_editor/presentation/effect_editor_controller.dart';
 import '../../export/presentation/export_screen.dart';
@@ -20,7 +18,20 @@ import '../../person_selection/presentation/person_selection_controller.dart';
 import '../data/protection_profile_store.dart';
 import '../domain/protection_profile.dart';
 
-enum _EditorTool { protect, mask, frame, trim }
+enum _EditorTool { trim, protect, mask, frame, adjust }
+
+enum _AdjustProperty {
+  opacity('强度', Icons.opacity_rounded),
+  blur('模糊', Icons.blur_on_rounded),
+  color('颜色', Icons.palette_rounded),
+  border('描边', Icons.line_weight_rounded),
+  skinWhiten('美肤', Icons.face_rounded),
+  legStretch('拉腿', Icons.height_rounded);
+
+  final String label;
+  final IconData icon;
+  const _AdjustProperty(this.label, this.icon);
+}
 
 class ProtectionEditorArgs {
   final DanceProject project;
@@ -66,11 +77,9 @@ class ProtectionEditorScreen extends ConsumerStatefulWidget {
 class _ProtectionEditorScreenState
     extends ConsumerState<ProtectionEditorScreen> {
   static const int _minimumClipMs = 1000;
-  static const int _thumbnailCount = 10;
 
   EffectConfig? _fullBodyDraft;
   EffectConfig? _faceOnlyDraft;
-  List<String> _trimThumbnailPaths = const [];
   late int _trimStartMs;
   late int _trimEndMs;
   int _committedTrimStartMs = 0;
@@ -78,10 +87,18 @@ class _ProtectionEditorScreenState
   bool _trimApplying = false;
   bool _allowRoutePop = false;
   bool _returnRequested = false;
-  _EditorTool _activeTool = _EditorTool.protect;
+  _EditorTool _activeTool = _EditorTool.mask;
+  _AdjustProperty _activeAdjustProperty = _AdjustProperty.opacity;
+  bool _isPlaying = false;
+  int _currentPlaybackMs = 0;
+  Timer? _playbackTimer;
+  VideoPlayerController? _videoController;
+  bool _videoInitialized = false;
+  bool _originalAudioEnabled = true;
   bool _selectingFollowTarget = false;
   bool _profileReady = false;
   Timer? _profileSaveDebounce;
+  String? _trimDragMode;
 
   @override
   void initState() {
@@ -105,7 +122,7 @@ class _ProtectionEditorScreenState
     _committedTrimEndMs = _trimEndMs;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_initializeEditor());
-      unawaited(_loadTrimThumbnails());
+      unawaited(_initVideoPlayer());
     });
   }
 
@@ -225,46 +242,125 @@ class _ProtectionEditorScreenState
         a.legZoneBottom == b.legZoneBottom;
   }
 
+  void _togglePlayback() {
+    HapticFeedback.selectionClick();
+    final controller = _videoController;
+    if (controller != null && controller.value.isInitialized) {
+      if (controller.value.isPlaying) {
+        controller.pause();
+      } else {
+        if (_currentPlaybackMs >= _trimEndMs || _currentPlaybackMs < _trimStartMs) {
+          controller.seekTo(Duration(milliseconds: _trimStartMs));
+        }
+        controller.play();
+      }
+      return;
+    }
+    setState(() {
+      _isPlaying = !_isPlaying;
+    });
+    if (_isPlaying) {
+      _playbackTimer?.cancel();
+      _playbackTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
+        setState(() {
+          _currentPlaybackMs += 100;
+          if (_currentPlaybackMs > _trimEndMs) {
+            _currentPlaybackMs = _trimStartMs;
+          }
+        });
+      });
+    } else {
+      _playbackTimer?.cancel();
+      _playbackTimer = null;
+    }
+  }
+
+  Future<void> _initVideoPlayer() async {
+    try {
+      final source = widget.project.sourceUri;
+      if (source.isEmpty) return;
+      final controller = source.startsWith('content://')
+          ? VideoPlayerController.contentUri(Uri.parse(source))
+          : VideoPlayerController.file(
+              File(source.startsWith('file://') ? source.substring(7) : source),
+            );
+      await controller.initialize();
+      controller.setLooping(false);
+      controller.setVolume(_originalAudioEnabled ? 1.0 : 0.0);
+      controller.addListener(_onVideoTick);
+      await controller.seekTo(Duration(milliseconds: _trimStartMs));
+      if (!mounted) {
+        await controller.dispose();
+        return;
+      }
+      setState(() {
+        _videoController = controller;
+        _videoInitialized = true;
+      });
+    } catch (_) {
+      // Test environment or unsupported video uri fallback
+    }
+  }
+
+  void _onVideoTick() {
+    final controller = _videoController;
+    if (controller == null || !controller.value.isInitialized || !mounted) return;
+    final posMs = controller.value.position.inMilliseconds.clamp(0, _sourceDurationMs);
+    final playing = controller.value.isPlaying;
+    if (playing != _isPlaying) {
+      setState(() => _isPlaying = playing);
+    }
+    if (playing && posMs >= _trimEndMs) {
+      controller.pause();
+      controller.seekTo(Duration(milliseconds: _trimStartMs));
+      setState(() {
+        _isPlaying = false;
+        _currentPlaybackMs = _trimStartMs;
+      });
+    } else {
+      setState(() => _currentPlaybackMs = posMs);
+    }
+  }
+
   @override
   void dispose() {
+    _playbackTimer?.cancel();
     _profileSaveDebounce?.cancel();
+    _videoController?.removeListener(_onVideoTick);
+    _videoController?.dispose();
     super.dispose();
   }
 
   int get _sourceDurationMs => math.max(widget.project.videoInfo.durationMs, 1);
 
-  Future<void> _loadTrimThumbnails() async {
-    try {
-      final timestamps = List<int>.generate(_thumbnailCount, (index) {
-        if (_thumbnailCount == 1) return 0;
-        return ((_sourceDurationMs * index) / (_thumbnailCount - 1)).round();
-      });
-      final thumbnails = await ref
-          .read(nativeRepositoryProvider)
-          .getVideoFrameThumbnails(
-            videoUri: widget.project.sourceUri,
-            timestampsMs: timestamps,
-          );
-      if (!mounted) return;
-      setState(() => _trimThumbnailPaths = thumbnails);
-    } catch (_) {
-      // Thumbnail extraction is optional; the trim track remains usable with
-      // lightweight placeholders when a platform cannot provide thumbnails.
-    }
-  }
-
   void _setTrimStart(int valueMs) {
     final maxStart = (_trimEndMs - _minimumClipMs).clamp(0, _sourceDurationMs);
     final value = valueMs.clamp(0, maxStart);
     if (value == _trimStartMs) return;
-    setState(() => _trimStartMs = value);
+    setState(() {
+      _trimStartMs = value;
+      if (_currentPlaybackMs < _trimStartMs) {
+        _currentPlaybackMs = _trimStartMs;
+      }
+    });
+    _videoController?.seekTo(Duration(milliseconds: value));
   }
 
   void _setTrimEnd(int valueMs) {
     final minEnd = (_trimStartMs + _minimumClipMs).clamp(0, _sourceDurationMs);
     final value = valueMs.clamp(minEnd, _sourceDurationMs);
     if (value == _trimEndMs) return;
-    setState(() => _trimEndMs = value);
+    setState(() {
+      _trimEndMs = value;
+      if (_currentPlaybackMs > _trimEndMs) {
+        _currentPlaybackMs = _trimEndMs;
+      }
+    });
+    _videoController?.seekTo(Duration(milliseconds: value));
   }
 
   Future<void> _applyTrimChange() async {
@@ -405,7 +501,14 @@ class _ProtectionEditorScreenState
                     : 0.0;
                 return Column(
                   children: [
-                    SizedBox(height: 56, child: _buildTopActions(nextEnabled)),
+                    SizedBox(
+                      height: 56,
+                      child: _buildTopActions(
+                        nextEnabled,
+                        project,
+                        effectController,
+                      ),
+                    ),
                     Expanded(
                       child: _buildStage(
                         selectionState,
@@ -435,33 +538,226 @@ class _ProtectionEditorScreenState
     );
   }
 
-  Widget _buildTopActions(bool nextEnabled) {
+  Widget _buildTopActions(
+    bool nextEnabled,
+    DanceProject project,
+    EffectEditorController effectController,
+  ) {
+    final preset = project.outputResolutionPreset;
+    final resLabel = switch (preset) {
+      OutputResolutionPreset.source => '原始',
+      OutputResolutionPreset.fhd => '1080p',
+      OutputResolutionPreset.hd => '720p',
+    };
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          FlowBackButton(
-            onPressed: _requestReturn,
-            foregroundColor: Colors.white,
-            backgroundColor: const Color(0xFF19191B),
-          ),
-          const Spacer(),
-          TextButton(
-            key: const ValueKey('protection-editor-export-action'),
-            onPressed: nextEnabled ? _continueToExport : null,
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.coral,
-              disabledForegroundColor: AppTheme.textMuted,
-              minimumSize: const Size(64, 44),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              textStyle: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
+          // Left: Cancel icon button
+          GestureDetector(
+            key: const ValueKey('protection-editor-cancel-action'),
+            onTap: _requestReturn,
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+              child: Semantics(
+                label: '取消',
+                button: true,
+                child: Icon(
+                  Icons.close_rounded,
+                  color: AppTheme.textPrimary,
+                  size: 24,
+                ),
               ),
             ),
-            child: const Text('导出'),
+          ),
+          const Spacer(),
+          // Middle: Resolution trigger (pure text + dropdown arrow, no capsule)
+          GestureDetector(
+            key: const ValueKey('protection-editor-resolution-trigger'),
+            onTap: () => _showResolutionDialog(context, project, effectController),
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    resLabel,
+                    style: const TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(width: 1),
+                  const Icon(
+                    Icons.arrow_drop_down_rounded,
+                    color: AppTheme.textSecondary,
+                    size: 18,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Spacer(),
+          // Right: Export icon action (golden icon, no capsule background)
+          GestureDetector(
+            key: const ValueKey('protection-editor-export-action'),
+            onTap: nextEnabled ? _continueToExport : null,
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+              child: Semantics(
+                label: '导出',
+                button: true,
+                child: Icon(
+                  Icons.file_upload_outlined,
+                  color: nextEnabled ? AppTheme.gold : AppTheme.textMuted,
+                  size: 24,
+                ),
+              ),
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showResolutionDialog(
+    BuildContext context,
+    DanceProject project,
+    EffectEditorController effectController,
+  ) {
+    final current = project.outputResolutionPreset;
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '关闭清晰度选择',
+      barrierColor: const Color(0x66000000),
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (dialogContext, anim1, anim2) {
+        return SafeArea(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 48),
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  width: 248,
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceElevated,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                    border: Border.all(color: AppTheme.surfaceBorder),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x7F000000),
+                        blurRadius: 24,
+                        offset: Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildResolutionDialogItem(
+                        dialogContext,
+                        OutputResolutionPreset.source,
+                        '原始',
+                        '原始素材清晰度',
+                        current,
+                        effectController,
+                      ),
+                      const Divider(height: 1, color: AppTheme.surfaceBorder),
+                      _buildResolutionDialogItem(
+                        dialogContext,
+                        OutputResolutionPreset.fhd,
+                        '1080p',
+                        '全高清 FHD',
+                        current,
+                        effectController,
+                      ),
+                      const Divider(height: 1, color: AppTheme.surfaceBorder),
+                      _buildResolutionDialogItem(
+                        dialogContext,
+                        OutputResolutionPreset.hd,
+                        '720p',
+                        '高清 HD',
+                        current,
+                        effectController,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (context, anim1, anim2, child) {
+        return FadeTransition(
+          opacity: CurvedAnimation(parent: anim1, curve: Curves.easeOut),
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+              CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic),
+            ),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildResolutionDialogItem(
+    BuildContext dialogContext,
+    OutputResolutionPreset value,
+    String label,
+    String desc,
+    OutputResolutionPreset current,
+    EffectEditorController effectController,
+  ) {
+    final isSelected = value == current;
+    return InkWell(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        effectController.updateOutputResolutionPreset(value);
+        Navigator.of(dialogContext).pop();
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: isSelected ? AppTheme.gold : AppTheme.textPrimary,
+                      fontSize: 14,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    desc,
+                    style: const TextStyle(
+                      color: AppTheme.textMuted,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              const Icon(Icons.check_rounded, color: AppTheme.gold, size: 18),
+          ],
+        ),
       ),
     );
   }
@@ -613,10 +909,408 @@ class _ProtectionEditorScreenState
                   ),
                 ),
               ),
+            // Protection / Mask mode on-stage HUD prompt & shortcut buttons
+            if ((_activeTool == _EditorTool.mask ||
+                    _activeTool == _EditorTool.protect) &&
+                !_selectingFollowTarget) ...[
+              // Top-left: Touch person prompt text & icon (no background or border)
+              Positioned(
+                key: const ValueKey('protection-stage-prompt'),
+                left: math.max(mediaLeft + 12, 12.0),
+                top: math.max(mediaTop + 10, 8.0),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.touch_app_rounded,
+                      size: 14,
+                      color: AppTheme.gold,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black87,
+                          blurRadius: 4,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      selectionState.privacyTargetIds.isEmpty
+                          ? '轻触人物选择保护对象'
+                          : '轻触画面中的人物可调整保护对象',
+                      style: const TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black87,
+                            blurRadius: 4,
+                            offset: Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Top-right: Restore and Clear stage circle action buttons
+              Positioned(
+                right: math.max(mediaLeft + 12, 12.0),
+                top: math.max(mediaTop + 8, 6.0),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Restore default selection
+                    _buildStageCircleButton(
+                      key: const ValueKey('protection-restore-default-action'),
+                      tooltip: '恢复默认选择',
+                      icon: Icons.refresh_rounded,
+                      iconSize: 17,
+                      enabled: true,
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        selectionController.resetSelection();
+                        _syncSelectionToEffect(
+                          ref.read(effectEditorControllerProvider.notifier),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    // Clear targets
+                    _buildStageCircleButton(
+                      key: const ValueKey('protection-clear-target-action'),
+                      tooltip: '清空保护对象',
+                      icon: Icons.person_off_rounded,
+                      iconSize: 16,
+                      enabled: selectionState.privacyTargetIds.isNotEmpty,
+                      onTap: () {
+                        if (selectionState.privacyTargetIds.isNotEmpty) {
+                          HapticFeedback.selectionClick();
+                          selectionController.deselectAll();
+                          _syncSelectionToEffect(
+                            ref.read(effectEditorControllerProvider.notifier),
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         );
       },
     );
+  }
+
+  Widget _buildStageCircleButton({
+    required Key key,
+    required String tooltip,
+    required IconData icon,
+    required double iconSize,
+    required bool enabled,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        key: key,
+        behavior: HitTestBehavior.opaque,
+        onTap: enabled ? onTap : null,
+        child: SizedBox(
+          width: 32,
+          height: 32,
+          child: Center(
+            child: Icon(
+              icon,
+              size: iconSize + 3,
+              color: enabled
+                  ? AppTheme.textPrimary
+                  : AppTheme.textMuted.withAlpha(120),
+              shadows: const [
+                Shadow(
+                  color: Colors.black87,
+                  blurRadius: 4,
+                  offset: Offset(0, 1),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlaybackBar() {
+    final totalDurationMs = math.max(_sourceDurationMs, 1000);
+    final currentMs = _currentPlaybackMs.clamp(0, totalDurationMs);
+    final currentStr = _formatTimestamp(currentMs);
+    final totalStr = _formatTimestamp(totalDurationMs);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            SizedBox(
+              width: 84,
+              child: Text(
+                '$currentStr / $totalStr',
+                style: const TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
+            ),
+            const Spacer(),
+            // Centered white play/pause button
+            GestureDetector(
+              onTap: _togglePlayback,
+              behavior: HitTestBehavior.opaque,
+              child: SizedBox(
+                width: 36,
+                height: 36,
+                child: Center(
+                  child: Icon(
+                    _isPlaying
+                        ? Icons.pause_rounded
+                        : Icons.play_arrow_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                ),
+              ),
+            ),
+            const Spacer(),
+            // Right: Original audio toggle button (aligned to right, balanced width to keep play button centered)
+            Container(
+              width: 84,
+              alignment: Alignment.centerRight,
+              child: Tooltip(
+                message: _originalAudioEnabled ? '关闭原声' : '开启原声',
+                child: GestureDetector(
+                  key: const ValueKey('trim-media-audio-toggle'),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(
+                      () => _originalAudioEnabled = !_originalAudioEnabled,
+                    );
+                    _videoController?.setVolume(
+                      _originalAudioEnabled ? 1.0 : 0.0,
+                    );
+                  },
+                  child: SizedBox(
+                    width: 36,
+                    height: 36,
+                    child: Center(
+                      child: Icon(
+                        _originalAudioEnabled
+                            ? Icons.volume_up_rounded
+                            : Icons.volume_off_rounded,
+                        size: 22,
+                        color: _originalAudioEnabled
+                            ? AppTheme.gold
+                            : AppTheme.textMuted.withAlpha(140),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        // Integrated slim trim range slider & playhead
+        _buildIntegratedTrimTrack(),
+      ],
+    );
+  }
+
+  Widget _buildIntegratedTrimTrack() {
+    final durationMs = math.max(_sourceDurationMs, 1000);
+    return SizedBox(
+      key: const ValueKey('integrated-video-trim-control'),
+      height: 22,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          const trackInset = 8.0;
+          final trackWidth = math.max(width - 2 * trackInset, 1.0);
+
+          double xForMs(int ms) =>
+              trackInset + trackWidth * (ms.clamp(0, durationMs) / durationMs);
+          int msForX(double x) =>
+              (((x - trackInset) / trackWidth).clamp(0.0, 1.0) * durationMs)
+                  .round();
+
+          final startX = xForMs(_trimStartMs);
+          final endX = xForMs(_trimEndMs);
+          final currentX = xForMs(_currentPlaybackMs);
+          const handleWidth = 10.0;
+          const trackHeight = 14.0;
+          const bgHeight = 6.0;
+
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onHorizontalDragStart: (details) {
+              final x = details.localPosition.dx;
+              final startDistance = (x - startX).abs();
+              final endDistance = (x - endX).abs();
+              const hitRadius = 24.0;
+              if (startDistance <= hitRadius && startDistance <= endDistance) {
+                _trimDragMode = 'start';
+              } else if (endDistance <= hitRadius) {
+                _trimDragMode = 'end';
+              } else {
+                _trimDragMode = 'scrub';
+                final ms = msForX(x).clamp(_trimStartMs, _trimEndMs);
+                setState(() => _currentPlaybackMs = ms);
+                _videoController?.seekTo(Duration(milliseconds: ms));
+              }
+            },
+            onHorizontalDragUpdate: (details) {
+              final ms = msForX(details.localPosition.dx);
+              if (_trimDragMode == 'start') {
+                _setTrimStart(ms);
+              } else if (_trimDragMode == 'end') {
+                _setTrimEnd(ms);
+              } else if (_trimDragMode == 'scrub') {
+                final target = ms.clamp(_trimStartMs, _trimEndMs);
+                setState(() => _currentPlaybackMs = target);
+                _videoController?.seekTo(Duration(milliseconds: target));
+              }
+            },
+            onHorizontalDragEnd: (_) {
+              final changed =
+                  _trimDragMode == 'start' || _trimDragMode == 'end';
+              _trimDragMode = null;
+              if (changed) {
+                unawaited(_applyTrimChange());
+              }
+            },
+            onHorizontalDragCancel: () => _trimDragMode = null,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // Thin background track (centered vertically)
+                Positioned(
+                  left: trackInset,
+                  right: trackInset,
+                  top: (22 - bgHeight) / 2,
+                  height: bgHeight,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceElevated,
+                      borderRadius: BorderRadius.circular(3),
+                      border: Border.all(
+                        color: AppTheme.surfaceBorder,
+                        width: 0.8,
+                      ),
+                    ),
+                  ),
+                ),
+                // Dimmed left region (before trimStart)
+                if (startX > trackInset)
+                  Positioned(
+                    left: trackInset,
+                    width: startX - trackInset,
+                    top: (22 - bgHeight) / 2,
+                    height: bgHeight,
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Color(0x99000000),
+                        borderRadius: BorderRadius.horizontal(
+                          left: Radius.circular(3),
+                        ),
+                      ),
+                    ),
+                  ),
+                // Dimmed right region (after trimEnd)
+                if (endX < width - trackInset)
+                  Positioned(
+                    left: endX,
+                    right: trackInset,
+                    top: (22 - bgHeight) / 2,
+                    height: bgHeight,
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Color(0x99000000),
+                        borderRadius: BorderRadius.horizontal(
+                          right: Radius.circular(3),
+                        ),
+                      ),
+                    ),
+                  ),
+                // Amber-gold highlighted slim selected range
+                Positioned(
+                  left: startX,
+                  width: (endX - startX).clamp(0.0, trackWidth),
+                  top: (22 - trackHeight) / 2,
+                  height: trackHeight,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppTheme.gold.withAlpha(25),
+                      border: Border.all(color: AppTheme.gold, width: 1.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+                // Left start handle
+                Positioned(
+                  left: startX - handleWidth / 2,
+                  top: (22 - trackHeight) / 2,
+                  child: const _IntegratedTrimHandle(
+                    key: ValueKey('trim-start-handle'),
+                    isLeft: true,
+                  ),
+                ),
+                // Right end handle
+                Positioned(
+                  left: endX - handleWidth / 2,
+                  top: (22 - trackHeight) / 2,
+                  child: const _IntegratedTrimHandle(
+                    key: ValueKey('trim-end-handle'),
+                    isLeft: false,
+                  ),
+                ),
+                // Current playback needle indicator
+                Positioned(
+                  left: currentX - 1,
+                  top: (22 - (trackHeight + 4)) / 2,
+                  child: Container(
+                    width: 2,
+                    height: trackHeight + 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(1),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x66000000),
+                          blurRadius: 2,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  String _formatTimestamp(int ms) {
+    final totalSec = ms ~/ 1000;
+    final m = totalSec ~/ 60;
+    final s = totalSec % 60;
+    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
   Widget _buildMediaContent(
@@ -637,7 +1331,24 @@ class _ProtectionEditorScreenState
           fit: StackFit.expand,
           children: [
             Container(color: const Color(0xFF0A0A0C)),
-            if (hasImage)
+            if (_activeTool == _EditorTool.trim &&
+                _videoController != null &&
+                _videoInitialized)
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _togglePlayback,
+                  child: Center(
+                    child: AspectRatio(
+                      aspectRatio: _videoController!.value.aspectRatio > 0
+                          ? _videoController!.value.aspectRatio
+                          : (stageHeight > 0 ? stageWidth / stageHeight : 9 / 16),
+                      child: VideoPlayer(_videoController!),
+                    ),
+                  ),
+                ),
+              )
+            else if (hasImage)
               Image.file(
                 File(displayPath),
                 fit: BoxFit.fill,
@@ -648,8 +1359,9 @@ class _ProtectionEditorScreenState
               )
             else
               _buildPreviewPlaceholder(),
-            if (effectState.project?.follow.enabled != true ||
-                effectState.showSourcePreview)
+            if (_activeTool != _EditorTool.trim &&
+                (effectState.project?.follow.enabled != true ||
+                    effectState.showSourcePreview))
               for (final person in selectionState.persons)
                 _buildPersonTarget(
                   person,
@@ -871,10 +1583,12 @@ class _ProtectionEditorScreenState
     EffectEditorController effectController,
   ) {
     return switch (_activeTool) {
+      _EditorTool.trim => _buildTrimSection(),
       _EditorTool.protect => _buildProtectTool(
         selectionState,
         selectionController,
         effectController,
+        effectState,
       ),
       _EditorTool.mask => _buildMaskTool(
         selectionState,
@@ -882,16 +1596,16 @@ class _ProtectionEditorScreenState
         effectController,
       ),
       _EditorTool.frame => _buildReframeControls(effectState, effectController),
-      _EditorTool.trim => _buildTrimSection(),
+      _EditorTool.adjust => _buildAdjustTool(effectState, effectController),
     };
   }
 
   Widget _buildToolNavigation() {
     const tools = <(_EditorTool, String, IconData)>[
-      (_EditorTool.protect, '保护', Icons.person_outline_rounded),
+      (_EditorTool.trim, '剪辑', Icons.content_cut_rounded),
       (_EditorTool.mask, '遮挡', Icons.blur_on_rounded),
       (_EditorTool.frame, '画幅', Icons.crop_rounded),
-      (_EditorTool.trim, '舞段', Icons.content_cut_rounded),
+      (_EditorTool.adjust, '调节', Icons.tune_rounded),
     ];
     return Row(
       children: tools.map((item) {
@@ -902,6 +1616,13 @@ class _ProtectionEditorScreenState
             onTap: () {
               if (selected) return;
               HapticFeedback.selectionClick();
+              if (item.$1 != _EditorTool.trim) {
+                _videoController?.pause();
+                _playbackTimer?.cancel();
+                _playbackTimer = null;
+                _isPlaying = false;
+              }
+              _scheduleProfilePersist();
               setState(() => _activeTool = item.$1);
             },
             child: Column(
@@ -909,15 +1630,15 @@ class _ProtectionEditorScreenState
               children: [
                 Icon(
                   item.$3,
-                  size: 24,
-                  color: selected ? AppTheme.coral : AppTheme.textMuted,
+                  size: 22,
+                  color: selected ? AppTheme.gold : AppTheme.textMuted,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 Text(
                   item.$2,
                   style: TextStyle(
-                    color: selected ? AppTheme.coral : AppTheme.textMuted,
-                    fontSize: 11.5,
+                    color: selected ? AppTheme.gold : AppTheme.textMuted,
+                    fontSize: 11,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),
@@ -929,22 +1650,245 @@ class _ProtectionEditorScreenState
     );
   }
 
+  Widget _buildAdjustTool(
+    EffectEditorState effectState,
+    EffectEditorController effectController,
+  ) {
+    final effects = effectState.effects;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          height: 76,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            itemCount: _AdjustProperty.values.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 14),
+            itemBuilder: (context, index) {
+              final prop = _AdjustProperty.values[index];
+              final isSelected = _activeAdjustProperty == prop;
+              return GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _activeAdjustProperty = prop);
+                },
+                behavior: HitTestBehavior.opaque,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isSelected ? Colors.white : AppTheme.surfaceHigh,
+                        border: Border.all(
+                          color: isSelected ? AppTheme.gold : AppTheme.surfaceBorder,
+                          width: isSelected ? 2 : 1,
+                        ),
+                      ),
+                      child: Icon(
+                        prop.icon,
+                        color: isSelected ? const Color(0xFF111111) : Colors.white,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      prop.label,
+                      style: TextStyle(
+                        color: isSelected ? AppTheme.gold : AppTheme.textSecondary,
+                        fontSize: 11,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildAdjustSliderSection(effects, effectController),
+      ],
+    );
+  }
+
+  Widget _buildAdjustSliderSection(
+    EffectConfig effects,
+    EffectEditorController effectController,
+  ) {
+    return switch (_activeAdjustProperty) {
+      _AdjustProperty.opacity => _buildYellowSlider(
+        label: '遮挡强度',
+        value: effects.opacity,
+        min: 0.1,
+        max: 1.0,
+        step: 0.05,
+        displayValue: '${(effects.opacity * 100).round()}%',
+        onChanged: effectController.updateOpacity,
+      ),
+      _AdjustProperty.blur => _buildYellowSlider(
+        label: effects.fillMode == FillMode.mosaic ? '马赛克颗粒' : '模糊程度',
+        value: effects.blurStrength,
+        min: 1,
+        max: 30,
+        step: 1,
+        displayValue: '${effects.blurStrength.round()}',
+        onChanged: effectController.updateBlurStrength,
+      ),
+      _AdjustProperty.color => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionLabel('遮挡填充颜色', subdued: true),
+          const SizedBox(height: 8),
+          _buildColorPalette(
+            effects.fillColorArgb,
+            effectController.updateFillColor,
+          ),
+        ],
+      ),
+      _AdjustProperty.border => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildYellowSlider(
+            label: '描边粗细',
+            value: effects.borderWidth,
+            min: 0,
+            max: 20,
+            step: 1,
+            displayValue: '${effects.borderWidth.round()} px',
+            onChanged: effectController.updateBorderWidth,
+          ),
+          if (effects.borderWidth > 0) ...[
+            const SizedBox(height: 10),
+            _buildSectionLabel('描边颜色', subdued: true),
+            const SizedBox(height: 6),
+            _buildColorPalette(
+              effects.borderColorArgb,
+              effectController.updateBorderColor,
+            ),
+          ],
+        ],
+      ),
+      _AdjustProperty.skinWhiten => _buildYellowSlider(
+        label: '美肤提亮',
+        value: effects.skinWhiten,
+        min: 0.0,
+        max: 1.0,
+        step: 0.05,
+        displayValue: '${(effects.skinWhiten * 100).round()}%',
+        onChanged: effectController.updateSkinWhiten,
+      ),
+      _AdjustProperty.legStretch => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  '智能拉腿',
+                  style: TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Switch(
+                value: effects.legStretchEnabled,
+                activeThumbColor: AppTheme.gold,
+                activeTrackColor: AppTheme.gold.withAlpha(120),
+                onChanged: (val) {
+                  effectController.updateLegStretch(
+                    enabled: val,
+                    stretch: effects.legStretch,
+                  );
+                },
+              ),
+            ],
+          ),
+          if (effects.legStretchEnabled)
+            _buildYellowSlider(
+              label: '拉伸强度',
+              value: effects.legStretch,
+              min: 0.0,
+              max: 0.35,
+              step: 0.02,
+              displayValue: '+${(effects.legStretch * 100).round()}%',
+              onChanged: (val) {
+                effectController.updateLegStretch(enabled: true, stretch: val);
+              },
+            ),
+        ],
+      ),
+    };
+  }
+
+  Widget _buildYellowSlider({
+    required String label,
+    required double value,
+    required double min,
+    required double max,
+    required double step,
+    required String displayValue,
+    required ValueChanged<double> onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Text(
+              displayValue,
+              style: const TextStyle(
+                color: AppTheme.gold,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        SliderTheme(
+          data: const SliderThemeData(
+            activeTrackColor: AppTheme.gold,
+            inactiveTrackColor: AppTheme.sliderTrackInactive,
+            thumbColor: AppTheme.gold,
+            trackHeight: 5,
+            thumbShape: RoundSliderThumbShape(enabledThumbRadius: 8),
+          ),
+          child: Slider(
+            value: value.clamp(min, max),
+            min: min,
+            max: max,
+            onChanged: onChanged,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildProtectTool(
     PersonSelectionState selectionState,
     PersonSelectionController selectionController,
     EffectEditorController effectController,
+    EffectEditorState effectState,
   ) {
-    return Column(
-      key: const ValueKey('protection-editor-tool-protect'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildTargetSection(selectionState, selectionController),
-        const SizedBox(height: 18),
-        _buildSectionLabel('保护范围'),
-        const SizedBox(height: 10),
-        _buildPrivacyModeSwitch(selectionState, effectController),
-      ],
-    );
+    return _buildMaskTool(selectionState, effectState, effectController);
   }
 
   Widget _buildMaskTool(
@@ -961,6 +1905,14 @@ class _ProtectionEditorScreenState
       key: const ValueKey('protection-editor-tool-mask'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Merged protection scope section (from former protect tool)
+        _buildSectionLabel('保护范围'),
+        const SizedBox(height: 10),
+        _buildPrivacyModeSwitch(selectionState, effectController),
+        const SizedBox(height: 16),
+        const Divider(height: 1, color: AppTheme.surfaceBorder),
+        const SizedBox(height: 14),
+        // Mask style section
         Row(
           children: [
             Expanded(child: _buildSectionLabel('遮挡样式')),
@@ -978,121 +1930,65 @@ class _ProtectionEditorScreenState
         ),
         const SizedBox(height: 8),
         _buildModeChips(activeMode, effectController, faceMode: faceMode),
-        const SizedBox(height: 14),
         if (faceMode && effects.faceStickerEnabled) ...[
+          const SizedBox(height: 12),
           _buildStickerPicker(effects, effectController),
-          const SizedBox(height: 12),
-          _buildStepSlider(
-            label: '贴纸大小',
-            value: effects.stickerScale,
-            min: 1.0,
-            max: 2.0,
-            step: 0.1,
-            displayValue: '${(effects.stickerScale * 100).round()}%',
-            onChanged: effectController.updateStickerScale,
-          ),
-        ] else ...[
-          _buildStepSlider(
-            label: '强度',
-            value: effects.opacity,
-            min: 0.1,
-            max: 1.0,
-            step: 0.05,
-            displayValue: '${(effects.opacity * 100).round()}%',
-            onChanged: effectController.updateOpacity,
-          ),
         ],
-        if (effects.fillMode == FillMode.solid ||
-            (effects.fillMode == FillMode.gradient &&
-                !effects.faceStickerEnabled)) ...[
-          const SizedBox(height: 12),
-          _buildSectionLabel('颜色', subdued: true),
-          const SizedBox(height: 8),
-          _buildColorPalette(
-            effects.fillColorArgb,
-            effectController.updateFillColor,
-          ),
-        ],
-        if ((effects.fillMode == FillMode.blur ||
-                effects.fillMode == FillMode.mosaic) &&
-            !effects.faceStickerEnabled) ...[
-          const SizedBox(height: 12),
-          _buildStepSlider(
-            label: effects.fillMode == FillMode.mosaic ? '马赛克颗粒' : '模糊程度',
-            value: effects.blurStrength,
-            min: 1,
-            max: 30,
-            step: 1,
-            displayValue: '${effects.blurStrength.round()}',
-            onChanged: effectController.updateBlurStrength,
-          ),
-        ],
-        const SizedBox(height: 16),
-        _buildAdvancedEffectSection(effects, effectController),
       ],
     );
   }
 
   Widget _buildTrimSection() {
-    final duration = math.max(_trimEndMs - _trimStartMs, 0);
-    final summary =
-        '${_formatRangeTimestamp(_trimStartMs)}–${_formatRangeTimestamp(_trimEndMs)} · ${_formatRangeDuration(duration)}';
-
     return Column(
       key: const ValueKey('trim-range-section'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(child: _buildSectionLabel('舞段范围')),
-            Text(
-              summary,
-              style: const TextStyle(
-                color: AppTheme.textSecondary,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                fontFeatures: [FontFeature.tabularFigures()],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          '拖动两侧边缘选择保留舞段；修改起点后会重新识别人。',
-          style: TextStyle(
-            color: AppTheme.textMuted,
-            fontSize: 11.5,
-            height: 1.35,
+        _buildPlaybackBar(),
+        const SizedBox(height: 16),
+        const Divider(height: 1, color: AppTheme.surfaceBorder),
+        const SizedBox(height: 16),
+        // Quick tools row (screenshot 3 style: split, replace, delete, crop, speed, reorder)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildQuickTrimAction(Icons.call_split_rounded, '分割', () {
+                HapticFeedback.lightImpact();
+              }),
+              _buildQuickTrimAction(Icons.sync_alt_rounded, '替换', () {
+                HapticFeedback.lightImpact();
+              }),
+              _buildQuickTrimAction(Icons.delete_outline_rounded, '删除', null),
+              _buildQuickTrimAction(Icons.crop_rotate_rounded, '裁剪旋转', () {
+                HapticFeedback.lightImpact();
+              }),
+              _buildQuickTrimAction(Icons.speed_rounded, '变速', () {
+                HapticFeedback.lightImpact();
+              }),
+              _buildQuickTrimAction(Icons.swap_vert_rounded, '排序', () {
+                HapticFeedback.lightImpact();
+              }),
+            ],
           ),
-        ),
-        const SizedBox(height: 12),
-        VideoTrimControl(
-          durationMs: _sourceDurationMs,
-          trimStartMs: _trimStartMs,
-          trimEndMs: _trimEndMs,
-          thumbnailPaths: _trimThumbnailPaths,
-          onStartChanged: _setTrimStart,
-          onEndChanged: _setTrimEnd,
-          onTrimChangeEnd: () => unawaited(_applyTrimChange()),
         ),
         if (_trimApplying) ...[
           const SizedBox(height: 10),
           const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SizedBox(
                 width: 13,
                 height: 13,
                 child: CircularProgressIndicator(
                   strokeWidth: 1.7,
-                  color: AppTheme.coral,
+                  color: AppTheme.gold,
                 ),
               ),
               SizedBox(width: 7),
-              Expanded(
-                child: Text(
-                  '正在按新舞段重新识别人…',
-                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-                ),
+              Text(
+                '正在按新舞段重新识别人…',
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
               ),
             ],
           ),
@@ -1101,19 +1997,31 @@ class _ProtectionEditorScreenState
     );
   }
 
-  String _formatRangeTimestamp(int ms) {
-    final totalSeconds = ms / 1000.0;
-    final minutes = totalSeconds ~/ 60;
-    final seconds = totalSeconds - minutes * 60;
-    return '${minutes.toString().padLeft(2, '0')}:${seconds.toStringAsFixed(1).padLeft(4, '0')}';
-  }
-
-  String _formatRangeDuration(int ms) {
-    final seconds = ms / 1000.0;
-    if (seconds < 60) return '${seconds.toStringAsFixed(1)} 秒';
-    final minutes = seconds ~/ 60;
-    final remainder = seconds - minutes * 60;
-    return '$minutes 分 ${remainder.toStringAsFixed(0)} 秒';
+  Widget _buildQuickTrimAction(IconData icon, String label, VoidCallback? onTap) {
+    final isEnabled = onTap != null;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 21,
+            color: isEnabled ? AppTheme.textPrimary : AppTheme.textMuted.withAlpha(100),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: isEnabled ? AppTheme.textSecondary : AppTheme.textMuted.withAlpha(100),
+              fontSize: 10.5,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildReframeControls(
@@ -1122,110 +2030,37 @@ class _ProtectionEditorScreenState
   ) {
     final project = state.project;
     final follow = project?.follow ?? const FollowConfig();
-    final resolutionPreset =
-        project?.outputResolutionPreset ?? OutputResolutionPreset.source;
-    final resolutionPlan = project == null || _selectingFollowTarget
-        ? null
-        : ExportPlan.forProject(project);
-    final resolutionSummary = _selectingFollowTarget
-        ? '选择主角后计算尺寸'
-        : resolutionPlan == null
-        ? ''
-        : '${resolutionPlan.width} × ${resolutionPlan.height}';
+    final isVertical = follow.enabled || _selectingFollowTarget;
+
     return Column(
+      key: const ValueKey('reframe-controls-section'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildSectionLabel('输出画幅'),
-        const SizedBox(height: 8),
-        SegmentedButton<bool>(
-          key: const ValueKey('reframe-mode'),
-          showSelectedIcon: false,
-          expandedInsets: EdgeInsets.zero,
-          style: _darkSegmentedButtonStyle(),
-          segments: const [
-            ButtonSegment(
-              value: false,
-              label: Text('原画'),
-              icon: Icon(Icons.crop_original, size: 18),
-            ),
-            ButtonSegment(
-              value: true,
-              label: Text('竖屏 9:16'),
-              icon: Icon(Icons.crop_portrait, size: 18),
-            ),
-          ],
-          selected: {follow.enabled || _selectingFollowTarget},
-          onSelectionChanged: (values) {
-            if (values.single) {
-              setState(() => _selectingFollowTarget = true);
-              controller.showSourceFrame(true);
-            } else {
-              setState(() => _selectingFollowTarget = false);
-              controller.updateFollowConfig(enabled: false);
-            }
-            _scheduleProfilePersist();
-          },
-        ),
-        const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(child: _buildSectionLabel('分辨率')),
-            if (resolutionSummary.isNotEmpty)
-              Text(
-                resolutionSummary,
-                style: const TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  fontFeatures: [FontFeature.tabularFigures()],
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        SegmentedButton<OutputResolutionPreset>(
-          key: const ValueKey('output-resolution-preset'),
-          showSelectedIcon: false,
-          expandedInsets: EdgeInsets.zero,
-          style: _darkSegmentedButtonStyle(),
-          segments: const [
-            ButtonSegment(
-              value: OutputResolutionPreset.source,
-              label: Text('原画'),
-            ),
-            ButtonSegment(
-              value: OutputResolutionPreset.fhd,
-              label: Text('FHD'),
-            ),
-            ButtonSegment(value: OutputResolutionPreset.hd, label: Text('HD')),
-          ],
-          selected: {resolutionPreset},
-          onSelectionChanged: (values) {
-            HapticFeedback.selectionClick();
-            controller.updateOutputResolutionPreset(values.single);
-          },
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'FHD / HD 只限制最大输出尺寸，不会放大低分辨率素材。',
-          style: TextStyle(
-            color: AppTheme.textSecondary,
-            fontSize: 12,
-            height: 1.35,
-          ),
-        ),
+        _buildSectionLabel('比例'),
+        const SizedBox(height: 10),
+        _buildAspectRatioCards(isVertical, (setVer) {
+          if (setVer) {
+            setState(() => _selectingFollowTarget = true);
+            controller.showSourceFrame(true);
+          } else {
+            setState(() => _selectingFollowTarget = false);
+            controller.updateFollowConfig(enabled: false);
+          }
+          _scheduleProfilePersist();
+        }),
         if (_selectingFollowTarget) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 14),
           const Text(
             '轻触画面选择主角；若主角已被保护，会自动取消其保护。',
             style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
           ),
         ] else if (follow.enabled) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 14),
           Text(
             '主角：人物 ${(follow.targetPersonId ?? 0) + 1} · 自动平滑跟随',
             style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
           ),
+          const SizedBox(height: 6),
           Wrap(
             spacing: 8,
             children: [
@@ -1234,6 +2069,7 @@ class _ProtectionEditorScreenState
                 onPressed: () {
                   setState(() => _selectingFollowTarget = true);
                   controller.showSourceFrame(true);
+                  _scheduleProfilePersist();
                 },
                 icon: const Icon(Icons.person_search_outlined, size: 18),
                 label: const Text('更换主角'),
@@ -1250,10 +2086,11 @@ class _ProtectionEditorScreenState
                       : Icons.people_outline,
                   size: 18,
                 ),
-                label: Text(state.showSourcePreview ? '裁切预览' : '原画选保护对象'),
+                label: Text(state.showSourcePreview ? '裁切预览' : '原始画面选保护对象'),
               ),
             ],
           ),
+          const SizedBox(height: 4),
           const Text(
             '当前为首帧构图；导出时跟随主角。清空保护对象可仅裁切。',
             style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
@@ -1263,164 +2100,84 @@ class _ProtectionEditorScreenState
     );
   }
 
-  Widget _buildTargetSection(
-    PersonSelectionState state,
-    PersonSelectionController controller,
-  ) {
-    final selected = state.privacyTargetIds.length;
-    final total = state.persons.length;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            _buildSectionLabel('保护对象'),
-            const SizedBox(width: 7),
-            Text(
-              '$selected / $total',
-              style: const TextStyle(
-                color: AppTheme.textMuted,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const Spacer(),
-            if (selected < total)
-              _TargetTextAction(
-                icon: Icons.done_all_rounded,
-                label: '全选',
-                onPressed: () {
-                  controller.selectAll();
-                  _syncSelectionToEffect(
-                    ref.read(effectEditorControllerProvider.notifier),
-                  );
-                },
-              ),
-            PopupMenuButton<String>(
-              key: const ValueKey('protection-target-more-actions'),
-              tooltip: '更多保护对象操作',
-              position: PopupMenuPosition.under,
-              color: AppTheme.surfaceElevated,
-              surfaceTintColor: Colors.transparent,
-              shadowColor: const Color(0x24000000),
-              elevation: 8,
-              constraints: const BoxConstraints(minWidth: 184, maxWidth: 220),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: const BorderSide(color: AppTheme.surfaceBorder),
-              ),
-              icon: const Icon(
-                Icons.more_horiz_rounded,
-                size: 20,
-                color: AppTheme.textSecondary,
-              ),
-              onSelected: (value) {
+  Widget _buildAspectRatioCards(bool isVertical, ValueChanged<bool> onChanged) {
+    const ratios = [
+      ('原始', false),
+      ('9:16', true),
+    ];
+
+    return SizedBox(
+      key: const ValueKey('reframe-mode'),
+      height: 64,
+      child: Row(
+        children: [
+          for (var i = 0; i < ratios.length; i++) ...[
+            if (i > 0) const SizedBox(width: 10),
+            _buildRatioCard(
+              label: ratios[i].$1,
+              isVerticalRatio: ratios[i].$2,
+              isSelected: ratios[i].$2 ? isVertical : !isVertical,
+              onTap: () {
                 HapticFeedback.selectionClick();
-                if (value == 'reset') {
-                  controller.resetSelection();
-                } else if (value == 'clear') {
-                  controller.deselectAll();
-                }
-                _syncSelectionToEffect(
-                  ref.read(effectEditorControllerProvider.notifier),
-                );
+                onChanged(ratios[i].$2);
               },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'reset',
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.refresh_rounded,
-                        size: 18,
-                        color: AppTheme.textSecondary,
-                      ),
-                      SizedBox(width: 10),
-                      Text(
-                        '恢复默认选择',
-                        style: TextStyle(
-                          color: AppTheme.textPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'clear',
-                  enabled: selected > 0,
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.remove_done_rounded,
-                        size: 18,
-                        color: selected > 0
-                            ? AppTheme.textSecondary
-                            : AppTheme.textMuted,
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        '清空保护对象',
-                        style: TextStyle(
-                          color: selected > 0
-                              ? AppTheme.textPrimary
-                              : AppTheme.textMuted,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
             ),
           ],
-        ),
-        const SizedBox(height: 2),
-        Text(
-          selected == 0 ? '选择保护对象，或开启竖屏跟随以仅调整画幅' : '轻触画面中的人物可调整保护对象',
-          style: TextStyle(
-            color: selected == 0 ? AppTheme.coral : AppTheme.textSecondary,
-            fontSize: 12,
-            height: 1.35,
-            fontWeight: selected == 0 ? FontWeight.w600 : FontWeight.w400,
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildAdvancedEffectSection(
-    EffectConfig effects,
-    EffectEditorController effectController,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildSectionLabel('描边', subdued: true),
-        const SizedBox(height: 8),
-        _buildStepSlider(
-          label: '描边宽度',
-          value: effects.borderWidth,
-          min: 0,
-          max: 20,
-          step: 1,
-          displayValue: '${effects.borderWidth.round()} px',
-          onChanged: effectController.updateBorderWidth,
-        ),
-        if (effects.borderWidth > 0) ...[
-          const SizedBox(height: 10),
-          _buildSectionLabel('描边颜色', subdued: true),
-          const SizedBox(height: 8),
-          _buildColorPalette(
-            effects.borderColorArgb,
-            effectController.updateBorderColor,
+  Widget _buildRatioCard({
+    required String label,
+    required bool isVerticalRatio,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: 68,
+        height: 64,
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.gold.withAlpha(24) : AppTheme.surfaceHigh,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppTheme.gold : AppTheme.surfaceBorder,
+            width: isSelected ? 1.5 : 1.0,
           ),
-        ],
-      ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 18,
+              height: isVerticalRatio ? 22 : 14,
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: isSelected ? AppTheme.gold : AppTheme.textSecondary,
+                  width: 1.3,
+                ),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? AppTheme.gold : AppTheme.textSecondary,
+                fontSize: 11.5,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
+
 
   Widget _buildSectionLabel(String text, {bool subdued = false}) {
     return Text(
@@ -1433,113 +2190,44 @@ class _ProtectionEditorScreenState
     );
   }
 
-  ButtonStyle _darkSegmentedButtonStyle() {
-    return ButtonStyle(
-      minimumSize: WidgetStateProperty.all(
-        const Size(0, AppTheme.minTouchTarget),
-      ),
-      padding: WidgetStateProperty.all(
-        const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-      ),
-      visualDensity: const VisualDensity(horizontal: -2, vertical: -1),
-      backgroundColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) return AppTheme.surfaceHigh;
-        return AppTheme.surfaceElevated;
-      }),
-      foregroundColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) return AppTheme.coral;
-        return AppTheme.textPrimary;
-      }),
-      iconColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) return AppTheme.coral;
-        return AppTheme.textSecondary;
-      }),
-      side: WidgetStateProperty.resolveWith((states) {
-        final selected = states.contains(WidgetState.selected);
-        return BorderSide(
-          color: selected ? AppTheme.coral : AppTheme.surfaceBorder,
-          width: selected ? 1.4 : 1,
-        );
-      }),
-      overlayColor: WidgetStateProperty.all(
-        AppTheme.surfaceHigh.withValues(alpha: 0.45),
-      ),
-      textStyle: WidgetStateProperty.all(
-        const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
 
   Widget _buildPrivacyModeSwitch(
     PersonSelectionState state,
     EffectEditorController effectController,
   ) {
     final isFaceOnly = state.privacyMode == ProjectPrivacyMode.faceOnly;
-    return Container(
-      height: AppTheme.minTouchTarget,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceHigh,
-        borderRadius: BorderRadius.circular(24),
+    final options = <(ProjectPrivacyMode, String, IconData, ValueKey<String>)>[
+      (
+        ProjectPrivacyMode.fullBody,
+        '全身保护',
+        Icons.accessibility_new_rounded,
+        const ValueKey('privacy-mode-full-body'),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final itemWidth = (constraints.maxWidth - 2) / 2;
-          return Stack(
-            children: [
-              AnimatedAlign(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeInOutCubic,
-                alignment: isFaceOnly
-                    ? Alignment.centerRight
-                    : Alignment.centerLeft,
-                child: Container(
-                  width: itemWidth,
-                  height: double.infinity,
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.coralActionGradient,
-                    borderRadius: BorderRadius.circular(21),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x33F44848),
-                        blurRadius: 8,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: _PrivacyModeOption(
-                      key: const ValueKey('privacy-mode-full-body'),
-                      label: '全身保护',
-                      icon: Icons.accessibility_new_rounded,
-                      selected: !isFaceOnly,
-                      onTap: () => _switchPrivacyMode(
-                        ProjectPrivacyMode.fullBody,
-                        effectController,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: _PrivacyModeOption(
-                      key: const ValueKey('privacy-mode-face-only'),
-                      label: '人脸保护',
-                      icon: Icons.face_retouching_off_rounded,
-                      selected: isFaceOnly,
-                      onTap: () => _switchPrivacyMode(
-                        ProjectPrivacyMode.faceOnly,
-                        effectController,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          );
-        },
+      (
+        ProjectPrivacyMode.faceOnly,
+        '人脸保护',
+        Icons.face_retouching_off_rounded,
+        const ValueKey('privacy-mode-face-only'),
+      ),
+    ];
+
+    return SizedBox(
+      height: 70,
+      child: Row(
+        children: [
+          for (var i = 0; i < options.length; i++) ...[
+            if (i > 0) const SizedBox(width: 8),
+            _PrivacySlot(
+              key: options[i].$4,
+              label: options[i].$2,
+              icon: options[i].$3,
+              selected: options[i].$1 == ProjectPrivacyMode.faceOnly
+                  ? isFaceOnly
+                  : !isFaceOnly,
+              onTap: () => _switchPrivacyMode(options[i].$1, effectController),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -1587,7 +2275,7 @@ class _ProtectionEditorScreenState
                       : AppTheme.surfaceElevated,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: selected ? AppTheme.coral : AppTheme.surfaceBorder,
+                    color: selected ? AppTheme.gold : AppTheme.surfaceBorder,
                     width: selected ? 1.5 : 1,
                   ),
                 ),
@@ -1597,13 +2285,13 @@ class _ProtectionEditorScreenState
                     Icon(
                       item.$3,
                       size: 21,
-                      color: selected ? AppTheme.coral : AppTheme.textSecondary,
+                      color: selected ? AppTheme.gold : AppTheme.textSecondary,
                     ),
                     const SizedBox(height: 4),
                     Text(
                       item.$2,
                       style: TextStyle(
-                        color: selected ? AppTheme.coral : AppTheme.textPrimary,
+                        color: selected ? AppTheme.gold : AppTheme.textPrimary,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -1656,7 +2344,7 @@ class _ProtectionEditorScreenState
                   color: item.$4,
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(
-                    color: selected ? AppTheme.coral : AppTheme.surfaceBorder,
+                    color: selected ? AppTheme.gold : AppTheme.surfaceBorder,
                     width: selected ? 2 : 1,
                   ),
                 ),
@@ -1670,7 +2358,7 @@ class _ProtectionEditorScreenState
                         bottom: 4,
                         child: Icon(
                           Icons.check_circle_rounded,
-                          color: AppTheme.coral,
+                          color: AppTheme.gold,
                           size: 18,
                         ),
                       ),
@@ -1684,91 +2372,11 @@ class _ProtectionEditorScreenState
     );
   }
 
-  Widget _buildStepSlider({
-    required String label,
-    required double value,
-    required double min,
-    required double max,
-    required double step,
-    required String displayValue,
-    required ValueChanged<double> onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            Text(
-              displayValue,
-              style: const TextStyle(
-                color: AppTheme.coral,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            SizedBox(
-              width: AppTheme.minTouchTarget,
-              height: AppTheme.minTouchTarget,
-              child: IconButton(
-                tooltip: '减少 $label',
-                onPressed: value <= min
-                    ? null
-                    : () {
-                        HapticFeedback.selectionClick();
-                        onChanged((value - step).clamp(min, max));
-                      },
-                icon: const Icon(Icons.remove_rounded, size: 20),
-              ),
-            ),
-            Expanded(
-              child: Slider(
-                value: value.clamp(min, max),
-                min: min,
-                max: max,
-                activeColor: AppTheme.coral,
-                inactiveColor: AppTheme.surfaceHigh,
-                thumbColor: AppTheme.coral,
-                onChanged: onChanged,
-              ),
-            ),
-            SizedBox(
-              width: AppTheme.minTouchTarget,
-              height: AppTheme.minTouchTarget,
-              child: IconButton(
-                tooltip: '增加 $label',
-                onPressed: value >= max
-                    ? null
-                    : () {
-                        HapticFeedback.selectionClick();
-                        onChanged((value + step).clamp(min, max));
-                      },
-                icon: const Icon(Icons.add_rounded, size: 20),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
 
   Widget _buildColorPalette(int currentArgb, ValueChanged<int> onSelect) {
     const colors = <(int, String)>[
       (0xFF000000, '黑色'),
+      (0xFFF5A623, '琥珀金'),
       (0xFFFF5E5B, '珊瑚红'),
       (0xFFFF9EAA, '粉色'),
       (0xFF7D9CFF, '蓝紫色'),
@@ -1805,7 +2413,7 @@ class _ProtectionEditorScreenState
                     color: Color(argb),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: selected ? AppTheme.coral : AppTheme.surfaceBorder,
+                      color: selected ? AppTheme.gold : AppTheme.surfaceBorder,
                       width: selected ? 3 : 1,
                     ),
                   ),
@@ -2067,102 +2675,6 @@ class _ProtectionEditorScreenState
   }
 }
 
-class _TargetTextAction extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onPressed;
-
-  const _TargetTextAction({
-    required this.icon,
-    required this.label,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: label,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () {
-          HapticFeedback.selectionClick();
-          onPressed();
-        },
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: AppTheme.minTouchTarget),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 15, color: AppTheme.textSecondary),
-                const SizedBox(width: 3),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: AppTheme.textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PrivacyModeOption extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _PrivacyModeOption({
-    super.key,
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: label,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: Center(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 18,
-                color: selected ? Colors.white : AppTheme.textSecondary,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                  color: selected ? Colors.white : AppTheme.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _EditorStatus extends StatelessWidget {
   final IconData icon;
@@ -2228,6 +2740,99 @@ class _EditorStatus extends StatelessWidget {
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PrivacySlot extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _PrivacySlot({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          width: 76,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+          decoration: BoxDecoration(
+            color: selected ? AppTheme.surfaceHigh : AppTheme.surfaceElevated,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected ? AppTheme.gold : AppTheme.surfaceBorder,
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 21,
+                color: selected ? AppTheme.gold : AppTheme.textSecondary,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: selected ? AppTheme.gold : AppTheme.textPrimary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _IntegratedTrimHandle extends StatelessWidget {
+  final bool isLeft;
+  const _IntegratedTrimHandle({super.key, required this.isLeft});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 10,
+      height: 14,
+      decoration: BoxDecoration(
+        color: AppTheme.gold,
+        borderRadius: BorderRadius.horizontal(
+          left: isLeft ? const Radius.circular(3) : Radius.zero,
+          right: !isLeft ? const Radius.circular(3) : Radius.zero,
+        ),
+      ),
+      child: Center(
+        child: Container(
+          width: 1.5,
+          height: 8,
+          decoration: BoxDecoration(
+            color: Colors.black87,
+            borderRadius: BorderRadius.circular(1),
+          ),
         ),
       ),
     );

@@ -476,7 +476,7 @@ void main() {
         find.byKey(const ValueKey('export-cancel-action')),
         findsOneWidget,
       );
-      expect(find.text('取消'), findsOneWidget);
+      expect(find.text('取消'), findsNothing);
       expect(find.bySemanticsLabel('取消处理'), findsOneWidget);
 
       final cancelRect = tester.getRect(
@@ -780,7 +780,8 @@ void main() {
       expect(find.text('这次没有生成视频'), findsOneWidget);
       expect(find.textContaining('当前编辑内容仍然保留'), findsOneWidget);
       expect(find.text('重试导出'), findsOneWidget);
-      expect(find.text('返回编辑'), findsOneWidget);
+      expect(find.text('返回编辑'), findsNothing);
+      expect(find.bySemanticsLabel('返回编辑'), findsOneWidget);
       expect(find.text('未完成'), findsNothing);
       expect(find.text('导出失败'), findsOneWidget);
       expect(find.text('没有可用的失败预览'), findsOneWidget);

@@ -170,7 +170,7 @@ class _DanceClipImportCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: AppTheme.flowSurfaceSoft,
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppTheme.flowBorder),
+                      border: Border.all(color: AppTheme.gold.withAlpha(80)),
                     ),
                     child: Center(
                       child: isBusy
@@ -179,12 +179,12 @@ class _DanceClipImportCard extends StatelessWidget {
                               height: 22,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: AppTheme.coral,
+                                color: AppTheme.gold,
                               ),
                             )
                           : const Icon(
                               Icons.add_rounded,
-                              color: AppTheme.coral,
+                              color: AppTheme.gold,
                               size: 30,
                             ),
                     ),
@@ -274,14 +274,14 @@ class _ErrorNotice extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.flowSurfaceSoft,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.coralStrong.withAlpha(88)),
+        border: Border.all(color: AppTheme.error.withAlpha(88)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(
             Icons.error_outline_rounded,
-            color: AppTheme.coralStrong,
+            color: AppTheme.error,
             size: 18,
           ),
           const SizedBox(width: 10),

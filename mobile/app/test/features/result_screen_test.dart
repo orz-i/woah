@@ -71,8 +71,10 @@ void main() {
       await tester.pump();
 
       expect(find.text('舞段已完成'), findsNothing);
-      expect(find.text('分享'), findsOneWidget);
-      expect(find.text('下一个'), findsOneWidget);
+      expect(find.text('分享'), findsNothing);
+      expect(find.text('下一个'), findsNothing);
+      expect(find.bySemanticsLabel('分享'), findsOneWidget);
+      expect(find.bySemanticsLabel('返回首页'), findsOneWidget);
       expect(find.text('查看视频'), findsOneWidget);
       expect(find.text('更多选项'), findsNothing);
       expect(find.text('视频已安全保存到你的设备'), findsNothing);

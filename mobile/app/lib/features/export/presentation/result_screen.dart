@@ -169,24 +169,70 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   child: Row(
                     children: [
-                      _ResultTopAction(
+                      Semantics(
                         key: const ValueKey('result-next-action'),
-                        icon: Icons.add_rounded,
-                        label: '下一个',
-                        onTap: navigationEnabled
-                            ? () {
-                                HapticFeedback.mediumImpact();
-                                context.go('/');
-                              }
-                            : null,
+                        button: true,
+                        enabled: navigationEnabled,
+                        label: '返回首页',
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: navigationEnabled
+                                ? () {
+                                    HapticFeedback.mediumImpact();
+                                    context.go('/');
+                                  }
+                                : null,
+                            borderRadius: BorderRadius.circular(16),
+                            child: AnimatedOpacity(
+                              duration: const Duration(milliseconds: 120),
+                              opacity: navigationEnabled ? 1 : 0.42,
+                              child: const Padding(
+                                padding: EdgeInsets.all(8),
+                                child: Icon(
+                                  Icons.close_rounded,
+                                  size: 24,
+                                  color: AppTheme.textPrimary,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                       const Spacer(),
-                      _ResultTopAction(
+                      Semantics(
                         key: const ValueKey('result-share-action'),
-                        icon: Icons.ios_share_rounded,
-                        label: _isSharing ? '分享中' : '分享',
-                        accent: true,
-                        onTap: shareEnabled ? _shareVideo : null,
+                        button: true,
+                        enabled: shareEnabled,
+                        label: _isSharing ? '正在分享' : '分享',
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: shareEnabled ? _shareVideo : null,
+                            borderRadius: BorderRadius.circular(16),
+                            child: AnimatedOpacity(
+                              duration: const Duration(milliseconds: 120),
+                              opacity: shareEnabled ? 1 : 0.42,
+                              child: Padding(
+                                padding: const EdgeInsets.all(8),
+                                child: _isSharing
+                                    ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: AppTheme.gold,
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.ios_share_rounded,
+                                        size: 24,
+                                        color: AppTheme.gold,
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -228,7 +274,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       title = '正在保存到相册';
       subtitle = '保存完成后即可直接分享';
       icon = Icons.downloading_rounded;
-      iconColor = AppTheme.coral;
+      iconColor = AppTheme.gold;
     } else if (_isSaved) {
       title = '已保存至系统相册';
       subtitle = fileSizeMb == null ? '视频已安全脱敏存储' : '视频已安全脱敏 · $fileSizeMb MB';
@@ -238,7 +284,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       title = '尚未存入系统相册';
       subtitle = '视频仍保留在设备中，可重新保存';
       icon = Icons.error_outline_rounded;
-      iconColor = AppTheme.coral;
+      iconColor = AppTheme.error;
     } else {
       title = '视频处理完成';
       subtitle = '正在准备写入媒体库';
@@ -254,202 +300,130 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         color: AppTheme.flowBackground,
         border: Border(top: BorderSide(color: AppTheme.flowBorder)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
         children: [
-          Row(
-            children: [
-              if (_isSaving)
-                const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AppTheme.coral,
-                  ),
-                )
-              else
-                Icon(icon, size: 21, color: iconColor),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: AppTheme.flowTextPrimary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        color: AppTheme.flowTextSecondary,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
+          if (_isSaving)
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppTheme.gold,
               ),
-              if (kDebugMode)
-                _ResultDiagnosticsButton(
-                  key: const ValueKey('result-diagnostics-action'),
-                  isExporting: _isExportingDiagnostics,
-                  onTap: _isExportingDiagnostics ? null : _exportDiagnostics,
-                ),
-            ],
-          ),
-          const SizedBox(height: 13),
-          Row(
-            children: [
-              Expanded(
-                child: _ResultInlineAction(
-                  key: const ValueKey('result-open-action'),
-                  icon: Icons.play_circle_outline_rounded,
-                  label: _isOpening ? '正在打开…' : '查看视频',
-                  onTap: !_isSaving && !_isOpening ? _openSavedVideo : null,
-                ),
-              ),
-              if (_saveError != null) ...[
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _ResultInlineAction(
-                    icon: Icons.save_alt_rounded,
-                    label: '重新保存',
-                    accent: true,
-                    onTap: _isSaving ? null : () => _saveToGallery(),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ResultTopAction extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool accent;
-  final VoidCallback? onTap;
-
-  const _ResultTopAction({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.accent = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = onTap != null;
-    return AnimatedOpacity(
-      duration: const Duration(milliseconds: 120),
-      opacity: enabled ? 1 : 0.42,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: Ink(
-            height: 38,
-            padding: const EdgeInsets.symmetric(horizontal: 11),
-            decoration: BoxDecoration(
-              color: accent ? AppTheme.coralPale : AppTheme.flowSurface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: accent
-                    ? AppTheme.coral.withAlpha(90)
-                    : AppTheme.flowBorder,
-              ),
-            ),
-            child: Row(
+            )
+          else
+            Icon(icon, size: 21, color: iconColor),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  icon,
-                  size: 17,
-                  color: accent ? AppTheme.coral : AppTheme.flowTextSecondary,
-                ),
-                const SizedBox(width: 6),
                 Text(
-                  label,
-                  style: TextStyle(
-                    color: accent ? AppTheme.coral : AppTheme.flowTextPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                  title,
+                  style: const TextStyle(
+                    color: AppTheme.flowTextPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: AppTheme.flowTextSecondary,
+                    fontSize: 12,
                   ),
                 ),
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ResultInlineAction extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool accent;
-  final VoidCallback? onTap;
-
-  const _ResultInlineAction({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.accent = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = onTap != null;
-    return AnimatedOpacity(
-      duration: const Duration(milliseconds: 120),
-      opacity: enabled ? 1 : 0.42,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: Ink(
-            height: 46,
-            decoration: BoxDecoration(
-              color: accent ? AppTheme.coral : AppTheme.flowSurface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: accent ? AppTheme.coral : AppTheme.flowBorder,
+          const SizedBox(width: 8),
+          if (_saveError != null)
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                key: const ValueKey('result-resave-action'),
+                borderRadius: BorderRadius.circular(10),
+                onTap: _isSaving ? null : () => _saveToGallery(),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.refresh_rounded, size: 16, color: AppTheme.gold),
+                      SizedBox(width: 4),
+                      Text(
+                        '重新保存',
+                        style: TextStyle(
+                          color: AppTheme.gold,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else
+            Semantics(
+              key: const ValueKey('result-open-action'),
+              button: true,
+              enabled: !_isSaving && !_isOpening,
+              label: _isOpening ? '正在打开…' : '查看视频',
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: !_isSaving && !_isOpening ? _openSavedVideo : null,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 6,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_isOpening)
+                          const SizedBox(
+                            width: 15,
+                            height: 15,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppTheme.gold,
+                            ),
+                          )
+                        else
+                          const Icon(
+                            Icons.play_circle_outline_rounded,
+                            size: 17,
+                            color: AppTheme.gold,
+                          ),
+                        const SizedBox(width: 5),
+                        Text(
+                          _isOpening ? '正在打开…' : '查看视频',
+                          style: const TextStyle(
+                            color: AppTheme.gold,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  icon,
-                  size: 18,
-                  color: accent ? Colors.white : AppTheme.flowTextPrimary,
-                ),
-                const SizedBox(width: 7),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: accent ? Colors.white : AppTheme.flowTextPrimary,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+          if (kDebugMode) ...[
+            const SizedBox(width: 4),
+            _ResultDiagnosticsButton(
+              key: const ValueKey('result-diagnostics-action'),
+              isExporting: _isExportingDiagnostics,
+              onTap: _isExportingDiagnostics ? null : _exportDiagnostics,
             ),
-          ),
-        ),
+          ],
+        ],
       ),
     );
   }

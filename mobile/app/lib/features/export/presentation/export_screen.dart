@@ -131,22 +131,30 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         child: Row(
           children: [
             if (isFailed)
-              _CompactTopAction(
-                key: _failedBackKey,
-                icon: Icons.arrow_back_ios_new_rounded,
+              Semantics(
+                button: true,
                 label: '返回编辑',
-                onTap: () => context.pop(),
+                child: GestureDetector(
+                  key: _failedBackKey,
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    context.pop();
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                    child: Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      size: 22,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                ),
               )
             else
               _buildCancelAction(
                 controller,
                 enabled: isActive && state.jobId != null,
-              ),
-            const Spacer(),
-            if (state.showLivePreview)
-              const _StatusPill(
-                icon: Icons.radio_button_checked_rounded,
-                label: '实时画面',
               ),
           ],
         ),
@@ -159,7 +167,6 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     required bool enabled,
   }) {
     final actionEnabled = enabled && !_cancelInFlight;
-    final actionLabel = _cancelInFlight ? '正在取消' : '取消';
     return Semantics(
       container: true,
       button: true,
@@ -173,43 +180,22 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
           child: AnimatedOpacity(
             duration: const Duration(milliseconds: 120),
             opacity: actionEnabled || _cancelInFlight ? 1 : 0.42,
-            child: Container(
-              height: 38,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: AppTheme.flowSurface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppTheme.flowBorder),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (_cancelInFlight)
-                    const SizedBox(
-                      width: 14,
-                      height: 14,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+              child: _cancelInFlight
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
                       child: CircularProgressIndicator(
-                        strokeWidth: 1.8,
-                        color: AppTheme.coral,
+                        strokeWidth: 2,
+                        color: AppTheme.gold,
                       ),
                     )
-                  else
-                    const Icon(
+                  : const Icon(
                       Icons.close_rounded,
-                      size: 17,
-                      color: AppTheme.flowTextSecondary,
+                      size: 24,
+                      color: AppTheme.textPrimary,
                     ),
-                  const SizedBox(width: 6),
-                  Text(
-                    actionLabel,
-                    style: const TextStyle(
-                      color: AppTheme.flowTextPrimary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
             ),
           ),
         ),
@@ -280,51 +266,65 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       )
                     else
                       _buildPreviewPlaceholder(state),
-                    if (livePreviewToggleEnabled && !state.showLivePreview)
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 14,
-                        child: Center(
-                          child: _buildLivePreviewToggleOverlay(
-                            icon: Icons.play_circle_outline_rounded,
-                            label: '点击查看实时画面',
-                          ),
-                        ),
-                      ),
-                    if (livePreviewToggleEnabled &&
-                        state.showLivePreview &&
-                        !hasLivePreview)
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 14,
-                        child: Center(
-                          child: _buildLivePreviewToggleOverlay(
-                            icon: Icons.hourglass_top_rounded,
-                            label: '正在开启实时画面…',
-                          ),
-                        ),
-                      ),
-                    if (livePreviewToggleEnabled &&
-                        state.showLivePreview &&
-                        hasLivePreview)
+                    if (livePreviewToggleEnabled)
                       Positioned(
                         right: 12,
                         bottom: 12,
                         child: _buildLivePreviewToggleOverlay(
-                          icon: Icons.visibility_off_outlined,
-                          label: '点击关闭实时画面',
+                          icon: !state.showLivePreview
+                              ? Icons.play_circle_outline_rounded
+                              : (!hasLivePreview
+                                  ? Icons.hourglass_top_rounded
+                                  : Icons.visibility_off_outlined),
+                          label: !state.showLivePreview
+                              ? '点击查看实时画面'
+                              : (!hasLivePreview
+                                  ? '正在开启实时画面…'
+                                  : '点击关闭实时画面'),
                         ),
                       ),
                     if (state.isFailed)
                       const Positioned(
                         right: 12,
                         top: 12,
-                        child: _StatusPill(
-                          icon: Icons.warning_amber_rounded,
-                          label: '导出失败',
-                          accent: true,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 4,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.warning_amber_rounded,
+                                size: 16,
+                                color: AppTheme.gold,
+                                shadows: [
+                                  Shadow(
+                                    color: Colors.black87,
+                                    blurRadius: 4,
+                                    offset: Offset(0, 1),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(width: 5),
+                              Text(
+                                '导出失败',
+                                style: TextStyle(
+                                  color: AppTheme.gold,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black87,
+                                      blurRadius: 4,
+                                      offset: Offset(0, 1),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                   ],
@@ -344,10 +344,14 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.movie_filter_outlined,
+            Icon(
+              state.isFailed
+                  ? Icons.error_outline_rounded
+                  : Icons.movie_filter_outlined,
               size: 44,
-              color: AppTheme.flowTextMuted,
+              color: state.isFailed
+                  ? AppTheme.gold.withAlpha(180)
+                  : AppTheme.flowTextMuted,
             ),
             const SizedBox(height: 9),
             Text(
@@ -367,24 +371,37 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     required IconData icon,
     required String label,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xC8000000),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0x22FFFFFF)),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.white, size: 18),
-          const SizedBox(width: 7),
+          Icon(
+            icon,
+            color: Colors.white,
+            size: 16,
+            shadows: const [
+              Shadow(
+                color: Colors.black87,
+                blurRadius: 4,
+                offset: Offset(0, 1),
+              ),
+            ],
+          ),
+          const SizedBox(width: 5),
           Text(
             label,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 12,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
+              shadows: [
+                Shadow(
+                  color: Colors.black87,
+                  blurRadius: 4,
+                  offset: Offset(0, 1),
+                ),
+              ],
             ),
           ),
         ],
@@ -415,7 +432,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               Text(
                 '$percent%',
                 style: const TextStyle(
-                  color: AppTheme.coral,
+                  color: AppTheme.gold,
                   fontSize: 36,
                   height: 1,
                   fontWeight: FontWeight.w600,
@@ -444,7 +461,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               value: progress > 0 ? progress : null,
               minHeight: 5,
               backgroundColor: AppTheme.surfaceHigh,
-              valueColor: const AlwaysStoppedAnimation(AppTheme.coral),
+              valueColor: const AlwaysStoppedAnimation(AppTheme.gold),
             ),
           ),
           const SizedBox(height: 13),
@@ -455,7 +472,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                 height: 16,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: AppTheme.coral,
+                  color: AppTheme.gold,
                 ),
               ),
               const SizedBox(width: 9),
@@ -782,98 +799,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   }
 }
 
-class _CompactTopAction extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
 
-  const _CompactTopAction({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          onTap();
-        },
-        borderRadius: BorderRadius.circular(14),
-        child: Ink(
-          height: 38,
-          padding: const EdgeInsets.symmetric(horizontal: 11),
-          decoration: BoxDecoration(
-            color: AppTheme.flowSurface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppTheme.flowBorder),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 16, color: AppTheme.flowTextSecondary),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: AppTheme.flowTextPrimary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusPill extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool accent;
-
-  const _StatusPill({
-    required this.icon,
-    required this.label,
-    this.accent = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = accent ? AppTheme.coral : AppTheme.flowTextSecondary;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: accent ? AppTheme.coralPale : AppTheme.flowSurface,
-        borderRadius: BorderRadius.circular(13),
-        border: Border.all(
-          color: accent ? AppTheme.coral.withAlpha(80) : AppTheme.flowBorder,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 11.5,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _InlineAction extends StatelessWidget {
   final IconData icon;
@@ -899,10 +825,10 @@ class _InlineAction extends StatelessWidget {
         child: Ink(
           height: 46,
           decoration: BoxDecoration(
-            color: primary ? AppTheme.coral : AppTheme.flowSurface,
+            color: primary ? AppTheme.gold : AppTheme.flowSurface,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: primary ? AppTheme.coral : AppTheme.flowBorder,
+              color: primary ? AppTheme.gold : AppTheme.flowBorder,
             ),
           ),
           child: Row(
@@ -911,15 +837,17 @@ class _InlineAction extends StatelessWidget {
               Icon(
                 icon,
                 size: 18,
-                color: primary ? Colors.white : AppTheme.flowTextPrimary,
+                color: primary ? AppTheme.textOnAccent : AppTheme.flowTextPrimary,
               ),
-              const SizedBox(width: 7),
+              const SizedBox(width: 8),
               Text(
                 label,
                 style: TextStyle(
-                  color: primary ? Colors.white : AppTheme.flowTextPrimary,
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w700,
+                  color: primary
+                      ? AppTheme.textOnAccent
+                      : AppTheme.flowTextPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],

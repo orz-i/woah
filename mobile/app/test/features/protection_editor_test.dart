@@ -85,20 +85,39 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.byKey(const ValueKey('protection-editor-tool-protect')),
+      find.byKey(const ValueKey('protection-editor-tool-mask')),
       findsOneWidget,
     );
-    expect(find.text('保护对象'), findsOneWidget);
     expect(find.text('保护范围'), findsOneWidget);
-    expect(find.text('导出'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('privacy-mode-full-body')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('privacy-mode-face-only')),
+      findsOneWidget,
+    );
+    expect(find.text('遮挡样式'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('protection-editor-cancel-action')),
+      findsOneWidget,
+    );
     expect(
       find.byKey(const ValueKey('protection-editor-export-action')),
       findsOneWidget,
     );
 
-    for (final tool in ['protect', 'mask', 'frame', 'trim']) {
+    for (final tool in ['trim', 'mask', 'frame', 'adjust']) {
       expect(find.byKey(ValueKey('editor-tool-$tool')), findsOneWidget);
     }
+    expect(
+      find.byKey(const ValueKey('editor-tool-protect')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('editor-tool-filter')),
+      findsNothing,
+    );
 
     expect(
       find.byKey(const ValueKey('bottom_control_drawer_handle')),
@@ -114,21 +133,15 @@ void main() {
     );
     expect(find.text('默认 Profile'), findsNothing);
 
-    await _selectTool(tester, 'mask');
-    expect(
-      find.byKey(const ValueKey('protection-editor-tool-mask')),
-      findsOneWidget,
-    );
-    expect(find.text('遮挡样式'), findsOneWidget);
-    expect(find.text('马赛克'), findsOneWidget);
-
     await _selectTool(tester, 'frame');
     expect(find.byKey(const ValueKey('reframe-mode')), findsOneWidget);
     expect(
       find.byKey(const ValueKey('output-resolution-preset')),
-      findsOneWidget,
+      findsNothing,
     );
-    expect(find.text('FHD'), findsOneWidget);
+    expect(find.text('9:16'), findsOneWidget);
+    expect(find.text('背景'), findsNothing);
+    expect(find.text('输出跟随模式'), findsNothing);
 
     await _selectTool(tester, 'trim');
     expect(find.byKey(const ValueKey('trim-range-section')), findsOneWidget);
@@ -136,6 +149,26 @@ void main() {
       find.byKey(const ValueKey('integrated-video-trim-control')),
       findsOneWidget,
     );
+    expect(find.byTooltip('撤销'), findsNothing);
+    expect(find.byTooltip('重做'), findsNothing);
+    expect(find.text('开始时间'), findsNothing);
+    expect(find.text('结束时间'), findsNothing);
+    expect(find.text('截取时长'), findsNothing);
+    expect(find.text('舞段截取'), findsNothing);
+    final audioBtn = find.byKey(const ValueKey('trim-media-audio-toggle'));
+    expect(audioBtn, findsOneWidget);
+    await tester.tap(audioBtn);
+    await tester.pump();
+    await tester.tap(audioBtn);
+    await tester.pump();
+    final playBtn = find.byIcon(Icons.play_arrow_rounded);
+    expect(playBtn, findsOneWidget);
+    await tester.tap(playBtn);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byIcon(Icons.pause_rounded), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.pause_rounded));
+    await tester.pump();
+    expect(find.byIcon(Icons.play_arrow_rounded), findsOneWidget);
     expect(find.text('质量'), findsNothing);
     expect(find.text('均衡'), findsNothing);
     expect(find.text('快速'), findsNothing);
@@ -203,7 +236,7 @@ void main() {
     expect(find.byKey(const ValueKey('reframe-mode')), findsOneWidget);
     expect(
       find.byKey(const ValueKey('output-resolution-preset')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(tester.takeException(), isNull);
   });
@@ -397,6 +430,13 @@ void main() {
       findsOneWidget,
     );
     expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('editor-tool-content-mask')),
+        matching: find.text('遮挡'),
+      ),
+      findsNothing,
+    );
+    expect(
       tester.getRect(
         find.byKey(const ValueKey('protection-editor-media-frame')),
       ),
@@ -405,6 +445,13 @@ void main() {
 
     await _selectTool(tester, 'frame');
     expect(find.byKey(const ValueKey('reframe-mode')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('editor-tool-content-frame')),
+        matching: find.text('画幅'),
+      ),
+      findsNothing,
+    );
     expect(
       tester.getRect(
         find.byKey(const ValueKey('protection-editor-media-frame')),
@@ -415,11 +462,44 @@ void main() {
     await _selectTool(tester, 'trim');
     expect(find.byKey(const ValueKey('trim-range-section')), findsOneWidget);
     expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('editor-tool-content-trim')),
+        matching: find.text('剪辑'),
+      ),
+      findsNothing,
+    );
+    expect(
       tester.getRect(
         find.byKey(const ValueKey('protection-editor-media-frame')),
       ),
       initialFrame,
     );
+
+    await _selectTool(tester, 'adjust');
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('editor-tool-content-adjust')),
+        matching: find.text('调节'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('editor-tool-content-adjust')),
+        matching: find.text('取消'),
+      ),
+      findsNothing,
+    );
+    expect(find.text('完成'), findsNothing);
+    expect(
+      tester.getRect(
+        find.byKey(const ValueKey('protection-editor-media-frame')),
+      ),
+      initialFrame,
+    );
+    for (final label in ['剪辑', '遮挡', '画幅', '调节']) {
+      expect(find.text(label), findsOneWidget);
+    }
     expect(tester.takeException(), isNull);
   });
 
@@ -439,11 +519,13 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await _selectTool(tester, 'frame');
-
-      final resolution = find.byKey(const ValueKey('output-resolution-preset'));
-      await tester.ensureVisible(resolution);
-      await tester.tap(find.text('FHD'));
+      final resTrigger = find.byKey(
+        const ValueKey('protection-editor-resolution-trigger'),
+      );
+      expect(resTrigger, findsOneWidget);
+      await tester.tap(resTrigger);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('1080p'));
       await tester.pumpAndSettle();
       expect(
         container
@@ -651,7 +733,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await _selectTool(tester, 'protect');
+    await _selectTool(tester, 'mask');
 
     final effectController = container.read(
       effectEditorControllerProvider.notifier,
@@ -676,8 +758,15 @@ void main() {
     effectController.updateStickerScale(1.4);
     await tester.pump(const Duration(milliseconds: 250));
 
-    await tester.ensureVisible(find.text('全身保护'));
-    await tester.tap(find.byKey(const ValueKey('privacy-mode-full-body')));
+    final fullBodyOption = find.byKey(
+      const ValueKey('privacy-mode-full-body'),
+    );
+    await tester.ensureVisible(fullBodyOption);
+    final fullBodyGesture = find.descendant(
+      of: fullBodyOption,
+      matching: find.byType(GestureDetector),
+    );
+    await tester.tap(fullBodyGesture, warnIfMissed: false);
     await tester.pumpAndSettle();
     var effects = container.read(effectEditorControllerProvider).effects;
     expect(effects.fillMode, FillMode.mosaic);
@@ -739,14 +828,13 @@ void main() {
       selection = container.read(personSelectionControllerProvider);
       expect(selection.faceOnlyPersonIds, equals({1}));
 
-      final moreActions = find.byKey(
-        const ValueKey('protection-target-more-actions'),
+      final restoreAction = find.byKey(
+        const ValueKey('protection-restore-default-action'),
       );
-      await tester.ensureVisible(moreActions);
-      await tester.tap(moreActions);
+      await tester.ensureVisible(restoreAction);
+      await tester.tap(restoreAction);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('恢复默认选择'));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 300));
 
       selection = container.read(personSelectionControllerProvider);
       final effects = container.read(effectEditorControllerProvider).effects;
@@ -841,7 +929,7 @@ void main() {
       await tester.pumpAndSettle();
       await _selectTool(tester, 'frame');
       await tester.ensureVisible(find.byKey(const ValueKey('reframe-mode')));
-      await tester.tap(find.text('竖屏 9:16'));
+      await tester.tap(find.text('9:16'));
       await tester.pumpAndSettle();
       expect(
         find.byKey(const ValueKey('reframe-subject-prompt')),
@@ -893,7 +981,7 @@ void main() {
         find.byKey(const ValueKey('protection-editor-media-frame')),
       );
       expect(stageSize.width / stageSize.height, closeTo(16 / 9, .001));
-      await _selectTool(tester, 'protect');
+      await _selectTool(tester, 'mask');
       final faceModeOption = find.byKey(
         const ValueKey('privacy-mode-face-only'),
       );
@@ -916,13 +1004,11 @@ void main() {
             .targetPersonId,
         1,
       );
-      final moreActions = find.byKey(
-        const ValueKey('protection-target-more-actions'),
+      final clearAction = find.byKey(
+        const ValueKey('protection-clear-target-action'),
       );
-      await tester.ensureVisible(moreActions);
-      await tester.tap(moreActions);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('清空保护对象'));
+      await tester.ensureVisible(clearAction);
+      await tester.tap(clearAction);
       await tester.pumpAndSettle();
       await tester.tap(
         find.byKey(const ValueKey('protection-editor-export-action')),
@@ -1012,7 +1098,7 @@ void main() {
 
     await _selectTool(tester, 'frame');
     await tester.ensureVisible(find.byKey(const ValueKey('reframe-mode')));
-    await tester.tap(find.text('竖屏 9:16'));
+    await tester.tap(find.text('9:16'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('protection-person-target-0')));
     await tester.pumpAndSettle();
@@ -1050,7 +1136,7 @@ void main() {
       await tester.pumpAndSettle();
       await _selectTool(tester, 'frame');
       await tester.ensureVisible(find.byKey(const ValueKey('reframe-mode')));
-      await tester.tap(find.text('竖屏 9:16'));
+      await tester.tap(find.text('9:16'));
       await tester.pumpAndSettle();
       await tester.ensureVisible(
         find.byKey(const ValueKey('reframe-cancel-selection')),
