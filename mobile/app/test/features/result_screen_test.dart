@@ -71,8 +71,8 @@ void main() {
       await tester.pump();
 
       expect(find.text('舞段已完成'), findsNothing);
-      expect(find.text('分享视频'), findsOneWidget);
-      expect(find.text('制作下一个'), findsOneWidget);
+      expect(find.text('分享'), findsOneWidget);
+      expect(find.text('下一个'), findsOneWidget);
       expect(find.text('查看视频'), findsOneWidget);
       expect(find.text('更多选项'), findsNothing);
       expect(find.text('视频已安全保存到你的设备'), findsNothing);
@@ -91,20 +91,26 @@ void main() {
       final shareCenter = tester.getCenter(
         find.byKey(const ValueKey('result-share-action')),
       );
-      expect(
-        tester.getCenter(find.byKey(const ValueKey('result-open-action'))).dx,
-        greaterThan(shareCenter.dx),
+      final nextCenter = tester.getCenter(
+        find.byKey(const ValueKey('result-next-action')),
       );
+      final openCenter = tester.getCenter(
+        find.byKey(const ValueKey('result-open-action')),
+      );
+      expect(nextCenter.dx, lessThan(shareCenter.dx));
+      expect(nextCenter.dy, closeTo(shareCenter.dy, 1));
+      expect(openCenter.dy, greaterThan(shareCenter.dy));
       expect(
         tester
             .getCenter(find.byKey(const ValueKey('result-diagnostics-action')))
             .dy,
-        lessThan(shareCenter.dy),
+        greaterThan(shareCenter.dy),
       );
-      expect(
-        tester.getCenter(find.byKey(const ValueKey('result-next-action'))).dx,
-        lessThan(shareCenter.dx),
+      final stageRect = tester.getRect(
+        find.byKey(const ValueKey('result-media-stage')),
       );
+      expect(stageRect.top, greaterThan(shareCenter.dy));
+      expect(stageRect.bottom, lessThan(openCenter.dy));
     },
   );
 
@@ -211,18 +217,16 @@ void main() {
     await tester.pump();
 
     expect(find.text('正在保存到相册'), findsOneWidget);
-    expect(
-      tester
-          .widget<InkWell>(find.byKey(const ValueKey('result-next-action')))
-          .onTap,
-      isNull,
+    final nextInk = find.descendant(
+      of: find.byKey(const ValueKey('result-next-action')),
+      matching: find.byType(InkWell),
     );
-    expect(
-      tester
-          .widget<InkWell>(find.byKey(const ValueKey('result-open-action')))
-          .onTap,
-      isNull,
+    final openInk = find.descendant(
+      of: find.byKey(const ValueKey('result-open-action')),
+      matching: find.byType(InkWell),
     );
+    expect(tester.widget<InkWell>(nextInk).onTap, isNull);
+    expect(tester.widget<InkWell>(openInk).onTap, isNull);
 
     await tester.tap(find.byKey(const ValueKey('result-next-action')));
     await tester.tap(find.byKey(const ValueKey('result-open-action')));

@@ -390,7 +390,7 @@ void main() {
         container.read(exportControllerProvider).currentPreviewPath,
         '/cache/live_widget.jpg',
       );
-      expect(find.text('实时画面 · 点击关闭'), findsOneWidget);
+      expect(find.text('点击关闭实时画面'), findsOneWidget);
 
       await tester.tap(
         find.byKey(const ValueKey('export-live-preview-toggle')),
@@ -453,7 +453,7 @@ void main() {
   );
 
   testWidgets(
-    'active export uses a single circular cancel control without processing header',
+    'active export is a media stage with a compact top cancel action',
     (tester) async {
       final repository = _PreviewToggleRepository();
       addTearDown(repository.dispose);
@@ -472,17 +472,18 @@ void main() {
       await tester.pump();
 
       expect(find.text('正在保护舞段'), findsNothing);
-      expect(find.text('取消处理'), findsNothing);
       expect(
         find.byKey(const ValueKey('export-cancel-action')),
         findsOneWidget,
       );
-      expect(
-        find.byKey(const ValueKey('immersive-flow-next-control')),
-        findsNothing,
-      );
-      expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+      expect(find.text('取消'), findsOneWidget);
       expect(find.bySemanticsLabel('取消处理'), findsOneWidget);
+
+      final cancelRect = tester.getRect(
+        find.byKey(const ValueKey('export-cancel-action')),
+      );
+      expect(cancelRect.height, lessThanOrEqualTo(40));
+      expect(cancelRect.width, lessThan(100));
 
       final stage = find.byKey(const ValueKey('export-media-stage'));
       final progressDeck = find.byKey(const ValueKey('export-progress-deck'));
@@ -491,7 +492,8 @@ void main() {
       final stageRect = tester.getRect(stage);
       final progressRect = tester.getRect(progressDeck);
       expect(stageRect.top, lessThan(progressRect.top));
-      expect(progressRect.top - stageRect.bottom, lessThanOrEqualTo(18));
+      expect(stageRect.height, greaterThan(progressRect.height));
+      expect(progressRect.top - stageRect.bottom, closeTo(0, 0.5));
 
       await tester.tap(find.byKey(const ValueKey('export-cancel-action')));
       await tester.pump();
@@ -501,6 +503,49 @@ void main() {
       expect(find.text('继续处理'), findsOneWidget);
     },
   );
+
+  testWidgets('export media workspace stays stable on a compact phone', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final repository = _PreviewToggleRepository();
+    addTearDown(repository.dispose);
+    final container = ProviderContainer(
+      overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(home: ExportScreen(project: _testProject())),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final stageRect = tester.getRect(
+      find.byKey(const ValueKey('export-media-stage')),
+    );
+    final statusRect = tester.getRect(
+      find.byKey(const ValueKey('export-progress-deck')),
+    );
+    final cancelRect = tester.getRect(
+      find.byKey(const ValueKey('export-cancel-action')),
+    );
+
+    expect(stageRect.width, closeTo(360, 0.5));
+    expect(stageRect.height, greaterThan(statusRect.height));
+    expect(stageRect.top, greaterThan(cancelRect.bottom));
+    expect(statusRect.top, closeTo(stageRect.bottom, 0.5));
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('cancel stays disabled until the native export job exists', (
     tester,
@@ -671,7 +716,7 @@ void main() {
   );
 
   testWidgets(
-    'failed export uses a centered retry action with surrounding secondary actions',
+    'failed export keeps the media stage and exposes explicit inline actions',
     (tester) async {
       final repository = _PreviewToggleRepository();
       addTearDown(repository.dispose);
@@ -699,6 +744,7 @@ void main() {
         const ValueKey('export-failed-diagnostics'),
       );
 
+      expect(find.byKey(const ValueKey('export-media-stage')), findsOneWidget);
       expect(retry, findsOneWidget);
       expect(back, findsOneWidget);
       expect(copy, findsOneWidget);
@@ -709,16 +755,15 @@ void main() {
       );
       expect(find.text('这次没有生成视频'), findsOneWidget);
       expect(find.textContaining('当前编辑内容仍然保留'), findsOneWidget);
-      expect(find.text('重试导出'), findsNothing);
-      expect(find.text('返回编辑'), findsNothing);
+      expect(find.text('重试导出'), findsOneWidget);
+      expect(find.text('返回编辑'), findsOneWidget);
 
-      final retryCenter = tester.getCenter(retry);
-      final backCenter = tester.getCenter(back);
-      final copyCenter = tester.getCenter(copy);
-      final diagnosticsCenter = tester.getCenter(diagnostics);
-      expect(backCenter.dx, lessThan(retryCenter.dx));
-      expect(diagnosticsCenter.dx, greaterThan(retryCenter.dx));
-      expect(copyCenter.dy, lessThan(retryCenter.dy));
+      expect(tester.getTopLeft(back).dy, lessThan(tester.getTopLeft(retry).dy));
+      expect(tester.getCenter(copy).dy, closeTo(tester.getCenter(retry).dy, 2));
+      expect(
+        tester.getCenter(diagnostics).dy,
+        closeTo(tester.getCenter(retry).dy, 2),
+      );
 
       expect(repository.startExportCalls, 1);
       await tester.tap(retry);
