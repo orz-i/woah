@@ -1755,6 +1755,31 @@ class ExportPipeline(
                                         )
                                     )
                                 }
+                                if (
+                                    com.danceanon.native.diagnostics.DiagnosticsBuild.ENABLED &&
+                                    (processedFrames == 1 || processedFrames % 15 == 0)
+                                ) {
+                                    com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                                        level = "INFO",
+                                        component = "ExportPipeline",
+                                        event = "AUTO_REFRAME_SAMPLE",
+                                        fields = mapOf(
+                                            "job_id" to jobId,
+                                            "frame" to processedFrames,
+                                            "pts_us" to ptsUs,
+                                            "target_person_id" to followTargetId,
+                                            "observed_target" to (observed != null),
+                                            "target_center_x" to observed?.centerX,
+                                            "target_center_y" to observed?.centerY,
+                                            "crop_center_x" to visualCrop.centerX,
+                                            "crop_center_y" to visualCrop.centerY,
+                                            "crop_left" to visualCrop.left,
+                                            "crop_top" to visualCrop.top,
+                                            "crop_right" to visualCrop.right,
+                                            "crop_bottom" to visualCrop.bottom
+                                        )
+                                    )
+                                }
                                 reframeInitialized = true
                                 val glCrop = com.danceanon.native.camera.ReframeGeometry
                                     .visualTopLeftToScreenGl(visualCrop)
