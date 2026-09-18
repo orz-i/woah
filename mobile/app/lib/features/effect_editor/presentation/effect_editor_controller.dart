@@ -17,7 +17,6 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
   final NativeProcessingRepository? _repository;
   Timer? _debounceTimer;
   int _nextRequestId = 0;
-  int? _previewTimestampMs;
 
   EffectEditorController({NativeProcessingRepository? repository})
     // ignore: prefer_initializing_formals
@@ -27,7 +26,6 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
   void init(DanceProject project, {String? initialPreviewPath}) {
     _debounceTimer?.cancel();
     ++_nextRequestId;
-    _previewTimestampMs = project.trimStartMs;
     state = EffectEditorState(
       project: project,
       effects: project.effects,
@@ -42,10 +40,6 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
     bool debounce = false,
   }) {
     final activeEffects = effects ?? state.effects;
-    _previewTimestampMs = (_previewTimestampMs ?? project.trimStartMs).clamp(
-      project.trimStartMs,
-      project.effectiveTrimEndMs,
-    );
     state = state.copyWith(
       project: project.copyWith(
         effects: activeEffects,
@@ -208,18 +202,6 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
     _requestPreview(debounce: false);
   }
 
-  void updatePreviewTimestamp(int timestampMs, {bool debounce = false}) {
-    final project = state.project;
-    if (project == null) return;
-    final clamped = timestampMs.clamp(
-      project.trimStartMs,
-      project.effectiveTrimEndMs,
-    );
-    if (_previewTimestampMs == clamped && state.previewPath != null) return;
-    _previewTimestampMs = clamped;
-    _requestPreview(debounce: debounce);
-  }
-
   void _requestPreview({bool debounce = true}) {
     final repo = _repository;
     if (repo == null) return;
@@ -243,14 +225,11 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
 
       try {
         final currentProj = state.project ?? project;
-        final previewTimestampMs =
-            (_previewTimestampMs ?? currentProj.trimStartMs).clamp(
-              currentProj.trimStartMs,
-              currentProj.effectiveTrimEndMs,
-            );
+        // Keep preview on the stable first frame of the selected subclip to
+        // avoid identity instability while respecting the temporal trim.
         final result = await repo.getPreviewFrame(
           analysisCacheId: cacheId,
-          timestampMs: previewTimestampMs,
+          timestampMs: currentProj.trimStartMs,
           selectedPersonIds: currentProj.selectedPersonIds.toList(),
           faceOnlyPersonIds: currentProj.faceOnlyPersonIds.toList(),
           effects: state.effects,

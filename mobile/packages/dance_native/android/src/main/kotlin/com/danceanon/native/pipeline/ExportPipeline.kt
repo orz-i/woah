@@ -469,7 +469,13 @@ class ExportPipeline(
                     val root = analysisMetadata?.persons?.firstOrNull { it.id.toLong() == targetId }
                         ?: throw IllegalArgumentException("Follow target is missing from the analysis cache")
                     val protectedIds = if (faceOnlyPersonIds.isEmpty()) fullBodyPersonIds else faceOnlyIdentityProtectedIds
-                    trackManager.setIdentityProtectedTrackIds(protectedIds + targetId.toInt())
+                    // Camera following is not a privacy guarantee. Do not promote the
+                    // protagonist into the privacy-grade strict identity lane: ambiguous
+                    // crossings may intentionally refuse a plausible reassociation and
+                    // freeze the camera for the rest of the clip. Privacy roots remain
+                    // strict; the protagonist uses normal tracking plus a short prediction
+                    // grace below.
+                    trackManager.setIdentityProtectedTrackIds(protectedIds)
                     // Selecting a camera subject must never add a privacy mask.
                     trackManager.setPrivacySelectedTrackIds(fullBodyPersonIds)
                     com.danceanon.native.inference.FloatRect(
@@ -1722,18 +1728,19 @@ class ExportPipeline(
                                 }
 
                                 val followTargetId = requireNotNull(request.follow.targetPersonId).toInt()
-                                val observed = trackedList.firstOrNull {
-                                    it.id == followTargetId && it.observedThisFrame
-                                }?.bbox?.let { box ->
-                                    com.danceanon.native.inference.FloatRect(
-                                        box.left / trackingWidth.toFloat(),
-                                        box.top / trackingHeight.toFloat(),
-                                        box.right / trackingWidth.toFloat(),
-                                        box.bottom / trackingHeight.toFloat()
-                                    )
+                                val followTrack = trackedList.firstOrNull { it.id == followTargetId }
+                                val followObservation = resolveFollowCameraObservation(
+                                    track = followTrack,
+                                    trackingWidth = trackingWidth,
+                                    trackingHeight = trackingHeight
+                                )
+                                val targetSource = when {
+                                    followTrack?.observedThisFrame == true -> "OBSERVED"
+                                    followObservation != null -> "PREDICTED"
+                                    else -> "HELD"
                                 }
                                 val visualCrop = reframeFollower.cropForFrame(
-                                    target = observed ?: if (!reframeInitialized) followSeed else null,
+                                    target = followObservation ?: if (!reframeInitialized) followSeed else null,
                                     presentationTimeUs = ptsUs,
                                     sourceAspectRatio = trackingWidth.toFloat() / trackingHeight.toFloat(),
                                     outputAspectRatio = requireNotNull(request.follow.outputAspectRatio).toFloat(),
@@ -1747,7 +1754,8 @@ class ExportPipeline(
                                         event = "POST_CROP_FIRST_FRAME",
                                         fields = mapOf(
                                             "target_person_id" to followTargetId,
-                                            "observed_target" to (observed != null),
+                                            "observed_target" to (followTrack?.observedThisFrame == true),
+                                            "target_source" to targetSource,
                                             "crop_left" to visualCrop.left,
                                             "crop_top" to visualCrop.top,
                                             "crop_right" to visualCrop.right,
@@ -1768,9 +1776,12 @@ class ExportPipeline(
                                             "frame" to processedFrames,
                                             "pts_us" to ptsUs,
                                             "target_person_id" to followTargetId,
-                                            "observed_target" to (observed != null),
-                                            "target_center_x" to observed?.centerX,
-                                            "target_center_y" to observed?.centerY,
+                                            "observed_target" to (followTrack?.observedThisFrame == true),
+                                            "target_source" to targetSource,
+                                            "target_state" to followTrack?.state?.name,
+                                            "target_frames_since_observation" to followTrack?.framesSinceLastObservation,
+                                            "target_center_x" to followObservation?.centerX,
+                                            "target_center_y" to followObservation?.centerY,
                                             "crop_center_x" to visualCrop.centerX,
                                             "crop_center_y" to visualCrop.centerY,
                                             "crop_left" to visualCrop.left,
@@ -2284,7 +2295,28 @@ class ExportPipeline(
         private const val CPU_MT_PROBE_THREADS = 4
         private const val CPU_MT4_ARTIFACT_MAX_PTS_US = 450_000L
         private const val CPU_MT4_PRODUCTION_REUSE_PARITY_INTERVAL_FRAMES = 120
+        internal const val FOLLOW_CAMERA_PREDICTION_GRACE_FRAMES = 6
         internal const val SELECTION_IDENTITY_ROOT_MIN_CONFIDENCE = 0.60
+
+        internal fun resolveFollowCameraObservation(
+            track: TrackedPerson?,
+            trackingWidth: Int,
+            trackingHeight: Int
+        ): FloatRect? {
+            if (track == null || trackingWidth <= 0 || trackingHeight <= 0) return null
+            val predictedGrace =
+                !track.observedThisFrame &&
+                    track.framesSinceLastObservation in 1..FOLLOW_CAMERA_PREDICTION_GRACE_FRAMES &&
+                    track.state != TrackState.LOST &&
+                    track.state != TrackState.REMOVED
+            if (!track.observedThisFrame && !predictedGrace) return null
+            return FloatRect(
+                left = track.bbox.left / trackingWidth.toFloat(),
+                top = track.bbox.top / trackingHeight.toFloat(),
+                right = track.bbox.right / trackingWidth.toFloat(),
+                bottom = track.bbox.bottom / trackingHeight.toFloat()
+            )
+        }
 
         internal fun canonicalizeFaceReferenceCoordinate(value: Float): Float =
             FaceReferenceGeometryCanonicalizer.coordinate(value)

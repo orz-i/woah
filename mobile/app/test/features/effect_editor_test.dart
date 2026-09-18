@@ -149,17 +149,11 @@ void main() {
         expect(repo.lastTimestampMs, equals(0));
         expect(repo.lastTightMaskPreview, isTrue);
 
-        controller.updatePreviewTimestamp(1750);
-        await Future.delayed(const Duration(milliseconds: 50));
-        expect(repo.lastTimestampMs, equals(1750));
-
-        // Effect changes stay on the current playback frame instead of snapping
-        // back to the trim start frame.
+        // Trigger debounced update
         controller.updateOpacity(0.5);
 
         // Wait for debounce timer (200ms)
         await Future.delayed(const Duration(milliseconds: 250));
-        expect(repo.lastTimestampMs, equals(1750));
         expect(controller.state.previewRequestId, greaterThan(1));
         expect(
           controller.state.previewPath,

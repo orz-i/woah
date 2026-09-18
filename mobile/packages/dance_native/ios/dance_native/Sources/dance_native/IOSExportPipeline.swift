@@ -324,11 +324,11 @@ final class IOSExportPipeline {
         var sourceCrop = SIMD4<Float>(0, 0, 1, 1)
         if let followTargetId {
           let sourceAspect = Float(frame.width) / Float(frame.height)
-          let observed = tracker.observedBounds(for: followTargetId).map { box in
+          let followBounds = tracker.followBounds(for: followTargetId).map { box in
             SIMD4<Float>(box.x / Float(frame.width), box.y / Float(frame.height), box.z / Float(frame.width), box.w / Float(frame.height))
           }
           sourceCrop = camera.crop(
-            target: observed ?? (cameraHasFrame ? nil : followSeed),
+            target: followBounds ?? (cameraHasFrame ? nil : followSeed),
             presentationTimeUs: timestampUs,
             sourceAspectRatio: sourceAspect,
             outputAspectRatio: request.follow.outputAspectRatio.map { Float($0) } ?? sourceAspect,

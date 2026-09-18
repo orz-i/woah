@@ -226,16 +226,6 @@ void main() {
       container.read(effectEditorControllerProvider).project!.hasFollowTarget,
       isTrue,
     );
-    final dynamicPlay = find.byKey(
-      const ValueKey('dynamic-reframe-play-toggle'),
-    );
-    expect(dynamicPlay, findsOneWidget);
-    await tester.tap(dynamicPlay);
-    await tester.pump(const Duration(milliseconds: 700));
-    expect(repository.lastPreviewTimestampMs, greaterThan(project.trimStartMs));
-    await tester.tap(dynamicPlay);
-    await tester.pump();
-
     await _selectTool(tester, 'adjust');
     expect(find.text('拉腿'), findsOneWidget);
 

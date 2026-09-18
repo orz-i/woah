@@ -78,9 +78,6 @@ class ProtectionEditorScreen extends ConsumerStatefulWidget {
 class _ProtectionEditorScreenState
     extends ConsumerState<ProtectionEditorScreen> {
   static const int _minimumClipMs = 1000;
-  static const Duration _dynamicReframePreviewInterval = Duration(
-    milliseconds: 250,
-  );
 
   EffectConfig? _fullBodyDraft;
   EffectConfig? _faceOnlyDraft;
@@ -96,8 +93,6 @@ class _ProtectionEditorScreenState
   bool _isPlaying = false;
   int _currentPlaybackMs = 0;
   Timer? _playbackTimer;
-  Timer? _dynamicReframePreviewTimer;
-  int? _pendingDynamicReframePreviewMs;
   VideoPlayerController? _videoController;
   bool _videoInitialized = false;
   bool _originalAudioEnabled = true;
@@ -293,7 +288,6 @@ class _ProtectionEditorScreenState
             _currentPlaybackMs = _trimStartMs;
           }
         });
-        _scheduleDynamicReframePreview(_currentPlaybackMs);
       });
     } else {
       _playbackTimer?.cancel();
@@ -348,73 +342,14 @@ class _ProtectionEditorScreenState
         _isPlaying = false;
         _currentPlaybackMs = _trimStartMs;
       });
-      _scheduleDynamicReframePreview(_trimStartMs, immediate: true);
     } else {
       setState(() => _currentPlaybackMs = posMs);
-      if (playing) {
-        _scheduleDynamicReframePreview(posMs);
-      }
     }
-  }
-
-  bool _canRunDynamicReframePreview(EffectEditorState state) {
-    return mounted &&
-        _activeTool != _EditorTool.trim &&
-        !_selectingFollowTarget &&
-        state.project?.hasFollowTarget == true &&
-        !state.showSourcePreview;
-  }
-
-  void _scheduleDynamicReframePreview(
-    int timestampMs, {
-    bool immediate = false,
-  }) {
-    final effectState = ref.read(effectEditorControllerProvider);
-    if (!_canRunDynamicReframePreview(effectState)) return;
-    final project = effectState.project!;
-    _pendingDynamicReframePreviewMs = timestampMs.clamp(
-      project.trimStartMs,
-      project.effectiveTrimEndMs,
-    );
-
-    if (immediate) {
-      _dynamicReframePreviewTimer?.cancel();
-      _dynamicReframePreviewTimer = null;
-      _dispatchDynamicReframePreview();
-      return;
-    }
-    if (_dynamicReframePreviewTimer?.isActive ?? false) return;
-    _dynamicReframePreviewTimer = Timer(
-      _dynamicReframePreviewInterval,
-      _dispatchDynamicReframePreview,
-    );
-  }
-
-  void _dispatchDynamicReframePreview() {
-    _dynamicReframePreviewTimer?.cancel();
-    _dynamicReframePreviewTimer = null;
-    if (!mounted) return;
-    final effectState = ref.read(effectEditorControllerProvider);
-    if (!_canRunDynamicReframePreview(effectState)) return;
-    final timestampMs = _pendingDynamicReframePreviewMs;
-    if (timestampMs == null) return;
-    if (effectState.previewLoading) {
-      _dynamicReframePreviewTimer = Timer(
-        const Duration(milliseconds: 100),
-        _dispatchDynamicReframePreview,
-      );
-      return;
-    }
-    _pendingDynamicReframePreviewMs = null;
-    ref
-        .read(effectEditorControllerProvider.notifier)
-        .updatePreviewTimestamp(timestampMs);
   }
 
   @override
   void dispose() {
     _playbackTimer?.cancel();
-    _dynamicReframePreviewTimer?.cancel();
     _profileSaveDebounce?.cancel();
     _videoController?.removeListener(_onVideoTick);
     _videoController?.dispose();
@@ -1409,11 +1344,6 @@ class _ProtectionEditorScreenState
     final displayPath =
         effectState.previewPath ?? effectState.previewThumbnailPath;
     final hasImage = displayPath != null && displayPath.isNotEmpty;
-    final dynamicReframePreview =
-        _activeTool != _EditorTool.trim &&
-        !_selectingFollowTarget &&
-        effectState.project?.hasFollowTarget == true &&
-        !effectState.showSourcePreview;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -1443,18 +1373,13 @@ class _ProtectionEditorScreenState
                 ),
               )
             else if (hasImage)
-              GestureDetector(
-                key: const ValueKey('dynamic-reframe-preview-stage'),
-                behavior: HitTestBehavior.opaque,
-                onTap: dynamicReframePreview ? _togglePlayback : null,
-                child: Image.file(
-                  File(displayPath),
-                  fit: BoxFit.fill,
-                  gaplessPlayback: true,
-                  filterQuality: FilterQuality.low,
-                  errorBuilder: (context, error, stackTrace) =>
-                      _buildPreviewPlaceholder(),
-                ),
+              Image.file(
+                File(displayPath),
+                fit: BoxFit.fill,
+                gaplessPlayback: true,
+                filterQuality: FilterQuality.low,
+                errorBuilder: (context, error, stackTrace) =>
+                    _buildPreviewPlaceholder(),
               )
             else
               _buildPreviewPlaceholder(),
@@ -1485,42 +1410,12 @@ class _ProtectionEditorScreenState
                         outputAspectRatio: 9 / 16,
                         zoom: 1,
                       );
-                      _scheduleDynamicReframePreview(
-                        _currentPlaybackMs,
-                        immediate: true,
-                      );
                     } else {
                       selectionController.togglePerson(person.id);
                       _syncSelectionToEffect(effectController);
                     }
                   },
                 ),
-            if (dynamicReframePreview)
-              Positioned(
-                key: const ValueKey('dynamic-reframe-play-toggle'),
-                right: 10,
-                bottom: 10,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: _togglePlayback,
-                  child: Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: const Color(0xB319191B),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppTheme.surfaceBorder),
-                    ),
-                    child: Icon(
-                      _isPlaying
-                          ? Icons.pause_rounded
-                          : Icons.play_arrow_rounded,
-                      size: 21,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
-                ),
-              ),
             if (effectState.previewLoading)
               Positioned(
                 bottom: 12,
@@ -1750,19 +1645,9 @@ class _ProtectionEditorScreenState
                 _playbackTimer?.cancel();
                 _playbackTimer = null;
                 _isPlaying = false;
-              } else {
-                _dynamicReframePreviewTimer?.cancel();
-                _dynamicReframePreviewTimer = null;
-                _pendingDynamicReframePreviewMs = null;
               }
               _scheduleProfilePersist();
               setState(() => _activeTool = item.$1);
-              if (item.$1 != _EditorTool.trim) {
-                _scheduleDynamicReframePreview(
-                  _currentPlaybackMs,
-                  immediate: true,
-                );
-              }
             },
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,

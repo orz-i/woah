@@ -103,7 +103,7 @@ final class IOSTemporalIdentityTracker {
     faceOnlyPrivacyIds = faceOnlyIds.subtracting(fullBodyIds)
     privacyTargetIds = fullBodyIds.union(faceOnlyIds)
     if faceOnlyIds.isEmpty {
-      identityProtectedIds = privacyTargetIds.union(followTargetId.map { [$0] } ?? [])
+      identityProtectedIds = privacyTargetIds
     } else {
       // Android mixed-mode tracking protects every credible analysis identity,
       // while keeping actual privacy membership separate. This prevents a
@@ -112,8 +112,13 @@ final class IOSTemporalIdentityTracker {
       let credible = Set((metadata?.persons ?? [])
         .filter { $0.confidence >= 0.60 }
         .map(\.id))
-      identityProtectedIds = privacyTargetIds.union(credible).union(followTargetId.map { [$0] } ?? [])
+      identityProtectedIds = privacyTargetIds.union(credible)
     }
+    // Camera following is not a privacy guarantee. Keep the explicit follow ID
+    // out of the strict privacy-grade identity lane so an ambiguous crossing
+    // cannot freeze reframing indefinitely. The export camera has a bounded
+    // predicted-bbox grace for short observation gaps.
+    _ = followTargetId
     nextTrackId = (metadata?.persons.map(\.id).max() ?? -1) + 1
   }
 
@@ -344,6 +349,26 @@ final class IOSTemporalIdentityTracker {
     guard let track = tracks.first(where: { $0.id == id && $0.observedThisFrame }) else { return nil }
     let box = track.detection
     return SIMD4<Float>(box.x1, box.y1, box.x2, box.y2)
+  }
+
+  func followBounds(for id: Int, predictionGraceFrames: Int = 6) -> SIMD4<Float>? {
+    guard let track = tracks.first(where: { $0.id == id }) else { return nil }
+    if track.observedThisFrame {
+      let box = track.detection
+      return SIMD4<Float>(box.x1, box.y1, box.x2, box.y2)
+    }
+    guard predictionGraceFrames > 0,
+          track.missedFrames > 0,
+          track.missedFrames <= predictionGraceFrames,
+          track.state != .lost else {
+      return nil
+    }
+    return SIMD4<Float>(
+      track.predictedX1,
+      track.predictedY1,
+      track.predictedX2,
+      track.predictedY2
+    )
   }
 
   func paritySnapshots() -> [IOSTemporalTrackSnapshot] {
