@@ -351,7 +351,8 @@ final class IOSExportPipeline {
           tightMask: !fullBodyIds.isEmpty,
           outputWidth: target.width,
           outputHeight: target.height,
-          sourceCrop: sourceCrop
+          sourceCrop: sourceCrop,
+          legStretchTargetId: followTargetId
         )
         let outputPixelBuffer = try makePixelBuffer(
           adaptor: adaptor,
@@ -433,10 +434,10 @@ final class IOSExportPipeline {
        !ratio.isFinite || ratio <= 0 {
       throw exportError("INVALID_ARGUMENT", "Invalid follow output aspect ratio.")
     }
-    if request.effects.skinWhiten > 0 || request.effects.legStretchEnabled {
+    if request.effects.skinWhiten > 0 {
       throw exportError(
         "PLATFORM_NOT_SUPPORTED",
-        "iOS does not yet support skin whitening or leg stretch during export."
+        "iOS does not yet support skin whitening during export."
       )
     }
   }

@@ -348,7 +348,12 @@ class PreviewPipeline(
                         faceStickerPlacements = faceOnlyFrameResult?.stickerPlacements.orEmpty(),
                         tightMask = request.tightMaskPreview ?: false,
                         sourceWidth = sourceFrameWidth,
-                        sourceHeight = sourceFrameHeight
+                        sourceHeight = sourceFrameHeight,
+                        legStretchTargetPersonId = if (request.follow.enabled) {
+                            request.follow.targetPersonId?.toInt()
+                        } else {
+                            null
+                        }
                     )
                 } finally {
                     target.restore(previousFramebuffer)
@@ -391,7 +396,12 @@ class PreviewPipeline(
                     faceStickerPlacements = faceOnlyFrameResult?.stickerPlacements.orEmpty(),
                     tightMask = request.tightMaskPreview ?: false,
                     sourceWidth = sourceFrameWidth,
-                    sourceHeight = sourceFrameHeight
+                    sourceHeight = sourceFrameHeight,
+                    legStretchTargetPersonId = if (request.follow.enabled) {
+                        request.follow.targetPersonId?.toInt()
+                    } else {
+                        null
+                    }
                 )
             }
 

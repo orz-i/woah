@@ -9,9 +9,11 @@ uniform mat4 uTexMatrix;
 uniform vec4 uCropRect;
 uniform vec4 uMaskCropRect;
 uniform vec4 uOccluderCropRect;
+uniform vec4 uLegMaskCropRect;
 varying vec2 vOesTexCoord;
 varying vec2 vMaskTexCoord;
 varying vec2 vOccluderTexCoord;
+varying vec2 vLegMaskTexCoord;
 varying vec2 vVisualContentCoord;
 
 void main() {
@@ -36,6 +38,10 @@ void main() {
         mix(uOccluderCropRect.x, uOccluderCropRect.z, contentUv.x),
         mix(uOccluderCropRect.y, uOccluderCropRect.w, 1.0 - contentUv.y)
     );
+    vLegMaskTexCoord = vec2(
+        mix(uLegMaskCropRect.x, uLegMaskCropRect.z, contentUv.x),
+        mix(uLegMaskCropRect.y, uLegMaskCropRect.w, 1.0 - contentUv.y)
+    );
 }
 """.trim()
 
@@ -44,14 +50,18 @@ void main() {
 varying vec2 vOesTexCoord;
 varying vec2 vMaskTexCoord;
 varying vec2 vOccluderTexCoord;
+varying vec2 vLegMaskTexCoord;
 varying vec2 vVisualContentCoord;
 
+uniform mat4 uTexMatrix;
 uniform sampler2D uMaskTexture;
 uniform sampler2D uOccluderTexture;
 uniform sampler2D uStickerTexture;
+uniform sampler2D uLegMaskTexture;
 
 uniform int uHasMask;
 uniform int uHasOccluder;
+uniform int uHasLegMask;
 uniform int uFillMode; // 0: none/solid, 1: outline, 2: blur, 3: gradient, 4: skin_whiten, 5: mosaic
 
 uniform vec4 uFillColor;
@@ -66,6 +76,7 @@ uniform int uLegStretchEnabled;
 uniform float uLegStretch;
 uniform float uLegZoneTop;
 uniform float uLegZoneBottom;
+uniform vec4 uLegRect;
 
 uniform int uHasSticker;
 uniform vec4 uStickerRect; // (left, top, right, bottom)
@@ -93,7 +104,7 @@ void main() {
 
     vec4 originalColor = texture2D(uBaseTexture, originalUv);
 
-    if (uHasMask == 0) {
+    if (uHasMask == 0 && uHasLegMask == 0) {
         gl_FragColor = originalColor;
         return;
     }
@@ -110,22 +121,36 @@ void main() {
 
     float maskVal = privacyVal * (1.0 - occluderVal);
 
-
-    // 1. Leg stretch non-linear dual coordinate warp - APPLIED PERSON-ONLY
-    vec2 warpedUv = originalUv;
-    if (uLegStretchEnabled == 1 && uLegStretch > 1.0) {
-        if (originalUv.y >= uLegZoneTop && originalUv.y <= uLegZoneBottom) {
-            float range = max(0.01, uLegZoneBottom - uLegZoneTop);
-            float t = (originalUv.y - uLegZoneTop) / range;
-            warpedUv.y = uLegZoneTop + (t / uLegStretch) * range;
-        }
+    float legMaskVal = 0.0;
+    if (uHasLegMask == 1 &&
+        vLegMaskTexCoord.x >= 0.0 && vLegMaskTexCoord.x <= 1.0 &&
+        vLegMaskTexCoord.y >= 0.0 && vLegMaskTexCoord.y <= 1.0) {
+        legMaskVal = texture2D(uLegMaskTexture, vLegMaskTexCoord).r;
     }
 
-    // Only warp within person mask; background strictly preserves original coordinates
+    // 1. Protagonist-only leg stretch. The beauty mask is independent from
+    // privacy selection and the zone is expressed relative to the protagonist bbox.
     vec4 color = originalColor;
-    if (maskVal > 0.05 && uLegStretchEnabled == 1 && uLegStretch > 1.0) {
-        vec4 warpedColor = texture2D(uBaseTexture, warpedUv);
-        color = mix(originalColor, warpedColor, maskVal);
+    if (uLegStretchEnabled == 1 && uHasLegMask == 1 &&
+        uLegStretch > 1.0 && legMaskVal > 0.05) {
+        float rectHeight = max(0.0001, uLegRect.w - uLegRect.y);
+        float zoneTop = uLegRect.y + rectHeight * uLegZoneTop;
+        float zoneBottom = uLegRect.y + rectHeight * uLegZoneBottom;
+        float visualY = vVisualContentCoord.y;
+        if (vVisualContentCoord.x >= uLegRect.x &&
+            vVisualContentCoord.x <= uLegRect.z &&
+            visualY >= zoneTop && visualY <= zoneBottom) {
+            float range = max(0.0001, zoneBottom - zoneTop);
+            float t = (visualY - zoneTop) / range;
+            float warpedVisualY = zoneTop + (t / uLegStretch) * range;
+            vec2 warpedContentUv = vec2(vVisualContentCoord.x, 1.0 - warpedVisualY);
+            vec4 transformed = uTexMatrix * vec4(warpedContentUv, 0.0, 1.0);
+            float invW = 1.0 / (transformed.w != 0.0 ? transformed.w : 1.0);
+            vec2 warpedUv = transformed.xy * invW;
+            vec4 warpedColor = texture2D(uBaseTexture, warpedUv);
+            float beautyAlpha = smoothstep(0.10, 0.80, legMaskVal);
+            color = mix(originalColor, warpedColor, beautyAlpha);
+        }
     }
 
     vec2 uv = originalUv;

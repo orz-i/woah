@@ -195,6 +195,65 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('leg stretch appears only after selecting a protagonist', (
+    tester,
+  ) async {
+    final repository = _FakeProtectionRepository();
+    final container = ProviderContainer(
+      overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(home: ProtectionEditorScreen(project: project)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _selectTool(tester, 'adjust');
+    expect(find.text('拉腿'), findsNothing);
+
+    await _selectTool(tester, 'frame');
+    await tester.ensureVisible(find.byKey(const ValueKey('reframe-mode')));
+    await tester.tap(find.text('9:16'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('protection-person-target-1')));
+    await tester.pumpAndSettle();
+
+    expect(
+      container.read(effectEditorControllerProvider).project!.hasFollowTarget,
+      isTrue,
+    );
+    await _selectTool(tester, 'adjust');
+    expect(find.text('拉腿'), findsOneWidget);
+
+    await tester.tap(find.text('拉腿'));
+    await tester.pump();
+    final toggle = tester.widget<Switch>(find.byType(Switch));
+    expect(toggle.value, isFalse);
+    toggle.onChanged!(true);
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(
+      container.read(effectEditorControllerProvider).effects.legStretchEnabled,
+      isTrue,
+    );
+
+    await _selectTool(tester, 'frame');
+    final reframeMode = find.byKey(const ValueKey('reframe-mode'));
+    await tester.tap(
+      find.descendant(of: reframeMode, matching: find.text('原始')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      container.read(effectEditorControllerProvider).effects.legStretchEnabled,
+      isFalse,
+    );
+    await _selectTool(tester, 'adjust');
+    expect(find.text('拉腿'), findsNothing);
+  });
+
   testWidgets('saved Profile applies to a fresh video and stays collapsed', (
     tester,
   ) async {

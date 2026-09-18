@@ -22,8 +22,10 @@ class GlRenderer : FrameRenderer {
         val uCropRectLoc: Int,
         val uMaskCropRectLoc: Int,
         val uOccluderCropRectLoc: Int,
+        val uLegMaskCropRectLoc: Int,
         val uHasMaskLoc: Int,
         val uHasOccluderLoc: Int,
+        val uHasLegMaskLoc: Int,
         val uFillModeLoc: Int,
         val uFillColorLoc: Int,
         val uBorderColorLoc: Int,
@@ -36,6 +38,7 @@ class GlRenderer : FrameRenderer {
         val uLegStretchLoc: Int,
         val uLegZoneTopLoc: Int,
         val uLegZoneBottomLoc: Int,
+        val uLegRectLoc: Int,
         val uHasStickerLoc: Int,
         val uStickerRectLoc: Int,
         val uTexelSizeLoc: Int,
@@ -43,7 +46,8 @@ class GlRenderer : FrameRenderer {
         val uBaseTextureLoc: Int,
         val uMaskTextureLoc: Int,
         val uOccluderTextureLoc: Int,
-        val uStickerTextureLoc: Int
+        val uStickerTextureLoc: Int,
+        val uLegMaskTextureLoc: Int
     )
 
     private var oesProgram: ProgramLocations? = null
@@ -56,6 +60,7 @@ class GlRenderer : FrameRenderer {
     private var maskTextureId = 0
     private var occluderTextureId = 0
     private var stickerTextureId = 0
+    private var legMaskTextureId = 0
     private var loadedStickerAssetId: String? = null
     private var stickerTextureLoaded = false
     private var captureBuffer: ByteBuffer? = null
@@ -241,18 +246,19 @@ class GlRenderer : FrameRenderer {
                 position(0)
             }
 
-        // Initialize 2D auxiliary textures (privacy mask, occluder mask, face sticker)
-        val textures = IntArray(3)
-        GLES20.glGenTextures(3, textures, 0)
+        // Initialize 2D auxiliary textures (privacy, occluder, sticker, protagonist beauty mask)
+        val textures = IntArray(4)
+        GLES20.glGenTextures(4, textures, 0)
         maskTextureId = textures[0]
         occluderTextureId = textures[1]
         stickerTextureId = textures[2]
+        legMaskTextureId = textures[3]
 
         val blankPixel = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).apply {
             put(0.toByte()); put(0.toByte()); put(0.toByte()); put(0.toByte())
             rewind()
         }
-        for (texId in listOf(maskTextureId, occluderTextureId, stickerTextureId)) {
+        for (texId in listOf(maskTextureId, occluderTextureId, stickerTextureId, legMaskTextureId)) {
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texId)
             GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
             GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
@@ -358,8 +364,10 @@ class GlRenderer : FrameRenderer {
             uCropRectLoc = GLES20.glGetUniformLocation(programId, "uCropRect"),
             uMaskCropRectLoc = GLES20.glGetUniformLocation(programId, "uMaskCropRect"),
             uOccluderCropRectLoc = GLES20.glGetUniformLocation(programId, "uOccluderCropRect"),
+            uLegMaskCropRectLoc = GLES20.glGetUniformLocation(programId, "uLegMaskCropRect"),
             uHasMaskLoc = GLES20.glGetUniformLocation(programId, "uHasMask"),
             uHasOccluderLoc = GLES20.glGetUniformLocation(programId, "uHasOccluder"),
+            uHasLegMaskLoc = GLES20.glGetUniformLocation(programId, "uHasLegMask"),
             uFillModeLoc = GLES20.glGetUniformLocation(programId, "uFillMode"),
             uFillColorLoc = GLES20.glGetUniformLocation(programId, "uFillColor"),
             uBorderColorLoc = GLES20.glGetUniformLocation(programId, "uBorderColor"),
@@ -372,6 +380,7 @@ class GlRenderer : FrameRenderer {
             uLegStretchLoc = GLES20.glGetUniformLocation(programId, "uLegStretch"),
             uLegZoneTopLoc = GLES20.glGetUniformLocation(programId, "uLegZoneTop"),
             uLegZoneBottomLoc = GLES20.glGetUniformLocation(programId, "uLegZoneBottom"),
+            uLegRectLoc = GLES20.glGetUniformLocation(programId, "uLegRect"),
             uHasStickerLoc = GLES20.glGetUniformLocation(programId, "uHasSticker"),
             uStickerRectLoc = GLES20.glGetUniformLocation(programId, "uStickerRect"),
             uTexelSizeLoc = GLES20.glGetUniformLocation(programId, "uTexelSize"),
@@ -379,7 +388,8 @@ class GlRenderer : FrameRenderer {
             uBaseTextureLoc = GLES20.glGetUniformLocation(programId, "uBaseTexture"),
             uMaskTextureLoc = GLES20.glGetUniformLocation(programId, "uMaskTexture"),
             uOccluderTextureLoc = GLES20.glGetUniformLocation(programId, "uOccluderTexture"),
-            uStickerTextureLoc = GLES20.glGetUniformLocation(programId, "uStickerTexture")
+            uStickerTextureLoc = GLES20.glGetUniformLocation(programId, "uStickerTexture"),
+            uLegMaskTextureLoc = GLES20.glGetUniformLocation(programId, "uLegMaskTexture")
         )
     }
 
@@ -402,8 +412,10 @@ class GlRenderer : FrameRenderer {
         if (prog.uCropRectLoc >= 0) GLES20.glUniform4f(prog.uCropRectLoc, 0f, 0f, 1f, 1f)
         if (prog.uMaskCropRectLoc >= 0) GLES20.glUniform4f(prog.uMaskCropRectLoc, 0f, 0f, 1f, 1f)
         if (prog.uOccluderCropRectLoc >= 0) GLES20.glUniform4f(prog.uOccluderCropRectLoc, 0f, 0f, 1f, 1f)
+        if (prog.uLegMaskCropRectLoc >= 0) GLES20.glUniform4f(prog.uLegMaskCropRectLoc, 0f, 0f, 1f, 1f)
         if (prog.uHasMaskLoc >= 0) GLES20.glUniform1i(prog.uHasMaskLoc, 0)
         if (prog.uHasOccluderLoc >= 0) GLES20.glUniform1i(prog.uHasOccluderLoc, 0)
+        if (prog.uHasLegMaskLoc >= 0) GLES20.glUniform1i(prog.uHasLegMaskLoc, 0)
         if (prog.uHasStickerLoc >= 0) GLES20.glUniform1i(prog.uHasStickerLoc, 0)
 
         val target = if (textureType == SourceTextureType.OES) GLES11Ext.GL_TEXTURE_EXTERNAL_OES else GLES20.GL_TEXTURE_2D
@@ -422,6 +434,10 @@ class GlRenderer : FrameRenderer {
         GLES20.glActiveTexture(GLES20.GL_TEXTURE3)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, stickerTextureId)
         if (prog.uStickerTextureLoc >= 0) GLES20.glUniform1i(prog.uStickerTextureLoc, 3)
+
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE4)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, legMaskTextureId)
+        if (prog.uLegMaskTextureLoc >= 0) GLES20.glUniform1i(prog.uLegMaskTextureLoc, 4)
 
         drawQuad(prog)
         checkGlError("renderBase")
@@ -484,7 +500,8 @@ class GlRenderer : FrameRenderer {
         tightMask: Boolean = false,
         sourceWidth: Int? = null,
         sourceHeight: Int? = null,
-        initialFollowTarget: com.danceanon.native.inference.FloatRect? = null
+        initialFollowTarget: com.danceanon.native.inference.FloatRect? = null,
+        legStretchTargetPersonId: Int? = null
     ) {
         GLES20.glViewport(0, 0, width, height)
         GLES20.glClearColor(0f, 0f, 0f, 1f)
@@ -532,12 +549,35 @@ class GlRenderer : FrameRenderer {
         if (prog.uBlurRadiusLoc >= 0) GLES20.glUniform1f(prog.uBlurRadiusLoc, effects.blurStrength.toFloat().coerceAtLeast(1.0f))
         if (prog.uSkinWhitenLoc >= 0) GLES20.glUniform1f(prog.uSkinWhitenLoc, effects.skinWhiten.toFloat())
 
-        val legStretchEnabled = if (effects.legStretchEnabled) 1 else 0
-        val legStretch = (1.0 + effects.legStretch).toFloat().coerceAtLeast(1.0f)
+        val legTarget = if (effects.legStretchEnabled && legStretchTargetPersonId != null) {
+            persons.firstOrNull {
+                it.id == legStretchTargetPersonId && it.observedThisFrame && it.mask != null
+            }
+        } else {
+            null
+        }
+        val legMask = legTarget?.mask
+        val legStretchEnabled = if (legMask != null) 1 else 0
+        val legStretch = (1.0 + effects.legStretch).toFloat().coerceIn(1.0f, 1.5f)
+        val legZoneTop = effects.legZoneTop.toFloat().coerceIn(0f, 1f)
+        val legZoneBottom = effects.legZoneBottom.toFloat().coerceIn(legZoneTop, 1f)
         if (prog.uLegStretchEnabledLoc >= 0) GLES20.glUniform1i(prog.uLegStretchEnabledLoc, legStretchEnabled)
         if (prog.uLegStretchLoc >= 0) GLES20.glUniform1f(prog.uLegStretchLoc, legStretch)
-        if (prog.uLegZoneTopLoc >= 0) GLES20.glUniform1f(prog.uLegZoneTopLoc, effects.legZoneTop.toFloat().coerceIn(0f, 1f))
-        if (prog.uLegZoneBottomLoc >= 0) GLES20.glUniform1f(prog.uLegZoneBottomLoc, effects.legZoneBottom.toFloat().coerceIn(0f, 1f))
+        if (prog.uLegZoneTopLoc >= 0) GLES20.glUniform1f(prog.uLegZoneTopLoc, legZoneTop)
+        if (prog.uLegZoneBottomLoc >= 0) GLES20.glUniform1f(prog.uLegZoneBottomLoc, legZoneBottom)
+        if (legTarget != null && legMask != null && prog.uLegRectLoc >= 0) {
+            val refW = maxOf(1, sourceWidth ?: legMask.originalWidth).toFloat()
+            val refH = maxOf(1, sourceHeight ?: legMask.originalHeight).toFloat()
+            GLES20.glUniform4f(
+                prog.uLegRectLoc,
+                (legTarget.bbox.left / refW).coerceIn(0f, 1f),
+                (legTarget.bbox.top / refH).coerceIn(0f, 1f),
+                (legTarget.bbox.right / refW).coerceIn(0f, 1f),
+                (legTarget.bbox.bottom / refH).coerceIn(0f, 1f)
+            )
+        } else if (prog.uLegRectLoc >= 0) {
+            GLES20.glUniform4f(prog.uLegRectLoc, 0f, 0f, 0f, 0f)
+        }
         if (prog.uTexelSizeLoc >= 0) GLES20.glUniform2f(prog.uTexelSizeLoc, 1f / width.coerceAtLeast(1), 1f / height.coerceAtLeast(1))
 
         // Follow Crop Mapping
@@ -663,7 +703,22 @@ class GlRenderer : FrameRenderer {
 
         if (prog.uHasMaskLoc >= 0) GLES20.glUniform1i(prog.uHasMaskLoc, if (hasSelected) 1 else 0)
         if (prog.uHasOccluderLoc >= 0) GLES20.glUniform1i(prog.uHasOccluderLoc, if (hasOccluder) 1 else 0)
+        if (prog.uHasLegMaskLoc >= 0) GLES20.glUniform1i(prog.uHasLegMaskLoc, legStretchEnabled)
 
+        val legMaskSamplingRect = legMask?.samplingRect
+            ?: defaultLetterboxSamplingRect(
+                legMask?.originalWidth?.takeIf { it > 0 } ?: sourceWidth ?: width,
+                legMask?.originalHeight?.takeIf { it > 0 } ?: sourceHeight ?: height
+            )
+        if (prog.uLegMaskCropRectLoc >= 0) {
+            GLES20.glUniform4f(
+                prog.uLegMaskCropRectLoc,
+                legMaskSamplingRect.left,
+                legMaskSamplingRect.top,
+                legMaskSamplingRect.right,
+                legMaskSamplingRect.bottom
+            )
+        }
 
         // Setup base texture
         val target = if (textureType == SourceTextureType.OES) GLES11Ext.GL_TEXTURE_EXTERNAL_OES else GLES20.GL_TEXTURE_2D
@@ -705,6 +760,20 @@ class GlRenderer : FrameRenderer {
             )
         }
         if (prog.uOccluderTextureLoc >= 0) GLES20.glUniform1i(prog.uOccluderTextureLoc, 2)
+
+        // Protagonist beauty mask is independent from privacy selection (Texture 4).
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE4)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, legMaskTextureId)
+        GLES20.glPixelStorei(GLES20.GL_UNPACK_ALIGNMENT, 1)
+        if (legMask != null) {
+            legMask.buffer.rewind()
+            GLES20.glTexImage2D(
+                GLES20.GL_TEXTURE_2D, 0, GLES20.GL_LUMINANCE,
+                legMask.width, legMask.height, 0,
+                GLES20.GL_LUMINANCE, GLES20.GL_UNSIGNED_BYTE, legMask.buffer
+            )
+        }
+        if (prog.uLegMaskTextureLoc >= 0) GLES20.glUniform1i(prog.uLegMaskTextureLoc, 4)
 
         // Sticker effect runtime connection (bound to Texture 3)
         val selectedPersons = persons.filter { selectedPersonIds.contains(it.id) && it.mask != null }
@@ -947,6 +1016,12 @@ class GlRenderer : FrameRenderer {
             stickerTextureId = 0
             loadedStickerAssetId = null
             stickerTextureLoaded = false
+        }
+
+        if (legMaskTextureId != 0) {
+            val textures = intArrayOf(legMaskTextureId)
+            GLES20.glDeleteTextures(1, textures, 0)
+            legMaskTextureId = 0
         }
 
         captureBuffer = null

@@ -134,6 +134,7 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
   }
 
   void updateLegStretch({required bool enabled, double stretch = 0.15}) {
+    if (enabled && state.project?.hasFollowTarget != true) return;
     state = state.copyWith(
       effects: state.effects.copyWith(
         legStretchEnabled: enabled,
@@ -170,8 +171,12 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
       outputAspectRatio: outputAspectRatio,
     );
 
+    final updatedEffects = !requestedEnabled && state.effects.legStretchEnabled
+        ? state.effects.copyWith(legStretchEnabled: false)
+        : state.effects;
     state = state.copyWith(
       project: proj.copyWith(follow: updatedFollow),
+      effects: updatedEffects,
       showSourcePreview: false,
       clearPreview: true,
     );

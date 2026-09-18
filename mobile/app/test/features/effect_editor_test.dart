@@ -42,18 +42,45 @@ void main() {
       expect(configured.effects.borderColorArgb, equals(0xFF00E5FF));
     });
 
-    test('Updates skin whiten and leg stretch parameters', () {
+    test('Leg stretch requires and follows the explicit protagonist', () {
       final controller = EffectEditorController();
       controller.init(testProject);
 
       controller.updateSkinWhiten(0.75);
+      controller.updateLegStretch(enabled: true, stretch: 0.20);
       var configured = controller.buildConfiguredProject();
       expect(configured!.effects.skinWhiten, equals(0.75));
+      expect(configured.effects.legStretchEnabled, isFalse);
 
+      final protagonistProject = testProject.copyWith(
+        persons: const [
+          PersonTrack(
+            id: 1,
+            normalizedInitialBox: NormalizedRect(
+              left: .2,
+              top: .1,
+              right: .6,
+              bottom: .9,
+            ),
+            thumbnailPath: '',
+            confidence: .95,
+          ),
+        ],
+        follow: const FollowConfig(
+          enabled: true,
+          targetPersonId: 1,
+          outputAspectRatio: 9 / 16,
+        ),
+      );
+      controller.init(protagonistProject);
       controller.updateLegStretch(enabled: true, stretch: 0.20);
       configured = controller.buildConfiguredProject();
       expect(configured!.effects.legStretchEnabled, isTrue);
       expect(configured.effects.legStretch, equals(0.20));
+
+      controller.updateFollowConfig(enabled: false);
+      configured = controller.buildConfiguredProject();
+      expect(configured!.effects.legStretchEnabled, isFalse);
     });
 
     test('Face sticker style toggles real sticker configuration', () {

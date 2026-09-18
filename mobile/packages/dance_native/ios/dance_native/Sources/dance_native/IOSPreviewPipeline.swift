@@ -131,7 +131,10 @@ final class IOSPreviewPipeline {
       tightMask: request.tightMaskPreview ?? false,
       outputWidth: outputWidth,
       outputHeight: outputHeight,
-      sourceCrop: sourceCrop
+      sourceCrop: sourceCrop,
+      legStretchTargetId: request.follow.enabled
+        ? request.follow.targetPersonId.map { Int($0) }
+        : nil
     )
     let previewPath = try savePreview(
       rendered,

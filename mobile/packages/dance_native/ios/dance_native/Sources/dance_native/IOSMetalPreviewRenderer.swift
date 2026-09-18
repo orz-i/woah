@@ -82,7 +82,8 @@ final class IOSMetalPreviewRenderer {
     tightMask: Bool = false,
     outputWidth: Int? = nil,
     outputHeight: Int? = nil,
-    sourceCrop: SIMD4<Float> = SIMD4<Float>(0, 0, 1, 1)
+    sourceCrop: SIMD4<Float> = SIMD4<Float>(0, 0, 1, 1),
+    legStretchTargetId: Int? = nil
   ) throws -> CGImage {
     let sourceWidth = max(1, source.width)
     let sourceHeight = max(1, source.height)
@@ -127,6 +128,16 @@ final class IOSMetalPreviewRenderer {
       tightMask: tightMask,
       sourceCrop: sourceCrop
     )
+    let legInputs = Self.buildLegStretchInputs(
+      persons: persons,
+      targetId: effects.legStretchEnabled ? legStretchTargetId : nil,
+      preprocess: preprocess,
+      sourceWidth: sourceWidth,
+      sourceHeight: sourceHeight,
+      previewWidth: previewWidth,
+      previewHeight: previewHeight,
+      sourceCrop: sourceCrop
+    )
 
     let sourceTexture = try makeTexture(
       width: previewWidth,
@@ -143,6 +154,14 @@ final class IOSMetalPreviewRenderer {
       usage: [.shaderRead],
       bytes: renderInputs.privacyMask,
       bytesPerRow: previewWidth
+    )
+    let legMaskTexture = try makeTexture(
+      width: legInputs.enabled ? previewWidth : 1,
+      height: legInputs.enabled ? previewHeight : 1,
+      pixelFormat: .r8Unorm,
+      usage: [.shaderRead],
+      bytes: legInputs.enabled ? legInputs.mask : [0],
+      bytesPerRow: legInputs.enabled ? previewWidth : 1
     )
     let outputDescriptor = MTLTextureDescriptor.texture2DDescriptor(
       pixelFormat: .rgba8Unorm,
@@ -183,6 +202,17 @@ final class IOSMetalPreviewRenderer {
       : nil
     var customStickerFlag: UInt32 = customStickerTexture == nil ? 0 : 1
     var stickerScale = Float(max(0.5, min(3.0, effects.stickerScale)))
+    var legStretchFlag: UInt32 = legInputs.enabled ? 1 : 0
+    let legStretchValue = max(1.0, min(1.5, 1.0 + effects.legStretch))
+    let legZoneTopValue = max(0.0, min(1.0, effects.legZoneTop))
+    let legZoneBottomValue = max(
+      legZoneTopValue,
+      min(1.0, effects.legZoneBottom)
+    )
+    var legStretch = Float(legStretchValue)
+    var legZoneTop = Float(legZoneTopValue)
+    var legZoneBottom = Float(legZoneBottomValue)
+    var legRect = legInputs.rect
     var faceRectCount = UInt32(renderInputs.faceRects.count)
     var faceRects = renderInputs.faceRects.isEmpty
       ? [SIMD4<Float>(repeating: 0)]
@@ -193,6 +223,7 @@ final class IOSMetalPreviewRenderer {
     encoder.setTexture(maskTexture, index: 1)
     encoder.setTexture(outputTexture, index: 2)
     encoder.setTexture(customStickerTexture, index: 3)
+    encoder.setTexture(legMaskTexture, index: 4)
     encoder.setBytes(&fillMode, length: MemoryLayout<UInt32>.size, index: 0)
     encoder.setBytes(&fillColor, length: MemoryLayout<SIMD4<Float>>.size, index: 1)
     encoder.setBytes(&borderColor, length: MemoryLayout<SIMD4<Float>>.size, index: 2)
@@ -208,6 +239,11 @@ final class IOSMetalPreviewRenderer {
     }
     encoder.setBytes(&customStickerFlag, length: MemoryLayout<UInt32>.size, index: 9)
     encoder.setBytes(&stickerScale, length: MemoryLayout<Float>.size, index: 10)
+    encoder.setBytes(&legStretchFlag, length: MemoryLayout<UInt32>.size, index: 11)
+    encoder.setBytes(&legStretch, length: MemoryLayout<Float>.size, index: 12)
+    encoder.setBytes(&legZoneTop, length: MemoryLayout<Float>.size, index: 13)
+    encoder.setBytes(&legZoneBottom, length: MemoryLayout<Float>.size, index: 14)
+    encoder.setBytes(&legRect, length: MemoryLayout<SIMD4<Float>>.size, index: 15)
 
     let threadWidth = max(1, pipeline.threadExecutionWidth)
     let threadHeight = max(1, pipeline.maxTotalThreadsPerThreadgroup / threadWidth)
@@ -310,6 +346,75 @@ final class IOSMetalPreviewRenderer {
   private struct PrivacyInputs {
     let privacyMask: [UInt8]
     let faceRects: [SIMD4<Float>]
+  }
+
+  private struct LegStretchInputs {
+    let mask: [UInt8]
+    let rect: SIMD4<Float>
+    let enabled: Bool
+  }
+
+  private static func buildLegStretchInputs(
+    persons: [IOSPreviewPerson],
+    targetId: Int?,
+    preprocess: IOSYoloPreprocessResult,
+    sourceWidth: Int,
+    sourceHeight: Int,
+    previewWidth: Int,
+    previewHeight: Int,
+    sourceCrop: SIMD4<Float>
+  ) -> LegStretchInputs {
+    guard let targetId,
+          let target = persons.first(where: {
+            $0.id == targetId && !$0.conservativePrivacyFallback
+          }),
+          target.detection.mask.count == IOSYoloPostprocessor.protoSize * IOSYoloPostprocessor.protoSize else {
+      return LegStretchInputs(
+        mask: [],
+        rect: SIMD4<Float>(repeating: 0),
+        enabled: false
+      )
+    }
+
+    var output = [UInt8](repeating: 0, count: previewWidth * previewHeight)
+    let cropWidth = sourceCrop.z - sourceCrop.x
+    let cropHeight = sourceCrop.w - sourceCrop.y
+    for previewY in 0..<previewHeight {
+      let sourceY = ((Float32(previewY) + 0.5) / Float32(previewHeight) * cropHeight + sourceCrop.y)
+        * Float32(sourceHeight)
+      let modelY = sourceY * preprocess.scale + preprocess.padTop
+      let protoY = Int(floor(
+        Double(modelY / Float32(preprocess.inputSize) * Float32(IOSYoloPostprocessor.protoSize))
+      ))
+      guard protoY >= 0, protoY < IOSYoloPostprocessor.protoSize else { continue }
+      for previewX in 0..<previewWidth {
+        let sourceX = ((Float32(previewX) + 0.5) / Float32(previewWidth) * cropWidth + sourceCrop.x)
+          * Float32(sourceWidth)
+        let modelX = sourceX * preprocess.scale + preprocess.padLeft
+        let protoX = Int(floor(
+          Double(modelX / Float32(preprocess.inputSize) * Float32(IOSYoloPostprocessor.protoSize))
+        ))
+        guard protoX >= 0, protoX < IOSYoloPostprocessor.protoSize else { continue }
+        let index = protoY * IOSYoloPostprocessor.protoSize + protoX
+        output[previewY * previewWidth + previewX] = target.detection.mask[index] >= 128 ? 255 : 0
+      }
+    }
+
+    let width = Float32(max(1, sourceWidth))
+    let height = Float32(max(1, sourceHeight))
+    let sourceRect = SIMD4<Float>(
+      target.detection.x1 / width,
+      target.detection.y1 / height,
+      target.detection.x2 / width,
+      target.detection.y2 / height
+    )
+    let rect = SIMD4<Float>(
+      (sourceRect.x - sourceCrop.x) / cropWidth,
+      (sourceRect.y - sourceCrop.y) / cropHeight,
+      (sourceRect.z - sourceCrop.x) / cropWidth,
+      (sourceRect.w - sourceCrop.y) / cropHeight
+    )
+    return LegStretchInputs(mask: output, rect: rect, enabled: true)
   }
 
   private static func buildPrivacyInputs(
@@ -728,6 +833,7 @@ kernel void woahPreviewKernel(
   texture2d<float, access::read> privacyMask [[texture(1)]],
   texture2d<float, access::write> output [[texture(2)]],
   texture2d<float, access::sample> stickerTexture [[texture(3)]],
+  texture2d<float, access::read> legMask [[texture(4)]],
   constant uint &fillMode [[buffer(0)]],
   constant float4 &fillColor [[buffer(1)]],
   constant float4 &borderColor [[buffer(2)]],
@@ -739,6 +845,11 @@ kernel void woahPreviewKernel(
   constant float4 *faceRects [[buffer(8)]],
   constant uint &customStickerEnabled [[buffer(9)]],
   constant float &stickerScale [[buffer(10)]],
+  constant uint &legStretchEnabled [[buffer(11)]],
+  constant float &legStretch [[buffer(12)]],
+  constant float &legZoneTop [[buffer(13)]],
+  constant float &legZoneBottom [[buffer(14)]],
+  constant float4 &legRect [[buffer(15)]],
   uint2 gid [[thread_position_in_grid]]
 ) {
   uint width = output.get_width();
@@ -746,8 +857,32 @@ kernel void woahPreviewKernel(
   if (gid.x >= width || gid.y >= height) return;
 
   float4 original = source.read(gid);
-  float maskValue = privacyMask.read(gid).r;
   float4 color = original;
+
+  float legMaskValue = 0.0;
+  if (legStretchEnabled == 1) {
+    legMaskValue = legMask.read(gid).r;
+  }
+  if (legStretchEnabled == 1 && legStretch > 1.0 && legMaskValue > 0.05) {
+    float2 uv = float2(
+      (float(gid.x) + 0.5) / float(width),
+      (float(gid.y) + 0.5) / float(height)
+    );
+    float rectHeight = max(0.0001, legRect.w - legRect.y);
+    float zoneTop = legRect.y + rectHeight * legZoneTop;
+    float zoneBottom = legRect.y + rectHeight * legZoneBottom;
+    if (uv.x >= legRect.x && uv.x <= legRect.z &&
+        uv.y >= zoneTop && uv.y <= zoneBottom) {
+      float range = max(0.0001, zoneBottom - zoneTop);
+      float t = (uv.y - zoneTop) / range;
+      float warpedY = zoneTop + (t / legStretch) * range;
+      uint sampleY = min(height - 1, uint(clamp(warpedY, 0.0, 1.0) * float(height)));
+      float4 warpedColor = source.read(uint2(gid.x, sampleY));
+      color = mix(color, warpedColor, smoothstep(0.10, 0.80, legMaskValue));
+    }
+  }
+
+  float maskValue = privacyMask.read(gid).r;
   float blendAlpha = smoothstep(0.15, 0.85, maskValue) * opacity;
 
   if (blendAlpha > 0.001) {

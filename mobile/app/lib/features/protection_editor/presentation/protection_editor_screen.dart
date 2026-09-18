@@ -163,8 +163,12 @@ class _ProtectionEditorScreenState
     final isFaceMode =
         selectionState.privacyMode == ProjectPrivacyMode.faceOnly;
     if (savedProfile != null) {
-      _fullBodyDraft = _normalizeFullBodyDraft(savedProfile.fullBodyEffects);
-      _faceOnlyDraft = _normalizeFaceDraft(savedProfile.faceOnlyEffects);
+      _fullBodyDraft = _normalizeFullBodyDraft(
+        _profileSafeEffects(savedProfile.fullBodyEffects),
+      );
+      _faceOnlyDraft = _normalizeFaceDraft(
+        _profileSafeEffects(savedProfile.faceOnlyEffects),
+      );
     } else if (isFaceMode) {
       _faceOnlyDraft ??= _normalizeFaceDraft(configured.effects);
       _fullBodyDraft ??= _defaultFullBodyDraft(configured.effects);
@@ -218,13 +222,20 @@ class _ProtectionEditorScreenState
 
     final profile = ProtectionProfile(
       privacyMode: selectionState.privacyMode,
-      fullBodyEffects:
-          _fullBodyDraft ?? _defaultFullBodyDraft(effectState.effects),
-      faceOnlyEffects: _faceOnlyDraft ?? _defaultFaceDraft(effectState.effects),
+      fullBodyEffects: _profileSafeEffects(
+        _fullBodyDraft ?? _defaultFullBodyDraft(effectState.effects),
+      ),
+      faceOnlyEffects: _profileSafeEffects(
+        _faceOnlyDraft ?? _defaultFaceDraft(effectState.effects),
+      ),
       outputResolutionPreset: project.outputResolutionPreset,
       portraitReframe: project.follow.enabled || _selectingFollowTarget,
     );
     await ref.read(protectionProfileStoreProvider).save(profile);
+  }
+
+  EffectConfig _profileSafeEffects(EffectConfig effects) {
+    return effects.copyWith(legStretchEnabled: false);
   }
 
   bool _sameEffects(EffectConfig a, EffectConfig b) {
@@ -251,7 +262,8 @@ class _ProtectionEditorScreenState
       if (controller.value.isPlaying) {
         controller.pause();
       } else {
-        if (_currentPlaybackMs >= _trimEndMs || _currentPlaybackMs < _trimStartMs) {
+        if (_currentPlaybackMs >= _trimEndMs ||
+            _currentPlaybackMs < _trimStartMs) {
           controller.seekTo(Duration(milliseconds: _trimStartMs));
         }
         controller.play();
@@ -263,7 +275,9 @@ class _ProtectionEditorScreenState
     });
     if (_isPlaying) {
       _playbackTimer?.cancel();
-      _playbackTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      _playbackTimer = Timer.periodic(const Duration(milliseconds: 100), (
+        timer,
+      ) {
         if (!mounted) {
           timer.cancel();
           return;
@@ -313,7 +327,10 @@ class _ProtectionEditorScreenState
     if (controller == null || !controller.value.isInitialized || !mounted) {
       return;
     }
-    final posMs = controller.value.position.inMilliseconds.clamp(0, _sourceDurationMs);
+    final posMs = controller.value.position.inMilliseconds.clamp(
+      0,
+      _sourceDurationMs,
+    );
     final playing = controller.value.isPlaying;
     if (playing != _isPlaying) {
       setState(() => _isPlaying = playing);
@@ -580,7 +597,8 @@ class _ProtectionEditorScreenState
           // Middle: Resolution trigger (pure text + dropdown arrow, no capsule)
           GestureDetector(
             key: const ValueKey('protection-editor-resolution-trigger'),
-            onTap: () => _showResolutionDialog(context, project, effectController),
+            onTap: () =>
+                _showResolutionDialog(context, project, effectController),
             behavior: HitTestBehavior.opaque,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
@@ -744,7 +762,9 @@ class _ProtectionEditorScreenState
                     style: TextStyle(
                       color: isSelected ? AppTheme.gold : AppTheme.textPrimary,
                       fontSize: 14,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w500,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -1080,9 +1100,7 @@ class _ProtectionEditorScreenState
                 height: 36,
                 child: Center(
                   child: Icon(
-                    _isPlaying
-                        ? Icons.pause_rounded
-                        : Icons.play_arrow_rounded,
+                    _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
                     color: Colors.white,
                     size: 28,
                   ),
@@ -1346,7 +1364,9 @@ class _ProtectionEditorScreenState
                     child: AspectRatio(
                       aspectRatio: _videoController!.value.aspectRatio > 0
                           ? _videoController!.value.aspectRatio
-                          : (stageHeight > 0 ? stageWidth / stageHeight : 9 / 16),
+                          : (stageHeight > 0
+                                ? stageWidth / stageHeight
+                                : 9 / 16),
                       child: VideoPlayer(_videoController!),
                     ),
                   ),
@@ -1659,6 +1679,17 @@ class _ProtectionEditorScreenState
     EffectEditorController effectController,
   ) {
     final effects = effectState.effects;
+    final hasProtagonist = effectState.project?.hasFollowTarget ?? false;
+    final properties = _AdjustProperty.values
+        .where(
+          (property) =>
+              property != _AdjustProperty.legStretch || hasProtagonist,
+        )
+        .toList(growable: false);
+    final activeProperty =
+        !hasProtagonist && _activeAdjustProperty == _AdjustProperty.legStretch
+        ? _AdjustProperty.opacity
+        : _activeAdjustProperty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1667,11 +1698,11 @@ class _ProtectionEditorScreenState
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
-            itemCount: _AdjustProperty.values.length,
+            itemCount: properties.length,
             separatorBuilder: (_, _) => const SizedBox(width: 14),
             itemBuilder: (context, index) {
-              final prop = _AdjustProperty.values[index];
-              final isSelected = _activeAdjustProperty == prop;
+              final prop = properties[index];
+              final isSelected = activeProperty == prop;
               return GestureDetector(
                 onTap: () {
                   HapticFeedback.selectionClick();
@@ -1689,13 +1720,17 @@ class _ProtectionEditorScreenState
                         shape: BoxShape.circle,
                         color: isSelected ? Colors.white : AppTheme.surfaceHigh,
                         border: Border.all(
-                          color: isSelected ? AppTheme.gold : AppTheme.surfaceBorder,
+                          color: isSelected
+                              ? AppTheme.gold
+                              : AppTheme.surfaceBorder,
                           width: isSelected ? 2 : 1,
                         ),
                       ),
                       child: Icon(
                         prop.icon,
-                        color: isSelected ? const Color(0xFF111111) : Colors.white,
+                        color: isSelected
+                            ? const Color(0xFF111111)
+                            : Colors.white,
                         size: 22,
                       ),
                     ),
@@ -1703,9 +1738,13 @@ class _ProtectionEditorScreenState
                     Text(
                       prop.label,
                       style: TextStyle(
-                        color: isSelected ? AppTheme.gold : AppTheme.textSecondary,
+                        color: isSelected
+                            ? AppTheme.gold
+                            : AppTheme.textSecondary,
                         fontSize: 11,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.w500,
                       ),
                     ),
                   ],
@@ -1715,16 +1754,21 @@ class _ProtectionEditorScreenState
           ),
         ),
         const SizedBox(height: 12),
-        _buildAdjustSliderSection(effects, effectController),
+        _buildAdjustSliderSection(
+          effects,
+          effectController,
+          activeProperty: activeProperty,
+        ),
       ],
     );
   }
 
   Widget _buildAdjustSliderSection(
     EffectConfig effects,
-    EffectEditorController effectController,
-  ) {
-    return switch (_activeAdjustProperty) {
+    EffectEditorController effectController, {
+    required _AdjustProperty activeProperty,
+  }) {
+    return switch (activeProperty) {
       _AdjustProperty.opacity => _buildYellowSlider(
         label: '遮挡强度',
         value: effects.opacity,
@@ -1808,7 +1852,9 @@ class _ProtectionEditorScreenState
                 onChanged: (val) {
                   effectController.updateLegStretch(
                     enabled: val,
-                    stretch: effects.legStretch,
+                    stretch: val && effects.legStretch <= 0
+                        ? 0.15
+                        : effects.legStretch,
                   );
                 },
               ),
@@ -2001,7 +2047,11 @@ class _ProtectionEditorScreenState
     );
   }
 
-  Widget _buildQuickTrimAction(IconData icon, String label, VoidCallback? onTap) {
+  Widget _buildQuickTrimAction(
+    IconData icon,
+    String label,
+    VoidCallback? onTap,
+  ) {
     final isEnabled = onTap != null;
     return GestureDetector(
       onTap: onTap,
@@ -2012,13 +2062,17 @@ class _ProtectionEditorScreenState
           Icon(
             icon,
             size: 21,
-            color: isEnabled ? AppTheme.textPrimary : AppTheme.textMuted.withAlpha(100),
+            color: isEnabled
+                ? AppTheme.textPrimary
+                : AppTheme.textMuted.withAlpha(100),
           ),
           const SizedBox(height: 4),
           Text(
             label,
             style: TextStyle(
-              color: isEnabled ? AppTheme.textSecondary : AppTheme.textMuted.withAlpha(100),
+              color: isEnabled
+                  ? AppTheme.textSecondary
+                  : AppTheme.textMuted.withAlpha(100),
               fontSize: 10.5,
               fontWeight: FontWeight.w500,
             ),
@@ -2105,10 +2159,7 @@ class _ProtectionEditorScreenState
   }
 
   Widget _buildAspectRatioCards(bool isVertical, ValueChanged<bool> onChanged) {
-    const ratios = [
-      ('原始', false),
-      ('9:16', true),
-    ];
+    const ratios = [('原始', false), ('9:16', true)];
 
     return SizedBox(
       key: const ValueKey('reframe-mode'),
@@ -2146,7 +2197,9 @@ class _ProtectionEditorScreenState
         width: 68,
         height: 64,
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.gold.withAlpha(24) : AppTheme.surfaceHigh,
+          color: isSelected
+              ? AppTheme.gold.withAlpha(24)
+              : AppTheme.surfaceHigh,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected ? AppTheme.gold : AppTheme.surfaceBorder,
@@ -2182,7 +2235,6 @@ class _ProtectionEditorScreenState
     );
   }
 
-
   Widget _buildSectionLabel(String text, {bool subdued = false}) {
     return Text(
       text,
@@ -2193,7 +2245,6 @@ class _ProtectionEditorScreenState
       ),
     );
   }
-
 
   Widget _buildPrivacyModeSwitch(
     PersonSelectionState state,
@@ -2621,6 +2672,7 @@ class _ProtectionEditorScreenState
     if (selectionState.privacyMode == mode) return;
 
     HapticFeedback.selectionClick();
+    final currentEffects = ref.read(effectEditorControllerProvider).effects;
     _captureActiveDraft();
 
     final selectionController = ref.read(
@@ -2630,9 +2682,20 @@ class _ProtectionEditorScreenState
     final configured = selectionController.buildConfiguredProject();
     if (configured == null) return;
 
-    final nextEffects = mode == ProjectPrivacyMode.faceOnly
+    final nextBase = mode == ProjectPrivacyMode.faceOnly
         ? (_faceOnlyDraft ??= _defaultFaceDraft(configured.effects))
         : (_fullBodyDraft ??= _defaultFullBodyDraft(configured.effects));
+    final nextEffects = nextBase.copyWith(
+      legStretchEnabled: currentEffects.legStretchEnabled,
+      legStretch: currentEffects.legStretch,
+      legZoneTop: currentEffects.legZoneTop,
+      legZoneBottom: currentEffects.legZoneBottom,
+    );
+    if (mode == ProjectPrivacyMode.faceOnly) {
+      _faceOnlyDraft = nextEffects;
+    } else {
+      _fullBodyDraft = nextEffects;
+    }
     effectController.updateEditingContext(
       project: configured,
       effects: nextEffects,
@@ -2807,7 +2870,6 @@ class _ProtectionEditorScreenState
     );
   }
 }
-
 
 class _EditorStatus extends StatelessWidget {
   final IconData icon;

@@ -1710,7 +1710,12 @@ class ExportPipeline(
                                         faceStickerPlacements = faceOnlyFrameResult?.stickerPlacements.orEmpty(),
                                         tightMask = shouldUseTightFullBodyMaskForExport(selectedIds),
                                         sourceWidth = trackingWidth,
-                                        sourceHeight = trackingHeight
+                                        sourceHeight = trackingHeight,
+                                        legStretchTargetPersonId = if (request.follow.enabled) {
+                                            request.follow.targetPersonId?.toInt()
+                                        } else {
+                                            null
+                                        }
                                     )
                                 } finally {
                                     target.restore(previousFramebuffer)
@@ -1780,7 +1785,12 @@ class ExportPipeline(
                                     tightMask = shouldUseTightFullBodyMaskForExport(selectedIds),
                                     sourceWidth = trackingWidth,
                                     sourceHeight = trackingHeight,
-                                    initialFollowTarget = followSeed
+                                    initialFollowTarget = followSeed,
+                                    legStretchTargetPersonId = if (request.follow.enabled) {
+                                        request.follow.targetPersonId?.toInt()
+                                    } else {
+                                        null
+                                    }
                                 )
                             }
                             renderedFrameCount++

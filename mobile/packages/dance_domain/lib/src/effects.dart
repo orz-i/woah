@@ -51,10 +51,10 @@ class EffectConfig {
   /// Leg stretch intensity [0.0, 0.5]
   final double legStretch;
 
-  /// Normalized Y top boundary of leg zone [0.0, 1.0]
+  /// Protagonist-bbox-relative Y top boundary of leg zone [0.0, 1.0]
   final double legZoneTop;
 
-  /// Normalized Y bottom boundary of leg zone [0.0, 1.0]
+  /// Protagonist-bbox-relative Y bottom boundary of leg zone [0.0, 1.0]
   final double legZoneBottom;
 
   const EffectConfig({
