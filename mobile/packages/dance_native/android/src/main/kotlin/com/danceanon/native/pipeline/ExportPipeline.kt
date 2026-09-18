@@ -421,6 +421,7 @@ class ExportPipeline(
                 val trackManager = TrackManager()
                 val reframeFollower = com.danceanon.native.camera.SmoothFollower()
                 var reframeInitialized = false
+                var lastReframeProxyTrackId: Int? = null
                 // Temporal fresh-class evidence has no exact person ID. It is safe
                 // only for the historical FULL_BODY-only compositor. In mixed mode
                 // it can label nearby FACE_ONLY detections as SELECTED and turn
@@ -1729,15 +1730,59 @@ class ExportPipeline(
 
                                 val followTargetId = requireNotNull(request.follow.targetPersonId).toInt()
                                 val followTrack = trackedList.firstOrNull { it.id == followTargetId }
-                                val followObservation = resolveFollowCameraObservation(
+                                val primaryFollowObservation = resolveFollowCameraObservation(
                                     track = followTrack,
                                     trackingWidth = trackingWidth,
                                     trackingHeight = trackingHeight
                                 )
+                                val followProxy = if (primaryFollowObservation == null) {
+                                    resolveFollowCameraOcclusionProxy(
+                                        target = followTrack,
+                                        tracks = trackedList
+                                    )
+                                } else {
+                                    null
+                                }
+                                val followObservation = primaryFollowObservation
+                                    ?: followProxy?.let { proxy ->
+                                        resolveFollowCameraObservation(
+                                            track = proxy,
+                                            trackingWidth = trackingWidth,
+                                            trackingHeight = trackingHeight
+                                        )
+                                    }
                                 val targetSource = when {
                                     followTrack?.observedThisFrame == true -> "OBSERVED"
-                                    followObservation != null -> "PREDICTED"
+                                    primaryFollowObservation != null -> "PREDICTED"
+                                    followProxy != null -> "OCCLUSION_PROXY"
                                     else -> "HELD"
+                                }
+                                val followProxyIou = if (followTrack != null && followProxy != null) {
+                                    TrackManager.computeBBoxIoU(followTrack.bbox, followProxy.bbox)
+                                } else {
+                                    null
+                                }
+                                if (
+                                    com.danceanon.native.diagnostics.DiagnosticsBuild.ENABLED &&
+                                    lastReframeProxyTrackId != followProxy?.id
+                                ) {
+                                    com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                                        level = "INFO",
+                                        component = "ExportPipeline",
+                                        event = "AUTO_REFRAME_PROXY_CHANGE",
+                                        fields = mapOf(
+                                            "job_id" to jobId,
+                                            "frame" to processedFrames,
+                                            "pts_us" to ptsUs,
+                                            "target_person_id" to followTargetId,
+                                            "previous_proxy_id" to lastReframeProxyTrackId,
+                                            "current_proxy_id" to followProxy?.id,
+                                            "current_proxy_iou" to followProxyIou,
+                                            "target_state" to followTrack?.state?.name,
+                                            "target_frames_since_observation" to followTrack?.framesSinceLastObservation
+                                        )
+                                    )
+                                    lastReframeProxyTrackId = followProxy?.id
                                 }
                                 val visualCrop = reframeFollower.cropForFrame(
                                     target = followObservation ?: if (!reframeInitialized) followSeed else null,
@@ -1780,6 +1825,8 @@ class ExportPipeline(
                                             "target_source" to targetSource,
                                             "target_state" to followTrack?.state?.name,
                                             "target_frames_since_observation" to followTrack?.framesSinceLastObservation,
+                                            "target_proxy_id" to followProxy?.id,
+                                            "target_proxy_iou" to followProxyIou,
                                             "target_center_x" to followObservation?.centerX,
                                             "target_center_y" to followObservation?.centerY,
                                             "crop_center_x" to visualCrop.centerX,
@@ -2316,6 +2363,55 @@ class ExportPipeline(
                 right = track.bbox.right / trackingWidth.toFloat(),
                 bottom = track.bbox.bottom / trackingHeight.toFloat()
             )
+        }
+
+        internal fun resolveFollowCameraOcclusionProxy(
+            target: TrackedPerson?,
+            tracks: List<TrackedPerson>
+        ): TrackedPerson? {
+            if (target == null || target.observedThisFrame) return null
+            if (target.state != TrackState.OCCLUDED && target.state != TrackState.REACQUIRING) {
+                return null
+            }
+
+            val targetBox = target.bbox
+            val targetWidth = targetBox.width.coerceAtLeast(1f)
+            val targetHeight = targetBox.height.coerceAtLeast(1f)
+            val referenceDim = maxOf(targetWidth, targetHeight, 1f)
+
+            return tracks.asSequence()
+                .filter { candidate ->
+                    candidate.id != target.id &&
+                        candidate.observedThisFrame &&
+                        candidate.state != TrackState.LOST &&
+                        candidate.state != TrackState.REMOVED
+                }
+                .mapNotNull { candidate ->
+                    val candidateBox = candidate.bbox
+                    val iou = TrackManager.computeBBoxIoU(targetBox, candidateBox)
+                    val dx = candidateBox.centerX - targetBox.centerX
+                    val dy = candidateBox.centerY - targetBox.centerY
+                    val centerDistanceRatio = sqrt(dx * dx + dy * dy) / referenceDim
+                    val widthRatio = candidateBox.width.coerceAtLeast(1f) / targetWidth
+                    val heightRatio = candidateBox.height.coerceAtLeast(1f) / targetHeight
+                    val explicitOccluder = target.occludedByTrackIds.contains(candidate.id)
+                    val minIou = if (explicitOccluder) 0.45f else 0.55f
+                    val maxCenterDistanceRatio = if (explicitOccluder) 0.30f else 0.20f
+                    val minScale = if (explicitOccluder) 0.70f else 0.78f
+                    val maxScale = if (explicitOccluder) 1.43f else 1.28f
+                    if (
+                        iou < minIou ||
+                        centerDistanceRatio > maxCenterDistanceRatio ||
+                        widthRatio !in minScale..maxScale ||
+                        heightRatio !in minScale..maxScale
+                    ) {
+                        null
+                    } else {
+                        candidate to iou
+                    }
+                }
+                .maxByOrNull { it.second }
+                ?.first
         }
 
         internal fun canonicalizeFaceReferenceCoordinate(value: Float): Float =

@@ -357,18 +357,67 @@ final class IOSTemporalIdentityTracker {
       let box = track.detection
       return SIMD4<Float>(box.x1, box.y1, box.x2, box.y2)
     }
-    guard predictionGraceFrames > 0,
-          track.missedFrames > 0,
-          track.missedFrames <= predictionGraceFrames,
-          track.state != .lost else {
+    if predictionGraceFrames > 0,
+       track.missedFrames > 0,
+       track.missedFrames <= predictionGraceFrames,
+       track.state != .lost {
+      return SIMD4<Float>(
+        track.predictedX1,
+        track.predictedY1,
+        track.predictedX2,
+        track.predictedY2
+      )
+    }
+
+    guard track.state == .occluded || track.state == .reacquiring else {
       return nil
     }
-    return SIMD4<Float>(
-      track.predictedX1,
-      track.predictedY1,
-      track.predictedX2,
-      track.predictedY2
-    )
+    let targetWidth = max(1, track.predictedX2 - track.predictedX1)
+    let targetHeight = max(1, track.predictedY2 - track.predictedY1)
+    let referenceDimension = max(1, max(targetWidth, targetHeight))
+    let targetCenterX = (track.predictedX1 + track.predictedX2) * 0.5
+    let targetCenterY = (track.predictedY1 + track.predictedY2) * 0.5
+
+    let proxy = tracks
+      .filter { candidate in
+        candidate.id != track.id
+          && candidate.observedThisFrame
+          && candidate.state != .lost
+      }
+      .compactMap { candidate -> (Track, Float32)? in
+        let box = candidate.detection
+        let iou = rectIoU(
+          track.predictedX1,
+          track.predictedY1,
+          track.predictedX2,
+          track.predictedY2,
+          box.x1,
+          box.y1,
+          box.x2,
+          box.y2
+        )
+        guard iou >= 0.55 else { return nil }
+        let candidateWidth = max(1, box.x2 - box.x1)
+        let candidateHeight = max(1, box.y2 - box.y1)
+        let widthRatio = candidateWidth / targetWidth
+        let heightRatio = candidateHeight / targetHeight
+        guard widthRatio >= 0.78, widthRatio <= 1.28,
+              heightRatio >= 0.78, heightRatio <= 1.28 else {
+          return nil
+        }
+        let candidateCenterX = (box.x1 + box.x2) * 0.5
+        let candidateCenterY = (box.y1 + box.y2) * 0.5
+        let dx = candidateCenterX - targetCenterX
+        let dy = candidateCenterY - targetCenterY
+        let centerDistanceRatio = sqrt(dx * dx + dy * dy) / referenceDimension
+        guard centerDistanceRatio <= 0.20 else { return nil }
+        return (candidate, iou)
+      }
+      .max(by: { first, second in first.1 < second.1 })?.0
+
+    guard let proxy else { return nil }
+    let box = proxy.detection
+    return SIMD4<Float>(box.x1, box.y1, box.x2, box.y2)
   }
 
   func paritySnapshots() -> [IOSTemporalTrackSnapshot] {
