@@ -16,6 +16,7 @@ import '../../export/presentation/export_screen.dart';
 import '../../person_selection/domain/person_selection_state.dart';
 import '../../person_selection/presentation/person_selection_controller.dart';
 import '../data/protection_profile_store.dart';
+import '../data/sticker_asset_store.dart';
 import '../domain/protection_profile.dart';
 
 enum _EditorTool { trim, protect, mask, frame, adjust }
@@ -97,6 +98,7 @@ class _ProtectionEditorScreenState
   bool _originalAudioEnabled = true;
   bool _selectingFollowTarget = false;
   bool _profileReady = false;
+  bool _stickerImporting = false;
   Timer? _profileSaveDebounce;
   String? _trimDragMode;
 
@@ -308,7 +310,9 @@ class _ProtectionEditorScreenState
 
   void _onVideoTick() {
     final controller = _videoController;
-    if (controller == null || !controller.value.isInitialized || !mounted) return;
+    if (controller == null || !controller.value.isInitialized || !mounted) {
+      return;
+    }
     final posMs = controller.value.position.inMilliseconds.clamp(0, _sourceDurationMs);
     final playing = controller.value.isPlaying;
     if (playing != _isPlaying) {
@@ -2318,60 +2322,189 @@ class _ProtectionEditorScreenState
       ('builtin:bear', '小熊', Icons.pets_outlined, Color(0xFFC58B62)),
     ];
     final current = effects.stickerAssetId ?? 'builtin:sunglasses';
-    return SizedBox(
-      height: 68,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        itemCount: stickers.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 10),
-        itemBuilder: (context, index) {
-          final item = stickers[index];
-          final selected = current == item.$1;
-          return Semantics(
-            button: true,
-            selected: selected,
-            label: '贴纸 ${item.$2}',
-            child: GestureDetector(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                controller.updateStickerAsset(item.$1);
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 160),
-                width: 58,
-                decoration: BoxDecoration(
-                  color: item.$4,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: selected ? AppTheme.gold : AppTheme.surfaceBorder,
-                    width: selected ? 2 : 1,
+    final customFile = !current.startsWith('builtin:') && current != 'disabled'
+        ? File(current)
+        : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          height: 68,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            children: [
+              Semantics(
+                button: true,
+                label: '导入自定义贴纸',
+                child: GestureDetector(
+                  key: const ValueKey('sticker-import'),
+                  onTap: _stickerImporting
+                      ? null
+                      : () => _importCustomSticker(controller),
+                  child: Container(
+                    width: 58,
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceElevated,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: AppTheme.surfaceBorder),
+                    ),
+                    child: Center(
+                      child: _stickerImporting
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppTheme.gold,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.add_photo_alternate_outlined,
+                              color: AppTheme.gold,
+                              size: 25,
+                            ),
+                    ),
                   ),
                 ),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Icon(item.$3, color: AppTheme.textPrimary, size: 24),
-                    if (selected)
-                      const Positioned(
-                        right: 4,
-                        bottom: 4,
-                        child: Icon(
-                          Icons.check_circle_rounded,
-                          color: AppTheme.gold,
-                          size: 18,
+              ),
+              if (customFile != null) ...[
+                const SizedBox(width: 10),
+                Semantics(
+                  button: true,
+                  selected: true,
+                  label: '自定义贴纸，已选择',
+                  child: Container(
+                    key: const ValueKey('sticker-custom-current'),
+                    width: 58,
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceHigh,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: AppTheme.gold, width: 2),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.file(
+                          customFile,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => const Icon(
+                            Icons.broken_image_outlined,
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                        const Positioned(
+                          right: 4,
+                          bottom: 4,
+                          child: Icon(
+                            Icons.check_circle_rounded,
+                            color: AppTheme.gold,
+                            size: 18,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(width: 10),
+              for (var index = 0; index < stickers.length; index++) ...[
+                if (index > 0) const SizedBox(width: 10),
+                Builder(
+                  builder: (context) {
+                    final item = stickers[index];
+                    final selected = current == item.$1;
+                    return Semantics(
+                      button: true,
+                      selected: selected,
+                      label: '贴纸 ${item.$2}',
+                      child: GestureDetector(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          controller.updateStickerAsset(item.$1);
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 160),
+                          width: 58,
+                          decoration: BoxDecoration(
+                            color: item.$4,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: selected
+                                  ? AppTheme.gold
+                                  : AppTheme.surfaceBorder,
+                              width: selected ? 2 : 1,
+                            ),
+                          ),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Icon(
+                                item.$3,
+                                color: AppTheme.textPrimary,
+                                size: 24,
+                              ),
+                              if (selected)
+                                const Positioned(
+                                  right: 4,
+                                  bottom: 4,
+                                  child: Icon(
+                                    Icons.check_circle_rounded,
+                                    color: AppTheme.gold,
+                                    size: 18,
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                       ),
-                  ],
+                    );
+                  },
                 ),
-              ),
-            ),
-          );
-        },
-      ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildYellowSlider(
+          label: '贴纸大小',
+          value: effects.stickerScale,
+          min: 0.5,
+          max: 3.0,
+          step: 0.1,
+          displayValue: '${effects.stickerScale.toStringAsFixed(1)}×',
+          onChanged: controller.updateStickerScale,
+        ),
+      ],
     );
   }
 
+  Future<void> _importCustomSticker(EffectEditorController controller) async {
+    if (_stickerImporting) return;
+    HapticFeedback.selectionClick();
+    setState(() => _stickerImporting = true);
+    try {
+      final path = await ref.read(stickerAssetStoreProvider).pickAndImport();
+      if (!mounted || path == null) return;
+      controller.updateStickerAsset(path);
+    } on FormatException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('导入贴纸失败，请换一张图片重试')));
+    } finally {
+      if (mounted) {
+        setState(() => _stickerImporting = false);
+      }
+    }
+  }
 
   Widget _buildColorPalette(int currentArgb, ValueChanged<int> onSelect) {
     const colors = <(int, String)>[

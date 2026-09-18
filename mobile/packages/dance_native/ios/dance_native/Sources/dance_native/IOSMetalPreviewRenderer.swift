@@ -1,11 +1,15 @@
 import CoreGraphics
 import Foundation
+import ImageIO
 import Metal
+import MetalKit
 
 final class IOSMetalPreviewRenderer {
   private let device: MTLDevice
   private let commandQueue: MTLCommandQueue
   private let pipeline: MTLComputePipelineState
+  private var loadedStickerAssetId: String?
+  private var loadedStickerTexture: MTLTexture?
 
   init() throws {
     guard let device = MTLCreateSystemDefaultDevice(),
@@ -174,6 +178,11 @@ final class IOSMetalPreviewRenderer {
     var borderWidth = Float(max(0.0, effects.borderWidth))
     var blurStrength = Float(max(1.0, effects.blurStrength))
     var stickerFlag: UInt32 = stickerEnabled ? 1 : 0
+    let customStickerTexture = stickerEnabled
+      ? loadCustomStickerTexture(effects.stickerAssetId)
+      : nil
+    var customStickerFlag: UInt32 = customStickerTexture == nil ? 0 : 1
+    var stickerScale = Float(max(0.5, min(3.0, effects.stickerScale)))
     var faceRectCount = UInt32(renderInputs.faceRects.count)
     var faceRects = renderInputs.faceRects.isEmpty
       ? [SIMD4<Float>(repeating: 0)]
@@ -183,6 +192,7 @@ final class IOSMetalPreviewRenderer {
     encoder.setTexture(sourceTexture, index: 0)
     encoder.setTexture(maskTexture, index: 1)
     encoder.setTexture(outputTexture, index: 2)
+    encoder.setTexture(customStickerTexture, index: 3)
     encoder.setBytes(&fillMode, length: MemoryLayout<UInt32>.size, index: 0)
     encoder.setBytes(&fillColor, length: MemoryLayout<SIMD4<Float>>.size, index: 1)
     encoder.setBytes(&borderColor, length: MemoryLayout<SIMD4<Float>>.size, index: 2)
@@ -196,6 +206,8 @@ final class IOSMetalPreviewRenderer {
         encoder.setBytes(base, length: raw.count, index: 8)
       }
     }
+    encoder.setBytes(&customStickerFlag, length: MemoryLayout<UInt32>.size, index: 9)
+    encoder.setBytes(&stickerScale, length: MemoryLayout<Float>.size, index: 10)
 
     let threadWidth = max(1, pipeline.threadExecutionWidth)
     let threadHeight = max(1, pipeline.maxTotalThreadsPerThreadgroup / threadWidth)
@@ -230,6 +242,37 @@ final class IOSMetalPreviewRenderer {
       width: previewWidth,
       height: previewHeight
     )
+  }
+
+  private func loadCustomStickerTexture(_ assetId: String?) -> MTLTexture? {
+    guard let assetId,
+          !assetId.isEmpty,
+          assetId != "disabled",
+          !assetId.hasPrefix("builtin:") else {
+      return nil
+    }
+    if loadedStickerAssetId == assetId {
+      return loadedStickerTexture
+    }
+
+    loadedStickerAssetId = assetId
+    loadedStickerTexture = nil
+    let url = URL(fileURLWithPath: assetId)
+    guard FileManager.default.fileExists(atPath: url.path),
+          let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+          let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
+      return nil
+    }
+
+    let loader = MTKTextureLoader(device: device)
+    loadedStickerTexture = try? loader.newTexture(
+      cgImage: image,
+      options: [
+        .SRGB: false,
+        .textureUsage: NSNumber(value: MTLTextureUsage.shaderRead.rawValue),
+      ]
+    )
+    return loadedStickerTexture
   }
 
   private func makeTexture(
@@ -678,10 +721,13 @@ static inline float ellipseMask(float2 local) {
   return dot(d, d) <= 1.0 ? 1.0 : 0.0;
 }
 
+constexpr sampler stickerSampler(coord::normalized, address::clamp_to_edge, filter::linear);
+
 kernel void woahPreviewKernel(
   texture2d<float, access::read> source [[texture(0)]],
   texture2d<float, access::read> privacyMask [[texture(1)]],
   texture2d<float, access::write> output [[texture(2)]],
+  texture2d<float, access::sample> stickerTexture [[texture(3)]],
   constant uint &fillMode [[buffer(0)]],
   constant float4 &fillColor [[buffer(1)]],
   constant float4 &borderColor [[buffer(2)]],
@@ -691,6 +737,8 @@ kernel void woahPreviewKernel(
   constant uint &stickerEnabled [[buffer(6)]],
   constant uint &faceRectCount [[buffer(7)]],
   constant float4 *faceRects [[buffer(8)]],
+  constant uint &customStickerEnabled [[buffer(9)]],
+  constant float &stickerScale [[buffer(10)]],
   uint2 gid [[thread_position_in_grid]]
 ) {
   uint width = output.get_width();
@@ -767,16 +815,30 @@ kernel void woahPreviewKernel(
       );
       if (ellipseMask(local) < 0.5) continue;
 
-      // Privacy-safe built-in sunglasses sticker. The face oval is opaque;
-      // dark lenses and bridge are painted over it, so no transparent hole can
-      // reveal identity even before the dedicated face detector is ported.
+      float scale = clamp(stickerScale, 0.5, 3.0);
+      float2 stickerLocal = (local - float2(0.5)) / scale + float2(0.5);
+      if (stickerLocal.x < 0.0 || stickerLocal.x > 1.0 ||
+          stickerLocal.y < 0.0 || stickerLocal.y > 1.0) {
+        continue;
+      }
+
+      if (customStickerEnabled == 1) {
+        float4 sampled = stickerTexture.sample(stickerSampler, stickerLocal);
+        // Keep transparent pixels privacy-safe, matching Android's fail-closed
+        // sticker overlay semantics.
+        float3 safeRgb = mix(float3(1.0, 0.80, 0.10), sampled.rgb, sampled.a);
+        color = float4(safeRgb, 1.0);
+        continue;
+      }
+
+      // Built-in fallback remains available if a custom asset cannot be read.
       float4 sticker = float4(1.0, 0.84, 0.0, 1.0);
-      float2 centered = local - float2(0.5);
+      float2 centered = stickerLocal - float2(0.5);
       float edge = dot(centered / float2(0.50, 0.48), centered / float2(0.50, 0.48));
       if (edge > 0.84) sticker = float4(0.12, 0.12, 0.12, 1.0);
-      bool leftLens = local.x >= 0.18 && local.x <= 0.46 && local.y >= 0.31 && local.y <= 0.56;
-      bool rightLens = local.x >= 0.54 && local.x <= 0.82 && local.y >= 0.31 && local.y <= 0.56;
-      bool bridge = local.x >= 0.44 && local.x <= 0.56 && local.y >= 0.39 && local.y <= 0.47;
+      bool leftLens = stickerLocal.x >= 0.18 && stickerLocal.x <= 0.46 && stickerLocal.y >= 0.31 && stickerLocal.y <= 0.56;
+      bool rightLens = stickerLocal.x >= 0.54 && stickerLocal.x <= 0.82 && stickerLocal.y >= 0.31 && stickerLocal.y <= 0.56;
+      bool bridge = stickerLocal.x >= 0.44 && stickerLocal.x <= 0.56 && stickerLocal.y >= 0.39 && stickerLocal.y <= 0.47;
       if (leftLens || rightLens || bridge) {
         sticker = float4(0.02, 0.02, 0.02, 1.0);
       }

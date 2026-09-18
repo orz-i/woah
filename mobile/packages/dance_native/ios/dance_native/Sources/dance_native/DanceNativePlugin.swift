@@ -44,6 +44,42 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
       result("iOS " + UIDevice.current.systemVersion)
     case "getBuildInfo":
       result(Self.buildInfo())
+    case "persistStickerAsset":
+      guard let arguments = call.arguments as? [String: Any],
+            let typedData = arguments["bytes"] as? FlutterStandardTypedData,
+            !typedData.data.isEmpty else {
+        result(FlutterError(
+          code: "INVALID_ARGS",
+          message: "bytes is required.",
+          details: nil
+        ))
+        return
+      }
+      do {
+        let fileManager = FileManager.default
+        let support = try fileManager.url(
+          for: .applicationSupportDirectory,
+          in: .userDomainMask,
+          appropriateFor: nil,
+          create: true
+        )
+        let directory = support.appendingPathComponent("stickers", isDirectory: true)
+        try fileManager.createDirectory(
+          at: directory,
+          withIntermediateDirectories: true
+        )
+        let file = directory.appendingPathComponent(
+          "sticker_\(Int(Date().timeIntervalSince1970 * 1000)).png"
+        )
+        try typedData.data.write(to: file, options: .atomic)
+        result(file.path)
+      } catch {
+        result(FlutterError(
+          code: "STICKER_PERSIST_FAILED",
+          message: "Failed to persist sticker asset.",
+          details: String(describing: error)
+        ))
+      }
     case "saveVideoToGallery":
       guard let arguments = call.arguments as? [String: Any],
             let filePath = arguments["filePath"] as? String,

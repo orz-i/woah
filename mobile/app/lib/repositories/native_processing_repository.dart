@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dance_domain/dance_domain.dart';
 import 'package:dance_native/dance_native.dart';
@@ -101,6 +103,10 @@ class NativeProcessingRepository {
       trimStartMs: trimStartMs,
       trimEndMs: trimEndMs,
     );
+  }
+
+  Future<String> persistStickerAsset(Uint8List pngBytes) {
+    return _client.persistStickerAsset(pngBytes);
   }
 
   Future<List<String>> getVideoFrameThumbnails({

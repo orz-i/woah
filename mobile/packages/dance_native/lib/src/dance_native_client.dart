@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:flutter/services.dart';
 import 'package:dance_domain/dance_domain.dart';
 import 'bridge/dance_api.g.dart';
@@ -124,6 +126,16 @@ class DanceNativeClient implements DanceProcessingEvents {
     );
   }
 
+  Future<String> persistStickerAsset(Uint8List pngBytes) async {
+    final path = await _channel.invokeMethod<String>('persistStickerAsset', {
+      'bytes': pngBytes,
+    });
+    if (path == null || path.isEmpty) {
+      throw StateError('Native sticker persistence returned no path.');
+    }
+    return path;
+  }
+
   Future<List<String>> getVideoFrameThumbnails({
     required String videoUri,
     required List<int> timestampsMs,
@@ -145,14 +157,11 @@ class DanceNativeClient implements DanceProcessingEvents {
     int timestampMs = 0,
     String backend = 'auto',
   }) {
-    return _channel.invokeMapMethod<dynamic, dynamic>(
-      'runIOSYoloPhase1Probe',
-      {
-        'videoUri': videoUri,
-        'timestampMs': timestampMs,
-        'backend': backend,
-      },
-    );
+    return _channel.invokeMapMethod<dynamic, dynamic>('runIOSYoloPhase1Probe', {
+      'videoUri': videoUri,
+      'timestampMs': timestampMs,
+      'backend': backend,
+    });
   }
 
   /// Toggle Android export live-preview capture for a running job.

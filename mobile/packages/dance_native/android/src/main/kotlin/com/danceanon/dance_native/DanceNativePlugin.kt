@@ -155,6 +155,23 @@ class DanceNativePlugin :
             "getPlatformVersion" -> {
                 result.success("Android ${Build.VERSION.RELEASE}")
             }
+            "persistStickerAsset" -> {
+                val bytes = call.argument<ByteArray>("bytes")
+                val ctx = context
+                if (bytes == null || bytes.isEmpty() || ctx == null) {
+                    result.error("INVALID_ARGS", "bytes or context is unavailable", null)
+                    return
+                }
+                try {
+                    val dir = File(ctx.filesDir, "stickers").apply { mkdirs() }
+                    val file = File(dir, "sticker_${System.currentTimeMillis()}.png")
+                    file.outputStream().use { it.write(bytes) }
+                    result.success(file.absolutePath)
+                } catch (e: Exception) {
+                    android.util.Log.e("DanceNativePlugin", "Failed to persist sticker: ${e.message}", e)
+                    result.error("STICKER_PERSIST_FAILED", e.message ?: "Failed to persist sticker", null)
+                }
+            }
             "saveVideoToGallery" -> {
                 val filePath = call.argument<String>("filePath")
                 val ctx = context

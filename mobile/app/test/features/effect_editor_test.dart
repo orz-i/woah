@@ -82,6 +82,25 @@ void main() {
     });
 
     test(
+      'Custom face sticker path and scale survive project configuration',
+      () {
+        final controller = EffectEditorController();
+        controller.init(testProject);
+
+        const customPath = '/app-support/stickers/sticker_123.png';
+        controller.updateStickerAsset(customPath);
+        controller.updateStickerScale(0.8);
+
+        final configured = controller.buildConfiguredProject();
+        expect(configured, isNotNull);
+        expect(configured!.effects.fillMode, FillMode.sticker);
+        expect(configured.effects.faceStickerEnabled, isTrue);
+        expect(configured.effects.stickerAssetId, customPath);
+        expect(configured.effects.stickerScale, 0.8);
+      },
+    );
+
+    test(
       'Initializes preview and guards against out-of-order responses with sequence ID',
       () async {
         final repo = _FakeNativeRepository();

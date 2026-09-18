@@ -110,14 +110,8 @@ void main() {
     for (final tool in ['trim', 'mask', 'frame', 'adjust']) {
       expect(find.byKey(ValueKey('editor-tool-$tool')), findsOneWidget);
     }
-    expect(
-      find.byKey(const ValueKey('editor-tool-protect')),
-      findsNothing,
-    );
-    expect(
-      find.byKey(const ValueKey('editor-tool-filter')),
-      findsNothing,
-    );
+    expect(find.byKey(const ValueKey('editor-tool-protect')), findsNothing);
+    expect(find.byKey(const ValueKey('editor-tool-filter')), findsNothing);
 
     expect(
       find.byKey(const ValueKey('bottom_control_drawer_handle')),
@@ -172,6 +166,32 @@ void main() {
     expect(find.text('质量'), findsNothing);
     expect(find.text('均衡'), findsNothing);
     expect(find.text('快速'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('face sticker tool exposes custom import and size control', (
+    tester,
+  ) async {
+    final repository = _FakeProtectionRepository();
+    final container = ProviderContainer(
+      overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(home: ProtectionEditorScreen(project: project)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('privacy-mode-face-only')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('sticker-import')), findsOneWidget);
+    expect(find.text('贴纸大小'), findsOneWidget);
+    expect(find.byType(Slider), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -758,9 +778,7 @@ void main() {
     effectController.updateStickerScale(1.4);
     await tester.pump(const Duration(milliseconds: 250));
 
-    final fullBodyOption = find.byKey(
-      const ValueKey('privacy-mode-full-body'),
-    );
+    final fullBodyOption = find.byKey(const ValueKey('privacy-mode-full-body'));
     await tester.ensureVisible(fullBodyOption);
     final fullBodyGesture = find.descendant(
       of: fullBodyOption,
