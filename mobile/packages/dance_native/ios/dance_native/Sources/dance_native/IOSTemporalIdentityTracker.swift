@@ -84,10 +84,32 @@ final class IOSTemporalIdentityTracker {
   private let protectedUnobservedMinScale: Float32 = 0.82
   private let protectedUnobservedMaxScale: Float32 = 1.18
   private let associationAmbiguityMargin: Float32 = 0.05
+  private let followIdHandoffRelaxedWindowUs: Int64 = 650_000
+  private let followIdHandoffWindowUs: Int64 = 1_100_000
+  private let followIdHandoffMinIoU: Float32 = 0.40
+  private let followIdHandoffMaxCenterDistanceRatio: Float32 = 0.24
+  private let followIdHandoffMinWidthRatio: Float32 = 0.58
+  private let followIdHandoffMaxWidthRatio: Float32 = 1.70
+  private let followIdHandoffMinHeightRatio: Float32 = 0.65
+  private let followIdHandoffMaxHeightRatio: Float32 = 1.55
+  private let followIdHandoffMinScoreMargin: Float32 = 0.08
+  private let followIdHandoffLateMinIoU: Float32 = 0.60
+  private let followIdHandoffLateMaxCenterDistanceRatio: Float32 = 0.12
+  private let followIdHandoffLateMinWidthRatio: Float32 = 0.65
+  private let followIdHandoffLateMaxWidthRatio: Float32 = 1.55
+  private let followIdHandoffLateMinHeightRatio: Float32 = 0.75
+  private let followIdHandoffLateMaxHeightRatio: Float32 = 1.35
+  private let followIdHandoffLateMinScoreMargin: Float32 = 0.10
   private var tracks: [Track] = []
   private var currentFacePrivacyEvidence: [IOSFreshFacePrivacyClassEvidence] = []
   private var nextTrackId = 0
   private var initialized = false
+  private var latestTimestampUs: Int64 = 0
+  private var followStateTargetId: Int?
+  private var followIdentityTrackId: Int?
+  private var followOcclusionProxyTrackId: Int?
+  private var followLastIdentityBounds: SIMD4<Float>?
+  private var followLastIdentityTimestampUs: Int64?
 
   init(
     metadata: IOSAnalysisMetadata?,
@@ -116,9 +138,10 @@ final class IOSTemporalIdentityTracker {
     }
     // Camera following is not a privacy guarantee. Keep the explicit follow ID
     // out of the strict privacy-grade identity lane so an ambiguous crossing
-    // cannot freeze reframing indefinitely. The export camera has a bounded
-    // predicted-bbox grace for short observation gaps.
-    _ = followTargetId
+    // cannot freeze reframing indefinitely. Camera continuity is handled by a
+    // separate bounded proxy/handoff state below and never changes privacy IDs.
+    followStateTargetId = followTargetId
+    followIdentityTrackId = followTargetId
     nextTrackId = (metadata?.persons.map(\.id).max() ?? -1) + 1
   }
 
@@ -127,6 +150,7 @@ final class IOSTemporalIdentityTracker {
     preprocess: IOSYoloPreprocessResult,
     timestampUs: Int64
   ) throws -> [IOSPreviewPerson] {
+    latestTimestampUs = timestampUs
     currentFacePrivacyEvidence.removeAll(keepingCapacity: true)
     if !initialized {
       initialized = true
@@ -352,45 +376,131 @@ final class IOSTemporalIdentityTracker {
   }
 
   func followBounds(for id: Int, predictionGraceFrames: Int = 6) -> SIMD4<Float>? {
-    guard let track = tracks.first(where: { $0.id == id }) else { return nil }
+    if followStateTargetId != id {
+      followStateTargetId = id
+      followIdentityTrackId = id
+      followOcclusionProxyTrackId = nil
+      followLastIdentityBounds = nil
+      followLastIdentityTimestampUs = nil
+    }
+
+    let rootTarget = tracks.first(where: { $0.id == id })
+    if let rootTarget,
+       let rootBounds = cameraBounds(
+         for: rootTarget,
+         predictionGraceFrames: predictionGraceFrames
+       ) {
+      followIdentityTrackId = id
+      followOcclusionProxyTrackId = nil
+      followLastIdentityBounds = rootBounds
+      followLastIdentityTimestampUs = latestTimestampUs
+      return rootBounds
+    }
+
+    let identityId = followIdentityTrackId ?? id
+    followIdentityTrackId = identityId
+    let identityTrack = tracks.first(where: { $0.id == identityId })
+    if let identityTrack,
+       let identityBounds = cameraBounds(
+         for: identityTrack,
+         predictionGraceFrames: predictionGraceFrames
+       ) {
+      followOcclusionProxyTrackId = nil
+      followLastIdentityBounds = identityBounds
+      followLastIdentityTimestampUs = latestTimestampUs
+      return identityBounds
+    }
+
+    if identityTrack == nil
+      || (identityTrack?.state != .occluded && identityTrack?.state != .reacquiring) {
+      followOcclusionProxyTrackId = nil
+    }
+
+    // A temporary occlusion proxy is sticky only while the accepted identity
+    // itself remains in the occlusion/reacquire lane. It never becomes the
+    // identity anchor used by a later ID handoff.
+    if let proxyId = followOcclusionProxyTrackId {
+      guard let proxy = tracks.first(where: { $0.id == proxyId }) else { return nil }
+      return cameraBounds(for: proxy, predictionGraceFrames: predictionGraceFrames)
+    }
+
+    if let identityTrack,
+       identityTrack.state == .occluded || identityTrack.state == .reacquiring,
+       let proxy = resolveOcclusionFollowProxy(target: identityTrack) {
+      followOcclusionProxyTrackId = proxy.id
+      return cameraBounds(for: proxy, predictionGraceFrames: predictionGraceFrames)
+    }
+
+    guard identityTrack == nil || identityTrack?.state == .lost else { return nil }
+    guard let lastIdentityTimestampUs = followLastIdentityTimestampUs,
+          latestTimestampUs >= lastIdentityTimestampUs else {
+      return nil
+    }
+    let handoffAgeUs = latestTimestampUs - lastIdentityTimestampUs
+    guard handoffAgeUs <= followIdHandoffWindowUs,
+          let proxy = resolveLostFollowHandoffProxy(
+            anchor: followLastIdentityBounds,
+            targetId: identityId,
+            handoffAgeUs: handoffAgeUs
+          ) else {
+      return nil
+    }
+
+    followIdentityTrackId = proxy.id
+    followOcclusionProxyTrackId = nil
+    guard let proxyBounds = cameraBounds(
+      for: proxy,
+      predictionGraceFrames: predictionGraceFrames
+    ) else {
+      return nil
+    }
+    followLastIdentityBounds = proxyBounds
+    followLastIdentityTimestampUs = latestTimestampUs
+    return proxyBounds
+  }
+
+  private func cameraBounds(
+    for track: Track,
+    predictionGraceFrames: Int
+  ) -> SIMD4<Float>? {
     if track.observedThisFrame {
       let box = track.detection
       return SIMD4<Float>(box.x1, box.y1, box.x2, box.y2)
     }
-    if predictionGraceFrames > 0,
-       track.missedFrames > 0,
-       track.missedFrames <= predictionGraceFrames,
-       track.state != .lost {
-      return SIMD4<Float>(
-        track.predictedX1,
-        track.predictedY1,
-        track.predictedX2,
-        track.predictedY2
-      )
-    }
-
-    guard track.state == .occluded || track.state == .reacquiring else {
+    guard predictionGraceFrames > 0,
+          track.missedFrames > 0,
+          track.missedFrames <= predictionGraceFrames,
+          track.state != .lost else {
       return nil
     }
-    let targetWidth = max(1, track.predictedX2 - track.predictedX1)
-    let targetHeight = max(1, track.predictedY2 - track.predictedY1)
-    let referenceDimension = max(1, max(targetWidth, targetHeight))
-    let targetCenterX = (track.predictedX1 + track.predictedX2) * 0.5
-    let targetCenterY = (track.predictedY1 + track.predictedY2) * 0.5
+    return SIMD4<Float>(
+      track.predictedX1,
+      track.predictedY1,
+      track.predictedX2,
+      track.predictedY2
+    )
+  }
 
-    let proxy = tracks
+  private func resolveOcclusionFollowProxy(target: Track) -> Track? {
+    let targetWidth = max(1, target.predictedX2 - target.predictedX1)
+    let targetHeight = max(1, target.predictedY2 - target.predictedY1)
+    let referenceDimension = max(1, max(targetWidth, targetHeight))
+    let targetCenterX = (target.predictedX1 + target.predictedX2) * 0.5
+    let targetCenterY = (target.predictedY1 + target.predictedY2) * 0.5
+
+    return tracks
       .filter { candidate in
-        candidate.id != track.id
+        candidate.id != target.id
           && candidate.observedThisFrame
           && candidate.state != .lost
       }
       .compactMap { candidate -> (Track, Float32)? in
         let box = candidate.detection
         let iou = rectIoU(
-          track.predictedX1,
-          track.predictedY1,
-          track.predictedX2,
-          track.predictedY2,
+          target.predictedX1,
+          target.predictedY1,
+          target.predictedX2,
+          target.predictedY2,
           box.x1,
           box.y1,
           box.x2,
@@ -414,10 +524,91 @@ final class IOSTemporalIdentityTracker {
         return (candidate, iou)
       }
       .max(by: { first, second in first.1 < second.1 })?.0
+  }
 
-    guard let proxy else { return nil }
-    let box = proxy.detection
-    return SIMD4<Float>(box.x1, box.y1, box.x2, box.y2)
+  private func resolveLostFollowHandoffProxy(
+    anchor: SIMD4<Float>?,
+    targetId: Int,
+    handoffAgeUs: Int64
+  ) -> Track? {
+    guard let anchor,
+          handoffAgeUs >= 0,
+          handoffAgeUs <= followIdHandoffWindowUs else {
+      return nil
+    }
+    let lateHandoff = handoffAgeUs > followIdHandoffRelaxedWindowUs
+    let minIoU = lateHandoff ? followIdHandoffLateMinIoU : followIdHandoffMinIoU
+    let maxCenterDistanceRatio = lateHandoff
+      ? followIdHandoffLateMaxCenterDistanceRatio
+      : followIdHandoffMaxCenterDistanceRatio
+    let minWidthRatio = lateHandoff
+      ? followIdHandoffLateMinWidthRatio
+      : followIdHandoffMinWidthRatio
+    let maxWidthRatio = lateHandoff
+      ? followIdHandoffLateMaxWidthRatio
+      : followIdHandoffMaxWidthRatio
+    let minHeightRatio = lateHandoff
+      ? followIdHandoffLateMinHeightRatio
+      : followIdHandoffMinHeightRatio
+    let maxHeightRatio = lateHandoff
+      ? followIdHandoffLateMaxHeightRatio
+      : followIdHandoffMaxHeightRatio
+    let minScoreMargin = lateHandoff
+      ? followIdHandoffLateMinScoreMargin
+      : followIdHandoffMinScoreMargin
+    let anchorWidth = max(1, anchor.z - anchor.x)
+    let anchorHeight = max(1, anchor.w - anchor.y)
+    let referenceDimension = max(1, max(anchorWidth, anchorHeight))
+    let anchorCenterX = (anchor.x + anchor.z) * 0.5
+    let anchorCenterY = (anchor.y + anchor.w) * 0.5
+
+    let candidates = tracks.compactMap { candidate -> (track: Track, score: Float32)? in
+      guard candidate.id != targetId,
+            candidate.observedThisFrame,
+            candidate.state != .lost else {
+        return nil
+      }
+      let box = candidate.detection
+      let iou = rectIoU(
+        anchor.x,
+        anchor.y,
+        anchor.z,
+        anchor.w,
+        box.x1,
+        box.y1,
+        box.x2,
+        box.y2
+      )
+      let candidateWidth = max(1, box.x2 - box.x1)
+      let candidateHeight = max(1, box.y2 - box.y1)
+      let widthRatio = candidateWidth / anchorWidth
+      let heightRatio = candidateHeight / anchorHeight
+      let candidateCenterX = (box.x1 + box.x2) * 0.5
+      let candidateCenterY = (box.y1 + box.y2) * 0.5
+      let dx = candidateCenterX - anchorCenterX
+      let dy = candidateCenterY - anchorCenterY
+      let centerDistanceRatio = sqrt(dx * dx + dy * dy) / referenceDimension
+      guard iou >= minIoU,
+            centerDistanceRatio <= maxCenterDistanceRatio,
+            widthRatio >= minWidthRatio,
+            widthRatio <= maxWidthRatio,
+            heightRatio >= minHeightRatio,
+            heightRatio <= maxHeightRatio else {
+        return nil
+      }
+      let score = iou
+        - centerDistanceRatio * 0.25
+        - abs(widthRatio - 1) * 0.10
+        - abs(heightRatio - 1) * 0.10
+      return (candidate, score)
+    }.sorted { $0.score > $1.score }
+
+    guard let best = candidates.first else { return nil }
+    if candidates.count > 1,
+       best.score - candidates[1].score < minScoreMargin {
+      return nil
+    }
+    return best.track
   }
 
   func paritySnapshots() -> [IOSTemporalTrackSnapshot] {

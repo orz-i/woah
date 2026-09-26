@@ -52,6 +52,11 @@ class ExportPipeline(
     private val eventEmitter: DanceProcessingEvents? = null
 ) {
 
+    private enum class FollowCameraProxyMode {
+        OCCLUSION,
+        ID_HANDOFF
+    }
+
     private fun canonicalizeCpuReferenceForFace(
         cpuReferenceTracks: List<TrackedPerson>
     ): List<TrackedPerson> = cpuReferenceTracks.map { cpuTrack ->
@@ -421,7 +426,14 @@ class ExportPipeline(
                 val trackManager = TrackManager()
                 val reframeFollower = com.danceanon.native.camera.SmoothFollower()
                 var reframeInitialized = false
-                var lastReframeProxyTrackId: Int? = null
+                var reframeIdentityTrackId = request.follow.targetPersonId?.toInt()
+                var reframeOcclusionProxyTrackId: Int? = null
+                var lastLoggedReframeProxyTrackId: Int? = null
+                var lastLoggedReframeProxyMode: FollowCameraProxyMode? = null
+                var reframeLastIdentityTrackBox: FloatRect? = null
+                var reframeLastIdentityPtsUs: Long? = null
+                var reframeLastHandoffIou: Float? = null
+                var reframeLastHandoffAgeUs: Long? = null
                 // Temporal fresh-class evidence has no exact person ID. It is safe
                 // only for the historical FULL_BODY-only compositor. In mixed mode
                 // it can label nearby FACE_ONLY detections as SELECTED and turn
@@ -1729,42 +1741,186 @@ class ExportPipeline(
                                 }
 
                                 val followTargetId = requireNotNull(request.follow.targetPersonId).toInt()
-                                val followTrack = trackedList.firstOrNull { it.id == followTargetId }
-                                val primaryFollowObservation = resolveFollowCameraObservation(
-                                    track = followTrack,
+                                val rootFollowTrack = trackedList.firstOrNull { it.id == followTargetId }
+                                val rootFollowObservation = resolveFollowCameraObservation(
+                                    track = rootFollowTrack,
                                     trackingWidth = trackingWidth,
                                     trackingHeight = trackingHeight
                                 )
-                                val followProxy = if (primaryFollowObservation == null) {
-                                    resolveFollowCameraOcclusionProxy(
-                                        target = followTrack,
-                                        tracks = trackedList
+                                if (rootFollowObservation != null && rootFollowTrack != null) {
+                                    reframeIdentityTrackId = followTargetId
+                                    reframeOcclusionProxyTrackId = null
+                                    reframeLastIdentityTrackBox = rootFollowTrack.bbox
+                                    reframeLastIdentityPtsUs = ptsUs
+                                    reframeLastHandoffIou = null
+                                    reframeLastHandoffAgeUs = null
+                                }
+
+                                var identityTrackId = reframeIdentityTrackId ?: followTargetId
+                                reframeIdentityTrackId = identityTrackId
+                                var identityTrack = trackedList.firstOrNull { it.id == identityTrackId }
+                                var identityObservation = if (rootFollowObservation != null) {
+                                    rootFollowObservation
+                                } else {
+                                    resolveFollowCameraObservation(
+                                        track = identityTrack,
+                                        trackingWidth = trackingWidth,
+                                        trackingHeight = trackingHeight
                                     )
+                                }
+                                if (
+                                    rootFollowObservation == null &&
+                                    identityObservation != null &&
+                                    identityTrack != null
+                                ) {
+                                    reframeLastIdentityTrackBox = identityTrack.bbox
+                                    reframeLastIdentityPtsUs = ptsUs
+                                    reframeOcclusionProxyTrackId = null
+                                }
+
+                                if (
+                                    identityObservation == null &&
+                                    (
+                                        identityTrack == null ||
+                                            (
+                                                identityTrack.state != TrackState.OCCLUDED &&
+                                                    identityTrack.state != TrackState.REACQUIRING
+                                            )
+                                    )
+                                ) {
+                                    reframeOcclusionProxyTrackId = null
+                                }
+
+                                var followOcclusionProxy = if (identityObservation == null) {
+                                    reframeOcclusionProxyTrackId?.let { proxyId ->
+                                        trackedList.firstOrNull { track -> track.id == proxyId }
+                                    }
                                 } else {
                                     null
                                 }
-                                val followObservation = primaryFollowObservation
-                                    ?: followProxy?.let { proxy ->
-                                        resolveFollowCameraObservation(
-                                            track = proxy,
+                                var followOcclusionProxyObservation = followOcclusionProxy?.let { proxy ->
+                                    resolveFollowCameraObservation(
+                                        track = proxy,
+                                        trackingWidth = trackingWidth,
+                                        trackingHeight = trackingHeight
+                                    )
+                                }
+                                if (
+                                    identityObservation == null &&
+                                    reframeOcclusionProxyTrackId == null
+                                ) {
+                                    val freshOcclusionProxy = resolveFollowCameraOcclusionProxy(
+                                        target = identityTrack,
+                                        tracks = trackedList
+                                    )
+                                    if (freshOcclusionProxy != null) {
+                                        reframeOcclusionProxyTrackId = freshOcclusionProxy.id
+                                        followOcclusionProxy = freshOcclusionProxy
+                                        followOcclusionProxyObservation = resolveFollowCameraObservation(
+                                            track = freshOcclusionProxy,
                                             trackingWidth = trackingWidth,
                                             trackingHeight = trackingHeight
                                         )
                                     }
+                                }
+
+                                val handoffAgeBeforeUs = reframeLastIdentityPtsUs?.let { lastIdentityPtsUs ->
+                                    (ptsUs - lastIdentityPtsUs).coerceAtLeast(0L)
+                                }
+                                if (
+                                    identityObservation == null &&
+                                    (identityTrack == null || identityTrack.state == TrackState.LOST) &&
+                                    handoffAgeBeforeUs != null &&
+                                    handoffAgeBeforeUs <= FOLLOW_CAMERA_ID_HANDOFF_WINDOW_US
+                                ) {
+                                    val handoffAnchor = reframeLastIdentityTrackBox
+                                    val handoffTrack = resolveFollowCameraLostHandoffProxy(
+                                        anchor = handoffAnchor,
+                                        targetId = identityTrackId,
+                                        tracks = trackedList,
+                                        handoffAgeUs = handoffAgeBeforeUs
+                                    )
+                                    if (handoffTrack != null) {
+                                        val previousIdentityTrackId = identityTrackId
+                                        val handoffIou = handoffAnchor?.let { anchor ->
+                                            TrackManager.computeBBoxIoU(anchor, handoffTrack.bbox)
+                                        }
+                                        identityTrackId = handoffTrack.id
+                                        reframeIdentityTrackId = handoffTrack.id
+                                        identityTrack = handoffTrack
+                                        identityObservation = resolveFollowCameraObservation(
+                                            track = handoffTrack,
+                                            trackingWidth = trackingWidth,
+                                            trackingHeight = trackingHeight
+                                        )
+                                        reframeOcclusionProxyTrackId = null
+                                        followOcclusionProxy = null
+                                        followOcclusionProxyObservation = null
+                                        if (identityObservation != null) {
+                                            reframeLastIdentityTrackBox = handoffTrack.bbox
+                                            reframeLastIdentityPtsUs = ptsUs
+                                        }
+                                        reframeLastHandoffIou = handoffIou
+                                        reframeLastHandoffAgeUs = handoffAgeBeforeUs
+                                        if (com.danceanon.native.diagnostics.DiagnosticsBuild.ENABLED) {
+                                            com.danceanon.native.diagnostics.NativeDiagnostics.event(
+                                                level = "INFO",
+                                                component = "ExportPipeline",
+                                                event = "AUTO_REFRAME_ID_HANDOFF",
+                                                fields = mapOf(
+                                                    "job_id" to jobId,
+                                                    "frame" to processedFrames,
+                                                    "pts_us" to ptsUs,
+                                                    "target_person_id" to followTargetId,
+                                                    "previous_identity_track_id" to previousIdentityTrackId,
+                                                    "current_identity_track_id" to handoffTrack.id,
+                                                    "handoff_age_us" to handoffAgeBeforeUs,
+                                                    "handoff_iou" to handoffIou,
+                                                    "late_strong_handoff" to (
+                                                        handoffAgeBeforeUs > FOLLOW_CAMERA_ID_HANDOFF_RELAXED_WINDOW_US
+                                                    )
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
+
+                                val currentIdentityTrackId = reframeIdentityTrackId ?: followTargetId
+                                val identityIsHandoff = currentIdentityTrackId != followTargetId
+                                val followObservation = identityObservation ?: followOcclusionProxyObservation
                                 val targetSource = when {
-                                    followTrack?.observedThisFrame == true -> "OBSERVED"
-                                    primaryFollowObservation != null -> "PREDICTED"
-                                    followProxy != null -> "OCCLUSION_PROXY"
+                                    identityObservation != null && !identityIsHandoff &&
+                                        identityTrack?.observedThisFrame == true -> "OBSERVED"
+                                    identityObservation != null && !identityIsHandoff -> "PREDICTED"
+                                    identityObservation != null -> "ID_HANDOFF_PROXY"
+                                    followOcclusionProxyObservation != null -> "OCCLUSION_PROXY"
                                     else -> "HELD"
                                 }
-                                val followProxyIou = if (followTrack != null && followProxy != null) {
-                                    TrackManager.computeBBoxIoU(followTrack.bbox, followProxy.bbox)
-                                } else {
-                                    null
+                                val effectiveProxyTrackId = when {
+                                    reframeOcclusionProxyTrackId != null -> reframeOcclusionProxyTrackId
+                                    identityIsHandoff -> currentIdentityTrackId
+                                    else -> null
+                                }
+                                val effectiveProxyMode = when {
+                                    reframeOcclusionProxyTrackId != null -> FollowCameraProxyMode.OCCLUSION
+                                    identityIsHandoff -> FollowCameraProxyMode.ID_HANDOFF
+                                    else -> null
+                                }
+                                val followProxyIou = when {
+                                    followOcclusionProxy != null && identityTrack != null ->
+                                        TrackManager.computeBBoxIoU(identityTrack.bbox, followOcclusionProxy.bbox)
+                                    identityIsHandoff -> reframeLastHandoffIou
+                                    else -> null
+                                }
+                                val continuityAgeUs = reframeLastIdentityPtsUs?.let { lastIdentityPtsUs ->
+                                    (ptsUs - lastIdentityPtsUs).coerceAtLeast(0L)
                                 }
                                 if (
                                     com.danceanon.native.diagnostics.DiagnosticsBuild.ENABLED &&
-                                    lastReframeProxyTrackId != followProxy?.id
+                                    (
+                                        lastLoggedReframeProxyTrackId != effectiveProxyTrackId ||
+                                            lastLoggedReframeProxyMode != effectiveProxyMode
+                                    )
                                 ) {
                                     com.danceanon.native.diagnostics.NativeDiagnostics.event(
                                         level = "INFO",
@@ -1775,14 +1931,23 @@ class ExportPipeline(
                                             "frame" to processedFrames,
                                             "pts_us" to ptsUs,
                                             "target_person_id" to followTargetId,
-                                            "previous_proxy_id" to lastReframeProxyTrackId,
-                                            "current_proxy_id" to followProxy?.id,
+                                            "identity_track_id" to currentIdentityTrackId,
+                                            "previous_proxy_id" to lastLoggedReframeProxyTrackId,
+                                            "previous_proxy_mode" to lastLoggedReframeProxyMode?.name,
+                                            "current_proxy_id" to effectiveProxyTrackId,
                                             "current_proxy_iou" to followProxyIou,
-                                            "target_state" to followTrack?.state?.name,
-                                            "target_frames_since_observation" to followTrack?.framesSinceLastObservation
+                                            "proxy_mode" to effectiveProxyMode?.name,
+                                            "continuity_age_us" to continuityAgeUs,
+                                            "identity_state" to identityTrack?.state?.name,
+                                            "identity_frames_since_observation" to
+                                                identityTrack?.framesSinceLastObservation,
+                                            "root_target_state" to rootFollowTrack?.state?.name,
+                                            "root_target_frames_since_observation" to
+                                                rootFollowTrack?.framesSinceLastObservation
                                         )
                                     )
-                                    lastReframeProxyTrackId = followProxy?.id
+                                    lastLoggedReframeProxyTrackId = effectiveProxyTrackId
+                                    lastLoggedReframeProxyMode = effectiveProxyMode
                                 }
                                 val visualCrop = reframeFollower.cropForFrame(
                                     target = followObservation ?: if (!reframeInitialized) followSeed else null,
@@ -1799,7 +1964,9 @@ class ExportPipeline(
                                         event = "POST_CROP_FIRST_FRAME",
                                         fields = mapOf(
                                             "target_person_id" to followTargetId,
-                                            "observed_target" to (followTrack?.observedThisFrame == true),
+                                            "identity_track_id" to currentIdentityTrackId,
+                                            "observed_target" to (identityTrack?.observedThisFrame == true),
+                                            "root_observed_target" to (rootFollowTrack?.observedThisFrame == true),
                                             "target_source" to targetSource,
                                             "crop_left" to visualCrop.left,
                                             "crop_top" to visualCrop.top,
@@ -1821,12 +1988,22 @@ class ExportPipeline(
                                             "frame" to processedFrames,
                                             "pts_us" to ptsUs,
                                             "target_person_id" to followTargetId,
-                                            "observed_target" to (followTrack?.observedThisFrame == true),
+                                            "identity_track_id" to currentIdentityTrackId,
+                                            "observed_target" to (identityTrack?.observedThisFrame == true),
+                                            "root_observed_target" to (rootFollowTrack?.observedThisFrame == true),
                                             "target_source" to targetSource,
-                                            "target_state" to followTrack?.state?.name,
-                                            "target_frames_since_observation" to followTrack?.framesSinceLastObservation,
-                                            "target_proxy_id" to followProxy?.id,
+                                            "target_state" to identityTrack?.state?.name,
+                                            "target_frames_since_observation" to
+                                                identityTrack?.framesSinceLastObservation,
+                                            "root_target_state" to rootFollowTrack?.state?.name,
+                                            "root_target_frames_since_observation" to
+                                                rootFollowTrack?.framesSinceLastObservation,
+                                            "target_proxy_id" to effectiveProxyTrackId,
                                             "target_proxy_iou" to followProxyIou,
+                                            "target_proxy_mode" to effectiveProxyMode?.name,
+                                            "target_occlusion_proxy_id" to reframeOcclusionProxyTrackId,
+                                            "target_handoff_age_us" to continuityAgeUs,
+                                            "target_last_handoff_age_us" to reframeLastHandoffAgeUs,
                                             "target_center_x" to followObservation?.centerX,
                                             "target_center_y" to followObservation?.centerY,
                                             "crop_center_x" to visualCrop.centerX,
@@ -2343,6 +2520,22 @@ class ExportPipeline(
         private const val CPU_MT4_ARTIFACT_MAX_PTS_US = 450_000L
         private const val CPU_MT4_PRODUCTION_REUSE_PARITY_INTERVAL_FRAMES = 120
         internal const val FOLLOW_CAMERA_PREDICTION_GRACE_FRAMES = 6
+        internal const val FOLLOW_CAMERA_ID_HANDOFF_RELAXED_WINDOW_US = 650_000L
+        internal const val FOLLOW_CAMERA_ID_HANDOFF_WINDOW_US = 1_100_000L
+        private const val FOLLOW_CAMERA_ID_HANDOFF_MIN_IOU = 0.40f
+        private const val FOLLOW_CAMERA_ID_HANDOFF_MAX_CENTER_DISTANCE_RATIO = 0.24f
+        private const val FOLLOW_CAMERA_ID_HANDOFF_MIN_WIDTH_RATIO = 0.58f
+        private const val FOLLOW_CAMERA_ID_HANDOFF_MAX_WIDTH_RATIO = 1.70f
+        private const val FOLLOW_CAMERA_ID_HANDOFF_MIN_HEIGHT_RATIO = 0.65f
+        private const val FOLLOW_CAMERA_ID_HANDOFF_MAX_HEIGHT_RATIO = 1.55f
+        private const val FOLLOW_CAMERA_ID_HANDOFF_MIN_SCORE_MARGIN = 0.08f
+        private const val FOLLOW_CAMERA_ID_HANDOFF_LATE_MIN_IOU = 0.60f
+        private const val FOLLOW_CAMERA_ID_HANDOFF_LATE_MAX_CENTER_DISTANCE_RATIO = 0.12f
+        private const val FOLLOW_CAMERA_ID_HANDOFF_LATE_MIN_WIDTH_RATIO = 0.65f
+        private const val FOLLOW_CAMERA_ID_HANDOFF_LATE_MAX_WIDTH_RATIO = 1.55f
+        private const val FOLLOW_CAMERA_ID_HANDOFF_LATE_MIN_HEIGHT_RATIO = 0.75f
+        private const val FOLLOW_CAMERA_ID_HANDOFF_LATE_MAX_HEIGHT_RATIO = 1.35f
+        private const val FOLLOW_CAMERA_ID_HANDOFF_LATE_MIN_SCORE_MARGIN = 0.10f
         internal const val SELECTION_IDENTITY_ROOT_MIN_CONFIDENCE = 0.60
 
         internal fun resolveFollowCameraObservation(
@@ -2412,6 +2605,108 @@ class ExportPipeline(
                 }
                 .maxByOrNull { it.second }
                 ?.first
+        }
+
+        internal fun resolveFollowCameraLostHandoffProxy(
+            anchor: FloatRect?,
+            targetId: Int,
+            tracks: List<TrackedPerson>,
+            handoffAgeUs: Long
+        ): TrackedPerson? {
+            if (
+                anchor == null ||
+                anchor.width <= 0f ||
+                anchor.height <= 0f ||
+                handoffAgeUs < 0L ||
+                handoffAgeUs > FOLLOW_CAMERA_ID_HANDOFF_WINDOW_US
+            ) {
+                return null
+            }
+            val lateHandoff = handoffAgeUs > FOLLOW_CAMERA_ID_HANDOFF_RELAXED_WINDOW_US
+            val minIou = if (lateHandoff) {
+                FOLLOW_CAMERA_ID_HANDOFF_LATE_MIN_IOU
+            } else {
+                FOLLOW_CAMERA_ID_HANDOFF_MIN_IOU
+            }
+            val maxCenterDistanceRatio = if (lateHandoff) {
+                FOLLOW_CAMERA_ID_HANDOFF_LATE_MAX_CENTER_DISTANCE_RATIO
+            } else {
+                FOLLOW_CAMERA_ID_HANDOFF_MAX_CENTER_DISTANCE_RATIO
+            }
+            val minWidthRatio = if (lateHandoff) {
+                FOLLOW_CAMERA_ID_HANDOFF_LATE_MIN_WIDTH_RATIO
+            } else {
+                FOLLOW_CAMERA_ID_HANDOFF_MIN_WIDTH_RATIO
+            }
+            val maxWidthRatio = if (lateHandoff) {
+                FOLLOW_CAMERA_ID_HANDOFF_LATE_MAX_WIDTH_RATIO
+            } else {
+                FOLLOW_CAMERA_ID_HANDOFF_MAX_WIDTH_RATIO
+            }
+            val minHeightRatio = if (lateHandoff) {
+                FOLLOW_CAMERA_ID_HANDOFF_LATE_MIN_HEIGHT_RATIO
+            } else {
+                FOLLOW_CAMERA_ID_HANDOFF_MIN_HEIGHT_RATIO
+            }
+            val maxHeightRatio = if (lateHandoff) {
+                FOLLOW_CAMERA_ID_HANDOFF_LATE_MAX_HEIGHT_RATIO
+            } else {
+                FOLLOW_CAMERA_ID_HANDOFF_MAX_HEIGHT_RATIO
+            }
+            val minScoreMargin = if (lateHandoff) {
+                FOLLOW_CAMERA_ID_HANDOFF_LATE_MIN_SCORE_MARGIN
+            } else {
+                FOLLOW_CAMERA_ID_HANDOFF_MIN_SCORE_MARGIN
+            }
+            val anchorWidth = anchor.width.coerceAtLeast(1f)
+            val anchorHeight = anchor.height.coerceAtLeast(1f)
+            val referenceDim = maxOf(anchorWidth, anchorHeight, 1f)
+
+            data class Candidate(
+                val track: TrackedPerson,
+                val score: Float
+            )
+
+            val candidates = tracks.asSequence()
+                .filter { candidate ->
+                    candidate.id != targetId &&
+                        candidate.observedThisFrame &&
+                        candidate.state != TrackState.LOST &&
+                        candidate.state != TrackState.REMOVED
+                }
+                .mapNotNull { candidate ->
+                    val candidateBox = candidate.bbox
+                    val iou = TrackManager.computeBBoxIoU(anchor, candidateBox)
+                    val dx = candidateBox.centerX - anchor.centerX
+                    val dy = candidateBox.centerY - anchor.centerY
+                    val centerDistanceRatio = sqrt(dx * dx + dy * dy) / referenceDim
+                    val widthRatio = candidateBox.width.coerceAtLeast(1f) / anchorWidth
+                    val heightRatio = candidateBox.height.coerceAtLeast(1f) / anchorHeight
+                    if (
+                        iou < minIou ||
+                        centerDistanceRatio > maxCenterDistanceRatio ||
+                        widthRatio !in minWidthRatio..maxWidthRatio ||
+                        heightRatio !in minHeightRatio..maxHeightRatio
+                    ) {
+                        null
+                    } else {
+                        val score =
+                            iou -
+                                centerDistanceRatio * 0.25f -
+                                kotlin.math.abs(widthRatio - 1f) * 0.10f -
+                                kotlin.math.abs(heightRatio - 1f) * 0.10f
+                        Candidate(candidate, score)
+                    }
+                }
+                .sortedByDescending { it.score }
+                .toList()
+
+            val best = candidates.firstOrNull() ?: return null
+            val second = candidates.getOrNull(1)
+            if (second != null && best.score - second.score < minScoreMargin) {
+                return null
+            }
+            return best.track
         }
 
         internal fun canonicalizeFaceReferenceCoordinate(value: Float): Float =

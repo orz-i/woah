@@ -15,7 +15,7 @@
 - 固定单主角，默认 9:16，最大保留源画面高度；没有额外特写缩放、自动切人、场景切换识别或手工关键帧。
 - 主角必须由用户明确选择；不会再从保护对象或人物列表中静默选择第一个人作为镜头目标。
 - 主角在边缘时裁切框停在源画面边界，不能保证人物始终严格居中；姿态横向展开超过裁切宽度时仍可能截断四肢。
-- 丢失可信观察后，相机先使用最多 6 帧的主角自身预测；若主角处于遮挡/重获阶段且存在与预测框高度重叠、中心和尺寸都接近的当前可观测 duplicate/occluder track，则只把该 bbox 临时作为相机代理，不修改真实人物 ID 或隐私归属。没有安全代理时保持最后可信构图；长期离场不能凭空恢复主角。
+- 丢失可信观察后，相机先使用最多 6 帧的当前主角身份预测；若该身份处于遮挡/重获阶段且存在与预测框高度重叠、中心和尺寸都接近的当前可观测 duplicate/occluder track，则只把该 track 作为临时相机代理，不修改真实人物 ID、相机身份锚点或隐私归属。若当前相机身份随后进入 LOST/被 tracker 移除，则允许 camera-only ID 接力：650 ms 内使用常规唯一几何门槛；650 ms–1.1 s 只接受 IoU/中心/尺度更强的唯一连续候选。接力后的新 ID 成为新的相机身份锚点，因此可以安全链式处理 `旧 ID → 新 ID → 再新 ID` 的普通 tracker 断链；任一阶段存在多个近似候选或超过 1.1 s 都保持最后可信构图，不凭空切人。
 - 复用已有分割/身份跟踪，不增加第二套检测模型，不恢复 SAM2 或 ONNX。
 
 ## 几何与状态约定
@@ -30,13 +30,13 @@
 这些是第一版构图参数，不是基于真机视频得出的最佳值。时间倒退、关闭跟随或更换目标会清除相机状态。
 
 Android 跟随开启时，推理/跟踪始终保持完整源显示空间，原有隐私保护链路不再感知竖屏输出尺寸。
-主角仅加入 identity-protected 集合，不加入隐私集合。自动运镜改为渲染后处理：第一 GPU pass 先按完整源画幅
+主角不加入隐私级 strict identity-protected 集合，也不加入隐私集合；运镜使用独立、短时且带唯一性约束的 camera continuity bridge，避免严格隐私身份规则在交叉遮挡时把相机永久冻结。自动运镜改为渲染后处理：第一 GPU pass 先按完整源画幅
 完成 full-body mask、遮挡关系和 face sticker 合成；第二 GPU pass 只对已经保护完成的 RGBA 纹理应用 cropRect。
 因此裁切不再参与任何隐私 mask/贴纸的采样坐标。mask 没有显式 samplingRect 时，也必须使用其原始源画幅尺寸，
 禁止回退到 9:16 输出尺寸。主角相机代理只消费现有 tracker 的 bbox，不参与 TrackManager 身份变更。top-left crop 到 screen-GL 的转换与 post-crop texture matrix 均由纯几何单测锁定。
 9:16 首帧预览和最终导出都使用同一后处理结构与 18×32 整数单位画幅；预览失败时不会随意换主角。
 
-iOS 使用相同参数的 `IOSSubjectReframer`，跟踪使用完整源画面。
+iOS 使用相同参数的 `IOSSubjectReframer`，跟踪使用完整源画面，并与 Android 采用相同的临时遮挡代理、链式 camera identity handoff、650 ms 常规门槛及 1.1 s 强几何延伸门槛。
 源画面直接按裁切窗口采样到输出尺寸，隐私 mask、人脸区域和贴纸位置同步转换。
 `IOSMetalPreviewRenderer` 的 tightMask 参数显式传入隐私构造函数，并在渲染入口拒绝非法/越界裁窗。
 iOS 首帧预览也复用与 Android 一致的精确 9:16 尺寸规则。
@@ -81,12 +81,9 @@ swiftc dance_native/Sources/dance_native/IOSSubjectReframer.swift tests/subject_
 - 最新 Android debug APK 构建通过，产物 `mobile/app/build/app/outputs/flutter-apk/app-debug.apk`，SHA-256 为
   `0d21aa43fbd5d3cc30939c0bb8aedfc88093eec1128c8d6b12013865ba551998`。
 
-当前没有 Android AVD，也没有连接 Android/iOS 设备；`flutter devices` 仅检测到 Windows、Chrome 和 Edge。
-因此尚未执行 Android 真实 GPU 像素/视频导出验收。
+2026-09-26 的运镜连续性治理在 macOS Woah 工作区进行。当前 Mac 没有 Android JDK/SDK，因此本轮新增的 Android handoff 单测尚不能在该宿主重新执行；上面的 Android/Flutter 数字仅是此前基线证据，不能替代本轮 Android 回归。
 
-此前曾对较早版本的 `IOSSubjectReframer` 做过独立 Swift 主机编译，但本轮又新增了精确 9:16 尺寸规则和裁窗输入校验；
-当前 Windows Woah 环境不允许执行 `swiftc`，且没有 macOS/iOS SDK，所以旧 Swift 编译证据不能覆盖最新代码。
-最新 iOS 代码仍需在 macOS 上完成完整应用构建、Simulator/真机导出验收。不得把旧的独立 Swift 算法测试当成当前 iOS 产品验收。
+本轮 iOS 已使用 `/Applications/Xcode.app` 临时 `DEVELOPER_DIR` 构建 `Runner.xcworkspace` 的 `dance_native` Debug / iPhoneSimulator scheme，包含 `IOSTemporalIdentityTracker.swift` 的当前链式 handoff 实现，构建成功。仍需用真实视频完成 Android/iOS 导出视觉验收，尤其确认 ID 接力后运镜不会切到邻近人物。
 
 下一次设备验证应覆盖横屏左右移动、交叉遮挡、快速舞蹈动作、
 短暂及长期离场、带旋转元数据的视频、音频/时间裁剪，以及纯裁切、全身保护、人脸贴纸三种输出。
