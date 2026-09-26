@@ -1957,6 +1957,7 @@ class ExportPipeline(
                                     zoom = request.follow.zoom.toFloat(),
                                     smoothFactor = request.follow.smoothFactor.toFloat()
                                 )
+                                val reframeMotion = reframeFollower.motionState()
                                 if (!reframeInitialized) {
                                     com.danceanon.native.diagnostics.NativeDiagnostics.event(
                                         level = "INFO",
@@ -2008,6 +2009,18 @@ class ExportPipeline(
                                             "target_center_y" to followObservation?.centerY,
                                             "crop_center_x" to visualCrop.centerX,
                                             "crop_center_y" to visualCrop.centerY,
+                                            "camera_velocity_x" to reframeMotion.velocityX,
+                                            "camera_velocity_y" to reframeMotion.velocityY,
+                                            "camera_velocity_x_spans_per_s" to (
+                                                reframeMotion.velocityX / visualCrop.width.coerceAtLeast(1e-6f)
+                                            ),
+                                            "camera_target_error_x" to (
+                                                reframeMotion.targetX - reframeMotion.cameraX
+                                            ),
+                                            "camera_target_error_x_spans" to (
+                                                (reframeMotion.targetX - reframeMotion.cameraX) /
+                                                    visualCrop.width.coerceAtLeast(1e-6f)
+                                            ),
                                             "crop_left" to visualCrop.left,
                                             "crop_top" to visualCrop.top,
                                             "crop_right" to visualCrop.right,

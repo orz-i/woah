@@ -61,6 +61,56 @@ class SmoothFollowerTest {
         }
     }
 
+    @Test fun moderateCompositionShiftOutsideNewDeadZoneEventuallyMovesCamera() {
+        val camera = SmoothFollower()
+        val initial = crop(camera, 0.5f, 0)
+        var current = initial
+        for (i in 1..60) {
+            current = crop(camera, 0.508f, i * 16_667L)
+        }
+        assertTrue(current.centerX > initial.centerX + 0.001f)
+        assertTrue(current.centerX < 0.508f)
+    }
+
+    @Test fun largePanRampsVelocityInsteadOfStartingAtFullSpeed() {
+        val camera = SmoothFollower()
+        crop(camera, 0.2f, 0)
+        crop(camera, 0.8f, 16_667L)
+        val first = camera.motionState()
+        crop(camera, 0.8f, 33_334L)
+        val second = camera.motionState()
+
+        assertTrue(first.velocityX > 0f)
+        assertTrue(second.velocityX > first.velocityX)
+        assertTrue(first.velocityX < (81f / 256f) * 0.20f)
+    }
+
+    @Test fun largePanCatchesUpFasterWithoutTeleporting() {
+        val camera = SmoothFollower()
+        crop(camera, 0.2f, 0)
+        var current = crop(camera, 0.2f, 0)
+        for (i in 1..60) {
+            current = crop(camera, 0.8f, i * 16_667L)
+        }
+        assertTrue(current.centerX > 0.58f)
+        assertTrue(current.centerX < 0.8f)
+    }
+
+    @Test fun suddenDirectionReversalBrakesBeforeMovingOpposite() {
+        val camera = SmoothFollower()
+        crop(camera, 0.2f, 0)
+        for (i in 1..10) {
+            crop(camera, 0.8f, i * 16_667L)
+        }
+        val before = camera.motionState()
+        crop(camera, 0.2f, 11 * 16_667L)
+        val after = camera.motionState()
+
+        assertTrue(before.velocityX > 0f)
+        assertTrue(after.velocityX >= 0f)
+        assertTrue(after.velocityX < before.velocityX)
+    }
+
     @Test fun missingTargetHoldsTrustedCompositionInsteadOfDrifting() {
         val camera = SmoothFollower()
         val initial = crop(camera, 0.7f, 0)

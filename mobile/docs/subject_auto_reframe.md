@@ -25,9 +25,8 @@
 例如 1920×1080 源理想输出 594×1056，3840×2160 源理想输出 1206×2144；设备若只支持 1080p，则由 `ExportPlan` 显式按比例降级，而不是在 Android/iOS native pipeline 中静默改尺寸。
 
 相机内部使用完整、已旋转显示方向的源空间归一化坐标，左上角为原点。
-平滑以视频 PTS 为准，将 30 Hz 参考 alpha 0.1 转换为 `1 - (1-alpha)^(dt*30)`；
-小于裁切跨度 3% 的变化不运镜，速度上限为每秒 0.8 源跨度，单次时间步最大 100 ms。
-这些是第一版构图参数，不是基于真机视频得出的最佳值。时间倒退、关闭跟随或更换目标会清除相机状态。
+平滑以视频 PTS 为准，将 30 Hz 参考 alpha 0.1 转换为 `1 - (1-alpha)^(dt*30)`。运动品质层不再把该 alpha 直接变成位置跳步，而是先生成目标速度，再经过加速度/刹车限制：
+小于裁切跨度 2% 的变化保持稳定；大位移的允许速度会从每秒 0.65 个裁切跨度渐进提高到 1.50 个裁切跨度，加速度上限为 5.5 span/s²、刹车/反向上限为 7.5 span/s²，单次时间步仍最大 100 ms。这样主角重新出现或发生 camera ID handoff 时镜头不会瞬间满速启动，急转向时也先减速；同时横向大位移比旧固定 0.8 span/s 更快追上。时间倒退、关闭跟随或更换目标会清除位置和速度状态。
 
 Android 跟随开启时，推理/跟踪始终保持完整源显示空间，原有隐私保护链路不再感知竖屏输出尺寸。
 主角不加入隐私级 strict identity-protected 集合，也不加入隐私集合；运镜使用独立、短时且带唯一性约束的 camera continuity bridge，避免严格隐私身份规则在交叉遮挡时把相机永久冻结。自动运镜改为渲染后处理：第一 GPU pass 先按完整源画幅
@@ -83,7 +82,7 @@ swiftc dance_native/Sources/dance_native/IOSSubjectReframer.swift tests/subject_
 
 2026-09-26 的运镜连续性治理在 macOS Woah 工作区进行。当前 Mac 没有 Android JDK/SDK，因此本轮新增的 Android handoff 单测尚不能在该宿主重新执行；上面的 Android/Flutter 数字仅是此前基线证据，不能替代本轮 Android 回归。
 
-本轮 iOS 已使用 `/Applications/Xcode.app` 临时 `DEVELOPER_DIR` 构建 `Runner.xcworkspace` 的 `dance_native` Debug / iPhoneSimulator scheme，包含 `IOSTemporalIdentityTracker.swift` 的当前链式 handoff 实现，构建成功。仍需用真实视频完成 Android/iOS 导出视觉验收，尤其确认 ID 接力后运镜不会切到邻近人物。
+本轮 iOS 已使用 `/Applications/Xcode.app` 临时 `DEVELOPER_DIR` 构建 `Runner.xcworkspace` 的 `dance_native` Debug / iPhoneSimulator scheme，包含链式 handoff 与当前 acceleration-limited `IOSSubjectReframer`，构建成功；独立 Swift 主机测试也覆盖 dead-zone、加速启动、大位移追赶、反向刹车、缺失保持和 reset。Android 的 `AUTO_REFRAME_SAMPLE` 额外输出 camera velocity 与 target-error（含按 crop span 归一化值），供下一份诊断直接判断镜头是否存在过慢追赶、急启停或残余抖动。仍需用真实视频完成 Android/iOS 导出视觉验收。
 
 下一次设备验证应覆盖横屏左右移动、交叉遮挡、快速舞蹈动作、
 短暂及长期离场、带旋转元数据的视频、音频/时间裁剪，以及纯裁切、全身保护、人脸贴纸三种输出。

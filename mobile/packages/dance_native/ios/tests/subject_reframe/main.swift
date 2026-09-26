@@ -69,6 +69,45 @@ for index in 1...60 {
   let value = crop(jitterCamera, 0.5 + (index % 2 == 0 ? 0.003 : -0.003), Int64(index) * 33_333)
   near(value.x, stable.x)
 }
+
+let moderateCamera = IOSSubjectReframer()
+let moderateStart = crop(moderateCamera, 0.5, 0)
+var moderateEnd = moderateStart
+for index in 1...60 {
+  moderateEnd = crop(moderateCamera, 0.508, Int64(index) * 16_667)
+}
+precondition((moderateEnd.x + moderateEnd.z) / 2 > 0.501)
+precondition((moderateEnd.x + moderateEnd.z) / 2 < 0.508)
+
+let accelerationCamera = IOSSubjectReframer()
+let accelerationStart = crop(accelerationCamera, 0.2, 0)
+let accelerationFirst = crop(accelerationCamera, 0.8, 16_667)
+let accelerationSecond = crop(accelerationCamera, 0.8, 33_334)
+let firstStep = (accelerationFirst.x + accelerationFirst.z) / 2
+  - (accelerationStart.x + accelerationStart.z) / 2
+let secondStep = (accelerationSecond.x + accelerationSecond.z) / 2
+  - (accelerationFirst.x + accelerationFirst.z) / 2
+precondition(firstStep > 0)
+precondition(secondStep > firstStep)
+
+let catchUpCamera = IOSSubjectReframer()
+_ = crop(catchUpCamera, 0.2, 0)
+var catchUp = crop(catchUpCamera, 0.2, 0)
+for index in 1...60 {
+  catchUp = crop(catchUpCamera, 0.8, Int64(index) * 16_667)
+}
+precondition((catchUp.x + catchUp.z) / 2 > 0.58)
+precondition((catchUp.x + catchUp.z) / 2 < 0.8)
+
+let reverseCamera = IOSSubjectReframer()
+_ = crop(reverseCamera, 0.2, 0)
+var beforeReverse = crop(reverseCamera, 0.2, 0)
+for index in 1...10 {
+  beforeReverse = crop(reverseCamera, 0.8, Int64(index) * 16_667)
+}
+let afterReverse = crop(reverseCamera, 0.2, 11 * 16_667)
+precondition((afterReverse.x + afterReverse.z) / 2 >= (beforeReverse.x + beforeReverse.z) / 2)
+
 let lostCamera = IOSSubjectReframer()
 let held = crop(lostCamera, 0.7, 0)
 for index in 1...120 {
@@ -83,4 +122,4 @@ near((reset.x + reset.z) / 2, 0.7)
 let invalid = panCamera.crop(target: box(.nan), presentationTimeUs: 33_333,
   sourceAspectRatio: 16 / 9, outputAspectRatio: 9 / 16)
 precondition(invalid == reset)
-print("Subject reframe Swift core: geometry, edges, portrait, vertical crop, PTS, jitter, missing target, speed, reset, NaN checks passed")
+print("Subject reframe Swift core: geometry, edges, portrait, vertical crop, PTS, jitter, acceleration, catch-up, reversal braking, missing target, reset, NaN checks passed")
