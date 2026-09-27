@@ -108,6 +108,7 @@ final class IOSTemporalIdentityTracker {
   private var followStateTargetId: Int?
   private var followIdentityTrackId: Int?
   private var followOcclusionProxyTrackId: Int?
+  private let followOcclusionProxyStabilizer = IOSOcclusionProxyStabilizer()
   private var followLastIdentityBounds: SIMD4<Float>?
   private var followLastIdentityTimestampUs: Int64?
 
@@ -380,6 +381,7 @@ final class IOSTemporalIdentityTracker {
       followStateTargetId = id
       followIdentityTrackId = id
       followOcclusionProxyTrackId = nil
+      followOcclusionProxyStabilizer.reset()
       followLastIdentityBounds = nil
       followLastIdentityTimestampUs = nil
     }
@@ -392,6 +394,7 @@ final class IOSTemporalIdentityTracker {
        ) {
       followIdentityTrackId = id
       followOcclusionProxyTrackId = nil
+      followOcclusionProxyStabilizer.reset()
       followLastIdentityBounds = rootBounds
       followLastIdentityTimestampUs = latestTimestampUs
       return rootBounds
@@ -406,6 +409,7 @@ final class IOSTemporalIdentityTracker {
          predictionGraceFrames: predictionGraceFrames
        ) {
       followOcclusionProxyTrackId = nil
+      followOcclusionProxyStabilizer.reset()
       followLastIdentityBounds = identityBounds
       followLastIdentityTimestampUs = latestTimestampUs
       return identityBounds
@@ -414,21 +418,45 @@ final class IOSTemporalIdentityTracker {
     if identityTrack == nil
       || (identityTrack?.state != .occluded && identityTrack?.state != .reacquiring) {
       followOcclusionProxyTrackId = nil
+      followOcclusionProxyStabilizer.reset()
     }
 
     // A temporary occlusion proxy is sticky only while the accepted identity
     // itself remains in the occlusion/reacquire lane. It never becomes the
     // identity anchor used by a later ID handoff.
     if let proxyId = followOcclusionProxyTrackId {
-      guard let proxy = tracks.first(where: { $0.id == proxyId }) else { return nil }
-      return cameraBounds(for: proxy, predictionGraceFrames: predictionGraceFrames)
+      if let proxy = tracks.first(where: { $0.id == proxyId }) {
+        guard let rawProxyBounds = cameraBounds(
+          for: proxy,
+          predictionGraceFrames: predictionGraceFrames
+        ) else {
+          return nil
+        }
+        return followOcclusionProxyStabilizer.stabilize(
+          target: rawProxyBounds,
+          presentationTimeUs: latestTimestampUs,
+          frameWidth: Float(frameWidth),
+          frameHeight: Float(frameHeight)
+        )
+      }
+      followOcclusionProxyTrackId = nil
+      followOcclusionProxyStabilizer.reset()
     }
 
     if let identityTrack,
        identityTrack.state == .occluded || identityTrack.state == .reacquiring,
-       let proxy = resolveOcclusionFollowProxy(target: identityTrack) {
+       let proxy = resolveOcclusionFollowProxy(target: identityTrack),
+       let rawProxyBounds = cameraBounds(
+         for: proxy,
+         predictionGraceFrames: predictionGraceFrames
+       ) {
       followOcclusionProxyTrackId = proxy.id
-      return cameraBounds(for: proxy, predictionGraceFrames: predictionGraceFrames)
+      return followOcclusionProxyStabilizer.stabilize(
+        target: rawProxyBounds,
+        presentationTimeUs: latestTimestampUs,
+        frameWidth: Float(frameWidth),
+        frameHeight: Float(frameHeight)
+      )
     }
 
     guard identityTrack == nil || identityTrack?.state == .lost else { return nil }
@@ -448,6 +476,7 @@ final class IOSTemporalIdentityTracker {
 
     followIdentityTrackId = proxy.id
     followOcclusionProxyTrackId = nil
+    followOcclusionProxyStabilizer.reset()
     guard let proxyBounds = cameraBounds(
       for: proxy,
       predictionGraceFrames: predictionGraceFrames

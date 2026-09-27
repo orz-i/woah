@@ -15,7 +15,7 @@
 - 固定单主角，默认 9:16，最大保留源画面高度；没有额外特写缩放、自动切人、场景切换识别或手工关键帧。
 - 主角必须由用户明确选择；不会再从保护对象或人物列表中静默选择第一个人作为镜头目标。
 - 主角在边缘时裁切框停在源画面边界，不能保证人物始终严格居中；姿态横向展开超过裁切宽度时仍可能截断四肢。
-- 丢失可信观察后，相机先使用最多 6 帧的当前主角身份预测；若该身份处于遮挡/重获阶段且存在与预测框高度重叠、中心和尺寸都接近的当前可观测 duplicate/occluder track，则只把该 track 作为临时相机代理，不修改真实人物 ID、相机身份锚点或隐私归属。若当前相机身份随后进入 LOST/被 tracker 移除，则允许 camera-only ID 接力：650 ms 内使用常规唯一几何门槛；650 ms–1.1 s 只接受 IoU/中心/尺度更强的唯一连续候选。接力后的新 ID 成为新的相机身份锚点，因此可以安全链式处理 `旧 ID → 新 ID → 再新 ID` 的普通 tracker 断链；任一阶段存在多个近似候选或超过 1.1 s 都保持最后可信构图，不凭空切人。
+- 丢失可信观察后，相机先使用最多 6 帧的当前主角身份预测；若该身份处于遮挡/重获阶段且存在与预测框高度重叠、中心和尺寸都接近的当前可观测 duplicate/occluder track，则只把该 track 作为临时相机代理，不修改真实人物 ID、相机身份锚点或隐私归属。OCCLUSION_PROXY 的 bbox 中心会经过独立滞回稳定器：横向 1.5% 源宽可立即突破，0.7%–1.5% 的同向漂移需持续约 150 ms，进入跟随后只保留 0.4% 的小释放区；纵向使用相同语义的 1.2% / 0.6% / 0.35% 门槛。短周期左右摆动会被吸收，而真实持续移动仍可通过。若当前相机身份随后进入 LOST/被 tracker 移除，则允许 camera-only ID 接力：650 ms 内使用常规唯一几何门槛；650 ms–1.1 s 只接受 IoU/中心/尺度更强的唯一连续候选。接力后的新 ID 成为新的相机身份锚点，因此可以安全链式处理 `旧 ID → 新 ID → 再新 ID` 的普通 tracker 断链；任一阶段存在多个近似候选或超过 1.1 s 都保持最后可信构图，不凭空切人。
 - 复用已有分割/身份跟踪，不增加第二套检测模型，不恢复 SAM2 或 ONNX。
 
 ## 几何与状态约定
@@ -82,7 +82,7 @@ swiftc dance_native/Sources/dance_native/IOSSubjectReframer.swift tests/subject_
 
 2026-09-26 的运镜连续性治理在 macOS Woah 工作区进行。当前 Mac 没有 Android JDK/SDK，因此本轮新增的 Android handoff 单测尚不能在该宿主重新执行；上面的 Android/Flutter 数字仅是此前基线证据，不能替代本轮 Android 回归。
 
-本轮 iOS 已使用 `/Applications/Xcode.app` 临时 `DEVELOPER_DIR` 构建 `Runner.xcworkspace` 的 `dance_native` Debug / iPhoneSimulator scheme，包含链式 handoff 与当前 acceleration-limited `IOSSubjectReframer`，构建成功；独立 Swift 主机测试也覆盖 dead-zone、加速启动、大位移追赶、反向刹车、缺失保持和 reset。Android 的 `AUTO_REFRAME_SAMPLE` 额外输出 camera velocity 与 target-error（含按 crop span 归一化值），供下一份诊断直接判断镜头是否存在过慢追赶、急启停或残余抖动。仍需用真实视频完成 Android/iOS 导出视觉验收。
+本轮 iOS 已使用 `/Applications/Xcode.app` 临时 `DEVELOPER_DIR` 构建 `Runner.xcworkspace` 的 `dance_native` Debug / iPhoneSimulator scheme，包含链式 handoff、acceleration-limited `IOSSubjectReframer` 与 proxy-only `IOSOcclusionProxyStabilizer`，构建成功；独立 Swift 主机测试覆盖 dead-zone、加速启动、大位移追赶、反向刹车、缺失保持、proxy 抖动保持、持续漂移突破和 reset。Android 的 `AUTO_REFRAME_SAMPLE` 额外输出 camera velocity / target-error，以及 `proxy_raw_center_x`、`proxy_stabilized_center_x`、`proxy_stabilization_delta_x`，供下一份诊断直接量化 OCCLUSION_PROXY 的微运镜抑制。基于 2026-09-26 两份真实诊断逐帧 track signature 的离线回放，当前横向门槛预计可将两段代理轨迹的中心总变动分别压低约 60% 与 77%，同时保留长期段的明显方向变化。仍需用真实视频完成 Android/iOS 导出视觉验收。
 
 下一次设备验证应覆盖横屏左右移动、交叉遮挡、快速舞蹈动作、
 短暂及长期离场、带旋转元数据的视频、音频/时间裁剪，以及纯裁切、全身保护、人脸贴纸三种输出。

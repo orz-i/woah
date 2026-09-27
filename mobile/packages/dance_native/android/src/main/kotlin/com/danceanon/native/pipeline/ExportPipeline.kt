@@ -425,6 +425,8 @@ class ExportPipeline(
                 var lastPresentationNs = -1L
                 val trackManager = TrackManager()
                 val reframeFollower = com.danceanon.native.camera.SmoothFollower()
+                val reframeOcclusionProxyStabilizer =
+                    com.danceanon.native.camera.OcclusionProxyStabilizer()
                 var reframeInitialized = false
                 var reframeIdentityTrackId = request.follow.targetPersonId?.toInt()
                 var reframeOcclusionProxyTrackId: Int? = null
@@ -1887,13 +1889,29 @@ class ExportPipeline(
 
                                 val currentIdentityTrackId = reframeIdentityTrackId ?: followTargetId
                                 val identityIsHandoff = currentIdentityTrackId != followTargetId
-                                val followObservation = identityObservation ?: followOcclusionProxyObservation
+                                val rawOcclusionProxyObservation = followOcclusionProxyObservation
+                                val stabilizedOcclusionProxyObservation = if (
+                                    identityObservation == null &&
+                                    reframeOcclusionProxyTrackId != null
+                                ) {
+                                    rawOcclusionProxyObservation?.let { rawProxy ->
+                                        reframeOcclusionProxyStabilizer.stabilize(
+                                            target = rawProxy,
+                                            presentationTimeUs = ptsUs
+                                        )
+                                    }
+                                } else {
+                                    reframeOcclusionProxyStabilizer.reset()
+                                    null
+                                }
+                                val followObservation =
+                                    identityObservation ?: stabilizedOcclusionProxyObservation
                                 val targetSource = when {
                                     identityObservation != null && !identityIsHandoff &&
                                         identityTrack?.observedThisFrame == true -> "OBSERVED"
                                     identityObservation != null && !identityIsHandoff -> "PREDICTED"
                                     identityObservation != null -> "ID_HANDOFF_PROXY"
-                                    followOcclusionProxyObservation != null -> "OCCLUSION_PROXY"
+                                    stabilizedOcclusionProxyObservation != null -> "OCCLUSION_PROXY"
                                     else -> "HELD"
                                 }
                                 val effectiveProxyTrackId = when {
@@ -2003,6 +2021,18 @@ class ExportPipeline(
                                             "target_proxy_iou" to followProxyIou,
                                             "target_proxy_mode" to effectiveProxyMode?.name,
                                             "target_occlusion_proxy_id" to reframeOcclusionProxyTrackId,
+                                            "proxy_raw_center_x" to rawOcclusionProxyObservation?.centerX,
+                                            "proxy_stabilized_center_x" to
+                                                stabilizedOcclusionProxyObservation?.centerX,
+                                            "proxy_stabilization_delta_x" to if (
+                                                rawOcclusionProxyObservation != null &&
+                                                stabilizedOcclusionProxyObservation != null
+                                            ) {
+                                                stabilizedOcclusionProxyObservation.centerX -
+                                                    rawOcclusionProxyObservation.centerX
+                                            } else {
+                                                null
+                                            },
                                             "target_handoff_age_us" to continuityAgeUs,
                                             "target_last_handoff_age_us" to reframeLastHandoffAgeUs,
                                             "target_center_x" to followObservation?.centerX,
