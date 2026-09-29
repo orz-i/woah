@@ -27,10 +27,13 @@ class StickerAssetStore {
 
     final picked = files.first;
     final inputLength = await picked.length();
-    if (inputLength > _maxInputBytes) {
+    if (inputLength != null && inputLength > _maxInputBytes) {
       throw const FormatException('图片过大，请选择 25 MB 以内的图片');
     }
     final bytes = await picked.readAsBytes();
+    if (bytes.lengthInBytes > _maxInputBytes) {
+      throw const FormatException('图片过大，请选择 25 MB 以内的图片');
+    }
     if (bytes.isEmpty) {
       throw const FormatException('所选图片为空');
     }

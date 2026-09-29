@@ -1,4 +1,4 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:dance_domain/dance_domain.dart';
 import '../../../core/logging/app_logger.dart';
@@ -7,9 +7,9 @@ import '../domain/video_import_state.dart';
 
 final importVideoControllerProvider =
     StateNotifierProvider<ImportVideoController, VideoImportState>((ref) {
-  final repo = ref.watch(nativeRepositoryProvider);
-  return ImportVideoController(repo);
-});
+      final repo = ref.watch(nativeRepositoryProvider);
+      return ImportVideoController(repo);
+    });
 
 class ImportVideoController extends StateNotifier<VideoImportState> {
   final NativeProcessingRepository _repository;
@@ -26,7 +26,11 @@ class ImportVideoController extends StateNotifier<VideoImportState> {
       );
 
       if (files.isEmpty || files.first.path == null) {
-        state = state.copyWith(status: state.videoInfo != null ? VideoImportStatus.ready : VideoImportStatus.idle);
+        state = state.copyWith(
+          status: state.videoInfo != null
+              ? VideoImportStatus.ready
+              : VideoImportStatus.idle,
+        );
         return;
       }
 
@@ -62,7 +66,12 @@ class ImportVideoController extends StateNotifier<VideoImportState> {
         errorMessage: null,
       );
     } catch (e, stack) {
-      AppLogger.e('ImportVideoController', 'Failed to probe video at $path', e, stack);
+      AppLogger.e(
+        'ImportVideoController',
+        'Failed to probe video at $path',
+        e,
+        stack,
+      );
       state = state.copyWith(
         status: VideoImportStatus.error,
         errorMessage: '解析视频规格失败: $e',

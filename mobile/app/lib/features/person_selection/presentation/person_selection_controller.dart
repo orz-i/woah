@@ -1,6 +1,6 @@
 import 'package:dance_domain/dance_domain.dart';
 import 'package:dance_native/dance_native.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import '../../../core/logging/app_logger.dart';
 import '../../../repositories/native_processing_repository.dart';
