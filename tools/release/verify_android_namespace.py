@@ -81,6 +81,42 @@ def verify_declared_namespaces() -> None:
             validate_package(actual, label)
 
 
+def verify_source_hygiene_contract() -> None:
+    gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
+    normalized = [line.strip() for line in gitignore if line.strip() and not line.lstrip().startswith("#")]
+    if "debug/" in normalized:
+        fail(
+            ".gitignore must not use a repository-wide `debug/` rule; it can hide "
+            "real Kotlin/Java source packages such as src/main/kotlin/.../debug"
+        )
+    if "/debug/" not in normalized:
+        fail(".gitignore should scope temporary debug output to the repository root with `/debug/`")
+
+    plugin_gradle = (
+        ROOT / "mobile/packages/dance_native/android/build.gradle.kts"
+    ).read_text(encoding="utf-8")
+    for token in (
+        '"**/com/danceanon/**"',
+        '"**/art/gaoge/dance/native/**"',
+        "tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompileTool>()",
+        "tasks.withType<org.gradle.api.tasks.compile.JavaCompile>()",
+        "exclude(*legacyAndroidSourcePatterns)",
+    ):
+        if token not in plugin_gradle:
+            fail(f"Android build must quarantine stale pre-migration sources: missing {token}")
+
+    legacy_roots = [
+        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/com/danceanon",
+        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/native",
+    ]
+    for legacy_root in legacy_roots:
+        if legacy_root.exists():
+            fail(
+                "Stale local Android source tree is present: "
+                f"{legacy_root.relative_to(ROOT)}. Delete it after pulling the latest branch."
+            )
+
+
 def verify_kotlin_packages() -> None:
     roots = [
         ROOT / "mobile/packages/dance_native/android/src",
@@ -116,6 +152,7 @@ def verify_kotlin_packages() -> None:
 
 def main() -> int:
     verify_declared_namespaces()
+    verify_source_hygiene_contract()
     verify_kotlin_packages()
 
     if FAILURES:

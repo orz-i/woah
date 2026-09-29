@@ -52,6 +52,30 @@ val diagnosticGitCommitSha = System.getenv("GIT_COMMIT_SHA")?.takeIf { it.isNotB
 val diagnosticBuildTimestamp = System.getenv("BUILD_TIMESTAMP")?.takeIf { it.isNotBlank() }
     ?: Instant.now().toString()
 
+// Old local checkouts may still contain source files under pre-Woah package
+// roots. Those files were previously hidden by an over-broad `debug/` ignore
+// rule and can still be picked up by Kotlin from src/**/kotlin. Keep them out
+// of every Android compilation unit so a stale local file cannot break builds.
+val legacyAndroidSourcePatterns = arrayOf(
+    "**/com/danceanon/**",
+    "**/art/gaoge/dance/native/**",
+)
+
+val legacyAndroidSources = fileTree("src") {
+    include(
+        "**/kotlin/com/danceanon/**/*.kt",
+        "**/kotlin/art/gaoge/dance/native/**/*.kt",
+        "**/java/com/danceanon/**/*.java",
+        "**/java/art/gaoge/dance/native/**/*.java",
+    )
+}
+if (!legacyAndroidSources.isEmpty) {
+    logger.warn(
+        "Ignoring stale pre-migration Android sources under com/danceanon or " +
+            "art/gaoge/dance/native. Delete those local files after pulling the latest branch."
+    )
+}
+
 android {
     namespace = "art.gaoge.dance.engine"
 
@@ -124,6 +148,14 @@ kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompileTool>().configureEach {
+    exclude(*legacyAndroidSourcePatterns)
+}
+
+tasks.withType<org.gradle.api.tasks.compile.JavaCompile>().configureEach {
+    exclude(*legacyAndroidSourcePatterns)
 }
 
 dependencies {

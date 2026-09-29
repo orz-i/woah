@@ -114,7 +114,7 @@ mobile/packages/dance_native/ios/dance_native/Sources/dance_native/Resources/Inf
 
 # --- Data & Temporary Storage ---
 data/tasks/
-debug/
+/debug/
 !mobile/packages/dance_native/android/src/debug/
 !mobile/packages/dance_native/android/src/debug/**
 input/
