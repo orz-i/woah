@@ -14,7 +14,7 @@ import yaml
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.tracker import TrackerConfig
-from src.pipeline import DanceAnonymizerPipeline
+from src.pipeline import WoahPipeline
 
 
 def load_config(config_path: str) -> dict:
@@ -93,7 +93,7 @@ def main():
     output_dir = os.path.dirname(os.path.abspath(args.output))
     os.makedirs(output_dir, exist_ok=True)
 
-    pipeline = DanceAnonymizerPipeline(
+    pipeline = WoahPipeline(
         tracker_config=tracker_config,
         effect_config=effect_config,
         engine_config=engine_config,

@@ -4,15 +4,14 @@ import 'router.dart';
 import 'system_ui.dart';
 import 'theme.dart';
 
-class DanceAnonymizerApp extends ConsumerStatefulWidget {
-  const DanceAnonymizerApp({super.key});
+class WoahApp extends ConsumerStatefulWidget {
+  const WoahApp({super.key});
 
   @override
-  ConsumerState<DanceAnonymizerApp> createState() => _DanceAnonymizerAppState();
+  ConsumerState<WoahApp> createState() => _WoahAppState();
 }
 
-class _DanceAnonymizerAppState extends ConsumerState<DanceAnonymizerApp>
-    with WidgetsBindingObserver {
+class _WoahAppState extends ConsumerState<WoahApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();

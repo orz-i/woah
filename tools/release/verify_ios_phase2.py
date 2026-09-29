@@ -143,7 +143,7 @@ def verify_plugin_gating() -> None:
 def verify_cross_platform_selection_contract() -> None:
     android = (
         ROOT
-        / "mobile/packages/dance_native/android/src/main/kotlin/com/danceanon/native/pipeline/AnalyzePipeline.kt"
+        / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/native/pipeline/AnalyzePipeline.kt"
     ).read_text(encoding="utf-8")
     app_selection = (
         ROOT

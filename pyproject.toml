@@ -1,7 +1,7 @@
 [project]
-name = "dance-anonymizer"
+name = "woah"
 version = "0.1.0"
-description = "AI Video Dance Anonymizer and Privacy Pipeline"
+description = "Woah AI video privacy and editing pipeline"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

@@ -1,11 +1,11 @@
-# Woah (DanceAnon) — AI 智能舞蹈视频打码与隐私匿名化工具
+# Woah — AI 智能舞蹈视频打码与隐私匿名化工具
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter)](https://flutter.dev)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python)](https://www.python.org)
 [![Android](https://img.shields.io/badge/Android-MediaCodec%20%7C%20OpenGL%20ES-3DDC84?logo=android)](https://developer.android.com)
 
-**Woah (DanceAnon)** 是一款基于 AI 视觉分割与多目标追踪技术的智能舞蹈视频打码与隐私保护工具。支持在**移动端（Flutter + 原生硬件加速）**与**桌面/Web 端（Python + PyTorch）**双端运行。能够自动识别人体轮廓、精准追踪多人动态，并提供全身打码、马赛克/模糊、渐变遮罩、边缘轮廓、智能镜头跟随等专业后期特效。
+**Woah** 是一款基于 AI 视觉分割与多目标追踪技术的智能舞蹈视频打码与隐私保护工具。支持在**移动端（Flutter + 原生硬件加速）**与**桌面/Web 端（Python + PyTorch）**双端运行。能够自动识别人体轮廓、精准追踪多人动态，并提供全身打码、马赛克/模糊、渐变遮罩、边缘轮廓、智能镜头跟随等专业后期特效。
 
 ---
 
@@ -31,7 +31,7 @@
 ## 📁 目录结构
 
 ```text
-dance-anonymizer/
+woah/
 ├── mobile/                  # 📱 移动端工程 (Flutter + Android / iOS 原生插件)
 │   ├── app/                 # Flutter 主应用 (UI、路由、状态管理)
 │   └── packages/
@@ -125,4 +125,4 @@ python desktop/app.py
 
 ## 📄 开源许可证
 
-本项目基于 [MIT License](file:///D:/dance-anonymizer/LICENSE) 协议开源。欢迎提交 Issue 与 Pull Request！
+本项目基于 [MIT License](file:///D:/woah/LICENSE) 协议开源。欢迎提交 Issue 与 Pull Request！

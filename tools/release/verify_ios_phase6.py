@@ -124,7 +124,7 @@ def verify_ios_surface() -> None:
 
 def verify_android_reference_boundary() -> None:
     tracker = text(
-        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/com/danceanon/native/privacy/PrivacyClassTemporalTracker.kt",
+        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/native/privacy/PrivacyClassTemporalTracker.kt",
         "Android PrivacyClassTemporalTracker",
     )
     for token in (
@@ -143,7 +143,7 @@ def verify_android_reference_boundary() -> None:
         check(token in tracker, f"Android privacy-class tracker reference drifted: {token}")
 
     tests = text(
-        ROOT / "mobile/packages/dance_native/android/src/test/kotlin/com/danceanon/native/privacy/PrivacyClassTemporalTrackerTest.kt",
+        ROOT / "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/native/privacy/PrivacyClassTemporalTrackerTest.kt",
         "Android PrivacyClassTemporalTrackerTest",
     )
     for test_name in (
@@ -158,7 +158,7 @@ def verify_android_reference_boundary() -> None:
         check(test_name in tests, f"Android privacy-class regression test missing: {test_name}")
 
     export = text(
-        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/com/danceanon/native/pipeline/ExportPipeline.kt",
+        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/native/pipeline/ExportPipeline.kt",
         "Android ExportPipeline",
     )
     for token in (

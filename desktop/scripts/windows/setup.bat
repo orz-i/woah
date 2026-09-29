@@ -1,7 +1,7 @@
 @echo off
 cd /d "%~dp0..\.."
 echo ========================================
-echo   DanceAnon - Setup (Windows)
+echo   Woah - Setup (Windows)
 echo ========================================
 echo.
 

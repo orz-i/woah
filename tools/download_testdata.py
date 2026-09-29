@@ -51,7 +51,7 @@ def math_sin_wave(f, p):
 
 def main():
     print("=" * 65)
-    print(" Dance Anonymizer - Test Data Provisioning Utility ")
+    print(" Woah - Test Data Provisioning Utility ")
     print("=" * 65)
 
     manifest_path = os.path.join("testdata", "manifest.json")

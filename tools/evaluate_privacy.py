@@ -122,7 +122,7 @@ def run_synthetic_benchmark():
 
 def main():
     print("=" * 65)
-    print(" Dance Anonymizer - Privacy Safety & Exposure Evaluation ")
+    print(" Woah - Privacy Safety & Exposure Evaluation ")
     print("=" * 65)
 
     if len(sys.argv) < 2:

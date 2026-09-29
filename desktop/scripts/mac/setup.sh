@@ -1,10 +1,10 @@
 #!/bin/bash
-# DanceAnon - 一键安装脚本
+# Woah - 一键安装脚本
 set -e
 cd "$(dirname "$0")/../.."
 
 echo "========================================"
-echo "  DanceAnon - 环境安装"
+echo "  Woah - 环境安装"
 echo "========================================"
 
 echo "[1/3] 检查 Python..."

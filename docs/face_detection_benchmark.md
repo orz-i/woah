@@ -352,7 +352,7 @@ Long-running instrumentation initially appeared to stall after roughly 5 seconds
 of repeated FACE_ONLY work. Per-frame logs first made this look like a detector or
 direct-buffer lifetime problem because the final visible frame varied between
 runs. Device system logs later showed the real trigger: ColorOS
-`OplusHansManager` froze `com.danceanon.dance_native.test` when the instrumentation
+`OplusHansManager` froze `art.gaoge.dance.native.test` when the instrumentation
 process had no foreground Activity. A run that stopped after `frame_start=272`,
 for example, was followed immediately by a Hans `freeze uid` entry for the test
 package.
@@ -2135,7 +2135,7 @@ The ROI report includes:
 From `mobile/app/android` with a valid JDK 17:
 
 ```text
-.\gradlew.bat :dance_native:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.danceanon.native.benchmark.FaceRoiBenchmarkInstrumentedTest
+.\gradlew.bat :dance_native:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=art.gaoge.dance.native.benchmark.FaceRoiBenchmarkInstrumentedTest
 ```
 
 This test is still a reviewed-fixture benchmark rather than a general recall claim.

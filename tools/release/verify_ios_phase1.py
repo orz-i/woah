@@ -67,7 +67,7 @@ def verify_tensor_contract() -> dict:
 
     android_adapter = (
         ROOT
-        / "mobile/packages/dance_native/android/src/main/kotlin/com/danceanon/native/inference/YoloLiteRtTensorAdapter.kt"
+        / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/native/inference/YoloLiteRtTensorAdapter.kt"
     ).read_text(encoding="utf-8")
     for token in (
         "PROTO_SIZE = 160",

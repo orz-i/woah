@@ -39,7 +39,7 @@ flutter:
   plugin:
     platforms:
       android:
-        package: com.danceanon.dance_native
+        package: art.gaoge.dance.native
         pluginClass: DanceNativePlugin
       ios:
         pluginClass: DanceNativePlugin

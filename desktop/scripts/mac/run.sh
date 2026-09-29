@@ -2,7 +2,7 @@
 cd "$(dirname "$0")/../.."
 source .venv/bin/activate
 echo "========================================"
-echo "  DanceAnon"
+echo "  Woah"
 echo "  浏览器打开 http://localhost:8002"
 echo "  按 Ctrl+C 停止"
 echo "========================================"

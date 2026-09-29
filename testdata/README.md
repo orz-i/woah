@@ -1,4 +1,4 @@
-﻿# Dance Anonymizer Test Dataset Specification
+﻿# Woah Test Dataset Specification
 
 This directory contains the standard dataset specification and manifests used for validating the dance anonymization pipeline.
 

@@ -70,7 +70,7 @@ def verify_identity_contract() -> None:
 
     android = (
         ROOT
-        / "mobile/packages/dance_native/android/src/main/kotlin/com/danceanon/native/pipeline/PreviewPipeline.kt"
+        / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/native/pipeline/PreviewPipeline.kt"
     ).read_text(encoding="utf-8")
     check(
         "HungarianSolver.match(costMatrix, maxCostThreshold = 0.70f)" in android,

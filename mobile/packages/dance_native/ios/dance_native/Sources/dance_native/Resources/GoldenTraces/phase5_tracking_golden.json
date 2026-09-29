@@ -7,7 +7,7 @@
       "name": "short_gap_reacquire_full_body",
       "androidReferences": [
         {
-          "path": "mobile/packages/dance_native/android/src/test/kotlin/com/danceanon/native/tracking/TrackManagerReacquireIdentityTest.kt",
+          "path": "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/native/tracking/TrackManagerReacquireIdentityTest.kt",
           "testName": "testReacquireTransitionPreservesIdentityAfterTemporaryOcclusion"
         }
       ],
@@ -50,11 +50,11 @@
       "name": "face_only_unselected_neighbor_isolation",
       "androidReferences": [
         {
-          "path": "mobile/packages/dance_native/android/src/test/kotlin/com/danceanon/native/tracking/TrackManagerPrivacySelectionSplitTest.kt",
+          "path": "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/native/tracking/TrackManagerPrivacySelectionSplitTest.kt",
           "testName": "identity protected face-only track remains unselected for full-body privacy class"
         },
         {
-          "path": "mobile/packages/dance_native/android/src/test/kotlin/com/danceanon/native/tracking/TrackManagerCrossingIdentityTest.kt",
+          "path": "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/native/tracking/TrackManagerCrossingIdentityTest.kt",
           "testName": "testTwoDancersCrossingAtSpeedMaintainsIdentities"
         }
       ],
@@ -105,7 +105,7 @@
       "name": "ambiguous_face_only_defers_identity_commit",
       "androidReferences": [
         {
-          "path": "mobile/packages/dance_native/android/src/test/kotlin/com/danceanon/native/tracking/TrackManagerAmbiguousCrossingTest.kt",
+          "path": "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/native/tracking/TrackManagerAmbiguousCrossingTest.kt",
           "testName": "testAmbiguousOverlapDefersCommitWithoutSwapping"
         }
       ],
@@ -146,11 +146,11 @@
       "name": "protected_lost_stale_anchor_isolation",
       "androidReferences": [
         {
-          "path": "mobile/packages/dance_native/android/src/test/kotlin/com/danceanon/native/tracking/TrackManagerLostRecoveryIsolationTest.kt",
+          "path": "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/native/tracking/TrackManagerLostRecoveryIsolationTest.kt",
           "testName": "testLostTrackIsNotGloballyReboundToPersonAtStaleLastObservedPosition"
         },
         {
-          "path": "mobile/packages/dance_native/android/src/test/kotlin/com/danceanon/native/tracking/TrackManagerSampledMaskIoUTest.kt",
+          "path": "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/native/tracking/TrackManagerSampledMaskIoUTest.kt",
           "testName": "protectedUnobservedPredictionIsBoundedAroundReliableAnchor"
         }
       ],
@@ -221,7 +221,7 @@
       "name": "long_occlusion_grace_reacquires_original_id",
       "androidReferences": [
         {
-          "path": "mobile/packages/dance_native/android/src/test/kotlin/com/danceanon/native/tracking/TrackManagerLongOcclusionReacquisitionTest.kt",
+          "path": "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/native/tracking/TrackManagerLongOcclusionReacquisitionTest.kt",
           "testName": "testLongOcclusion25FramesDoesNotInstantRemoveTargetAndReacquiresId"
         }
       ],
@@ -293,7 +293,7 @@
       "name": "selected_identity_long_gap_fails_closed",
       "androidReferences": [
         {
-          "path": "mobile/packages/dance_native/android/src/test/kotlin/com/danceanon/native/tracking/LostTrackPrivacySafetyTest.kt",
+          "path": "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/native/tracking/LostTrackPrivacySafetyTest.kt",
           "testName": "testLostTrackEventuallyRemoved"
         }
       ],

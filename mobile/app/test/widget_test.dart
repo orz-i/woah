@@ -7,7 +7,7 @@ void main() {
   testWidgets('App smoke test initializes correctly', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const ProviderScope(child: DanceAnonymizerApp()));
+    await tester.pumpWidget(const ProviderScope(child: WoahApp()));
 
     expect(find.text('Woah'), findsOneWidget);
     expect(find.text('记录每一个舞动瞬间'), findsOneWidget);

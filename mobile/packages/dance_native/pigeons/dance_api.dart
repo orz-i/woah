@@ -5,8 +5,8 @@ import 'package:pigeon/pigeon.dart';
     dartOut: 'lib/src/bridge/dance_api.g.dart',
     dartPackageName: 'dance_native',
     kotlinOut:
-        'android/src/main/kotlin/com/danceanon/native/bridge/DanceApi.g.kt',
-    kotlinOptions: KotlinOptions(package: 'com.danceanon.native.bridge'),
+        'android/src/main/kotlin/art/gaoge/dance/native/bridge/DanceApi.g.kt',
+    kotlinOptions: KotlinOptions(package: 'art.gaoge.dance.native.bridge'),
     swiftOut: 'ios/dance_native/Sources/dance_native/DanceApi.g.swift',
     swiftOptions: SwiftOptions(),
   ),

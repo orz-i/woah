@@ -80,7 +80,7 @@ def evaluate_tracking_metrics(gt_tracks, pred_tracks, iou_thresh=0.5):
 
 def main():
     print("=" * 60)
-    print(" Dance Anonymizer - Multi-Person Tracking Benchmark ")
+    print(" Woah - Multi-Person Tracking Benchmark ")
     print("=" * 60)
 
     # Mock synthetic benchmark demonstration

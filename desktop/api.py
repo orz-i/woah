@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "vendor", "Cutie"))
 
 from src.tracker import DanceTracker, TrackerConfig, TrackResult, auto_device
-from src.pipeline import DanceAnonymizerPipeline
+from src.pipeline import WoahPipeline
 from src.effects import (
     process_frame_effects, calculate_depth_order,
     apply_shadow_outline_effect, draw_text_labels,
@@ -370,7 +370,7 @@ async def render(
                                  "task_id": task_id, "output_path": output_path}
 
     try:
-        pipeline = DanceAnonymizerPipeline(
+        pipeline = WoahPipeline(
             tracker_config=TrackerConfig(model_path="yolo11s-seg.pt",
                                           device=device or auto_device(), conf_threshold=0.3,
                                           verbose=False),

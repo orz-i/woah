@@ -138,7 +138,7 @@ def verify_video_stream(file_path, expected_width=None, expected_height=None, ma
 
 def main():
     print("=" * 65)
-    print(" Dance Anonymizer - Comprehensive Video & Media Pipeline Validator ")
+    print(" Woah - Comprehensive Video & Media Pipeline Validator ")
     print("=" * 65)
 
     if len(sys.argv) < 2:

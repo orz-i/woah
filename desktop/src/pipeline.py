@@ -12,7 +12,7 @@ from .effects import process_frame_effects
 from .engine import create_tracker
 
 
-class DanceAnonymizerPipeline:
+class WoahPipeline:
 
     def __init__(self, tracker_config: TrackerConfig = TrackerConfig(),
                  effect_config: Optional[dict] = None,

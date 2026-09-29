@@ -6,5 +6,5 @@ import 'app/system_ui.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await applyAppImmersiveMode();
-  runApp(const ProviderScope(child: DanceAnonymizerApp()));
+  runApp(const ProviderScope(child: WoahApp()));
 }
