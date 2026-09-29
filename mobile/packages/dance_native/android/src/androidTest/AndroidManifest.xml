@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
         <activity
-            android:name="art.gaoge.dance.native.privacy.FaceOnlyStressHostActivity"
+            android:name="art.gaoge.dance.engine.privacy.FaceOnlyStressHostActivity"
             android:exported="false"
             android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen" />
     </application>

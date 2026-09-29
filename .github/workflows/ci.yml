@@ -32,6 +32,9 @@ jobs:
           uv run python tools/evaluate_tracking.py
           uv run python tools/verify_video.py
 
+      - name: Verify Android namespace contract
+        run: python tools/release/verify_android_namespace.py
+
       - name: Verify shared export media contract
         run: python tools/release/verify_export_media_contract.py
 

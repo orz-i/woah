@@ -1,0 +1,5 @@
+package art.gaoge.dance.engine.example
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()

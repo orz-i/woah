@@ -97,7 +97,7 @@ def verify_temporal_privacy() -> None:
     renderer = source("IOSMetalPreviewRenderer.swift")
     matcher = source("IOSPreviewIdentityMatcher.swift")
     android = text(
-        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/native/tracking/TrackManager.kt",
+        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/tracking/TrackManager.kt",
         "Android TrackManager",
     )
 

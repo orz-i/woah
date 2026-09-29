@@ -7,7 +7,7 @@
 
     <application>
         <service
-            android:name="art.gaoge.dance.native.service.ExportForegroundService"
+            android:name="art.gaoge.dance.engine.service.ExportForegroundService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="dataSync|mediaProcessing" />

@@ -15,7 +15,7 @@ fun sha256(file: File): String {
     return digest.digest().joinToString("") { "%02x".format(it) }
 }
 
-group = "art.gaoge.dance.native"
+group = "art.gaoge.dance.engine"
 version = "1.0-SNAPSHOT"
 
 buildscript {
@@ -53,7 +53,7 @@ val diagnosticBuildTimestamp = System.getenv("BUILD_TIMESTAMP")?.takeIf { it.isN
     ?: Instant.now().toString()
 
 android {
-    namespace = "art.gaoge.dance.native"
+    namespace = "art.gaoge.dance.engine"
 
     compileSdk = 36
 

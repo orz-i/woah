@@ -34,13 +34,13 @@ def main() -> int:
         "mobile/app/lib/features/protection_editor/presentation/protection_editor_screen.dart"
     )
     android = read(
-        "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/native/pipeline/ExportPipeline.kt"
+        "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt"
     )
     encoder = read(
-        "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/native/media/VideoEncoder.kt"
+        "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/media/VideoEncoder.kt"
     )
     android_caps = read(
-        "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/native/device/DeviceCapabilities.kt"
+        "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/device/DeviceCapabilities.kt"
     )
     ios = read(
         "mobile/packages/dance_native/ios/dance_native/Sources/dance_native/IOSExportPipeline.swift"

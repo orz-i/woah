@@ -405,7 +405,7 @@ def verify_ios_replay_surface() -> None:
 
 def verify_android_reference_boundary() -> None:
     android = text(
-        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/native/tracking/TrackManager.kt",
+        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/tracking/TrackManager.kt",
         "Android TrackManager",
     )
     for token in (
@@ -430,7 +430,7 @@ def verify_android_reference_boundary() -> None:
         check(token in android, f"Android tracking reference drifted; revisit Phase 5 Golden Trace: {token}")
 
     face_geometry = text(
-        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/native/privacy/FacePrivacyRegionResolver.kt",
+        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/FacePrivacyRegionResolver.kt",
         "Android FacePrivacyRegionResolver",
     )
     for token in (
@@ -445,7 +445,7 @@ def verify_android_reference_boundary() -> None:
         check(token in face_geometry, f"Android FACE_ONLY geometry reference drifted: {token}")
 
     face_temporal = text(
-        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/native/privacy/FacePrivacyTemporalStabilizer.kt",
+        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/FacePrivacyTemporalStabilizer.kt",
         "Android FacePrivacyTemporalStabilizer",
     )
     for token in (
@@ -459,7 +459,7 @@ def verify_android_reference_boundary() -> None:
         check(token in face_temporal, f"Android FACE_ONLY temporal reference drifted: {token}")
 
     face_processor = text(
-        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/native/privacy/FaceOnlyPrivacyFrameProcessor.kt",
+        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/FaceOnlyPrivacyFrameProcessor.kt",
         "Android FaceOnlyPrivacyFrameProcessor",
     )
     for token in (
@@ -473,7 +473,7 @@ def verify_android_reference_boundary() -> None:
         check(token in face_processor, f"Android FACE_ONLY projection reference drifted: {token}")
 
     motion_estimator = text(
-        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/native/privacy/PersonBboxMotionEstimator.kt",
+        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/PersonBboxMotionEstimator.kt",
         "Android PersonBboxMotionEstimator",
     )
     for token in (
@@ -483,7 +483,7 @@ def verify_android_reference_boundary() -> None:
     ):
         check(token in motion_estimator, f"Android person-bbox motion reference drifted: {token}")
     motion_test = text(
-        ROOT / "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/native/privacy/PersonBboxMotionEstimatorTest.kt",
+        ROOT / "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/PersonBboxMotionEstimatorTest.kt",
         "Android PersonBboxMotionEstimatorTest",
     )
     for test_name in (
@@ -493,7 +493,7 @@ def verify_android_reference_boundary() -> None:
         check(test_name in motion_test, f"Android person-bbox motion regression test missing: {test_name}")
 
     body_mask_estimator = text(
-        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/native/privacy/BodyMaskFaceHeadEstimator.kt",
+        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/BodyMaskFaceHeadEstimator.kt",
         "Android BodyMaskFaceHeadEstimator",
     )
     for token in (
@@ -508,7 +508,7 @@ def verify_android_reference_boundary() -> None:
         check(token in body_mask_estimator, f"Android body-mask face-head reference drifted: {token}")
 
     body_mask_test = text(
-        ROOT / "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/native/privacy/BodyMaskFaceHeadEstimatorTest.kt",
+        ROOT / "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/BodyMaskFaceHeadEstimatorTest.kt",
         "Android BodyMaskFaceHeadEstimatorTest",
     )
     for test_name in (
@@ -519,7 +519,7 @@ def verify_android_reference_boundary() -> None:
         check(test_name in body_mask_test, f"Android body-mask face-head regression test missing: {test_name}")
 
     trusted_mask_fallback = text(
-        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/native/privacy/FaceTrustedMaskFallback.kt",
+        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/FaceTrustedMaskFallback.kt",
         "Android FaceTrustedMaskFallback",
     )
     for token in (
@@ -529,7 +529,7 @@ def verify_android_reference_boundary() -> None:
     ):
         check(token in trusted_mask_fallback, f"Android trusted-mask fallback reference drifted: {token}")
     trusted_mask_test = text(
-        ROOT / "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/native/privacy/FaceTrustedMaskFallbackTest.kt",
+        ROOT / "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/FaceTrustedMaskFallbackTest.kt",
         "Android FaceTrustedMaskFallbackTest",
     )
     for test_name in (
@@ -539,7 +539,7 @@ def verify_android_reference_boundary() -> None:
         check(test_name in trusted_mask_test, f"Android trusted-mask fallback regression test missing: {test_name}")
 
     pixel_motion = text(
-        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/native/privacy/FacePixelMotionTracker.kt",
+        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/FacePixelMotionTracker.kt",
         "Android FacePixelMotionTracker",
     )
     check(
@@ -548,7 +548,7 @@ def verify_android_reference_boundary() -> None:
     )
 
     class_fallback = text(
-        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/native/privacy/FacePrivacyClassFallbackResolver.kt",
+        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/FacePrivacyClassFallbackResolver.kt",
         "Android FacePrivacyClassFallbackResolver",
     )
     for token in (
@@ -561,7 +561,7 @@ def verify_android_reference_boundary() -> None:
     ):
         check(token in class_fallback, f"Android FACE_ONLY class-fallback reference drifted: {token}")
     class_fallback_test = text(
-        ROOT / "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/native/privacy/FacePrivacyClassFallbackResolverTest.kt",
+        ROOT / "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/FacePrivacyClassFallbackResolverTest.kt",
         "Android FacePrivacyClassFallbackResolverTest",
     )
     for test_name in (
@@ -572,7 +572,7 @@ def verify_android_reference_boundary() -> None:
         check(test_name in class_fallback_test, f"Android FACE_ONLY class-fallback regression test missing: {test_name}")
 
     class_continuity = text(
-        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/native/privacy/FacePrivacyClassFallbackContinuity.kt",
+        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/FacePrivacyClassFallbackContinuity.kt",
         "Android FacePrivacyClassFallbackContinuity",
     )
     for token in (
@@ -586,7 +586,7 @@ def verify_android_reference_boundary() -> None:
     ):
         check(token in class_continuity, f"Android FACE_ONLY class-continuity reference drifted: {token}")
     class_continuity_test = text(
-        ROOT / "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/native/privacy/FacePrivacyClassFallbackContinuityTest.kt",
+        ROOT / "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/FacePrivacyClassFallbackContinuityTest.kt",
         "Android FacePrivacyClassFallbackContinuityTest",
     )
     for test_name in (
