@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('easter egg shows rolling credits and build metadata', (
+  testWidgets('easter egg reveals and cycles surprises with pose switching', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -23,32 +23,66 @@ void main() {
       ),
     );
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
 
-    expect(find.text('作者  CJ'), findsOneWidget);
-    expect(find.text('本程序免费开源'), findsOneWidget);
-    expect(find.text('谨防上当受骗'), findsOneWidget);
-    expect(find.text('版本 · v2.3.4'), findsOneWidget);
-    expect(find.text('构建 · #57'), findsOneWidget);
-    expect(find.text('构建类型 · RELEASE'), findsOneWidget);
-    expect(find.text('提交 · abcdef123456'), findsOneWidget);
-    expect(find.text('处理 · LOCAL FIRST'), findsOneWidget);
-    expect(find.text('隐私 · PRIVATE BY DESIGN'), findsOneWidget);
-    expect(find.text('设备与诊断'), findsNothing);
-    expect(find.text('加速能力'), findsNothing);
-    expect(find.byKey(WoahEasterEggScreen.creditsRollKey), findsOneWidget);
+    expect(find.text('彩蛋时间'), findsOneWidget);
+    expect(find.text('点一点星星'), findsOneWidget);
+    expect(find.text('你已经很棒了'), findsNothing);
+    expect(find.byKey(WoahEasterEggScreen.revealCardKey), findsNothing);
+    _expectBuddyAsset(tester, WoahEasterEggScreen.idleAsset);
+
+    await tester.tap(find.byKey(WoahEasterEggScreen.primaryActionKey));
+    await tester.pump();
+    expect(find.text('小伙伴正在打开惊喜…'), findsOneWidget);
+    _expectBuddyAsset(tester, WoahEasterEggScreen.playfulAsset);
+
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('你已经很棒了'), findsOneWidget);
+    expect(find.text('继续做自己吧！'), findsOneWidget);
+    expect(find.text('再看一个彩蛋'), findsOneWidget);
+    expect(find.byKey(WoahEasterEggScreen.revealCardKey), findsOneWidget);
+    _expectBuddyAsset(tester, WoahEasterEggScreen.happyAsset);
+
+    await tester.tap(find.byKey(WoahEasterEggScreen.primaryActionKey));
+    await tester.pump();
+    _expectBuddyAsset(tester, WoahEasterEggScreen.waveAsset);
+
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('愿每个舞动'), findsOneWidget);
+    expect(find.text('都被温柔保护。'), findsOneWidget);
+    _expectBuddyAsset(tester, WoahEasterEggScreen.happyAsset);
+
+    expect(find.text('Woah  ·  CJ  ·  v2.3.4  ·  #57'), findsOneWidget);
+    expect(find.text('abcdef123456  ·  art.gaoge.dance'), findsOneWidget);
     expect(find.byIcon(Icons.close_rounded), findsNothing);
+  });
 
-    final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
-    expect(scaffold.backgroundColor, const Color(0xFF050506));
-    expect(
-      tester.widget<Text>(find.text('作者  CJ')).style?.color,
-      const Color(0xFFF4F4F5),
+  testWidgets('easter egg stays usable on a compact phone viewport', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: WoahEasterEggScreen(
+          buildInfoLoader: () async => const WoahBuildInfo(
+            versionName: '0.1.0',
+            buildNumber: '1',
+            gitCommit: 'development',
+            buildType: 'debug',
+          ),
+        ),
+      ),
     );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
 
-    final initialTop = tester.getTopLeft(find.text('作者  CJ')).dy;
-    await tester.pump(const Duration(seconds: 2));
-    final movedTop = tester.getTopLeft(find.text('作者  CJ')).dy;
-    expect(movedTop, lessThan(initialTop));
+    expect(find.text('彩蛋时间'), findsOneWidget);
+    expect(find.text('点一点星星'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets(
@@ -64,27 +98,35 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('导入舞段'), findsOneWidget);
-      expect(find.text('设备与诊断'), findsNothing);
-
       await tester.longPress(find.text('Woah'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      expect(find.text('作者  CJ'), findsOneWidget);
-      expect(find.text('本程序免费开源'), findsOneWidget);
-      expect(find.text('谨防上当受骗'), findsOneWidget);
+      expect(find.text('彩蛋时间'), findsOneWidget);
+      expect(find.text('点一点星星'), findsOneWidget);
       expect(find.byIcon(Icons.close_rounded), findsNothing);
-      expect(find.text('设备与诊断'), findsNothing);
 
       await tester.binding.handlePopRoute();
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 700));
 
       expect(find.text('导入舞段'), findsOneWidget);
-      expect(find.text('作者  CJ'), findsNothing);
+      expect(find.text('彩蛋时间'), findsNothing);
     },
   );
+}
+
+void _expectBuddyAsset(WidgetTester tester, String assetName) {
+  final images = tester.widgetList<Image>(
+    find.byKey(WoahEasterEggScreen.buddyKey),
+  );
+  expect(images, isNotEmpty);
+  final names = images
+      .map((image) => image.image)
+      .whereType<AssetImage>()
+      .map((provider) => provider.assetName)
+      .toSet();
+  expect(names, contains(assetName));
 }
 
 class _NoopNativeRepository implements NativeProcessingRepository {
