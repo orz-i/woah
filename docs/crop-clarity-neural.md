@@ -68,11 +68,23 @@ python tools/litert/verify_crop_clarity_model.py \
   --contract-out /tmp/crop-clarity-span-x2.contract.json
 ```
 
-Train with a licensed HR corpus:
+Extract sparse frames from a licensed/user-authorized real-video corpus first so
+camera ISP and actual H.264/H.265/social compression are represented in the HR
+side of training. Extraction saves PNG to avoid adding another JPEG generation:
+
+```bash
+python tools/litert/extract_crop_clarity_frames.py \
+  --videos-dir /path/to/licensed/videos \
+  --output-dir /path/to/woah-sr-frames \
+  --sample-fps 1 \
+  --max-frames-per-video 120
+```
+
+Then train with the extracted frames (or another licensed HR corpus):
 
 ```bash
 python tools/litert/train_crop_clarity_span_x2.py \
-  --data-dir /path/to/hr/frames \
+  --data-dir /path/to/woah-sr-frames \
   --steps 100000 \
   --output-weights /tmp/crop-clarity.weights.h5
 ```

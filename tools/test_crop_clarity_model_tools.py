@@ -4,6 +4,7 @@ import unittest
 
 from tools.litert import benchmark_crop_clarity_model as benchmark_tool
 from tools.litert import crop_clarity_span_x2 as model_tool
+from tools.litert import extract_crop_clarity_frames as frame_tool
 from tools.litert import verify_crop_clarity_model as verifier
 
 
@@ -48,6 +49,47 @@ class CropClarityModelToolContractTest(unittest.TestCase):
         self.assertEqual(benchmark_tool.tile_count(608, 1080), 28)
         self.assertEqual(benchmark_tool.tile_count(405, 720), 15)
         self.assertEqual(benchmark_tool.axis_starts(120), [0])
+
+    def test_video_frame_sampling_is_temporally_distributed(self):
+        self.assertEqual(
+            frame_tool.sample_frame_indices(
+                frame_count=300,
+                source_fps=30.0,
+                sample_fps=1.0,
+                max_frames=None,
+            ),
+            list(range(0, 300, 30)),
+        )
+        limited = frame_tool.sample_frame_indices(
+            frame_count=300,
+            source_fps=30.0,
+            sample_fps=5.0,
+            max_frames=4,
+        )
+        self.assertEqual(len(limited), 4)
+        self.assertEqual(limited[0], 0)
+        self.assertGreater(limited[-1], 250)
+        self.assertEqual(limited, sorted(set(limited)))
+
+    def test_invalid_video_metadata_has_safe_sampling_fallback(self):
+        self.assertEqual(
+            frame_tool.sample_frame_indices(
+                frame_count=91,
+                source_fps=0.0,
+                sample_fps=1.0,
+                max_frames=None,
+            ),
+            [0, 30, 60, 90],
+        )
+        self.assertEqual(
+            frame_tool.sample_frame_indices(
+                frame_count=0,
+                source_fps=30.0,
+                sample_fps=1.0,
+                max_frames=None,
+            ),
+            [],
+        )
 
 
 if __name__ == "__main__":
