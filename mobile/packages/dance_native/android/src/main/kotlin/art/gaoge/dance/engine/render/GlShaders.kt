@@ -15,6 +15,7 @@ varying vec2 vMaskTexCoord;
 varying vec2 vOccluderTexCoord;
 varying vec2 vLegMaskTexCoord;
 varying vec2 vVisualContentCoord;
+varying vec2 vContentCoord;
 
 void main() {
     gl_Position = aPosition;
@@ -26,6 +27,7 @@ void main() {
     vec4 transformed = uTexMatrix * vec4(contentUv, 0.0, 1.0);
     float invW = 1.0 / (transformed.w != 0.0 ? transformed.w : 1.0);
     vOesTexCoord = transformed.xy * invW;
+    vContentCoord = contentUv;
     // Source-space visual coordinates: X grows left->right, Y grows top->bottom.
     // FACE_ONLY geometry is expressed in this convention and must not be
     // compared against the texture-transformed OES/Bitmap coordinates.
@@ -52,6 +54,7 @@ varying vec2 vMaskTexCoord;
 varying vec2 vOccluderTexCoord;
 varying vec2 vLegMaskTexCoord;
 varying vec2 vVisualContentCoord;
+varying vec2 vContentCoord;
 
 uniform mat4 uTexMatrix;
 uniform sampler2D uMaskTexture;
@@ -81,6 +84,8 @@ uniform vec4 uLegRect;
 uniform int uHasSticker;
 uniform vec4 uStickerRect; // (left, top, right, bottom)
 uniform vec2 uTexelSize;
+uniform vec2 uSourceTexelSize;
+uniform float uCropClarityStrength;
 
 vec3 rgb2hsv(vec3 c) {
     vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
@@ -97,12 +102,43 @@ vec3 hsv2rgb(vec3 c) {
     return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
+vec4 sampleBaseContent(vec2 contentUv) {
+    vec2 safeUv = clamp(contentUv, vec2(0.0), vec2(1.0));
+    vec4 transformed = uTexMatrix * vec4(safeUv, 0.0, 1.0);
+    float invW = 1.0 / (transformed.w != 0.0 ? transformed.w : 1.0);
+    return texture2D(uBaseTexture, transformed.xy * invW);
+}
+
+vec4 sampleCropClarity(vec2 contentUv) {
+    vec4 center = sampleBaseContent(contentUv);
+    if (uCropClarityStrength <= 0.001) {
+        return center;
+    }
+
+    vec2 dx = vec2(uSourceTexelSize.x, 0.0);
+    vec2 dy = vec2(0.0, uSourceTexelSize.y);
+    vec3 north = sampleBaseContent(contentUv - dy).rgb;
+    vec3 south = sampleBaseContent(contentUv + dy).rgb;
+    vec3 west = sampleBaseContent(contentUv - dx).rgb;
+    vec3 east = sampleBaseContent(contentUv + dx).rgb;
+    vec3 localAverage = (north + south + west + east) * 0.25;
+    vec3 detail = center.rgb - localAverage;
+
+    // Keep the enhancement inside the local neighbourhood so halos around
+    // privacy edges, subtitles and high-contrast clothing remain bounded.
+    vec3 localMin = min(center.rgb, min(min(north, south), min(west, east)));
+    vec3 localMax = max(center.rgb, max(max(north, south), max(west, east)));
+    vec3 enhanced = center.rgb + detail * uCropClarityStrength;
+    enhanced = clamp(enhanced, localMin - vec3(0.02), localMax + vec3(0.02));
+    return vec4(clamp(enhanced, 0.0, 1.0), center.a);
+}
+
 void main() {
     vec2 originalUv = vOesTexCoord;
     vec2 maskUv = vMaskTexCoord;
     vec2 occluderUv = vOccluderTexCoord;
 
-    vec4 originalColor = texture2D(uBaseTexture, originalUv);
+    vec4 originalColor = sampleCropClarity(vContentCoord);
 
     if (uHasMask == 0 && uHasLegMask == 0) {
         gl_FragColor = originalColor;
@@ -144,10 +180,7 @@ void main() {
             float t = (visualY - zoneTop) / range;
             float warpedVisualY = zoneTop + (t / uLegStretch) * range;
             vec2 warpedContentUv = vec2(vVisualContentCoord.x, 1.0 - warpedVisualY);
-            vec4 transformed = uTexMatrix * vec4(warpedContentUv, 0.0, 1.0);
-            float invW = 1.0 / (transformed.w != 0.0 ? transformed.w : 1.0);
-            vec2 warpedUv = transformed.xy * invW;
-            vec4 warpedColor = texture2D(uBaseTexture, warpedUv);
+            vec4 warpedColor = sampleCropClarity(warpedContentUv);
             float beautyAlpha = smoothstep(0.10, 0.80, legMaskVal);
             color = mix(originalColor, warpedColor, beautyAlpha);
         }

@@ -274,13 +274,11 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                           icon: !state.showLivePreview
                               ? Icons.play_circle_outline_rounded
                               : (!hasLivePreview
-                                  ? Icons.hourglass_top_rounded
-                                  : Icons.visibility_off_outlined),
+                                    ? Icons.hourglass_top_rounded
+                                    : Icons.visibility_off_outlined),
                           label: !state.showLivePreview
                               ? '点击查看实时画面'
-                              : (!hasLivePreview
-                                  ? '正在开启实时画面…'
-                                  : '点击关闭实时画面'),
+                              : (!hasLivePreview ? '正在开启实时画面…' : '点击关闭实时画面'),
                         ),
                       ),
                     if (state.isFailed)
@@ -488,6 +486,32 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               ),
             ],
           ),
+          if (state.exportPlan?.hasCropClarityRestoration == true) ...[
+            const SizedBox(height: 9),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.high_quality_outlined,
+                  size: 16,
+                  color: AppTheme.flowTextMuted,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '裁切清晰度恢复 · '
+                    '${state.exportPlan!.cropClarityScale.toStringAsFixed(1)}× · '
+                    '${state.exportPlan!.width}×${state.exportPlan!.height}',
+                    style: const TextStyle(
+                      color: AppTheme.flowTextMuted,
+                      fontSize: 11.5,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
           if (state.exportPlan?.hasFallback == true) ...[
             const SizedBox(height: 9),
             Row(
@@ -799,8 +823,6 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   }
 }
 
-
-
 class _InlineAction extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -837,7 +859,9 @@ class _InlineAction extends StatelessWidget {
               Icon(
                 icon,
                 size: 18,
-                color: primary ? AppTheme.textOnAccent : AppTheme.flowTextPrimary,
+                color: primary
+                    ? AppTheme.textOnAccent
+                    : AppTheme.flowTextPrimary,
               ),
               const SizedBox(width: 8),
               Text(

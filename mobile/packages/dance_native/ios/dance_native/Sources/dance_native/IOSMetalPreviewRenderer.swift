@@ -83,7 +83,8 @@ final class IOSMetalPreviewRenderer {
     outputWidth: Int? = nil,
     outputHeight: Int? = nil,
     sourceCrop: SIMD4<Float> = SIMD4<Float>(0, 0, 1, 1),
-    legStretchTargetId: Int? = nil
+    legStretchTargetId: Int? = nil,
+    cropClarityScale: Double = 1.0
   ) throws -> CGImage {
     let sourceWidth = max(1, source.width)
     let sourceHeight = max(1, source.height)
@@ -213,6 +214,10 @@ final class IOSMetalPreviewRenderer {
     var legZoneTop = Float(legZoneTopValue)
     var legZoneBottom = Float(legZoneBottomValue)
     var legRect = legInputs.rect
+    let safeCropClarityScale = cropClarityScale.isFinite
+      ? max(1.0, min(2.0, cropClarityScale))
+      : 1.0
+    var cropClarityStrength = Float(max(0.0, min(0.55, (safeCropClarityScale - 1.0) * 0.55)))
     var faceRectCount = UInt32(renderInputs.faceRects.count)
     var faceRects = renderInputs.faceRects.isEmpty
       ? [SIMD4<Float>(repeating: 0)]
@@ -244,6 +249,7 @@ final class IOSMetalPreviewRenderer {
     encoder.setBytes(&legZoneTop, length: MemoryLayout<Float>.size, index: 13)
     encoder.setBytes(&legZoneBottom, length: MemoryLayout<Float>.size, index: 14)
     encoder.setBytes(&legRect, length: MemoryLayout<SIMD4<Float>>.size, index: 15)
+    encoder.setBytes(&cropClarityStrength, length: MemoryLayout<Float>.size, index: 16)
 
     let threadWidth = max(1, pipeline.threadExecutionWidth)
     let threadHeight = max(1, pipeline.maxTotalThreadsPerThreadgroup / threadWidth)
@@ -850,6 +856,7 @@ kernel void woahPreviewKernel(
   constant float &legZoneTop [[buffer(13)]],
   constant float &legZoneBottom [[buffer(14)]],
   constant float4 &legRect [[buffer(15)]],
+  constant float &cropClarityStrength [[buffer(16)]],
   uint2 gid [[thread_position_in_grid]]
 ) {
   uint width = output.get_width();
@@ -857,6 +864,20 @@ kernel void woahPreviewKernel(
   if (gid.x >= width || gid.y >= height) return;
 
   float4 original = source.read(gid);
+  if (cropClarityStrength > 0.001) {
+    int2 p = int2(gid);
+    float3 north = source.read(uint2(clampPixel(p + int2(0, -1), width, height))).rgb;
+    float3 south = source.read(uint2(clampPixel(p + int2(0, 1), width, height))).rgb;
+    float3 west = source.read(uint2(clampPixel(p + int2(-1, 0), width, height))).rgb;
+    float3 east = source.read(uint2(clampPixel(p + int2(1, 0), width, height))).rgb;
+    float3 localAverage = (north + south + west + east) * 0.25;
+    float3 detail = original.rgb - localAverage;
+    float3 localMin = min(original.rgb, min(min(north, south), min(west, east)));
+    float3 localMax = max(original.rgb, max(max(north, south), max(west, east)));
+    float3 enhanced = original.rgb + detail * cropClarityStrength;
+    enhanced = clamp(enhanced, localMin - float3(0.02), localMax + float3(0.02));
+    original.rgb = clamp(enhanced, 0.0, 1.0);
+  }
   float4 color = original;
 
   float legMaskValue = 0.0;

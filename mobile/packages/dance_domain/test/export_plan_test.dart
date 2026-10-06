@@ -99,6 +99,130 @@ void main() {
     },
   );
 
+  test('1080p landscape portrait crop restores clarity up to FHD', () {
+    final plan = ExportPlan.forProject(
+      project(
+        width: 1920,
+        height: 1080,
+        follow: const FollowConfig(
+          enabled: true,
+          targetPersonId: 1,
+          outputAspectRatio: 9 / 16,
+        ),
+      ),
+      maxEncodeWidth: 3840,
+      maxEncodeHeight: 2160,
+    );
+
+    expect((plan.width, plan.height), (1080, 1920));
+    expect(plan.hasCropClarityRestoration, isTrue);
+    expect(plan.cropClarityScale, closeTo(16 / 9, 0.001));
+  });
+
+  test(
+    '720p landscape portrait crop never exceeds the 2x restoration bound',
+    () {
+      final plan = ExportPlan.forProject(
+        project(
+          width: 1280,
+          height: 720,
+          follow: const FollowConfig(
+            enabled: true,
+            targetPersonId: 1,
+            outputAspectRatio: 9 / 16,
+          ),
+        ),
+      );
+
+      expect((plan.width, plan.height), (810, 1440));
+      expect(plan.cropClarityScale, closeTo(2.0, 0.001));
+    },
+  );
+
+  test(
+    '4K portrait crop already has enough source pixels and skips restoration',
+    () {
+      final plan = ExportPlan.forProject(
+        project(
+          width: 3840,
+          height: 2160,
+          follow: const FollowConfig(
+            enabled: true,
+            targetPersonId: 1,
+            outputAspectRatio: 9 / 16,
+          ),
+        ),
+      );
+
+      expect((plan.width, plan.height), (1206, 2144));
+      expect(plan.hasCropClarityRestoration, isFalse);
+      expect(plan.cropClarityScale, 1.0);
+    },
+  );
+
+  test('HD portrait preference restores only to the HD envelope', () {
+    final plan = ExportPlan.forProject(
+      project(
+        width: 1920,
+        height: 1080,
+        resolution: OutputResolutionPreset.hd,
+        follow: const FollowConfig(
+          enabled: true,
+          targetPersonId: 1,
+          outputAspectRatio: 9 / 16,
+        ),
+      ),
+    );
+
+    expect((plan.width, plan.height), (720, 1280));
+    expect(plan.cropClarityScale, closeTo(32 / 27, 0.001));
+  });
+
+  test(
+    'large follow zoom still respects the strict 2x restoration ceiling',
+    () {
+      final plan = ExportPlan.forProject(
+        project(
+          width: 1920,
+          height: 1080,
+          follow: const FollowConfig(
+            enabled: true,
+            targetPersonId: 1,
+            outputAspectRatio: 9 / 16,
+            zoom: 3,
+          ),
+        ),
+      );
+
+      expect((plan.width, plan.height), (396, 704));
+      expect(plan.cropClarityScale, lessThanOrEqualTo(2.0));
+      expect(plan.cropClarityScale, greaterThan(1.9));
+    },
+  );
+
+  test(
+    'encoder fallback can disable restoration when output is below crop pixels',
+    () {
+      final plan = ExportPlan.forProject(
+        project(
+          width: 1920,
+          height: 1080,
+          follow: const FollowConfig(
+            enabled: true,
+            targetPersonId: 1,
+            outputAspectRatio: 9 / 16,
+          ),
+        ),
+        maxEncodeWidth: 640,
+        maxEncodeHeight: 360,
+      );
+
+      expect((plan.width, plan.height), (360, 640));
+      expect(plan.hasCropClarityRestoration, isFalse);
+      expect(plan.fallbackReason, ExportFallbackReason.encoderDimensionLimit);
+    },
+  );
+
   test('9:16 capability fallback keeps an exact ratio', () {
     final plan = ExportPlan.forProject(
       project(

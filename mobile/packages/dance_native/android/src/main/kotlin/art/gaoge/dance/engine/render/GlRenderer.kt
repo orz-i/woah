@@ -42,6 +42,8 @@ class GlRenderer : FrameRenderer {
         val uHasStickerLoc: Int,
         val uStickerRectLoc: Int,
         val uTexelSizeLoc: Int,
+        val uSourceTexelSizeLoc: Int,
+        val uCropClarityStrengthLoc: Int,
         val uFootYLoc: Int,
         val uBaseTextureLoc: Int,
         val uMaskTextureLoc: Int,
@@ -384,6 +386,8 @@ class GlRenderer : FrameRenderer {
             uHasStickerLoc = GLES20.glGetUniformLocation(programId, "uHasSticker"),
             uStickerRectLoc = GLES20.glGetUniformLocation(programId, "uStickerRect"),
             uTexelSizeLoc = GLES20.glGetUniformLocation(programId, "uTexelSize"),
+            uSourceTexelSizeLoc = GLES20.glGetUniformLocation(programId, "uSourceTexelSize"),
+            uCropClarityStrengthLoc = GLES20.glGetUniformLocation(programId, "uCropClarityStrength"),
             uFootYLoc = GLES20.glGetUniformLocation(programId, "uFootY"),
             uBaseTextureLoc = GLES20.glGetUniformLocation(programId, "uBaseTexture"),
             uMaskTextureLoc = GLES20.glGetUniformLocation(programId, "uMaskTexture"),
@@ -417,6 +421,10 @@ class GlRenderer : FrameRenderer {
         if (prog.uHasOccluderLoc >= 0) GLES20.glUniform1i(prog.uHasOccluderLoc, 0)
         if (prog.uHasLegMaskLoc >= 0) GLES20.glUniform1i(prog.uHasLegMaskLoc, 0)
         if (prog.uHasStickerLoc >= 0) GLES20.glUniform1i(prog.uHasStickerLoc, 0)
+        if (prog.uSourceTexelSizeLoc >= 0) {
+            GLES20.glUniform2f(prog.uSourceTexelSizeLoc, 1f / width.coerceAtLeast(1), 1f / height.coerceAtLeast(1))
+        }
+        if (prog.uCropClarityStrengthLoc >= 0) GLES20.glUniform1f(prog.uCropClarityStrengthLoc, 0f)
 
         val target = if (textureType == SourceTextureType.OES) GLES11Ext.GL_TEXTURE_EXTERNAL_OES else GLES20.GL_TEXTURE_2D
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
@@ -501,7 +509,8 @@ class GlRenderer : FrameRenderer {
         sourceWidth: Int? = null,
         sourceHeight: Int? = null,
         initialFollowTarget: art.gaoge.dance.engine.inference.FloatRect? = null,
-        legStretchTargetPersonId: Int? = null
+        legStretchTargetPersonId: Int? = null,
+        cropClarityScale: Double = 1.0
     ) {
         GLES20.glViewport(0, 0, width, height)
         GLES20.glClearColor(0f, 0f, 0f, 1f)
@@ -579,6 +588,24 @@ class GlRenderer : FrameRenderer {
             GLES20.glUniform4f(prog.uLegRectLoc, 0f, 0f, 0f, 0f)
         }
         if (prog.uTexelSizeLoc >= 0) GLES20.glUniform2f(prog.uTexelSizeLoc, 1f / width.coerceAtLeast(1), 1f / height.coerceAtLeast(1))
+        val sourceRefWidth = maxOf(1, sourceWidth ?: width)
+        val sourceRefHeight = maxOf(1, sourceHeight ?: height)
+        if (prog.uSourceTexelSizeLoc >= 0) {
+            GLES20.glUniform2f(
+                prog.uSourceTexelSizeLoc,
+                1f / sourceRefWidth.toFloat(),
+                1f / sourceRefHeight.toFloat()
+            )
+        }
+        val safeClarityScale = if (cropClarityScale.isFinite()) {
+            cropClarityScale.coerceIn(1.0, 2.0)
+        } else {
+            1.0
+        }
+        val clarityStrength = ((safeClarityScale - 1.0) * 0.55).toFloat().coerceIn(0f, 0.55f)
+        if (prog.uCropClarityStrengthLoc >= 0) {
+            GLES20.glUniform1f(prog.uCropClarityStrengthLoc, clarityStrength)
+        }
 
         // Follow Crop Mapping
         val cropRect = if (follow.enabled) {

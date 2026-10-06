@@ -199,8 +199,9 @@ void main() {
 
       await controller.startExport(project, 'portrait.mp4');
 
-      expect(repository.lastTargetWidth, 594);
-      expect(repository.lastTargetHeight, 1056);
+      expect(repository.lastTargetWidth, 1080);
+      expect(repository.lastTargetHeight, 1920);
+      expect(repository.lastCropClarityScale, closeTo(16 / 9, 0.001));
       expect(repository.lastFollow.targetPersonId, 2);
       expect(repository.lastFollow.outputAspectRatio, 9 / 16);
     },
@@ -241,6 +242,44 @@ void main() {
       expect(repository.lastVideoBitrate, greaterThan(8_000_000));
     },
   );
+
+  test('ExportController forwards adaptive crop clarity restoration', () async {
+    final repository = _TrimCaptureRepository();
+    final controller = ExportController(repository);
+    addTearDown(controller.dispose);
+    final now = DateTime.utc(2026, 10, 5);
+    final project = DanceProject(
+      id: 'portrait-clarity',
+      sourceUri: '/portrait-clarity.mp4',
+      videoInfo: const VideoInfo(
+        codedWidth: 1920,
+        codedHeight: 1080,
+        displayWidth: 1920,
+        displayHeight: 1080,
+        fps: 30,
+        durationMs: 5000,
+        rotation: 0,
+        videoCodec: 'h264',
+        hasAudio: true,
+      ),
+      follow: const FollowConfig(
+        enabled: true,
+        targetPersonId: 1,
+        outputAspectRatio: 9 / 16,
+      ),
+      analysisCacheId: 'cache-portrait-clarity',
+      persons: const [],
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    await controller.startExport(project, 'portrait-clarity.mp4');
+
+    expect(repository.lastTargetWidth, 1080);
+    expect(repository.lastTargetHeight, 1920);
+    expect(repository.lastCropClarityScale, closeTo(16 / 9, 0.001));
+    expect(controller.state.exportPlan!.hasCropClarityRestoration, isTrue);
+  });
 
   test(
     'ExportController applies user FHD preference before device fallback',
@@ -405,6 +444,52 @@ void main() {
       );
       expect(repository.livePreviewToggles.last, isFalse);
       expect(find.text('点击查看实时画面'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'export surfaces crop clarity restoration when portrait crop needs pixels',
+    (tester) async {
+      final repository = _PreviewToggleRepository();
+      addTearDown(repository.dispose);
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+      final project = _testProject().copyWith(
+        videoInfo: const VideoInfo(
+          codedWidth: 1920,
+          codedHeight: 1080,
+          displayWidth: 1920,
+          displayHeight: 1080,
+          fps: 30,
+          durationMs: 12000,
+          rotation: 0,
+          videoCodec: 'h264',
+          hasAudio: true,
+        ),
+        follow: const FollowConfig(
+          enabled: true,
+          targetPersonId: 0,
+          outputAspectRatio: 9 / 16,
+        ),
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(home: ExportScreen(project: project)),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final plan = container.read(exportControllerProvider).exportPlan;
+      expect(plan?.hasCropClarityRestoration, isTrue);
+      expect(plan?.width, 1080);
+      expect(plan?.height, 1920);
+      expect(find.textContaining('裁切清晰度恢复'), findsOneWidget);
+      expect(find.textContaining('1080×1920'), findsOneWidget);
     },
   );
 
@@ -873,6 +958,7 @@ class _TrimCaptureRepository implements NativeProcessingRepository {
   int? lastTargetHeight;
   double? lastTargetFps;
   int? lastVideoBitrate;
+  double? lastCropClarityScale;
   FollowConfig lastFollow = const FollowConfig();
 
   _TrimCaptureRepository({
@@ -913,6 +999,7 @@ class _TrimCaptureRepository implements NativeProcessingRepository {
     double targetFps = 30.0,
     int videoBitrate = 8000000,
     String processingProfile = 'quality',
+    double cropClarityScale = 1.0,
     bool enableLivePreview = false,
     int trimStartMs = 0,
     int? trimEndMs,
@@ -924,6 +1011,7 @@ class _TrimCaptureRepository implements NativeProcessingRepository {
     lastTargetHeight = targetHeight;
     lastTargetFps = targetFps;
     lastVideoBitrate = videoBitrate;
+    lastCropClarityScale = cropClarityScale;
     lastFollow = follow;
     return 'trim-job';
   }
@@ -982,6 +1070,7 @@ class _PreviewToggleRepository implements NativeProcessingRepository {
     double targetFps = 30.0,
     int videoBitrate = 8000000,
     String processingProfile = 'quality',
+    double cropClarityScale = 1.0,
     bool enableLivePreview = false,
     int trimStartMs = 0,
     int? trimEndMs,

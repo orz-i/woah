@@ -203,6 +203,7 @@ class ExportRequestDto {
   final double targetFps;
   final int videoBitrate;
   final String processingProfile;
+  final double? cropClarityScale;
   final bool enableLivePreview;
   final List<int>? faceOnlyPersonIds;
   final int trimStartMs;
@@ -220,6 +221,7 @@ class ExportRequestDto {
     required this.targetFps,
     required this.videoBitrate,
     required this.processingProfile,
+    this.cropClarityScale,
     this.enableLivePreview = false,
     this.faceOnlyPersonIds,
     this.trimStartMs = 0,

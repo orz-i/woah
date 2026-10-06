@@ -106,6 +106,7 @@ class ExportController extends StateNotifier<ExportState> {
         targetFps: plan.nominalFps,
         videoBitrate: plan.videoBitrate,
         processingProfile: 'quality',
+        cropClarityScale: plan.cropClarityScale,
         // Android supports a runtime capture gate and starts with it disabled.
         // Other platforms keep the previous eager-capture behavior so their
         // UI toggle remains backwards-compatible.

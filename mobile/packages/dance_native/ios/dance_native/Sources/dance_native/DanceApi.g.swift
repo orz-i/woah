@@ -786,6 +786,7 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
   var targetFps: Double
   var videoBitrate: Int64
   var processingProfile: String
+  var cropClarityScale: Double? = nil
   var enableLivePreview: Bool
   var faceOnlyPersonIds: [Int64]? = nil
   var trimStartMs: Int64
@@ -805,10 +806,11 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
     let targetFps = pigeonVar_list[8] as! Double
     let videoBitrate = pigeonVar_list[9] as! Int64
     let processingProfile = pigeonVar_list[10] as! String
-    let enableLivePreview = pigeonVar_list[11] as! Bool
-    let faceOnlyPersonIds: [Int64]? = nilOrValue(pigeonVar_list[12])
-    let trimStartMs = pigeonVar_list[13] as! Int64
-    let trimEndMs: Int64? = nilOrValue(pigeonVar_list[14])
+    let cropClarityScale: Double? = nilOrValue(pigeonVar_list[11])
+    let enableLivePreview = pigeonVar_list[12] as! Bool
+    let faceOnlyPersonIds: [Int64]? = nilOrValue(pigeonVar_list[13])
+    let trimStartMs = pigeonVar_list[14] as! Int64
+    let trimEndMs: Int64? = nilOrValue(pigeonVar_list[15])
 
     return ExportRequestDto(
       sourceUri: sourceUri,
@@ -822,6 +824,7 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
       targetFps: targetFps,
       videoBitrate: videoBitrate,
       processingProfile: processingProfile,
+      cropClarityScale: cropClarityScale,
       enableLivePreview: enableLivePreview,
       faceOnlyPersonIds: faceOnlyPersonIds,
       trimStartMs: trimStartMs,
@@ -841,6 +844,7 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
       targetFps,
       videoBitrate,
       processingProfile,
+      cropClarityScale,
       enableLivePreview,
       faceOnlyPersonIds,
       trimStartMs,
@@ -851,7 +855,7 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return DanceApiPigeonInternal.deepEquals(lhs.sourceUri, rhs.sourceUri) && DanceApiPigeonInternal.deepEquals(lhs.analysisCacheId, rhs.analysisCacheId) && DanceApiPigeonInternal.deepEquals(lhs.outputFilePath, rhs.outputFilePath) && DanceApiPigeonInternal.deepEquals(lhs.selectedPersonIds, rhs.selectedPersonIds) && DanceApiPigeonInternal.deepEquals(lhs.effects, rhs.effects) && DanceApiPigeonInternal.deepEquals(lhs.follow, rhs.follow) && DanceApiPigeonInternal.deepEquals(lhs.targetWidth, rhs.targetWidth) && DanceApiPigeonInternal.deepEquals(lhs.targetHeight, rhs.targetHeight) && DanceApiPigeonInternal.deepEquals(lhs.targetFps, rhs.targetFps) && DanceApiPigeonInternal.deepEquals(lhs.videoBitrate, rhs.videoBitrate) && DanceApiPigeonInternal.deepEquals(lhs.processingProfile, rhs.processingProfile) && DanceApiPigeonInternal.deepEquals(lhs.enableLivePreview, rhs.enableLivePreview) && DanceApiPigeonInternal.deepEquals(lhs.faceOnlyPersonIds, rhs.faceOnlyPersonIds) && DanceApiPigeonInternal.deepEquals(lhs.trimStartMs, rhs.trimStartMs) && DanceApiPigeonInternal.deepEquals(lhs.trimEndMs, rhs.trimEndMs)
+    return DanceApiPigeonInternal.deepEquals(lhs.sourceUri, rhs.sourceUri) && DanceApiPigeonInternal.deepEquals(lhs.analysisCacheId, rhs.analysisCacheId) && DanceApiPigeonInternal.deepEquals(lhs.outputFilePath, rhs.outputFilePath) && DanceApiPigeonInternal.deepEquals(lhs.selectedPersonIds, rhs.selectedPersonIds) && DanceApiPigeonInternal.deepEquals(lhs.effects, rhs.effects) && DanceApiPigeonInternal.deepEquals(lhs.follow, rhs.follow) && DanceApiPigeonInternal.deepEquals(lhs.targetWidth, rhs.targetWidth) && DanceApiPigeonInternal.deepEquals(lhs.targetHeight, rhs.targetHeight) && DanceApiPigeonInternal.deepEquals(lhs.targetFps, rhs.targetFps) && DanceApiPigeonInternal.deepEquals(lhs.videoBitrate, rhs.videoBitrate) && DanceApiPigeonInternal.deepEquals(lhs.processingProfile, rhs.processingProfile) && DanceApiPigeonInternal.deepEquals(lhs.cropClarityScale, rhs.cropClarityScale) && DanceApiPigeonInternal.deepEquals(lhs.enableLivePreview, rhs.enableLivePreview) && DanceApiPigeonInternal.deepEquals(lhs.faceOnlyPersonIds, rhs.faceOnlyPersonIds) && DanceApiPigeonInternal.deepEquals(lhs.trimStartMs, rhs.trimStartMs) && DanceApiPigeonInternal.deepEquals(lhs.trimEndMs, rhs.trimEndMs)
   }
 
   func hash(into hasher: inout Hasher) {
@@ -867,6 +871,7 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
     DanceApiPigeonInternal.deepHash(value: targetFps, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: videoBitrate, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: processingProfile, hasher: &hasher)
+    DanceApiPigeonInternal.deepHash(value: cropClarityScale, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: enableLivePreview, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: faceOnlyPersonIds, hasher: &hasher)
     DanceApiPigeonInternal.deepHash(value: trimStartMs, hasher: &hasher)
@@ -874,7 +879,7 @@ struct ExportRequestDto: Hashable, CustomStringConvertible {
   }
 
   public var description: String {
-    return "ExportRequestDto(sourceUri: \(String(describing: sourceUri)), analysisCacheId: \(String(describing: analysisCacheId)), outputFilePath: \(String(describing: outputFilePath)), selectedPersonIds: \(String(describing: selectedPersonIds)), effects: \(String(describing: effects)), follow: \(String(describing: follow)), targetWidth: \(String(describing: targetWidth)), targetHeight: \(String(describing: targetHeight)), targetFps: \(String(describing: targetFps)), videoBitrate: \(String(describing: videoBitrate)), processingProfile: \(String(describing: processingProfile)), enableLivePreview: \(String(describing: enableLivePreview)), faceOnlyPersonIds: \(String(describing: faceOnlyPersonIds)), trimStartMs: \(String(describing: trimStartMs)), trimEndMs: \(String(describing: trimEndMs)))"
+    return "ExportRequestDto(sourceUri: \(String(describing: sourceUri)), analysisCacheId: \(String(describing: analysisCacheId)), outputFilePath: \(String(describing: outputFilePath)), selectedPersonIds: \(String(describing: selectedPersonIds)), effects: \(String(describing: effects)), follow: \(String(describing: follow)), targetWidth: \(String(describing: targetWidth)), targetHeight: \(String(describing: targetHeight)), targetFps: \(String(describing: targetFps)), videoBitrate: \(String(describing: videoBitrate)), processingProfile: \(String(describing: processingProfile)), cropClarityScale: \(String(describing: cropClarityScale)), enableLivePreview: \(String(describing: enableLivePreview)), faceOnlyPersonIds: \(String(describing: faceOnlyPersonIds)), trimStartMs: \(String(describing: trimStartMs)), trimEndMs: \(String(describing: trimEndMs)))"
   }
 }
 
