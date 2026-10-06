@@ -24,6 +24,7 @@ GPU_OP_VERSION_MAX = {
     "MUL": 1,
     "RESIZE_BILINEAR": 3,
     "SUB": 1,
+    "TRANSPOSE_CONV": 1,
 }
 GPU_OP_ALLOWLIST = set(GPU_OP_VERSION_MAX)
 FORBIDDEN_OPS = {
@@ -164,11 +165,10 @@ def inspect_model(model_path: Path) -> dict[str, Any]:
         "operator_versions": operator_versions,
         "gpu_operator_allowlist": sorted(GPU_OP_ALLOWLIST),
         "gpu_operator_version_max": GPU_OP_VERSION_MAX,
-        "upstream_inspiration": {
-            "name": "Swift Parameter-free Attention Network for Efficient Super-Resolution",
-            "repository": "https://github.com/hongyuanyu/SPAN",
-            "license": "Apache-2.0",
-            "adaptation": "NHWC static tiles; PixelShuffle replaced by bilinear resize + Conv2D",
+        "runtime_contract": {
+            "pixelshuffle_depth_to_space_forbidden": True,
+            "transpose_conv_allowed": True,
+            "note": "Architecture-specific migration method is tracked by the candidate spec; this verifier only enforces the shared LiteRT runtime contract.",
         },
     }
 

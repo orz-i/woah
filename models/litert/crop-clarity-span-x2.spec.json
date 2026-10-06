@@ -1,6 +1,6 @@
 {
   "name": "crop_clarity_span_x2",
-  "status": "prototype_not_promoted",
+  "status": "fallback_training_candidate_not_promoted",
   "model_file": "crop-clarity-span-x2.tflite",
   "scale": 2,
   "tile_size": 192,
@@ -23,7 +23,8 @@
     "LOGISTIC",
     "MUL",
     "RESIZE_BILINEAR",
-    "SUB"
+    "SUB",
+    "TRANSPOSE_CONV"
   ],
   "litert_gpu_max_op_versions": {
     "ADD": 1,
@@ -33,7 +34,8 @@
     "LOGISTIC": 1,
     "MUL": 1,
     "RESIZE_BILINEAR": 3,
-    "SUB": 1
+    "SUB": 1,
+    "TRANSPOSE_CONV": 1
   },
   "forbidden_ops": [
     "CUSTOM",
@@ -43,7 +45,7 @@
     "TRANSPOSE"
   ],
   "architecture": {
-    "family": "SPAN-derived",
+    "family": "SPAN-derived-custom-fallback",
     "feature_channels": 12,
     "attention_blocks": 3,
     "spab_convolution": "DEPTHWISE_CONV_2D + pointwise CONV_2D",

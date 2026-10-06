@@ -1,76 +1,99 @@
 # Crop clarity neural restoration
 
-This document defines the neural follow-up to Woah's deterministic crop-clarity
-fallback. The product behavior stays automatic: portrait subject-follow exports
-request restoration only when the final crop contains fewer source pixels than
-the output contract.
+Woah keeps crop clarity automatic: portrait subject-follow exports request enhancement only when the final crop contains fewer source pixels than the output contract. The deterministic GPU shader remains the production fallback.
 
-## Current status
+## Adjusted strategy: no-training first
 
-- `ExportPlan.cropClarityScale` and the deterministic GPU shader are production-ready fallback infrastructure.
-- Neural x2 authoring/runtime scaffolding exists but is **not connected to production export yet**.
-- No neural model is required by normal builds. A model is packaged only when a generated SHA contract matches it.
-- Neural inference requests GPU only; Woah never retries neural inference on CPU. Because LiteRT may internally partition/fallback, full GPU residency must be proven by the real-device promotion gate before production use.
+Custom training is no longer the primary path. The selection order is:
 
-## Model contract
+1. prefer a legally usable lightweight pretrained x2 SR checkpoint that can be migrated into Woah's LiteRT GPU contract without changing learned weights;
+2. use official SPAN x2 as the exact-conversion reference, not an automatic product default;
+3. if no pretrained candidate passes mobile performance/quality gates, keep the deterministic shader in production;
+4. only train Woah's custom lightweight model if we later decide the quality gain justifies owning a training lifecycle.
 
-`models/litert/crop-clarity-span-x2.spec.json` is the static architecture contract.
+This keeps training optional rather than a prerequisite.
 
-- Input: `float32 [1,192,192,3]`, NHWC RGB, `[0,1]`
-- Output: `float32 [1,384,384,3]`, NHWC RGB
-- Scale: x2 only
-- Architecture: SPAN-derived parameter-free attention, 12 features, 3 blocks
-- SPAB convolutions: depthwise 3×3 + pointwise 1×1 to reduce mobile MACs
-- Upsampling: `RESIZE_BILINEAR + CONV_2D`
-- PixelShuffle / `DEPTH_TO_SPACE` is intentionally excluded from the model
+## Exact SPAN PixelShuffle migration
 
-The design is inspired by the Apache-2.0 SPAN project. It preserves SPAN's
-`(out3 + residual) * (sigmoid(out3) - 0.5)` parameter-free attention pattern,
-but intentionally uses fewer channels/blocks and depthwise-separable spatial
-convolutions for the mobile export workload:
-`https://github.com/hongyuanyu/SPAN`.
+Official SPAN is Apache-2.0. Its inference topology uses a 48-feature, six-SPAB backbone followed by a 3x3 Conv2D and PyTorch PixelShuffle. Official pretrained checkpoints are linked from the upstream repository.
 
-A TensorFlow 2.21 structural export with random weights (never promoted) has
-proven the exact graph: 27,620-byte FlatBuffer, 4,011 trainable parameters and
-~309.879M MAC per 192×192 tile. The converted graph contains only `ADD v1`,
-`CONCATENATION v1`, `CONV_2D v1`, `DEPTHWISE_CONV_2D v1`, `LOGISTIC v1`,
-`MUL v1`, `RESIZE_BILINEAR v3`, and `SUB v1`. A three-step fixture-only training
-smoke was also exported and passed the same graph verifier, proving trained
-weights do not alter the reviewed operator contract. The verifier checks both
-operator names and versions so a future converter upgrade cannot silently move
-the graph outside the reviewed GPU contract.
+PixelShuffle must not ship unchanged because it exports as `DEPTH_TO_SPACE`, which is outside Woah's reviewed LiteRT GPU operator contract. LiteRT GPU supports `TRANSPOSE_CONV v1`, so Woah rewrites the x2 head exactly:
 
-## Why the upstream model is not used unchanged
+- main weights: the source 3x3 Conv2D + PixelShuffle are permuted into a stride-2, 6x6 `TRANSPOSE_CONV`;
+- phase bias: the source Conv2D owns four independent bias phases per output channel, represented exactly by a second stride-2, 2x2 `TRANSPOSE_CONV` over a constant-one LR map;
+- the constant-one map comes from a zero-kernel 1x1 `CONV_2D` with bias 1;
+- no learned parameter is approximated and no fine-tuning is required.
 
-Upstream SPAN uses a convolution followed by PixelShuffle. The public LiteRT GPU
-delegate operator list includes `CONV_2D`, `LOGISTIC`, `ADD`, `SUB`, `MUL`,
-`CONCATENATION`, `RESIZE_BILINEAR`, and `TRANSPOSE_CONV`, but does not list
-`DEPTH_TO_SPACE`. Woah therefore uses an NHWC graph whose x2 head is bilinear
-resize plus convolution so the whole graph can stay on the GPU delegate.
+`tools/litert/span_pretrained_x2_migration.py` is the executable proof. Random-weight validation reaches float32 `max_abs` around `3.6e-7`, well inside the `1e-4` equivalence gate. The proof head exports with only `ADD`, `CONV_2D`, and `TRANSPOSE_CONV`.
 
-## Tooling
+## Official SPAN performance finding
 
-Create an isolated authoring environment first (these packages are not app
-runtime dependencies):
+A full official-topology proof was also built with synthetic weights to validate the graph shape before obtaining the actual checkpoint. It successfully converts to LiteRT and contains only reviewed operators:
+
+- `ADD`
+- `CONCATENATION`
+- `CONV_2D`
+- `LOGISTIC`
+- `MUL`
+- `SUB`
+- `TRANSPOSE_CONV`
+
+However, the full 48-feature / six-block topology costs about **16.171G MAC per 192x192 tile**. On the current Apple Silicon host using LiteRT 2.2 Metal, median model-only latency was about **13.3 ms/tile**. A representative 608x1080 portrait crop requires 28 overlapping tiles, yielding roughly **372 ms/frame** of serial model-only work before graphics handoff and composition.
+
+This is not a phone benchmark, but it is enough to treat original full SPAN as a **performance-risk reference** rather than assume that "pretrained" automatically means "mobile-suitable".
+
+Therefore the preferred no-training candidate is a **lighter pretrained x2 SPAN/SPAN-F-class model** if one can be sourced with acceptable license/provenance. The same exact head rewrite can be reused when its head follows Conv2D + PixelShuffle semantics. Original SPAN remains useful for equivalence/reference validation and may still be tested on real devices, but it is not selected by default.
+
+Static reference contract: `models/litert/crop-clarity-span-pretrained-x2.spec.json`.
+
+## Checkpoint migration pipeline
+
+No BasicSR code is needed in the app or in the TensorFlow conversion stage.
+
+First extract/reparameterize a trusted official checkpoint. `extract_pretrained_span_x2.py` mirrors upstream `Conv3XC.update_params` exactly, fusing each training-time 1x1/3x3/1x1 + skip branch into the single inference 3x3 convolution used by SPAN eval mode:
 
 ```bash
-python3.12 -m venv /tmp/woah-sr
-/tmp/woah-sr/bin/pip install -r tools/litert/crop_clarity_requirements.txt
+python3.12 -m venv /tmp/woah-span-migrate
+/tmp/woah-span-migrate/bin/pip install -r tools/litert/span_pretrained_migration_requirements.txt
+
+/tmp/woah-span-migrate/bin/python tools/litert/extract_pretrained_span_x2.py \
+  /path/to/trusted-official-span-x2.pth \
+  --output /tmp/span-x2-reparameterized.npz \
+  --report /tmp/span-x2-source.json
 ```
 
-Author/export an untrained graph for operator validation:
+The extractor requires modern PyTorch `weights_only=True` loading and should still be used only with trusted official checkpoints.
+
+Then build the full NHWC LiteRT graph without PyTorch:
 
 ```bash
-python tools/litert/crop_clarity_span_x2.py \
-  --output /tmp/crop-clarity-span-x2.tflite
-python tools/litert/verify_crop_clarity_model.py \
+/tmp/woah-span-migrate/bin/python tools/litert/span_pretrained_x2_migration.py \
+  --archive /tmp/span-x2-reparameterized.npz \
+  --export-full /tmp/crop-clarity-span-x2.tflite
+
+/tmp/woah-span-migrate/bin/python tools/litert/verify_crop_clarity_model.py \
   /tmp/crop-clarity-span-x2.tflite \
   --contract-out /tmp/crop-clarity-span-x2.contract.json
 ```
 
-Extract sparse frames from a licensed/user-authorized real-video corpus first so
-camera ISP and actual H.264/H.265/social compression are represented in the HR
-side of training. Extraction saves PNG to avoid adding another JPEG generation:
+Before promotion, the actual checkpoint still needs an end-to-end official PyTorch vs migrated-model numerical comparison and SHA-pinned source provenance.
+
+## Custom model remains fallback research only
+
+`models/litert/crop-clarity-span-x2.spec.json` describes the previous custom 12-channel / three-block SPAN-derived fallback. It uses depthwise-separable spatial convolutions plus `RESIZE_BILINEAR + CONV_2D`.
+
+Its validated proof characteristics are:
+
+- input `float32 [1,192,192,3]`, NHWC RGB `[0,1]`;
+- output `float32 [1,384,384,3]`;
+- 4,011 trainable parameters;
+- 27,620-byte random-weight FlatBuffer;
+- about 309.879M MAC per tile;
+- about 1.0-1.2 ms/tile on the current Apple Silicon LiteRT 2.2 Metal host after warmup.
+
+A representative 608x1080 crop uses 28 tiles. The custom topology is therefore much closer to the mobile compute envelope than full SPAN, but it needs training to produce meaningful SR quality. Training is retained only as an optional later fallback.
+
+Fallback tooling remains available:
 
 ```bash
 python tools/litert/extract_crop_clarity_frames.py \
@@ -78,79 +101,44 @@ python tools/litert/extract_crop_clarity_frames.py \
   --output-dir /path/to/woah-sr-frames \
   --sample-fps 1 \
   --max-frames-per-video 120
-```
 
-Then train with the extracted frames (or another licensed HR corpus):
-
-```bash
 python tools/litert/train_crop_clarity_span_x2.py \
   --data-dir /path/to/woah-sr-frames \
   --steps 100000 \
   --output-weights /tmp/crop-clarity.weights.h5
 ```
 
-`--smoke-fixtures` exists only to validate the training plumbing. Those weights
-must never be promoted.
+Fixture-only smoke weights must never be promoted.
 
-The training degradation intentionally samples blur, variable resize chains,
-JPEG compression, and sensor/compression-like noise. Production training should
-extend this with the real Woah source distribution and H.264/H.265 frame
-extraction.
+## Runtime and provisioning
 
-## Local model provisioning
+Normal builds require no Neural SR model. A candidate becomes package-eligible only after `verify_crop_clarity_model.py` emits a matching SHA contract beside the model. `tools/setup_models.py --android` stages it for Android and `tools/release/sync_ios_crop_clarity_model.py` stages the same verified bytes for iOS. Invalid or stale optional assets are removed rather than used.
 
-A prototype becomes package-eligible only after the verifier emits
-`models/litert/crop-clarity-span-x2.contract.json` next to the model and the SHA
-matches exactly. `tools/setup_models.py --android` stages it for Android;
-`tools/release/sync_ios_crop_clarity_model.py` stages the same bytes for iOS.
-Invalid or stale optional assets are removed rather than used.
+Android scaffold:
 
-## Runtime architecture
+- `CropClarityBackendPolicy`: off / deterministic shader / neural LiteRT GPU candidate;
+- neural candidate begins at 1.25x enlargement;
+- `LiteRtCropClarityRestorer` requests GPU and never explicitly retries Neural SR on CPU;
+- `CropClarityTilePlanner` owns overlapping 192px tiles and exact x2 retained-core destination geometry.
 
-Android:
+IOS scaffold:
 
-- `CropClarityBackendPolicy`: off / deterministic shader / neural LiteRT GPU
-- Neural activation begins at 1.25×; milder enlargement stays on the shader to avoid model startup and tile cost.
-- `LiteRtCropClarityRestorer`: GPU-targeted `Accelerator.GPU`; static op verification + real-device profiling are required to prove full residency
-- `CropClarityTilePlanner`: overlapping 192 px tiles with seam-free retained cores
+- `IOSCropClarityRestorer` uses the same tensor contract with a Metal delegate candidate.
 
-IOS:
+Delegate creation is not treated as proof of complete GPU residency; LiteRT can internally partition. Static op validation plus real-device profiling remain mandatory.
 
-- `IOSCropClarityRestorer`: same tensor contract, strict Metal delegate
-
-The runtime classes intentionally expose tile inference without performing a GL
-readback. Production integration must not use a frame-wide CPU readback/upload
-loop. The current Kotlin `TensorBuffer` API exposes typed read/write calls, while
-LiteRT 2.2's C++ `TensorBuffer` additionally exposes zero-copy
-`CreateFromGlTexture`, `CreateFromGlBuffer`, and `CreateFromAhwb`. The preferred
-Android production path is therefore a small C++/JNI bridge that wraps the
-existing crop texture (or an interoperable graphics buffer) directly for GPU
-inference and returns a GPU-backed output texture/buffer. The neural backend can
-replace the shader only after that handoff strategy and real-device performance
-pass the promotion gates below.
-
-A host-side LiteRT 2.2 Metal direction check on Apple Silicon compiled the same
-trained smoke graph fully through the Metal GPU path. After warmup, model-only
-latency was about 1.0–1.2 ms per 192×192 tile (CPU was ~17 ms). A representative
-608×1080 portrait crop requires 28 overlapping tiles, so zero-copy I/O is
-material: CPU readback/upload would erase much of the GPU advantage. This host
-measurement is evidence for architecture viability only, not a mobile promotion
-gate.
-
-Reproduce model-only host timing with:
-
-```bash
-python tools/litert/benchmark_crop_clarity_model.py \
-  /tmp/crop-clarity-span-x2.tflite --accelerator gpu
-```
+Production Android integration must also avoid `glReadPixels -> FloatArray -> GPU` per tile. LiteRT C++ exposes graphics-backed TensorBuffer interoperability, so the intended production path is a small JNI bridge wrapping an existing GL texture/buffer (or interoperable graphics buffer) directly once an Android SDK/NDK environment is available for compile/device validation.
 
 ## Promotion gates
 
-1. TFLite verifier passes exact IO and GPU operator allowlist.
-2. Model is byte-pinned by SHA-256.
-3. Android strict-GPU compilation succeeds on representative Adreno/Mali devices.
-4. iPhone Metal delegate succeeds on representative devices.
-5. Real-video A/B beats the deterministic fallback on crop detail without temporal flicker.
-6. Export throughput, peak memory, thermals, and cancellation remain acceptable.
-7. Privacy regions are no less protected than the deterministic fallback.
-8. Only after all gates pass may the neural backend become the default for `cropClarityScale > 1`.
+1. Select a lightweight pretrained x2 candidate with clear license/provenance, or explicitly accept original SPAN's compute cost for testing.
+2. Pin checkpoint source and SHA-256.
+3. Full-model source-framework vs migrated LiteRT numerical equivalence passes.
+4. TFLite verifier passes exact IO and GPU op/version allowlist; `DEPTH_TO_SPACE` remains forbidden.
+5. Model bytes are pinned by SHA-256 for Android and iOS.
+6. Android Adreno/Mali GPU residency + zero-copy benchmark passes.
+7. Real iPhone Metal benchmark passes.
+8. Real-video A/B beats the deterministic shader without unacceptable temporal flicker.
+9. Export throughput, peak memory, thermals and cancellation remain acceptable.
+10. Privacy regions are no less protected than the deterministic fallback.
+11. Only after all gates pass may Neural SR replace the shader for eligible crops.

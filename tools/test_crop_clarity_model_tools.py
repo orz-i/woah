@@ -2,14 +2,19 @@ import json
 from pathlib import Path
 import unittest
 
+import numpy as np
+
 from tools.litert import benchmark_crop_clarity_model as benchmark_tool
 from tools.litert import crop_clarity_span_x2 as model_tool
 from tools.litert import extract_crop_clarity_frames as frame_tool
+from tools.litert import extract_pretrained_span_x2 as pretrained_extractor
+from tools.litert import span_pretrained_x2_migration as pretrained_migration
 from tools.litert import verify_crop_clarity_model as verifier
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = ROOT / "models/litert/crop-clarity-span-x2.spec.json"
+PRETRAINED_SPEC = ROOT / "models/litert/crop-clarity-span-pretrained-x2.spec.json"
 
 
 class CropClarityModelToolContractTest(unittest.TestCase):
@@ -40,10 +45,41 @@ class CropClarityModelToolContractTest(unittest.TestCase):
         self.assertEqual(self.spec["architecture"]["upsample_head"], "RESIZE_BILINEAR + CONV_2D")
 
     def test_prototype_is_not_promoted_or_required(self):
-        self.assertEqual(self.spec["status"], "prototype_not_promoted")
+        self.assertEqual(self.spec["status"], "fallback_training_candidate_not_promoted")
         gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
         self.assertIn("models/litert/*", gitignore)
         self.assertNotIn("!models/litert/crop-clarity-span-x2.tflite", gitignore)
+
+    def test_pretrained_route_is_no_training_and_transpose_conv_allowlisted(self):
+        spec = json.loads(PRETRAINED_SPEC.read_text(encoding="utf-8"))
+        self.assertEqual(spec["status"], "no_training_reference_candidate_performance_risk")
+        self.assertFalse(spec["migration"]["training_required"])
+        self.assertIn("TRANSPOSE_CONV", verifier.GPU_OP_ALLOWLIST)
+        self.assertEqual(verifier.GPU_OP_VERSION_MAX["TRANSPOSE_CONV"], 1)
+        self.assertEqual(spec["migration"]["forbidden_runtime_op"], "DEPTH_TO_SPACE")
+        self.assertGreater(spec["host_proof"]["mac_per_192_tile"], 10_000_000_000)
+        self.assertEqual(spec["host_proof"]["representative_608x1080_tiles"], 28)
+
+    def test_pretrained_checkpoint_extractor_covers_all_inference_conv3xc_modules(self):
+        self.assertEqual(len(pretrained_extractor.CONV3XC_PREFIXES), 20)
+        self.assertEqual(pretrained_extractor.CONV3XC_PREFIXES[0], "conv_1")
+        self.assertEqual(pretrained_extractor.CONV3XC_PREFIXES[-1], "conv_2")
+        self.assertIn("block_6.c3_r", pretrained_extractor.CONV3XC_PREFIXES)
+
+    def test_pretrained_pixelshuffle_head_rewrite_is_numerically_exact(self):
+        rng = np.random.default_rng(42)
+        source = pretrained_migration.PixelShuffleHead(
+            weight=rng.normal(0, 0.1, (12, 4, 3, 3)).astype(np.float32),
+            bias=rng.normal(0, 0.1, (12,)).astype(np.float32),
+        )
+        feature = rng.normal(0, 1, (1, 5, 7, 4)).astype(np.float32)
+        expected = pretrained_migration.pytorch_pixelshuffle_reference(feature, source)
+        converted = pretrained_migration.convert_pixelshuffle_head(source)
+        actual = pretrained_migration.transpose_head_reference_numpy(feature, converted)
+        delta = np.abs(expected - actual)
+        self.assertLess(float(delta.max()), 1e-4)
+        self.assertEqual(converted.main_kernel.shape, (6, 6, 3, 4))
+        self.assertEqual(converted.phase_bias_kernel.shape, (2, 2, 3, 1))
 
     def test_benchmark_tile_count_matches_android_planner_examples(self):
         self.assertEqual(benchmark_tool.tile_count(608, 1080), 28)
