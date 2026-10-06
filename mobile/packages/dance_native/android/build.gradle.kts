@@ -235,6 +235,31 @@ val syncLiteRtModelAssets = tasks.register("syncLiteRtModelAssets") {
                     }
                 }
             }
+
+            // Neural crop clarity remains optional until a model passes the
+            // promotion gates. A local prototype is staged only with the SHA
+            // contract emitted by verify_crop_clarity_model.py.
+            val clarityName = "crop-clarity-span-x2.tflite"
+            val claritySource = File(repoModelsDir, clarityName)
+            val clarityContract = File(repoModelsDir, "crop-clarity-span-x2.contract.json")
+            val clarityDest = File(targetDir, clarityName)
+            val clarityExpected = if (clarityContract.isFile) {
+                runCatching {
+                    val parsed = JsonSlurper().parse(clarityContract) as Map<*, *>
+                    (parsed["sha256"] as? String)?.lowercase()
+                }.getOrNull()
+            } else null
+            val clarityValid = claritySource.isFile &&
+                clarityExpected?.matches(Regex("[0-9a-f]{64}")) == true &&
+                sha256(claritySource) == clarityExpected
+            if (clarityValid) {
+                val needsCopy = !clarityDest.exists() ||
+                    clarityDest.length() != claritySource.length() ||
+                    sha256(clarityDest) != clarityExpected
+                if (needsCopy) claritySource.copyTo(clarityDest, overwrite = true)
+            } else {
+                clarityDest.delete()
+            }
         }
     }
 }
@@ -264,6 +289,25 @@ val verifyLiteRtModelAssets = tasks.register("verifyLiteRtModelAssets") {
             if (actualSha256 != expectedSha256) {
                 throw GradleException(
                     "Unexpected YOLO model hash: expected=$expectedSha256 actual=$actualSha256"
+                )
+            }
+        }
+
+        val optionalClarity = file("src/main/assets/models/litert/crop-clarity-span-x2.tflite")
+        if (optionalClarity.exists()) {
+            val clarityContractFile = file("../../../../models/litert/crop-clarity-span-x2.contract.json")
+            if (!clarityContractFile.isFile) {
+                throw GradleException("Staged crop-clarity model is missing its SHA contract")
+            }
+            val clarityContract = JsonSlurper().parse(clarityContractFile) as Map<*, *>
+            val clarityExpected = (clarityContract["sha256"] as? String)?.lowercase()
+            if (clarityExpected == null || !clarityExpected.matches(Regex("[0-9a-f]{64}"))) {
+                throw GradleException("Invalid crop-clarity SHA contract")
+            }
+            val clarityActual = sha256(optionalClarity)
+            if (clarityActual != clarityExpected) {
+                throw GradleException(
+                    "Unexpected crop-clarity model hash: expected=$clarityExpected actual=$clarityActual"
                 )
             }
         }

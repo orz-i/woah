@@ -39,15 +39,17 @@ htmlcov/
 *.data
 models/
 
-# Canonical shared Android/iOS YOLO LiteRT artifact. Keep every other production
-# model ignored, but track this byte-pinned binary instead of relying on
-# host-dependent floating-point re-export.
+# Canonical shared Android/iOS YOLO LiteRT artifact. Keep other production model
+# binaries ignored, while allowing the crop-clarity architecture/SHA contracts
+# to be tracked without promoting experimental model bytes.
 !models/
 models/*
 !models/litert/
 models/litert/*
 !models/litert/README.md
 !models/litert/yolo11n-seg-fp16.tflite
+!models/litert/crop-clarity-span-x2.spec.json
+!models/litert/crop-clarity-span-x2.contract.json
 
 # Benchmark-only face model fixture. Keep production model ignores intact while
 # allowing this small, source-pinned Apache-2.0 test asset to survive clean checkout.

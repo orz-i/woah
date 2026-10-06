@@ -21,6 +21,9 @@ ROOT = Path(__file__).resolve().parents[1]
 MODEL_NAMES = (
     "yolo11n-seg-fp16.tflite",
 )
+OPTIONAL_MODEL_CONTRACTS = {
+    "crop-clarity-span-x2.tflite": "crop-clarity-span-x2.contract.json",
+}
 ASSET_PATH = Path("mobile/packages/dance_native/android/src/main/assets/models/litert")
 YOLO_CONTRACT = Path(
     "mobile/packages/dance_native/ios/dance_native/Sources/dance_native/Resources/"
@@ -48,7 +51,8 @@ def model_identity(path: Path) -> dict[str, str | int]:
 def stage_android_models(root: Path, source_dir: Path | None = None) -> dict:
     """Validate the supported model before staging; replace it atomically.
 
-    Only MODEL_NAMES are read. Unavailable/obsolete model caches are left alone.
+    Release-critical MODEL_NAMES stay mandatory. Optional crop-clarity assets are
+    staged only when both the model and a matching generated SHA contract exist.
     """
     source = source_dir.resolve() if source_dir is not None else root / "models/litert"
     target = root / ASSET_PATH
@@ -78,7 +82,32 @@ def stage_android_models(root: Path, source_dir: Path | None = None) -> dict:
             + " Only the canonical YOLO LiteRT model is part of the supported build contract."
         )
 
+    optional_models = {}
+    optional_skipped = {}
+    for name, contract_name in OPTIONAL_MODEL_CONTRACTS.items():
+        model_path = source / name
+        contract_path = source / contract_name
+        if not model_path.exists() and not contract_path.exists():
+            optional_skipped[name] = "not_provisioned"
+            continue
+        try:
+            if not model_path.is_file() or not contract_path.is_file():
+                raise ValueError("model and generated SHA contract must both exist")
+            identity = model_identity(model_path)
+            optional_contract = json.loads(contract_path.read_text(encoding="utf-8"))
+            expected = optional_contract.get("sha256")
+            if not isinstance(expected, str) or expected.lower() != identity["sha256"]:
+                raise ValueError("SHA-256 does not match generated crop-clarity contract")
+            optional_models[name] = identity
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            optional_skipped[name] = str(exc)
+
     target.mkdir(parents=True, exist_ok=True)
+    identities.update(optional_models)
+    for optional_name in OPTIONAL_MODEL_CONTRACTS:
+        if optional_name not in optional_models:
+            (target / optional_name).unlink(missing_ok=True)
+
     for name, identity in identities.items():
         destination = target / name
         if destination.is_file() and compute_sha256(destination) == identity["sha256"]:
@@ -97,7 +126,12 @@ def stage_android_models(root: Path, source_dir: Path | None = None) -> dict:
     for name, identity in identities.items():
         if model_identity(target / name) != identity:
             raise ValueError(f"Packaged LiteRT model verification failed: {name}")
-    return {"source": str(source), "target": str(target), "models": identities}
+    return {
+        "source": str(source),
+        "target": str(target),
+        "models": identities,
+        "optional_skipped": optional_skipped,
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
