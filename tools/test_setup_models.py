@@ -8,7 +8,12 @@ import unittest
 from unittest.mock import patch
 
 from tools.setup_models import (
-    ASSET_PATH, MODEL_NAMES, YOLO_CONTRACT, model_identity, stage_android_models,
+    ASSET_PATH,
+    MODEL_NAMES,
+    OPTIONAL_MODEL_CONTRACTS,
+    YOLO_CONTRACT,
+    model_identity,
+    stage_android_models,
 )
 
 
@@ -45,6 +50,36 @@ class AndroidModelStagingTest(unittest.TestCase):
         self.assertEqual({p.name for p in self.source.iterdir()}, {MODEL_NAMES[0]})
         report = stage_android_models(self.root)
         self.assertEqual(set(report["models"]), {MODEL_NAMES[0]})
+
+    def test_verified_optional_crop_clarity_model_is_staged(self):
+        name, contract_name = next(iter(OPTIONAL_MODEL_CONTRACTS.items()))
+        model = self.source / name
+        model.write_bytes(b"\x08\x00\x00\x00TFL3crop-clarity")
+        model_sha = hashlib.sha256(model.read_bytes()).hexdigest()
+        (self.source / contract_name).write_text(
+            json.dumps({"sha256": model_sha}), encoding="utf-8"
+        )
+
+        report = stage_android_models(self.root)
+        self.assertIn(name, report["models"])
+        self.assertEqual(report["models"][name]["sha256"], model_sha)
+        self.assertEqual(model.read_bytes(), (self.root / ASSET_PATH / name).read_bytes())
+
+    def test_unverified_optional_crop_clarity_model_is_removed_and_skipped(self):
+        name, contract_name = next(iter(OPTIONAL_MODEL_CONTRACTS.items()))
+        model = self.source / name
+        model.write_bytes(b"\x08\x00\x00\x00TFL3crop-clarity")
+        target = self.root / ASSET_PATH / name
+        target.parent.mkdir(parents=True)
+        target.write_bytes(b"stale")
+        (self.source / contract_name).write_text(
+            json.dumps({"sha256": "0" * 64}), encoding="utf-8"
+        )
+
+        report = stage_android_models(self.root)
+        self.assertNotIn(name, report["models"])
+        self.assertIn(name, report["optional_skipped"])
+        self.assertFalse(target.exists())
 
     def test_unavailable_and_obsolete_source_files_are_not_processed(self):
         unused = (

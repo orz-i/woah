@@ -1,0 +1,65 @@
+{
+  "name": "crop_clarity_span_x2",
+  "status": "fallback_training_candidate_not_promoted",
+  "model_file": "crop-clarity-span-x2.tflite",
+  "scale": 2,
+  "tile_size": 192,
+  "input": {
+    "shape": [1, 192, 192, 3],
+    "layout": "NHWC",
+    "dtype": "float32",
+    "range": "0..1"
+  },
+  "output": {
+    "shape": [1, 384, 384, 3],
+    "layout": "NHWC",
+    "dtype": "float32"
+  },
+  "allowed_litert_gpu_ops": [
+    "ADD",
+    "CONCATENATION",
+    "CONV_2D",
+    "DEPTHWISE_CONV_2D",
+    "LOGISTIC",
+    "MUL",
+    "RESIZE_BILINEAR",
+    "SUB",
+    "TRANSPOSE_CONV"
+  ],
+  "litert_gpu_max_op_versions": {
+    "ADD": 1,
+    "CONCATENATION": 1,
+    "CONV_2D": 1,
+    "DEPTHWISE_CONV_2D": 2,
+    "LOGISTIC": 1,
+    "MUL": 1,
+    "RESIZE_BILINEAR": 3,
+    "SUB": 1,
+    "TRANSPOSE_CONV": 1
+  },
+  "forbidden_ops": [
+    "CUSTOM",
+    "DELEGATE",
+    "DEPTH_TO_SPACE",
+    "FLEX",
+    "TRANSPOSE"
+  ],
+  "architecture": {
+    "family": "SPAN-derived-custom-fallback",
+    "feature_channels": 12,
+    "attention_blocks": 3,
+    "spab_convolution": "DEPTHWISE_CONV_2D + pointwise CONV_2D",
+    "upsample_head": "RESIZE_BILINEAR + CONV_2D",
+    "upstream": "https://github.com/hongyuanyu/SPAN",
+    "upstream_license": "Apache-2.0"
+  },
+  "promotion_gates": [
+    "verified FlatBuffer IO contract",
+    "GPU operator allowlist passes",
+    "byte-pinned SHA-256 contract",
+    "Android real-device strict-GPU benchmark",
+    "iPhone Metal delegate benchmark",
+    "real-video quality A/B beats deterministic shader fallback",
+    "privacy areas remain no less protected than fallback"
+  ]
+}

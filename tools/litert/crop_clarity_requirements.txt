@@ -1,0 +1,7 @@
+# Isolated authoring/verification environment for crop-clarity Neural SR.
+# These are tooling-only dependencies and must not become Woah app runtime deps.
+tensorflow==2.21.0
+ai-edge-litert==2.2.0
+numpy>=2.0,<3
+pillow>=11,<13
+opencv-python-headless>=4.10,<5

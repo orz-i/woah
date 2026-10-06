@@ -170,6 +170,7 @@ class ExportPipeline(
             jobId = jobId,
             fields = mapOf(
                 "profile" to request.processingProfile,
+                "crop_clarity_scale" to (request.cropClarityScale ?: 1.0),
                 "selected_ids" to fullBodyPersonIds.sorted(),
                 "face_only_ids" to faceOnlyPersonIds.sorted()
             )
@@ -1736,7 +1737,8 @@ class ExportPipeline(
                                             request.follow.targetPersonId?.toInt()
                                         } else {
                                             null
-                                        }
+                                        },
+                                        cropClarityScale = request.cropClarityScale ?: 1.0
                                     )
                                 } finally {
                                     target.restore(previousFramebuffer)
@@ -2093,7 +2095,8 @@ class ExportPipeline(
                                         request.follow.targetPersonId?.toInt()
                                     } else {
                                         null
-                                    }
+                                    },
+                                    cropClarityScale = request.cropClarityScale ?: 1.0
                                 )
                             }
                             renderedFrameCount++
@@ -2315,6 +2318,7 @@ class ExportPipeline(
                             "target_width" to targetWidth,
                             "target_height" to targetHeight,
                             "target_fps" to nominalOutputFps,
+                            "crop_clarity_scale" to (request.cropClarityScale ?: 1.0),
                             "selected_ids" to fullBodyPersonIds.sorted(),
                             "face_only_ids" to faceOnlyPersonIds.sorted(),
                             "decoded_frames" to decodedFrameCount,

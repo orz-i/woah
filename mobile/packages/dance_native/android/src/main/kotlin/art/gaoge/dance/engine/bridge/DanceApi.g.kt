@@ -763,6 +763,7 @@ data class ExportRequestDto (
   val targetFps: Double,
   val videoBitrate: Long,
   val processingProfile: String,
+  val cropClarityScale: Double? = null,
   val enableLivePreview: Boolean,
   val faceOnlyPersonIds: List<Long>? = null,
   val trimStartMs: Long,
@@ -782,11 +783,12 @@ data class ExportRequestDto (
       val targetFps = pigeonVar_list[8] as Double
       val videoBitrate = pigeonVar_list[9] as Long
       val processingProfile = pigeonVar_list[10] as String
-      val enableLivePreview = pigeonVar_list[11] as Boolean
-      val faceOnlyPersonIds = pigeonVar_list[12] as List<Long>?
-      val trimStartMs = pigeonVar_list[13] as Long
-      val trimEndMs = pigeonVar_list[14] as Long?
-      return ExportRequestDto(sourceUri, analysisCacheId, outputFilePath, selectedPersonIds, effects, follow, targetWidth, targetHeight, targetFps, videoBitrate, processingProfile, enableLivePreview, faceOnlyPersonIds, trimStartMs, trimEndMs)
+      val cropClarityScale = pigeonVar_list[11] as Double?
+      val enableLivePreview = pigeonVar_list[12] as Boolean
+      val faceOnlyPersonIds = pigeonVar_list[13] as List<Long>?
+      val trimStartMs = pigeonVar_list[14] as Long
+      val trimEndMs = pigeonVar_list[15] as Long?
+      return ExportRequestDto(sourceUri, analysisCacheId, outputFilePath, selectedPersonIds, effects, follow, targetWidth, targetHeight, targetFps, videoBitrate, processingProfile, cropClarityScale, enableLivePreview, faceOnlyPersonIds, trimStartMs, trimEndMs)
     }
   }
   fun toList(): List<Any?> {
@@ -802,6 +804,7 @@ data class ExportRequestDto (
       targetFps,
       videoBitrate,
       processingProfile,
+      cropClarityScale,
       enableLivePreview,
       faceOnlyPersonIds,
       trimStartMs,
@@ -816,7 +819,7 @@ data class ExportRequestDto (
       return true
     }
     val other = other as ExportRequestDto
-    return DanceApiPigeonUtils.deepEquals(this.sourceUri, other.sourceUri) && DanceApiPigeonUtils.deepEquals(this.analysisCacheId, other.analysisCacheId) && DanceApiPigeonUtils.deepEquals(this.outputFilePath, other.outputFilePath) && DanceApiPigeonUtils.deepEquals(this.selectedPersonIds, other.selectedPersonIds) && DanceApiPigeonUtils.deepEquals(this.effects, other.effects) && DanceApiPigeonUtils.deepEquals(this.follow, other.follow) && DanceApiPigeonUtils.deepEquals(this.targetWidth, other.targetWidth) && DanceApiPigeonUtils.deepEquals(this.targetHeight, other.targetHeight) && DanceApiPigeonUtils.deepEquals(this.targetFps, other.targetFps) && DanceApiPigeonUtils.deepEquals(this.videoBitrate, other.videoBitrate) && DanceApiPigeonUtils.deepEquals(this.processingProfile, other.processingProfile) && DanceApiPigeonUtils.deepEquals(this.enableLivePreview, other.enableLivePreview) && DanceApiPigeonUtils.deepEquals(this.faceOnlyPersonIds, other.faceOnlyPersonIds) && DanceApiPigeonUtils.deepEquals(this.trimStartMs, other.trimStartMs) && DanceApiPigeonUtils.deepEquals(this.trimEndMs, other.trimEndMs)
+    return DanceApiPigeonUtils.deepEquals(this.sourceUri, other.sourceUri) && DanceApiPigeonUtils.deepEquals(this.analysisCacheId, other.analysisCacheId) && DanceApiPigeonUtils.deepEquals(this.outputFilePath, other.outputFilePath) && DanceApiPigeonUtils.deepEquals(this.selectedPersonIds, other.selectedPersonIds) && DanceApiPigeonUtils.deepEquals(this.effects, other.effects) && DanceApiPigeonUtils.deepEquals(this.follow, other.follow) && DanceApiPigeonUtils.deepEquals(this.targetWidth, other.targetWidth) && DanceApiPigeonUtils.deepEquals(this.targetHeight, other.targetHeight) && DanceApiPigeonUtils.deepEquals(this.targetFps, other.targetFps) && DanceApiPigeonUtils.deepEquals(this.videoBitrate, other.videoBitrate) && DanceApiPigeonUtils.deepEquals(this.processingProfile, other.processingProfile) && DanceApiPigeonUtils.deepEquals(this.cropClarityScale, other.cropClarityScale) && DanceApiPigeonUtils.deepEquals(this.enableLivePreview, other.enableLivePreview) && DanceApiPigeonUtils.deepEquals(this.faceOnlyPersonIds, other.faceOnlyPersonIds) && DanceApiPigeonUtils.deepEquals(this.trimStartMs, other.trimStartMs) && DanceApiPigeonUtils.deepEquals(this.trimEndMs, other.trimEndMs)
   }
 
   override fun hashCode(): Int {
@@ -832,6 +835,7 @@ data class ExportRequestDto (
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.targetFps)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.videoBitrate)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.processingProfile)
+    result = 31 * result + DanceApiPigeonUtils.deepHash(this.cropClarityScale)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.enableLivePreview)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.faceOnlyPersonIds)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.trimStartMs)
@@ -839,7 +843,7 @@ data class ExportRequestDto (
     return result
   }
   override fun toString(): String {
-    return "ExportRequestDto(sourceUri=$sourceUri, analysisCacheId=$analysisCacheId, outputFilePath=$outputFilePath, selectedPersonIds=$selectedPersonIds, effects=$effects, follow=$follow, targetWidth=$targetWidth, targetHeight=$targetHeight, targetFps=$targetFps, videoBitrate=$videoBitrate, processingProfile=$processingProfile, enableLivePreview=$enableLivePreview, faceOnlyPersonIds=$faceOnlyPersonIds, trimStartMs=$trimStartMs, trimEndMs=$trimEndMs)"
+    return "ExportRequestDto(sourceUri=$sourceUri, analysisCacheId=$analysisCacheId, outputFilePath=$outputFilePath, selectedPersonIds=$selectedPersonIds, effects=$effects, follow=$follow, targetWidth=$targetWidth, targetHeight=$targetHeight, targetFps=$targetFps, videoBitrate=$videoBitrate, processingProfile=$processingProfile, cropClarityScale=$cropClarityScale, enableLivePreview=$enableLivePreview, faceOnlyPersonIds=$faceOnlyPersonIds, trimStartMs=$trimStartMs, trimEndMs=$trimEndMs)"
   }
 }
 

@@ -64,12 +64,14 @@ jobs:
           cd ../dance_native && flutter test
           cd ../../app && flutter test
 
-      - name: Verify Android LiteRT Staging Contract
-        run: python -m unittest tools.test_setup_models -v
+      - name: Verify LiteRT Model Contracts
+        run: |
+          python -m unittest tools.test_setup_models -v
+          uv run python -m unittest tools.test_crop_clarity_model_tools -v
 
-      # SAM2 is unavailable and ONNX is obsolete. The tracked YOLO model is
-      # the only LiteRT provisioning input; the face-model gate stays in Gradle.
-      - name: Stage canonical Android YOLO LiteRT asset
+      # SAM2 is unavailable and ONNX is obsolete. YOLO stays mandatory; the
+      # crop-clarity prototype is staged only when a verified SHA contract exists.
+      - name: Stage Android LiteRT assets
         run: |
           python tools/setup_models.py --android
 

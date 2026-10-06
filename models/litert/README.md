@@ -23,3 +23,26 @@ license reference recorded there.
 All other production model binaries remain ignored. Do not replace this file
 without updating the tracked iOS model contract and graph/semantic evidence
 together.
+
+## Optional crop-clarity Neural SR
+
+No Neural SR binary is tracked or required by normal builds.
+
+`crop-clarity-span-pretrained-x2.spec.json` defines the **no-training reference route**:
+reuse an Apache-2.0 pretrained SPAN-family x2 checkpoint, preserve learned weights,
+and rewrite only PixelShuffle into an exactly equivalent `TRANSPOSE_CONV` main
+branch plus periodic phase-bias branch. The original 48-feature/6-block SPAN
+migration is numerically valid but its host proof is expensive (~16.171G MAC per
+192px tile, ~13.3 ms/tile on the current Apple Silicon Metal host), so product
+selection should prefer a lighter legally usable pretrained x2 checkpoint rather
+than assuming full SPAN is mobile-suitable.
+
+`crop-clarity-span-x2.spec.json` is now the **fallback custom-training route**. It
+uses a smaller 12-channel/3-block depthwise-separable SPAN-derived body and a
+`RESIZE_BILINEAR + CONV_2D` head. It should be trained only if the pretrained
+migration fails phone performance or real-video quality gates.
+
+A candidate becomes package-eligible only when
+`tools/litert/verify_crop_clarity_model.py` emits a matching
+`crop-clarity-span-x2.contract.json` containing its SHA-256. Normal builds keep
+the deterministic crop-clarity shader when no promoted model is provisioned.

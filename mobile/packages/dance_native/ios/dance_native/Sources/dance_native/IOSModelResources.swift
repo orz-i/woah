@@ -5,6 +5,8 @@ enum IOSModelResources {
   static let yoloModelExtension = "tflite"
   static let yoloPhase1FixtureFileName = "yolo_phase1_test_frame"
   static let yoloPhase1FixtureExtension = "jpg"
+  static let cropClarityModelFileName = "crop-clarity-span-x2"
+  static let cropClarityModelExtension = "tflite"
 
   static func yoloModelURL() -> URL? {
     resourceURL(
@@ -17,6 +19,13 @@ enum IOSModelResources {
     resourceURL(
       fileName: yoloPhase1FixtureFileName,
       fileExtension: yoloPhase1FixtureExtension
+    )
+  }
+
+  static func cropClarityModelURL() -> URL? {
+    resourceURL(
+      fileName: cropClarityModelFileName,
+      fileExtension: cropClarityModelExtension
     )
   }
 

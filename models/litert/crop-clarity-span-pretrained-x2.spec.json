@@ -1,0 +1,53 @@
+{
+  "name": "crop_clarity_span_pretrained_x2",
+  "status": "no_training_reference_candidate_performance_risk",
+  "scale": 2,
+  "tile_size": 192,
+  "source": {
+    "project": "Swift Parameter-free Attention Network for Efficient Super-Resolution",
+    "repository": "https://github.com/hongyuanyu/SPAN",
+    "license": "Apache-2.0",
+    "checkpoint_distribution": "official Google Drive linked from upstream README",
+    "architecture": {
+      "feature_channels": 48,
+      "attention_blocks": 6,
+      "upsample_head": "Conv2D 3x3 -> PyTorch PixelShuffle x2"
+    }
+  },
+  "migration": {
+    "training_required": false,
+    "backbone": "preserve official pretrained weights after Conv3XC inference reparameterization",
+    "upsample_weight": "exact PixelShuffle Conv2D -> TRANSPOSE_CONV stride2 kernel6 permutation",
+    "upsample_bias": "exact periodic phase bias via constant-one Conv2D + TRANSPOSE_CONV stride2 kernel2",
+    "equivalence_tolerance_float32_max_abs": 0.0001,
+    "forbidden_runtime_op": "DEPTH_TO_SPACE"
+  },
+  "expected_litert_gpu_ops": [
+    "ADD",
+    "CONCATENATION",
+    "CONV_2D",
+    "LOGISTIC",
+    "MUL",
+    "SUB",
+    "TRANSPOSE_CONV"
+  ],
+  "host_proof": {
+    "random_weight_full_topology_flatbuffer_bytes": 1667472,
+    "mac_per_192_tile": 16171000000,
+    "apple_silicon_litert_metal_median_ms_per_tile": 13.275,
+    "representative_608x1080_tiles": 28,
+    "representative_serial_model_only_ms": 371.7,
+    "interpretation": "conversion is viable but the original 48-feature/6-block topology is too expensive to assume mobile suitability"
+  },
+  "selection_policy": "prefer a legally usable lighter pretrained x2 SPAN/SPAN-F-class checkpoint; use original SPAN as equivalence reference, not automatic product default",
+  "promotion_gates": [
+    "obtain and SHA-pin official x2 checkpoint",
+    "full-model PyTorch vs migrated TensorFlow numerical equivalence",
+    "LiteRT graph passes operator/version verifier",
+    "Android real-device GPU residency and zero-copy benchmark",
+    "iPhone real-device Metal benchmark",
+    "real-video quality beats deterministic shader fallback",
+    "privacy areas remain no less protected than fallback"
+  ],
+  "fallback": "deterministic shader stays production default; custom 12-channel/3-block training remains optional research only if no acceptable lightweight pretrained model exists"
+}

@@ -795,6 +795,7 @@ class ExportRequestDto {
     required this.targetFps,
     required this.videoBitrate,
     required this.processingProfile,
+    this.cropClarityScale,
     required this.enableLivePreview,
     this.faceOnlyPersonIds,
     required this.trimStartMs,
@@ -823,6 +824,8 @@ class ExportRequestDto {
 
   String processingProfile;
 
+  double? cropClarityScale;
+
   bool enableLivePreview;
 
   List<int>? faceOnlyPersonIds;
@@ -844,6 +847,7 @@ class ExportRequestDto {
       targetFps,
       videoBitrate,
       processingProfile,
+      cropClarityScale,
       enableLivePreview,
       faceOnlyPersonIds,
       trimStartMs,
@@ -868,10 +872,11 @@ class ExportRequestDto {
       targetFps: result[8]! as double,
       videoBitrate: result[9]! as int,
       processingProfile: result[10]! as String,
-      enableLivePreview: result[11]! as bool,
-      faceOnlyPersonIds: (result[12] as List<Object?>?)?.cast<int>(),
-      trimStartMs: result[13]! as int,
-      trimEndMs: result[14] as int?,
+      cropClarityScale: result[11] as double?,
+      enableLivePreview: result[12]! as bool,
+      faceOnlyPersonIds: (result[13] as List<Object?>?)?.cast<int>(),
+      trimStartMs: result[14]! as int,
+      trimEndMs: result[15] as int?,
     );
   }
 
@@ -884,7 +889,7 @@ class ExportRequestDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(sourceUri, other.sourceUri) && _deepEquals(analysisCacheId, other.analysisCacheId) && _deepEquals(outputFilePath, other.outputFilePath) && _deepEquals(selectedPersonIds, other.selectedPersonIds) && _deepEquals(effects, other.effects) && _deepEquals(follow, other.follow) && _deepEquals(targetWidth, other.targetWidth) && _deepEquals(targetHeight, other.targetHeight) && _deepEquals(targetFps, other.targetFps) && _deepEquals(videoBitrate, other.videoBitrate) && _deepEquals(processingProfile, other.processingProfile) && _deepEquals(enableLivePreview, other.enableLivePreview) && _deepEquals(faceOnlyPersonIds, other.faceOnlyPersonIds) && _deepEquals(trimStartMs, other.trimStartMs) && _deepEquals(trimEndMs, other.trimEndMs);
+    return _deepEquals(sourceUri, other.sourceUri) && _deepEquals(analysisCacheId, other.analysisCacheId) && _deepEquals(outputFilePath, other.outputFilePath) && _deepEquals(selectedPersonIds, other.selectedPersonIds) && _deepEquals(effects, other.effects) && _deepEquals(follow, other.follow) && _deepEquals(targetWidth, other.targetWidth) && _deepEquals(targetHeight, other.targetHeight) && _deepEquals(targetFps, other.targetFps) && _deepEquals(videoBitrate, other.videoBitrate) && _deepEquals(processingProfile, other.processingProfile) && _deepEquals(cropClarityScale, other.cropClarityScale) && _deepEquals(enableLivePreview, other.enableLivePreview) && _deepEquals(faceOnlyPersonIds, other.faceOnlyPersonIds) && _deepEquals(trimStartMs, other.trimStartMs) && _deepEquals(trimEndMs, other.trimEndMs);
   }
 
   @override
@@ -893,7 +898,7 @@ class ExportRequestDto {
 
   @override
   String toString() {
-    return 'ExportRequestDto(sourceUri: $sourceUri, analysisCacheId: $analysisCacheId, outputFilePath: $outputFilePath, selectedPersonIds: $selectedPersonIds, effects: $effects, follow: $follow, targetWidth: $targetWidth, targetHeight: $targetHeight, targetFps: $targetFps, videoBitrate: $videoBitrate, processingProfile: $processingProfile, enableLivePreview: $enableLivePreview, faceOnlyPersonIds: $faceOnlyPersonIds, trimStartMs: $trimStartMs, trimEndMs: $trimEndMs)';
+    return 'ExportRequestDto(sourceUri: $sourceUri, analysisCacheId: $analysisCacheId, outputFilePath: $outputFilePath, selectedPersonIds: $selectedPersonIds, effects: $effects, follow: $follow, targetWidth: $targetWidth, targetHeight: $targetHeight, targetFps: $targetFps, videoBitrate: $videoBitrate, processingProfile: $processingProfile, cropClarityScale: $cropClarityScale, enableLivePreview: $enableLivePreview, faceOnlyPersonIds: $faceOnlyPersonIds, trimStartMs: $trimStartMs, trimEndMs: $trimEndMs)';
   }
 }
 
