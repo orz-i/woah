@@ -21,7 +21,9 @@ from typing import Any
 import zipfile
 
 MAX_PAIRS = 12
-SCENE_KINDS = {"content_anchor", "privacy_overlap", "high_contrast", "fast_motion", "temporal_burst"}
+SCENE_KINDS_V2 = {"content_anchor", "privacy_overlap", "high_contrast", "fast_motion", "temporal_burst"}
+SCENE_KINDS_V3 = {"content_anchor", "high_contrast", "fast_motion", "temporal_burst",
+                  "crop_privacy_visible", "crop_privacy_overlap", "late_content"}
 MAX_PNG_BYTES = 30 * 1024 * 1024
 SAFE_PNG = re.compile(r"^frame_[0-9]{6,9}_(?:off|on)\.png$")
 
@@ -29,7 +31,8 @@ SAFE_PNG = re.compile(r"^frame_[0-9]{6,9}_(?:off|on)\.png$")
 def validate_manifest(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     schema = manifest.get("schema")
     valid_modes = {1: "same_frame_same_crop_two_pass",
-                   2: "same_frame_same_crop_two_pass_scene_driven"}
+                   2: "same_frame_same_crop_two_pass_scene_driven",
+                   3: "same_frame_same_crop_two_pass_scene_driven"}
     if schema not in valid_modes or manifest.get("capture_mode") != valid_modes[schema]:
         raise ValueError("unknown crop-clarity A/B capture contract")
     if manifest.get("privacy_composited") is not True or manifest.get("source_material_included") is not False:
@@ -39,6 +42,11 @@ def validate_manifest(manifest: dict[str, Any]) -> list[dict[str, Any]]:
         raise ValueError("A/B bundle exceeds the schema-specific pair count limit")
     if schema == 2 and manifest.get("selection_policy") != "online_scene_heuristics_v2":
         raise ValueError("invalid phase-2 selection policy")
+    if schema == 3 and manifest.get("selection_policy") != "online_timeline_reservation_and_crop_visibility_v3":
+        raise ValueError("invalid phase-2 reserved sampling policy")
+    nominal = manifest.get("nominal_frames")
+    if schema == 3 and (type(nominal) is not int or nominal <= 0):
+        raise ValueError("invalid nominal frame count for scene schedule")
     expected = manifest.get("expected_frames")
     if expected is not None and (
         not isinstance(expected, list) or len(expected) > MAX_PAIRS or
@@ -65,9 +73,9 @@ def validate_manifest(manifest: dict[str, Any]) -> list[dict[str, Any]]:
             "same_decoded_frame", "same_privacy_state", "same_crop_matrix"
         )):
             raise ValueError("A/B pair is not proven to share frame/privacy/crop")
-        if schema == 2:
+        if schema in (2, 3):
             kind = sample.get("scene_kind")
-            if kind not in SCENE_KINDS:
+            if kind not in (SCENE_KINDS_V2 if schema == 2 else SCENE_KINDS_V3):
                 raise ValueError("invalid scene kind")
             for feature in ("luma_mean", "contrast", "protected_overlap",
                             "protagonist_motion", "protected_count"):
@@ -78,6 +86,24 @@ def validate_manifest(manifest: dict[str, Any]) -> list[dict[str, Any]]:
                     raise ValueError("invalid temporal burst index")
             elif sample.get("burst_index") is not None:
                 raise ValueError("non-temporal scene has burst index")
+            if schema == 3:
+                phase = ("early" if frame * 3 <= nominal else
+                         "middle" if frame * 3 <= nominal * 2 else "late")
+                if sample.get("sample_phase") != phase:
+                    raise ValueError("scene time phase disagrees with source frame")
+                crop_count = sample.get("crop_visible_protected_count")
+                source_count = sample.get("protected_count")
+                area = sample.get("crop_protected_area_fraction")
+                if (type(crop_count) is not int or crop_count < 0 or
+                    type(source_count) is not int or crop_count > source_count or
+                    type(area) not in (int, float) or not 0 <= area <= 1):
+                    raise ValueError("invalid final-crop privacy review evidence")
+                if kind.startswith("crop_privacy_") and crop_count == 0:
+                    raise ValueError("crop privacy category requires final-crop visibility")
+                if kind == "crop_privacy_overlap" and sample["protected_overlap"] < 0.08:
+                    raise ValueError("crop overlap evidence is insufficient")
+                if kind == "late_content" and phase != "late":
+                    raise ValueError("late content must belong to the final third")
         crop = sample.get("crop")
         if (not isinstance(crop, list) or len(crop) != 4 or
             not all(isinstance(x, (float, int)) and 0 <= x <= 1 for x in crop) or
@@ -170,8 +196,9 @@ def review_bundle(bundle: Path, output_dir: Path) -> dict[str, Any]:
             kind = sample.get("scene_kind", "legacy_fixed_frame")
             scene_counts[kind] = scene_counts.get(kind, 0) + 1
             if kind == "temporal_burst" and (
-                not current_run or (sample["frame"] == current_run[-1] + 1 and
-                                    sample.get("burst_index") == len(current_run))
+                (not current_run and sample.get("burst_index") == 0) or
+                (current_run and sample["frame"] == current_run[-1] + 1 and
+                 sample.get("burst_index") == len(current_run))
             ):
                 current_run.append(sample["frame"])
             else:
@@ -192,12 +219,13 @@ def review_bundle(bundle: Path, output_dir: Path) -> dict[str, Any]:
                 "new_clipped_channel_percent": round(float(clip_new.mean() * 100), 4),
                 "mostly_black_percent": round(float((off_np.max(axis=2) < 16).mean() * 100), 4),
             }
-            if manifest.get("schema") == 2:
-                report["scene_evidence"] = {
-                    feature: sample.get(feature) for feature in
-                    ("burst_index", "luma_mean", "contrast", "protected_overlap",
-                     "protagonist_motion", "protected_count")
-                }
+            if manifest.get("schema") in (2, 3):
+                features = ["burst_index", "luma_mean", "contrast", "protected_overlap",
+                            "protagonist_motion", "protected_count"]
+                if manifest["schema"] == 3:
+                    features += ["sample_phase", "crop_visible_protected_count",
+                                 "crop_protected_area_fraction"]
+                report["scene_evidence"] = {feature: sample.get(feature) for feature in features}
             if previous_frame is not None and sample["frame"] == previous_frame + 1:
                 # This is NOT motion-compensated: a high value may just be motion.
                 residual_change = np.abs(residual.astype(np.int32) - residual_previous.astype(np.int32))
@@ -256,14 +284,32 @@ def review_bundle(bundle: Path, output_dir: Path) -> dict[str, Any]:
         "image_pairs": reports,
         "scene_counts": scene_counts,
         "scene_coverage": {
-            "privacy_overlap": (scene_counts.get("privacy_overlap", 0) > 0),
+            "privacy_overlap": (scene_counts.get("privacy_overlap", 0) > 0 or
+                                scene_counts.get("crop_privacy_overlap", 0) > 0),
             "high_contrast": (scene_counts.get("high_contrast", 0) > 0),
             "fast_motion_or_burst": (
                 scene_counts.get("fast_motion", 0) > 0 or
                 scene_counts.get("temporal_burst", 0) > 0
             ),
             "complete_five_frame_burst": any(len(run) >= 5 for run in temporal_runs),
-        } if manifest["schema"] == 2 else None,
+            "final_crop_privacy_visible": any(sample.get("crop_visible_protected_count", 0) > 0
+                                              for sample in samples) if manifest["schema"] == 3 else None,
+        } if manifest["schema"] in (2, 3) else None,
+        "phase_counts": {
+            phase: sum(1 for sample in samples if sample.get("sample_phase") == phase and
+                       sample.get("scene_kind") != "temporal_burst")
+            for phase in ("early", "middle", "late")
+        } if manifest["schema"] == 3 else None,
+        "late_third_captured": (
+            any(sample.get("sample_phase") == "late" and
+                sample.get("scene_kind") != "temporal_burst" for sample in samples)
+            if manifest["schema"] == 3 else None
+        ),
+        "final_crop_privacy_candidates": (
+            sum(1 for sample in samples if sample.get("crop_visible_protected_count", 0) > 0)
+            if manifest["schema"] == 3 else None
+        ),
+        "selection_policy": manifest.get("selection_policy"),
         "temporal_runs": temporal_runs,
         "expected_frames": manifest.get("expected_frames"),
         "missing_expected_frames": sorted(set(manifest.get("expected_frames") or []) - {sample["frame"] for sample in samples}),

@@ -13,6 +13,7 @@ import art.gaoge.dance.engine.bridge.ExportRequestDto
 import art.gaoge.dance.engine.bridge.JobStatusDto
 import art.gaoge.dance.engine.clarity.CropClarityAbCapture
 import art.gaoge.dance.engine.clarity.CropClaritySceneSampler
+import art.gaoge.dance.engine.clarity.CropClarityCropPrivacyGeometry
 import art.gaoge.dance.engine.export.ExportCoordinator
 import art.gaoge.dance.engine.inference.FloatRect
 import art.gaoge.dance.engine.inference.RgbaColOrder
@@ -374,8 +375,9 @@ class ExportPipeline(
                                 fields = mapOf(
                                     "job_id" to jobId,
                                     "scale" to (request.cropClarityScale ?: 1.0),
-                                    "sample_frames" to art.gaoge.dance.engine.clarity.CropClarityQualityGate
-                                        .sampleFrames(totalFrames).sorted(),
+                                    "sampling_policy" to CropClaritySceneSampler.SELECTION_POLICY,
+                                    "max_pairs" to CropClaritySceneSampler.MAX_PAIRS,
+                                    "temporal_pairs_reserved" to CropClaritySceneSampler.TEMPORAL_FRAMES,
                                     "target_width" to targetWidth,
                                     "target_height" to targetHeight
                                 )
@@ -2143,15 +2145,16 @@ class ExportPipeline(
                                     val visibleOther = trackedList.filter {
                                         !allPrivacyTargetIds.contains(it.id) && it.observedThisFrame
                                     }
-                                    var maxOverlap = 0f
-                                    for (protectedTrack in visibleProtected) {
-                                        for (other in visibleOther) {
-                                            val overlap = TrackManager.computeBBoxIoU(
-                                                protectedTrack.bbox, other.bbox
-                                            )
-                                            if (overlap > maxOverlap) maxOverlap = overlap
-                                        }
-                                    }
+                                    // Use the *final* dynamic portrait crop, not the full
+                                    // horizontal frame. Exact source-space tracked bboxes are
+                                    // projected into the identical crop used by the encoder.
+                                    val cropPrivacy = CropClarityCropPrivacyGeometry.evaluate(
+                                        crop = visualCrop,
+                                        sourceWidth = trackingWidth,
+                                        sourceHeight = trackingHeight,
+                                        protectedBoxes = visibleProtected.map { it.bbox },
+                                        otherBoxes = visibleOther.map { it.bbox }
+                                    )
                                     val protagonistBox = identityTrack?.takeIf { it.observedThisFrame }?.bbox
                                     val currentPosition = protagonistBox?.let {
                                         (it.centerX / trackingWidth.coerceAtLeast(1).toFloat()) to
@@ -2175,10 +2178,11 @@ class ExportPipeline(
                                         CropClaritySceneSampler.Signals(
                                             luma = qualityLuma,
                                             lumaAgeFrames = processedFrames - qualityLumaFrame,
-                                            protectedOverlap = maxOverlap,
-                                            protectedVisible = visibleProtected.isNotEmpty(),
+                                            cropProtectedCount = cropPrivacy.cropProtectedCount,
+                                            cropProtectedAreaFraction = cropPrivacy.cropProtectedAreaFraction,
+                                            cropOverlap = cropPrivacy.maxCropOverlap,
                                             protagonistMotion = motion,
-                                            protectedCount = visibleProtected.size
+                                            sourceProtectedCount = cropPrivacy.sourceProtectedCount
                                         )
                                     )
                                 } else null

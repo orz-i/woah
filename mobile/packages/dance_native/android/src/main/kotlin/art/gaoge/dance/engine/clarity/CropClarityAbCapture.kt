@@ -43,8 +43,11 @@ class CropClarityAbCapture private constructor(
         NativeDiagnostics.event(
             level = "INFO", component = "CropClarityAbCapture", event = "CROP_CLARITY_SCENE_SELECTED",
             fields = mapOf("job_id" to jobId, "frame" to frameNumber, "kind" to choice.kind,
+                "sample_phase" to choice.samplePhase,
                 "burst_index" to choice.burstIndex, "contrast" to choice.contrast,
-                "motion" to choice.motion, "overlap" to choice.overlap)
+                "motion" to choice.motion, "crop_overlap" to choice.overlap,
+                "crop_protected_count" to choice.cropProtectedCount,
+                "crop_protected_area_fraction" to choice.cropProtectedAreaFraction)
         )
         return choice
     }
@@ -84,6 +87,9 @@ class CropClarityAbCapture private constructor(
                 put("enhanced", enhancedName)
                 put("crop", JSONArray(listOf(cropLeft, cropTop, cropRight, cropBottom)))
                 put("scene_kind", choice.kind)
+                put("sample_phase", choice.samplePhase)
+                put("crop_visible_protected_count", choice.cropProtectedCount)
+                put("crop_protected_area_fraction", choice.cropProtectedAreaFraction.toDouble())
                 put("burst_index", choice.burstIndex ?: JSONObject.NULL)
                 put("luma_mean", choice.lumaMean.toDouble())
                 put("contrast", choice.contrast)
@@ -118,7 +124,7 @@ class CropClarityAbCapture private constructor(
         try {
             if (!broken && samples.length() > 0) {
                 val manifest = JSONObject().apply {
-                    put("schema", 2)
+                    put("schema", 3)
                     put("job_id", jobId)
                     put("privacy_composited", true)
                     put("capture_mode", "same_frame_same_crop_two_pass_scene_driven")
@@ -129,10 +135,11 @@ class CropClarityAbCapture private constructor(
                     put("output_width", width)
                     put("output_height", height)
                     put("nominal_frames", nominalFrames)
-                    put("selection_policy", "online_scene_heuristics_v2")
+                    put("selection_policy", CropClaritySceneSampler.SELECTION_POLICY)
                     put("max_pairs", CropClaritySceneSampler.MAX_PAIRS)
                     put("expected_frames", JSONArray(targets.sorted()))
                     put("scene_counts", JSONObject(sampler.counts))
+                    put("phase_scene_counts", JSONObject(sampler.phaseCounts))
                     put("screening", JSONObject(sampler.screeningSummary))
                     put("samples", samples)
                 }
@@ -171,6 +178,7 @@ class CropClarityAbCapture private constructor(
                     "missing_frames" to missingFrames,
                     "complete" to missingFrames.isEmpty(),
                     "scene_counts" to sampler.counts,
+                    "phase_scene_counts" to sampler.phaseCounts,
                     "screening" to sampler.screeningSummary,
                     "temporal_pairs" to sampler.counts.getOrDefault("temporal_burst", 0),
                     "debug_opt_in" to true

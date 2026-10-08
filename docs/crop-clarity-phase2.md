@@ -1,6 +1,6 @@
 # Crop clarity phase 2 — scene-driven QA and Release performance
 
-**Implementation status:** tooling available on branch `feat/crop-clarity-phase2-quality-performance`. Native Android build, device image review, and Release performance measurements must still be performed on representative devices; no performance or visual-quality PASS is claimed by implementation alone.
+**Implementation status:** continued on `feat/crop-clarity-phase2-quality-performance`. The first real v2 A/B captured five adjacent frames and useful sharpening evidence but concentrated samples before ~37% of the clip, with no actual final-crop protected target coverage. The v3 sampling and synthetic geometry regression below address this tooling gap. Android native build and v3 real-device review, and Release OFF/ON measurement remain pending; no new performance, temporal or privacy PASS is implied.
 
 ## Boundaries
 
@@ -11,14 +11,13 @@
 
 ## A. Scene-driven A/B and temporal gate
 
-A scene is considered reviewable only when its sampled luma suggests actual image content (not an almost-black title/outro); stale luma over 16 frames is rejected. Before storing a chosen pair, the renderer also checks a sparse sample of the **already-protected baseline output** and vetoes nearly black frames. Such vetoed selections are reported as missing captures, not silently marked complete. The online selector prioritizes:
+A scene is considered reviewable only when its sampled luma suggests actual image content (not an almost-black title/outro); stale luma over 16 frames is rejected. Before storing a chosen pair, the renderer also checks a sparse sample of the **already-protected baseline output** and vetoes nearly black frames. Such vetoed selections are reported as missing captures, not silently marked complete.
 
-1. overlap between an observed protected track and an observed unprotected track (`bbox IoU >= 0.08`);
-2. fast tracked protagonist motion (`>= 0.012` of source dimensions per frame), starting a **5-frame consecutive burst**;
-3. strong brightness contrast on the existing 640px inference image (`p90 - p10 >= 96`);
-4. a content anchor and, when rapid motion never occurs, a late-enough fallback temporal burst.
+**v3 sampling, same Debug opt-in:** Max **12 pairs** consist of **five reserved consecutive temporal frames** and **seven ordinary scene slots** divided into **early 2 / middle 2 / final third 3**. Ordinary slots open at staggered points (~0%, 15%, 33%, 50%, 67%, 78%, 88%) of the nominal timeline, and up to 12 further frames are reserved for an observed privacy target to enter the *final portrait crop* before taking general content. The temporal burst is triggered by fast motion (`>=0.012` normalized source dimensions/frame) or falls back to middle-third content; it does not consume any of the seven ordinary slots. A dark or dropped frame can interrupt the temporal run, which is then reported as incomplete, not inferred continuous.
 
-Events have a minimum 12-frame spacing except within a burst. The source of the content metric and each sample's scores are preserved as a *metadata summary* alongside the A/B images, never as an unprotected image. Max 12 pairs. Some categories may be absent and this is surfaced in the report; the selector must not fabricate overlap or motion evidence.
+For each candidate, `CropClarityCropPrivacyGeometry` projects observed protected/source bounding boxes into the **same actual visual crop matrix** computed by the following camera. It requires meaningful rectangle intersection, avoiding the previous false claim that a selected target anywhere in the original landscape image was visible in the final portrait. Priority is: (1) final-crop protected overlap (crop-clipped IoU >=0.08), (2) final-crop protected visibility, (3) high contrast and rapid motion, (4) general content anchor. This is a **review candidate heuristic**, not confirmation that privacy effects were rendered or that a face is hidden. The user does **not** need to supply additional video for these engineering checks.
+
+Events have a minimum 12-frame spacing except within a burst. The source/crop metadata are preserved alongside the A/B images; unprotected RGB is never saved. If an entire time band is black/off-crop, its slots remain unfilled rather than fabricating quality evidence. Schema 3 reports `sample_phase`, `crop_visible_protected_count`, `crop_protected_area_fraction`, `phase_counts`, `late_third_captured`, and `final_crop_privacy_candidates`; the offline report still accepts historical schemas 1 and 2. **Every screenshot is still already privacy-composited; treat it as sensitive.**
 
 **Important:** the selector operates online without buffering full video. Its decisions are best-effort, not a retrospective global optimum. A 5-frame contiguous sequence gives a limited time-domain screening window, not proof of zero flicker across the full film.
 
@@ -70,7 +69,7 @@ flutter build apk --release
 Copy-Item build/app/outputs/flutter-apk/app-release.apk app-release-clarity-on.apk
 ```
 
-Use **exactly the same commit, phone, source file, privacy choices, trim, bitrate, profile and output target**. Disable the export live-preview toggle and background tasks, allow temperature to settle, and run at least three completed exports per mode after warmup. Alternating runs/interleaving installations is ideal to reduce battery/thermal drift; keep a note of starting battery/thermal state. Benchmark 720p→2x, 1080p→~1.78x, and a 4K control where both are 1.0x.
+Use **exactly the same commit, phone, source file, privacy choices, trim, bitrate, profile and output target**. Disable the export live-preview toggle and background tasks, allow temperature to settle, and run at least three completed exports per mode after warmup. Alternating runs/interleaving installations is ideal to reduce battery/thermal drift; keep a note of starting battery/thermal state. **Start with the existing 1280×720 dance video** for the 720p→2× baseline; no new source footage is required. 1080p→~1.78× and a 4K no-op control are optional later when such media is naturally available. Do not mark the optional coverage as passed without those inputs.
 
 For each build, clear logcat before its series of exports and collect after three completed runs, while the same build is still installed:
 
@@ -109,5 +108,6 @@ The parser rejects Debug builds, YOLO fallback, incomplete exports, unknown or d
 
 - `python -m unittest tools.diagnostics.test_crop_clarity_ab_report tools.diagnostics.test_crop_clarity_release_perf`
 - Flutter app controller tests for the build-time OFF contract.
-- Android JVM `CropClaritySceneSamplerTest` for luma rejection, overlap/motion choice, five consecutive frames, bounded storage and stale evidence.
+- Android JVM `CropClaritySceneSamplerTest` for late-third reserved slots, off-crop candidate rejection, source frame overestimation, five consecutive frames, bounded storage and stale evidence; `CropClarityCropPrivacyGeometryTest` for synthetic people crossing/moving, lost observations and reacquisition with full-frame-coordinate privacy masks.
+- Python `tools.test_crop_clarity_post_crop_contract` for the **actual pipeline source-order guard** (privacy composition → follow crop → crop-aware selection → encoder output) and `tools.test_crop_clarity_synthetic_privacy` for executable synthetic multi-person pixel-coordinate experiments. These run without Android hardware, but are not substitutes for device privacy validation.
 - Full Android Gradle compilation/instrumented real-device rendering is **pending** until a workstation with Java/Android SDK and a phone is available. The current Mac development environment lacks Java/Android SDK, so passing Flutter/Python/Swift tests cannot substitute for the Android native gate.

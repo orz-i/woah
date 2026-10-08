@@ -130,6 +130,97 @@ class CropClarityAbReportTest(unittest.TestCase):
             self.assertEqual(len(result["adjacent_frame_proxy"]), 4)
             self.assertEqual(result["quality_acceptance"], "MANUAL_REVIEW_REQUIRED")
 
+    def test_phase3_reserved_timeline_and_final_crop_privacy_in_manifest(self):
+        try:
+            import numpy as np
+            from PIL import Image
+        except ImportError:
+            self.skipTest("numpy/pillow not installed in plain system Python; CI uses uv run")
+        frames = [13, 94, 95, 96, 97, 98, 100, 228, 338, 450, 507, 572]
+        protected_frames = {100, 228, 507}
+        bursts = {frame: index for index, frame in enumerate(range(94, 99))}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = dict(self.manifest)
+            manifest.update({
+                "schema": 3,
+                "capture_mode": "same_frame_same_crop_two_pass_scene_driven",
+                "selection_policy": "online_timeline_reservation_and_crop_visibility_v3",
+                "nominal_frames": 650,
+            })
+            samples = []
+            for frame in frames:
+                kind = (
+                    "temporal_burst" if frame in bursts else
+                    "crop_privacy_overlap" if frame == 228 else
+                    "crop_privacy_visible" if frame in protected_frames else
+                    "late_content" if frame >= 434 else "high_contrast"
+                )
+                phase = "early" if frame <= 216 else "middle" if frame <= 433 else "late"
+                item = dict(self.sample)
+                item.update({
+                    "frame": frame, "pts_us": frame * 33333,
+                    "baseline": f"frame_{frame:06d}_off.png",
+                    "enhanced": f"frame_{frame:06d}_on.png",
+                    "scene_kind": kind,
+                    "sample_phase": phase,
+                    "burst_index": bursts.get(frame),
+                    "luma_mean": 95.0, "contrast": 140,
+                    "protected_overlap": 0.2 if kind == "crop_privacy_overlap" else 0.0,
+                    "protagonist_motion": 0.03,
+                    "protected_count": 1,
+                    "crop_visible_protected_count": 1 if frame in protected_frames else 0,
+                    "crop_protected_area_fraction": 0.1 if frame in protected_frames else 0.0,
+                })
+                samples.append(item)
+            manifest["samples"] = samples
+            manifest["expected_frames"] = frames
+            bundle = root / "phase3.zip"
+            with zipfile.ZipFile(bundle, "w") as archive:
+                archive.writestr("manifest.json", json.dumps(manifest))
+                for sample in samples:
+                    off = np.zeros((12, 8, 3), dtype=np.uint8)
+                    off[:, 4:] = 140
+                    on = off.copy()
+                    on[:, 3] = 12
+                    for field, image in (("baseline", off), ("enhanced", on)):
+                        output = BytesIO()
+                        Image.fromarray(image, "RGB").save(output, format="PNG")
+                        archive.writestr(sample[field], output.getvalue())
+            result = qa.review_bundle(bundle, root / "report")
+            self.assertEqual(result["schema"], 3)
+            self.assertEqual(result["phase_counts"], {"early": 2, "middle": 2, "late": 3})
+            self.assertTrue(result["late_third_captured"])
+            self.assertEqual(result["final_crop_privacy_candidates"], 3)
+            self.assertEqual(result["scene_coverage"]["complete_five_frame_burst"], True)
+            self.assertEqual(result["temporal_runs"], [[94, 95, 96, 97, 98]])
+            self.assertEqual(result["quality_acceptance"], "MANUAL_REVIEW_REQUIRED")
+            self.assertEqual(result["privacy_acceptance"], "NOT_PROVEN_BY_PNG_DIFF_ALONE")
+
+    def test_phase3_rejects_misreported_crop_privacy_and_timeline(self):
+        self.manifest.update({
+            "schema": 3,
+            "nominal_frames": 650,
+            "capture_mode": "same_frame_same_crop_two_pass_scene_driven",
+            "selection_policy": "online_timeline_reservation_and_crop_visibility_v3",
+        })
+        self.sample.update({
+            "sample_phase": "middle", "scene_kind": "crop_privacy_visible",
+            "burst_index": None, "luma_mean": 100.0, "contrast": 120,
+            "protected_overlap": 0.0, "protagonist_motion": 0.02,
+            "protected_count": 1,
+            "crop_visible_protected_count": 0,
+            "crop_protected_area_fraction": 0.0,
+        })
+        with self.assertRaisesRegex(ValueError, "final-crop visibility"):
+            qa.validate_manifest(self.manifest)
+        self.sample["crop_visible_protected_count"] = 1
+        self.sample["crop_protected_area_fraction"] = .1
+        self.assertEqual(len(qa.validate_manifest(self.manifest)), 1)
+        self.sample["sample_phase"] = "late"
+        with self.assertRaisesRegex(ValueError, "time phase"):
+            qa.validate_manifest(self.manifest)
+
     def test_phase2_rejects_bad_scene_evidence(self):
         self.manifest.update({
             "schema": 2, "capture_mode": "same_frame_same_crop_two_pass_scene_driven",
