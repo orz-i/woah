@@ -11,6 +11,7 @@ import art.gaoge.dance.engine.bridge.DanceNativeException
 import art.gaoge.dance.engine.bridge.DanceProcessingEvents
 import art.gaoge.dance.engine.bridge.ExportRequestDto
 import art.gaoge.dance.engine.bridge.JobStatusDto
+import art.gaoge.dance.engine.clarity.CropClarityAbCapture
 import art.gaoge.dance.engine.export.ExportCoordinator
 import art.gaoge.dance.engine.inference.FloatRect
 import art.gaoge.dance.engine.inference.RgbaColOrder
@@ -281,6 +282,8 @@ class ExportPipeline(
             var glRenderer: GlRenderer? = null
             var privacyRenderer: GlRenderer? = null
             var privacyRenderTarget: art.gaoge.dance.engine.render.TextureRenderTarget? = null
+            var clarityAbBaselineTarget: art.gaoge.dance.engine.render.TextureRenderTarget? = null
+            var clarityAbCapture: CropClarityAbCapture? = null
             var surfaceTexture: SurfaceTexture? = null
             var decoder: VideoDecoder? = null
             var canonicalInferenceDecoder: CanonicalYuvInferenceDecoder? = null
@@ -347,6 +350,44 @@ class ExportPipeline(
                         compositionSize.first,
                         compositionSize.second
                     )
+                    clarityAbCapture = CropClarityAbCapture.beginIfRequested(
+                        context = context,
+                        jobId = jobId,
+                        nominalFrames = totalFrames,
+                        requestedScale = request.cropClarityScale ?: 1.0,
+                        postCrop = postCropEnabled,
+                        hasPrivacyTargets = allPrivacyTargetIds.isNotEmpty(),
+                        outputWidth = targetWidth,
+                        outputHeight = targetHeight
+                    )
+                    if (clarityAbCapture != null) {
+                        // The QA allocation must never prevent a normal export.
+                        try {
+                            clarityAbBaselineTarget = art.gaoge.dance.engine.render.TextureRenderTarget(
+                                compositionSize.first, compositionSize.second
+                            )
+                            art.gaoge.dance.engine.diagnostics.NativeDiagnostics.event(
+                                level = "INFO", component = "ExportPipeline",
+                                event = "CROP_CLARITY_AB_ARMED",
+                                fields = mapOf(
+                                    "job_id" to jobId,
+                                    "scale" to (request.cropClarityScale ?: 1.0),
+                                    "sample_frames" to art.gaoge.dance.engine.clarity.CropClarityQualityGate
+                                        .sampleFrames(totalFrames).sorted(),
+                                    "target_width" to targetWidth,
+                                    "target_height" to targetHeight
+                                )
+                            )
+                        } catch (error: Throwable) {
+                            try { clarityAbCapture?.close() } catch (_: Throwable) {}
+                            clarityAbCapture = null
+                            art.gaoge.dance.engine.diagnostics.NativeDiagnostics.event(
+                                level = "WARN", component = "ExportPipeline",
+                                event = "CROP_CLARITY_AB_TARGET_UNAVAILABLE",
+                                fields = mapOf("job_id" to jobId, "error" to error.javaClass.simpleName)
+                            )
+                        }
+                    }
                     art.gaoge.dance.engine.diagnostics.NativeDiagnostics.event(
                         level = "INFO",
                         component = "ExportPipeline",
@@ -1711,8 +1752,13 @@ class ExportPipeline(
                             if (postCropEnabled) {
                                 val target = requireNotNull(privacyRenderTarget)
                                 val compositor = requireNotNull(privacyRenderer)
-                                val previousFramebuffer = target.bind()
-                                try {
+                                var qaThisFrame = clarityAbCapture?.shouldCapture(processedFrames) == true &&
+                                    clarityAbBaselineTarget != null
+
+                                // Both variants use identical tracked persons, privacy classes,
+                                // masks, effects and source texture. The only difference is
+                                // cropClarityScale. No extra render occurs without debug opt-in.
+                                val renderProtected = { scale: Double ->
                                     compositor.render(
                                         frameTexture = renderTexId,
                                         texMatrix = renderTexMatrix,
@@ -1738,8 +1784,33 @@ class ExportPipeline(
                                         } else {
                                             null
                                         },
-                                        cropClarityScale = request.cropClarityScale ?: 1.0
+                                        cropClarityScale = scale,
+                                        cropClarityJobId = jobId
                                     )
+                                }
+                                if (qaThisFrame) {
+                                    val baselineTarget = requireNotNull(clarityAbBaselineTarget)
+                                    try {
+                                        val previous = baselineTarget.bind()
+                                        try {
+                                            renderProtected(1.0)
+                                        } finally {
+                                            baselineTarget.restore(previous)
+                                        }
+                                    } catch (error: Throwable) {
+                                        qaThisFrame = false
+                                        art.gaoge.dance.engine.diagnostics.NativeDiagnostics.event(
+                                            level = "WARN",
+                                            component = "ExportPipeline",
+                                            event = "CROP_CLARITY_AB_BASELINE_FAILED",
+                                            fields = mapOf("job_id" to jobId, "frame" to processedFrames,
+                                                "error" to error.javaClass.simpleName)
+                                        )
+                                    }
+                                }
+                                val previousFramebuffer = target.bind()
+                                try {
+                                    renderProtected(request.cropClarityScale ?: 1.0)
                                 } finally {
                                     target.restore(previousFramebuffer)
                                 }
@@ -2063,12 +2134,59 @@ class ExportPipeline(
                                 reframeInitialized = true
                                 val glCrop = art.gaoge.dance.engine.camera.ReframeGeometry
                                     .visualTopLeftToScreenGl(visualCrop)
+                                val cropTextureMatrix = art.gaoge.dance.engine.camera.ReframeGeometry
+                                    .textureMatrixForScreenGlCrop(glCrop)
+                                // Snapshot the exact *protected* output, not a raw frame or a
+                                // second independently computed camera trajectory.
+                                var baselineBitmap: android.graphics.Bitmap? = null
+                                if (qaThisFrame) {
+                                    try {
+                                        glRenderer.renderBase(
+                                            frameTexture = requireNotNull(clarityAbBaselineTarget).textureId,
+                                            texMatrix = cropTextureMatrix,
+                                            textureType = art.gaoge.dance.engine.render.SourceTextureType.TEXTURE_2D
+                                        )
+                                        baselineBitmap = glRenderer.captureRenderedFrame()
+                                    } catch (error: Throwable) {
+                                        art.gaoge.dance.engine.diagnostics.NativeDiagnostics.event(
+                                            level = "WARN", component = "ExportPipeline",
+                                            event = "CROP_CLARITY_AB_READBACK_FAILED",
+                                            fields = mapOf("job_id" to jobId, "frame" to processedFrames,
+                                                "variant" to "off", "error" to error.javaClass.simpleName)
+                                        )
+                                    }
+                                }
+                                // Always leave the production enhanced output on the encoder
+                                // surface, even if the optional baseline readback failed.
                                 glRenderer.renderBase(
                                     frameTexture = target.textureId,
-                                    texMatrix = art.gaoge.dance.engine.camera.ReframeGeometry
-                                        .textureMatrixForScreenGlCrop(glCrop),
+                                    texMatrix = cropTextureMatrix,
                                     textureType = art.gaoge.dance.engine.render.SourceTextureType.TEXTURE_2D
                                 )
+                                if (baselineBitmap != null) {
+                                    val baseline = requireNotNull(baselineBitmap)
+                                    val enhanced = try { glRenderer.captureRenderedFrame() } catch (_: Throwable) { null }
+                                    if (enhanced != null) {
+                                        clarityAbCapture?.capture(
+                                            frameNumber = processedFrames,
+                                            ptsUs = ptsUs,
+                                            cropLeft = visualCrop.left,
+                                            cropTop = visualCrop.top,
+                                            cropRight = visualCrop.right,
+                                            cropBottom = visualCrop.bottom,
+                                            baseline = baseline,
+                                            enhanced = enhanced
+                                        ) ?: run { baseline.recycle(); enhanced.recycle() }
+                                    } else {
+                                        baseline.recycle()
+                                        art.gaoge.dance.engine.diagnostics.NativeDiagnostics.event(
+                                            level = "WARN", component = "ExportPipeline",
+                                            event = "CROP_CLARITY_AB_READBACK_FAILED",
+                                            fields = mapOf("job_id" to jobId, "frame" to processedFrames,
+                                                "variant" to "on")
+                                        )
+                                    }
+                                }
                             } else {
                                 glRenderer.render(
                                     frameTexture = renderTexId,
@@ -2096,7 +2214,8 @@ class ExportPipeline(
                                     } else {
                                         null
                                     },
-                                    cropClarityScale = request.cropClarityScale ?: 1.0
+                                    cropClarityScale = request.cropClarityScale ?: 1.0,
+                                    cropClarityJobId = jobId
                                 )
                             }
                             renderedFrameCount++
@@ -2515,6 +2634,8 @@ class ExportPipeline(
                 try { audioCopier?.close() } catch (_: Throwable) {}
                 try { encoder?.close() } catch (_: Throwable) {}
                 try { faceOnlyPrivacyProcessor?.close() } catch (_: Throwable) {}
+                try { clarityAbCapture?.close() } catch (_: Throwable) {}
+                try { clarityAbBaselineTarget?.close() } catch (_: Throwable) {}
                 try { privacyRenderTarget?.close() } catch (_: Throwable) {}
                 try { privacyRenderer?.close() } catch (_: Throwable) {}
                 try { glRenderer?.close() } catch (_: Throwable) {}

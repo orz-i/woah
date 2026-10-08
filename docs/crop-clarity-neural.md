@@ -1,5 +1,7 @@
 # Crop clarity neural restoration
 
+For the current deterministic-shader visual A/B gate and Android opt-in capture workflow, see [`crop-clarity-quality-gate.md`](crop-clarity-quality-gate.md). Neural SR remains a separate, unpromoted research path.
+
 Woah keeps crop clarity automatic: portrait subject-follow exports request enhancement only when the final crop contains fewer source pixels than the output contract. The deterministic GPU shader remains the production fallback.
 
 ## Adjusted strategy: no-training first
