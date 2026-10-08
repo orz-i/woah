@@ -10,6 +10,7 @@ final class IOSMetalPreviewRenderer {
   private let pipeline: MTLComputePipelineState
   private var loadedStickerAssetId: String?
   private var loadedStickerTexture: MTLTexture?
+  private var cropClarityActivationLogged = false
 
   init() throws {
     guard let device = MTLCreateSystemDefaultDevice(),
@@ -267,6 +268,14 @@ final class IOSMetalPreviewRenderer {
         details: String(describing: error)
       )
     }
+#if DEBUG
+    // Log only after the GPU command completes. This is a parameter-submission
+    // proof (Metal has no GLES-style glGetUniformfv), not a quality verdict.
+    if !cropClarityActivationLogged && cropClarityStrength > 0.001 {
+      cropClarityActivationLogged = true
+      NSLog("CROP_CLARITY_RENDER_ACTIVE platform=ios scale=\(safeCropClarityScale) strength=\(cropClarityStrength) source=\(sourceWidth)x\(sourceHeight) output=\(previewWidth)x\(previewHeight) metal_command=completed")
+    }
+#endif
 
     var outputBytes = [UInt8](repeating: 0, count: previewWidth * previewHeight * 4)
     outputBytes.withUnsafeMutableBytes { raw in

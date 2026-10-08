@@ -7,6 +7,8 @@ import android.opengl.GLES20
 import art.gaoge.dance.engine.bridge.EffectConfigDto
 import art.gaoge.dance.engine.bridge.FollowConfigDto
 import art.gaoge.dance.engine.camera.ReframeGeometry
+import art.gaoge.dance.engine.clarity.CropClarityQualityGate
+import art.gaoge.dance.engine.diagnostics.NativeDiagnostics
 import art.gaoge.dance.engine.tracking.TrackedPerson
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -68,6 +70,7 @@ class GlRenderer : FrameRenderer {
     private var captureBuffer: ByteBuffer? = null
     private var mergedMaskBuffer: ByteBuffer? = null
     private var mergedMaskCapacity = 0
+    private var clarityActivationLogged = false
 
     private val follower = art.gaoge.dance.engine.camera.SmoothFollower()
     private var followTargetId: Long? = null
@@ -221,6 +224,7 @@ class GlRenderer : FrameRenderer {
     override fun initialize(width: Int, height: Int) {
         this.width = width
         this.height = height
+        clarityActivationLogged = false
 
         val vendor = GLES20.glGetString(GLES20.GL_VENDOR) ?: "Unknown"
         val renderer = GLES20.glGetString(GLES20.GL_RENDERER) ?: "Unknown"
@@ -510,7 +514,8 @@ class GlRenderer : FrameRenderer {
         sourceHeight: Int? = null,
         initialFollowTarget: art.gaoge.dance.engine.inference.FloatRect? = null,
         legStretchTargetPersonId: Int? = null,
-        cropClarityScale: Double = 1.0
+        cropClarityScale: Double = 1.0,
+        cropClarityJobId: String? = null
     ) {
         GLES20.glViewport(0, 0, width, height)
         GLES20.glClearColor(0f, 0f, 0f, 1f)
@@ -597,14 +602,45 @@ class GlRenderer : FrameRenderer {
                 1f / sourceRefHeight.toFloat()
             )
         }
-        val safeClarityScale = if (cropClarityScale.isFinite()) {
-            cropClarityScale.coerceIn(1.0, 2.0)
-        } else {
-            1.0
-        }
-        val clarityStrength = ((safeClarityScale - 1.0) * 0.55).toFloat().coerceIn(0f, 0.55f)
+        val safeClarityScale = CropClarityQualityGate.safeScale(cropClarityScale)
+        val clarityStrength = CropClarityQualityGate.strength(cropClarityScale)
         if (prog.uCropClarityStrengthLoc >= 0) {
             GLES20.glUniform1f(prog.uCropClarityStrengthLoc, clarityStrength)
+        }
+        // One debug event per renderer after writing the actual GL uniform. An
+        // accepted DTO alone cannot prove that a shader uniform survived linking.
+        if (art.gaoge.dance.engine.BuildConfig.DEBUG && !clarityActivationLogged && clarityStrength > 0.001f) {
+            clarityActivationLogged = true
+            var observedStrength: Float? = null
+            val uniformVerified = try {
+                if (prog.uCropClarityStrengthLoc < 0) false else {
+                    val readback = FloatArray(1)
+                    GLES20.glGetUniformfv(prog.programId, prog.uCropClarityStrengthLoc, readback, 0)
+                    observedStrength = readback[0]
+                    GLES20.glGetError() == GLES20.GL_NO_ERROR &&
+                        kotlin.math.abs(readback[0] - clarityStrength) < 0.001f
+                }
+            } catch (_: Throwable) { false }
+            NativeDiagnostics.eventLazy(
+                level = if (uniformVerified) "INFO" else "WARN",
+                component = "GlRenderer",
+                event = if (uniformVerified) "CROP_CLARITY_RENDER_ACTIVE" else "CROP_CLARITY_RENDER_UNVERIFIED",
+                fields = {
+                    mapOf(
+                        "job_id" to cropClarityJobId,
+                        "scale" to safeClarityScale,
+                        "strength_requested" to clarityStrength,
+                        "strength_uniform" to observedStrength,
+                        "uniform_verified" to uniformVerified,
+                        "uniform_location" to prog.uCropClarityStrengthLoc,
+                        "source_width" to sourceRefWidth,
+                        "source_height" to sourceRefHeight,
+                        "render_width" to width,
+                        "render_height" to height,
+                        "texture_type" to textureType.name
+                    )
+                }
+            )
         }
 
         // Follow Crop Mapping
