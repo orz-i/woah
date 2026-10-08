@@ -22,10 +22,21 @@ class CropClarityQualityGateTest {
         assertTrue(CropClarityQualityGate.eligible(debug = true, postCrop = true, hasPrivacyTargets = true, requestedScale = 2.0))
     }
 
-    @Test fun firstMiddleLastAreUniqueAndBounded() {
+    @Test fun firstMiddleNearEndAreUniqueAndBounded() {
         assertEquals(setOf(1), CropClarityQualityGate.sampleFrames(1))
         assertEquals(setOf(1, 2), CropClarityQualityGate.sampleFrames(2))
-        assertEquals(setOf(1, 325, 326, 649), CropClarityQualityGate.sampleFrames(649))
+        assertEquals(setOf(1, 325, 326, 645), CropClarityQualityGate.sampleFrames(649))
         assertTrue(CropClarityQualityGate.sampleFrames(1000).size <= CropClarityQualityGate.MAX_PAIRS)
+    }
+
+    @Test fun metadataOverestimateDoesNotSkipFinalSample() {
+        // Production diagnostic: 650 estimated frames, 649 actually decoded.
+        val targets = CropClarityQualityGate.sampleFrames(650)
+        assertEquals(setOf(1, 325, 326, 646), targets)
+        assertTrue(targets.all { it <= 649 })
+        assertTrue(targets.none { it == 650 })
+        assertEquals(4, targets.size)
+        assertEquals(emptyList(), CropClarityQualityGate.missingFrames(targets, (1..649).toList()))
+        assertEquals(listOf(646), CropClarityQualityGate.missingFrames(targets, listOf(1, 325, 326)))
     }
 }

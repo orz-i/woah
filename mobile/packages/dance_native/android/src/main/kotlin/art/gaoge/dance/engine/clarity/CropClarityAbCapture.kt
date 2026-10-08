@@ -124,10 +124,24 @@ class CropClarityAbCapture private constructor(
             partialFile.delete()
             file.delete()
         } else {
+            val capturedFrames = (0 until samples.length()).mapNotNull { index ->
+                samples.optJSONObject(index)?.optInt("frame")
+            }.toSet()
+            val missingFrames = CropClarityQualityGate.missingFrames(targets, capturedFrames)
             NativeDiagnostics.event(
-                level = "INFO", component = "CropClarityAbCapture", event = "CROP_CLARITY_AB_READY",
-                fields = mapOf("job_id" to jobId, "file_name" to file.name,
-                    "pair_count" to samples.length(), "debug_opt_in" to true)
+                level = if (missingFrames.isEmpty()) "INFO" else "WARN",
+                component = "CropClarityAbCapture",
+                event = "CROP_CLARITY_AB_READY",
+                fields = mapOf(
+                    "job_id" to jobId,
+                    "file_name" to file.name,
+                    "pair_count" to samples.length(),
+                    "expected_pair_count" to targets.size,
+                    "expected_frames" to targets.sorted(),
+                    "missing_frames" to missingFrames,
+                    "complete" to missingFrames.isEmpty(),
+                    "debug_opt_in" to true
+                )
             )
         }
     }

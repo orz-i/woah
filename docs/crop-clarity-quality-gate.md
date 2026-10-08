@@ -8,7 +8,7 @@
 - One-time **debug-only opt-in** creates a second privacy render target on selected frames. Both variants share the same decoded frame, tracked-person list, privacy classification/masks, effects, crop matrix, dimensions and PTS. Only `cropClarityScale` is changed to `1.0` for the baseline; the enhanced variant uses the original export request.
 - Captured PNGs are **already privacy-composited final output frames**, not raw decoded input or masks. Nevertheless, unmasked people and background may be identifiable; treat the files as sensitive local media.
 - A/B PNGs are retained in **app-private cache** and deliberately excluded from the standard Woah diagnostics ZIP. No automatic sharing/upload or main UI controls are introduced.
-- Only first, two adjacent middle, and nominal final frames are sampled: **at most four pairs**. The last three private ZIPs at most are retained (older archives are rotated when a new QA run is armed). Quality captures are readback/PNG-heavy and must NOT be included in performance benchmarks.
+- Only first, two adjacent middle, and one **near-end** frame are sampled: **at most four pairs**. The late frame deliberately has a 2–6-frame guard before the metadata-estimated end because a completed 30fps export can contain 649 decoded frames even when its duration predicts 650. The last three private ZIPs at most are retained (older archives are rotated when a new QA run is armed). Quality captures are readback/PNG-heavy and must NOT be included in performance benchmarks.
 - The marker is consumed for a single eligible export. Without the marker, both debug and release use the same single-pass production path; release cannot activate the capture.
 
 ## Real-device workflow (Android debug APK)
@@ -42,7 +42,7 @@
 
    Open `crop_clarity_ab_contact_sheet.png`. Each row is **OFF (GL bilinear)**, **ON (current shader)**, and an amplified per-pixel **difference ×4**. `crop_clarity_ab_report.json` records changed-pixel percentage, mean absolute RGB difference, edge energy and new clipped-channel fraction. Where the two middle frames are adjacent, it also measures a **non-motion-compensated** difference in enhancement residual; it is only a flicker-screening hint, not a temporal quality proof.
 
-7. Delete the private A/B ZIP and report from every device/workstation after review. The normal diagnostics bundle deliberately never contains these images.
+7. Look for `CROP_CLARITY_AB_READY` in the normal diagnostic ZIP. It now lists `expected_frames`, `missing_frames`, `expected_pair_count`, `pair_count` and `complete` even though the photos remain private. A partial-but-readable ZIP is not a complete sampling pass. Delete the private A/B ZIP and report from every device/workstation after review. The normal diagnostics bundle deliberately never contains these images.
 
 ## Review rubric (no automatic "better" claim)
 
