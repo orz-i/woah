@@ -81,6 +81,73 @@ class CropClarityAbReportTest(unittest.TestCase):
             self.assertTrue((root / "report" / "crop_clarity_ab_report.json").exists())
             self.assertEqual(result["missing_expected_frames"], [])
 
+    def test_phase2_scene_selection_and_five_consecutive_frames(self):
+        try:
+            import numpy as np
+            from PIL import Image
+        except ImportError:
+            self.skipTest("numpy/pillow not installed in plain system Python; CI uses uv run")
+        with tempfile.TemporaryDirectory() as directory:
+            directory_path = Path(directory)
+            manifest = dict(self.manifest)
+            manifest.update({
+                "schema": 2, "capture_mode": "same_frame_same_crop_two_pass_scene_driven",
+                "selection_policy": "online_scene_heuristics_v2",
+            })
+            samples = []
+            for offset in range(5):
+                frame = 201 + offset
+                item = dict(self.sample)
+                item.update({
+                    "frame": frame, "pts_us": offset * 33_333,
+                    "baseline": f"frame_{frame:06d}_off.png",
+                    "enhanced": f"frame_{frame:06d}_on.png",
+                    "scene_kind": "temporal_burst", "burst_index": offset,
+                    "luma_mean": 100.0, "contrast": 150,
+                    "protected_overlap": 0.2, "protagonist_motion": 0.03,
+                    "protected_count": 1,
+                })
+                samples.append(item)
+            manifest["samples"] = samples
+            manifest["expected_frames"] = [item["frame"] for item in samples]
+            bundle = directory_path / "phase2.zip"
+            with zipfile.ZipFile(bundle, "w") as archive:
+                archive.writestr("manifest.json", json.dumps(manifest))
+                for index, item in enumerate(samples):
+                    off = np.zeros((12, 8, 3), dtype=np.uint8)
+                    off[:, 4:] = 100
+                    on = off.copy()
+                    on[:, 3] = 20 + index
+                    for field, image in (("baseline", off), ("enhanced", on)):
+                        output = BytesIO()
+                        Image.fromarray(image, "RGB").save(output, format="PNG")
+                        archive.writestr(item[field], output.getvalue())
+            result = qa.review_bundle(bundle, directory_path / "report")
+            self.assertEqual(result["schema"], 2)
+            self.assertEqual(result["scene_counts"]["temporal_burst"], 5)
+            self.assertTrue(result["scene_coverage"]["complete_five_frame_burst"])
+            self.assertEqual(result["temporal_runs"], [[201, 202, 203, 204, 205]])
+            self.assertEqual(len(result["adjacent_frame_proxy"]), 4)
+            self.assertEqual(result["quality_acceptance"], "MANUAL_REVIEW_REQUIRED")
+
+    def test_phase2_rejects_bad_scene_evidence(self):
+        self.manifest.update({
+            "schema": 2, "capture_mode": "same_frame_same_crop_two_pass_scene_driven",
+            "selection_policy": "online_scene_heuristics_v2",
+        })
+        with self.assertRaisesRegex(ValueError, "scene kind"):
+            qa.validate_manifest(self.manifest)
+        self.sample.update({
+            "scene_kind": "temporal_burst", "burst_index": 0,
+            "luma_mean": 95.0, "contrast": 132,
+            "protected_overlap": 0.1, "protagonist_motion": 0.02,
+            "protected_count": 1,
+        })
+        self.assertEqual(len(qa.validate_manifest(self.manifest)), 1)
+        self.sample["burst_index"] = 15
+        with self.assertRaisesRegex(ValueError, "burst index"):
+            qa.validate_manifest(self.manifest)
+
     def test_adjacent_midframe_proxy_is_explicitly_non_motion_compensated(self):
         try:
             import numpy as np

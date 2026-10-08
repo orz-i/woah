@@ -12,6 +12,7 @@ import art.gaoge.dance.engine.bridge.DanceProcessingEvents
 import art.gaoge.dance.engine.bridge.ExportRequestDto
 import art.gaoge.dance.engine.bridge.JobStatusDto
 import art.gaoge.dance.engine.clarity.CropClarityAbCapture
+import art.gaoge.dance.engine.clarity.CropClaritySceneSampler
 import art.gaoge.dance.engine.export.ExportCoordinator
 import art.gaoge.dance.engine.inference.FloatRect
 import art.gaoge.dance.engine.inference.RgbaColOrder
@@ -94,6 +95,7 @@ class ExportPipeline(
         isCancelled: AtomicBoolean,
         onStatusChange: (JobStatusDto) -> Unit
     ) = withContext(Dispatchers.IO) {
+        val perfStartNs = android.os.SystemClock.elapsedRealtimeNanos()
         val startTime = System.currentTimeMillis()
         val diagnosticJobId = if (art.gaoge.dance.engine.diagnostics.DiagnosticsBuild.ENABLED) jobId else null
         val videoInfo = VideoProbe.probe(context, sourceUri)
@@ -457,6 +459,10 @@ class ExportPipeline(
                 decoder.prepare()
 
                 var processedFrames = 0
+                var qualityLuma: CropClaritySceneSampler.LumaEvidence? = null
+                var qualityLumaFrame = -1
+                var previousProtagonistPosition: Pair<Float, Float>? = null
+                var previousProtagonistFrame = -1
                 val totalEstFrames = ((trimmedDurationMs / 1000.0) * nominalOutputFps).toLong().coerceAtLeast(1L)
                 // Source PTS remains authoritative. This duration is only a
                 // deterministic monotonic fallback for duplicate/broken PTS.
@@ -961,6 +967,16 @@ class ExportPipeline(
                                         }
                                     }.orEmpty()
                                 )
+                                // Reuse the 640px model input: sparse luma stats only.
+                                // No extra GPU readback, no stored unprotected image.
+                                if (clarityAbCapture != null && (
+                                        processedFrames == 1 ||
+                                            processedFrames - qualityLumaFrame >=
+                                                CropClaritySceneSampler.LUMA_PROBE_STRIDE
+                                    )) {
+                                    qualityLuma = CropClaritySceneSampler.sampleLuma(rgbaBuffer)
+                                    qualityLumaFrame = processedFrames
+                                }
                                 var cpuMt4PrimaryInferenceTimeMs: Long? = null
                                 val cpuMt4Probe = cpuMt4ProbeSegmenter
                                 val canReuseProductionForCpuMt4Reference =
@@ -1752,8 +1768,8 @@ class ExportPipeline(
                             if (postCropEnabled) {
                                 val target = requireNotNull(privacyRenderTarget)
                                 val compositor = requireNotNull(privacyRenderer)
-                                var qaThisFrame = clarityAbCapture?.shouldCapture(processedFrames) == true &&
-                                    clarityAbBaselineTarget != null
+                                // Selection happens after the *single* camera crop has been
+                                // determined. Production renders only once unconditionally.
 
                                 // Both variants use identical tracked persons, privacy classes,
                                 // masks, effects and source texture. The only difference is
@@ -1787,26 +1803,6 @@ class ExportPipeline(
                                         cropClarityScale = scale,
                                         cropClarityJobId = jobId
                                     )
-                                }
-                                if (qaThisFrame) {
-                                    val baselineTarget = requireNotNull(clarityAbBaselineTarget)
-                                    try {
-                                        val previous = baselineTarget.bind()
-                                        try {
-                                            renderProtected(1.0)
-                                        } finally {
-                                            baselineTarget.restore(previous)
-                                        }
-                                    } catch (error: Throwable) {
-                                        qaThisFrame = false
-                                        art.gaoge.dance.engine.diagnostics.NativeDiagnostics.event(
-                                            level = "WARN",
-                                            component = "ExportPipeline",
-                                            event = "CROP_CLARITY_AB_BASELINE_FAILED",
-                                            fields = mapOf("job_id" to jobId, "frame" to processedFrames,
-                                                "error" to error.javaClass.simpleName)
-                                        )
-                                    }
                                 }
                                 val previousFramebuffer = target.bind()
                                 try {
@@ -2136,10 +2132,80 @@ class ExportPipeline(
                                     .visualTopLeftToScreenGl(visualCrop)
                                 val cropTextureMatrix = art.gaoge.dance.engine.camera.ReframeGeometry
                                     .textureMatrixForScreenGlCrop(glCrop)
+                                val chosenScene = if (clarityAbCapture != null &&
+                                    clarityAbBaselineTarget != null
+                                ) {
+                                    // Compare selected and unselected *observed* boxes; a
+                                    // positive overlap is a review hint, not a privacy verdict.
+                                    val visibleProtected = trackedList.filter {
+                                        allPrivacyTargetIds.contains(it.id) && it.observedThisFrame
+                                    }
+                                    val visibleOther = trackedList.filter {
+                                        !allPrivacyTargetIds.contains(it.id) && it.observedThisFrame
+                                    }
+                                    var maxOverlap = 0f
+                                    for (protectedTrack in visibleProtected) {
+                                        for (other in visibleOther) {
+                                            val overlap = TrackManager.computeBBoxIoU(
+                                                protectedTrack.bbox, other.bbox
+                                            )
+                                            if (overlap > maxOverlap) maxOverlap = overlap
+                                        }
+                                    }
+                                    val protagonistBox = identityTrack?.takeIf { it.observedThisFrame }?.bbox
+                                    val currentPosition = protagonistBox?.let {
+                                        (it.centerX / trackingWidth.coerceAtLeast(1).toFloat()) to
+                                            (it.centerY / trackingHeight.coerceAtLeast(1).toFloat())
+                                    }
+                                    val frameGap = (processedFrames - previousProtagonistFrame).coerceAtLeast(1)
+                                    val motion = if (currentPosition != null &&
+                                        previousProtagonistPosition != null
+                                    ) {
+                                        val old = requireNotNull(previousProtagonistPosition)
+                                        val dx = currentPosition.first - old.first
+                                        val dy = currentPosition.second - old.second
+                                        (sqrt(dx * dx + dy * dy) / frameGap).coerceAtMost(1f)
+                                    } else 0f
+                                    if (currentPosition != null) {
+                                        previousProtagonistPosition = currentPosition
+                                        previousProtagonistFrame = processedFrames
+                                    }
+                                    clarityAbCapture?.choose(
+                                        processedFrames,
+                                        CropClaritySceneSampler.Signals(
+                                            luma = qualityLuma,
+                                            lumaAgeFrames = processedFrames - qualityLumaFrame,
+                                            protectedOverlap = maxOverlap,
+                                            protectedVisible = visibleProtected.isNotEmpty(),
+                                            protagonistMotion = motion,
+                                            protectedCount = visibleProtected.size
+                                        )
+                                    )
+                                } else null
+                                var baselineReady = false
+                                if (chosenScene != null) {
+                                    val baselineTarget = requireNotNull(clarityAbBaselineTarget)
+                                    try {
+                                        val previous = baselineTarget.bind()
+                                        try {
+                                            renderProtected(1.0)
+                                            baselineReady = true
+                                        } finally {
+                                            baselineTarget.restore(previous)
+                                        }
+                                    } catch (error: Throwable) {
+                                        art.gaoge.dance.engine.diagnostics.NativeDiagnostics.event(
+                                            level = "WARN", component = "ExportPipeline",
+                                            event = "CROP_CLARITY_AB_BASELINE_FAILED",
+                                            fields = mapOf("job_id" to jobId, "frame" to processedFrames,
+                                                "error" to error.javaClass.simpleName)
+                                        )
+                                    }
+                                }
                                 // Snapshot the exact *protected* output, not a raw frame or a
                                 // second independently computed camera trajectory.
                                 var baselineBitmap: android.graphics.Bitmap? = null
-                                if (qaThisFrame) {
+                                if (baselineReady) {
                                     try {
                                         glRenderer.renderBase(
                                             frameTexture = requireNotNull(clarityAbBaselineTarget).textureId,
@@ -2147,6 +2213,17 @@ class ExportPipeline(
                                             textureType = art.gaoge.dance.engine.render.SourceTextureType.TEXTURE_2D
                                         )
                                         baselineBitmap = glRenderer.captureRenderedFrame()
+                                        if (baselineBitmap != null &&
+                                            !CropClarityAbCapture.hasVisibleProtectedContent(requireNotNull(baselineBitmap))
+                                        ) {
+                                            baselineBitmap?.recycle()
+                                            baselineBitmap = null
+                                            art.gaoge.dance.engine.diagnostics.NativeDiagnostics.event(
+                                                level = "INFO", component = "ExportPipeline",
+                                                event = "CROP_CLARITY_AB_DARK_FRAME_SKIPPED",
+                                                fields = mapOf("job_id" to jobId, "frame" to processedFrames)
+                                            )
+                                        }
                                     } catch (error: Throwable) {
                                         art.gaoge.dance.engine.diagnostics.NativeDiagnostics.event(
                                             level = "WARN", component = "ExportPipeline",
@@ -2168,7 +2245,7 @@ class ExportPipeline(
                                     val enhanced = try { glRenderer.captureRenderedFrame() } catch (_: Throwable) { null }
                                     if (enhanced != null) {
                                         clarityAbCapture?.capture(
-                                            frameNumber = processedFrames,
+                                            choice = requireNotNull(chosenScene),
                                             ptsUs = ptsUs,
                                             cropLeft = visualCrop.left,
                                             cropTop = visualCrop.top,
@@ -2419,6 +2496,56 @@ class ExportPipeline(
                     outputUri = finalOutFile.absolutePath
                 )
                 emitProgress(status, onStatusChange)
+
+                // Always emit one compact, non-media Logcat record on successful
+                // exports. In Release this captures *real* app/codec pipeline
+                // throughput without debug shadow probes or A/B readbacks.
+                // renderEffects is a CPU dispatch timer (not GPU execution time).
+                try {
+                    val renderStage = profiler.snapshotSummary()["renderEffects"].orEmpty()
+                    val elapsedMs = (android.os.SystemClock.elapsedRealtimeNanos() - perfStartNs) / 1_000_000.0
+                    val thermal = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                        (context.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager)
+                            ?.currentThermalStatus
+                    } else null
+                    val payload = org.json.JSONObject().apply {
+                        put("schema", 1)
+                        put("build_mode", if (art.gaoge.dance.engine.BuildConfig.DEBUG) "debug" else "release")
+                        put("git_commit", art.gaoge.dance.engine.BuildConfig.GIT_COMMIT_SHA)
+                        put("device_model", android.os.Build.MODEL)
+                        put("source_width", videoInfo.displayWidth)
+                        put("source_height", videoInfo.displayHeight)
+                        put("source_fps", videoInfo.fps)
+                        put("trim_start_ms", trimStartMs)
+                        put("trim_end_ms", trimEndMs)
+                        put("target_width", targetWidth)
+                        put("target_height", targetHeight)
+                        put("target_fps", nominalOutputFps)
+                        put("video_bitrate", request.videoBitrate)
+                        put("profile", request.processingProfile)
+                        put("follow_enabled", request.follow.enabled)
+                        put("privacy_target_count", allPrivacyTargetIds.size)
+                        put("clarity_scale", request.cropClarityScale ?: 1.0)
+                        put("clarity_state", if ((request.cropClarityScale ?: 1.0) > 1.001) "on" else "off")
+                        put("decoded_frames", decodedFrameCount)
+                        put("rendered_frames", renderedFrameCount)
+                        put("encoded_frames", encodedFrameCount)
+                        put("yolo_accelerator", yoloEffectiveAccelerator.name)
+                        put("yolo_fallback", yoloFallbackReason ?: org.json.JSONObject.NULL)
+                        put("elapsed_ms", elapsedMs)
+                        put("throughput_fps", renderedFrameCount * 1000.0 / elapsedMs.coerceAtLeast(1.0))
+                        put("render_cpu_dispatch_count", renderStage["count"] ?: 0)
+                        put("render_cpu_dispatch_p50_ms", renderStage["p50_ms"] ?: 0)
+                        put("render_cpu_dispatch_p95_ms", renderStage["p95_ms"] ?: 0)
+                        put("thermal_status_end", thermal ?: org.json.JSONObject.NULL)
+                        put("pss_end_kb", android.os.Debug.getPss())
+                        put("ab_capture_possible", art.gaoge.dance.engine.BuildConfig.DEBUG)
+                        put("state", "completed")
+                    }
+                    android.util.Log.i("WoahExportPerf", payload.toString())
+                } catch (t: Throwable) {
+                    android.util.Log.w("WoahExportPerf", "benchmark record unavailable: ${t.javaClass.simpleName}")
+                }
 
                 try {
                     val p95DeltaUs = if (surfacePtsDeltaSamples.isNotEmpty()) {

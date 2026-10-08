@@ -20,19 +20,25 @@ import re
 from typing import Any
 import zipfile
 
-MAX_PAIRS = 4
+MAX_PAIRS = 12
+SCENE_KINDS = {"content_anchor", "privacy_overlap", "high_contrast", "fast_motion", "temporal_burst"}
 MAX_PNG_BYTES = 30 * 1024 * 1024
-SAFE_PNG = re.compile(r"^frame_[0-9]{6}_(?:off|on)\.png$")
+SAFE_PNG = re.compile(r"^frame_[0-9]{6,9}_(?:off|on)\.png$")
 
 
 def validate_manifest(manifest: dict[str, Any]) -> list[dict[str, Any]]:
-    if manifest.get("schema") != 1 or manifest.get("capture_mode") != "same_frame_same_crop_two_pass":
+    schema = manifest.get("schema")
+    valid_modes = {1: "same_frame_same_crop_two_pass",
+                   2: "same_frame_same_crop_two_pass_scene_driven"}
+    if schema not in valid_modes or manifest.get("capture_mode") != valid_modes[schema]:
         raise ValueError("unknown crop-clarity A/B capture contract")
     if manifest.get("privacy_composited") is not True or manifest.get("source_material_included") is not False:
         raise ValueError("only protected post-composition capture bundles are accepted")
     samples = manifest.get("samples")
-    if not isinstance(samples, list) or not 1 <= len(samples) <= MAX_PAIRS:
-        raise ValueError("A/B bundle must contain between one and four pairs")
+    if not isinstance(samples, list) or not 1 <= len(samples) <= (4 if schema == 1 else MAX_PAIRS):
+        raise ValueError("A/B bundle exceeds the schema-specific pair count limit")
+    if schema == 2 and manifest.get("selection_policy") != "online_scene_heuristics_v2":
+        raise ValueError("invalid phase-2 selection policy")
     expected = manifest.get("expected_frames")
     if expected is not None and (
         not isinstance(expected, list) or len(expected) > MAX_PAIRS or
@@ -59,6 +65,19 @@ def validate_manifest(manifest: dict[str, Any]) -> list[dict[str, Any]]:
             "same_decoded_frame", "same_privacy_state", "same_crop_matrix"
         )):
             raise ValueError("A/B pair is not proven to share frame/privacy/crop")
+        if schema == 2:
+            kind = sample.get("scene_kind")
+            if kind not in SCENE_KINDS:
+                raise ValueError("invalid scene kind")
+            for feature in ("luma_mean", "contrast", "protected_overlap",
+                            "protagonist_motion", "protected_count"):
+                if not isinstance(sample.get(feature), (int, float)):
+                    raise ValueError(f"missing scene evidence: {feature}")
+            if kind == "temporal_burst":
+                if type(sample.get("burst_index")) is not int or not 0 <= sample["burst_index"] < 5:
+                    raise ValueError("invalid temporal burst index")
+            elif sample.get("burst_index") is not None:
+                raise ValueError("non-temporal scene has burst index")
         crop = sample.get("crop")
         if (not isinstance(crop, list) or len(crop) != 4 or
             not all(isinstance(x, (float, int)) and 0 <= x <= 1 for x in crop) or
@@ -126,8 +145,12 @@ def review_bundle(bundle: Path, output_dir: Path) -> dict[str, Any]:
         rows = []
         reports = []
         residual_previous = None
+        off_previous = None
         previous_frame = None
         adjacent_proxy = []
+        temporal_runs = []
+        current_run = []
+        scene_counts = {}
         thumbnail_width = 360
         thumbnail_height = max(1, round(height * thumbnail_width / width))
         for sample in samples:
@@ -144,8 +167,20 @@ def review_bundle(bundle: Path, output_dir: Path) -> dict[str, Any]:
             )
             off_edges = edge_energy(off_np, np)
             on_edges = edge_energy(on_np, np)
+            kind = sample.get("scene_kind", "legacy_fixed_frame")
+            scene_counts[kind] = scene_counts.get(kind, 0) + 1
+            if kind == "temporal_burst" and (
+                not current_run or (sample["frame"] == current_run[-1] + 1 and
+                                    sample.get("burst_index") == len(current_run))
+            ):
+                current_run.append(sample["frame"])
+            else:
+                if current_run:
+                    temporal_runs.append(current_run)
+                current_run = [sample["frame"]] if kind == "temporal_burst" and sample.get("burst_index") == 0 else []
             report = {
                 "frame": sample["frame"],
+                "scene_kind": kind,
                 "pts_us": sample.get("pts_us"),
                 "crop": sample["crop"],
                 "mean_abs_rgb": round(float(abs_delta.mean()), 4),
@@ -155,17 +190,34 @@ def review_bundle(bundle: Path, output_dir: Path) -> dict[str, Any]:
                 "edge_energy_on": round(on_edges, 4),
                 "edge_energy_ratio": round(on_edges / off_edges, 4) if off_edges > 1e-7 else None,
                 "new_clipped_channel_percent": round(float(clip_new.mean() * 100), 4),
+                "mostly_black_percent": round(float((off_np.max(axis=2) < 16).mean() * 100), 4),
             }
+            if manifest.get("schema") == 2:
+                report["scene_evidence"] = {
+                    feature: sample.get(feature) for feature in
+                    ("burst_index", "luma_mean", "contrast", "protected_overlap",
+                     "protagonist_motion", "protected_count")
+                }
             if previous_frame is not None and sample["frame"] == previous_frame + 1:
                 # This is NOT motion-compensated: a high value may just be motion.
+                residual_change = np.abs(residual.astype(np.int32) - residual_previous.astype(np.int32))
+                # Compare on near-static pixels only. This is a screening proxy,
+                # NOT motion-compensated temporal PSNR nor a proof of no flicker.
+                stable_mask = (np.abs(off_np - off_previous).max(axis=2) <= 4)
+                stable_coverage = float(stable_mask.mean())
                 adjacent_proxy.append({
                     "frames": [previous_frame, sample["frame"]],
-                    "uncompensated_residual_change_mean_abs": round(
-                        float(np.abs(residual.astype(np.int32) - residual_previous.astype(np.int32)).mean()), 4
+                    "uncompensated_residual_change_mean_abs": round(float(residual_change.mean()), 4),
+                    "near_static_pixel_percent": round(100 * stable_coverage, 2),
+                    "near_static_residual_change_mean_abs": (
+                        round(float(residual_change[stable_mask].mean()), 4)
+                        if stable_coverage >= 0.05 else None
                     ),
+                    "note": "near_static_proxy_not_motion_compensated",
                 })
             previous_frame = sample["frame"]
             residual_previous = residual
+            off_previous = off_np
             reports.append(report)
 
             heat = np.clip(pixel_delta.astype(np.float32) * 4.0, 0, 255).astype(np.uint8)
@@ -183,6 +235,8 @@ def review_bundle(bundle: Path, output_dir: Path) -> dict[str, Any]:
             draw.text((8, thumbnail_height + 46), f"Frame {sample['frame']} / PTS {sample.get('pts_us', '')} us", fill="#cccccc")
             rows.append(row)
 
+        if current_run:
+            temporal_runs.append(current_run)
     output_dir.mkdir(parents=True, exist_ok=True)
     sheet = Image.new("RGB", (rows[0].width, sum(row.height for row in rows)), "#141414")
     top = 0
@@ -192,7 +246,7 @@ def review_bundle(bundle: Path, output_dir: Path) -> dict[str, Any]:
     sheet_path = output_dir / "crop_clarity_ab_contact_sheet.png"
     sheet.save(sheet_path)
     summary = {
-        "schema": 1,
+        "schema": manifest["schema"],
         "input": bundle.name,
         "job_id": manifest.get("job_id"),
         "output_size": [width, height],
@@ -200,6 +254,17 @@ def review_bundle(bundle: Path, output_dir: Path) -> dict[str, Any]:
         "strength_on": manifest.get("strength_on"),
         "same_decoded_frame_privacy_and_crop": True,
         "image_pairs": reports,
+        "scene_counts": scene_counts,
+        "scene_coverage": {
+            "privacy_overlap": (scene_counts.get("privacy_overlap", 0) > 0),
+            "high_contrast": (scene_counts.get("high_contrast", 0) > 0),
+            "fast_motion_or_burst": (
+                scene_counts.get("fast_motion", 0) > 0 or
+                scene_counts.get("temporal_burst", 0) > 0
+            ),
+            "complete_five_frame_burst": any(len(run) >= 5 for run in temporal_runs),
+        } if manifest["schema"] == 2 else None,
+        "temporal_runs": temporal_runs,
         "expected_frames": manifest.get("expected_frames"),
         "missing_expected_frames": sorted(set(manifest.get("expected_frames") or []) - {sample["frame"] for sample in samples}),
         "adjacent_frame_proxy": adjacent_proxy,

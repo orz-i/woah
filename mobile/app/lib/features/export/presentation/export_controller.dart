@@ -8,6 +8,19 @@ import '../../../core/logging/app_logger.dart';
 import '../../../repositories/native_processing_repository.dart';
 import '../domain/export_state.dart';
 
+// Build-time, Android-only QA switch. Normal builds compile with false and
+// keep automatic crop-clarity behavior. Never expose it as a user preference.
+const bool _benchmarkClarityOff = bool.fromEnvironment(
+  'WOAH_BENCHMARK_CROP_CLARITY_OFF',
+  defaultValue: false,
+);
+
+double effectiveExportCropClarityScale({
+  required double plannedScale,
+  required bool isAndroid,
+  required bool benchmarkOff,
+}) => isAndroid && benchmarkOff ? 1.0 : plannedScale;
+
 final exportControllerProvider =
     StateNotifierProvider.autoDispose<ExportController, ExportState>((ref) {
       final repo = ref.watch(nativeRepositoryProvider);
@@ -106,7 +119,11 @@ class ExportController extends StateNotifier<ExportState> {
         targetFps: plan.nominalFps,
         videoBitrate: plan.videoBitrate,
         processingProfile: 'quality',
-        cropClarityScale: plan.cropClarityScale,
+        cropClarityScale: effectiveExportCropClarityScale(
+          plannedScale: plan.cropClarityScale,
+          isAndroid: Platform.isAndroid,
+          benchmarkOff: _benchmarkClarityOff,
+        ),
         // Android supports a runtime capture gate and starts with it disabled.
         // Other platforms keep the previous eager-capture behavior so their
         // UI toggle remains backwards-compatible.

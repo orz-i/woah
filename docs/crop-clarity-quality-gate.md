@@ -1,5 +1,7 @@
 # Crop clarity phase 1: real-render A/B quality gate
 
+**Update:** Phase 2 now uses scene-driven sampling and a bounded five-frame temporal window. See [crop-clarity-phase2.md](crop-clarity-phase2.md). The fixed four-frame plan below documents the earlier phase-1 build only.
+
 **Status:** Debug capture/report tooling implemented. Real-device A/B and human image review remain acceptance gates; this document does not claim the 2x shader is perceptually better than interpolation.
 
 ## Scope and privacy boundaries
