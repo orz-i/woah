@@ -7,6 +7,7 @@ import android.opengl.GLES20
 import android.os.Handler
 import android.os.HandlerThread
 import android.view.Surface
+import art.gaoge.dance.engine.camera.FollowCameraTemporalRecovery
 import art.gaoge.dance.engine.bridge.DanceNativeException
 import art.gaoge.dance.engine.bridge.DanceProcessingEvents
 import art.gaoge.dance.engine.bridge.ExportRequestDto
@@ -477,6 +478,10 @@ class ExportPipeline(
                 val reframeFollower = art.gaoge.dance.engine.camera.SmoothFollower()
                 val reframeOcclusionProxyStabilizer =
                     art.gaoge.dance.engine.camera.OcclusionProxyStabilizer()
+                // Follow camera ONLY; never alters TrackManager privacy IDs.
+                val reframeTemporalRecovery = FollowCameraTemporalRecovery()
+                val reframeDistinctObservedBeforeLoss = mutableMapOf<Int, Long>()
+                var reframeRecoveryExpiredLogged = false
                 var reframeInitialized = false
                 var reframeIdentityTrackId = request.follow.targetPersonId?.toInt()
                 var reframeOcclusionProxyTrackId: Int? = null
@@ -1823,10 +1828,30 @@ class ExportPipeline(
                                 if (rootFollowObservation != null && rootFollowTrack != null) {
                                     reframeIdentityTrackId = followTargetId
                                     reframeOcclusionProxyTrackId = null
-                                    reframeLastIdentityTrackBox = rootFollowTrack.bbox
-                                    reframeLastIdentityPtsUs = ptsUs
-                                    reframeLastHandoffIou = null
-                                    reframeLastHandoffAgeUs = null
+                                    reframeTemporalRecovery.reset()
+                                    reframeRecoveryExpiredLogged = false
+                                    if (rootFollowTrack.observedThisFrame) {
+                                        reframeLastIdentityTrackBox = rootFollowTrack.bbox
+                                        reframeLastIdentityPtsUs = ptsUs
+                                        reframeLastHandoffIou = null
+                                        reframeLastHandoffAgeUs = null
+                                        // Known distinct people co-observed with the selected
+                                        // protagonist shortly before losing it cannot be
+                                        // silently promoted into that camera identity.
+                                        val cutoff = ptsUs -
+                                            FollowCameraTemporalRecovery.DISTINCT_COOCCURRENCE_WINDOW_US
+                                        reframeDistinctObservedBeforeLoss.entries.removeAll {
+                                            it.value < cutoff
+                                        }
+                                        trackedList.filter { other ->
+                                            other.id != followTargetId && other.observedThisFrame &&
+                                                TrackManager.computeBBoxIoU(
+                                                    rootFollowTrack.bbox, other.bbox
+                                                ) < 0.16f
+                                        }.forEach { other ->
+                                            reframeDistinctObservedBeforeLoss[other.id] = ptsUs
+                                        }
+                                    }
                                 }
 
                                 var identityTrackId = reframeIdentityTrackId ?: followTargetId
@@ -1846,8 +1871,10 @@ class ExportPipeline(
                                     identityObservation != null &&
                                     identityTrack != null
                                 ) {
-                                    reframeLastIdentityTrackBox = identityTrack.bbox
-                                    reframeLastIdentityPtsUs = ptsUs
+                                    if (identityTrack.observedThisFrame) {
+                                        reframeLastIdentityTrackBox = identityTrack.bbox
+                                        reframeLastIdentityPtsUs = ptsUs
+                                    }
                                     reframeOcclusionProxyTrackId = null
                                 }
 
@@ -1911,7 +1938,9 @@ class ExportPipeline(
                                         anchor = handoffAnchor,
                                         targetId = identityTrackId,
                                         tracks = trackedList,
-                                        handoffAgeUs = handoffAgeBeforeUs
+                                        handoffAgeUs = handoffAgeBeforeUs,
+                                        excludedTrackIds = allPrivacyTargetIds +
+                                            reframeDistinctObservedBeforeLoss.keys
                                     )
                                     if (handoffTrack != null) {
                                         val previousIdentityTrackId = identityTrackId
@@ -1935,6 +1964,7 @@ class ExportPipeline(
                                         }
                                         reframeLastHandoffIou = handoffIou
                                         reframeLastHandoffAgeUs = handoffAgeBeforeUs
+                                        reframeTemporalRecovery.reset()
                                         if (art.gaoge.dance.engine.diagnostics.DiagnosticsBuild.ENABLED) {
                                             art.gaoge.dance.engine.diagnostics.NativeDiagnostics.event(
                                                 level = "INFO",
@@ -1955,6 +1985,104 @@ class ExportPipeline(
                                                 )
                                             )
                                         }
+                                    }
+                                }
+
+                                // A lost root can reappear after the strict 1.1 s single-
+                                // frame geometric window. Require repeated, unique real
+                                // observations of the SAME camera-only candidate, and
+                                // stop after 2.6 s. This must never reassign privacy IDs.
+                                val eligibleForTemporalRecovery =
+                                    identityObservation == null &&
+                                        (identityTrack == null || identityTrack.state == TrackState.LOST) &&
+                                        handoffAgeBeforeUs != null &&
+                                        handoffAgeBeforeUs in
+                                            FollowCameraTemporalRecovery.MIN_AGE_US..
+                                            FollowCameraTemporalRecovery.MAX_AGE_US
+                                if (eligibleForTemporalRecovery) {
+                                    val previousPendingId = reframeTemporalRecovery.pendingTrackId
+                                    val recovery = reframeTemporalRecovery.observe(
+                                        anchor = reframeLastIdentityTrackBox,
+                                        rootTrackId = identityTrackId,
+                                        lastTargetPtsUs = reframeLastIdentityPtsUs,
+                                        ptsUs = ptsUs,
+                                        tracks = trackedList,
+                                        excludedTrackIds = allPrivacyTargetIds +
+                                            reframeDistinctObservedBeforeLoss.keys
+                                    )
+                                    val currentPendingId = reframeTemporalRecovery.pendingTrackId
+                                    if (
+                                        art.gaoge.dance.engine.diagnostics.DiagnosticsBuild.ENABLED &&
+                                        currentPendingId != null && currentPendingId != previousPendingId
+                                    ) {
+                                        art.gaoge.dance.engine.diagnostics.NativeDiagnostics.event(
+                                            level = "INFO", component = "ExportPipeline",
+                                            event = "AUTO_REFRAME_TEMPORAL_CANDIDATE",
+                                            fields = mapOf(
+                                                "job_id" to jobId, "pts_us" to ptsUs,
+                                                "candidate_track_id" to currentPendingId,
+                                                "age_us" to handoffAgeBeforeUs,
+                                                "privacy_identity_unchanged" to true
+                                            )
+                                        )
+                                    }
+                                    if (recovery != null) {
+                                        val previousIdentityTrackId = identityTrackId
+                                        identityTrackId = recovery.track.id
+                                        identityTrack = recovery.track
+                                        identityObservation = resolveFollowCameraObservation(
+                                            track = recovery.track,
+                                            trackingWidth = trackingWidth,
+                                            trackingHeight = trackingHeight
+                                        )
+                                        if (identityObservation != null) {
+                                            reframeIdentityTrackId = recovery.track.id
+                                            reframeLastIdentityTrackBox = recovery.track.bbox
+                                            reframeLastIdentityPtsUs = ptsUs
+                                            reframeLastHandoffIou = recovery.anchorIou
+                                            reframeLastHandoffAgeUs = recovery.ageUs
+                                            reframeOcclusionProxyTrackId = null
+                                            followOcclusionProxy = null
+                                            followOcclusionProxyObservation = null
+                                            reframeRecoveryExpiredLogged = false
+                                            art.gaoge.dance.engine.diagnostics.NativeDiagnostics.event(
+                                                level = "INFO", component = "ExportPipeline",
+                                                event = "AUTO_REFRAME_ID_HANDOFF",
+                                                fields = mapOf(
+                                                    "job_id" to jobId, "frame" to processedFrames,
+                                                    "pts_us" to ptsUs,
+                                                    "target_person_id" to followTargetId,
+                                                    "previous_identity_track_id" to previousIdentityTrackId,
+                                                    "current_identity_track_id" to recovery.track.id,
+                                                    "handoff_mode" to "TEMPORAL_CONFIRMED",
+                                                    "handoff_age_us" to recovery.ageUs,
+                                                    "handoff_iou" to recovery.anchorIou,
+                                                    "confirmed_observations" to recovery.observations,
+                                                    "observation_span_us" to recovery.observationSpanUs,
+                                                    "privacy_identity_unchanged" to true
+                                                )
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    reframeTemporalRecovery.reset()
+                                    if (
+                                        identityObservation == null &&
+                                        handoffAgeBeforeUs != null &&
+                                        handoffAgeBeforeUs > FollowCameraTemporalRecovery.MAX_AGE_US &&
+                                        !reframeRecoveryExpiredLogged
+                                    ) {
+                                        reframeRecoveryExpiredLogged = true
+                                        art.gaoge.dance.engine.diagnostics.NativeDiagnostics.event(
+                                            level = "INFO", component = "ExportPipeline",
+                                            event = "AUTO_REFRAME_RECOVERY_EXPIRED",
+                                            fields = mapOf(
+                                                "job_id" to jobId, "pts_us" to ptsUs,
+                                                "age_us" to handoffAgeBeforeUs,
+                                                "identity_track_id" to identityTrackId,
+                                                "camera_stays_held" to true
+                                            )
+                                        )
                                     }
                                 }
 
@@ -2910,7 +3038,8 @@ class ExportPipeline(
             anchor: FloatRect?,
             targetId: Int,
             tracks: List<TrackedPerson>,
-            handoffAgeUs: Long
+            handoffAgeUs: Long,
+            excludedTrackIds: Set<Int> = emptySet()
         ): TrackedPerson? {
             if (
                 anchor == null ||
@@ -2968,7 +3097,7 @@ class ExportPipeline(
 
             val candidates = tracks.asSequence()
                 .filter { candidate ->
-                    candidate.id != targetId &&
+                    candidate.id != targetId && candidate.id !in excludedTrackIds &&
                         candidate.observedThisFrame &&
                         candidate.state != TrackState.LOST &&
                         candidate.state != TrackState.REMOVED

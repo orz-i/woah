@@ -72,6 +72,7 @@ jobs:
           python -m unittest tools.diagnostics.test_crop_clarity_release_perf -v
           python -m unittest tools.test_crop_clarity_post_crop_contract -v
           python -m unittest tools.test_crop_clarity_synthetic_privacy -v
+          python -m unittest tools.test_follow_camera_recovery_contract -v
 
       # SAM2 is unavailable and ONNX is obsolete. YOLO stays mandatory; the
       # crop-clarity prototype is staged only when a verified SHA contract exists.
