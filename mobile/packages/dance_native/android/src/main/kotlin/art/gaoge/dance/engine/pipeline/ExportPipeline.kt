@@ -1885,6 +1885,16 @@ class ExportPipeline(
                                     reframeOcclusionProxyTrackId = null
                                 }
 
+                                // The occlusion-proxy lane must obey the same camera
+                                // negative-identity evidence as direct/temporal handoff.
+                                // Otherwise a historically separate dancer could still
+                                // pull the crop through a cached proxy ID.
+                                val excludedCameraProxyIds = allPrivacyTargetIds +
+                                    reframeIdentityHistory.excludedIds()
+                                if (reframeOcclusionProxyTrackId?.let { it in excludedCameraProxyIds } == true) {
+                                    reframeOcclusionProxyTrackId = null
+                                    reframeOcclusionProxyStabilizer.reset()
+                                }
                                 var followOcclusionProxy = if (identityObservation == null) {
                                     reframeOcclusionProxyTrackId?.let { proxyId ->
                                         trackedList.firstOrNull { track -> track.id == proxyId }
@@ -1905,7 +1915,8 @@ class ExportPipeline(
                                 ) {
                                     val freshOcclusionProxy = resolveFollowCameraOcclusionProxy(
                                         target = identityTrack,
-                                        tracks = trackedList
+                                        tracks = trackedList,
+                                        excludedTrackIds = excludedCameraProxyIds
                                     )
                                     if (freshOcclusionProxy != null) {
                                         reframeOcclusionProxyTrackId = freshOcclusionProxy.id
@@ -2983,7 +2994,8 @@ class ExportPipeline(
 
         internal fun resolveFollowCameraOcclusionProxy(
             target: TrackedPerson?,
-            tracks: List<TrackedPerson>
+            tracks: List<TrackedPerson>,
+            excludedTrackIds: Set<Int> = emptySet()
         ): TrackedPerson? {
             if (target == null || target.observedThisFrame) return null
             if (target.state != TrackState.OCCLUDED && target.state != TrackState.REACQUIRING) {
@@ -2997,7 +3009,7 @@ class ExportPipeline(
 
             return tracks.asSequence()
                 .filter { candidate ->
-                    candidate.id != target.id &&
+                    candidate.id != target.id && candidate.id !in excludedTrackIds &&
                         candidate.observedThisFrame &&
                         candidate.state != TrackState.LOST &&
                         candidate.state != TrackState.REMOVED

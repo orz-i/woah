@@ -70,6 +70,27 @@ class FollowCameraIdentityHistoryTest {
         assertEquals(setOf(11), history.excludedIds())
     }
 
+    @Test fun occlusionProxyMustNotBorrowHistoricallyCoObservedBystander() {
+        val history = FollowCameraIdentityHistory()
+        val sourceBox = FloatRect(100f, 100f, 400f, 900f)
+        // The selected protagonist and this other ID once appeared together.
+        history.recordSelectedObservation(2, true, listOf(
+            track(2, true, sourceBox), track(8, true, sourceBox)
+        ))
+        val target = TrackedPerson(
+            id = 2, bbox = sourceBox, mask = null, confidence = .8f,
+            state = TrackState.OCCLUDED, observedThisFrame = false,
+            occludedByTrackIds = setOf(8), framesSinceLastObservation = 12
+        )
+        // Even as the explicit occluder with a perfect bbox, ID 8 cannot
+        // take over camera movement. This must never change privacy IDs.
+        assertNull(art.gaoge.dance.engine.pipeline.ExportPipeline.resolveFollowCameraOcclusionProxy(
+            target = target,
+            tracks = listOf(target, track(8, true, sourceBox)),
+            excludedTrackIds = history.excludedIds()
+        ))
+    }
+
     @Test fun strictShortWindowHandoffAlsoHonorsHistoricalExclusion() {
         val history = FollowCameraIdentityHistory()
         val box = FloatRect(100f, 100f, 400f, 900f)

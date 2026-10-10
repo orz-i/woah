@@ -29,7 +29,16 @@ class FollowCameraRecoveryContractTest(unittest.TestCase):
         self.assertIn('track.id != selectedId && track.observedThisFrame', history)
         self.assertIn('fun excludedIds(): Set<Int> = coObservedTrackIds.toSet()', history)
         self.assertNotIn('reframeDistinctObservedBeforeLoss', source)
-        self.assertEqual(source.count('reframeIdentityHistory.excludedIds()'), 3)
+        # Strict handoff + temporal handoff + occlusion proxy + expiry audit.
+        self.assertEqual(source.count('reframeIdentityHistory.excludedIds()'), 4)
+
+    def test_occlusion_proxy_cannot_bypass_historical_exclusion(self):
+        source = PIPELINE.read_text()
+        self.assertIn('val excludedCameraProxyIds = allPrivacyTargetIds +', source)
+        self.assertIn('reframeOcclusionProxyTrackId?.let { it in excludedCameraProxyIds } == true', source)
+        self.assertIn('excludedTrackIds = excludedCameraProxyIds', source)
+        self.assertIn('internal fun resolveFollowCameraOcclusionProxy(', source)
+        self.assertIn('candidate.id != target.id && candidate.id !in excludedTrackIds', source)
 
     def test_temporal_voting_require_three_spaced_unique_observations(self):
         source = RECOVERY.read_text()

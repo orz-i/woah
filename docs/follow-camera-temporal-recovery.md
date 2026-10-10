@@ -16,7 +16,8 @@ ID 8 was concurrently detected alongside selected ID 2 at 5.800, 13.400, 13.533
 and 13.567s. The previous 0.8-second negative-identity window had expired by
 the 18.2s loss, allowing a potentially wrong camera-only handoff. The corrected
 policy remembers **all concurrently observed track IDs during the entire export**
-and excludes them from short and temporal camera handoffs. This includes
+and excludes them from short and temporal camera handoffs **and from
+both new and cached occlusion proxies**. This includes
 duplicate detections: when an ID was simultaneously observed, geometry alone
 cannot establish that it is the selected protagonist.
 
@@ -36,7 +37,7 @@ The 2026-10-09 PLK110 real-device diagnostics showed that the selected protagoni
 
 - Do not touch TrackManager, selected privacy IDs, face/full-body effects, or the privacy-first post-crop pipeline. Only update `reframeIdentityTrackId` (camera-follow identity) when evidence passes.
 - Preserve the existing short-window strict handoff. After that, accept a later handoff *only between 1.1 and 2.6 seconds from the last directly observed protagonist*, with at least **three separately timed observations** of one observed ACTIVE candidate spanning **at least 250ms**. Any ambiguous similarly strong candidate, distant or implausibly sized body, low-confidence detection, or teleport-like jump blocks handoff.
-- Exclude all selected privacy targets and **every other track ever observed concurrently** with the protagonist during the export. This evidence does not expire after 0.8s; if co-observation was duplicate detection rather than two distinct people, automatic reassignment is still identity-ambiguous.
+- Exclude all selected privacy targets and **every other track ever observed concurrently** with the protagonist during the export. This evidence does not expire after 0.8s and applies to strict handoff, delayed handoff, and occlusion proxy reuse/discovery; if co-observation was duplicate detection rather than two distinct people, automatic reassignment is still identity-ambiguous.
 - If no uniquely supported continuation passes by 2.6s, **stay HELD** rather than jump to another dancer. On subsequent genuine protagonist observation, clear pending camera recovery state. Never reclassify privacy masks.
 - Emit `AUTO_REFRAME_TEMPORAL_CANDIDATE`, a `AUTO_REFRAME_ID_HANDOFF` with `handoff_mode=TEMPORAL_CONFIRMED` and evidence details when successful, and `AUTO_REFRAME_RECOVERY_EXPIRED` once if no recovery occurs.
 
