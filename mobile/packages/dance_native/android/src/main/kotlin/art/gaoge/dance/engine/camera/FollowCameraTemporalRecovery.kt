@@ -32,7 +32,6 @@ class FollowCameraTemporalRecovery {
         const val MAX_VOTE_GAP_US = 850_000L
         const val MIN_OBSERVATION_SPAN_US = 250_000L
         const val MIN_OBSERVATIONS = 3
-        const val DISTINCT_COOCCURRENCE_WINDOW_US = 800_000L
         private const val MIN_IOU = 0.32f
         private const val MAX_CENTER_DISTANCE_RATIO = 0.30f
         private const val MIN_WIDTH_RATIO = 0.55f

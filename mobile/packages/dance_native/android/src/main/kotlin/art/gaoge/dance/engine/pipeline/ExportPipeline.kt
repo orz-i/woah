@@ -7,6 +7,7 @@ import android.opengl.GLES20
 import android.os.Handler
 import android.os.HandlerThread
 import android.view.Surface
+import art.gaoge.dance.engine.camera.FollowCameraIdentityHistory
 import art.gaoge.dance.engine.camera.FollowCameraTemporalRecovery
 import art.gaoge.dance.engine.bridge.DanceNativeException
 import art.gaoge.dance.engine.bridge.DanceProcessingEvents
@@ -480,7 +481,8 @@ class ExportPipeline(
                     art.gaoge.dance.engine.camera.OcclusionProxyStabilizer()
                 // Follow camera ONLY; never alters TrackManager privacy IDs.
                 val reframeTemporalRecovery = FollowCameraTemporalRecovery()
-                val reframeDistinctObservedBeforeLoss = mutableMapOf<Int, Long>()
+                // Keep co-observed identities excluded across the whole export.
+                val reframeIdentityHistory = FollowCameraIdentityHistory()
                 var reframeRecoveryExpiredLogged = false
                 var reframeInitialized = false
                 var reframeIdentityTrackId = request.follow.targetPersonId?.toInt()
@@ -1835,22 +1837,14 @@ class ExportPipeline(
                                         reframeLastIdentityPtsUs = ptsUs
                                         reframeLastHandoffIou = null
                                         reframeLastHandoffAgeUs = null
-                                        // Known distinct people co-observed with the selected
-                                        // protagonist shortly before losing it cannot be
-                                        // silently promoted into that camera identity.
-                                        val cutoff = ptsUs -
-                                            FollowCameraTemporalRecovery.DISTINCT_COOCCURRENCE_WINDOW_US
-                                        reframeDistinctObservedBeforeLoss.entries.removeAll {
-                                            it.value < cutoff
-                                        }
-                                        trackedList.filter { other ->
-                                            other.id != followTargetId && other.observedThisFrame &&
-                                                TrackManager.computeBBoxIoU(
-                                                    rootFollowTrack.bbox, other.bbox
-                                                ) < 0.16f
-                                        }.forEach { other ->
-                                            reframeDistinctObservedBeforeLoss[other.id] = ptsUs
-                                        }
+                                        // If ID 2 and ID 8 were ever co-observed, an
+                                        // ID 2 -> 8 handoff is identity-ambiguous, even
+                                        // when later geometry looks similar. HOLD instead.
+                                        reframeIdentityHistory.recordSelectedObservation(
+                                            selectedId = followTargetId,
+                                            selectedObserved = true,
+                                            tracks = trackedList
+                                        )
                                     }
                                 }
 
@@ -1940,7 +1934,7 @@ class ExportPipeline(
                                         tracks = trackedList,
                                         handoffAgeUs = handoffAgeBeforeUs,
                                         excludedTrackIds = allPrivacyTargetIds +
-                                            reframeDistinctObservedBeforeLoss.keys
+                                            reframeIdentityHistory.excludedIds()
                                     )
                                     if (handoffTrack != null) {
                                         val previousIdentityTrackId = identityTrackId
@@ -2008,7 +2002,7 @@ class ExportPipeline(
                                         ptsUs = ptsUs,
                                         tracks = trackedList,
                                         excludedTrackIds = allPrivacyTargetIds +
-                                            reframeDistinctObservedBeforeLoss.keys
+                                            reframeIdentityHistory.excludedIds()
                                     )
                                     val currentPendingId = reframeTemporalRecovery.pendingTrackId
                                     if (
@@ -2080,7 +2074,9 @@ class ExportPipeline(
                                                 "job_id" to jobId, "pts_us" to ptsUs,
                                                 "age_us" to handoffAgeBeforeUs,
                                                 "identity_track_id" to identityTrackId,
-                                                "camera_stays_held" to true
+                                                "camera_stays_held" to true,
+                                                "historical_co_observed_excluded_ids" to
+                                                    reframeIdentityHistory.excludedIds().sorted()
                                             )
                                         )
                                     }

@@ -16,10 +16,20 @@ class FollowCameraRecoveryContractTest(unittest.TestCase):
         self.assertIn('FollowCameraTemporalRecovery.MAX_AGE_US', block)
         self.assertIn('reframeTemporalRecovery.observe(', block)
         self.assertIn('excludedTrackIds = allPrivacyTargetIds +', block)
-        self.assertIn('reframeDistinctObservedBeforeLoss.keys', block)
+        self.assertIn('reframeIdentityHistory.excludedIds()', block)
+        self.assertIn('reframeIdentityHistory.recordSelectedObservation(', block)
         self.assertIn('reframeIdentityTrackId = recovery.track.id', block)
         for forbidden in ('trackManager.setPrivacySelectedTrackIds(', 'trackManager.setIdentityProtectedTrackIds(', 'selectedIds = ', 'privacyModeByTrackId ='):
             self.assertNotIn(forbidden, block)
+
+    def test_historical_simultaneous_tracks_do_not_expire_at_800ms(self):
+        source = PIPELINE.read_text()
+        history = (ROOT / 'mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/camera/FollowCameraIdentityHistory.kt').read_text()
+        self.assertIn('private val coObservedTrackIds = mutableSetOf<Int>()', history)
+        self.assertIn('track.id != selectedId && track.observedThisFrame', history)
+        self.assertIn('fun excludedIds(): Set<Int> = coObservedTrackIds.toSet()', history)
+        self.assertNotIn('reframeDistinctObservedBeforeLoss', source)
+        self.assertEqual(source.count('reframeIdentityHistory.excludedIds()'), 3)
 
     def test_temporal_voting_require_three_spaced_unique_observations(self):
         source = RECOVERY.read_text()
