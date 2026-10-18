@@ -68,6 +68,39 @@ production wiring without pretending to compile Android Kotlin. Real Android
 reproduction of ID 2 remaining observed after 18.267s is still **unverified**;
 continued HOLD remains preferable to any wrong-person camera motion.
 
+## PLK110 follow-root recovery after a one-frame detector fragment (pending device acceptance)
+
+On commit 5924af2 the selected original track 2 stayed observed until 18.333s.
+At 18.367s detection 2 collapsed from roughly 139x216 to 61x118 pixels.
+The full-size detection then returned at 18.400, 18.433 and 18.467s with
+predicted-track bbox IoU of 0.821, 0.834 and 0.798. Other tracked boxes
+overlapped this detection by no more than 0.072. A surviving *different*
+occlusion group nevertheless quarantined the detection on weak geometry,
+so ordinary LOST recovery could not consume it.
+
+The fix does NOT further enlarge group hysteresis or camera ID handoff. The
+export opt-in supplies its chosen follow root to TrackManager, and only that
+root can use this exceptional, strictly bounded lane. The root must be LOST
+for at most six frames and absent from all current occlusion groups. It must
+not belong to identity-protected, full-body privacy-selected or face-privacy
+selected track sets. The reserved detection needs a real mask, high detection
+confidence, strong predicted and last-observed bbox agreement, mask agreement,
+and low overlap with all competing tracks and detections. Three distinct,
+continuous detector frames spanning at least 50ms are required.
+
+Only the original root ID may consume a confirmed detection through ordinary
+LOST recovery. The detection remains reserved against general matching and
+new track creation. This cannot relax protected privacy identity thresholds,
+change selected masks, transfer camera identity to co-observed ID 8, or
+reorder privacy-before-crop rendering.
+
+Debug events: FOLLOW_RESERVED_RECOVERY_PROBE (bounded diagnostic evidence),
+FOLLOW_RESERVED_RECOVERY_CANDIDATE, FOLLOW_RESERVED_RECOVERY_CONFIRMED and
+FOLLOW_RESERVED_RECOVERY_COMMIT.
+Kotlin deterministic fixtures and Python production-wiring regression cover
+positive and negative evidence. Android native build and device-export
+acceptance remain pending.
+
 ## Evidence and acceptance limit
 
 The observed candidate ID 8 has detector evidence near 19.5, 20.1 and 20.2s; fixture tests mirror their rough boxes, but **similarity is not identity proof**. A separate historical-identity fixture now vetoes ID 8 because it was co-observed much earlier with ID 2. No Android native compilation or real-device follow-video acceptance is available on the development Mac. A controlled follow camera handoff should be considered accepted only after visual review of a new real export around 18–23s: camera must not jump to a different person and privacy for other subjects must remain intact. A prolonged HOLD can be correct if evidence is ambiguous.

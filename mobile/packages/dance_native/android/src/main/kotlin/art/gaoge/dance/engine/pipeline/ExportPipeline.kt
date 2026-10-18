@@ -476,6 +476,12 @@ class ExportPipeline(
                 }
                 var lastPresentationNs = -1L
                 val trackManager = TrackManager()
+                // Only the unprotected camera protagonist can use the strict,
+                // multi-frame reserved-detection recovery lane. Never promote
+                // a follow selection into privacy identity protection.
+                trackManager.setFollowCameraTrackId(
+                    if (request.follow.enabled) request.follow.targetPersonId?.toInt() else null
+                )
                 val reframeFollower = art.gaoge.dance.engine.camera.SmoothFollower()
                 val reframeOcclusionProxyStabilizer =
                     art.gaoge.dance.engine.camera.OcclusionProxyStabilizer()
