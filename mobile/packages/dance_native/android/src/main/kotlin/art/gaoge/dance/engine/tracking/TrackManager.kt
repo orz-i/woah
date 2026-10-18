@@ -183,11 +183,6 @@ class TrackManager(
     private var nextTrackId = 0
     private var hasInitialized = false
     private var privacyOffscreenDormancyEnabled = false
-    // Opt-in from ExportPipeline. Never used for a privacy-protected identity.
-    private var followCameraTrackId: Int? = null
-    private val followReservedLostRecovery = FollowReservedLostRecovery()
-    // Last actual real detector commit through the isolated follow lane.
-    private var lastFollowReservedCommitPtsUs = -1L
 
     private fun diagnosticEvent(
         level: String,
@@ -369,12 +364,6 @@ class TrackManager(
         facePrivacySelectedTrackIds.addAll(ids)
     }
 
-    fun setFollowCameraTrackId(id: Int?) {
-        followCameraTrackId = id
-        followReservedLostRecovery.reset()
-        lastFollowReservedCommitPtsUs = -1L
-    }
-
     fun setPrivacyOffscreenDormancyEnabled(enabled: Boolean) {
         privacyOffscreenDormancyEnabled = enabled
     }
@@ -426,8 +415,6 @@ class TrackManager(
     ): List<TrackedPerson> {
         tracks.clear()
         occlusionGroups.clear()
-        followReservedLostRecovery.reset()
-        lastFollowReservedCommitPtsUs = -1L
         currentPrivacyClassEvidence.clear()
         currentFacePrivacyClassEvidence.clear()
         currentProtectedTrackMotionEvidence.clear()
@@ -698,7 +685,10 @@ class TrackManager(
 
         // 1. Predict all tracks with 8D Kalman Filter & Scene Motion Compensation
         val rawPredictedBoxes = tracks.map { track ->
-            val pred = track.kalman.predict(timestampUs)
+            val pred = track.kalman.predict(
+                timestampUs = timestampUs,
+                coastUnobservedShape = track.state == TrackState.LOST
+            )
             track.age++
             track.currentPredictedBbox = pred
             pred
@@ -2226,134 +2216,7 @@ class TrackManager(
             }
         }
 
-        // 6. Ordinary LOST recovery. A single detector-frame fragment can cause a
-        // non-privacy-protected follow root to leave its occlusion group; the
-        // remaining group can then reserve the returned full-size detection on
-        // geometry alone. Require three uniquely matching real observations
-        // before routing ONE reserved detection to its original ID. Never
-        // release the reservation to general matching or protected identities.
-        val followLostTrack = followCameraTrackId?.let { id ->
-            tracks.firstOrNull { track ->
-                track.id == id && FollowReservedLostRecovery.isEligibleTarget(
-                    state = track.state,
-                    framesSinceLastObservation = track.framesSinceLastObservation,
-                    hasObservedMask = track.lastObservedMask != null,
-                    identityProtected = id in protectedTrackIds,
-                    privacySelected = id in privacySelectedTrackIds,
-                    facePrivacySelected = id in facePrivacySelectedTrackIds,
-                    belongsToAnyGroup = occlusionGroups.any { it.trackIds.contains(id) }
-                )
-            }
-        }
-        val reservedFollowEvidenceCandidates = followLostTrack?.let { target ->
-            reservedGroupDetectionIndices.asSequence()
-                .filter { dIdx ->
-                    val owners = reservedGroupOwnerTrackIdsByDetectionIndex[dIdx].orEmpty()
-                    dIdx !in matchedDetectionIndices && dIdx !in reservedGlobalDetectionIndices &&
-                        owners.isNotEmpty() && target.id !in owners
-                }
-                .mapNotNull { dIdx ->
-                    val det = detections[dIdx]
-                    if (det.mask == null) return@mapNotNull null
-                    val evidence = FollowReservedLostRecovery.Evidence(
-                        detectionIndex = dIdx,
-                        box = det.bbox,
-                        confidence = det.confidence,
-                        predictedIoU = computeBBoxIoU(target.currentPredictedBbox, det.bbox),
-                        lastObservedIoU = computeBBoxIoU(target.lastObservedBbox, det.bbox),
-                        maskIoU = computePredictedMaskIoU(target, dIdx),
-                        strongestOtherTrackIoU = tracks.asSequence()
-                            .filter { it.id != target.id && it.state != TrackState.REMOVED }
-                            .map { computeBBoxIoU(it.currentPredictedBbox, det.bbox) }
-                            .maxOrNull() ?: 0f,
-                        strongestOtherDetectionIoU = detections.indices.asSequence()
-                            .filter { it != dIdx }
-                            .map { computeBBoxIoU(detections[it].bbox, det.bbox) }
-                            .maxOrNull() ?: 0f
-                    )
-                    evidence
-                }
-                .toList()
-        }.orEmpty()
-        val strictFollowEvidence = reservedFollowEvidenceCandidates.filter {
-            FollowReservedLostRecovery.isStrictEvidence(it)
-        }
-        val reservedFollowEvidence = strictFollowEvidence.singleOrNull()
-        // Having just committed this very root through three real detections,
-        // do not require three NEW frames for every next group-reserved frame.
-        // Continuation must be adjacent, previously observed, and independently
-        // supported by fresh box+mask uniqueness; otherwise return to voting.
-        val recentVerifiedFollowRoot = followLostTrack != null &&
-            FollowReservedLostRecovery.isRecentVerifiedContinuation(
-                lastConfirmedPtsUs = lastFollowReservedCommitPtsUs,
-                ptsUs = timestampUs,
-                observedOnPreviousFrame = followLostTrack.observedOnPreviousFrame
-            )
-        val continuingFollowEvidence = if (recentVerifiedFollowRoot) {
-            reservedFollowEvidenceCandidates.filter {
-                FollowReservedLostRecovery.isContinuationEvidence(it)
-            }.singleOrNull()
-        } else {
-            null
-        }
-        // Debug-only reason evidence for one short LOST window; a failed gate
-        // still needs to be diagnosable without extra real-device experiments.
-        if (followLostTrack != null && reservedFollowEvidenceCandidates.isNotEmpty() && diagnosticsEnabled) {
-            val closest = reservedFollowEvidenceCandidates.maxByOrNull { it.predictedIoU }
-            diagnosticEvent(
-                level = "INFO", component = "TrackManager",
-                event = "FOLLOW_RESERVED_RECOVERY_PROBE",
-                fields = mapOf(
-                    "track_id" to followLostTrack.id,
-                    "frames_since_observation" to followLostTrack.framesSinceLastObservation,
-                    "candidate_count" to reservedFollowEvidenceCandidates.size,
-                    "strict_candidate_count" to strictFollowEvidence.size,
-                    "recent_verified_follow_root" to recentVerifiedFollowRoot,
-                    "continuation_candidate" to (continuingFollowEvidence != null),
-                    "closest_det_index" to closest?.detectionIndex,
-                    "closest_confidence" to closest?.confidence,
-                    "closest_predicted_iou" to closest?.predictedIoU,
-                    "closest_last_observed_iou" to closest?.lastObservedIoU,
-                    "closest_mask_iou" to closest?.maskIoU,
-                    "closest_other_track_iou" to closest?.strongestOtherTrackIoU,
-                    "closest_other_detection_iou" to closest?.strongestOtherDetectionIoU,
-                    "pts_us" to timestampUs
-                )
-            )
-        }
-        val priorFollowVotes = followReservedLostRecovery.pendingVotes
-        val confirmedFromVotes = if (continuingFollowEvidence != null) {
-            followReservedLostRecovery.reset()
-            null
-        } else {
-            followReservedLostRecovery.observe(reservedFollowEvidence, timestampUs)
-        }
-        val confirmedFollowDetectionIndex =
-            continuingFollowEvidence?.detectionIndex ?: confirmedFromVotes
-        if (reservedFollowEvidence != null &&
-            (priorFollowVotes == 0 || confirmedFromVotes != null) &&
-            continuingFollowEvidence == null
-        ) {
-            diagnosticEvent(
-                level = "INFO", component = "TrackManager",
-                event = if (confirmedFromVotes != null) {
-                    "FOLLOW_RESERVED_RECOVERY_CONFIRMED"
-                } else {
-                    "FOLLOW_RESERVED_RECOVERY_CANDIDATE"
-                },
-                fields = mapOf(
-                    "track_id" to followLostTrack?.id,
-                    "det_index" to reservedFollowEvidence.detectionIndex,
-                    "votes" to (priorFollowVotes + 1),
-                    "predicted_iou" to reservedFollowEvidence.predictedIoU,
-                    "last_observed_iou" to reservedFollowEvidence.lastObservedIoU,
-                    "mask_iou" to reservedFollowEvidence.maskIoU,
-                    "strongest_other_track_iou" to reservedFollowEvidence.strongestOtherTrackIoU,
-                    "strongest_other_detection_iou" to reservedFollowEvidence.strongestOtherDetectionIoU,
-                    "pts_us" to timestampUs
-                )
-            )
-        }
+        // 6. Ordinary Recovery Association on Remaining Truly LOST Tracks
         val unassignedDetections = mutableListOf<Pair<Int, PersonDetection>>()
         for (c in detections.indices) {
             if (
@@ -2391,10 +2254,6 @@ class TrackManager(
             }
         }
 
-        if (confirmedFollowDetectionIndex != null) {
-            unassignedDetections.add(0, confirmedFollowDetectionIndex to detections[confirmedFollowDetectionIndex])
-        }
-
         val recoverableTracks = tracks.filter {
             it.state == TrackState.LOST &&
             !matchedTrackIndices.contains(tracks.indexOf(it))
@@ -2407,10 +2266,6 @@ class TrackManager(
 
             for (candTrack in recoverableTracks) {
                 if (reclaimedTrackIds.contains(candTrack.id)) continue
-                if (detIndex == confirmedFollowDetectionIndex && candTrack.id != followCameraTrackId) continue
-                if (confirmedFollowDetectionIndex != null &&
-                    candTrack.id == followCameraTrackId && detIndex != confirmedFollowDetectionIndex
-                ) continue
                 val dx = candTrack.currentPredictedBbox.centerX - det.bbox.centerX
                 val dy = candTrack.currentPredictedBbox.centerY - det.bbox.centerY
                 val dist = sqrt(dx * dx + dy * dy)
@@ -2481,23 +2336,6 @@ class TrackManager(
                 bestTrack.lastObservedFootY = det.footY
                 bestTrack.kalman.update(det.bbox, timestampUs)
                 reclaimedTrackIds.add(bestTrack.id)
-                if (detIndex == confirmedFollowDetectionIndex) {
-                    lastFollowReservedCommitPtsUs = timestampUs
-                    diagnosticEvent(
-                        level = "INFO", component = "TrackManager",
-                        event = if (continuingFollowEvidence != null) {
-                            "FOLLOW_RESERVED_CONTINUATION_COMMIT"
-                        } else {
-                            "FOLLOW_RESERVED_RECOVERY_COMMIT"
-                        },
-                        fields = mapOf(
-                            "track_id" to bestTrack.id,
-                            "det_index" to detIndex,
-                            "privacy_identity_unchanged" to true,
-                            "pts_us" to timestampUs
-                        )
-                    )
-                }
                 diagnosticEvent(
                     level = "INFO",
                     component = "TrackManager",
@@ -2525,8 +2363,6 @@ class TrackManager(
                     )
                 )
             } else {
-                // Confirmed reservations are never allowed to mint a new ID.
-                if (detIndex == confirmedFollowDetectionIndex) continue
                 val newTrackId = nextTrackId++
                 val newTrack = InternalTrack(
                     id = newTrackId,
@@ -2570,8 +2406,6 @@ class TrackManager(
     }
 
     private fun predictInternal(timestampUs: Long, countAsDetectionMiss: Boolean): List<TrackedPerson> {
-        followReservedLostRecovery.reset()
-        lastFollowReservedCommitPtsUs = -1L
         currentPrivacyClassEvidence.clear()
         currentFacePrivacyClassEvidence.clear()
         currentProtectedTrackMotionEvidence.clear()
@@ -2591,7 +2425,10 @@ class TrackManager(
         }
 
         val activeOrLost = tracks.map { track ->
-            val predBox = track.kalman.predict(timestampUs)
+            val predBox = track.kalman.predict(
+                timestampUs = timestampUs,
+                coastUnobservedShape = track.state == TrackState.LOST
+            )
             track.currentPredictedBbox = predBox
 
             if (track.offscreenDormant) {
@@ -2732,9 +2569,6 @@ class TrackManager(
         nextTrackId = 0
         hasInitialized = false
         privacyOffscreenDormancyEnabled = false
-        followCameraTrackId = null
-        followReservedLostRecovery.reset()
-        lastFollowReservedCommitPtsUs = -1L
     }
 
     companion object {

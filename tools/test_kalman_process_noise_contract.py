@@ -90,7 +90,8 @@ class KalmanProcessNoiseContractTest(unittest.TestCase):
                         "OCCLUSION_GROUP_EXIT_MARGIN"):
             self.assertNotIn(removed, TRACKER)
         self.assertIn("if (overlapRatio >= config.occlusionOverlapRatio)", TRACKER)
-        self.assertIn("FollowReservedLostRecovery.isEligibleTarget(", TRACKER)
+        self.assertNotIn("FollowReservedLostRecovery", TRACKER)
+        self.assertNotIn("setFollowCameraTrackId(", EXPORT)
         self.assertIn("reframeIdentityHistory.excludedIds()", EXPORT)
         self.assertIn("reframeIdentityHistory.recordSelectedObservation(", EXPORT)
 

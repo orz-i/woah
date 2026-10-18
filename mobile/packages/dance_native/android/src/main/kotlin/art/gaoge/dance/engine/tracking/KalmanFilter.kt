@@ -117,8 +117,25 @@ class KalmanFilter {
 
     /**
      * Predict next state given elapsed time dt (or compute from timestampUs).
+     *
+     * When a track is already LOST, its inferred size/aspect velocity is no
+     * longer supported by detector measurements. Stop extrapolating those
+     * velocities and damp only center translation while coasting. This leaves
+     * the normal observed prediction/update model entirely unchanged.
+     *
+     * Do not reset covariance: uncertainty must continue growing so a real
+     * later observation can correct the state.
      */
-    fun predict(timestampUs: Long = -1L): FloatRect {
+    fun predict(
+        timestampUs: Long = -1L,
+        coastUnobservedShape: Boolean = false
+    ): FloatRect {
+        if (coastUnobservedShape) {
+            state[4] *= LOST_CENTER_VELOCITY_RETENTION
+            state[5] *= LOST_CENTER_VELOCITY_RETENTION
+            state[6] = 0f
+            state[7] = 0f
+        }
         val dt = if (timestampUs > 0 && lastTimestampUs > 0 && timestampUs > lastTimestampUs) {
             ((timestampUs - lastTimestampUs) / 1_000_000f).coerceIn(0.001f, 0.2f)
         } else {
@@ -292,6 +309,8 @@ class KalmanFilter {
     }
 
     companion object {
+        private const val LOST_CENTER_VELOCITY_RETENTION = 0.85f
+
         /**
          * Computes inverse of 4x4 matrix using Gauss-Jordan elimination.
          */
