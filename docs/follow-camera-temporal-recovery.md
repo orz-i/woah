@@ -33,13 +33,40 @@ the exported frame geometry.
 
 The 2026-10-09 PLK110 real-device diagnostics showed that the selected protagonist track ID 2 was last observed at 18.233s, became LOST at 18.267s and was removed at 18.767s; the tracking signal and portrait crop then remained HELD through the rest of the export. This is separate from the accepted crop-clarity shader. The existing single-frame strict handoff window is 1.1s and does not cover the first later plausible observation at 19.5s.
 
-## Guarded fix
+## Guarded camera identity recovery
 
-- Do not touch TrackManager, selected privacy IDs, face/full-body effects, or the privacy-first post-crop pipeline. Only update `reframeIdentityTrackId` (camera-follow identity) when evidence passes.
+- Do not touch TrackManager, selected privacy IDs, face/full-body effects, or the privacy-first post-crop pipeline *as a camera handoff shortcut*. Only update `reframeIdentityTrackId` (camera-follow identity) when evidence passes.
 - Preserve the existing short-window strict handoff. After that, accept a later handoff *only between 1.1 and 2.6 seconds from the last directly observed protagonist*, with at least **three separately timed observations** of one observed ACTIVE candidate spanning **at least 250ms**. Any ambiguous similarly strong candidate, distant or implausibly sized body, low-confidence detection, or teleport-like jump blocks handoff.
 - Exclude all selected privacy targets and **every other track ever observed concurrently** with the protagonist during the export. This evidence does not expire after 0.8s and applies to strict handoff, delayed handoff, and occlusion proxy reuse/discovery; if co-observation was duplicate detection rather than two distinct people, automatic reassignment is still identity-ambiguous.
 - If no uniquely supported continuation passes by 2.6s, **stay HELD** rather than jump to another dancer. On subsequent genuine protagonist observation, clear pending camera recovery state. Never reclassify privacy masks.
 - Emit `AUTO_REFRAME_TEMPORAL_CANDIDATE`, a `AUTO_REFRAME_ID_HANDOFF` with `handoff_mode=TEMPORAL_CONFIRMED` and evidence details when successful, and `AUTO_REFRAME_RECOVERY_EXPIRED` once if no recovery occurs.
+
+## Separate raw-tracking repair: occlusion-group exit edge (pending device validation)
+
+The subsequent PLK110 diagnostic on commit `4adeab1` confirmed **no** camera handoff to
+co-observed ID 8. It also exposed the earlier source of the lost target: at 18.233s,
+ID 2's predicted overlap with group member ID 8 was **0.320**. At 18.267s the
+ratio became **0.293**, just below the existing group-entry threshold **0.300**.
+ID 2 immediately fell out of group `[1,2,8,10]` while the leftover group
+`[1,8,10]` repeatedly reserved live detection 2 as `UNCOMMITTED_OVERLAP`.
+The tracked protagonist went LOST in the same frame despite the still-present
+YOLO detection. Earlier bbox vertical truncation is an independent detector
+signal; it does not establish a new identity.
+
+`TrackManager` now applies a **0.05 absolute overlap exit margin** only to a
+pair already in an `ACTIVE_OVERLAP` group when at least one member was observed
+on the previous frame. New pairs must still pass the unchanged 0.30 entry
+threshold. Stale or ended group pairs get no grace, and sufficiently separated
+pairs still exit. This is group membership hysteresis, **not** a change to
+protected identity evidence, ambiguous assignment gates, mask selection,
+privacy composition, or camera-only ID handoffs. The edge telemetry now
+reports effective exit threshold and whether the pair stayed connected.
+
+Deterministic Kotlin boundary fixtures mirror the observed 0.320 → 0.293 drop,
+plus new/stale group and separation negatives. A Mac Python contract checks
+production wiring without pretending to compile Android Kotlin. Real Android
+reproduction of ID 2 remaining observed after 18.267s is still **unverified**;
+continued HOLD remains preferable to any wrong-person camera motion.
 
 ## Evidence and acceptance limit
 

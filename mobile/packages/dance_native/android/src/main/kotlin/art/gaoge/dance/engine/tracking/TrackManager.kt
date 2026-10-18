@@ -469,6 +469,23 @@ class TrackManager(
                 val previouslySameGroup = occlusionGroups.any { group ->
                     group.trackIds.contains(trackA.id) && group.trackIds.contains(trackB.id)
                 }
+                val activeGroupPair = occlusionGroups.any { group ->
+                    group.state == OcclusionGroupState.ACTIVE_OVERLAP &&
+                        group.trackIds.contains(trackA.id) && group.trackIds.contains(trackB.id)
+                }
+                val recentObservation = trackA.observedOnPreviousFrame || trackB.observedOnPreviousFrame
+                // A real PLK110 export lost an otherwise well-matched protagonist
+                // when this overlap moved from 0.320 to 0.293 across one frame.
+                // The instant group exit let the remaining group quarantine the
+                // protagonist's fresh detection as UNCOMMITTED_OVERLAP. Keep the
+                // already-active edge briefly below its entry threshold, but
+                // never admit a new edge or extend a fully stale group this way.
+                val connected = isOcclusionPairConnected(
+                    overlapRatio = overlapRatio,
+                    entryThreshold = config.occlusionOverlapRatio,
+                    activeGroupPair = activeGroupPair,
+                    recentlyObservedMember = recentObservation
+                )
                 if (
                     abs(overlapRatio - config.occlusionOverlapRatio) <= OCCLUSION_OVERLAP_EDGE_TELEMETRY_MARGIN ||
                     (previouslySameGroup && overlapRatio < config.occlusionOverlapRatio)
@@ -482,6 +499,11 @@ class TrackManager(
                             "track_b_id" to trackB.id,
                             "overlap_ratio" to overlapRatio,
                             "threshold" to config.occlusionOverlapRatio,
+                            "exit_threshold" to (config.occlusionOverlapRatio - OCCLUSION_GROUP_EXIT_MARGIN)
+                                .coerceAtLeast(config.occlusionOverlapRatio * 0.75f),
+                            "active_group_pair" to activeGroupPair,
+                            "recently_observed_member" to recentObservation,
+                            "connected" to connected,
                             "intersection_area" to interArea,
                             "min_area" to minArea,
                             "previously_same_group" to previouslySameGroup,
@@ -501,7 +523,7 @@ class TrackManager(
                         ) }
                     )
                 }
-                if (overlapRatio >= config.occlusionOverlapRatio) {
+                if (connected) {
                     overlapAdj[trackA.id]?.add(trackB.id)
                     overlapAdj[trackB.id]?.add(trackA.id)
                 }
@@ -2585,6 +2607,21 @@ class TrackManager(
         private const val GROUP_RESERVATION_MIN_EDGE_PENETRATION_PX = 1.0f
         private const val GROUP_RESERVATION_MIN_EDGE_PENETRATION_RATIO = 0.01f
         private const val OCCLUSION_OVERLAP_EDGE_TELEMETRY_MARGIN = 0.10f
+        private const val OCCLUSION_GROUP_EXIT_MARGIN = 0.05f
+
+        internal fun isOcclusionPairConnected(
+            overlapRatio: Float,
+            entryThreshold: Float,
+            activeGroupPair: Boolean,
+            recentlyObservedMember: Boolean
+        ): Boolean {
+            if (!overlapRatio.isFinite() || !entryThreshold.isFinite() || entryThreshold <= 0f) return false
+            if (overlapRatio >= entryThreshold) return true
+            if (!activeGroupPair || !recentlyObservedMember) return false
+            val exitThreshold = (entryThreshold - OCCLUSION_GROUP_EXIT_MARGIN)
+                .coerceAtLeast(entryThreshold * 0.75f)
+            return overlapRatio >= exitThreshold
+        }
 
         internal fun isStrictFaceOnlyReservationRescueEligible(
             wouldStrictGlobalCommit: Boolean,
