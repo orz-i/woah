@@ -482,23 +482,6 @@ class TrackManager(
                 val previouslySameGroup = occlusionGroups.any { group ->
                     group.trackIds.contains(trackA.id) && group.trackIds.contains(trackB.id)
                 }
-                val activeGroupPair = occlusionGroups.any { group ->
-                    group.state == OcclusionGroupState.ACTIVE_OVERLAP &&
-                        group.trackIds.contains(trackA.id) && group.trackIds.contains(trackB.id)
-                }
-                val recentObservation = trackA.observedOnPreviousFrame || trackB.observedOnPreviousFrame
-                // A real PLK110 export lost an otherwise well-matched protagonist
-                // when this overlap moved from 0.320 to 0.293 across one frame.
-                // The instant group exit let the remaining group quarantine the
-                // protagonist's fresh detection as UNCOMMITTED_OVERLAP. Keep the
-                // already-active edge briefly below its entry threshold, but
-                // never admit a new edge or extend a fully stale group this way.
-                val connected = isOcclusionPairConnected(
-                    overlapRatio = overlapRatio,
-                    entryThreshold = config.occlusionOverlapRatio,
-                    activeGroupPair = activeGroupPair,
-                    recentlyObservedMember = recentObservation
-                )
                 if (
                     abs(overlapRatio - config.occlusionOverlapRatio) <= OCCLUSION_OVERLAP_EDGE_TELEMETRY_MARGIN ||
                     (previouslySameGroup && overlapRatio < config.occlusionOverlapRatio)
@@ -512,11 +495,6 @@ class TrackManager(
                             "track_b_id" to trackB.id,
                             "overlap_ratio" to overlapRatio,
                             "threshold" to config.occlusionOverlapRatio,
-                            "exit_threshold" to (config.occlusionOverlapRatio - OCCLUSION_GROUP_EXIT_MARGIN)
-                                .coerceAtLeast(config.occlusionOverlapRatio * 0.75f),
-                            "active_group_pair" to activeGroupPair,
-                            "recently_observed_member" to recentObservation,
-                            "connected" to connected,
                             "intersection_area" to interArea,
                             "min_area" to minArea,
                             "previously_same_group" to previouslySameGroup,
@@ -536,7 +514,7 @@ class TrackManager(
                         ) }
                     )
                 }
-                if (connected) {
+                if (overlapRatio >= config.occlusionOverlapRatio) {
                     overlapAdj[trackA.id]?.add(trackB.id)
                     overlapAdj[trackB.id]?.add(trackA.id)
                 }
@@ -918,10 +896,6 @@ class TrackManager(
         val reservedGroupOwnerGroupsByDetectionIndex = mutableMapOf<Int, MutableSet<Set<Int>>>()
         val reservedGlobalDetectionIndices = mutableSetOf<Int>()
         val globalAmbiguousTrackIndices = mutableSetOf<Int>()
-        // Weak group-ownership decisions are exclusive to the already verified
-        // camera root. A yielded detector box is NOT available to other tracks
-        // or ordinary new-track creation, even if the root fails Global matching.
-        val weakGroupYieldOwnerByDetection = mutableMapOf<Int, Int>()
 
         for (group in occlusionGroups) {
             val groupTrackIndices = tracks.indices.filter { idx ->
@@ -1254,99 +1228,7 @@ class TrackManager(
                                 detBox
                             )
                     }
-                    // The real PLK110 clip had two group IDs with no fresh
-                    // observation for >50 and >150 frames, yet their old boxes
-                    // grazed the just-observed protagonist at 18.767s. Do not
-                    // let weak, stale group geometry quarantine a UNIQUE fresh
-                    // detection already verified as the non-private follow root.
-                    // Only the existing root may use the yielded detector box
-                    // through normal Global Hungarian; never release it to new
-                    // tracks or other LOST identities.
-                    val followRoot = followCameraTrackId?.let { id ->
-                        tracks.firstOrNull { it.id == id }
-                    }
-                    val rootId = followRoot?.id
-                    val yieldedToFollow = if (
-                        followRoot != null && rootId != null &&
-                        lastFollowReservedCommitPtsUs >= 0L &&
-                        followRoot.state == TrackState.ACTIVE &&
-                        followRoot.observedOnPreviousFrame &&
-                        rootId !in protectedTrackIds &&
-                        rootId !in privacySelectedTrackIds &&
-                        rootId !in facePrivacySelectedTrackIds &&
-                        (overlapsGroupMember || hungarianDetectionSupport != null)
-                    ) {
-                        val groupSupportIoU = reservationTrackGeometry.maxOfOrNull {
-                            computeBBoxIoU(it, detBox)
-                        } ?: 0f
-                        val strongestOtherTrackIoU = tracks.asSequence()
-                            .filter { it.id != rootId && it.state != TrackState.REMOVED }
-                            .map {
-                                maxOf(
-                                    computeBBoxIoU(it.currentPredictedBbox, detBox),
-                                    computeBBoxIoU(it.lastObservedBbox, detBox)
-                                )
-                            }
-                            .maxOrNull() ?: 0f
-                        val strongestOtherDetectionIoU = detections.indices.asSequence()
-                            .filter { it != dIdx }
-                            .map { computeBBoxIoU(detections[it].bbox, detBox) }
-                            .maxOrNull() ?: 0f
-                        FollowCameraWeakGroupOwnership.canYield(
-                            FollowCameraWeakGroupOwnership.Evidence(
-                                recentlyVerifiedFollowCommit =
-                                    lastFollowReservedCommitPtsUs >= 0L &&
-                                        timestampUs > lastFollowReservedCommitPtsUs &&
-                                        timestampUs - lastFollowReservedCommitPtsUs <= 100_000L,
-                                rootActiveAndObservedPreviousFrame =
-                                    followRoot.state == TrackState.ACTIVE &&
-                                        followRoot.observedOnPreviousFrame,
-                                rootOutsideGroup = occlusionGroups.none { rootId in it.trackIds },
-                                rootNotPrivacyProtected =
-                                    rootId !in protectedTrackIds &&
-                                        rootId !in privacySelectedTrackIds &&
-                                        rootId !in facePrivacySelectedTrackIds,
-                                unassignedByGroupHungarian =
-                                    matchResult.matches.none { it.second == c },
-                                detectorHasMask = detections[dIdx].mask != null,
-                                confidence = detections[dIdx].confidence,
-                                rootPredictedIoU = computeBBoxIoU(
-                                    followRoot.currentPredictedBbox, detBox
-                                ),
-                                rootLastObservedIoU = computeBBoxIoU(
-                                    followRoot.lastObservedBbox, detBox
-                                ),
-                                rootMaskIoU = computePredictedMaskIoU(followRoot, dIdx),
-                                groupStrongestIoU = groupSupportIoU,
-                                otherTrackStrongestIoU = strongestOtherTrackIoU,
-                                otherDetectionStrongestIoU = strongestOtherDetectionIoU
-                            )
-                        ).also { yielded ->
-                            if (yielded) {
-                                weakGroupYieldOwnerByDetection[dIdx] = rootId
-                                diagnosticEvent(
-                                    level = "INFO",
-                                    component = "TrackManager",
-                                    event = "FOLLOW_WEAK_GROUP_RESERVATION_YIELDED",
-                                    fields = mapOf(
-                                        "track_id" to rootId,
-                                        "det_index" to dIdx,
-                                        "group_id" to group.trackIds.sorted(),
-                                        "group_support_iou" to groupSupportIoU,
-                                        "root_predicted_iou" to computeBBoxIoU(
-                                            followRoot.currentPredictedBbox, detBox
-                                        ),
-                                        "root_observed_iou" to computeBBoxIoU(
-                                            followRoot.lastObservedBbox, detBox
-                                        ),
-                                        "other_track_iou" to strongestOtherTrackIoU,
-                                        "pts_us" to timestampUs
-                                    )
-                                )
-                            }
-                        }
-                    } else false
-                    if (!yieldedToFollow && (overlapsGroupMember || hungarianDetectionSupport != null)) {
+                    if (overlapsGroupMember || hungarianDetectionSupport != null) {
                         reservedGroupDetectionIndices.add(dIdx)
                         reservedGroupOwnerTrackIdsByDetectionIndex
                             .getOrPut(dIdx) { mutableSetOf() }
@@ -1690,22 +1572,8 @@ class TrackManager(
         if (remainingTrackIndices.isNotEmpty() && remainingDetectionIndices.isNotEmpty()) {
             val scoreMatrix = Array(remainingTrackIndices.size) { r ->
                 val track = tracks[remainingTrackIndices[r]]
-                val rootHasYieldedDetection =
-                    weakGroupYieldOwnerByDetection.values.any { it == track.id }
                 FloatArray(remainingDetectionIndices.size) { c ->
-                    val dIdx = remainingDetectionIndices[c]
-                    val exclusiveFollowOwner = weakGroupYieldOwnerByDetection[dIdx]
-                    if (
-                        (exclusiveFollowOwner != null && track.id != exclusiveFollowOwner) ||
-                        (rootHasYieldedDetection && exclusiveFollowOwner != track.id)
-                    ) {
-                        // A yielded detection belongs only to its original root.
-                        // That root cannot silently match a different detection
-                        // instead: ambiguous choices must fail closed.
-                        0f
-                    } else {
-                        computeMatchScore(track, dIdx)
-                    }
+                    computeMatchScore(track, remainingDetectionIndices[c])
                 }
             }
             val costMatrix = Array(remainingTrackIndices.size) { r ->
@@ -1933,25 +1801,6 @@ class TrackManager(
                 track.currentObservedFootY = det.footY
                 track.lastObservedFootY = det.footY
                 track.kalman.update(det.bbox, timestampUs)
-                if (weakGroupYieldOwnerByDetection[dIdx] == track.id) {
-                    lastFollowReservedCommitPtsUs = timestampUs
-                    diagnosticEvent(
-                        level = "INFO",
-                        component = "TrackManager",
-                        event = "FOLLOW_WEAK_GROUP_OWNERSHIP_COMMIT",
-                        fields = mapOf(
-                            "track_id" to track.id,
-                            "det_index" to dIdx,
-                            "bbox_iou" to associationBBoxIoU,
-                            "mask_iou" to associationMaskIoU,
-                            "pts_us" to timestampUs
-                        )
-                    )
-                } else if (track.id == followCameraTrackId) {
-                    // Normal Global association is not evidence that a prior
-                    // special reservation-yield claim remains valid.
-                    lastFollowReservedCommitPtsUs = -1L
-                }
                 diagnosticEventLazy(
                     level = "INFO",
                     component = "TrackManager",
@@ -1991,15 +1840,6 @@ class TrackManager(
                         )
                     )
                 }
-            }
-        }
-
-        // A weak group yielding geometry is NOT permission to create an ID
-        // or run ordinary LOST recovery if the original root did not pass
-        // unchanged Global Hungarian. Preserve the detector quarantine then.
-        weakGroupYieldOwnerByDetection.keys.forEach { dIdx ->
-            if (dIdx !in matchedDetectionIndices) {
-                reservedGlobalDetectionIndices.add(dIdx)
             }
         }
 
@@ -2917,21 +2757,6 @@ class TrackManager(
         private const val GROUP_RESERVATION_MIN_EDGE_PENETRATION_PX = 1.0f
         private const val GROUP_RESERVATION_MIN_EDGE_PENETRATION_RATIO = 0.01f
         private const val OCCLUSION_OVERLAP_EDGE_TELEMETRY_MARGIN = 0.10f
-        private const val OCCLUSION_GROUP_EXIT_MARGIN = 0.05f
-
-        internal fun isOcclusionPairConnected(
-            overlapRatio: Float,
-            entryThreshold: Float,
-            activeGroupPair: Boolean,
-            recentlyObservedMember: Boolean
-        ): Boolean {
-            if (!overlapRatio.isFinite() || !entryThreshold.isFinite() || entryThreshold <= 0f) return false
-            if (overlapRatio >= entryThreshold) return true
-            if (!activeGroupPair || !recentlyObservedMember) return false
-            val exitThreshold = (entryThreshold - OCCLUSION_GROUP_EXIT_MARGIN)
-                .coerceAtLeast(entryThreshold * 0.75f)
-            return overlapRatio >= exitThreshold
-        }
 
         internal fun isStrictFaceOnlyReservationRescueEligible(
             wouldStrictGlobalCommit: Boolean,

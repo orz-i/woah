@@ -1,205 +1,100 @@
-# Camera-only bounded identity recovery
+# Follow camera, Kalman tracking, and privacy safety
 
-## Diagnostic correction — stationary protagonist
+## Scope and invariants
 
-The original-video protagonist remained on screen at nearly the same position. A long
-`HELD` interval is therefore **not itself a camera error**; holding the existing crop is
-often the correct behavior. The `ID 2 -> ID 8` temporal handoff at 20.033s made the
-camera move, but did **not** prove the identity was recovered.
+Woah follows a user-selected protagonist after applying all person/face
+privacy effects in source coordinates, before portrait cropping. Camera motion
+is **not** a privacy identity assignment. The TrackManager's protected roots,
+privacy-selected IDs, protected masks, and compositing order may not be
+relaxed for more active framing.
 
-The tracking bbox of ID 2 became vertically truncated near 18s (its top moved from
-about 258px at 17.0s to about 390px at 18.0s, without comparable horizontal
-movement). That is consistent with detector/association fragmentation rather
-than the person leaving the scene.
+- Keep `FollowCameraIdentityHistory`: any ID ever **observed concurrently**
+  with the selected root is a negative identity for the entire export. That
+  applies to strict camera handoff and both new/cached occlusion proxies.
+  Duplicate detections are also ambiguous; they cannot authorize handoff.
+- Short-window camera identity handling and
+  `FollowCameraTemporalRecovery` remain strictly camera-only. Later handoff
+  requires three real observations over at least 250 ms inside the bounded
+  1.1–2.6 s window, and cannot use historical co-observed IDs or privacy IDs.
+- Keep `FollowReservedLostRecovery` as a bounded fail-closed fallback for
+  a recently lost, unprotected root whose real detector box was quarantined
+  by a different occlusion group. It requires repeated uniquely supported
+  mask/bbox evidence and never exposes the reserved detection to unrelated
+  identities. Camera-only continuity after a proven recovery cannot assign
+  or modify privacy roots. Retire this remaining fallback **only after** a
+  real-device Kalman acceptance run demonstrates it is redundant.
+- If identity evidence cannot uniquely prove the protagonist, the camera
+  remains **HELD**. A stationary protagonist makes a stable crop reasonable.
+  Reducing the count of HOLD samples is not an acceptance goal.
 
-ID 8 was concurrently detected alongside selected ID 2 at 5.800, 13.400, 13.533
-and 13.567s. The previous 0.8-second negative-identity window had expired by
-the 18.2s loss, allowing a potentially wrong camera-only handoff. The corrected
-policy remembers **all concurrently observed track IDs during the entire export**
-and excludes them from short and temporal camera handoffs **and from
-both new and cached occlusion proxies**. This includes
-duplicate detections: when an ID was simultaneously observed, geometry alone
-cannot establish that it is the selected protagonist.
+## Diagnosis: PLK110, 2026-10-18
 
-For this stationary case, a continued HOLD is safer and can be **correct**.
-Judge success by correct subject framing and no wrong-person movement, not
-by reducing the number of HOLD events. A new export should no longer report
-an ID 2 -> ID 8 handoff. The expiry event lists
-`historical_co_observed_excluded_ids` for diagnostics.
+The real source protagonist remained in view around 18 seconds, but ID 2
+experienced a detector-box contraction/fragment and later tracking loss.
+Follow camera must not hand off to ID 8: the two IDs were observed together
+earlier in the video (5.800, 13.400, 13.533, 13.567 s).
 
-This defensive follow guard does **not** repair the underlying detector/tracker
-identity loss. It does not modify privacy tracking, masks, shader strength, or
-the exported frame geometry.
+The `570d6f9` export provided 529 committed source-space bbox observations
+for ID 2. At 18.833 s the detector reported a bbox around **291 px high**,
+while the Kalman prediction was only **211 px high**. This was not primarily
+a missing YOLO detection: the source-space filter could not keep up with
+observed bbox height and center changes. The prior
+`KalmanFilter.predict` scaled its **standard deviations** for process
+noise directly by `dt` in seconds (roughly 1/30 each frame), making
+covariance too small. New measurements then carried insufficient weight
+after many frames, allowing stale size/center predictions.
 
-The 2026-10-09 PLK110 real-device diagnostics showed that the selected protagonist track ID 2 was last observed at 18.233s, became LOST at 18.267s and was removed at 18.767s; the tracking signal and portrait crop then remained HELD through the rest of the export. This is separate from the accepted crop-clarity shader. The existing single-frame strict handoff window is 1.1s and does not cover the first later plausible observation at 19.5s.
+The corrected prediction uses process covariance based on **reference-frame
+steps** (`dt * 30`). The process standard deviations scale as
+`0.50 * sqrt(dt * 30)`, with velocity represented in pixels/second.
+The conservative 0.50 factor smooths short pose noise rather than fully
+following every detector fluctuation. This is a model fix for all tracks,
+not a follow-specific identity exception.
 
-## Guarded camera identity recovery
+A self-contained anonymous-geometry replay of the 17.000–18.833 s bbox
+height channel shows **37.0 px → 7.8 px RMSE** with the new process
+noise calibration. The new replay's last predicted bbox height is
+about 281 px, much nearer the 291 px detector observation. An additional
+Kotlin JVM test uses the same 54 anonymous bbox heights and centers and
+checks prediction stability. This is offline evidence; it is not a real
+Android export pass.
 
-- Do not touch TrackManager, selected privacy IDs, face/full-body effects, or the privacy-first post-crop pipeline *as a camera handoff shortcut*. Only update `reframeIdentityTrackId` (camera-follow identity) when evidence passes.
-- Preserve the existing short-window strict handoff. After that, accept a later handoff *only between 1.1 and 2.6 seconds from the last directly observed protagonist*, with at least **three separately timed observations** of one observed ACTIVE candidate spanning **at least 250ms**. Any ambiguous similarly strong candidate, distant or implausibly sized body, low-confidence detection, or teleport-like jump blocks handoff.
-- Exclude all selected privacy targets and **every other track ever observed concurrently** with the protagonist during the export. This evidence does not expire after 0.8s and applies to strict handoff, delayed handoff, and occlusion proxy reuse/discovery; if co-observation was duplicate detection rather than two distinct people, automatic reassignment is still identity-ambiguous.
-- If no uniquely supported continuation passes by 2.6s, **stay HELD** rather than jump to another dancer. On subsequent genuine protagonist observation, clear pending camera recovery state. Never reclassify privacy masks.
-- Emit `AUTO_REFRAME_TEMPORAL_CANDIDATE`, a `AUTO_REFRAME_ID_HANDOFF` with `handoff_mode=TEMPORAL_CONFIRMED` and evidence details when successful, and `AUTO_REFRAME_RECOVERY_EXPIRED` once if no recovery occurs.
+## Transient workarounds removed
 
-## Separate raw-tracking repair: occlusion-group exit edge (pending device validation)
+The following exploratory fixes are removed rather than carried forward:
 
-The subsequent PLK110 diagnostic on commit `4adeab1` confirmed **no** camera handoff to
-co-observed ID 8. It also exposed the earlier source of the lost target: at 18.233s,
-ID 2's predicted overlap with group member ID 8 was **0.320**. At 18.267s the
-ratio became **0.293**, just below the existing group-entry threshold **0.300**.
-ID 2 immediately fell out of group `[1,2,8,10]` while the leftover group
-`[1,8,10]` repeatedly reserved live detection 2 as `UNCOMMITTED_OVERLAP`.
-The tracked protagonist went LOST in the same frame despite the still-present
-YOLO detection. Earlier bbox vertical truncation is an independent detector
-signal; it does not establish a new identity.
+- One-frame overlap hysteresis (`5924af2`) for occlusion-group edge
+  membership, together with its temporary tests. The normal group threshold
+  is restored.
+- The `FollowCameraWeakGroupOwnership` lane (`570d6f9`), which allowed
+  a weak occlusion-group reservation to yield exclusively to the camera
+  root. It introduced substantial per-frame special-case geometry and
+  bypassed ordinary group reservation ownership. Its class, diagnostics,
+  tests, and source contract are removed.
 
-`TrackManager` now applies a **0.05 absolute overlap exit margin** only to a
-pair already in an `ACTIVE_OVERLAP` group when at least one member was observed
-on the previous frame. New pairs must still pass the unchanged 0.30 entry
-threshold. Stale or ended group pairs get no grace, and sufficiently separated
-pairs still exit. This is group membership hysteresis, **not** a change to
-protected identity evidence, ambiguous assignment gates, mask selection,
-privacy composition, or camera-only ID handoffs. The edge telemetry now
-reports effective exit threshold and whether the pair stayed connected.
+The earlier, **actually proven** bounded LOST recovery is retained as a
+safety fallback until real Android evidence shows the calibrated Kalman
+filter sustains ordinary tracking without it. The historical co-observation
+exclusion remains mandatory. No SAM2, ONNX, Neural SR or new enhancement
+strength is introduced. Crop clarity shader strength remains **0.55**.
 
-Deterministic Kotlin boundary fixtures mirror the observed 0.320 → 0.293 drop,
-plus new/stale group and separation negatives. A Mac Python contract checks
-production wiring without pretending to compile Android Kotlin. Real Android
-reproduction of ID 2 remaining observed after 18.267s is still **unverified**;
-continued HOLD remains preferable to any wrong-person camera motion.
+## Validation
 
-## PLK110 follow-root recovery after a one-frame detector fragment (pending device acceptance)
+On the development Mac: run `python3 -m unittest
+tools.test_kalman_process_noise_contract
+tools.test_follow_reserved_lost_recovery_contract
+tools.test_follow_camera_recovery_contract -v` and the existing Flutter app,
+Native Dart and privacy/crop contract tests.
 
-On commit 5924af2 the selected original track 2 stayed observed until 18.333s.
-At 18.367s detection 2 collapsed from roughly 139x216 to 61x118 pixels.
-The full-size detection then returned at 18.400, 18.433 and 18.467s with
-predicted-track bbox IoU of 0.821, 0.834 and 0.798. Other tracked boxes
-overlapped this detection by no more than 0.072. A surviving *different*
-occlusion group nevertheless quarantined the detection on weak geometry,
-so ordinary LOST recovery could not consume it.
+On the Windows Android workstation, verify Kotlin JVM tests and build a Debug
+APK. The same PLK110 video should be exported once to check that source root
+ID 2 is still observed around **18–23 s**, its camera does not follow another
+person (especially historical ID 8), and protected output remains correct.
+Track the events `GLOBAL_ASSIGNMENT_COMMIT`, `GROUP_ASSIGNMENT_COMMIT`,
+`FOLLOW_RESERVED_RECOVERY_*`, `AUTO_REFRAME_ID_HANDOFF`,
+`AUTO_REFRAME_SAMPLE`, and `PRIVACY_COVERAGE_DROP`. A successful
+Android build and actual export are **not** assumed until observed.
 
-The fix does NOT further enlarge group hysteresis or camera ID handoff. The
-export opt-in supplies its chosen follow root to TrackManager, and only that
-root can use this exceptional, strictly bounded lane. The root must be LOST
-for at most six frames and absent from all current occlusion groups. It must
-not belong to identity-protected, full-body privacy-selected or face-privacy
-selected track sets. The reserved detection needs a real mask, high detection
-confidence, strong predicted and last-observed bbox agreement, mask agreement,
-and low overlap with all competing tracks and detections. Three distinct,
-continuous detector frames spanning at least 50ms are required.
-
-Only the original root ID may consume a confirmed detection through ordinary
-LOST recovery. The detection remains reserved against general matching and
-new track creation. This cannot relax protected privacy identity thresholds,
-change selected masks, transfer camera identity to co-observed ID 8, or
-reorder privacy-before-crop rendering.
-
-Debug events: FOLLOW_RESERVED_RECOVERY_PROBE (bounded diagnostic evidence),
-FOLLOW_RESERVED_RECOVERY_CANDIDATE, FOLLOW_RESERVED_RECOVERY_CONFIRMED and
-FOLLOW_RESERVED_RECOVERY_COMMIT.
-Kotlin deterministic fixtures and Python production-wiring regression cover
-positive and negative evidence. Android native build and device-export
-acceptance remain pending.
-
-## PLK110 follow-root continuation — detector evidence versus Kalman drift (pending Android acceptance)
-
-The \`1190aac\` real-device export confirmed two genuine
-\`FOLLOW_RESERVED_RECOVERY_COMMIT\` events for original ID 2 (18.433s and
-18.533s), with no camera handoff to historically co-observed ID 8.
-However, the old group \`[1,8,10]\` kept reserving the visible protagonist
-detection. The third recovery attempt ended at 18.567s / 18.600s /
-18.633s: predicted bbox IoU declined **0.722 / 0.701 / 0.656**, while
-IoU with the *last actually observed* ID-2 box stayed
-**0.950 / 0.915 / 0.872**, detector confidence stayed above **0.80**,
-mask evidence above **0.59**, and other-track IoU below **0.12**.
-That is independent evidence of a prediction-only divergence, not by
-itself proof of identity.
-
-Keep the original predicted-IoU gate of 0.72. A second, stronger
-**three-observation** gate now permits source-track recovery only when
-predicted IoU is still at least 0.60 **AND** the actual observed bbox,
-mask, confidence and uniquely separated competitors pass tighter
-thresholds (0.85 anchor IoU, 0.55 mask IoU, 0.80 detector confidence,
-competing IoU below 0.15). The same temporal vote/continuity checks
-remain mandatory. It does not apply to identity-protected, full-body-
-selected or face-selected people.
-
-After an **actual successful commit** through this special lane, only
-the *immediately adjacent* real observation may keep that same ID
-through the group's reserved detection, using separate strict
-box/segmentation/exclusivity checks. This privilege is revoked on
-prediction-only frames, missing proof, long frame gaps, target changes,
-and tracker reset. No reserved detection is made available to Global
-Hungarian or to a different LOST identity. The original strict camera
-co-observation exclusion (including ID 8) remains unchanged. Normal
-failure behavior is still HOLD.
-
-The expanded \`FOLLOW_RESERVED_RECOVERY_PROBE\` reports the adjacent
-confirmed state and candidate existence; successful adjacent commits
-emit \`FOLLOW_RESERVED_CONTINUATION_COMMIT\`. Deterministic positive
-and negative Kotlin fixtures cover the real IoU sequence, competing
-dancers/duplicate detections, stale commits and weaker evidence.
-**Android native compilation, Kotlin JVM test execution and fresh
-real-device video acceptance remain unverified until the next device
-build.**
-
-## 2026-10-18 PLK110: weak stale-group reservation arbitration (pending Android validation)
-
-The first real-device run of \`f196634\` showed nine adjacent
-\`FOLLOW_RESERVED_CONTINUATION_COMMIT\` events for ID 2 through 18.733s,
-followed by LOST at 18.767s. The selected person was still detected.
-Group \`[1,8,10]\` repeatedly issued \`GROUP_DETECTION_RESERVED\` for
-detector index 2 even though ID 1 had not been observed for >50 frames,
-ID 8 for >150, and the only fresh group member ID 10 was next to,
-rather than inside, the full protagonist box. At 18.767s, the maximum
-predicted/last-observed group box IoU with the detector candidate was
-about 0.125; ID 2 had very recent real observed bbox agreement 0.900,
-mask agreement 0.60, and predicted IoU 0.646. This is weak **group
-ownership** evidence, not a reason to relax camera identity protection.
-
-A small, opt-in ownership rule now allows the *already verified,
-recently observed, unprotected* camera root to challenge **only an
-unassigned-by-group Hungarian detection held by weak geometry**. All
-group-member predicted/observed boxes must have IoU <0.18 with the
-candidate; independent live root box, segmentation, confidence,
-other-track and other-detection exclusivity checks must pass. It
-applies only if the immediately preceding real root observation was
-committed through the existing strictly confirmed reserved lane (or
-through this new verified normal-global lane). There is no retroactive
-rewrite of tracking identity and no special rescue for protected,
-full-body-selected or face-selected people.
-
-When weak group reservation yields, the candidate remains exclusive
-to the original ID in *unchanged* Global Hungarian scoring; no other
-track may commit it. If Global rejects the ID, the candidate remains
-reserved against ordinary LOST recovery/new track creation. No group
-reservation, general recovery, protected matching, privacy class,
-camera-only handoff or shader thresholds are broadened. In particular,
-duplicate/confusable detections and strong group ownership still
-fail closed. The previously added three-vote recovery path remains
-available when the root is LOST; these paths are independent.
-
-Diagnostics: \`FOLLOW_WEAK_GROUP_RESERVATION_YIELDED\` and
-\`FOLLOW_WEAK_GROUP_OWNERSHIP_COMMIT\`. Kotlin fixture tests use
-the real 18.767s group/detector boxes, plus confidence-dip,
-increased-body-size, group-owner, conflicting detection and privacy
-negative controls. Python tests assert production wiring and the
-fallback quarantine. **Kotlin JVM/native Android compilation and new
-device-export acceptance remain pending** on the non-Android Mac.
-
-## Evidence and acceptance limit
-
-The observed candidate ID 8 has detector evidence near 19.5, 20.1 and 20.2s; fixture tests mirror their rough boxes, but **similarity is not identity proof**. A separate historical-identity fixture now vetoes ID 8 because it was co-observed much earlier with ID 2. No Android native compilation or real-device follow-video acceptance is available on the development Mac. A controlled follow camera handoff should be considered accepted only after visual review of a new real export around 18–23s: camera must not jump to a different person and privacy for other subjects must remain intact. A prolonged HOLD can be correct if evidence is ambiguous.
-
-### Verification
-
-```sh
-python -m unittest tools.test_follow_camera_recovery_contract -v
-# On an Android-capable workstation:
-cd mobile/app/android
-./gradlew :dance_native:testDebugUnitTest
-cd ..
-flutter build apk --debug
-```
-
-Use the *existing* 1280×720 dance video with protagonist ID 2 to reproduce. Review `AUTO_REFRAME_TEMPORAL_CANDIDATE`, `AUTO_REFRAME_ID_HANDOFF`, `AUTO_REFRAME_RECOVERY_EXPIRED` and `AUTO_REFRAME_SAMPLE`. Debug A/B opt-in is unrelated to this camera fix, and is not required for the initial follow recovery check.
+The five prior privacy coverage-drop warning frames at about 30.833,
+34.900 and 39.733–39.800 s remain a separate **visual privacy acceptance**
+item. A/B crop-clarity sample quality is not evidence of full-video privacy.

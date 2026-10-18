@@ -2,6 +2,7 @@ package art.gaoge.dance.engine.tracking
 
 import art.gaoge.dance.engine.inference.FloatRect
 import kotlin.math.max
+import kotlin.math.sqrt
 
 /**
  * Standard 8-dimensional Kalman Filter for bounding box tracking (XYAH state space).
@@ -133,19 +134,32 @@ class KalmanFilter {
         state[2] += dt * state[6]
         state[3] += dt * state[7]
 
-        // 2. Process noise Q(dt)
+        // 2. Process noise Q(dt).
+        //
+        // Motion is integrated in SECONDS, but the position/velocity weights
+        // were originally tuned per video frame. Multiplying their std devs
+        // directly by dt (~0.033 at 30fps) drove Q down ~900x in variance:
+        // after many observations P collapsed, so new YOLO boxes could grow
+        // from ~220px to ~291px while the prediction remained ~211px.
+        //
+        // Convert physical seconds into reference-frame steps, and let
+        // variance (not standard deviation) accumulate linearly with elapsed
+        // time. The 0.50 calibration retains smoothing of per-frame pose
+        // noise while allowing the filter to respond to real body-size changes.
+        // This is the Kalman model for ALL tracks, not an identity exception.
         val h = max(1e-4f, state[3])
         val stdPos = stdWeightPosition * h
         val stdVel = stdWeightVelocity * h
+        val noiseScale = 0.50f * sqrt(dt * 30f)
         val qStd = floatArrayOf(
-            stdPos * dt,
-            stdPos * dt,
-            1e-2f * dt,
-            stdPos * dt,
-            stdVel * dt,
-            stdVel * dt,
-            1e-3f * dt,
-            stdVel * dt
+            stdPos * noiseScale,
+            stdPos * noiseScale,
+            1e-2f * noiseScale,
+            stdPos * noiseScale,
+            stdVel * 30f * noiseScale,
+            stdVel * 30f * noiseScale,
+            1e-2f * noiseScale,
+            stdVel * 30f * noiseScale
         )
         val q = FloatArray(8) { i -> qStd[i] * qStd[i] }
 
