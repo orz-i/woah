@@ -53,6 +53,98 @@ class FollowReservedLostRecoveryTest {
     }
 
     @Test
+    fun plk110ThirdRecoveryUsesStrongObservedAnchorWhenKalmanDrifts() {
+        // Commit 1190aac: after the second real recovery at 18.533s, target
+        // ID 2 was LOST again. The next three detector boxes were exclusive,
+        // even as the UNOBSERVED predicted box drifted away from the anchor.
+        val gate = FollowReservedLostRecovery()
+        val frame567 = FloatRect(562.5f, 398.9f, 709.6f, 629.2f)
+        val frame600 = FloatRect(560.4f, 397.5f, 707.4f, 629.8f)
+        val frame633 = FloatRect(557.7f, 393.1f, 706.9f, 630.3f)
+        assertNull(gate.observe(evidence(
+            frame567, predictedIoU = .722f, lastObservedIoU = .950f,
+            maskIoU = .650f, confidence = .836f, otherTrackIoU = .101f
+        ), 18_566_666L))
+        assertNull(gate.observe(evidence(
+            frame600, predictedIoU = .701f, lastObservedIoU = .915f,
+            maskIoU = .591f, confidence = .831f, otherTrackIoU = .108f
+        ), 18_600_000L))
+        assertEquals(2, gate.observe(evidence(
+            frame633, predictedIoU = .656f, lastObservedIoU = .872f,
+            maskIoU = .591f, confidence = .804f, otherTrackIoU = .119f
+        ), 18_633_333L))
+    }
+
+    @Test
+    fun strongAnchorCannotReplacePrivacySafeNegativeIdentityEvidence() {
+        val box = FloatRect(558f, 393f, 707f, 630f)
+        // The alternative predicted-box gate is only valid with independent
+        // confirmed segmentation, an observed anchor and clear competitors.
+        val safe = evidence(box, predictedIoU = .656f,
+            lastObservedIoU = .872f, maskIoU = .591f,
+            confidence = .804f, otherTrackIoU = .119f)
+        assertTrue(FollowReservedLostRecovery.isStrictEvidence(safe))
+        for (unsafe in listOf(
+            evidence(box, predictedIoU = .599f, lastObservedIoU = .95f),
+            evidence(box, predictedIoU = .656f, lastObservedIoU = .84f),
+            evidence(box, predictedIoU = .656f, maskIoU = .54f),
+            evidence(box, predictedIoU = .656f, confidence = .79f),
+            evidence(box, predictedIoU = .656f, otherTrackIoU = .15f),
+            evidence(box, predictedIoU = .656f, otherDetectionIoU = .20f)
+        )) {
+            assertFalse(FollowReservedLostRecovery.isStrictEvidence(unsafe))
+        }
+    }
+
+    @Test
+    fun immediateContinuationRequiresActualAdjacentObservedCommit() {
+        val box = FloatRect(557f, 395f, 705f, 633f)
+        val continuation = evidence(
+            box, confidence = .676f, predictedIoU = .65f,
+            lastObservedIoU = .86f, maskIoU = .52f,
+            otherTrackIoU = .12f
+        )
+        assertFalse(FollowReservedLostRecovery.isStrictEvidence(continuation))
+        assertTrue(FollowReservedLostRecovery.isContinuationEvidence(continuation))
+        assertTrue(FollowReservedLostRecovery.isRecentVerifiedContinuation(
+            lastConfirmedPtsUs = 18_633_333L,
+            ptsUs = 18_666_666L,
+            observedOnPreviousFrame = true
+        ))
+        assertFalse(FollowReservedLostRecovery.isRecentVerifiedContinuation(
+            lastConfirmedPtsUs = 18_633_333L,
+            ptsUs = 18_666_666L,
+            observedOnPreviousFrame = false
+        ))
+        assertFalse(FollowReservedLostRecovery.isRecentVerifiedContinuation(
+            lastConfirmedPtsUs = 18_633_333L,
+            ptsUs = 18_766_666L,
+            observedOnPreviousFrame = true
+        ))
+        assertFalse(FollowReservedLostRecovery.isRecentVerifiedContinuation(
+            lastConfirmedPtsUs = 18_633_333L,
+            ptsUs = 18_633_333L,
+            observedOnPreviousFrame = true
+        ))
+        for (unsafe in listOf(
+            evidence(box, confidence = .599f, predictedIoU = .65f,
+                lastObservedIoU = .86f, maskIoU = .52f),
+            evidence(box, confidence = .67f, predictedIoU = .57f,
+                lastObservedIoU = .86f, maskIoU = .52f),
+            evidence(box, confidence = .67f, predictedIoU = .65f,
+                lastObservedIoU = .77f, maskIoU = .52f),
+            evidence(box, confidence = .67f, predictedIoU = .65f,
+                lastObservedIoU = .86f, maskIoU = .39f),
+            evidence(box, confidence = .67f, predictedIoU = .65f,
+                lastObservedIoU = .86f, maskIoU = .52f, otherTrackIoU = .15f),
+            evidence(box, confidence = .67f, predictedIoU = .65f,
+                lastObservedIoU = .86f, maskIoU = .52f, otherDetectionIoU = .16f)
+        )) {
+            assertFalse(FollowReservedLostRecovery.isContinuationEvidence(unsafe))
+        }
+    }
+
+    @Test
     fun overlappingBystanderOrDuplicateDetectorPreventsRecovery() {
         val full = FloatRect(572f, 405f, 710f, 625f)
         val gate = FollowReservedLostRecovery()

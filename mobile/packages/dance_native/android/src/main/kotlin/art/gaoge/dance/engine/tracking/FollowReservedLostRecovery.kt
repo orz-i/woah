@@ -31,6 +31,21 @@ internal class FollowReservedLostRecovery {
         private const val MIN_LAST_OBSERVED_IOU = 0.70f
         private const val MIN_MASK_IOU = 0.20f
         private const val MAX_OTHER_IOU = 0.20f
+        // Detector evidence can remain stable when an unobserved Kalman box
+        // drifts. This alternate gate is STRONGER on the observed anchor,
+        // mask, confidence and uniqueness; it is not a generic lower IoU.
+        private const val ANCHORED_MIN_PREDICTED_IOU = 0.60f
+        private const val ANCHORED_MIN_LAST_OBSERVED_IOU = 0.85f
+        private const val ANCHORED_MIN_MASK_IOU = 0.55f
+        private const val ANCHORED_MIN_CONFIDENCE = 0.80f
+        private const val ANCHORED_MAX_OTHER_IOU = 0.15f
+        // A confirmed reserved recovery may be continued on the very next
+        // observed frame, never from a stale/uncertain candidate.
+        private const val CONTINUE_MIN_CONFIDENCE = 0.60f
+        private const val CONTINUE_MIN_PREDICTED_IOU = 0.58f
+        private const val CONTINUE_MIN_LAST_OBSERVED_IOU = 0.78f
+        private const val CONTINUE_MIN_MASK_IOU = 0.40f
+        private const val CONTINUE_MAX_OTHER_IOU = 0.15f
         private const val MIN_CONTINUITY_IOU = 0.70f
         private const val MAX_VOTE_GAP_US = 100_000L
         private const val MIN_OBSERVATION_SPAN_US = 50_000L
@@ -51,16 +66,51 @@ internal class FollowReservedLostRecovery {
                 !identityProtected && !privacySelected && !facePrivacySelected &&
                 !belongsToAnyGroup
 
-        fun isStrictEvidence(evidence: Evidence): Boolean =
-            evidence.confidence.isFinite() && evidence.confidence >= MIN_CONFIDENCE &&
-                evidence.predictedIoU.isFinite() && evidence.predictedIoU >= MIN_PREDICTED_IOU &&
-                evidence.lastObservedIoU.isFinite() && evidence.lastObservedIoU >= MIN_LAST_OBSERVED_IOU &&
-                evidence.maskIoU.isFinite() && evidence.maskIoU >= MIN_MASK_IOU &&
+        private fun validEvidence(evidence: Evidence): Boolean =
+            evidence.box.width.isFinite() && evidence.box.height.isFinite() &&
+                evidence.box.width > 0f && evidence.box.height > 0f &&
+                evidence.confidence.isFinite() &&
+                evidence.predictedIoU.isFinite() && evidence.lastObservedIoU.isFinite() &&
+                evidence.maskIoU.isFinite() &&
                 evidence.strongestOtherTrackIoU.isFinite() &&
-                evidence.strongestOtherTrackIoU < MAX_OTHER_IOU &&
-                evidence.strongestOtherDetectionIoU.isFinite() &&
-                evidence.strongestOtherDetectionIoU < MAX_OTHER_IOU &&
-                evidence.box.width > 0f && evidence.box.height > 0f
+                evidence.strongestOtherDetectionIoU.isFinite()
+
+        private fun competingEvidenceBelow(evidence: Evidence, limit: Float): Boolean =
+            evidence.strongestOtherTrackIoU >= 0f &&
+                evidence.strongestOtherDetectionIoU >= 0f &&
+                evidence.strongestOtherTrackIoU < limit &&
+                evidence.strongestOtherDetectionIoU < limit
+
+        fun isStrictEvidence(evidence: Evidence): Boolean {
+            if (!validEvidence(evidence)) return false
+            val ordinary = evidence.confidence >= MIN_CONFIDENCE &&
+                evidence.predictedIoU >= MIN_PREDICTED_IOU &&
+                evidence.lastObservedIoU >= MIN_LAST_OBSERVED_IOU &&
+                evidence.maskIoU >= MIN_MASK_IOU &&
+                competingEvidenceBelow(evidence, MAX_OTHER_IOU)
+            val anchored = evidence.confidence >= ANCHORED_MIN_CONFIDENCE &&
+                evidence.predictedIoU >= ANCHORED_MIN_PREDICTED_IOU &&
+                evidence.lastObservedIoU >= ANCHORED_MIN_LAST_OBSERVED_IOU &&
+                evidence.maskIoU >= ANCHORED_MIN_MASK_IOU &&
+                competingEvidenceBelow(evidence, ANCHORED_MAX_OTHER_IOU)
+            return ordinary || anchored
+        }
+
+        fun isRecentVerifiedContinuation(
+            lastConfirmedPtsUs: Long,
+            ptsUs: Long,
+            observedOnPreviousFrame: Boolean
+        ): Boolean = observedOnPreviousFrame && lastConfirmedPtsUs >= 0L &&
+            ptsUs > lastConfirmedPtsUs &&
+            ptsUs - lastConfirmedPtsUs <= MAX_VOTE_GAP_US
+
+        fun isContinuationEvidence(evidence: Evidence): Boolean =
+            validEvidence(evidence) &&
+                evidence.confidence >= CONTINUE_MIN_CONFIDENCE &&
+                evidence.predictedIoU >= CONTINUE_MIN_PREDICTED_IOU &&
+                evidence.lastObservedIoU >= CONTINUE_MIN_LAST_OBSERVED_IOU &&
+                evidence.maskIoU >= CONTINUE_MIN_MASK_IOU &&
+                competingEvidenceBelow(evidence, CONTINUE_MAX_OTHER_IOU)
     }
 
     private var votes = 0

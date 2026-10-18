@@ -101,6 +101,48 @@ Kotlin deterministic fixtures and Python production-wiring regression cover
 positive and negative evidence. Android native build and device-export
 acceptance remain pending.
 
+## PLK110 follow-root continuation — detector evidence versus Kalman drift (pending Android acceptance)
+
+The \`1190aac\` real-device export confirmed two genuine
+\`FOLLOW_RESERVED_RECOVERY_COMMIT\` events for original ID 2 (18.433s and
+18.533s), with no camera handoff to historically co-observed ID 8.
+However, the old group \`[1,8,10]\` kept reserving the visible protagonist
+detection. The third recovery attempt ended at 18.567s / 18.600s /
+18.633s: predicted bbox IoU declined **0.722 / 0.701 / 0.656**, while
+IoU with the *last actually observed* ID-2 box stayed
+**0.950 / 0.915 / 0.872**, detector confidence stayed above **0.80**,
+mask evidence above **0.59**, and other-track IoU below **0.12**.
+That is independent evidence of a prediction-only divergence, not by
+itself proof of identity.
+
+Keep the original predicted-IoU gate of 0.72. A second, stronger
+**three-observation** gate now permits source-track recovery only when
+predicted IoU is still at least 0.60 **AND** the actual observed bbox,
+mask, confidence and uniquely separated competitors pass tighter
+thresholds (0.85 anchor IoU, 0.55 mask IoU, 0.80 detector confidence,
+competing IoU below 0.15). The same temporal vote/continuity checks
+remain mandatory. It does not apply to identity-protected, full-body-
+selected or face-selected people.
+
+After an **actual successful commit** through this special lane, only
+the *immediately adjacent* real observation may keep that same ID
+through the group's reserved detection, using separate strict
+box/segmentation/exclusivity checks. This privilege is revoked on
+prediction-only frames, missing proof, long frame gaps, target changes,
+and tracker reset. No reserved detection is made available to Global
+Hungarian or to a different LOST identity. The original strict camera
+co-observation exclusion (including ID 8) remains unchanged. Normal
+failure behavior is still HOLD.
+
+The expanded \`FOLLOW_RESERVED_RECOVERY_PROBE\` reports the adjacent
+confirmed state and candidate existence; successful adjacent commits
+emit \`FOLLOW_RESERVED_CONTINUATION_COMMIT\`. Deterministic positive
+and negative Kotlin fixtures cover the real IoU sequence, competing
+dancers/duplicate detections, stale commits and weaker evidence.
+**Android native compilation, Kotlin JVM test execution and fresh
+real-device video acceptance remain unverified until the next device
+build.**
+
 ## Evidence and acceptance limit
 
 The observed candidate ID 8 has detector evidence near 19.5, 20.1 and 20.2s; fixture tests mirror their rough boxes, but **similarity is not identity proof**. A separate historical-identity fixture now vetoes ID 8 because it was co-observed much earlier with ID 2. No Android native compilation or real-device follow-video acceptance is available on the development Mac. A controlled follow camera handoff should be considered accepted only after visual review of a new real export around 18–23s: camera must not jump to a different person and privacy for other subjects must remain intact. A prolonged HOLD can be correct if evidence is ambiguous.

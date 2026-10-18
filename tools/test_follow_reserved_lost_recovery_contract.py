@@ -50,6 +50,7 @@ class FollowReservedLostRecoveryContract(unittest.TestCase):
         self.assertIn("FollowReservedLostRecovery.isStrictEvidence(it)", section)
         self.assertIn("confirmedFollowDetectionIndex to detections[confirmedFollowDetectionIndex]", section)
         self.assertIn("detIndex == confirmedFollowDetectionIndex && candTrack.id != followCameraTrackId", section)
+        self.assertIn("candTrack.id == followCameraTrackId && detIndex != confirmedFollowDetectionIndex", section)
         self.assertIn("if (detIndex == confirmedFollowDetectionIndex) continue", section)
         self.assertNotIn("reservedGroupDetectionIndices.remove(", section)
         self.assertNotIn("setIdentityProtectedTrackIds(", section)
@@ -65,11 +66,53 @@ class FollowReservedLostRecoveryContract(unittest.TestCase):
             "MIN_MASK_IOU = 0.20f",
             "MAX_OTHER_IOU = 0.20f",
             "MAX_VOTE_GAP_US = 100_000L",
-            "strongestOtherTrackIoU < MAX_OTHER_IOU",
-            "strongestOtherDetectionIoU < MAX_OTHER_IOU",
+            "competingEvidenceBelow(evidence, MAX_OTHER_IOU)",
+            "competingEvidenceBelow(evidence, ANCHORED_MAX_OTHER_IOU)",
+            "competingEvidenceBelow(evidence, CONTINUE_MAX_OTHER_IOU)",
             "ptsUs - lastPtsUs <= MAX_VOTE_GAP_US",
         ):
             self.assertIn(expected, GATE)
+
+    def test_drifting_prediction_needs_independent_anchor_and_three_votes(self):
+        for expected in (
+            "ANCHORED_MIN_PREDICTED_IOU = 0.60f",
+            "ANCHORED_MIN_LAST_OBSERVED_IOU = 0.85f",
+            "ANCHORED_MIN_MASK_IOU = 0.55f",
+            "ANCHORED_MIN_CONFIDENCE = 0.80f",
+            "ANCHORED_MAX_OTHER_IOU = 0.15f",
+            "MIN_CONTINUITY_IOU = 0.70f",
+            "evidence.predictedIoU >= ANCHORED_MIN_PREDICTED_IOU",
+            "evidence.lastObservedIoU >= ANCHORED_MIN_LAST_OBSERVED_IOU",
+            "evidence.maskIoU >= ANCHORED_MIN_MASK_IOU",
+            "return ordinary || anchored",
+        ):
+            self.assertIn(expected, GATE)
+        self.assertIn("followReservedLostRecovery.observe(reservedFollowEvidence, timestampUs)", TRACKER)
+
+    def test_single_frame_continuation_only_after_actual_verified_commit(self):
+        for expected in (
+            "lastFollowReservedCommitPtsUs = timestampUs",
+            "observedOnPreviousFrame = followLostTrack.observedOnPreviousFrame",
+            "FollowReservedLostRecovery.isRecentVerifiedContinuation(",
+            "FollowReservedLostRecovery.isContinuationEvidence(it)",
+            "continuingFollowEvidence?.detectionIndex ?: confirmedFromVotes",
+            "FOLLOW_RESERVED_CONTINUATION_COMMIT",
+        ):
+            self.assertIn(expected, TRACKER)
+        for expected in (
+            "lastConfirmedPtsUs >= 0L",
+            "ptsUs > lastConfirmedPtsUs",
+            "ptsUs - lastConfirmedPtsUs <= MAX_VOTE_GAP_US",
+            "observedOnPreviousFrame",
+            "CONTINUE_MIN_CONFIDENCE = 0.60f",
+            "CONTINUE_MIN_LAST_OBSERVED_IOU = 0.78f",
+            "CONTINUE_MIN_MASK_IOU = 0.40f",
+            "CONTINUE_MAX_OTHER_IOU = 0.15f",
+        ):
+            self.assertIn(expected, GATE)
+        # The continuation proof must be revoked by a prediction-only frame,
+        # by changing targets, or by resetting the tracker.
+        self.assertGreaterEqual(TRACKER.count("lastFollowReservedCommitPtsUs = -1L"), 4)
 
     def test_remains_independent_from_camera_handoff(self):
         self.assertIn("reframeIdentityHistory.recordSelectedObservation(", EXPORT)

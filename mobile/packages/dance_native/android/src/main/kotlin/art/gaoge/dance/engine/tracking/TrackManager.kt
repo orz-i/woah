@@ -186,6 +186,8 @@ class TrackManager(
     // Opt-in from ExportPipeline. Never used for a privacy-protected identity.
     private var followCameraTrackId: Int? = null
     private val followReservedLostRecovery = FollowReservedLostRecovery()
+    // Last actual real detector commit through the isolated follow lane.
+    private var lastFollowReservedCommitPtsUs = -1L
 
     private fun diagnosticEvent(
         level: String,
@@ -370,6 +372,7 @@ class TrackManager(
     fun setFollowCameraTrackId(id: Int?) {
         followCameraTrackId = id
         followReservedLostRecovery.reset()
+        lastFollowReservedCommitPtsUs = -1L
     }
 
     fun setPrivacyOffscreenDormancyEnabled(enabled: Boolean) {
@@ -424,6 +427,7 @@ class TrackManager(
         tracks.clear()
         occlusionGroups.clear()
         followReservedLostRecovery.reset()
+        lastFollowReservedCommitPtsUs = -1L
         currentPrivacyClassEvidence.clear()
         currentFacePrivacyClassEvidence.clear()
         currentProtectedTrackMotionEvidence.clear()
@@ -2297,6 +2301,23 @@ class TrackManager(
             FollowReservedLostRecovery.isStrictEvidence(it)
         }
         val reservedFollowEvidence = strictFollowEvidence.singleOrNull()
+        // Having just committed this very root through three real detections,
+        // do not require three NEW frames for every next group-reserved frame.
+        // Continuation must be adjacent, previously observed, and independently
+        // supported by fresh box+mask uniqueness; otherwise return to voting.
+        val recentVerifiedFollowRoot = followLostTrack != null &&
+            FollowReservedLostRecovery.isRecentVerifiedContinuation(
+                lastConfirmedPtsUs = lastFollowReservedCommitPtsUs,
+                ptsUs = timestampUs,
+                observedOnPreviousFrame = followLostTrack.observedOnPreviousFrame
+            )
+        val continuingFollowEvidence = if (recentVerifiedFollowRoot) {
+            reservedFollowEvidenceCandidates.filter {
+                FollowReservedLostRecovery.isContinuationEvidence(it)
+            }.singleOrNull()
+        } else {
+            null
+        }
         // Debug-only reason evidence for one short LOST window; a failed gate
         // still needs to be diagnosable without extra real-device experiments.
         if (followLostTrack != null && reservedFollowEvidenceCandidates.isNotEmpty() && diagnosticsEnabled) {
@@ -2309,6 +2330,8 @@ class TrackManager(
                     "frames_since_observation" to followLostTrack.framesSinceLastObservation,
                     "candidate_count" to reservedFollowEvidenceCandidates.size,
                     "strict_candidate_count" to strictFollowEvidence.size,
+                    "recent_verified_follow_root" to recentVerifiedFollowRoot,
+                    "continuation_candidate" to (continuingFollowEvidence != null),
                     "closest_det_index" to closest?.detectionIndex,
                     "closest_confidence" to closest?.confidence,
                     "closest_predicted_iou" to closest?.predictedIoU,
@@ -2321,15 +2344,21 @@ class TrackManager(
             )
         }
         val priorFollowVotes = followReservedLostRecovery.pendingVotes
-        val confirmedFollowDetectionIndex = followReservedLostRecovery.observe(
-            reservedFollowEvidence, timestampUs
-        )
+        val confirmedFromVotes = if (continuingFollowEvidence != null) {
+            followReservedLostRecovery.reset()
+            null
+        } else {
+            followReservedLostRecovery.observe(reservedFollowEvidence, timestampUs)
+        }
+        val confirmedFollowDetectionIndex =
+            continuingFollowEvidence?.detectionIndex ?: confirmedFromVotes
         if (reservedFollowEvidence != null &&
-            (priorFollowVotes == 0 || confirmedFollowDetectionIndex != null)
+            (priorFollowVotes == 0 || confirmedFromVotes != null) &&
+            continuingFollowEvidence == null
         ) {
             diagnosticEvent(
                 level = "INFO", component = "TrackManager",
-                event = if (confirmedFollowDetectionIndex != null) {
+                event = if (confirmedFromVotes != null) {
                     "FOLLOW_RESERVED_RECOVERY_CONFIRMED"
                 } else {
                     "FOLLOW_RESERVED_RECOVERY_CANDIDATE"
@@ -2401,6 +2430,9 @@ class TrackManager(
             for (candTrack in recoverableTracks) {
                 if (reclaimedTrackIds.contains(candTrack.id)) continue
                 if (detIndex == confirmedFollowDetectionIndex && candTrack.id != followCameraTrackId) continue
+                if (confirmedFollowDetectionIndex != null &&
+                    candTrack.id == followCameraTrackId && detIndex != confirmedFollowDetectionIndex
+                ) continue
                 val dx = candTrack.currentPredictedBbox.centerX - det.bbox.centerX
                 val dy = candTrack.currentPredictedBbox.centerY - det.bbox.centerY
                 val dist = sqrt(dx * dx + dy * dy)
@@ -2472,9 +2504,14 @@ class TrackManager(
                 bestTrack.kalman.update(det.bbox, timestampUs)
                 reclaimedTrackIds.add(bestTrack.id)
                 if (detIndex == confirmedFollowDetectionIndex) {
+                    lastFollowReservedCommitPtsUs = timestampUs
                     diagnosticEvent(
                         level = "INFO", component = "TrackManager",
-                        event = "FOLLOW_RESERVED_RECOVERY_COMMIT",
+                        event = if (continuingFollowEvidence != null) {
+                            "FOLLOW_RESERVED_CONTINUATION_COMMIT"
+                        } else {
+                            "FOLLOW_RESERVED_RECOVERY_COMMIT"
+                        },
                         fields = mapOf(
                             "track_id" to bestTrack.id,
                             "det_index" to detIndex,
@@ -2556,6 +2593,7 @@ class TrackManager(
 
     private fun predictInternal(timestampUs: Long, countAsDetectionMiss: Boolean): List<TrackedPerson> {
         followReservedLostRecovery.reset()
+        lastFollowReservedCommitPtsUs = -1L
         currentPrivacyClassEvidence.clear()
         currentFacePrivacyClassEvidence.clear()
         currentProtectedTrackMotionEvidence.clear()
@@ -2718,6 +2756,7 @@ class TrackManager(
         privacyOffscreenDormancyEnabled = false
         followCameraTrackId = null
         followReservedLostRecovery.reset()
+        lastFollowReservedCommitPtsUs = -1L
     }
 
     companion object {
