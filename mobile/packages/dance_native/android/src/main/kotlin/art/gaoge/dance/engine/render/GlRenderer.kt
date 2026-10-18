@@ -700,7 +700,8 @@ class GlRenderer : FrameRenderer {
             preferFreshClassPrimary = preferFreshPrivacyClassPrimary,
             expectedSelectedCount = expectedSelectedPrivacyCount,
             maxFallbackObservationAgeFrames = maxFallbackObservationAgeFrames,
-            conservativeUnobservedOccluderPolicy = conservativePrimaryUnobservedOccluderPolicy
+            conservativeUnobservedOccluderPolicy = conservativePrimaryUnobservedOccluderPolicy,
+            jobId = cropClarityJobId
         )
         val primaryResolved = if (tightMask && primaryResolvedRaw.privacyMask != null) {
             primaryResolvedRaw.copy(

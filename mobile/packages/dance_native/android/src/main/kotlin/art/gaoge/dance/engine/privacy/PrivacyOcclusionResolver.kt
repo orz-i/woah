@@ -31,6 +31,34 @@ data class OcclusionEvidence(
 
 object PrivacyOcclusionResolver {
 
+    /**
+     * An observed protected root whose mask cannot survive the FULL_BODY
+     * export's 128-byte tight contour is not safe to export. Inspect the
+     * actual bytes: a non-null all-zero/too-weak mask also exposes the root.
+     */
+    fun observedSelectedWithoutMasks(
+        persons: List<TrackedPerson>,
+        selectedPersonIds: Set<Int>
+    ): List<Int> = persons.asSequence()
+        .filter {
+            selectedPersonIds.contains(it.id) && it.observedThisFrame &&
+                !hasRenderablePrivacyMask(it.mask)
+        }
+        .map { it.id }
+        .toList()
+
+    private fun hasRenderablePrivacyMask(mask: NativeMask?): Boolean {
+        if (mask == null || mask.width <= 0 || mask.height <= 0) return false
+        val pixelCount = mask.width * mask.height
+        if (mask.buffer.capacity() < pixelCount) return false
+        for (i in 0 until pixelCount) {
+            if ((mask.buffer.get(i).toInt() and 0xFF) >= FULL_BODY_EXPORT_MASK_THRESHOLD_BYTE) {
+                return true
+            }
+        }
+        return false
+    }
+
     private const val OWNERSHIP_MARGIN = 0.12f
     private const val MIN_UNSELECTED_PROBABILITY = 0.50f
     private const val MIN_STALE_RAW_PROBABILITY_ADVANTAGE = 0.10f
@@ -62,6 +90,12 @@ object PrivacyOcclusionResolver {
     // Fresh foreground ownership therefore needs to cover the same visible mask
     // support instead of only the >= 0.50 binary-analysis core.
     private const val RENDER_VISIBLE_MASK_THRESHOLD_BYTE = 39
+    // ExportPipeline always enables the 128-byte tight contour for FULL_BODY.
+    private const val FULL_BODY_EXPORT_MASK_THRESHOLD_BYTE = 128
+    // Unknown-class detections are protected by default. Do not allow a temporal
+    // unselected-class label alone to cut their masks: require an independently
+    // observed unprotected foreground and raw per-pixel instance advantage.
+    private const val UNKNOWN_FOREGROUND_OBSERVED_BBOX_IOU = 0.90f
 
     /**
      * Resolves selected privacy targets and explicit foreground occluders into
@@ -89,7 +123,8 @@ object PrivacyOcclusionResolver {
         expectedSelectedCount: Int = 0,
         maxFallbackObservationAgeFrames: Int = 15,
         conservativeUnobservedOccluderPolicy: Boolean = false,
-        behaviorNeutralFaceOnlyFastPaths: Boolean = false
+        behaviorNeutralFaceOnlyFastPaths: Boolean = false,
+        jobId: String? = null
     ): ResolvedCompositorMasks {
         if (selectedPersonIds.isEmpty()) {
             return ResolvedCompositorMasks(
@@ -396,6 +431,25 @@ object PrivacyOcclusionResolver {
                         null
                     }
                     val ownershipPixels = countMaskPixels(ownershipMask)
+                    val candidateFreshEvidence = freshEvidenceByPersonId[cand.id]
+                    val conservativeUnknownTarget = targetFreshEvidence?.conservativeUnknown == true
+                    // This corroborates foreground provenance, not identity transfer.
+                    // The unknown target remains SELECTED and keeps its own privacy.
+                    val corroboratingUnselectedTrackId = if (
+                        conservativeUnknownTarget && isCandFresh &&
+                        candidateFreshEvidence?.selectionClass == PrivacySelectionClass.UNSELECTED &&
+                        !candidateFreshEvidence.conservativeUnknown
+                    ) {
+                        persons.firstOrNull { observed ->
+                            observed.observedThisFrame && observed.mask != null &&
+                                observed.state != TrackState.REMOVED &&
+                                !selectedPersonIds.contains(observed.id) &&
+                                TrackManager.computeBBoxIoU(observed.bbox, candBbox) >=
+                                    UNKNOWN_FOREGROUND_OBSERVED_BBOX_IOU
+                        }?.id
+                    } else {
+                        null
+                    }
                     val tinyFreshDepthCoreHasStrongCurrentGeometry =
                         isFreshSelectedTarget &&
                             isCandFresh &&
@@ -408,12 +462,34 @@ object PrivacyOcclusionResolver {
                             ownershipPixels < MIN_TINY_CORE_OWNERSHIP_PIXELS &&
                             !tinyFreshDepthCoreHasStrongCurrentGeometry
                     val usesFreshDepthCore = freshDepthCorePixels > 0 && !suppressUnstableTinyFreshDepthCore
+                    val unknownForegroundCore = if (
+                        conservativeUnknownTarget && stateAllowsCarve &&
+                        corroboratingUnselectedTrackId != null
+                    ) {
+                        val proposed = if (usesFreshDepthCore) {
+                            freshDepthCore
+                        } else if (occluderErosionRadius > 0 && ownershipMask != null) {
+                            MaskPrivacyProcessor.erode(ownershipMask, radius = occluderErosionRadius)
+                        } else {
+                            ownershipMask
+                        }
+                        corroboratedUnknownForegroundCore(
+                            proposed, ownershipMask, rawMask, candMask
+                        )
+                    } else {
+                        null
+                    }
+                    val unknownForegroundCorePixels = countMaskPixels(unknownForegroundCore)
                     val isStrongForeground =
                         stateAllowsCarve &&
                         !suppressUnstableTinyFreshDepthCore &&
-                            (usesFreshDepthCore || ownershipPixels > 0)
-                    val candidateFreshEvidence = freshEvidenceByPersonId[cand.id]
+                            (if (conservativeUnknownTarget) {
+                                unknownForegroundCorePixels > 0
+                            } else {
+                                usesFreshDepthCore || ownershipPixels > 0
+                            })
                     fun fullDecisionFields(): Map<String, Any?> = mapOf(
+                        "job_id" to jobId,
                         "target_id" to target.id,
                         "candidate_id" to cand.id,
                         "target_detection_index" to targetFreshEvidence?.detectionIndex,
@@ -462,6 +538,9 @@ object PrivacyOcclusionResolver {
                         "ownership_pixels" to ownershipPixels,
                         "fresh_depth_core_pixels" to freshDepthCorePixels,
                         "fresh_depth_core_total_pixels" to freshDepthCoreTotalPixels,
+                        "conservative_unknown_foreground_proof_required" to conservativeUnknownTarget,
+                        "corroborating_unselected_track_id" to corroboratingUnselectedTrackId,
+                        "corroborated_unknown_foreground_core_pixels" to unknownForegroundCorePixels,
                         "fresh_depth_core_eligible" to useFreshDepthCore,
                         "mixed_explicit_fresh_depth_core_eligible" to useMixedExplicitFreshDepthCore,
                         "bbox_overlap_relaxed_for_fresh_depth" to
@@ -507,7 +586,9 @@ object PrivacyOcclusionResolver {
                         // the unselected instance is clearly in front by footY,
                         // use only its eroded fresh mask core. Otherwise preserve
                         // the older probability-margin ownership rule.
-                        val occluderCore = if (usesFreshDepthCore) {
+                        val occluderCore = if (conservativeUnknownTarget) {
+                            unknownForegroundCore ?: continue
+                        } else if (usesFreshDepthCore) {
                             freshDepthCore ?: continue
                         } else if (occluderErosionRadius > 0 && ownershipMask != null) {
                             MaskPrivacyProcessor.erode(ownershipMask, radius = occluderErosionRadius)
@@ -601,6 +682,10 @@ object PrivacyOcclusionResolver {
                     component = "PrivacyOcclusionResolver",
                     event = "PRIVACY_SEVERE_UNDERCOVERAGE",
                     fields = mapOf(
+                        "job_id" to jobId,
+                        "target_detection_index" to targetFreshEvidence?.detectionIndex,
+                        "target_conservative_unknown" to targetFreshEvidence?.conservativeUnknown,
+                        "accepted_occluders" to acceptedOccluderCores.size,
                         "target_id" to target.id,
                         "state" to target.state.name,
                         "coverage_ratio" to coverageRatio,
@@ -618,6 +703,10 @@ object PrivacyOcclusionResolver {
                     event = "PRIVACY_COVERAGE_DROP",
                     fields = {
                         mapOf(
+                            "job_id" to jobId,
+                            "target_detection_index" to targetFreshEvidence?.detectionIndex,
+                            "target_conservative_unknown" to targetFreshEvidence?.conservativeUnknown,
+                            "accepted_occluders" to acceptedOccluderCores.size,
                             "target_id" to target.id,
                             "state" to target.state.name,
                             "coverage_ratio" to coverageRatio,
@@ -1158,6 +1247,65 @@ object PrivacyOcclusionResolver {
         bufB.rewind()
         val minCount = minOf(minAreaCountA, minAreaCountB)
         return if (minCount > 0) interCount.toFloat() / minCount.toFloat() else 0f
+    }
+
+    /**
+     * A conservative-unknown detection is SELECTED for privacy safety. A fresh
+     * UNSELECTED instance may occlude it only where three independent pixel
+     * signals agree: eroded foreground core, probability ownership, and an
+     * unselected raw probability advantage. This preserves unknown target
+     * pixels wherever a foreground candidate merely overlaps in soft masks.
+     * Source/proto mapping mismatches always keep privacy (no carve).
+     */
+    private fun corroboratedUnknownForegroundCore(
+        proposedCore: NativeMask?,
+        ownershipMask: NativeMask?,
+        selectedMask: NativeMask,
+        unselectedMask: NativeMask
+    ): NativeMask? {
+        if (proposedCore == null || ownershipMask == null) return null
+        val width = selectedMask.width
+        val height = selectedMask.height
+        if (width <= 0 || height <= 0) return null
+        val total = width * height
+        for (mask in listOf(proposedCore, ownershipMask, unselectedMask)) {
+            if (mask.width != width || mask.height != height ||
+                mask.buffer.capacity() < total ||
+                mask.originalWidth != selectedMask.originalWidth ||
+                mask.originalHeight != selectedMask.originalHeight ||
+                mask.samplingRect != selectedMask.samplingRect
+            ) return null
+        }
+        if (selectedMask.buffer.capacity() < total) return null
+
+        val data = ByteArray(total)
+        var supported = 0
+        for (i in 0 until total) {
+            val core = proposedCore.buffer.get(i).toInt() and 0xFF
+            val owner = ownershipMask.buffer.get(i).toInt() and 0xFF
+            val selected = selectedMask.buffer.get(i).toInt() and 0xFF
+            val unselected = unselectedMask.buffer.get(i).toInt() and 0xFF
+            if (core >= 128 && owner >= 128 &&
+                (unselected - selected) / 255f >= MIN_STALE_RAW_PROBABILITY_ADVANTAGE
+            ) {
+                data[i] = 255.toByte()
+                supported++
+            }
+        }
+        if (supported == 0) return null
+        val buffer = ByteBuffer.allocateDirect(total).order(ByteOrder.nativeOrder())
+        buffer.put(data)
+        buffer.rewind()
+        return NativeMask(
+            width = width,
+            height = height,
+            buffer = buffer,
+            originalWidth = selectedMask.originalWidth,
+            originalHeight = selectedMask.originalHeight,
+            mapper = selectedMask.mapper,
+            roiInProto = selectedMask.roiInProto,
+            samplingRect = selectedMask.samplingRect
+        )
     }
 
     private fun buildFreshDepthCore(mask: NativeMask, erosionRadius: Int): NativeMask {
