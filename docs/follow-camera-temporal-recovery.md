@@ -143,6 +143,50 @@ dancers/duplicate detections, stale commits and weaker evidence.
 real-device video acceptance remain unverified until the next device
 build.**
 
+## 2026-10-18 PLK110: weak stale-group reservation arbitration (pending Android validation)
+
+The first real-device run of \`f196634\` showed nine adjacent
+\`FOLLOW_RESERVED_CONTINUATION_COMMIT\` events for ID 2 through 18.733s,
+followed by LOST at 18.767s. The selected person was still detected.
+Group \`[1,8,10]\` repeatedly issued \`GROUP_DETECTION_RESERVED\` for
+detector index 2 even though ID 1 had not been observed for >50 frames,
+ID 8 for >150, and the only fresh group member ID 10 was next to,
+rather than inside, the full protagonist box. At 18.767s, the maximum
+predicted/last-observed group box IoU with the detector candidate was
+about 0.125; ID 2 had very recent real observed bbox agreement 0.900,
+mask agreement 0.60, and predicted IoU 0.646. This is weak **group
+ownership** evidence, not a reason to relax camera identity protection.
+
+A small, opt-in ownership rule now allows the *already verified,
+recently observed, unprotected* camera root to challenge **only an
+unassigned-by-group Hungarian detection held by weak geometry**. All
+group-member predicted/observed boxes must have IoU <0.18 with the
+candidate; independent live root box, segmentation, confidence,
+other-track and other-detection exclusivity checks must pass. It
+applies only if the immediately preceding real root observation was
+committed through the existing strictly confirmed reserved lane (or
+through this new verified normal-global lane). There is no retroactive
+rewrite of tracking identity and no special rescue for protected,
+full-body-selected or face-selected people.
+
+When weak group reservation yields, the candidate remains exclusive
+to the original ID in *unchanged* Global Hungarian scoring; no other
+track may commit it. If Global rejects the ID, the candidate remains
+reserved against ordinary LOST recovery/new track creation. No group
+reservation, general recovery, protected matching, privacy class,
+camera-only handoff or shader thresholds are broadened. In particular,
+duplicate/confusable detections and strong group ownership still
+fail closed. The previously added three-vote recovery path remains
+available when the root is LOST; these paths are independent.
+
+Diagnostics: \`FOLLOW_WEAK_GROUP_RESERVATION_YIELDED\` and
+\`FOLLOW_WEAK_GROUP_OWNERSHIP_COMMIT\`. Kotlin fixture tests use
+the real 18.767s group/detector boxes, plus confidence-dip,
+increased-body-size, group-owner, conflicting detection and privacy
+negative controls. Python tests assert production wiring and the
+fallback quarantine. **Kotlin JVM/native Android compilation and new
+device-export acceptance remain pending** on the non-Android Mac.
+
 ## Evidence and acceptance limit
 
 The observed candidate ID 8 has detector evidence near 19.5, 20.1 and 20.2s; fixture tests mirror their rough boxes, but **similarity is not identity proof**. A separate historical-identity fixture now vetoes ID 8 because it was co-observed much earlier with ID 2. No Android native compilation or real-device follow-video acceptance is available on the development Mac. A controlled follow camera handoff should be considered accepted only after visual review of a new real export around 18–23s: camera must not jump to a different person and privacy for other subjects must remain intact. A prolonged HOLD can be correct if evidence is ambiguous.
