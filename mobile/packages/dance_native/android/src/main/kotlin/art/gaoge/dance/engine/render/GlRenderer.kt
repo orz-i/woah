@@ -122,6 +122,16 @@ class GlRenderer : FrameRenderer {
 
     companion object {
 
+        /** Pure decision gate; querying GL remains a single check per render. */
+        internal fun shouldAbortProtectedExportOnGlError(
+            error: Int,
+            jobId: String?,
+            selectedRootCount: Int,
+            additionalPrivacyPresent: Boolean
+        ): Boolean = error != GLES20.GL_NO_ERROR &&
+            !jobId.isNullOrBlank() &&
+            (selectedRootCount > 0 || additionalPrivacyPresent)
+
         fun computeTransformMatrix(stMatrix: FloatArray, rotation: Int = 0): FloatArray {
             val isDegenerate = stMatrix[0] == 0f && stMatrix[5] == 0f && stMatrix[10] == 0f && stMatrix[15] == 0f
             if (isDegenerate) {
@@ -884,7 +894,39 @@ class GlRenderer : FrameRenderer {
                 effects = effects
             )
         }
-        checkGlError("render")
+        // The existing once-per-frame GL error check must fail closed for
+        // protected exports. Logging and continuing could encode a frame with
+        // an invalid or stale privacy texture if a texture upload/draw failed.
+        // Preview/non-protected rendering keeps the historical logging policy.
+        val renderGlError = GLES20.glGetError()
+        if (renderGlError != GLES20.GL_NO_ERROR) {
+            val errorHex = "0x" + Integer.toHexString(renderGlError)
+            if (shouldAbortProtectedExportOnGlError(
+                    error = renderGlError,
+                    jobId = cropClarityJobId,
+                    selectedRootCount = selectedPersonIds.size,
+                    additionalPrivacyPresent = additionalResolvedPrivacy?.hasPrivacy == true
+                )
+            ) {
+                NativeDiagnostics.event(
+                    level = "CRITICAL",
+                    component = "GlRenderer",
+                    event = "PRIVACY_GL_RENDER_ERROR_FAIL_CLOSED",
+                    fields = mapOf(
+                        "job_id" to cropClarityJobId,
+                        "pts_us" to presentationTimeUs,
+                        "gl_error" to renderGlError,
+                        "gl_error_hex" to errorHex,
+                        "selected_root_count" to selectedPersonIds.size,
+                        "additional_privacy_present" to (additionalResolvedPrivacy?.hasPrivacy == true)
+                    )
+                )
+                throw IllegalStateException(
+                    "Protected GL rendering failed ($errorHex) at pts_us=$presentationTimeUs"
+                )
+            }
+            android.util.Log.e("GlRenderer", "GL Error after render: $errorHex")
+        }
         // Only sampled actual detector-miss frames request this Debug diagnostic.
         // Count the *composited* tight-mask pixels after the resolver/renderer
         // has made its privacy decision, not historical Track boxes alone.

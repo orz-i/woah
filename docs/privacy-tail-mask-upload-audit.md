@@ -131,3 +131,74 @@ per mode. For the last 11 frames check:
 
 A final video visual check is still required even if the GL input mask
 is nonempty and all security alarms are absent.
+
+## Real-device validation of the Mask probe (2026-10-19, 77dadcc)
+
+Two additional Android 17 / OnePlus PLK110 exports completed with
+`git_commit_sha=77dadccdb571c76ea495ada642f57845c3e94a22`:
+
+| Mode | Job ID | Decoded/rendered/encoded | Mask audit records |
+|---|---|---|---:|
+| 1280×720 landscape | `job_1792377473013` | 1391/1391/1391 | 11 |
+| 810×1440 portrait | `job_1792377915799` | 1391/1391/1391 | 11 |
+
+Both jobs have one `PRIVACY_COVERAGE_DROP` at 39.733333 s
+(82→65 above-threshold target pixels, ratio 0.79268295); no severe
+undercoverage or FULL_BODY fail-closed event. The accepted pair used
+a fresh conservative-unknown SELECTED detection, the observed
+nonprotected ID 2, and 98 corroborated foreground-core pixels.
+All 1391 source-space production-tracking and FULL_BODY privacy-input
+signatures match across the two jobs. An independent one-to-one replay
+of the 0.90 bbox-IoU fresh-class gate checks 2639 observed protected
+root instances in each job with no class-coverage contradiction.
+
+**The new audit confirms that the 11 detector-empty frames
+46.000–46.333 s did not produce an entirely empty GL privacy input.**
+At 46.000 s, 163 proto pixels survive the merged tight mask and
+155 proto-pixel centers lie inside the source sampling rectangle.
+At 46.333 s, the corresponding counts are 232 and 214.
+The full sampled timeline (source-visible proto centers) is:
+`155,146,143,143,141,141,141,212,214,214,214`.
+Both modes are byte-count identical in source aspect; the portrait
+GL privacy pass is still 1280×720 before the separate 810×1440 crop.
+
+Track-root decomposition at 46.333 s:
+- Protected ID 0: OCCLUDED, 12 frames since observation,
+  41 proto pixels total / 23 inside source sampling.
+- Protected ID 1: LOST, **178 frames since observation**,
+  191 proto pixels total / 191 inside source sampling.
+- Protected IDs 3 and 4: LOST, no current render Mask.
+
+The sudden 46.233 s increase (merged source-visible pixels 141→212)
+comes from ID 1 switching from REACQUIRING to LOST and its stale
+warped Mask growing 118→189 total pixels, with **no new YOLO detection**.
+The TrackManager resets `lostFrames=1` on that transition and
+regenerates `updateLostMask` from the historical canonical Mask.
+This is a plausible **false-masking/stale-mask artifact**, not proof of
+a privacy leak. Do not blindly erase an identity-protected Mask after
+a timeout: the last known person's actual visibility is not recorded
+in the ZIP and safety requires a video pixel review.
+
+### Additional fail-closed rendering safeguard
+
+The static GL code audit found a separate safety gap: the once-per-frame
+`checkGlError("render")` used to log errors and continue export.
+A GL texture upload or draw failure could therefore allow encoding
+with stale/incorrect privacy content. The protected export render now
+uses that same single `glGetError` check but records
+`PRIVACY_GL_RENDER_ERROR_FAIL_CLOSED` and throws before the frame
+can proceed to the encoder when a GL error occurs. FULL_BODY and
+secondary FACE_ONLY protection are both covered. Preview/unprotected
+rendering retains its previous logging behavior. The new gate does not
+alter privacy identities, masks, shaders or crop composition; it has
+not yet been validated on Android and must be tested in a new APK.
+This revision passed 40 applicable Mac Python unit/contract tests and
+14 diagnostics tests (4 skipped), 75 Flutter App tests, 5 dance_native
+Dart tests and 27 dance_domain Dart tests, plus static analysis of
+these three Flutter packages. The new Kotlin GL-error policy tests were
+written but could not be executed without Android/JVM tooling.
+
+The GL input audit's nonzero pixel counts and lack of observed
+OpenGL errors still cannot prove end-to-end shader execution or
+actual protected encoded pixels. Inspect the final output videos at
+39.700–39.833 s and 45.900–46.333 s before closing privacy acceptance.

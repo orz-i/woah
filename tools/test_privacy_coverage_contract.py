@@ -16,6 +16,7 @@ NATIVE = ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/
 RESOLVER = (NATIVE / "privacy/PrivacyOcclusionResolver.kt").read_text(encoding="utf-8")
 EXPORT = (NATIVE / "pipeline/ExportPipeline.kt").read_text(encoding="utf-8")
 RENDERER = (NATIVE / "render/GlRenderer.kt").read_text(encoding="utf-8")
+RENDERER = (NATIVE / "render/GlRenderer.kt").read_text(encoding="utf-8")
 AUDIT = (NATIVE / "privacy/PrivacyMaskUploadAudit.kt").read_text(encoding="utf-8")
 
 
@@ -189,7 +190,7 @@ class PrivacyCoverageContractTest(unittest.TestCase):
         self.assertIn("FULL_BODY_TIGHT_MASK_THRESHOLD = 128", AUDIT)
         self.assertIn("GL_TEXTURE_INPUT_ONLY_NO_FINAL_PIXEL_READBACK", AUDIT)
         self.assertLess(
-            RENDERER.index('checkGlError("render")'),
+            RENDERER.index('val renderGlError = GLES20.glGetError()'),
             RENDERER.index('event = "FULL_BODY_SOURCE_MASK_UPLOAD_AUDIT"'),
         )
         sampled = [
@@ -197,6 +198,18 @@ class PrivacyCoverageContractTest(unittest.TestCase):
             if streak in range(1, 13) or (streak > 12 and streak % 30 == 0)
         ]
         self.assertEqual(sampled, list(range(1, 13)) + [30, 60])
+
+    def test_protected_export_gl_errors_fail_closed_before_encoder_receives_frame(self):
+        self.assertIn("shouldAbortProtectedExportOnGlError(", RENDERER)
+        self.assertIn("selectedRootCount > 0 || additionalPrivacyPresent", RENDERER)
+        self.assertIn("!jobId.isNullOrBlank()", RENDERER)
+        self.assertIn('event = "PRIVACY_GL_RENDER_ERROR_FAIL_CLOSED"', RENDERER)
+        self.assertIn("throw IllegalStateException(", RENDERER)
+        self.assertIn("val renderGlError = GLES20.glGetError()", RENDERER)
+        self.assertLess(RENDERER.index("drawQuad(prog)", RENDERER.index("fun render(")),
+                        RENDERER.index("val renderGlError = GLES20.glGetError()"))
+        self.assertLess(RENDERER.index("throw IllegalStateException("),
+                        RENDERER.index('event = "FULL_BODY_SOURCE_MASK_UPLOAD_AUDIT"'))
 
     def test_missing_observed_full_body_mask_fails_export_before_source_render(self):
         self.assertIn("observedSelectedWithoutMasks(", RESOLVER)
