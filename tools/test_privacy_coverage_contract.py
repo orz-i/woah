@@ -134,6 +134,35 @@ class PrivacyCoverageContractTest(unittest.TestCase):
         self.assertLess(0.60, 0.65)
         self.assertLess(0.80, 0.85)
 
+    def test_postfix_device_observed_roots_have_selected_fresh_geometry(self):
+        # Quantized 1/16px bboxes from the 3255595 Android 17 logs.
+        # 39.733s: verified protected ID 1, and independent protagonist ID 2.
+        protected = (8074, 4486, 9426, 8014)
+        fresh_selected = (8074, 4486, 9426, 8014)
+        fresh_unselected = (8301, 4698, 11069, 9983)
+        self.assertGreaterEqual(iou(protected, fresh_selected), 0.90)
+        self.assertLess(iou(protected, fresh_unselected), 0.90)
+        # 45.933s: observed protected ID 0 is still selected while leaving
+        # the bottom of the 720px source frame. On 45.967s it is unobserved
+        # and guarded by the existing fallback instead of a class handoff.
+        exiting_root = (2559, 9186, 4601, 11514)
+        self.assertEqual(iou(exiting_root, exiting_root), 1.0)
+        self.assertGreater(exiting_root[3] / 16, 719)
+
+    def test_observed_selected_fresh_class_contradiction_aborts_export(self):
+        self.assertIn("observedSelectedWithoutFreshClassCoverage(", RESOLVER)
+        self.assertIn("OBSERVED_SELECTED_FRESH_BBOX_IOU = 0.90f", RESOLVER)
+        self.assertIn("HungarianSolver.match(", RESOLVER)
+        self.assertIn("assignment.unmatchedTracks.map", RESOLVER)
+        self.assertIn("it.selectionClass == PrivacySelectionClass.SELECTED", RESOLVER)
+        self.assertIn("mask.mapper != selectedMask.mapper", RESOLVER)
+        self.assertIn("if (preferFreshPrivacyClassPrimary)", EXPORT)
+        gate = EXPORT.index('event = "FULL_BODY_FRESH_CLASS_CONTRADICTION_FAIL_CLOSED"')
+        render = EXPORT.index('profiler.recordStage("renderEffects")')
+        self.assertLess(gate, render)
+        self.assertIn("DanceNativeException.EXPORT_FAILED", EXPORT[gate:render])
+        self.assertIn("uncoveredObservedIds", EXPORT[gate:render])
+
     def test_missing_observed_full_body_mask_fails_export_before_source_render(self):
         self.assertIn("observedSelectedWithoutMasks(", RESOLVER)
         gate = EXPORT.index('event = "FULL_BODY_PRIVACY_MASK_MISSING_FAIL_CLOSED"')

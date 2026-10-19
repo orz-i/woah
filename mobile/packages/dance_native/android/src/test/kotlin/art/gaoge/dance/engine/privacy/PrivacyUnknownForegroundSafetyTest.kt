@@ -253,6 +253,98 @@ class PrivacyUnknownForegroundSafetyTest {
     }
 
     @Test
+    fun observedProtectedFreshClassCannotBeSilentlyDowngradedToUnselected() {
+        val frame = risks[2]
+        val protectedMask = selectedMask()
+        val observedProtected = TrackedPerson(
+            id = 1,
+            bbox = frame.unknownBox,
+            mask = protectedMask,
+            confidence = 0.95f,
+            age = 40,
+            observedThisFrame = true,
+            state = TrackState.ACTIVE
+        )
+        val selectedEvidence = FreshPrivacyClassEvidence(
+            selectionClass = PrivacySelectionClass.SELECTED,
+            detectionIndex = frame.unknownIndex,
+            detection = PersonDetection(
+                bbox = frame.unknownBox,
+                confidence = 0.85f,
+                mask = protectedMask
+            ),
+            residualTrackIds = emptySet(),
+            conservativeUnknown = true
+        )
+        val foregroundEvidence = FreshPrivacyClassEvidence(
+            selectionClass = PrivacySelectionClass.UNSELECTED,
+            detectionIndex = frame.unselectedIndex,
+            detection = PersonDetection(
+                bbox = frame.foregroundBox,
+                confidence = 0.90f,
+                mask = foregroundMask()
+            ),
+            residualTrackIds = emptySet()
+        )
+        val guard = {
+            tracks: List<TrackedPerson>,
+            selectedIds: Set<Int>,
+            evidence: List<FreshPrivacyClassEvidence> ->
+            PrivacyOcclusionResolver.observedSelectedWithoutFreshClassCoverage(
+                tracks, selectedIds, evidence
+            )
+        }
+        assertTrue(
+            guard(listOf(observedProtected), setOf(1),
+                listOf(selectedEvidence, foregroundEvidence)).isEmpty(),
+            "conservative unknown is SELECTED for rendering, never an identity handoff"
+        )
+        assertEquals(
+            listOf(1),
+            guard(listOf(observedProtected), setOf(1),
+                listOf(selectedEvidence.copy(selectionClass = PrivacySelectionClass.UNSELECTED),
+                    foregroundEvidence)),
+            "an observed FULL_BODY root cannot silently become unprotected"
+        )
+        assertEquals(
+            listOf(1),
+            guard(listOf(observedProtected), setOf(1), listOf(foregroundEvidence)),
+            "a distant selected mask does not protect the observed root"
+        )
+        assertEquals(
+            listOf(3),
+            guard(listOf(observedProtected, observedProtected.copy(id = 3)),
+                setOf(1, 3), listOf(selectedEvidence)),
+            "one selected detection cannot cover two distinct confirmed roots"
+        )
+        assertTrue(
+            guard(listOf(observedProtected.copy(
+                state = TrackState.REACQUIRING, observedThisFrame = false
+            )), setOf(1), listOf(foregroundEvidence)).isEmpty(),
+            "unobserved identities use the existing privacy fallback, not this fresh-only gate"
+        )
+        assertTrue(
+            guard(listOf(observedProtected), setOf(2), listOf(foregroundEvidence)).isEmpty(),
+            "nonselected protagonist must never be promoted into privacy"
+        )
+    }
+
+    @Test
+    fun foregroundWithDifferentCoordinateMapperCannotCutUnknownPrivacy() {
+        val frame = risks[2]
+        val foreground = foregroundMask(255)
+        val mismatched = foreground.copy(
+            mapper = art.gaoge.dance.engine.geometry.ModelCoordinateMapper(
+                srcWidth = 1280, srcHeight = 720, protoSize = 80
+            )
+        )
+        val privacy = assertNotNull(resolve(
+            frame, selectedValue = 160, foregroundMaskOverride = mismatched
+        ).privacyMask)
+        assertEquals(160, pixel(privacy, 80, 80))
+    }
+
+    @Test
     fun missingObservedFullBodyMaskIsAFailClosedExportConditionOnlyForSelected() {
         val observedMissing = TrackedPerson(
             id = 1,

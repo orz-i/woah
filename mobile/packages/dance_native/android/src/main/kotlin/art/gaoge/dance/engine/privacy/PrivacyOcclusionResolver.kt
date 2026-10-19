@@ -59,6 +59,48 @@ object PrivacyOcclusionResolver {
         return false
     }
 
+    /**
+     * Fail-closed precondition for the FULL_BODY fresh-class-primary compositor.
+     * A verified current observation of a protected track may not disappear
+     * merely because a separate temporal privacy-class classifier classified
+     * its fresh detection as UNSELECTED (or omitted it). This only detects a
+     * contradiction: it never changes any track ID or privacy class.
+     *
+     * Invoke only while the fresh-class-primary path is enabled. The tracked
+     * fallback path already handles inference-skipped and detector-empty frames.
+     */
+    fun observedSelectedWithoutFreshClassCoverage(
+        persons: List<TrackedPerson>,
+        selectedPersonIds: Set<Int>,
+        freshClassEvidence: List<FreshPrivacyClassEvidence>
+    ): List<Int> {
+        val observedSelected = persons.filter {
+            selectedPersonIds.contains(it.id) &&
+                it.state != TrackState.REMOVED &&
+                it.observedThisFrame &&
+                it.mask != null
+        }
+        if (observedSelected.isEmpty()) return emptyList()
+        val freshSelected = freshClassEvidence.filter {
+            it.selectionClass == PrivacySelectionClass.SELECTED && it.detection.mask != null
+        }
+        if (freshSelected.isEmpty()) return observedSelected.map { it.id }
+
+        // Match each selected detection at most once: one fresh mask cannot
+        // satisfy two independently observed, identity-protected people.
+        val costs = Array(observedSelected.size) { row ->
+            FloatArray(freshSelected.size) { col ->
+                1f - TrackManager.computeBBoxIoU(
+                    observedSelected[row].bbox, freshSelected[col].detection.bbox
+                ).coerceIn(0f, 1f)
+            }
+        }
+        val assignment = HungarianSolver.match(
+            costs, maxCostThreshold = 1f - OBSERVED_SELECTED_FRESH_BBOX_IOU
+        )
+        return assignment.unmatchedTracks.map { observedSelected[it].id }
+    }
+
     private const val OWNERSHIP_MARGIN = 0.12f
     private const val MIN_UNSELECTED_PROBABILITY = 0.50f
     private const val MIN_STALE_RAW_PROBABILITY_ADVANTAGE = 0.10f
@@ -96,6 +138,7 @@ object PrivacyOcclusionResolver {
     // unselected-class label alone to cut their masks: require an independently
     // observed unprotected foreground and raw per-pixel instance advantage.
     private const val UNKNOWN_FOREGROUND_OBSERVED_BBOX_IOU = 0.90f
+    private const val OBSERVED_SELECTED_FRESH_BBOX_IOU = 0.90f
 
     /**
      * Resolves selected privacy targets and explicit foreground occluders into
@@ -1273,7 +1316,8 @@ object PrivacyOcclusionResolver {
                 mask.buffer.capacity() < total ||
                 mask.originalWidth != selectedMask.originalWidth ||
                 mask.originalHeight != selectedMask.originalHeight ||
-                mask.samplingRect != selectedMask.samplingRect
+                mask.samplingRect != selectedMask.samplingRect ||
+                mask.mapper != selectedMask.mapper
             ) return null
         }
         if (selectedMask.buffer.capacity() < total) return null

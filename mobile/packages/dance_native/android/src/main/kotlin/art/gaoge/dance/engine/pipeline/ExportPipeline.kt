@@ -1793,6 +1793,48 @@ class ExportPipeline(
                             )
                         }
 
+                        // The temporal class lane must not silently downgrade a
+                        // freshly observed, identity-confirmed FULL_BODY root to
+                        // UNSELECTED or drop its fresh mask from the compositor.
+                        // Abort rather than remapping another identity or exposing
+                        // the root. LOST/REACQUIRING fallback is unaffected.
+                        if (preferFreshPrivacyClassPrimary) {
+                            val uncoveredObservedIds =
+                                art.gaoge.dance.engine.privacy.PrivacyOcclusionResolver
+                                    .observedSelectedWithoutFreshClassCoverage(
+                                        trackedList, selectedIds, freshPrivacyClassEvidence
+                                    )
+                            if (uncoveredObservedIds.isNotEmpty()) {
+                                art.gaoge.dance.engine.diagnostics.NativeDiagnostics.event(
+                                    level = "CRITICAL",
+                                    component = "ExportPipeline",
+                                    event = "FULL_BODY_FRESH_CLASS_CONTRADICTION_FAIL_CLOSED",
+                                    fields = mapOf(
+                                        "job_id" to jobId,
+                                        "frame" to processedFrames,
+                                        "pts_us" to ptsUs,
+                                        "uncovered_observed_track_ids" to uncoveredObservedIds,
+                                        "fresh_selected_detection_indices" to freshPrivacyClassEvidence
+                                            .filter {
+                                                it.selectionClass ==
+                                                    art.gaoge.dance.engine.tracking.PrivacySelectionClass.SELECTED
+                                            }
+                                            .map { it.detectionIndex },
+                                        "fresh_unselected_detection_indices" to freshPrivacyClassEvidence
+                                            .filter {
+                                                it.selectionClass ==
+                                                    art.gaoge.dance.engine.tracking.PrivacySelectionClass.UNSELECTED
+                                            }
+                                            .map { it.detectionIndex }
+                                    )
+                                )
+                                throw DanceNativeException(
+                                    DanceNativeException.EXPORT_FAILED,
+                                    "Observed FULL_BODY privacy class contradiction: $uncoveredObservedIds"
+                                )
+                            }
+                        }
+
                         // 4. Render privacy in full-frame source aspect first. Auto-reframe
                         // is a second GPU pass over the already-protected RGBA frame so
                         // crop geometry can never alter mask/sticker coordinates.
