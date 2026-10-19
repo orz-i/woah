@@ -18,6 +18,7 @@ EXPORT = (NATIVE / "pipeline/ExportPipeline.kt").read_text(encoding="utf-8")
 RENDERER = (NATIVE / "render/GlRenderer.kt").read_text(encoding="utf-8")
 AUDIT = (NATIVE / "privacy/PrivacyMaskUploadAudit.kt").read_text(encoding="utf-8")
 HISTORY = (NATIVE / "privacy/VerifiedUnselectedForegroundHistory.kt").read_text(encoding="utf-8")
+PIXEL_AUDIT = (NATIVE / "privacy/PrivacyUnknownForegroundPixelAudit.kt").read_text(encoding="utf-8")
 
 
 @dataclass(frozen=True)
@@ -238,6 +239,26 @@ class PrivacyCoverageContractTest(unittest.TestCase):
         self.assertIn("ArrayDeque<Sample>(2)", HISTORY)
         self.assertIn("!selectedPersonIds.contains(it.id)", HISTORY)
         self.assertNotIn("privacySelectedTrackIds.add", HISTORY)
+
+    def test_debug_unknown_overlap_probe_is_source_free_and_non_mutating(self):
+        event = 'event = "PRIVACY_UNKNOWN_FOREGROUND_PIXEL_AUDIT"'
+        self.assertIn(event, RESOLVER)
+        self.assertIn("art.gaoge.dance.engine.BuildConfig.DEBUG", RESOLVER)
+        self.assertIn("conservativeUnknownTarget &&", RESOLVER)
+        self.assertIn("corroboratingUnselectedTrackId != null", RESOLVER)
+        self.assertIn("candidateFreshEvidence?.selectionClass == PrivacySelectionClass.UNSELECTED", RESOLVER)
+        self.assertIn("competingSelected = effectiveSelectedMasks.filterIndexed", RESOLVER)
+        self.assertIn("PrivacyUnknownForegroundPixelAudit.summarize(", RESOLVER)
+        self.assertIn("var debugProbeForTarget: UnknownOverlapProbe? = null", RESOLVER)
+        self.assertIn("AGGREGATE_PROTO_MASK_COUNTS_ONLY_NO_RGB_NO_RAW_MASK", PIXEL_AUDIT)
+        self.assertIn("ROW_MAJOR_TOP_TO_BOTTOM_SOURCE", PIXEL_AUDIT)
+        self.assertIn('"selected_retained_and_fresh_foreground"', PIXEL_AUDIT)
+        self.assertIn('"competing_selected_and_fresh_foreground"', PIXEL_AUDIT)
+        self.assertIn('"final_merged_and_fresh_foreground"', PIXEL_AUDIT)
+        self.assertIn('"outside_selected_bbox_totals"', PIXEL_AUDIT)
+        self.assertNotIn("BitmapFactory", PIXEL_AUDIT)
+        self.assertNotIn("glReadPixels", PIXEL_AUDIT)
+        self.assertNotIn("Base64", PIXEL_AUDIT)
 
     def test_missing_observed_full_body_mask_fails_export_before_source_render(self):
         self.assertIn("observedSelectedWithoutMasks(", RESOLVER)

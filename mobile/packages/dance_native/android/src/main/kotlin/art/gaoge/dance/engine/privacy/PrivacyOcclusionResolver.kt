@@ -31,6 +31,22 @@ data class OcclusionEvidence(
 
 object PrivacyOcclusionResolver {
 
+    private data class UnknownOverlapProbe(
+        val targetId: Int,
+        val targetDetectionIndex: Int?,
+        val candidateDetectionIndex: Int?,
+        val corroboratingUnselectedId: Int,
+        val targetBbox: FloatRect,
+        val selectedRaw: NativeMask,
+        val foregroundFresh: NativeMask,
+        val foregroundObserved: NativeMask?,
+        val ownership: NativeMask?,
+        val freshErodedCore: NativeMask?,
+        val approvedCarve: NativeMask?,
+        val temporalCore: NativeMask?,
+        val effectiveTarget: NativeMask? = null
+    )
+
     /**
      * An observed protected root whose mask cannot survive the FULL_BODY
      * export's 128-byte tight contour is not safe to export. Inspect the
@@ -369,6 +385,7 @@ object PrivacyOcclusionResolver {
 
         val preCarveSelectedMasks = mutableListOf<NativeMask>()
         val effectiveSelectedMasks = mutableListOf<NativeMask>()
+        var debugUnknownOverlapProbe: UnknownOverlapProbe? = null
         var anyAcceptedOccluder = false
 
         for (target in selectedPersons) {
@@ -382,6 +399,7 @@ object PrivacyOcclusionResolver {
             val targetFreshEvidence = freshEvidenceByPersonId[target.id]
 
             val acceptedOccluderCores = mutableListOf<NativeMask>()
+            var debugProbeForTarget: UnknownOverlapProbe? = null
 
             // Evaluate candidate occluders for all targets except REMOVED
             if (target.state != TrackState.REMOVED) {
@@ -574,6 +592,40 @@ object PrivacyOcclusionResolver {
                         else -> unknownForegroundCore
                     }
                     val unknownForegroundCorePixels = countMaskPixels(finalUnknownForegroundCore)
+                    // The diagnostics below are deliberately aggregate-only and
+                    // carry no raw masks, images, or exact per-pixel coordinates.
+                    // A full-body Debug export records at most one observed
+                    // unknown-vs-protagonist conflict per rendered frame.
+                    if (
+                        art.gaoge.dance.engine.BuildConfig.DEBUG &&
+                        !jobId.isNullOrBlank() &&
+                        useFreshPrimary &&
+                        debugUnknownOverlapProbe == null &&
+                        debugProbeForTarget == null &&
+                        conservativeUnknownTarget &&
+                        target.confidence <= MAX_TEMPORAL_UNKNOWN_CONFIDENCE &&
+                        cand.confidence >= MIN_TEMPORAL_FOREGROUND_CONFIDENCE &&
+                        normalizedFootYDelta >= MIN_TEMPORAL_FOREGROUND_FOOT_DELTA &&
+                        corroboratingUnselectedTrackId != null &&
+                        candidateFreshEvidence?.selectionClass == PrivacySelectionClass.UNSELECTED
+                    ) {
+                        debugProbeForTarget = UnknownOverlapProbe(
+                            targetId = target.id,
+                            targetDetectionIndex = targetFreshEvidence?.detectionIndex,
+                            candidateDetectionIndex = candidateFreshEvidence?.detectionIndex,
+                            corroboratingUnselectedId = corroboratingUnselectedTrackId,
+                            targetBbox = target.bbox,
+                            selectedRaw = rawMask,
+                            foregroundFresh = candMask,
+                            foregroundObserved = persons.firstOrNull {
+                                it.id == corroboratingUnselectedTrackId
+                            }?.mask,
+                            ownership = ownershipMask,
+                            freshErodedCore = freshDepthCore,
+                            approvedCarve = finalUnknownForegroundCore,
+                            temporalCore = temporalForegroundCore
+                        )
+                    }
                     val isStrongForeground =
                         stateAllowsCarve &&
                         !suppressUnstableTinyFreshDepthCore &&
@@ -818,6 +870,12 @@ object PrivacyOcclusionResolver {
             }
 
             effectiveSelectedMasks.add(effectiveMask)
+            val resolvedTargetProbe = debugProbeForTarget
+            if (debugUnknownOverlapProbe == null && resolvedTargetProbe != null) {
+                debugUnknownOverlapProbe = resolvedTargetProbe.copy(
+                    effectiveTarget = effectiveMask
+                )
+            }
         }
 
         val mergedPreCarvePrivacy = mergeMasks(preCarveSelectedMasks)
@@ -836,6 +894,44 @@ object PrivacyOcclusionResolver {
             renderOccluder = buildSafeRenderOccluderMask(
                 preCarvePrivacy = mergedPreCarvePrivacy,
                 effectivePrivacy = mergedPrivacy
+            )
+        }
+
+        val probe = debugUnknownOverlapProbe
+        if (art.gaoge.dance.engine.BuildConfig.DEBUG &&
+            probe != null && mergedPrivacy != null && probe.effectiveTarget != null
+        ) {
+            NativeDiagnostics.eventLazy(
+                level = "INFO",
+                component = "PrivacyOcclusionResolver",
+                event = "PRIVACY_UNKNOWN_FOREGROUND_PIXEL_AUDIT",
+                fields = {
+                    mapOf(
+                        "job_id" to jobId,
+                        "pts_us" to ptsUs,
+                        "target_id" to probe.targetId,
+                        "target_detection_index" to probe.targetDetectionIndex,
+                        "candidate_detection_index" to probe.candidateDetectionIndex,
+                        "corroborating_unselected_track_id" to
+                            probe.corroboratingUnselectedId
+                    ) + PrivacyUnknownForegroundPixelAudit.summarize(
+                        PrivacyUnknownForegroundPixelAudit.Probe(
+                            targetBbox = probe.targetBbox,
+                            selectedRaw = probe.selectedRaw,
+                            foregroundFresh = probe.foregroundFresh,
+                            foregroundObserved = probe.foregroundObserved,
+                            ownership = probe.ownership,
+                            erodedFreshCore = probe.freshErodedCore,
+                            approvedCarve = probe.approvedCarve,
+                            temporalCarve = probe.temporalCore,
+                            effectiveSelected = requireNotNull(probe.effectiveTarget),
+                            mergedPrivacy = mergedPrivacy,
+                            competingSelected = effectiveSelectedMasks.filterIndexed {
+                                index, _ -> selectedPersons[index].id != probe.targetId
+                            }
+                        )
+                    )
+                }
             )
         }
 
