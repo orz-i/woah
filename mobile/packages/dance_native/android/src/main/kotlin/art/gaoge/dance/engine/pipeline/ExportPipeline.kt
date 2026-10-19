@@ -463,6 +463,8 @@ class ExportPipeline(
                 decoder.prepare()
 
                 var processedFrames = 0
+                // Debug-only, detector-inference misses (not intentional stride skips).
+                var consecutiveEmptyInferenceFrames = 0
                 var qualityLuma: CropClaritySceneSampler.LumaEvidence? = null
                 var qualityLumaFrame = -1
                 var previousProtagonistPosition: Pair<Float, Float>? = null
@@ -895,6 +897,7 @@ class ExportPipeline(
                     var freshSelectedCoveredTrackIds = emptySet<Int>()
                     var suppressedSelectedPrivacyTrackIds = emptySet<Int>()
                     var preferFreshPrivacyClassPrimary = false
+                    var debugSourceMaskAudit = false
                     var cpuReferenceTrackedForFace: List<TrackedPerson>? = null
                     var canonicalModelRgbaForFace: java.nio.ByteBuffer? = null
 
@@ -1122,6 +1125,25 @@ class ExportPipeline(
                                 }
                             } else {
                                 emptyList()
+                            }
+
+                            // Observe the actual GL privacy texture input after genuine
+                            // inference misses. Log the first 12 consecutive misses,
+                            // then only every 30th; never scan every export frame.
+                            if (
+                                art.gaoge.dance.engine.BuildConfig.DEBUG &&
+                                fullBodyPersonIds.isNotEmpty() &&
+                                faceOnlyPersonIds.isEmpty() &&
+                                shouldInfer
+                            ) {
+                                consecutiveEmptyInferenceFrames = if (detections.isEmpty()) {
+                                    consecutiveEmptyInferenceFrames + 1
+                                } else {
+                                    0
+                                }
+                                debugSourceMaskAudit =
+                                    art.gaoge.dance.engine.privacy.PrivacyMaskUploadAudit
+                                        .shouldSampleEmptyInferenceStreak(consecutiveEmptyInferenceFrames)
                             }
 
                             val deterministicTrackingPrimary = if (preferDebugFaceDeterministicCpuPrimary) {
@@ -1875,7 +1897,8 @@ class ExportPipeline(
                                             null
                                         },
                                         cropClarityScale = scale,
-                                        cropClarityJobId = jobId
+                                        cropClarityJobId = jobId,
+                                        debugSourceMaskAudit = debugSourceMaskAudit
                                     )
                                 }
                                 val previousFramebuffer = target.bind()
@@ -2496,7 +2519,8 @@ class ExportPipeline(
                                         null
                                     },
                                     cropClarityScale = request.cropClarityScale ?: 1.0,
-                                    cropClarityJobId = jobId
+                                    cropClarityJobId = jobId,
+                                    debugSourceMaskAudit = debugSourceMaskAudit
                                 )
                             }
                             renderedFrameCount++

@@ -15,6 +15,8 @@ ROOT = Path(__file__).resolve().parents[1]
 NATIVE = ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine"
 RESOLVER = (NATIVE / "privacy/PrivacyOcclusionResolver.kt").read_text(encoding="utf-8")
 EXPORT = (NATIVE / "pipeline/ExportPipeline.kt").read_text(encoding="utf-8")
+RENDERER = (NATIVE / "render/GlRenderer.kt").read_text(encoding="utf-8")
+AUDIT = (NATIVE / "privacy/PrivacyMaskUploadAudit.kt").read_text(encoding="utf-8")
 
 
 @dataclass(frozen=True)
@@ -162,6 +164,39 @@ class PrivacyCoverageContractTest(unittest.TestCase):
         self.assertLess(gate, render)
         self.assertIn("DanceNativeException.EXPORT_FAILED", EXPORT[gate:render])
         self.assertIn("uncoveredObservedIds", EXPORT[gate:render])
+
+    def test_zero_or_weak_fresh_class_masks_fail_closed_at_tight_contour(self):
+        self.assertIn(
+            "hasRenderablePrivacyMask(it.detection.mask)", RESOLVER
+        )
+        self.assertIn("FULL_BODY_EXPORT_MASK_THRESHOLD_BYTE = 128", RESOLVER)
+        self.assertIn(
+            "FULL_BODY_FRESH_CLASS_CONTRADICTION_FAIL_CLOSED", EXPORT
+        )
+
+    def test_detector_miss_mask_probe_is_debug_only_and_samples_source_compositor(self):
+        self.assertIn("consecutiveEmptyInferenceFrames", EXPORT)
+        self.assertIn("shouldInfer\n", EXPORT)
+        self.assertIn("consecutiveEmptyInferenceFrames + 1", EXPORT)
+        self.assertIn("shouldSampleEmptyInferenceStreak(consecutiveEmptyInferenceFrames)", EXPORT)
+        self.assertEqual(EXPORT.count("debugSourceMaskAudit = debugSourceMaskAudit"), 2)
+        self.assertIn("debugSourceMaskAudit && art.gaoge.dance.engine.BuildConfig.DEBUG", RENDERER)
+        self.assertIn('event = "FULL_BODY_SOURCE_MASK_UPLOAD_AUDIT"', RENDERER)
+        self.assertIn("uploadedPrivacyMask = resolved.privacyMask", RENDERER)
+        self.assertIn("uploadedOccluderMask = resolved.occluderMask", RENDERER)
+        self.assertIn("val selectedRoots = persons", AUDIT)
+        self.assertIn("mask.buffer.capacity().toLong() < count", AUDIT)
+        self.assertIn("FULL_BODY_TIGHT_MASK_THRESHOLD = 128", AUDIT)
+        self.assertIn("GL_TEXTURE_INPUT_ONLY_NO_FINAL_PIXEL_READBACK", AUDIT)
+        self.assertLess(
+            RENDERER.index('checkGlError("render")'),
+            RENDERER.index('event = "FULL_BODY_SOURCE_MASK_UPLOAD_AUDIT"'),
+        )
+        sampled = [
+            streak for streak in range(0, 70)
+            if streak in range(1, 13) or (streak > 12 and streak % 30 == 0)
+        ]
+        self.assertEqual(sampled, list(range(1, 13)) + [30, 60])
 
     def test_missing_observed_full_body_mask_fails_export_before_source_render(self):
         self.assertIn("observedSelectedWithoutMasks(", RESOLVER)

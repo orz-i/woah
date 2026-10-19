@@ -311,6 +311,40 @@ class PrivacyUnknownForegroundSafetyTest {
             guard(listOf(observedProtected), setOf(1), listOf(foregroundEvidence)),
             "a distant selected mask does not protect the observed root"
         )
+        // A non-null mask may still disappear at the 128-byte FULL_BODY
+        // tight-mask threshold. It cannot satisfy protected class coverage.
+        assertEquals(
+            listOf(1),
+            guard(
+                listOf(observedProtected),
+                setOf(1),
+                listOf(selectedEvidence.copy(detection = selectedEvidence.detection.copy(
+                    mask = mask(0, 60, 87, 60, 101)
+                )))
+            ),
+            "all-zero fresh SELECTED mask must fail closed"
+        )
+        assertEquals(
+            listOf(1),
+            guard(
+                listOf(observedProtected),
+                setOf(1),
+                listOf(selectedEvidence.copy(detection = selectedEvidence.detection.copy(
+                    mask = mask(127, 60, 87, 60, 101)
+                )))
+            ),
+            "below-threshold fresh SELECTED mask is not renderable"
+        )
+        assertTrue(
+            guard(
+                listOf(observedProtected),
+                setOf(1),
+                listOf(selectedEvidence.copy(detection = selectedEvidence.detection.copy(
+                    mask = mask(128, 60, 87, 60, 101)
+                )))
+            ).isEmpty(),
+            "threshold byte 128 is accepted by tight-mask rendering"
+        )
         assertEquals(
             listOf(3),
             guard(listOf(observedProtected, observedProtected.copy(id = 3)),

@@ -515,7 +515,8 @@ class GlRenderer : FrameRenderer {
         initialFollowTarget: art.gaoge.dance.engine.inference.FloatRect? = null,
         legStretchTargetPersonId: Int? = null,
         cropClarityScale: Double = 1.0,
-        cropClarityJobId: String? = null
+        cropClarityJobId: String? = null,
+        debugSourceMaskAudit: Boolean = false
     ) {
         GLES20.glViewport(0, 0, width, height)
         GLES20.glClearColor(0f, 0f, 0f, 1f)
@@ -884,6 +885,36 @@ class GlRenderer : FrameRenderer {
             )
         }
         checkGlError("render")
+        // Only sampled actual detector-miss frames request this Debug diagnostic.
+        // Count the *composited* tight-mask pixels after the resolver/renderer
+        // has made its privacy decision, not historical Track boxes alone.
+        // This proves texture input bytes, not final output pixels.
+        if (debugSourceMaskAudit && art.gaoge.dance.engine.BuildConfig.DEBUG) {
+            NativeDiagnostics.eventLazy(
+                level = "INFO",
+                component = "GlRenderer",
+                event = "FULL_BODY_SOURCE_MASK_UPLOAD_AUDIT",
+                fields = {
+                    mapOf(
+                        "job_id" to cropClarityJobId,
+                        "pts_us" to presentationTimeUs,
+                        "crop_clarity_scale" to cropClarityScale
+                    ) + art.gaoge.dance.engine.privacy.PrivacyMaskUploadAudit.sourceMaskEvidence(
+                        persons = persons,
+                        selectedPersonIds = selectedPersonIds,
+                        uploadedPrivacyMask = resolved.privacyMask,
+                        uploadedOccluderMask = resolved.occluderMask,
+                        sourceWidth = sourceWidth ?: width,
+                        sourceHeight = sourceHeight ?: height,
+                        renderWidth = width,
+                        renderHeight = height,
+                        tightMask = tightMask,
+                        uploadedPrivacySamplingRect = privacySamplingRect,
+                        uploadedOccluderSamplingRect = occluderSamplingRect
+                    )
+                }
+            )
+        }
     }
 
     private fun renderFaceStickerOverlays(

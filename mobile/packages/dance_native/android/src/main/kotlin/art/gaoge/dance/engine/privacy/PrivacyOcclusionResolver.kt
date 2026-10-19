@@ -82,7 +82,8 @@ object PrivacyOcclusionResolver {
         }
         if (observedSelected.isEmpty()) return emptyList()
         val freshSelected = freshClassEvidence.filter {
-            it.selectionClass == PrivacySelectionClass.SELECTED && it.detection.mask != null
+            it.selectionClass == PrivacySelectionClass.SELECTED &&
+                hasRenderablePrivacyMask(it.detection.mask)
         }
         if (freshSelected.isEmpty()) return observedSelected.map { it.id }
 
