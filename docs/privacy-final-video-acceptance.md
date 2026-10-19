@@ -25,6 +25,7 @@ Windows PowerShell，从仓库根目录执行（修改三个示例路径）：
 py -3 tools\diagnostics\privacy_final_frame_review.py `
   --landscape "D:\Exports\woah-landscape.mp4" `
   --portrait "D:\Exports\woah-portrait.mp4" `
+  --expected-commit "c259eb46f9a396e1e0ab6a039c2001f5b9d62f0d" `
   --output-dir "D:\WoahPrivateReview"
 ```
 
@@ -34,6 +35,7 @@ macOS/Linux 也可以执行：
 python3 tools/diagnostics/privacy_final_frame_review.py \
   --landscape "/path/to/woah-landscape.mp4" \
   --portrait "/path/to/woah-portrait.mp4" \
+  --expected-commit "c259eb46f9a396e1e0ab6a039c2001f5b9d62f0d" \
   --output-dir "/path/to/WoahPrivateReview"
 ```
 
@@ -52,7 +54,7 @@ python3 tools/diagnostics/privacy_final_frame_review.py \
 - `manifest.json`：视频文件 SHA256、尺寸、帧数、帧率、每张 PNG 对应的原始帧编号/PTS，初始结果固定为 `NOT_REVIEWED`。
 - `landscape/overlap_39s`、`landscape/end_46s`、`portrait/...`：按 **FFprobe 实际帧时间戳**筛选，再通过 FFmpeg 的**源帧序号**无损提取。这样不会因为 `-ss` 寻找关键帧、浮点时间或含 B 帧的压缩格式，把风险帧误对应到相邻时间。
 
-工具对本次两段视频的 1391 帧/30 fps/尺寸/尾帧 PTS 做严格验证，防止错误输入。视频 SHA256 仅标识本地文件，**不能单凭哈希证明文件一定属于诊断 job_id**；仍需用户核对视频来源。
+工具对本次两段视频的 1391 帧/30 fps/尺寸/尾帧 PTS 做严格验证，防止错误输入。视频 SHA256 仅标识本地文件，**不能单凭哈希证明文件一定属于诊断 job_id**；仍需用户核对视频来源。`--expected-commit` 为可选的操作者声明，不会从 MP4 自动推断。未提供时 `expected_commit=null`，绝不沿用工具的旧版硬编码 SHA。2026-10-19 的第二份私密抽帧包沿用了旧工具的 `178065a` 元数据，尽管其随附诊断 ZIP 的实际构建提交为 `c259eb4`；因此这一个字段不是提交版本的可靠凭证。
 
 ## 人工验收准则
 

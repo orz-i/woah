@@ -139,6 +139,8 @@ class PrivacyFinalFrameReviewTest(unittest.TestCase):
             self.assertIn("46.333", checklist)
             manifest = json.loads((out / "manifest.json").read_text())
             self.assertEqual(manifest["visual_acceptance"], "NOT_REVIEWED")
+            self.assertIsNone(manifest["expected_commit"])
+            self.assertEqual(manifest["expected_commit_evidence"], "NOT_PROVIDED")
             self.assertEqual(
                 manifest["videos"]["portrait"]["frame_count"], review.EXPECTED_FRAMES
             )
@@ -149,6 +151,40 @@ class PrivacyFinalFrameReviewTest(unittest.TestCase):
             self.assertNotIn(str(root), (out / "manifest.json").read_text())
             with self.assertRaisesRegex(ValueError, "new or empty"):
                 review.validate_inputs(inputs, out)
+
+    def test_explicit_build_commit_is_only_operator_asserted(self):
+        commit = "c259eb46f9a396e1e0ab6a039c2001f5b9d62f0d"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            video = root / "landscape.mp4"
+            video.write_bytes(b"test-export")
+            def mock_extract(source, *, ffmpeg, destination, indices):
+                destination.mkdir(parents=True)
+                found = []
+                for pos, _ in enumerate(indices):
+                    path = destination / f"frame_{pos:04d}.png"
+                    path.write_bytes(b"PNG test")
+                    found.append(path)
+                return found
+            with patch.object(review, "probe_video", return_value=fake_meta()), \
+                 patch.object(review, "extract_window", side_effect=mock_extract), \
+                 patch.object(review.shutil, "which", return_value="/usr/bin/ffmpeg"):
+                output = review.prepare_review(
+                    {"landscape": video}, root / "private",
+                    ffprobe="ffprobe", ffmpeg="ffmpeg",
+                    expected_commit=commit.upper(),
+                )
+            self.assertEqual(output["expected_commit"], commit)
+            self.assertEqual(
+                output["expected_commit_evidence"],
+                "OPERATOR_ASSERTED_NOT_VERIFIED_FROM_VIDEO"
+            )
+            with self.assertRaisesRegex(ValueError, "40-character"):
+                review.prepare_review(
+                    {"landscape": video}, root / "invalid",
+                    ffprobe="ffprobe", ffmpeg="ffmpeg",
+                    expected_commit="178065a",
+                )
 
     def test_missing_ffmpeg_never_claims_success(self):
         with tempfile.TemporaryDirectory() as directory:

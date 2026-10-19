@@ -18,6 +18,7 @@ import math
 from dataclasses import dataclass
 from fractions import Fraction
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -210,8 +211,10 @@ def validate_inputs(inputs: dict[str, Path], output_dir: Path) -> None:
 
 def prepare_review(
     inputs: dict[str, Path], output_dir: Path,
-    *, ffprobe: str, ffmpeg: str,
+    *, ffprobe: str, ffmpeg: str, expected_commit: str | None = None,
 ) -> dict[str, Any]:
+    if expected_commit is not None and not re.fullmatch(r"[0-9a-fA-F]{40}", expected_commit):
+        raise ValueError("--expected-commit must be the complete 40-character Git SHA")
     validate_inputs(inputs, output_dir)
     if not shutil.which(ffprobe) or not shutil.which(ffmpeg):
         raise ValueError("ffmpeg and ffprobe are required on PATH")
@@ -266,7 +269,11 @@ def prepare_review(
         "schema": 1,
         "purpose": "woah_final_export_privacy_visual_review",
         "evidence_scope": "FINAL_EXPORTED_VIDEO_FRAMES_NOT_AUTOMATIC_PRIVACY_PROOF",
-        "expected_commit": "178065ae5b7161886b928ec5ca5871885fada7ba",
+        "expected_commit": expected_commit.lower() if expected_commit else None,
+        "expected_commit_evidence": (
+            "OPERATOR_ASSERTED_NOT_VERIFIED_FROM_VIDEO" if expected_commit
+            else "NOT_PROVIDED"
+        ),
         "clip_identity": "USER_ASSERTED_FROM_FINAL_EXPORT_NOT_CRYPTOGRAPHICALLY_LINKED_TO_JOB",
         "mode_coverage": "BOTH" if len(results) == 2 else "PARTIAL",
         "visual_acceptance": "NOT_REVIEWED",
@@ -365,6 +372,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--landscape", type=Path, help="Full 1280x720 exported MP4")
     parser.add_argument("--portrait", type=Path, help="Full 810x1440 exported MP4")
+    parser.add_argument(
+        "--expected-commit",
+        help="Optional full build Git SHA; operator assertion only, not verified from MP4"
+    )
     parser.add_argument("--output-dir", type=Path, required=True,
                         help="New private local directory, never committed")
     args = parser.parse_args(argv)
@@ -374,7 +385,10 @@ def main(argv: list[str] | None = None) -> int:
         ) if path is not None
     }
     try:
-        result = prepare_review(inputs, args.output_dir, ffprobe="ffprobe", ffmpeg="ffmpeg")
+        result = prepare_review(
+            inputs, args.output_dir, ffprobe="ffprobe", ffmpeg="ffmpeg",
+            expected_commit=args.expected_commit,
+        )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"PRIVACY_FINAL_FRAME_REVIEW=FAIL: {exc}", file=sys.stderr)
         return 1
