@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src blob: data:; media-src blob:; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'">
+<title>Woah · 本机主角交叠标注</title>
+<style>
+:root{color-scheme:dark;font:15px/1.5 system-ui,sans-serif;background:#171717;color:#f4f4f4}
+body{margin:0 auto;max-width:1320px;padding:18px}
+h1{font-size:23px;margin:.2rem 0}h2{font-size:17px;margin:0 0 8px}
+p,small{color:#bdbdbd}code{background:#333;border-radius:4px;padding:1px 4px}
+header{margin-bottom:16px}.notice{background:#282828;border-left:3px solid #bbb;padding:12px 16px;border-radius:4px}
+.files,.toolbar,.choices{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}
+label{display:inline-flex;align-items:center;gap:7px}
+input[type=file]{max-width:250px;font:inherit;font-size:13px}
+button,select{border:1px solid #666;border-radius:7px;background:#333;color:#fff;font:inherit;padding:8px 10px;cursor:pointer}
+button:disabled{opacity:.4;cursor:default}button:focus-visible,select:focus-visible{outline:3px solid white;outline-offset:2px}
+button.active{background:#eaeaea;color:#111;border-color:#fff}
+main{display:grid;grid-template-columns:minmax(320px,1.5fr) minmax(270px,.9fr);gap:18px}
+section{background:#242424;border-radius:10px;padding:14px;min-width:0}
+canvas{display:block;max-width:100%;height:auto;background:#090909;border-radius:4px}
+#context{width:100%}#zoom{max-height:67vh;max-width:100%;cursor:crosshair;margin:0 auto}
+#focusframe{font-variant-numeric:tabular-nums;font-weight:650}
+#status{white-space:pre-wrap;padding:9px 12px;background:#303030;border-radius:7px;min-height:24px}
+#evidence{font-family:ui-monospace,monospace;white-space:pre-wrap;background:#1a1a1a;padding:12px;border-radius:6px;font-size:12px;max-height:280px;overflow:auto}
+video{display:none}
+.actions{margin:16px 0;display:flex;gap:9px;flex-wrap:wrap}
+@media(max-width:800px){main{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+<h1>Woah · 39.733 秒人物重叠本机标注</h1>
+<p class="notice">只在本机浏览器打开原始视频；不上传、不联网、不生成源视频截图。输出文件仅记录检测框内 4×4 粗网格标签。
+<strong>单格含有主角不代表整格都可以去保护，不能直接作为算法的像素剔除许可。</strong>
+看不清的格子必须标为“不确定”，不要猜测被遮挡人物的身份。</p>
+<div class="files">
+<label>① 原始视频（未经 Woah 打码） <input type="file" id="videoInput" accept="video/mp4,video/quicktime,video/*"></label>
+<label>② 匿名归属数值报告 <input type="file" id="reportInput" accept=".json,application/json"></label>
+</div>
+<div id="status" role="status">先选择本机视频和归属报告。支持 2026-10-19 的 numeric_report.json 或 analyze_privacy_overlap_evidence.py 输出。</div>
+</header>
+<main>
+<section>
+<h2>原视频原始视角（仅本机显示）</h2>
+<canvas id="context" width="1280" height="720"></canvas>
+<small>原画仅用于理解背景。下面放大目标检测框，点击其中一个格子标注。</small>
+<div class="toolbar">
+<button id="prev" disabled>上一帧</button>
+<strong id="focusframe">未载入风险帧</strong>
+<button id="next" disabled>下一帧</button>
+</div>
+<h2>受保护检测框内 4×4 网格</h2>
+<canvas id="zoom" width="320" height="700" aria-label="点击标注局部网格"></canvas>
+<small>每格为粗区域，透明遮罩是人工标注，不是实际模型 Mask。淡白网格编号从左上角 1 到右下角 16。</small>
+</section>
+<section>
+<h2>选择标注类别，再点击左侧网格</h2>
+<div class="choices" id="choices"></div>
+<div class="actions">
+<button id="clear" disabled>清空本帧标签</button>
+<button id="export" disabled>导出匿名网格标签 JSON</button>
+</div>
+<p id="summary">尚无标注。</p>
+<h2>当前位置的模型原型统计</h2>
+<pre id="evidence">载入报告后显示。</pre>
+<p><strong>如何区分：</strong>只标记源画面中可见的前景。某格同时有主角和后方人物，选“混合/不确定”。不知道受保护身份是否在后方，也选“不确定”。背景不等于原型 Mask 一定应该移除。</p>
+<p>浏览器 seek 不能保证逐帧解码 PTS 完全一致：下方显示目标时间，必要时用播放器逐帧核对；本工具只生成<strong>粗区域人工线索</strong>，不构成逐像素真值。</p>
+</section>
+</main>
+<video id="source" preload="auto" playsinline muted></video>
+<script>
+'use strict';
+(function(){
+const CATEGORIES = Object.freeze({
+ UNREVIEWED:{name:'未审',rgb:'rgba(0,0,0,0)'},
+ PROTAGONIST_VISIBLE:{name:'可见主角',rgb:'rgba(0,188,255,.25)'},
+ PROTECTED_VISIBLE:{name:'可见受保护人物',rgb:'rgba(255,76,79,.3)'},
+ MIXED_UNCERTAIN:{name:'混合/不确定',rgb:'rgba(255,186,0,.3)'},
+ BACKGROUND_VISIBLE:{name:'仅可见背景',rgb:'rgba(100,220,120,.25)'}
+});
+const REQUIRED_SIGNALS=['selected_raw','selected_and_fresh_foreground',
+ 'selected_retained_and_fresh_foreground','selected_retained_with_weak_foreground',
+ 'competing_selected'];
+const OPTIONAL_SIGNALS=['selected_retained_effective','final_merged'];
+const SIGNALS=[...REQUIRED_SIGNALS,...OPTIONAL_SIGNALS];
+const el=id=>document.getElementById(id);
+const video=el('source'), context=el('context'),zoom=el('zoom');
+const ctx=context.getContext('2d'),zctx=zoom.getContext('2d');
+const state={numeric:null,frames:[],index:0,videoURL:null,videoReady:false,mode:'PROTAGONIST_VISIBLE',
+ annotations:new Map(),mediaTimes:new Map(),lastMediaTime:null};
+function status(s){el('status').textContent=s}
+function validFrame(p){
+ return p && Number.isInteger(p.pts_us) && p.pts_us>=39000000 && p.pts_us<=41000000 &&
+ Array.isArray(p.box)&&p.box.length===4&&p.box.every(Number.isFinite)&&
+ p.box[0]>=0&&p.box[1]>=0&&p.box[2]<=160&&p.box[3]<=160&&
+ p.box[0]<p.box[2]&&p.box[1]<p.box[3]&&
+ p.signals && typeof p.signals==='object';
+}
+function normalizeReport(data){
+ let values,commit;
+ if(Array.isArray(data.focus_frames)){
+  commit=data.build_commit||null;
+  values=data.focus_frames.map(p=>({
+   pts_us:p.pts_us,box:p.protected_mask_proto_bbox,
+   signals:p.coarse_4x4_cells||{}
+  }));
+ }else if(data.landscape && Array.isArray(data.landscape.focus_events)){
+  if(data.parity_status !== 'SOURCE_MASK_BIN_PARITY_ONLY_NOT_VISUAL_ACCEPTANCE'){
+   throw Error('横竖屏源坐标归属统计不一致，请先检查诊断包');
+  }
+  commit=data.landscape.build_commit||null;
+  values=data.landscape.focus_events.map(p=>({
+   pts_us:p.pts_us,box:p.selected_bbox_proto,signals:p.grid_by_signal||{}
+  }));
+ }else{throw Error('文件不是受支持的匿名归属数值报告')}
+ values=values.filter(p=>p.pts_us>=39600000&&p.pts_us<=39910000);
+ values.sort((a,b)=>a.pts_us-b.pts_us);
+ if(!values.length||values.length>15||values.some(p=>!validFrame(p)))throw Error('风险帧、PTS 或 160×160 原型检测框缺失/无效');
+ if(new Set(values.map(p=>p.pts_us)).size !== values.length)throw Error('重复风险帧 PTS');
+ for(const f of values){
+  if(!REQUIRED_SIGNALS.every(key=>Array.isArray(f.signals[key])&&f.signals[key].length===16&&
+   f.signals[key].every(v=>Number.isInteger(v)&&v>=0))){
+   throw Error('4×4 区域统计缺失或非整数');
+  }
+ }
+ return {values,commit:typeof commit==='string'&&/^[0-9a-f]{40}$/i.test(commit)?commit:null};
+}
+function protoToSource(box,w,h){
+ const scale=Math.min(640/w,640/h),padX=(640-w*scale)/2,padY=(640-h*scale)/2;
+ return {
+  left:((box[0]*4)-padX)/scale,
+  top:((box[1]*4)-padY)/scale,
+  right:((box[2]*4)-padX)/scale,
+  bottom:((box[3]*4)-padY)/scale
+ };
+}
+function frame(){return state.frames[state.index]}
+function labels(){const f=frame();return state.annotations.get(f.pts_us)}
+function refreshButtons(){
+ const active=state.videoReady&&state.frames.length>0;
+ el('prev').disabled=!active||state.index===0;
+ el('next').disabled=!active||state.index===state.frames.length-1;
+ el('clear').disabled=!active;
+ el('export').disabled=!active||![...state.annotations.values()].some(arr=>arr.some(v=>v!=='UNREVIEWED'));
+}
+function seek(){
+ if(!state.videoReady||!state.frames.length)return;
+ const f=frame();status('目标 PTS '+(f.pts_us/1e6).toFixed(6)+' 秒。正在定位原始视频帧（仅本机）…');
+ state.lastMediaTime=null;
+ const requested=f.pts_us/1e6;
+ if(Math.abs(video.currentTime-requested)<0.0005){draw();return}
+ video.currentTime=requested;
+}
+function draw(){
+ if(!state.videoReady||!frame())return;
+ if(video.readyState<2){status('目标源视频帧尚未完成本地解码，不能据此标注。');return}
+ const f=frame(),w=video.videoWidth,h=video.videoHeight;
+ if(w!==1280||h!==720){
+  status('原视频分辨率是 '+w+'×'+h+'，但这轮源坐标需要 1280×720。请提供对应完整原视频。');
+  state.videoReady=false;refreshButtons();return;
+ }
+ const b=protoToSource(f.box,w,h);
+ if(b.left<0||b.top<0||b.right>w||b.bottom>h){
+  status('检测框映射超出源画面范围，无法安全标注');
+  return;
+ }
+ context.width=w;context.height=h;
+ ctx.drawImage(video,0,0,w,h);
+ ctx.strokeStyle='#ffca58';ctx.lineWidth=2;
+ ctx.strokeRect(b.left,b.top,b.right-b.left,b.bottom-b.top);
+ zoom.width=320;zoom.height=680;
+ zctx.drawImage(video,b.left,b.top,b.right-b.left,b.bottom-b.top,0,0,zoom.width,zoom.height);
+ const choices=labels();
+ zctx.lineWidth=1;
+ for(let i=0;i<16;i++){
+  const row=Math.floor(i/4),col=i%4;
+  const x=col*zoom.width/4,y=row*zoom.height/4,cw=zoom.width/4,ch=zoom.height/4;
+  zctx.fillStyle=CATEGORIES[choices[i]].rgb;zctx.fillRect(x,y,cw,ch);
+  zctx.strokeStyle='rgba(255,255,255,.82)';zctx.strokeRect(x,y,cw,ch);
+  zctx.font='bold 13px system-ui';zctx.lineWidth=3;
+  zctx.strokeStyle='rgba(0,0,0,.8)';zctx.strokeText(String(i+1),x+5,y+16);
+  zctx.fillStyle='#fff';zctx.fillText(String(i+1),x+5,y+16);
+ }
+ el('focusframe').textContent='#'+(state.index+1)+'/'+state.frames.length+' · '+(f.pts_us/1e6).toFixed(6)+'s';
+ el('summary').textContent=Object.keys(CATEGORIES).map(key=>{
+  return CATEGORIES[key].name+'：'+choices.filter(label=>label===key).length;
+ }).join(' / ');
+ status('仅本地解码。目标 PTS '+(f.pts_us/1e6).toFixed(6)+'s，浏览器当前时间 '+video.currentTime.toFixed(6)+'s。'+
+ (state.lastMediaTime===null?'未取得精确解码帧 PTS，请人工核对。':'解码媒体时间 '+state.lastMediaTime.toFixed(6)+'s；不等同于导出视频 PTS。'));
+ el('evidence').textContent='每格按原型 Mask 统计（不是人物归属真值）：\n'+
+ SIGNALS.map(key=>{
+  const arr=f.signals[key];
+  if(!Array.isArray(arr))return key+': 未提供逐格数据（不能当作 0）';
+  return key+':\n'+[0,1,2,3].map(r=>arr.slice(r*4,r*4+4).map(n=>String(n).padStart(3)).join(' ')).join('\n');
+ }).join('\n\n');
+ refreshButtons();
+}
+function displayChoices(){
+ for(const [key,value] of Object.entries(CATEGORIES)){
+  if(key==='UNREVIEWED')continue;
+  const button=document.createElement('button');
+  button.type='button';button.textContent=value.name;button.dataset.category=key;
+  button.onclick=()=>{state.mode=key;highlightChoice()};
+  el('choices').appendChild(button);
+ }
+ highlightChoice();
+}
+function highlightChoice(){
+ for(const b of el('choices').querySelectorAll('button')){
+  b.classList.toggle('active',b.dataset.category===state.mode);
+  b.setAttribute('aria-pressed',String(b.dataset.category===state.mode));
+ }
+}
+el('reportInput').onchange=async()=>{
+ try{
+  const file=el('reportInput').files[0];if(!file)return;
+  if(file.size>2500000)throw Error('数值报告超过 2.5MB，拒绝加载');
+  const result=normalizeReport(JSON.parse(await file.text()));
+  state.numeric=result;state.frames=result.values;state.index=0;
+  state.annotations=new Map(result.values.map(f=>[f.pts_us,Array(16).fill('UNREVIEWED')]));
+  state.mediaTimes=new Map();
+  status('已载入 '+state.frames.length+' 个风险帧，仅包含模型数值统计。版本标记：'+(result.commit||'未声明')+
+  '。版本字段不是原视频与 APK 的加密证明。');
+  if(state.videoReady)seek();
+  refreshButtons();
+ }catch(err){state.numeric=null;state.frames=[];status('数值报告错误：'+err.message);refreshButtons()}
+};
+el('videoInput').onchange=()=>{
+ const file=el('videoInput').files[0];if(!file)return;
+ if(state.videoURL)URL.revokeObjectURL(state.videoURL);
+ state.videoReady=false;state.mediaTimes=new Map();refreshButtons();
+ state.videoURL=URL.createObjectURL(file);video.src=state.videoURL;video.load();
+ status('正在打开本地原始视频，文件不会上传。');
+};
+video.onloadedmetadata=()=>{
+ state.videoReady=video.videoWidth===1280&&video.videoHeight===720&&
+  Number.isFinite(video.duration)&&video.duration>=40.0;
+ if(!state.videoReady){
+  status('视频尺寸 '+video.videoWidth+'×'+video.videoHeight+'，时长 '+video.duration+
+   's；这轮源视频必须是 1280×720 且至少 40 秒的完整原视频。');
+  return;
+ }
+ if(state.frames.length)seek();
+ else status('原视频已载入。请选择匿名归属数值报告。');
+ refreshButtons();
+};
+video.onerror=()=>{
+ state.videoReady=false;refreshButtons();
+ status('原视频无法在当前浏览器本地解码。请检查编码格式，不要使用错误视频进行标注。');
+};
+video.onseeked=()=>{video.pause();draw()};
+video.onloadeddata=()=>{if(state.videoReady&&state.frames.length)draw()};
+if(typeof video.requestVideoFrameCallback==='function'){
+ const callback=(_now,meta)=>{
+  state.lastMediaTime=meta.mediaTime;
+  if(state.videoReady&&state.frames.length){
+   const goal=frame().pts_us/1e6;
+   // Record the browser's decoded media time only for nearby sought frames.
+   // Video timestamps may differ from Woah's export PTS and are not proof.
+   if(Math.abs(meta.mediaTime-goal)<.15)state.mediaTimes.set(frame().pts_us,meta.mediaTime);
+   draw();
+  }
+  video.requestVideoFrameCallback(callback);
+ };
+ video.requestVideoFrameCallback(callback);
+}
+zoom.onclick=event=>{
+ if(!state.videoReady||!frame())return;
+ const rect=zoom.getBoundingClientRect();
+ const x=(event.clientX-rect.left)/rect.width,y=(event.clientY-rect.top)/rect.height;
+ if(x<0||y<0||x>=1||y>=1)return;
+ const col=Math.floor(x*4),row=Math.floor(y*4);
+ labels()[row*4+col]=state.mode;draw();
+};
+el('prev').onclick=()=>{if(state.index>0){state.index--;seek();refreshButtons()}};
+el('next').onclick=()=>{if(state.index<state.frames.length-1){state.index++;seek();refreshButtons()}};
+el('clear').onclick=()=>{if(frame()){state.annotations.set(frame().pts_us,Array(16).fill('UNREVIEWED'));draw()}};
+el('export').onclick=()=>{
+ if(!state.videoReady||!state.numeric)return;
+ const items=state.frames.map(f=>({
+  pts_us:f.pts_us,selected_bbox_proto:f.box,
+  browser_media_time_s:state.mediaTimes.has(f.pts_us)?state.mediaTimes.get(f.pts_us):null,
+  cells:state.annotations.get(f.pts_us).slice()
+ }));
+ const payload={
+  schema:1,purpose:'woah_local_coarse_visual_overlap_annotation',
+  evidence_scope:'HUMAN_COARSE_VISIBLE_REGIONS_NO_VIDEO_NO_PIXEL_MASKS',
+  report_build_commit:state.numeric.commit,
+  source_width:video.videoWidth,source_height:video.videoHeight,
+  source_duration_s:video.duration,
+  manual_source_video_match:'OPERATOR_ASSERTED_NOT_CRYPTOGRAPHICALLY_VERIFIED',
+  visual_privacy_acceptance:'NOT_PROVEN',
+  pixel_carve_authorization:'NEVER',
+  label_definitions:Object.fromEntries(Object.entries(CATEGORIES).map(([k,v])=>[k,v.name])),
+  frames:items
+ };
+ const blob=new Blob([JSON.stringify(payload,null,2)+'\n'],{type:'application/json'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download='woah-local-manual-ownership-labels.json';
+ document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ status('已导出匿名网格标签 JSON。无视频像素、无截图、无原始 Mask；未声明可剔除任何保护区域。');
+};
+displayChoices();
+})();
+</script>
+</body>
+</html>
