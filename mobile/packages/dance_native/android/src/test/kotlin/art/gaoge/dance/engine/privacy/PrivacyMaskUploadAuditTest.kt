@@ -125,6 +125,8 @@ class PrivacyMaskUploadAuditTest {
         assertEquals(listOf(2, null), roots.map { it["mask_contour_pixels_ge_128"] })
         assertEquals(listOf(2, null), roots.map { it["mask_source_sampling_center_pixels_ge_128"] })
         assertEquals(listOf(12, 178), roots.map { it["frames_since_last_observation"] })
+        assertEquals(listOf(false, true), roots.map { it["tracked_fallback_mask_expired"] })
+        assertEquals(15, sample["fallback_observation_age_budget_frames"])
         assertEquals(false, roots[0]["observed"])
         assertEquals(false, roots[1]["mask_present"])
         assertEquals(

@@ -85,7 +85,9 @@ class PrivacyUnknownForegroundSafetyTest {
         selectedMaskOverride: NativeMask? = null,
         foregroundMaskOverride: NativeMask? = null,
         targetState: TrackState = TrackState.ACTIVE,
-        duplicateProtectedEvidence: Boolean = false
+        duplicateProtectedEvidence: Boolean = false,
+        verifiedForegroundTemporalEvidence:
+            VerifiedUnselectedForegroundHistory.Evidence? = null
     ): ResolvedCompositorMasks {
         val protected = selectedMaskOverride ?: selectedMask(selectedValue)
         val front = foregroundMaskOverride ?: if (foregroundWidth == 160) {
@@ -163,6 +165,7 @@ class PrivacyUnknownForegroundSafetyTest {
             freshClassEvidence = evidence,
             preferFreshClassPrimary = true,
             expectedSelectedCount = 1,
+            verifiedForegroundTemporalEvidence = verifiedForegroundTemporalEvidence,
             ptsUs = frame.ptsUs
         )
     }
@@ -376,6 +379,100 @@ class PrivacyUnknownForegroundSafetyTest {
             frame, selectedValue = 160, foregroundMaskOverride = mismatched
         ).privacyMask)
         assertEquals(160, pixel(privacy, 80, 80))
+    }
+
+    @Test
+    fun staleSelectedMaskCannotReviveAfterReacquiringBecomesLost() {
+        val frame = risks[2]
+        val aged = TrackedPerson(
+            id = 1,
+            bbox = frame.unknownBox,
+            mask = selectedMask(220),
+            confidence = 0.8f,
+            observedThisFrame = false,
+            state = TrackState.LOST,
+            missedFrames = 1, // Reset at REACQUIRING -> LOST
+            framesSinceLastObservation = 178
+        )
+        val noFreshDetection = PrivacyOcclusionResolver.resolveMasks(
+            persons = listOf(aged), selectedPersonIds = setOf(1),
+            maxFallbackObservationAgeFrames = 15,
+            preferFreshClassPrimary = false
+        )
+        assertFalse(noFreshDetection.hasPrivacy)
+        assertEquals(null, noFreshDetection.privacyMask)
+        // Recent genuine occlusions remain protected for the current budget.
+        val recent = PrivacyOcclusionResolver.resolveMasks(
+            persons = listOf(aged.copy(
+                state = TrackState.OCCLUDED,
+                framesSinceLastObservation = 12,
+                missedFrames = 200
+            )),
+            selectedPersonIds = setOf(1),
+            maxFallbackObservationAgeFrames = 15,
+            preferFreshClassPrimary = false
+        )
+        assertTrue(recent.hasPrivacy)
+        // Only *real* current observations can restart the output mask.
+        val reobserved = PrivacyOcclusionResolver.resolveMasks(
+            persons = listOf(aged.copy(observedThisFrame = true)),
+            selectedPersonIds = setOf(1),
+            maxFallbackObservationAgeFrames = 15,
+            preferFreshClassPrimary = false
+        )
+        assertTrue(reobserved.hasPrivacy)
+    }
+
+    @Test
+    fun temporallyVerifiedUnselectedInteriorDoesNotDisableUnknownPrivacy() {
+        val frame = risks[2]
+        val current = mask(255, 73, 79, 48, 135)
+        val history = VerifiedUnselectedForegroundHistory.Evidence(
+            trackId = 2,
+            previousMasks = listOf(
+                foregroundMask(255),
+                foregroundMask(255)
+            )
+        )
+        val withoutHistory = assertNotNull(
+            resolve(
+                frame, selectedValue = 160,
+                foregroundMaskOverride = current
+            ).privacyMask
+        )
+        val withHistory = assertNotNull(
+            resolve(
+                frame, selectedValue = 160,
+                foregroundMaskOverride = current,
+                verifiedForegroundTemporalEvidence = history
+            ).privacyMask
+        )
+        // Pixel was never in the current segmentation, but both independently
+        // observed previous instances confidently identified the protagonist.
+        assertEquals(160, pixel(withoutHistory, 83, 80))
+        assertEquals(0, pixel(withHistory, 83, 80))
+        // Unknown person remains protected outside proven protagonist interior.
+        assertEquals(160, pixel(withHistory, 65, 80))
+        val wrongId = assertNotNull(
+            resolve(
+                frame, selectedValue = 160,
+                foregroundMaskOverride = current,
+                verifiedForegroundTemporalEvidence = history.copy(trackId = 5)
+            ).privacyMask
+        )
+        assertEquals(160, pixel(wrongId, 83, 80))
+        val weakHistory = assertNotNull(
+            resolve(
+                frame, selectedValue = 160,
+                foregroundMaskOverride = current,
+                verifiedForegroundTemporalEvidence = history.copy(
+                    previousMasks = listOf(
+                        foregroundMask(255), foregroundMask(0)
+                    )
+                )
+            ).privacyMask
+        )
+        assertEquals(160, pixel(weakHistory, 83, 80))
     }
 
     @Test

@@ -16,8 +16,8 @@ NATIVE = ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/
 RESOLVER = (NATIVE / "privacy/PrivacyOcclusionResolver.kt").read_text(encoding="utf-8")
 EXPORT = (NATIVE / "pipeline/ExportPipeline.kt").read_text(encoding="utf-8")
 RENDERER = (NATIVE / "render/GlRenderer.kt").read_text(encoding="utf-8")
-RENDERER = (NATIVE / "render/GlRenderer.kt").read_text(encoding="utf-8")
 AUDIT = (NATIVE / "privacy/PrivacyMaskUploadAudit.kt").read_text(encoding="utf-8")
+HISTORY = (NATIVE / "privacy/VerifiedUnselectedForegroundHistory.kt").read_text(encoding="utf-8")
 
 
 @dataclass(frozen=True)
@@ -126,7 +126,7 @@ class PrivacyCoverageContractTest(unittest.TestCase):
         self.assertIn("candidateFreshEvidence?.selectionClass == PrivacySelectionClass.UNSELECTED", RESOLVER)
         self.assertIn("(unselected - selected) / 255f >= MIN_STALE_RAW_PROBABILITY_ADVANTAGE", RESOLVER)
         self.assertIn("mask.samplingRect != selectedMask.samplingRect", RESOLVER)
-        self.assertIn("unknownForegroundCore ?: continue", RESOLVER)
+        self.assertIn("finalUnknownForegroundCore ?: continue", RESOLVER)
         self.assertNotIn("FollowReservedLostRecovery", RESOLVER)
 
     def test_real_coverage_warnings_are_not_hidden_or_weakened(self):
@@ -210,6 +210,34 @@ class PrivacyCoverageContractTest(unittest.TestCase):
                         RENDERER.index("val renderGlError = GLES20.glGetError()"))
         self.assertLess(RENDERER.index("throw IllegalStateException("),
                         RENDERER.index('event = "FULL_BODY_SOURCE_MASK_UPLOAD_AUDIT"'))
+
+    def test_observation_age_prevents_stale_mask_resurrection_across_states(self):
+        self.assertIn(
+            "person.framesSinceLastObservation <= maxFallbackObservationAgeFrames",
+            RESOLVER
+        )
+        self.assertIn("person.observedThisFrame", RESOLVER)
+        self.assertIn("tracked_fallback_mask_expired", AUDIT)
+        self.assertIn("fallback_observation_age_budget_frames", AUDIT)
+        self.assertIn("maxFallbackObservationAgeFrames = maxFallbackObservationAgeFrames", RENDERER)
+
+    def test_temporal_protagonist_proof_is_root_scoped_not_identity_handoff(self):
+        self.assertIn("priorEvidenceAndRecord(", EXPORT)
+        self.assertIn("verifiedForegroundTemporalEvidence = verifiedForegroundTemporalEvidence", RENDERER)
+        self.assertIn("verifiedForegroundTemporalEvidence =", EXPORT)
+        self.assertIn("buildCorroboratedTemporalForegroundCore(", RESOLVER)
+        self.assertIn("targetFreshEvidence?.residualTrackIds?.isEmpty() == true", RESOLVER)
+        self.assertIn("conservativeUnknownTarget &&", RESOLVER)
+        self.assertIn("corroboratingUnselectedTrackId != null", RESOLVER)
+        self.assertIn("unknownForegroundCore != null", RESOLVER)
+        self.assertIn("TEMPORAL_FOREGROUND_HISTORY_THRESHOLD_BYTE = 192", RESOLVER)
+        self.assertIn("MaskPrivacyProcessor.erode(candidate, radius = 1)", RESOLVER)
+        self.assertIn("ptsUs - prior.ptsUs <= MAX_HISTORY_AGE_US", HISTORY)
+        self.assertIn("prior.trackId == verified.id", HISTORY)
+        self.assertIn("MIN_CURRENT_BBOX_IOU = 0.60f", HISTORY)
+        self.assertIn("ArrayDeque<Sample>(2)", HISTORY)
+        self.assertIn("!selectedPersonIds.contains(it.id)", HISTORY)
+        self.assertNotIn("privacySelectedTrackIds.add", HISTORY)
 
     def test_missing_observed_full_body_mask_fails_export_before_source_render(self):
         self.assertIn("observedSelectedWithoutMasks(", RESOLVER)

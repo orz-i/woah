@@ -86,6 +86,7 @@ object PrivacyMaskUploadAudit {
         renderWidth: Int,
         renderHeight: Int,
         tightMask: Boolean,
+        maxFallbackObservationAgeFrames: Int = 15,
         uploadedPrivacySamplingRect: FloatRect? = null,
         uploadedOccluderSamplingRect: FloatRect? = null
     ): Map<String, Any?> {
@@ -102,6 +103,10 @@ object PrivacyMaskUploadAudit {
                         track.bbox.left, track.bbox.top, track.bbox.right, track.bbox.bottom
                     ),
                     "mask_present" to (track.mask != null),
+                    "tracked_fallback_mask_expired" to (
+                        !track.observedThisFrame &&
+                            track.framesSinceLastObservation > maxFallbackObservationAgeFrames
+                    ),
                     "mask_contour_pixels_ge_128" to contourPixels(track.mask),
                     "mask_source_sampling_center_pixels_ge_128" to
                         sourceSampledContourCenters(
@@ -115,6 +120,7 @@ object PrivacyMaskUploadAudit {
             "render_width" to renderWidth,
             "render_height" to renderHeight,
             "tight_mask" to tightMask,
+            "fallback_observation_age_budget_frames" to maxFallbackObservationAgeFrames,
             "selected_root_count" to selectedPersonIds.size,
             "selected_root_masks" to selectedRoots,
             "uploaded_privacy_mask_present" to (uploadedPrivacyMask != null),

@@ -516,6 +516,8 @@ class GlRenderer : FrameRenderer {
         preferFreshPrivacyClassPrimary: Boolean = false,
         expectedSelectedPrivacyCount: Int = 0,
         maxFallbackObservationAgeFrames: Int = 15,
+        verifiedForegroundTemporalEvidence:
+            art.gaoge.dance.engine.privacy.VerifiedUnselectedForegroundHistory.Evidence? = null,
         conservativePrimaryUnobservedOccluderPolicy: Boolean = false,
         additionalResolvedPrivacy: art.gaoge.dance.engine.privacy.ResolvedCompositorMasks? = null,
         faceStickerPlacements: List<FaceStickerPlacement> = emptyList(),
@@ -711,6 +713,7 @@ class GlRenderer : FrameRenderer {
             preferFreshClassPrimary = preferFreshPrivacyClassPrimary,
             expectedSelectedCount = expectedSelectedPrivacyCount,
             maxFallbackObservationAgeFrames = maxFallbackObservationAgeFrames,
+            verifiedForegroundTemporalEvidence = verifiedForegroundTemporalEvidence,
             conservativeUnobservedOccluderPolicy = conservativePrimaryUnobservedOccluderPolicy,
             jobId = cropClarityJobId
         )
@@ -951,6 +954,7 @@ class GlRenderer : FrameRenderer {
                         renderWidth = width,
                         renderHeight = height,
                         tightMask = tightMask,
+                        maxFallbackObservationAgeFrames = maxFallbackObservationAgeFrames,
                         uploadedPrivacySamplingRect = privacySamplingRect,
                         uploadedOccluderSamplingRect = occluderSamplingRect
                     )

@@ -478,6 +478,11 @@ class ExportPipeline(
                 }
                 var lastPresentationNs = -1L
                 val trackManager = TrackManager()
+                // Export-scoped only: two preceding, independently observed
+                // protagonist masks can support conservative foreground
+                // interiors. It never carries protected privacy identities.
+                val verifiedForegroundHistory =
+                    art.gaoge.dance.engine.privacy.VerifiedUnselectedForegroundHistory()
                 val reframeFollower = art.gaoge.dance.engine.camera.SmoothFollower()
                 val reframeOcclusionProxyStabilizer =
                     art.gaoge.dance.engine.camera.OcclusionProxyStabilizer()
@@ -1386,6 +1391,21 @@ class ExportPipeline(
                             tracked
                         }
 
+                        val verifiedForegroundTemporalEvidence = if (
+                            allowFreshFullBodyClassPrimary &&
+                            fullBodyPersonIds.isNotEmpty() &&
+                            faceOnlyPersonIds.isEmpty()
+                        ) {
+                            verifiedForegroundHistory.priorEvidenceAndRecord(
+                                persons = trackedList,
+                                selectedPersonIds = fullBodyPersonIds,
+                                ptsUs = ptsUs,
+                                preferredUnselectedId = request.follow.targetPersonId?.toInt()
+                            )
+                        } else {
+                            null
+                        }
+
                         val faceOnlyFrameResult = faceOnlyPrivacyProcessor?.let { processor ->
                             val useCpuReferenceGeometry =
                                 art.gaoge.dance.engine.BuildConfig.DEBUG && cpuReferenceTrackedForFace != null
@@ -1886,6 +1906,8 @@ class ExportPipeline(
                                         preferFreshPrivacyClassPrimary = preferFreshPrivacyClassPrimary,
                                         expectedSelectedPrivacyCount = selectedIds.size,
                                         maxFallbackObservationAgeFrames = trackManager.getMaxMissedFrames(),
+                                        verifiedForegroundTemporalEvidence =
+                                            verifiedForegroundTemporalEvidence,
                                         additionalResolvedPrivacy = faceOnlyFrameResult?.resolvedPrivacy,
                                         faceStickerPlacements = faceOnlyFrameResult?.stickerPlacements.orEmpty(),
                                         tightMask = shouldUseTightFullBodyMaskForExport(selectedIds),
@@ -2507,6 +2529,8 @@ class ExportPipeline(
                                     preferFreshPrivacyClassPrimary = preferFreshPrivacyClassPrimary,
                                     expectedSelectedPrivacyCount = selectedIds.size,
                                     maxFallbackObservationAgeFrames = trackManager.getMaxMissedFrames(),
+                                    verifiedForegroundTemporalEvidence =
+                                        verifiedForegroundTemporalEvidence,
                                     additionalResolvedPrivacy = faceOnlyFrameResult?.resolvedPrivacy,
                                     faceStickerPlacements = faceOnlyFrameResult?.stickerPlacements.orEmpty(),
                                     tightMask = shouldUseTightFullBodyMaskForExport(selectedIds),
