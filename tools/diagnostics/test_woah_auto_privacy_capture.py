@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from tools.diagnostics import woah_auto_privacy_capture as capture
 
@@ -118,6 +119,61 @@ class WoahAutomaticPrivacyCollectorTest(unittest.TestCase):
                 output = Path(directory) / "exists.zip"
                 output.write_bytes(b"not zipped")
                 capture.prepare(video, None, None, path, output, 0., "ffmpeg", "ffprobe")
+
+    def test_ffmpeg_uses_dense_output_pts_without_legacy_vsync(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            video = root / 'fixture.mp4'
+            video.write_bytes(b'placeholder video')
+            commands = []
+            indices = [1189, 1192, 1197]
+
+            def simulate_ffmpeg(command):
+                commands.append(command)
+                # Reproduce a Windows FFmpeg build without -vsync support:
+                # if the old option is present, fail rather than writing PNGs.
+                if '-vsync' in command or '-fps_mode' in command:
+                    raise ValueError("Unrecognized option 'vsync'")
+                pattern = command[-1]
+                for number in range(len(indices)):
+                    Path(pattern.replace('%03d', f'{number:03d}')).write_bytes(
+                        b'\x89PNG\r\n\x1a\n' + b'test frame payload' * 5
+                    )
+                return ''
+
+            with patch.object(capture, 'run', side_effect=simulate_ffmpeg):
+                paths = capture.ffmpeg_extract(
+                    video, indices, root / 'review', 'ffmpeg.EXE',
+                    (412, 205, 361, 455),
+                )
+            self.assertEqual(len(paths), len(indices))
+            cmd = commands[0]
+            self.assertNotIn('-vsync', cmd)
+            self.assertNotIn('-fps_mode', cmd)
+            self.assertEqual(cmd[cmd.index('-r') + 1], '1')
+            self.assertEqual(
+                cmd[cmd.index('-vf') + 1],
+                capture.make_filter(indices, (412, 205, 361, 455)) + ',setpts=N/TB'
+            )
+            self.assertTrue(all(p.stat().st_size >= 60 for p in paths))
+
+    def test_ffmpeg_refuses_misaligned_frame_counts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            video = root / 'fixture.mp4'
+            video.write_bytes(b'placeholder video')
+            def emit_two_frames(command):
+                for number in range(2):
+                    Path(command[-1].replace('%03d', f'{number:03d}')).write_bytes(
+                        b'\x89PNG\r\n\x1a\n' + b'payload' * 15
+                    )
+                return ''
+            with patch.object(capture, 'run', side_effect=emit_two_frames):
+                with self.assertRaisesRegex(ValueError, 'extracted 2 frames, expected 3'):
+                    capture.ffmpeg_extract(
+                        video, [1189, 1192, 1197], root / 'review',
+                        'ffmpeg.EXE', None,
+                    )
 
     def test_generated_review_html_references_only_captured_relative_images(self):
         fragment = capture.generate_index({

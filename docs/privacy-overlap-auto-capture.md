@@ -27,6 +27,30 @@ Prerequisites: Python 3.9+ launcher `py -3`, and both
 `ffmpeg` / `ffprobe` visible on PATH. No OpenCV, Pillow, Gradle,
 Android SDK, or network access is needed.
 
+### Windows FFmpeg `Unrecognized option 'vsync'` compatibility fix
+
+The first distribution of the standalone kit used `-vsync 0` when
+extracting the selected PNG frames. Some Windows FFmpeg executables
+reject this option, producing `WOAH_AUTO_PRIVACY_CAPTURE=FAIL` despite
+working source/export videos. **Use the updated v2 ZIP and discard
+or replace the old kit folder**; no APK rebuild or new original-video
+export is required. The fixed script contains no `-vsync` or
+`-fps_mode` options. Instead, the FFmpeg filter selects the *original
+source frame indices* and uses `setpts=N/TB` to assign consecutive
+synthetic one-second output times to the extracted stills, with
+`-r 1`. This prevents default CFR output frame duplication/dropping
+and does not modify the source frame indices or the per-frame PTS
+retained from FFprobe in `manifest.json`.
+
+An actual FFmpeg 7.1.5 synthetic 3-video regression produced all
+33 PNGs **byte-identical** to the original `-vsync 0` capture,
+with identical manifest content and a valid ZIP CRC. Added mock tests
+reject any command that still contains `-vsync` and preserve the
+existing strict extracted-frame count requirement. If an unusual
+third-party `ffmpeg.EXE` also rejects the standard `setpts` filter or
+`-r`, identify the executable with `where ffmpeg` and `ffmpeg -version`
+rather than bypassing alignment checks.
+
 If using the repository script directly, supply the existing numerical
 report locally; the user's report is deliberately **not committed**
 to this repository:

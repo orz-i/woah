@@ -196,9 +196,17 @@ def make_filter(indices: list[int], crop: tuple[int, int, int, int] | None) -> s
 def ffmpeg_extract(video: Path, indices: list[int], dst: Path, ffmpeg: str,
                    crop: tuple[int,int,int,int] | None) -> list[Path]:
     dst.mkdir(parents=True, exist_ok=False)
+    # Keep exact source-frame index selection, then assign a dense, synthetic
+    # 1 fps timestamp to *only* the chosen still frames. This prevents FFmpeg's
+    # default CFR output synchronization from duplicating/dropping pictures
+    # across the large gaps between source PTS values. Older/alternate Windows
+    # builds may reject -vsync, while -r and the setpts filter are portable.
+    # PNG timestamps are not evidence: original per-frame PTS is sourced from
+    # ffprobe and stored separately in the manifest.
     cmd = [ffmpeg, '-nostdin', '-hide_banner', '-loglevel', 'error', '-y',
            '-i', str(video), '-map', '0:v:0', '-an', '-sn', '-dn',
-           '-vf', make_filter(indices, crop), '-vsync', '0', '-start_number', '0',
+           '-vf', make_filter(indices, crop) + ',setpts=N/TB',
+           '-r', '1', '-start_number', '0',
            '-f', 'image2', str(dst / 'frame_%03d.png')]
     run(cmd)
     files = sorted(dst.glob('frame_*.png'))
