@@ -1,97 +1,49 @@
-# FULL_BODY 39.7s: bounded YOLO NMS visibility shadow (2026-10-20)
+# FULL_BODY 39.7s — YOLO NMS visible-mask counterfactual (closed)
 
-**Status:** diagnostic-only NMS counterfactual; **NO** privacy composition or
-production detection change. **NOT SEALED / NOT VISUALLY ACCEPTED.** Starting
-branch HEAD: `d2acff26c71ab8b86782313088f96603e3c661fd`.
+**Decision (2026-10-20): RETIRED AS CAUSE OF THIS FIXTURE.**
+The experiment shipped only as a Debug shadow in `3b352908eb15b30fa95fd9c4caafdb12f009cbff`. Production detections and privacy rendering were unchanged. The follow-up on real Android exports proves that changing NMS's active-mask threshold from 1 to 128 **does not recover any additional detection candidate** in the entire focus window. It does not prove that the original final-video privacy is correct. **FULL_BODY visual acceptance remains NOT_PROVEN; sealing and master merge remain BLOCKED.**
 
-## Existing evidence and new mechanism
+## Paired device evidence
 
-The 3b4ba5a Android dual-mode run confirmed 1391-frame parity and persistent
-false grey masking on the protagonist at 39.733–39.900s. The selected unknown
-instance is protected and an independently observed selected ID1 exists near
-that area. The current selected-vs-unselected strong foreground intersection
-is zero from 39.800s onward; extending the protagonist's retained bounding
-box or lowering carve thresholds cannot prove the missing pixels' ownership.
+Both ordinary diagnostic bundles declare `git_commit_sha=3b352908eb15b30fa95fd9c4caafdb12f009cbff`, Android API 37, an identical 1280×720 / 30 fps source, and independent completed jobs:
 
-Code review reveals **an independent suppression mechanism**:
-`YoloMaskDecoder.maskAwareNms` previously counted every nonzero byte in the
-soft Mask for mask IoU. A YOLO sigmoid byte of 1–127 is low-probability, but
-can cause suppression alongside a genuine >=128 foreground core. Two
-overlapping candidate boxes can thus be treated as duplicates even when
-their stronger segmented foregrounds are disjoint. Existing hard 0/255 NMS
-tests never exercised this contrast.
+| Mode | Source ZIP | Job ID | Output | Frames decoded/rendered/encoded |
+| --- | --- | --- | --- | --- |
+| Landscape | `woah_diag_20261020_091700_20261020_090956_294440ff.zip` | `job_1792487406903` | 1280×720 | 1391/1391/1391 |
+| Portrait | `woah_diag_20261020_092457_20261020_090956_294440ff.zip` | `job_1792487842110` | 810×1440 | 1391/1391/1391 |
 
-This is a general model-postprocessing hypothesis, **not yet the proven cause
-of the 39.8s defect**. Even a newly retained detection need not belong to the
-protagonist and might be a protected passerby. It must **never** be used for
-automatic identity promotion or carving without independent pixel truth.
+Only job-scoped JSONL aggregate events, manifest, and pipeline summary were read. The ZIPs also contain raw model `.f32s`, `.rgba`, and YUV sample files; **none of those media/tensor files were opened, rendered, copied to the Git repository, or used for pixel-ownership conclusions**. The second archive also contains historical events; the comparison explicitly filters by the actual `job_id`.
 
-## Implementation boundaries
+### Actual per-frame NMS experiment (identical across both modes)
 
-- `YoloMaskDecoder` has a configurable **comparison-only** active-byte
-  threshold. **Production default remains 1**, and the original
-  threshold-1 hot loops are preserved exactly, with no change to candidate
-  selection or returned Mask bytes.
-- The second NMS evaluation at active threshold **128** is executed only
-  with `BuildConfig.DEBUG`, a nonempty diagnostic job ID and PTS
-  **39.600–39.910 seconds**. The production `kept` list is unchanged;
-  only its count and model-space geometry are compared to the shadow.
-  No second inference or source image capture occurs.
-- The event `YOLO_NMS_VISIBLE_THRESHOLD_SHADOW` records current job ID,
-  PTS, raw candidate count, legacy/strong kept counts, shadow-only and
-  legacy-only counts, **at most six** shadow-only candidate model-space
-  bounding boxes and confidences, and a truncation flag. It emits
-  **no RGB, raw masks, tensor arrays, image crops, identity labels or
-  background media**.
-- `analyze_privacy_overlap_evidence.py` validates the numeric schema,
-  refuses impossible candidate partitions, isolates the current job from
-  historical JSONL shards, checks landscape/portrait source-space equality
-  and reports `YOLO_NMS_SHADOW`. Historical bundles without the new event
-  remain readable and show `NMS_SHADOW_NOT_PRESENT`, never an invented
-  PASS.
-- A synthetic Kotlin counterexample distinguishes two disjoint strong
-  foreground cores with shared low-probability tails. A strong duplicate
-  must still be suppressed at 128; a randomized bounded-support test
-  checks full-scan parity at 1, 128 and 224. Android native compilation is
-  needed to execute these tests.
+| Source PTS (seconds) | YOLO raw candidates | Legacy NMS kept, byte >=1 | Counterfactual NMS kept, byte >=128 | Counterfactual-only candidates |
+| ---: | ---: | ---: | ---: | ---: |
+| 39.600 | 58 | 6 | 6 | 0 |
+| 39.633 | 55 | 6 | 6 | 0 |
+| 39.667 | 56 | 6 | 6 | 0 |
+| 39.700 | 50 | 6 | 6 | 0 |
+| 39.733 | 56 | 7 | 7 | 0 |
+| 39.767 | 63 | 7 | 7 | 0 |
+| 39.800 | 70 | 8 | 8 | 0 |
+| 39.833 | 61 | 8 | 8 | 0 |
+| 39.867 | 60 | 8 | 8 | 0 |
+| 39.900 | 62 | 7 | 7 | 0 |
 
-## Expected next decision
+Each of the **20** shadow comparison events (`10 frames × 2 outputs`) also reports `legacy_only_count=0`, `strong_only_geometry=[]`, and `does_not_change_rendering=true`. Thus both policies kept the **same candidate instances**, not merely equal candidate counts. The 10 events' scalar records match exactly across modes when excluding job ID.
 
-1. Build a Debug APK from **this commit** using the existing Windows Android
-   workstation. Export the **same authorized source** once in portrait and
-   landscape, using the established identities/settings. Collect only the
-   normal two numeric diagnostic ZIPs; do not upload original video,
-   unmasked screenshots or raw masks.
-2. Run the existing analyzer from the repository root, writing the report
-   **outside the Git tree**:
+Source-space paired equivalence is also intact: **1391/1391** identical production Track signatures, **1391/1391** privacy input signatures, **41/41** unknown foreground overlap audits, and **11/11** final-tail GL-input audits (ignoring intentional crop clarity scale). The one `PRIVACY_COVERAGE_DROP` remains at 39.733333s: selected raw area 82, effective 65, ratio **0.79268295** (79.27%). No severe undercoverage/fail-closed event occurred in these scoped export logs, but this cannot establish that a protected person's pixels were never exposed.
 
-   ```powershell
-   py -3 tools\diagnostics\analyze_privacy_overlap_evidence.py `
-     --landscape "D:\Diag\landscape.zip" `
-     --portrait "D:\Diag\portrait.zip" `
-     --output "D:\Diag\nms-shadow-report.json"
-   ```
+At **46.333333s**, selected root ID1 was unobserved for **178 frames** and its fallback Mask was expired. Actual GL-upload source-visible privacy-mask sample count was **23** in both modes, as previously observed. This is **log-level non-regression**, not final-video visual acceptance.
 
-3. If `strong_only_count=0` in all six risk frames, **retire this hypothesis**
-   without modifying production NMS. If there are additional strong-only
-   detections, inspect anonymous geometry and source-frame pixel identity
-   **independently**, with the observed protected ID1 and all unknowns
-   retaining protection. Counterfactual candidate counts, source-space
-   mode parity and synthetic tests alone never authorize a privacy cut.
-4. Recheck protected final-video 39.7–39.9s and 46s tail after any actual
-   compositor or inference change, with privacy-safe automated capture only
-   if new visual evidence is essential.
+## Engineering disposition
 
-## Native toolchain and seal gate
+The soft-mask-tail hypothesis was scientifically plausible: counting all nonzero sigmoid mask bytes in IoU can merge two nearby candidates whose >=128 foreground cores differ. Kotlin synthetic tests at the experiment checkpoint demonstrated that mechanism. It is **not an effective explanation for the current real clip**, as directly falsified by the zero-difference device comparison.
 
-This Mac had no JDK/Android SDK. An isolated Homebrew OpenJDK17/SDK setup
-was attempted through tmux, but prerequisite downloads remained stalled;
-the job was stopped without installing the runtime. This is an environment
-gate, **not** a native test pass. Kotlin JVM tests and APK compilation must
-run on a provisioned Android build machine.
+- **Retire all Android runtime shadow machinery**, including the second per-frame NMS run, its threshold parameter/hot-loop branches, Debug event emission, and temporary native synthetic comparison tests. Restore `YoloMaskDecoder`, `YoloLiteRtTensorAdapter`, `YoloLiteRtSegmenter` and `YoloMaskAwareNmsTest` exactly to their contents preceding `3b35290`. The observed production NMS threshold remains its historical nonzero-byte rule.
+- Retain a **read-only, numeric-only historical parser and tests** for `YOLO_NMS_VISIBLE_THRESHOLD_SHADOW` in `tools/diagnostics/analyze_privacy_overlap_evidence.py`, so archived device ZIPs can still be independently verified. This parser does not modify production code and never reports a visual privacy PASS.
+- Preserve earlier raw YOLO top-support diagnostics, conservative unknown SELECTED masking, GL fail-closed, selection isolation, and 46-second observation-age mask expiry. Do not widen YOLO boxes, lower mask thresholds, clear selected roots, or infer ownership from motion/appearance.
+- No repeat export for NMS is necessary. Future work must obtain genuinely **independent pixel/instance evidence** in the overlap (including protection of the real selected person) before any proposed unmasking. A model- or correspondence-based route must demonstrate zero protected-person false clearing under ambiguous similar-attire crossings, and pass final output video review.
 
-The 46-second observed-age expiration remains unchanged. The earlier
-39.733s coverage warning and protagonist overmask remain. Release performance,
-Crop Clarity visual QA and final-output privacy review still block full
-phase sealing and master merge. This shadow is a **single bounded decision
-experiment**, not the start of indefinite instrumentation.
+## Sealing / merge gate
+
+**NOT READY.** 39.733–39.900s protagonist overmask remains unresolved; model-level raw upper-body support was weak and the NMS alternative has been falsified. Real protected final-output review of that region and 46s, Crop Clarity Release OFF/ON benchmark and image quality review, and complete Android native/CI verification remain outstanding. No inference, GL output, follow-camera, or privacy-class change is authorized by this diagnostic experiment. No push/master merge is part of this retirement.

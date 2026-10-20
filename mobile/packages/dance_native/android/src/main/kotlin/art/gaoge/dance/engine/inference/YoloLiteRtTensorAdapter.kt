@@ -74,8 +74,7 @@ class YoloLiteRtTensorAdapter(
         confThreshold: Float = 0.25f,
         iouThreshold: Float = 0.50f,
         stageTimingsMs: MutableMap<String, Long>? = null,
-        captureRawTopSupportAudit: Boolean = false,
-        nmsShadowStats: MutableMap<String, Any?>? = null
+        captureRawTopSupportAudit: Boolean = false
     ): List<PersonDetection> {
         val candidateStartNs = System.nanoTime()
         val candidates = collectCandidates(
@@ -99,8 +98,7 @@ class YoloLiteRtTensorAdapter(
             preprocess = preprocess,
             iouThreshold = iouThreshold,
             stageTimingsMs = stageTimingsMs,
-            captureRawTopSupportAudit = captureRawTopSupportAudit,
-            nmsShadowStats = nmsShadowStats
+            captureRawTopSupportAudit = captureRawTopSupportAudit
         )
     }
 
@@ -200,8 +198,7 @@ class YoloLiteRtTensorAdapter(
         preprocess: PreprocessResult,
         iouThreshold: Float,
         stageTimingsMs: MutableMap<String, Long>? = null,
-        captureRawTopSupportAudit: Boolean = false,
-        nmsShadowStats: MutableMap<String, Any?>? = null
+        captureRawTopSupportAudit: Boolean = false
     ): List<PersonDetection> {
         // 2. Perform Mask-Aware Non-Maximum Suppression (NMS)
         val nmsStartNs = System.nanoTime()
@@ -221,38 +218,6 @@ class YoloLiteRtTensorAdapter(
         )
         stageTimingsMs?.set("yoloMaskDecode", nmsTimings.maskDecodeNs / 1_000_000)
         stageTimingsMs?.set("yoloMaskIouScan", nmsTimings.maskIouNs / 1_000_000)
-
-        if (nmsShadowStats != null) {
-            // Research-only counterfactual. Both NMS paths see the exact same
-            // LiteRT candidate tensors. The production `kept` and all privacy
-            // classes/render masks remain from the historical byte>=1 path.
-            val strongKept = YoloMaskDecoder.maskAwareNms(
-                candidates = candidates,
-                protoView = protoView,
-                bboxIouThreshold = iouThreshold,
-                maskIouThreshold = YoloMaskDecoder.DEFAULT_MASK_IOU_THRESHOLD,
-                inputSize = preprocess.inputSize,
-                protoSize = PROTO_SIZE,
-                activeByteThreshold = 128
-            ).first
-            val strongOnly = strongKept.filter { candidate -> kept.none { it === candidate } }
-            val legacyOnly = kept.filter { candidate -> strongKept.none { it === candidate } }
-            nmsShadowStats.putAll(mapOf(
-                "raw_candidate_count" to candidates.size,
-                "legacy_kept_count" to kept.size,
-                "strong_kept_count" to strongKept.size,
-                "strong_only_count" to strongOnly.size,
-                "legacy_only_count" to legacyOnly.size,
-                "strong_only_geometry" to strongOnly.take(6).map { candidate ->
-                    mapOf(
-                        "bbox_model" to listOf(candidate.x1, candidate.y1, candidate.x2, candidate.y2),
-                        "confidence" to candidate.confidence
-                    )
-                },
-                "strong_only_geometry_truncated" to (strongOnly.size > 6),
-                "does_not_change_rendering" to true
-            ))
-        }
 
         // 3. Process kept detections
         val materializeStartNs = System.nanoTime()

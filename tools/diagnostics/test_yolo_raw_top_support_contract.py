@@ -31,22 +31,19 @@ class YoloRawTopSupportContractTest(unittest.TestCase):
         for prohibited in ("Bitmap", "writeBytes", "FileOutputStream", "MediaCodec"):
             self.assertNotIn(prohibited, probe)
 
-    def test_nms_counterfactual_never_mutates_production_instances(self):
+    def test_retired_nms_visibility_shadow_is_not_in_android_runtime(self):
         decoder = (ANDROID / "inference/YoloMaskDecoder.kt").read_text()
         adapter = (ANDROID / "inference/YoloLiteRtTensorAdapter.kt").read_text()
         segmenter = (ANDROID / "inference/YoloLiteRtSegmenter.kt").read_text()
-        resolver = (ANDROID / "privacy/PrivacyOcclusionResolver.kt").read_text()
-        self.assertIn("activeByteThreshold: Int = 1", decoder)
-        self.assertIn("activeByteThreshold = 128", adapter)
+        # Device A/B found zero difference between the NMS candidate sets.
+        # Do not keep the second inference-postprocess loop or silently change
+        # the historical production NMS pixel threshold when retiring it.
+        self.assertNotIn("activeByteThreshold", decoder)
+        self.assertNotIn("nmsShadowStats", adapter)
+        self.assertNotIn("YOLO_NMS_VISIBLE_THRESHOLD_SHADOW", segmenter)
+        self.assertIn("if (a != 0 && b != 0) intersection++", decoder)
+        self.assertIn("if ((a or b) != 0) union++", decoder)
         self.assertIn("val (kept, maskCache) = YoloMaskDecoder.maskAwareNms(", adapter)
-        self.assertIn("val strongOnly = strongKept.filter", adapter)
-        self.assertIn("does_not_change_rendering", adapter)
-        self.assertIn("nmsShadowStats: MutableMap<String, Any?>? = null", adapter)
-        self.assertIn("timestampUs in 39_600_000L..39_910_000L", segmenter)
-        self.assertIn("!diagnosticJobId.isNullOrBlank()", segmenter)
-        self.assertIn("YOLO_NMS_VISIBLE_THRESHOLD_SHADOW", segmenter)
-        self.assertNotIn("NMS_VISIBLE_THRESHOLD_SHADOW", resolver)
-        self.assertNotIn("nmsShadowStats", resolver)
 
     def test_existing_selected_fallback_and_renderer_veto_remain_in_place(self):
         resolver = (ANDROID / "privacy/PrivacyOcclusionResolver.kt").read_text()
