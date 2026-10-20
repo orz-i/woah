@@ -50,7 +50,8 @@ class PrivacyUnknownForegroundPixelAuditTest {
             temporalCarve = temporal,
             effectiveSelected = effective,
             mergedPrivacy = merged,
-            competingSelected = listOf(anotherSelected)
+            competingSelected = listOf(anotherSelected),
+            strongVetoSelected = listOf(anotherSelected)
         )
     }
 
@@ -81,6 +82,15 @@ class PrivacyUnknownForegroundPixelAuditTest {
         assertEquals(52, totals["final_merged"])
         assertEquals(20, totals["final_merged_and_fresh_foreground"])
         @Suppress("UNCHECKED_CAST")
+        val strong = result["strong_threshold_totals"] as Map<String, Int>
+        assertEquals(32, strong["selected_and_fresh_ge224"])
+        assertEquals(32, strong["selected_and_observed_ge224"])
+        assertEquals(32, strong["selected_and_both_ge192"])
+        assertEquals(32, strong["selected_and_both_ge224"])
+        assertEquals(4, strong["selected_and_both_ge224_vetoed_other"])
+        assertEquals(28, strong["selected_and_both_ge224_without_other"])
+        assertEquals(1, result["strong_veto_selected_mask_count"])
+        @Suppress("UNCHECKED_CAST")
         val grid = result["grid_by_signal"] as Map<String, List<Int>>
         assertEquals(listOf(4, 4, 0, 0), grid.getValue("fresh_foreground").take(4))
         assertEquals(listOf(4, 4, 4, 4), grid.getValue("selected_raw").take(4))
@@ -110,6 +120,21 @@ class PrivacyUnknownForegroundPixelAuditTest {
         assertEquals(32, outside["selected_retained_effective"])
         assertEquals(8, outside["selected_and_approved_carve"])
         assertEquals(8, outside["selected_and_temporal_carve"])
+    }
+
+    @Test
+    fun strictForegroundEvidenceCountsNeverInferStrongPixelsFromWeakObservation() {
+        val weakObserved = mask { _, _ -> 100 }
+        val result = PrivacyUnknownForegroundPixelAudit.summarize(
+            fixture().copy(foregroundObserved = weakObserved)
+        )
+        assertEquals(true, result["valid"])
+        @Suppress("UNCHECKED_CAST")
+        val strong = result["strong_threshold_totals"] as Map<String, Int>
+        assertEquals(32, strong["selected_and_fresh_ge224"])
+        assertEquals(0, strong["selected_and_observed_ge224"])
+        assertEquals(0, strong["selected_and_both_ge224"])
+        assertEquals(0, strong["selected_and_both_ge224_without_other"])
     }
 
     @Test

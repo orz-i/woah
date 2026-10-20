@@ -51,6 +51,26 @@ internal object StrongObservedForegroundCarve {
             gate.normalizedForegroundFootDelta >= 0.50f &&
             gate.freshDepthCoreIntersectionPixels >= MIN_ERODED_CORE_PIXELS
 
+    /**
+     * DEBUG audit only: report which *existing* gates rejected the proposed
+     * correction. Never used as a fallback or as authority to relax a gate.
+     */
+    internal fun failedRequirements(gate: Gate): List<String> = buildList {
+        if (!gate.useFreshClassPrimary) add("FRESH_PRIMARY_AND_STATE")
+        if (!gate.targetConservativeUnknown) add("TARGET_NOT_CONSERVATIVE_UNKNOWN")
+        if (!gate.targetResidualTrackIdsEmpty) add("TARGET_HAS_RESIDUAL_ROOTS")
+        if (gate.targetConfidence !in 0f..0.45f) add("TARGET_CONFIDENCE")
+        if (!gate.candidateFreshUnselected) add("CANDIDATE_NOT_VERIFIED_FRESH_UNSELECTED")
+        if (gate.candidateConfidence !in 0.70f..1f) add("CANDIDATE_CONFIDENCE")
+        if (!gate.observedUnselected) add("NO_CURRENT_OBSERVED_FOREGROUND_ROOT")
+        if (gate.observedUnselectedAgeFrames < 15) add("FOREGROUND_ROOT_AGE")
+        if (gate.observedUnselectedConfidence !in 0.70f..1f) add("FOREGROUND_ROOT_CONFIDENCE")
+        if (!gate.foregroundTrackMatchesCandidate) add("FOREGROUND_ROOT_BBOX_MISMATCH")
+        if (gate.bboxOverlapRatio < 0.50f) add("BBOX_OVERLAP")
+        if (gate.normalizedForegroundFootDelta < 0.50f) add("FOREGROUND_DEPTH")
+        if (gate.freshDepthCoreIntersectionPixels < MIN_ERODED_CORE_PIXELS) add("FRESH_CORE_PIXELS")
+    }
+
     internal fun build(
         selected: NativeMask,
         freshForeground: NativeMask,

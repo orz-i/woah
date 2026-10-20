@@ -18,6 +18,24 @@ EVENT_NAME = "PRIVACY_UNKNOWN_FOREGROUND_PIXEL_AUDIT"
 SCOPE = "AGGREGATE_PROTO_MASK_COUNTS_ONLY_NO_RGB_NO_RAW_MASK"
 FOCUS_START_US = 39_600_000
 FOCUS_END_US = 39_910_000
+# Optional addition introduced after b80e60b. Older Debug bundles remain
+# valid and surface None instead of fabricating a successful gate or pixels.
+STRONG_KEYS = (
+    "selected_and_fresh_ge224",
+    "selected_and_observed_ge224",
+    "selected_and_both_ge192",
+    "selected_and_both_ge224",
+    "selected_and_both_ge224_vetoed_other",
+    "selected_and_both_ge224_without_other",
+)
+STRONG_SCALAR_FIELDS = (
+    "strong_foreground_gate_eligible",
+    "strong_foreground_gate_failures",
+    "strong_foreground_core_proto_pixels",
+    "strong_foreground_observed_age_frames",
+    "strong_foreground_observed_confidence",
+    "strong_foreground_veto_selected_masks_complete",
+)
 OUTSIDE_KEYS = (
     "selected_raw",
     "selected_and_fresh_foreground",
@@ -62,6 +80,47 @@ def _validate_event(fields: dict[str, Any]) -> None:
     if any(type(outside.get(key)) is not int or outside[key] < 0
            for key in OUTSIDE_KEYS):
         raise ValueError("invalid outside-bbox mask-bleed totals")
+    strong = fields.get("strong_threshold_totals")
+    if strong is not None:
+        if not isinstance(strong, dict) or any(
+            type(strong.get(k)) is not int or strong[k] < 0
+            for k in STRONG_KEYS
+        ):
+            raise ValueError("invalid strict foreground threshold totals")
+        if (strong["selected_and_both_ge224"] >
+            min(strong["selected_and_fresh_ge224"],
+                strong["selected_and_observed_ge224"],
+                strong["selected_and_both_ge192"])):
+            raise ValueError("strict threshold intersection exceeds evidence")
+        if (strong["selected_and_both_ge224_vetoed_other"] +
+            strong["selected_and_both_ge224_without_other"] !=
+            strong["selected_and_both_ge224"]):
+            raise ValueError("strict foreground veto partition mismatch")
+    if "strong_veto_selected_mask_count" in fields:
+        veto_count = fields["strong_veto_selected_mask_count"]
+        if type(veto_count) is not int or veto_count < 0:
+            raise ValueError("invalid strict selected mask veto count")
+    if "strong_foreground_gate_eligible" in fields:
+        eligible = fields["strong_foreground_gate_eligible"]
+        failures = fields.get("strong_foreground_gate_failures")
+        if type(eligible) is not bool or not isinstance(failures, list) or any(
+            not isinstance(reason, str) or not reason for reason in failures
+        ):
+            raise ValueError("invalid strict foreground gate diagnosis")
+        if eligible != (len(failures) == 0):
+            raise ValueError("strict gate diagnosis contradicts eligibility")
+        for key in ("strong_foreground_core_proto_pixels",
+                    "strong_foreground_observed_age_frames"):
+            if type(fields.get(key)) is not int or fields[key] < 0:
+                raise ValueError("invalid strict gate count")
+        confidence = fields.get("strong_foreground_observed_confidence")
+        if (type(confidence) not in (int, float) or
+            not 0 <= confidence <= 1):
+            raise ValueError("invalid observed root confidence")
+        if type(fields.get("strong_foreground_veto_selected_masks_complete")) is not bool:
+            raise ValueError("invalid strict veto mask completeness")
+        if strong is None:
+            raise ValueError("strict gate diagnosis lacks threshold evidence")
     if type(fields.get("pts_us")) is not int or fields["pts_us"] < 0:
         raise ValueError("missing or invalid PTS")
     for key in ("target_detection_index", "candidate_detection_index",
@@ -134,7 +193,8 @@ def compare(landscape: dict[str, Any], portrait: dict[str, Any]) -> dict[str, An
         # source-space mask counts if they share the same tracking source.
         retained = (
             "grid_by_signal", "total_by_signal", "selected_bbox_proto",
-            "outside_selected_bbox_totals"
+            "outside_selected_bbox_totals", "strong_threshold_totals",
+            "strong_veto_selected_mask_count", *STRONG_SCALAR_FIELDS
         )
         if any(la[key].get(field) != po[key].get(field) for field in retained):
             disagreements.append(key)
@@ -156,6 +216,15 @@ def compare(landscape: dict[str, Any], portrait: dict[str, Any]) -> dict[str, An
                     signal: event["outside_selected_bbox_totals"][signal]
                     for signal in OUTSIDE_KEYS
                 },
+                "strong_threshold_totals": event.get("strong_threshold_totals"),
+                "strong_veto_selected_mask_count": event.get(
+                    "strong_veto_selected_mask_count"
+                ),
+                "strong_gate_diagnostics": (
+                    {name: event[name] for name in STRONG_SCALAR_FIELDS}
+                    if all(name in event for name in STRONG_SCALAR_FIELDS)
+                    else None
+                ),
             })
         return {
             "build_commit": sample["commit"],

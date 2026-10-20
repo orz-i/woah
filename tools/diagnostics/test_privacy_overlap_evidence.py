@@ -114,6 +114,69 @@ class PrivacyUnknownForegroundEvidenceAnalyzerTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "outside-bbox"):
                 audit.read_bundle(right)
 
+    def test_new_strict_gate_diagnostics_preserve_old_bundle_compatibility(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            left = root / "landscape.zip"
+            right = root / "portrait.zip"
+            fresh = fake_fields("l")
+            fresh["strong_threshold_totals"] = {
+                "selected_and_fresh_ge224": 21,
+                "selected_and_observed_ge224": 18,
+                "selected_and_both_ge192": 16,
+                "selected_and_both_ge224": 12,
+                "selected_and_both_ge224_vetoed_other": 2,
+                "selected_and_both_ge224_without_other": 10,
+            }
+            fresh.update({
+                "strong_veto_selected_mask_count": 3,
+                "strong_foreground_gate_eligible": False,
+                "strong_foreground_gate_failures": ["FOREGROUND_ROOT_AGE"],
+                "strong_foreground_core_proto_pixels": 0,
+                "strong_foreground_observed_age_frames": 5,
+                "strong_foreground_observed_confidence": 0.78,
+                "strong_foreground_veto_selected_masks_complete": True,
+            })
+            older = fake_fields("r")
+            make_bundle(left, fresh, job="l")
+            make_bundle(right, older, job="r")
+            result = audit.compare(audit.read_bundle(left), audit.read_bundle(right))
+            self.assertEqual(result["parity_status"], "FOCUS_BIN_COUNTS_MISMATCH")
+            self.assertIsNone(result["portrait"]["focus_events"][0]["strong_gate_diagnostics"])
+            updated = copy.deepcopy(fresh)
+            updated["job_id"] = "r"
+            make_bundle(right, updated, job="r")
+            result = audit.compare(audit.read_bundle(left), audit.read_bundle(right))
+            self.assertEqual(
+                result["parity_status"],
+                "SOURCE_MASK_BIN_PARITY_ONLY_NOT_VISUAL_ACCEPTANCE",
+            )
+            self.assertEqual(
+                result["landscape"]["focus_events"][0]["strong_threshold_totals"][
+                    "selected_and_both_ge224_without_other"
+                ], 10,
+            )
+            self.assertEqual(
+                result["landscape"]["focus_events"][0]["strong_gate_diagnostics"][
+                    "strong_foreground_gate_failures"
+                ], ["FOREGROUND_ROOT_AGE"],
+            )
+            self.assertEqual(
+                result["landscape"]["focus_events"][0]["strong_veto_selected_mask_count"],
+                3,
+            )
+            updated["strong_foreground_gate_eligible"] = True
+            make_bundle(right, updated, job="r")
+            with self.assertRaisesRegex(ValueError, "contradicts eligibility"):
+                audit.read_bundle(right)
+            updated["strong_foreground_gate_eligible"] = False
+            updated["strong_threshold_totals"][
+                "selected_and_both_ge224_without_other"
+            ] = 14
+            make_bundle(right, updated, job="r")
+            with self.assertRaisesRegex(ValueError, "partition mismatch"):
+                audit.read_bundle(right)
+
     def test_missing_new_event_or_mismatched_build_does_not_pass(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

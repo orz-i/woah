@@ -52,6 +52,7 @@ class StrongObservedForegroundCarveTest {
     fun onlyTightlyCorroboratedCurrentForegroundCanEnableNewCarve() {
         val valid = gate()
         assertTrue(StrongObservedForegroundCarve.eligible(valid))
+        assertTrue(StrongObservedForegroundCarve.failedRequirements(valid).isEmpty())
         for (bad in listOf(
             valid.copy(useFreshClassPrimary = false),
             valid.copy(targetConservativeUnknown = false),
@@ -68,7 +69,17 @@ class StrongObservedForegroundCarveTest {
             valid.copy(freshDepthCoreIntersectionPixels = 8)
         )) {
             assertFalse(StrongObservedForegroundCarve.eligible(bad), "$bad")
+            assertTrue(
+                StrongObservedForegroundCarve.failedRequirements(bad).isNotEmpty(),
+                "DEBUG rejection diagnostic must explain any failed gate: $bad"
+            )
         }
+        assertEquals(
+            listOf("FOREGROUND_ROOT_AGE"),
+            StrongObservedForegroundCarve.failedRequirements(
+                valid.copy(observedUnselectedAgeFrames = 14)
+            )
+        )
     }
 
     @Test

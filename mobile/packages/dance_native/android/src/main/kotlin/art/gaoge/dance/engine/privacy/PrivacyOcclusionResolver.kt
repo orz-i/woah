@@ -44,6 +44,10 @@ object PrivacyOcclusionResolver {
         val freshErodedCore: NativeMask?,
         val approvedCarve: NativeMask?,
         val temporalCore: NativeMask?,
+        val strongForegroundGate: StrongObservedForegroundCarve.Gate,
+        val strictCoreProtoPixels: Int,
+        val otherFreshSelectedMasks: List<NativeMask>,
+        val otherFreshSelectedExpected: Int,
         val effectiveTarget: NativeMask? = null
     )
 
@@ -694,7 +698,18 @@ object PrivacyOcclusionResolver {
                             ownership = ownershipMask,
                             freshErodedCore = freshDepthCore,
                             approvedCarve = finalUnknownForegroundCore,
-                            temporalCore = temporalForegroundCore
+                            temporalCore = temporalForegroundCore,
+                            strongForegroundGate = strongForegroundGate,
+                            strictCoreProtoPixels = strongForegroundCorePixels,
+                            otherFreshSelectedMasks = freshClassEvidence.asSequence()
+                                .filter {
+                                    it.selectionClass == PrivacySelectionClass.SELECTED &&
+                                        it.detectionIndex != targetFreshEvidence?.detectionIndex
+                                }.mapNotNull { it.detection.mask }.toList(),
+                            otherFreshSelectedExpected = freshClassEvidence.count {
+                                it.selectionClass == PrivacySelectionClass.SELECTED &&
+                                    it.detectionIndex != targetFreshEvidence?.detectionIndex
+                            }
                         )
                     }
                     val isStrongForeground =
@@ -985,7 +1000,18 @@ object PrivacyOcclusionResolver {
                         "target_detection_index" to probe.targetDetectionIndex,
                         "candidate_detection_index" to probe.candidateDetectionIndex,
                         "corroborating_unselected_track_id" to
-                            probe.corroboratingUnselectedId
+                            probe.corroboratingUnselectedId,
+                        "strong_foreground_gate_eligible" to
+                            StrongObservedForegroundCarve.eligible(probe.strongForegroundGate),
+                        "strong_foreground_gate_failures" to
+                            StrongObservedForegroundCarve.failedRequirements(probe.strongForegroundGate),
+                        "strong_foreground_core_proto_pixels" to probe.strictCoreProtoPixels,
+                        "strong_foreground_observed_age_frames" to
+                            probe.strongForegroundGate.observedUnselectedAgeFrames,
+                        "strong_foreground_observed_confidence" to
+                            probe.strongForegroundGate.observedUnselectedConfidence,
+                        "strong_foreground_veto_selected_masks_complete" to
+                            (probe.otherFreshSelectedMasks.size == probe.otherFreshSelectedExpected)
                     ) + PrivacyUnknownForegroundPixelAudit.summarize(
                         PrivacyUnknownForegroundPixelAudit.Probe(
                             targetBbox = probe.targetBbox,
@@ -1000,7 +1026,8 @@ object PrivacyOcclusionResolver {
                             mergedPrivacy = mergedPrivacy,
                             competingSelected = effectiveSelectedMasks.filterIndexed {
                                 index, _ -> selectedPersons[index].id != probe.targetId
-                            }
+                            },
+                            strongVetoSelected = probe.otherFreshSelectedMasks
                         )
                     )
                 }

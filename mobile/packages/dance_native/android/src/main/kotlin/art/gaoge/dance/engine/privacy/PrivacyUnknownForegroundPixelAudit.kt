@@ -29,7 +29,8 @@ object PrivacyUnknownForegroundPixelAudit {
         val temporalCarve: NativeMask?,
         val effectiveSelected: NativeMask,
         val mergedPrivacy: NativeMask,
-        val competingSelected: List<NativeMask>
+        val competingSelected: List<NativeMask>,
+        val strongVetoSelected: List<NativeMask> = emptyList()
     )
 
     private fun matching(mask: NativeMask?, reference: NativeMask): Boolean {
@@ -55,7 +56,7 @@ object PrivacyUnknownForegroundPixelAudit {
             probe.foregroundFresh, probe.foregroundObserved, probe.ownership,
             probe.erodedFreshCore, probe.approvedCarve, probe.temporalCarve,
             probe.effectiveSelected, probe.mergedPrivacy
-        ) + probe.competingSelected
+        ) + probe.competingSelected + probe.strongVetoSelected
         if (masks.any { !matching(it, selected) }) {
             return mapOf("valid" to false, "reason" to "MASK_COORDINATE_MISMATCH")
         }
@@ -211,6 +212,30 @@ object PrivacyUnknownForegroundPixelAudit {
                 }
             }
         }
+        // Same pixel thresholds as StrongObservedForegroundCarve.build.
+        // Count evidence over the ENTIRE selected proto mask, including pixels
+        // outside its bbox. These are aggregate integers, never mask bytes or
+        // pixel coordinates. This is diagnostic-only; no predicate below can
+        // authorize a removal of privacy.
+        var selectedFreshStrong224 = 0
+        var selectedObservedStrong224 = 0
+        var selectedBothStrong192 = 0
+        var selectedBothStrong224 = 0
+        var bothStrong224Vetoed = 0
+        for (i in 0 until count.toInt()) {
+            if (byte(selected, i) < MASK_THRESHOLD) continue
+            val fresh = byte(probe.foregroundFresh, i)
+            val observed = byte(probe.foregroundObserved, i)
+            if (fresh >= 224) selectedFreshStrong224++
+            if (observed >= 224) selectedObservedStrong224++
+            if (fresh >= 192 && observed >= 192) selectedBothStrong192++
+            if (fresh >= 224 && observed >= 224) {
+                selectedBothStrong224++
+                if (probe.strongVetoSelected.any {
+                    byte(it, i) >= MASK_THRESHOLD
+                }) bothStrong224Vetoed++
+            }
+        }
         val summaries = keys.associateWith { key -> bins.getValue(key).sum() }
         return mapOf(
             "valid" to true,
@@ -227,6 +252,16 @@ object PrivacyUnknownForegroundPixelAudit {
                 "selected_and_approved_carve" to outsideApproved,
                 "selected_and_temporal_carve" to outsideTemporal
             ),
+            "strong_threshold_totals" to mapOf(
+                "selected_and_fresh_ge224" to selectedFreshStrong224,
+                "selected_and_observed_ge224" to selectedObservedStrong224,
+                "selected_and_both_ge192" to selectedBothStrong192,
+                "selected_and_both_ge224" to selectedBothStrong224,
+                "selected_and_both_ge224_vetoed_other" to bothStrong224Vetoed,
+                "selected_and_both_ge224_without_other" to
+                    selectedBothStrong224 - bothStrong224Vetoed
+            ),
+            "strong_veto_selected_mask_count" to probe.strongVetoSelected.size,
             "competing_selected_count" to probe.competingSelected.size,
             "not_ground_truth_ownership" to true
         )
