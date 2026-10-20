@@ -10,6 +10,8 @@ on:
       - 'tools/release/verify_export_media_contract.py'
       - 'tools/release/verify_ios_phase0.py'
       - 'tools/release/verify_ios_phase1.py'
+      - 'tools/release/verify_ios_phase4.py'
+      - 'tools/release/test_verify_ios_phase4.py'
       - '.github/workflows/ios-cloud.yml'
   pull_request:
     branches: [main, master]
@@ -20,6 +22,8 @@ on:
       - 'tools/release/verify_export_media_contract.py'
       - 'tools/release/verify_ios_phase0.py'
       - 'tools/release/verify_ios_phase1.py'
+      - 'tools/release/verify_ios_phase4.py'
+      - 'tools/release/test_verify_ios_phase4.py'
       - '.github/workflows/ios-cloud.yml'
   workflow_dispatch:
 
@@ -62,6 +66,8 @@ jobs:
           python tools/release/verify_export_media_contract.py
           python tools/release/verify_ios_phase0.py
           python tools/release/verify_ios_phase1.py
+          python tools/release/verify_ios_phase4.py
+          python -m unittest tools.release.test_verify_ios_phase4 -v
 
       - name: Resolve Flutter and native dependencies
         working-directory: mobile/app

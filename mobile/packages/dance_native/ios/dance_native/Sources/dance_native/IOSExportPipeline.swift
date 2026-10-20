@@ -441,6 +441,17 @@ final class IOSExportPipeline {
         "iOS does not yet support skin whitening during export."
       )
     }
+    // iOS Metal supports selected-protagonist leg stretch, but it requires
+    // an actual follow root to source the person's current segmentation.
+    // A crafted/legacy request with the effect enabled and no root must not
+    // silently export the unmodified video as though the effect succeeded.
+    if request.effects.legStretchEnabled &&
+       (!request.follow.enabled || request.follow.targetPersonId == nil) {
+      throw exportError(
+        "INVALID_ARGUMENT",
+        "Leg stretch requires an enabled protagonist follow target."
+      )
+    }
   }
 
   private func targetSize(
