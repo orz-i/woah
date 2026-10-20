@@ -72,4 +72,6 @@ The linked **2023 model card** instead describes an earlier 6 MB 512x512x4 archi
 | Real final video 39.733–39.900s and 46s | Current source-space metrics only; no accepted final protected pixels | BLOCKED |
 | Crop Clarity Release OFF/ON / full CI / master merge | Remaining product requirements and explicit merge approval outstanding | BLOCKED |
 
+**Stage 3 follow-up (2026-10-20):** A synthetic-image-only Android instrumentation test and host-side APK-private model provisioning runner are now authored under `src/androidTest` and `tools/diagnostics`. This does not constitute an Android native ABI PASS yet. See `docs/privacy-independent-instance-stage3-20261020.md`.
+
 **Stage 2 engineering disposition:** The model *artifact provenance* gate can be closed. The *deployment and identity-safety* gates cannot. MagicTouch is a candidate for an isolated, synthetic-image Android smoke only after confirming the actual Android ABI and version-specific use rights, and cannot be wired to PrivacyOcclusionResolver or used to clear selected/unknown Masks until independently verified current protected occupancy and real pixel-level privacy acceptance are available. Do not resume SAM2/ONNX, NMS, YOLO bbox expansion or speculative tracking-based privacy holes.

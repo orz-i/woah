@@ -89,6 +89,14 @@ jobs:
           chmod +x gradlew
           ./gradlew :dance_native:testDebugUnitTest
 
+      # Compiles the optional public-model Stage 3 synthetic smoke against
+      # the *actual pinned* tasks-vision:1.0.0 Java/Kotlin ABI. It is not
+      # executed in CI, downloads no .task weights and changes no export path.
+      - name: Compile Android Instrumentation ABI Smoke
+        run: |
+          cd mobile/app/android
+          ./gradlew :dance_native:compileDebugAndroidTestKotlin
+
       - name: Build Android Debug APK
         run: |
           cd mobile/app
