@@ -36,6 +36,13 @@ STRONG_SCALAR_FIELDS = (
     "strong_foreground_observed_confidence",
     "strong_foreground_veto_selected_masks_complete",
 )
+RAW_TOP_SUPPORT_FIELDS = (
+    "target_yolo_raw_top_support", "candidate_yolo_raw_top_support",
+)
+RAW_TOP_SUPPORT_KEYS = (
+    "outside_sampled", "outside_ge128", "outside_ge192", "outside_ge224",
+    "inside_sampled", "inside_decoded_ge128", "band_height_proto",
+)
 OUTSIDE_KEYS = (
     "selected_raw",
     "selected_and_fresh_foreground",
@@ -121,6 +128,24 @@ def _validate_event(fields: dict[str, Any]) -> None:
             raise ValueError("invalid strict veto mask completeness")
         if strong is None:
             raise ValueError("strict gate diagnosis lacks threshold evidence")
+    for name in RAW_TOP_SUPPORT_FIELDS:
+        # Older builds lack this optional counterfactual; None never implies
+        # the model had no signal or that foreground ownership was verified.
+        value = fields.get(name)
+        if value is None:
+            continue
+        if not isinstance(value, dict) or any(
+            type(value.get(key)) is not int or value[key] < 0
+            for key in RAW_TOP_SUPPORT_KEYS
+        ):
+            raise ValueError(f"invalid raw prototype top support: {name}")
+        if not (value["outside_ge224"] <= value["outside_ge192"] <=
+                value["outside_ge128"] <= value["outside_sampled"]):
+            raise ValueError(f"inconsistent raw prototype top support: {name}")
+        if value["inside_decoded_ge128"] > value["inside_sampled"] or (
+            value["band_height_proto"] != 12
+        ):
+            raise ValueError(f"invalid raw prototype top support bounds: {name}")
     if type(fields.get("pts_us")) is not int or fields["pts_us"] < 0:
         raise ValueError("missing or invalid PTS")
     for key in ("target_detection_index", "candidate_detection_index",
@@ -194,7 +219,8 @@ def compare(landscape: dict[str, Any], portrait: dict[str, Any]) -> dict[str, An
         retained = (
             "grid_by_signal", "total_by_signal", "selected_bbox_proto",
             "outside_selected_bbox_totals", "strong_threshold_totals",
-            "strong_veto_selected_mask_count", *STRONG_SCALAR_FIELDS
+            "strong_veto_selected_mask_count", *STRONG_SCALAR_FIELDS,
+            *RAW_TOP_SUPPORT_FIELDS
         )
         if any(la[key].get(field) != po[key].get(field) for field in retained):
             disagreements.append(key)
@@ -220,6 +246,10 @@ def compare(landscape: dict[str, Any], portrait: dict[str, Any]) -> dict[str, An
                 "strong_veto_selected_mask_count": event.get(
                     "strong_veto_selected_mask_count"
                 ),
+                "raw_yolo_top_support": {
+                    "target": event.get("target_yolo_raw_top_support"),
+                    "candidate": event.get("candidate_yolo_raw_top_support"),
+                },
                 "strong_gate_diagnostics": (
                     {name: event[name] for name in STRONG_SCALAR_FIELDS}
                     if all(name in event for name in STRONG_SCALAR_FIELDS)

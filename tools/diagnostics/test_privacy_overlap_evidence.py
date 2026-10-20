@@ -177,6 +177,53 @@ class PrivacyUnknownForegroundEvidenceAnalyzerTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "partition mismatch"):
                 audit.read_bundle(right)
 
+    def test_raw_model_top_band_probe_is_numeric_comparable_and_not_ownership(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            left = root / "l.zip"
+            right = root / "r.zip"
+            raw = {
+                "outside_sampled": 120,
+                "outside_ge128": 57,
+                "outside_ge192": 28,
+                "outside_ge224": 12,
+                "inside_sampled": 100,
+                "inside_decoded_ge128": 30,
+                "band_height_proto": 12,
+            }
+            first = fake_fields("a")
+            first["target_yolo_raw_top_support"] = copy.deepcopy(raw)
+            first["candidate_yolo_raw_top_support"] = copy.deepcopy(raw)
+            second = copy.deepcopy(first)
+            second["job_id"] = "b"
+            make_bundle(left, first, job="a")
+            make_bundle(right, second, job="b")
+            result = audit.compare(audit.read_bundle(left), audit.read_bundle(right))
+            self.assertEqual(result["parity_status"],
+                             "SOURCE_MASK_BIN_PARITY_ONLY_NOT_VISUAL_ACCEPTANCE")
+            self.assertEqual(result["visual_privacy_acceptance"], "NOT_PROVEN")
+            self.assertEqual(
+                result["landscape"]["focus_events"][0]["raw_yolo_top_support"]
+                    ["candidate"]["outside_ge224"], 12
+            )
+            self.assertNotIn("mask_bytes", json.dumps(result))
+            self.assertNotIn('"rgb":', json.dumps(result).lower())
+            second["candidate_yolo_raw_top_support"]["outside_ge224"] = 11
+            make_bundle(right, second, job="b")
+            self.assertEqual(
+                audit.compare(audit.read_bundle(left), audit.read_bundle(right))["parity_status"],
+                "FOCUS_BIN_COUNTS_MISMATCH"
+            )
+            second["candidate_yolo_raw_top_support"]["outside_ge224"] = 60
+            make_bundle(right, second, job="b")
+            with self.assertRaisesRegex(ValueError, "inconsistent raw prototype"):
+                audit.read_bundle(right)
+            second["candidate_yolo_raw_top_support"]["outside_ge224"] = 11
+            second["candidate_yolo_raw_top_support"]["inside_decoded_ge128"] = 101
+            make_bundle(right, second, job="b")
+            with self.assertRaisesRegex(ValueError, "raw prototype top support bounds"):
+                audit.read_bundle(right)
+
     def test_missing_new_event_or_mismatched_build_does_not_pass(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

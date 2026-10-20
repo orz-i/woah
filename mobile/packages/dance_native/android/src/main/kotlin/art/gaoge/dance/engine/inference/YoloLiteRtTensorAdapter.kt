@@ -73,7 +73,8 @@ class YoloLiteRtTensorAdapter(
         preprocess: PreprocessResult,
         confThreshold: Float = 0.25f,
         iouThreshold: Float = 0.50f,
-        stageTimingsMs: MutableMap<String, Long>? = null
+        stageTimingsMs: MutableMap<String, Long>? = null,
+        captureRawTopSupportAudit: Boolean = false
     ): List<PersonDetection> {
         val candidateStartNs = System.nanoTime()
         val candidates = collectCandidates(
@@ -96,7 +97,8 @@ class YoloLiteRtTensorAdapter(
             protoView = protoView,
             preprocess = preprocess,
             iouThreshold = iouThreshold,
-            stageTimingsMs = stageTimingsMs
+            stageTimingsMs = stageTimingsMs,
+            captureRawTopSupportAudit = captureRawTopSupportAudit
         )
     }
 
@@ -195,7 +197,8 @@ class YoloLiteRtTensorAdapter(
         protoView: ProtoTensorView,
         preprocess: PreprocessResult,
         iouThreshold: Float,
-        stageTimingsMs: MutableMap<String, Long>? = null
+        stageTimingsMs: MutableMap<String, Long>? = null,
+        captureRawTopSupportAudit: Boolean = false
     ): List<PersonDetection> {
         // 2. Perform Mask-Aware Non-Maximum Suppression (NMS)
         val nmsStartNs = System.nanoTime()
@@ -227,6 +230,13 @@ class YoloLiteRtTensorAdapter(
         )
 
         for (cand in kept) {
+            // Probe only candidate pairs with genuine detector-box intersection.
+            // This avoids prototype dot products for isolated persons in Debug.
+            val auditOverlappingCandidate = captureRawTopSupportAudit && kept.any { other ->
+                other !== cand &&
+                    minOf(cand.x2, other.x2) > maxOf(cand.x1, other.x1) &&
+                    minOf(cand.y2, other.y2) > maxOf(cand.y1, other.y1)
+            }
             val srcX1 = ((cand.x1 - preprocess.padLeft) / preprocess.scale).coerceIn(0f, preprocess.srcWidth.toFloat())
             val srcY1 = ((cand.y1 - preprocess.padTop) / preprocess.scale).coerceIn(0f, preprocess.srcHeight.toFloat())
             val srcX2 = ((cand.x2 - preprocess.padLeft) / preprocess.scale).coerceIn(0f, preprocess.srcWidth.toFloat())
@@ -255,7 +265,16 @@ class YoloLiteRtTensorAdapter(
                     bbox = bbox,
                     confidence = cand.confidence,
                     mask = nativeMask,
-                    footY = bbox.bottom
+                    footY = bbox.bottom,
+                    rawTopSupportAudit = if (auditOverlappingCandidate) {
+                        YoloRawTopSupportProbe.summarize(
+                            candidate = cand,
+                            protoView = protoView,
+                            decodedMask = maskBytes,
+                            inputSize = preprocess.inputSize,
+                            protoSize = PROTO_SIZE
+                        )
+                    } else null
                 )
             )
         }
