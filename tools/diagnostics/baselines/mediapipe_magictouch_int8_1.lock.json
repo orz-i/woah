@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "model_id": "mediapipe_magic_touch_int8_1",
+  "model_uri": "https://storage.googleapis.com/mediapipe-models/interactive_segmenter_v2/magic_touch/int8/1/interactive_segmentation.task",
+  "sha256": "38431bc66b883404e8397f74c3579404315b9b52b04a46c6346fe906a7309b03",
+  "bytes": 30525312,
+  "upstream_gcs_etag_md5": "eff9593362906a47112886311c6d34c6",
+  "android_dependency": "com.google.mediapipe:tasks-vision:1.0.0",
+  "expected_input_shape": [
+    768,
+    768,
+    3
+  ],
+  "model_license_scope_review": "REQUIRES_VERSION_SPECIFIC_REVIEW",
+  "release_status": "RESEARCH_ONLY_NO_MODEL_BUNDLING"
+}
