@@ -342,15 +342,31 @@ object YoloMaskDecoder {
         return if (unionArea <= 0f) 0f else interArea / unionArea
     }
 
-    fun calculateMaskIoU(maskA: ByteArray, maskB: ByteArray): Float {
+    fun calculateMaskIoU(
+        maskA: ByteArray,
+        maskB: ByteArray,
+        activeByteThreshold: Int = 1
+    ): Float {
+        require(activeByteThreshold in 1..255)
         var intersection = 0
         var union = 0
         val len = minOf(maskA.size, maskB.size)
-        for (i in 0 until len) {
-            val a = maskA[i].toInt()
-            val b = maskB[i].toInt()
-            if (a != 0 && b != 0) intersection++
-            if ((a or b) != 0) union++
+        if (activeByteThreshold == 1) {
+            // Preserve the exact legacy hot loop, including its byte
+            // operations, when no shadow experiment has been requested.
+            for (i in 0 until len) {
+                val a = maskA[i].toInt()
+                val b = maskB[i].toInt()
+                if (a != 0 && b != 0) intersection++
+                if ((a or b) != 0) union++
+            }
+        } else {
+            for (i in 0 until len) {
+                val a = (maskA[i].toInt() and 0xFF) >= activeByteThreshold
+                val b = (maskB[i].toInt() and 0xFF) >= activeByteThreshold
+                if (a && b) intersection++
+                if (a || b) union++
+            }
         }
         return if (union == 0) 0f else intersection.toFloat() / union.toFloat()
     }
@@ -361,11 +377,13 @@ object YoloMaskDecoder {
         candA: RawCandidate,
         candB: RawCandidate,
         inputSize: Int = DEFAULT_INPUT_SIZE,
-        protoSize: Int = DEFAULT_PROTO_SIZE
+        protoSize: Int = DEFAULT_PROTO_SIZE,
+        activeByteThreshold: Int = 1
     ): Float {
+        require(activeByteThreshold in 1..255)
         val requiredSize = protoSize * protoSize
         if (maskA.size < requiredSize || maskB.size < requiredSize) {
-            return calculateMaskIoU(maskA, maskB)
+            return calculateMaskIoU(maskA, maskB, activeByteThreshold)
         }
 
         val supportA = candidateProtoSupportRect(candA, inputSize, protoSize)
@@ -377,15 +395,29 @@ object YoloMaskDecoder {
 
         var intersection = 0
         var union = 0
-        for (py in y1 until y2) {
-            var index = py * protoSize + x1
-            val rowEnd = py * protoSize + x2
-            while (index < rowEnd) {
-                val a = maskA[index].toInt()
-                val b = maskB[index].toInt()
-                if (a != 0 && b != 0) intersection++
-                if ((a or b) != 0) union++
-                index++
+        if (activeByteThreshold == 1) {
+            for (py in y1 until y2) {
+                var index = py * protoSize + x1
+                val rowEnd = py * protoSize + x2
+                while (index < rowEnd) {
+                    val a = maskA[index].toInt()
+                    val b = maskB[index].toInt()
+                    if (a != 0 && b != 0) intersection++
+                    if ((a or b) != 0) union++
+                    index++
+                }
+            }
+        } else {
+            for (py in y1 until y2) {
+                var index = py * protoSize + x1
+                val rowEnd = py * protoSize + x2
+                while (index < rowEnd) {
+                    val a = (maskA[index].toInt() and 0xFF) >= activeByteThreshold
+                    val b = (maskB[index].toInt() and 0xFF) >= activeByteThreshold
+                    if (a && b) intersection++
+                    if (a || b) union++
+                    index++
+                }
             }
         }
         return if (union == 0) 0f else intersection.toFloat() / union.toFloat()
@@ -433,8 +465,12 @@ object YoloMaskDecoder {
         maskIouThreshold: Float = DEFAULT_MASK_IOU_THRESHOLD,
         inputSize: Int = DEFAULT_INPUT_SIZE,
         protoSize: Int = DEFAULT_PROTO_SIZE,
-        timings: MaskAwareNmsTimings? = null
+        timings: MaskAwareNmsTimings? = null,
+        activeByteThreshold: Int = 1
     ): Pair<List<RawCandidate>, CandidateMaskCache> {
+        require(activeByteThreshold in 1..255)
+        // Legacy production semantics count every nonzero soft-mask byte.
+        // Debug shadow audits may use 128, but must never change this default.
         val sorted = candidates.sortedByDescending { it.confidence }
         val selected = ArrayList<RawCandidate>(sorted.size)
         val suppressed = BooleanArray(sorted.size)
@@ -464,10 +500,11 @@ object YoloMaskDecoder {
                             candA = current,
                             candB = next,
                             inputSize = inputSize,
-                            protoSize = protoSize
+                            protoSize = protoSize,
+                            activeByteThreshold = activeByteThreshold
                         )
                     } else {
-                        calculateMaskIoU(maskCurrent, maskNext)
+                        calculateMaskIoU(maskCurrent, maskNext, activeByteThreshold)
                     }
                     if (timings != null) {
                         timings.maskIouNs += System.nanoTime() - iouStartNs

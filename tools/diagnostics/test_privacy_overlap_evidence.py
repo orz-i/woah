@@ -40,8 +40,29 @@ def fake_fields(job: str = "job_current", pts: int = 39_733_333) -> dict:
     }
 
 
+def fake_nms_shadow(job: str, pts: int = 39_800_000) -> dict:
+    return {
+        "job_id": job,
+        "pts_us": pts,
+        "evidence_scope": audit.NMS_SHADOW_SCOPE,
+        "pixel_ownership_proven": False,
+        "does_not_change_rendering": True,
+        "raw_candidate_count": 6,
+        "legacy_kept_count": 4,
+        "strong_kept_count": 5,
+        "strong_only_count": 1,
+        "legacy_only_count": 0,
+        "strong_only_geometry": [{
+            "bbox_model": [250.0, 180.0, 310.0, 410.0],
+            "confidence": 0.71,
+        }],
+        "strong_only_geometry_truncated": False,
+    }
+
+
 def make_bundle(path: Path, fields: dict, *, job: str = "job_current",
-                sha: str = SHA, duplicate: bool = False) -> None:
+                sha: str = SHA, duplicate: bool = False,
+                nms_shadow: dict | None = None) -> None:
     event = {"event": audit.EVENT_NAME, "fields": fields}
     stale = {"event": audit.EVENT_NAME, "fields": {**fields, "job_id": "old_job"}}
     warning = {"event": "PRIVACY_COVERAGE_DROP", "fields": {
@@ -50,6 +71,13 @@ def make_bundle(path: Path, fields: dict, *, job: str = "job_current",
     payload = [json.dumps(stale), json.dumps(event), json.dumps(warning)]
     if duplicate:
         payload.append(json.dumps(event))
+    if nms_shadow is not None:
+        payload.extend((
+            json.dumps({"event": audit.NMS_SHADOW_EVENT, "fields": {
+                **nms_shadow, "job_id": "old_job"
+            }}),
+            json.dumps({"event": audit.NMS_SHADOW_EVENT, "fields": nms_shadow}),
+        ))
     with zipfile.ZipFile(path, "w") as out:
         out.writestr("manifest.json", json.dumps({
             "pipeline_lifecycle_job_id": job, "git_commit_sha": sha
@@ -223,6 +251,57 @@ class PrivacyUnknownForegroundEvidenceAnalyzerTest(unittest.TestCase):
             make_bundle(right, second, job="b")
             with self.assertRaisesRegex(ValueError, "raw prototype top support bounds"):
                 audit.read_bundle(right)
+
+    def test_debug_nms_shadow_reports_only_numeric_counterfactual_not_pixel_ownership(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            left = root / "landscape.zip"
+            right = root / "portrait.zip"
+            make_bundle(left, fake_fields("a"), job="a", nms_shadow=fake_nms_shadow("a"))
+            make_bundle(right, fake_fields("b"), job="b", nms_shadow=fake_nms_shadow("b"))
+            report = audit.compare(audit.read_bundle(left), audit.read_bundle(right))
+            self.assertEqual(report["nms_shadow"]["shared_focus_frames"], 1)
+            self.assertEqual(report["nms_shadow"]["status"],
+                             "NMS_SHADOW_PARITY_ONLY_NOT_PRIVACY_ACCEPTANCE")
+            self.assertEqual(report["nms_shadow"]["pixels_restored"], 0)
+            self.assertFalse(report["nms_shadow"]["protagonist_ownership_proven"])
+            self.assertEqual(report["visual_privacy_acceptance"], "NOT_PROVEN")
+            self.assertEqual(report["nms_shadow"]["landscape"][0]["strong_only_count"], 1)
+            self.assertNotIn("mask_bytes", json.dumps(report))
+            self.assertNotIn('"rgb":', json.dumps(report).lower())
+
+    def test_nms_shadow_mode_mismatch_or_missing_frame_never_passes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            left = root / "l.zip"
+            right = root / "r.zip"
+            make_bundle(left, fake_fields("a"), job="a", nms_shadow=fake_nms_shadow("a"))
+            make_bundle(right, fake_fields("b"), job="b")
+            report = audit.compare(audit.read_bundle(left), audit.read_bundle(right))
+            self.assertEqual(report["nms_shadow"]["status"], "NMS_SHADOW_FRAME_SET_MISMATCH")
+            self.assertEqual(report["parity_status"], "FOCUS_NMS_SHADOW_MISMATCH")
+            changed = fake_nms_shadow("b")
+            changed["raw_candidate_count"] = 7
+            make_bundle(right, fake_fields("b"), job="b", nms_shadow=changed)
+            report = audit.compare(audit.read_bundle(left), audit.read_bundle(right))
+            self.assertEqual(report["nms_shadow"]["status"], "NMS_SHADOW_NUMERIC_MISMATCH")
+            self.assertEqual(report["nms_shadow"]["mismatched_pts_us"], [39_800_000])
+
+    def test_nms_shadow_rejects_unsafe_claims_and_invalid_geometry(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "bundle.zip"
+            for mutator, error in (
+                (lambda f: f.update(pixel_ownership_proven=True), "unsafe acceptance"),
+                (lambda f: f.update(raw_mask_bytes=[1, 2, 3]), "forbidden extra data"),
+                (lambda f: f.update(strong_kept_count=6), "partition"),
+                (lambda f: f.update(strong_only_geometry=[]), "bounded candidate geometry"),
+                (lambda f: f["strong_only_geometry"][0].update(bbox_model=[float("nan"), 1, 2, 3]), "scalar geometry"),
+            ):
+                record = fake_nms_shadow("a")
+                mutator(record)
+                make_bundle(path, fake_fields("a"), job="a", nms_shadow=record)
+                with self.assertRaisesRegex(ValueError, error):
+                    audit.read_bundle(path)
 
     def test_missing_new_event_or_mismatched_build_does_not_pass(self):
         with tempfile.TemporaryDirectory() as directory:

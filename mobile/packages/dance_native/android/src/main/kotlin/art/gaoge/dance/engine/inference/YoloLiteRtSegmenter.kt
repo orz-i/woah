@@ -164,6 +164,14 @@ class YoloLiteRtSegmenter(
             stageTimings["yoloOutputRead"] = (System.nanoTime() - outputReadStartNs) / 1_000_000
 
             val decodeStartNs = System.nanoTime()
+            // Known 39.7s overlap fixture: compare candidate suppression using
+            // visible (>=128) Mask IoU without changing production detections.
+            // Bounded to the narrow risk window to avoid full-export overhead.
+            val nmsShadowStats: MutableMap<String, Any?>? = if (
+                art.gaoge.dance.engine.BuildConfig.DEBUG &&
+                !diagnosticJobId.isNullOrBlank() &&
+                timestampUs in 39_600_000L..39_910_000L
+            ) linkedMapOf() else null
             val parsed = adapter.parseDetections(
                 output0 = out0Floats,
                 output1 = out1Floats,
@@ -173,9 +181,23 @@ class YoloLiteRtSegmenter(
                 stageTimingsMs = stageTimings,
                 // No extra prototype sampling in Release or ordinary non-diagnostic frames.
                 captureRawTopSupportAudit = art.gaoge.dance.engine.BuildConfig.DEBUG &&
-                    diagnosticJobId != null
+                    diagnosticJobId != null,
+                nmsShadowStats = nmsShadowStats
             )
             stageTimings["yoloDecode"] = (System.nanoTime() - decodeStartNs) / 1_000_000
+            if (nmsShadowStats != null && nmsShadowStats.isNotEmpty()) {
+                art.gaoge.dance.engine.diagnostics.NativeDiagnostics.eventLazy(
+                    level = "INFO",
+                    component = "YoloLiteRtSegmenter",
+                    event = "YOLO_NMS_VISIBLE_THRESHOLD_SHADOW",
+                    fields = { mapOf(
+                        "job_id" to diagnosticJobId,
+                        "pts_us" to timestampUs,
+                        "evidence_scope" to "MODEL_SPACE_NUMERIC_ONLY_NO_RGB_NO_MASK",
+                        "pixel_ownership_proven" to false
+                    ) + nmsShadowStats }
+                )
+            }
             if (diagnosticJobId != null) {
                 val diagnosticsStartNs = System.nanoTime()
                 tensorDiagnosticsByJobId

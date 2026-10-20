@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 import sys
 import zipfile
@@ -16,6 +17,8 @@ from typing import Any
 
 EVENT_NAME = "PRIVACY_UNKNOWN_FOREGROUND_PIXEL_AUDIT"
 SCOPE = "AGGREGATE_PROTO_MASK_COUNTS_ONLY_NO_RGB_NO_RAW_MASK"
+NMS_SHADOW_EVENT = "YOLO_NMS_VISIBLE_THRESHOLD_SHADOW"
+NMS_SHADOW_SCOPE = "MODEL_SPACE_NUMERIC_ONLY_NO_RGB_NO_MASK"
 FOCUS_START_US = 39_600_000
 FOCUS_END_US = 39_910_000
 # Optional addition introduced after b80e60b. Older Debug bundles remain
@@ -154,6 +157,56 @@ def _validate_event(fields: dict[str, Any]) -> None:
             raise ValueError(f"invalid target/candidate identity metadata: {key}")
 
 
+def _validate_nms_shadow(fields: dict[str, Any]) -> None:
+    """Reject malformed or image-like shadow data; no privacy PASS is inferred."""
+    if (
+        fields.get("evidence_scope") != NMS_SHADOW_SCOPE or
+        fields.get("pixel_ownership_proven") is not False or
+        fields.get("does_not_change_rendering") is not True
+    ):
+        raise ValueError("invalid NMS shadow scope / unsafe acceptance assertion")
+    counts = (
+        "raw_candidate_count", "legacy_kept_count", "strong_kept_count",
+        "strong_only_count", "legacy_only_count"
+    )
+    allowed = set(counts) | {
+        "job_id", "pts_us", "evidence_scope", "pixel_ownership_proven",
+        "does_not_change_rendering", "strong_only_geometry",
+        "strong_only_geometry_truncated",
+    }
+    if set(fields) != allowed:
+        raise ValueError("unexpected NMS shadow field / forbidden extra data")
+    if any(type(fields.get(key)) is not int or fields[key] < 0 for key in counts):
+        raise ValueError("invalid NMS shadow candidate counts")
+    raw = fields["raw_candidate_count"]
+    legacy = fields["legacy_kept_count"]
+    strong = fields["strong_kept_count"]
+    add = fields["strong_only_count"]
+    lost = fields["legacy_only_count"]
+    if raw > 8400 or max(legacy, strong) > raw or add > strong or lost > legacy or (
+        legacy - lost + add != strong
+    ):
+        raise ValueError("inconsistent NMS shadow candidate partition")
+    geometry = fields.get("strong_only_geometry")
+    if not isinstance(geometry, list) or len(geometry) != min(add, 6) or (
+        fields.get("strong_only_geometry_truncated") is not (add > 6)
+    ):
+        raise ValueError("invalid NMS shadow bounded candidate geometry")
+    for item in geometry:
+        if not isinstance(item, dict) or set(item) != {"bbox_model", "confidence"}:
+            raise ValueError("invalid NMS shadow candidate shape")
+        bbox = item["bbox_model"]
+        confidence = item["confidence"]
+        if not isinstance(bbox, list) or len(bbox) != 4 or any(
+            type(v) not in (float, int) or not math.isfinite(v) for v in bbox
+        ) or type(confidence) not in (float, int) or (
+            not math.isfinite(confidence) or not 0 <= confidence <= 1
+        ):
+            raise ValueError("invalid NMS shadow scalar geometry")
+    if type(fields.get("pts_us")) is not int or fields["pts_us"] < 0:
+        raise ValueError("invalid NMS shadow PTS")
+
+
 def read_bundle(path: Path) -> dict[str, Any]:
     with zipfile.ZipFile(path) as zipped:
         manifest = json.loads(zipped.read("manifest.json"))
@@ -164,6 +217,7 @@ def read_bundle(path: Path) -> dict[str, Any]:
         if not isinstance(commit, str) or len(commit) != 40:
             raise ValueError(f"{path.name}: build commit cannot be verified")
         per_key: dict[tuple[int, int, int], dict[str, Any]] = {}
+        nms_events: dict[int, dict[str, Any]] = {}
         coverage_warnings: set[tuple[int, int | None]] = set()
         for name in zipped.namelist():
             if not (name.startswith("session_") and name.endswith(".jsonl")):
@@ -183,6 +237,13 @@ def read_bundle(path: Path) -> dict[str, Any]:
                     pts = fields.get("pts_us")
                     if type(pts) is int:
                         coverage_warnings.add((pts, fields.get("target_detection_index")))
+                if kind == NMS_SHADOW_EVENT:
+                    _validate_nms_shadow(fields)
+                    pts = fields["pts_us"]
+                    if pts in nms_events and nms_events[pts] != fields:
+                        raise ValueError(f"{path.name}: conflicting duplicate NMS shadow at {pts}")
+                    nms_events[pts] = fields
+                    continue
                 if kind != EVENT_NAME:
                     continue
                 _validate_event(fields)
@@ -200,6 +261,7 @@ def read_bundle(path: Path) -> dict[str, Any]:
             coverage_warnings, key=lambda item: (item[0], str(item[1]))
         ),
         "events": per_key,
+        "nms_shadow_events": nms_events,
     }
 
 
@@ -267,12 +329,45 @@ def compare(landscape: dict[str, Any], portrait: dict[str, Any]) -> dict[str, An
             "focus_events": records,
         }
     comparable = landscape["commit"] == portrait["commit"]
+    shadow_left = {
+        pts: value for pts, value in landscape.get("nms_shadow_events", {}).items()
+        if FOCUS_START_US <= pts <= FOCUS_END_US
+    }
+    shadow_right = {
+        pts: value for pts, value in portrait.get("nms_shadow_events", {}).items()
+        if FOCUS_START_US <= pts <= FOCUS_END_US
+    }
+    shadow_fields = (
+        "raw_candidate_count", "legacy_kept_count", "strong_kept_count",
+        "strong_only_count", "legacy_only_count", "strong_only_geometry",
+        "strong_only_geometry_truncated"
+    )
+    shadow_common = sorted(set(shadow_left) & set(shadow_right))
+    shadow_mismatches = [
+        pts for pts in shadow_common
+        if any(shadow_left[pts][key] != shadow_right[pts][key]
+               for key in shadow_fields)
+    ]
+    shadow_status = (
+        "DIFFERENT_APK_COMMITS_NOT_COMPARABLE" if not comparable else
+        "NMS_SHADOW_NOT_PRESENT" if not shadow_left and not shadow_right else
+        "NMS_SHADOW_FRAME_SET_MISMATCH" if set(shadow_left) != set(shadow_right) else
+        "NMS_SHADOW_NUMERIC_MISMATCH" if shadow_mismatches else
+        "NMS_SHADOW_PARITY_ONLY_NOT_PRIVACY_ACCEPTANCE"
+    )
+    def shadow_rows(records: dict[int, dict]) -> list[dict]:
+        return [
+            {"pts_us": pts, **{key: fields[key] for key in shadow_fields}}
+            for pts, fields in sorted(records.items())
+        ]
     status = (
         "DIFFERENT_APK_COMMITS_NOT_COMPARABLE" if not comparable else
         "NO_FOCUS_AUDIT_NOT_ACCEPTED" if not la or not po else
         "FOCUS_EVENTS_MISSING_BETWEEN_MODES" if set(la) != set(po) else
         "FOCUS_BIN_COUNTS_MISMATCH" if disagreements else
-        "SOURCE_MASK_BIN_PARITY_ONLY_NOT_VISUAL_ACCEPTANCE"
+        "FOCUS_NMS_SHADOW_MISMATCH" if shadow_status in (
+            "NMS_SHADOW_FRAME_SET_MISMATCH", "NMS_SHADOW_NUMERIC_MISMATCH"
+        ) else "SOURCE_MASK_BIN_PARITY_ONLY_NOT_VISUAL_ACCEPTANCE"
     )
     return {
         "schema": 1,
@@ -282,6 +377,15 @@ def compare(landscape: dict[str, Any], portrait: dict[str, Any]) -> dict[str, An
         "parity_status": status,
         "shared_focus_conflicts": len(common),
         "mismatched_focus_conflicts": [list(k) for k in disagreements[:20]],
+        "nms_shadow": {
+            "status": shadow_status,
+            "shared_focus_frames": len(shadow_common),
+            "mismatched_pts_us": shadow_mismatches[:20],
+            "landscape": shadow_rows(shadow_left),
+            "portrait": shadow_rows(shadow_right),
+            "pixels_restored": 0,
+            "protagonist_ownership_proven": False,
+        },
         "landscape": summarize(landscape, la),
         "portrait": summarize(portrait, po),
     }
@@ -311,6 +415,7 @@ def main() -> int:
         print(f"PRIVACY_OVERLAP_EVIDENCE=FAIL: {exc}", file=sys.stderr)
         return 1
     print(f"PRIVACY_OVERLAP_EVIDENCE={result['parity_status']}")
+    print(f"YOLO_NMS_SHADOW={result['nms_shadow']['status']}")
     print(f"PRIVACY_VISUAL_ACCEPTANCE={result['visual_privacy_acceptance']}")
     print(f"Report: {args.output}")
     return 0

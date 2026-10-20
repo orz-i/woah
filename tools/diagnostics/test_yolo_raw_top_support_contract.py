@@ -31,6 +31,23 @@ class YoloRawTopSupportContractTest(unittest.TestCase):
         for prohibited in ("Bitmap", "writeBytes", "FileOutputStream", "MediaCodec"):
             self.assertNotIn(prohibited, probe)
 
+    def test_nms_counterfactual_never_mutates_production_instances(self):
+        decoder = (ANDROID / "inference/YoloMaskDecoder.kt").read_text()
+        adapter = (ANDROID / "inference/YoloLiteRtTensorAdapter.kt").read_text()
+        segmenter = (ANDROID / "inference/YoloLiteRtSegmenter.kt").read_text()
+        resolver = (ANDROID / "privacy/PrivacyOcclusionResolver.kt").read_text()
+        self.assertIn("activeByteThreshold: Int = 1", decoder)
+        self.assertIn("activeByteThreshold = 128", adapter)
+        self.assertIn("val (kept, maskCache) = YoloMaskDecoder.maskAwareNms(", adapter)
+        self.assertIn("val strongOnly = strongKept.filter", adapter)
+        self.assertIn("does_not_change_rendering", adapter)
+        self.assertIn("nmsShadowStats: MutableMap<String, Any?>? = null", adapter)
+        self.assertIn("timestampUs in 39_600_000L..39_910_000L", segmenter)
+        self.assertIn("!diagnosticJobId.isNullOrBlank()", segmenter)
+        self.assertIn("YOLO_NMS_VISIBLE_THRESHOLD_SHADOW", segmenter)
+        self.assertNotIn("NMS_VISIBLE_THRESHOLD_SHADOW", resolver)
+        self.assertNotIn("nmsShadowStats", resolver)
+
     def test_existing_selected_fallback_and_renderer_veto_remain_in_place(self):
         resolver = (ANDROID / "privacy/PrivacyOcclusionResolver.kt").read_text()
         self.assertIn("person.framesSinceLastObservation <= maxFallbackObservationAgeFrames", resolver)

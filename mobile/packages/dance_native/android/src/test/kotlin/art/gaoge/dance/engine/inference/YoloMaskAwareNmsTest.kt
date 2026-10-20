@@ -75,6 +75,16 @@ class YoloMaskAwareNmsTest {
                     masks[a], masks[b], candidates[a], candidates[b], 640, protoSize
                 )
                 assertEquals(full, bounded, "bounded support IoU must equal full 160x160 scan")
+                for (threshold in intArrayOf(128, 224)) {
+                    val thresholdedFull = YoloMaskDecoder.calculateMaskIoU(
+                        masks[a], masks[b], activeByteThreshold = threshold)
+                    val thresholdedBounded = YoloMaskDecoder.calculateMaskIoUWithinCandidateSupport(
+                        masks[a], masks[b], candidates[a], candidates[b], 640, protoSize,
+                        activeByteThreshold = threshold
+                    )
+                    assertEquals(thresholdedFull, thresholdedBounded,
+                        "visible-mask IoU must match full scan at threshold=$threshold")
+                }
             }
         }
     }
@@ -238,6 +248,59 @@ class YoloMaskAwareNmsTest {
 
         assertEquals(1, kept.size, "Duplicate candidate must be suppressed")
         assertEquals(candA, kept[0], "Higher confidence candidate must be kept")
+    }
+
+    @Test
+    fun softBackgroundTailsCanSuppressDistinctForegroundInstancesOnlyUnderLegacyNms() {
+        val size = 160
+        fun softMask(coreX: IntRange): ByteArray {
+            // Real sigmoid outputs commonly have nonzero (low-probability)
+            // bytes throughout a candidate's bbox, unlike hard 0/255 tests.
+            val mask = ByteArray(size * size) { 8.toByte() }
+            for (y in 40..120) for (x in coreX) {
+                mask[y * size + x] = 240.toByte()
+            }
+            return mask
+        }
+        val a = RawCandidate(100f, 100f, 500f, 500f, 0.92f, FloatArray(32),
+            syntheticMask = softMask(30..55))
+        val b = RawCandidate(100f, 100f, 500f, 500f, 0.85f, FloatArray(32),
+            syntheticMask = softMask(75..100))
+
+        assertEquals(1f, YoloMaskDecoder.calculateMaskIoU(
+            requireNotNull(a.syntheticMask), requireNotNull(b.syntheticMask)))
+        assertEquals(0f, YoloMaskDecoder.calculateMaskIoU(
+            requireNotNull(a.syntheticMask), requireNotNull(b.syntheticMask), activeByteThreshold = 128))
+        val production = YoloMaskDecoder.maskAwareNms(listOf(a, b), null).first
+        val explicitLegacy = YoloMaskDecoder.maskAwareNms(
+            listOf(a, b), null, activeByteThreshold = 1).first
+        val counterfactual = YoloMaskDecoder.maskAwareNms(
+            listOf(a, b), null, activeByteThreshold = 128).first
+        assertEquals(listOf(a), production, "Legacy policy suppresses second candidate")
+        assertEquals(production, explicitLegacy, "Default production NMS must remain byte-exact")
+        assertEquals(listOf(a, b), counterfactual, "Threshold shadow sees both distinct cores")
+    }
+
+    @Test
+    fun strongDuplicateStillSuppressesAtVisibleThresholdAndUnsignedBytesAreHandled() {
+        val size = 160
+        fun softMask(shift: Int): ByteArray {
+            val mask = ByteArray(size * size) { 7.toByte() }
+            for (y in 40..120) for (x in (30 + shift)..(55 + shift)) {
+                mask[y * size + x] = 255.toByte()
+            }
+            return mask
+        }
+        val a = RawCandidate(100f, 100f, 500f, 500f, 0.92f, FloatArray(32),
+            syntheticMask = softMask(0))
+        val b = RawCandidate(101f, 100f, 501f, 500f, 0.85f, FloatArray(32),
+            syntheticMask = softMask(1))
+        assertTrue(YoloMaskDecoder.calculateMaskIoU(
+            requireNotNull(a.syntheticMask), requireNotNull(b.syntheticMask), 128) > 0.80f)
+        assertEquals(1, YoloMaskDecoder.maskAwareNms(listOf(a, b), null,
+            activeByteThreshold = 128).first.size)
+        assertEquals(1f, YoloMaskDecoder.calculateMaskIoU(
+            byteArrayOf(128.toByte(), 127.toByte()), byteArrayOf(255.toByte(), 0), 128))
     }
 
     @Test
