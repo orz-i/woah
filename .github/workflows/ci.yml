@@ -64,15 +64,18 @@ jobs:
           cd ../dance_native && flutter test
           cd ../../app && flutter test
 
-      - name: Verify LiteRT and Crop Clarity QA Contracts
+      - name: Verify LiteRT Crop Clarity and Privacy Contracts
         run: |
           python -m unittest tools.test_setup_models -v
           uv run python -m unittest tools.test_crop_clarity_model_tools -v
-          uv run python -m unittest tools.diagnostics.test_crop_clarity_ab_report -v
-          python -m unittest tools.diagnostics.test_crop_clarity_release_perf -v
           python -m unittest tools.test_crop_clarity_post_crop_contract -v
           python -m unittest tools.test_crop_clarity_synthetic_privacy -v
           python -m unittest tools.test_follow_camera_recovery_contract -v
+          python -m unittest tools.test_kalman_process_noise_contract -v
+          python -m unittest tools.test_kalman_lost_coasting_contract -v
+          python -m unittest tools.test_privacy_coverage_contract -v
+          python -m unittest tools.release.test_verify_export_media_contract -v
+          python -m unittest discover -s tools/diagnostics -p 'test_*.py' -v
 
       # SAM2 is unavailable and ONNX is obsolete. YOLO stays mandatory; the
       # crop-clarity prototype is staged only when a verified SHA contract exists.

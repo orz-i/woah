@@ -1,0 +1,39 @@
+# 2026-10-20 Woah: FULL_BODY/Crop Clarity 封板判定与合并前预审
+
+Scope: existing `feat/crop-clarity-phase2-quality-performance` vs `master`. Pre-audit starting HEAD `ff0be8be0abe65800788e328651c5cc419296c11`, master `d875b400f2228d068a685cef1480fcbd59edf72a`. **Decision: NOT SEALED / NOT READY TO MERGE.** This document contains no video, user screenshots, masks or raw tensor data. No push/merge occurred.
+
+## Gate semantics (avoid false PASS)
+
+A **code freeze** means no further speculative pixel-removal experiments are justified by current evidence. It does **not** mean privacy coverage or product release is accepted. A **functional seal** and full-branch merge require all mandatory gates below, in addition to explicit user authorization to merge. A passing synthetic test, NMS/Track signature, Debug mask metric or Git fast-forward check cannot substitute for a verified final protected output.
+
+| Gate | Actual evidence | Status / blocking requirement |
+| --- | --- | --- |
+| 39.733–39.900s selected-person confidentiality + protagonist false masking | 3b4ba5a Android 17 paired 1391-frame exports show reproducible large grey block on protagonist; 39.733s 82→65 (79.27%); raw YOLO above protagonist box has very little strong evidence | **BLOCK**: clearly labeled final protected output must retain ALL non-protagonist coverage and eliminate the visible protagonist false masking. If pixels cannot be assigned independently, preserve privacy; do not invent a PASS. |
+| Source-space tracking/class symmetry across portrait/landscape | 1391/1391 production Track and privacy input signatures equal; 41/41 unknown-overlap audits equal | **PASS (numeric parity only)**, not identity or pixel correctness |
+| 46s stale ceiling mask regression | At 46.333s protected ID1 stale 178 observations; expired and excluded; GL source-visible sampled count 23 (root0), both outputs | **PASS at log/input level**; final protected pixels of the new build still need visual recheck |
+| Conservative unknown class / GL fail-closed / observation-age budget | Kotlin source guards, existing regression contracts, matched device export without severe coverage fail-closed | **PARTIAL**: fail-closed code guard present; cannot assert no missed protected people from logs alone |
+| Crop Clarity Phase 2 real output A/B | Scene sampler and 12-pair tooling implemented; historic quality documents still list visual/temporal acceptance gaps | **BLOCK** until privacy-safe protected crop, relevant adjacent frames, and quality judgement actually reviewed |
+| Crop Clarity Release OFF/ON performance | Instrumentation requires ≥3 matched Release exports per variant and thermal/throughput review | **BLOCK**: no accepted Release pair series on this audit |
+| Android native Kotlin JVM tests + release APK | 3b4ba5a Debug APK verifiably executed 1391-frame exports on Android. Mac lacks Android JDK/SDK; no branch PR CI yet | **PARTIAL**: no full native CI and release-build gate from this final branch HEAD. Device Debug success is not release equivalence |
+| Dart/Flutter and executable Python regression | Flutter app 75, dance_native 5, dance_domain 27; Flutter analysis clean; Python diagnostics 69 (65 pass/4 skip), host privacy/Kalman 24 pass; protected-resolution UI contract repaired and four negative tests pass | **PASS on executed local suites**. ML model-tools dependency-backed suite and full remote CI remain unverified |
+| Branch topology / accidental media | master is ancestor of branch (fast-forward structurally possible); branch ahead master by 27 commits, initially 74 files changed. No new binary video/image/zip/model artifacts in branch diff | **PASS on Git topology/source artifact check**; never equate fast-forward with quality readiness |
+| GitHub Production/iOS CI | Last master Production CI (2026-10-08, run 37722483843) failed at stale protection-editor resolution UI contract, skipping subsequent native steps. Baseline iOS Cloud CI also failed at repository contracts. No PR and no complete CI on branch | **BLOCK**: local contract mismatch now corrected; full branch PR CI and independent iOS issue must be triaged rather than reported green |
+
+## Concrete engineering review / actions
+
+1. Retain `c259eb4` observation-age expiry: do not restore old root ID1 masks at 46s; retain privacy union and GL fail-closed, including conservatively SELECTED unknowns.
+2. **Do not** widen bounding boxes, reduce 224/9 cut thresholds, infer protagonist ownership from Kalman, footY, or a strong optical-flow match, or promote the synthetic `research_full_body_motion_correspondence.py` to the export pipeline. In the adversarial identical-appearance crossing, even forward/backward unique correspondence can match an intruder if protected occupancy was incorrectly reported complete. The project has no independent proof of a complete protected-person census in that overlap. Fail closed.
+3. Local CI blocker remediation: adjust `tools/release/verify_export_media_contract.py` to the current top-row `protection-editor-resolution-trigger`, `1080p`/`720p` dialog, and `updateOutputResolutionPreset` callback. Keep no-upscale enforcement in the domain ExportPlan and existing Flutter test. Add four falsification tests and include privacy/source-geometry/Kalman/diagnostic checks in Production CI. These changes do not touch native compositor, effect rendering or visual cropping.
+4. No opportunistic interface redesign, desktop historical code, SAM2/ONNX resurrection or new logging/capture tooling just to clear a numerical warning. Do not request new sensitive video solely to repeat known indistinguishable masks.
+
+## Exit criteria for returning to *full merge audit*
+
+Required before declaring functional seal:
+
+- An independently justified upper-body pixel-ownership solution with a protected-person veto, in both positive and adversarial synthetic cases; code integration only when false-clear risk is controlled.
+- Real Android paired landscape/portrait protected exports from **the actual proposed final build**, validating 39.7–39.9s and neighboring frames, all other selected people, and 45.967–46.333s. The 39.733 overmask must be fixed without releasing another person. Numeric parity and 79.27% warning interpretation do not override visible evidence.
+- Accepted Crop Clarity protected output A/B (including later-third relevant protected people and temporal sequence) and matched Release OFF/ON benchmarks. A tolerance budget must be agreed before accepting results; logs do not measure peak GPU or guarantee temporal quality.
+- Completed Kotlin/Gradle native tests, Android build, app/package regression, repository contract checks and GitHub Production CI against proposed merge tip. Baseline iOS Cloud CI failure needs separate scope decision; do not attribute it to this Android privacy fix without reproducing cause.
+- A clean, source-only worktree, reviewed final diff/commit history, and **explicit approval to merge**.
+
+**Current disposition:** engineer may freeze the unsafe speculative carve route, not the product. Continue only independently supportable safety/regression/CI work; do not label this full branch sealed or merge it into master. If fixes are urgently needed on master sooner, a deliberately scoped, separately reviewed security-fix integration is safer than silently accepting the unresolved full-feature gate.

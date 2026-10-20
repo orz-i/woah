@@ -61,6 +61,10 @@ def main() -> int:
         "maxEncodeHeight",
         "0.13",
         "80_000_000",
+        # FHD/HD remain upper bounds: smaller sources are not enlarged merely
+        # because a resolution preset was selected.
+        "if (width <= capWidth && height <= capHeight)",
+        "return (width: width, height: height);",
     ):
         require(plan, token, "ExportPlan")
     require(project, "enum OutputResolutionPreset { source, fhd, hd }", "DanceProject")
@@ -78,12 +82,19 @@ def main() -> int:
     ):
         require(controller, token, "ExportController")
 
+    # The immersive editor moved the preset from a labeled selector to a
+    # compact top-row trigger/dialog. The old Key and copy are deliberately
+    # absent. Check the actual reachable UI and update handler instead; the
+    # no-upscale contract is enforced in ExportPlan above and in Dart tests.
     for token in (
-        "output-resolution-preset",
+        "protection-editor-resolution-trigger",
+        "_showResolutionDialog(context, project, effectController)",
         "OutputResolutionPreset.source",
         "OutputResolutionPreset.fhd",
         "OutputResolutionPreset.hd",
-        "FHD / HD 只限制最大输出尺寸，不会放大低分辨率素材",
+        "'1080p'",
+        "'720p'",
+        "effectController.updateOutputResolutionPreset(value);",
     ):
         require(protection_editor, token, "Protection editor resolution UI")
 
