@@ -44,10 +44,8 @@ object PrivacyOcclusionResolver {
         val freshErodedCore: NativeMask?,
         val approvedCarve: NativeMask?,
         val temporalCore: NativeMask?,
-        val strongForegroundGate: StrongObservedForegroundCarve.Gate,
-        val strictCoreProtoPixels: Int,
-        val otherFreshSelectedMasks: List<NativeMask>,
-        val otherFreshSelectedExpected: Int,
+        val freshOtherSelectedMasks: List<NativeMask>,
+        val expectedOtherSelectedCount: Int,
         val effectiveTarget: NativeMask? = null
     )
 
@@ -517,7 +515,7 @@ object PrivacyOcclusionResolver {
                     val conservativeUnknownTarget = targetFreshEvidence?.conservativeUnknown == true
                     // This corroborates foreground provenance, not identity transfer.
                     // The unknown target remains SELECTED and keeps its own privacy.
-                    val corroboratingUnselectedTrack = if (
+                    val corroboratingUnselectedTrackId = if (
                         conservativeUnknownTarget && isCandFresh &&
                         candidateFreshEvidence?.selectionClass == PrivacySelectionClass.UNSELECTED &&
                         !candidateFreshEvidence.conservativeUnknown
@@ -528,11 +526,10 @@ object PrivacyOcclusionResolver {
                                 !selectedPersonIds.contains(observed.id) &&
                                 TrackManager.computeBBoxIoU(observed.bbox, candBbox) >=
                                     UNKNOWN_FOREGROUND_OBSERVED_BBOX_IOU
-                        }
+                        }?.id
                     } else {
                         null
                     }
-                    val corroboratingUnselectedTrackId = corroboratingUnselectedTrack?.id
                     val tinyFreshDepthCoreHasStrongCurrentGeometry =
                         isFreshSelectedTarget &&
                             isCandFresh &&
@@ -589,84 +586,14 @@ object PrivacyOcclusionResolver {
                         null
                     }
                     val temporalForegroundCorePixels = countMaskPixels(temporalForegroundCore)
-                    // Only a genuinely observed, stable foreground root may
-                    // recover high-confidence *current* eroded interior pixels
-                    // where raw selected-vs-unselected probability margin is
-                    // inconclusive. This is NOT temporal/bbox extrapolation.
-                    // Independent fresh SELECTED masks always veto the carve
-                    // at their own proto pixels; invalid masks veto it entirely.
-                    val strongForegroundGate = StrongObservedForegroundCarve.Gate(
-                        useFreshClassPrimary = useFreshPrimary && stateAllowsCarve,
-                        targetConservativeUnknown = conservativeUnknownTarget,
-                        targetResidualTrackIdsEmpty =
-                            targetFreshEvidence?.residualTrackIds?.isEmpty() == true,
-                        targetConfidence = target.confidence,
-                        candidateFreshUnselected =
-                            isCandFresh &&
-                                candidateFreshEvidence?.selectionClass == PrivacySelectionClass.UNSELECTED &&
-                                candidateFreshEvidence.conservativeUnknown == false,
-                        candidateConfidence = cand.confidence,
-                        observedUnselected = corroboratingUnselectedTrack?.observedThisFrame == true,
-                        observedUnselectedAgeFrames = corroboratingUnselectedTrack?.age ?: 0,
-                        observedUnselectedConfidence = corroboratingUnselectedTrack?.confidence ?: 0f,
-                        foregroundTrackMatchesCandidate = corroboratingUnselectedTrackId != null,
-                        bboxOverlapRatio = bboxOverlapRatio,
-                        normalizedForegroundFootDelta = normalizedFootYDelta,
-                        freshDepthCoreIntersectionPixels = freshDepthCorePixels
-                    )
-                    val strongForegroundCore = if (
-                        StrongObservedForegroundCarve.eligible(strongForegroundGate)
-                    ) {
-                        val otherSelected = freshClassEvidence.filter {
-                            it.selectionClass == PrivacySelectionClass.SELECTED &&
-                                it.detectionIndex != targetFreshEvidence?.detectionIndex
-                        }
-                        val otherMasks = otherSelected.mapNotNull { it.detection.mask }
-                        val observedMask = corroboratingUnselectedTrack?.mask
-                        if (otherMasks.size == otherSelected.size && observedMask != null) {
-                            StrongObservedForegroundCarve.build(
-                                selected = rawMask,
-                                freshForeground = candMask,
-                                observedForeground = observedMask,
-                                otherSelected = otherMasks
-                            )
-                        } else {
-                            null
-                        }
-                    } else {
-                        null
-                    }
-                    val strongForegroundCorePixels = countMaskPixels(strongForegroundCore)
-                    val acceptedUnknownCores = listOfNotNull(
-                        unknownForegroundCore, temporalForegroundCore, strongForegroundCore
-                    )
-                    val finalUnknownForegroundCore = when (acceptedUnknownCores.size) {
-                        0 -> null
-                        1 -> acceptedUnknownCores.first()
-                        else -> mergeMasks(acceptedUnknownCores)
+                    val finalUnknownForegroundCore = when {
+                        unknownForegroundCore == null -> null
+                        temporalForegroundCore != null -> mergeMasks(
+                            listOf(unknownForegroundCore, temporalForegroundCore)
+                        )
+                        else -> unknownForegroundCore
                     }
                     val unknownForegroundCorePixels = countMaskPixels(finalUnknownForegroundCore)
-                    if (strongForegroundCorePixels > 0) {
-                        NativeDiagnostics.eventLazy(
-                            level = "INFO",
-                            component = "PrivacyOcclusionResolver",
-                            event = "PRIVACY_STRONG_OBSERVED_FOREGROUND_CARVE",
-                            fields = { mapOf(
-                                "job_id" to jobId,
-                                "pts_us" to ptsUs,
-                                "target_detection_index" to targetFreshEvidence?.detectionIndex,
-                                "candidate_detection_index" to candidateFreshEvidence?.detectionIndex,
-                                "observed_unselected_track_id" to corroboratingUnselectedTrackId,
-                                "strict_core_proto_pixels" to strongForegroundCorePixels,
-                                "merged_approved_core_proto_pixels" to unknownForegroundCorePixels,
-                                "other_fresh_selected_count" to
-                                    freshClassEvidence.count {
-                                        it.selectionClass == PrivacySelectionClass.SELECTED &&
-                                            it.detectionIndex != targetFreshEvidence?.detectionIndex
-                                    }
-                            ) }
-                        )
-                    }
                     // The diagnostics below are deliberately aggregate-only and
                     // carry no raw masks, images, or exact per-pixel coordinates.
                     // A full-body Debug export records at most one observed
@@ -699,14 +626,14 @@ object PrivacyOcclusionResolver {
                             freshErodedCore = freshDepthCore,
                             approvedCarve = finalUnknownForegroundCore,
                             temporalCore = temporalForegroundCore,
-                            strongForegroundGate = strongForegroundGate,
-                            strictCoreProtoPixels = strongForegroundCorePixels,
-                            otherFreshSelectedMasks = freshClassEvidence.asSequence()
+                            // Numeric-only Debug evidence; never feeds the
+                            // compositor or weakens any selected identity.
+                            freshOtherSelectedMasks = freshClassEvidence.asSequence()
                                 .filter {
                                     it.selectionClass == PrivacySelectionClass.SELECTED &&
                                         it.detectionIndex != targetFreshEvidence?.detectionIndex
                                 }.mapNotNull { it.detection.mask }.toList(),
-                            otherFreshSelectedExpected = freshClassEvidence.count {
+                            expectedOtherSelectedCount = freshClassEvidence.count {
                                 it.selectionClass == PrivacySelectionClass.SELECTED &&
                                     it.detectionIndex != targetFreshEvidence?.detectionIndex
                             }
@@ -774,7 +701,6 @@ object PrivacyOcclusionResolver {
                         "corroborating_unselected_track_id" to corroboratingUnselectedTrackId,
                         "corroborated_unknown_foreground_core_pixels" to unknownForegroundCorePixels,
                         "temporal_foreground_core_pixels" to temporalForegroundCorePixels,
-                        "strong_observed_foreground_core_pixels" to strongForegroundCorePixels,
                         "temporal_foreground_track_id" to
                             (if (temporalForegroundCorePixels > 0) corroboratingUnselectedTrackId else null),
                         "fresh_depth_core_eligible" to useFreshDepthCore,
@@ -1001,17 +927,9 @@ object PrivacyOcclusionResolver {
                         "candidate_detection_index" to probe.candidateDetectionIndex,
                         "corroborating_unselected_track_id" to
                             probe.corroboratingUnselectedId,
-                        "strong_foreground_gate_eligible" to
-                            StrongObservedForegroundCarve.eligible(probe.strongForegroundGate),
-                        "strong_foreground_gate_failures" to
-                            StrongObservedForegroundCarve.failedRequirements(probe.strongForegroundGate),
-                        "strong_foreground_core_proto_pixels" to probe.strictCoreProtoPixels,
-                        "strong_foreground_observed_age_frames" to
-                            probe.strongForegroundGate.observedUnselectedAgeFrames,
-                        "strong_foreground_observed_confidence" to
-                            probe.strongForegroundGate.observedUnselectedConfidence,
-                        "strong_foreground_veto_selected_masks_complete" to
-                            (probe.otherFreshSelectedMasks.size == probe.otherFreshSelectedExpected)
+                        "veto_selected_masks_complete" to
+                            (probe.freshOtherSelectedMasks.size ==
+                                probe.expectedOtherSelectedCount)
                     ) + PrivacyUnknownForegroundPixelAudit.summarize(
                         PrivacyUnknownForegroundPixelAudit.Probe(
                             targetBbox = probe.targetBbox,
@@ -1027,7 +945,7 @@ object PrivacyOcclusionResolver {
                             competingSelected = effectiveSelectedMasks.filterIndexed {
                                 index, _ -> selectedPersons[index].id != probe.targetId
                             },
-                            strongVetoSelected = probe.otherFreshSelectedMasks
+                            strongVetoSelected = probe.freshOtherSelectedMasks
                         )
                     )
                 }

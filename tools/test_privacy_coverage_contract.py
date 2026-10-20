@@ -19,7 +19,6 @@ RENDERER = (NATIVE / "render/GlRenderer.kt").read_text(encoding="utf-8")
 AUDIT = (NATIVE / "privacy/PrivacyMaskUploadAudit.kt").read_text(encoding="utf-8")
 HISTORY = (NATIVE / "privacy/VerifiedUnselectedForegroundHistory.kt").read_text(encoding="utf-8")
 PIXEL_AUDIT = (NATIVE / "privacy/PrivacyUnknownForegroundPixelAudit.kt").read_text(encoding="utf-8")
-STRONG_FOREGROUND = (NATIVE / "privacy/StrongObservedForegroundCarve.kt").read_text(encoding="utf-8")
 
 
 @dataclass(frozen=True)
@@ -260,39 +259,43 @@ class PrivacyCoverageContractTest(unittest.TestCase):
         self.assertIn('"strong_threshold_totals"', PIXEL_AUDIT)
         self.assertIn('"selected_and_both_ge224_without_other"', PIXEL_AUDIT)
         self.assertIn("probe.strongVetoSelected.any", PIXEL_AUDIT)
-        self.assertIn("strongVetoSelected = probe.otherFreshSelectedMasks", RESOLVER)
-        self.assertIn('"strong_foreground_gate_failures" to', RESOLVER)
-        self.assertIn("StrongObservedForegroundCarve.failedRequirements(", RESOLVER)
-        self.assertIn('"strong_foreground_core_proto_pixels" to probe.strictCoreProtoPixels', RESOLVER)
+        self.assertIn("strongVetoSelected = probe.freshOtherSelectedMasks", RESOLVER)
+        self.assertIn('"veto_selected_masks_complete" to', RESOLVER)
+        self.assertNotIn("StrongObservedForegroundCarve", RESOLVER)
+        self.assertNotIn("PRIVACY_STRONG_OBSERVED_FOREGROUND_CARVE", RESOLVER)
         self.assertNotIn("BitmapFactory", PIXEL_AUDIT)
         self.assertNotIn("glReadPixels", PIXEL_AUDIT)
         self.assertNotIn("Base64", PIXEL_AUDIT)
 
-    def test_narrow_strong_observed_foreground_carve_vetoes_other_selected_masks(self):
-        self.assertIn("StrongObservedForegroundCarve.eligible(strongForegroundGate)", RESOLVER)
-        self.assertIn("StrongObservedForegroundCarve.build(", RESOLVER)
-        self.assertIn("useFreshClassPrimary = useFreshPrimary && stateAllowsCarve", RESOLVER)
-        self.assertIn("targetFreshEvidence?.residualTrackIds?.isEmpty() == true", RESOLVER)
-        self.assertIn("corroboratingUnselectedTrack?.observedThisFrame == true", RESOLVER)
-        self.assertIn("candidateFreshEvidence?.selectionClass == PrivacySelectionClass.UNSELECTED", RESOLVER)
-        self.assertIn("it.detectionIndex != targetFreshEvidence?.detectionIndex", RESOLVER)
-        self.assertIn("otherMasks.size == otherSelected.size", RESOLVER)
-        self.assertIn("unknownForegroundCore, temporalForegroundCore, strongForegroundCore", RESOLVER)
-        self.assertIn("event = \"PRIVACY_STRONG_OBSERVED_FOREGROUND_CARVE\"", RESOLVER)
-        self.assertIn("STRONG_FOREGROUND_BYTE = 224", STRONG_FOREGROUND)
-        self.assertIn("SELECTED_CONTOUR_BYTE = 128", STRONG_FOREGROUND)
-        self.assertIn("MIN_ERODED_CORE_PIXELS = 9", STRONG_FOREGROUND)
-        self.assertIn("observedUnselectedAgeFrames >= 15", STRONG_FOREGROUND)
-        self.assertIn("normalizedForegroundFootDelta >= 0.50f", STRONG_FOREGROUND)
-        self.assertIn("bboxOverlapRatio >= 0.50f", STRONG_FOREGROUND)
-        self.assertIn("gate.candidateConfidence in 0.70f..1f", STRONG_FOREGROUND)
-        self.assertIn("gate.targetConfidence in 0f..0.45f", STRONG_FOREGROUND)
-        self.assertIn("otherSelected.any { !aligned(it) }", STRONG_FOREGROUND)
-        self.assertIn("otherSelected.any {", STRONG_FOREGROUND)
-        self.assertIn("observedPixel >= STRONG_FOREGROUND_BYTE", STRONG_FOREGROUND)
-        self.assertIn("MaskPrivacyProcessor.erode(candidate, radius = 1)", STRONG_FOREGROUND)
-        self.assertNotIn("privacySelectedTrackIds.add", STRONG_FOREGROUND)
-        self.assertNotIn("selectedPersonIds.add", STRONG_FOREGROUND)
+    def test_real_device_5491f62_proves_retired_strict_carve_was_noop(self):
+        # Source-free numeric evidence from the two identical Android modes.
+        # These are proto-pixel COUNTS, not reconstructible segmentation masks.
+        risk_frames = (
+            # pts_us, both >=192, both >=224, approved legacy strict pixels
+            (39_733_333, 24, 6, 0),
+            (39_766_666, 18, 2, 0),
+            (39_800_000, 0, 0, 0),
+            (39_833_333, 0, 0, 0),
+            (39_866_666, 0, 0, 0),
+            (39_900_000, 0, 0, 0),
+        )
+        self.assertLess(max(fresh_224 for _, _, fresh_224, _ in risk_frames), 9)
+        self.assertEqual([r[2] for r in risk_frames], [6, 2, 0, 0, 0, 0])
+        self.assertTrue(all(approved == 0 for *_, approved in risk_frames))
+        self.assertEqual(sum(r[1] for r in risk_frames[2:]), 0)
+
+        # Restored the older compositor without weakening protection:
+        # the 192/224 intensities remain only for Debug-only audit.
+        self.assertNotIn("StrongObservedForegroundCarve", RESOLVER)
+        self.assertNotIn('event = "PRIVACY_STRONG_OBSERVED_FOREGROUND_CARVE"', RESOLVER)
+        self.assertNotIn("strongForegroundCore", RESOLVER)
+        self.assertIn("unknownForegroundCore == null -> null", RESOLVER)
+        self.assertIn("temporalForegroundCore != null -> mergeMasks(", RESOLVER)
+        self.assertIn("listOf(unknownForegroundCore, temporalForegroundCore)", RESOLVER)
+        self.assertIn('"veto_selected_masks_complete" to', RESOLVER)
+        self.assertIn("strongVetoSelected = probe.freshOtherSelectedMasks", RESOLVER)
+        self.assertIn("selectedBothStrong192", PIXEL_AUDIT)
+        self.assertIn("selectedBothStrong224", PIXEL_AUDIT)
 
     def test_missing_observed_full_body_mask_fails_export_before_source_render(self):
         self.assertIn("observedSelectedWithoutMasks(", RESOLVER)

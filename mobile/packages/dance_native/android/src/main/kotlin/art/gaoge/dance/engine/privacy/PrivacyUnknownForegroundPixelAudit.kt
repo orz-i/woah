@@ -212,11 +212,12 @@ object PrivacyUnknownForegroundPixelAudit {
                 }
             }
         }
-        // Same pixel thresholds as StrongObservedForegroundCarve.build.
-        // Count evidence over the ENTIRE selected proto mask, including pixels
-        // outside its bbox. These are aggregate integers, never mask bytes or
-        // pixel coordinates. This is diagnostic-only; no predicate below can
-        // authorize a removal of privacy.
+        // Retain the former 192/224 intensity evidence as Debug-only
+        // counterfactual telemetry after retiring the proven-ineffective
+        // StrongObservedForegroundCarve experiment. Counts span the ENTIRE
+        // selected proto mask, including areas outside its detector bbox.
+        // These aggregate integers are NOT pixel-ownership proof and never
+        // affect compositor decisions or authorize privacy removal.
         var selectedFreshStrong224 = 0
         var selectedObservedStrong224 = 0
         var selectedBothStrong192 = 0

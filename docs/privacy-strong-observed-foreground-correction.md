@@ -1,6 +1,9 @@
 # Protected-overlap strong observed foreground correction
 
-Status: implementation candidate, **final-pixel validation pending**.
+Status: HISTORICAL / RETIRED after 5491f62 dual-device audit. See
+docs/privacy-5491f62-strict-carve-retirement.md. The strict experimental
+carve is no longer active; this document preserves the old hypothesis and
+its original synthetic test rationale, not the current product behavior.
 
 Previous evidence from the 2cb113e Android traces and local source/output crops
 confirms the unprotected protagonist's upper body is wrongly anonymized at

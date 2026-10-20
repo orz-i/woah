@@ -1,7 +1,11 @@
 # b80e60b Android 17 full-body privacy overlap: real-device A/B review
 
 Status: **visual NOT ACCEPTED for protagonist overmask; no verified identity leak
-in the 11 sampled risk frames; no full-video privacy pass.**
+in the 11 sampled risk frames; no full-video privacy pass.** Follow-up:
+the additional 5491f62 numeric gate audit proved the strong carve is
+inactive across all 41 candidate frames. See
+docs/privacy-5491f62-strict-carve-retirement.md for the retirement
+decision. The text below describes the historical b80e60b state.
 
 ## Scoped inputs and provenance
 
