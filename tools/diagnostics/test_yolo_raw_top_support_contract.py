@@ -1,7 +1,7 @@
-"""Source-contract checks for numeric-only YOLO decoder-gap diagnostics.
+"""Source contracts for retiring exhausted YOLO raw top-support diagnostics.
 
-Native Kotlin test execution still requires JDK/Android SDK on a build host.
-These checks guard the observation-only boundary on the current Mac.
+Historical anonymous ZIP analyzers stay usable; native privacy/rendering keeps
+its pre-experiment behavior. These tests do NOT establish visual privacy PASS.
 """
 from pathlib import Path
 import unittest
@@ -11,39 +11,36 @@ ANDROID = (ROOT / "mobile/packages/dance_native/android/src/main/kotlin"
            / "art/gaoge/dance/engine")
 
 
-class YoloRawTopSupportContractTest(unittest.TestCase):
-    def test_probe_never_enters_export_privacy_decision(self):
-        probe = (ANDROID / "inference/YoloRawTopSupportProbe.kt").read_text()
+class YoloRawTopSupportRetirementContractTest(unittest.TestCase):
+    def test_live_raw_proto_sampler_is_fully_retired(self):
+        probe = ANDROID / "inference/YoloRawTopSupportProbe.kt"
+        self.assertFalse(probe.exists(), "Unused debug raw-prototype sampler must not be compiled")
         adapter = (ANDROID / "inference/YoloLiteRtTensorAdapter.kt").read_text()
         segmenter = (ANDROID / "inference/YoloLiteRtSegmenter.kt").read_text()
+        detector = (ANDROID / "inference/Segmenter.kt").read_text()
         resolver = (ANDROID / "privacy/PrivacyOcclusionResolver.kt").read_text()
-        self.assertIn("captureRawTopSupportAudit: Boolean = false", adapter)
-        self.assertIn("if (auditOverlappingCandidate)", adapter)
-        self.assertIn("BuildConfig.DEBUG &&", segmenter)
-        self.assertIn("diagnosticJobId != null", segmenter)
+        for source in (adapter, segmenter, detector, resolver):
+            for forbidden in (
+                "rawTopSupportAudit", "YoloRawTopSupportProbe",
+                "YoloRawTopSupportAudit", "captureRawTopSupportAudit",
+                "target_yolo_raw_top_support",
+                "candidate_yolo_raw_top_support",
+            ):
+                self.assertNotIn(forbidden, source)
         self.assertIn("PRIVACY_UNKNOWN_FOREGROUND_PIXEL_AUDIT", resolver)
-        self.assertIn("target_yolo_raw_top_support", resolver)
-        self.assertIn("candidate_yolo_raw_top_support", resolver)
-        self.assertEqual(resolver.count("probe.targetRawTopSupportAudit?.scalarFields()"), 1)
-        self.assertEqual(resolver.count("probe.foregroundRawTopSupportAudit?.scalarFields()"), 1)
-        # Only numeric sample buckets; never images/arrays in export telemetry.
-        self.assertIn("Map<String, Int>", probe)
-        for prohibited in ("Bitmap", "writeBytes", "FileOutputStream", "MediaCodec"):
-            self.assertNotIn(prohibited, probe)
-
-    def test_retired_nms_visibility_shadow_is_not_in_android_runtime(self):
-        decoder = (ANDROID / "inference/YoloMaskDecoder.kt").read_text()
-        adapter = (ANDROID / "inference/YoloLiteRtTensorAdapter.kt").read_text()
-        segmenter = (ANDROID / "inference/YoloLiteRtSegmenter.kt").read_text()
-        # Device A/B found zero difference between the NMS candidate sets.
-        # Do not keep the second inference-postprocess loop or silently change
-        # the historical production NMS pixel threshold when retiring it.
-        self.assertNotIn("activeByteThreshold", decoder)
-        self.assertNotIn("nmsShadowStats", adapter)
-        self.assertNotIn("YOLO_NMS_VISIBLE_THRESHOLD_SHADOW", segmenter)
-        self.assertIn("if (a != 0 && b != 0) intersection++", decoder)
-        self.assertIn("if ((a or b) != 0) union++", decoder)
         self.assertIn("val (kept, maskCache) = YoloMaskDecoder.maskAwareNms(", adapter)
+
+    def test_historical_numeric_comparator_remains_non_visual(self):
+        analyzer = (ROOT / "tools/diagnostics/analyze_privacy_overlap_evidence.py").read_text()
+        for token in (
+            "RAW_TOP_SUPPORT_FIELDS",
+            "target_yolo_raw_top_support",
+            "candidate_yolo_raw_top_support",
+            '"visual_privacy_acceptance": "NOT_PROVEN"',
+        ):
+            self.assertIn(token, analyzer)
+        for forbidden in ("cv2.imread", "PIL.Image.open", "mask_png_bytes"):
+            self.assertNotIn(forbidden, analyzer)
 
     def test_existing_selected_fallback_and_renderer_veto_remain_in_place(self):
         resolver = (ANDROID / "privacy/PrivacyOcclusionResolver.kt").read_text()
@@ -52,6 +49,14 @@ class YoloRawTopSupportContractTest(unittest.TestCase):
         self.assertIn("after == 0", resolver)
         self.assertIn("buildSafeRenderOccluderMask(", resolver)
         self.assertIn("val conservativeUnknownTarget", resolver)
+
+    def test_nms_control_case_restored_without_active_threshold_change(self):
+        decoder = (ANDROID / "inference/YoloMaskDecoder.kt").read_text()
+        adapter = (ANDROID / "inference/YoloLiteRtTensorAdapter.kt").read_text()
+        self.assertIn("if (a != 0 && b != 0) intersection++", decoder)
+        self.assertIn("if ((a or b) != 0) union++", decoder)
+        self.assertNotIn("activeByteThreshold", decoder)
+        self.assertNotIn("nmsShadowStats", adapter)
 
 
 if __name__ == "__main__":

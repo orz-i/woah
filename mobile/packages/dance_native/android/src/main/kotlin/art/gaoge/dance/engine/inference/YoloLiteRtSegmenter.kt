@@ -170,10 +170,7 @@ class YoloLiteRtSegmenter(
                 preprocess = preprocess,
                 confThreshold = 0.25f,
                 iouThreshold = 0.50f,
-                stageTimingsMs = stageTimings,
-                // No extra prototype sampling in Release or ordinary non-diagnostic frames.
-                captureRawTopSupportAudit = art.gaoge.dance.engine.BuildConfig.DEBUG &&
-                    diagnosticJobId != null
+                stageTimingsMs = stageTimings
             )
             stageTimings["yoloDecode"] = (System.nanoTime() - decodeStartNs) / 1_000_000
             if (diagnosticJobId != null) {

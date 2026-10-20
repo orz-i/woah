@@ -3,7 +3,6 @@ package art.gaoge.dance.engine.privacy
 import art.gaoge.dance.engine.diagnostics.NativeDiagnostics
 import art.gaoge.dance.engine.inference.FloatRect
 import art.gaoge.dance.engine.inference.NativeMask
-import art.gaoge.dance.engine.inference.YoloRawTopSupportAudit
 import art.gaoge.dance.engine.tracking.FreshPrivacyClassEvidence
 import art.gaoge.dance.engine.tracking.HungarianSolver
 import art.gaoge.dance.engine.tracking.PrivacySelectionClass
@@ -45,8 +44,6 @@ object PrivacyOcclusionResolver {
         val freshErodedCore: NativeMask?,
         val approvedCarve: NativeMask?,
         val temporalCore: NativeMask?,
-        val targetRawTopSupportAudit: YoloRawTopSupportAudit?,
-        val foregroundRawTopSupportAudit: YoloRawTopSupportAudit?,
         val freshOtherSelectedMasks: List<NativeMask>,
         val expectedOtherSelectedCount: Int,
         val effectiveTarget: NativeMask? = null
@@ -629,8 +626,6 @@ object PrivacyOcclusionResolver {
                             freshErodedCore = freshDepthCore,
                             approvedCarve = finalUnknownForegroundCore,
                             temporalCore = temporalForegroundCore,
-                            targetRawTopSupportAudit = targetFreshEvidence?.detection?.rawTopSupportAudit,
-                            foregroundRawTopSupportAudit = candidateFreshEvidence?.detection?.rawTopSupportAudit,
                             // Numeric-only Debug evidence; never feeds the
                             // compositor or weakens any selected identity.
                             freshOtherSelectedMasks = freshClassEvidence.asSequence()
@@ -934,11 +929,7 @@ object PrivacyOcclusionResolver {
                             probe.corroboratingUnselectedId,
                         "veto_selected_masks_complete" to
                             (probe.freshOtherSelectedMasks.size ==
-                                probe.expectedOtherSelectedCount),
-                        "target_yolo_raw_top_support" to
-                            probe.targetRawTopSupportAudit?.scalarFields(),
-                        "candidate_yolo_raw_top_support" to
-                            probe.foregroundRawTopSupportAudit?.scalarFields()
+                                probe.expectedOtherSelectedCount)
                     ) + PrivacyUnknownForegroundPixelAudit.summarize(
                         PrivacyUnknownForegroundPixelAudit.Probe(
                             targetBbox = probe.targetBbox,

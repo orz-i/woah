@@ -31,9 +31,7 @@ data class PersonDetection(
     val bbox: FloatRect,
     val confidence: Float,
     val mask: NativeMask? = null,
-    val footY: Float = bbox.bottom,
-    // Debug-only numeric counterfactual; never used to assign identity or carve privacy.
-    val rawTopSupportAudit: YoloRawTopSupportAudit? = null
+    val footY: Float = bbox.bottom
 )
 
 data class SegmentationFrame(

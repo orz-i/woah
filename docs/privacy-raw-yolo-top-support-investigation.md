@@ -1,6 +1,6 @@
 # FULL_BODY: raw YOLO mask support vs detector-box truncation
 
-Status: **Debug-only counterfactual implemented; rendering unchanged; 39.733–39.900s NOT ACCEPTED**. Baseline HEAD before this work: `111b65e1a7ce3763406f1475252ee9dd3f1cc03e`. Contains no source video, screenshot, per-pixel coordinates, raw RGB or binary masks.
+Historical implementation note: the Debug-only counterfactual was implemented at `3b4ba5a8259e6fae94ff140e27b5277c3b5079a5` and exercised by subsequent paired Android exports. **It has now been retired from Android inference/DTO/privacy telemetry**, because the captured 39.733–39.900s model response above the contracted protagonist bbox was too weak and ambiguous to justify a safety-preserving pixel correction. Production rendering was never changed by this probe; the historical anonymous ZIP parser remains read-only and compatible. The implementation details below describe that historical experiment, **not currently enabled runtime functionality**. FULL_BODY visual acceptance remains **NOT_ACCEPTED**. Baseline before the experiment: `111b65e1a7ce3763406f1475252ee9dd3f1cc03e`. Contains no source video, screenshot, per-pixel coordinates, raw RGB or binary masks.
 
 ## What the code audit establishes
 

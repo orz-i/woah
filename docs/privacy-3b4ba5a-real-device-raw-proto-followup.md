@@ -1,6 +1,6 @@
 # 3b4ba5a Android 17: raw YOLO support follow-up and bounded motion feasibility
 
-Status (2026-10-20): **39.733–39.900s NOT FIXED / NOT VISUALLY ACCEPTED.**
+Status (2026-10-20): **39.733–39.900s NOT FIXED / NOT VISUALLY ACCEPTED.** The raw top-support Debug probe was later retired from the native runtime after real-device evidence did not support safe restoration; the following fields describe archived `3b4ba5a` exports and remain readable by the offline numeric analyzer.
 Source space FULL_BODY behavior and GL composition were **not modified** in this follow-up. This report contains anonymous integers only. No source video, unmasked screenshot, RGBA/YUV diagnostic buffer, TFLite tensors, or raw segmentation masks were copied into this workspace or committed.
 
 ## Exact real-device evidence
