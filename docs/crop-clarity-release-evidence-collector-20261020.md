@@ -70,6 +70,23 @@ Incompatible signing between APKs must be resolved on the build machine. **Do no
 
 Note: the report's `scenario` is a human assertion that the input clip/selection and video settings are identical across builds. No media hash, pixel identity, mask bytes or decoded sample images are added to the scalar telemetry. If the saved app state or selected identities change between installations, the paired benchmark is no longer fully comparable even when the numeric metadata matches.
 
+### Single-entry Release QA (2026-10-21)
+
+The recommended host workflow is one command from the repository root:
+
+```powershell
+uv run python .\tools\diagnostics\run_crop_clarity_release_qa.py `
+  --action all `
+  --output-dir "D:\WoahReleaseQA\trial-01" `
+  --scenario "same-720p-dance" `
+  --acknowledge-test-install
+```
+
+The host tool builds two signed Release candidates from the same clean Git HEAD, pins both APK SHA-256 values, and (only with explicit installation authorization) sequentially replaces the installed Woah app using `adb install -r`. When the scalar collector says `ARMED`, the operator must complete three matching in-app exports for OFF and three for ON. It then compares the matched numbers and reports `REQUIRES_DEVICE_REVIEW` rather than any privacy PASS.
+
+Use `--action build` to build only, without installing anything. Use `--action run --acknowledge-test-install` to test the exact same pinned APK pair later. The output directory must be a new empty folder outside Git. The command never uninstalls apps, clears app data, reads original video, captures raw logcat or bundles research models. Existing Android Release signing must already be configured: signature incompatibility is a hard install failure, not grounds for uninstalling the app.
+
+Host-only simulated integration tests cover Git HEAD/dirty state, SHA tampering, expired artifacts, installation authorization, build/install failure and scalar comparison. The tag-only collector also aborts if its new marker is not observed within 20 seconds (rather than leaving a supposedly armed capture waiting the full export-series timeout). Real signed Android Release throughput remains NOT MEASURED until the device run. The feature branch is included in Production CI push triggers, so actual native/Flutter gates may execute after an explicitly requested push; they are not claimed PASS now.
 ## Executable evidence status
 
 - Pure synthetic/mocked capture runner: marker discrimination, no global logcat clearing, wrong variant and build rejection, stdout streaming, complete 3-record emission and atomic output, duplicate/replay detection, malformed/private data veto, device/build/output mismatch, error cleanup.

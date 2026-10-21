@@ -2,9 +2,12 @@ name: Production CI
 
 on:
   push:
-    branches: [ main, master ]
+    # The feature branch is intentionally not merged until native/release
+    # acceptance. Run the *same* Production CI gates on push before a PR.
+    branches: [ main, master, feat/crop-clarity-phase2-quality-performance ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   validate-and-test:

@@ -191,17 +191,25 @@ def capture_device(
         )
         if marker.returncode != 0:
             raise RuntimeError("ADB device cannot emit Release capture marker; log utility unavailable")
-        deadline = time.monotonic() + timeout_minutes * 60
+        start = time.monotonic()
+        deadline = start + timeout_minutes * 60
+        marker_deadline = start + 20  # no 90-minute hang if logcat marker was lost
         print(f"WOAH_RELEASE_CAPTURE_MODE={mode.upper()}; expected_exports={repeats}", flush=True)
         while not session.complete:
             if overflow.is_set():
                 raise RuntimeError("filtered logcat queue overflowed; capture invalid")
-            remaining = deadline - time.monotonic()
+            now = time.monotonic()
+            if not session.armed and now >= marker_deadline:
+                raise RuntimeError("Release logcat marker not observed within 20 seconds; "
+                                   "capture not armed, no exports should be counted")
+            remaining = deadline - now
             if remaining <= 0:
                 raise RuntimeError(
                     f"Release capture timed out after {timeout_minutes} minutes "
                     f"with {len(session.records)}/{repeats} valid completed exports"
                 )
+            if not session.armed:
+                remaining = min(remaining, marker_deadline - now)
             try:
                 line = events.get(timeout=min(remaining, 2))
             except queue.Empty:

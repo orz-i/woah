@@ -59,6 +59,33 @@ The previous schema 1 A/B ZIP is still accepted for historical comparisons.
 
 **Do not time the Debug APK.** Release builds omit CPU shadow probes, full-export YUV diagnostics, and the A/B capture path. The app's normal release behavior is unchanged. A **build-time-only** switch sets the *native export's* crop clarity scale to 1.0 for the OFF variant, without changing portrait size, follow target, masks, effect selection or project output preset. Do not distribute the OFF build as production.
 
+### 推荐：一条命令完成构建、安装、采集和比较
+
+当前原生代码与 Dart 性能日志开关均已存在，不需要新增 UI，也不需要下载 MagicTouch 模型。**需要先在 Windows 配置现有的 Release APK 签名证书**（`mobile/app/android/key.properties` 或 `WOAH_KEYSTORE_PATH`、`WOAH_KEYSTORE_PASSWORD`、`WOAH_KEY_ALIAS`、`WOAH_KEY_PASSWORD` 环境变量），并连接已启用 USB 调试的 Android 手机。此工具会依次 **`adb install -r` 替换手机上已安装的 Woah**，因此只在准备测试的设备上使用。它从不卸载应用或清空数据；如果签名不兼容，则立即停止并保留现有数据。
+
+在 Woah 仓库根目录，选择一个尚未使用、**位于 Git 仓库之外**的目录后运行：
+
+```powershell
+uv run python .\tools\diagnostics\run_crop_clarity_release_qa.py `
+  --action all `
+  --output-dir "D:\WoahReleaseQA\trial-01" `
+  --scenario "same-720p-dance" `
+  --acknowledge-test-install
+```
+
+工具将自动使用当前**干净且具名**的 Git 分支构建 OFF/ON 两份签名 Release APK，为每份文件固定 SHA-256，按顺序安装到连接的手机，监听 `WoahExportPerf` 并自动分析性能。只有一个步骤无法自动完成：**每当出现 `WOAH_RELEASE_CAPTURE_ARMED=YES`，需要你在 Woah 应用内使用相同项目、所选隐私人物、分辨率和导出设置连续完成 3 次导出**。先 OFF 三次，再 ON 三次。不要在采集器完成前进行第二个模式的安装。
+
+最终输出在外部目录中：
+- `release-qa-build.json`：Git SHA 和两份 APK 的哈希，不包含用户视频
+- `release_off.log` / `release_on.log`：各三条白名单内的匿名性能记录
+- `crop-clarity-release-comparison.json`：耗时与吞吐对比，结论仍为 `REQUIRES_DEVICE_REVIEW`
+
+可以先只构建而不安装：将 `--action all` 换成 `--action build`，去掉安装授权参数。以后在**相同 HEAD 和外部目录**运行 `--action run --acknowledge-test-install` 即可继续测量。已存在的输出目录、被修改的 APK、不干净的 Git 工作区或未确认设备安装都会被拒绝；重新测试应使用新的 `trial-02` 等目录。
+
+这是一项**Release 性能实验**，不会修复 39.733–39.900 秒隐私误遮挡，也不会给出最终视频隐私验收。以下是可用于分步排错的旧式构建/采集步骤，推荐先尝试上述一条命令。
+
+### 分步模式（备用）
+
 On the Android build workstation, from `mobile/app`:
 
 ```powershell
@@ -123,7 +150,7 @@ The default 10% slowdown is a **provisional test budget**, not an already achiev
 
 ## Automated and deferred gates
 
-- `python -m unittest tools.diagnostics.test_crop_clarity_ab_report tools.diagnostics.test_crop_clarity_release_perf tools.diagnostics.test_capture_crop_clarity_release_perf`
+- `python -m unittest tools.diagnostics.test_crop_clarity_ab_report tools.diagnostics.test_crop_clarity_release_perf tools.diagnostics.test_capture_crop_clarity_release_perf tools.diagnostics.test_run_crop_clarity_release_qa`
 - Flutter app controller tests for the build-time OFF contract.
 - Android JVM `CropClaritySceneSamplerTest` for late-third reserved slots, off-crop candidate rejection, source frame overestimation, five consecutive frames, bounded storage and stale evidence; `CropClarityCropPrivacyGeometryTest` for synthetic people crossing/moving, lost observations and reacquisition with full-frame-coordinate privacy masks.
 - Python `tools.test_crop_clarity_post_crop_contract` for the **actual pipeline source-order guard** (privacy composition → follow crop → crop-aware selection → encoder output) and `tools.test_crop_clarity_synthetic_privacy` for executable synthetic multi-person pixel-coordinate experiments. These run without Android hardware, but are not substitutes for device privacy validation.

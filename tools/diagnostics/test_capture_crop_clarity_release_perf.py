@@ -300,6 +300,49 @@ class CaptureCropClarityReleasePerfTest(unittest.TestCase):
             self.assertTrue(proc.terminated)
             self.assertFalse(output.exists())
 
+    def test_lost_marker_fails_promptly_without_waiting_for_export_timeout(self):
+        # The tag-filtered stream might not receive our device-side marker on
+        # some ADB builds. Never ask the operator to export against an unarmed
+        # listener or wait the full 90-minute series timeout.
+        import threading
+        with tempfile.TemporaryDirectory() as dirname:
+            output = Path(dirname) / "release_off.log"
+            stopped = threading.Event()
+            class BlockingSource:
+                def __iter__(self):
+                    while not stopped.wait(0.01):
+                        pass
+                    return
+                    yield "unreachable"
+                def close(self):
+                    stopped.set()
+            class FakeProcess:
+                def __init__(self):
+                    self.stdout = BlockingSource()
+                    self.terminated = False
+                def poll(self):
+                    return 0 if self.terminated else None
+                def terminate(self):
+                    self.terminated = True
+                    stopped.set()
+                def wait(self, timeout=5):
+                    return 0
+                def kill(self):
+                    self.terminate()
+            process = FakeProcess()
+            with patch.object(capture.subprocess, "Popen", return_value=process), \
+                 patch.object(capture.subprocess, "run", return_value=(
+                     subprocess.CompletedProcess([], 0, "", "")
+                 )), patch.object(capture.time, "sleep", return_value=None), \
+                 patch.object(capture.time, "monotonic", side_effect=[0.0, 21.0]):
+                with self.assertRaisesRegex(RuntimeError, "marker not observed within 20 seconds"):
+                    capture.capture_device(
+                        output, mode="off", repeats=3, timeout_minutes=90,
+                        adb="adb", serial=None, expected_commit=COMMIT,
+                    )
+            self.assertTrue(process.terminated)
+            self.assertFalse(output.exists())
+
     def test_native_export_log_has_exact_reviewed_scalar_field_allowlist(self):
         # If native release logging evolves, explicitly review any new value
         # before the host tool is permitted to serialize it to a report.
