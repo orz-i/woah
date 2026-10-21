@@ -36,6 +36,45 @@ class SignedReleaseApkPreflightTest(unittest.TestCase):
         self.assertNotIn("Woah Release", str(data))
         self.assertNotIn("signingKey", str(data))
 
+    def test_debug_signed_release_is_opt_in_only_and_not_a_public_release(self):
+        debug_signing = SIGNING.replace("Woah Release", "Android Debug")
+        with self.assertRaisesRegex(ValueError, "Production Release APK uses"):
+            identity.parse_apk_identity(debug_signing, PACKAGE)
+        self.assertEqual(
+            identity.parse_apk_identity(
+                debug_signing, PACKAGE, qa_debug_signing=True
+            )["signer_sha256"],
+            CERT,
+        )
+        with self.assertRaisesRegex(ValueError, "Explicit QA debug signing requires"):
+            identity.parse_apk_identity(SIGNING, PACKAGE, qa_debug_signing=True)
+        with self.assertRaisesRegex(ValueError, "Release APK requires exactly one"):
+            identity.parse_apk_identity(
+                debug_signing + "Signer #2 certificate SHA-256 digest: " + CERT + "\n",
+                PACKAGE, qa_debug_signing=True,
+            )
+
+    def test_windows_default_sdk_location_does_not_require_tools_on_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            local_app_data = root / "AppData" / "Local"
+            sdk = local_app_data / "Android" / "Sdk"
+            sdk.mkdir(parents=True)
+            chosen = identity.locate_sdk(
+                env={"LOCALAPPDATA": str(local_app_data)},
+                properties=root / "missing-local.properties",
+            )
+            self.assertEqual(chosen, sdk.resolve())
+            buildtools = sdk / "build-tools" / "36.0.0"
+            buildtools.mkdir(parents=True)
+            for name in ("apksigner.bat", "aapt.exe"):
+                (buildtools / name).write_bytes(b"safe synthetic stub")
+            self.assertEqual(
+                identity.locate_build_tools(sdk=chosen),
+                ((buildtools / "apksigner.bat").resolve(),
+                 (buildtools / "aapt.exe").resolve()),
+            )
+
     def test_wrong_application_id_missing_version_and_bad_signers_fail(self):
         for signing, package in (
             ("", PACKAGE),
@@ -109,7 +148,7 @@ class SignedReleaseApkPreflightTest(unittest.TestCase):
                 identity.locate_sdk(env={
                     "ANDROID_HOME": str(sdk), "ANDROID_SDK_ROOT": str(another),
                 })
-            with self.assertRaisesRegex(ValueError, "SDK directory missing"):
+            with self.assertRaisesRegex(ValueError, "Android SDK missing"):
                 identity.locate_sdk(env={}, properties=root / "absent")
 
     def test_inspect_invokes_only_readonly_signed_apk_check_and_aapt_badging(self):

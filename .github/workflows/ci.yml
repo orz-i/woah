@@ -10,6 +10,23 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Windows-only host QA test gate. These stdlib/mocked tests exercise path,
+  # signing-preflight and ADB-collector contracts without SDKs, passwords,
+  # real media, private keys or a connected phone. This is NOT Release acceptance.
+  windows-release-qa-host-smoke:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test Windows Release QA host scripts (synthetic only)
+        shell: pwsh
+        run: |
+          python -m unittest tools.diagnostics.test_release_apk_preflight tools.diagnostics.test_run_crop_clarity_release_qa tools.diagnostics.test_capture_crop_clarity_release_perf tools.diagnostics.test_crop_clarity_release_perf -q
+
   validate-and-test:
     runs-on: ubuntu-latest
     steps:

@@ -61,7 +61,7 @@ The previous schema 1 A/B ZIP is still accepted for historical comparisons.
 
 ### 推荐：一条命令完成构建、安装、采集和比较
 
-当前原生代码与 Dart 性能日志开关均已存在，不需要新增 UI，也不需要下载 MagicTouch 模型。**需要先在 Windows 配置现有的 Release APK 签名证书**（`mobile/app/android/key.properties` 或 `WOAH_KEYSTORE_PATH`、`WOAH_KEYSTORE_PASSWORD`、`WOAH_KEY_ALIAS`、`WOAH_KEY_PASSWORD` 环境变量），并连接已启用 USB 调试的 Android 手机。此工具会依次 **`adb install -r` 替换手机上已安装的 Woah**，因此只在准备测试的设备上使用。它从不卸载应用或清空数据；如果签名不兼容，则立即停止并保留现有数据。
+当前代码已经有 Release OFF/ON 对照与性能记录，不需要新增 UI 或 MagicTouch 模型。**没有正式 Release 签名证书也可以做本机性能实验**：显式使用 `--qa-debug-signing`，以电脑上既有的 `~/.android/debug.keystore` 签署 **Release 代码变体**（而不是 Debug 编译）。原始 Gradle 正式 Release 签名校验保持不变，带该标志的 APK 仅供本机 QA，**不能分发或作为正式 Release 签名验收证据**。若已有正式发布证书，只需移除该标志。SDK 的 `apksigner`、`aapt` 通常位于 Android SDK `build-tools` 中，**不需要添加到 PATH**；脚本会从 SDK 变量、`local.properties` 或 Windows 默认 SDK 目录查找。手机需启用 USB 调试；该流程会使用 `adb install -r` 替换已安装的 Woah，因此只应在测试设备上执行。签名不匹配则停止，绝不卸载或清除应用数据。
 
 在 Woah 仓库根目录，选择一个尚未使用、**位于 Git 仓库之外**的目录后运行：
 
@@ -70,17 +70,18 @@ uv run python .\tools\diagnostics\run_crop_clarity_release_qa.py `
   --action all `
   --output-dir "D:\WoahReleaseQA\trial-01" `
   --scenario "same-720p-dance" `
+  --qa-debug-signing `
   --acknowledge-test-install
 ```
 
-工具将自动使用当前**干净且具名**的 Git 分支构建 OFF/ON 两份签名 Release APK，固定每份文件的 SHA-256，并通过 Android SDK Build Tools 的 `apksigner verify` 与 `aapt dump badging` 检查包名 `art.gaoge.dance`、版本和**一致的签名证书指纹**。安装前会再次复核 APK 内容和证书，并用 `adb get-serialno` 把整轮 OFF/ON 测试固定到同一台已连接设备，换机或离线时拒绝继续。校验通过后才会按顺序安装、监听 `WoahExportPerf` 并分析性能。只有一个步骤无法自动完成：**每当出现 `WOAH_RELEASE_CAPTURE_ARMED=YES`，需要你在 Woah 应用内使用相同项目、所选隐私人物、分辨率和导出设置连续完成 3 次导出**。先 OFF 三次，再 ON 三次。不要在采集器完成前进行第二个模式的安装。
+工具从当前**具名 Git 提交**构建 OFF/ON 两份 Release 代码变体；已跟踪的源码改动或未知的未跟踪代码仍会阻断，但独立存放的诊断 ZIP、日志不会无故阻断，也不会被清理。随后锁定两份 APK SHA-256，使用 SDK 自带 `apksigner verify` 与 `aapt dump badging` 检查包名、版本及相同签名证书。**QA Debug 证书仅在显式允许时验收；默认正式 Release 路径仍拒绝 Debug 证书。** 安装前再次校验 APK，并将 OFF/ON 绑定同一 ADB 设备。每当出现 `WOAH_RELEASE_CAPTURE_ARMED=YES`，你需要在 Woah 使用完全相同的素材、所选隐私人物和导出设置，先完成 OFF 三次、再完成 ON 三次；其余数据采集和比较自动完成。
 
 最终输出在外部目录中：
-- `release-qa-build.json`：Git SHA、两份 APK 的哈希、包名、版本号与**公开的签名证书 SHA-256 指纹**；不包含签名私钥或用户视频
+- `release-qa-build.json`：schema 2、Git SHA、两份 APK 哈希、包名、版本及**公开的证书 SHA-256 指纹与 `signing_scope`**；不包含签名私钥或用户视频
 - `release_off.log` / `release_on.log`：各三条白名单内的匿名性能记录
-- `crop-clarity-release-comparison.json`：耗时与吞吐对比，结论仍为 `REQUIRES_DEVICE_REVIEW`
+- `crop-clarity-release-comparison.json`：耗时与吞吐对比；QA Debug 证书实验会标注 `QA_DEBUG_CERT_NOT_FOR_DISTRIBUTION`，性能结论仍为 `REQUIRES_DEVICE_REVIEW`
 
-可以先只构建而不安装：将 `--action all` 换成 `--action build`，去掉安装授权参数。以后在**相同 HEAD 和外部目录**运行 `--action run --acknowledge-test-install` 即可继续测量。已存在的输出目录、被修改的 APK、不正确的 APK 包名或证书、不干净的 Git 工作区、无法识别的 ADB 设备或未确认设备安装都会被拒绝；重新测试应使用新的 `trial-02` 等目录。Android SDK 需要安装包含 `apksigner` 与 `aapt` 的 Build Tools；使用已有 `ANDROID_SDK_ROOT`、`ANDROID_HOME` 或 `mobile/app/android/local.properties` 自动定位。
+只构建不安装时可改为 `--action build --qa-debug-signing`，且无需安装授权。以后对同一 HEAD、相同目录使用 `--action run --qa-debug-signing --acknowledge-test-install`。当使用正常发布签名时，构建与测试命令都移除 `--qa-debug-signing`。**不允许混用两种签名模式**：QA Debug 证书签署的 Release APK 明确记录为 `QA_DEBUG_CERT_NOT_FOR_DISTRIBUTION`。如果 Git 仍不满足要求，脚本会分别给出已跟踪变更和未知文件数量；不要执行 `git clean -fd`、`git reset --hard` 来绕过。测试目录选择新的 `trial-02`，不能覆盖旧报告。
 
 这是一项**Release 性能实验**，不会修复 39.733–39.900 秒隐私误遮挡，也不会给出最终视频隐私验收。以下是可用于分步排错的旧式构建/采集步骤，推荐先尝试上述一条命令。
 

@@ -34,17 +34,20 @@ def fake_inspector(_path: Path) -> dict:
 
 class FakeBuilder:
     def __init__(self, target: Path, *, dirty: bool = False,
-                 fail_on: str = "") -> None:
+                 fail_on: str = "", status: str | None = None) -> None:
         self.target = target
         self.calls: list[list[str]] = []
+        self.flutter_environments: list[dict] = []
         self.dirty = dirty
         self.fail_on = fail_on
+        self.status = status
 
     def __call__(self, args, **kwargs):
         args = list(args)
         self.calls.append(args)
         joined = " ".join(args)
         if args and args[0] == "flutter":
+            self.flutter_environments.append(kwargs.get("env", {}).copy())
             if kwargs.get("env", {}).get("GIT_COMMIT_SHA") != HEAD:
                 raise AssertionError("Both Flutter builds must embed the same full Git HEAD")
             if not kwargs.get("stream_output") and kwargs.get("capture_output") is True:
@@ -57,7 +60,8 @@ class FakeBuilder:
             return subprocess.CompletedProcess(args, 0, BRANCH + "\n", "")
         if args[:3] == ["git", "status", "--porcelain"]:
             return subprocess.CompletedProcess(
-                args, 0, " M mobile/app/lib/dirty.dart\n" if self.dirty else "", "",
+                args, 0, (self.status if self.status is not None else
+                          " M mobile/app/lib/dirty.dart\n" if self.dirty else ""), "",
             )
         if args[:3] == ["flutter", "build", "apk"]:
             self.target.parent.mkdir(parents=True, exist_ok=True)
@@ -109,6 +113,7 @@ class ReleasePairWorkflowTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as dirname:
             output = Path(dirname) / "release-qa"
             manifest, fake = self.build(output)
+            self.assertEqual(manifest["schema"], 2)
             self.assertEqual(manifest["git_commit"], HEAD)
             self.assertEqual(manifest["git_branch"], BRANCH)
             self.assertEqual(set(manifest["apks"]), {"off", "on"})
@@ -209,7 +214,7 @@ class ReleasePairWorkflowTest(unittest.TestCase):
                 workflow.build_pair(workflow.ROOT / "leaked-release", runner=FakeBuilder(
                     Path(dirname) / "generated.apk"
                 ))
-            with self.assertRaisesRegex(ValueError, "clean named Git branch"):
+            with self.assertRaisesRegex(ValueError, "source provenance blocked"):
                 self.build(output, dirty=True)
             self.assertFalse((output / workflow.OFF_APK).exists())
 
@@ -396,6 +401,130 @@ class ReleasePairWorkflowTest(unittest.TestCase):
         self.assertIn("validateReleaseSigning", source)
         self.assertIn("hasReleaseSigning", source)
         self.assertIn("WOAH_KEYSTORE_PATH", source)
+
+    def test_main_passes_explicit_qa_signing_to_build_and_install(self):
+        with tempfile.TemporaryDirectory() as directory:
+            target = str(Path(directory) / "fresh-qa")
+            with patch.object(workflow, "build_pair", return_value={"schema": 2}) as builder, \
+                 patch.object(workflow, "run_pair", return_value={}) as runner, \
+                 patch("sys.argv", [
+                     "release-qa", "--action", "all", "--output-dir", target,
+                     "--qa-debug-signing", "--acknowledge-test-install",
+                 ]):
+                self.assertEqual(workflow.main(), 0)
+            self.assertTrue(builder.call_args.kwargs["qa_debug_signing"])
+            self.assertTrue(runner.call_args.kwargs["qa_debug_signing"])
+            self.assertTrue(runner.call_args.kwargs["acknowledge_install"])
+
+    def test_untracked_qa_artifacts_are_tolerated_but_untracked_source_is_not(self):
+        with tempfile.TemporaryDirectory() as dirname:
+            target = Path(dirname) / "generated.apk"
+            safe = FakeBuilder(target, status=(
+                "?? woah_diag_20261021.zip\n"
+                "?? crop_clarity_ab(1).zip\n"
+                "?? logs/archived-private-diagnostic.json\n"
+            ))
+            self.assertEqual(workflow.git_identity(runner=safe), (HEAD, BRANCH))
+            # Git status -z is unquoted, so spaces and Unicode in diagnostic
+            # filenames do not require manual sanitization on Windows.
+            self.assertEqual(workflow.git_identity(runner=FakeBuilder(
+                target, status="?? logs/隐私测试 记录.json\0?? crop_clarity_ab(1).zip\0"
+            )), (HEAD, BRANCH))
+            for path in (
+                "tools/diagnostics/new_script.py",
+                "mobile/app/lib/new_editor.dart",
+                "mobile/packages/dance_native/android/src/main/kotlin/Shadow.kt",
+                "release-config.gradle.kts",
+            ):
+                fake = FakeBuilder(target, status="?? " + path + "\n")
+                with self.subTest(path=path), self.assertRaisesRegex(
+                    ValueError, "0 tracked changes, 1 unrecognized untracked"
+                ):
+                    workflow.git_identity(runner=fake)
+            self.assertEqual(
+                workflow._safe_untracked_evidence("docs/session/report.json"), True
+            )
+            self.assertEqual(
+                workflow._safe_untracked_evidence("artifacts/patch.py"), False
+            )
+
+    def test_git_error_differentiates_tracked_edits_from_untracked_data(self):
+        with tempfile.TemporaryDirectory() as dirname:
+            fake = FakeBuilder(
+                Path(dirname) / "unused.apk",
+                status=" M mobile/app/lib/export_controller.dart\n?? woah_diag_1.zip\n",
+            )
+            with self.assertRaisesRegex(ValueError, "1 tracked changes, 0 unrecognized"):
+                workflow.git_identity(runner=fake)
+
+    def test_existing_local_debug_keystore_only_sets_qa_process_environment(self):
+        with tempfile.TemporaryDirectory() as dirname:
+            home = Path(dirname) / "test-user"
+            key_dir = home / ".android"
+            key_dir.mkdir(parents=True)
+            keystore = key_dir / "debug.keystore"
+            starting = {"WOAH_KEYSTORE_PATH": "/private/release-secret.jks",
+                        "SOME_UNRELATED_CONFIG": "retained"}
+            with self.assertRaisesRegex(ValueError, "QA debug-signing keystore absent"):
+                workflow._qa_debug_signing_environment(starting, home=home)
+            keystore.write_bytes(b"synthetic existing key not used or loaded")
+            result = workflow._qa_debug_signing_environment(starting, home=home)
+            self.assertEqual(result["WOAH_KEYSTORE_PATH"], str(keystore.resolve()))
+            self.assertEqual(result["WOAH_KEY_ALIAS"], "androiddebugkey")
+            self.assertEqual(result["WOAH_KEYSTORE_PASSWORD"], "android")
+            self.assertEqual(result["WOAH_KEY_PASSWORD"], "android")
+            self.assertEqual(result["SOME_UNRELATED_CONFIG"], "retained")
+            self.assertEqual(starting["WOAH_KEYSTORE_PATH"], "/private/release-secret.jks")
+
+    def test_qa_debug_signed_release_is_not_mislabelled_or_usable_without_opt_in(self):
+        with tempfile.TemporaryDirectory() as dirname:
+            output = Path(dirname) / "release-qa"
+            generated = Path(dirname) / "flutter-qa-generated.apk"
+            fake = FakeBuilder(generated)
+            with patch.object(workflow, "GENERATED_APK", generated), \
+                 patch.object(
+                    workflow, "_qa_debug_signing_environment",
+                    side_effect=lambda current: {
+                        **current,
+                        "WOAH_KEYSTORE_PATH": "SYNTHETIC_DEBUG_KEY",
+                        "WOAH_KEY_ALIAS": "androiddebugkey",
+                        "WOAH_KEYSTORE_PASSWORD": "android",
+                        "WOAH_KEY_PASSWORD": "android",
+                    },
+                 ):
+                manifest = workflow.build_pair(
+                    output, runner=fake, inspector=fake_inspector,
+                    qa_debug_signing=True,
+                )
+            self.assertIs(manifest["qa_debug_signing"], True)
+            self.assertEqual(
+                manifest["signing_scope"], workflow.QA_SIGNING_DESCRIPTION
+            )
+            self.assertEqual(manifest["release_acceptance"], "NOT_PROVEN")
+            for mode in ("off", "on"):
+                self.assertTrue((output / manifest["apks"][mode]["filename"]).exists())
+            self.assertEqual(len(fake.flutter_environments), 3)
+            self.assertTrue(all(
+                env["WOAH_KEY_ALIAS"] == "androiddebugkey"
+                for env in fake.flutter_environments
+            ))
+            with self.assertRaisesRegex(ValueError, "manifest invalid or wrong Git HEAD"):
+                workflow.verify_pair(output, runner=fake, inspector=fake_inspector)
+            verified = workflow.verify_pair(
+                output, runner=fake, inspector=fake_inspector,
+                qa_debug_signing=True,
+            )
+            self.assertEqual(verified["signing_scope"], workflow.QA_SIGNING_DESCRIPTION)
+            def runner(cmd, **kwargs):
+                return fake(cmd, **kwargs) if cmd[0] == "git" else FakeInstall()(cmd, **kwargs)
+            report = workflow.run_pair(
+                output, scenario="same-consented-video", acknowledge_install=True,
+                runner=runner, collect=simulate_capture, inspector=fake_inspector,
+                qa_debug_signing=True,
+            )
+            self.assertEqual(report["apk_signing_scope"], workflow.QA_SIGNING_DESCRIPTION)
+            self.assertEqual(report["distribution_acceptance"], "NOT_PROVEN")
+            self.assertEqual(report["release_acceptance"], "REQUIRES_DEVICE_REVIEW")
 
     def test_wrapper_source_has_no_video_reader_unsafe_install_or_data_clear(self):
         source = Path(workflow.__file__).read_text(encoding="utf-8")

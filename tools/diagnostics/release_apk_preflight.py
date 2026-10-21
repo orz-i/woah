@@ -51,7 +51,20 @@ def locate_sdk(
                 if result.is_dir():
                     return result
                 break
-    raise ValueError("Android SDK directory missing (ANDROID_SDK_ROOT/ANDROID_HOME/sdk.dir)")
+    # Flutter/Android Studio on Windows often use this default directory
+    # without adding aapt.exe/apksigner.bat to PATH or exporting SDK variables.
+    local_app_data = variables.get("LOCALAPPDATA", "").strip()
+    defaults = (
+        [Path(local_app_data) / "Android" / "Sdk"] if local_app_data else []
+    ) + [Path.home() / "AppData" / "Local" / "Android" / "Sdk"]
+    for candidate in defaults:
+        if candidate.is_dir():
+            return candidate.resolve()
+    raise ValueError(
+        "Android SDK missing: check Flutter's Android SDK path in "
+        "mobile/app/android/local.properties or ANDROID_HOME. "
+        "apksigner/aapt are found inside SDK build-tools, not on PATH"
+    )
 
 
 def locate_build_tools(
@@ -74,7 +87,10 @@ def locate_build_tools(
             tools = (version / signer, version / aapt)
             if all(path.is_file() for path in tools):
                 return tools
-    raise ValueError("Android build-tools must provide apksigner and aapt")
+    raise ValueError(
+        "Android SDK Build-Tools missing apksigner/aapt (not a PATH requirement); "
+        "install Android SDK Build-Tools using Android Studio SDK Manager"
+    )
 
 
 def _read_tool(
@@ -93,12 +109,19 @@ def _read_tool(
     return result.stdout
 
 
-def parse_apk_identity(signing: str, package: str) -> dict[str, str | int]:
+def parse_apk_identity(
+    signing: str, package: str, *, qa_debug_signing: bool = False
+) -> dict[str, str | int]:
     certs = SIGNER_RE.findall(signing)
     if len(certs) != 1 or certs[0][0] != "1":
         raise ValueError("Release APK requires exactly one verifiable signer")
-    if re.search(r"Signer\s+#1 certificate DN:\s*.*Android Debug", signing, re.I):
-        raise ValueError("Release APK uses an Android Debug certificate")
+    debug_signer = bool(re.search(
+        r"Signer\s+#1 certificate DN:\s*.*Android Debug", signing, re.I
+    ))
+    if debug_signer and not qa_debug_signing:
+        raise ValueError("Production Release APK uses an Android Debug certificate")
+    if qa_debug_signing and not debug_signer:
+        raise ValueError("Explicit QA debug signing requires an Android Debug certificate")
     packages = PACKAGE_RE.findall(package)
     if len(packages) != 1:
         raise ValueError("Release APK package/version metadata is missing or ambiguous")
@@ -119,6 +142,7 @@ def parse_apk_identity(signing: str, package: str) -> dict[str, str | int]:
 def inspect_release_apk(
     apk: Path, *, runner: Callable = subprocess.run,
     build_tools: tuple[Path, Path] | None = None,
+    qa_debug_signing: bool = False,
 ) -> dict[str, str | int]:
     if not apk.is_file():
         raise ValueError("Release APK missing at verification")
@@ -127,4 +151,5 @@ def inspect_release_apk(
         _read_tool([str(signer), "verify", "--verbose", "--print-certs", str(apk)],
                    runner=runner),
         _read_tool([str(aapt), "dump", "badging", str(apk)], runner=runner),
+        qa_debug_signing=qa_debug_signing,
     )

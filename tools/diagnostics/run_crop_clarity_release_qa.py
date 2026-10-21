@@ -45,6 +45,51 @@ ON_APK = "release-clarity-on.apk"
 COMPARISON = "crop-clarity-release-comparison.json"
 MAX_PAIRED_RUNS = 10
 IDENTITY_KEYS = frozenset({"app_id", "version_code", "version_name", "signer_sha256"})
+QA_SIGNING_DESCRIPTION = "QA_DEBUG_CERT_NOT_FOR_DISTRIBUTION"
+RELEASE_SIGNING_DESCRIPTION = "EXPLICIT_RELEASE_CERT"
+
+
+def _inspected_apk(
+    apk: Path, *, qa_debug_signing: bool,
+    inspector: Callable[[Path], dict],
+) -> dict[str, Any]:
+    # Source-inspection for the shipped helper enforces the exact signer class.
+    # Injected inspectors exist only for synthetic/mock unit tests.
+    if inspector is inspect_release_apk:
+        result = inspector(apk, qa_debug_signing=qa_debug_signing)
+    else:
+        result = inspector(apk)
+    return _validate_identity(result)
+
+
+def _qa_debug_signing_environment(
+    current: dict[str, str], *, home: Path | None = None
+) -> dict[str, str]:
+    """Use the workstation's EXISTING debug key for a QA-only Release build.
+
+    Never generates, reads, copies or exports a signing key. Explicit opt-in
+    only; the production Release Gradle signing guard stays unchanged.
+    """
+    location = Path(current.get("ANDROID_USER_HOME", "")).expanduser() if (
+        current.get("ANDROID_USER_HOME", "").strip()
+    ) else ((Path.home() if home is None else home) / ".android")
+    keystore = location / "debug.keystore"
+    if not keystore.is_file() or keystore.stat().st_size < 1:
+        raise ValueError(
+            "QA debug-signing keystore absent; first build an ordinary "
+            "'flutter build apk --debug' on this machine. "
+            "No new key has been created and no app data was touched"
+        )
+    if ROOT.resolve() == keystore.resolve() or ROOT.resolve() in keystore.resolve().parents:
+        raise ValueError("QA signing key must remain outside the source checkout")
+    updated = current.copy()
+    updated.update({
+        "WOAH_KEYSTORE_PATH": str(keystore.resolve()),
+        "WOAH_KEYSTORE_PASSWORD": "android",  # Standard Android SDK debug keystore
+        "WOAH_KEY_ALIAS": "androiddebugkey",
+        "WOAH_KEY_PASSWORD": "android",
+    })
+    return updated
 
 
 def _validate_identity(obj: object) -> dict[str, Any]:
@@ -90,16 +135,65 @@ def _exec(
     return result
 
 
+def _safe_untracked_evidence(path: str) -> bool:
+    """Untracked QA data outside build inputs is not source-code dirtiness.
+
+    Only non-executable evidence in dedicated directories, or narrowly named
+    root-level diagnostic reports, can be ignored. Never ignore untracked
+    Dart/Kotlin/Gradle/Python, model assets, SDK configs or source resources.
+    """
+    normalized = path.replace("\\", "/")
+    if normalized.startswith("/") or ".." in normalized.split("/"):
+        return False
+    if any(normalized.startswith(directory) for directory in (
+        "logs/", "output/", "input/", "uploads/", "testdata/",
+        "data/tasks/", "docs/session/", "artifacts/", "qa-output/",
+    )):
+        return not normalized.lower().endswith((
+            ".py", ".dart", ".kt", ".java", ".gradle", ".kts", ".so",
+            ".tflite", ".task", ".onnx", ".sh", ".ps1", ".exe",
+        ))
+    if "/" not in normalized:
+        return bool(re.fullmatch(
+            r"(?:woah_diag_|crop_clarity_ab|stage3-|release_(?:off|on))"
+            r"[A-Za-z0-9_() .-]*\.(?:zip|log|json|jsonl|txt)", normalized,
+            flags=re.I,
+        ))
+    return False
+
+
 def git_identity(*, runner: Callable = subprocess.run) -> tuple[str, str]:
     head = _exec(["git", "rev-parse", "HEAD"], cwd=ROOT, runner=runner).stdout.strip()
     branch = _exec(["git", "branch", "--show-current"],
                    cwd=ROOT, runner=runner).stdout.strip()
-    dirty = _exec(["git", "status", "--porcelain"],
-                  cwd=ROOT, runner=runner).stdout.strip()
+    # -z disables Git's path quoting on Windows (including spaces and Unicode)
+    # and preserves literal filenames without shell parsing.
+    raw_status = _exec(["git", "status", "--porcelain", "-z", "--untracked-files=all"],
+                       cwd=ROOT, runner=runner).stdout
     if not re.fullmatch(r"[0-9a-f]{40}", head):
         raise ValueError("Release build cannot be tied to a valid full Git SHA")
-    if not branch or dirty:
-        raise ValueError("Release evidence requires a clean named Git branch/worktree")
+    if not branch:
+        raise ValueError("Release QA requires a named Git branch, not detached HEAD")
+    tracked = 0
+    unknown = 0
+    allowed = 0
+    for line in (raw_status.split("\0") if "\0" in raw_status else raw_status.splitlines()):
+        if line.startswith("?? "):
+            if _safe_untracked_evidence(line[3:]):
+                allowed += 1
+            else:
+                unknown += 1
+        elif line.strip():
+            tracked += 1
+    if tracked or unknown:
+        raise ValueError(
+            "Release QA source provenance blocked: "
+            f"{tracked} tracked changes, {unknown} unrecognized untracked files "
+            f"({allowed} isolated QA artifacts tolerated). "
+            "Run git status --short to review; nothing was deleted or reset"
+        )
+    if allowed:
+        print(f"WOAH_RELEASE_QA=IGNORED_{allowed}_ISOLATED_UNTRACKED_ARTIFACTS", flush=True)
     return head, branch
 
 
@@ -148,11 +242,15 @@ def build_pair(
     output_dir: Path, *, flutter: str = "flutter",
     runner: Callable = subprocess.run,
     inspector: Callable[[Path], dict] = inspect_release_apk,
+    qa_debug_signing: bool = False,
 ) -> dict[str, Any]:
     output = _external_dir(output_dir, new=True)
     head, branch = git_identity(runner=runner)
     output.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
+    if qa_debug_signing:
+        env = _qa_debug_signing_environment(env)
+        print("WOAH_RELEASE_QA=ANDROID_DEBUG_CERT_FOR_LOCAL_PERF_ONLY_NOT_PUBLISHABLE", flush=True)
     env["GIT_COMMIT_SHA"] = head  # identical native BuildConfig for both variants
     _exec([flutter, "pub", "get"], cwd=APP_DIR, env=env,
           runner=runner, stream_output=True)
@@ -175,7 +273,7 @@ def build_pair(
         # Both installed artifacts must be real signed Release APKs, with
         # the *same* signing certificate, package ID and version. SHA-256 of
         # file bytes alone cannot establish those properties.
-        identity = _validate_identity(inspector(target))
+        identity = _inspected_apk(target, qa_debug_signing=qa_debug_signing, inspector=inspector)
         artifacts[mode] = {
             "filename": filename,
             "bytes": target.stat().st_size,
@@ -193,13 +291,17 @@ def build_pair(
         raise ValueError("Git checkout changed during Release pair build")
 
     manifest: dict[str, Any] = {
-        "schema": 1,
+        "schema": 2,
         "purpose": "woah_two_variants_release_clarity_synthetic_setup_not_privacy_proof",
         "git_commit": head,
         "git_branch": branch,
         "build_mode": "release",
         "installed_app_id_expected": "art.gaoge.dance",
         "clarity_off_dart_define": True,
+        "qa_debug_signing": qa_debug_signing,
+        "signing_scope": (
+            QA_SIGNING_DESCRIPTION if qa_debug_signing else RELEASE_SIGNING_DESCRIPTION
+        ),
         "privacy_visual_acceptance": "NOT_PROVEN",
         "release_acceptance": "NOT_PROVEN",
         "apks": artifacts,
@@ -213,6 +315,7 @@ def build_pair(
 def verify_pair(
     output_dir: Path, *, runner: Callable = subprocess.run,
     inspector: Callable[[Path], dict] = inspect_release_apk,
+    qa_debug_signing: bool = False,
 ) -> dict[str, Any]:
     output = _external_dir(output_dir, new=False)
     path = output / MANIFEST
@@ -225,15 +328,21 @@ def verify_pair(
         or set(manifest) != {
             "schema", "purpose", "git_commit", "git_branch", "build_mode",
             "installed_app_id_expected", "clarity_off_dart_define",
+            "qa_debug_signing", "signing_scope",
             "privacy_visual_acceptance", "release_acceptance", "apks",
         }
-        or manifest["schema"] != 1
+        or type(manifest["schema"]) is not int
+        or manifest["schema"] != 2
         or manifest["purpose"] !=
             "woah_two_variants_release_clarity_synthetic_setup_not_privacy_proof"
         or manifest["git_commit"] != head or manifest["git_branch"] != branch
         or manifest["build_mode"] != "release"
         or manifest["installed_app_id_expected"] != "art.gaoge.dance"
         or manifest["clarity_off_dart_define"] is not True
+        or manifest["qa_debug_signing"] is not qa_debug_signing
+        or manifest["signing_scope"] != (
+            QA_SIGNING_DESCRIPTION if qa_debug_signing else RELEASE_SIGNING_DESCRIPTION
+        )
         or manifest["privacy_visual_acceptance"] != "NOT_PROVEN"
         or manifest["release_acceptance"] != "NOT_PROVEN"
         or not isinstance(manifest["apks"], dict)
@@ -254,7 +363,9 @@ def verify_pair(
             raise ValueError(f"{mode}: Release APK missing or size mismatch")
         if _hash_file(apk) != obj["sha256"]:
             raise ValueError(f"{mode}: Release APK SHA-256 mismatch")
-        if _validate_identity(obj["apk_identity"]) != _validate_identity(inspector(apk)):
+        if _validate_identity(obj["apk_identity"]) != _inspected_apk(
+            apk, qa_debug_signing=qa_debug_signing, inspector=inspector
+        ):
             raise ValueError(f"{mode}: verified APK signing/package identity changed")
     if manifest["apks"]["off"]["sha256"] == manifest["apks"]["on"]["sha256"]:
         raise ValueError("OFF and ON APKs have identical hashes")
@@ -271,6 +382,7 @@ def run_pair(
     runner: Callable = subprocess.run,
     collect: Callable = capture_device,
     inspector: Callable[[Path], dict] = inspect_release_apk,
+    qa_debug_signing: bool = False,
 ) -> dict[str, Any]:
     if acknowledge_install is not True:
         raise ValueError("set --acknowledge-test-install to explicitly allow replacing the installed Woah APK")
@@ -283,7 +395,10 @@ def run_pair(
     if not math.isfinite(max_slowdown_percent) or not 0 <= max_slowdown_percent <= 100:
         raise ValueError("invalid provisional slowdown budget")
     output = _external_dir(output_dir, new=False)
-    manifest = verify_pair(output, runner=runner, inspector=inspector)
+    manifest = verify_pair(
+        output, runner=runner, inspector=inspector,
+        qa_debug_signing=qa_debug_signing,
+    )
     # Resolve once and use -s for every further ADB/collector invocation.
     # A second phone of the same model cannot silently replace the first.
     pinned_serial = selected_adb_serial(adb=adb, requested=serial, runner=runner)
@@ -294,6 +409,8 @@ def run_pair(
     result_path = output / COMPARISON
     ensure_output_outside_checkout(result_path)
 
+    if qa_debug_signing:
+        print("WOAH_RELEASE_QA=DEBUG_CERT_SIGNED_RELEASE_QA_NOT_FOR_DISTRIBUTION", flush=True)
     print("WOAH_RELEASE_QA=REPLACES_THE_INSTALLED_WOAH_APP_IN_TURN", flush=True)
     print("WOAH_RELEASE_QA=NEVER_UNINSTALLS_OR_CLEARS_APPLICATION_DATA", flush=True)
     for mode, filename in (("off", OFF_APK), ("on", ON_APK)):
@@ -319,6 +436,10 @@ def run_pair(
         scenario=scenario, repeats_required=repeats,
         max_slowdown_percent=max_slowdown_percent,
     )
+    # Device measurements remain legitimate local QA of the Release codepath,
+    # but debug-key signed APKs are categorically not publishing evidence.
+    result["apk_signing_scope"] = manifest["signing_scope"]
+    result["distribution_acceptance"] = "NOT_PROVEN"
     _save_atomic_json(result_path, result)
     print(f"WOAH_RELEASE_COMPARE=REVIEW_REQUIRED; output={result_path}", flush=True)
     return result
@@ -334,6 +455,8 @@ def main() -> int:
     parser.add_argument("--max-slowdown-percent", type=float, default=10.0)
     parser.add_argument("--acknowledge-test-install", action="store_true",
                         help="Allow adb install -r of both signed Release variants")
+    parser.add_argument("--qa-debug-signing", action="store_true",
+                        help="Opt-in: sign Release-code test APKs with existing local Android Debug key; NEVER publish")
     parser.add_argument("--flutter", default="flutter")
     parser.add_argument("--adb", default="adb")
     parser.add_argument("--serial")
@@ -344,7 +467,10 @@ def main() -> int:
         if args.action in ("run", "all") and not args.acknowledge_test_install:
             raise ValueError("--acknowledge-test-install is required before build/install")
         if args.action in ("build", "all"):
-            build_pair(args.output_dir, flutter=args.flutter)
+            build_pair(
+                args.output_dir, flutter=args.flutter,
+                qa_debug_signing=args.qa_debug_signing,
+            )
         if args.action in ("run", "all"):
             run_pair(
                 args.output_dir, scenario=args.scenario,
@@ -352,6 +478,7 @@ def main() -> int:
                 repeats=args.repeats, timeout_minutes=args.timeout_minutes,
                 max_slowdown_percent=args.max_slowdown_percent,
                 adb=args.adb, serial=args.serial,
+                qa_debug_signing=args.qa_debug_signing,
             )
     except (OSError, RuntimeError, ValueError, json.JSONDecodeError,
             subprocess.TimeoutExpired) as exc:
