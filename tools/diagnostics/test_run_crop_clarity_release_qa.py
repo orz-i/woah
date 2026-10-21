@@ -275,7 +275,14 @@ class ReleasePairWorkflowTest(unittest.TestCase):
         )
         self.assertIn("workflow_dispatch:", workflow_source)
         self.assertIn("./gradlew :dance_native:testDebugUnitTest", workflow_source)
+        self.assertIn("./gradlew :dance_native:compileReleaseKotlin", workflow_source)
         self.assertIn("./gradlew :dance_native:compileDebugAndroidTestKotlin", workflow_source)
+        # Production Release compile is a JVM ABI gate, not a signed APK or
+        # a simulated performance test. It must not require a keystore.
+        release_step = workflow_source.split("- name: Compile Native Android Release Kotlin", 1)[1].split("- name:", 1)[0]
+        self.assertIn("compileReleaseKotlin", release_step)
+        self.assertNotIn("assembleRelease", release_step)
+        self.assertNotIn("flutter build apk --release", release_step)
 
     def test_native_package_id_and_release_signing_contract_are_pinned(self):
         source = (workflow.APP_DIR / "android/app/build.gradle.kts").read_text()

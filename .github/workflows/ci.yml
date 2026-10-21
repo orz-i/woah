@@ -92,6 +92,16 @@ jobs:
           chmod +x gradlew
           ./gradlew :dance_native:testDebugUnitTest
 
+      # Compile the native Kotlin that ships in the Release variant, not just
+      # the Debug unit-test variant. The library compile task does not require
+      # a release keystore, package an APK, run R8 or attest release behavior.
+      # Actual signed Release builds and device OFF/ON exports remain blocked
+      # until separately measured with the dedicated Release QA collector.
+      - name: Compile Native Android Release Kotlin
+        run: |
+          cd mobile/app/android
+          ./gradlew :dance_native:compileReleaseKotlin
+
       # Compiles the optional public-model Stage 3 synthetic smoke against
       # the *actual pinned* tasks-vision:1.0.0 Java/Kotlin ABI. It is not
       # executed in CI, downloads no .task weights and changes no export path.
