@@ -237,17 +237,7 @@ object PrivacyOcclusionResolver {
             }
         }
 
-        // LOST/REACQUIRING state counters can reset independently of real
-        // observations. Never re-activate a historical selected mask solely
-        // because the current state has a small missed-frame count.
-        // Fresh synthetic selected detections are not tracked fallback masks.
-        val selectedPersons = privacyPersons.filter { person ->
-            effectiveSelectedIds.contains(person.id) &&
-                person.mask != null &&
-                (!selectedPersonIds.contains(person.id) ||
-                    person.observedThisFrame ||
-                    person.framesSinceLastObservation <= maxFallbackObservationAgeFrames)
-        }
+        val selectedPersons = privacyPersons.filter { effectiveSelectedIds.contains(it.id) && it.mask != null }
         if (selectedPersons.isEmpty()) {
             return ResolvedCompositorMasks(
                 privacyMask = null,
