@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-20. **Branch:** `feat/crop-clarity-phase2-quality-performance`. Starting HEAD: `af0a28ac9c67c6b1541c7229bd0b73887f5f264f`.
 
-**Disposition: ANDROID SYNTHETIC SMOKE HARNESS IMPLEMENTED; ACTUAL NATIVE COMPILE / ANDROID DEVICE RUNTIME NOT YET EXECUTED. FULL_BODY 39.733–39.900s STILL NOT FIXED; PRIVACY NOT SEALED; NO master MERGE.** Stage 3 touches only the Android **androidTest** source tree, a host-only test harness, numerical verifier tests and CI compile invocation. No production class, UI, renderer, source-video processing, proprietary media or model asset is modified or bundled.
+**Disposition (updated after real Android feedback): ANDROID SYNTHETIC SMOKE BUILT AND RUN ON A USER DEVICE. The first version failed native model initialization; the subsequent test runner reported three completed instrumentation successes, but its single final logcat sweep did NOT supply exactly three verified numeric performance records. The host-only per-attempt telemetry fix remains subject to rerun. FULL_BODY 39.733–39.900s STILL NOT FIXED; PRIVACY NOT SEALED; NO master MERGE.** Stage 3 touches only the Android **androidTest** source tree, a host-only test harness, numerical verifier tests and CI compile invocation. No production class, UI, renderer, source-video processing, proprietary media or model asset is modified or bundled.
 
 ## What has been independently confirmed
 
@@ -49,7 +49,7 @@ This flow is optional, intentionally external to the production Flutter editor, 
    py -3 tools\diagnostics\verify_interactive_segmenter_asset.py --artifact "D:\WoahStage3\interactive_segmentation.task"
    ```
 
-3. **One command** stages the SHA-pinned model into app-private storage, runs exactly the chosen instrumented class **three times**, reads only `WoahMagicTouchStage3` scalar logcat events with a unique random run token, writes one numeric JSON report **outside Git**, and removes the staged task file in `finally`. It never clears the device's other logcat events:
+3. **One command** stages the SHA-pinned model into app-private storage, runs exactly the chosen instrumented class **three times**, assigns a **different random 16-hex run token to each invocation**, and verifies that invocation's tagged `WoahMagicTouchStage3` numeric event immediately after the test completes. This prevents a last-only logcat snapshot from losing earlier rounds, and prevents old or duplicated records from being counted as new runs. It writes one numeric JSON report with `run_tokens` **outside Git** and removes the staged task file in `finally`. It never clears the device's other logcat events:
    ```powershell
    py -3 tools\diagnostics\stage_magic_touch_android_test.py run `
      --artifact "D:\WoahStage3\interactive_segmentation.task" `
@@ -58,15 +58,21 @@ This flow is optional, intentionally external to the production Flutter editor, 
    ```
    The default `--package auto` finds the sole eligible installed instrumentation target. If several Woah runners exist, specify `--package` with the **real** `target=` value from `adb shell pm list instrumentation`. You can pass `--serial <adb-device-id>` when more than one Android device is connected.
 
-4. The result is either an explicit ABI/model/test failure or a CPU synthetic-only timing report that still says `privacy_visual_acceptance=NOT_PROVEN`. **Pre-build follow-up:** on some AndroidJUnitRunner versions, `am instrument -w -r` reports a successful single test through `INSTRUMENTATION_STATUS_CODE: 1` (start), `0` (pass), and final `INSTRUMENTATION_CODE: -1`, but omits the formatted `OK (1 test)` footer. The Python runner now accepts only that exact single-test status sequence or a proven formatted single-test success, while still rejecting negative/skipped, missing-final, duplicate and unrelated test statuses. If the test genuinely fails, it saves a bounded, path-redacted synthetic-instrumentation excerpt as **`D:\WoahStage3\stage3-cpu-smoke.failure.txt`**, prints the reason, and removes the staged model. It does not clear logcat or capture user video. **This repair only changes the host Python helper; with the existing test APK installed, rerun after `git pull` without rebuilding/reinstalling APK or re-downloading the model.**
+4. The result is either an explicit ABI/model/test failure or a CPU synthetic-only timing report that still says `privacy_visual_acceptance=NOT_PROVEN`. A previous genuine Android execution passed all three instrumentations but failed the **final single logcat dump** check with `tagged synthetic smoke records incomplete/duplicated`. The available error gives no exact event count, so ring-buffer loss versus duplication cannot be proven retroactively. Stage 3 now validates **exactly one valid event for each distinct attempt token** as it runs. Failure writes `D:\WoahStage3\stage3-cpu-smoke.failure.txt` with integer-only counts (`tagged_json_lines`, `matching_attempt_token`, `valid_attempt_records`, `malformed_json`, etc.) and does not copy raw logs or masks. **Only the host Python runner and numeric analyzer changed; no APK reinstallation or model re-download is required.**
+
+   **Pre-build follow-up:** on some AndroidJUnitRunner versions, `am instrument -w -r` reports a successful single test through `INSTRUMENTATION_STATUS_CODE: 1` (start), `0` (pass), and final `INSTRUMENTATION_CODE: -1`, but omits the formatted `OK (1 test)` footer. The Python runner now accepts only that exact single-test status sequence or a proven formatted single-test success, while still rejecting negative/skipped, missing-final, duplicate and unrelated test statuses. If the test genuinely fails, it saves a bounded, path-redacted synthetic-instrumentation excerpt as **`D:\WoahStage3\stage3-cpu-smoke.failure.txt`**, prints the reason, and removes the staged model. It does not clear logcat or capture user video. **This repair only changes the host Python helper; with the existing test APK installed, rerun after `git pull` without rebuilding/reinstalling APK or re-downloading the model.**
 
    The same report can be independently generated from already collected *scalar-only* logcat text with:
    ```powershell
+   $tokens = (Get-Content "D:\WoahStage3\stage3-cpu-smoke.json" |
+     ConvertFrom-Json).run_tokens
    py -3 tools\diagnostics\analyze_magic_touch_stage3_smoke.py `
      --log "D:\WoahStage3\stage3-tag-only.log" `
      --output "D:\WoahStage3\independent-report.json" `
-     --min-runs 3 --run-token <run_token-from-stage3-cpu-smoke.json>
+     --min-runs 3 --run-tokens $tokens
    ```
+
+The optional independent `--run-tokens` check requires a previously retained tag-filtered logcat text containing all three unique attempts. On a small Android log buffer those older messages may already have rotated away; **the automatic per-attempt verification is the authoritative host-side evidence**. There is no need to collect old logcat manually. The completed `stage3-cpu-smoke.json` report already contains the three verified per-attempt tokens.
 
 Optional cleanup (should already be automatic after `run`):
 ```powershell
@@ -77,7 +83,7 @@ py -3 tools\diagnostics\stage_magic_touch_android_test.py cleanup --package art.
 
 Production CI now **compiles** the optional `androidTest` source via `:dance_native:compileDebugAndroidTestKotlin` against the pinned library; it does **not** stage or download a model, run an emulator, request permission changes or call the test. This is a **native ABI compilation gate**, and can be marked passed **only after the GitHub run actually succeeds**.
 
-On the current Mac, Java Runtime and Android SDK are unavailable; thus no Gradle build, actual MagicTouch invocation, model GPU path, Android 17 PSS or thermal measurements were performed in this stage. Host test modules verify exact test-only boundary, SHA/private transfer, failure cleanup, run-token isolation and aggregated metric integrity:
+The current Mac lacks JDK/Android SDK and could not compile or invoke Android natively. The user's separate Android workstation did compile and run the installed test APK: an initial native model-source failure was corrected with fd-backed loading, followed by **three reported instrumentation successes**. However, the telemetry sweep error leaves complete numeric latency/PSS/thermal analysis **NOT VERIFIED**; GPU was never exercised. Host modules guard the test-only boundary, SHA/private transfer, cleanup, run-token isolation and metric integrity:
 
 ```bash
 python3 -m unittest tools.diagnostics.test_magic_touch_stage3_native_contract -v

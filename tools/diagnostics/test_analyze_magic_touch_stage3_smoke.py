@@ -98,6 +98,40 @@ class Stage3SyntheticSmokeReportTest(unittest.TestCase):
         self.assertAlmostEqual(summary["segment_p95_over_runs_ms"], 89.2)
         self.assertIn("NO_REAL_VIDEO_OR_OCCLUSION", summary["performance_limits"])
 
+    def test_three_uniquely_identified_synthetic_runs_can_be_summarized(self):
+        tokens = ["f" * 16, "e" * 16, "d" * 16]
+        events = [record(run_token=token, segment_median_ms=80.0 + i)
+                  for i, token in enumerate(tokens)]
+        summary = audit.summarize(events, min_repeats=3, distinct_run_tokens=True)
+        self.assertEqual(summary["run_token_policy"],
+                         "UNIQUE_VERIFIED_TOKEN_PER_INSTRUMENTATION")
+        self.assertEqual(summary["run_tokens"], tokens)
+        self.assertEqual(summary["runs"], 3)
+        self.assertEqual(summary["repeat_status"],
+                         "REPEATED_CPU_SMOKE_NOT_PRODUCTION_BENCHMARK")
+        self.assertNotIn("run_token", summary)
+        self.assertEqual(summary["privacy_visual_acceptance"], "NOT_PROVEN")
+        self.assertEqual(summary["pixel_carve_authorization"], "NEVER")
+
+    def test_reusing_one_token_cannot_fake_independent_repeats(self):
+        with self.assertRaisesRegex(ValueError, "runs not independent"):
+            audit.summarize([record(), record()], distinct_run_tokens=True)
+        with self.assertRaisesRegex(ValueError, "cannot be compared"):
+            audit.summarize([record(), record(run_token="e" * 16)])
+
+    def test_distinct_runs_still_require_same_model_device_and_commit(self):
+        original = record(run_token="f" * 16)
+        for change in (
+            {"git_commit": "e" * 40},
+            {"device_model": "different"},
+            {"android_api": 36},
+        ):
+            with self.assertRaisesRegex(ValueError, "cannot be compared"):
+                audit.summarize([
+                    original,
+                    record(run_token="e" * 16, **change),
+                ], distinct_run_tokens=True)
+
     def test_unknown_fields_including_raw_masks_fail_closed(self):
         for suspicious in (
             {"raw_mask": [0, 1, 255]},
@@ -175,6 +209,44 @@ class Stage3SyntheticSmokeReportTest(unittest.TestCase):
         ))
         with self.assertRaisesRegex(ValueError, "no valid completed"):
             audit.read_logcat(sample)
+
+    def test_cli_reconstructs_independent_runs_when_full_logcat_retained(self):
+        with tempfile.TemporaryDirectory() as dirname:
+            root = Path(dirname)
+            log_file = root / "synthetic.log"
+            dest = root / "numeric-report.json"
+            tokens = ["f" * 16, "e" * 16, "d" * 16]
+            log_file.write_text(logcat(*[
+                record(run_token=token) for token in tokens
+            ]), encoding="utf-8")
+            with patch("sys.argv", [
+                "analyze_magic_touch_stage3_smoke.py",
+                "--log", str(log_file), "--output", str(dest),
+                "--min-runs", "3", "--run-tokens", *tokens,
+            ]), contextlib.redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(audit.main(), 0)
+                self.assertIn("REPEATED_CPU_SMOKE", output.getvalue())
+            result = json.loads(dest.read_text())
+            self.assertEqual(result["run_tokens"], tokens)
+            self.assertEqual(result["privacy_visual_acceptance"], "NOT_PROVEN")
+
+    def test_cli_missing_one_of_three_attempts_never_writes_report(self):
+        with tempfile.TemporaryDirectory() as dirname:
+            root = Path(dirname)
+            log_file = root / "synthetic.log"
+            dest = root / "numeric-report.json"
+            tokens = ["f" * 16, "e" * 16, "d" * 16]
+            log_file.write_text(logcat(*[
+                record(run_token=token) for token in tokens[:-1]
+            ]), encoding="utf-8")
+            with patch("sys.argv", [
+                "analyze_magic_touch_stage3_smoke.py",
+                "--log", str(log_file), "--output", str(dest),
+                "--min-runs", "3", "--run-tokens", *tokens,
+            ]), contextlib.redirect_stderr(io.StringIO()) as errors:
+                self.assertEqual(audit.main(), 1)
+                self.assertIn("no valid completed", errors.getvalue())
+            self.assertFalse(dest.exists())
 
     def test_main_refuses_output_inside_repository(self):
         with tempfile.TemporaryDirectory() as dirname:

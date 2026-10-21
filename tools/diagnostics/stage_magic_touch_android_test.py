@@ -23,7 +23,7 @@ from tools.diagnostics.verify_interactive_segmenter_asset import (  # noqa: E402
     ROOT as PROVENANCE_ROOT, validate_android_dependency_source, verify
 )
 from tools.diagnostics.analyze_magic_touch_stage3_smoke import (  # noqa: E402
-    read_logcat, summarize
+    read_logcat, summarize, validate
 )
 
 LOCK_FILE = ROOT / "tools/diagnostics/baselines/mediapipe_magictouch_int8_1.lock.json"
@@ -267,6 +267,64 @@ def _write_stage3_instrument_failure(
     return failure_path
 
 
+def _logcat_scalar_counters(content: str, token: str) -> dict[str, int]:
+    """Count only synthetic tag/JSON diagnostics; never emit log line contents."""
+    counts = {
+        "tagged_json_lines": 0,
+        "well_formed_json": 0,
+        "matching_attempt_token": 0,
+        "other_attempt_tokens": 0,
+        "malformed_json": 0,
+        "invalid_contract": 0,
+        "valid_attempt_records": 0,
+    }
+    for line in content.splitlines():
+        if "WoahMagicTouchStage3" not in line or "{" not in line:
+            continue
+        counts["tagged_json_lines"] += 1
+        try:
+            value = json.loads(line[line.index("{"):])
+        except (TypeError, ValueError):
+            counts["malformed_json"] += 1
+            continue
+        counts["well_formed_json"] += 1
+        if not isinstance(value, dict) or value.get("run_token") != token:
+            counts["other_attempt_tokens"] += 1
+            continue
+        counts["matching_attempt_token"] += 1
+        try:
+            validate(value)
+        except (ValueError, TypeError, KeyError):
+            counts["invalid_contract"] += 1
+        else:
+            counts["valid_attempt_records"] += 1
+    return counts
+
+
+def _write_stage3_telemetry_failure(
+    dest: Path, *, attempt: int, repeats: int,
+    reason: str, token: str, content: str,
+) -> Path:
+    """Write only finite integer counters from a tag-filtered logcat snapshot."""
+    counters = _logcat_scalar_counters(content, token=token)
+    failure_path = dest.with_name(dest.stem + ".failure.txt")
+    lines = [
+        "WOAH_STAGE3_SYNTHETIC_TELEMETRY=FAIL",
+        f"run={attempt}/{repeats}",
+        f"reason={reason}",
+        "privacy_visual_acceptance=NOT_PROVEN",
+        "pixel_carve_authorization=NEVER",
+        "source_video_used=false",
+        "--- synthetic logcat counters only ---",
+        *(f"{key}={value}" for key, value in counters.items()),
+    ]
+    failure_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = failure_path.with_name(failure_path.name + ".stage3tmp")
+    temporary.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    temporary.replace(failure_path)
+    return failure_path
+
+
 def run_synthetic_smoke(
     path: Path, package: str, output: Path, *, repeats: int = 3,
     adb: str = "adb", serial: str | None = None,
@@ -283,17 +341,24 @@ def run_synthetic_smoke(
         raise ValueError("stage3 numeric report must be written outside Git tree")
     prefix = adb_prefix(adb, serial)
     resolved_package, component = _instrumentation_component(package, prefix, run=run)
-    run_token = token_generator(8)
-    if not re.fullmatch(r"[0-9a-f]{16}", run_token):
-        raise ValueError("synthetic test run token malformed")
+    # Unique *per-instrumentation* token prevents a later logcat snapshot
+    # from mistaking older results for the current attempt. All tokens are
+    # generated and validated before staging the 30 MB public test model.
+    attempt_tokens = [token_generator(8) for _ in range(repeats)]
+    if any(
+        not isinstance(token, str) or not re.fullmatch(r"[0-9a-f]{16}", token)
+        for token in attempt_tokens
+    ) or len(set(attempt_tokens)) != repeats:
+        raise ValueError("synthetic test attempt tokens must be distinct 16-hex values")
     stage_model(path, resolved_package, adb=adb, serial=serial, run=run, verifier=verifier)
+    records: list[dict] = []
     try:
-        for attempt in range(1, repeats + 1):
+        for attempt, attempt_token in enumerate(attempt_tokens, start=1):
             command = prefix + [
                 "shell", "am", "instrument", "-w", "-r",
                 "-e", "class", TEST_CLASS,
                 "-e", ENABLE_ARG, "1",
-                "-e", TOKEN_ARG, run_token,
+                "-e", TOKEN_ARG, attempt_token,
                 component,
             ]
             # Instrumentation sometimes returns shell exit=0 *even when a
@@ -318,14 +383,43 @@ def run_synthetic_smoke(
                         _instrumentation_failure_evidence(result), max_lines=25
                     )
                 )
-        logs = _execute(
-            prefix + ["logcat", "-d", "-v", "brief", "-s", "WoahMagicTouchStage3:I", "*:S"],
-            timeout=90, run=run,
+            # Read the filtered numeric logcat *immediately* after the one
+            # successful run. A single final dump can lose earlier messages
+            # when the Android ring buffer wraps or rotates.
+            logs = _execute(
+                prefix + [
+                    "logcat", "-d", "-v", "brief", "-s",
+                    "WoahMagicTouchStage3:I", "*:S",
+                ],
+                timeout=90, run=run,
+            )
+            try:
+                current = read_logcat(logs.stdout, run_token=attempt_token)
+            except (ValueError, TypeError, KeyError) as error:
+                current = []
+                failure_reason = "MISSING_OR_INVALID_TAGGED_SYNTHETIC_RECORD"
+                parse_reason = str(error)
+            else:
+                failure_reason = "INCOMPLETE_OR_DUPLICATE_TAGGED_SYNTHETIC_RECORD"
+                parse_reason = ""
+            if len(current) != 1:
+                diagnostic = _write_stage3_telemetry_failure(
+                    dest, attempt=attempt, repeats=repeats,
+                    reason=failure_reason, token=attempt_token,
+                    content=logs.stdout,
+                )
+                counters = _logcat_scalar_counters(logs.stdout, attempt_token)
+                counts = " ".join(f"{name}={value}" for name, value in counters.items())
+                raise RuntimeError(
+                    "Stage 3 synthetic telemetry not verified "
+                    f"(run {attempt}/{repeats}; {failure_reason}; "
+                    f"{len(current)} valid current-token records). "
+                    f"Diagnostic: {diagnostic}; {counts}; {parse_reason}"
+                )
+            records.append(current[0])
+        report = summarize(
+            records, min_repeats=repeats, distinct_run_tokens=True
         )
-        records = read_logcat(logs.stdout, run_token=run_token)
-        if len(records) != repeats:
-            raise ValueError("tagged synthetic smoke records incomplete/duplicated")
-        report = summarize(records, min_repeats=repeats)
         dest.parent.mkdir(parents=True, exist_ok=True)
         temporary = dest.with_name(dest.name + ".stage3tmp")
         temporary.write_text(

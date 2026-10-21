@@ -125,21 +125,30 @@ def read_logcat(content: str, *, run_token: str | None = None) -> list[dict]:
     return records
 
 
-def summarize(records: list[dict], *, min_repeats: int = 3) -> dict:
+def summarize(
+    records: list[dict], *, min_repeats: int = 3,
+    distinct_run_tokens: bool = False,
+) -> dict:
     if min_repeats < 2 or min_repeats > 20:
         raise ValueError("invalid repeat requirement")
     if not records:
         raise ValueError("no records")
-    first = records[0]
     for record in records:
         validate(record)
-        for key in ("run_token", "git_commit", "model_sha256", "device_model", "android_api"):
+    first = records[0]
+    tokens = [record["run_token"] for record in records]
+    if distinct_run_tokens and len(set(tokens)) != len(tokens):
+        raise ValueError("repeated Stage 3 attempt token; runs not independent")
+    comparison_fields = ("git_commit", "model_sha256", "device_model", "android_api")
+    if not distinct_run_tokens:
+        comparison_fields = ("run_token", *comparison_fields)
+    for record in records:
+        for key in comparison_fields:
             if record[key] != first[key]:
                 raise ValueError("different device/build/model cannot be compared")
-    return {
+    report = {
         "schema": 1,
         "scope": "STAGE3_NUMERIC_SYNTHETIC_CPU_ONLY",
-        "run_token": first["run_token"],
         "git_commit": first["git_commit"],
         "device_model": first["device_model"],
         "android_api": first["android_api"],
@@ -174,6 +183,13 @@ def summarize(records: list[dict], *, min_repeats: int = 3) -> dict:
         "privacy_visual_acceptance": "NOT_PROVEN",
         "release_acceptance": "NOT_PROVEN",
     }
+    if distinct_run_tokens:
+        report["run_token_policy"] = "UNIQUE_VERIFIED_TOKEN_PER_INSTRUMENTATION"
+        report["run_tokens"] = tokens
+    else:
+        # Preserve read-only compatibility with pre-Stage3 telemetry reports.
+        report["run_token"] = first["run_token"]
+    return report
 
 
 def main() -> int:
@@ -181,16 +197,37 @@ def main() -> int:
     parser.add_argument("--log", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--min-runs", type=int, default=3)
-    parser.add_argument("--run-token", help="Restrict to one 16-hex synthetic test session")
+    parser.add_argument("--run-token", help="Restrict to one historical 16-hex test session")
+    parser.add_argument("--run-tokens", nargs="+", metavar="TOKEN",
+                        help="Verify exactly one event for each distinct Stage 3 attempt")
     args = parser.parse_args()
     try:
         dest = args.output.resolve()
         if dest == ROOT or ROOT in dest.parents:
             raise ValueError("synthetic smoke log report must remain outside Git tree")
-        report = summarize(
-            read_logcat(args.log.read_text(encoding="utf-8-sig"), run_token=args.run_token),
-            min_repeats=args.min_runs,
-        )
+        content = args.log.read_text(encoding="utf-8-sig")
+        if args.run_token is not None and args.run_tokens is not None:
+            raise ValueError("provide --run-token or --run-tokens, not both")
+        if args.run_tokens is not None:
+            tokens = args.run_tokens
+            if (not 2 <= len(tokens) <= 20
+                or len(set(tokens)) != len(tokens)
+                or any(not re.fullmatch(r"[0-9a-f]{16}", t) for t in tokens)):
+                raise ValueError("--run-tokens must contain distinct 16-hex values")
+            records = []
+            for token in tokens:
+                matches = read_logcat(content, run_token=token)
+                if len(matches) != 1:
+                    raise ValueError("not exactly one synthetic log per attempt token")
+                records.extend(matches)
+            report = summarize(
+                records, min_repeats=args.min_runs, distinct_run_tokens=True
+            )
+        else:
+            report = summarize(
+                read_logcat(content, run_token=args.run_token),
+                min_repeats=args.min_runs,
+            )
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(json.dumps(report, sort_keys=True, indent=2) + "\n", encoding="utf-8")
     except (OSError, ValueError, TypeError, KeyError) as error:
