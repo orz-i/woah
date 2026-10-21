@@ -68,7 +68,7 @@ The previous schema 1 A/B ZIP is still accepted for historical comparisons.
 ```powershell
 uv run python .\tools\diagnostics\run_crop_clarity_release_qa.py `
   --action all `
-  --output-dir "D:\WoahReleaseQA\trial-01" `
+  --output-dir "D:\WoahReleaseQA\trial-03" `
   --scenario "same-720p-dance" `
   --qa-debug-signing `
   --acknowledge-test-install
@@ -81,7 +81,9 @@ uv run python .\tools\diagnostics\run_crop_clarity_release_qa.py `
 - `release_off.log` / `release_on.log`：各三条白名单内的匿名性能记录
 - `crop-clarity-release-comparison.json`：耗时与吞吐对比；QA Debug 证书实验会标注 `QA_DEBUG_CERT_NOT_FOR_DISTRIBUTION`，性能结论仍为 `REQUIRES_DEVICE_REVIEW`
 
-只构建不安装时可改为 `--action build --qa-debug-signing`，且无需安装授权。以后对同一 HEAD、相同目录使用 `--action run --qa-debug-signing --acknowledge-test-install`。当使用正常发布签名时，构建与测试命令都移除 `--qa-debug-signing`。**不允许混用两种签名模式**：QA Debug 证书签署的 Release APK 明确记录为 `QA_DEBUG_CERT_NOT_FOR_DISTRIBUTION`。如果 Git 仍不满足要求，脚本会分别给出已跟踪变更和未知文件数量；不要执行 `git clean -fd`、`git reset --hard` 来绕过。测试目录选择新的 `trial-02`，不能覆盖旧报告。
+只构建不安装时可改为 `--action build --qa-debug-signing`，且无需安装授权。以后对同一 HEAD、相同目录使用 `--action run --qa-debug-signing --acknowledge-test-install`。当使用正常发布签名时，构建与测试命令都移除 `--qa-debug-signing`。**不允许混用两种签名模式**：QA Debug 证书签署的 Release APK 明确记录为 `QA_DEBUG_CERT_NOT_FOR_DISTRIBUTION`。
+
+**Windows 工程现场兼容（2026-10-21）：** 对 `D:\dance-anonymizer` 的已知未跟踪内容，Git 保护校验现允许 `mobile/app/crop_clarity_ab.zip`、`mobile/app/crop_clarity_ab_raw.zip`，以及 `mobile/app/android/app/src/debug/AndroidManifest.xml` 和 `mobile/packages/dance_native/example/android/app/src/debug/AndroidManifest.xml` 两份仅用于 Debug 构建的 Flutter 清单。这些仅是可核对的**精确路径**，不代表忽略整个 `src/debug` 目录；若目录内出现额外的 `.kt`、`.java`、其它未知文件或 `src/main`、`src/release` 修改，仍会阻断 Release QA。脚本使用 `git status --porcelain -z --untracked-files=all` 验证实际叶文件（普通 `git status --short` 只会显示折叠目录）。若仍报 Git 状态异常，请运行 `git status --short --untracked-files=all` 获取具体文件列表；**不要执行 `git clean -fd`、`git reset --hard` 或删除 A/B 诊断 ZIP**。测试输出始终使用 Git 外的新目录，不能覆盖旧报告。
 
 这是一项**Release 性能实验**，不会修复 39.733–39.900 秒隐私误遮挡，也不会给出最终视频隐私验收。以下是可用于分步排错的旧式构建/采集步骤，推荐先尝试上述一条命令。
 

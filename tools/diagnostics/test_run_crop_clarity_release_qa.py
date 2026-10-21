@@ -416,6 +416,77 @@ class ReleasePairWorkflowTest(unittest.TestCase):
             self.assertTrue(runner.call_args.kwargs["qa_debug_signing"])
             self.assertTrue(runner.call_args.kwargs["acknowledge_install"])
 
+    def test_windows_flutter_debug_scaffolds_and_app_ab_zips_are_not_release_source_dirt(self):
+        # Actual user workspace showed these four collapsed untracked entries:
+        #   ?? mobile/app/android/app/src/debug/
+        #   ?? mobile/app/crop_clarity_ab.zip
+        #   ?? mobile/app/crop_clarity_ab_raw.zip
+        #   ?? mobile/packages/dance_native/example/android/app/src/debug/
+        # Git -z -uall enumerates the contained leaf files, rather than dirs.
+        actual = (
+            "?? mobile/app/android/app/src/debug/AndroidManifest.xml\0"
+            "?? mobile/app/crop_clarity_ab.zip\0"
+            "?? mobile/app/crop_clarity_ab_raw.zip\0"
+            "?? mobile/packages/dance_native/example/android/app/src/debug/AndroidManifest.xml\0"
+        )
+        with tempfile.TemporaryDirectory() as dirname:
+            fake = FakeBuilder(
+                Path(dirname) / "apk-fixture.apk", status=actual,
+            )
+            self.assertEqual(workflow.git_identity(runner=fake), (HEAD, BRANCH))
+            self.assertIn(
+                ["git", "status", "--porcelain", "-z", "--untracked-files=all"],
+                fake.calls,
+            )
+            self.assertTrue(workflow._safe_untracked_evidence(
+                "mobile\\app\\crop_clarity_ab_raw.zip"
+            ))
+
+    def test_only_exact_debug_manifest_and_ab_zip_paths_may_be_excluded(self):
+        tolerated = (
+            "mobile/app/android/app/src/debug/AndroidManifest.xml",
+            "mobile/packages/dance_native/example/android/app/src/debug/AndroidManifest.xml",
+            "mobile/app/crop_clarity_ab.zip",
+            "mobile/app/crop_clarity_ab_raw.zip",
+            "mobile/app/crop_clarity_ab(1).zip",
+        )
+        blocked = (
+            # Collapsed directories must never be blindly accepted.
+            "mobile/app/android/app/src/debug/",
+            "mobile/packages/dance_native/example/android/app/src/debug/",
+            # Unknown debug Kotlin/Java/code and other source sets must block.
+            "mobile/app/android/app/src/debug/kotlin/Malicious.kt",
+            "mobile/app/android/app/src/debug/Helper.java",
+            "mobile/app/android/app/src/debug/res/raw/hidden_model.tflite",
+            "mobile/app/android/app/src/main/AndroidManifest.xml",
+            "mobile/app/android/app/src/release/AndroidManifest.xml",
+            "mobile/packages/dance_native/android/src/debug/kotlin/Shadow.kt",
+            "mobile/packages/dance_native/example/android/app/src/debug/Extra.kt",
+            "mobile/app/android/app/build.gradle.kts",
+            # Only two known protected QA archive names, not a broad zip bypass.
+            "mobile/app/crop_clarity_other.zip",
+            "mobile/app/user-video.zip",
+            "mobile/app/lib/crop_clarity_ab.zip",
+            "mobile/app/crop_clarity_ab_raw.exe",
+        )
+        for path in tolerated:
+            with self.subTest(tolerated=path):
+                self.assertTrue(workflow._safe_untracked_evidence(path))
+        for path in blocked:
+            with self.subTest(blocked=path):
+                self.assertFalse(workflow._safe_untracked_evidence(path))
+        with tempfile.TemporaryDirectory() as dirname:
+            fake = FakeBuilder(Path(dirname) / "apk", status=(
+                "?? mobile/app/android/app/src/debug/AndroidManifest.xml\0"
+                "?? mobile/app/android/app/src/debug/kotlin/Shadow.kt\0"
+            ))
+            with self.assertRaisesRegex(
+                ValueError, r"0 tracked changes, 1 unrecognized untracked files"
+            ) as raised:
+                workflow.git_identity(runner=fake)
+            self.assertIn("1 isolated QA artifacts tolerated", str(raised.exception))
+            self.assertIn("--untracked-files=all", str(raised.exception))
+
     def test_untracked_qa_artifacts_are_tolerated_but_untracked_source_is_not(self):
         with tempfile.TemporaryDirectory() as dirname:
             target = Path(dirname) / "generated.apk"

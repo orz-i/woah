@@ -138,13 +138,33 @@ def _exec(
 def _safe_untracked_evidence(path: str) -> bool:
     """Untracked QA data outside build inputs is not source-code dirtiness.
 
-    Only non-executable evidence in dedicated directories, or narrowly named
-    root-level diagnostic reports, can be ignored. Never ignore untracked
-    Dart/Kotlin/Gradle/Python, model assets, SDK configs or source resources.
+    Only non-executable evidence in dedicated directories, narrowly named
+    diagnosis ZIPs or exactly the standard Flutter debug-only manifests can
+    be ignored. Never ignore untracked Dart/Kotlin/Gradle/Python, model
+    assets, release/main manifests, SDK configs or unknown source resources.
     """
     normalized = path.replace("\\", "/")
     if normalized.startswith("/") or ".." in normalized.split("/"):
         return False
+    # These two Flutter scaffold manifests belong to the *debug-only* Android
+    # source set, never the Release build we benchmark. Standard Git output
+    # normally collapses each parent to `?? src/debug/`; this verifier uses
+    # `git status -z --untracked-files=all` to inspect the actual filenames.
+    # Deliberately do NOT allow other files in those directories, including
+    # Kotlin/Java, changed Gradle logic, manifests in src/main or src/release.
+    if normalized in {
+        "mobile/app/android/app/src/debug/AndroidManifest.xml",
+        "mobile/packages/dance_native/example/android/app/src/debug/AndroidManifest.xml",
+    }:
+        return True
+    # Flutter A/B QA archives stored beside the app project are already
+    # protected-media evidence, not code or Flutter-declared app assets.
+    # Keep this to known file names, never an entire mobile/app directory.
+    if re.fullmatch(
+        r"mobile/app/crop_clarity_ab(?:_raw)?(?:\(\d{1,3}\))?\.zip",
+        normalized,
+    ):
+        return True
     if any(normalized.startswith(directory) for directory in (
         "logs/", "output/", "input/", "uploads/", "testdata/",
         "data/tasks/", "docs/session/", "artifacts/", "qa-output/",
@@ -190,7 +210,8 @@ def git_identity(*, runner: Callable = subprocess.run) -> tuple[str, str]:
             "Release QA source provenance blocked: "
             f"{tracked} tracked changes, {unknown} unrecognized untracked files "
             f"({allowed} isolated QA artifacts tolerated). "
-            "Run git status --short to review; nothing was deleted or reset"
+            "Run git status --short --untracked-files=all for exact paths; "
+            "nothing was deleted or reset"
         )
     if allowed:
         print(f"WOAH_RELEASE_QA=IGNORED_{allowed}_ISOLATED_UNTRACKED_ARTIFACTS", flush=True)

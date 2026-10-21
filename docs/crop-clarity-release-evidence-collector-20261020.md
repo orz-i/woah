@@ -110,6 +110,20 @@ uv run python .\tools\diagnostics\run_crop_clarity_release_qa.py `
 ```
 
 This is not fully unattended: complete three matching OFF exports and three matching ON exports when prompted. For build-only, use `--action build --qa-debug-signing` without the install authorization; for an existing pinned pair, use `--action run --qa-debug-signing --acknowledge-test-install`. Git checkout files and signing keystore are not destroyed or cleaned by the script. Model/real-video privacy, sustained device thermal behavior and public Release signing remain unproven.
+### Windows untracked Flutter scaffolds and Crop Clarity captures (2026-10-21)
+
+After pulling commit `553f6f1`, the user's Windows checkout at `D:\\dance-anonymizer` reported `0 tracked changes, 4 unrecognized untracked files`. The four displayed Git entries were two generated-looking `src/debug/` **directories** and two protected Crop Clarity A/B ZIPs under `mobile/app/`. Standard `git status --short` collapses untracked directories, so the contents of the two folders have **not been directly inspected** on Windows. This remediation does not claim anything about their unseen contents.
+
+The Release QA provenance guard now recognizes precisely the following four **leaf file paths**:
+
+- `mobile/app/crop_clarity_ab.zip`
+- `mobile/app/crop_clarity_ab_raw.zip`
+- `mobile/app/android/app/src/debug/AndroidManifest.xml`
+- `mobile/packages/dance_native/example/android/app/src/debug/AndroidManifest.xml`
+
+These are outside Release code/Flutter asset inputs: the ZIPs are existing local evidence not included in pubspec assets, and Flutter's `src/debug` manifests are not used in the Release variant. Unknown Android `src/debug` files (especially `.kt`/`.java`), untracked code, `src/main`/`src/release` manifests, Gradle changes and tracked source edits remain blocked. Do **not** ignore entire directories, delete files, change signing modes, execute `git clean -fd`/`git reset --hard` or lower privacy checks. Use `git status --short --untracked-files=all` if an unrecognized leaf remains; the guard explicitly rejects collapsed directories and prints a counted failure. Synthetic host tests construct the exact user's four expected leaf paths plus adversarial extra-source cases.
+
+This is **host-tool provenance handling only**. Windows CI is not yet executed for this commit. Release QA with `--qa-debug-signing` still needs installed Android Build-Tools and the existing local Android Debug key; a signed Release-code APK is a non-distributable benchmark variant. Real device performance, final export pixels, privacy acceptance and master merge remain NOT PROVEN.
 ## Executable evidence status
 
 - Pure synthetic/mocked capture runner: marker discrimination, no global logcat clearing, wrong variant and build rejection, stdout streaming, complete 3-record emission and atomic output, duplicate/replay detection, malformed/private data veto, device/build/output mismatch, error cleanup.
