@@ -86,6 +86,38 @@ python3 -m unittest tools.diagnostics.test_analyze_magic_touch_stage3_smoke -v
 python3 -m unittest discover -s tools/diagnostics -p 'test_*.py' -q
 ```
 
+## Android device follow-up: ExternalFile missing model source (2026-10-20)
+
+A real opt-in Android 17 instrumented run from `23ada361b8904919e238796432ded41987aba47b` successfully reached the expected Stage 3 test class (target package `art.gaoge.dance.engine.test`, run 1/3). The host Stage 2 model SHA and the device-private 30,525,312-byte model SHA had already been validated by the test runner. The Java/Kotlin instrumentation setup was therefore functional, but the MagicTouch native model initialization **FAILED** before `setImage` or `segment` could be exercised:
+
+```text
+MediaPipeException: invalid argument: ExternalFile must specify at least one of
+'file_content', 'file_name', 'file_pointer_meta' or 'file_descriptor_meta'.
+    at InteractiveSegmenter.nativeCreate(...)
+    at MagicTouchSyntheticSmokeInstrumentedTest.kt:82
+INSTRUMENTATION_STATUS_CODE: -2
+```
+
+The previous test passed a read-only memory-mapped `ByteBuffer` to `BaseOptions.setModelAssetBuffer`. This did not produce a usable native `ExternalFile` source in the observed runtime, but the precise failure within the JNI buffer conversion is **not proven** by this stack trace. The narrow fix replaces **only the androidTest model binding**, using `ParcelFileDescriptor.open` with `MODE_READ_ONLY` and `BaseOptions.setModelAssetFileDescriptor(modelDescriptor.fd)`. The descriptor is kept open through the entire segmenter lifetime, then closed after `segmenter.close()`. This is an officially supported MediaPipe Tasks model source, maps to `file_descriptor_meta` rather than `file_pointer_meta`, and preserves the existing verified private file and CPU-only synthetic image tests. It never changes the production MediaPipe face locator, APK model assets, privacy resolver, renderer or app.
+
+**Acceptance after code change: PENDING REBUILD/REINSTALL/DEVICE RECHECK.** The source and host contract tests pass; actual native fd-based `InteractiveSegmenter.createFromOptions` has not yet been run. A subsequent device error (for example an unsupported model operation) would be a separate cause, not proof the current issue was solved. No model download or original source-video retest is needed.
+
+Windows procedure from the repository root, with the already-installed original Woah test target and model file:
+
+```powershell
+git pull --ff-only origin feat/crop-clarity-phase2-quality-performance
+cd mobile\app\android
+.\gradlew.bat :dance_native:assembleDebugAndroidTest
+.\gradlew.bat :dance_native:installDebugAndroidTest
+cd ..\..\..
+uv run python .\tools\diagnostics\stage_magic_touch_android_test.py run `
+  --artifact "D:\WoahStage3\interactive_segmentation.task" `
+  --output "D:\WoahStage3\stage3-cpu-smoke.json" `
+  --repeats 3
+```
+
+If the Android Gradle plugin does not expose `installDebugAndroidTest` for this library variant, do not assume the APK was updated. Collect the Gradle task error and installed `adb shell pm list instrumentation` result to resolve the actual APK path. The test host will save bounded failure context to `D:\WoahStage3\stage3-cpu-smoke.failure.txt` without requiring original media or a broad logcat dump.
+
 ## No-go / exit conditions
 
 A passing synthetic ABI+CPU smoke can only qualify MagicTouch for **further research**, not for production deployment. Explicit blockers remain:

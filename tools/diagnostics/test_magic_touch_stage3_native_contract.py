@@ -24,6 +24,15 @@ class MagicTouchStage3IsolationContractTest(unittest.TestCase):
         src = TEST.read_text(encoding="utf-8")
         self.assertIn("src/androidTest/", TEST.as_posix())
         self.assertNotIn("instrumentation.arguments", src)
+        self.assertNotIn(".setModelAssetBuffer(mapped)", src)
+        self.assertNotIn("FileChannel.MapMode.READ_ONLY", src)
+        self.assertIn("catch (error: Throwable)", src)
+        self.assertIn("try {\n                segmenter.close()\n            } finally {\n                modelDescriptor.close()", src)
+        open_fd = src.index("val modelDescriptor = ParcelFileDescriptor.open(")
+        create_model = src.index("InteractiveSegmenter.createFromOptions(context, options)")
+        close_model = src.rindex("segmenter.close()")
+        close_fd = src.rindex("modelDescriptor.close()")
+        self.assertTrue(open_fd < create_model < close_model < close_fd)
         for required in (
             "MagicTouchSyntheticSmokeInstrumentedTest",
             'const val ENABLE_ARG = "woahMagicTouchStage3Enabled"',
@@ -33,7 +42,9 @@ class MagicTouchStage3IsolationContractTest(unittest.TestCase):
             'const val TEST_MODEL_FILE = "woah_magic_touch_stage3.task"',
             "File(context.filesDir, TEST_MODEL_FILE)",
             'const val MODEL_BYTES = 30_525_312L',
-            "setModelAssetBuffer(mapped)",
+            "ParcelFileDescriptor.open(asset, ParcelFileDescriptor.MODE_READ_ONLY)",
+            "assertTrue(modelDescriptor.fd >= 0",
+            "setModelAssetFileDescriptor(modelDescriptor.fd)",
             "setDelegate(Delegate.CPU)",
             "InteractiveSegmenter.createFromOptions",
             "segmenter.setImage(mpImage)",

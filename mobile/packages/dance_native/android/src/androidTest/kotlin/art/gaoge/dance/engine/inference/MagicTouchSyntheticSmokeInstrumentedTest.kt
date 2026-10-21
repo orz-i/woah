@@ -8,6 +8,7 @@ import android.graphics.Paint
 import android.os.Build
 import android.os.Debug
 import android.os.PowerManager
+import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -25,7 +26,6 @@ import org.junit.Assume.assumeTrue
 import org.junit.runner.RunWith
 import java.io.File
 import java.io.FileInputStream
-import java.nio.channels.FileChannel
 import java.security.MessageDigest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -66,20 +66,25 @@ class MagicTouchSyntheticSmokeInstrumentedTest {
         val pssBeforeKb = endPssKb()
         val thermalBefore = thermalStatus(context)
 
-        // Zero-copy read-only mapping of the optional app-private .task file.
-        // The mapping stays strongly reachable until the segmenter is closed.
-        val mapped = FileInputStream(asset).channel.use { channel ->
-            channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size())
-        }
-
+        // The Android 17 runtime reported no usable ExternalFile source when
+        // given a read-only mapped buffer. The precise JNI conversion fault is
+        // unconfirmed. Supply the same SHA-verified private model via its live
+        // read-only file descriptor, which maps to ExternalFile.file_descriptor_meta.
+        val modelDescriptor = ParcelFileDescriptor.open(asset, ParcelFileDescriptor.MODE_READ_ONLY)
         val creationStarted = System.nanoTime()
-        val options = InteractiveSegmenterOptions.builder().setBaseOptions(
-            BaseOptions.builder()
-                .setModelAssetBuffer(mapped)
-                .setDelegate(Delegate.CPU)
-                .build()
-        ).build()
-        val segmenter = InteractiveSegmenter.createFromOptions(context, options)
+        val segmenter = try {
+            assertTrue(modelDescriptor.fd >= 0, "Stage 3 model fd must be valid")
+            val options = InteractiveSegmenterOptions.builder().setBaseOptions(
+                BaseOptions.builder()
+                    .setModelAssetFileDescriptor(modelDescriptor.fd)
+                    .setDelegate(Delegate.CPU)
+                    .build()
+            ).build()
+            InteractiveSegmenter.createFromOptions(context, options)
+        } catch (error: Throwable) {
+            modelDescriptor.close()
+            throw error
+        }
         val initializationMs = elapsedMs(creationStarted)
 
         val bitmap = makeSyntheticObjectImage(WIDTH, HEIGHT)
@@ -236,7 +241,12 @@ class MagicTouchSyntheticSmokeInstrumentedTest {
         } finally {
             mpImage.close()
             bitmap.recycle()
-            segmenter.close()
+            // File descriptor must stay open until native segmenter closes.
+            try {
+                segmenter.close()
+            } finally {
+                modelDescriptor.close()
+            }
         }
     }
 
