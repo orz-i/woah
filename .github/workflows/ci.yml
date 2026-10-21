@@ -36,7 +36,9 @@ jobs:
         run: python tools/release/verify_android_namespace.py
 
       - name: Verify shared export media contract
-        run: python tools/release/verify_export_media_contract.py
+        run: |
+          python tools/release/verify_export_media_contract.py
+          python -m unittest tools.release.test_verify_export_media_contract -q
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4

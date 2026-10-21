@@ -61,6 +61,9 @@ def main() -> int:
         "maxEncodeHeight",
         "0.13",
         "80_000_000",
+        # Presets cap output without enlarging a smaller input source.
+        "if (width <= capWidth && height <= capHeight)",
+        "return (width: width, height: height);",
     ):
         require(plan, token, "ExportPlan")
     require(project, "enum OutputResolutionPreset { source, fhd, hd }", "DanceProject")
@@ -78,12 +81,17 @@ def main() -> int:
     ):
         require(controller, token, "ExportController")
 
+    # The resolution control is now a top-row button/dialog, not the old
+    # selector. Verify the actual user action and preset handler.
     for token in (
-        "output-resolution-preset",
+        "protection-editor-resolution-trigger",
+        "_showResolutionDialog(context, project, effectController)",
         "OutputResolutionPreset.source",
         "OutputResolutionPreset.fhd",
         "OutputResolutionPreset.hd",
-        "FHD / HD 只限制最大输出尺寸，不会放大低分辨率素材",
+        "'1080p'",
+        "'720p'",
+        "effectController.updateOutputResolutionPreset(value);",
     ):
         require(protection_editor, token, "Protection editor resolution UI")
 
