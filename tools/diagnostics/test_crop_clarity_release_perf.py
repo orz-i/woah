@@ -6,7 +6,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from tools.diagnostics.crop_clarity_release_perf import compare, read_records
+from tools.diagnostics.crop_clarity_release_perf import compare, read_records, validate_release_record
 
 
 def record(mode: str, elapsed: float = 1000.0, **changes) -> dict:
@@ -70,10 +70,63 @@ class CropClarityReleasePerfTest(unittest.TestCase):
             {"yolo_accelerator": "CPU"},
         ):
             with self.subTest(mutation=mutation):
-                with self.assertRaisesRegex(ValueError, "non-comparable"):
+                # Invalid standalone telemetry is rejected before the
+                # cross-build comparator; valid-but-different runs reach the
+                # explicit non-comparable metadata gate.
+                with self.assertRaisesRegex(
+                    ValueError, "non-comparable|invalid source Git commit|GPU inference"
+                ):
                     compare([record("off")], [record("on", **mutation)], scenario="clip")
         with self.assertRaisesRegex(ValueError, "never activated"):
             compare([record("off")], [record("off")], scenario="clip")
+
+    def test_missing_profiler_samples_or_bogus_throughput_are_rejected(self):
+        for mutation in (
+            {"render_cpu_dispatch_count": 0},
+            {"render_cpu_dispatch_count": 299},
+            {"render_cpu_dispatch_count": 301},
+            {"render_cpu_dispatch_p50_ms": 5, "render_cpu_dispatch_p95_ms": 4},
+            {"render_cpu_dispatch_p95_ms": float("nan")},
+            {"throughput_fps": 2.0},
+            {"throughput_fps": -1.0},
+            {"elapsed_ms": float("inf")},
+            {"elapsed_ms": 0},
+        ):
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                validate_release_record(record("on", **mutation))
+
+    def test_missing_release_metadata_and_incomplete_counts_fail_closed(self):
+        for mutation in (
+            {"git_commit": "unknown"}, {"git_commit": None},
+            {"schema": True},
+            {"follow_enabled": False},
+            {"build_mode": "debug"}, {"state": "cancelled"},
+            {"ab_capture_possible": True}, {"yolo_accelerator": "CPU"},
+            {"yolo_fallback": "cpu-fallback"},
+            {"decoded_frames": 299}, {"rendered_frames": 299},
+            {"encoded_frames": 299}, {"privacy_target_count": 0},
+            {"source_width": 0}, {"target_height": -1},
+            {"trim_end_ms": 0}, {"trim_start_ms": -1},
+            {"follow_enabled": "true"}, {"profile": "fast"},
+            {"clarity_state": "off"}, {"clarity_scale": 1.0},
+            {"clarity_scale": 2.2}, {"clarity_scale": float("nan")},
+            {"thermal_status_end": -1}, {"thermal_status_end": "0"},
+            {"pss_end_kb": None},
+        ):
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                validate_release_record(record("on", **mutation))
+
+    def test_valid_but_different_outputs_cannot_be_cross_compared(self):
+        for mutation in (
+            {"trim_start_ms": 333}, {"trim_end_ms": 15_000},
+            {"source_fps": 29.0, "target_fps": 30.0},
+            {"video_bitrate": 8_000_000}, {"privacy_target_count": 3},
+            {"follow_enabled": False}, {"device_model": "other-phone"},
+        ):
+            with self.subTest(mutation=mutation), self.assertRaisesRegex(
+                ValueError, "non-comparable|cannot be ON without follow crop"
+            ):
+                compare([record("off")], [record("on", **mutation)], scenario="clip")
 
     def test_four_k_control_expects_both_paths_off(self):
         base = record("off", source_width=3840, source_height=2160)

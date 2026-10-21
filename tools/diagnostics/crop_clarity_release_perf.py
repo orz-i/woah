@@ -15,6 +15,7 @@ import argparse
 import json
 import math
 from pathlib import Path
+import re
 import statistics
 
 TAG = "WoahExportPerf"
@@ -36,6 +37,87 @@ def _read_text(path: Path) -> str:
     return data.decode("utf-8-sig")
 
 
+def validate_release_record(record: dict, *, source: str = "release-record") -> dict:
+    """Require complete, internally coherent, scalar-only Release telemetry.
+
+    Native ExportPipeline emits this once after a successful atomic output.
+    The native renderEffects profiler wraps every successfully rendered frame.
+    A missing timer, bogus count, divergent throughput or invalid flags must
+    not accidentally promote a partial record into matched evidence.
+    """
+    if (not isinstance(record, dict)
+        or type(record.get("schema")) is not int
+        or record["schema"] != 1):
+        raise ValueError(f"{source}: unsupported Release performance record")
+    if record.get("build_mode") != "release":
+        raise ValueError(f"{source}: Debug data is not an acceptable release benchmark")
+    if record.get("state") != "completed":
+        raise ValueError(f"{source}: incomplete export is not a benchmark sample")
+    if record.get("ab_capture_possible") is not False:
+        raise ValueError(f"{source}: A/B capture-capable build rejected")
+    if record.get("yolo_accelerator") != "GPU" or record.get("yolo_fallback") not in (None, ""):
+        raise ValueError(f"{source}: GPU inference was unavailable or fallback occurred")
+    commit = record.get("git_commit")
+    if (not isinstance(commit, str) or
+        not re.fullmatch(r"[0-9a-fA-F]{12,40}", commit)):
+        raise ValueError(f"{source}: missing, unknown or invalid source Git commit")
+    if (not isinstance(record.get("device_model"), str)
+        or not 1 <= len(record["device_model"].strip()) <= 80
+        or any(ord(c) < 32 for c in record["device_model"])):
+        raise ValueError(f"{source}: missing or malformed device model")
+    for key in (
+        "source_width", "source_height", "target_width", "target_height",
+        "video_bitrate", "privacy_target_count", "decoded_frames",
+        "rendered_frames", "encoded_frames", "render_cpu_dispatch_count",
+    ):
+        value = record.get(key)
+        if type(value) is not int or value <= 0:
+            raise ValueError(f"{source}: invalid positive count/dimension {key}")
+    for key in ("trim_start_ms", "trim_end_ms"):
+        value = record.get(key)
+        if type(value) is not int or value < 0:
+            raise ValueError(f"{source}: invalid trim timing {key}")
+    if record["trim_end_ms"] <= record["trim_start_ms"]:
+        raise ValueError(f"{source}: nonpositive export trim duration")
+    if type(record.get("follow_enabled")) is not bool:
+        raise ValueError(f"{source}: missing follow-enabled contract")
+    if record.get("profile") != "quality":
+        raise ValueError(f"{source}: quality-profile export required")
+    for key in ("source_fps", "target_fps", "elapsed_ms", "throughput_fps"):
+        value = record.get(key)
+        if type(value) not in (int, float) or not math.isfinite(value) or value <= 0:
+            raise ValueError(f"{source}: invalid nonzero timing or FPS {key}")
+    for key in ("render_cpu_dispatch_p50_ms", "render_cpu_dispatch_p95_ms"):
+        value = record.get(key)
+        if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
+            raise ValueError(f"{source}: invalid CPU dispatch timer {key}")
+    if record["render_cpu_dispatch_p95_ms"] < record["render_cpu_dispatch_p50_ms"]:
+        raise ValueError(f"{source}: CPU dispatch P95 smaller than P50")
+    frame_keys = ("decoded_frames", "rendered_frames", "encoded_frames")
+    if len({record[key] for key in frame_keys}) != 1:
+        raise ValueError(f"{source}: decoded/rendered/encoded frame count mismatch")
+    if record["render_cpu_dispatch_count"] != record["rendered_frames"]:
+        raise ValueError(f"{source}: render CPU dispatch sample count differs from frames")
+    expected_throughput = record["rendered_frames"] * 1000.0 / record["elapsed_ms"]
+    if abs(record["throughput_fps"] - expected_throughput) > max(0.02, expected_throughput * 0.005):
+        raise ValueError(f"{source}: throughput does not match elapsed time and frame count")
+    scale = record.get("clarity_scale")
+    if type(scale) not in (int, float) or not math.isfinite(scale) or not 1.0 <= scale <= 2.0:
+        raise ValueError(f"{source}: invalid restoration scale")
+    state = record.get("clarity_state")
+    if state not in ("off", "on") or (scale <= 1.001) != (state == "off"):
+        raise ValueError(f"{source}: declared clarity state contradicts scale")
+    if state == "on" and record["follow_enabled"] is not True:
+        raise ValueError(f"{source}: crop clarity cannot be ON without follow crop")
+    thermal = record.get("thermal_status_end")
+    if thermal is not None and (type(thermal) is not int or not 0 <= thermal <= 6):
+        raise ValueError(f"{source}: invalid end thermal status sample")
+    pss = record.get("pss_end_kb")
+    if type(pss) is not int or pss <= 0:
+        raise ValueError(f"{source}: invalid end PSS sample")
+    return record
+
+
 def read_records(path: Path) -> list[dict]:
     records = []
     for line in _read_text(path).splitlines():
@@ -50,23 +132,7 @@ def read_records(path: Path) -> list[dict]:
             continue
         if not isinstance(record, dict) or record.get("schema") != 1:
             continue
-        if record.get("build_mode") != "release":
-            raise ValueError(f"{path.name}: Debug data is not an acceptable release benchmark")
-        if record.get("state") != "completed":
-            raise ValueError(f"{path.name}: incomplete export is not a benchmark sample")
-        if record.get("ab_capture_possible") is not False:
-            raise ValueError(f"{path.name}: A/B capture-capable build rejected")
-        if record.get("yolo_fallback") not in (None, ""):
-            raise ValueError(f"{path.name}: YOLO fallback invalidates GPU comparison")
-        frames = [record.get(key) for key in ("decoded_frames", "rendered_frames", "encoded_frames")]
-        if not all(isinstance(n, int) and n > 0 for n in frames) or len(set(frames)) != 1:
-            raise ValueError(f"{path.name}: frame count mismatch")
-        if not isinstance(record.get("elapsed_ms"), (float, int)) or not math.isfinite(record["elapsed_ms"]) or record["elapsed_ms"] <= 0:
-            raise ValueError(f"{path.name}: invalid elapsed_ms")
-        for key in ("render_cpu_dispatch_p50_ms", "render_cpu_dispatch_p95_ms"):
-            if not isinstance(record.get(key), (int, float)):
-                raise ValueError(f"{path.name}: missing {key}")
-        records.append(record)
+        records.append(validate_release_record(record, source=path.name))
     if not records:
         raise ValueError(f"No completed release {TAG} records in {path}")
     return records
@@ -92,6 +158,11 @@ def compare(
         raise ValueError("repeats_required must be >= 2")
     if not math.isfinite(max_slowdown_percent) or max_slowdown_percent < 0:
         raise ValueError("invalid slowdown budget")
+    if not off or not on:
+        raise ValueError("both OFF and ON Release runs are required")
+    for side, records in (("off", off), ("on", on)):
+        for index, record in enumerate(records):
+            validate_release_record(record, source=f"{side}[{index}]")
     baseline = off[0]
     if not isinstance(baseline.get("git_commit"), str) or baseline["git_commit"] in ("", "unknown"):
         raise ValueError("release benchmark requires a known Git commit in both APKs")

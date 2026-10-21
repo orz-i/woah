@@ -71,31 +71,48 @@ Copy-Item build/app/outputs/flutter-apk/app-release.apk app-release-clarity-on.a
 
 Use **exactly the same commit, phone, source file, privacy choices, trim, bitrate, profile and output target**. Disable the export live-preview toggle and background tasks, allow temperature to settle, and run at least three completed exports per mode after warmup. Alternating runs/interleaving installations is ideal to reduce battery/thermal drift; keep a note of starting battery/thermal state. **Start with the existing 1280×720 dance video** for the 720p→2× baseline; no new source footage is required. 1080p→~1.78× and a 4K no-op control are optional later when such media is naturally available. Do not mark the optional coverage as passed without those inputs.
 
-For each build, clear logcat before its series of exports and collect after three completed runs, while the same build is still installed:
+For each installed Release build, run the new **host-side scalar-only capture tool** instead of clearing all device logcat. It starts a tag-filtered listener and injects a fresh random marker: **all pre-existing export records are excluded**. It does not install the APK, click the editor, or ingest the video. The only in-app work is completing three otherwise identical exports per installed mode.
+
+From the **repository root**, after building the OFF/ON APKs above, first install the OFF build and start a capture:
 
 ```powershell
-adb install -r .\app-release-clarity-off.apk
-adb logcat -c
-# In the app, perform 3 matching complete exports. Do not enable Debug QA captures.
-adb logcat -d -v brief -s 'WoahExportPerf:I' '*:S' | Out-File -Encoding utf8 release_off.log
+adb install -r .\mobile\app\app-release-clarity-off.apk
 
-adb install -r .\app-release-clarity-on.apk
-adb logcat -c
-# In the app, perform 3 matching complete exports.
-adb logcat -d -v brief -s 'WoahExportPerf:I' '*:S' | Out-File -Encoding utf8 release_on.log
+uv run python .\tools\diagnostics\capture_crop_clarity_release_perf.py `
+  --mode off `
+  --output "D:\WoahReleaseQA\release_off.log" `
+  --repeats 3
 ```
 
-`WoahExportPerf` emits **one small JSON record per successful export** including commit, device model, geometry, count parity, native scale, total processing wall time, throughput, render CPU dispatch P50/P95, end-of-run thermal status and end sampled PSS. It never logs private media paths or frame images.
-
-At repository root:
+When `WOAH_RELEASE_CAPTURE_ARMED=YES` appears, complete three matching exports in Woah. The collector automatically reports `1/3`, `2/3`, `3/3` and exits after exactly three newly captured valid records. Then install the ON build and repeat:
 
 ```powershell
-uv run python tools/diagnostics/crop_clarity_release_perf.py --off mobile/app/release_off.log --on mobile/app/release_on.log --scenario same-720p-dance --output mobile/app/crop_clarity_perf_720p.json --min-runs 3 --max-slowdown-percent 10
+adb install -r .\mobile\app\app-release-clarity-on.apk
+
+uv run python .\tools\diagnostics\capture_crop_clarity_release_perf.py `
+  --mode on `
+  --output "D:\WoahReleaseQA\release_on.log" `
+  --repeats 3
 ```
 
-The default 10% slowdown is a **provisional test budget**, not an already achieved result or a product guarantee. To review a 4K no-op control use `--control-noop`; both runs must show native scale 1.0.
+If `adb install -r` reports an incompatible APK signing certificate, verify the local signing configuration rather than uninstalling the existing app or deleting application data. Close Debug QA captures, disable export live preview and avoid CPU/GPU background loads during the benchmark. Wait for the capture tool to arm **before starting any export**.
 
-The parser rejects Debug builds, YOLO fallback, incomplete exports, unknown or divergent Git commits, different devices/output geometry/FPS/privacy-target counts, bad scale modes and significant frame-count differences. Different `--scenario` labels are a **manual assertion** about source identity because neither log contains the input video data or its SHA. The script reports median/p95 wall-clock duration, throughput change and CPU dispatch timers; it deliberately **does not claim measured GPU kernel duration, peak memory or thermal safety**. Single-run data produces `REPEAT_REQUIRED`.
+The collector writes only the known `WoahExportPerf` JSON scalar fields; it does not save raw Logcat, paths, pictures, video, masks or a source-media copy. Any Debug export, missing/invalid **render CPU dispatch** samples, GPU YOLO fallback, old/duplicate record, unknown (potentially private) log field, wrong clarity mode or mismatched per-run settings causes an explicit failure **without clearing device logs**. Performance records contain counts and device/build identifiers, not a proof of source video or person-ID equality.
+
+After both modes have three records, from the repository root:
+
+```powershell
+uv run python .\tools\diagnostics\crop_clarity_release_perf.py `
+  --off "D:\WoahReleaseQA\release_off.log" `
+  --on "D:\WoahReleaseQA\release_on.log" `
+  --scenario "same-720p-dance" `
+  --output "D:\WoahReleaseQA\crop_clarity_perf_720p.json" `
+  --min-runs 3 --max-slowdown-percent 10
+```
+
+The output directory `D:\WoahReleaseQA` is intentionally **outside Git**. Choose fresh output filenames for a new capture; the collector refuses to overwrite earlier evidence. Optionally add `--expected-commit <FULL_40_HEX_GIT_SHA>` to either collector for a specific Release build.
+
+The default 10% slowdown is a **provisional test budget**, not an already achieved result. `--control-noop` requires both runs' native scale to equal 1.0. The comparator rejects missing render CPU dispatch samples, impossible throughput/frame-count/time combinations, Debug data, YOLO fallback, incomplete exports or different device/geometry/FPS/trim/bitrate/profile. Matching source content and actual protected-person identity remain **operator asserted** because the native small JSON does not include the source file SHA or per-person IDs. The report does not claim measured GPU execution time, peak memory, long-run thermal safety, video quality or privacy correctness; fewer than three runs yields `REPEAT_REQUIRED`.
 
 ### Release acceptance (manual)
 
@@ -106,8 +123,8 @@ The parser rejects Debug builds, YOLO fallback, incomplete exports, unknown or d
 
 ## Automated and deferred gates
 
-- `python -m unittest tools.diagnostics.test_crop_clarity_ab_report tools.diagnostics.test_crop_clarity_release_perf`
+- `python -m unittest tools.diagnostics.test_crop_clarity_ab_report tools.diagnostics.test_crop_clarity_release_perf tools.diagnostics.test_capture_crop_clarity_release_perf`
 - Flutter app controller tests for the build-time OFF contract.
 - Android JVM `CropClaritySceneSamplerTest` for late-third reserved slots, off-crop candidate rejection, source frame overestimation, five consecutive frames, bounded storage and stale evidence; `CropClarityCropPrivacyGeometryTest` for synthetic people crossing/moving, lost observations and reacquisition with full-frame-coordinate privacy masks.
 - Python `tools.test_crop_clarity_post_crop_contract` for the **actual pipeline source-order guard** (privacy composition → follow crop → crop-aware selection → encoder output) and `tools.test_crop_clarity_synthetic_privacy` for executable synthetic multi-person pixel-coordinate experiments. These run without Android hardware, but are not substitutes for device privacy validation.
-- Full Android Gradle compilation/instrumented real-device rendering is **pending** until a workstation with Java/Android SDK and a phone is available. The current Mac development environment lacks Java/Android SDK, so passing Flutter/Python/Swift tests cannot substitute for the Android native gate.
+- The separate Windows workstation has executed the Android Stage 3 MagicTouch **synthetic CPU smoke** on PLK110, but this is not an Android Release export/ABI gate for the current Crop Clarity branch tip. Matched native Release OFF/ON export captures, v3 protected visual review and the complete Android Gradle/CI matrix are still pending. The Mac development environment lacks Java/Android SDK; passing Flutter/Python/Swift tests cannot substitute for the native gate.
