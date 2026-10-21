@@ -81,15 +81,33 @@ def verify_media_pipeline() -> None:
         and "Production export identity/detection stays on XNNPACK" in pipeline,
         "Simulator inference seam must not replace the production XNNPACK path",
     )
-    for unsupported in (
+    for supported_boundary in (
         "request.follow.enabled",
         "request.effects.skinWhiten > 0",
-        "request.effects.legStretchEnabled",
     ):
         check(
-            unsupported in pipeline,
-            f"Phase 4 must explicitly reject unsupported semantics instead of silently downgrading: {unsupported}",
+            supported_boundary in pipeline,
+            f"Phase 4 must preserve explicit validation and unsupported-effect rejection: {supported_boundary}",
         )
+    # The renderer added protagonist leg stretch after Phase 4. Reject only an
+    # impossible leg-stretch request (no follow root); do not require the now
+    # supported effect to be rejected on every export.
+    for token in (
+        "request.effects.legStretchEnabled &&",
+        "!request.follow.enabled || request.follow.targetPersonId == nil",
+        '"Leg stretch requires an enabled protagonist follow target."',
+        "legStretchTargetId: followTargetId",
+    ):
+        check(token in pipeline, f"iOS leg stretch export contract missing: {token}")
+    renderer = source("IOSMetalPreviewRenderer.swift")
+    for token in (
+        "effects.legStretchEnabled ? legStretchTargetId : nil",
+        "Self.buildLegStretchInputs(",
+        "let legStretchValue = max(1.0, min(1.5, 1.0 + effects.legStretch))",
+        "encoder.setBytes(&legStretchFlag",
+        "if (legStretchEnabled == 1 && legStretch > 1.0",
+    ):
+        check(token in renderer, f"iOS renderer leg stretch implementation missing: {token}")
 
 
 def verify_temporal_privacy() -> None:

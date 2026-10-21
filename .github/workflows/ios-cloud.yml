@@ -60,8 +60,12 @@ jobs:
       - name: Verify repository iOS contracts
         run: |
           python tools/release/verify_export_media_contract.py
+          python -m unittest tools.release.test_verify_export_media_contract -q
           python tools/release/verify_ios_phase0.py
           python tools/release/verify_ios_phase1.py
+          # Explicitly verify the supported protagonist leg-stretch contract.
+          python tools/release/verify_ios_phase4.py
+          python -m unittest tools.release.test_verify_ios_phase4 -q
 
       - name: Resolve Flutter and native dependencies
         working-directory: mobile/app
