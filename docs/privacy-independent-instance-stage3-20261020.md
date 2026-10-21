@@ -19,7 +19,7 @@ Official API sources:
 
 `mobile/packages/dance_native/android/src/androidTest/kotlin/art/gaoge/dance/engine/inference/MagicTouchSyntheticSmokeInstrumentedTest.kt`
 
-- Runs **only** when `woahMagicTouchStage3Enabled=1` AND given a fresh random 16-hex `woahMagicTouchStage3RunToken` through Android instrumentation. Unrelated ordinary `androidTest` runs skip the optional experiment.
+- Runs **only** when `woahMagicTouchStage3Enabled=1` AND given a fresh random 16-hex `woahMagicTouchStage3RunToken` through AndroidX `InstrumentationRegistry.getArguments()`. Reading arguments from a framework `Instrumentation` instance was corrected during pre-push API review. Unrelated ordinary `androidTest` runs skip the optional experiment.
 - Loads the fully SHA-checked public .task from the debug application's **private `files/woah_magic_touch_stage3.task`**, memory maps it, and enables **CPU**. A genuine mismatch or missing file fails the opted-in test; it does not silently fall back.
 - Generates synthetic colored rectangles and a circle directly inside RAM with `Bitmap.createBitmap` and `Canvas`. No video, camera, person photo, source path, consent-sensitive frame, portrait ROI, video identity or actual Woah privacy Mask is read.
 - Measures initialization time and, after one warmup, five independent `setImage` and positive stroke `segment` pairs; reuses embeddings for additional positive+negative strokes. Rebinds a second synthetic 512×288 landscape image to check source-dependent output width/height (first input 384×384).
@@ -38,7 +38,7 @@ This flow is optional, intentionally external to the production Flutter editor, 
    .\gradlew.bat :dance_native:compileDebugAndroidTestKotlin
    .\gradlew.bat :dance_native:assembleDebugAndroidTest
    ```
-   Verify the corresponding **instrumentation APK and its target debug application** are installed. Installation mechanics differ for a library AndroidTest variant. Confirm the instrumented runner's actual package with `adb shell pm list instrumentation` and the `(target=...)` value. **Do not assume the target app package from the test class namespace.** The host tool accepts only `art.gaoge.dance`, `art.gaoge.dance.engine` or `art.gaoge.dance.engine.test`; anything else fails closed for review.
+   Verify the corresponding **instrumentation APK and its target debug application** are installed. Installation mechanics differ for a library AndroidTest variant. Inspect installed runners with `adb shell pm list instrumentation` if setup fails. The host runner now auto-discovers exactly **one** AndroidJUnitRunner whose target is among `art.gaoge.dance`, `art.gaoge.dance.engine` or `art.gaoge.dance.engine.test`. If more than one matching runner is present it refuses to stage the model, and you can explicitly choose the observed `(target=...)` using `--package`. **Do not assume the target app package from the test class namespace.**
 
 2. Download the **public** fixed-version model to a location outside the source checkout using your normal network/tooling (only the model file, not personal source video):
    ```text
@@ -53,11 +53,10 @@ This flow is optional, intentionally external to the production Flutter editor, 
    ```powershell
    py -3 tools\diagnostics\stage_magic_touch_android_test.py run `
      --artifact "D:\WoahStage3\interactive_segmentation.task" `
-     --package art.gaoge.dance.engine `
      --output "D:\WoahStage3\stage3-cpu-smoke.json" `
      --repeats 3
    ```
-   Replace the `--package` argument with the **real** `target=` reported by the installed instrumentation. You can pass `--serial <adb-device-id>` when there is more than one connected Android target.
+   The default `--package auto` finds the sole eligible installed instrumentation target. If several Woah runners exist, specify `--package` with the **real** `target=` value from `adb shell pm list instrumentation`. You can pass `--serial <adb-device-id>` when more than one Android device is connected.
 
 4. The result is either an explicit ABI/model/test failure or a CPU synthetic-only timing report that still says `privacy_visual_acceptance=NOT_PROVEN`. The same report can be independently generated from already collected *scalar-only* logcat text with:
    ```powershell

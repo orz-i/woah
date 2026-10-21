@@ -128,18 +128,24 @@ def stage_model(
         raise
 
 
-def _instrumentation_component(package: str, prefix: list[str], *, run: Callable) -> str:
+def _instrumentation_component(
+    package: str, prefix: list[str], *, run: Callable
+) -> tuple[str, str]:
+    # Auto-select ONLY from the narrow Woah debug target allowlist. Ambiguous
+    # instrumentation targets fail closed; never stage a model for a random app.
+    if package != "auto":
+        validate_package(package)
     response = _execute(prefix + ["shell", "pm", "list", "instrumentation"], run=run)
-    matches = []
+    matches: list[tuple[str, str]] = []
     for line in response.stdout.splitlines():
         found = re.fullmatch(
             r"instrumentation:(\S+)\s+\(target=([A-Za-z0-9_.]+)\)",
             line.strip(),
         )
-        if found and found.group(2) == package and (
-            "AndroidJUnitRunner" in found.group(1)
-        ):
-            matches.append(found.group(1))
+        if found and found.group(2) in ACCEPTED_DEBUG_PACKAGES and (
+            package == "auto" or found.group(2) == package
+        ) and found.group(1).endswith("/androidx.test.runner.AndroidJUnitRunner"):
+            matches.append((found.group(2), found.group(1)))
     if len(matches) != 1:
         raise ValueError("Woah instrumentation target not uniquely installed; check pm list instrumentation")
     return matches[0]
@@ -152,18 +158,19 @@ def run_synthetic_smoke(
     verifier: Callable[[Path], str] = check_public_asset,
     token_generator: Callable[[int], str] = secrets.token_hex,
 ) -> dict:
-    validate_package(package)
+    if package != "auto":
+        validate_package(package)
     if not 2 <= repeats <= 5:
         raise ValueError("stage3 CPU smoke requires 2–5 independent repeats")
     dest = output.resolve()
     if dest == ROOT or ROOT in dest.parents:
         raise ValueError("stage3 numeric report must be written outside Git tree")
     prefix = adb_prefix(adb, serial)
-    component = _instrumentation_component(package, prefix, run=run)
+    resolved_package, component = _instrumentation_component(package, prefix, run=run)
     run_token = token_generator(8)
     if not re.fullmatch(r"[0-9a-f]{16}", run_token):
         raise ValueError("synthetic test run token malformed")
-    stage_model(path, package, adb=adb, serial=serial, run=run, verifier=verifier)
+    stage_model(path, resolved_package, adb=adb, serial=serial, run=run, verifier=verifier)
     try:
         for _ in range(repeats):
             result = _execute(
@@ -199,14 +206,15 @@ def run_synthetic_smoke(
         return report
     finally:
         # Do not leave a 30 MB model lying in application-private files.
-        cleanup_model(package, adb=adb, serial=serial, run=run)
+        cleanup_model(resolved_package, adb=adb, serial=serial, run=run)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("stage", "cleanup", "run"))
     parser.add_argument("--artifact", type=Path)
-    parser.add_argument("--package", required=True, choices=sorted(ACCEPTED_DEBUG_PACKAGES))
+    parser.add_argument("--package", default="auto", choices=sorted(ACCEPTED_DEBUG_PACKAGES | {"auto"}),
+                        help="Auto-detect a unique Woah instrumentation target for run")
     parser.add_argument("--output", type=Path, help="Required for run; numeric-only JSON outside Git")
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--adb", default="adb")
@@ -214,8 +222,8 @@ def main() -> int:
     args = parser.parse_args()
     try:
         if args.action == "stage":
-            if args.artifact is None:
-                raise ValueError("--artifact is required for stage")
+            if args.artifact is None or args.package == "auto":
+                raise ValueError("--artifact and an explicit --package are required for stage")
             stage_model(args.artifact, args.package, adb=args.adb, serial=args.serial)
             print("WOAH_STAGE3_PUBLIC_MODEL_STAGED=SHA_VERIFIED_DEBUG_ONLY")
         elif args.action == "run":
@@ -228,6 +236,8 @@ def main() -> int:
             print("WOAH_STAGE3_CPU_SYNTHETIC=" + report["repeat_status"])
             print("PRIVACY_VISUAL_ACCEPTANCE=NOT_PROVEN")
         else:
+            if args.package == "auto":
+                raise ValueError("cleanup requires an explicit --package")
             cleanup_model(args.package, adb=args.adb, serial=args.serial)
             print("WOAH_STAGE3_PUBLIC_MODEL_CLEANUP=COMPLETE")
     except (OSError, RuntimeError, ValueError, subprocess.TimeoutExpired) as error:

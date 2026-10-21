@@ -23,10 +23,12 @@ class MagicTouchStage3IsolationContractTest(unittest.TestCase):
         self.assertTrue(TEST.is_file())
         src = TEST.read_text(encoding="utf-8")
         self.assertIn("src/androidTest/", TEST.as_posix())
+        self.assertNotIn("instrumentation.arguments", src)
         for required in (
             "MagicTouchSyntheticSmokeInstrumentedTest",
             'const val ENABLE_ARG = "woahMagicTouchStage3Enabled"',
-            'instrumentation.arguments.getString(ENABLE_ARG) == "1"',
+            'arguments.getString(ENABLE_ARG) == "1"',
+            'InstrumentationRegistry.getArguments()',
             "assumeTrue(",
             'const val TEST_MODEL_FILE = "woah_magic_touch_stage3.task"',
             "File(context.filesDir, TEST_MODEL_FILE)",

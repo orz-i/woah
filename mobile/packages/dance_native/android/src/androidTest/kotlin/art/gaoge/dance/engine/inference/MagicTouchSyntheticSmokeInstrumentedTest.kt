@@ -46,10 +46,12 @@ import kotlin.test.assertTrue
 class MagicTouchSyntheticSmokeInstrumentedTest {
     @Test
     fun testPinnedMagicTouchOnSyntheticShapesOnly() {
-        val instrumentation = InstrumentationRegistry.getInstrumentation()
-        val enabled = instrumentation.arguments.getString(ENABLE_ARG) == "1"
+        // AndroidX owns the instrumentation arguments Bundle. The framework
+        // Instrumentation instance has no `arguments` property.
+        val arguments = InstrumentationRegistry.getArguments()
+        val enabled = arguments.getString(ENABLE_ARG) == "1"
         assumeTrue("Stage 3 is opt-in: no additional model in regular Android tests", enabled)
-        val runToken = instrumentation.arguments.getString(RUN_TOKEN_ARG).orEmpty()
+        val runToken = arguments.getString(RUN_TOKEN_ARG).orEmpty()
         assertTrue(runToken.matches(Regex("[0-9a-f]{16}")),
             "An explicit 16-hex Stage 3 run token is required for log isolation")
 

@@ -215,6 +215,22 @@ class Stage3PublicModelProvisioningTest(unittest.TestCase):
             self.assertEqual(joined.count("am instrument"), 3)
             self.assertEqual(joined.count(staging.TEST_CLASS), 3)
 
+    def test_auto_discovers_single_woah_instrumentation_target_and_runs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            artifact = root / "synthetic.task"
+            artifact.write_bytes(b"synthetic only")
+            fake = FakeInstrumentedADB()
+            report = staging.run_synthetic_smoke(
+                artifact, "auto", root / "report.json", repeats=3, run=fake,
+                verifier=lambda _: SHA, token_generator=lambda _: "f" * 16,
+            )
+            self.assertEqual(report["runs"], 3)
+            self.assertEqual(fake.commands[-1][-3:], [
+                "rm", "-f", "files/" + staging.REMOTE_BASENAME
+            ])
+            self.assertIn(PACKAGE, fake.commands[1])
+
     def test_run_fails_before_staging_if_wrong_or_missing_instrumentation(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -223,11 +239,33 @@ class Stage3PublicModelProvisioningTest(unittest.TestCase):
             fake = FakeInstrumentedADB(valid_component=False)
             with self.assertRaisesRegex(ValueError, "not uniquely installed"):
                 staging.run_synthetic_smoke(
-                    artifact, PACKAGE, root / "report.json", run=fake,
+                    artifact, "auto", root / "report.json", run=fake,
                     verifier=lambda _: SHA,
                 )
             self.assertEqual(len(fake.commands), 1)
             self.assertNotIn("exec-in", " ".join(fake.commands[0]))
+
+    def test_auto_refuses_ambiguous_woah_instrumentation_targets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            artifact = root / "synthetic.task"
+            artifact.write_bytes(b"synthetic only")
+            class AmbiguousADB(FakeInstrumentedADB):
+                def __call__(self, command, **kwargs):
+                    result = super().__call__(command, **kwargs)
+                    if "pm list instrumentation" in " ".join(command):
+                        extra = ("instrumentation:art.gaoge.dance.test/"
+                                 "androidx.test.runner.AndroidJUnitRunner "
+                                 "(target=art.gaoge.dance)\n")
+                        return subprocess.CompletedProcess(command, 0, result.stdout + extra, "")
+                    return result
+            fake = AmbiguousADB()
+            with self.assertRaisesRegex(ValueError, "not uniquely installed"):
+                staging.run_synthetic_smoke(
+                    artifact, "auto", root / "report.json", run=fake,
+                    verifier=lambda _: SHA,
+                )
+            self.assertEqual(len(fake.commands), 1)
 
     def test_failed_instrumentation_stops_and_cleans_model_without_report(self):
         with tempfile.TemporaryDirectory() as directory:
