@@ -73,14 +73,14 @@ uv run python .\tools\diagnostics\run_crop_clarity_release_qa.py `
   --acknowledge-test-install
 ```
 
-工具将自动使用当前**干净且具名**的 Git 分支构建 OFF/ON 两份签名 Release APK，为每份文件固定 SHA-256，按顺序安装到连接的手机，监听 `WoahExportPerf` 并自动分析性能。只有一个步骤无法自动完成：**每当出现 `WOAH_RELEASE_CAPTURE_ARMED=YES`，需要你在 Woah 应用内使用相同项目、所选隐私人物、分辨率和导出设置连续完成 3 次导出**。先 OFF 三次，再 ON 三次。不要在采集器完成前进行第二个模式的安装。
+工具将自动使用当前**干净且具名**的 Git 分支构建 OFF/ON 两份签名 Release APK，固定每份文件的 SHA-256，并通过 Android SDK Build Tools 的 `apksigner verify` 与 `aapt dump badging` 检查包名 `art.gaoge.dance`、版本和**一致的签名证书指纹**。安装前会再次复核 APK 内容和证书，并用 `adb get-serialno` 把整轮 OFF/ON 测试固定到同一台已连接设备，换机或离线时拒绝继续。校验通过后才会按顺序安装、监听 `WoahExportPerf` 并分析性能。只有一个步骤无法自动完成：**每当出现 `WOAH_RELEASE_CAPTURE_ARMED=YES`，需要你在 Woah 应用内使用相同项目、所选隐私人物、分辨率和导出设置连续完成 3 次导出**。先 OFF 三次，再 ON 三次。不要在采集器完成前进行第二个模式的安装。
 
 最终输出在外部目录中：
-- `release-qa-build.json`：Git SHA 和两份 APK 的哈希，不包含用户视频
+- `release-qa-build.json`：Git SHA、两份 APK 的哈希、包名、版本号与**公开的签名证书 SHA-256 指纹**；不包含签名私钥或用户视频
 - `release_off.log` / `release_on.log`：各三条白名单内的匿名性能记录
 - `crop-clarity-release-comparison.json`：耗时与吞吐对比，结论仍为 `REQUIRES_DEVICE_REVIEW`
 
-可以先只构建而不安装：将 `--action all` 换成 `--action build`，去掉安装授权参数。以后在**相同 HEAD 和外部目录**运行 `--action run --acknowledge-test-install` 即可继续测量。已存在的输出目录、被修改的 APK、不干净的 Git 工作区或未确认设备安装都会被拒绝；重新测试应使用新的 `trial-02` 等目录。
+可以先只构建而不安装：将 `--action all` 换成 `--action build`，去掉安装授权参数。以后在**相同 HEAD 和外部目录**运行 `--action run --acknowledge-test-install` 即可继续测量。已存在的输出目录、被修改的 APK、不正确的 APK 包名或证书、不干净的 Git 工作区、无法识别的 ADB 设备或未确认设备安装都会被拒绝；重新测试应使用新的 `trial-02` 等目录。Android SDK 需要安装包含 `apksigner` 与 `aapt` 的 Build Tools；使用已有 `ANDROID_SDK_ROOT`、`ANDROID_HOME` 或 `mobile/app/android/local.properties` 自动定位。
 
 这是一项**Release 性能实验**，不会修复 39.733–39.900 秒隐私误遮挡，也不会给出最终视频隐私验收。以下是可用于分步排错的旧式构建/采集步骤，推荐先尝试上述一条命令。
 

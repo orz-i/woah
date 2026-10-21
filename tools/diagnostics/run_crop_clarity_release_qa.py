@@ -33,6 +33,9 @@ from tools.diagnostics.capture_crop_clarity_release_perf import (  # noqa: E402
 from tools.diagnostics.crop_clarity_release_perf import (  # noqa: E402
     compare, read_records,
 )
+from tools.diagnostics.release_apk_preflight import (  # noqa: E402
+    EXPECTED_APP_ID, inspect_release_apk,
+)
 
 APP_DIR = ROOT / "mobile/app"
 GENERATED_APK = APP_DIR / "build/app/outputs/flutter-apk/app-release.apk"
@@ -41,6 +44,23 @@ OFF_APK = "release-clarity-off.apk"
 ON_APK = "release-clarity-on.apk"
 COMPARISON = "crop-clarity-release-comparison.json"
 MAX_PAIRED_RUNS = 10
+IDENTITY_KEYS = frozenset({"app_id", "version_code", "version_name", "signer_sha256"})
+
+
+def _validate_identity(obj: object) -> dict[str, Any]:
+    if (
+        not isinstance(obj, dict) or set(obj) != IDENTITY_KEYS
+        or obj.get("app_id") != EXPECTED_APP_ID
+        or type(obj.get("version_code")) is not int
+        or obj["version_code"] <= 0
+        or type(obj.get("version_name")) is not str
+        or not 1 <= len(obj["version_name"]) <= 64
+        or not isinstance(obj.get("signer_sha256"), str)
+        or not re.fullmatch(r"[0-9a-f]{64}", obj["signer_sha256"])
+    ):
+        raise ValueError("invalid signed APK package/version/certificate identity")
+    return obj
+
 
 
 def _exec(
@@ -83,6 +103,22 @@ def git_identity(*, runner: Callable = subprocess.run) -> tuple[str, str]:
     return head, branch
 
 
+def selected_adb_serial(
+    *, adb: str, requested: str | None,
+    runner: Callable = subprocess.run,
+) -> str:
+    """Pin the ADB session to one stable device without storing its ID."""
+    raw = _exec(adb_prefix(adb, requested) + ["get-serialno"],
+                runner=runner, timeout=20).stdout.strip()
+    if (
+        not re.fullmatch(r"[A-Za-z0-9_.:-]{1,128}", raw)
+        or raw.lower() in {"unknown", "offline", "unauthorized"}
+        or (requested is not None and raw != requested)
+    ):
+        raise ValueError("ADB did not confirm the selected Android device identity")
+    return raw
+
+
 def _hash_file(path: Path) -> str:
     sha = hashlib.sha256()
     with path.open("rb") as stream:
@@ -111,6 +147,7 @@ def _save_atomic_json(path: Path, data: dict[str, Any]) -> None:
 def build_pair(
     output_dir: Path, *, flutter: str = "flutter",
     runner: Callable = subprocess.run,
+    inspector: Callable[[Path], dict] = inspect_release_apk,
 ) -> dict[str, Any]:
     output = _external_dir(output_dir, new=True)
     head, branch = git_identity(runner=runner)
@@ -135,15 +172,22 @@ def build_pair(
             raise ValueError("Flutter did not produce a usable new Release APK")
         target = output / filename
         shutil.copy2(GENERATED_APK, target)
+        # Both installed artifacts must be real signed Release APKs, with
+        # the *same* signing certificate, package ID and version. SHA-256 of
+        # file bytes alone cannot establish those properties.
+        identity = _validate_identity(inspector(target))
         artifacts[mode] = {
             "filename": filename,
             "bytes": target.stat().st_size,
             "sha256": _hash_file(target),
+            "apk_identity": identity,
         }
         print(f"WOAH_RELEASE_{mode.upper()}_BUILT=PINNED_SHA256", flush=True)
 
     if artifacts["off"]["sha256"] == artifacts["on"]["sha256"]:
         raise ValueError("OFF and ON APK hashes are identical; build-time mode not differentiated")
+    if artifacts["off"]["apk_identity"] != artifacts["on"]["apk_identity"]:
+        raise ValueError("OFF and ON APKs have different signing certificates or package versions")
     updated_head, updated_branch = git_identity(runner=runner)
     if (head, branch) != (updated_head, updated_branch):
         raise ValueError("Git checkout changed during Release pair build")
@@ -168,6 +212,7 @@ def build_pair(
 
 def verify_pair(
     output_dir: Path, *, runner: Callable = subprocess.run,
+    inspector: Callable[[Path], dict] = inspect_release_apk,
 ) -> dict[str, Any]:
     output = _external_dir(output_dir, new=False)
     path = output / MANIFEST
@@ -198,7 +243,7 @@ def verify_pair(
     for mode, name in (("off", OFF_APK), ("on", ON_APK)):
         obj = manifest["apks"][mode]
         if (
-            not isinstance(obj, dict) or set(obj) != {"filename", "bytes", "sha256"}
+            not isinstance(obj, dict) or set(obj) != {"filename", "bytes", "sha256", "apk_identity"}
             or obj["filename"] != name or type(obj["bytes"]) is not int
             or obj["bytes"] < 1024 or not isinstance(obj["sha256"], str)
             or not re.fullmatch(r"[a-f0-9]{64}", obj["sha256"])
@@ -209,8 +254,12 @@ def verify_pair(
             raise ValueError(f"{mode}: Release APK missing or size mismatch")
         if _hash_file(apk) != obj["sha256"]:
             raise ValueError(f"{mode}: Release APK SHA-256 mismatch")
+        if _validate_identity(obj["apk_identity"]) != _validate_identity(inspector(apk)):
+            raise ValueError(f"{mode}: verified APK signing/package identity changed")
     if manifest["apks"]["off"]["sha256"] == manifest["apks"]["on"]["sha256"]:
         raise ValueError("OFF and ON APKs have identical hashes")
+    if manifest["apks"]["off"]["apk_identity"] != manifest["apks"]["on"]["apk_identity"]:
+        raise ValueError("OFF/ON signed APK certificate/package/version mismatch")
     return manifest
 
 
@@ -221,6 +270,7 @@ def run_pair(
     max_slowdown_percent: float = 10.0,
     runner: Callable = subprocess.run,
     collect: Callable = capture_device,
+    inspector: Callable[[Path], dict] = inspect_release_apk,
 ) -> dict[str, Any]:
     if acknowledge_install is not True:
         raise ValueError("set --acknowledge-test-install to explicitly allow replacing the installed Woah APK")
@@ -233,8 +283,11 @@ def run_pair(
     if not math.isfinite(max_slowdown_percent) or not 0 <= max_slowdown_percent <= 100:
         raise ValueError("invalid provisional slowdown budget")
     output = _external_dir(output_dir, new=False)
-    manifest = verify_pair(output, runner=runner)
-    prefix = adb_prefix(adb, serial)
+    manifest = verify_pair(output, runner=runner, inspector=inspector)
+    # Resolve once and use -s for every further ADB/collector invocation.
+    # A second phone of the same model cannot silently replace the first.
+    pinned_serial = selected_adb_serial(adb=adb, requested=serial, runner=runner)
+    prefix = adb_prefix(adb, pinned_serial)
     for mode, filename in (("off", OFF_APK), ("on", ON_APK)):
         expected_log = output / f"release_{mode}.log"
         ensure_output_outside_checkout(expected_log)
@@ -244,6 +297,8 @@ def run_pair(
     print("WOAH_RELEASE_QA=REPLACES_THE_INSTALLED_WOAH_APP_IN_TURN", flush=True)
     print("WOAH_RELEASE_QA=NEVER_UNINSTALLS_OR_CLEARS_APPLICATION_DATA", flush=True)
     for mode, filename in (("off", OFF_APK), ("on", ON_APK)):
+        if selected_adb_serial(adb=adb, requested=pinned_serial, runner=runner) != pinned_serial:
+            raise ValueError("Android device changed during paired Release QA")
         print(f"WOAH_RELEASE_INSTALLING={mode.upper()}_TEST_APK_REQUIRES_VALID_SIGNING", flush=True)
         _exec(prefix + ["install", "-r", str(output / filename)],
               runner=runner, timeout=240)
@@ -255,7 +310,7 @@ def run_pair(
         collect(
             output / f"release_{mode}.log",
             mode=mode, repeats=repeats, timeout_minutes=timeout_minutes,
-            adb=adb, serial=serial, expected_commit=manifest["git_commit"],
+            adb=adb, serial=pinned_serial, expected_commit=manifest["git_commit"],
         )
 
     result = compare(
