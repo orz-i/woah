@@ -1745,6 +1745,29 @@ class ExportPipeline(
                             }
                         }
 
+                        // Do not encode an observed FULL_BODY-selected person
+                        // whose segmentation is missing or too weak to render.
+                        // Keep identity and privacy class unchanged; fail closed.
+                        val unmaskedObservedProtectedIds =
+                            art.gaoge.dance.engine.privacy.PrivacyOcclusionResolver
+                                .observedSelectedWithoutMasks(trackedList, selectedIds)
+                        if (unmaskedObservedProtectedIds.isNotEmpty()) {
+                            art.gaoge.dance.engine.diagnostics.NativeDiagnostics.event(
+                                level = "CRITICAL",
+                                component = "ExportPipeline",
+                                event = "FULL_BODY_PRIVACY_MASK_MISSING_FAIL_CLOSED",
+                                fields = mapOf(
+                                    "job_id" to jobId,
+                                    "pts_us" to ptsUs,
+                                    "unmasked_observed_track_ids" to unmaskedObservedProtectedIds
+                                )
+                            )
+                            throw DanceNativeException(
+                                DanceNativeException.EXPORT_FAILED,
+                                "Observed FULL_BODY identity has no privacy mask: $unmaskedObservedProtectedIds"
+                            )
+                        }
+
                         // 4. Render privacy in full-frame source aspect first. Auto-reframe
                         // is a second GPU pass over the already-protected RGBA frame so
                         // crop geometry can never alter mask/sticker coordinates.

@@ -31,6 +31,34 @@ data class OcclusionEvidence(
 
 object PrivacyOcclusionResolver {
 
+    // A current observation of a FULL_BODY-selected person must supply a
+    // renderable tight privacy mask. A missing or all-below-threshold mask
+    // is not evidence that the person has left the frame.
+    private const val FULL_BODY_EXPORT_MASK_THRESHOLD_BYTE = 128
+
+    fun observedSelectedWithoutMasks(
+        persons: List<TrackedPerson>,
+        selectedPersonIds: Set<Int>
+    ): List<Int> = persons.asSequence()
+        .filter {
+            selectedPersonIds.contains(it.id) && it.observedThisFrame &&
+                !hasRenderablePrivacyMask(it.mask)
+        }
+        .map { it.id }
+        .toList()
+
+    private fun hasRenderablePrivacyMask(mask: NativeMask?): Boolean {
+        if (mask == null || mask.width <= 0 || mask.height <= 0) return false
+        val count = mask.width.toLong() * mask.height.toLong()
+        if (count > mask.buffer.limit().toLong()) return false
+        for (index in 0 until count.toInt()) {
+            if ((mask.buffer.get(index).toInt() and 0xFF) >= FULL_BODY_EXPORT_MASK_THRESHOLD_BYTE) {
+                return true
+            }
+        }
+        return false
+    }
+
     private const val OWNERSHIP_MARGIN = 0.12f
     private const val MIN_UNSELECTED_PROBABILITY = 0.50f
     private const val MIN_STALE_RAW_PROBABILITY_ADVANTAGE = 0.10f
@@ -209,7 +237,17 @@ object PrivacyOcclusionResolver {
             }
         }
 
-        val selectedPersons = privacyPersons.filter { effectiveSelectedIds.contains(it.id) && it.mask != null }
+        // LOST/REACQUIRING state counters can reset independently of real
+        // observations. Never re-activate a historical selected mask solely
+        // because the current state has a small missed-frame count.
+        // Fresh synthetic selected detections are not tracked fallback masks.
+        val selectedPersons = privacyPersons.filter { person ->
+            effectiveSelectedIds.contains(person.id) &&
+                person.mask != null &&
+                (!selectedPersonIds.contains(person.id) ||
+                    person.observedThisFrame ||
+                    person.framesSinceLastObservation <= maxFallbackObservationAgeFrames)
+        }
         if (selectedPersons.isEmpty()) {
             return ResolvedCompositorMasks(
                 privacyMask = null,

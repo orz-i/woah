@@ -122,6 +122,16 @@ class GlRenderer : FrameRenderer {
 
     companion object {
 
+        /** Gate protected export failure without changing ordinary preview behavior. */
+        internal fun shouldAbortProtectedExportOnGlError(
+            error: Int,
+            jobId: String?,
+            selectedRootCount: Int,
+            additionalPrivacyPresent: Boolean
+        ): Boolean = error != GLES20.GL_NO_ERROR &&
+            !jobId.isNullOrBlank() &&
+            (selectedRootCount > 0 || additionalPrivacyPresent)
+
         fun computeTransformMatrix(stMatrix: FloatArray, rotation: Int = 0): FloatArray {
             val isDegenerate = stMatrix[0] == 0f && stMatrix[5] == 0f && stMatrix[10] == 0f && stMatrix[15] == 0f
             if (isDegenerate) {
@@ -882,7 +892,38 @@ class GlRenderer : FrameRenderer {
                 effects = effects
             )
         }
-        checkGlError("render")
+        // A GL draw/upload error in a protected export could encode an
+        // unprotected or stale frame. Abort instead of logging and continuing.
+        // Only one glGetError read is performed, as in the former checkGlError.
+        val renderGlError = GLES20.glGetError()
+        if (renderGlError != GLES20.GL_NO_ERROR) {
+            val errorHex = "0x" + Integer.toHexString(renderGlError)
+            if (shouldAbortProtectedExportOnGlError(
+                    error = renderGlError,
+                    jobId = cropClarityJobId,
+                    selectedRootCount = selectedPersonIds.size,
+                    additionalPrivacyPresent = additionalResolvedPrivacy?.hasPrivacy == true
+                )
+            ) {
+                NativeDiagnostics.event(
+                    level = "CRITICAL",
+                    component = "GlRenderer",
+                    event = "PRIVACY_GL_RENDER_ERROR_FAIL_CLOSED",
+                    fields = mapOf(
+                        "job_id" to cropClarityJobId,
+                        "pts_us" to presentationTimeUs,
+                        "gl_error" to renderGlError,
+                        "gl_error_hex" to errorHex,
+                        "selected_root_count" to selectedPersonIds.size,
+                        "additional_privacy_present" to (additionalResolvedPrivacy?.hasPrivacy == true)
+                    )
+                )
+                throw IllegalStateException(
+                    "Protected GL rendering failed ($errorHex) at pts_us=$presentationTimeUs"
+                )
+            }
+            android.util.Log.e("GlRenderer", "GL Error after render: $errorHex")
+        }
     }
 
     private fun renderFaceStickerOverlays(

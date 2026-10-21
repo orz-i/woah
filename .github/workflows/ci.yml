@@ -82,6 +82,14 @@ jobs:
           chmod +x gradlew
           ./gradlew :dance_native:testDebugUnitTest
 
+      # Compile the native Release variant without requiring any signing key.
+      # This checks the safety backport's Release ABI, not publishable APK
+      # signing, R8, device rendering or visual privacy acceptance.
+      - name: Compile Native Android Release Kotlin
+        run: |
+          cd mobile/app/android
+          ./gradlew :dance_native:compileReleaseKotlin
+
       - name: Build Android Debug APK
         run: |
           cd mobile/app
