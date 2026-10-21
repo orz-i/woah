@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import shutil
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -96,7 +98,79 @@ class PrivacyFinalFrameReviewTest(unittest.TestCase):
                         video, ffmpeg="ffmpeg",
                         destination=root / "output", indices=[1189, 1190]
                     )
-            self.assertIn("select=eq(n\\,1189)+eq(n\\,1190)", captured[0])
+            cmd = captured[0]
+            self.assertNotIn("-vsync", cmd)
+            self.assertNotIn("-fps_mode", cmd)
+            self.assertEqual(cmd[cmd.index("-vf") + 1],
+                             r"select=eq(n\,1189)+eq(n\,1190),setpts=N/TB")
+            self.assertEqual(cmd[cmd.index("-r") + 1], "1")
+            self.assertIn("-an", cmd)
+            self.assertIn("-sn", cmd)
+
+    def test_windows_ffmpeg_without_vsync_or_fps_mode_extracts_selected_stills(self):
+        # Older portable Windows ffmpeg.EXE can reject `-vsync` outright.
+        # Synthetic command emulation checks the same deterministic strategy
+        # already used in woah_auto_privacy_capture.py, with no real media.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            video = root / "synthetic-final.mp4"
+            video.write_bytes(b"public test sentinel")
+            capture = []
+
+            def simulate(command: list[str]) -> str:
+                capture.append(command)
+                self.assertNotIn("-vsync", command)
+                self.assertNotIn("-fps_mode", command)
+                self.assertEqual(command[command.index("-vf") + 1],
+                                 review.make_select_filter([1190, 1192, 1390])
+                                 + ",setpts=N/TB")
+                self.assertEqual(command[command.index("-r") + 1], "1")
+                for ordinal in range(3):
+                    dest = Path(command[-1].replace("%04d", f"{ordinal:04d}"))
+                    dest.write_bytes(b"\x89PNG\r\n\x1a\n" + b"pixels" * 11)
+                return ""
+
+            with patch.object(review, "run_command", side_effect=simulate):
+                found = review.extract_window(
+                    video, ffmpeg="ffmpeg.EXE",
+                    destination=root / "private-final-review",
+                    indices=[1190, 1192, 1390],
+                )
+            self.assertEqual(len(found), 3)
+            self.assertEqual([file.name for file in found], [
+                "frame_0000.png", "frame_0001.png", "frame_0002.png"
+            ])
+            self.assertEqual(video.read_bytes(), b"public test sentinel")
+            self.assertEqual(len(capture), 1)
+            self.assertTrue(all(file.stat().st_size > 8 for file in found))
+
+    @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"),
+                         "FFmpeg tools not installed on this host")
+    def test_real_ffmpeg_selects_three_frames_from_generated_video_only(self):
+        # Real FFmpeg smoke, optional on Macs without FFmpeg. The input is an
+        # automatically generated 2s color pattern, never a person's media.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            video = root / "synthetic-color-pattern.mp4"
+            generate = subprocess.run([
+                "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
+                "-y", "-f", "lavfi", "-i",
+                "testsrc2=size=160x90:rate=30:duration=2",
+                "-c:v", "mpeg4", "-q:v", "3", str(video),
+            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+                timeout=30)
+            self.assertEqual(generate.returncode, 0,
+                             generate.stderr.decode("utf-8", errors="replace")[-600:])
+            found = review.extract_window(
+                video, ffmpeg="ffmpeg", destination=root / "private-stills",
+                indices=[3, 6, 29],
+            )
+            self.assertEqual(len(found), 3)
+            self.assertEqual([f.name for f in found], [
+                "frame_0000.png", "frame_0001.png", "frame_0002.png"
+            ])
+            self.assertTrue(all(f.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+                                for f in found))
 
     def test_local_review_remains_manual_and_keeps_exact_provenance(self):
         with tempfile.TemporaryDirectory() as directory:

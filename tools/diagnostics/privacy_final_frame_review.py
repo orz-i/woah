@@ -165,12 +165,19 @@ def extract_window(
     video: Path, *, ffmpeg: str, destination: Path, indices: list[int],
 ) -> list[Path]:
     destination.mkdir(parents=True, exist_ok=False)
+    # Use index-exact frame selection, then synthesize dense 1-second output
+    # timestamps solely for the extracted PNGs. The original video PTS is
+    # independently obtained from ffprobe and preserved in the manifest.
+    # Some Windows FFmpeg builds reject -vsync; matching the proven working
+    # woah_auto_privacy_capture.py path avoids version-specific -fps_mode.
+    # setpts=N/TB spaces only the *selected* images 1s apart so -r 1 cannot
+    # silently duplicate/drop stills across large gaps in original frame PTS.
     run_command([
         ffmpeg, "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
         "-i", str(video),
         "-map", "0:v:0", "-an", "-sn", "-dn",
-        "-vf", make_select_filter(indices),
-        "-vsync", "0", "-start_number", "0",
+        "-vf", make_select_filter(indices) + ",setpts=N/TB",
+        "-r", "1", "-start_number", "0",
         "-f", "image2", str(destination / "frame_%04d.png"),
     ])
     written = sorted(destination.glob("frame_*.png"))
