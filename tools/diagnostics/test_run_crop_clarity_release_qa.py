@@ -101,6 +101,22 @@ def simulate_capture(
 
 
 class ReleasePairWorkflowTest(unittest.TestCase):
+    def test_flutter_launcher_resolution_for_windows_batch_path(self):
+        resolved = r"C:\Flutter SDK\bin\flutter.bat"
+        self.assertEqual(
+            workflow.resolve_flutter_launcher("flutter", lookup=lambda _: resolved),
+            resolved,
+        )
+        with self.assertRaisesRegex(ValueError, "Flutter launcher not found"):
+            workflow.resolve_flutter_launcher("flutter", lookup=lambda _: None)
+
+    def test_flutter_launcher_missing_process_fails_before_any_build(self):
+        def missing(_args, **_kwargs):
+            raise FileNotFoundError("[WinError 2] executable not found")
+
+        with self.assertRaisesRegex(RuntimeError, r"Unable to start flutter.bat \(pub get\)"):
+            workflow._exec(["/sdk/flutter.bat", "pub", "get"], runner=missing)
+
     def build(self, output: Path, *, dirty: bool = False,
               inspector=fake_inspector) -> tuple[dict, FakeBuilder]:
         fake_path = output.parent / "fixture-generated.apk"

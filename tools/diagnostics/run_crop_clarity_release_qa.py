@@ -108,16 +108,50 @@ def _validate_identity(obj: object) -> dict[str, Any]:
 
 
 
+def resolve_flutter_launcher(
+    flutter: str, *, lookup: Callable[[str], str | None] = shutil.which
+) -> str:
+    """Resolve the actual Flutter script for Python's shell-free subprocess.
+
+    PowerShell can resolve `flutter` using PATHEXT to `flutter.bat`, whereas
+    Windows CreateProcess may fail with WinError 2 for the bare command. The
+    absolute script path works for both the pub-get and Release build steps.
+    """
+    executable = lookup(flutter)
+    if not executable:
+        raise ValueError(
+            "Flutter launcher not found by Python (before APK build): "
+            "in PowerShell, check 'Get-Command flutter' and "
+            "'uv run python -c \"import shutil; print(shutil.which(\'flutter\'))\"'. "
+            "If PowerShell finds flutter.bat but Python does not, pass "
+            "--flutter with the full path to flutter.bat. No app was installed"
+        )
+    return executable
+
+
 def _exec(
     command: list[str], *, cwd: Path | None = None,
     env: dict[str, str] | None = None, runner: Callable = subprocess.run,
     timeout: int | None = None, stream_output: bool = False,
 ) -> subprocess.CompletedProcess:
-    result = runner(
-        command, cwd=str(cwd) if cwd is not None else None,
-        env=env, timeout=timeout,
-        check=False, capture_output=not stream_output, text=True,
-    )
+    try:
+        result = runner(
+            command, cwd=str(cwd) if cwd is not None else None,
+            env=env, timeout=timeout,
+            check=False, capture_output=not stream_output, text=True,
+        )
+    except FileNotFoundError as exc:
+        # Do not expose the entire command line (which might include private
+        # workspace paths). Name only the launcher and operation to diagnose
+        # Windows missing .bat/.exe without touching the build or device.
+        launcher = Path(command[0]).name
+        operation = " ".join(command[1:3])
+        raise RuntimeError(
+            f"Unable to start {launcher} ({operation}): executable or script "
+            "not found by Python subprocess. For Flutter on Windows, check "
+            "Get-Command flutter and pass --flutter with the full "
+            "flutter.bat path if needed"
+        ) from exc
     if result.returncode:
         # Show Flutter build errors live, rather than hiding terminal progress.
         # For ADB installs, print only Android's standard failure category,
@@ -273,7 +307,10 @@ def build_pair(
         env = _qa_debug_signing_environment(env)
         print("WOAH_RELEASE_QA=ANDROID_DEBUG_CERT_FOR_LOCAL_PERF_ONLY_NOT_PUBLISHABLE", flush=True)
     env["GIT_COMMIT_SHA"] = head  # identical native BuildConfig for both variants
-    _exec([flutter, "pub", "get"], cwd=APP_DIR, env=env,
+    # Resolve Flutter only for actual subprocess execution; synthetic tests
+    # supply an injected runner and never touch the host's installed Flutter.
+    launcher = resolve_flutter_launcher(flutter) if runner is subprocess.run else flutter
+    _exec([launcher, "pub", "get"], cwd=APP_DIR, env=env,
           runner=runner, stream_output=True)
 
     artifacts: dict[str, dict[str, Any]] = {}
@@ -285,7 +322,7 @@ def build_pair(
         # user file or the installed application; rejects stale build reuse.
         if GENERATED_APK.exists():
             GENERATED_APK.unlink()
-        _exec([flutter, "build", "apk", "--release", *args],
+        _exec([launcher, "build", "apk", "--release", *args],
               cwd=APP_DIR, env=env, runner=runner, stream_output=True)
         if not GENERATED_APK.is_file() or GENERATED_APK.stat().st_size < 1024:
             raise ValueError("Flutter did not produce a usable new Release APK")
