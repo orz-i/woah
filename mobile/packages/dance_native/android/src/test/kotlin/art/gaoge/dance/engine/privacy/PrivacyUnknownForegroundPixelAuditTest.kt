@@ -95,7 +95,21 @@ class PrivacyUnknownForegroundPixelAuditTest {
         assertEquals(listOf(4, 4, 0, 0), grid.getValue("fresh_foreground").take(4))
         assertEquals(listOf(4, 4, 4, 4), grid.getValue("selected_raw").take(4))
         assertEquals(listOf(4, 0, 0, 0), grid.getValue("competing_selected").take(4))
-        assertEquals(listOf(4, 0, 4, 4), grid.getValue("final_merged").take(4))
+        // Fixture merge: x>=2 is protected in every row; x<2 is
+        // protected only for y<2 by the other selected person's mask.
+        // In this 8x8 fixture, each 4x4 grid bin contains exactly 2x2
+        // prototype pixels. The top row is [4,4,4,4], not [4,0,4,4].
+        // Check every bin, including the truly empty lower-left column,
+        // rather than weakening final-merged privacy coverage to fit a typo.
+        assertEquals(
+            listOf(4, 4, 4, 4, 0, 4, 4, 4, 0, 4, 4, 4, 0, 4, 4, 4),
+            grid.getValue("final_merged")
+        )
+        assertEquals(totals.getValue("final_merged"), grid.getValue("final_merged").sum())
+        assertEquals(
+            totals.getValue("final_merged_and_fresh_foreground"),
+            grid.getValue("final_merged_and_fresh_foreground").sum()
+        )
         assertEquals(
             "AGGREGATE_PROTO_MASK_COUNTS_ONLY_NO_RGB_NO_RAW_MASK",
             result["evidence_scope"]
