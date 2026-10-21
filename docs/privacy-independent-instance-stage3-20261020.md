@@ -58,7 +58,9 @@ This flow is optional, intentionally external to the production Flutter editor, 
    ```
    The default `--package auto` finds the sole eligible installed instrumentation target. If several Woah runners exist, specify `--package` with the **real** `target=` value from `adb shell pm list instrumentation`. You can pass `--serial <adb-device-id>` when more than one Android device is connected.
 
-4. The result is either an explicit ABI/model/test failure or a CPU synthetic-only timing report that still says `privacy_visual_acceptance=NOT_PROVEN`. The same report can be independently generated from already collected *scalar-only* logcat text with:
+4. The result is either an explicit ABI/model/test failure or a CPU synthetic-only timing report that still says `privacy_visual_acceptance=NOT_PROVEN`. **Pre-build follow-up:** on some AndroidJUnitRunner versions, `am instrument -w -r` reports a successful single test through `INSTRUMENTATION_STATUS_CODE: 1` (start), `0` (pass), and final `INSTRUMENTATION_CODE: -1`, but omits the formatted `OK (1 test)` footer. The Python runner now accepts only that exact single-test status sequence or a proven formatted single-test success, while still rejecting negative/skipped, missing-final, duplicate and unrelated test statuses. If the test genuinely fails, it saves a bounded, path-redacted synthetic-instrumentation excerpt as **`D:\WoahStage3\stage3-cpu-smoke.failure.txt`**, prints the reason, and removes the staged model. It does not clear logcat or capture user video. **This repair only changes the host Python helper; with the existing test APK installed, rerun after `git pull` without rebuilding/reinstalling APK or re-downloading the model.**
+
+   The same report can be independently generated from already collected *scalar-only* logcat text with:
    ```powershell
    py -3 tools\diagnostics\analyze_magic_touch_stage3_smoke.py `
      --log "D:\WoahStage3\stage3-tag-only.log" `

@@ -151,6 +151,122 @@ def _instrumentation_component(
     return matches[0]
 
 
+def _instrumentation_result_verdict(stdout: str, returncode: int) -> tuple[bool, str]:
+    """Recognize formatted and AndroidJUnitRunner -r raw output without guesswork.
+
+    Android 'am instrument -w -r' may report per-test status codes but omit
+    the human-readable 'OK (1 test)' footer. A successful *individual* test
+    must still be distinguishable from a skipped/failed/crashed invocation.
+    """
+    if not isinstance(stdout, str) or not stdout.strip():
+        return False, "EMPTY_INSTRUMENTATION_OUTPUT"
+    if returncode != 0:
+        return False, "ADB_INSTRUMENTATION_NONZERO_EXIT"
+    terminal_codes = re.findall(
+        r"(?m)^INSTRUMENTATION_CODE:\s*(-?\d+)\s*$", stdout
+    )
+    if terminal_codes != ["-1"]:
+        return False, "MISSING_SUCCESSFUL_FINAL_INSTRUMENTATION_CODE"
+    if re.search(
+        r"(?im)^\s*(?:INSTRUMENTATION_FAILED:|FAILURES!!!|"
+        r"INSTRUMENTATION_RESULT:\s*shortMsg=)", stdout
+    ):
+        return False, "ANDROID_RUNNER_REPORTED_FAILURE"
+    statuses = [
+        int(status) for status in re.findall(
+            r"(?m)^INSTRUMENTATION_STATUS_CODE:\s*(-?\d+)\s*$", stdout
+        )
+    ]
+    if any(status < 0 for status in statuses):
+        return False, "TEST_FAILED_SKIPPED_OR_ABORTED"
+    formatted_one = bool(re.search(r"\bOK\s*\(\s*1\s+tests?\s*\)", stdout))
+    raw_one = (
+        statuses.count(1) == 1
+        and statuses.count(0) == 1
+        and len(statuses) == 2
+        and "INSTRUMENTATION_STATUS: class=" + TEST_CLASS in stdout
+        and "INSTRUMENTATION_STATUS: test=testPinnedMagicTouchOnSyntheticShapesOnly"
+        in stdout
+    )
+    if statuses and not raw_one:
+        return False, "PER_TEST_STATUS_COUNT_OR_CLASS_MISMATCH"
+    if not (formatted_one or raw_one):
+        return False, "NO_VERIFIED_SINGLE_TEST_SUCCESS_RECORD"
+    return True, ("ANDROID_RAW_PER_TEST_SUCCESS" if raw_one else "FORMATTED_SINGLE_TEST_SUCCESS")
+
+
+def _safe_instrumentation_excerpt(stdout: str, *, max_lines: int = 85) -> str:
+    """Bounded, targeted AndroidTest failure evidence; never dump device logcat.
+
+    This output originates only from our one synthetic instrumentation class.
+    Remove path/URL-like tokens and control chars before showing or saving it.
+    """
+    if not isinstance(stdout, str):
+        return "NO_TEXT_FROM_ADB"
+    kept: list[str] = []
+    in_stack = False
+    for line in stdout.replace("\r", "").splitlines():
+        clean = "".join(ch for ch in line if ch == "\t" or ord(ch) >= 32)
+        if re.match(
+            r"^(?:INSTRUMENTATION_(?:STATUS|RESULT|CODE|FAILED)"
+            r"|FAILURES!!!|Process crashed|No tests found|Tests run:|Error:)", clean
+        ):
+            in_stack = clean.startswith("INSTRUMENTATION_STATUS: stack=")
+        elif in_stack and (
+            clean.lstrip().startswith(("at ", "Caused by:", "... ", "Suppressed:"))
+            or re.match(r"^[A-Za-z_$][\w.$]*Error:", clean)
+            or re.match(r"^[A-Za-z_$][\w.$]*Exception:", clean)
+        ):
+            pass
+        else:
+            in_stack = False
+            continue
+        # Instrumentation errors are from synthetic Stage3 only, but even
+        # their stack trace should not expose an unrelated file location.
+        clean = re.sub(r"(?:content|file|https?)://\S+", "<redacted-uri>", clean)
+        clean = re.sub(r"/(?:data|storage|sdcard|mnt)/\S+", "<redacted-device-path>", clean)
+        clean = re.sub(r"\b[A-Za-z]:\\[^\s]+", "<redacted-host-path>", clean)
+        kept.append(clean[:300])
+        if len(kept) >= max_lines:
+            kept.append("TRUNCATED_STAGE3_INSTRUMENTATION_LINES")
+            break
+    return "\n".join(kept) if kept else "NO_PARSEABLE_SYNTHETIC_INSTRUMENTATION_STATUS"
+
+
+def _instrumentation_failure_evidence(result: subprocess.CompletedProcess) -> str:
+    stdout = result.stdout if isinstance(result.stdout, str) else ""
+    stderr = result.stderr if isinstance(result.stderr, str) else ""
+    # Only the targeted synthetic test's stdout/stderr, never device logcat.
+    # Prefix stderr lines so the bounded sanitizer retains ADB failure text.
+    return stdout + "\n" + "\n".join(
+        "Error: " + line for line in stderr.splitlines()[:12]
+    )
+
+
+def _write_stage3_instrument_failure(
+    dest: Path, *, attempt: int, repeats: int, package: str,
+    reason: str, result: subprocess.CompletedProcess
+) -> Path:
+    failure_path = dest.with_name(dest.stem + ".failure.txt")
+    lines = [
+        "WOAH_STAGE3_SYNTHETIC_INSTRUMENTATION=FAIL",
+        f"run={attempt}/{repeats}",
+        f"target_package={package}",
+        f"reason={reason}",
+        f"adb_exit={result.returncode}",
+        "privacy_visual_acceptance=NOT_PROVEN",
+        "pixel_carve_authorization=NEVER",
+        "source_video_used=false",
+        "--- bounded targeted instrumentation details ---",
+        _safe_instrumentation_excerpt(_instrumentation_failure_evidence(result)),
+    ]
+    failure_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = failure_path.with_name(failure_path.name + ".stage3tmp")
+    temporary.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    temporary.replace(failure_path)
+    return failure_path
+
+
 def run_synthetic_smoke(
     path: Path, package: str, output: Path, *, repeats: int = 3,
     adb: str = "adb", serial: str | None = None,
@@ -172,23 +288,36 @@ def run_synthetic_smoke(
         raise ValueError("synthetic test run token malformed")
     stage_model(path, resolved_package, adb=adb, serial=serial, run=run, verifier=verifier)
     try:
-        for _ in range(repeats):
-            result = _execute(
-                prefix + [
-                    "shell", "am", "instrument", "-w", "-r",
-                    "-e", "class", TEST_CLASS,
-                    "-e", ENABLE_ARG, "1",
-                    "-e", TOKEN_ARG, run_token,
-                    component,
-                ], timeout=360, run=run,
+        for attempt in range(1, repeats + 1):
+            command = prefix + [
+                "shell", "am", "instrument", "-w", "-r",
+                "-e", "class", TEST_CLASS,
+                "-e", ENABLE_ARG, "1",
+                "-e", TOKEN_ARG, run_token,
+                component,
+            ]
+            # Instrumentation sometimes returns shell exit=0 *even when a
+            # specific test has failed*. Inspect its per-test status separately.
+            result = run(
+                command, capture_output=True, text=True, timeout=360,
+                check=False,
             )
-            # Only this explicitly named test may count as a successful run.
-            if (
-                not isinstance(result.stdout, str) or
-                not re.search(r"OK \(1 test\)", result.stdout) or
-                "INSTRUMENTATION_CODE: -1" not in result.stdout
-            ):
-                raise RuntimeError("Stage 3 instrumentation did not pass exactly one test")
+            accepted, reason = _instrumentation_result_verdict(
+                result.stdout, result.returncode
+            )
+            if not accepted:
+                diagnostic = _write_stage3_instrument_failure(
+                    dest, attempt=attempt, repeats=repeats,
+                    package=resolved_package, reason=reason, result=result,
+                )
+                raise RuntimeError(
+                    "Stage 3 instrumentation did not pass exactly one test "
+                    f"(run {attempt}/{repeats}; {reason}). "
+                    f"Synthetic test diagnostic: {diagnostic}\n"
+                    + _safe_instrumentation_excerpt(
+                        _instrumentation_failure_evidence(result), max_lines=25
+                    )
+                )
         logs = _execute(
             prefix + ["logcat", "-d", "-v", "brief", "-s", "WoahMagicTouchStage3:I", "*:S"],
             timeout=90, run=run,

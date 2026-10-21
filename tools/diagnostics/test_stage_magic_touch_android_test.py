@@ -267,6 +267,134 @@ class Stage3PublicModelProvisioningTest(unittest.TestCase):
                 )
             self.assertEqual(len(fake.commands), 1)
 
+    def test_android_raw_runner_success_without_ok_footer_is_accepted(self):
+        # With `am instrument -w -r`, the AndroidJUnitRunner may omit the
+        # pretty 'OK (1 test)' footer but still report the exact test's
+        # start+success status codes and final successful instrumentation code.
+        raw = (
+            'INSTRUMENTATION_STATUS: numtests=1\n'
+            'INSTRUMENTATION_STATUS: class=' + staging.TEST_CLASS + '\n'
+            'INSTRUMENTATION_STATUS: test=testPinnedMagicTouchOnSyntheticShapesOnly\n'
+            'INSTRUMENTATION_STATUS_CODE: 1\n'
+            'INSTRUMENTATION_STATUS: class=' + staging.TEST_CLASS + '\n'
+            'INSTRUMENTATION_STATUS: test=testPinnedMagicTouchOnSyntheticShapesOnly\n'
+            'INSTRUMENTATION_STATUS_CODE: 0\n'
+            'INSTRUMENTATION_CODE: -1\n'
+        )
+        self.assertEqual(
+            staging._instrumentation_result_verdict(raw, 0),
+            (True, 'ANDROID_RAW_PER_TEST_SUCCESS'),
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            artifact = root / 'synthetic.task'
+            artifact.write_bytes(b'synthetic only')
+            class RawRunnerADB(FakeInstrumentedADB):
+                def __call__(self, command, **kwargs):
+                    result = super().__call__(command, **kwargs)
+                    if 'am instrument' in ' '.join(command):
+                        return subprocess.CompletedProcess(command, 0, raw, '')
+                    return result
+            fake = RawRunnerADB()
+            report = staging.run_synthetic_smoke(
+                artifact, PACKAGE, root / 'stage3.json', repeats=3, run=fake,
+                verifier=lambda _: SHA, token_generator=lambda _: 'f' * 16,
+            )
+            self.assertEqual(report['runs'], 3)
+            self.assertEqual(report['pixel_carve_authorization'], 'NEVER')
+            self.assertEqual(fake.commands[-1][-1], 'files/' + staging.REMOTE_BASENAME)
+
+    def test_fatal_or_skipped_raw_runner_never_yields_privacy_pass(self):
+        prefix = (
+            'INSTRUMENTATION_STATUS: class=' + staging.TEST_CLASS + '\n'
+            'INSTRUMENTATION_STATUS: test=testPinnedMagicTouchOnSyntheticShapesOnly\n'
+            'INSTRUMENTATION_STATUS_CODE: 1\n'
+        )
+        for report in (
+            prefix + 'INSTRUMENTATION_STATUS_CODE: -2\nINSTRUMENTATION_CODE: -1\n',
+            prefix + 'INSTRUMENTATION_STATUS_CODE: -3\nINSTRUMENTATION_CODE: -1\n',
+            prefix + 'INSTRUMENTATION_STATUS_CODE: -4\nINSTRUMENTATION_CODE: -1\n',
+            prefix + 'INSTRUMENTATION_STATUS_CODE: 0\nINSTRUMENTATION_CODE: 0\n',
+            prefix + 'INSTRUMENTATION_STATUS_CODE: 0\nINSTRUMENTATION_STATUS_CODE: 0\n'
+                     'INSTRUMENTATION_CODE: -1\nOK (1 test)\n',
+            prefix + 'INSTRUMENTATION_STATUS_CODE: 0\nINSTRUMENTATION_CODE: -1\n'
+                      'INSTRUMENTATION_RESULT: shortMsg=Process crashed\n',
+            'INSTRUMENTATION_CODE: -1\n',
+            '',
+        ):
+            accepted, _ = staging._instrumentation_result_verdict(report, 0)
+            self.assertFalse(accepted, repr(report))
+
+    def test_failing_raw_runner_produces_bounded_diagnostic_outside_git(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            artifact = root / 'synthetic.task'
+            artifact.write_bytes(b'synthetic only')
+            output = root / 'stage3.json'
+            class FailingRawADB(FakeInstrumentedADB):
+                def __call__(self, command, **kwargs):
+                    result = super().__call__(command, **kwargs)
+                    if 'am instrument' in ' '.join(command):
+                        return subprocess.CompletedProcess(command, 0, (
+                            'INSTRUMENTATION_STATUS: class=' + staging.TEST_CLASS + '\n'
+                            'INSTRUMENTATION_STATUS: test=testPinnedMagicTouchOnSyntheticShapesOnly\n'
+                            'INSTRUMENTATION_STATUS: stack=java.lang.IllegalStateException: '
+                            'Model load error at /data/user/0/hidden-model.task\n'
+                            '    at art.gaoge.dance.engine.inference.Test.run(Test.kt:12)\n'
+                            'INSTRUMENTATION_STATUS_CODE: -2\n'
+                            'INSTRUMENTATION_CODE: -1\n'
+                        ), '')
+                    return result
+            fake = FailingRawADB()
+            with self.assertRaisesRegex(RuntimeError, 'TEST_FAILED_SKIPPED_OR_ABORTED'):
+                staging.run_synthetic_smoke(
+                    artifact, PACKAGE, output, repeats=3, run=fake,
+                    verifier=lambda _: SHA, token_generator=lambda _: 'f' * 16,
+                )
+            diag = root / 'stage3.failure.txt'
+            self.assertTrue(diag.is_file())
+            diagnostic = diag.read_text(encoding='utf-8')
+            self.assertIn('java.lang.IllegalStateException', diagnostic)
+            self.assertIn('INSTRUMENTATION_STATUS_CODE: -2', diagnostic)
+            self.assertIn('<redacted-device-path>', diagnostic)
+            self.assertNotIn('/data/user/', diagnostic)
+            self.assertIn('privacy_visual_acceptance=NOT_PROVEN', diagnostic)
+            self.assertFalse(output.exists())
+            self.assertEqual(fake.commands[-1][-3:], [
+                'rm', '-f', 'files/' + staging.REMOTE_BASENAME,
+            ])
+
+    def test_failure_report_includes_sanitized_adb_stderr(self):
+        with tempfile.TemporaryDirectory() as dirname:
+            dest = Path(dirname) / 'stage3-report.json'
+            completed = subprocess.CompletedProcess(
+                ['adb', 'shell', 'am', 'instrument'], 1,
+                'INSTRUMENTATION_CODE: 0\n',
+                'Test command failed in /data/user/0/private-path\n',
+            )
+            path = staging._write_stage3_instrument_failure(
+                dest, attempt=1, repeats=3, package=PACKAGE,
+                reason='ADB_INSTRUMENTATION_NONZERO_EXIT', result=completed,
+            )
+            body = path.read_text(encoding='utf-8')
+            self.assertIn('ADB_INSTRUMENTATION_NONZERO_EXIT', body)
+            self.assertIn('Test command failed', body)
+            self.assertIn('<redacted-device-path>', body)
+            self.assertNotIn('/data/user/0/', body)
+
+    def test_failure_excerpt_is_bounded_and_masks_potential_paths(self):
+        lines = '\n'.join([
+            'INSTRUMENTATION_STATUS: stack=java.lang.IllegalArgumentException: '
+            'file:///storage/emulated/0/source.mov',
+            '    at foo.bar.Test.method(Test.kt:42)',
+            'INSTRUMENTATION_CODE: -1',
+        ] * 120)
+        snippet = staging._safe_instrumentation_excerpt(lines, max_lines=8)
+        self.assertIn('<redacted-uri>', snippet)
+        self.assertNotIn('source.mov', snippet)
+        self.assertIn('TRUNCATED_STAGE3_INSTRUMENTATION_LINES', snippet)
+        self.assertLess(len(snippet), 2400)
+
     def test_failed_instrumentation_stops_and_cleans_model_without_report(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
