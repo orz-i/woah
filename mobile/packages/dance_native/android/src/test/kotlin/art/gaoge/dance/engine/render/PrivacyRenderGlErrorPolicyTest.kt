@@ -19,6 +19,15 @@ class PrivacyRenderGlErrorPolicyTest {
     }
 
     @Test
+    fun missingMainShaderFailsClosedForProtectedFullBodyOrFaceExport() {
+        assertTrue(GlRenderer.isProtectedExportRender("job_full", 4, false))
+        assertTrue(GlRenderer.isProtectedExportRender("job_face", 0, true))
+        assertFalse(GlRenderer.isProtectedExportRender(null, 4, true))
+        assertFalse(GlRenderer.isProtectedExportRender("", 4, true))
+        assertFalse(GlRenderer.isProtectedExportRender("job_unprotected", 0, false))
+    }
+
+    @Test
     fun successfulRenderAndPreviewKeepExistingPolicy() {
         assertFalse(GlRenderer.shouldAbortProtectedExportOnGlError(0, "job_test", 4, true))
         assertFalse(GlRenderer.shouldAbortProtectedExportOnGlError(glError, null, 4, false))

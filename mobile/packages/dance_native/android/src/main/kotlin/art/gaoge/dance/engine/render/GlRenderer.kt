@@ -123,14 +123,20 @@ class GlRenderer : FrameRenderer {
     companion object {
 
         /** Gate protected export failure without changing ordinary preview behavior. */
+        internal fun isProtectedExportRender(
+            jobId: String?,
+            selectedRootCount: Int,
+            additionalPrivacyPresent: Boolean
+        ): Boolean = !jobId.isNullOrBlank() &&
+            (selectedRootCount > 0 || additionalPrivacyPresent)
+
         internal fun shouldAbortProtectedExportOnGlError(
             error: Int,
             jobId: String?,
             selectedRootCount: Int,
             additionalPrivacyPresent: Boolean
         ): Boolean = error != GLES20.GL_NO_ERROR &&
-            !jobId.isNullOrBlank() &&
-            (selectedRootCount > 0 || additionalPrivacyPresent)
+            isProtectedExportRender(jobId, selectedRootCount, additionalPrivacyPresent)
 
         // Explicitly opt in only for the encoded crop of a privacy-protected
         // export. Preview and optional Debug A/B readback keep log-only policy.
@@ -583,7 +589,30 @@ class GlRenderer : FrameRenderer {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
 
         val prog = if (textureType == SourceTextureType.OES) oesProgram else texture2DProgram
-        if (prog == null) return
+        if (prog == null) {
+            if (isProtectedExportRender(
+                    cropClarityJobId,
+                    selectedPersonIds.size,
+                    additionalResolvedPrivacy?.hasPrivacy == true
+                )
+            ) {
+                NativeDiagnostics.event(
+                    level = "CRITICAL",
+                    component = "GlRenderer",
+                    event = "PRIVACY_GL_SHADER_MISSING_FAIL_CLOSED",
+                    fields = mapOf(
+                        "job_id" to cropClarityJobId,
+                        "pts_us" to presentationTimeUs,
+                        "selected_root_count" to selectedPersonIds.size,
+                        "additional_privacy_present" to (additionalResolvedPrivacy?.hasPrivacy == true)
+                    )
+                )
+                throw IllegalStateException(
+                    "Protected GL shader is unavailable at pts_us=$presentationTimeUs"
+                )
+            }
+            return
+        }
 
         GLES20.glUseProgram(prog.programId)
 
