@@ -2184,7 +2184,9 @@ class ExportPipeline(
                                 glRenderer.renderBase(
                                     frameTexture = target.textureId,
                                     texMatrix = cropTextureMatrix,
-                                    textureType = art.gaoge.dance.engine.render.SourceTextureType.TEXTURE_2D
+                                    textureType = art.gaoge.dance.engine.render.SourceTextureType.TEXTURE_2D,
+                                    protectedExportJobId = if (allPrivacyTargetIds.isNotEmpty()) jobId else null,
+                                    presentationTimeUs = ptsUs
                                 )
                                 if (baselineBitmap != null) {
                                     val baseline = requireNotNull(baselineBitmap)
