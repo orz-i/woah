@@ -36,7 +36,9 @@ jobs:
         run: python tools/release/verify_android_namespace.py
 
       - name: Verify shared export media contract
-        run: python tools/release/verify_export_media_contract.py
+        run: |
+          python tools/release/verify_export_media_contract.py
+          python -m unittest tools.release.test_verify_export_media_contract -q
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -81,6 +83,14 @@ jobs:
           cd mobile/app/android
           chmod +x gradlew
           ./gradlew :dance_native:testDebugUnitTest
+
+      # Compile the native Release variant without requiring any signing key.
+      # This checks the safety backport's Release ABI, not publishable APK
+      # signing, R8, device rendering or visual privacy acceptance.
+      - name: Compile Native Android Release Kotlin
+        run: |
+          cd mobile/app/android
+          ./gradlew :dance_native:compileReleaseKotlin
 
       - name: Build Android Debug APK
         run: |

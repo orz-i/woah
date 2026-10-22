@@ -122,6 +122,45 @@ class GlRenderer : FrameRenderer {
 
     companion object {
 
+        /** Gate protected export failure without changing ordinary preview behavior. */
+        internal fun isProtectedExportRender(
+            jobId: String?,
+            selectedRootCount: Int,
+            additionalPrivacyPresent: Boolean
+        ): Boolean = !jobId.isNullOrBlank() &&
+            (selectedRootCount > 0 || additionalPrivacyPresent)
+
+        internal fun shouldAbortProtectedExportOnGlError(
+            error: Int,
+            jobId: String?,
+            selectedRootCount: Int,
+            additionalPrivacyPresent: Boolean
+        ): Boolean = error != GLES20.GL_NO_ERROR &&
+            isProtectedExportRender(jobId, selectedRootCount, additionalPrivacyPresent)
+
+        // Explicitly opt in only for the encoded crop of a privacy-protected
+        // export. Preview and optional Debug A/B readback keep log-only policy.
+        internal fun isProtectedExportBasePass(jobId: String?): Boolean =
+            !jobId.isNullOrBlank()
+
+        internal fun shouldAbortProtectedExportBasePassOnGlError(
+            error: Int,
+            jobId: String?
+        ): Boolean = isProtectedExportBasePass(jobId) &&
+            error != GLES20.GL_NO_ERROR
+
+        // If the optional sticker program is missing, the secondary face
+        // privacy mask MUST remain in the regular main compositor.
+        internal fun shouldRenderFacePrivacyAsSticker(
+            stickerEnabled: Boolean,
+            hasPlacements: Boolean,
+            hasFaceMask: Boolean,
+            stickerShaderAvailable: Boolean
+        ): Boolean = stickerEnabled &&
+            hasPlacements &&
+            hasFaceMask &&
+            stickerShaderAvailable
+
         fun computeTransformMatrix(stMatrix: FloatArray, rotation: Int = 0): FloatArray {
             val isDegenerate = stMatrix[0] == 0f && stMatrix[5] == 0f && stMatrix[10] == 0f && stMatrix[15] == 0f
             if (isDegenerate) {
@@ -404,14 +443,32 @@ class GlRenderer : FrameRenderer {
     fun renderBase(
         frameTexture: Int,
         texMatrix: FloatArray?,
-        textureType: SourceTextureType = SourceTextureType.OES
+        textureType: SourceTextureType = SourceTextureType.OES,
+        protectedExportJobId: String? = null,
+        presentationTimeUs: Long = -1L
     ) {
         GLES20.glViewport(0, 0, width, height)
         GLES20.glClearColor(0f, 0f, 0f, 1f)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
 
         val prog = if (textureType == SourceTextureType.OES) oesProgram else texture2DProgram
-        if (prog == null) return
+        if (prog == null) {
+            if (isProtectedExportBasePass(protectedExportJobId)) {
+                NativeDiagnostics.event(
+                    level = "CRITICAL",
+                    component = "GlRenderer",
+                    event = "PRIVACY_POST_CROP_SHADER_MISSING_FAIL_CLOSED",
+                    fields = mapOf(
+                        "job_id" to protectedExportJobId,
+                        "pts_us" to presentationTimeUs
+                    )
+                )
+                throw IllegalStateException(
+                    "Protected output crop shader is unavailable at pts_us=$presentationTimeUs"
+                )
+            }
+            return
+        }
 
         GLES20.glUseProgram(prog.programId)
 
@@ -452,7 +509,29 @@ class GlRenderer : FrameRenderer {
         if (prog.uLegMaskTextureLoc >= 0) GLES20.glUniform1i(prog.uLegMaskTextureLoc, 4)
 
         drawQuad(prog)
-        checkGlError("renderBase")
+        // The encoder's portrait crop is a second GL draw after the privacy
+        // compositor. Its failure must not silently encode a stale frame.
+        val cropGlError = GLES20.glGetError()
+        if (shouldAbortProtectedExportBasePassOnGlError(cropGlError, protectedExportJobId)) {
+            val errorHex = "0x" + Integer.toHexString(cropGlError)
+            NativeDiagnostics.event(
+                level = "CRITICAL",
+                component = "GlRenderer",
+                event = "PRIVACY_POST_CROP_GL_ERROR_FAIL_CLOSED",
+                fields = mapOf(
+                    "job_id" to protectedExportJobId,
+                    "pts_us" to presentationTimeUs,
+                    "gl_error" to cropGlError,
+                    "gl_error_hex" to errorHex
+                )
+            )
+            throw IllegalStateException(
+                "Protected output crop GL failed ($errorHex) at pts_us=$presentationTimeUs"
+            )
+        }
+        if (cropGlError != GLES20.GL_NO_ERROR) {
+            android.util.Log.e("GlRenderer", "GL Error after renderBase: 0x" + Integer.toHexString(cropGlError))
+        }
     }
 
     fun captureFrameForInference(): Bitmap? {
@@ -522,7 +601,30 @@ class GlRenderer : FrameRenderer {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
 
         val prog = if (textureType == SourceTextureType.OES) oesProgram else texture2DProgram
-        if (prog == null) return
+        if (prog == null) {
+            if (isProtectedExportRender(
+                    cropClarityJobId,
+                    selectedPersonIds.size,
+                    additionalResolvedPrivacy?.hasPrivacy == true
+                )
+            ) {
+                NativeDiagnostics.event(
+                    level = "CRITICAL",
+                    component = "GlRenderer",
+                    event = "PRIVACY_GL_SHADER_MISSING_FAIL_CLOSED",
+                    fields = mapOf(
+                        "job_id" to cropClarityJobId,
+                        "pts_us" to presentationTimeUs,
+                        "selected_root_count" to selectedPersonIds.size,
+                        "additional_privacy_present" to (additionalResolvedPrivacy?.hasPrivacy == true)
+                    )
+                )
+                throw IllegalStateException(
+                    "Protected GL shader is unavailable at pts_us=$presentationTimeUs"
+                )
+            }
+            return
+        }
 
         GLES20.glUseProgram(prog.programId)
 
@@ -719,15 +821,16 @@ class GlRenderer : FrameRenderer {
                 listOf(primaryResolved, additionalResolvedPrivacy)
             )
         }
-        val renderFacePrivacyAsSticker =
-            effects.faceStickerEnabled &&
-                faceStickerPlacements.isNotEmpty() &&
-                additionalResolvedPrivacy?.privacyMask != null
-        // FACE_ONLY is visually rendered by the privacy-sticker pass. Keep the
-        // secondary face mask out of the main fill compositor so the sticker
-        // replaces the solid/blur/mosaic block instead of being layered on it.
-        // If the face mask is unexpectedly missing we fall back to the merged
-        // compositor path, preserving fail-closed privacy behavior.
+        val renderFacePrivacyAsSticker = shouldRenderFacePrivacyAsSticker(
+            stickerEnabled = effects.faceStickerEnabled,
+            hasPlacements = faceStickerPlacements.isNotEmpty(),
+            hasFaceMask = additionalResolvedPrivacy?.privacyMask != null,
+            stickerShaderAvailable = stickerOverlayProgram != null
+        )
+        // FACE_ONLY normally uses the privacy-sticker pass instead of the
+        // main fill. If the optional shader is missing, keep the face mask in
+        // the regular merged privacy compositor: never expose an unprotected
+        // face just because a sticker program is unavailable.
         val resolved = if (renderFacePrivacyAsSticker) primaryResolved else mergedResolved
         val hasSelected = resolved.hasPrivacy
         val hasOccluder = resolved.hasOccluder
@@ -882,7 +985,38 @@ class GlRenderer : FrameRenderer {
                 effects = effects
             )
         }
-        checkGlError("render")
+        // A GL draw/upload error in a protected export could encode an
+        // unprotected or stale frame. Abort instead of logging and continuing.
+        // Only one glGetError read is performed, as in the former checkGlError.
+        val renderGlError = GLES20.glGetError()
+        if (renderGlError != GLES20.GL_NO_ERROR) {
+            val errorHex = "0x" + Integer.toHexString(renderGlError)
+            if (shouldAbortProtectedExportOnGlError(
+                    error = renderGlError,
+                    jobId = cropClarityJobId,
+                    selectedRootCount = selectedPersonIds.size,
+                    additionalPrivacyPresent = additionalResolvedPrivacy?.hasPrivacy == true
+                )
+            ) {
+                NativeDiagnostics.event(
+                    level = "CRITICAL",
+                    component = "GlRenderer",
+                    event = "PRIVACY_GL_RENDER_ERROR_FAIL_CLOSED",
+                    fields = mapOf(
+                        "job_id" to cropClarityJobId,
+                        "pts_us" to presentationTimeUs,
+                        "gl_error" to renderGlError,
+                        "gl_error_hex" to errorHex,
+                        "selected_root_count" to selectedPersonIds.size,
+                        "additional_privacy_present" to (additionalResolvedPrivacy?.hasPrivacy == true)
+                    )
+                )
+                throw IllegalStateException(
+                    "Protected GL rendering failed ($errorHex) at pts_us=$presentationTimeUs"
+                )
+            }
+            android.util.Log.e("GlRenderer", "GL Error after render: $errorHex")
+        }
     }
 
     private fun renderFaceStickerOverlays(
