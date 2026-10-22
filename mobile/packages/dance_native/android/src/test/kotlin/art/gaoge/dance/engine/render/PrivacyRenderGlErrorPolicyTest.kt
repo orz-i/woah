@@ -49,4 +49,28 @@ class PrivacyRenderGlErrorPolicyTest {
         assertFalse(GlRenderer.shouldAbortProtectedExportBasePassOnGlError(glError, null))
         assertFalse(GlRenderer.shouldAbortProtectedExportBasePassOnGlError(glError, ""))
     }
+
+    @Test
+    fun missingOptionalFaceStickerShaderMustRetainOpaquePrivacyCompositor() {
+        assertFalse(
+            GlRenderer.shouldRenderFacePrivacyAsSticker(
+                stickerEnabled = true, hasPlacements = true,
+                hasFaceMask = true, stickerShaderAvailable = false
+            ),
+            "No shader means keep the face in the main privacy mask, not in an absent overlay"
+        )
+    }
+
+    @Test
+    fun validFaceStickerStillUsesOverlayOnlyWhenAllEvidenceIsPresent() {
+        assertTrue(
+            GlRenderer.shouldRenderFacePrivacyAsSticker(
+                stickerEnabled = true, hasPlacements = true,
+                hasFaceMask = true, stickerShaderAvailable = true
+            )
+        )
+        assertFalse(GlRenderer.shouldRenderFacePrivacyAsSticker(false, true, true, true))
+        assertFalse(GlRenderer.shouldRenderFacePrivacyAsSticker(true, false, true, true))
+        assertFalse(GlRenderer.shouldRenderFacePrivacyAsSticker(true, true, false, true))
+    }
 }

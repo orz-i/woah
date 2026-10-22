@@ -149,6 +149,18 @@ class GlRenderer : FrameRenderer {
         ): Boolean = isProtectedExportBasePass(jobId) &&
             error != GLES20.GL_NO_ERROR
 
+        // If the optional sticker program is missing, the secondary face
+        // privacy mask MUST remain in the regular main compositor.
+        internal fun shouldRenderFacePrivacyAsSticker(
+            stickerEnabled: Boolean,
+            hasPlacements: Boolean,
+            hasFaceMask: Boolean,
+            stickerShaderAvailable: Boolean
+        ): Boolean = stickerEnabled &&
+            hasPlacements &&
+            hasFaceMask &&
+            stickerShaderAvailable
+
         fun computeTransformMatrix(stMatrix: FloatArray, rotation: Int = 0): FloatArray {
             val isDegenerate = stMatrix[0] == 0f && stMatrix[5] == 0f && stMatrix[10] == 0f && stMatrix[15] == 0f
             if (isDegenerate) {
@@ -809,15 +821,16 @@ class GlRenderer : FrameRenderer {
                 listOf(primaryResolved, additionalResolvedPrivacy)
             )
         }
-        val renderFacePrivacyAsSticker =
-            effects.faceStickerEnabled &&
-                faceStickerPlacements.isNotEmpty() &&
-                additionalResolvedPrivacy?.privacyMask != null
-        // FACE_ONLY is visually rendered by the privacy-sticker pass. Keep the
-        // secondary face mask out of the main fill compositor so the sticker
-        // replaces the solid/blur/mosaic block instead of being layered on it.
-        // If the face mask is unexpectedly missing we fall back to the merged
-        // compositor path, preserving fail-closed privacy behavior.
+        val renderFacePrivacyAsSticker = shouldRenderFacePrivacyAsSticker(
+            stickerEnabled = effects.faceStickerEnabled,
+            hasPlacements = faceStickerPlacements.isNotEmpty(),
+            hasFaceMask = additionalResolvedPrivacy?.privacyMask != null,
+            stickerShaderAvailable = stickerOverlayProgram != null
+        )
+        // FACE_ONLY normally uses the privacy-sticker pass instead of the
+        // main fill. If the optional shader is missing, keep the face mask in
+        // the regular merged privacy compositor: never expose an unprotected
+        // face just because a sticker program is unavailable.
         val resolved = if (renderFacePrivacyAsSticker) primaryResolved else mergedResolved
         val hasSelected = resolved.hasPrivacy
         val hasOccluder = resolved.hasOccluder
