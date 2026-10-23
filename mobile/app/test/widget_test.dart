@@ -10,10 +10,10 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: WoahApp()));
 
     expect(find.text('Woah'), findsOneWidget);
-    expect(find.text('记录每一个闪闪发光的你'), findsOneWidget);
-    expect(find.text('视频隐私保护'), findsOneWidget);
-    expect(find.text('选择视频'), findsOneWidget);
-    expect(find.byKey(const ValueKey('home-hero-card')), findsOneWidget);
+    expect(find.text('记录每一个闪闪发光的你'), findsNothing);
+    expect(find.text('导入视频'), findsOneWidget);
+    expect(find.text('从设备中选择视频'), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-import-card')), findsOneWidget);
     expect(find.byIcon(Icons.close_rounded), findsNothing);
     expect(find.text('隐私保护 · 本机处理'), findsNothing);
   });

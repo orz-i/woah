@@ -6,7 +6,6 @@ import 'package:app/features/import_video/domain/video_import_state.dart';
 import 'package:app/features/import_video/presentation/home_tool_catalog.dart';
 import 'package:app/features/import_video/presentation/import_video_controller.dart';
 import 'package:app/features/import_video/presentation/import_video_screen.dart';
-import 'package:app/features/import_video/presentation/tool_library_screen.dart';
 import 'package:app/features/protection_editor/presentation/protection_editor_screen.dart';
 import 'package:app/repositories/native_processing_repository.dart';
 import 'package:dance_domain/dance_domain.dart';
@@ -94,7 +93,6 @@ class _FakeProbeRepository extends NativeProcessingRepository {
 GoRouter _testRouter() => GoRouter(
   routes: [
     GoRoute(path: '/', builder: (_, _) => const ImportVideoScreen()),
-    GoRoute(path: '/tools', builder: (_, _) => const ToolLibraryScreen()),
     GoRoute(
       path: '/protection_editor',
       builder: (context, state) {
@@ -149,109 +147,59 @@ Future<void> _pumpWorkbench(
 void main() {
   test('catalog never promotes in-editor capabilities to launchable cards', () {
     expect(HomeToolCatalog.standalone, isNotEmpty);
-    expect(HomeToolCatalog.standalone.every((tool) => tool.canLaunch), isTrue);
-    expect(
-      HomeToolCatalog.editorFeatures.every((tool) => !tool.canLaunch),
-      isTrue,
-    );
-    final all = [
-      ...HomeToolCatalog.standalone,
-      ...HomeToolCatalog.editorFeatures,
-    ];
+    expect(HomeToolCatalog.standalone.length, 1);
+    final all = [...HomeToolCatalog.standalone];
     expect(all.map((tool) => tool.id).toSet().length, all.length);
   });
 
-  testWidgets('home navigates to tool library and back without fake controls', (
+  testWidgets('single action, no tool library or editor-level features', (
     tester,
   ) async {
     final router = _testRouter();
     addTearDown(router.dispose);
     await _pumpWorkbench(tester, router);
-
-    expect(find.byKey(const ValueKey('home-hero-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-import-card')), findsOneWidget);
     expect(find.byType(PageView), findsNothing);
-    expect(
-      find.byKey(const ValueKey('home-tool-library-link')),
-      findsOneWidget,
-    );
-
-    await tester.tap(find.byKey(const ValueKey('home-tool-library-link')));
-    await tester.pumpAndSettle();
-
-    expect(find.text('全部工具'), findsOneWidget);
-    expect(find.text('编辑器内功能'), findsOneWidget);
-    expect(
-      find.byKey(const ValueKey('tool-launch-video-protection')),
-      findsOneWidget,
-    );
-
-    for (final tool in HomeToolCatalog.editorFeatures) {
-      final card = find.byKey(ValueKey('tool-editor-${tool.id}'));
-      expect(card, findsOneWidget);
-      expect(
-        find.descendant(of: card, matching: find.byType(InkWell)),
-        findsNothing,
-      );
-    }
-
-    await tester.tap(find.byKey(const ValueKey('tools-back')));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('home-hero-card')), findsOneWidget);
+    expect(find.text('全部工具'), findsNothing);
+    expect(find.text('编辑器内功能'), findsNothing);
+    expect(find.text('智能裁切'), findsNothing);
+    expect(find.text('人脸贴纸'), findsNothing);
+    expect(find.text('人物特效'), findsNothing);
+    expect(find.text('导入视频'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  for (final fromTools in [false, true]) {
-    testWidgets('shared import flows from $fromTools', (tester) async {
-      final original = FilePickerPlatform.instance;
-      final picker = _FakeVideoPicker()
-        ..response = Future.value([
-          _FakePlatformFile('dance.mp4', '/fake/dance.mp4'),
-        ]);
-      FilePickerPlatform.instance = picker;
-      addTearDown(() => FilePickerPlatform.instance = original);
+  testWidgets('single import completes and resets after editor', (
+    tester,
+  ) async {
+    final original = FilePickerPlatform.instance;
+    final picker = _FakeVideoPicker()
+      ..response = Future.value([
+        _FakePlatformFile('dance.mp4', '/fake/dance.mp4'),
+      ]);
+    FilePickerPlatform.instance = picker;
+    addTearDown(() => FilePickerPlatform.instance = original);
+    final repo = _FakeProbeRepository();
+    final router = _testRouter();
+    addTearDown(router.dispose);
+    await _pumpWorkbench(tester, router, repository: repo);
 
-      final repo = _FakeProbeRepository();
-      final router = _testRouter();
-      addTearDown(router.dispose);
-      await _pumpWorkbench(tester, router, repository: repo);
-
-      if (fromTools) {
-        await tester.tap(find.byKey(const ValueKey('home-tool-library-link')));
-        await tester.pumpAndSettle();
-      }
-      await tester.tap(
-        find.byKey(
-          ValueKey(
-            fromTools ? 'tool-launch-video-protection' : 'home-hero-card',
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(picker.calls, 1);
-      expect(repo.probes, 1);
-      expect(find.text('TEST_PROTECTION_EDITOR'), findsOneWidget);
-      expect(find.text('/fake/dance.mp4'), findsOneWidget);
-
-      await tester.tap(find.text('返回首页'));
-      await tester.pumpAndSettle();
-      expect(find.text('TEST_PROTECTION_EDITOR'), findsNothing);
-      expect(
-        ProviderScope.containerOf(
-          tester.element(
-            find.byType(fromTools ? ToolLibraryScreen : ImportVideoScreen),
-          ),
-        ).read(importVideoControllerProvider).status,
-        VideoImportStatus.idle,
-      );
-      if (fromTools) {
-        expect(find.text('导入视频开始编辑'), findsOneWidget);
-      } else {
-        expect(find.text('选择视频'), findsOneWidget);
-      }
-      expect(tester.takeException(), isNull);
-    });
-  }
+    await tester.tap(find.byKey(const ValueKey('home-import-card')));
+    await tester.pumpAndSettle();
+    expect(picker.calls, 1);
+    expect(repo.probes, 1);
+    expect(find.text('TEST_PROTECTION_EDITOR'), findsOneWidget);
+    await tester.tap(find.text('返回首页'));
+    await tester.pumpAndSettle();
+    expect(
+      ProviderScope.containerOf(
+        tester.element(find.byType(ImportVideoScreen)),
+      ).read(importVideoControllerProvider).status,
+      VideoImportStatus.idle,
+    );
+    expect(find.text('导入视频'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('picker cannot be launched twice while busy; cancel stays home', (
     tester,
@@ -265,16 +213,16 @@ void main() {
     addTearDown(router.dispose);
 
     await _pumpWorkbench(tester, router);
-    await tester.tap(find.byKey(const ValueKey('home-hero-card')));
+    await tester.tap(find.byKey(const ValueKey('home-import-card')));
     await tester.pump();
     expect(find.text('正在导入视频…'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('home-hero-card')));
+    await tester.tap(find.byKey(const ValueKey('home-import-card')));
     expect(picker.calls, 1);
     pending.complete([]);
     await tester.pumpAndSettle();
     expect(picker.calls, 1);
-    expect(find.text('选择视频'), findsOneWidget);
+    expect(find.text('导入视频'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -293,10 +241,8 @@ void main() {
     addTearDown(router.dispose);
 
     await _pumpWorkbench(tester, router, repository: repo);
-    await tester.tap(find.byKey(const ValueKey('home-tool-library-link')));
-    await tester.pumpAndSettle();
     await tester.tap(
-      find.byKey(const ValueKey('tool-launch-video-protection')),
+      find.byKey(const ValueKey('home-import-card')),
     );
     await tester.pumpAndSettle();
 
@@ -316,17 +262,10 @@ void main() {
     addTearDown(router.dispose);
 
     await _pumpWorkbench(tester, router, textScale: 1.6);
-    expect(find.byKey(const ValueKey('home-hero-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-import-card')), findsOneWidget);
     expect(tester.takeException(), isNull);
-    await tester.ensureVisible(
-      find.byKey(const ValueKey('home-tool-library-link')),
-    );
-    await tester.tap(find.byKey(const ValueKey('home-tool-library-link')));
-    await tester.pumpAndSettle();
-    expect(
-      find.byKey(const ValueKey('tool-editor-face-sticker')),
-      findsOneWidget,
-    );
+    await tester.ensureVisible(find.byKey(const ValueKey('home-import-card')));
+    expect(find.text('全部工具'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

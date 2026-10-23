@@ -18,11 +18,11 @@ void main() {
       await tester.pump();
 
       expect(find.text('Woah'), findsOneWidget);
-      expect(find.text('记录每一个闪闪发光的你'), findsOneWidget);
-      expect(find.text('视频隐私保护'), findsOneWidget);
-      expect(find.text('选择视频'), findsOneWidget);
-      expect(find.byKey(const ValueKey('home-hero-card')), findsOneWidget);
-      expect(find.bySemanticsLabel('选择视频，开始视频隐私保护'), findsOneWidget);
+      expect(find.text('记录每一个闪闪发光的你'), findsNothing);
+      expect(find.text('导入视频'), findsOneWidget);
+      expect(find.text('从设备中选择视频'), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-import-card')), findsOneWidget);
+      expect(find.bySemanticsLabel('导入视频，从设备中选择视频'), findsOneWidget);
       expect(find.byIcon(Icons.close_rounded), findsNothing);
       expect(find.text('人脸贴纸'), findsNothing);
       expect(find.text('智能裁切'), findsNothing);
@@ -48,8 +48,8 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.byKey(const ValueKey('home-hero-card')), findsOneWidget);
-      expect(find.text('选择视频'), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-import-card')), findsOneWidget);
+      expect(find.text('从设备中选择视频'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }
