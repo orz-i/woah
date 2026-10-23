@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../app/system_ui.dart';
 import '../../../app/theme.dart';
@@ -14,8 +13,7 @@ import 'video_import_error_notice.dart';
 import 'video_import_flow.dart';
 import 'woah_easter_egg_screen.dart';
 
-/// Minimal task-first Home. Independent tools and a card pager will be
-/// registered here only when those tools have real navigation actions.
+/// Single-task launcher. Internal editor tools never appear on Home.
 class ImportVideoScreen extends ConsumerStatefulWidget {
   const ImportVideoScreen({super.key});
 
@@ -37,13 +35,11 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(importVideoControllerProvider);
-    final isBusy =
-        state.status == VideoImportStatus.picking ||
-        state.status == VideoImportStatus.probing;
+    final isBusy = state.isLoading;
     final actionLabel = switch (state.status) {
       VideoImportStatus.picking => '正在导入视频…',
       VideoImportStatus.probing => '正在读取视频…',
-      _ => '选择视频',
+      _ => '导入视频',
     };
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -53,41 +49,64 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, viewport) {
-              final compact = viewport.maxHeight < 700;
-              final paddingY = compact ? 16.0 : 24.0;
-              final cardHeight = (viewport.maxHeight * (compact ? 0.61 : 0.55))
-                  .clamp(330.0, 460.0);
-              final upperGap = compact
-                  ? 26.0
-                  : (viewport.maxHeight - cardHeight - 200.0).clamp(40.0, 74.0);
+              final horizontalPadding = viewport.maxWidth < 360 ? 20.0 : 24.0;
+              final verticalPadding = viewport.maxHeight < 650 ? 18.0 : 26.0;
+              final availableWidth = viewport.maxWidth - 2 * horizontalPadding;
+              final cardWidth = math.min(300.0, availableWidth * 0.88);
+              final cardHeight = (cardWidth * 1.12).clamp(250.0, 336.0);
+              final gapAboveCard = math.max(
+                46.0,
+                (viewport.maxHeight -
+                        2 * verticalPadding -
+                        cardHeight -
+                        36.0 -
+                        76.0) /
+                    2,
+              );
 
               return SingleChildScrollView(
                 physics: const ClampingScrollPhysics(),
-                padding: EdgeInsets.fromLTRB(22, paddingY, 22, paddingY),
+                padding: EdgeInsets.fromLTRB(
+                  horizontalPadding,
+                  verticalPadding,
+                  horizontalPadding,
+                  verticalPadding,
+                ),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    minHeight: math.max(0, viewport.maxHeight - paddingY * 2),
+                    minHeight: math.max(
+                      0.0,
+                      viewport.maxHeight - 2 * verticalPadding,
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       _HomeBrand(onLongPress: _openEasterEgg),
-                      SizedBox(height: upperGap),
-                      SizedBox(
-                        height: cardHeight,
-                        child: _HomeToolPager(
-                          isBusy: isBusy,
-                          actionLabel: actionLabel,
-                          onLaunch: (tool) =>
-                              launchHomeTool(context, ref, tool),
+                      SizedBox(height: gapAboveCard),
+                      Center(
+                        child: SizedBox(
+                          width: cardWidth,
+                          height: cardHeight,
+                          child: _HomeToolDeck(
+                            isBusy: isBusy,
+                            actionLabel: actionLabel,
+                            onLaunch: (tool) =>
+                                launchHomeTool(context, ref, tool),
+                          ),
                         ),
                       ),
                       if (state.errorMessage != null) ...[
-                        const SizedBox(height: 14),
-                        VideoImportErrorNotice(message: state.errorMessage!),
+                        const SizedBox(height: 18),
+                        Center(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(maxWidth: cardWidth),
+                            child: VideoImportErrorNotice(
+                              message: state.errorMessage!,
+                            ),
+                          ),
+                        ),
                       ],
-                      const SizedBox(height: 20),
-                      const _ToolLibraryLink(),
                     ],
                   ),
                 ),
@@ -111,50 +130,41 @@ class _HomeBrand extends StatelessWidget {
       key: const ValueKey('home-brand'),
       behavior: HitTestBehavior.translucent,
       onLongPress: onLongPress,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Woah',
-                  style: TextStyle(
-                    color: AppTheme.flowTextPrimary,
-                    fontSize: 30,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -1.3,
-                    height: 1.1,
-                  ),
+      child: const Align(
+        alignment: Alignment.centerLeft,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Woah',
+                style: TextStyle(
+                  color: AppTheme.flowTextPrimary,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -1.0,
+                  height: 1.12,
                 ),
-                SizedBox(width: 8),
-                Icon(
-                  Icons.auto_awesome_rounded,
-                  size: 18,
-                  color: AppTheme.gold,
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              '记录每一个闪闪发光的你',
-              style: TextStyle(
-                color: AppTheme.flowTextSecondary,
-                fontSize: 13,
-                height: 1.3,
               ),
-            ),
-          ],
+              SizedBox(width: 7),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppTheme.gold,
+                  shape: BoxShape.circle,
+                ),
+                child: SizedBox(width: 5, height: 5),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _ProtectionHeroCard extends StatelessWidget {
-  const _ProtectionHeroCard({
+class _ImportActionCard extends StatelessWidget {
+  const _ImportActionCard({
     required this.tool,
     required this.isBusy,
     required this.actionLabel,
@@ -168,97 +178,77 @@ class _ProtectionHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const radius = BorderRadius.all(Radius.circular(28));
+    const radius = BorderRadius.all(Radius.circular(22));
 
     return Semantics(
       button: true,
       enabled: !isBusy,
-      label: isBusy ? actionLabel : '选择视频，开始${tool.title}',
+      label: isBusy ? actionLabel : '导入视频，从设备中选择视频',
       child: ExcludeSemantics(
         child: Material(
-          color: Colors.transparent,
           borderRadius: radius,
           clipBehavior: Clip.antiAlias,
+          color: AppTheme.flowSurface,
           child: Ink(
-            key: const ValueKey('home-hero-card'),
+            key: const ValueKey('home-import-card'),
             decoration: BoxDecoration(
               borderRadius: radius,
-              border: Border.all(color: const Color(0xFF444044)),
+              border: Border.all(color: const Color(0xFF353538)),
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0xFF303034),
-                  Color(0xFF292524),
-                  Color(0xFF171719),
+                  Color(0xFF242427),
+                  Color(0xFF18181B),
+                  Color(0xFF141416),
                 ],
-                stops: [0.0, 0.52, 1.0],
               ),
             ),
             child: InkWell(
               onTap: onTap,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 22),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Expanded(child: _HeroArtwork(tool: tool)),
-                    const SizedBox(height: 8),
+                    if (isBusy)
+                      const SizedBox(
+                        height: 34,
+                        width: 34,
+                        child: CircularProgressIndicator(
+                          color: AppTheme.gold,
+                          strokeWidth: 2.2,
+                        ),
+                      )
+                    else
+                      const Icon(
+                        Icons.add_rounded,
+                        size: 38,
+                        color: AppTheme.goldLight,
+                      ),
+                    const SizedBox(height: 20),
                     Text(
-                      tool.title,
-                      style: TextStyle(
+                      actionLabel,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
                         color: AppTheme.flowTextPrimary,
-                        fontSize: 25,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.6,
-                        height: 1.16,
+                        fontSize: 20,
+                        height: 1.3,
+                        letterSpacing: -0.25,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 7),
                     Text(
-                      tool.description,
-                      style: TextStyle(
-                        color: AppTheme.flowTextSecondary,
-                        fontSize: 13,
-                        height: 1.35,
-                      ),
+                      isBusy ? '请稍候' : tool.description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 22),
-                    Container(height: 1, color: Colors.white.withAlpha(24)),
-                    const SizedBox(height: 15),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            actionLabel,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppTheme.goldLight,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        if (isBusy)
-                          const SizedBox(
-                            width: 21,
-                            height: 21,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AppTheme.gold,
-                            ),
-                          )
-                        else
-                          const Icon(
-                            Icons.arrow_forward_rounded,
-                            color: AppTheme.goldLight,
-                            size: 23,
-                          ),
-                      ],
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AppTheme.flowTextSecondary,
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
                     ),
                   ],
                 ),
@@ -271,82 +261,10 @@ class _ProtectionHeroCard extends StatelessWidget {
   }
 }
 
-/// Media-stage abstraction; no real user's image is baked into the launcher.
-class _HeroArtwork extends StatelessWidget {
-  const _HeroArtwork({required this.tool});
-
-  final HomeTool tool;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, area) {
-        final width = math.min(area.maxWidth * 0.64, 180.0);
-        final height = math.min(area.maxHeight * 0.92, 200.0);
-        return Center(
-          child: SizedBox(
-            width: width,
-            height: height,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(21),
-                      border: Border.all(color: Colors.white.withAlpha(36)),
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xFF6B523E),
-                          Color(0xFF453D39),
-                          Color(0xFF27272A),
-                        ],
-                      ),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        tool.artworkIcon,
-                        color: const Color(0xFFE7D3B5).withAlpha(190),
-                        size: math.min(height * 0.64, 122.0),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  right: -14,
-                  bottom: -10,
-                  child: Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: AppTheme.gold,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: const Color(0xFFEFCE92),
-                        width: 1.4,
-                      ),
-                    ),
-                    child: Icon(
-                      tool.badgeIcon,
-                      color: AppTheme.textOnAccent,
-                      size: 28,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// Future-ready: no fake slides or indicators while one action is available.
-class _HomeToolPager extends StatefulWidget {
-  const _HomeToolPager({
+/// One real action produces one visible card. Paging stays dormant until a
+/// second independent workflow is shipped; editor-only features are excluded.
+class _HomeToolDeck extends StatefulWidget {
+  const _HomeToolDeck({
     required this.isBusy,
     required this.actionLabel,
     required this.onLaunch,
@@ -357,22 +275,22 @@ class _HomeToolPager extends StatefulWidget {
   final ValueChanged<HomeTool> onLaunch;
 
   @override
-  State<_HomeToolPager> createState() => _HomeToolPagerState();
+  State<_HomeToolDeck> createState() => _HomeToolDeckState();
 }
 
-class _HomeToolPagerState extends State<_HomeToolPager> {
-  late final PageController _controller;
+class _HomeToolDeckState extends State<_HomeToolDeck> {
+  late final PageController _pageController;
   int _selectedIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _controller = PageController(viewportFraction: 0.91);
+    _pageController = PageController(viewportFraction: 0.90);
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -380,8 +298,9 @@ class _HomeToolPagerState extends State<_HomeToolPager> {
   Widget build(BuildContext context) {
     final tools = HomeToolCatalog.standalone;
     assert(tools.isNotEmpty);
+
     if (tools.length == 1) {
-      return _ProtectionHeroCard(
+      return _ImportActionCard(
         tool: tools.single,
         isBusy: widget.isBusy,
         actionLabel: widget.actionLabel,
@@ -393,35 +312,32 @@ class _HomeToolPagerState extends State<_HomeToolPager> {
       children: [
         Expanded(
           child: PageView.builder(
-            controller: _controller,
+            controller: _pageController,
             itemCount: tools.length,
-            onPageChanged: (page) => setState(() => _selectedIndex = page),
+            onPageChanged: (index) => setState(() => _selectedIndex = index),
             itemBuilder: (context, index) {
               final tool = tools[index];
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 5),
-                child: _ProtectionHeroCard(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: _ImportActionCard(
                   tool: tool,
                   isBusy: widget.isBusy,
-                  actionLabel: widget.actionLabel,
+                  actionLabel: tool.title,
                   onTap: widget.isBusy ? null : () => widget.onLaunch(tool),
                 ),
               );
             },
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             for (var i = 0; i < tools.length; i++)
-              AnimatedContainer(
-                duration: MediaQuery.disableAnimationsOf(context)
-                    ? Duration.zero
-                    : const Duration(milliseconds: 180),
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                width: i == _selectedIndex ? 21 : 5,
+              Container(
+                width: i == _selectedIndex ? 17 : 5,
                 height: 5,
+                margin: const EdgeInsets.symmetric(horizontal: 3),
                 decoration: BoxDecoration(
                   color: i == _selectedIndex
                       ? AppTheme.gold
@@ -432,58 +348,6 @@ class _HomeToolPagerState extends State<_HomeToolPager> {
           ],
         ),
       ],
-    );
-  }
-}
-
-class _ToolLibraryLink extends StatelessWidget {
-  const _ToolLibraryLink();
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        key: const ValueKey('home-tool-library-link'),
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => context.push('/tools'),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
-          child: Row(
-            children: [
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '全部工具',
-                      style: TextStyle(
-                        color: AppTheme.flowTextPrimary,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    SizedBox(height: 5),
-                    Text(
-                      '探索裁切、贴纸与人物效果',
-                      style: TextStyle(
-                        color: AppTheme.flowTextMuted,
-                        fontSize: 12,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.arrow_forward_rounded,
-                color: AppTheme.flowTextSecondary,
-                size: 22,
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

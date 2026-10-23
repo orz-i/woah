@@ -8,8 +8,7 @@ import '../domain/video_import_state.dart';
 import 'home_tool_catalog.dart';
 import 'import_video_controller.dart';
 
-/// Dispatches only registered, independently operable tool actions.
-/// Editor-only catalog entries deliberately have no launcher.
+/// Standalone Home actions only. Editor-internal effects have no dispatch key.
 Future<void> launchHomeTool(
   BuildContext context,
   WidgetRef ref,
@@ -18,15 +17,10 @@ Future<void> launchHomeTool(
   switch (tool.launch) {
     case HomeToolLaunch.videoProtection:
       await startVideoProtectionFlow(context, ref);
-    case null:
-      return;
   }
 }
 
-/// Shared launcher for any real, independently operable video-protection entry.
-///
-/// Keeps the existing picker, probe, editor route, and post-editor reset
-/// consistent across Home and the tool library.
+/// Preserve picker, media probing, unified editor, and post-editor reset.
 Future<void> startVideoProtectionFlow(
   BuildContext context,
   WidgetRef ref,
@@ -42,7 +36,7 @@ Future<void> startVideoProtectionFlow(
   await controller.pickAndProbeVideo();
   if (!context.mounted) return;
 
-  // A failed or canceled probe must never reuse previously cached metadata.
+  // An error or canceled selection must not open the editor.
   if (ref.read(importVideoControllerProvider).status !=
       VideoImportStatus.ready) {
     return;
