@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dance_domain/dance_domain.dart';
 import '../features/import_video/presentation/import_video_screen.dart';
+import '../features/import_video/presentation/tool_library_screen.dart';
 import '../features/protection_editor/presentation/protection_editor_screen.dart';
 import '../features/export/presentation/export_screen.dart';
 import '../features/export/presentation/result_screen.dart';
@@ -17,6 +18,11 @@ final appRouter = GoRouter(
       path: '/',
       name: 'import_video',
       builder: (context, state) => const ImportVideoScreen(),
+    ),
+    GoRoute(
+      path: '/tools',
+      name: 'tools',
+      builder: (context, state) => const ToolLibraryScreen(),
     ),
     GoRoute(
       path: '/protection_editor',

@@ -5,7 +5,23 @@ import 'package:go_router/go_router.dart';
 
 import '../../protection_editor/presentation/protection_editor_screen.dart';
 import '../domain/video_import_state.dart';
+import 'home_tool_catalog.dart';
 import 'import_video_controller.dart';
+
+/// Dispatches only registered, independently operable tool actions.
+/// Editor-only catalog entries deliberately have no launcher.
+Future<void> launchHomeTool(
+  BuildContext context,
+  WidgetRef ref,
+  HomeTool tool,
+) async {
+  switch (tool.launch) {
+    case HomeToolLaunch.videoProtection:
+      await startVideoProtectionFlow(context, ref);
+    case null:
+      return;
+  }
+}
 
 /// Shared launcher for any real, independently operable video-protection entry.
 ///

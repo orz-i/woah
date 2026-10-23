@@ -3,11 +3,14 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/system_ui.dart';
 import '../../../app/theme.dart';
 import '../domain/video_import_state.dart';
+import 'home_tool_catalog.dart';
 import 'import_video_controller.dart';
+import 'video_import_error_notice.dart';
 import 'video_import_flow.dart';
 import 'woah_easter_egg_screen.dart';
 
@@ -72,20 +75,19 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
                       SizedBox(height: upperGap),
                       SizedBox(
                         height: cardHeight,
-                        child: _ProtectionHeroCard(
+                        child: _HomeToolPager(
                           isBusy: isBusy,
                           actionLabel: actionLabel,
-                          onTap: isBusy
-                              ? null
-                              : () => startVideoProtectionFlow(context, ref),
+                          onLaunch: (tool) =>
+                              launchHomeTool(context, ref, tool),
                         ),
                       ),
                       if (state.errorMessage != null) ...[
                         const SizedBox(height: 14),
-                        _ErrorNotice(message: state.errorMessage!),
+                        VideoImportErrorNotice(message: state.errorMessage!),
                       ],
-                      const SizedBox(height: 22),
-                      const _HomeHint(),
+                      const SizedBox(height: 20),
+                      const _ToolLibraryLink(),
                     ],
                   ),
                 ),
@@ -153,11 +155,13 @@ class _HomeBrand extends StatelessWidget {
 
 class _ProtectionHeroCard extends StatelessWidget {
   const _ProtectionHeroCard({
+    required this.tool,
     required this.isBusy,
     required this.actionLabel,
     required this.onTap,
   });
 
+  final HomeTool tool;
   final bool isBusy;
   final String actionLabel;
   final VoidCallback? onTap;
@@ -169,7 +173,7 @@ class _ProtectionHeroCard extends StatelessWidget {
     return Semantics(
       button: true,
       enabled: !isBusy,
-      label: isBusy ? actionLabel : '选择视频，开始视频隐私保护',
+      label: isBusy ? actionLabel : '选择视频，开始${tool.title}',
       child: ExcludeSemantics(
         child: Material(
           color: Colors.transparent,
@@ -198,10 +202,10 @@ class _ProtectionHeroCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Expanded(child: _HeroArtwork()),
+                    Expanded(child: _HeroArtwork(tool: tool)),
                     const SizedBox(height: 8),
-                    const Text(
-                      '视频隐私保护',
+                    Text(
+                      tool.title,
                       style: TextStyle(
                         color: AppTheme.flowTextPrimary,
                         fontSize: 25,
@@ -211,8 +215,8 @@ class _ProtectionHeroCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      '智能识别人物，专注记录舞台上的你',
+                    Text(
+                      tool.description,
                       style: TextStyle(
                         color: AppTheme.flowTextSecondary,
                         fontSize: 13,
@@ -269,7 +273,9 @@ class _ProtectionHeroCard extends StatelessWidget {
 
 /// Media-stage abstraction; no real user's image is baked into the launcher.
 class _HeroArtwork extends StatelessWidget {
-  const _HeroArtwork();
+  const _HeroArtwork({required this.tool});
+
+  final HomeTool tool;
 
   @override
   Widget build(BuildContext context) {
@@ -301,7 +307,7 @@ class _HeroArtwork extends StatelessWidget {
                     ),
                     child: Center(
                       child: Icon(
-                        Icons.person_outline_rounded,
+                        tool.artworkIcon,
                         color: const Color(0xFFE7D3B5).withAlpha(190),
                         size: math.min(height * 0.64, 122.0),
                       ),
@@ -322,8 +328,8 @@ class _HeroArtwork extends StatelessWidget {
                         width: 1.4,
                       ),
                     ),
-                    child: const Icon(
-                      Icons.shield_outlined,
+                    child: Icon(
+                      tool.badgeIcon,
                       color: AppTheme.textOnAccent,
                       size: 28,
                     ),
@@ -338,61 +344,145 @@ class _HeroArtwork extends StatelessWidget {
   }
 }
 
-class _HomeHint extends StatelessWidget {
-  const _HomeHint();
+/// Future-ready: no fake slides or indicators while one action is available.
+class _HomeToolPager extends StatefulWidget {
+  const _HomeToolPager({
+    required this.isBusy,
+    required this.actionLabel,
+    required this.onLaunch,
+  });
+
+  final bool isBusy;
+  final String actionLabel;
+  final ValueChanged<HomeTool> onLaunch;
+
+  @override
+  State<_HomeToolPager> createState() => _HomeToolPagerState();
+}
+
+class _HomeToolPagerState extends State<_HomeToolPager> {
+  late final PageController _controller;
+  int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = PageController(viewportFraction: 0.91);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 10),
-      child: Text(
-        '导入视频后，可选择保护对象和编辑效果',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: AppTheme.flowTextMuted,
-          fontSize: 12,
-          height: 1.4,
+    final tools = HomeToolCatalog.standalone;
+    assert(tools.isNotEmpty);
+    if (tools.length == 1) {
+      return _ProtectionHeroCard(
+        tool: tools.single,
+        isBusy: widget.isBusy,
+        actionLabel: widget.actionLabel,
+        onTap: widget.isBusy ? null : () => widget.onLaunch(tools.single),
+      );
+    }
+
+    return Column(
+      children: [
+        Expanded(
+          child: PageView.builder(
+            controller: _controller,
+            itemCount: tools.length,
+            onPageChanged: (page) => setState(() => _selectedIndex = page),
+            itemBuilder: (context, index) {
+              final tool = tools[index];
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 5),
+                child: _ProtectionHeroCard(
+                  tool: tool,
+                  isBusy: widget.isBusy,
+                  actionLabel: widget.actionLabel,
+                  onTap: widget.isBusy ? null : () => widget.onLaunch(tool),
+                ),
+              );
+            },
+          ),
         ),
-      ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            for (var i = 0; i < tools.length; i++)
+              AnimatedContainer(
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 180),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: i == _selectedIndex ? 21 : 5,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: i == _selectedIndex
+                      ? AppTheme.gold
+                      : AppTheme.flowTextMuted,
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+          ],
+        ),
+      ],
     );
   }
 }
 
-class _ErrorNotice extends StatelessWidget {
-  const _ErrorNotice({required this.message});
-
-  final String message;
+class _ToolLibraryLink extends StatelessWidget {
+  const _ToolLibraryLink();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-      decoration: BoxDecoration(
-        color: AppTheme.flowSurfaceSoft,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.error.withAlpha(88)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.error_outline_rounded,
-            color: AppTheme.error,
-            size: 18,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                color: AppTheme.flowTextSecondary,
-                fontSize: 12,
-                height: 1.4,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: const ValueKey('home-tool-library-link'),
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => context.push('/tools'),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
+          child: Row(
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '全部工具',
+                      style: TextStyle(
+                        color: AppTheme.flowTextPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: 5),
+                    Text(
+                      '探索裁切、贴纸与人物效果',
+                      style: TextStyle(
+                        color: AppTheme.flowTextMuted,
+                        fontSize: 12,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+              Icon(
+                Icons.arrow_forward_rounded,
+                color: AppTheme.flowTextSecondary,
+                size: 22,
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
