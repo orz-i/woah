@@ -7,73 +7,52 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('import home uses immersive star hub without app close control', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: ImportVideoScreen())),
-    );
-    await tester.pump();
+  testWidgets(
+    'home has one real video protection card in the shared dark theme',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
 
-    expect(find.byIcon(Icons.close_rounded), findsNothing);
-    expect(find.byTooltip('关闭'), findsNothing);
-    expect(find.text('Woah'), findsOneWidget);
-    expect(find.text('记录每一个闪闪发光的你'), findsOneWidget);
-    expect(find.text('导入舞段'), findsOneWidget);
-    expect(find.text('选择视频'), findsOneWidget);
-    expect(find.byKey(const ValueKey('home-primary-star')), findsOneWidget);
-    expect(find.byKey(const ValueKey('home-buddy')), findsOneWidget);
-    expect(find.byKey(const ValueKey('home-buddy-frame-0')), findsOneWidget);
+      await tester.pumpWidget(
+        const ProviderScope(child: MaterialApp(home: ImportVideoScreen())),
+      );
+      await tester.pump();
 
-    await tester.pump(const Duration(milliseconds: 2200));
-    expect(find.byKey(const ValueKey('home-buddy-frame-1')), findsOneWidget);
-    await tester.pump(const Duration(milliseconds: 600));
-    expect(find.byKey(const ValueKey('home-buddy-frame-2')), findsOneWidget);
-    await tester.pump(const Duration(milliseconds: 700));
-    expect(find.byKey(const ValueKey('home-buddy-frame-3')), findsOneWidget);
-    await tester.pump(const Duration(milliseconds: 500));
-    expect(find.byKey(const ValueKey('home-buddy-frame-4')), findsOneWidget);
-    await tester.pump(const Duration(milliseconds: 500));
-    expect(find.byKey(const ValueKey('home-buddy-frame-0')), findsOneWidget);
+      expect(find.text('Woah'), findsOneWidget);
+      expect(find.text('记录每一个闪闪发光的你'), findsOneWidget);
+      expect(find.text('视频隐私保护'), findsOneWidget);
+      expect(find.text('选择视频'), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-hero-card')), findsOneWidget);
+      expect(find.bySemanticsLabel('选择视频，开始视频隐私保护'), findsOneWidget);
+      expect(find.byIcon(Icons.close_rounded), findsNothing);
+      expect(find.text('人脸贴纸'), findsNothing);
+      expect(find.text('智能裁切'), findsNothing);
+      expect(find.byKey(const ValueKey('home-buddy')), findsNothing);
+      expect(
+        tester.widget<Scaffold>(find.byType(Scaffold)).backgroundColor,
+        AppTheme.flowBackground,
+      );
+      expect(tester.takeException(), isNull);
+      semantics.dispose();
+    },
+  );
 
-    expect(find.text('人脸贴纸'), findsOneWidget);
-    expect(find.text('智能裁切'), findsOneWidget);
-    expect(find.text('更多工具'), findsOneWidget);
-    expect(
-      find.byKey(const ValueKey('future-feature-face-sticker')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey('future-feature-smart-crop')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey('future-feature-more-tools')),
-      findsOneWidget,
-    );
+  for (final size in [const Size(320, 568), const Size(360, 640)]) {
+    testWidgets('home fits compact phone viewport $size', (tester) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    expect(find.byKey(const ValueKey('media-picker-card')), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
+      await tester.pumpWidget(
+        const ProviderScope(child: MaterialApp(home: ImportVideoScreen())),
+      );
+      await tester.pump();
 
-  testWidgets('immersive star home fits a compact phone viewport', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(360, 640);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: ImportVideoScreen())),
-    );
-    await tester.pump();
-
-    expect(find.byKey(const ValueKey('home-primary-star')), findsOneWidget);
-    expect(find.byKey(const ValueKey('home-buddy')), findsOneWidget);
-    expect(find.text('导入舞段'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
+      expect(find.byKey(const ValueKey('home-hero-card')), findsOneWidget);
+      expect(find.text('选择视频'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   group('VideoMetadataCard Widget Tests', () {
     testWidgets('Displays horizontal video parameters properly', (
