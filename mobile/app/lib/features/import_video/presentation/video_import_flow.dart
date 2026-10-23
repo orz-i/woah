@@ -42,6 +42,11 @@ Future<void> startVideoProtectionFlow(
   await controller.pickAndProbeVideo();
   if (!context.mounted) return;
 
+  // A failed or canceled probe must never reuse previously cached metadata.
+  if (ref.read(importVideoControllerProvider).status !=
+      VideoImportStatus.ready) {
+    return;
+  }
   final project = controller.createProject();
   if (project == null) return;
 
