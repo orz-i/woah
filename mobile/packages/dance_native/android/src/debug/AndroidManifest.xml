@@ -1,0 +1,11 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Only included in debug builds. ADB and manual media picks are used for M0. -->
+    <application>
+        <activity
+            android:name="art.gaoge.dance.engine.comparison.ComparisonM0Activity"
+            android:exported="true"
+            android:label="Woah · M0 同步验证"
+            android:theme="@android:style/Theme.Material.NoActionBar"
+            android:screenOrientation="unspecified" />
+    </application>
+</manifest>
