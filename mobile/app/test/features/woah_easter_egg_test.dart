@@ -110,7 +110,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 700));
 
-      expect(find.text('导入舞段'), findsOneWidget);
+      expect(find.text('导入视频'), findsOneWidget);
       expect(find.text('彩蛋时间'), findsNothing);
     },
   );
