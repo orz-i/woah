@@ -22,6 +22,21 @@ void main() {
       expect(find.text('导入视频'), findsOneWidget);
       expect(find.text('从设备中选择视频'), findsOneWidget);
       expect(find.byKey(const ValueKey('home-import-card')), findsOneWidget);
+      final cardInk = tester.widget<Ink>(
+        find.byKey(const ValueKey('home-import-card')),
+      );
+      final cardDecoration = cardInk.decoration! as BoxDecoration;
+      expect(cardDecoration.border, isNull);
+      final elevation = tester.widget<DecoratedBox>(
+        find.byKey(const ValueKey('home-card-elevation')),
+      );
+      final elevationDecoration = elevation.decoration as BoxDecoration;
+      expect(elevationDecoration.border, isNull);
+      expect(elevationDecoration.boxShadow, hasLength(2));
+      expect(
+        elevationDecoration.boxShadow!.every((shadow) => shadow.offset.dy > 0),
+        isTrue,
+      );
       expect(find.bySemanticsLabel('导入视频，从设备中选择视频'), findsOneWidget);
       expect(find.byIcon(Icons.close_rounded), findsNothing);
       expect(find.text('人脸贴纸'), findsNothing);

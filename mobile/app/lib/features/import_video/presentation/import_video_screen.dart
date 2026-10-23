@@ -185,72 +185,94 @@ class _ImportActionCard extends StatelessWidget {
       enabled: !isBusy,
       label: isBusy ? actionLabel : '导入视频，从设备中选择视频',
       child: ExcludeSemantics(
-        child: Material(
-          borderRadius: radius,
-          clipBehavior: Clip.antiAlias,
-          color: AppTheme.flowSurface,
-          child: Ink(
-            key: const ValueKey('home-import-card'),
-            decoration: BoxDecoration(
-              borderRadius: radius,
-              border: Border.all(color: const Color(0xFF353538)),
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF242427),
-                  Color(0xFF18181B),
-                  Color(0xFF141416),
-                ],
+        // Keep the shadow outside Material's rounded clipping boundary.
+        child: DecoratedBox(
+          key: const ValueKey('home-card-elevation'),
+          decoration: const BoxDecoration(
+            borderRadius: radius,
+            boxShadow: [
+              // Low-key ambient separation from the near-black canvas.
+              BoxShadow(
+                color: Color(0x29454750),
+                offset: Offset(0, 15),
+                blurRadius: 34,
+                spreadRadius: -8,
               ),
-            ),
-            child: InkWell(
-              onTap: onTap,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (isBusy)
-                      const SizedBox(
-                        height: 34,
-                        width: 34,
-                        child: CircularProgressIndicator(
-                          color: AppTheme.gold,
-                          strokeWidth: 2.2,
-                        ),
-                      )
-                    else
-                      const Icon(
-                        Icons.add_rounded,
-                        size: 38,
-                        color: AppTheme.goldLight,
-                      ),
-                    const SizedBox(height: 20),
-                    Text(
-                      actionLabel,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: AppTheme.flowTextPrimary,
-                        fontSize: 20,
-                        height: 1.3,
-                        letterSpacing: -0.25,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 7),
-                    Text(
-                      isBusy ? '请稍候' : tool.description,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: AppTheme.flowTextSecondary,
-                        fontSize: 13,
-                        height: 1.4,
-                      ),
-                    ),
+              // Weighted toward the lower edge for a restrained lift.
+              BoxShadow(
+                color: Color(0xAA000000),
+                offset: Offset(0, 22),
+                blurRadius: 30,
+                spreadRadius: -9,
+              ),
+            ],
+          ),
+          child: Material(
+            borderRadius: radius,
+            clipBehavior: Clip.antiAlias,
+            color: AppTheme.flowSurface,
+            child: Ink(
+              key: const ValueKey('home-import-card'),
+              decoration: BoxDecoration(
+                borderRadius: radius,
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF242427),
+                    Color(0xFF18181B),
+                    Color(0xFF141416),
                   ],
+                ),
+              ),
+              child: InkWell(
+                onTap: onTap,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (isBusy)
+                        const SizedBox(
+                          height: 34,
+                          width: 34,
+                          child: CircularProgressIndicator(
+                            color: AppTheme.gold,
+                            strokeWidth: 2.2,
+                          ),
+                        )
+                      else
+                        const Icon(
+                          Icons.add_rounded,
+                          size: 38,
+                          color: AppTheme.goldLight,
+                        ),
+                      const SizedBox(height: 20),
+                      Text(
+                        actionLabel,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: AppTheme.flowTextPrimary,
+                          fontSize: 20,
+                          height: 1.3,
+                          letterSpacing: -0.25,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 7),
+                      Text(
+                        isBusy ? '请稍候' : tool.description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: AppTheme.flowTextSecondary,
+                          fontSize: 13,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
