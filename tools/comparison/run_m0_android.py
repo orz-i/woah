@@ -7,8 +7,10 @@ from pathlib import Path
 import subprocess
 import sys
 
+from verify_m0_apk import apk_contents
+
 PKG = "art.gaoge.dance"
-ACTIVITY = PKG + ".engine.comparison.ComparisonM0Activity"
+ACTIVITY = PKG + "/" + PKG + ".engine.comparison.ComparisonM0Activity"
 REMOTE = "/sdcard/Movies/WoahM0"
 REPORT = f"/sdcard/Android/data/{PKG}/files/Documents/comparison-m0/latest.json"
 
@@ -42,6 +44,14 @@ def main() -> int:
         if args.apk is not None:
             if not args.apk.is_file():
                 parser.error(f"APK not found: {args.apk}")
+            inspected = apk_contents(args.apk)
+            if not inspected["m0DebugComponentPresent"]:
+                print(
+                    "M0_APK=FAIL: supplied APK lacks the M0 Activity. "
+                    "Switch to the M0 branch and rebuild --debug.",
+                    file=sys.stderr,
+                )
+                return 2
             result = adb("install", "-r", str(args.apk))
             print(result.stdout)
         if (args.teacher is None) != (args.learner is None):
@@ -65,13 +75,24 @@ def main() -> int:
         result = adb("shell", "am", "start", "-n", ACTIVITY,
                      "--el", "offset_us", str(args.offset_us))
         print(result.stdout)
+        print(result.stderr)
+        if ("Error type 3" in result.stdout or "does not exist" in result.stdout
+                or "Error type 3" in result.stderr or
+                "does not exist" in result.stderr):
+            print("M0_LAUNCH=FAIL: installed APK has no M0 Activity. Run "
+                  "python tools/comparison/verify_m0_apk.py --inspect-device",
+                  file=sys.stderr)
+            return 3
         print("In the M0 screen pick Teacher and Learner via system picker.")
         print("Use Movies/WoahM0 for synthetic files (or browse your own videos).")
         print("After a playback run tap 保存诊断, then execute:")
         print(f"  python tools/comparison/run_m0_android.py --pull-report m0-latest.json")
         return 0
-    except FileNotFoundError:
-        print(f"adb not found: {args.adb}. Install Android platform-tools or use --adb.", file=sys.stderr)
+    except FileNotFoundError as error:
+        print(f"Required executable or file not found: {error}. "
+              "Install Android platform-tools or use --adb.", file=sys.stderr)
+    except (ValueError, OSError) as error:
+        print(f"M0_APK=FAIL: {error}", file=sys.stderr)
     except subprocess.CalledProcessError as error:
         print(f"Command failed ({error.returncode}): {' '.join(error.cmd)}",
               file=sys.stderr)

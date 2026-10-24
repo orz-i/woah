@@ -59,6 +59,58 @@ adb shell am start -n art.gaoge.dance/art.gaoge.dance.engine.comparison.Comparis
   --el offset_us 3000000
 ```
 
+## 启动报错 Error type 3：先检查 APK，而不是反复改 am start 参数
+
+`ComparisonM0Activity` 的完整组件是
+`art.gaoge.dance/art.gaoge.dance.engine.comparison.ComparisonM0Activity`。
+在 ADB 输出中简写为 `art.gaoge.dance/.engine.comparison.ComparisonM0Activity` 也是正常的；**Error type 3 不是音乐偏移符号错误**。
+
+1. 在 Windows 构建机器从仓库根目录检查分支，并同步最新修复：
+
+   ```powershell
+   git fetch origin
+   git switch feat/dance-comparison-m0
+   git pull --ff-only
+   git rev-parse --short HEAD
+   ```
+
+2. **确保使用该分支重新生成 Debug APK**，而不是安装旧路径或 Release APK：
+
+   ```powershell
+   cd mobile/app
+   flutter pub get
+   flutter build apk --debug
+   cd ../..
+   ```
+
+3. 用纯 Python 检查 APK 是否**同时包含 Manifest Activity 名称和 DEX 类**（不会操作手机数据）：
+
+   ```powershell
+   python tools/comparison/verify_m0_apk.py --apk mobile/app/build/app/outputs/flutter-apk/app-debug.apk
+   ```
+
+   - `M0_APK=FAIL`：本机 APK 本身缺少入口。首先确认 Git 分支与 Debug 构建；进一步查看 Flutter Gradle 的 Manifest merger，而不是安装这个包。
+   - `M0_APK=HAS_MANIFEST_NAME_AND_DEX_CLASS`：这是静态必要条件，**不代表真机已启动成功**。
+
+4. 检查手机上**目前安装的** APK，而非仅查看源码（需允许 ADB 从设备读取已安装 APK）：
+
+   ```powershell
+   python tools/comparison/verify_m0_apk.py --inspect-device
+   ```
+
+   - `M0_DEVICE=FAIL`：已安装包不含验证 Activity 或未安装目标应用，通常是旧 APK、Release APK 或不同构建；先备份所需应用数据，再考虑是否替换。
+   - 如果不能 `adb pull` 设备的 `base.apk`，报告会明确指出读取失败，不推断设备一定缺少 Activity。
+
+5. 若本地 APK 确认正确，可明确要求安装并启动（`install -r` 尝试**保留应用数据**，不会卸载）：
+
+   ```powershell
+   python tools/comparison/verify_m0_apk.py --install --inspect-device --launch
+   ```
+
+   若提示 `INSTALL_FAILED_UPDATE_INCOMPATIBLE`，旧安装与 Debug 的签名可能不同。**不要直接执行 `adb uninstall`**，它会删除原应用数据；优先使用测试设备，或先完成备份/确认迁移方案。
+
+诊断脚本根据 **编译后的 APK** 检查，而不是只查 `src/debug/AndroidManifest.xml`。它检查二进制 Manifest 中的类名以及 DEX 类型描述符；这是快速打包预检，不取代 Android 官方 `aapt` 的结构化 Manifest 检验与真实启动。静态检查通过但 `am start` 仍报错时，请保留脚本的 `LOCAL_APK`、`INSTALLED_APK`、`INSTALL`、`M0_LAUNCH` 输出以便定位。
+
 ## M0 设备实验矩阵
 
 使用原生按钮而非 Flutter 定时器同步两侧，轮流检查：
