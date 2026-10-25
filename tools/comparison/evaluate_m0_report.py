@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 
 
@@ -20,17 +21,23 @@ def evaluate(report: dict, *, expected_offset_us: int | None = None,
     maximum = report.get("maxAbsMediaErrorUs")
     # Heuristic engineering thresholds for equal-frame-rate CFR: deliberately
     # report a candidate only, never display-PASS.
-    tolerance_us = int(1_000_000 / fps + 0.5)
+    tolerance_us = math.ceil(1_000_000 / fps)
     measured = (pairs >= min_pairs and
                 isinstance(p95, (int, float)) and
                 isinstance(maximum, (int, float)))
-    within_target = (measured and p95 <= tolerance_us and
-                     maximum <= 2 * tolerance_us)
+    usable = report.get("usableTeacherFrames")
+    coverage = pairs / usable if isinstance(usable, int) and usable > 0 else None
+    within_target = (report.get("sourceError") is None and
+                     (coverage is None or coverage >= 0.8) and measured and
+                     p95 <= tolerance_us and maximum <= 2 * tolerance_us)
     return {
         "status": "PLANNED_METADATA_WITHIN_TARGET" if within_target
                   else "INSUFFICIENT_OR_OUTSIDE_PLANNED_METADATA",
         "actualDisplayAcceptance": "NOT_PROVEN",
         "plannedFramePairs": pairs,
+        "plannedPairCoverage": coverage,
+        "observationDurationUs": report.get("observationDurationUs"),
+        "windows": report.get("windows", []),
         "minRequiredPairs": min_pairs,
         "p95AbsMediaErrorUs": p95,
         "maxAbsMediaErrorUs": maximum,

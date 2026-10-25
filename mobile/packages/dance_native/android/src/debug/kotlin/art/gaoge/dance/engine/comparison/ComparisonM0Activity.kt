@@ -253,6 +253,12 @@ class ComparisonM0Activity : Activity() {
             setMediaItem(MediaItem.fromUri(source))
             setSeekParameters(SeekParameters.EXACT)
             setVideoSurfaceView(surface)
+            // Muting alone still decodes a second audio track and clock.
+            // Render teacher audio only; actual display sync remains measured.
+            if (side == ComparisonFrameProbe.Side.LEARNER) {
+                trackSelectionParameters = trackSelectionParameters.buildUpon()
+                    .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true).build()
+            }
             volume = if (side == ComparisonFrameProbe.Side.TEACHER) 1f else 0f
             setPlaybackSpeed(playbackSpeed)
             setVideoFrameMetadataListener(VideoFrameMetadataListener {
@@ -373,6 +379,7 @@ class ComparisonM0Activity : Activity() {
             teacherPlayer?.pause()
             learnerPlayer?.pause()
         } else {
+            frameEpoch = frameProbe.startNewEpoch()
             if (currentCompareUs() >= (overlap!!.durationUs - 150_000L)) {
                 seekCompareUs(0)
             }
@@ -469,6 +476,25 @@ class ComparisonM0Activity : Activity() {
                 put("bufferingEvents", bufferingEvents)
                 put("seekEvents", seekEvents)
                 put("processPssKb", Debug.getPss())
+                put("learnerAudioDisabled", true)
+                put("teacherVideoWidth", teacherPlayer?.videoFormat?.width ?: -1)
+                put("teacherVideoHeight", teacherPlayer?.videoFormat?.height ?: -1)
+                put("learnerVideoWidth", learnerPlayer?.videoFormat?.width ?: -1)
+                put("learnerVideoHeight", learnerPlayer?.videoFormat?.height ?: -1)
+                put("usableTeacherFrames", stats.usableTeacherFrames)
+                put("usableLearnerFrames", stats.usableLearnerFrames)
+                put("observationDurationUs", stats.observationDurationUs)
+                put("windows", JSONArray().apply {
+                    stats.windows.forEach { sample ->
+                        put(JSONObject().apply {
+                            put("startUs", sample.startUs)
+                            put("pairs", sample.pairs)
+                            put("p95AbsMediaErrorUs", sample.p95AbsMediaErrorUs)
+                            put("maxAbsMediaErrorUs", sample.maxAbsMediaErrorUs)
+                            put("meanSignedMediaErrorUs", sample.meanSignedMediaErrorUs)
+                        })
+                    }
+                })
                 put("evidenceType", "pre_render_planned_release_metadata_only")
                 put("teacherFrameEvents", stats.teacherFrames)
                 put("learnerFrameEvents", stats.learnerFrames)

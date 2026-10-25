@@ -12,10 +12,10 @@
 
 ## 生成带真值的两份视频
 
-需要 FFmpeg（带 `libx264`、`drawtext`）、`ffprobe` 和 Python 3：
+需要 FFmpeg（带 `libx264`、AAC 编码器）、`ffprobe` 和 Python 3.10+。帧号/源 PTS 使用仓库内置的 5×7 像素字形流式绘制，无系统字体、Fontconfig 或额外 Python 依赖：
 
 ```sh
-python3 tools/comparison/generate_m0_fixtures.py
+uv run python tools/comparison/generate_m0_fixtures.py
 ```
 
 输出（不进入 Git）：
@@ -28,7 +28,9 @@ testdata/comparison/generated/manifest.json
 
 默认老师的视频从 2s 位置出现音乐，自己从 5s 出现完全相同的伴奏，因此期望偏移 **+3,000,000µs**。两源视频从 0s 开始，印有自身帧号及源 PTS；请勿把同一音乐的开始时间当作视频 0s。
 
-可用 `--fps 24/30/60`、`--size 1280x720` 和 `--offset-ms -1000` 生成测试变体；负偏移须保证 `teacher-lead-ms + offset-ms >= 0`。每次生成可检查 `manifest.json` 里的 sha256、实际流编码和预期偏移。
+每帧还有 20 位源帧号条码，便于对录屏进行像素解码；`MUSIC` 显示相对音乐起点。生成在临时目录完成，两路编码/探测均成功后才发布 MP4 和 manifest，失败保留上一套完整产物。
+
+可用 `--music-seconds 120` 生成长时漂移样片；默认仍为 10s 音乐。可用 `--fps 24/30/60`、`--size 1280x720` 和 `--offset-ms -1000` 生成测试变体；负偏移须保证 `teacher-lead-ms + offset-ms >= 0`。每次生成可检查 `manifest.json` 里的 sha256、实际流编码和预期偏移。
 
 ## 构建与打开
 
@@ -50,7 +52,9 @@ python3 tools/comparison/run_m0_android.py \
   --offset-us 3000000
 ```
 
-脚本将测试素材放进设备的 `Movies/WoahM0`，启动仅在 Debug 存在的 Activity。**需要你在系统文件选择器中手动选一次老师/自己两段视频**。也可以不传两个素材参数，用手机相册选择真实的视频（不会自动上传原始媒体）。
+自动化合成测试可添加 `--load-fixtures`：将两份文件推入本应用专属存储，重启此应用并通过现有 Debug URI 参数直接加载，无需手机选片；不卸载或清数据。此选项仅用于明确提供的测试素材。
+
+脚本默认将测试素材放进设备的 `Movies/WoahM0`，启动仅在 Debug 存在的 Activity。**需要你在系统文件选择器中手动选一次老师/自己两段视频**。也可以不传两个素材参数，用手机相册选择真实的视频（不会自动上传原始媒体）。
 
 不需要安装脚本也可以：
 
@@ -142,15 +146,16 @@ python3 tools/comparison/evaluate_m0_report.py m0-latest.json \
 
 - `p95AbsMediaErrorUs` 来自 **两路即将渲染帧** 的源 PTS，按 Media3 的 **计划** releaseTimeNs 配对，并减去预期音乐偏移。它**不是**物理屏幕实际呈现时间，也不代表音频匹配算法的误差。
 - `p95PlannedReleaseSkewUs` 是两路计划 release time 之间的差值，不是表面像素的显示时间差。样本少时不得宣称验收成功。
+- 新报告包含 `usableTeacherFrames` / 配对覆盖率、观测时长和最多 120 个 5 秒统计窗口；少于 80% 配对覆盖率不得判为元数据达标。30fps 整数微秒量化容许单帧 33,334µs。自己侧禁用音频轨道而不只将音量设为 0。
 - 报告自动剔除进入探针的首约 1 秒，并在拖动、变速、修改偏移时重开观测 epoch。它不能跨不同操作拼接成一组假稳态结果。
 - 对 M0 的真实显示验收，必须同时收集带时间码的设备屏幕录制；录屏可能掉帧，有疑问时补高帧率外部拍屏。报告还需附上设备型号、Android 版本、视频来源和运行速度。
 - 初始工程目标：30fps CFR 稳态 P95 ≤1帧、最大 ≤2帧，无累积漂移；这只是一条 **待实测** 判据。不同 fps / VFR 按各自源帧 PTS 报告，不套用统一 33.4ms。
 
 若双 ExoPlayer 在设备验证中无法达到真实可见同步门槛，不要靠更密集的 seek 勉强通过；进入双 MediaCodec + 单 GL 合成方案的技术评估。
 
-## 当前 Mac Pi 的构建限制
+## 构建环境与验证范围
 
-本轮 `flutter doctor -v` 已确认 Mac Pi 上 Flutter/Dart 可用，但 **Android SDK、JDK、adb 均未安装或不可发现**，没有可连接的 Android 真机。因此不能在这里证明 `compileDebugKotlin`、APK 或双视频真正播放成功；不应把本地脚本测试当成 Android 构建通过。
+历史 Mac Pi 环境无法进行 Android 真机验收。本次已在 Windows 本机完成比较功能定向 Kotlin 测试及 Debug/Release Kotlin 编译，使用本机 Flutter 构建 Debug APK，并通过 ADB 在 OnePlus 8T 采集。macOS 与 WSL Linux 的 Python 测试只代表工具契约回归；真实 MP4 编码、FFprobe 与完整解码在 Windows FFmpeg 9.0.1 上验证。具体设备结论参见本轮验收报告。
 
 用户现有 Windows Android 构建环境可复用下面的命令（不要执行无关的全量 Release QA）：
 
@@ -181,3 +186,16 @@ cd mobile/app/android
 单元测试覆盖偏移正负号、非零源有效范围、无公共区间、跨 epoch 丢弃旧帧、按计划显示时间配对。这些只能验证代码逻辑，**不代替真机 codec 或屏幕像素验证**。
 
 当前 M0 完成标准：Android Debug 构建通过；真机有完整播放/seek/变速/后台/多次打开证据；计划帧元数据与屏幕证据支持或拒绝双 ExoPlayer；正式选定 M1/M2 后端。真实视频自动音频匹配、导出和 iOS 都不属于 M0。
+
+## 连续屏幕证据分析（2026-10-25）
+
+设备 `screenrecord --help` 本身若返回 139，不应归咎于播放器。可用官方 scrcpy 的便携版本代替，保持手机屏幕开启，关闭电脑播放和音频转发：
+
+```sh
+scrcpy --no-control --no-playback --no-audio --max-fps=60 --time-limit=30 --record=m0.mp4
+python tools/comparison/analyze_m0_screenrecord.py m0.mp4 \
+  --teacher-rect 0,307,1080,607 --learner-rect 0,1083,1080,607 \
+  --out m0-screen.json
+```
+
+矩形为捕获画面中视频内容的 `x,y,width,height`，示例仅适用于本次 OnePlus 8T 竖屏布局；其他设备须从截图核对，不能照抄。分析默认保留老师源时间 [1,11)s；长片须指定 `--end-source-seconds`。`--samples-out` 可保存全部解码帧号。它使用源帧码统计可见误差，输出每 5 秒窗口，永不将其写成物理面板扫描证据。编码器/合成器自身可能丢帧，结合未录屏采样和元数据对照。

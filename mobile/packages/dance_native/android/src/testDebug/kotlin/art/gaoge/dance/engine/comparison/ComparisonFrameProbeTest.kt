@@ -36,6 +36,25 @@ class ComparisonFrameProbeTest {
         assertEquals(0, probe.snapshot(0).pairedFrames)
     }
 
+    @Test fun timeWindowsExposeDriftAndKeepExportBounded() {
+        val probe = ComparisonFrameProbe()
+        val epoch = probe.startNewEpoch()
+        for (i in 0 until 3600) {
+            val ns = 1_000_000_000L + i * 1_000_000_000L
+            probe.add(ComparisonFrameProbe.Side.TEACHER, epoch, i * 1_000_000L, ns)
+            probe.add(ComparisonFrameProbe.Side.LEARNER, epoch,
+                i * 1_000_000L + 3_000_000L + i * 100L, ns)
+        }
+        val report = probe.snapshot(3_000_000L)
+        assertEquals(120, report.windows.size)
+        assertEquals(3599, report.usableTeacherFrames)
+        assertEquals(3_598_000_000L, report.observationDurationUs)
+        assertEquals(0L, report.windows.first().startUs)
+        assertEquals(5, report.windows.first().pairs)
+        assertEquals(500L, report.windows.first().maxAbsMediaErrorUs)
+        assertEquals(60_000L, report.windows.last().maxAbsMediaErrorUs)
+    }
+
     @Test fun epochChangeRejectsOldObservations() {
         val probe = ComparisonFrameProbe()
         val old = probe.startNewEpoch()

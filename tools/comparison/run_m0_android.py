@@ -12,6 +12,7 @@ from verify_m0_apk import apk_contents
 PKG = "art.gaoge.dance"
 ACTIVITY = PKG + "/" + PKG + ".engine.comparison.ComparisonM0Activity"
 REMOTE = "/sdcard/Movies/WoahM0"
+APP_FIXTURES = f"/sdcard/Android/data/{PKG}/files/comparison-fixtures"
 REPORT = f"/sdcard/Android/data/{PKG}/files/Documents/comparison-m0/latest.json"
 
 
@@ -20,12 +21,16 @@ def main() -> int:
     parser.add_argument("--apk", type=Path, help="Already-built Android debug APK")
     parser.add_argument("--teacher", type=Path, help="Synthetic teacher.mp4 (optional)")
     parser.add_argument("--learner", type=Path, help="Synthetic learner.mp4 (optional)")
+    parser.add_argument("--load-fixtures", action="store_true",
+                        help="Load synthetic files from app storage without the picker; restarts the app")
     parser.add_argument("--offset-us", type=int, default=3_000_000)
     parser.add_argument("--adb", default="adb", help="adb binary or absolute path")
     parser.add_argument("--serial", help="adb device serial, required if multiple")
     parser.add_argument("--pull-report", type=Path,
                         help="Only retrieve the last saved report; do not launch")
     args = parser.parse_args()
+    if args.load_fixtures and (args.teacher is None or args.learner is None):
+        parser.error("--load-fixtures requires both synthetic source files")
 
     def adb(*cmd: str, check: bool = True) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
@@ -57,14 +62,18 @@ def main() -> int:
         if (args.teacher is None) != (args.learner is None):
             parser.error("Provide both synthetic fixtures, or neither.")
 
+        launch_extras: list[str] = []
         if args.teacher is not None and args.learner is not None:
             for file in (args.teacher, args.learner):
                 if not file.is_file():
                     parser.error(f"Fixture not found: {file}")
-            adb("shell", "mkdir", "-p", REMOTE)
+            remote = APP_FIXTURES if args.load_fixtures else REMOTE
+            adb("shell", "mkdir", "-p", remote)
             for role, file in (("teacher", args.teacher), ("learner", args.learner)):
-                dest = f"{REMOTE}/{role}.mp4"
+                dest = f"{remote}/{role}.mp4"
                 print(adb("push", str(file), dest).stdout.strip())
+                if args.load_fixtures:
+                    launch_extras.extend(["--es", f"{role}_uri", f"file://{dest}"])
                 # Best-effort scan for visibility in system document picker.
                 adb("shell", "am", "broadcast", "-a",
                     "android.intent.action.MEDIA_SCANNER_SCAN_FILE",
@@ -72,8 +81,9 @@ def main() -> int:
 
         print("Device:", adb("shell", "getprop", "ro.product.model").stdout.strip())
         print("API:", adb("shell", "getprop", "ro.build.version.sdk").stdout.strip())
-        result = adb("shell", "am", "start", "-n", ACTIVITY,
-                     "--el", "offset_us", str(args.offset_us))
+        result = adb("shell", "am", "start", *(["-S"] if args.load_fixtures else []),
+                     "-n", ACTIVITY, "--el", "offset_us", str(args.offset_us),
+                     *launch_extras)
         print(result.stdout)
         print(result.stderr)
         if ("Error type 3" in result.stdout or "does not exist" in result.stdout
@@ -83,8 +93,11 @@ def main() -> int:
                   "python tools/comparison/verify_m0_apk.py --inspect-device",
                   file=sys.stderr)
             return 3
-        print("In the M0 screen pick Teacher and Learner via system picker.")
-        print("Use Movies/WoahM0 for synthetic files (or browse your own videos).")
+        if args.load_fixtures:
+            print("Synthetic pair loaded directly from app-specific storage.")
+        else:
+            print("In the M0 screen pick Teacher and Learner via system picker.")
+            print("Use Movies/WoahM0 for synthetic files (or browse your own videos).")
         print("After a playback run tap 保存诊断, then execute:")
         print(f"  python tools/comparison/run_m0_android.py --pull-report m0-latest.json")
         return 0

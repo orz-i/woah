@@ -21,7 +21,16 @@ internal class ComparisonFrameProbe {
         val teacherPtsUs: Long,
         val learnerPtsUs: Long,
         val signedMediaErrorUs: Long,
-        val plannedReleaseSkewUs: Long
+        val plannedReleaseSkewUs: Long,
+        val teacherPlannedReleaseNs: Long = 0L
+    )
+
+    data class WindowSummary(
+        val startUs: Long,
+        val pairs: Int,
+        val p95AbsMediaErrorUs: Long,
+        val maxAbsMediaErrorUs: Long,
+        val meanSignedMediaErrorUs: Double
     )
 
     data class Summary(
@@ -33,7 +42,11 @@ internal class ComparisonFrameProbe {
         val maxAbsMediaErrorUs: Long?,
         val meanSignedMediaErrorUs: Double?,
         val p95PlannedReleaseSkewUs: Long?,
-        val examples: List<PairSample>
+        val examples: List<PairSample>,
+        val usableTeacherFrames: Int = 0,
+        val usableLearnerFrames: Int = 0,
+        val observationDurationUs: Long = 0L,
+        val windows: List<WindowSummary> = emptyList()
     )
 
     private val epoch = AtomicLong(0)
@@ -91,7 +104,8 @@ internal class ComparisonFrameProbe {
                     teacherPtsUs = t.sourcePtsUs,
                     learnerPtsUs = l.sourcePtsUs,
                     signedMediaErrorUs = l.sourcePtsUs - t.sourcePtsUs - offsetUs,
-                    plannedReleaseSkewUs = skewNs / 1000L
+                    plannedReleaseSkewUs = skewNs / 1000L,
+                    teacherPlannedReleaseNs = t.plannedReleaseNs
                 ))
                 nextLearnerIndex++ // one-to-one
             }
@@ -111,7 +125,21 @@ internal class ComparisonFrameProbe {
             maxAbsMediaErrorUs = absoluteErrors.last(),
             meanSignedMediaErrorUs = matches.map { it.signedMediaErrorUs.toDouble() }.average(),
             p95PlannedReleaseSkewUs = percentile(skew, 0.95),
-            examples = matches.takeLast(24)
+            examples = matches.takeLast(24),
+            usableTeacherFrames = teacherUsable.size,
+            usableLearnerFrames = learnerUsable.size,
+            observationDurationUs = (minOf(ts.last().plannedReleaseNs,
+                ls.last().plannedReleaseNs) - readyNs).coerceAtLeast(0L) / 1000L,
+            // Five-second wall-clock windows expose drift hidden by a global
+            // percentile or the last 24 examples; export at most ten minutes.
+            windows = matches.groupBy {
+                (it.teacherPlannedReleaseNs - readyNs) / 5_000_000_000L
+            }.entries.take(120).map { (window, samples) ->
+                val errors = samples.map { abs(it.signedMediaErrorUs) }.sorted()
+                WindowSummary(window * 5_000_000L, samples.size,
+                    percentile(errors, 0.95), errors.last(),
+                    samples.map { it.signedMediaErrorUs.toDouble() }.average())
+            }
         )
     }
 
