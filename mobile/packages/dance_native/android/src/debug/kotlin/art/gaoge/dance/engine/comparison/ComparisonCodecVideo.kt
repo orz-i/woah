@@ -137,7 +137,10 @@ internal class ComparisonCodecVideo(
         val deadline = System.nanoTime() + 2_000_000_000L
         while (true) {
             checkCurrent()
-            feed()
+            // Keep the codec's existing input pool fed. One packet per output
+            // poll leaves B-frame/reorder pipelines idle at 1080p60. Codec-owned
+            // buffers remain the bound; no decoded-frame list is accumulated.
+            repeat(8) { feed() }
             val index = decoder.dequeueOutputBuffer(bufferInfo, 1_000L)
             if (index >= 0) {
                 val eos = bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0
