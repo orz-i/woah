@@ -1,6 +1,6 @@
 # Woah · M0 双视频音乐同步播放验证（Android Debug）
 
-**状态：验证工具；不属于生产功能。** 2026-10-25：双 ExoPlayer 协调实现未通过 M0，保留 [历史拒绝报告](comparison-m0-device-2026-10-25.md)。共同音频时钟＋双 MediaCodec＋单 GL 替代样机已通过本设备的合成素材 M0 矩阵，设备范围与版本见 [最新真机验收报告](comparison-m0-gl-device-2026-10-25.md)。 本阶段采用恒定音乐时间偏移（手动输入），不能自动识别共同歌曲、不导出视频，也不对动作打分。
+**状态：验证工具；不属于生产功能。** 2026-10-25：双 ExoPlayer 协调实现未通过 M0，保留 [历史拒绝报告](comparison-m0-device-2026-10-25.md)。共同音频时钟＋双 MediaCodec＋单 GL 替代样机已通过本设备的合成素材 M0 矩阵，设备范围与版本见 [合成素材真机报告](comparison-m0-gl-device-2026-10-25.md)。同日已完成 [手动近似音乐锚点及原生不同帧率原片调度验收](comparison-m0-manual-native-device-2026-10-25.md)，修复 4K HEVC 带重排帧 seek 的未来同步点落地问题；长时真实原片仍因缺少素材待验收。 本阶段采用恒定音乐时间偏移（手动输入），不能自动识别共同歌曲、不导出视频，也不对动作打分。
 
 ## 隔离边界
 
@@ -77,6 +77,12 @@ adb shell am broadcast -a art.gaoge.dance.M0_GL_TEST -p art.gaoge.dance --es act
 例如老师 `0`、学生 `2` 得到 `offsetUs=+2000000`。这是输入值的精确表示，不代表听辨达到微秒精度；诊断记录 `USER_ESTIMATE_NOT_INDEPENDENTLY_MEASURED`。锚点必须在两路视频内部，最大偏移 ±300 秒；无效输入留在对话框内，不改变当前校准。
 
 校准仅随当前手机选片对保存在私有 `noBackupFilesDir`。冷启动可恢复；换任一路视频会清除锚点并归零偏移。±10/100ms 微调会保留新偏移，但将锚点标为未校准，需再次确认；显式测试素材和偏移参数不继承或覆盖手机原片校准。诊断包含手动源时间和偏移，不导出 URI、原文件名或自动匹配置信度。
+
+### 带重排帧的同步点 seek
+
+GL 解码器在 `SEEK_TO_PREVIOUS_SYNC` 之后检查实际 `sampleTime`。若同步点 PTS 晚于目标，有限次回退到更早的随机访问点，再向前解码到原目标；不放宽 `[PTS,nextPTS)` 覆盖或 SurfaceTexture 时间戳校验。报告分别记录 `teacherSyncSeekRetries` / `learnerSyncSeekRetries`。无有效前置同步点时明确报错，不把未来帧当作目标帧。
+
+该防护与 Android 的 [MediaExtractor seek 模式](https://developer.android.com/reference/android/media/MediaExtractor#SEEK_TO_PREVIOUS_SYNC) 和 [MediaCodec 流边界要求](https://developer.android.com/reference/android/media/MediaCodec#seeking) 一致：seek 后仍从同步样本送入解码器。
 
 ## 构建与打开
 
