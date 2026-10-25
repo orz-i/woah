@@ -83,3 +83,18 @@ final result: passed
 - 采集证据：`15-compact-teacher-dragged.xml`、`15-compact-learner-dragged.xml`、`15-compact-canceled.xml`；构建、安装、专项测试与静态检查日志均位于同一忽略的 session 目录。本次只验收该布局调整，沿用此前未变更部分的有效结果。
 
 final result: passed
+
+
+## 视频内选片与历史入口补充（2026-10-25）
+
+根据用户截图要求，移除顶部老师/学生选片栏；两个视频左上角的角色标签改为选片按钮。未选择时显示加号，已选择时显示下拉标记，可直接替换对应视频。交换操作迁到“更多操作 → 交换老师和学生”。顶部“项目”改为历史图标及“历史”，列表标题改为“对比历史”，复用原有保存和恢复。
+
+- 代码提交：`1e1807668d24a837d14a78c3bda39560e7760be6`，仍在 `feat/dance-comparison-m0`，未推送。
+- 同设备 1080×2400 / DPR 3：视频舞台由 1352px 增至 1544px（释放 64dp），控制台位置保留；两个选片按钮实测各 72×48dp。
+- 相关 Flutter 14 项通过，静态检查无问题。复用并扩展现有小屏测试，验证按钮位于各视频区域、老师/学生角色分发、历史恢复，以及菜单交换两次后偏移符号恢复；横屏、2 倍字体及手动校准既有回归通过。
+- Debug APK 安装至原 KB2000 / Android 14，272643732 bytes；本机与安装包 SHA256 一致：`0ed922d4a3b7d05277a03f1a0da1b773aab334b0280a12d91bfc229107f9f3bc`。
+- 真机分别点击两个视频内角色按钮，均打开 `com.android.documentsui/.picker.PickActivity`，通过系统返回取消；未选择新素材，原 +1.450s 校准及锚点保留。系统文件选择器需按目录层级返回，首个返回仅退到根目录时继续返回，直至 Woah；这不是应用保存失败。
+- 点击“历史”显示原有两条记录，选择当前记录后恢复对比；更多菜单可见交换操作。最终停在新版共同对比页，暂停于 0，1×。本进程采集日志未见 `E/flutter` 或 `FATAL EXCEPTION`。
+- 基准：`docs/session/comparison-ux-20261025/16-source-before.png`；最终：`16-main-final.png`；历史：`16-history-opened.png`。系统选片取消、历史恢复、菜单与数据检查 XML/JSON，以及构建/安装/测试日志均位于同一忽略的 session 目录。
+
+final result: passed

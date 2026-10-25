@@ -126,5 +126,28 @@
     "testCuesPersisted": false,
     "screenshot": "docs/session/comparison-ux-20261025/15-manual-compact-final.png",
     "result": "passed"
+  },
+  "embeddedSourceRevision": {
+    "codeCommit": "1e1807668d24a837d14a78c3bda39560e7760be6",
+    "apkSha256": "0ed922d4a3b7d05277a03f1a0da1b773aab334b0280a12d91bfc229107f9f3bc",
+    "apkBytes": 272643732,
+    "stageHeightPx": {
+      "before": 1352,
+      "after": 1544
+    },
+    "sourceButtonDp": {
+      "width": 72,
+      "height": 48
+    },
+    "topSourceBarRemoved": true,
+    "historyRenamed": true,
+    "swapInOverflow": true,
+    "testsPassed": 14,
+    "analyze": "passed",
+    "devicePickerOpenedForBothRoles": true,
+    "deviceHistoryRestored": true,
+    "savedCalibrationPreserved": true,
+    "screenshot": "docs/session/comparison-ux-20261025/16-main-final.png",
+    "result": "passed"
   }
 }

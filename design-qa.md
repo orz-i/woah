@@ -213,3 +213,22 @@ final result: passed
 - Code：db936a50fa5e23fcf0b4b72177e80bfa60c3a6d1。详细数据见 docs/comparison-ux-2026-10-25.md 的紧凑布局补充。
 
 final result: passed
+
+
+## 视频内选片与历史入口 — 2026-10-25
+
+- Source visual truth：用户附件“微信图片_20261025231922_7_328.jpg”，以及同状态的原设备完整截图 docs/session/comparison-ux-20261025/16-source-before.png。
+- Implementation：1e1807668d24a837d14a78c3bda39560e7760be6；docs/session/comparison-ux-20261025/16-main-final.png、16-history-opened.png。
+- Viewport/state：同一 KB2000，完整截图均 1080×2400 / DPR 3，逻辑 360×800；同一原片对、手动 +1.450s、暂停于 0。用户附件用于意图，不对其压缩尺寸作精确像素比较；全尺寸真机图无外框缩放。
+- Full-view evidence：调整前、最终对比页与历史列表置于同一比较输入，最终页另单独打开复核；视频舞台 1352→1544px，顶部独立选片栏移除，原控制台位置保留。
+- Focused checks：老师/学生视频角落按钮、历史图标与标题、更多菜单、历史记录恢复。全尺寸图中这些区域可读，无需额外裁切。
+- Typography：沿用 AppTheme 和现有原生字体，角色 12sp，历史延续导航文字层级；小屏和 2 倍字体回归无溢出。
+- Spacing/layout：按钮各 72×48dp，保留触控面积；两路按钮随竖屏上下或横屏左右的视频区域定位。移除重复角色/选片栏后，释放的 64dp 归还视频。
+- Colors/tokens：沿用石墨灰边框、深色半透明按钮与主题文字；未选加号和金色提示使用既有强调色。
+- Image quality：复用原视频，保持完整人物和源比例；源内自带播放器与黑边保留，未替换素材或生成图片。
+- Copy/content：顶部与列表使用“历史 / 对比历史”；角色标签兼任选片，交换动作迁至更多菜单。保存模型和保存重命名功能保持原有语义。
+- Findings/iterations：一次实现后无待修复的本次 P0/P1/P2；选片、历史、菜单与画布增高均符合明确调整目标，无扩展其他页面。沿用此前记录的源素材自带 UI 限制。
+- Validation：14 项相关测试、改动文件静态检查、Debug 构建/安装与哈希比对通过。真机两个角色入口打开系统选片器并取消返回，历史恢复成功，原校准/锚点/位置保持，日志未见应用异常。不扩展为全产品可访问性或多机型验收。
+- Implementation checklist：选片整合、顶部栏移除、历史重命名、交换迁移、专项回归、真机证据均完成。
+
+final result: passed
