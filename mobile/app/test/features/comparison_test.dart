@@ -460,7 +460,10 @@ void main() {
             ).copyWith(textScaler: TextScaler.linear(2)),
             child: child!,
           ),
-          home: ComparisonScreen(gateway: gateway),
+          home: ComparisonScreen(
+            gateway: gateway,
+            manualVideoFactory: (uri) => FakeCueVideo(uri, gateway.events),
+          ),
         ),
       );
       await tester.pump(const Duration(milliseconds: 400));
@@ -480,6 +483,36 @@ void main() {
         tester.getRect(find.byKey(const ValueKey('comparison-speed'))).bottom,
         lessThanOrEqualTo(640),
       );
+      await tester.tap(find.byKey(const ValueKey('comparison-calibration')));
+      await tester.pumpAndSettle();
+      for (final size in [const Size(320, 640), const Size(800, 360)]) {
+        tester.view.physicalSize = size;
+        await tester.pumpAndSettle();
+        for (var role = 0; role < 2; role++) {
+          final controls = tester.getRect(
+            find.byKey(ValueKey('comparison-manual-controls-$role')),
+          );
+          final slider = tester.getRect(
+            find.byKey(ValueKey('comparison-manual-seek-$role')),
+          );
+          expect(controls.height, 48);
+          expect(slider.height, greaterThanOrEqualTo(48));
+          expect(slider.width, greaterThanOrEqualTo(120));
+          expect(controls.bottom, lessThanOrEqualTo(size.height));
+          for (final label in [
+            role == 0 ? '播放老师' : '播放学生',
+            role == 0 ? '老师后退0.1秒' : '学生后退0.1秒',
+            role == 0 ? '老师前进0.1秒' : '学生前进0.1秒',
+          ]) {
+            final target = tester.getSize(find.byTooltip(label));
+            expect(target.width, greaterThanOrEqualTo(48));
+            expect(target.height, greaterThanOrEqualTo(48));
+          }
+        }
+        expect(tester.takeException(), isNull);
+      }
+      await tester.tap(find.text('取消'));
+      await tester.pumpAndSettle();
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
     },
@@ -512,6 +545,7 @@ void main() {
       expect(find.textContaining('候选'), findsNothing);
       await tester.tap(find.byKey(const ValueKey('comparison-calibration')));
       await tester.pumpAndSettle();
+      expect(find.textContaining('分别播放或拖动'), findsNothing);
       expect(find.byKey(const ValueKey('comparison-seek')), findsNothing);
       expect(find.byKey(const ValueKey('comparison-play')), findsNothing);
       expect(

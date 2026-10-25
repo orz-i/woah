@@ -29,18 +29,17 @@ class ComparisonManualView extends StatelessWidget {
         ];
         return Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              child: Text(
-                error ?? session.error ?? '分别播放或拖动到同一歌词、鼓点，再完成校准。',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: error != null || session.error != null
-                      ? AppTheme.error
-                      : AppTheme.flowTextSecondary,
+            if (error != null || session.error != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                child: Text(
+                  error ?? session.error!,
+                  style: const TextStyle(fontSize: 12, color: AppTheme.error),
                 ),
               ),
-            ),
             Expanded(
               child: bounds.maxWidth > bounds.maxHeight
                   ? Row(children: panes)
@@ -111,89 +110,103 @@ class ComparisonManualView extends StatelessWidget {
                 Positioned(
                   top: 6,
                   left: 10,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+                  right: 10,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _badge(Text(label, style: const TextStyle(fontSize: 12))),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.topRight,
+                          child: _badge(
+                            Text(
+                              '${comparisonTime(value)} / ${comparisonTime(duration)}',
+                              maxLines: 2,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontFeatures: [FontFeature.tabularFigures()],
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                      child: Text(label, style: const TextStyle(fontSize: 12)),
-                    ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
           ColoredBox(
+            key: ValueKey('comparison-manual-controls-$role'),
             color: AppTheme.flowSurface,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    IconButton(
-                      key: ValueKey('comparison-manual-play-$role'),
-                      tooltip: (video.value.isPlaying ? '暂停' : '播放') + label,
-                      onPressed: session.ready && !saving
-                          ? () => session.toggle(role)
-                          : null,
-                      icon: Icon(
-                        video.value.isPlaying
-                            ? Icons.pause_rounded
-                            : Icons.play_arrow_rounded,
+                IconButton(
+                  key: ValueKey('comparison-manual-play-$role'),
+                  tooltip: (video.value.isPlaying ? '暂停' : '播放') + label,
+                  onPressed: session.ready && !saving
+                      ? () => session.toggle(role)
+                      : null,
+                  icon: Icon(
+                    video.value.isPlaying
+                        ? Icons.pause_rounded
+                        : Icons.play_arrow_rounded,
+                    size: 22,
+                  ),
+                ),
+                Expanded(
+                  child: SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      trackHeight: 2,
+                      thumbShape: const RoundSliderThumbShape(
+                        enabledThumbRadius: 6,
+                      ),
+                      overlayShape: const RoundSliderOverlayShape(
+                        overlayRadius: 20,
                       ),
                     ),
-                    Expanded(
-                      child: Text(
-                        '${comparisonTime(value)} / ${comparisonTime(duration)}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontFeatures: [FontFeature.tabularFigures()],
+                    child: Semantics(
+                      label: '$label源视频进度',
+                      child: SizedBox(
+                        height: 48,
+                        child: Slider(
+                          key: ValueKey('comparison-manual-seek-$role'),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          min: 0,
+                          max: math.max(1, duration - 1000).toDouble(),
+                          value: value
+                              .clamp(0, math.max(1, duration - 1000))
+                              .toDouble(),
+                          semanticFormatterCallback: (v) =>
+                              comparisonTime(v.round()),
+                          onChangeStart: session.ready && !saving
+                              ? (_) => unawaited(session.pause())
+                              : null,
+                          onChanged: session.ready && !saving
+                              ? (v) => session.scrub(role, v.round())
+                              : null,
+                          onChangeEnd: session.ready && !saving
+                              ? (v) => session.seek(role, v.round())
+                              : null,
                         ),
                       ),
                     ),
-                    IconButton(
-                      tooltip: '$label后退0.1秒',
-                      onPressed: session.ready && !saving
-                          ? () => session.seek(role, value - 100000)
-                          : null,
-                      icon: const Icon(Icons.chevron_left, size: 22),
-                    ),
-                    IconButton(
-                      tooltip: '$label前进0.1秒',
-                      onPressed: session.ready && !saving
-                          ? () => session.seek(role, value + 100000)
-                          : null,
-                      icon: const Icon(Icons.chevron_right, size: 22),
-                    ),
-                  ],
-                ),
-                Semantics(
-                  label: '$label源视频进度',
-                  child: Slider(
-                    key: ValueKey('comparison-manual-seek-$role'),
-                    min: 0,
-                    max: math.max(1, duration - 1000).toDouble(),
-                    value: value
-                        .clamp(0, math.max(1, duration - 1000))
-                        .toDouble(),
-                    semanticFormatterCallback: (v) => comparisonTime(v.round()),
-                    onChangeStart: session.ready && !saving
-                        ? (_) => unawaited(session.pause())
-                        : null,
-                    onChanged: session.ready && !saving
-                        ? (v) => session.scrub(role, v.round())
-                        : null,
-                    onChangeEnd: session.ready && !saving
-                        ? (v) => session.seek(role, v.round())
-                        : null,
                   ),
+                ),
+                IconButton(
+                  tooltip: '$label后退0.1秒',
+                  onPressed: session.ready && !saving
+                      ? () => session.seek(role, value - 100000)
+                      : null,
+                  icon: const Icon(Icons.chevron_left, size: 22),
+                ),
+                IconButton(
+                  tooltip: '$label前进0.1秒',
+                  onPressed: session.ready && !saving
+                      ? () => session.seek(role, value + 100000)
+                      : null,
+                  icon: const Icon(Icons.chevron_right, size: 22),
                 ),
               ],
             ),
@@ -202,4 +215,15 @@ class ComparisonManualView extends StatelessWidget {
       ),
     );
   }
+
+  Widget _badge(Widget child) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: Colors.black54,
+      borderRadius: BorderRadius.circular(6),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: child,
+    ),
+  );
 }
