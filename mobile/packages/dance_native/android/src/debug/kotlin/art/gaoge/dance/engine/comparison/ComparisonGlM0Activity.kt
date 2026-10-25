@@ -1,6 +1,11 @@
 package art.gaoge.dance.engine.comparison
 
 import android.app.Activity
+import android.app.AlertDialog
+import android.text.Editable
+import android.text.InputType
+import android.text.TextWatcher
+import android.widget.EditText
 import android.content.Intent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -49,7 +54,7 @@ class ComparisonGlM0Activity : Activity() {
     companion object {
         private const val PICK_TEACHER=401
         private const val PICK_LEARNER=402
-        private const val MAX_OFFSET_US=300_000_000L
+        private const val MAX_OFFSET_US=ComparisonManualMusicAnchor.MAX_OFFSET_US
     }
     private var teacherUri: Uri?=null
     private var learnerUri: Uri?=null
@@ -65,6 +70,8 @@ class ComparisonGlM0Activity : Activity() {
     private lateinit var progressBar: SeekBar
     private lateinit var toggleButton: Button
     private lateinit var speedButton: Button
+    private lateinit var anchorButton: Button
+    private var manualAnchor: ComparisonManualMusicAnchor?=null
     private lateinit var choreographer: Choreographer
     private val handler=Handler(Looper.getMainLooper())
     private var session=0L
@@ -126,8 +133,24 @@ class ComparisonGlM0Activity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        val explicitPair=intent.hasExtra("teacher_uri") || intent.hasExtra("learner_uri")
+        val remembered=rememberedSources()
         offsetUs=(savedInstanceState?.getLong("offset_us")
-            ?: intent.getLongExtra("offset_us",0)).coerceIn(-MAX_OFFSET_US,MAX_OFFSET_US)
+            ?: if (intent.hasExtra("offset_us")) intent.getLongExtra("offset_us",0)
+            else if (explicitPair) 0L else remembered.optLong("manual_offset_us",0L))
+            .coerceIn(-MAX_OFFSET_US,MAX_OFFSET_US)
+        manualAnchor=runCatching {
+            when {
+                savedInstanceState?.containsKey("anchor_teacher_us")==true ->
+                    ComparisonManualMusicAnchor(savedInstanceState.getLong("anchor_teacher_us"),
+                        savedInstanceState.getLong("anchor_learner_us"))
+                savedInstanceState==null && !explicitPair && !intent.hasExtra("offset_us") ->
+                    remembered.optJSONObject("manual_music_anchor")?.let {
+                        ComparisonManualMusicAnchor(it.getLong("teacherUs"),it.getLong("learnerUs"))
+                    }
+                else -> null
+            }?.takeIf { it.offsetUs==offsetUs }
+        }.getOrNull()
         // Persist only explicit system-picker choices. Fixture intents override
         // the pair as a whole and never replace the remembered phone selection.
         val sources = when {
@@ -139,7 +162,7 @@ class ComparisonGlM0Activity : Activity() {
                 put("teacher_uri",intent.getStringExtra("teacher_uri"))
                 put("learner_uri",intent.getStringExtra("learner_uri"))
             }
-            else -> rememberedSources()
+            else -> remembered
         }
         teacherUri=sources.optString("teacher_uri").takeIf { it.isNotBlank() }?.let(Uri::parse)
         learnerUri=sources.optString("learner_uri").takeIf { it.isNotBlank() }?.let(Uri::parse)
@@ -163,6 +186,10 @@ class ComparisonGlM0Activity : Activity() {
         outState.putString("learner_uri",learnerUri?.toString())
         outState.putLong("compare_us",currentCompareUs())
         outState.putFloat("speed",playbackSpeed)
+        manualAnchor?.let {
+            outState.putLong("anchor_teacher_us",it.teacherUs)
+            outState.putLong("anchor_learner_us",it.learnerUs)
+        }
         super.onSaveInstanceState(outState)
     }
 
@@ -254,7 +281,9 @@ class ComparisonGlM0Activity : Activity() {
             action("退 10 秒") { jump(-10_000_000L) },
             action("进 10 秒") { jump(10_000_000L) }
         ))
+        anchorButton=action("音乐锚点：未校准") { showMusicAnchorDialog() }
         parent.addView(actions(
+            anchorButton,
             action("偏移 -100ms") { changeOffset(-100_000L) },
             action("偏移 -10ms") { changeOffset(-10_000L) },
             action("偏移 +10ms") { changeOffset(10_000L) },
@@ -289,7 +318,9 @@ class ComparisonGlM0Activity : Activity() {
             else -> return
         }
         selectionRevision++
+        manualAnchor=null; offsetUs=0L
         val selected=rememberedSources().apply {
+            remove("manual_music_anchor"); put("manual_offset_us",0L)
             put(if (requestCode==PICK_TEACHER) "teacher_uri" else "learner_uri",uri.toString())
         }
         runCatching { writeAtomic(selectionFile(),selected) }.onFailure {
@@ -299,6 +330,91 @@ class ComparisonGlM0Activity : Activity() {
         // Invalidate the previous pairing even if the second source is missing.
         closePlayers()
         if (teacherUri != null && learnerUri != null) openPair()
+    }
+
+    private fun showMusicAnchorDialog() {
+        val a=teacherInfo ?: return
+        val b=learnerInfo ?: return
+        wantToPlay=false; audio?.pause(); audioClock.reset(); updateStatus()
+        val body=LinearLayout(this).apply {
+            orientation=LinearLayout.VERTICAL; setPadding(28,12,28,4)
+        }
+        body.addView(TextView(this).apply {
+            text="输入同一歌词、鼓点等音乐事件在各自视频中的源时间。秒或 分:秒，最多六位小数。正偏移表示学生更晚；人物动作早晚差异会保留。"
+        })
+        fun field(label: String,value: Long?): EditText {
+            body.addView(TextView(this).apply { text=label })
+            return EditText(this).apply {
+                inputType=InputType.TYPE_CLASS_TEXT
+                isSingleLine=true
+                hint="例如 5.125 或 1:05.125"
+                contentDescription=label
+                value?.let { setText(ComparisonManualMusicAnchor.formatTime(it)) }
+                body.addView(this)
+            }
+        }
+        val teacher=field("老师音乐事件源时间",manualAnchor?.teacherUs)
+        val learner=field("学生同一音乐事件源时间",manualAnchor?.learnerUs)
+        val preview=TextView(this).also { body.addView(it) }
+        fun candidate(): ComparisonManualMusicAnchor = ComparisonManualMusicAnchor(
+            ComparisonManualMusicAnchor.parseTime(teacher.text.toString()),
+            ComparisonManualMusicAnchor.parseTime(learner.text.toString())).also {
+                it.overlap(a.durationUs,b.durationUs)
+            }
+        fun showPreview() {
+            preview.text=runCatching {
+                val anchor=candidate()
+                "偏移 = 学生 − 老师 = %+.6fs；公共区间 %.3fs".format(Locale.US,
+                    anchor.offsetUs/1e6,anchor.overlap(a.durationUs,b.durationUs).durationUs/1e6)
+            }.getOrElse { "请填写两路视频内的音乐时间；尚未应用。" }
+        }
+        val watcher=object: TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?,start: Int,count: Int,after: Int)=Unit
+            override fun onTextChanged(s: CharSequence?,start: Int,before: Int,count: Int) { showPreview() }
+            override fun afterTextChanged(s: Editable?)=Unit
+        }
+        teacher.addTextChangedListener(watcher); learner.addTextChangedListener(watcher)
+        showPreview()
+        val dialog=AlertDialog.Builder(this).setTitle("手动确认共同音乐锚点")
+            .setView(body).setNegativeButton("取消",null)
+            .setNeutralButton("清除校准") { _,_ ->
+                manualAnchor=null; offsetUs=0L; rememberCalibration()
+                overlap=ComparisonTimeMapping.overlap(SourceInterval(0,a.durationUs),
+                    SourceInterval(0,b.durationUs),0L)
+                seekCompareUs(0); updateStatus()
+            }
+            .setPositiveButton("确认同一事件并应用",null).create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val anchor=runCatching { candidate() }.getOrElse {
+                    preview.text="时间无效：必须位于两路视频内，偏移不超过 300 秒，最多六位小数。"
+                    return@setOnClickListener
+                }
+                manualAnchor=anchor; offsetUs=anchor.offsetUs
+                overlap=anchor.overlap(a.durationUs,b.durationUs)
+                rememberCalibration()
+                seekCompareUs(anchor.teacherUs-overlap!!.teacherStartUs)
+                updateStatus(); dialog.dismiss()
+            }
+        }
+        dialog.show()
+    }
+
+    /** Bind the calibration to the exact remembered picker pair, never fixture intents. */
+    private fun rememberCalibration() {
+        val selected=rememberedSources()
+        if (selected.optString("teacher_uri")!=teacherUri?.toString() ||
+            selected.optString("learner_uri")!=learnerUri?.toString()) return
+        selected.put("manual_offset_us",offsetUs)
+        selected.remove("manual_music_anchor")
+        manualAnchor?.let { anchor ->
+            selected.put("manual_music_anchor",JSONObject().apply {
+                put("teacherUs",anchor.teacherUs); put("learnerUs",anchor.learnerUs)
+            })
+        }
+        runCatching { writeAtomic(selectionFile(),selected) }.onFailure {
+            Log.w("WoahComparisonGL","Could not remember manual calibration (${it.javaClass.simpleName})")
+        }
     }
 
     private fun selectionFile() = File(noBackupFilesDir,"comparison-m0-selection.json")
@@ -424,6 +540,11 @@ class ComparisonGlM0Activity : Activity() {
                     teacherInfo=a; learnerInfo=b
                     if (!a.hasAudio) fail(IllegalStateException("Teacher audio track required"))
                     else {
+                        if (manualAnchor!=null && runCatching {
+                            manualAnchor!!.overlap(a.durationUs,b.durationUs)
+                        }.isFailure) {
+                            manualAnchor=null; offsetUs=0L; rememberCalibration()
+                        }
                         overlap=ComparisonTimeMapping.overlap(
                             SourceInterval(0,a.durationUs),SourceInterval(0,b.durationUs),offsetUs)
                         if (overlap==null) fail(IllegalStateException("No common interval"))
@@ -520,6 +641,7 @@ class ComparisonGlM0Activity : Activity() {
     private fun changeOffset(deltaUs: Long) {
         val compare=currentCompareUs()
         offsetUs=(offsetUs+deltaUs).coerceIn(-MAX_OFFSET_US,MAX_OFFSET_US)
+        manualAnchor=null; rememberCalibration()
         val a=teacherInfo; val b=learnerInfo
         if (a!=null && b!=null) {
             overlap=ComparisonTimeMapping.overlap(SourceInterval(0,a.durationUs),
@@ -549,6 +671,7 @@ class ComparisonGlM0Activity : Activity() {
             (range?.durationUs ?: 0L)/1e6,teacherUs/1e6,(teacherUs+offsetUs)/1e6)
         if (!dragActive && range!=null) progressBar.progress=(1000L*current/range.durationUs).toInt()
         toggleButton.text=if (wantToPlay) "暂停" else "播放"
+        anchorButton.text=if (manualAnchor!=null) "音乐锚点：已确认" else "音乐锚点：未校准"
         if (wantToPlay && range!=null && current>=range.durationUs-30_000L) {
             wantToPlay=false; audio?.pause()
         }
@@ -564,6 +687,13 @@ class ComparisonGlM0Activity : Activity() {
             put("device","${Build.MANUFACTURER} ${Build.MODEL}")
             put("apiLevel",Build.VERSION.SDK_INT)
             put("offsetUs",offsetUs); put("speed",playbackSpeed)
+            put("musicCalibration",if (manualAnchor!=null) "HUMAN_ENTERED_MUSIC_ANCHOR" else "UNCALIBRATED_OFFSET")
+            put("manualMusicAnchor",manualAnchor?.let { anchor -> JSONObject().apply {
+                put("teacherUs",anchor.teacherUs); put("learnerUs",anchor.learnerUs)
+                put("offsetUs",anchor.offsetUs); put("method","manual_same_music_event_source_times")
+                put("timeAccuracy","USER_ESTIMATE_NOT_INDEPENDENTLY_MEASURED")
+                put("automaticMatching",false); put("motionAlignment",false)
+            } } ?: JSONObject.NULL)
             put("sourceError",sourceError ?: JSONObject.NULL)
             put("audioClockSource","single_media3_audio_position_bounded_monotonic_interpolation")
             put("audioSelected",audio?.audioFormat!=null)

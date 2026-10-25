@@ -70,6 +70,14 @@ adb shell am broadcast -a art.gaoge.dance.M0_GL_TEST -p art.gaoge.dance --es act
 
 录屏的页脚位置用 `--teacher-code-rect x,y,w,h --learner-code-rect x,y,w,h` 指定截图像素矩形，两个参数须一起提供。异帧率/VFR 添加 `--codes-only --samples-out samples.json`，再用 `evaluate_m0_frame_coverage.py` 传入对应源 MP4 与各自参考 fps。保留条码无效观测数量，不能把未识别帧当作通过。
 
+### 手动共同音乐锚点（GL Debug）
+
+点击「音乐锚点：未校准」，分别输入同一歌词、鼓点等音乐事件在老师和学生视频中的源时间。支持十进制秒或 `分:秒`，最多六位小数；输入后先显示 `学生 − 老师` 的偏移与公共区间，点击「确认同一事件并应用」才改变播放。应用后暂停在该锚点，不进行音乐特征搜索或人物动作匹配。
+
+例如老师 `0`、学生 `2` 得到 `offsetUs=+2000000`。这是输入值的精确表示，不代表听辨达到微秒精度；诊断记录 `USER_ESTIMATE_NOT_INDEPENDENTLY_MEASURED`。锚点必须在两路视频内部，最大偏移 ±300 秒；无效输入留在对话框内，不改变当前校准。
+
+校准仅随当前手机选片对保存在私有 `noBackupFilesDir`。冷启动可恢复；换任一路视频会清除锚点并归零偏移。±10/100ms 微调会保留新偏移，但将锚点标为未校准，需再次确认；显式测试素材和偏移参数不继承或覆盖手机原片校准。诊断包含手动源时间和偏移，不导出 URI、原文件名或自动匹配置信度。
+
 ## 构建与打开
 
 现有 Woah 应用 Debug 编译（不需要发布签名）：
