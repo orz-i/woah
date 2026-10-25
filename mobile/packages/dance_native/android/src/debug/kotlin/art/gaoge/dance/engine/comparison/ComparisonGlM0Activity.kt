@@ -82,6 +82,7 @@ class ComparisonGlM0Activity : Activity() {
     private var rendererStalls=0
     private var clockBacksteps=0
     private var maxClockBackstepUs=0L
+    private val audioClock=ComparisonAudioClock()
     private var closeFailures=0
     private val testReceiver=object: BroadcastReceiver() {
         override fun onReceive(context: Context,intent: Intent) {
@@ -99,7 +100,8 @@ class ComparisonGlM0Activity : Activity() {
             val range=overlap
             val player=audio
             if (range!=null && player!=null && videoReady && !renderStalled && player.isPlaying) {
-                var target=(player.currentPosition*1000L)
+                val sampleNs=System.nanoTime()
+                var target=audioClock.sample(player.currentPosition*1000L,sampleNs,playbackSpeed)
                     .coerceIn(range.teacherStartUs,range.teacherEndUs-1)
                 if (target<lastTickTeacherUs) {
                     clockBacksteps++
@@ -107,8 +109,8 @@ class ComparisonGlM0Activity : Activity() {
                     target=lastTickTeacherUs
                 }
                 lastTickTeacherUs=target
-                engine?.render(target,offsetUs,System.nanoTime())
-            }
+                engine?.render(target,offsetUs,sampleNs)
+            } else audioClock.reset()
             choreographer.postFrameCallback(this)
         }
     }
@@ -372,6 +374,7 @@ class ComparisonGlM0Activity : Activity() {
         pendingCompareUs=compare
         seekEvents++; videoReady=false; renderStalled=false
         player.pause()
+        audioClock.reset()
         val target=range.teacherTimeUs(compare)
         lastTickTeacherUs=target
         player.seekTo(target/1000L)
@@ -400,6 +403,7 @@ class ComparisonGlM0Activity : Activity() {
     private fun cycleSpeed() {
         playbackSpeed=when(playbackSpeed) { 1f->.75f; .75f->.5f; else->1f }
         engine?.resetDiagnostics()
+        audioClock.reset()
         audio?.setPlaybackSpeed(playbackSpeed)
         speedButton.text="速度 ${playbackSpeed}×"
         updateStatus()
@@ -452,7 +456,7 @@ class ComparisonGlM0Activity : Activity() {
             put("apiLevel",Build.VERSION.SDK_INT)
             put("offsetUs",offsetUs); put("speed",playbackSpeed)
             put("sourceError",sourceError ?: JSONObject.NULL)
-            put("audioClockSource","single_media3_audio_renderer_position_ms")
+            put("audioClockSource","single_media3_audio_position_bounded_monotonic_interpolation")
             put("audioSelected",audio?.audioFormat!=null)
             put("audioPlayerCount",if (audio!=null) 1 else 0)
             put("audioVideoTrackDisabled",true)
@@ -469,6 +473,9 @@ class ComparisonGlM0Activity : Activity() {
             put("seekEvents",seekEvents); put("bufferingEvents",bufferingEvents)
             put("rendererStalls",rendererStalls); put("resourceCloseFailures",closeFailures)
             put("clockBacksteps",clockBacksteps); put("maxClockBackstepUs",maxClockBackstepUs)
+            put("maxAudioPublishedStepUs",audioClock.maxPublishedStepUs)
+            put("maxAudioInterpolationAheadUs",audioClock.maxAheadUs)
+            put("audioInterpolationBoundUs",15_000)
             put("processPssKb",Debug.getPss())
             put("evidenceType","joint_gl_submission_source_pts_only")
             put("actualDisplayAcceptance","NOT_PROVEN")
@@ -506,7 +513,7 @@ class ComparisonGlM0Activity : Activity() {
     }
     override fun onPause() {
         pendingCompareUs=currentCompareUs()
-        foreground=false; wantToPlay=false; audio?.pause()
+        foreground=false; wantToPlay=false; audio?.pause(); audioClock.reset()
         choreographer.removeFrameCallback(frames)
         super.onPause()
     }

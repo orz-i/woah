@@ -7,7 +7,8 @@ import kotlin.math.ceil
 internal class ComparisonGlDiagnostics {
     data class Sample(val teacherUs: Long, val learnerUs: Long, val targetUs: Long,
                       val offsetUs: Long, val submitNs: Long, val clockAgeUs: Long,
-                      val coverageValid: Boolean) {
+                      val coverageValid: Boolean,val workUs: Long=0,val swapUs: Long=0,
+                      val prepareUs: Long=0,val latchUs: Long=0) {
         val errorUs: Long get() = learnerUs - teacherUs - offsetUs
     }
     data class Window(val startUs: Long, val samples: Int, val p95Us: Long,
@@ -16,7 +17,9 @@ internal class ComparisonGlDiagnostics {
                        val meanSignedUs: Double?, val p95ClockAgeUs: Long?,
                        val maxClockAgeUs: Long?, val coverageMisses: Int,
                        val durationUs: Long, val saturated: Boolean,
-                       val windows: List<Window>, val examples: List<Sample>)
+                       val windows: List<Window>, val examples: List<Sample>,
+                       val p95WorkUs: Long?=null,val p95SwapUs: Long?=null,
+                       val p95PrepareUs: Long?=null,val p95LatchUs: Long?=null)
     private var epoch = 0L
     private val samples = ArrayList<Sample>()
     private var saturated = false
@@ -48,7 +51,9 @@ internal class ComparisonGlDiagnostics {
                 val values=rows.map { abs(it.errorUs) }.sorted()
                 Window(window*5_000_000L,rows.size,p95(values),values.last(),
                     rows.map { it.errorUs.toDouble() }.average())
-            },stable.takeLast(24))
+            },stable.takeLast(24),
+            p95(stable.map { it.workUs }.sorted()),p95(stable.map { it.swapUs }.sorted()),
+            p95(stable.map { it.prepareUs }.sorted()),p95(stable.map { it.latchUs }.sorted()))
     }
     private fun p95(values: List<Long>): Long =
         values[(ceil(values.size*.95).toInt()-1).coerceAtLeast(0)]

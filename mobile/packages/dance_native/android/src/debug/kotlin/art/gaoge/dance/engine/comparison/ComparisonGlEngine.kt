@@ -204,10 +204,13 @@ internal class ComparisonGlEngine(
         checkCurrent()
         val a=teacher ?: error("Teacher decoder missing")
         val b=learner ?: error("Learner decoder missing")
+        val beginNs=System.nanoTime()
         val ta=a.prepareAt(teacherUs)
         val lb=b.prepareAt(teacherUs+offsetUs)
+        val preparedNs=System.nanoTime()
         a.latchPrepared()
         b.latchPrepared()
+        val latchedNs=System.nanoTime()
         checkCurrent()
         check(ta.contains(teacherUs) && lb.contains(teacherUs+offsetUs)) {
             "Joint frame coverage failed"
@@ -223,8 +226,11 @@ internal class ComparisonGlEngine(
         checkCurrent()
         val submitNs=System.nanoTime()
         check(EGL14.eglSwapBuffers(display,window)) { "EGL joint swap failed" }
+        val swappedNs=System.nanoTime()
         diagnostics.add(observation,ComparisonGlDiagnostics.Sample(ta.startUs,
-            lb.startUs,teacherUs,offsetUs,submitNs,(submitNs-clockNs)/1000L,true))
+            lb.startUs,teacherUs,offsetUs,submitNs,(submitNs-clockNs)/1000L,true,
+            (swappedNs-beginNs)/1000L,(swappedNs-submitNs)/1000L,
+            (preparedNs-beginNs)/1000L,(latchedNs-preparedNs)/1000L))
         lastTeacher=ta.startUs; lastLearner=lb.startUs; redraw=false
     }
 
@@ -334,6 +340,10 @@ internal class ComparisonGlEngine(
                 put("maxAbsMediaErrorUs",s.maxUs ?: JSONObject.NULL)
                 put("meanSignedMediaErrorUs",s.meanSignedUs ?: JSONObject.NULL)
                 put("p95ClockSampleAgeUs",s.p95ClockAgeUs ?: JSONObject.NULL)
+                put("p95RenderWorkUs",s.p95WorkUs ?: JSONObject.NULL)
+                put("p95SwapWaitUs",s.p95SwapUs ?: JSONObject.NULL)
+                put("p95PrepareUs",s.p95PrepareUs ?: JSONObject.NULL)
+                put("p95TextureLatchUs",s.p95LatchUs ?: JSONObject.NULL)
                 put("maxClockSampleAgeUs",s.maxClockAgeUs ?: JSONObject.NULL)
                 put("coverageMisses",s.coverageMisses)
                 put("observationDurationUs",s.durationUs)
