@@ -93,10 +93,17 @@ def analyze(args: argparse.Namespace) -> dict:
     times = [float(row['best_effort_timestamp_time'])
              for row in json.loads(probe.stdout)['frames']]
     chains = ['[0:v]split=2[t][l]']
-    for side, rect in zip(('t', 'l'), (args.teacher_rect, args.learner_rect)):
-        x, y, width, height = rect
-        chains.append(f'[{side}]crop=w={width}:h={height}:x={x}:y={y}:exact=1,'
-                      f'scale=640:360:flags=area,crop=520:4:24:262[{side}b]')
+    direct = (getattr(args,'teacher_code_rect',None),getattr(args,'learner_code_rect',None))
+    if any(direct) and not all(direct):
+        raise ValueError('Provide both capture-space frame-code rectangles')
+    for side, rect, code in zip(('t','l'),(args.teacher_rect,args.learner_rect),direct):
+        x,y,width,height = code if code is not None else rect
+        chain=f'[{side}]crop=w={width}:h={height}:x={x}:y={y}:exact=1,'
+        if code is not None:
+            chain+='scale=520:4:flags=area'
+        else:
+            chain+='scale=640:360:flags=area,crop=520:4:24:262'
+        chains.append(chain+f'[{side}b]')
     chains.append('[tb][lb]hstack=inputs=2[out]')
     command = [args.ffmpeg,'-v','error','-i',str(args.recording),'-filter_complex',
                ';'.join(chains),'-map','[out]','-fps_mode','passthrough',
@@ -133,10 +140,16 @@ def analyze(args: argparse.Namespace) -> dict:
             if process.poll() is None:
                 process.kill()
                 process.wait()
-    result = summarize(samples, args.fps, args.offset_us)
+    result = ({'schema':'woah.comparison.m0.screen-codes.v1',
+               'status':'FRAME_CODES_EXTRACTED',
+               'actualDisplayAcceptance':'NOT_PROVEN_PHYSICAL_PANEL',
+               'evidenceType':'decoded_frame_codes_in_compositor_capture',
+               'samples':len(samples),'teacherReferenceCodeFps':args.fps}
+              if getattr(args,'codes_only',False) else summarize(samples,args.fps,args.offset_us))
     result.update({'recording': str(args.recording), 'decodedCaptureFrames': index,
                    'invalidCodes': invalid, 'excludedFrames': excluded,
-                   'teacherRect': args.teacher_rect, 'learnerRect': args.learner_rect})
+                   'teacherRect': args.teacher_rect, 'learnerRect': args.learner_rect,
+                   'teacherCodeRect': direct[0], 'learnerCodeRect': direct[1]})
     if args.samples_out:
         args.samples_out.write_text(json.dumps(samples, indent=2) + '\n', encoding='utf-8')
     return result
@@ -147,6 +160,9 @@ def main() -> int:
     parser.add_argument('recording',type=Path)
     parser.add_argument('--teacher-rect',type=rectangle,required=True)
     parser.add_argument('--learner-rect',type=rectangle,required=True)
+    parser.add_argument('--teacher-code-rect',type=rectangle,help='Optional frame-code rectangle in capture pixels (real-footage footer)')
+    parser.add_argument('--learner-code-rect',type=rectangle,help='Required together with --teacher-code-rect')
+    parser.add_argument('--codes-only',action='store_true',help='Extract codes for actual-PTS coverage evaluation; omit equal-FPS error heuristics')
     parser.add_argument('--fps',type=int,choices=(24,30,60),default=30)
     parser.add_argument('--offset-us',type=int,default=3_000_000)
     parser.add_argument('--start-source-seconds',type=float,default=1.0)
@@ -160,6 +176,6 @@ def main() -> int:
     output=json.dumps(result,indent=2)+'\n'
     if args.out: args.out.write_text(output,encoding='utf-8')
     print(output)
-    return 0 if result['status']=='SCREEN_CAPTURE_WITHIN_TARGET' else 2
+    return 0 if result['status'] in ('SCREEN_CAPTURE_WITHIN_TARGET','FRAME_CODES_EXTRACTED') else 2
 
 if __name__=='__main__': raise SystemExit(main())
