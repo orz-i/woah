@@ -344,6 +344,7 @@ class ComparisonController extends ChangeNotifier {
   Future<void> selectProject(ComparisonProject value) async {
     await pause();
     await save();
+    if (!_lastSaveSucceeded) return;
     await gateway.cancelAlignment();
     _revision++;
     await gateway.close();
@@ -359,6 +360,7 @@ class ComparisonController extends ChangeNotifier {
   Future<void> newProject() async {
     await pause();
     await save();
+    if (!_lastSaveSucceeded) return;
     await gateway.cancelAlignment();
     _revision++;
     await gateway.close();

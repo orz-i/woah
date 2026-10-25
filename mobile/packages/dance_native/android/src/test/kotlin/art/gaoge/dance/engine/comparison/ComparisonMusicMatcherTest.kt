@@ -65,6 +65,37 @@ class ComparisonMusicMatcherTest {
         val result=ComparisonMusicMatcher.match(features(song),features(changed))
         assertNotEquals("matched",result.status,result.toString())
     }
+    @Test fun delayedRoomReflectionsAndAnotherSoundTrackRetainTheCommonMusic() {
+        val song=music(12)
+        val background=music(12,290)
+        val delay=24000
+        val recorded=FloatArray(song.size+delay) { i ->
+            val source=i-delay
+            if (source<0) 0f else {
+                .42f*song[source]+
+                    (if (source>=640) .20f*song[source-640] else 0f)+
+                    (if (source>=1760) .10f*song[source-1760] else 0f)+
+                    .16f*background[source]
+            }
+        }
+        val result=ComparisonMusicMatcher.match(features(song),features(recorded))
+        assertEquals("matched",result.status,result.toString())
+        assertTrue(abs(result.candidates.first().offsetUs-1_500_000)<30_000,result.toString())
+    }
+    @Test fun unrelatedSongsWithTheSameBeatGridNeverAutoApply() {
+        val reference=features(music(12))
+        for (seed in listOf(124,281,901,311,1872,395)) {
+            val result=ComparisonMusicMatcher.match(reference,features(music(12,seed)))
+            assertNotEquals("matched",result.status,"seed=$seed $result")
+        }
+    }
+    @Test fun oneSharedShortSectionCannotStandInForThreeAgreeingWindows() {
+        val song=music(12)
+        val other=music(12,902)
+        for (i in 4*16000 until 7*16000) other[i]=song[i]
+        val result=ComparisonMusicMatcher.match(features(song),features(other))
+        assertNotEquals("matched",result.status,result.toString())
+    }
     @Test fun cancellationPropagatesBeforePublishingAMatch() {
         val sample=features(music(4))
         assertFailsWith<ComparisonAlignmentCancelled> {

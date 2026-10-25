@@ -82,7 +82,14 @@ internal object ComparisonMusicMatcher {
         }.take(3)
         val best=candidates.firstOrNull()
             ?: return MusicAlignmentResult("no_match","没有找到可靠的共同音乐，可以手动校准。",emptyList())
-        if (best.score<.64) return MusicAlignmentResult("no_match","共同音乐证据不足，请试听候选或手动校准。",candidates)
+        // Room recordings can have lower spectral similarity than a direct audio copy.
+        // Accept that path only with long support, three independently agreeing windows,
+        // tight residuals and a clearly separated competing music position.
+        val runner=candidates.getOrNull(1)?.score ?: 0.0
+        val stableRoomRecording=best.score>=.54 && best.supportedSeconds>=8.0 &&
+            best.consistentWindows==3L && best.residualMs<=20.0 && best.score-runner>=.15
+        if (best.score<.64 && !stableRoomRecording)
+            return MusicAlignmentResult("no_match","共同音乐证据不足，请试听候选或手动校准。",candidates)
         if (best.residualMs>60)
             return MusicAlignmentResult("inconsistent","不同片段的音乐位置不一致，可能存在变速或剪辑，请手动选择对比位置。",candidates)
         if (best.consistentWindows<3)

@@ -229,6 +229,23 @@ void main() {
       expect(controller.error, contains('保存失败'));
     },
   );
+  test(
+    'a failed save keeps the current project when starting or switching',
+    () async {
+      final gateway = FakeComparisonGateway(saved: [savedProject()]);
+      final controller = ComparisonController(gateway);
+      addTearDown(controller.dispose);
+      await controller.initialize();
+      gateway.failSave = true;
+      await controller.newProject();
+      expect(controller.project.id, 'test_project');
+      await controller.selectProject(
+        const ComparisonProject(id: 'another', updatedAtMs: 2),
+      );
+      expect(controller.project.id, 'test_project');
+      expect(controller.error, contains('保存失败'));
+    },
+  );
   testWidgets(
     'paused polling does not continually rebuild accessibility state',
     (tester) async {
