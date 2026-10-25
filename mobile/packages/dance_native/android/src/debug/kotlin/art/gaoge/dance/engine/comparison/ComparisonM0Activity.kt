@@ -253,12 +253,9 @@ class ComparisonM0Activity : Activity() {
             setMediaItem(MediaItem.fromUri(source))
             setSeekParameters(SeekParameters.EXACT)
             setVideoSurfaceView(surface)
-            // Muting alone still decodes a second audio track and clock.
-            // Render teacher audio only; actual display sync remains measured.
-            if (side == ComparisonFrameProbe.Side.LEARNER) {
-                trackSelectionParameters = trackSelectionParameters.buildUpon()
-                    .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true).build()
-            }
+            // Keep the learner muted. Disabling its audio renderer made its
+            // standalone clock start ~100ms ahead of teacher on the M0 device.
+            // Two independent audio clocks still require backend acceptance.
             volume = if (side == ComparisonFrameProbe.Side.TEACHER) 1f else 0f
             setPlaybackSpeed(playbackSpeed)
             setVideoFrameMetadataListener(VideoFrameMetadataListener {
@@ -476,7 +473,7 @@ class ComparisonM0Activity : Activity() {
                 put("bufferingEvents", bufferingEvents)
                 put("seekEvents", seekEvents)
                 put("processPssKb", Debug.getPss())
-                put("learnerAudioDisabled", true)
+                put("learnerAudioMuted", learnerPlayer?.volume == 0f)
                 put("teacherVideoWidth", teacherPlayer?.videoFormat?.width ?: -1)
                 put("teacherVideoHeight", teacherPlayer?.videoFormat?.height ?: -1)
                 put("learnerVideoWidth", learnerPlayer?.videoFormat?.width ?: -1)
