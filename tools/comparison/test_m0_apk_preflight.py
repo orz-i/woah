@@ -8,9 +8,9 @@ from unittest import mock
 from zipfile import ZipFile
 
 from verify_m0_apk import (
-    ACTIVITY, COMPONENT, PKG, apk_contents, launch, inspect_installed
+    ACTIVITY, COMPONENT, GL_ACTIVITY, GL_COMPONENT, PKG, apk_contents, launch, inspect_installed
 )
-from run_m0_android import ACTIVITY as RUNNER_COMPONENT
+from run_m0_android import ACTIVITY as RUNNER_COMPONENT, GL_ACTIVITY as RUNNER_GL_COMPONENT
 
 
 class M0ApkPreflightTest(unittest.TestCase):
@@ -36,6 +36,18 @@ class M0ApkPreflightTest(unittest.TestCase):
             self.assertTrue(result["m0DebugComponentPresent"])
             self.assertEqual(result["dexFiles"], ["classes.dex"])
             self.assertEqual(len(result["sha256"]), 64)
+
+    def test_shared_gl_component_requires_both_manifest_and_dex(self):
+        self.assertEqual(RUNNER_GL_COMPONENT, GL_COMPONENT)
+        with tempfile.TemporaryDirectory() as d:
+            apk = self.make_apk(d)
+            self.assertFalse(apk_contents(apk)["m0GlDebugComponentPresent"])
+            with ZipFile(apk, "w") as archive:
+                archive.writestr("AndroidManifest.xml", GL_ACTIVITY.encode("utf-16le"))
+                archive.writestr("classes.dex",
+                                 b"Lart/gaoge/dance/engine/comparison/ComparisonGlM0Activity;")
+            self.assertTrue(apk_contents(apk)["m0GlDebugComponentPresent"])
+            self.assertFalse(apk_contents(apk)["m0DebugComponentPresent"])
 
     def test_utf16_manifest_string_pool(self):
         with tempfile.TemporaryDirectory() as d:

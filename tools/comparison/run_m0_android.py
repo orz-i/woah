@@ -12,12 +12,15 @@ from verify_m0_apk import apk_contents
 PKG = "art.gaoge.dance"
 ACTIVITY = PKG + "/" + PKG + ".engine.comparison.ComparisonM0Activity"
 REMOTE = "/sdcard/Movies/WoahM0"
+GL_ACTIVITY = PKG + "/" + PKG + ".engine.comparison.ComparisonGlM0Activity"
 APP_FIXTURES = f"/sdcard/Android/data/{PKG}/files/comparison-fixtures"
 REPORT = f"/sdcard/Android/data/{PKG}/files/Documents/comparison-m0/latest.json"
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--backend", choices=("exo", "shared-gl"), default="exo",
+                        help="Debug backend; original dual ExoPlayer or shared audio + codec/GL")
     parser.add_argument("--apk", type=Path, help="Already-built Android debug APK")
     parser.add_argument("--teacher", type=Path, help="Synthetic teacher.mp4 (optional)")
     parser.add_argument("--learner", type=Path, help="Synthetic learner.mp4 (optional)")
@@ -50,7 +53,8 @@ def main() -> int:
             if not args.apk.is_file():
                 parser.error(f"APK not found: {args.apk}")
             inspected = apk_contents(args.apk)
-            if not inspected["m0DebugComponentPresent"]:
+            if not inspected["m0GlDebugComponentPresent" if args.backend == "shared-gl"
+                             else "m0DebugComponentPresent"]:
                 print(
                     "M0_APK=FAIL: supplied APK lacks the M0 Activity. "
                     "Switch to the M0 branch and rebuild --debug.",
@@ -82,7 +86,8 @@ def main() -> int:
         print("Device:", adb("shell", "getprop", "ro.product.model").stdout.strip())
         print("API:", adb("shell", "getprop", "ro.build.version.sdk").stdout.strip())
         result = adb("shell", "am", "start", *(["-S"] if args.load_fixtures else []),
-                     "-n", ACTIVITY, "--el", "offset_us", str(args.offset_us),
+                     "-n", GL_ACTIVITY if args.backend == "shared-gl" else ACTIVITY,
+                     "--el", "offset_us", str(args.offset_us),
                      *launch_extras)
         print(result.stdout)
         print(result.stderr)

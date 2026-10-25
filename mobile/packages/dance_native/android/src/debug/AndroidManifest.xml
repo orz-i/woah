@@ -7,5 +7,11 @@
             android:label="Woah · M0 同步验证"
             android:theme="@android:style/Theme.Material.NoActionBar"
             android:screenOrientation="unspecified" />
+        <activity
+            android:name="art.gaoge.dance.engine.comparison.ComparisonGlM0Activity"
+            android:exported="true"
+            android:label="Woah · M0 GL 同步验证"
+            android:theme="@android:style/Theme.Material.NoActionBar"
+            android:screenOrientation="unspecified" />
     </application>
 </manifest>

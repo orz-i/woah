@@ -18,6 +18,8 @@ import zipfile
 PKG = "art.gaoge.dance"
 ACTIVITY = "art.gaoge.dance.engine.comparison.ComparisonM0Activity"
 COMPONENT = f"{PKG}/{ACTIVITY}"
+GL_ACTIVITY = "art.gaoge.dance.engine.comparison.ComparisonGlM0Activity"
+GL_COMPONENT = f"{PKG}/{GL_ACTIVITY}"
 
 
 def apk_contents(apk: Path) -> dict:
@@ -38,9 +40,16 @@ def apk_contents(apk: Path) -> dict:
             named.encode("utf-16le") in manifest
         )
         full_descriptor = b"Lart/gaoge/dance/engine/comparison/ComparisonM0Activity;"
-        dex_type_present = any(
-            full_descriptor in archive.read(name) for name in dex_names
-        )
+        dex_type_present = False
+        gl_dex_present = False
+        gl_descriptor = b"Lart/gaoge/dance/engine/comparison/ComparisonGlM0Activity;"
+        for name in dex_names:
+            dex = archive.read(name)
+            dex_type_present |= full_descriptor in dex
+            gl_dex_present |= gl_descriptor in dex
+        gl_named = "ComparisonGlM0Activity"
+        gl_manifest_present = (gl_named.encode("utf-8") in manifest or
+                               gl_named.encode("utf-16le") in manifest)
     digest = hashlib.sha256()
     with apk.open("rb") as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
@@ -54,6 +63,7 @@ def apk_contents(apk: Path) -> dict:
         "dexFiles": dex_names,
     }
     result["m0DebugComponentPresent"] = manifest_name_present and dex_type_present
+    result["m0GlDebugComponentPresent"] = gl_manifest_present and gl_dex_present
     return result
 
 

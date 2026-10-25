@@ -10,13 +10,16 @@ from pathlib import Path
 
 def evaluate(report: dict, *, expected_offset_us: int | None = None,
              fps: int = 30, min_pairs: int = 60) -> dict:
-    if report.get("schema") != "woah.comparison.m0.probe.v1":
+    is_gl = report.get("schema") == "woah.comparison.m0.gl.v1"
+    if not is_gl and report.get("schema") != "woah.comparison.m0.probe.v1":
         raise ValueError("Wrong M0 diagnostic schema")
-    if report.get("evidenceType") != "pre_render_planned_release_metadata_only":
+    evidence = ("joint_gl_submission_source_pts_only" if is_gl else
+                "pre_render_planned_release_metadata_only")
+    if report.get("evidenceType") != evidence:
         raise ValueError("Wrong evidence provenance")
     if expected_offset_us is not None and report.get("offsetUs") != expected_offset_us:
         raise ValueError("Manual offset does not match fixture manifest")
-    pairs = report.get("matchedPlannedReleaseFrames", 0)
+    pairs = report.get("jointSubmissions" if is_gl else "matchedPlannedReleaseFrames", 0)
     p95 = report.get("p95AbsMediaErrorUs")
     maximum = report.get("maxAbsMediaErrorUs")
     # Heuristic engineering thresholds for equal-frame-rate CFR: deliberately
@@ -27,14 +30,23 @@ def evaluate(report: dict, *, expected_offset_us: int | None = None,
                 isinstance(maximum, (int, float)))
     usable = report.get("usableTeacherFrames")
     coverage = pairs / usable if isinstance(usable, int) and usable > 0 else None
-    within_target = (report.get("sourceError") is None and
+    topology_valid = (not is_gl or (report.get("audioPlayerCount") == 1 and
+                      report.get("videoWindowSurfaces") == 1 and
+                      report.get("coverageMisses") == 0 and
+                      not report.get("diagnosticsSaturated", False)))
+    within_target = (topology_valid and report.get("sourceError") is None and
                      (coverage is None or coverage >= 0.8) and measured and
                      p95 <= tolerance_us and maximum <= 2 * tolerance_us)
     return {
-        "status": "PLANNED_METADATA_WITHIN_TARGET" if within_target
+        "status": ("JOINT_GL_METADATA_WITHIN_TARGET" if is_gl else
+                   "PLANNED_METADATA_WITHIN_TARGET") if within_target
                   else "INSUFFICIENT_OR_OUTSIDE_PLANNED_METADATA",
         "actualDisplayAcceptance": "NOT_PROVEN",
-        "plannedFramePairs": pairs,
+        "backend": report.get("backend", "dual_exoplayer"),
+        "metadataSamples": pairs,
+        "plannedFramePairs": pairs if not is_gl else None,
+        "p95ClockSampleAgeUs": report.get("p95ClockSampleAgeUs"),
+        "maxClockSampleAgeUs": report.get("maxClockSampleAgeUs"),
         "plannedPairCoverage": coverage,
         "observationDurationUs": report.get("observationDurationUs"),
         "windows": report.get("windows", []),
@@ -46,8 +58,9 @@ def evaluate(report: dict, *, expected_offset_us: int | None = None,
         "bufferingEvents": report.get("bufferingEvents"),
         "speed": report.get("speed"),
         "device": report.get("device"),
-        "limitation": ("Matched Media3 planned video frame release times only; "
-                       "requires actual on-device screen observations."),
+        "limitation": ("Joint GL source-PTS submission metadata only; " if is_gl else
+                       "Matched Media3 planned video frame release times only; ") +
+                       "requires actual on-device screen observations.",
     }
 
 
@@ -68,7 +81,8 @@ def main() -> int:
         min_pairs=args.min_pairs,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0 if result["status"] == "PLANNED_METADATA_WITHIN_TARGET" else 2
+    return 0 if result["status"] in ("PLANNED_METADATA_WITHIN_TARGET",
+                                    "JOINT_GL_METADATA_WITHIN_TARGET") else 2
 
 
 if __name__ == "__main__":

@@ -117,6 +117,23 @@ class M0ScriptsTest(unittest.TestCase):
         self.assertEqual(summarize(rows, 30, 3_000_000)["status"],
                          "SCREEN_CAPTURE_WITHIN_TARGET")
 
+    def test_joint_gl_metadata_requires_single_surface_and_covered_pts(self):
+        report = {"schema": "woah.comparison.m0.gl.v1",
+                  "evidenceType": "joint_gl_submission_source_pts_only",
+                  "jointSubmissions": 100, "p95AbsMediaErrorUs": 0,
+                  "maxAbsMediaErrorUs": 0, "audioPlayerCount": 1,
+                  "videoWindowSurfaces": 1, "coverageMisses": 0}
+        result = evaluate(report)
+        self.assertEqual(result["status"], "JOINT_GL_METADATA_WITHIN_TARGET")
+        self.assertEqual(result["actualDisplayAcceptance"], "NOT_PROVEN")
+        report["coverageMisses"] = 1
+        self.assertEqual(evaluate(report)["status"],
+                         "INSUFFICIENT_OR_OUTSIDE_PLANNED_METADATA")
+        report["coverageMisses"] = 0
+        report["videoWindowSurfaces"] = 2
+        self.assertEqual(evaluate(report)["status"],
+                         "INSUFFICIENT_OR_OUTSIDE_PLANNED_METADATA")
+
     def test_empty_screen_capture_has_no_fabricated_metrics(self):
         result = summarize([], 30, 3_000_000)
         self.assertEqual(result["status"], "INSUFFICIENT_SCREEN_CAPTURE")
