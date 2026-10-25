@@ -186,7 +186,10 @@ class ComparisonGlM0Activity : Activity() {
             }
         })
 
-        stateText = text("选择两段视频。M0 不进行自动音乐识别。")
+        stateText = text("选择两段视频。M0 不进行自动音乐识别。").apply {
+            minLines=2
+            maxLines=2
+        }
         stateText.gravity = Gravity.CENTER
         parent.addView(stateText)
         progressBar = SeekBar(this).apply {
@@ -362,7 +365,11 @@ class ComparisonGlM0Activity : Activity() {
         player.seekTo(target/1000L)
         val generation=session
         engine?.seek(target,offsetUs) {
-            if (generation==session) { videoReady=true; reconcile(); updateStatus() }
+            if (generation==session) {
+                videoReady=true
+                resizeStage()
+                reconcile(); updateStatus()
+            }
         }
     }
 

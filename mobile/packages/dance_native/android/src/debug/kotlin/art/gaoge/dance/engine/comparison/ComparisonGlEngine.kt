@@ -69,6 +69,8 @@ internal class ComparisonGlEngine(
     private var height = initialHeight
     private var gap = initialGap
     private var redraw = true
+    private var lastTarget: Long? = null
+    private var lastOffset = 0L
     private var lastTeacher = -1L
     private var lastLearner = -1L
     private val diagnostics = ComparisonGlDiagnostics()
@@ -103,7 +105,17 @@ internal class ComparisonGlEngine(
     }
 
     fun resize(w: Int,h: Int,g: Int) {
-        handler.post { width=w; height=h; gap=g; redraw=true }
+        handler.post {
+            if (w<=0 || h<=g || closed.get()) return@post
+            width=w; height=h; gap=g; redraw=true
+            // A resized Surface may discard the old-size buffer. Paused playback
+            // must repaint the already latched PAIR without waiting for play.
+            val target=lastTarget
+            if (target!=null && current() && window!=EGL14.EGL_NO_SURFACE) {
+                try { drawAt(target,lastOffset,System.nanoTime(),diagnostics.generation()) }
+                catch (e: Throwable) { error(e) }
+            }
+        }
     }
 
     fun seek(teacherUs: Long,offsetUs: Long,complete: () -> Unit) {
@@ -113,6 +125,7 @@ internal class ComparisonGlEngine(
             if (closed.get() || generation!=request.get()) return@post
             activeRequest=generation
             try {
+                lastTarget=null
                 teacher!!.seek(teacherUs)
                 learner!!.seek(teacherUs+offsetUs)
                 redraw=true
@@ -168,10 +181,11 @@ internal class ComparisonGlEngine(
         val ta=a.selectAt(teacherUs)
         val lb=b.selectAt(teacherUs+offsetUs)
         checkCurrent()
-        if (!redraw && ta.startUs==lastTeacher && lb.startUs==lastLearner) return
         check(ta.contains(teacherUs) && lb.contains(teacherUs+offsetUs)) {
             "Joint frame coverage failed"
         }
+        lastTarget=teacherUs; lastOffset=offsetUs
+        if (!redraw && ta.startUs==lastTeacher && lb.startUs==lastLearner) return
         GLES20.glViewport(0,0,width,height)
         GLES20.glClearColor(0f,0f,0f,1f)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
