@@ -82,7 +82,7 @@ internal class ComparisonSession(
                 if (!closed) { surfaceAvailable=true; if (engine==null) buildEngine() }
             } }
             override fun onSurfaceCleanup() { main.post {
-                if (!closed) { pendingUs=positionUs(); wantsPlay=false; pauseClock()
+                if (!closed) { pendingUs=positionUs(); pauseClock()
                     surfaceAvailable=false; releaseEngine() }
             } }
         })
@@ -216,8 +216,15 @@ internal class ComparisonSession(
     }
     fun resize(newWidth: Int,newHeight: Int,sideBySide: Boolean): ComparisonPlaybackDto {
         require(newWidth in 2..4096 && newHeight in 2..4096)
-        if (width!=newWidth || height!=newHeight || horizontal!=sideBySide) {
-            pendingUs=positionUs();wantsPlay=false;pauseClock()
+        if (width==newWidth && height==newHeight) {
+            if (horizontal!=sideBySide) {
+                horizontal=sideBySide
+                engine?.resize(width,height,8,horizontal)
+            }
+        } else {
+            // Preserve playback intent and the music position through a rotated
+            // output Surface. Backgrounding clears wantsPlay separately.
+            pendingUs=positionUs();pauseClock()
             releaseEngine();width=newWidth;height=newHeight;horizontal=sideBySide
             producer.setSize(width,height)
             if (surfaceAvailable) buildEngine()

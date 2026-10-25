@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 import 'package:dance_domain/dance_domain.dart';
@@ -12,6 +13,8 @@ import 'comparison_manual_view.dart';
 import 'comparison_time.dart';
 
 enum _ComparisonProjectAction { create, save, swap }
+
+enum _ComparisonViewAction { stacked, sideBySide, rotate }
 
 class ComparisonScreen extends StatefulWidget {
   final ComparisonGateway? gateway;
@@ -27,7 +30,11 @@ class _ComparisonScreenState extends State<ComparisonScreen>
   bool _allowPop = false, _exiting = false;
   double? _scrub;
   ComparisonManualSession? _manualSession;
-  bool _finishingManual = false;
+  bool _finishingManual = false, _orientationOverridden = false;
+  bool _rotating = false;
+  bool get _landscape =>
+      MediaQuery.orientationOf(context) == Orientation.landscape;
+  bool get _sideBySide => controller.project.sideBySide ?? _landscape;
   @override
   void initState() {
     super.initState();
@@ -70,6 +77,9 @@ class _ComparisonScreenState extends State<ComparisonScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    if (_orientationOverridden) {
+      unawaited(SystemChrome.setPreferredOrientations([]));
+    }
     if (_manualSession != null) unawaited(_manualSession!.close());
     controller.dispose();
     super.dispose();
@@ -179,6 +189,81 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     }
   }
 
+  Future<void> _rotate() async {
+    if (_rotating || _finishingManual) return;
+    final landscape = _landscape;
+    setState(() => _rotating = true);
+    try {
+      _orientationOverridden = true;
+      await SystemChrome.setPreferredOrientations(
+        landscape
+            ? [DeviceOrientation.portraitUp]
+            : [
+                DeviceOrientation.landscapeLeft,
+                DeviceOrientation.landscapeRight,
+              ],
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('屏幕方向切换未完成，请重试。')));
+      }
+    } finally {
+      if (mounted) setState(() => _rotating = false);
+    }
+  }
+
+  Widget _viewMenu() => PopupMenuButton<_ComparisonViewAction>(
+    key: const ValueKey('comparison-view'),
+    tooltip: '视图',
+    enabled:
+        controller.initialized &&
+        !controller.picking &&
+        !controller.matching &&
+        !_finishingManual &&
+        !_rotating,
+    icon: Icon(
+      _sideBySide ? Icons.view_column_outlined : Icons.view_agenda_outlined,
+      size: 20,
+    ),
+    onSelected: (action) {
+      switch (action) {
+        case _ComparisonViewAction.stacked:
+          unawaited(controller.setSideBySide(false));
+        case _ComparisonViewAction.sideBySide:
+          unawaited(controller.setSideBySide(true));
+        case _ComparisonViewAction.rotate:
+          unawaited(_rotate());
+      }
+    },
+    itemBuilder: (_) => [
+      CheckedPopupMenuItem(
+        value: _ComparisonViewAction.stacked,
+        checked: !_sideBySide,
+        child: const Text('上下视图'),
+      ),
+      CheckedPopupMenuItem(
+        value: _ComparisonViewAction.sideBySide,
+        checked: _sideBySide,
+        child: const Text('左右视图'),
+      ),
+      const PopupMenuDivider(),
+      PopupMenuItem(
+        value: _ComparisonViewAction.rotate,
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(
+            _landscape
+                ? Icons.stay_current_portrait
+                : Icons.stay_current_landscape,
+          ),
+          title: Text(_landscape ? '竖屏显示' : '横屏显示'),
+        ),
+      ),
+    ],
+  );
+
   @override
   Widget build(BuildContext context) => PopScope(
     canPop: _allowPop,
@@ -198,46 +283,47 @@ class _ComparisonScreenState extends State<ComparisonScreen>
           ),
           leading: BackButton(onPressed: _exit),
           centerTitle: false,
-          actions: _manualSession != null
-              ? []
-              : [
-                  IconButton(
-                    key: const ValueKey('comparison-history'),
-                    tooltip: '历史',
-                    onPressed: controller.busy ? null : _history,
-                    icon: const Icon(Icons.history_rounded, size: 20),
+          actions: [
+            _viewMenu(),
+            if (_manualSession == null) ...[
+              IconButton(
+                key: const ValueKey('comparison-history'),
+                tooltip: '历史',
+                onPressed: controller.busy ? null : _history,
+                icon: const Icon(Icons.history_rounded, size: 20),
+              ),
+              PopupMenuButton<_ComparisonProjectAction>(
+                key: const ValueKey('comparison-project-menu'),
+                tooltip: '更多操作',
+                enabled: !controller.busy && !controller.saving,
+                onSelected: (action) {
+                  switch (action) {
+                    case _ComparisonProjectAction.create:
+                      unawaited(controller.newProject());
+                    case _ComparisonProjectAction.save:
+                      unawaited(_save());
+                    case _ComparisonProjectAction.swap:
+                      unawaited(controller.swap());
+                  }
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(
+                    value: _ComparisonProjectAction.save,
+                    child: Text('保存并重命名'),
                   ),
-                  PopupMenuButton<_ComparisonProjectAction>(
-                    key: const ValueKey('comparison-project-menu'),
-                    tooltip: '更多操作',
-                    enabled: !controller.busy && !controller.saving,
-                    onSelected: (action) {
-                      switch (action) {
-                        case _ComparisonProjectAction.create:
-                          unawaited(controller.newProject());
-                        case _ComparisonProjectAction.save:
-                          unawaited(_save());
-                        case _ComparisonProjectAction.swap:
-                          unawaited(controller.swap());
-                      }
-                    },
-                    itemBuilder: (_) => [
-                      const PopupMenuItem(
-                        value: _ComparisonProjectAction.save,
-                        child: Text('保存并重命名'),
-                      ),
-                      const PopupMenuItem(
-                        value: _ComparisonProjectAction.create,
-                        child: Text('新建对比'),
-                      ),
-                      PopupMenuItem(
-                        value: _ComparisonProjectAction.swap,
-                        enabled: controller.project.hasPair,
-                        child: const Text('交换老师和学生'),
-                      ),
-                    ],
+                  const PopupMenuItem(
+                    value: _ComparisonProjectAction.create,
+                    child: Text('新建对比'),
+                  ),
+                  PopupMenuItem(
+                    value: _ComparisonProjectAction.swap,
+                    enabled: controller.project.hasPair,
+                    child: const Text('交换老师和学生'),
                   ),
                 ],
+              ),
+            ],
+          ],
         ),
         body: SafeArea(
           child: !controller.initialized
@@ -245,6 +331,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
               : _manualSession != null
               ? ComparisonManualView(
                   session: _manualSession!,
+                  sideBySide: _sideBySide,
                   saving: _finishingManual,
                   error: controller.error,
                   onApply: () => _finishManual(true),
@@ -256,7 +343,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                     if (horizontal) {
                       return Row(
                         children: [
-                          Expanded(child: _preview(true)),
+                          Expanded(child: _preview(_sideBySide)),
                           SizedBox(
                             width: math.min(340, viewport.maxWidth * .43),
                             child: SingleChildScrollView(
@@ -269,7 +356,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                     }
                     return Column(
                       children: [
-                        Expanded(child: _preview(false)),
+                        Expanded(child: _preview(_sideBySide)),
                         ConstrainedBox(
                           constraints: BoxConstraints(
                             maxHeight: viewport.maxHeight * .46,

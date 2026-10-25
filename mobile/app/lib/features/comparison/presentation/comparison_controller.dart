@@ -288,12 +288,14 @@ class ComparisonController extends ChangeNotifier {
 
   Future<void> leaveManualCalibration({required bool applied}) async {
     if (_closed || !calibrating) return;
+    final layoutChanged = project.sideBySide != _manualOriginal?.sideBySide;
     if (!applied && _manualOriginal != null) {
-      project = _manualOriginal!;
-      _dirty = false;
+      project = _manualOriginal!.copyWith(sideBySide: project.sideBySide);
+      _dirty = layoutChanged;
     }
     _manualOriginal = null;
     calibrating = false;
+    if (!applied && layoutChanged) await save();
     await _open();
     _notify();
   }
@@ -337,6 +339,14 @@ class ComparisonController extends ChangeNotifier {
 
   Future<void> seek(int positionUs) async {
     await _control(ComparisonCommand.seek, positionUs);
+  }
+
+  Future<void> setSideBySide(bool value) async {
+    if (_closed || picking || matching || project.sideBySide == value) return;
+    project = project.copyWith(sideBySide: value);
+    _dirty = true;
+    _notify();
+    if (!calibrating) await save();
   }
 
   Future<void> setSpeed(double speed) async {

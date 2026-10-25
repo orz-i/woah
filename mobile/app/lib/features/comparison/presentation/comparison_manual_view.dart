@@ -13,11 +13,13 @@ class ComparisonManualView extends StatelessWidget {
     required this.onApply,
     required this.onCancel,
     this.saving = false,
+    this.sideBySide,
     this.error,
   });
   final ComparisonManualSession session;
   final VoidCallback onApply, onCancel;
   final bool saving;
+  final bool? sideBySide;
   final String? error;
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
@@ -41,7 +43,7 @@ class ComparisonManualView extends StatelessWidget {
                 ),
               ),
             Expanded(
-              child: bounds.maxWidth > bounds.maxHeight
+              child: (sideBySide ?? (bounds.maxWidth > bounds.maxHeight))
                   ? Row(children: panes)
                   : Column(children: panes),
             ),
@@ -111,27 +113,51 @@ class ComparisonManualView extends StatelessWidget {
                   top: 6,
                   left: 10,
                   right: 10,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _badge(Text(label, style: const TextStyle(fontSize: 12))),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Align(
-                          alignment: Alignment.topRight,
-                          child: _badge(
-                            Text(
-                              '${comparisonTime(value)} / ${comparisonTime(duration)}',
-                              maxLines: 2,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontFeatures: [FontFeature.tabularFigures()],
-                              ),
-                            ),
+                  child: LayoutBuilder(
+                    builder: (context, bounds) {
+                      final narrow = bounds.maxWidth < 260;
+                      final roleBadge = _badge(
+                        Text(label, style: const TextStyle(fontSize: 12)),
+                      );
+                      final timeBadge = _badge(
+                        Text(
+                          narrow
+                              ? '${comparisonTime(value)}\n/ ${comparisonTime(duration)}'
+                              : '${comparisonTime(value)} / ${comparisonTime(duration)}',
+                          maxLines: 2,
+                          style: TextStyle(
+                            fontSize: narrow ? 10 : 11,
+                            fontFeatures: const [FontFeature.tabularFigures()],
                           ),
                         ),
-                      ),
-                    ],
+                      );
+                      if (narrow) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            roleBadge,
+                            const SizedBox(height: 4),
+                            Align(
+                              alignment: Alignment.topRight,
+                              child: timeBadge,
+                            ),
+                          ],
+                        );
+                      }
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          roleBadge,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.topRight,
+                              child: timeBadge,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ],
@@ -140,75 +166,88 @@ class ComparisonManualView extends StatelessWidget {
           ColoredBox(
             key: ValueKey('comparison-manual-controls-$role'),
             color: AppTheme.flowSurface,
-            child: Row(
-              children: [
-                IconButton(
-                  key: ValueKey('comparison-manual-play-$role'),
-                  tooltip: (video.value.isPlaying ? '暂停' : '播放') + label,
-                  onPressed: session.ready && !saving
-                      ? () => session.toggle(role)
-                      : null,
-                  icon: Icon(
-                    video.value.isPlaying
-                        ? Icons.pause_rounded
-                        : Icons.play_arrow_rounded,
-                    size: 22,
-                  ),
-                ),
-                Expanded(
-                  child: SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      trackHeight: 2,
-                      thumbShape: const RoundSliderThumbShape(
-                        enabledThumbRadius: 6,
-                      ),
-                      overlayShape: const RoundSliderOverlayShape(
-                        overlayRadius: 20,
-                      ),
+            child: LayoutBuilder(
+              builder: (context, bounds) {
+                final controls = <Widget>[
+                  IconButton(
+                    key: ValueKey('comparison-manual-play-$role'),
+                    tooltip: (video.value.isPlaying ? '暂停' : '播放') + label,
+                    onPressed: session.ready && !saving
+                        ? () => session.toggle(role)
+                        : null,
+                    icon: Icon(
+                      video.value.isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
+                      size: 22,
                     ),
-                    child: Semantics(
-                      label: '$label源视频进度',
-                      child: SizedBox(
-                        height: 48,
-                        child: Slider(
-                          key: ValueKey('comparison-manual-seek-$role'),
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          min: 0,
-                          max: math.max(1, duration - 1000).toDouble(),
-                          value: value
-                              .clamp(0, math.max(1, duration - 1000))
-                              .toDouble(),
-                          semanticFormatterCallback: (v) =>
-                              comparisonTime(v.round()),
-                          onChangeStart: session.ready && !saving
-                              ? (_) => unawaited(session.pause())
-                              : null,
-                          onChanged: session.ready && !saving
-                              ? (v) => session.scrub(role, v.round())
-                              : null,
-                          onChangeEnd: session.ready && !saving
-                              ? (v) => session.seek(role, v.round())
-                              : null,
+                  ),
+                  Expanded(
+                    child: SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: 2,
+                        thumbShape: const RoundSliderThumbShape(
+                          enabledThumbRadius: 6,
+                        ),
+                        overlayShape: const RoundSliderOverlayShape(
+                          overlayRadius: 20,
+                        ),
+                      ),
+                      child: Semantics(
+                        label: '$label源视频进度',
+                        child: SizedBox(
+                          height: 48,
+                          child: Slider(
+                            key: ValueKey('comparison-manual-seek-$role'),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            min: 0,
+                            max: math.max(1, duration - 1000).toDouble(),
+                            value: value
+                                .clamp(0, math.max(1, duration - 1000))
+                                .toDouble(),
+                            semanticFormatterCallback: (v) =>
+                                comparisonTime(v.round()),
+                            onChangeStart: session.ready && !saving
+                                ? (_) => unawaited(session.pause())
+                                : null,
+                            onChanged: session.ready && !saving
+                                ? (v) => session.scrub(role, v.round())
+                                : null,
+                            onChangeEnd: session.ready && !saving
+                                ? (v) => session.seek(role, v.round())
+                                : null,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                IconButton(
-                  tooltip: '$label后退0.1秒',
-                  onPressed: session.ready && !saving
-                      ? () => session.seek(role, value - 100000)
-                      : null,
-                  icon: const Icon(Icons.chevron_left, size: 22),
-                ),
-                IconButton(
-                  tooltip: '$label前进0.1秒',
-                  onPressed: session.ready && !saving
-                      ? () => session.seek(role, value + 100000)
-                      : null,
-                  icon: const Icon(Icons.chevron_right, size: 22),
-                ),
-              ],
+                  IconButton(
+                    tooltip: '$label后退0.1秒',
+                    onPressed: session.ready && !saving
+                        ? () => session.seek(role, value - 100000)
+                        : null,
+                    icon: const Icon(Icons.chevron_left, size: 22),
+                  ),
+                  IconButton(
+                    tooltip: '$label前进0.1秒',
+                    onPressed: session.ready && !saving
+                        ? () => session.seek(role, value + 100000)
+                        : null,
+                    icon: const Icon(Icons.chevron_right, size: 22),
+                  ),
+                ];
+                if (bounds.maxWidth >= 280) return Row(children: controls);
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(children: controls.take(2).toList()),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [controls[2], controls[3]],
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ],

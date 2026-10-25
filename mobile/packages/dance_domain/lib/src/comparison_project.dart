@@ -42,6 +42,8 @@ class ComparisonProject {
   final int? learnerAnchorUs;
   final int positionUs;
   final double speed;
+  /// Null follows screen orientation; an explicit choice is saved per project.
+  final bool? sideBySide;
   final int updatedAtMs;
   const ComparisonProject({
     required this.id,
@@ -54,6 +56,7 @@ class ComparisonProject {
     this.learnerAnchorUs,
     this.positionUs = 0,
     this.speed = 1,
+    this.sideBySide,
     required this.updatedAtMs,
   });
   bool get hasPair => teacher != null && learner != null;
@@ -69,6 +72,7 @@ class ComparisonProject {
     'learnerAnchorUs': learnerAnchorUs,
     'positionUs': positionUs,
     'speed': speed,
+    'sideBySide': sideBySide,
     'updatedAtMs': updatedAtMs,
   };
   factory ComparisonProject.fromJson(Map<String, dynamic> json) {
@@ -104,6 +108,7 @@ class ComparisonProject {
       learnerAnchorUs: (json['learnerAnchorUs'] as num?)?.toInt(),
       positionUs: position,
       speed: speed,
+      sideBySide: json['sideBySide'] as bool?,
       updatedAtMs: (json['updatedAtMs'] as num).toInt(),
     );
   }
@@ -118,6 +123,7 @@ class ComparisonProject {
     bool clearAnchors = false,
     int? positionUs,
     double? speed,
+    bool? sideBySide,
   }) => ComparisonProject(
     id: id,
     title: title ?? this.title,
@@ -133,6 +139,7 @@ class ComparisonProject {
         : learnerAnchorUs ?? this.learnerAnchorUs,
     positionUs: positionUs ?? this.positionUs,
     speed: speed ?? this.speed,
+    sideBySide: sideBySide ?? this.sideBySide,
     updatedAtMs: DateTime.now().millisecondsSinceEpoch,
   );
   ComparisonProject swapSources() => ComparisonProject(
@@ -146,6 +153,7 @@ class ComparisonProject {
     learnerAnchorUs: teacherAnchorUs,
     positionUs: positionUs,
     speed: speed,
+    sideBySide: sideBySide,
     updatedAtMs: DateTime.now().millisecondsSinceEpoch,
   );
 }

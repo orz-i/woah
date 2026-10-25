@@ -7,6 +7,7 @@ import 'package:app/features/comparison/presentation/comparison_screen.dart';
 import 'package:dance_domain/dance_domain.dart';
 import 'package:dance_native/dance_native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -56,6 +57,7 @@ class FakeComparisonGateway implements ComparisonGateway {
   final pickedRoles = <String>[];
   int opens = 0, cancels = 0, saves = 0, alignCalls = 0;
   final List<String> events = [];
+  final layouts = <bool>[];
   MusicAlignmentDto? alignmentResult;
   bool failSave = false;
   Completer<void>? firstSaveGate;
@@ -94,6 +96,7 @@ class FakeComparisonGateway implements ComparisonGateway {
   ) async {
     opens++;
     events.add('shared-open');
+    layouts.add(horizontal);
     current.offsetUs = p.offsetUs;
     current.positionUs = p.positionUs;
     current.speed = p.speed;
@@ -122,8 +125,11 @@ class FakeComparisonGateway implements ComparisonGateway {
   }
 
   @override
-  Future<ComparisonPlaybackDto> resize(int w, int h, bool horizontal) async =>
-      current;
+  Future<ComparisonPlaybackDto> resize(int w, int h, bool horizontal) async {
+    layouts.add(horizontal);
+    return current;
+  }
+
   @override
   Future<ComparisonPlaybackDto> state() async => current;
   @override
@@ -188,18 +194,22 @@ void main() {
   test(
     'projects round trip, source swap preserves manual event and reverses offset',
     () {
-      final source = savedProject();
+      final source = savedProject().copyWith(sideBySide: true);
       final restored = ComparisonProject.fromJson(
         jsonDecode(jsonEncode(source.toJson())) as Map<String, dynamic>,
       );
       expect(restored.offsetUs, 2000000);
       expect(restored.positionUs, 1000000);
+      expect(restored.sideBySide, true);
+      final legacy = source.toJson()..remove('sideBySide');
+      expect(ComparisonProject.fromJson(legacy).sideBySide, isNull);
       final swapped = restored.swapSources();
       expect(swapped.teacher!.uri, learner.uri);
       expect(swapped.offsetUs, -2000000);
       expect(swapped.teacherAnchorUs, 2000000);
       expect(swapped.learnerAnchorUs, 0);
       expect(swapped.positionUs, 1000000);
+      expect(swapped.sideBySide, true);
       final invalid = source.toJson()..['schemaVersion'] = 999;
       expect(() => ComparisonProject.fromJson(invalid), throwsFormatException);
     },
@@ -661,6 +671,175 @@ void main() {
       expect(gateway.projects.first.offsetUs, 2000000);
       expect(gateway.current.positionUs, 1000000);
       expect(find.byKey(const ValueKey('comparison-seek')), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    },
+  );
+
+  testWidgets(
+    'view choices preserve playback and rotation override is released on exit',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final directions = <List<dynamic>>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+            if (call.method == 'SystemChrome.setPreferredOrientations') {
+              directions.add(List<dynamic>.from(call.arguments as List));
+            }
+            return null;
+          });
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, null);
+      });
+      final gateway = FakeComparisonGateway(saved: [savedProject()]);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.darkTheme,
+          home: ComparisonScreen(gateway: gateway),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('comparison-play')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('comparison-view')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.ancestor(
+          of: find.text('左右视图'),
+          matching: find.byWidgetPredicate(
+            (widget) => widget is CheckedPopupMenuItem,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(gateway.layouts.last, true);
+      expect(gateway.projects.first.sideBySide, true);
+      expect(gateway.current.phase, 'playing');
+      expect(gateway.current.positionUs, 1000000);
+      expect(gateway.projects.first.offsetUs, 2000000);
+      final teacherRect = tester.getRect(
+        find.byKey(const ValueKey('comparison-pick-teacher')),
+      );
+      final learnerRect = tester.getRect(
+        find.byKey(const ValueKey('comparison-pick-learner')),
+      );
+      expect(learnerRect.left, greaterThan(teacherRect.right));
+      expect(learnerRect.top, teacherRect.top);
+      await tester.tap(find.byKey(const ValueKey('comparison-view')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('横屏显示'));
+      await tester.pumpAndSettle();
+      expect(directions.last, [
+        'DeviceOrientation.landscapeLeft',
+        'DeviceOrientation.landscapeRight',
+      ]);
+      tester.view.physicalSize = const Size(800, 360);
+      await tester.pumpAndSettle();
+      expect(gateway.layouts.last, true);
+      await tester.tap(find.byKey(const ValueKey('comparison-view')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.ancestor(
+          of: find.text('上下视图'),
+          matching: find.byWidgetPredicate(
+            (widget) => widget is CheckedPopupMenuItem,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(gateway.layouts.last, false);
+      expect(gateway.current.phase, 'playing');
+      await tester.tap(find.byKey(const ValueKey('comparison-view')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('竖屏显示'));
+      await tester.pumpAndSettle();
+      expect(directions.last, ['DeviceOrientation.portraitUp']);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+      expect(directions.last, isEmpty);
+      final restored = ComparisonController(gateway);
+      await restored.initialize();
+      expect(restored.project.sideBySide, false);
+      expect(restored.project.offsetUs, 2000000);
+      restored.dispose();
+    },
+  );
+
+  testWidgets(
+    'portrait side-by-side manual calibration keeps sliders usable and cancel only discards cue changes',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final gateway = FakeComparisonGateway(
+        saved: [savedProject().copyWith(sideBySide: true)],
+      );
+      final previews = <FakeCueVideo>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.darkTheme,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(2)),
+            child: child!,
+          ),
+          home: ComparisonScreen(
+            gateway: gateway,
+            manualVideoFactory: (uri) {
+              final video = FakeCueVideo(uri, gateway.events);
+              previews.add(video);
+              return video;
+            },
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('comparison-calibration')));
+      await tester.pumpAndSettle();
+      for (var role = 0; role < 2; role++) {
+        final slider = find.byKey(ValueKey('comparison-manual-seek-$role'));
+        expect(tester.getSize(slider).width, greaterThanOrEqualTo(96));
+        expect(tester.getSize(slider).height, 48);
+        expect(
+          tester
+              .getSize(find.byKey(ValueKey('comparison-manual-controls-$role')))
+              .height,
+          96,
+        );
+        tester.widget<Slider>(slider).onChangeEnd!((role + 1) * 2000000.0);
+      }
+      await tester.pumpAndSettle();
+      expect(previews[0].value.position.inMicroseconds, 2000000);
+      expect(previews[1].value.position.inMicroseconds, 4000000);
+      await tester.tap(find.byKey(const ValueKey('comparison-view')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.ancestor(
+          of: find.text('上下视图'),
+          matching: find.byWidgetPredicate(
+            (widget) => widget is CheckedPopupMenuItem,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(previews[0].value.position.inMicroseconds, 2000000);
+      expect(previews[1].value.position.inMicroseconds, 4000000);
+      await tester.tap(find.text('取消'));
+      await tester.pumpAndSettle();
+      expect(gateway.projects.first.teacherAnchorUs, 0);
+      expect(gateway.projects.first.learnerAnchorUs, 2000000);
+      expect(gateway.projects.first.sideBySide, false);
+      expect(gateway.projects.first.offsetUs, 2000000);
+      expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
     },

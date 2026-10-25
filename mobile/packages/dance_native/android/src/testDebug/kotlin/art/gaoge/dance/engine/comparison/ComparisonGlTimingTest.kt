@@ -57,4 +57,24 @@ class ComparisonGlTimingTest {
         assertEquals(1,summary.coverageMisses)
         assertEquals(3599,summary.samples)
     }
+    @Test fun bothArrangementsContainPortraitAndLandscapeSourcesWithoutOverlap() {
+        for ((width,height) in listOf(1080 to 1544,2400 to 1080)) {
+            for (sideBySide in listOf(false,true)) {
+                for ((sourceWidth,sourceHeight) in listOf(1080 to 1920,1920 to 1080)) {
+                    val teacher=ComparisonGlLayout.viewport(width,height,8,sourceWidth,sourceHeight,true,sideBySide)
+                    val learner=ComparisonGlLayout.viewport(width,height,8,sourceWidth,sourceHeight,false,sideBySide)
+                    for (pane in listOf(teacher,learner)) {
+                        assertTrue(pane.x>=0 && pane.top>=0)
+                        assertTrue(pane.x+pane.width<=width && pane.top+pane.height<=height)
+                        assertTrue(pane.width>0 && pane.height>0)
+                        assertTrue(kotlin.math.abs(pane.width.toDouble()/pane.height-
+                            sourceWidth.toDouble()/sourceHeight)<2.0/pane.height)
+                    }
+                    if (sideBySide) assertTrue(teacher.x+teacher.width<=learner.x)
+                    else assertTrue(teacher.top+teacher.height<=learner.top)
+                }
+            }
+        }
+    }
+
 }
