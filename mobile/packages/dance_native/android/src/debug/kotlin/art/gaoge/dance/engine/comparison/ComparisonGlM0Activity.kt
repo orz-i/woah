@@ -2,6 +2,9 @@ package art.gaoge.dance.engine.comparison
 
 import android.app.Activity
 import android.content.Intent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
@@ -80,6 +83,12 @@ class ComparisonGlM0Activity : Activity() {
     private var clockBacksteps=0
     private var maxClockBackstepUs=0L
     private var closeFailures=0
+    private val testReceiver=object: BroadcastReceiver() {
+        override fun onReceive(context: Context,intent: Intent) {
+            if (intent.getStringExtra("action")=="stall")
+                engine?.injectRenderStall(intent.getLongExtra("duration_ms",150))
+        }
+    }
 
     private val refresh=object: Runnable {
         override fun run() { updateStatus(); handler.postDelayed(this,250L) }
@@ -119,6 +128,9 @@ class ComparisonGlM0Activity : Activity() {
         buildView()
         speedButton.text="速度 ${playbackSpeed}×"
         handler.post(refresh)
+        val filter=IntentFilter("art.gaoge.dance.M0_GL_TEST")
+        if (Build.VERSION.SDK_INT>=33) registerReceiver(testReceiver,filter,Context.RECEIVER_EXPORTED)
+        else @Suppress("DEPRECATION") registerReceiver(testReceiver,filter)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -318,7 +330,7 @@ class ComparisonGlM0Activity : Activity() {
                 if (generation==session && renderStalled) {
                     val range=overlap
                     if (range!=null) {
-                        val target=(player.currentPosition*1000L)
+                        val target=maxOf(lastTickTeacherUs,player.currentPosition*1000L)
                             .coerceIn(range.teacherStartUs,range.teacherEndUs-1)
                         engine?.render(target,offsetUs,System.nanoTime()) {
                             if (generation==session) {
@@ -499,6 +511,7 @@ class ComparisonGlM0Activity : Activity() {
         super.onPause()
     }
     override fun onDestroy() {
+        unregisterReceiver(testReceiver)
         handler.removeCallbacksAndMessages(null)
         choreographer.removeFrameCallback(frames)
         closePlayers()

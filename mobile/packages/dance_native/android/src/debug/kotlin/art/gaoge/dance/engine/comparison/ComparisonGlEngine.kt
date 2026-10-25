@@ -23,6 +23,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 
 internal data class ComparisonViewport(val x: Int, val top: Int, val width: Int, val height: Int)
 internal object ComparisonGlLayout {
@@ -54,7 +55,13 @@ internal class ComparisonGlEngine(
     private val frameHandler = Handler(frameThread.looper)
     private val closed = AtomicBoolean(false)
     private val request = AtomicLong(0)
+    private data class RenderRequest(val teacherUs: Long,val offsetUs: Long,
+        val clockNs: Long,val generation: Long,val observation: Long,
+        val complete: (() -> Unit)? = null)
     private val tickPending = AtomicBoolean(false)
+    private val latestTick = AtomicReference<RenderRequest?>(null)
+    private val testStallMs = AtomicLong(0)
+    private var injectedStalls = 0
     private var activeRequest = 0L
     private var display: EGLDisplay = EGL14.EGL_NO_DISPLAY
     private var eglContext: EGLContext = EGL14.EGL_NO_CONTEXT
@@ -120,6 +127,7 @@ internal class ComparisonGlEngine(
 
     fun seek(teacherUs: Long,offsetUs: Long,complete: () -> Unit) {
         val generation=request.incrementAndGet()
+        latestTick.set(null)
         val observation=diagnostics.reset()
         handler.post {
             if (closed.get() || generation!=request.get()) return@post
@@ -138,39 +146,57 @@ internal class ComparisonGlEngine(
     fun render(teacherUs: Long,offsetUs: Long,clockSampleNs: Long,
                complete: (() -> Unit)? = null) {
         if (closed.get()) return
-        val ownsTick=tickPending.compareAndSet(false,true)
-        if (!ownsTick && complete==null) return
-        val generation=request.get()
-        val observation=diagnostics.generation()
+        val next=RenderRequest(teacherUs,offsetUs,clockSampleNs,request.get(),
+            diagnostics.generation(),complete)
+        if (complete!=null) {
+            latestTick.set(null)
+            handler.post { executeRender(next) }
+        }
+        else {
+            // One running job and one newest request, never a historical queue.
+            // A VSYNC arriving during swap must update the mailbox, not be lost.
+            latestTick.set(next)
+            scheduleTick()
+        }
+    }
+
+    private fun scheduleTick() {
+        if (!tickPending.compareAndSet(false,true)) return
         handler.post {
-            if (closed.get() || generation!=request.get()) {
-                if (ownsTick) tickPending.set(false)
-                return@post
-            }
-            activeRequest=generation
-            val done=AtomicBoolean(false)
-            val notified=AtomicBoolean(false)
-            val watchdog=Runnable {
-                if (!done.get() && generation==request.get() && !closed.get()) {
-                    notified.set(true)
-                    stalled()
-                }
-            }
-            main.postDelayed(watchdog,50)
-            try {
-                drawAt(teacherUs,offsetUs,clockSampleNs,observation)
-                main.post {
-                    if (!closed.get() && generation==request.get()) {
-                        complete?.invoke()
-                        if (notified.get()) recovered()
-                    }
-                }
-            } catch (e: Throwable) { error(e) }
+            try { latestTick.getAndSet(null)?.let(::executeRender) }
             finally {
-                done.set(true)
-                main.removeCallbacks(watchdog)
-                if (ownsTick) tickPending.set(false)
+                tickPending.set(false)
+                if (latestTick.get()!=null && !closed.get()) scheduleTick()
             }
+        }
+    }
+
+    private fun executeRender(next: RenderRequest) {
+        if (closed.get() || next.generation!=request.get()) return
+        activeRequest=next.generation
+        val done=AtomicBoolean(false)
+        val notified=AtomicBoolean(false)
+        val watchdog=Runnable {
+            if (!done.get() && next.generation==request.get() && !closed.get()) {
+                notified.set(true)
+                stalled()
+            }
+        }
+        main.postDelayed(watchdog,50)
+        try {
+            val delay=testStallMs.getAndSet(0)
+            if (delay>0) { injectedStalls++; Thread.sleep(delay) }
+            drawAt(next.teacherUs,next.offsetUs,next.clockNs,next.observation)
+            main.post {
+                if (!closed.get() && next.generation==request.get()) {
+                    next.complete?.invoke()
+                    if (notified.get()) recovered()
+                }
+            }
+        } catch (e: Throwable) { error(e) }
+        finally {
+            done.set(true)
+            main.removeCallbacks(watchdog)
         }
     }
 
@@ -178,8 +204,10 @@ internal class ComparisonGlEngine(
         checkCurrent()
         val a=teacher ?: error("Teacher decoder missing")
         val b=learner ?: error("Learner decoder missing")
-        val ta=a.selectAt(teacherUs)
-        val lb=b.selectAt(teacherUs+offsetUs)
+        val ta=a.prepareAt(teacherUs)
+        val lb=b.prepareAt(teacherUs+offsetUs)
+        a.latchPrepared()
+        b.latchPrepared()
         checkCurrent()
         check(ta.contains(teacherUs) && lb.contains(teacherUs+offsetUs)) {
             "Joint frame coverage failed"
@@ -293,10 +321,14 @@ internal class ComparisonGlEngine(
         }
     }
 
+    // Debug-only deterministic coverage of the common buffering barrier.
+    fun injectRenderStall(milliseconds: Long) { testStallMs.set(milliseconds.coerceIn(1,500)) }
+
     fun report(complete: (JSONObject) -> Unit) {
         handler.post {
             val s=diagnostics.snapshot()
             val data=JSONObject().apply {
+                put("injectedTestStalls",injectedStalls)
                 put("jointSubmissions",s.samples)
                 put("p95AbsMediaErrorUs",s.p95Us ?: JSONObject.NULL)
                 put("maxAbsMediaErrorUs",s.maxUs ?: JSONObject.NULL)

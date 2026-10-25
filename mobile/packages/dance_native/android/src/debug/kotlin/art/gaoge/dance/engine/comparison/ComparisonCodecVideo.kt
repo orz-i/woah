@@ -40,6 +40,8 @@ internal class ComparisonCodecVideo(
     private var outputEos = false
     private var displayedPtsUs = -1L
     private var displayedEndUs = -1L
+    private var preparedPtsUs: Long? = null
+    private var preparedEndUs = -1L
     val matrix = FloatArray(16)
     val description: ComparisonVideoDescription
     var decodedFrames = 0L
@@ -107,6 +109,8 @@ internal class ComparisonCodecVideo(
         outputEos = false
         displayedPtsUs = -1L
         displayedEndUs = -1L
+        preparedPtsUs = null
+        preparedEndUs = -1L
         signal.drainPermits()
     }
 
@@ -150,7 +154,7 @@ internal class ComparisonCodecVideo(
     }
 
     /** Keep the newest output <= target, and hold exactly one future output. */
-    fun selectAt(sourceUs: Long): ComparisonFrameInterval {
+    fun prepareAt(sourceUs: Long): ComparisonFrameInterval {
         checkCurrent()
         val target = sourceUs.coerceIn(0, description.durationUs - 1)
         if (displayedPtsUs >= 0 && target in displayedPtsUs until displayedEndUs)
@@ -174,26 +178,34 @@ internal class ComparisonCodecVideo(
                 signal.drainPermits()
                 decoder.releaseOutputBuffer(selected.index, true)
                 candidate = null
-                val deadline = System.nanoTime() + 1_000_000_000L
-                while (true) {
-                    checkCurrent()
-                    if (signal.tryAcquire(5, TimeUnit.MILLISECONDS)) {
-                        texture.updateTexImage()
-                        // Late callbacks from a flushed seek cannot relabel old pixels.
-                        if (kotlin.math.abs(texture.timestamp / 1000L - selected.ptsUs) <= 1L) break
-                    } else textureWaits++
-                    check(System.nanoTime() < deadline) { "SurfaceTexture PTS latch timeout" }
-                }
-                texture.getTransformMatrix(matrix)
-                displayedPtsUs = selected.ptsUs
-                displayedEndUs = pending?.ptsUs ?: description.durationUs
+                preparedPtsUs = selected.ptsUs
+                preparedEndUs = pending?.ptsUs ?: description.durationUs
             }
-            val interval = ComparisonFrameInterval(displayedPtsUs, displayedEndUs)
+            val interval = ComparisonFrameInterval(preparedPtsUs ?: displayedPtsUs,
+                if (preparedPtsUs != null) preparedEndUs else displayedEndUs)
             check(interval.contains(target)) { "Decoded frame does not cover requested source PTS" }
             return interval
         } finally {
             candidate?.let { decoder.releaseOutputBuffer(it.index, false) }
         }
+    }
+
+    /** Both codecs enqueue their selected frames before either texture wait. */
+    fun latchPrepared() {
+        val ptsUs = preparedPtsUs ?: return
+        val deadline = System.nanoTime() + 1_000_000_000L
+        while (true) {
+            checkCurrent()
+            if (signal.tryAcquire(5, TimeUnit.MILLISECONDS)) {
+                texture.updateTexImage()
+                if (kotlin.math.abs(texture.timestamp / 1000L - ptsUs) <= 1L) break
+            } else textureWaits++
+            check(System.nanoTime() < deadline) { "SurfaceTexture PTS latch timeout" }
+        }
+        texture.getTransformMatrix(matrix)
+        displayedPtsUs = ptsUs
+        displayedEndUs = preparedEndUs
+        preparedPtsUs = null
     }
 
     override fun close() {
