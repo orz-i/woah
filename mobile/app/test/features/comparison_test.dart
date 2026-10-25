@@ -7,6 +7,7 @@ import 'package:app/features/comparison/presentation/comparison_screen.dart';
 import 'package:dance_domain/dance_domain.dart';
 import 'package:dance_native/dance_native.dart';
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const teacher = ComparisonSource(
@@ -52,7 +53,9 @@ class FakeComparisonGateway implements ComparisonGateway {
     : projects = saved ?? [];
   List<ComparisonProject> projects;
   ComparisonSource? picked;
-  int opens = 0, cancels = 0, saves = 0;
+  int opens = 0, cancels = 0, saves = 0, alignCalls = 0;
+  final List<String> events = [];
+  MusicAlignmentDto? alignmentResult;
   bool failSave = false;
   Completer<void>? firstSaveGate;
   Completer<MusicAlignmentDto>? pendingMatch;
@@ -85,6 +88,7 @@ class FakeComparisonGateway implements ComparisonGateway {
     bool horizontal,
   ) async {
     opens++;
+    events.add('shared-open');
     current.offsetUs = p.offsetUs;
     current.positionUs = p.positionUs;
     current.speed = p.speed;
@@ -118,15 +122,59 @@ class FakeComparisonGateway implements ComparisonGateway {
   @override
   Future<ComparisonPlaybackDto> state() async => current;
   @override
-  Future<MusicAlignmentDto> align(ComparisonProject p) =>
-      pendingMatch?.future ?? Future.value(matched());
+  Future<MusicAlignmentDto> align(ComparisonProject p) {
+    alignCalls++;
+    return pendingMatch?.future ?? Future.value(alignmentResult ?? matched());
+  }
+
   @override
   Future<void> cancelAlignment() async {
     cancels++;
   }
 
   @override
-  Future<void> close() async {}
+  Future<void> close() async {
+    events.add('shared-close');
+  }
+}
+
+class FakeCueVideo extends VideoPlayerController {
+  FakeCueVideo(String source, this.events)
+    : super.contentUri(Uri.parse(source)) {
+    events.add('preview-create');
+  }
+  final List<String> events;
+  bool closed = false;
+  @override
+  Future<void> initialize() async {
+    value = const VideoPlayerValue(
+      duration: Duration(seconds: 15),
+      size: Size(640, 480),
+      isInitialized: true,
+    );
+  }
+
+  @override
+  Future<void> pause() async {
+    value = value.copyWith(isPlaying: false);
+  }
+
+  @override
+  Future<void> play() async {
+    value = value.copyWith(isPlaying: true);
+  }
+
+  @override
+  Future<void> seekTo(Duration position) async {
+    value = value.copyWith(position: position);
+  }
+
+  @override
+  Future<void> dispose() async {
+    closed = true;
+    events.add('preview-close');
+    await super.dispose();
+  }
 }
 
 void main() {
@@ -149,19 +197,6 @@ void main() {
       expect(() => ComparisonProject.fromJson(invalid), throwsFormatException);
     },
   );
-  test('manual source times are exact and malformed values are rejected', () {
-    expect(parseComparisonTime('1:05.123456'), 65123456);
-    for (final value in [
-      '-1',
-      'NaN',
-      '1e3',
-      '1:60',
-      '1.0000001',
-      '999999999999999999999',
-    ]) {
-      expect(() => parseComparisonTime(value), throwsFormatException);
-    }
-  });
   test(
     'canceling a picker retains saved calibration and source references',
     () async {
@@ -317,44 +352,61 @@ void main() {
       await tester.pump();
     },
   );
-  testWidgets(
-    'music candidates do not shrink the stage and auditions return to the video',
-    (tester) async {
-      final gateway = FakeComparisonGateway(saved: [savedProject()]);
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.darkTheme,
-          home: ComparisonScreen(gateway: gateway),
-        ),
+  test(
+    'automatic calibration chooses the best usable result without presenting alternatives',
+    () async {
+      final gateway = FakeComparisonGateway(saved: [savedProject()])
+        ..alignmentResult = MusicAlignmentDto(
+          status: 'ambiguous',
+          message: 'internal alternatives',
+          candidates: [
+            MusicCandidateDto(
+              offsetUs: 1000000,
+              score: .7,
+              consistentWindows: 3,
+              supportedSeconds: 10,
+              residualMs: 0,
+            ),
+            MusicCandidateDto(
+              offsetUs: 3000000,
+              score: .9,
+              consistentWindows: 3,
+              supportedSeconds: 10,
+              residualMs: 0,
+            ),
+          ],
+        );
+      final controller = ComparisonController(gateway);
+      addTearDown(controller.dispose);
+      await controller.initialize();
+      expect(gateway.alignCalls, 0);
+      await controller.matchMusic();
+      expect(controller.project.offsetUs, 3000000);
+      expect(controller.project.alignment, 'auto_review');
+      expect(gateway.projects.first.offsetUs, 3000000);
+    },
+  );
+
+  test(
+    'restored uncalibrated pair calibrates once and existing calibration is retained on reselection',
+    () async {
+      final gateway = FakeComparisonGateway(
+        saved: [
+          savedProject().copyWith(
+            alignment: 'unmatched',
+            offsetUs: 0,
+            clearAnchors: true,
+          ),
+        ],
       );
-      await tester.pump(const Duration(milliseconds: 400));
-      final before = tester.getSize(
-        find.byKey(const ValueKey('comparison-stage')),
-      );
-      await tester.tap(find.byKey(const ValueKey('comparison-calibration')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('comparison-match')));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('候选 1'), findsOneWidget);
-      await tester.tap(
-        find.byKey(const ValueKey('comparison-calibration-close')),
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('匹配位置'), findsNothing);
-      expect(
-        tester.getSize(find.byKey(const ValueKey('comparison-stage'))),
-        before,
-      );
-      await tester.tap(find.byKey(const ValueKey('comparison-calibration')));
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('试听 8 秒'));
-      await tester.tap(find.text('试听 8 秒'));
-      await tester.pumpAndSettle();
-      expect(find.text('音乐校准'), findsNothing);
-      expect(gateway.current.phase, 'playing');
-      expect(gateway.projects.first.alignment, 'candidate');
-      await tester.pumpWidget(const SizedBox.shrink());
-      await tester.pump();
+      final controller = ComparisonController(gateway);
+      addTearDown(controller.dispose);
+      await controller.initialize();
+      expect(gateway.alignCalls, 1);
+      gateway.picked = teacher;
+      await controller.pick('teacher');
+      expect(gateway.alignCalls, 1);
+      expect(controller.project.offsetUs, 3000000);
     },
   );
 
@@ -431,35 +483,110 @@ void main() {
     },
   );
 
-  testWidgets('manual input applies both source times to the saved project', (
-    tester,
-  ) async {
-    final gateway = FakeComparisonGateway(saved: [savedProject()]);
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.darkTheme,
-        home: ComparisonScreen(gateway: gateway),
-      ),
-    );
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('comparison-calibration')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('comparison-manual')));
-    await tester.pumpAndSettle();
-    await tester.enterText(
-      find.byKey(const ValueKey('comparison-anchor-teacher')),
-      '1.25',
-    );
-    await tester.enterText(
-      find.byKey(const ValueKey('comparison-anchor-learner')),
-      '3.5',
-    );
-    await tester.tap(find.text('应用校准'));
-    await tester.pumpAndSettle();
-    expect(gateway.projects.first.offsetUs, 2250000);
-    expect(gateway.projects.first.teacherAnchorUs, 1250000);
-    await tester.pumpWidget(const SizedBox.shrink());
-    await tester.pump();
-  });
+  testWidgets(
+    'manual mode exposes independent source sliders, hides shared controls and saves both anchors',
+    (tester) async {
+      final gateway = FakeComparisonGateway(saved: [savedProject()]);
+      final previews = <FakeCueVideo>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.darkTheme,
+          home: ComparisonScreen(
+            gateway: gateway,
+            manualVideoFactory: (uri) {
+              final video = FakeCueVideo(uri, gateway.events);
+              previews.add(video);
+              return video;
+            },
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('候选'), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('comparison-calibration')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('comparison-seek')), findsNothing);
+      expect(find.byKey(const ValueKey('comparison-play')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('comparison-manual-seek-0')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('comparison-manual-seek-1')),
+        findsOneWidget,
+      );
+      expect(
+        gateway.events.indexOf('shared-close'),
+        lessThan(gateway.events.indexOf('preview-create')),
+      );
+      for (final entry in [(0, 1250000.0), (1, 3500000.0)]) {
+        final slider = tester.widget<Slider>(
+          find.byKey(ValueKey('comparison-manual-seek-${entry.$1}')),
+        );
+        slider.onChanged!(entry.$2);
+        slider.onChangeEnd!(entry.$2);
+        await tester.pumpAndSettle();
+      }
+      expect(previews[0].value.position.inMicroseconds, 1250000);
+      expect(previews[1].value.position.inMicroseconds, 3500000);
+      await tester.tap(find.byKey(const ValueKey('comparison-manual-play-0')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('comparison-manual-play-1')));
+      await tester.pumpAndSettle();
+      expect(previews[0].value.isPlaying, false);
+      expect(previews[1].value.isPlaying, true);
+      await tester.tap(find.byKey(const ValueKey('comparison-manual-apply')));
+      await tester.pumpAndSettle();
+      expect(gateway.projects.first.offsetUs, 2250000);
+      expect(gateway.projects.first.teacherAnchorUs, 1250000);
+      expect(gateway.projects.first.learnerAnchorUs, 3500000);
+      expect(previews.every((v) => v.closed), true);
+      expect(
+        gateway.events.lastIndexOf('preview-close'),
+        lessThan(gateway.events.lastIndexOf('shared-open')),
+      );
+      expect(find.byKey(const ValueKey('comparison-seek')), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    },
+  );
+
+  testWidgets(
+    'failed manual saving keeps editing open and cancel restores the saved calibration',
+    (tester) async {
+      final gateway = FakeComparisonGateway(saved: [savedProject()]);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.darkTheme,
+          home: ComparisonScreen(
+            gateway: gateway,
+            manualVideoFactory: (uri) => FakeCueVideo(uri, gateway.events),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('comparison-calibration')));
+      await tester.pumpAndSettle();
+      final slider = tester.widget<Slider>(
+        find.byKey(const ValueKey('comparison-manual-seek-1')),
+      );
+      slider.onChangeEnd!(7000000);
+      await tester.pumpAndSettle();
+      gateway.failSave = true;
+      await tester.tap(find.byKey(const ValueKey('comparison-manual-apply')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('comparison-seek')), findsNothing);
+      expect(find.textContaining('保存失败'), findsOneWidget);
+      gateway.failSave = false;
+      await tester.tap(find.text('取消'));
+      await tester.pumpAndSettle();
+      expect(gateway.projects.first.offsetUs, 2000000);
+      expect(gateway.current.positionUs, 1000000);
+      expect(find.byKey(const ValueKey('comparison-seek')), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    },
+  );
 }

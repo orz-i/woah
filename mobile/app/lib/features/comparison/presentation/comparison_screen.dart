@@ -2,42 +2,21 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:video_player/video_player.dart';
 import 'package:dance_domain/dance_domain.dart';
 import '../../../app/theme.dart';
 import '../data/comparison_gateway.dart';
 import 'comparison_controller.dart';
-
-int parseComparisonTime(String value) {
-  final match = RegExp(
-    r'^(?:(\d+):)?(\d+)(?:\.(\d{1,6}))?$',
-  ).firstMatch(value.trim());
-  if (match == null) throw const FormatException('请输入秒或分:秒');
-  final minutes = int.tryParse(match.group(1) ?? '0');
-  final seconds = int.tryParse(match.group(2)!);
-  if (minutes == null ||
-      seconds == null ||
-      minutes > 1440 ||
-      seconds > 86400 ||
-      (match.group(1) != null && seconds >= 60)) {
-    throw const FormatException('时间无效');
-  }
-  final result =
-      (minutes * 60 + seconds) * 1000000 +
-      int.parse((match.group(3) ?? '').padRight(6, '0'));
-  if (result > 86400000000) throw const FormatException('时间过大');
-  return result;
-}
-
-String comparisonTime(int value) {
-  final ms = value ~/ 1000;
-  return '${(ms ~/ 60000).toString().padLeft(2, '0')}:${((ms ~/ 1000) % 60).toString().padLeft(2, '0')}.${(ms % 1000).toString().padLeft(3, '0')}';
-}
+import 'comparison_manual_session.dart';
+import 'comparison_manual_view.dart';
+import 'comparison_time.dart';
 
 enum _ComparisonProjectAction { create, save }
 
 class ComparisonScreen extends StatefulWidget {
   final ComparisonGateway? gateway;
-  const ComparisonScreen({super.key, this.gateway});
+  final VideoPlayerController Function(String)? manualVideoFactory;
+  const ComparisonScreen({super.key, this.gateway, this.manualVideoFactory});
   @override
   State<ComparisonScreen> createState() => _ComparisonScreenState();
 }
@@ -47,6 +26,8 @@ class _ComparisonScreenState extends State<ComparisonScreen>
   late final ComparisonController controller;
   bool _allowPop = false, _exiting = false;
   double? _scrub;
+  ComparisonManualSession? _manualSession;
+  bool _finishingManual = false;
   @override
   void initState() {
     super.initState();
@@ -61,11 +42,16 @@ class _ComparisonScreenState extends State<ComparisonScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
+      if (_manualSession != null) unawaited(_manualSession!.pause());
       unawaited(controller.background());
     }
   }
 
   Future<void> _exit() async {
+    if (_manualSession != null) {
+      await _finishManual(false);
+      return;
+    }
     if (_exiting) return;
     _exiting = true;
     final saved = await controller.finish();
@@ -83,6 +69,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    if (_manualSession != null) unawaited(_manualSession!.close());
     controller.dispose();
     super.dispose();
   }
@@ -151,13 +138,41 @@ class _ComparisonScreenState extends State<ComparisonScreen>
   }
 
   Future<void> _manual() async {
-    await controller.pause();
-    if (!mounted || !controller.project.hasPair) return;
-    final values = await showDialog<List<int>>(
-      context: context,
-      builder: (_) => _MusicAnchorDialog(project: controller.project),
+    if (_manualSession != null || !await controller.enterManualCalibration()) {
+      return;
+    }
+    if (!mounted) return;
+    final session = ComparisonManualSession(
+      controller.project,
+      factory: widget.manualVideoFactory,
     );
-    if (values != null) await controller.manual(values[0], values[1]);
+    setState(() => _manualSession = session);
+    unawaited(session.initialize());
+  }
+
+  Future<void> _finishManual(bool apply) async {
+    final session = _manualSession;
+    if (session == null || _finishingManual) return;
+    setState(() => _finishingManual = true);
+    try {
+      if (apply) {
+        final anchors = await session.anchors();
+        if (!mounted) return;
+        if (!await controller.manual(anchors.$1, anchors.$2)) return;
+      }
+      await session.close();
+      if (!mounted) return;
+      setState(() => _manualSession = null);
+      await controller.leaveManualCalibration(applied: apply);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('校准未完成，请重试。')));
+      }
+    } finally {
+      if (mounted) setState(() => _finishingManual = false);
+    }
   }
 
   @override
@@ -172,48 +187,58 @@ class _ComparisonScreenState extends State<ComparisonScreen>
         resizeToAvoidBottomInset: false,
         backgroundColor: AppTheme.flowBackground,
         appBar: AppBar(
-          title: const Text(
-            '舞蹈对比',
+          title: Text(
+            _manualSession != null ? '手动校准' : '舞蹈对比',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
           leading: BackButton(onPressed: _exit),
           centerTitle: false,
-          actions: [
-            TextButton.icon(
-              key: const ValueKey('comparison-projects'),
-              onPressed: controller.busy ? null : _history,
-              icon: const Icon(Icons.folder_open_outlined, size: 20),
-              label: const Text('项目'),
-            ),
-            PopupMenuButton<_ComparisonProjectAction>(
-              key: const ValueKey('comparison-project-menu'),
-              tooltip: '更多项目操作',
-              enabled: !controller.busy && !controller.saving,
-              onSelected: (action) {
-                switch (action) {
-                  case _ComparisonProjectAction.create:
-                    unawaited(controller.newProject());
-                  case _ComparisonProjectAction.save:
-                    unawaited(_save());
-                }
-              },
-              itemBuilder: (_) => const [
-                PopupMenuItem(
-                  value: _ComparisonProjectAction.save,
-                  child: Text('保存并重命名'),
-                ),
-                PopupMenuItem(
-                  value: _ComparisonProjectAction.create,
-                  child: Text('新建对比'),
-                ),
-              ],
-            ),
-          ],
+          actions: _manualSession != null
+              ? []
+              : [
+                  TextButton.icon(
+                    key: const ValueKey('comparison-projects'),
+                    onPressed: controller.busy ? null : _history,
+                    icon: const Icon(Icons.folder_open_outlined, size: 20),
+                    label: const Text('项目'),
+                  ),
+                  PopupMenuButton<_ComparisonProjectAction>(
+                    key: const ValueKey('comparison-project-menu'),
+                    tooltip: '更多项目操作',
+                    enabled: !controller.busy && !controller.saving,
+                    onSelected: (action) {
+                      switch (action) {
+                        case _ComparisonProjectAction.create:
+                          unawaited(controller.newProject());
+                        case _ComparisonProjectAction.save:
+                          unawaited(_save());
+                      }
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: _ComparisonProjectAction.save,
+                        child: Text('保存并重命名'),
+                      ),
+                      PopupMenuItem(
+                        value: _ComparisonProjectAction.create,
+                        child: Text('新建对比'),
+                      ),
+                    ],
+                  ),
+                ],
         ),
         body: SafeArea(
           child: !controller.initialized
               ? const Center(child: CircularProgressIndicator())
+              : _manualSession != null
+              ? ComparisonManualView(
+                  session: _manualSession!,
+                  saving: _finishingManual,
+                  error: controller.error,
+                  onApply: () => _finishManual(true),
+                  onCancel: () => _finishManual(false),
+                )
               : LayoutBuilder(
                   builder: (context, viewport) {
                     final horizontal = viewport.maxWidth > viewport.maxHeight;
@@ -386,10 +411,10 @@ class _ComparisonScreenState extends State<ComparisonScreen>
       '${controller.project.offsetUs >= 0 ? '+' : ''}${(controller.project.offsetUs / 1e6).toStringAsFixed(3)}s';
 
   String get _alignmentLabel => switch (controller.project.alignment) {
-    'auto' => '音乐已对齐',
+    'auto' => '自动校准',
     'manual' => '手动校准',
-    'candidate' => '候选校准',
-    _ => controller.candidates.isEmpty ? '尚未对齐音乐' : '请选择音乐位置',
+    'candidate' || 'auto_review' => '自动校准 · 可微调',
+    _ => '需手动校准',
   };
 
   Widget _musicSummary() {
@@ -406,7 +431,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
         Expanded(
           child: Text(
             controller.matching
-                ? '正在匹配音乐…'
+                ? '正在自动校准…'
                 : !paired
                 ? '先选择老师和学生视频'
                 : _alignmentLabel + (aligned ? ' · $_offsetLabel' : ''),
@@ -425,195 +450,10 @@ class _ComparisonScreenState extends State<ComparisonScreen>
         else
           TextButton(
             key: const ValueKey('comparison-calibration'),
-            onPressed: paired && !controller.picking ? _calibration : null,
-            child: const Text('校准'),
+            onPressed: paired && !controller.busy ? _manual : null,
+            child: const Text('手动校准'),
           ),
       ],
-    );
-  }
-
-  Future<void> _calibration() async {
-    await controller.pause();
-    if (!mounted) return;
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      showDragHandle: true,
-      backgroundColor: AppTheme.flowSurface,
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.sizeOf(context).height * .82,
-      ),
-      builder: (sheetContext) => AnimatedBuilder(
-        animation: controller,
-        builder: (context, _) => SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      '音乐校准',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    key: const ValueKey('comparison-calibration-close'),
-                    tooltip: '关闭校准',
-                    onPressed: () => Navigator.pop(sheetContext),
-                    icon: const Icon(Icons.close, size: 22),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                '$_alignmentLabel · $_offsetLabel',
-                style: const TextStyle(
-                  color: AppTheme.gold,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '老师 ${comparisonTime(controller.project.teacherAnchorUs ?? math.max(0, -controller.project.offsetUs))}'
-                ' 对应学生 ${comparisonTime(controller.project.learnerAnchorUs ?? math.max(0, controller.project.offsetUs))}',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppTheme.flowTextSecondary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                controller.message,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppTheme.flowTextSecondary,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  OutlinedButton.icon(
-                    key: const ValueKey('comparison-match'),
-                    onPressed: controller.matching
-                        ? controller.cancelMatching
-                        : controller.matchMusic,
-                    icon: Icon(
-                      controller.matching
-                          ? Icons.close
-                          : Icons.music_note_outlined,
-                      size: 18,
-                    ),
-                    label: Text(controller.matching ? '取消匹配' : '匹配音乐'),
-                  ),
-                  FilledButton.tonalIcon(
-                    key: const ValueKey('comparison-manual'),
-                    onPressed: controller.busy
-                        ? null
-                        : () {
-                            Navigator.pop(sheetContext);
-                            unawaited(_manual());
-                          },
-                    icon: const Icon(Icons.tune, size: 18),
-                    label: const Text('手动校准'),
-                  ),
-                ],
-              ),
-              if (!controller.matching && controller.candidates.isNotEmpty) ...[
-                const Divider(height: 32),
-                const Text(
-                  '匹配位置',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  '试听会回到对应起点，播放约 8 秒后暂停。',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.flowTextSecondary,
-                  ),
-                ),
-                for (var i = 0; i < controller.candidates.length; i++)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: DecoratedBox(
-                      decoration: AppTheme.panelDecoration(radius: 12),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    controller.candidates[i].offsetUs ==
-                                            controller.project.offsetUs
-                                        ? '候选 ${i + 1} · 当前'
-                                        : '候选 ${i + 1}',
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.pop(sheetContext);
-                                    unawaited(
-                                      controller.applyCandidate(
-                                        controller.candidates[i],
-                                      ),
-                                    );
-                                  },
-                                  child: const Text('试听 8 秒'),
-                                ),
-                              ],
-                            ),
-                            Text(
-                              '音乐偏移 ${(controller.candidates[i].offsetUs / 1e6).toStringAsFixed(3)} 秒',
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${controller.candidates[i].consistentWindows}/3 段一致 · 共同段约 ${controller.candidates[i].supportedSeconds.toStringAsFixed(1)} 秒',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.flowTextSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-              const Divider(height: 32),
-              const Text('所用视频', style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              for (final entry in [
-                ('老师（参考）', controller.project.teacher),
-                ('学生（自己）', controller.project.learner),
-              ])
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    '${entry.$1} · ${entry.$2?.name ?? '未选择'}',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.flowTextSecondary,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -816,111 +656,6 @@ class _ComparisonScreenState extends State<ComparisonScreen>
           ],
         ),
       ),
-    );
-  }
-}
-
-class _MusicAnchorDialog extends StatefulWidget {
-  final ComparisonProject project;
-  const _MusicAnchorDialog({required this.project});
-  @override
-  State<_MusicAnchorDialog> createState() => _MusicAnchorDialogState();
-}
-
-class _MusicAnchorDialogState extends State<_MusicAnchorDialog> {
-  late final TextEditingController teacher;
-  late final TextEditingController learner;
-  @override
-  void initState() {
-    super.initState();
-    teacher = TextEditingController(
-      text: widget.project.teacherAnchorUs == null
-          ? ''
-          : (widget.project.teacherAnchorUs! / 1e6).toStringAsFixed(6),
-    );
-    learner = TextEditingController(
-      text: widget.project.learnerAnchorUs == null
-          ? ''
-          : (widget.project.learnerAnchorUs! / 1e6).toStringAsFixed(6),
-    );
-  }
-
-  @override
-  void dispose() {
-    teacher.dispose();
-    learner.dispose();
-    super.dispose();
-  }
-
-  List<int>? _values() {
-    try {
-      final t = parseComparisonTime(teacher.text),
-          l = parseComparisonTime(learner.text);
-      if (t < widget.project.teacher!.durationUs &&
-          l < widget.project.learner!.durationUs) {
-        return [t, l];
-      }
-    } on FormatException {
-      /* Incomplete input keeps the Apply action disabled. */
-    }
-    return null;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final values = _values();
-    return AlertDialog(
-      scrollable: true,
-      title: const Text('手动音乐校准'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('找到同一歌词或鼓点，填入它在两段视频中的时间。支持秒或分:秒。'),
-          const SizedBox(height: 16),
-          TextField(
-            key: const ValueKey('comparison-anchor-teacher'),
-            controller: teacher,
-            textInputAction: TextInputAction.next,
-            decoration: const InputDecoration(
-              labelText: '老师源时间',
-              hintText: '例如 0 或 1:05.125',
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            key: const ValueKey('comparison-anchor-learner'),
-            controller: learner,
-            textInputAction: TextInputAction.done,
-            decoration: const InputDecoration(
-              labelText: '学生同一音乐事件源时间',
-              hintText: '例如 2',
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            values == null
-                ? '请填写两段视频内的有效时间。'
-                : '学生 − 老师 = ${((values[1] - values[0]) / 1e6).toStringAsFixed(3)} 秒',
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('取消'),
-        ),
-        FilledButton(
-          onPressed: values == null
-              ? null
-              : () {
-                  final current = _values();
-                  if (current != null) Navigator.pop(context, current);
-                },
-          child: const Text('应用校准'),
-        ),
-      ],
     );
   }
 }

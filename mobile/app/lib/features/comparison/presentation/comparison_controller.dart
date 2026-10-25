@@ -15,18 +15,19 @@ class ComparisonController extends ChangeNotifier {
   ComparisonProject project;
   List<ComparisonProject> projects = [];
   ComparisonPlaybackDto? playback;
-  List<MusicCandidateDto> candidates = [];
   String message = '选择老师和自己的视频，按共同音乐开始对比。';
   String? error;
   bool initialized = false, picking = false, matching = false, saving = false;
+  bool calibrating = false;
+  ComparisonProject? _manualOriginal;
   bool _closed = false, _opening = false, _polling = false, _dirty = false;
   int _revision = 0, _width = 0, _height = 0;
   bool _horizontal = false;
   bool _lastSaveSucceeded = true;
   int _openRequest = 0;
-  Timer? _poll, _autosave, _resize, _audition;
+  Timer? _poll, _autosave, _resize;
   Future<void> _writeTail = Future.value();
-  bool get busy => picking || matching;
+  bool get busy => picking || matching || calibrating;
   bool get playing =>
       playback?.phase == 'playing' || playback?.phase == 'buffering';
   bool get canPlay =>
@@ -62,6 +63,7 @@ class ComparisonController extends ChangeNotifier {
     });
     _notify();
     await _open();
+    if (project.hasPair && project.alignment == 'unmatched') await matchMusic();
   }
 
   void setViewport(int width, int height, bool horizontal) {
@@ -76,7 +78,7 @@ class ComparisonController extends ChangeNotifier {
     _horizontal = horizontal;
     _resize?.cancel();
     _resize = Timer(const Duration(milliseconds: 180), () async {
-      if (_closed || !initialized || !project.hasPair) return;
+      if (_closed || calibrating || !initialized || !project.hasPair) return;
       if (playback == null) {
         await _open();
         return;
@@ -96,6 +98,7 @@ class ComparisonController extends ChangeNotifier {
   Future<void> _open() async {
     if (_closed ||
         !initialized ||
+        calibrating ||
         !project.hasPair ||
         _width < 2 ||
         _height < 2) {
@@ -125,7 +128,9 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<void> _refresh() async {
-    if (_closed || _polling || _opening || playback == null) return;
+    if (_closed || calibrating || _polling || _opening || playback == null) {
+      return;
+    }
     _polling = true;
     final revision = _revision;
     try {
@@ -160,7 +165,6 @@ class ComparisonController extends ChangeNotifier {
     if (busy || _closed) return;
     picking = true;
     error = null;
-    _audition?.cancel();
     _notify();
     try {
       final source = await gateway.pick(role);
@@ -168,23 +172,22 @@ class ComparisonController extends ChangeNotifier {
       final previous = role == 'teacher' ? project.teacher : project.learner;
       if (source.uri == previous?.uri) {
         await _open();
-        return;
+      } else {
+        await gateway.cancelAlignment();
+        _revision++;
+        project = project.copyWith(
+          teacher: role == 'teacher' ? source : null,
+          learner: role == 'learner' ? source : null,
+          offsetUs: 0,
+          alignment: 'unmatched',
+          clearAnchors: true,
+          positionUs: 0,
+        );
+        playback = null;
+        _dirty = true;
+        await save();
+        await _open();
       }
-      await gateway.cancelAlignment();
-      _revision++;
-      project = project.copyWith(
-        teacher: role == 'teacher' ? source : null,
-        learner: role == 'learner' ? source : null,
-        offsetUs: 0,
-        alignment: 'unmatched',
-        clearAnchors: true,
-        positionUs: 0,
-      );
-      candidates = [];
-      playback = null;
-      _dirty = true;
-      await save();
-      await _open();
     } catch (_) {
       error = '选择视频失败，请从系统文件选择器选择可读取的本地视频。';
     } finally {
@@ -200,18 +203,31 @@ class ComparisonController extends ChangeNotifier {
     if (_closed || !project.hasPair || busy) return;
     matching = true;
     error = null;
-    message = '正在设备上分析共同音乐…';
-    candidates = [];
-    _audition?.cancel();
+    message = '正在自动校准音乐…';
     final revision = ++_revision;
     _notify();
     try {
       final result = await gateway.align(project);
       if (_closed || revision != _revision) return;
-      candidates = result.candidates;
-      message = result.message;
-      if (result.status == 'matched' && candidates.isNotEmpty) {
-        await applyCandidate(candidates.first, audition: false);
+      final available =
+          result.candidates
+              .where(
+                (item) =>
+                    min(
+                      project.teacher!.durationUs,
+                      project.learner!.durationUs - item.offsetUs,
+                    ) >
+                    max(0, -item.offsetUs),
+              )
+              .toList()
+            ..sort((a, b) => b.score.compareTo(a.score));
+      if (available.isNotEmpty) {
+        await _applyBest(available.first, reliable: result.status == 'matched');
+        message = result.status == 'matched'
+            ? '已自动完成音乐校准。'
+            : '已自动采用最佳音乐位置，可手动微调。';
+      } else {
+        message = '没有找到可用的共同音乐，请手动校准。';
       }
     } catch (_) {
       if (!_closed && revision == _revision) message = '本次音乐匹配未完成，可以重试或手动校准。';
@@ -231,39 +247,58 @@ class ComparisonController extends ChangeNotifier {
     _notify();
   }
 
-  Future<void> applyCandidate(
-    MusicCandidateDto candidate, {
-    bool audition = true,
+  Future<void> _applyBest(
+    MusicCandidateDto best, {
+    required bool reliable,
   }) async {
     final teacher = project.teacher, learner = project.learner;
     if (teacher == null ||
         learner == null ||
-        min(teacher.durationUs, learner.durationUs - candidate.offsetUs) <=
-            max(0, -candidate.offsetUs)) {
-      error = '此音乐位置没有公共视频区间，请手动校准。';
-      _notify();
+        min(teacher.durationUs, learner.durationUs - best.offsetUs) <=
+            max(0, -best.offsetUs)) {
+      error = '自动位置没有公共视频区间，请手动校准。';
       return;
     }
     project = project.copyWith(
-      offsetUs: candidate.offsetUs,
-      alignment: audition ? 'candidate' : 'auto',
+      offsetUs: best.offsetUs,
+      alignment: reliable ? 'auto' : 'auto_review',
       clearAnchors: true,
       positionUs: 0,
     );
     _dirty = true;
-    await _control(ComparisonCommand.setOffset, candidate.offsetUs);
+    await _control(ComparisonCommand.setOffset, best.offsetUs);
     await _control(ComparisonCommand.seek, 0);
     await save();
-    if (audition && !_closed) {
-      message = '已试用此音乐位置，可播放比较或手动微调。';
-      await _control(ComparisonCommand.play, 0);
-      _audition?.cancel();
-      _audition = Timer(const Duration(seconds: 8), pause);
+  }
+
+  Future<bool> enterManualCalibration() async {
+    if (_closed || busy || !project.hasPair) return false;
+    await pause();
+    await save();
+    if (!_lastSaveSucceeded || _closed) return false;
+    _revision++;
+    calibrating = true;
+    _manualOriginal = project;
+    await gateway.cancelAlignment();
+    await gateway.close();
+    playback = null;
+    _notify();
+    return true;
+  }
+
+  Future<void> leaveManualCalibration({required bool applied}) async {
+    if (_closed || !calibrating) return;
+    if (!applied && _manualOriginal != null) {
+      project = _manualOriginal!;
+      _dirty = false;
     }
+    _manualOriginal = null;
+    calibrating = false;
+    await _open();
     _notify();
   }
 
-  Future<void> manual(int teacherUs, int learnerUs) async {
+  Future<bool> manual(int teacherUs, int learnerUs) async {
     if (!project.hasPair ||
         teacherUs < 0 ||
         learnerUs < 0 ||
@@ -277,20 +312,19 @@ class ComparisonController extends ChangeNotifier {
       alignment: 'manual',
       teacherAnchorUs: teacherUs,
       learnerAnchorUs: learnerUs,
-      positionUs: 0,
+      positionUs: teacherUs - max(0, teacherUs - learnerUs),
     );
     _dirty = true;
-    candidates = [];
     await _control(ComparisonCommand.setOffset, project.offsetUs);
     final start = playback?.teacherStartUs ?? 0;
     await _control(ComparisonCommand.seek, max(0, teacherUs - start));
-    message = '已应用手动音乐锚点，人物动作的早晚差异会保留。';
+    message = '已保存手动音乐校准。';
     await save();
     _notify();
+    return _lastSaveSucceeded;
   }
 
   Future<void> toggle() async {
-    _audition?.cancel();
     await _control(
       playing ? ComparisonCommand.pause : ComparisonCommand.play,
       0,
@@ -298,12 +332,10 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<void> pause() async {
-    _audition?.cancel();
     await _control(ComparisonCommand.pause, 0);
   }
 
   Future<void> seek(int positionUs) async {
-    _audition?.cancel();
     await _control(ComparisonCommand.seek, positionUs);
   }
 
@@ -334,7 +366,6 @@ class ComparisonController extends ChangeNotifier {
     _revision++;
     project = project.swapSources();
     playback = null;
-    candidates = [];
     _dirty = true;
     await _open();
     await save();
@@ -350,10 +381,10 @@ class ComparisonController extends ChangeNotifier {
     await gateway.close();
     project = value;
     playback = null;
-    candidates = [];
     message = '已恢复项目；源视频不可用时可点击重新关联。';
     error = null;
     await _open();
+    if (project.hasPair && project.alignment == 'unmatched') await matchMusic();
     _notify();
   }
 
@@ -366,7 +397,6 @@ class ComparisonController extends ChangeNotifier {
     await gateway.close();
     project = _newProject();
     playback = null;
-    candidates = [];
     message = '选择老师和自己的视频，按共同音乐开始对比。';
     error = null;
     _notify();
@@ -425,7 +455,6 @@ class ComparisonController extends ChangeNotifier {
     _poll?.cancel();
     _autosave?.cancel();
     _resize?.cancel();
-    _audition?.cancel();
     unawaited(gateway.cancelAlignment());
     unawaited(gateway.close());
     super.dispose();
