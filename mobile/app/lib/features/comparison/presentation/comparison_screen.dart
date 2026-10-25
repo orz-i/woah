@@ -11,7 +11,7 @@ import 'comparison_manual_session.dart';
 import 'comparison_manual_view.dart';
 import 'comparison_time.dart';
 
-enum _ComparisonProjectAction { create, save }
+enum _ComparisonProjectAction { create, save, swap }
 
 class ComparisonScreen extends StatefulWidget {
   final ComparisonGateway? gateway;
@@ -113,11 +113,11 @@ class _ComparisonScreenState extends State<ComparisonScreen>
           shrinkWrap: true,
           children: [
             const ListTile(
-              title: Text('本机对比项目'),
+              title: Text('对比历史'),
               subtitle: Text('视频位置和音乐校准会自动保存'),
             ),
             if (controller.projects.isEmpty)
-              const ListTile(title: Text('还没有保存的对比')),
+              const ListTile(title: Text('还没有对比历史')),
             for (final project in controller.projects)
               ListTile(
                 leading: const Icon(Icons.video_library_outlined),
@@ -202,14 +202,14 @@ class _ComparisonScreenState extends State<ComparisonScreen>
               ? []
               : [
                   TextButton.icon(
-                    key: const ValueKey('comparison-projects'),
+                    key: const ValueKey('comparison-history'),
                     onPressed: controller.busy ? null : _history,
-                    icon: const Icon(Icons.folder_open_outlined, size: 20),
-                    label: const Text('项目'),
+                    icon: const Icon(Icons.history_rounded, size: 20),
+                    label: const Text('历史'),
                   ),
                   PopupMenuButton<_ComparisonProjectAction>(
                     key: const ValueKey('comparison-project-menu'),
-                    tooltip: '更多项目操作',
+                    tooltip: '更多操作',
                     enabled: !controller.busy && !controller.saving,
                     onSelected: (action) {
                       switch (action) {
@@ -217,16 +217,23 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                           unawaited(controller.newProject());
                         case _ComparisonProjectAction.save:
                           unawaited(_save());
+                        case _ComparisonProjectAction.swap:
+                          unawaited(controller.swap());
                       }
                     },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(
+                    itemBuilder: (_) => [
+                      const PopupMenuItem(
                         value: _ComparisonProjectAction.save,
                         child: Text('保存并重命名'),
                       ),
-                      PopupMenuItem(
+                      const PopupMenuItem(
                         value: _ComparisonProjectAction.create,
                         child: Text('新建对比'),
+                      ),
+                      PopupMenuItem(
+                        value: _ComparisonProjectAction.swap,
+                        enabled: controller.project.hasPair,
+                        child: const Text('交换老师和学生'),
                       ),
                     ],
                   ),
@@ -254,13 +261,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                             width: math.min(340, viewport.maxWidth * .43),
                             child: SingleChildScrollView(
                               padding: const EdgeInsets.all(8),
-                              child: Column(
-                                children: [
-                                  _sources(),
-                                  const SizedBox(height: 12),
-                                  _controls(),
-                                ],
-                              ),
+                              child: _controls(),
                             ),
                           ),
                         ],
@@ -268,10 +269,6 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                     }
                     return Column(
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                          child: _sources(),
-                        ),
                         Expanded(child: _preview(false)),
                         ConstrainedBox(
                           constraints: BoxConstraints(
@@ -287,67 +284,33 @@ class _ComparisonScreenState extends State<ComparisonScreen>
       ),
     ),
   );
-  Widget _sources() => Row(
-    children: [
-      Expanded(
-        child: _source('teacher', '老师', '参考', controller.project.teacher),
-      ),
-      IconButton(
-        tooltip: '交换老师和学生',
-        onPressed: controller.busy || !controller.project.hasPair
-            ? null
-            : controller.swap,
-        icon: const Icon(Icons.swap_horiz, size: 20),
-      ),
-      Expanded(
-        child: _source('learner', '学生', '自己', controller.project.learner),
-      ),
-    ],
-  );
-
-  Widget _source(
-    String role,
-    String label,
-    String purpose,
-    ComparisonSource? source,
-  ) => Tooltip(
-    message: source == null ? '选择$label视频' : source.name,
-    child: OutlinedButton(
-      key: ValueKey('comparison-pick-$role'),
-      onPressed: controller.busy ? null : () => controller.pick(role),
-      style: OutlinedButton.styleFrom(
-        minimumSize: const Size(48, 48),
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        side: BorderSide(
-          color: source == null ? AppTheme.gold : AppTheme.flowBorder,
-        ),
-      ),
-      child: LayoutBuilder(
-        builder: (context, bounds) => Row(
-          children: [
-            Text(label, style: const TextStyle(fontSize: 14)),
-            if (bounds.maxWidth > 110 &&
-                MediaQuery.textScalerOf(context).scale(14) < 19) ...[
-              const SizedBox(width: 5),
-              Text(
-                source == null ? '选视频' : purpose,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppTheme.flowTextSecondary,
-                ),
-              ),
-            ],
-            const Spacer(),
-            Icon(
-              source == null ? Icons.add : Icons.expand_more,
-              size: 18,
-              semanticLabel: source == null ? '选择视频' : '更换视频',
+  Widget _source(String role, String label, ComparisonSource? source) =>
+      Tooltip(
+        message: source == null ? '选择$label视频' : source.name,
+        child: OutlinedButton.icon(
+          key: ValueKey('comparison-pick-$role'),
+          onPressed: controller.busy ? null : () => controller.pick(role),
+          style: OutlinedButton.styleFrom(
+            backgroundColor: Colors.black.withValues(alpha: .72),
+            foregroundColor: AppTheme.flowTextPrimary,
+            minimumSize: const Size(48, 48),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
             ),
-          ],
+            side: BorderSide(
+              color: source == null ? AppTheme.gold : AppTheme.flowBorder,
+            ),
+          ),
+          iconAlignment: IconAlignment.end,
+          icon: Icon(
+            source == null ? Icons.add : Icons.expand_more,
+            size: 16,
+            semanticLabel: source == null ? '选择视频' : '更换视频',
+          ),
+          label: Text(label, style: const TextStyle(fontSize: 12)),
         ),
-      ),
-    ),
-  );
+      );
 
   Widget _preview(bool horizontal) => LayoutBuilder(
     builder: (context, viewport) {
@@ -373,43 +336,50 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                 filterQuality: FilterQuality.low,
               ),
             if (!controller.project.hasPair)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Text(
-                    '选择两段视频\n按同一段音乐观察动作差异',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: AppTheme.flowTextSecondary),
-                  ),
-                ),
+              Flex(
+                direction: horizontal ? Axis.horizontal : Axis.vertical,
+                children: [
+                  for (final entry in [
+                    ('老师', controller.project.teacher),
+                    ('学生', controller.project.learner),
+                  ])
+                    Expanded(
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            entry.$2 == null
+                                ? '待选择${entry.$1}视频'
+                                : '已选择${entry.$1}视频',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: AppTheme.flowTextSecondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             if (controller.project.hasPair &&
                 (state == null || state.phase == 'opening'))
               const Center(
                 child: CircularProgressIndicator(color: AppTheme.gold),
               ),
-            if (controller.project.hasPair) ...[
-              Positioned(top: 8, left: 8, child: _badge('老师')),
-              Positioned(
-                top: horizontal ? 8 : viewport.maxHeight / 2 + 8,
-                left: horizontal ? viewport.maxWidth / 2 + 8 : 8,
-                child: _badge('学生'),
-              ),
-            ],
+            Positioned(
+              top: 8,
+              left: 8,
+              child: _source('teacher', '老师', controller.project.teacher),
+            ),
+            Positioned(
+              top: horizontal ? 8 : viewport.maxHeight / 2 + 8,
+              left: horizontal ? viewport.maxWidth / 2 + 8 : 8,
+              child: _source('learner', '学生', controller.project.learner),
+            ),
           ],
         ),
       );
     },
-  );
-  Widget _badge(String label) => DecoratedBox(
-    decoration: BoxDecoration(
-      color: Colors.black54,
-      borderRadius: BorderRadius.circular(5),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Text(label, style: const TextStyle(fontSize: 12)),
-    ),
   );
   String get _offsetLabel =>
       '${controller.project.offsetUs >= 0 ? '+' : ''}${(controller.project.offsetUs / 1e6).toStringAsFixed(3)}s';

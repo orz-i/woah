@@ -53,6 +53,7 @@ class FakeComparisonGateway implements ComparisonGateway {
     : projects = saved ?? [];
   List<ComparisonProject> projects;
   ComparisonSource? picked;
+  final pickedRoles = <String>[];
   int opens = 0, cancels = 0, saves = 0, alignCalls = 0;
   final List<String> events = [];
   MusicAlignmentDto? alignmentResult;
@@ -69,7 +70,11 @@ class FakeComparisonGateway implements ComparisonGateway {
     speed: 1,
   );
   @override
-  Future<ComparisonSource?> pick(String role) async => picked;
+  Future<ComparisonSource?> pick(String role) async {
+    pickedRoles.add(role);
+    return picked;
+  }
+
   @override
   Future<ComparisonLibrary> load() async => ComparisonLibrary(projects, 0);
   @override
@@ -312,7 +317,7 @@ void main() {
     },
   );
   testWidgets(
-    'formal page restores a project and keeps controls usable in a small portrait viewport',
+    'embedded source controls, history and swap stay usable in a small portrait viewport',
     (tester) async {
       tester.view.physicalSize = const Size(320, 640);
       tester.view.devicePixelRatio = 1;
@@ -338,6 +343,7 @@ void main() {
       for (final key in [
         'comparison-pick-teacher',
         'comparison-pick-learner',
+        'comparison-history',
         'comparison-step-back',
         'comparison-step-forward',
         'comparison-play',
@@ -348,6 +354,36 @@ void main() {
         expect(rect.width, greaterThanOrEqualTo(48), reason: key);
         expect(rect.height, greaterThanOrEqualTo(48), reason: key);
         expect(rect.bottom, lessThanOrEqualTo(640), reason: key);
+      }
+      final stage = tester.getRect(
+        find.byKey(const ValueKey('comparison-stage')),
+      );
+      for (final role in ['teacher', 'learner']) {
+        final source = find.byKey(ValueKey('comparison-pick-$role'));
+        final rect = tester.getRect(source);
+        expect(stage.contains(rect.center), isTrue);
+        await tester.tap(source);
+        await tester.pumpAndSettle();
+        expect(gateway.pickedRoles.last, role);
+      }
+      expect(
+        tester
+            .getTopLeft(find.byKey(const ValueKey('comparison-pick-learner')))
+            .dy,
+        greaterThan(stage.center.dy),
+      );
+      expect(find.text('项目'), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('comparison-history')));
+      await tester.pumpAndSettle();
+      expect(find.text('对比历史'), findsOneWidget);
+      await tester.tap(find.text('我的练舞'));
+      await tester.pumpAndSettle();
+      for (final expected in [-2000000, 2000000]) {
+        await tester.tap(find.byKey(const ValueKey('comparison-project-menu')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('交换老师和学生'));
+        await tester.pumpAndSettle();
+        expect(gateway.projects.first.offsetUs, expected);
       }
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
