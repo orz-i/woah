@@ -198,10 +198,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
       await SystemChrome.setPreferredOrientations(
         landscape
             ? [DeviceOrientation.portraitUp]
-            : [
-                DeviceOrientation.landscapeLeft,
-                DeviceOrientation.landscapeRight,
-              ],
+            : [DeviceOrientation.landscapeLeft],
       );
     } catch (_) {
       if (mounted) {

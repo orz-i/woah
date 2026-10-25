@@ -734,10 +734,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('横屏显示'));
       await tester.pumpAndSettle();
-      expect(directions.last, [
-        'DeviceOrientation.landscapeLeft',
-        'DeviceOrientation.landscapeRight',
-      ]);
+      expect(directions.last, ['DeviceOrientation.landscapeLeft']);
       tester.view.physicalSize = const Size(800, 360);
       await tester.pumpAndSettle();
       expect(gateway.layouts.last, true);
