@@ -17,6 +17,8 @@ Future<void> launchHomeTool(
   switch (tool.launch) {
     case HomeToolLaunch.videoProtection:
       await startVideoProtectionFlow(context, ref);
+    case HomeToolLaunch.danceComparison:
+      await context.push('/comparison');
   }
 }
 

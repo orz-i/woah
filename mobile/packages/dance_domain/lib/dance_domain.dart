@@ -4,3 +4,4 @@ export 'src/person_track.dart';
 export 'src/effects.dart';
 export 'src/project.dart';
 export 'src/export_plan.dart';
+export 'src/comparison_project.dart';

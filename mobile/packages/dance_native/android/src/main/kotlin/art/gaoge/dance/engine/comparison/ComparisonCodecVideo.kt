@@ -17,7 +17,7 @@ internal class ComparisonGlCancelled : RuntimeException()
 internal data class ComparisonVideoDescription(
     val width: Int, val height: Int, val rotation: Int,
     val durationUs: Long, val fps: Float, val mime: String,
-    val decoder: String, val hasAudio: Boolean
+    val decoder: String, val hasAudio: Boolean, val startUs: Long = 0
 )
 
 /** Source PTS interval, not a made-up CFR index. End is exclusive. */
@@ -96,7 +96,7 @@ internal class ComparisonCodecVideo(
             val decoder = MediaCodec.createDecoderByType(mime)
             codec = decoder
             description = ComparisonVideoDescription(width, height, rotation,
-                duration, fps, mime, decoder.name, hasAudio)
+                duration, fps, mime, decoder.name, hasAudio, extractor.sampleTime.coerceAtLeast(0L))
             decoder.configure(f, surface, null, 0)
             decoder.start()
         } catch (error: Throwable) {

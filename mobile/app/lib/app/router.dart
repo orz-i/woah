@@ -1,3 +1,4 @@
+import '../features/comparison/presentation/comparison_screen.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dance_domain/dance_domain.dart';
@@ -13,6 +14,11 @@ final appRouter = GoRouter(
   initialLocation: '/',
   observers: [rootRouteObserver],
   routes: [
+    GoRoute(
+      path: '/comparison',
+      name: 'dance_comparison',
+      builder: (_, _) => const ComparisonScreen(),
+    ),
     GoRoute(
       path: '/',
       name: 'import_video',

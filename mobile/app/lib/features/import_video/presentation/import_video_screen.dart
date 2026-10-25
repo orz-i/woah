@@ -13,7 +13,7 @@ import 'video_import_error_notice.dart';
 import 'video_import_flow.dart';
 import 'woah_easter_egg_screen.dart';
 
-/// Single-task launcher. Internal editor tools never appear on Home.
+/// Standalone workflow launcher. Editor-internal tools stay inside their editors.
 class ImportVideoScreen extends ConsumerStatefulWidget {
   const ImportVideoScreen({super.key});
 
@@ -183,11 +183,15 @@ class _ImportActionCard extends StatelessWidget {
     return Semantics(
       button: true,
       enabled: !isBusy,
-      label: isBusy ? actionLabel : '导入视频，从设备中选择视频',
+      label: isBusy ? actionLabel : '${tool.title}，${tool.description}',
       child: ExcludeSemantics(
         // Keep the shadow outside Material's rounded clipping boundary.
         child: DecoratedBox(
-          key: const ValueKey('home-card-elevation'),
+          key: ValueKey(
+            tool.launch == HomeToolLaunch.videoProtection
+                ? 'home-card-elevation'
+                : 'home-comparison-elevation',
+          ),
           decoration: const BoxDecoration(
             borderRadius: radius,
             boxShadow: [
@@ -212,7 +216,11 @@ class _ImportActionCard extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             color: AppTheme.flowSurface,
             child: Ink(
-              key: const ValueKey('home-import-card'),
+              key: ValueKey(
+                tool.launch == HomeToolLaunch.videoProtection
+                    ? 'home-import-card'
+                    : 'home-comparison-card',
+              ),
               decoration: BoxDecoration(
                 borderRadius: radius,
                 gradient: const LinearGradient(
@@ -242,8 +250,10 @@ class _ImportActionCard extends StatelessWidget {
                           ),
                         )
                       else
-                        const Icon(
-                          Icons.add_rounded,
+                        Icon(
+                          tool.launch == HomeToolLaunch.videoProtection
+                              ? Icons.add_rounded
+                              : Icons.compare_rounded,
                           size: 38,
                           color: AppTheme.goldLight,
                         ),
@@ -318,7 +328,7 @@ class _HomeToolDeckState extends State<_HomeToolDeck> {
 
   @override
   Widget build(BuildContext context) {
-    final tools = HomeToolCatalog.standalone;
+    final tools = HomeToolCatalog.forPlatform(Theme.of(context).platform);
     assert(tools.isNotEmpty);
 
     if (tools.length == 1) {
@@ -344,7 +354,11 @@ class _HomeToolDeckState extends State<_HomeToolDeck> {
                 child: _ImportActionCard(
                   tool: tool,
                   isBusy: widget.isBusy,
-                  actionLabel: tool.title,
+                  actionLabel:
+                      widget.isBusy &&
+                          tool.launch == HomeToolLaunch.videoProtection
+                      ? widget.actionLabel
+                      : tool.title,
                   onTap: widget.isBusy ? null : () => widget.onLaunch(tool),
                 ),
               );

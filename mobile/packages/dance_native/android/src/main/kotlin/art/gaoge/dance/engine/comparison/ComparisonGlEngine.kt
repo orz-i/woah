@@ -28,7 +28,16 @@ import java.util.concurrent.atomic.AtomicReference
 internal data class ComparisonViewport(val x: Int, val top: Int, val width: Int, val height: Int)
 internal object ComparisonGlLayout {
     fun viewport(width: Int, height: Int, gap: Int, videoWidth: Int,
-                 videoHeight: Int, teacher: Boolean): ComparisonViewport {
+                 videoHeight: Int, teacher: Boolean, sideBySide: Boolean = false): ComparisonViewport {
+        if (sideBySide) {
+            val firstWidth=(width-gap)/2
+            val left=if (teacher) 0 else firstWidth+gap
+            val paneWidth=if (teacher) firstWidth else width-left
+            val aspect=videoWidth.toDouble()/videoHeight
+            val w=minOf(paneWidth,(height*aspect).toInt()).coerceAtLeast(1)
+            val h=minOf(height,(paneWidth/aspect).toInt()).coerceAtLeast(1)
+            return ComparisonViewport(left+(paneWidth-w)/2,(height-h)/2,w,h)
+        }
         val firstHeight = (height-gap)/2
         val top = if (teacher) 0 else firstHeight+gap
         val stageHeight = if (teacher) firstHeight else height-top
@@ -46,7 +55,8 @@ internal class ComparisonGlEngine(
     private val opened: (ComparisonVideoDescription, ComparisonVideoDescription) -> Unit,
     private val failed: (Throwable) -> Unit,
     private val stalled: () -> Unit,
-    private val recovered: () -> Unit
+    private val recovered: () -> Unit,
+    initialSideBySide: Boolean = false
 ) {
     private val main = Handler(Looper.getMainLooper())
     private val thread = HandlerThread("WoahComparisonGL").apply { start() }
@@ -75,6 +85,7 @@ internal class ComparisonGlEngine(
     private var width = initialWidth
     private var height = initialHeight
     private var gap = initialGap
+    private var sideBySide = initialSideBySide
     private var redraw = true
     private var lastTarget: Long? = null
     private var lastOffset = 0L
@@ -111,10 +122,10 @@ internal class ComparisonGlEngine(
         }
     }
 
-    fun resize(w: Int,h: Int,g: Int) {
+    fun resize(w: Int,h: Int,g: Int,horizontal: Boolean = sideBySide) {
         handler.post {
             if (w<=0 || h<=g || closed.get()) return@post
-            width=w; height=h; gap=g; redraw=true
+            width=w; height=h; gap=g; sideBySide=horizontal; redraw=true
             // A resized Surface may discard the old-size buffer. Paused playback
             // must repaint the already latched PAIR without waiting for play.
             val target=lastTarget
@@ -238,7 +249,7 @@ internal class ComparisonGlEngine(
         val d=video.description
         val rotated=d.rotation%180!=0
         val rect=ComparisonGlLayout.viewport(width,height,gap,
-            if (rotated) d.height else d.width,if (rotated) d.width else d.height,isTeacher)
+            if (rotated) d.height else d.width,if (rotated) d.width else d.height,isTeacher,sideBySide)
         GLES20.glViewport(rect.x,height-rect.top-rect.height,rect.width,rect.height)
         GLES20.glUseProgram(program)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)

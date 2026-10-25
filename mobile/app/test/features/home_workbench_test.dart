@@ -75,7 +75,7 @@ class _FakeProbeRepository extends NativeProcessingRepository {
   Future<VideoInfo> probeVideo(String uri) async {
     probes++;
     if (fail) throw StateError('invalid media');
-    expect(uri, '/fake/dance.mp4');
+    expect(uri.replaceAll(String.fromCharCode(92), '/'), '/fake/dance.mp4');
     return const VideoInfo(
       codedWidth: 1920,
       codedHeight: 1080,
@@ -147,19 +147,19 @@ Future<void> _pumpWorkbench(
 void main() {
   test('catalog never promotes in-editor capabilities to launchable cards', () {
     expect(HomeToolCatalog.standalone, isNotEmpty);
-    expect(HomeToolCatalog.standalone.length, 1);
+    expect(HomeToolCatalog.standalone.length, 2);
     final all = [...HomeToolCatalog.standalone];
     expect(all.map((tool) => tool.id).toSet().length, all.length);
   });
 
-  testWidgets('single action, no tool library or editor-level features', (
+  testWidgets('standalone workflows exclude editor-internal tools', (
     tester,
   ) async {
     final router = _testRouter();
     addTearDown(router.dispose);
     await _pumpWorkbench(tester, router);
     expect(find.byKey(const ValueKey('home-import-card')), findsOneWidget);
-    expect(find.byType(PageView), findsNothing);
+    expect(find.byType(PageView), findsOneWidget);
     expect(find.text('全部工具'), findsNothing);
     expect(find.text('编辑器内功能'), findsNothing);
     expect(find.text('智能裁切'), findsNothing);
@@ -241,9 +241,7 @@ void main() {
     addTearDown(router.dispose);
 
     await _pumpWorkbench(tester, router, repository: repo);
-    await tester.tap(
-      find.byKey(const ValueKey('home-import-card')),
-    );
+    await tester.tap(find.byKey(const ValueKey('home-import-card')));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('解析视频规格失败'), findsOneWidget);

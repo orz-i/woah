@@ -159,10 +159,8 @@ tasks.withType<org.gradle.api.tasks.compile.JavaCompile>().configureEach {
 }
 
 dependencies {
-    // M0 comparison playback probe: debug-only, not bundled in release.
-    // Match video_player_android 2.12.2's pinned Media3 1.9.2; do not
-    // silently mix newer ExoPlayer with older HLS/RTSP/smoothstreaming modules.
-    debugImplementation("androidx.media3:media3-exoplayer:1.9.2")
+    // Shared comparison session; match video_player_android's Media3 version.
+    implementation("androidx.media3:media3-exoplayer:1.9.2")
     implementation("com.google.ai.edge.litert:litert:2.1.5")
     // Face locator runtime is packaged but remains dormant until an explicit
     // internal caller opts in. YOLO/TrackManager remains identity authority.

@@ -17,6 +17,13 @@ import art.gaoge.dance.engine.bridge.DanceNativeApiImpl
 import art.gaoge.dance.engine.bridge.DanceProcessingEvents
 import art.gaoge.dance.engine.export.ExportCoordinator
 import io.flutter.embedding.engine.plugins.FlutterPlugin
+import io.flutter.embedding.engine.plugins.activity.ActivityAware
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
+import art.gaoge.dance.engine.bridge.comparison.DanceComparisonApi
+import art.gaoge.dance.engine.comparison.ComparisonNativeApi
+import android.app.Activity
+import android.app.Application
+import android.os.Bundle
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
@@ -32,7 +39,29 @@ import java.util.concurrent.RejectedExecutionException
 /** DanceNativePlugin */
 class DanceNativePlugin :
     FlutterPlugin,
-    MethodCallHandler {
+    MethodCallHandler, ActivityAware {
+    private var comparisonApi: ComparisonNativeApi?=null
+    private var currentActivity: Activity?=null
+    private val comparisonLifecycle=object: Application.ActivityLifecycleCallbacks {
+        override fun onActivityPaused(activity: Activity) { if (activity===currentActivity) comparisonApi?.background() }
+        override fun onActivityResumed(activity: Activity) { if (activity===currentActivity) comparisonApi?.foreground() }
+        override fun onActivityCreated(activity: Activity,state: Bundle?)=Unit
+        override fun onActivityStarted(activity: Activity)=Unit
+        override fun onActivityStopped(activity: Activity)=Unit
+        override fun onActivitySaveInstanceState(activity: Activity,state: Bundle)=Unit
+        override fun onActivityDestroyed(activity: Activity)=Unit
+    }
+    override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+        currentActivity=binding.activity
+        binding.activity.application.registerActivityLifecycleCallbacks(comparisonLifecycle)
+        comparisonApi?.attach(binding)
+    }
+    override fun onDetachedFromActivityForConfigChanges()=onDetachedFromActivity()
+    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding)=onAttachedToActivity(binding)
+    override fun onDetachedFromActivity() {
+        currentActivity?.application?.unregisterActivityLifecycleCallbacks(comparisonLifecycle)
+        comparisonApi?.detach();currentActivity=null
+    }
     private lateinit var channel: MethodChannel
     private var context: Context? = null
     private var apiImpl: DanceNativeApiImpl? = null
@@ -41,6 +70,8 @@ class DanceNativePlugin :
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         val appCtx = flutterPluginBinding.applicationContext
+        comparisonApi=ComparisonNativeApi(appCtx,flutterPluginBinding.textureRegistry)
+        DanceComparisonApi.setUp(flutterPluginBinding.binaryMessenger,comparisonApi)
         context = appCtx
         mainHandler = Handler(Looper.getMainLooper())
         thumbnailExecutor?.shutdownNow()
@@ -331,6 +362,9 @@ class DanceNativePlugin :
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        onDetachedFromActivity()
+        DanceComparisonApi.setUp(binding.binaryMessenger,null)
+        comparisonApi?.dispose();comparisonApi=null
         channel.setMethodCallHandler(null)
         DanceNativeApi.setUp(binding.binaryMessenger, null)
         thumbnailExecutor?.shutdownNow()
