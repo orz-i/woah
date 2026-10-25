@@ -388,6 +388,17 @@ void main() {
         tester.getCenter(find.byKey(const ValueKey('comparison-view'))).dx,
         closeTo(160, .1),
       );
+      await tester.tap(find.byKey(const ValueKey('comparison-view')));
+      await tester.pumpAndSettle();
+      final menuItem = find.ancestor(
+        of: find.text('左右视图'),
+        matching: find.byWidgetPredicate(
+          (widget) => widget is CheckedPopupMenuItem,
+        ),
+      );
+      expect(tester.getCenter(menuItem).dx, closeTo(160, .1));
+      await tester.tapAt(const Offset(12, 60));
+      await tester.pumpAndSettle();
       expect(find.text('项目'), findsNothing);
       await tester.tap(find.byKey(const ValueKey('comparison-history')));
       await tester.pumpAndSettle();
@@ -524,6 +535,24 @@ void main() {
         tester.getCenter(find.byKey(const ValueKey('comparison-view'))).dx,
         closeTo(400, .1),
       );
+      await tester.tap(find.byKey(const ValueKey('comparison-view')));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .getCenter(
+              find.ancestor(
+                of: find.text('左右视图'),
+                matching: find.byWidgetPredicate(
+                  (widget) => widget is CheckedPopupMenuItem,
+                ),
+              ),
+            )
+            .dx,
+        closeTo(400, .1),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.tapAt(const Offset(12, 300));
+      await tester.pumpAndSettle();
       await tester.ensureVisible(find.byKey(const ValueKey('comparison-play')));
       expect(
         tester.getRect(find.byKey(const ValueKey('comparison-play'))).right,

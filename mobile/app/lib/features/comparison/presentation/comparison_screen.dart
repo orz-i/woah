@@ -32,6 +32,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
   ComparisonManualSession? _manualSession;
   bool _finishingManual = false, _orientationOverridden = false;
   bool _rotating = false;
+  static const _viewTriggerWidth = 104.0, _viewMenuWidth = 200.0;
   static const _orientationChannel = MethodChannel(
     'art.gaoge.dance/orientation',
   );
@@ -266,16 +267,18 @@ class _ComparisonScreenState extends State<ComparisonScreen>
   Widget _viewMenu() => PopupMenuButton<_ComparisonViewAction>(
     key: const ValueKey('comparison-view'),
     tooltip: '视图',
+    constraints: const BoxConstraints.tightFor(width: _viewMenuWidth),
+    offset: const Offset((_viewTriggerWidth - _viewMenuWidth) / 2, 0),
     enabled:
         controller.initialized &&
         !controller.picking &&
         !controller.matching &&
         !_finishingManual &&
         !_rotating,
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6),
+    child: SizedBox(
+      width: _viewTriggerWidth,
+      height: 48,
+      child: Center(
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
