@@ -131,13 +131,24 @@ class ComparisonController extends ChangeNotifier {
     try {
       final state = await gateway.state();
       if (_closed || revision != _revision) return;
+      final previous = playback;
+      final changed =
+          previous == null ||
+          previous.textureId != state.textureId ||
+          previous.phase != state.phase ||
+          previous.positionUs != state.positionUs ||
+          previous.durationUs != state.durationUs ||
+          previous.teacherStartUs != state.teacherStartUs ||
+          previous.offsetUs != state.offsetUs ||
+          previous.speed != state.speed ||
+          previous.error != state.error;
       playback = state;
       if (state.error != null) error = state.error;
       if (project.positionUs != state.positionUs) {
         project = project.copyWith(positionUs: state.positionUs);
         _dirty = true;
       }
-      _notify();
+      if (changed) _notify();
     } catch (_) {
       /* A detached route is closed by its owner; preserve the project. */
     } finally {

@@ -204,6 +204,14 @@ internal class ComparisonSession(
                 silentAnchorTeacherUs=before;audio?.setPlaybackSpeed(speed);reconcile()
             }
         }
+        if (art.gaoge.dance.engine.BuildConfig.DEBUG) {
+            android.util.Log.i("WoahComparison","command="+command+" position_us="+positionUs()+
+                " offset_us="+offsetUs+" speed="+speed+" phase="+state().phase)
+            if (command==ComparisonCommand.PAUSE) engine?.report { report ->
+                report.remove("samples")
+                android.util.Log.i("WoahComparison","playback_report="+report.toString())
+            }
+        }
         return state()
     }
     fun resize(newWidth: Int,newHeight: Int,sideBySide: Boolean): ComparisonPlaybackDto {

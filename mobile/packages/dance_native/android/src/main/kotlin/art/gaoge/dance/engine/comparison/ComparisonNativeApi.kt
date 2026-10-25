@@ -140,21 +140,34 @@ internal class ComparisonNativeApi(private val context: Context,private val regi
     override suspend fun alignMusic(teacherUri: String,learnerUri: String): MusicAlignmentDto {
         session?.control(ComparisonCommand.PAUSE,0,1.0)
         val generation=alignmentGeneration.incrementAndGet()
+        val started=android.os.SystemClock.elapsedRealtime()
         return withContext(Dispatchers.Default) {
             val current={ alignmentGeneration.get()==generation && !Thread.currentThread().isInterrupted }
             try {
                 val teacher=ComparisonPcmDecoder(context).features(teacherUri,current)
+                debug("music teacher_frames="+teacher.frames.size+" origin_us="+teacher.startUs)
                 val learner=ComparisonPcmDecoder(context).features(learnerUri,current)
+                debug("music learner_frames="+learner.frames.size+" origin_us="+learner.startUs)
                 check(current()) { "匹配已取消" }
                 val result=ComparisonMusicMatcher.match(teacher,learner,current)
+                debug("music status="+result.status+" elapsed_ms="+(android.os.SystemClock.elapsedRealtime()-started)+
+                    " candidates="+result.candidates.joinToString { "offset_us="+it.offsetUs+" score="+it.score+
+                        " windows="+it.consistentWindows+" span_s="+it.supportedSeconds+" residual_ms="+it.residualMs })
                 MusicAlignmentDto(result.status,result.message,result.candidates.map {
                     MusicCandidateDto(it.offsetUs,it.score,it.consistentWindows,it.supportedSeconds,it.residualMs)
                 })
             } catch (error: ComparisonAlignmentCancelled) { throw error }
             catch (error: ComparisonNoAudio) {
                 MusicAlignmentDto("no_audio","视频没有可供匹配的音轨，可以手动校准时间。",emptyList())
+            } catch (error: Exception) {
+                // Never log selected URIs or source names. Stack locations suffice for diagnosis.
+                debug("music failed="+error.javaClass.simpleName+" locations="+error.stackTrace.take(8).joinToString())
+                MusicAlignmentDto("error","本次音乐匹配未完成，可以重试或手动校准。",emptyList())
             }
         }
+    }
+    private fun debug(message: String) {
+        if (art.gaoge.dance.engine.BuildConfig.DEBUG) android.util.Log.i("WoahComparison",message)
     }
     override suspend fun cancelAlignment() { alignmentGeneration.incrementAndGet() }
     override suspend fun close() { alignmentGeneration.incrementAndGet();session?.close();session=null }

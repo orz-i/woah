@@ -230,6 +230,33 @@ void main() {
     },
   );
   testWidgets(
+    'paused polling does not continually rebuild accessibility state',
+    (tester) async {
+      final gateway = FakeComparisonGateway(saved: [savedProject()]);
+      final controller = ComparisonController(gateway);
+      controller.setViewport(640, 480, false);
+      await controller.initialize();
+      await tester.pump(const Duration(milliseconds: 400));
+      var updates = 0;
+      controller.addListener(() => updates++);
+      await tester.pump(const Duration(milliseconds: 800));
+      expect(updates, 0);
+      gateway.current = ComparisonPlaybackDto(
+        textureId: 7,
+        phase: 'playing',
+        positionUs: 1500000,
+        durationUs: 12000000,
+        teacherStartUs: 0,
+        offsetUs: 2000000,
+        speed: 1,
+      );
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(updates, 1);
+      expect(controller.project.positionUs, 1500000);
+      controller.dispose();
+    },
+  );
+  testWidgets(
     'formal page restores a project and keeps controls usable in a small portrait viewport',
     (tester) async {
       tester.view.physicalSize = const Size(320, 640);
