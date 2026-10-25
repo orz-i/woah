@@ -24,7 +24,10 @@ def summarize(samples: list[dict], fps: int, offset_us: int) -> dict:
                                1_000_000 / fps - offset_us)
         measured.append(row)
     if not measured:
-        return {'status': 'INSUFFICIENT_SCREEN_CAPTURE', 'samples': 0,
+        return {'schema': 'woah.comparison.m0.screen.v1',
+                'status': 'INSUFFICIENT_SCREEN_CAPTURE', 'samples': 0,
+                'fps': fps, 'expectedOffsetUs': offset_us,
+                'p95AbsMediaErrorUs': None, 'maxAbsMediaErrorUs': None,
                 'actualDisplayAcceptance': 'NOT_PROVEN_PHYSICAL_PANEL'}
     errors = sorted(abs(row['errorUs']) for row in measured)
     p95 = errors[math.ceil(.95 * len(errors)) - 1]

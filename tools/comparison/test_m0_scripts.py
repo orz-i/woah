@@ -117,6 +117,14 @@ class M0ScriptsTest(unittest.TestCase):
         self.assertEqual(summarize(rows, 30, 3_000_000)["status"],
                          "SCREEN_CAPTURE_WITHIN_TARGET")
 
+    def test_empty_screen_capture_has_no_fabricated_metrics(self):
+        result = summarize([], 30, 3_000_000)
+        self.assertEqual(result["status"], "INSUFFICIENT_SCREEN_CAPTURE")
+        self.assertEqual(result["schema"], "woah.comparison.m0.screen.v1")
+        self.assertIsNone(result["p95AbsMediaErrorUs"])
+        self.assertIsNone(result["maxAbsMediaErrorUs"])
+        self.assertEqual(result["actualDisplayAcceptance"], "NOT_PROVEN_PHYSICAL_PANEL")
+
     def test_screen_binary_decode_rejects_ambiguous_cells(self):
         raw = bytearray(1040 * 4)
         for side, code in enumerate((123, 213)):

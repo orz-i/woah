@@ -1,0 +1,4500 @@
+{
+  "schema": "woah.comparison.m0.device-validation.v1",
+  "date": "2026-10-25",
+  "m0Gate": "REJECT_CURRENT_DUAL_EXOPLAYER_COORDINATOR",
+  "testedApkSourceCommit": "66db56aea8eb6409651a6282965d6e5132cd1e13",
+  "testedApkSha256": "11466b8c58ab7e015392ed931f1c95e211af39276e8debe344c140f9d474dae0",
+  "actualDisplayAcceptance": "NOT_PROVEN_PHYSICAL_PANEL",
+  "device": {
+    "model": "OnePlus KB2000",
+    "android": "14",
+    "api": 34,
+    "soc": "SM8250"
+  },
+  "environment": {
+    "branch": "feat/dance-comparison-m0",
+    "pythonTests": {
+      "Windows": 19,
+      "LinuxWSL": 19,
+      "macOS": 19
+    },
+    "kotlinComparisonTests": 10,
+    "crossPlatformDeterminism": {
+      "pcmSha256": "c0785f3e2186c2b9cc022ea1f682ee4343ed5b03c4d6db07ed46e58374cb3dd9",
+      "rgbFrame31Sha256": "f3dc44618769db4dac72c1fa099457711aeb12534bc92cd7993b203ace6811af"
+    },
+    "initialFailure": {
+      "fontconfigError": true,
+      "drawtextExitHex": "0xC0000005",
+      "withoutDrawtextExitCode": 0
+    },
+    "screenrecordFailure": {
+      "helpExitCode": 139,
+      "recordingExitCode": 139
+    },
+    "scrcpy": {
+      "version": "5.0.1",
+      "officialUrl": "https://github.com/Genymobile/scrcpy/releases/tag/v5.0.1",
+      "zipSha256": "b12a2c4ee8be317422451fc7dcf8ee20a71b5ea7ef9ad73ddd825a25316227a5"
+    },
+    "testedApkSourceCommit": "66db56aea8eb6409651a6282965d6e5132cd1e13"
+  },
+  "cases": [
+    {
+      "tag": "final-long-1x",
+      "description": "30fps / +3s / 1× / 长片",
+      "probe": {
+        "schema": "woah.comparison.m0.probe.v1",
+        "buildSha": "66db56aea8eb6409651a6282965d6e5132cd1e13",
+        "media3": "1.9.2",
+        "device": "OnePlus KB2000",
+        "apiLevel": 34,
+        "offsetUs": 3000000,
+        "speed": 1,
+        "teacherDurationMs": 122000,
+        "learnerDurationMs": 125000,
+        "overlapDurationUs": 122000000,
+        "teacherVideoMime": "video/avc",
+        "learnerVideoMime": "video/avc",
+        "teacherFrameRate": 30,
+        "learnerFrameRate": 30,
+        "sourceError": null,
+        "bufferingEvents": 4,
+        "seekEvents": 1,
+        "processPssKb": 124243,
+        "learnerAudioMuted": true,
+        "teacherVideoWidth": 640,
+        "teacherVideoHeight": 360,
+        "learnerVideoWidth": 640,
+        "learnerVideoHeight": 360,
+        "usableTeacherFrames": 3628,
+        "usableLearnerFrames": 3629,
+        "observationDurationUs": 120896281,
+        "windows": [
+          {
+            "startUs": 0,
+            "pairs": 151,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -33333.33112582781
+          },
+          {
+            "startUs": 5000000,
+            "pairs": 149,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -33109.61744966443
+          },
+          {
+            "startUs": 10000000,
+            "pairs": 149,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -32885.906040268455
+          },
+          {
+            "startUs": 15000000,
+            "pairs": 150,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -33333.333333333336
+          },
+          {
+            "startUs": 20000000,
+            "pairs": 149,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -33333.3355704698
+          },
+          {
+            "startUs": 25000000,
+            "pairs": 151,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -33333.33112582781
+          },
+          {
+            "startUs": 30000000,
+            "pairs": 150,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -33333.333333333336
+          },
+          {
+            "startUs": 35000000,
+            "pairs": 149,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -32438.476510067114
+          },
+          {
+            "startUs": 40000000,
+            "pairs": 150,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -33333.333333333336
+          },
+          {
+            "startUs": 45000000,
+            "pairs": 150,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -33333.333333333336
+          },
+          {
+            "startUs": 50000000,
+            "pairs": 149,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -32662.187919463086
+          },
+          {
+            "startUs": 55000000,
+            "pairs": 150,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -33333.333333333336
+          },
+          {
+            "startUs": 60000000,
+            "pairs": 149,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -32214.765100671142
+          },
+          {
+            "startUs": 65000000,
+            "pairs": 150,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -33333.333333333336
+          },
+          {
+            "startUs": 70000000,
+            "pairs": 150,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -33333.333333333336
+          },
+          {
+            "startUs": 75000000,
+            "pairs": 149,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -32885.906040268455
+          },
+          {
+            "startUs": 80000000,
+            "pairs": 149,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -32662.194630872484
+          },
+          {
+            "startUs": 85000000,
+            "pairs": 150,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -33333.333333333336
+          },
+          {
+            "startUs": 90000000,
+            "pairs": 149,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -32885.906040268455
+          },
+          {
+            "startUs": 95000000,
+            "pairs": 150,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -33333.333333333336
+          },
+          {
+            "startUs": 100000000,
+            "pairs": 150,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -33333.333333333336
+          },
+          {
+            "startUs": 105000000,
+            "pairs": 150,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -33333.333333333336
+          },
+          {
+            "startUs": 110000000,
+            "pairs": 150,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -33333.333333333336
+          },
+          {
+            "startUs": 115000000,
+            "pairs": 149,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -33109.62416107383
+          },
+          {
+            "startUs": 120000000,
+            "pairs": 26,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -32051.26923076923
+          }
+        ],
+        "evidenceType": "pre_render_planned_release_metadata_only",
+        "teacherFrameEvents": 3659,
+        "learnerFrameEvents": 3659,
+        "matchedPlannedReleaseFrames": 3618,
+        "p50AbsMediaErrorUs": 33333,
+        "p95AbsMediaErrorUs": 33334,
+        "maxAbsMediaErrorUs": 33334,
+        "meanSignedMediaErrorUs": -33112.21641791045,
+        "p95PlannedReleaseSkewUs": 16545,
+        "samples": [
+          {
+            "teacherPtsUs": 121166666,
+            "learnerPtsUs": 124133333,
+            "errorUs": -33333,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 121200000,
+            "learnerPtsUs": 124166666,
+            "errorUs": -33334,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 121233333,
+            "learnerPtsUs": 124200000,
+            "errorUs": -33333,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 121266666,
+            "learnerPtsUs": 124233333,
+            "errorUs": -33333,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 121300000,
+            "learnerPtsUs": 124266666,
+            "errorUs": -33334,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 121333333,
+            "learnerPtsUs": 124300000,
+            "errorUs": -33333,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 121366666,
+            "learnerPtsUs": 124333333,
+            "errorUs": -33333,
+            "plannedReleaseSkewUs": 16548
+          },
+          {
+            "teacherPtsUs": 121400000,
+            "learnerPtsUs": 124366666,
+            "errorUs": -33334,
+            "plannedReleaseSkewUs": 16548
+          },
+          {
+            "teacherPtsUs": 121433333,
+            "learnerPtsUs": 124400000,
+            "errorUs": -33333,
+            "plannedReleaseSkewUs": 16548
+          },
+          {
+            "teacherPtsUs": 121466666,
+            "learnerPtsUs": 124466666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16533
+          },
+          {
+            "teacherPtsUs": 121533333,
+            "learnerPtsUs": 124500000,
+            "errorUs": -33333,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 121566666,
+            "learnerPtsUs": 124533333,
+            "errorUs": -33333,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 121600000,
+            "learnerPtsUs": 124566666,
+            "errorUs": -33334,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 121633333,
+            "learnerPtsUs": 124600000,
+            "errorUs": -33333,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 121666666,
+            "learnerPtsUs": 124633333,
+            "errorUs": -33333,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 121700000,
+            "learnerPtsUs": 124666666,
+            "errorUs": -33334,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 121733333,
+            "learnerPtsUs": 124700000,
+            "errorUs": -33333,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 121766666,
+            "learnerPtsUs": 124733333,
+            "errorUs": -33333,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 121800000,
+            "learnerPtsUs": 124766666,
+            "errorUs": -33334,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 121833333,
+            "learnerPtsUs": 124800000,
+            "errorUs": -33333,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 121866666,
+            "learnerPtsUs": 124833333,
+            "errorUs": -33333,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 121900000,
+            "learnerPtsUs": 124866666,
+            "errorUs": -33334,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 121933333,
+            "learnerPtsUs": 124900000,
+            "errorUs": -33333,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 121966666,
+            "learnerPtsUs": 124933333,
+            "errorUs": -33333,
+            "plannedReleaseSkewUs": 0
+          }
+        ]
+      },
+      "screen": {
+        "schema": "woah.comparison.m0.screen.v1",
+        "status": "SCREEN_CAPTURE_WITHIN_TARGET",
+        "actualDisplayAcceptance": "NOT_PROVEN_PHYSICAL_PANEL",
+        "evidenceType": "decoded_frame_codes_in_compositor_capture",
+        "samples": 4036,
+        "fps": 30,
+        "expectedOffsetUs": 3000000,
+        "p95AbsMediaErrorUs": 33333,
+        "maxAbsMediaErrorUs": 33333,
+        "meanSignedMediaErrorUs": -31202.19871159564,
+        "firstCaptureSeconds": 2.142333,
+        "lastCaptureSeconds": 122.100411,
+        "windows": [
+          {
+            "startSeconds": 0,
+            "samples": 91,
+            "meanSignedErrorUs": -28937.43956043956,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 5,
+            "samples": 167,
+            "meanSignedErrorUs": -31536.610778443115,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 10,
+            "samples": 168,
+            "meanSignedErrorUs": -31547.303571428572,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 15,
+            "samples": 168,
+            "meanSignedErrorUs": -31745.714285714286,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 20,
+            "samples": 167,
+            "meanSignedErrorUs": -31137.413173652694,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 25,
+            "samples": 165,
+            "meanSignedErrorUs": -31312.81818181818,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 30,
+            "samples": 165,
+            "meanSignedErrorUs": -31312.81818181818,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 35,
+            "samples": 164,
+            "meanSignedErrorUs": -31707.0,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 40,
+            "samples": 162,
+            "meanSignedErrorUs": -31275.40740740741,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 45,
+            "samples": 168,
+            "meanSignedErrorUs": -31348.89285714286,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 50,
+            "samples": 168,
+            "meanSignedErrorUs": -30952.071428571428,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 55,
+            "samples": 166,
+            "meanSignedErrorUs": -31324.98795180723,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 60,
+            "samples": 170,
+            "meanSignedErrorUs": -31372.235294117647,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 65,
+            "samples": 171,
+            "meanSignedErrorUs": -31188.77192982456,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 70,
+            "samples": 171,
+            "meanSignedErrorUs": -30993.842105263157,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 75,
+            "samples": 172,
+            "meanSignedErrorUs": -31395.03488372093,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 80,
+            "samples": 168,
+            "meanSignedErrorUs": -31348.89285714286,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 85,
+            "samples": 174,
+            "meanSignedErrorUs": -30267.896551724138,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 90,
+            "samples": 171,
+            "meanSignedErrorUs": -31188.77192982456,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 95,
+            "samples": 170,
+            "meanSignedErrorUs": -31176.15882352941,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 100,
+            "samples": 172,
+            "meanSignedErrorUs": -31007.441860465115,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 105,
+            "samples": 167,
+            "meanSignedErrorUs": -31337.011976047903,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 110,
+            "samples": 168,
+            "meanSignedErrorUs": -31348.89285714286,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 115,
+            "samples": 171,
+            "meanSignedErrorUs": -31188.77192982456,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 120,
+            "samples": 72,
+            "meanSignedErrorUs": -31018.208333333332,
+            "maxAbsErrorUs": 33333
+          }
+        ],
+        "worstExamples": [
+          {
+            "captureSeconds": 2.142333,
+            "teacherFrame": 30,
+            "learnerFrame": 119,
+            "errorUs": -33333
+          },
+          {
+            "captureSeconds": 2.175522,
+            "teacherFrame": 31,
+            "learnerFrame": 120,
+            "errorUs": -33333
+          },
+          {
+            "captureSeconds": 2.209933,
+            "teacherFrame": 32,
+            "learnerFrame": 121,
+            "errorUs": -33333
+          },
+          {
+            "captureSeconds": 2.241689,
+            "teacherFrame": 33,
+            "learnerFrame": 122,
+            "errorUs": -33333
+          },
+          {
+            "captureSeconds": 2.2748,
+            "teacherFrame": 34,
+            "learnerFrame": 123,
+            "errorUs": -33333
+          },
+          {
+            "captureSeconds": 2.308133,
+            "teacherFrame": 35,
+            "learnerFrame": 124,
+            "errorUs": -33333
+          },
+          {
+            "captureSeconds": 2.342456,
+            "teacherFrame": 36,
+            "learnerFrame": 125,
+            "errorUs": -33333
+          },
+          {
+            "captureSeconds": 2.374889,
+            "teacherFrame": 37,
+            "learnerFrame": 126,
+            "errorUs": -33333
+          },
+          {
+            "captureSeconds": 2.382522,
+            "teacherFrame": 37,
+            "learnerFrame": 126,
+            "errorUs": -33333
+          },
+          {
+            "captureSeconds": 2.4071,
+            "teacherFrame": 38,
+            "learnerFrame": 127,
+            "errorUs": -33333
+          },
+          {
+            "captureSeconds": 2.4401,
+            "teacherFrame": 39,
+            "learnerFrame": 128,
+            "errorUs": -33333
+          },
+          {
+            "captureSeconds": 2.473189,
+            "teacherFrame": 40,
+            "learnerFrame": 129,
+            "errorUs": -33333
+          }
+        ],
+        "limitation": "Screen encoder/compositor can drop frames or sample the two surfaces at different display phases. No panel/scanout proof; thresholds apply only to equal-fps CFR sources.",
+        "recording": "docs\\session\\comparison-m0-20261025\\final-long-1x.mp4",
+        "decodedCaptureFrames": 4211,
+        "invalidCodes": 0,
+        "excludedFrames": 175,
+        "teacherRect": [
+          0,
+          307,
+          1080,
+          607
+        ],
+        "learnerRect": [
+          0,
+          1083,
+          1080,
+          607
+        ]
+      },
+      "plannedPairCoverage": 0.9972436604189636
+    },
+    {
+      "tag": "final-long-075x",
+      "description": "30fps / +3s / 0.75× / 长片",
+      "probe": {
+        "schema": "woah.comparison.m0.probe.v1",
+        "buildSha": "66db56aea8eb6409651a6282965d6e5132cd1e13",
+        "media3": "1.9.2",
+        "device": "OnePlus KB2000",
+        "apiLevel": 34,
+        "offsetUs": 3000000,
+        "speed": 0.75,
+        "teacherDurationMs": 122000,
+        "learnerDurationMs": 125000,
+        "overlapDurationUs": 122000000,
+        "teacherVideoMime": "video/avc",
+        "learnerVideoMime": "video/avc",
+        "teacherFrameRate": 30,
+        "learnerFrameRate": 30,
+        "sourceError": null,
+        "bufferingEvents": 6,
+        "seekEvents": 2,
+        "processPssKb": 125881,
+        "learnerAudioMuted": true,
+        "teacherVideoWidth": 640,
+        "teacherVideoHeight": 360,
+        "learnerVideoWidth": 640,
+        "learnerVideoHeight": 360,
+        "usableTeacherFrames": 3635,
+        "usableLearnerFrames": 3635,
+        "observationDurationUs": 161505477,
+        "windows": [
+          {
+            "startUs": 0,
+            "pairs": 101,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 8250.821782178218
+          },
+          {
+            "startUs": 5000000,
+            "pairs": 86,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 15503.89534883721
+          },
+          {
+            "startUs": 10000000,
+            "pairs": 89,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 10486.932584269663
+          },
+          {
+            "startUs": 15000000,
+            "pairs": 82,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 17073.158536585364
+          },
+          {
+            "startUs": 20000000,
+            "pairs": 90,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 9629.611111111111
+          },
+          {
+            "startUs": 25000000,
+            "pairs": 84,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 15872.97619047619
+          },
+          {
+            "startUs": 30000000,
+            "pairs": 87,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 11111.091954022988
+          },
+          {
+            "startUs": 35000000,
+            "pairs": 89,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 10486.921348314607
+          },
+          {
+            "startUs": 40000000,
+            "pairs": 85,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 14509.776470588235
+          },
+          {
+            "startUs": 45000000,
+            "pairs": 88,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 11363.602272727272
+          },
+          {
+            "startUs": 50000000,
+            "pairs": 87,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 14176.241379310344
+          },
+          {
+            "startUs": 55000000,
+            "pairs": 90,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 8148.155555555555
+          },
+          {
+            "startUs": 60000000,
+            "pairs": 87,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 12643.67816091954
+          },
+          {
+            "startUs": 65000000,
+            "pairs": 87,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 13793.091954022988
+          },
+          {
+            "startUs": 70000000,
+            "pairs": 83,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 16064.216867469879
+          },
+          {
+            "startUs": 75000000,
+            "pairs": 86,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 15503.89534883721
+          },
+          {
+            "startUs": 80000000,
+            "pairs": 86,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 14728.709302325582
+          },
+          {
+            "startUs": 85000000,
+            "pairs": 89,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 8988.752808988764
+          },
+          {
+            "startUs": 90000000,
+            "pairs": 88,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 11363.693181818182
+          },
+          {
+            "startUs": 95000000,
+            "pairs": 86,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 12403.116279069767
+          },
+          {
+            "startUs": 100000000,
+            "pairs": 83,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 15662.638554216868
+          },
+          {
+            "startUs": 105000000,
+            "pairs": 89,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 10112.370786516854
+          },
+          {
+            "startUs": 110000000,
+            "pairs": 84,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 13492.07142857143
+          },
+          {
+            "startUs": 115000000,
+            "pairs": 85,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 12548.976470588235
+          },
+          {
+            "startUs": 120000000,
+            "pairs": 92,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 7246.380434782609
+          },
+          {
+            "startUs": 125000000,
+            "pairs": 87,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 11877.413793103447
+          },
+          {
+            "startUs": 130000000,
+            "pairs": 84,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 13095.25
+          },
+          {
+            "startUs": 135000000,
+            "pairs": 90,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 11481.455555555556
+          },
+          {
+            "startUs": 140000000,
+            "pairs": 83,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 14457.831325301206
+          },
+          {
+            "startUs": 145000000,
+            "pairs": 86,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 12015.53488372093
+          },
+          {
+            "startUs": 150000000,
+            "pairs": 89,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 11235.966292134832
+          },
+          {
+            "startUs": 155000000,
+            "pairs": 85,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 14509.75294117647
+          },
+          {
+            "startUs": 160000000,
+            "pairs": 26,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 10256.384615384615
+          }
+        ],
+        "evidenceType": "pre_render_planned_release_metadata_only",
+        "teacherFrameEvents": 3659,
+        "learnerFrameEvents": 3659,
+        "matchedPlannedReleaseFrames": 2813,
+        "p50AbsMediaErrorUs": 0,
+        "p95AbsMediaErrorUs": 33334,
+        "maxAbsMediaErrorUs": 33334,
+        "meanSignedMediaErrorUs": 12394.832207607536,
+        "p95PlannedReleaseSkewUs": 16575,
+        "samples": [
+          {
+            "teacherPtsUs": 120966666,
+            "learnerPtsUs": 123966666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16587
+          },
+          {
+            "teacherPtsUs": 121000000,
+            "learnerPtsUs": 124033333,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16517
+          },
+          {
+            "teacherPtsUs": 121066666,
+            "learnerPtsUs": 124066666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16595
+          },
+          {
+            "teacherPtsUs": 121100000,
+            "learnerPtsUs": 124133333,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16510
+          },
+          {
+            "teacherPtsUs": 121166666,
+            "learnerPtsUs": 124166666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16522
+          },
+          {
+            "teacherPtsUs": 121200000,
+            "learnerPtsUs": 124200000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16543
+          },
+          {
+            "teacherPtsUs": 121233333,
+            "learnerPtsUs": 124266666,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16567
+          },
+          {
+            "teacherPtsUs": 121300000,
+            "learnerPtsUs": 124300000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16539
+          },
+          {
+            "teacherPtsUs": 121333333,
+            "learnerPtsUs": 124366666,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16571
+          },
+          {
+            "teacherPtsUs": 121400000,
+            "learnerPtsUs": 124400000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16536
+          },
+          {
+            "teacherPtsUs": 121433333,
+            "learnerPtsUs": 124466666,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16575
+          },
+          {
+            "teacherPtsUs": 121500000,
+            "learnerPtsUs": 124500000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16532
+          },
+          {
+            "teacherPtsUs": 121533333,
+            "learnerPtsUs": 124533333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16531
+          },
+          {
+            "teacherPtsUs": 121566666,
+            "learnerPtsUs": 124566666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16556
+          },
+          {
+            "teacherPtsUs": 121600000,
+            "learnerPtsUs": 124600000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16550
+          },
+          {
+            "teacherPtsUs": 121633333,
+            "learnerPtsUs": 124633333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16550
+          },
+          {
+            "teacherPtsUs": 121666666,
+            "learnerPtsUs": 124666666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 121700000,
+            "learnerPtsUs": 124700000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 121733333,
+            "learnerPtsUs": 124733333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16548
+          },
+          {
+            "teacherPtsUs": 121766666,
+            "learnerPtsUs": 124766666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16547
+          },
+          {
+            "teacherPtsUs": 121800000,
+            "learnerPtsUs": 124800000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16547
+          },
+          {
+            "teacherPtsUs": 121833333,
+            "learnerPtsUs": 124833333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16546
+          },
+          {
+            "teacherPtsUs": 121866666,
+            "learnerPtsUs": 124900000,
+            "errorUs": 33334,
+            "plannedReleaseSkewUs": 16565
+          },
+          {
+            "teacherPtsUs": 121933333,
+            "learnerPtsUs": 124933333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16552
+          }
+        ]
+      },
+      "screen": {
+        "schema": "woah.comparison.m0.screen.v1",
+        "status": "SCREEN_CAPTURE_WITHIN_TARGET",
+        "actualDisplayAcceptance": "NOT_PROVEN_PHYSICAL_PANEL",
+        "evidenceType": "decoded_frame_codes_in_compositor_capture",
+        "samples": 7014,
+        "fps": 30,
+        "expectedOffsetUs": 3000000,
+        "p95AbsMediaErrorUs": 33333,
+        "maxAbsMediaErrorUs": 33333,
+        "meanSignedMediaErrorUs": 16728.280581693754,
+        "firstCaptureSeconds": 2.515511,
+        "lastCaptureSeconds": 162.501767,
+        "windows": [
+          {
+            "startSeconds": 0,
+            "samples": 114,
+            "meanSignedErrorUs": 16374.105263157895,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 5,
+            "samples": 220,
+            "meanSignedErrorUs": 16514.986363636363,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 10,
+            "samples": 214,
+            "meanSignedErrorUs": 16666.5,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 15,
+            "samples": 219,
+            "meanSignedErrorUs": 16438.19178082192,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 20,
+            "samples": 221,
+            "meanSignedErrorUs": 16892.742081447963,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 25,
+            "samples": 216,
+            "meanSignedErrorUs": 16820.819444444445,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 30,
+            "samples": 223,
+            "meanSignedErrorUs": 16741.237668161433,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 35,
+            "samples": 220,
+            "meanSignedErrorUs": 16969.52727272727,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 40,
+            "samples": 220,
+            "meanSignedErrorUs": 16818.013636363637,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 45,
+            "samples": 217,
+            "meanSignedErrorUs": 17204.129032258064,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 50,
+            "samples": 226,
+            "meanSignedErrorUs": 16224.026548672566,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 55,
+            "samples": 210,
+            "meanSignedErrorUs": 17301.414285714287,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 60,
+            "samples": 224,
+            "meanSignedErrorUs": 16964.116071428572,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 65,
+            "samples": 223,
+            "meanSignedErrorUs": 16890.713004484303,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 70,
+            "samples": 219,
+            "meanSignedErrorUs": 16590.397260273974,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 75,
+            "samples": 222,
+            "meanSignedErrorUs": 16516.35135135135,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 80,
+            "samples": 219,
+            "meanSignedErrorUs": 16894.80821917808,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 85,
+            "samples": 212,
+            "meanSignedErrorUs": 16823.73113207547,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 90,
+            "samples": 222,
+            "meanSignedErrorUs": 16966.797297297297,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 95,
+            "samples": 214,
+            "meanSignedErrorUs": 16822.26168224299,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 100,
+            "samples": 215,
+            "meanSignedErrorUs": 16899.055813953488,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 105,
+            "samples": 227,
+            "meanSignedErrorUs": 16005.713656387665,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 110,
+            "samples": 217,
+            "meanSignedErrorUs": 16743.30414746544,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 115,
+            "samples": 214,
+            "meanSignedErrorUs": 16666.5,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 120,
+            "samples": 228,
+            "meanSignedErrorUs": 16374.105263157895,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 125,
+            "samples": 217,
+            "meanSignedErrorUs": 16896.912442396315,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 130,
+            "samples": 213,
+            "meanSignedErrorUs": 16588.25352112676,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 135,
+            "samples": 227,
+            "meanSignedErrorUs": 16739.920704845816,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 140,
+            "samples": 218,
+            "meanSignedErrorUs": 16972.30733944954,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 145,
+            "samples": 214,
+            "meanSignedErrorUs": 16510.73831775701,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 150,
+            "samples": 223,
+            "meanSignedErrorUs": 16741.237668161433,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 155,
+            "samples": 218,
+            "meanSignedErrorUs": 16360.69266055046,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 160,
+            "samples": 108,
+            "meanSignedErrorUs": 17283.777777777777,
+            "maxAbsErrorUs": 33333
+          }
+        ],
+        "worstExamples": [
+          {
+            "captureSeconds": 2.538789,
+            "teacherFrame": 30,
+            "learnerFrame": 121,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.580033,
+            "teacherFrame": 31,
+            "learnerFrame": 122,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.629978,
+            "teacherFrame": 32,
+            "learnerFrame": 123,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.671167,
+            "teacherFrame": 33,
+            "learnerFrame": 124,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.7131,
+            "teacherFrame": 34,
+            "learnerFrame": 125,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.7632,
+            "teacherFrame": 35,
+            "learnerFrame": 126,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.803767,
+            "teacherFrame": 36,
+            "learnerFrame": 127,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.853411,
+            "teacherFrame": 37,
+            "learnerFrame": 128,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.895189,
+            "teacherFrame": 38,
+            "learnerFrame": 129,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.936189,
+            "teacherFrame": 39,
+            "learnerFrame": 130,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.986633,
+            "teacherFrame": 40,
+            "learnerFrame": 131,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 3.028744,
+            "teacherFrame": 41,
+            "learnerFrame": 132,
+            "errorUs": 33333
+          }
+        ],
+        "limitation": "Screen encoder/compositor can drop frames or sample the two surfaces at different display phases. No panel/scanout proof; thresholds apply only to equal-fps CFR sources.",
+        "recording": "docs\\session\\comparison-m0-20261025\\final-long-075x.mp4",
+        "decodedCaptureFrames": 7215,
+        "invalidCodes": 0,
+        "excludedFrames": 201,
+        "teacherRect": [
+          0,
+          307,
+          1080,
+          607
+        ],
+        "learnerRect": [
+          0,
+          1083,
+          1080,
+          607
+        ]
+      },
+      "plannedPairCoverage": 0.7738651994497937
+    },
+    {
+      "tag": "final-long-05x",
+      "description": "30fps / +3s / 0.5× / 长片",
+      "probe": {
+        "schema": "woah.comparison.m0.probe.v1",
+        "buildSha": "66db56aea8eb6409651a6282965d6e5132cd1e13",
+        "media3": "1.9.2",
+        "device": "OnePlus KB2000",
+        "apiLevel": 34,
+        "offsetUs": 3000000,
+        "speed": 0.5,
+        "teacherDurationMs": 122000,
+        "learnerDurationMs": 125000,
+        "overlapDurationUs": 122000000,
+        "teacherVideoMime": "video/avc",
+        "learnerVideoMime": "video/avc",
+        "teacherFrameRate": 30,
+        "learnerFrameRate": 30,
+        "sourceError": null,
+        "bufferingEvents": 8,
+        "seekEvents": 3,
+        "processPssKb": 124305,
+        "learnerAudioMuted": true,
+        "teacherVideoWidth": 640,
+        "teacherVideoHeight": 360,
+        "learnerVideoWidth": 640,
+        "learnerVideoHeight": 360,
+        "usableTeacherFrames": 3643,
+        "usableLearnerFrames": 3644,
+        "observationDurationUs": 242825995,
+        "windows": [
+          {
+            "startUs": 0,
+            "pairs": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 5000000,
+            "pairs": 34,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 10000000,
+            "pairs": 35,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 15000000,
+            "pairs": 35,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 20000000,
+            "pairs": 35,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 25000000,
+            "pairs": 36,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 30000000,
+            "pairs": 40,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 35000000,
+            "pairs": 39,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 40000000,
+            "pairs": 40,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 45000000,
+            "pairs": 36,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 50000000,
+            "pairs": 34,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 55000000,
+            "pairs": 35,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 60000000,
+            "pairs": 36,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 65000000,
+            "pairs": 34,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 70000000,
+            "pairs": 35,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 75000000,
+            "pairs": 39,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 80000000,
+            "pairs": 38,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 85000000,
+            "pairs": 37,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 90000000,
+            "pairs": 32,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 95000000,
+            "pairs": 36,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 100000000,
+            "pairs": 36,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 105000000,
+            "pairs": 39,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 110000000,
+            "pairs": 39,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 115000000,
+            "pairs": 37,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 120000000,
+            "pairs": 38,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 125000000,
+            "pairs": 38,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 130000000,
+            "pairs": 37,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 135000000,
+            "pairs": 34,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 140000000,
+            "pairs": 34,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 145000000,
+            "pairs": 36,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 150000000,
+            "pairs": 36,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 155000000,
+            "pairs": 35,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 160000000,
+            "pairs": 34,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 165000000,
+            "pairs": 39,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 170000000,
+            "pairs": 38,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 175000000,
+            "pairs": 37,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 180000000,
+            "pairs": 36,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 185000000,
+            "pairs": 37,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 190000000,
+            "pairs": 37,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 195000000,
+            "pairs": 37,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 200000000,
+            "pairs": 37,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 205000000,
+            "pairs": 37,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 210000000,
+            "pairs": 37,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 215000000,
+            "pairs": 38,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 220000000,
+            "pairs": 38,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 225000000,
+            "pairs": 36,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 230000000,
+            "pairs": 35,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 235000000,
+            "pairs": 36,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 240000000,
+            "pairs": 17,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          }
+        ],
+        "evidenceType": "pre_render_planned_release_metadata_only",
+        "teacherFrameEvents": 3659,
+        "learnerFrameEvents": 3659,
+        "matchedPlannedReleaseFrames": 1791,
+        "p50AbsMediaErrorUs": 0,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0,
+        "p95PlannedReleaseSkewUs": 16559,
+        "samples": [
+          {
+            "teacherPtsUs": 120033333,
+            "learnerPtsUs": 123033333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16550
+          },
+          {
+            "teacherPtsUs": 120066666,
+            "learnerPtsUs": 123066666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16550
+          },
+          {
+            "teacherPtsUs": 120100000,
+            "learnerPtsUs": 123100000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16550
+          },
+          {
+            "teacherPtsUs": 120133333,
+            "learnerPtsUs": 123133333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16550
+          },
+          {
+            "teacherPtsUs": 120166666,
+            "learnerPtsUs": 123166666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16550
+          },
+          {
+            "teacherPtsUs": 120200000,
+            "learnerPtsUs": 123200000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16550
+          },
+          {
+            "teacherPtsUs": 120233333,
+            "learnerPtsUs": 123233333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16550
+          },
+          {
+            "teacherPtsUs": 120866666,
+            "learnerPtsUs": 123866666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 120900000,
+            "learnerPtsUs": 123900000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 120933333,
+            "learnerPtsUs": 123933333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 120966666,
+            "learnerPtsUs": 123966666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 121000000,
+            "learnerPtsUs": 124000000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 121033333,
+            "learnerPtsUs": 124033333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16552
+          },
+          {
+            "teacherPtsUs": 121066666,
+            "learnerPtsUs": 124066666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16553
+          },
+          {
+            "teacherPtsUs": 121100000,
+            "learnerPtsUs": 124100000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16553
+          },
+          {
+            "teacherPtsUs": 121133333,
+            "learnerPtsUs": 124133333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16553
+          },
+          {
+            "teacherPtsUs": 121166666,
+            "learnerPtsUs": 124166666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16553
+          },
+          {
+            "teacherPtsUs": 121200000,
+            "learnerPtsUs": 124200000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16553
+          },
+          {
+            "teacherPtsUs": 121233333,
+            "learnerPtsUs": 124233333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16553
+          },
+          {
+            "teacherPtsUs": 121266666,
+            "learnerPtsUs": 124266666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16553
+          },
+          {
+            "teacherPtsUs": 121300000,
+            "learnerPtsUs": 124300000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16524
+          },
+          {
+            "teacherPtsUs": 121333333,
+            "learnerPtsUs": 124333333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16547
+          },
+          {
+            "teacherPtsUs": 121366666,
+            "learnerPtsUs": 124366666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16547
+          },
+          {
+            "teacherPtsUs": 121400000,
+            "learnerPtsUs": 124400000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16547
+          }
+        ]
+      },
+      "screen": {
+        "schema": "woah.comparison.m0.screen.v1",
+        "status": "SCREEN_CAPTURE_WITHIN_TARGET",
+        "actualDisplayAcceptance": "NOT_PROVEN_PHYSICAL_PANEL",
+        "evidenceType": "decoded_frame_codes_in_compositor_capture",
+        "samples": 7330,
+        "fps": 30,
+        "expectedOffsetUs": 3000000,
+        "p95AbsMediaErrorUs": 33333,
+        "maxAbsMediaErrorUs": 33333,
+        "meanSignedMediaErrorUs": -16952.990995907232,
+        "firstCaptureSeconds": 3.193467,
+        "lastCaptureSeconds": 243.144067,
+        "windows": [
+          {
+            "startSeconds": 0,
+            "samples": 56,
+            "meanSignedErrorUs": -16666.5,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 5,
+            "samples": 152,
+            "meanSignedErrorUs": -16447.20394736842,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 10,
+            "samples": 164,
+            "meanSignedErrorUs": -16666.5,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 15,
+            "samples": 150,
+            "meanSignedErrorUs": -16888.72,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 20,
+            "samples": 155,
+            "meanSignedErrorUs": -16343.922580645161,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 25,
+            "samples": 150,
+            "meanSignedErrorUs": -17110.94,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 30,
+            "samples": 155,
+            "meanSignedErrorUs": -16989.07741935484,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 35,
+            "samples": 148,
+            "meanSignedErrorUs": -17342.16891891892,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 40,
+            "samples": 148,
+            "meanSignedErrorUs": -16891.722972972973,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 45,
+            "samples": 154,
+            "meanSignedErrorUs": -16233.603896103896,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 50,
+            "samples": 150,
+            "meanSignedErrorUs": -17555.38,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 55,
+            "samples": 153,
+            "meanSignedErrorUs": -17429.019607843136,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 60,
+            "samples": 151,
+            "meanSignedErrorUs": -16776.87417218543,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 65,
+            "samples": 153,
+            "meanSignedErrorUs": -17211.156862745098,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 70,
+            "samples": 154,
+            "meanSignedErrorUs": -17315.844155844155,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 75,
+            "samples": 145,
+            "meanSignedErrorUs": -17471.089655172414,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 80,
+            "samples": 146,
+            "meanSignedErrorUs": -17351.424657534248,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 85,
+            "samples": 157,
+            "meanSignedErrorUs": -16560.343949044585,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 90,
+            "samples": 150,
+            "meanSignedErrorUs": -17999.82,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 95,
+            "samples": 150,
+            "meanSignedErrorUs": -16888.72,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 100,
+            "samples": 147,
+            "meanSignedErrorUs": -17233.38775510204,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 105,
+            "samples": 151,
+            "meanSignedErrorUs": -16776.87417218543,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 110,
+            "samples": 155,
+            "meanSignedErrorUs": -17419.18064516129,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 115,
+            "samples": 141,
+            "meanSignedErrorUs": -17730.31914893617,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 120,
+            "samples": 149,
+            "meanSignedErrorUs": -17225.77852348993,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 125,
+            "samples": 151,
+            "meanSignedErrorUs": -17659.867549668874,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 130,
+            "samples": 145,
+            "meanSignedErrorUs": -17930.855172413794,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 135,
+            "samples": 149,
+            "meanSignedErrorUs": -16778.355704697988,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 140,
+            "samples": 155,
+            "meanSignedErrorUs": -16989.07741935484,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 145,
+            "samples": 156,
+            "meanSignedErrorUs": -17307.51923076923,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 150,
+            "samples": 151,
+            "meanSignedErrorUs": -16776.87417218543,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 155,
+            "samples": 149,
+            "meanSignedErrorUs": -17225.77852348993,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 160,
+            "samples": 157,
+            "meanSignedErrorUs": -17197.28025477707,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 165,
+            "samples": 150,
+            "meanSignedErrorUs": -16444.28,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 170,
+            "samples": 151,
+            "meanSignedErrorUs": -16997.62251655629,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 175,
+            "samples": 159,
+            "meanSignedErrorUs": -16980.962264150945,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 180,
+            "samples": 154,
+            "meanSignedErrorUs": -16882.948051948053,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 185,
+            "samples": 149,
+            "meanSignedErrorUs": -17002.06711409396,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 190,
+            "samples": 155,
+            "meanSignedErrorUs": -16989.07741935484,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 195,
+            "samples": 154,
+            "meanSignedErrorUs": -16666.5,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 200,
+            "samples": 153,
+            "meanSignedErrorUs": -16557.56862745098,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 205,
+            "samples": 159,
+            "meanSignedErrorUs": -16771.32075471698,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 210,
+            "samples": 152,
+            "meanSignedErrorUs": -16666.5,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 215,
+            "samples": 153,
+            "meanSignedErrorUs": -16557.56862745098,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 220,
+            "samples": 163,
+            "meanSignedErrorUs": -16359.754601226994,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 225,
+            "samples": 157,
+            "meanSignedErrorUs": -16560.343949044585,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 230,
+            "samples": 159,
+            "meanSignedErrorUs": -16142.396226415094,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 235,
+            "samples": 164,
+            "meanSignedErrorUs": -16463.25,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 240,
+            "samples": 101,
+            "meanSignedErrorUs": -16171.455445544554,
+            "maxAbsErrorUs": 33333
+          }
+        ],
+        "worstExamples": [
+          {
+            "captureSeconds": 3.193467,
+            "teacherFrame": 30,
+            "learnerFrame": 119,
+            "errorUs": -33333
+          },
+          {
+            "captureSeconds": 3.260667,
+            "teacherFrame": 31,
+            "learnerFrame": 120,
+            "errorUs": -33333
+          },
+          {
+            "captureSeconds": 3.326911,
+            "teacherFrame": 32,
+            "learnerFrame": 121,
+            "errorUs": -33333
+          },
+          {
+            "captureSeconds": 3.394533,
+            "teacherFrame": 33,
+            "learnerFrame": 122,
+            "errorUs": -33333
+          },
+          {
+            "captureSeconds": 3.458789,
+            "teacherFrame": 34,
+            "learnerFrame": 123,
+            "errorUs": -33333
+          },
+          {
+            "captureSeconds": 3.525089,
+            "teacherFrame": 35,
+            "learnerFrame": 124,
+            "errorUs": -33333
+          },
+          {
+            "captureSeconds": 3.5914,
+            "teacherFrame": 36,
+            "learnerFrame": 125,
+            "errorUs": -33333
+          },
+          {
+            "captureSeconds": 3.658767,
+            "teacherFrame": 37,
+            "learnerFrame": 126,
+            "errorUs": -33333
+          },
+          {
+            "captureSeconds": 3.724456,
+            "teacherFrame": 38,
+            "learnerFrame": 127,
+            "errorUs": -33333
+          },
+          {
+            "captureSeconds": 3.789933,
+            "teacherFrame": 39,
+            "learnerFrame": 128,
+            "errorUs": -33333
+          },
+          {
+            "captureSeconds": 3.856878,
+            "teacherFrame": 40,
+            "learnerFrame": 129,
+            "errorUs": -33333
+          },
+          {
+            "captureSeconds": 3.9234,
+            "teacherFrame": 41,
+            "learnerFrame": 130,
+            "errorUs": -33333
+          }
+        ],
+        "limitation": "Screen encoder/compositor can drop frames or sample the two surfaces at different display phases. No panel/scanout proof; thresholds apply only to equal-fps CFR sources.",
+        "recording": "docs\\session\\comparison-m0-20261025\\final-long-05x.mp4",
+        "decodedCaptureFrames": 7540,
+        "invalidCodes": 0,
+        "excludedFrames": 210,
+        "teacherRect": [
+          0,
+          307,
+          1080,
+          607
+        ],
+        "learnerRect": [
+          0,
+          1083,
+          1080,
+          607
+        ]
+      },
+      "plannedPairCoverage": 0.49162777930277246
+    },
+    {
+      "tag": "final-short-1x",
+      "description": "30fps / +3s / 1× / 短片",
+      "probe": {
+        "schema": "woah.comparison.m0.probe.v1",
+        "buildSha": "66db56aea8eb6409651a6282965d6e5132cd1e13",
+        "media3": "1.9.2",
+        "device": "OnePlus KB2000",
+        "apiLevel": 34,
+        "offsetUs": 3000000,
+        "speed": 1,
+        "teacherDurationMs": 12000,
+        "learnerDurationMs": 15000,
+        "overlapDurationUs": 12000000,
+        "teacherVideoMime": "video/avc",
+        "learnerVideoMime": "video/avc",
+        "teacherFrameRate": 30,
+        "learnerFrameRate": 30,
+        "sourceError": null,
+        "bufferingEvents": 5,
+        "seekEvents": 2,
+        "processPssKb": 119190,
+        "learnerAudioMuted": true,
+        "teacherVideoWidth": 640,
+        "teacherVideoHeight": 360,
+        "learnerVideoWidth": 640,
+        "learnerVideoHeight": 360,
+        "usableTeacherFrames": 329,
+        "usableLearnerFrames": 329,
+        "observationDurationUs": 10934019,
+        "windows": [
+          {
+            "startUs": 0,
+            "pairs": 149,
+            "p95AbsMediaErrorUs": 33333,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 3355.7046979865772
+          },
+          {
+            "startUs": 5000000,
+            "pairs": 148,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 8558.554054054053
+          },
+          {
+            "startUs": 10000000,
+            "pairs": 28,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 9523.785714285714
+          }
+        ],
+        "evidenceType": "pre_render_planned_release_metadata_only",
+        "teacherFrameEvents": 359,
+        "learnerFrameEvents": 359,
+        "matchedPlannedReleaseFrames": 325,
+        "p50AbsMediaErrorUs": 0,
+        "p95AbsMediaErrorUs": 33334,
+        "maxAbsMediaErrorUs": 33334,
+        "meanSignedMediaErrorUs": 6256.406153846154,
+        "p95PlannedReleaseSkewUs": 16551,
+        "samples": [
+          {
+            "teacherPtsUs": 11166666,
+            "learnerPtsUs": 14166666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11200000,
+            "learnerPtsUs": 14200000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11233333,
+            "learnerPtsUs": 14233333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11266666,
+            "learnerPtsUs": 14266666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11300000,
+            "learnerPtsUs": 14300000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11333333,
+            "learnerPtsUs": 14333333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11366666,
+            "learnerPtsUs": 14366666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11400000,
+            "learnerPtsUs": 14400000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11433333,
+            "learnerPtsUs": 14433333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11466666,
+            "learnerPtsUs": 14466666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11500000,
+            "learnerPtsUs": 14500000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11533333,
+            "learnerPtsUs": 14533333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11566666,
+            "learnerPtsUs": 14566666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11600000,
+            "learnerPtsUs": 14600000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11633333,
+            "learnerPtsUs": 14633333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11666666,
+            "learnerPtsUs": 14666666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11700000,
+            "learnerPtsUs": 14733333,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16538
+          },
+          {
+            "teacherPtsUs": 11733333,
+            "learnerPtsUs": 14766666,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 11766666,
+            "learnerPtsUs": 14800000,
+            "errorUs": 33334,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 11800000,
+            "learnerPtsUs": 14833333,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 11833333,
+            "learnerPtsUs": 14866666,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 11866666,
+            "learnerPtsUs": 14900000,
+            "errorUs": 33334,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 11900000,
+            "learnerPtsUs": 14933333,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 11933333,
+            "learnerPtsUs": 14966666,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16549
+          }
+        ]
+      },
+      "screen": {
+        "schema": "woah.comparison.m0.screen.v1",
+        "status": "SCREEN_CAPTURE_WITHIN_TARGET",
+        "actualDisplayAcceptance": "NOT_PROVEN_PHYSICAL_PANEL",
+        "evidenceType": "decoded_frame_codes_in_compositor_capture",
+        "samples": 388,
+        "fps": 30,
+        "expectedOffsetUs": 3000000,
+        "p95AbsMediaErrorUs": 33333,
+        "maxAbsMediaErrorUs": 33333,
+        "meanSignedMediaErrorUs": 12199.190721649484,
+        "firstCaptureSeconds": 2.449711,
+        "lastCaptureSeconds": 12.386989,
+        "windows": [
+          {
+            "startSeconds": 0,
+            "samples": 80,
+            "meanSignedErrorUs": 24166.425,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 5,
+            "samples": 208,
+            "meanSignedErrorUs": 9455.033653846154,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 10,
+            "samples": 100,
+            "meanSignedErrorUs": 8333.25,
+            "maxAbsErrorUs": 33333
+          }
+        ],
+        "worstExamples": [
+          {
+            "captureSeconds": 2.449711,
+            "teacherFrame": 30,
+            "learnerFrame": 121,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.482778,
+            "teacherFrame": 31,
+            "learnerFrame": 122,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.515789,
+            "teacherFrame": 32,
+            "learnerFrame": 123,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.548811,
+            "teacherFrame": 33,
+            "learnerFrame": 124,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.581544,
+            "teacherFrame": 34,
+            "learnerFrame": 125,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.6147,
+            "teacherFrame": 35,
+            "learnerFrame": 126,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.648833,
+            "teacherFrame": 36,
+            "learnerFrame": 127,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.6817,
+            "teacherFrame": 37,
+            "learnerFrame": 128,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 3.053944,
+            "teacherFrame": 48,
+            "learnerFrame": 139,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 3.0876,
+            "teacherFrame": 49,
+            "learnerFrame": 140,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 3.119733,
+            "teacherFrame": 50,
+            "learnerFrame": 141,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 3.153022,
+            "teacherFrame": 51,
+            "learnerFrame": 142,
+            "errorUs": 33333
+          }
+        ],
+        "limitation": "Screen encoder/compositor can drop frames or sample the two surfaces at different display phases. No panel/scanout proof; thresholds apply only to equal-fps CFR sources.",
+        "recording": "docs\\session\\comparison-m0-20261025\\final-short-1x.mp4",
+        "decodedCaptureFrames": 523,
+        "invalidCodes": 0,
+        "excludedFrames": 135,
+        "teacherRect": [
+          0,
+          307,
+          1080,
+          607
+        ],
+        "learnerRect": [
+          0,
+          1083,
+          1080,
+          607
+        ]
+      },
+      "plannedPairCoverage": 0.9878419452887538
+    },
+    {
+      "tag": "final-short-075x",
+      "description": "30fps / +3s / 0.75× / 短片",
+      "probe": {
+        "schema": "woah.comparison.m0.probe.v1",
+        "buildSha": "66db56aea8eb6409651a6282965d6e5132cd1e13",
+        "media3": "1.9.2",
+        "device": "OnePlus KB2000",
+        "apiLevel": 34,
+        "offsetUs": 3000000,
+        "speed": 0.75,
+        "teacherDurationMs": 12000,
+        "learnerDurationMs": 15000,
+        "overlapDurationUs": 12000000,
+        "teacherVideoMime": "video/avc",
+        "learnerVideoMime": "video/avc",
+        "teacherFrameRate": 30,
+        "learnerFrameRate": 30,
+        "sourceError": null,
+        "bufferingEvents": 7,
+        "seekEvents": 3,
+        "processPssKb": 117396,
+        "learnerAudioMuted": true,
+        "teacherVideoWidth": 640,
+        "teacherVideoHeight": 360,
+        "learnerVideoWidth": 640,
+        "learnerVideoHeight": 360,
+        "usableTeacherFrames": 334,
+        "usableLearnerFrames": 333,
+        "observationDurationUs": 14780529,
+        "windows": [
+          {
+            "startUs": 0,
+            "pairs": 113,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 33333.33628318584
+          },
+          {
+            "startUs": 5000000,
+            "pairs": 112,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 33333.330357142855
+          },
+          {
+            "startUs": 10000000,
+            "pairs": 108,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 33333.333333333336
+          }
+        ],
+        "evidenceType": "pre_render_planned_release_metadata_only",
+        "teacherFrameEvents": 359,
+        "learnerFrameEvents": 359,
+        "matchedPlannedReleaseFrames": 333,
+        "p50AbsMediaErrorUs": 33333,
+        "p95AbsMediaErrorUs": 33334,
+        "maxAbsMediaErrorUs": 33334,
+        "meanSignedMediaErrorUs": 33333.333333333336,
+        "p95PlannedReleaseSkewUs": 16552,
+        "samples": [
+          {
+            "teacherPtsUs": 11166666,
+            "learnerPtsUs": 14200000,
+            "errorUs": 33334,
+            "plannedReleaseSkewUs": 16550
+          },
+          {
+            "teacherPtsUs": 11200000,
+            "learnerPtsUs": 14233333,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16550
+          },
+          {
+            "teacherPtsUs": 11233333,
+            "learnerPtsUs": 14266666,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11266666,
+            "learnerPtsUs": 14300000,
+            "errorUs": 33334,
+            "plannedReleaseSkewUs": 16550
+          },
+          {
+            "teacherPtsUs": 11300000,
+            "learnerPtsUs": 14333333,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16550
+          },
+          {
+            "teacherPtsUs": 11333333,
+            "learnerPtsUs": 14366666,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11366666,
+            "learnerPtsUs": 14400000,
+            "errorUs": 33334,
+            "plannedReleaseSkewUs": 16550
+          },
+          {
+            "teacherPtsUs": 11400000,
+            "learnerPtsUs": 14433333,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16550
+          },
+          {
+            "teacherPtsUs": 11433333,
+            "learnerPtsUs": 14466666,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11466666,
+            "learnerPtsUs": 14500000,
+            "errorUs": 33334,
+            "plannedReleaseSkewUs": 16550
+          },
+          {
+            "teacherPtsUs": 11500000,
+            "learnerPtsUs": 14533333,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16457
+          },
+          {
+            "teacherPtsUs": 11533333,
+            "learnerPtsUs": 14566666,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11566666,
+            "learnerPtsUs": 14600000,
+            "errorUs": 33334,
+            "plannedReleaseSkewUs": 16548
+          },
+          {
+            "teacherPtsUs": 11600000,
+            "learnerPtsUs": 14633333,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16548
+          },
+          {
+            "teacherPtsUs": 11633333,
+            "learnerPtsUs": 14666666,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11666666,
+            "learnerPtsUs": 14700000,
+            "errorUs": 33334,
+            "plannedReleaseSkewUs": 16548
+          },
+          {
+            "teacherPtsUs": 11700000,
+            "learnerPtsUs": 14733333,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16548
+          },
+          {
+            "teacherPtsUs": 11733333,
+            "learnerPtsUs": 14766666,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16548
+          },
+          {
+            "teacherPtsUs": 11766666,
+            "learnerPtsUs": 14800000,
+            "errorUs": 33334,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11800000,
+            "learnerPtsUs": 14833333,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16548
+          },
+          {
+            "teacherPtsUs": 11833333,
+            "learnerPtsUs": 14866666,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16548
+          },
+          {
+            "teacherPtsUs": 11866666,
+            "learnerPtsUs": 14900000,
+            "errorUs": 33334,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11900000,
+            "learnerPtsUs": 14933333,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16548
+          },
+          {
+            "teacherPtsUs": 11933333,
+            "learnerPtsUs": 14966666,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16548
+          }
+        ]
+      },
+      "screen": {
+        "schema": "woah.comparison.m0.screen.v1",
+        "status": "SCREEN_CAPTURE_WITHIN_TARGET",
+        "actualDisplayAcceptance": "NOT_PROVEN_PHYSICAL_PANEL",
+        "evidenceType": "decoded_frame_codes_in_compositor_capture",
+        "samples": 508,
+        "fps": 30,
+        "expectedOffsetUs": 3000000,
+        "p95AbsMediaErrorUs": 33333,
+        "maxAbsMediaErrorUs": 33333,
+        "meanSignedMediaErrorUs": 17913.206692913387,
+        "firstCaptureSeconds": 2.495889,
+        "lastCaptureSeconds": 15.784089,
+        "windows": [
+          {
+            "startSeconds": 0,
+            "samples": 98,
+            "meanSignedErrorUs": 14285.57142857143,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 5,
+            "samples": 192,
+            "meanSignedErrorUs": 18923.421875,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 10,
+            "samples": 188,
+            "meanSignedErrorUs": 18794.13829787234,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 15,
+            "samples": 30,
+            "meanSignedErrorUs": 17777.6,
+            "maxAbsErrorUs": 33333
+          }
+        ],
+        "worstExamples": [
+          {
+            "captureSeconds": 2.511478,
+            "teacherFrame": 30,
+            "learnerFrame": 121,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.517722,
+            "teacherFrame": 30,
+            "learnerFrame": 121,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.551633,
+            "teacherFrame": 31,
+            "learnerFrame": 122,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.642644,
+            "teacherFrame": 33,
+            "learnerFrame": 124,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.683278,
+            "teacherFrame": 34,
+            "learnerFrame": 125,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.773811,
+            "teacherFrame": 36,
+            "learnerFrame": 127,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.818667,
+            "teacherFrame": 37,
+            "learnerFrame": 128,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.865844,
+            "teacherFrame": 38,
+            "learnerFrame": 129,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.907222,
+            "teacherFrame": 39,
+            "learnerFrame": 130,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.948189,
+            "teacherFrame": 40,
+            "learnerFrame": 131,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 2.999011,
+            "teacherFrame": 41,
+            "learnerFrame": 132,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 3.039133,
+            "teacherFrame": 42,
+            "learnerFrame": 133,
+            "errorUs": 33333
+          }
+        ],
+        "limitation": "Screen encoder/compositor can drop frames or sample the two surfaces at different display phases. No panel/scanout proof; thresholds apply only to equal-fps CFR sources.",
+        "recording": "docs\\session\\comparison-m0-20261025\\final-short-075x.mp4",
+        "decodedCaptureFrames": 681,
+        "invalidCodes": 0,
+        "excludedFrames": 173,
+        "teacherRect": [
+          0,
+          307,
+          1080,
+          607
+        ],
+        "learnerRect": [
+          0,
+          1083,
+          1080,
+          607
+        ]
+      },
+      "plannedPairCoverage": 0.9970059880239521
+    },
+    {
+      "tag": "final-short-05x",
+      "description": "30fps / +3s / 0.5× / 短片",
+      "probe": {
+        "schema": "woah.comparison.m0.probe.v1",
+        "buildSha": "66db56aea8eb6409651a6282965d6e5132cd1e13",
+        "media3": "1.9.2",
+        "device": "OnePlus KB2000",
+        "apiLevel": 34,
+        "offsetUs": 3000000,
+        "speed": 0.5,
+        "teacherDurationMs": 12000,
+        "learnerDurationMs": 15000,
+        "overlapDurationUs": 12000000,
+        "teacherVideoMime": "video/avc",
+        "learnerVideoMime": "video/avc",
+        "teacherFrameRate": 30,
+        "learnerFrameRate": 30,
+        "sourceError": null,
+        "bufferingEvents": 9,
+        "seekEvents": 4,
+        "processPssKb": 120870,
+        "learnerAudioMuted": true,
+        "teacherVideoWidth": 640,
+        "teacherVideoHeight": 360,
+        "learnerVideoWidth": 640,
+        "learnerVideoHeight": 360,
+        "usableTeacherFrames": 341,
+        "usableLearnerFrames": 340,
+        "observationDurationUs": 22649940,
+        "windows": [
+          {
+            "startUs": 0,
+            "pairs": 75,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 33333.333333333336
+          },
+          {
+            "startUs": 5000000,
+            "pairs": 75,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 33333.333333333336
+          },
+          {
+            "startUs": 10000000,
+            "pairs": 75,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 33333.333333333336
+          },
+          {
+            "startUs": 15000000,
+            "pairs": 75,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 33333.333333333336
+          },
+          {
+            "startUs": 20000000,
+            "pairs": 40,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 33333.325
+          }
+        ],
+        "evidenceType": "pre_render_planned_release_metadata_only",
+        "teacherFrameEvents": 359,
+        "learnerFrameEvents": 359,
+        "matchedPlannedReleaseFrames": 340,
+        "p50AbsMediaErrorUs": 33333,
+        "p95AbsMediaErrorUs": 33334,
+        "maxAbsMediaErrorUs": 33334,
+        "meanSignedMediaErrorUs": 33333.33235294118,
+        "p95PlannedReleaseSkewUs": 16555,
+        "samples": [
+          {
+            "teacherPtsUs": 11166666,
+            "learnerPtsUs": 14200000,
+            "errorUs": 33334,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 11200000,
+            "learnerPtsUs": 14233333,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 11233333,
+            "learnerPtsUs": 14266666,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 11266666,
+            "learnerPtsUs": 14300000,
+            "errorUs": 33334,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 11300000,
+            "learnerPtsUs": 14333333,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16521
+          },
+          {
+            "teacherPtsUs": 11333333,
+            "learnerPtsUs": 14366666,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16548
+          },
+          {
+            "teacherPtsUs": 11366666,
+            "learnerPtsUs": 14400000,
+            "errorUs": 33334,
+            "plannedReleaseSkewUs": 16548
+          },
+          {
+            "teacherPtsUs": 11400000,
+            "learnerPtsUs": 14433333,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16548
+          },
+          {
+            "teacherPtsUs": 11433333,
+            "learnerPtsUs": 14466666,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16548
+          },
+          {
+            "teacherPtsUs": 11466666,
+            "learnerPtsUs": 14500000,
+            "errorUs": 33334,
+            "plannedReleaseSkewUs": 16548
+          },
+          {
+            "teacherPtsUs": 11500000,
+            "learnerPtsUs": 14533333,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16548
+          },
+          {
+            "teacherPtsUs": 11533333,
+            "learnerPtsUs": 14566666,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16512
+          },
+          {
+            "teacherPtsUs": 11566666,
+            "learnerPtsUs": 14600000,
+            "errorUs": 33334,
+            "plannedReleaseSkewUs": 16547
+          },
+          {
+            "teacherPtsUs": 11600000,
+            "learnerPtsUs": 14633333,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16547
+          },
+          {
+            "teacherPtsUs": 11633333,
+            "learnerPtsUs": 14666666,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16547
+          },
+          {
+            "teacherPtsUs": 11666666,
+            "learnerPtsUs": 14700000,
+            "errorUs": 33334,
+            "plannedReleaseSkewUs": 16547
+          },
+          {
+            "teacherPtsUs": 11700000,
+            "learnerPtsUs": 14733333,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16547
+          },
+          {
+            "teacherPtsUs": 11733333,
+            "learnerPtsUs": 14766666,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16547
+          },
+          {
+            "teacherPtsUs": 11766666,
+            "learnerPtsUs": 14800000,
+            "errorUs": 33334,
+            "plannedReleaseSkewUs": 16547
+          },
+          {
+            "teacherPtsUs": 11800000,
+            "learnerPtsUs": 14833333,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16545
+          },
+          {
+            "teacherPtsUs": 11833333,
+            "learnerPtsUs": 14866666,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16545
+          },
+          {
+            "teacherPtsUs": 11866666,
+            "learnerPtsUs": 14900000,
+            "errorUs": 33334,
+            "plannedReleaseSkewUs": 16545
+          },
+          {
+            "teacherPtsUs": 11900000,
+            "learnerPtsUs": 14933333,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 16545
+          },
+          {
+            "teacherPtsUs": 11933333,
+            "learnerPtsUs": 14966666,
+            "errorUs": 33333,
+            "plannedReleaseSkewUs": 0
+          }
+        ]
+      },
+      "screen": {
+        "schema": "woah.comparison.m0.screen.v1",
+        "status": "SCREEN_CAPTURE_WITHIN_TARGET",
+        "actualDisplayAcceptance": "NOT_PROVEN_PHYSICAL_PANEL",
+        "evidenceType": "decoded_frame_codes_in_compositor_capture",
+        "samples": 558,
+        "fps": 30,
+        "expectedOffsetUs": 3000000,
+        "p95AbsMediaErrorUs": 33333,
+        "maxAbsMediaErrorUs": 33333,
+        "meanSignedMediaErrorUs": 18100.177419354837,
+        "firstCaptureSeconds": 3.141156,
+        "lastCaptureSeconds": 23.082067,
+        "windows": [
+          {
+            "startSeconds": 0,
+            "samples": 55,
+            "meanSignedErrorUs": 15757.418181818182,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 5,
+            "samples": 143,
+            "meanSignedErrorUs": 18181.636363636364,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 10,
+            "samples": 139,
+            "meanSignedErrorUs": 18225.237410071943,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 15,
+            "samples": 139,
+            "meanSignedErrorUs": 18225.237410071943,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 20,
+            "samples": 82,
+            "meanSignedErrorUs": 19105.5,
+            "maxAbsErrorUs": 33333
+          }
+        ],
+        "worstExamples": [
+          {
+            "captureSeconds": 3.158167,
+            "teacherFrame": 30,
+            "learnerFrame": 121,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 3.224156,
+            "teacherFrame": 31,
+            "learnerFrame": 122,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 3.239633,
+            "teacherFrame": 31,
+            "learnerFrame": 122,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 3.289756,
+            "teacherFrame": 32,
+            "learnerFrame": 123,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 3.355711,
+            "teacherFrame": 33,
+            "learnerFrame": 124,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 3.554144,
+            "teacherFrame": 36,
+            "learnerFrame": 127,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 3.620911,
+            "teacherFrame": 37,
+            "learnerFrame": 128,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 3.688144,
+            "teacherFrame": 38,
+            "learnerFrame": 129,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 3.761044,
+            "teacherFrame": 39,
+            "learnerFrame": 130,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 3.827744,
+            "teacherFrame": 40,
+            "learnerFrame": 131,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 3.894156,
+            "teacherFrame": 41,
+            "learnerFrame": 132,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 3.961022,
+            "teacherFrame": 42,
+            "learnerFrame": 133,
+            "errorUs": 33333
+          }
+        ],
+        "limitation": "Screen encoder/compositor can drop frames or sample the two surfaces at different display phases. No panel/scanout proof; thresholds apply only to equal-fps CFR sources.",
+        "recording": "docs\\session\\comparison-m0-20261025\\final-short-05x.mp4",
+        "decodedCaptureFrames": 749,
+        "invalidCodes": 0,
+        "excludedFrames": 191,
+        "teacherRect": [
+          0,
+          307,
+          1080,
+          607
+        ],
+        "learnerRect": [
+          0,
+          1083,
+          1080,
+          607
+        ]
+      },
+      "plannedPairCoverage": 0.9970674486803519
+    },
+    {
+      "tag": "final-slow-seek-v2",
+      "description": "30fps / 0.5× / seek + 偏移恢复后",
+      "probe": {
+        "schema": "woah.comparison.m0.probe.v1",
+        "buildSha": "66db56aea8eb6409651a6282965d6e5132cd1e13",
+        "media3": "1.9.2",
+        "device": "OnePlus KB2000",
+        "apiLevel": 34,
+        "offsetUs": 3000000,
+        "speed": 0.5,
+        "teacherDurationMs": 12000,
+        "learnerDurationMs": 15000,
+        "overlapDurationUs": 12000000,
+        "teacherVideoMime": "video/avc",
+        "learnerVideoMime": "video/avc",
+        "teacherFrameRate": 30,
+        "learnerFrameRate": 30,
+        "sourceError": null,
+        "bufferingEvents": 12,
+        "seekEvents": 5,
+        "processPssKb": 117025,
+        "learnerAudioMuted": true,
+        "teacherVideoWidth": 640,
+        "teacherVideoHeight": 360,
+        "learnerVideoWidth": 640,
+        "learnerVideoHeight": 360,
+        "usableTeacherFrames": 226,
+        "usableLearnerFrames": 225,
+        "observationDurationUs": 15000154,
+        "windows": [
+          {
+            "startUs": 0,
+            "pairs": 9,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 5000000,
+            "pairs": 75,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 10000000,
+            "pairs": 75,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 15000000,
+            "pairs": 1,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          }
+        ],
+        "evidenceType": "pre_render_planned_release_metadata_only",
+        "teacherFrameEvents": 239,
+        "learnerFrameEvents": 239,
+        "matchedPlannedReleaseFrames": 160,
+        "p50AbsMediaErrorUs": 0,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0,
+        "p95PlannedReleaseSkewUs": 16553,
+        "samples": [
+          {
+            "teacherPtsUs": 9933333,
+            "learnerPtsUs": 12933333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16548
+          },
+          {
+            "teacherPtsUs": 9966666,
+            "learnerPtsUs": 12966666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 10000000,
+            "learnerPtsUs": 13000000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 10033333,
+            "learnerPtsUs": 13033333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 10066666,
+            "learnerPtsUs": 13066666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 10100000,
+            "learnerPtsUs": 13100000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 10133333,
+            "learnerPtsUs": 13133333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 10166666,
+            "learnerPtsUs": 13166666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16548
+          },
+          {
+            "teacherPtsUs": 10200000,
+            "learnerPtsUs": 13200000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16574
+          },
+          {
+            "teacherPtsUs": 10233333,
+            "learnerPtsUs": 13233333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 10266666,
+            "learnerPtsUs": 13266666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 10300000,
+            "learnerPtsUs": 13300000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 10333333,
+            "learnerPtsUs": 13333333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 10366666,
+            "learnerPtsUs": 13366666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16549
+          },
+          {
+            "teacherPtsUs": 10400000,
+            "learnerPtsUs": 13400000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16593
+          },
+          {
+            "teacherPtsUs": 10433333,
+            "learnerPtsUs": 13433333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16550
+          },
+          {
+            "teacherPtsUs": 10466666,
+            "learnerPtsUs": 13466666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 10500000,
+            "learnerPtsUs": 13500000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 10533333,
+            "learnerPtsUs": 13533333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 10566666,
+            "learnerPtsUs": 13566666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 10600000,
+            "learnerPtsUs": 13600000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16551
+          },
+          {
+            "teacherPtsUs": 10633333,
+            "learnerPtsUs": 13633333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16551
+          },
+          {
+            "teacherPtsUs": 10666666,
+            "learnerPtsUs": 13666666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16551
+          },
+          {
+            "teacherPtsUs": 10700000,
+            "learnerPtsUs": 13700000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16551
+          }
+        ]
+      },
+      "screen": {
+        "schema": "woah.comparison.m0.screen.v1",
+        "status": "SCREEN_CAPTURE_WITHIN_TARGET",
+        "actualDisplayAcceptance": "NOT_PROVEN_PHYSICAL_PANEL",
+        "evidenceType": "decoded_frame_codes_in_compositor_capture",
+        "samples": 226,
+        "fps": 30,
+        "expectedOffsetUs": 3000000,
+        "p95AbsMediaErrorUs": 33333,
+        "maxAbsMediaErrorUs": 33333,
+        "meanSignedMediaErrorUs": 14454.132743362832,
+        "firstCaptureSeconds": 0.032759,
+        "lastCaptureSeconds": 7.993242,
+        "windows": [
+          {
+            "startSeconds": 0,
+            "samples": 139,
+            "meanSignedErrorUs": 15347.568345323742,
+            "maxAbsErrorUs": 33333
+          },
+          {
+            "startSeconds": 5,
+            "samples": 87,
+            "meanSignedErrorUs": 13026.689655172413,
+            "maxAbsErrorUs": 33333
+          }
+        ],
+        "worstExamples": [
+          {
+            "captureSeconds": 0.065518,
+            "teacherFrame": 138,
+            "learnerFrame": 229,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 0.131037,
+            "teacherFrame": 139,
+            "learnerFrame": 230,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 0.196555,
+            "teacherFrame": 140,
+            "learnerFrame": 231,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 0.262073,
+            "teacherFrame": 141,
+            "learnerFrame": 232,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 0.360351,
+            "teacherFrame": 142,
+            "learnerFrame": 233,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 0.425869,
+            "teacherFrame": 143,
+            "learnerFrame": 234,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 0.458629,
+            "teacherFrame": 143,
+            "learnerFrame": 234,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 0.524147,
+            "teacherFrame": 144,
+            "learnerFrame": 235,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 0.589665,
+            "teacherFrame": 145,
+            "learnerFrame": 236,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 0.655184,
+            "teacherFrame": 146,
+            "learnerFrame": 237,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 0.720702,
+            "teacherFrame": 147,
+            "learnerFrame": 238,
+            "errorUs": 33333
+          },
+          {
+            "captureSeconds": 0.78622,
+            "teacherFrame": 148,
+            "learnerFrame": 239,
+            "errorUs": 33333
+          }
+        ],
+        "limitation": "Screen encoder/compositor can drop frames or sample the two surfaces at different display phases. No panel/scanout proof; thresholds apply only to equal-fps CFR sources.",
+        "recording": "docs\\session\\comparison-m0-20261025\\final-slow-seek-v2-steady.mp4",
+        "decodedCaptureFrames": 226,
+        "invalidCodes": 0,
+        "excludedFrames": 0,
+        "teacherRect": [
+          0,
+          307,
+          1080,
+          607
+        ],
+        "learnerRect": [
+          0,
+          1083,
+          1080,
+          607
+        ]
+      },
+      "plannedPairCoverage": 0.7079646017699115
+    },
+    {
+      "tag": "profile-24-negative",
+      "description": "24fps / −1s / 720p / 1×",
+      "probe": {
+        "schema": "woah.comparison.m0.probe.v1",
+        "buildSha": "66db56aea8eb6409651a6282965d6e5132cd1e13",
+        "media3": "1.9.2",
+        "device": "OnePlus KB2000",
+        "apiLevel": 34,
+        "offsetUs": -1000000,
+        "speed": 1,
+        "teacherDurationMs": 12000,
+        "learnerDurationMs": 11000,
+        "overlapDurationUs": 11000000,
+        "teacherVideoMime": "video/avc",
+        "learnerVideoMime": "video/avc",
+        "teacherFrameRate": 24,
+        "learnerFrameRate": 24,
+        "sourceError": null,
+        "bufferingEvents": 4,
+        "seekEvents": 1,
+        "processPssKb": 117019,
+        "learnerAudioMuted": true,
+        "teacherVideoWidth": 1280,
+        "teacherVideoHeight": 720,
+        "learnerVideoWidth": 1280,
+        "learnerVideoHeight": 720,
+        "usableTeacherFrames": 237,
+        "usableLearnerFrames": 239,
+        "observationDurationUs": 9858168,
+        "windows": [
+          {
+            "startUs": 0,
+            "pairs": 119,
+            "p95AbsMediaErrorUs": 83334,
+            "maxAbsMediaErrorUs": 83334,
+            "meanSignedMediaErrorUs": -65826.32773109243
+          },
+          {
+            "startUs": 5000000,
+            "pairs": 117,
+            "p95AbsMediaErrorUs": 41667,
+            "maxAbsMediaErrorUs": 41667,
+            "meanSignedMediaErrorUs": -41666.666666666664
+          }
+        ],
+        "evidenceType": "pre_render_planned_release_metadata_only",
+        "teacherFrameEvents": 263,
+        "learnerFrameEvents": 263,
+        "matchedPlannedReleaseFrames": 236,
+        "p50AbsMediaErrorUs": 41667,
+        "p95AbsMediaErrorUs": 83334,
+        "maxAbsMediaErrorUs": 83334,
+        "meanSignedMediaErrorUs": -53848.8686440678,
+        "p95PlannedReleaseSkewUs": 16666,
+        "samples": [
+          {
+            "teacherPtsUs": 11000000,
+            "learnerPtsUs": 9958333,
+            "errorUs": -41667,
+            "plannedReleaseSkewUs": 16551
+          },
+          {
+            "teacherPtsUs": 11041666,
+            "learnerPtsUs": 10000000,
+            "errorUs": -41666,
+            "plannedReleaseSkewUs": 16551
+          },
+          {
+            "teacherPtsUs": 11083333,
+            "learnerPtsUs": 10041666,
+            "errorUs": -41667,
+            "plannedReleaseSkewUs": 16551
+          },
+          {
+            "teacherPtsUs": 11125000,
+            "learnerPtsUs": 10083333,
+            "errorUs": -41667,
+            "plannedReleaseSkewUs": 16551
+          },
+          {
+            "teacherPtsUs": 11166666,
+            "learnerPtsUs": 10125000,
+            "errorUs": -41666,
+            "plannedReleaseSkewUs": 16552
+          },
+          {
+            "teacherPtsUs": 11208333,
+            "learnerPtsUs": 10166666,
+            "errorUs": -41667,
+            "plannedReleaseSkewUs": 16553
+          },
+          {
+            "teacherPtsUs": 11250000,
+            "learnerPtsUs": 10208333,
+            "errorUs": -41667,
+            "plannedReleaseSkewUs": 16553
+          },
+          {
+            "teacherPtsUs": 11291666,
+            "learnerPtsUs": 10250000,
+            "errorUs": -41666,
+            "plannedReleaseSkewUs": 16553
+          },
+          {
+            "teacherPtsUs": 11333333,
+            "learnerPtsUs": 10291666,
+            "errorUs": -41667,
+            "plannedReleaseSkewUs": 16553
+          },
+          {
+            "teacherPtsUs": 11375000,
+            "learnerPtsUs": 10333333,
+            "errorUs": -41667,
+            "plannedReleaseSkewUs": 16553
+          },
+          {
+            "teacherPtsUs": 11416666,
+            "learnerPtsUs": 10375000,
+            "errorUs": -41666,
+            "plannedReleaseSkewUs": 16553
+          },
+          {
+            "teacherPtsUs": 11458333,
+            "learnerPtsUs": 10416666,
+            "errorUs": -41667,
+            "plannedReleaseSkewUs": 16553
+          },
+          {
+            "teacherPtsUs": 11500000,
+            "learnerPtsUs": 10458333,
+            "errorUs": -41667,
+            "plannedReleaseSkewUs": 16553
+          },
+          {
+            "teacherPtsUs": 11541666,
+            "learnerPtsUs": 10500000,
+            "errorUs": -41666,
+            "plannedReleaseSkewUs": 16553
+          },
+          {
+            "teacherPtsUs": 11583333,
+            "learnerPtsUs": 10541666,
+            "errorUs": -41667,
+            "plannedReleaseSkewUs": 16553
+          },
+          {
+            "teacherPtsUs": 11625000,
+            "learnerPtsUs": 10583333,
+            "errorUs": -41667,
+            "plannedReleaseSkewUs": 16553
+          },
+          {
+            "teacherPtsUs": 11666666,
+            "learnerPtsUs": 10625000,
+            "errorUs": -41666,
+            "plannedReleaseSkewUs": 16550
+          },
+          {
+            "teacherPtsUs": 11708333,
+            "learnerPtsUs": 10666666,
+            "errorUs": -41667,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11750000,
+            "learnerPtsUs": 10708333,
+            "errorUs": -41667,
+            "plannedReleaseSkewUs": 16552
+          },
+          {
+            "teacherPtsUs": 11791666,
+            "learnerPtsUs": 10750000,
+            "errorUs": -41666,
+            "plannedReleaseSkewUs": 16552
+          },
+          {
+            "teacherPtsUs": 11833333,
+            "learnerPtsUs": 10791666,
+            "errorUs": -41667,
+            "plannedReleaseSkewUs": 16552
+          },
+          {
+            "teacherPtsUs": 11875000,
+            "learnerPtsUs": 10833333,
+            "errorUs": -41667,
+            "plannedReleaseSkewUs": 16552
+          },
+          {
+            "teacherPtsUs": 11916666,
+            "learnerPtsUs": 10875000,
+            "errorUs": -41666,
+            "plannedReleaseSkewUs": 16552
+          },
+          {
+            "teacherPtsUs": 11958333,
+            "learnerPtsUs": 10916666,
+            "errorUs": -41667,
+            "plannedReleaseSkewUs": 16552
+          }
+        ]
+      },
+      "screen": {
+        "schema": "woah.comparison.m0.screen.v1",
+        "status": "SCREEN_CAPTURE_OUTSIDE_TARGET",
+        "actualDisplayAcceptance": "NOT_PROVEN_PHYSICAL_PANEL",
+        "evidenceType": "decoded_frame_codes_in_compositor_capture",
+        "samples": 384,
+        "fps": 24,
+        "expectedOffsetUs": -1000000,
+        "p95AbsMediaErrorUs": 83333,
+        "maxAbsMediaErrorUs": 83333,
+        "meanSignedMediaErrorUs": -60872.421875,
+        "firstCaptureSeconds": 2.443644,
+        "lastCaptureSeconds": 11.396611,
+        "windows": [
+          {
+            "startSeconds": 0,
+            "samples": 93,
+            "meanSignedErrorUs": -58691.81720430108,
+            "maxAbsErrorUs": 83333
+          },
+          {
+            "startSeconds": 5,
+            "samples": 227,
+            "meanSignedErrorUs": -61306.92070484581,
+            "maxAbsErrorUs": 83333
+          },
+          {
+            "startSeconds": 10,
+            "samples": 64,
+            "meanSignedErrorUs": -62500.0,
+            "maxAbsErrorUs": 83333
+          }
+        ],
+        "worstExamples": [
+          {
+            "captureSeconds": 2.452456,
+            "teacherFrame": 49,
+            "learnerFrame": 23,
+            "errorUs": -83333
+          },
+          {
+            "captureSeconds": 2.499589,
+            "teacherFrame": 50,
+            "learnerFrame": 24,
+            "errorUs": -83333
+          },
+          {
+            "captureSeconds": 2.533422,
+            "teacherFrame": 51,
+            "learnerFrame": 25,
+            "errorUs": -83333
+          },
+          {
+            "captureSeconds": 2.615378,
+            "teacherFrame": 53,
+            "learnerFrame": 27,
+            "errorUs": -83333
+          },
+          {
+            "captureSeconds": 2.700989,
+            "teacherFrame": 55,
+            "learnerFrame": 29,
+            "errorUs": -83333
+          },
+          {
+            "captureSeconds": 2.7565,
+            "teacherFrame": 56,
+            "learnerFrame": 30,
+            "errorUs": -83333
+          },
+          {
+            "captureSeconds": 2.822456,
+            "teacherFrame": 58,
+            "learnerFrame": 32,
+            "errorUs": -83333
+          },
+          {
+            "captureSeconds": 2.905322,
+            "teacherFrame": 60,
+            "learnerFrame": 34,
+            "errorUs": -83333
+          },
+          {
+            "captureSeconds": 3.071189,
+            "teacherFrame": 64,
+            "learnerFrame": 38,
+            "errorUs": -83333
+          },
+          {
+            "captureSeconds": 3.154878,
+            "teacherFrame": 66,
+            "learnerFrame": 40,
+            "errorUs": -83333
+          },
+          {
+            "captureSeconds": 3.196989,
+            "teacherFrame": 67,
+            "learnerFrame": 41,
+            "errorUs": -83333
+          },
+          {
+            "captureSeconds": 3.237844,
+            "teacherFrame": 68,
+            "learnerFrame": 42,
+            "errorUs": -83333
+          }
+        ],
+        "limitation": "Screen encoder/compositor can drop frames or sample the two surfaces at different display phases. No panel/scanout proof; thresholds apply only to equal-fps CFR sources.",
+        "recording": "docs\\session\\comparison-m0-20261025\\profile-24-negative.mp4",
+        "decodedCaptureFrames": 540,
+        "invalidCodes": 0,
+        "excludedFrames": 156,
+        "teacherRect": [
+          0,
+          307,
+          1080,
+          607
+        ],
+        "learnerRect": [
+          0,
+          1083,
+          1080,
+          607
+        ]
+      },
+      "plannedPairCoverage": 0.9957805907172996
+    },
+    {
+      "tag": "profile-60-1080p",
+      "description": "60fps / +3s / 1080p / 1×",
+      "probe": {
+        "schema": "woah.comparison.m0.probe.v1",
+        "buildSha": "66db56aea8eb6409651a6282965d6e5132cd1e13",
+        "media3": "1.9.2",
+        "device": "OnePlus KB2000",
+        "apiLevel": 34,
+        "offsetUs": 3000000,
+        "speed": 1,
+        "teacherDurationMs": 12000,
+        "learnerDurationMs": 15000,
+        "overlapDurationUs": 12000000,
+        "teacherVideoMime": "video/avc",
+        "learnerVideoMime": "video/avc",
+        "teacherFrameRate": 60,
+        "learnerFrameRate": 60,
+        "sourceError": null,
+        "bufferingEvents": 4,
+        "seekEvents": 1,
+        "processPssKb": 119153,
+        "learnerAudioMuted": true,
+        "teacherVideoWidth": 1920,
+        "teacherVideoHeight": 1080,
+        "learnerVideoWidth": 1920,
+        "learnerVideoHeight": 1080,
+        "usableTeacherFrames": 660,
+        "usableLearnerFrames": 660,
+        "observationDurationUs": 10969238,
+        "windows": [
+          {
+            "startUs": 0,
+            "pairs": 301,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 5000000,
+            "pairs": 300,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 10000000,
+            "pairs": 59,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          }
+        ],
+        "evidenceType": "pre_render_planned_release_metadata_only",
+        "teacherFrameEvents": 719,
+        "learnerFrameEvents": 719,
+        "matchedPlannedReleaseFrames": 660,
+        "p50AbsMediaErrorUs": 0,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0,
+        "p95PlannedReleaseSkewUs": 16546,
+        "samples": [
+          {
+            "teacherPtsUs": 11600000,
+            "learnerPtsUs": 14600000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 22
+          },
+          {
+            "teacherPtsUs": 11616666,
+            "learnerPtsUs": 14616666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 22
+          },
+          {
+            "teacherPtsUs": 11633333,
+            "learnerPtsUs": 14633333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 23
+          },
+          {
+            "teacherPtsUs": 11650000,
+            "learnerPtsUs": 14650000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 24
+          },
+          {
+            "teacherPtsUs": 11666666,
+            "learnerPtsUs": 14666666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 24
+          },
+          {
+            "teacherPtsUs": 11683333,
+            "learnerPtsUs": 14683333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 25
+          },
+          {
+            "teacherPtsUs": 11700000,
+            "learnerPtsUs": 14700000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11716666,
+            "learnerPtsUs": 14716666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 0
+          },
+          {
+            "teacherPtsUs": 11733333,
+            "learnerPtsUs": 14733333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 4
+          },
+          {
+            "teacherPtsUs": 11750000,
+            "learnerPtsUs": 14750000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 11
+          },
+          {
+            "teacherPtsUs": 11766666,
+            "learnerPtsUs": 14766666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 12
+          },
+          {
+            "teacherPtsUs": 11783333,
+            "learnerPtsUs": 14783333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 12
+          },
+          {
+            "teacherPtsUs": 11800000,
+            "learnerPtsUs": 14800000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 13
+          },
+          {
+            "teacherPtsUs": 11816666,
+            "learnerPtsUs": 14816666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 13
+          },
+          {
+            "teacherPtsUs": 11833333,
+            "learnerPtsUs": 14833333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 13
+          },
+          {
+            "teacherPtsUs": 11850000,
+            "learnerPtsUs": 14850000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 14
+          },
+          {
+            "teacherPtsUs": 11866666,
+            "learnerPtsUs": 14866666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 14
+          },
+          {
+            "teacherPtsUs": 11883333,
+            "learnerPtsUs": 14883333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 15
+          },
+          {
+            "teacherPtsUs": 11900000,
+            "learnerPtsUs": 14900000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 15
+          },
+          {
+            "teacherPtsUs": 11916666,
+            "learnerPtsUs": 14916666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16
+          },
+          {
+            "teacherPtsUs": 11933333,
+            "learnerPtsUs": 14933333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 16
+          },
+          {
+            "teacherPtsUs": 11950000,
+            "learnerPtsUs": 14950000,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 17
+          },
+          {
+            "teacherPtsUs": 11966666,
+            "learnerPtsUs": 14966666,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 17
+          },
+          {
+            "teacherPtsUs": 11983333,
+            "learnerPtsUs": 14983333,
+            "errorUs": 0,
+            "plannedReleaseSkewUs": 18
+          }
+        ]
+      },
+      "screen": {
+        "schema": "woah.comparison.m0.screen.v1",
+        "status": "SCREEN_CAPTURE_WITHIN_TARGET",
+        "actualDisplayAcceptance": "NOT_PROVEN_PHYSICAL_PANEL",
+        "evidenceType": "decoded_frame_codes_in_compositor_capture",
+        "samples": 595,
+        "fps": 60,
+        "expectedOffsetUs": 3000000,
+        "p95AbsMediaErrorUs": 16667,
+        "maxAbsMediaErrorUs": 16667,
+        "meanSignedMediaErrorUs": -2212.929411764706,
+        "firstCaptureSeconds": 2.440822,
+        "lastCaptureSeconds": 12.433867,
+        "windows": [
+          {
+            "startSeconds": 0,
+            "samples": 154,
+            "meanSignedErrorUs": -3355.0454545454545,
+            "maxAbsErrorUs": 16667
+          },
+          {
+            "startSeconds": 5,
+            "samples": 296,
+            "meanSignedErrorUs": -1745.5304054054054,
+            "maxAbsErrorUs": 16667
+          },
+          {
+            "startSeconds": 10,
+            "samples": 145,
+            "meanSignedErrorUs": -1954.0620689655173,
+            "maxAbsErrorUs": 16667
+          }
+        ],
+        "worstExamples": [
+          {
+            "captureSeconds": 3.019533,
+            "teacherFrame": 95,
+            "learnerFrame": 274,
+            "errorUs": -16667
+          },
+          {
+            "captureSeconds": 3.0356,
+            "teacherFrame": 96,
+            "learnerFrame": 275,
+            "errorUs": -16667
+          },
+          {
+            "captureSeconds": 3.052,
+            "teacherFrame": 97,
+            "learnerFrame": 276,
+            "errorUs": -16667
+          },
+          {
+            "captureSeconds": 3.068667,
+            "teacherFrame": 98,
+            "learnerFrame": 277,
+            "errorUs": -16667
+          },
+          {
+            "captureSeconds": 3.085611,
+            "teacherFrame": 99,
+            "learnerFrame": 278,
+            "errorUs": -16667
+          },
+          {
+            "captureSeconds": 3.101578,
+            "teacherFrame": 100,
+            "learnerFrame": 279,
+            "errorUs": -16667
+          },
+          {
+            "captureSeconds": 3.118189,
+            "teacherFrame": 101,
+            "learnerFrame": 280,
+            "errorUs": -16667
+          },
+          {
+            "captureSeconds": 3.134844,
+            "teacherFrame": 102,
+            "learnerFrame": 281,
+            "errorUs": -16667
+          },
+          {
+            "captureSeconds": 3.151344,
+            "teacherFrame": 103,
+            "learnerFrame": 282,
+            "errorUs": -16667
+          },
+          {
+            "captureSeconds": 3.168122,
+            "teacherFrame": 104,
+            "learnerFrame": 283,
+            "errorUs": -16667
+          },
+          {
+            "captureSeconds": 3.1849,
+            "teacherFrame": 105,
+            "learnerFrame": 284,
+            "errorUs": -16667
+          },
+          {
+            "captureSeconds": 3.201333,
+            "teacherFrame": 106,
+            "learnerFrame": 285,
+            "errorUs": -16667
+          }
+        ],
+        "limitation": "Screen encoder/compositor can drop frames or sample the two surfaces at different display phases. No panel/scanout proof; thresholds apply only to equal-fps CFR sources.",
+        "recording": "docs\\session\\comparison-m0-20261025\\profile-60-1080p.mp4",
+        "decodedCaptureFrames": 762,
+        "invalidCodes": 0,
+        "excludedFrames": 167,
+        "teacherRect": [
+          0,
+          307,
+          1080,
+          607
+        ],
+        "learnerRect": [
+          0,
+          1083,
+          1080,
+          607
+        ]
+      },
+      "plannedPairCoverage": 1.0
+    }
+  ],
+  "controls": [
+    {
+      "case": "initial",
+      "teacherFrame": 0,
+      "learnerFrame": 90,
+      "expectedTeacherFrame": 0,
+      "expectedLearnerFrame": 90,
+      "pass": true
+    },
+    {
+      "case": "seek-50",
+      "teacherFrame": 180,
+      "learnerFrame": 270,
+      "expectedTeacherFrame": 180,
+      "expectedLearnerFrame": 270,
+      "pass": true
+    },
+    {
+      "case": "seek-90",
+      "teacherFrame": 324,
+      "learnerFrame": 414,
+      "expectedTeacherFrame": 324,
+      "expectedLearnerFrame": 414,
+      "pass": true
+    },
+    {
+      "case": "seek-0",
+      "teacherFrame": 0,
+      "learnerFrame": 90,
+      "expectedTeacherFrame": 0,
+      "expectedLearnerFrame": 90,
+      "pass": true
+    },
+    {
+      "case": "jump-plus10",
+      "teacherFrame": 300,
+      "learnerFrame": 390,
+      "expectedTeacherFrame": 300,
+      "expectedLearnerFrame": 390,
+      "pass": true
+    },
+    {
+      "case": "jump-minus10",
+      "teacherFrame": 0,
+      "learnerFrame": 90,
+      "expectedTeacherFrame": 0,
+      "expectedLearnerFrame": 90,
+      "pass": true
+    },
+    {
+      "case": "offset-plus100ms",
+      "teacherFrame": 0,
+      "learnerFrame": 93,
+      "expectedTeacherFrame": 0,
+      "expectedLearnerFrame": 93,
+      "pass": true
+    },
+    {
+      "case": "offset-restored100ms",
+      "teacherFrame": 0,
+      "learnerFrame": 90,
+      "expectedTeacherFrame": 0,
+      "expectedLearnerFrame": 90,
+      "pass": true
+    },
+    {
+      "case": "offset-plus10ms",
+      "teacherFrame": 0,
+      "learnerFrame": 91,
+      "expectedTeacherFrame": 0,
+      "expectedLearnerFrame": 90,
+      "pass": true
+    },
+    {
+      "case": "offset-restored10ms",
+      "teacherFrame": 0,
+      "learnerFrame": 90,
+      "expectedTeacherFrame": 0,
+      "expectedLearnerFrame": 90,
+      "pass": true
+    },
+    {
+      "case": "rapid-seek-final90",
+      "teacherFrame": 324,
+      "learnerFrame": 414,
+      "expectedTeacherFrame": 324,
+      "expectedLearnerFrame": 414,
+      "pass": true
+    },
+    {
+      "case": "pause",
+      "teacherFrame": 56,
+      "learnerFrame": 147
+    },
+    {
+      "case": "pause-held",
+      "teacherFrame": 56,
+      "learnerFrame": 147,
+      "expectedTeacherFrame": 56,
+      "expectedLearnerFrame": 147,
+      "pass": true
+    },
+    {
+      "case": "background-resume-paused",
+      "teacherFrame": 56,
+      "learnerFrame": 147,
+      "expectedTeacherFrame": 56,
+      "expectedLearnerFrame": 147,
+      "pass": true
+    },
+    {
+      "case": "resume-play",
+      "teacherFrame": 121,
+      "learnerFrame": 211,
+      "bothAdvanced": true
+    },
+    {
+      "case": "playing-seek-recovered",
+      "teacherFrame": 189,
+      "learnerFrame": 278,
+      "nearTargetAndPaired": true
+    }
+  ],
+  "negativeFixtureAudio": {
+    "offsetUs": -1000000.0,
+    "correlation": 0.9999651593945623
+  },
+  "excludedInvalidRun": {
+    "tag": "final-slow-seek",
+    "reason": "UI was not ready; actual saved speed=1, no valid steady interval. Excluded; v2 verifies speed before playback."
+  },
+  "rawEvidenceRoot": "docs/session/comparison-m0-20261025"
+}
