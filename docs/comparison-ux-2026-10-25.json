@@ -1,0 +1,110 @@
+{
+  "date": "2026-10-25",
+  "scope": "Android comparison UI and automatic/inline manual calibration",
+  "branch": "feat/dance-comparison-m0",
+  "codeCommit": "50140291bad331f4895e5de694c79bdf4c4d278c",
+  "apk": {
+    "bytes": 272643276,
+    "sha256": "06922ebd3e9d0a2cf86c84ff10ec72bd38eb1b062c2b27177a53edae1bbd7526",
+    "installedHashMatches": true
+  },
+  "viewport": {
+    "pixels": [
+      1080,
+      2400
+    ],
+    "logical": [
+      360,
+      800
+    ],
+    "devicePixelRatio": 3
+  },
+  "layout": {
+    "beforeStageHeightPx": 898,
+    "afterStageHeightPx": 1352,
+    "increasePercent": 50.6
+  },
+  "tests": {
+    "fullFlutterBeforeFinalHandoffFix": 94,
+    "comparisonAfterHandoffFix": 14,
+    "analyze": "No issues found"
+  },
+  "automatic": {
+    "onSelectedOrRestoredUncalibratedPair": true,
+    "highestScoringUsableOffsetApplied": true,
+    "candidateUiRemoved": true,
+    "weakEvidenceKeptAsAutoReview": true,
+    "confirmedCalibrationRetained": true
+  },
+  "manual": {
+    "originalSourceTimesUs": [
+      0,
+      1450000
+    ],
+    "afterTeacherPlayUs": [
+      2154000,
+      1450000
+    ],
+    "afterTeacherDragUs": [
+      9140000,
+      1450000
+    ],
+    "afterBothDragsUs": [
+      9140000,
+      11225000
+    ],
+    "savedTeacherUs": 100000,
+    "savedLearnerUs": 1550000,
+    "savedOffsetUs": 1450000,
+    "sharedTimelineRestored": true,
+    "evidenceCommit": "1dc2a8d790efe7026ec39013eb96e72b7d944119",
+    "reusedBecause": "Independent preview and dragging code was unchanged by the final view/texture handoff fix."
+  },
+  "handoffFix": {
+    "previewWidgetsRemovedBeforeTextureRelease": true,
+    "previewPlayersReleasedBeforeSharedOpen": true,
+    "afterCancelAndApplySharedUiPositionUs": 4676000,
+    "sharedUiAccessible": true,
+    "evidenceCommit": "50140291bad331f4895e5de694c79bdf4c4d278c"
+  },
+  "currentDeviceState": {
+    "offsetUs": 1450000,
+    "alignment": "manual",
+    "positionUs": 0,
+    "speed": 1,
+    "paused": true,
+    "sourcesRetained": true
+  },
+  "acceptedScreenshots": [
+    {
+      "file": "02-current-phone.png",
+      "sha256": "beba69e32c9315d3ca09517a6afddd0b3a58fcbcd91b11d90b0dd9df9cb1aad6"
+    },
+    {
+      "file": "03-main-restored.png",
+      "sha256": "a5862a7ed922506cc61553ab41424bde0108bc13765a017a37831b82d9f0734f"
+    },
+    {
+      "file": "14-main-final.png",
+      "sha256": "67fbf46ab74fb7d4a8f06fa872730abca839d164abd41c6ddc9ec6c5e85f7c70"
+    },
+    {
+      "file": "14-manual-final.png",
+      "sha256": "272e51409dfe6040119f75d7243735ebf44d94f757dca1024db3c19f94f3bd45"
+    },
+    {
+      "file": "11-both-dragged.png",
+      "sha256": "3d8c8f3c5cb26d5524bd4b8706874b31b39b1810794f89b097c08c38b0684621"
+    },
+    {
+      "file": "13-paused.png",
+      "sha256": "398c0098de38c4bc6d0ca95a58835262af1035f974a2ea6c75c83c91c559c06d"
+    }
+  ],
+  "evidenceLimits": [
+    "automatic choice/picker rules validated with fake gateway tests; existing granted clips reused on device",
+    "the learner source was changed by the user during this task; later screenshots show the currently selected portrait source",
+    "manual timing data verifies independent positioning and persistence, not a new human-labeled musical ground truth",
+    "no complete TalkBack audit, multi-device campaign or full Release QA"
+  ]
+}

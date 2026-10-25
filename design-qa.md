@@ -182,3 +182,22 @@ Verification:
 No actionable P0/P1/P2 findings remain.
 
 final result: passed
+
+
+# Android 舞蹈对比 UI QA — 2026-10-25
+
+此节仅记录对比页面，保留上方既有首页 QA 内容。
+
+- Source visual truth：用户附件截图，以及 docs/session/comparison-ux-20261025/02-current-phone.png。
+- Intended changes：更大比较画布、选片后自动采用最佳位置、不显示候选、手动模式双独立播放条并隐藏共同条。
+- Implementation：50140291bad331f4895e5de694c79bdf4c4d278c；14-main-final.png、14-manual-final.png。
+- Viewport：1080×2400，逻辑 360×800，DPR 3；前后截图同像素尺寸、同设备与主题，无设备外框缩放。后期学生源片已由用户更换，因此不对不同视频内容做像素相等比较。
+- Full-view evidence：调整前、最终共同页和最终手动页在同一视觉输入中一起检查；共同画布由 898px 增至 1352px。
+- Focused checks：控制区、双源进度条、完成/取消按钮、校准文案和切换后时间更新；截图已逐张打开审查。
+- Fidelity surfaces：沿用 AppTheme 字体/颜色，间距与触控目标检查通过，原视频比例保留，文案对应最终自动/手动流程。
+- Iterations：修复候选常驻、粗跳转、纯图标播放、大字体拥挤，以及真机纹理切换后旧帧问题。后者通过先移除 widget、等待帧结束再释放播放器修复，取消和完成路径均已复测。
+- Validation：Flutter 94 项全套通过；最终切换修复后 14 项专项通过，最新静态检查无问题，APK 本机/安装哈希一致。
+- P0/P1/P2：无待解决项。P3：源视频内自带黑边/播放器按原样保留。尚未做完整 TalkBack 或多机型审计。
+- Full report：[docs/comparison-ux-2026-10-25.md](docs/comparison-ux-2026-10-25.md)。
+
+final result: passed
