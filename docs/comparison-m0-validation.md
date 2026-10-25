@@ -50,6 +50,20 @@ adb shell am broadcast -a art.gaoge.dance.M0_GL_TEST -p art.gaoge.dance --es act
 
 持续时间限 1–500ms。报告将标记 `injectedTestStalls`；该轮应单独留存，不能混入正常流畅度统计。它验证看门狗暂停共同音频、双路追上后恢复的路径，不模拟所有存储故障。入口、广播和 GL 引擎均仅存在于 Debug。
 
+## 手机真实素材（Debug 验收）
+
+真实素材在手机时，在 GL 页分别点击「选择老师」和「选择自己」，通过系统文件选择器授予这两段视频的读取权限。只需集中完成这一轮选片。选择引用仅保存在应用私有 `noBackupFilesDir` 中；之后冷启动可恢复，不覆盖原文件，也不扫描整个相册。测试 URI 参数按整对覆盖当前会话，不能覆盖记住的手机选片。
+
+真实素材的输入副本可通过 ADB 专属 Debug 入口采集，便于本地 FFprobe、帧参考与哈希核验：
+
+```sh
+adb shell am broadcast -a art.gaoge.dance.M0_GL_TEST -p art.gaoge.dance --es action export_selected_sources --es request_id local_real_m0_001
+```
+
+该接收器要求发送方持有系统 `DUMP` 权限（ADB shell），普通应用不能触发。播放先暂停；结果在本应用 `Documents/comparison-m0/selected-sources-local_real_m0_001.json`，状态为 `NO_SELECTION`、`COPYING`、`READY` 或 `FAILED`。每个请求独立，`READY` 才包含两路完整副本的相对路径、字节数和 SHA-256；不包含媒体 URI 或原始文件名。取消、中断和提供方读取失败不会把部分文件发布为成功输入。
+
+这只是本地 Debug 验收输入采集，不是对比视频导出功能。原始视频与分析副本不进入 Git，不调用上传接口。M0 仍使用手动恒定音乐偏移；默认 `offsetUs=0` 只代表源时间调度假设，不能据此声称两段音乐内容已经对齐。手机选片完成前，真实舞蹈验收仍为 **等待手机选片**，不沿用合成素材的通过结论。
+
 ## 构建与打开
 
 现有 Woah 应用 Debug 编译（不需要发布签名）：

@@ -22,10 +22,10 @@ def main() -> int:
     parser.add_argument("--backend", choices=("exo", "shared-gl"), default="exo",
                         help="Debug backend; original dual ExoPlayer or shared audio + codec/GL")
     parser.add_argument("--apk", type=Path, help="Already-built Android debug APK")
-    parser.add_argument("--teacher", type=Path, help="Synthetic teacher.mp4 (optional)")
-    parser.add_argument("--learner", type=Path, help="Synthetic learner.mp4 (optional)")
+    parser.add_argument("--teacher", type=Path, help="Explicit teacher test video (optional)")
+    parser.add_argument("--learner", type=Path, help="Explicit learner test video (optional)")
     parser.add_argument("--load-fixtures", action="store_true",
-                        help="Load synthetic files from app storage without the picker; restarts the app")
+                        help="Load the two explicit test files from app storage without the picker; restarts the app")
     parser.add_argument("--offset-us", type=int, default=3_000_000)
     parser.add_argument("--adb", default="adb", help="adb binary or absolute path")
     parser.add_argument("--serial", help="adb device serial, required if multiple")
@@ -33,7 +33,7 @@ def main() -> int:
                         help="Only retrieve the last saved report; do not launch")
     args = parser.parse_args()
     if args.load_fixtures and (args.teacher is None or args.learner is None):
-        parser.error("--load-fixtures requires both synthetic source files")
+        parser.error("--load-fixtures requires both source files")
 
     def adb(*cmd: str, check: bool = True) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
@@ -64,7 +64,7 @@ def main() -> int:
             result = adb("install", "-r", str(args.apk))
             print(result.stdout)
         if (args.teacher is None) != (args.learner is None):
-            parser.error("Provide both synthetic fixtures, or neither.")
+            parser.error("Provide both test sources, or neither.")
 
         launch_extras: list[str] = []
         if args.teacher is not None and args.learner is not None:
@@ -99,7 +99,7 @@ def main() -> int:
                   file=sys.stderr)
             return 3
         if args.load_fixtures:
-            print("Synthetic pair loaded directly from app-specific storage.")
+            print("Test pair loaded directly from app-specific storage.")
         else:
             print("In the M0 screen pick Teacher and Learner via system picker.")
             print("Use Movies/WoahM0 for synthetic files (or browse your own videos).")

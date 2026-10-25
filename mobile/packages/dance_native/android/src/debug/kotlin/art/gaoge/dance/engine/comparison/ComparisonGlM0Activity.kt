@@ -14,6 +14,7 @@ import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.util.AtomicFile
 import android.view.Choreographer
 import android.view.Gravity
 import android.view.SurfaceHolder
@@ -35,10 +36,12 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
 import art.gaoge.dance.engine.BuildConfig
 import org.json.JSONObject
+import org.json.JSONArray
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 
 /** Isolated M0 alternative: ONE audio player; two codecs; one GL window surface. */
 @androidx.annotation.OptIn(markerClass = [UnstableApi::class])
@@ -84,10 +87,15 @@ class ComparisonGlM0Activity : Activity() {
     private var maxClockBackstepUs=0L
     private val audioClock=ComparisonAudioClock()
     private var closeFailures=0
+    @Volatile private var selectionRevision=0L
+    private var sourceExportWorker: Thread?=null
+    @Volatile private var sourceExportStatus="NOT_REQUESTED"
     private val testReceiver=object: BroadcastReceiver() {
         override fun onReceive(context: Context,intent: Intent) {
-            if (intent.getStringExtra("action")=="stall")
-                engine?.injectRenderStall(intent.getLongExtra("duration_ms",150))
+            when (intent.getStringExtra("action")) {
+                "stall" -> engine?.injectRenderStall(intent.getLongExtra("duration_ms",150))
+                "export_selected_sources" -> exportSelectedSources(intent.getStringExtra("request_id"))
+            }
         }
     }
 
@@ -120,10 +128,21 @@ class ComparisonGlM0Activity : Activity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         offsetUs=(savedInstanceState?.getLong("offset_us")
             ?: intent.getLongExtra("offset_us",0)).coerceIn(-MAX_OFFSET_US,MAX_OFFSET_US)
-        teacherUri=(savedInstanceState?.getString("teacher_uri")
-            ?: intent.getStringExtra("teacher_uri"))?.let(Uri::parse)
-        learnerUri=(savedInstanceState?.getString("learner_uri")
-            ?: intent.getStringExtra("learner_uri"))?.let(Uri::parse)
+        // Persist only explicit system-picker choices. Fixture intents override
+        // the pair as a whole and never replace the remembered phone selection.
+        val sources = when {
+            savedInstanceState != null -> JSONObject().apply {
+                put("teacher_uri",savedInstanceState.getString("teacher_uri"))
+                put("learner_uri",savedInstanceState.getString("learner_uri"))
+            }
+            intent.hasExtra("teacher_uri") || intent.hasExtra("learner_uri") -> JSONObject().apply {
+                put("teacher_uri",intent.getStringExtra("teacher_uri"))
+                put("learner_uri",intent.getStringExtra("learner_uri"))
+            }
+            else -> rememberedSources()
+        }
+        teacherUri=sources.optString("teacher_uri").takeIf { it.isNotBlank() }?.let(Uri::parse)
+        learnerUri=sources.optString("learner_uri").takeIf { it.isNotBlank() }?.let(Uri::parse)
         playbackSpeed=savedInstanceState?.getFloat("speed") ?: 1f
         pendingCompareUs=savedInstanceState?.getLong("compare_us") ?: 0
         choreographer=Choreographer.getInstance()
@@ -131,8 +150,11 @@ class ComparisonGlM0Activity : Activity() {
         speedButton.text="速度 ${playbackSpeed}×"
         handler.post(refresh)
         val filter=IntentFilter("art.gaoge.dance.M0_GL_TEST")
-        if (Build.VERSION.SDK_INT>=33) registerReceiver(testReceiver,filter,Context.RECEIVER_EXPORTED)
-        else @Suppress("DEPRECATION") registerReceiver(testReceiver,filter)
+        // Selected-media copying is callable by ADB/system debugging only.
+        // Ordinary apps must not be able to trigger copying of a picked URI.
+        if (Build.VERSION.SDK_INT>=33)
+            registerReceiver(testReceiver,filter,android.Manifest.permission.DUMP,null,Context.RECEIVER_EXPORTED)
+        else @Suppress("DEPRECATION") registerReceiver(testReceiver,filter,android.Manifest.permission.DUMP,null)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -266,10 +288,97 @@ class ComparisonGlM0Activity : Activity() {
             PICK_LEARNER -> learnerUri = uri
             else -> return
         }
+        selectionRevision++
+        val selected=rememberedSources().apply {
+            put(if (requestCode==PICK_TEACHER) "teacher_uri" else "learner_uri",uri.toString())
+        }
+        runCatching { writeAtomic(selectionFile(),selected) }.onFailure {
+            Log.w("WoahComparisonGL","Could not remember picker selection (${it.javaClass.simpleName})")
+        }
         pendingCompareUs=0L
         // Invalidate the previous pairing even if the second source is missing.
         closePlayers()
         if (teacherUri != null && learnerUri != null) openPair()
+    }
+
+    private fun selectionFile() = File(noBackupFilesDir,"comparison-m0-selection.json")
+
+    private fun rememberedSources(): JSONObject = runCatching {
+        JSONObject(AtomicFile(selectionFile()).readFully().toString(Charsets.UTF_8))
+    }.getOrElse { JSONObject() }
+
+    private fun writeAtomic(file: File,value: JSONObject) {
+        file.parentFile?.mkdirs()
+        val atomic=AtomicFile(file)
+        val stream=atomic.startWrite()
+        try {
+            stream.write(value.toString(2).toByteArray(Charsets.UTF_8))
+            atomic.finishWrite(stream)
+        } catch (e: Throwable) { atomic.failWrite(stream); throw e }
+    }
+
+    /** Copy only the current two selected URIs to local app evidence storage.
+     * No URI/name is exported, no network API is invoked, and playback is paused first.
+     */
+    private fun exportSelectedSources(requestId: String?) {
+        if (sourceExportWorker?.isAlive==true) return
+        val a=teacherUri
+        val b=learnerUri
+        val revision=selectionRevision
+        val id=requestId?.takeIf { it.matches(Regex("[A-Za-z0-9_-]{1,64}")) }
+            ?: UUID.randomUUID().toString()
+        val parent=File(getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) ?: filesDir,"comparison-m0")
+        val manifest=File(parent,"selected-sources-$id.json")
+        if (a==null || b==null) {
+            sourceExportStatus="NO_SELECTION"
+            runCatching { writeAtomic(manifest,JSONObject().apply {
+                put("status",sourceExportStatus); put("requestId",id)
+            }) }
+            return
+        }
+        wantToPlay=false; audio?.pause(); audioClock.reset()
+        sourceExportStatus="COPYING"
+        try {
+            writeAtomic(manifest,JSONObject().apply {
+                put("status",sourceExportStatus); put("requestId",id)
+            })
+        } catch (e: Exception) {
+            sourceExportStatus="FAILED"
+            Log.w("WoahComparisonGL","Could not start local source evidence (${e.javaClass.simpleName})")
+            return
+        }
+        sourceExportWorker=Thread({
+            try {
+                val directory=File(parent,"sources_${UUID.randomUUID()}")
+                check(directory.mkdirs()) { "Could not create local evidence folder" }
+                val sources=JSONArray()
+                for ((role,uri) in listOf("teacher" to a,"learner" to b)) {
+                    val target=File(directory,"$role.media")
+                    val input=contentResolver.openInputStream(uri) ?: error("Selected source unavailable")
+                    val result=ComparisonSelectedSourceCopy.copy(input,target) {
+                        !isDestroyed && revision==selectionRevision
+                    }
+                    sources.put(JSONObject().apply {
+                        put("role",role); put("relativePath",directory.name+"/"+target.name)
+                        put("bytes",result.bytes); put("sha256",result.sha256)
+                    })
+                }
+                check(!isDestroyed && revision==selectionRevision) { "Selected pair changed" }
+                sourceExportStatus="READY"
+                writeAtomic(manifest,JSONObject().apply {
+                    put("status",sourceExportStatus); put("requestId",id)
+                    put("buildSha",BuildConfig.GIT_COMMIT_SHA)
+                    put("scope","only_current_selected_sources_local_debug_evidence")
+                    put("sources",sources)
+                })
+            } catch (e: Exception) {
+                sourceExportStatus="FAILED"
+                runCatching { writeAtomic(manifest,JSONObject().apply {
+                    put("status",sourceExportStatus); put("requestId",id)
+                    put("errorType",e.javaClass.simpleName)
+                }) }
+            }
+        },"WoahM0SelectedSources").apply { start() }
     }
 
     private fun resizeStage() {
@@ -470,6 +579,7 @@ class ComparisonGlM0Activity : Activity() {
             put("learnerVideoWidth",learnerInfo?.width ?: -1)
             put("learnerVideoHeight",learnerInfo?.height ?: -1)
             put("overlapDurationUs",overlap?.durationUs ?: 0)
+            put("sourceExportStatus",sourceExportStatus)
             put("seekEvents",seekEvents); put("bufferingEvents",bufferingEvents)
             put("rendererStalls",rendererStalls); put("resourceCloseFailures",closeFailures)
             put("clockBacksteps",clockBacksteps); put("maxClockBackstepUs",maxClockBackstepUs)
@@ -518,6 +628,7 @@ class ComparisonGlM0Activity : Activity() {
         super.onPause()
     }
     override fun onDestroy() {
+        sourceExportWorker?.interrupt()
         unregisterReceiver(testReceiver)
         handler.removeCallbacksAndMessages(null)
         choreographer.removeFrameCallback(frames)
