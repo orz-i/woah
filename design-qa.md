@@ -246,3 +246,23 @@ final result: passed
 - Findings/checklist：两项明确调整完成，无本次待处理 P0/P1/P2；此前手动校准等未变更部分沿用有效验证。
 
 final result: passed
+
+
+## 上下/左右与横竖屏 — 2026-10-26
+
+- Source visual truth：用户明确扩展当前页面的要求，以及 docs/session/comparison-ux-20261025/18-view-baseline.png。实施沿用已有原生页面、主题和用户素材，新增视图菜单，不创建新原型或资源。
+- Implementation：最终代码 2801d1f78ca285f7617369e38d824f19f83bc617；20-portrait-ready.png、20-landscape-final-zero.png、20-view-menu.png；手动页补充 18-manual-portrait-side.png 和 18-manual-landscape-side.png。
+- Viewport/state：KB2000，竖屏 1080×2400 / DPR 3（360×800dp）；横屏 2400×1080（800×360dp）。源与最终竖屏同尺寸、同素材对、共同 0、1×、+1.450s；横屏是有意新增状态，不与竖屏做像素相等判断。
+- Full-view evidence：原上下页、最终竖屏左右、横屏左右与菜单一起置于同一视觉输入中对照；另逐张查看手动窄栏及横屏手动页。
+- Focused checks：顶部视图/历史/更多导航，菜单选中态，角色入口随排列定位，公共控制台，手动两路进度条与完成/取消。完整图可读，无需额外裁切。
+- Fonts/typography：延续 AppTheme 原生字体、字号和字重；窄栏时间用两行显示；320×640 与 2 倍字体测试通过，未缩小触控目标。
+- Spacing/layout：上下与左右独立于屏幕方向；横屏控制台在右侧，竖屏在底部。手动宽栏保持单排 48dp，窄栏把滑条与微调分两排，保留滑条宽度和至少 48dp 点击区域。
+- Colors/tokens：沿用石墨灰、黑色舞台、银白文字及金色播放强调；保留无边框角色入口与仅图标历史。
+- Image quality：原视频完整适配各 pane，无新图片或占位图；原素材自带 UI/黑边及处理效果保留；原生 44 项中的几何测试覆盖两种排列、横竖素材与视口边界。
+- Copy/content：新增“视图 / 上下视图 / 左右视图 / 横屏显示 / 竖屏显示”，不引入实现细节到产品页面；选中状态与当前布局一致。
+- Comparison history：初版视觉布局可用，但 [P1] 从横屏退出后首页仍横屏（18-exit-restored-home.png）。固定横屏请求本身未解决。最终记录进入角度，等待恢复稳定后释放；20-exit-first-home.png 与 20-exit-second-home.png 两轮均回到竖屏且旋转设置恢复 0。先前 P1 已关闭。
+- Validation：最终 16 项 Flutter 通过、静态检查无问题，44 项原生有效结果复用；最终包安装哈希一致。真机完成四种组合、播放中切换、seek、手动独立拖动、后台、项目恢复和退出方向恢复。最终保留原锚点，测试进度归零。没有未完成的本次 P0/P1/P2。
+- Scope/limits：单台 Android 14 真机结论；保留此前源素材自带 UI 的 P3 限制，不声称完成多机型或完整可访问性审计。
+- Checklist：布局切换、保存兼容、页面横竖屏、手动窄栏、播放恢复、退出还原、真机证据均完成。详见 docs/comparison-views-2026-10-26.md。
+
+final result: passed
