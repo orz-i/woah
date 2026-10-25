@@ -201,3 +201,15 @@ final result: passed
 - Full report：[docs/comparison-ux-2026-10-25.md](docs/comparison-ux-2026-10-25.md)。
 
 final result: passed
+
+
+## 手动校准控制区压缩 — 2026-10-25
+
+- Source：用户附件 14-manual-final.png；最终运行图 15-manual-compact-final.png，均为同一 KB2000 的 1080×2400（360×800dp）。两张完整截图在同一视觉输入中对照，随后检查时间、滑条和底部操作区域。
+- Intent：减少滑条整体占比，移除顶部说明。实现为每路单排 48dp 控制区（原 96dp），2dp 轨道和 12dp 圆点；时间置于视频角落，错误提示按需显示。
+- Fidelity：主题颜色与字体沿用现有 AppTheme；视频比例与素材不变；释放的高度归还视频；角色与时间层级清晰；完成/取消保持原位置与操作。
+- Validation：相关 14 项通过，含小屏、横屏与 2 倍字体；48dp 触控目标保留，静态检查无问题。真机老师拖到 8.949s 后学生未动，学生拖到 11.918s 后老师未动；取消恢复原 +1.450s。构建/安装 APK 哈希一致。
+- Scope：仅本次手动页布局；不重复全量 Release QA，不扩展为全产品可访问性或多设备验收。无待处理的本次 P0/P1/P2 问题。
+- Code：db936a50fa5e23fcf0b4b72177e80bfa60c3a6d1。详细数据见 docs/comparison-ux-2026-10-25.md 的紧凑布局补充。
+
+final result: passed

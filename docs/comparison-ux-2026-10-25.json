@@ -106,5 +106,25 @@
     "the learner source was changed by the user during this task; later screenshots show the currently selected portrait source",
     "manual timing data verifies independent positioning and persistence, not a new human-labeled musical ground truth",
     "no complete TalkBack audit, multi-device campaign or full Release QA"
-  ]
+  ],
+  "compactManualRevision": {
+    "codeCommit": "db936a50fa5e23fcf0b4b72177e80bfa60c3a6d1",
+    "apkSha256": "280b3daa3c039b087e6596c10e8f2e5cabeb3d5b5d9016b3bc733ca1eb0699cb",
+    "apkBytes": 272644264,
+    "controlsHeightDp": {
+      "before": 96,
+      "after": 48
+    },
+    "hintRemoved": true,
+    "testsPassed": 14,
+    "analyze": "passed",
+    "teacherDragUs": 8949000,
+    "learnerUnchangedUs": 1450000,
+    "learnerDragUs": 11918000,
+    "teacherUnchangedUs": 8949000,
+    "cancelRestoredOffsetUs": 1450000,
+    "testCuesPersisted": false,
+    "screenshot": "docs/session/comparison-ux-20261025/15-manual-compact-final.png",
+    "result": "passed"
+  }
 }

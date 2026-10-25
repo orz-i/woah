@@ -67,3 +67,19 @@ Flutter 全套 94 项通过。切换修复后，对比专项 14 项再次通过�
 手机保留用户当前选择的素材、+1.450 秒校准、1×、共同时间 0，暂停。没有推送或修改无关功能。
 
 final result: passed
+
+
+## 手动校准页紧凑布局补充（2026-10-25）
+
+根据用户对 14-manual-final.png 的反馈，删除顶部“分别播放或拖动……”常驻说明，将每路两排控制改成一排；时间移到视频右上角。仅出错时显示错误信息。滑条轨道改为 2dp、圆点直径 12dp，播放、±0.1 秒与拖动仍保留至少 48dp 的触控高度。
+
+- 代码提交：`db936a50fa5e23fcf0b4b72177e80bfa60c3a6d1`，当前分支 `feat/dance-comparison-m0`，未推送。
+- 同设备 1080×2400 / DPR 3 实测：每路控制区从 288px（96dp）降到 144px（48dp）；两路共释放 96dp，加上删除的 29dp 说明，视频区每路从约 204dp 增至约 266dp。
+- 相关 Flutter 14 项通过；扩展原有大字体测试，覆盖 320×640 与 800×360、2 倍字体、48dp 触控和可用滑条宽度。改动的 Dart 文件静态检查无问题。
+- Debug APK 已安装至原 KB2000 / Android 14，保留媒体与项目。本机和安装包 SHA256 一致：`280b3daa3c039b087e6596c10e8f2e5cabeb3d5b5d9016b3bc733ca1eb0699cb`，272644264 bytes。
+- 真机实际拖动：老师 `0.000 → 8.949s` 时学生保持 `1.450s`；随后学生 `1.450 → 11.918s` 时老师保持 `8.949s`。取消后共同播放条恢复，原 `+1.450s` 和原保存锚点保留。本次没有把测试拖动保存成新的音乐锚点。
+- 最终页面保留在手动模式，老师 `0.000s` / 学生 `1.450s`；标题、时间、双滑条和底部操作完整。应用本进程采集日志中未见 `E/flutter` 或 `FATAL EXCEPTION`。
+- 原图：`docs/session/comparison-ux-20261025/14-manual-final.png`；最终：`docs/session/comparison-ux-20261025/15-manual-compact-final.png`。同尺寸完整页面与控制区已对照检查，原素材比例保留。
+- 采集证据：`15-compact-teacher-dragged.xml`、`15-compact-learner-dragged.xml`、`15-compact-canceled.xml`；构建、安装、专项测试与静态检查日志均位于同一忽略的 session 目录。本次只验收该布局调整，沿用此前未变更部分的有效结果。
+
+final result: passed
