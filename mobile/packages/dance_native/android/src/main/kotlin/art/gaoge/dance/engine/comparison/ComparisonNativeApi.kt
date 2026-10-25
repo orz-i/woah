@@ -157,6 +157,9 @@ internal class ComparisonNativeApi(private val context: Context,private val regi
                     MusicCandidateDto(it.offsetUs,it.score,it.consistentWindows,it.supportedSeconds,it.residualMs)
                 })
             } catch (error: ComparisonAlignmentCancelled) { throw error }
+            catch (error: ComparisonAlignmentTooLong) {
+                MusicAlignmentDto("unsupported","自动匹配暂支持十分钟内的视频；可以使用手动校准。",emptyList())
+            }
             catch (error: ComparisonNoAudio) {
                 MusicAlignmentDto("no_audio","视频没有可供匹配的音轨，可以手动校准时间。",emptyList())
             } catch (error: Exception) {

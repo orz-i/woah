@@ -45,10 +45,7 @@ internal class ComparisonPcmDecoder(private val context: Context) {
                 channels=nextChannels;inputRate=nextRate
                 encoding=if (output.containsKey(MediaFormat.KEY_PCM_ENCODING)) output.getInteger(MediaFormat.KEY_PCM_ENCODING) else AudioFormat.ENCODING_PCM_16BIT
                 check(channels in 1..8 && encoding in listOf(AudioFormat.ENCODING_PCM_16BIT,AudioFormat.ENCODING_PCM_FLOAT))
-                if (sonic==null) sonic=SonicAudioProcessor().apply {
-                    setOutputSampleRateHz(ComparisonMusicFeatureBuilder.RATE)
-                    configure(AudioProcessor.AudioFormat(inputRate,1,C.ENCODING_PCM_16BIT));flush()
-                }
+                if (sonic==null) sonic=ComparisonMusicResampling.create(inputRate)
             }
             fun drain() {
                 val output=sonic!!.output.order(ByteOrder.nativeOrder())
@@ -99,5 +96,16 @@ internal class ComparisonPcmDecoder(private val context: Context) {
             runCatching { codec?.stop() };runCatching { codec?.release() }
             sonic?.reset();extractor.release()
         }
+    }
+}
+
+
+/** Media3 1.9+ requires the stream-metadata overload; no-argument flush throws. */
+@androidx.annotation.OptIn(markerClass=[UnstableApi::class])
+internal object ComparisonMusicResampling {
+    fun create(inputRate: Int) = SonicAudioProcessor().apply {
+        setOutputSampleRateHz(ComparisonMusicFeatureBuilder.RATE)
+        configure(AudioProcessor.AudioFormat(inputRate,1,C.ENCODING_PCM_16BIT))
+        flush(AudioProcessor.StreamMetadata.DEFAULT)
     }
 }

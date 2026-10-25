@@ -3,6 +3,7 @@ package art.gaoge.dance.engine.comparison
 import kotlin.math.*
 
 internal class ComparisonAlignmentCancelled : RuntimeException("匹配已取消")
+internal class ComparisonAlignmentTooLong : RuntimeException("自动匹配暂支持十分钟内的视频；可以使用手动校准。")
 internal class ComparisonNoAudio : RuntimeException("视频没有音轨")
 internal data class MusicFrame(val timeUs: Long,val spectrum: FloatArray,val onset: FloatArray,val peaks: IntArray)
 internal data class MusicFeatures(val frames: List<MusicFrame>,val distinctHashes: Int=0) {
@@ -29,7 +30,7 @@ internal class ComparisonMusicFeatureBuilder(private val originUs: Long) {
         if (samples>=FFT && (samples-FFT)%HOP==0L) extract()
     }
     private fun extract() {
-        check(frames.size<MAX_FRAMES) { "自动匹配暂支持十分钟内的视频；可以使用手动校准。" }
+        if (frames.size>=MAX_FRAMES) throw ComparisonAlignmentTooLong()
         val first=(samples%FFT).toInt()
         for (i in 0 until FFT) { real[reverse[i]]=ring[(first+i)%FFT]*window[i];imaginary[i]=0.0 }
         var length=2
