@@ -33,6 +33,8 @@ String comparisonTime(int value) {
   return '${(ms ~/ 60000).toString().padLeft(2, '0')}:${((ms ~/ 1000) % 60).toString().padLeft(2, '0')}.${(ms % 1000).toString().padLeft(3, '0')}';
 }
 
+enum _ComparisonProjectAction { create, save }
+
 class ComparisonScreen extends StatefulWidget {
   final ComparisonGateway? gateway;
   const ComparisonScreen({super.key, this.gateway});
@@ -176,21 +178,36 @@ class _ComparisonScreenState extends State<ComparisonScreen>
             overflow: TextOverflow.ellipsis,
           ),
           leading: BackButton(onPressed: _exit),
+          centerTitle: false,
           actions: [
-            IconButton(
-              tooltip: '新建对比',
-              onPressed: controller.busy ? null : controller.newProject,
-              icon: const Icon(Icons.add),
-            ),
-            IconButton(
-              tooltip: '本机项目',
+            TextButton.icon(
+              key: const ValueKey('comparison-projects'),
               onPressed: controller.busy ? null : _history,
-              icon: const Icon(Icons.history),
+              icon: const Icon(Icons.folder_open_outlined, size: 20),
+              label: const Text('项目'),
             ),
-            IconButton(
-              tooltip: '保存项目',
-              onPressed: controller.saving || controller.busy ? null : _save,
-              icon: const Icon(Icons.save_outlined),
+            PopupMenuButton<_ComparisonProjectAction>(
+              key: const ValueKey('comparison-project-menu'),
+              tooltip: '更多项目操作',
+              enabled: !controller.busy && !controller.saving,
+              onSelected: (action) {
+                switch (action) {
+                  case _ComparisonProjectAction.create:
+                    unawaited(controller.newProject());
+                  case _ComparisonProjectAction.save:
+                    unawaited(_save());
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: _ComparisonProjectAction.save,
+                  child: Text('保存并重命名'),
+                ),
+                PopupMenuItem(
+                  value: _ComparisonProjectAction.create,
+                  child: Text('新建对比'),
+                ),
+              ],
             ),
           ],
         ),
@@ -207,7 +224,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                           SizedBox(
                             width: math.min(340, viewport.maxWidth * .43),
                             child: SingleChildScrollView(
-                              padding: const EdgeInsets.all(12),
+                              padding: const EdgeInsets.all(8),
                               child: Column(
                                 children: [
                                   _sources(),
@@ -231,10 +248,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                           constraints: BoxConstraints(
                             maxHeight: viewport.maxHeight * .46,
                           ),
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.all(12),
-                            child: _controls(),
-                          ),
+                          child: SingleChildScrollView(child: _controls()),
                         ),
                       ],
                     );
@@ -246,41 +260,66 @@ class _ComparisonScreenState extends State<ComparisonScreen>
   );
   Widget _sources() => Row(
     children: [
-      Expanded(child: _source('teacher', '老师（参考）', controller.project.teacher)),
+      Expanded(
+        child: _source('teacher', '老师', '参考', controller.project.teacher),
+      ),
       IconButton(
         tooltip: '交换老师和学生',
         onPressed: controller.busy || !controller.project.hasPair
             ? null
             : controller.swap,
-        icon: const Icon(Icons.swap_horiz),
+        icon: const Icon(Icons.swap_horiz, size: 20),
       ),
-      Expanded(child: _source('learner', '学生（自己）', controller.project.learner)),
+      Expanded(
+        child: _source('learner', '学生', '自己', controller.project.learner),
+      ),
     ],
   );
-  Widget _source(String role, String label, ComparisonSource? source) =>
-      OutlinedButton(
-        key: ValueKey('comparison-pick-$role'),
-        onPressed: controller.busy ? null : () => controller.pick(role),
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+
+  Widget _source(
+    String role,
+    String label,
+    String purpose,
+    ComparisonSource? source,
+  ) => Tooltip(
+    message: source == null ? '选择$label视频' : source.name,
+    child: OutlinedButton(
+      key: ValueKey('comparison-pick-$role'),
+      onPressed: controller.busy ? null : () => controller.pick(role),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(48, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        side: BorderSide(
+          color: source == null ? AppTheme.gold : AppTheme.flowBorder,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+      ),
+      child: LayoutBuilder(
+        builder: (context, bounds) => Row(
           children: [
-            Text(label),
-            const SizedBox(height: 4),
-            Text(
-              source?.name ?? '选择视频',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 11,
-                color: AppTheme.flowTextSecondary,
+            Text(label, style: const TextStyle(fontSize: 14)),
+            if (bounds.maxWidth > 110 &&
+                MediaQuery.textScalerOf(context).scale(14) < 19) ...[
+              const SizedBox(width: 5),
+              Text(
+                source == null ? '选视频' : purpose,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppTheme.flowTextSecondary,
+                ),
               ),
+            ],
+            const Spacer(),
+            Icon(
+              source == null ? Icons.add : Icons.expand_more,
+              size: 18,
+              semanticLabel: source == null ? '选择视频' : '更换视频',
             ),
           ],
         ),
-      );
+      ),
+    ),
+  );
+
   Widget _preview(bool horizontal) => LayoutBuilder(
     builder: (context, viewport) {
       final ratio = math.min(
@@ -321,11 +360,11 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                 child: CircularProgressIndicator(color: AppTheme.gold),
               ),
             if (controller.project.hasPair) ...[
-              Positioned(top: 8, left: 8, child: _badge('老师 · 参考')),
+              Positioned(top: 8, left: 8, child: _badge('老师')),
               Positioned(
                 top: horizontal ? 8 : viewport.maxHeight / 2 + 8,
                 left: horizontal ? viewport.maxWidth / 2 + 8 : 8,
-                child: _badge('学生 · 实际'),
+                child: _badge('学生'),
               ),
             ],
           ],
@@ -343,6 +382,336 @@ class _ComparisonScreenState extends State<ComparisonScreen>
       child: Text(label, style: const TextStyle(fontSize: 12)),
     ),
   );
+  String get _offsetLabel =>
+      '${controller.project.offsetUs >= 0 ? '+' : ''}${(controller.project.offsetUs / 1e6).toStringAsFixed(3)}s';
+
+  String get _alignmentLabel => switch (controller.project.alignment) {
+    'auto' => '音乐已对齐',
+    'manual' => '手动校准',
+    'candidate' => '候选校准',
+    _ => controller.candidates.isEmpty ? '尚未对齐音乐' : '请选择音乐位置',
+  };
+
+  Widget _musicSummary() {
+    final paired = controller.project.hasPair;
+    final aligned = controller.project.alignment != 'unmatched';
+    return Row(
+      children: [
+        Icon(
+          Icons.graphic_eq_rounded,
+          size: 18,
+          color: aligned ? AppTheme.gold : AppTheme.flowTextSecondary,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            controller.matching
+                ? '正在匹配音乐…'
+                : !paired
+                ? '先选择老师和学生视频'
+                : _alignmentLabel + (aligned ? ' · $_offsetLabel' : ''),
+            maxLines: 2,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppTheme.flowTextPrimary,
+            ),
+          ),
+        ),
+        if (controller.matching)
+          TextButton(
+            onPressed: controller.cancelMatching,
+            child: const Text('取消'),
+          )
+        else
+          TextButton(
+            key: const ValueKey('comparison-calibration'),
+            onPressed: paired && !controller.picking ? _calibration : null,
+            child: const Text('校准'),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _calibration() async {
+    await controller.pause();
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      backgroundColor: AppTheme.flowSurface,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * .82,
+      ),
+      builder: (sheetContext) => AnimatedBuilder(
+        animation: controller,
+        builder: (context, _) => SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      '音乐校准',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    key: const ValueKey('comparison-calibration-close'),
+                    tooltip: '关闭校准',
+                    onPressed: () => Navigator.pop(sheetContext),
+                    icon: const Icon(Icons.close, size: 22),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '$_alignmentLabel · $_offsetLabel',
+                style: const TextStyle(
+                  color: AppTheme.gold,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                controller.message,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppTheme.flowTextSecondary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    key: const ValueKey('comparison-match'),
+                    onPressed: controller.matching
+                        ? controller.cancelMatching
+                        : controller.matchMusic,
+                    icon: Icon(
+                      controller.matching
+                          ? Icons.close
+                          : Icons.music_note_outlined,
+                      size: 18,
+                    ),
+                    label: Text(controller.matching ? '取消匹配' : '匹配音乐'),
+                  ),
+                  FilledButton.tonalIcon(
+                    key: const ValueKey('comparison-manual'),
+                    onPressed: controller.busy
+                        ? null
+                        : () {
+                            Navigator.pop(sheetContext);
+                            unawaited(_manual());
+                          },
+                    icon: const Icon(Icons.tune, size: 18),
+                    label: const Text('手动校准'),
+                  ),
+                ],
+              ),
+              if (!controller.matching && controller.candidates.isNotEmpty) ...[
+                const Divider(height: 32),
+                const Text(
+                  '其他音乐位置',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  '试听会回到对应起点，播放约 8 秒后暂停。',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.flowTextSecondary,
+                  ),
+                ),
+                for (var i = 0; i < controller.candidates.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: DecoratedBox(
+                      decoration: AppTheme.panelDecoration(radius: 12),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text('候选 ${i + 1}'),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(sheetContext);
+                                    unawaited(
+                                      controller.applyCandidate(
+                                        controller.candidates[i],
+                                      ),
+                                    );
+                                  },
+                                  child: const Text('试听 8 秒'),
+                                ),
+                              ],
+                            ),
+                            Text(
+                              '音乐偏移 ${(controller.candidates[i].offsetUs / 1e6)
+                                      .toStringAsFixed(3)} 秒',
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${controller.candidates[i].consistentWindows}/3 段一致 · 共同段约 ${controller.candidates[i].supportedSeconds
+                                      .toStringAsFixed(1)} 秒',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.flowTextSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+              const Divider(height: 32),
+              const Text('所用视频', style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              for (final entry in [
+                ('老师（参考）', controller.project.teacher),
+                ('学生（自己）', controller.project.learner),
+              ])
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    '${entry.$1} · ${entry.$2?.name ?? '未选择'}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.flowTextSecondary,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _stepButton(bool forward, int stepUs, int positionUs) => Tooltip(
+    message: '${forward ? '前进' : '后退'}${stepUs ~/ 1000000}秒',
+    child: TextButton(
+      key: ValueKey(
+        forward ? 'comparison-step-forward' : 'comparison-step-back',
+      ),
+      onPressed: controller.canPlay
+          ? () => controller.seek(
+              math.max(0, positionUs + (forward ? stepUs : -stepUs)),
+            )
+          : null,
+      style: TextButton.styleFrom(
+        minimumSize: const Size(48, 56),
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            forward ? Icons.forward_rounded : Icons.replay_rounded,
+            size: 22,
+          ),
+          Text(
+            '${stepUs ~/ 1000000}秒',
+            style: const TextStyle(fontSize: 11),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _playButton(bool ended) => FilledButton.icon(
+    key: const ValueKey('comparison-play'),
+    onPressed: controller.canPlay ? controller.toggle : null,
+    style: FilledButton.styleFrom(
+      backgroundColor: AppTheme.gold,
+      foregroundColor: AppTheme.textOnAccent,
+      minimumSize: const Size(48, 56),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    ),
+    icon: Icon(
+      controller.playing
+          ? Icons.pause_rounded
+          : ended
+          ? Icons.replay_rounded
+          : Icons.play_arrow_rounded,
+      size: 26,
+    ),
+    label: Text(
+      controller.playing
+          ? '暂停'
+          : ended
+          ? '重播'
+          : '播放',
+    ),
+  );
+
+  Widget _speedControl({bool wide = false}) {
+    final value = Text(
+      '${controller.project.speed.toString().replaceAll('.0', '')}×',
+      maxLines: 1,
+      style: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        height: 1.2,
+      ),
+    );
+    const label = Text(
+      '倍速',
+      style: TextStyle(
+        fontSize: 11,
+        color: AppTheme.flowTextSecondary,
+        height: 1.3,
+      ),
+    );
+    return PopupMenuButton<double>(
+      key: const ValueKey('comparison-speed'),
+      tooltip: '播放速度',
+      enabled: !controller.busy,
+      onSelected: controller.setSpeed,
+      itemBuilder: (_) => const [
+        PopupMenuItem(value: 1, child: Text('1× · 正常')),
+        PopupMenuItem(value: .75, child: Text('0.75×')),
+        PopupMenuItem(value: .5, child: Text('0.5×')),
+      ],
+      child: Container(
+        width: wide ? double.infinity : 64,
+        constraints: const BoxConstraints(minHeight: 56),
+        alignment: Alignment.center,
+        child: wide
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [value, const SizedBox(width: 8), label],
+              )
+            : Column(mainAxisSize: MainAxisSize.min, children: [value, label]),
+      ),
+    );
+  }
+
+  String _displayTime(int value) {
+    final formatted = comparisonTime(value);
+    return MediaQuery.textScalerOf(context).scale(13) > 18
+        ? formatted.split('.').first
+        : formatted;
+  }
+
   Widget _controls() {
     final state = controller.playback;
     final duration = state?.durationUs ?? 0;
@@ -351,165 +720,93 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                 (state?.positionUs.toDouble() ??
                     controller.project.positionUs.toDouble()))
             .clamp(0.0, math.max(1, duration).toDouble());
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (controller.error != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              controller.error!,
-              style: const TextStyle(color: AppTheme.error),
-            ),
-          ),
-        Row(
+    final stepUs = duration <= 30000000 ? 1000000 : 5000000;
+    final ended = duration > 0 && position >= duration - 100000;
+    return DecoratedBox(
+      key: const ValueKey('comparison-console'),
+      decoration: const BoxDecoration(
+        color: AppTheme.flowSurface,
+        border: Border(top: BorderSide(color: AppTheme.flowBorder)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            if (controller.matching)
-              const Padding(
-                padding: EdgeInsets.only(right: 10),
-                child: SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+            if (controller.error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  controller.error!,
+                  style: const TextStyle(fontSize: 13, color: AppTheme.error),
                 ),
               ),
-            Expanded(
-              child: Text(
-                controller.message,
-                maxLines: 3,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppTheme.flowTextSecondary,
+            _musicSummary(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: Text(
+                    _displayTime(position.round()),
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
+                  ),
                 ),
+                Flexible(
+                  child: Text(
+                    _displayTime(duration),
+                    textAlign: TextAlign.end,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppTheme.flowTextSecondary,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Semantics(
+              label: '共同进度',
+              child: Slider(
+                key: const ValueKey('comparison-seek'),
+                min: 0,
+                max: math.max(1, duration).toDouble(),
+                value: position,
+                semanticFormatterCallback: (value) =>
+                    comparisonTime(value.round()),
+                onChanged: duration > 0 && !controller.busy
+                    ? (value) => setState(() => _scrub = value)
+                    : null,
+                onChangeEnd: duration > 0 && !controller.busy
+                    ? (value) {
+                        setState(() => _scrub = null);
+                        unawaited(controller.seek(value.round()));
+                      }
+                    : null,
               ),
             ),
-            if (controller.matching)
-              TextButton(
-                onPressed: controller.cancelMatching,
-                child: const Text('取消'),
-              ),
+            Row(
+              children: [
+                _stepButton(false, stepUs, position.round()),
+                const SizedBox(width: 8),
+                Expanded(child: _playButton(ended)),
+                const SizedBox(width: 8),
+                _stepButton(true, stepUs, position.round()),
+                if (MediaQuery.textScalerOf(context).scale(14) <= 19) ...[
+                  const SizedBox(width: 8),
+                  _speedControl(),
+                ],
+              ],
+            ),
+            if (MediaQuery.textScalerOf(context).scale(14) > 19)
+              _speedControl(wide: true),
           ],
         ),
-        if (controller.project.hasPair) ...[
-          const SizedBox(height: 6),
-          Text(
-            '音乐偏移 ${controller.project.offsetUs >= 0 ? '+' : ''}${(controller.project.offsetUs / 1e6).toStringAsFixed(3)}s · ${controller.project.alignment == 'manual'
-                ? '手动校准'
-                : controller.project.alignment == 'auto'
-                ? '音乐匹配'
-                : controller.project.alignment == 'candidate'
-                ? '候选校准'
-                : '待校准'}',
-            style: const TextStyle(fontSize: 12),
-          ),
-          Slider(
-            key: const ValueKey('comparison-seek'),
-            min: 0,
-            max: math.max(1, duration).toDouble(),
-            value: position,
-            onChanged: duration > 0 && !controller.busy
-                ? (v) => setState(() => _scrub = v)
-                : null,
-            onChangeEnd: (v) {
-              setState(() => _scrub = null);
-              unawaited(controller.seek(v.round()));
-            },
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(comparisonTime(position.round())),
-              Text(comparisonTime(duration)),
-            ],
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                tooltip: '后退十秒',
-                onPressed: controller.canPlay
-                    ? () => controller.seek(
-                        math.max(0, position.round() - 10000000),
-                      )
-                    : null,
-                icon: const Icon(Icons.replay_10),
-              ),
-              IconButton(
-                key: const ValueKey('comparison-play'),
-                tooltip: controller.playing ? '暂停' : '播放',
-                onPressed: controller.canPlay ? controller.toggle : null,
-                iconSize: 38,
-                color: AppTheme.gold,
-                icon: Icon(
-                  controller.playing
-                      ? Icons.pause_circle_filled
-                      : Icons.play_circle_fill,
-                ),
-              ),
-              IconButton(
-                tooltip: '前进十秒',
-                onPressed: controller.canPlay
-                    ? () => controller.seek(position.round() + 10000000)
-                    : null,
-                icon: const Icon(Icons.forward_10),
-              ),
-              const SizedBox(width: 8),
-              DropdownButton<double>(
-                value: controller.project.speed,
-                underline: const SizedBox.shrink(),
-                items: const [
-                  DropdownMenuItem(value: 1, child: Text('1×')),
-                  DropdownMenuItem(value: .75, child: Text('0.75×')),
-                  DropdownMenuItem(value: .5, child: Text('0.5×')),
-                ],
-                onChanged: controller.busy
-                    ? null
-                    : (v) {
-                        if (v != null) unawaited(controller.setSpeed(v));
-                      },
-              ),
-            ],
-          ),
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 8,
-            children: [
-              TextButton.icon(
-                key: const ValueKey('comparison-match'),
-                onPressed: controller.busy ? null : controller.matchMusic,
-                icon: const Icon(Icons.music_note_outlined, size: 18),
-                label: const Text('匹配音乐'),
-              ),
-              TextButton.icon(
-                key: const ValueKey('comparison-manual'),
-                onPressed: controller.busy ? null : _manual,
-                icon: const Icon(Icons.tune, size: 18),
-                label: const Text('手动校准'),
-              ),
-            ],
-          ),
-          if (!controller.matching && controller.candidates.isNotEmpty) ...[
-            const Divider(),
-            const Align(alignment: Alignment.centerLeft, child: Text('可选音乐位置')),
-            for (var i = 0; i < controller.candidates.length; i++)
-              ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  '候选 ${i + 1} · 偏移 ${(controller.candidates[i].offsetUs / 1e6).toStringAsFixed(3)} 秒',
-                ),
-                subtitle: Text(
-                  '${controller.candidates[i].consistentWindows}/3 段一致 · 共同段约 ${controller.candidates[i].supportedSeconds.toStringAsFixed(1)} 秒',
-                ),
-                trailing: TextButton(
-                  onPressed: () =>
-                      controller.applyCandidate(controller.candidates[i]),
-                  child: const Text('试用并播放'),
-                ),
-              ),
-          ],
-        ],
-      ],
+      ),
     );
   }
 }
@@ -569,11 +866,12 @@ class _MusicAnchorDialogState extends State<_MusicAnchorDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('分别输入同一歌词或鼓点在各自视频中的时间。秒或分:秒，最多六位小数。人物动作的早晚差异会保留。'),
+          const Text('找到同一歌词或鼓点，填入它在两段视频中的时间。支持秒或分:秒。'),
           const SizedBox(height: 16),
           TextField(
             key: const ValueKey('comparison-anchor-teacher'),
             controller: teacher,
+            textInputAction: TextInputAction.next,
             decoration: const InputDecoration(
               labelText: '老师源时间',
               hintText: '例如 0 或 1:05.125',
@@ -584,6 +882,7 @@ class _MusicAnchorDialogState extends State<_MusicAnchorDialog> {
           TextField(
             key: const ValueKey('comparison-anchor-learner'),
             controller: learner,
+            textInputAction: TextInputAction.done,
             decoration: const InputDecoration(
               labelText: '学生同一音乐事件源时间',
               hintText: '例如 2',

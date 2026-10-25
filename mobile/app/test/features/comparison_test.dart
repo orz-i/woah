@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:app/app/theme.dart';
 import 'package:app/features/comparison/data/comparison_gateway.dart';
 import 'package:app/features/comparison/presentation/comparison_controller.dart';
 import 'package:app/features/comparison/presentation/comparison_screen.dart';
@@ -282,28 +283,168 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       final gateway = FakeComparisonGateway(saved: [savedProject()]);
       await tester.pumpWidget(
-        MaterialApp(home: ComparisonScreen(gateway: gateway)),
+        MaterialApp(
+          theme: AppTheme.darkTheme,
+          home: ComparisonScreen(gateway: gateway),
+        ),
       );
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pump();
       expect(find.text('舞蹈对比'), findsOneWidget);
-      expect(find.text('老师（参考）'), findsOneWidget);
+      expect(find.text('老师'), findsWidgets);
       expect(find.byKey(const ValueKey('comparison-stage')), findsOneWidget);
-      expect(find.byKey(const ValueKey('comparison-manual')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('comparison-calibration')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('comparison-manual')), findsNothing);
+      for (final key in [
+        'comparison-pick-teacher',
+        'comparison-pick-learner',
+        'comparison-step-back',
+        'comparison-step-forward',
+        'comparison-play',
+        'comparison-speed',
+        'comparison-calibration',
+      ]) {
+        final rect = tester.getRect(find.byKey(ValueKey(key)));
+        expect(rect.width, greaterThanOrEqualTo(48), reason: key);
+        expect(rect.height, greaterThanOrEqualTo(48), reason: key);
+        expect(rect.bottom, lessThanOrEqualTo(640), reason: key);
+      }
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
     },
   );
+  testWidgets(
+    'music candidates do not shrink the stage and auditions return to the video',
+    (tester) async {
+      final gateway = FakeComparisonGateway(saved: [savedProject()]);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.darkTheme,
+          home: ComparisonScreen(gateway: gateway),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      final before = tester.getSize(
+        find.byKey(const ValueKey('comparison-stage')),
+      );
+      await tester.tap(find.byKey(const ValueKey('comparison-calibration')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('comparison-match')));
+      await tester.pumpAndSettle();
+      expect(find.text('候选 1'), findsOneWidget);
+      await tester.tap(
+        find.byKey(const ValueKey('comparison-calibration-close')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('其他音乐位置'), findsNothing);
+      expect(
+        tester.getSize(find.byKey(const ValueKey('comparison-stage'))),
+        before,
+      );
+      await tester.tap(find.byKey(const ValueKey('comparison-calibration')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('试听 8 秒'));
+      await tester.tap(find.text('试听 8 秒'));
+      await tester.pumpAndSettle();
+      expect(find.text('音乐校准'), findsNothing);
+      expect(gateway.current.phase, 'playing');
+      expect(gateway.projects.first.alignment, 'candidate');
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    },
+  );
+
+  testWidgets(
+    'short-clip stepping and speed selection remain usable in the persistent console',
+    (tester) async {
+      final gateway = FakeComparisonGateway(saved: [savedProject()]);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.darkTheme,
+          home: ComparisonScreen(gateway: gateway),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('comparison-step-forward')));
+      await tester.pump();
+      expect(gateway.current.positionUs, 2000000);
+      await tester.tap(find.byKey(const ValueKey('comparison-step-back')));
+      await tester.pump();
+      expect(gateway.current.positionUs, 1000000);
+      await tester.tap(find.byKey(const ValueKey('comparison-speed')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('0.5×'));
+      await tester.pumpAndSettle();
+      expect(gateway.projects.first.speed, .5);
+      await tester.tap(find.byKey(const ValueKey('comparison-play')));
+      await tester.pump();
+      expect(gateway.current.phase, 'playing');
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    },
+  );
+
+  testWidgets(
+    'large text and landscape keep primary controls visible without overflow',
+    (tester) async {
+      tester.view.physicalSize = const Size(800, 360);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final gateway = FakeComparisonGateway(saved: [savedProject()]);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.darkTheme,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(2)),
+            child: child!,
+          ),
+          home: ComparisonScreen(gateway: gateway),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(tester.takeException(), isNull);
+      await tester.ensureVisible(find.byKey(const ValueKey('comparison-play')));
+      expect(
+        tester.getRect(find.byKey(const ValueKey('comparison-play'))).right,
+        lessThanOrEqualTo(800),
+      );
+      tester.view.physicalSize = const Size(320, 640);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(tester.takeException(), isNull);
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('comparison-speed')),
+      );
+      expect(
+        tester.getRect(find.byKey(const ValueKey('comparison-speed'))).bottom,
+        lessThanOrEqualTo(640),
+      );
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    },
+  );
+
   testWidgets('manual input applies both source times to the saved project', (
     tester,
   ) async {
     final gateway = FakeComparisonGateway(saved: [savedProject()]);
     await tester.pumpWidget(
-      MaterialApp(home: ComparisonScreen(gateway: gateway)),
+      MaterialApp(
+        theme: AppTheme.darkTheme,
+        home: ComparisonScreen(gateway: gateway),
+      ),
     );
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('comparison-calibration')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('comparison-manual')));
     await tester.pumpAndSettle();
     await tester.enterText(
