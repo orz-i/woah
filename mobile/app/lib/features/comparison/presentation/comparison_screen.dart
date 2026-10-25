@@ -201,11 +201,11 @@ class _ComparisonScreenState extends State<ComparisonScreen>
           actions: _manualSession != null
               ? []
               : [
-                  TextButton.icon(
+                  IconButton(
                     key: const ValueKey('comparison-history'),
+                    tooltip: '历史',
                     onPressed: controller.busy ? null : _history,
                     icon: const Icon(Icons.history_rounded, size: 20),
-                    label: const Text('历史'),
                   ),
                   PopupMenuButton<_ComparisonProjectAction>(
                     key: const ValueKey('comparison-project-menu'),
@@ -298,9 +298,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
-            side: BorderSide(
-              color: source == null ? AppTheme.gold : AppTheme.flowBorder,
-            ),
+            side: BorderSide.none,
           ),
           iconAlignment: IconAlignment.end,
           icon: Icon(
