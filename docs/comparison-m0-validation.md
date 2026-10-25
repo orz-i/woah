@@ -1,10 +1,10 @@
 # Woah · M0 双视频音乐同步播放验证（Android Debug）
 
-**状态：验证工具；不属于生产功能。** 2026-10-25 真机结论：当前双 ExoPlayer 协调实现未通过 M0，见 [完整验收数据与后端建议](comparison-m0-device-2026-10-25.md)。 本阶段采用恒定音乐时间偏移（手动输入），不能自动识别共同歌曲、不导出视频，也不对动作打分。
+**状态：验证工具；不属于生产功能。** 2026-10-25：双 ExoPlayer 协调实现未通过 M0，保留 [历史拒绝报告](comparison-m0-device-2026-10-25.md)。共同音频时钟＋双 MediaCodec＋单 GL 替代样机已通过本设备的合成素材 M0 矩阵，设备范围与版本见 [最新真机验收报告](comparison-m0-gl-device-2026-10-25.md)。 本阶段采用恒定音乐时间偏移（手动输入），不能自动识别共同歌曲、不导出视频，也不对动作打分。
 
 ## 隔离边界
 
-- 从干净 `master` 派生独立 `feat/dance-comparison-m0` 工作树。
+- 本轮在既有 `feat/dance-comparison-m0` 分支继续开发，不合并 `master`，不推送，不清理其他工作区。
 - 新增 Debug manifest + Debug Activity，`androidx.media3:media3-exoplayer:1.9.2` 仅在 Debug 编译引入；Release 不包含此 Activity 与探针。
 - 原匿名化导出、隐私追踪、Flutter 首页、iOS 均不改动。
 - `ComparisonTimeMapping` 为小型生产可复用时间契约，单位有符号 microseconds。正偏移表示同一音乐事件在「自己」视频中出现得更晚。
@@ -32,6 +32,24 @@ testdata/comparison/generated/manifest.json
 
 可用 `--music-seconds 120` 生成长时漂移样片；默认仍为 10s 音乐。可用 `--fps 24/30/60`、`--size 1280x720` 和 `--offset-ms -1000` 生成测试变体；负偏移须保证 `teacher-lead-ms + offset-ms >= 0`。每次生成可检查 `manifest.json` 里的 sha256、实际流编码和预期偏移。
 
+## 共同音频时钟后端
+
+`--backend shared-gl` 打开 `ComparisonGlM0Activity`。它只播放一份老师音频，两路视频按同一音频位置和手动偏移选择实际 PTS 区间；两个 OES 纹理锁定后一次 GL 交换提交。暂停、seek、变速、后台与受控渲染停顿均在本机验收矩阵内。默认 `--backend exo` 保留原后端以便复现实验，不作为本次通过的候选。
+
+```powershell
+uv run python tools/comparison/run_m0_android.py --backend shared-gl --teacher testdata/comparison/generated/teacher.mp4 --learner testdata/comparison/generated/learner.mp4 --offset-us 3000000 --load-fixtures
+```
+
+GL 报告 schema 为 `woah.comparison.m0.gl.v1`，`jointSubmissions` 记录双路源 PTS 的联合提交；`coverageMisses` 必须为 0，`audioPlayerCount` 与 `videoWindowSurfaces` 都应为 1。相同 CFR 的源 PTS 差按帧长评估；异帧率 / VFR 用 `evaluate_m0_frame_coverage.py` 结合实际源 MP4 的 `[PTS,nextPTS)` 区间分析录屏帧码，不能把自然帧起点差当作两个独立播放器的漂移。
+
+仅 Debug 的恢复测试可在播放时执行：
+
+```sh
+adb shell am broadcast -a art.gaoge.dance.M0_GL_TEST -p art.gaoge.dance --es action stall --el duration_ms 150
+```
+
+持续时间限 1–500ms。报告将标记 `injectedTestStalls`；该轮应单独留存，不能混入正常流畅度统计。它验证看门狗暂停共同音频、双路追上后恢复的路径，不模拟所有存储故障。入口、广播和 GL 引擎均仅存在于 Debug。
+
 ## 构建与打开
 
 现有 Woah 应用 Debug 编译（不需要发布签名）：
@@ -46,6 +64,7 @@ Android SDK 的 `adb` 连上真机后，回到仓库根目录：
 
 ```sh
 python3 tools/comparison/run_m0_android.py \
+  --backend shared-gl \
   --apk mobile/app/build/app/outputs/flutter-apk/app-debug.apk \
   --teacher testdata/comparison/generated/teacher.mp4 \
   --learner testdata/comparison/generated/learner.mp4 \
@@ -56,25 +75,26 @@ python3 tools/comparison/run_m0_android.py \
 
 脚本默认将测试素材放进设备的 `Movies/WoahM0`，启动仅在 Debug 存在的 Activity。**需要你在系统文件选择器中手动选一次老师/自己两段视频**。也可以不传两个素材参数，用手机相册选择真实的视频（不会自动上传原始媒体）。
 
-不需要安装脚本也可以：
+直接启动已安装 APK 中的 GL 入口：
 
 ```sh
-adb shell am start -n art.gaoge.dance/art.gaoge.dance.engine.comparison.ComparisonM0Activity \
+adb shell am start -n art.gaoge.dance/art.gaoge.dance.engine.comparison.ComparisonGlM0Activity \
   --el offset_us 3000000
 ```
 
 ## 启动报错 Error type 3：先检查 APK，而不是反复改 am start 参数
 
+以下旧组件名对应保留的 ExoPlayer 对照入口。使用 GL 后端时，APK 检查输出还须有 `m0GlDebugComponentPresent: true`，并启动 `ComparisonGlM0Activity`。本轮修复只保留在本地分支，不能假设远端 APK 已包含它。
+
 `ComparisonM0Activity` 的完整组件是
 `art.gaoge.dance/art.gaoge.dance.engine.comparison.ComparisonM0Activity`。
 在 ADB 输出中简写为 `art.gaoge.dance/.engine.comparison.ComparisonM0Activity` 也是正常的；**Error type 3 不是音乐偏移符号错误**。
 
-1. 在 Windows 构建机器从仓库根目录检查分支，并同步最新修复：
+1. 在 Windows 构建机器从仓库根目录检查本地分支与版本：
 
    ```powershell
-   git fetch origin
-   git switch feat/dance-comparison-m0
-   git pull --ff-only
+   git branch --show-current
+   git status --short
    git rev-parse --short HEAD
    ```
 
@@ -140,18 +160,19 @@ python3 tools/comparison/evaluate_m0_report.py m0-latest.json \
   --manifest testdata/comparison/generated/manifest.json --fps 30
 ```
 
-即使输出 `PLANNED_METADATA_WITHIN_TARGET`，真实屏幕显示仍为 `NOT_PROVEN`。
+即使输出 `PLANNED_METADATA_WITHIN_TARGET` 或 `JOINT_GL_METADATA_WITHIN_TARGET`，物理面板显示仍为 `NOT_PROVEN`。
 
 ## 正确解读报告
 
-- `p95AbsMediaErrorUs` 来自 **两路即将渲染帧** 的源 PTS，按 Media3 的 **计划** releaseTimeNs 配对，并减去预期音乐偏移。它**不是**物理屏幕实际呈现时间，也不代表音频匹配算法的误差。
+- 以下计划 release-time 字段说明针对原 `woah.comparison.m0.probe.v1` 双 ExoPlayer 报告；GL schema 的误差来自同一次交换提交的双路源 PTS，另有时钟采样年龄、帧覆盖与解码阶段耗时，仍不等于实际面板显示延迟。
+- 原后端的 `p95AbsMediaErrorUs` 来自 **两路即将渲染帧** 的源 PTS，按 Media3 的 **计划** releaseTimeNs 配对，并减去预期音乐偏移。它**不是**物理屏幕实际呈现时间，也不代表音频匹配算法的误差。
 - `p95PlannedReleaseSkewUs` 是两路计划 release time 之间的差值，不是表面像素的显示时间差。样本少时不得宣称验收成功。
 - 新报告包含 `usableTeacherFrames` / 配对覆盖率、观测时长和最多 120 个 5 秒统计窗口；少于 80% 配对覆盖率不得判为元数据达标。30fps 整数微秒量化容许单帧 33,334µs。自己侧保持静音；禁用其音频 renderer 的设备对照导致 1× 约 100ms 偏差，已回退。该对照也说明独立播放器时钟不能代替共同调度。
 - 报告自动剔除进入探针的首约 1 秒，并在拖动、变速、修改偏移时重开观测 epoch。它不能跨不同操作拼接成一组假稳态结果。
 - 对 M0 的真实显示验收，必须同时收集带时间码的设备屏幕录制；录屏可能掉帧，有疑问时补高帧率外部拍屏。报告还需附上设备型号、Android 版本、视频来源和运行速度。
 - 初始工程目标：30fps CFR 稳态 P95 ≤1帧、最大 ≤2帧，无累积漂移；这只是一条 **待实测** 判据。不同 fps / VFR 按各自源帧 PTS 报告，不套用统一 33.4ms。
 
-若双 ExoPlayer 在设备验证中无法达到真实可见同步门槛，不要靠更密集的 seek 勉强通过；进入双 MediaCodec + 单 GL 合成方案的技术评估。
+双 ExoPlayer 已在本机被拒绝；后续比较实验使用共同音频时钟与双 MediaCodec + 单 GL 后端，不靠更密集的 seek 修正稳态播放。
 
 ## 构建环境与验证范围
 
@@ -170,9 +191,9 @@ cd ..
 flutter build apk --debug
 ```
 
-只在上述编译门槛通过、并取得真机时间码证据后，才决定双 ExoPlayer 是否可作为正式后端。
+后端选型依据定向编译、实际 codec 运行、联合提交和录屏帧码共同判断。通过范围以最新验收报告所列设备与素材为限，不据此自动启动 M1 或生产集成。
 
-## 自动化与未通过的门槛
+## 自动化与验收门槛
 
 Android SDK/JDK 有效的环境中：
 
@@ -185,7 +206,7 @@ cd mobile/app/android
 
 单元测试覆盖偏移正负号、非零源有效范围、无公共区间、跨 epoch 丢弃旧帧、按计划显示时间配对。这些只能验证代码逻辑，**不代替真机 codec 或屏幕像素验证**。
 
-当前 M0 完成标准：Android Debug 构建通过；真机有完整播放/seek/变速/后台/多次打开证据；计划帧元数据与屏幕证据支持或拒绝双 ExoPlayer；正式选定 M1/M2 后端。真实视频自动音频匹配、导出和 iOS 都不属于 M0。
+当前 M0 完成标准：Android Debug 构建通过；真机有完整播放/seek/变速/后台/多次打开证据；联合提交帧元数据与屏幕证据支持候选后端，并保留原双 ExoPlayer 的对照结论。本轮不启动 M1。真实视频自动音频匹配、导出和 iOS 都不属于 M0。
 
 ## 连续屏幕证据分析（2026-10-25）
 
