@@ -62,7 +62,13 @@ adb shell am broadcast -a art.gaoge.dance.M0_GL_TEST -p art.gaoge.dance --es act
 
 该接收器要求发送方持有系统 `DUMP` 权限（ADB shell），普通应用不能触发。播放先暂停；结果在本应用 `Documents/comparison-m0/selected-sources-local_real_m0_001.json`，状态为 `NO_SELECTION`、`COPYING`、`READY` 或 `FAILED`。每个请求独立，`READY` 才包含两路完整副本的相对路径、字节数和 SHA-256；不包含媒体 URI 或原始文件名。取消、中断和提供方读取失败不会把部分文件发布为成功输入。
 
-这只是本地 Debug 验收输入采集，不是对比视频导出功能。原始视频与分析副本不进入 Git，不调用上传接口。M0 仍使用手动恒定音乐偏移；默认 `offsetUs=0` 只代表源时间调度假设，不能据此声称两段音乐内容已经对齐。手机选片完成前，真实舞蹈验收仍为 **等待手机选片**，不沿用合成素材的通过结论。
+这只是本地 Debug 验收输入采集，不是对比视频导出功能。原始视频与分析副本不进入 Git，不调用上传接口。M0 仍使用手动恒定音乐偏移；默认 `offsetUs=0` 只代表源时间调度假设，不能据此声称两段音乐内容已经对齐。2026-10-25 已用用户手机所选两段 HEVC 完成 [真实素材播放调度验收](comparison-m0-real-device-2026-10-25.md)。用户确认先用零偏移验收调度，音乐内容未校准；不同帧率使用明确标记的真实画面派生输入，不沿用合成素材的通过数据。
+
+### 真实画面帧码输入与分析
+
+`prepare_m0_real_fixtures.py --teacher teacher.media --learner learner.media --out new-output-directory` 为显式给定的本地视频追加帧码页脚并生成 HEVC 测试副本；输出目录必须不存在，原文件不变。24/60fps 与 VFR 是派生测试输入，不是原生拍摄帧率证明。
+
+录屏的页脚位置用 `--teacher-code-rect x,y,w,h --learner-code-rect x,y,w,h` 指定截图像素矩形，两个参数须一起提供。异帧率/VFR 添加 `--codes-only --samples-out samples.json`，再用 `evaluate_m0_frame_coverage.py` 传入对应源 MP4 与各自参考 fps。保留条码无效观测数量，不能把未识别帧当作通过。
 
 ## 构建与打开
 
