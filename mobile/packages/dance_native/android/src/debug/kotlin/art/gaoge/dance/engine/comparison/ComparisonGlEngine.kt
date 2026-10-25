@@ -355,6 +355,8 @@ internal class ComparisonGlEngine(
                 put("teacherSkippedOutputs",teacher?.skippedFrames ?: 0)
                 put("learnerSkippedOutputs",learner?.skippedFrames ?: 0)
                 put("textureWaits",(teacher?.textureWaits ?: 0)+(learner?.textureWaits ?: 0))
+                put("teacherSyncSeekRetries",teacher?.syncSeekRetries ?: 0)
+                put("learnerSyncSeekRetries",learner?.syncSeekRetries ?: 0)
                 put("windows",JSONArray().apply {
                     s.windows.forEach { w -> put(JSONObject().apply {
                         put("startUs",w.startUs); put("samples",w.samples)

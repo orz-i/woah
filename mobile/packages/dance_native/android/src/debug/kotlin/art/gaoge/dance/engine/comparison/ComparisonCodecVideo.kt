@@ -50,6 +50,10 @@ internal class ComparisonCodecVideo(
         private set
     var skippedFrames = 0L
         private set
+    var syncSeekRetries = 0L
+        private set
+    private var lastSeekTargetUs = 0L
+    private var lastSyncPtsUs = 0L
     var textureWaits = 0L
         private set
 
@@ -113,7 +117,14 @@ internal class ComparisonCodecVideo(
         // Consume it on this GL thread before resetting the codec generation.
         if (everSignalled.get()) texture.updateTexImage()
         decoder.flush()
-        extractor.seekTo(sourceUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+        lastSeekTargetUs=sourceUs
+        val sync=ComparisonSyncSeek.atOrBefore(sourceUs) { requested ->
+            checkCurrent()
+            extractor.seekTo(requested, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+            extractor.sampleTime
+        }
+        lastSyncPtsUs=sync.syncPtsUs
+        syncSeekRetries+=sync.retries
         inputEos = false
         outputEos = false
         displayedPtsUs = -1L
@@ -192,7 +203,7 @@ internal class ComparisonCodecVideo(
             }
             val interval = ComparisonFrameInterval(preparedPtsUs ?: displayedPtsUs,
                 if (preparedPtsUs != null) preparedEndUs else displayedEndUs)
-            check(interval.contains(target)) { "Decoded frame does not cover requested source PTS" }
+            check(interval.contains(target)) { "Decoded frame coverage: target=$target interval=[${interval.startUs},${interval.endUs}) seek=$lastSeekTargetUs sync=$lastSyncPtsUs size=${description.width}x${description.height}" }
             return interval
         } finally {
             candidate?.let { decoder.releaseOutputBuffer(it.index, false) }
