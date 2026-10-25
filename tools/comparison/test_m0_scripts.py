@@ -10,6 +10,7 @@ from pathlib import Path
 
 from evaluate_m0_report import evaluate
 from analyze_m0_screenrecord import summarize, decode_strip
+from evaluate_m0_frame_coverage import frame_intervals, evaluate_coverage
 from generate_m0_fixtures import generate_music, write_audio, SAMPLE_RATE, main
 from m0_pixels import render_frame, timecode, FRAME_CODE
 
@@ -133,6 +134,28 @@ class M0ScriptsTest(unittest.TestCase):
         report["videoWindowSurfaces"] = 2
         self.assertEqual(evaluate(report)["status"],
                          "INSUFFICIENT_OR_OUTSIDE_PLANNED_METADATA")
+
+    def test_mixed_cadences_use_actual_frame_intersections(self):
+        teacher = frame_intervals([round(i*1e6/24) for i in range(120)],5_000_000,24)
+        learner = frame_intervals([round(i*1e6/30) for i in range(240)],8_000_000,30)
+        rows = [{"teacherFrame": int((i/60+.01)*24),
+                 "learnerFrame": int((i/60+.01+3)*30)} for i in range(180)]
+        self.assertEqual(evaluate_coverage(rows,teacher,learner,3_000_000)["status"],
+                         "FRAME_COVERAGE_WITHIN_TARGET")
+        for row in rows: row["learnerFrame"] += 4
+        self.assertEqual(evaluate_coverage(rows,teacher,learner,3_000_000)["status"],
+                         "FRAME_COVERAGE_OUTSIDE_TARGET")
+
+    def test_sparse_vfr_retains_frame_until_actual_next_pts(self):
+        teacher = frame_intervals([0,66667,100000],133333,30)
+        learner = frame_intervals([3_000_000,3_033_333,3_066_667],3_100_000,30)
+        rows = [{"teacherFrame": 0,"learnerFrame": 91}]*60
+        result = evaluate_coverage(rows,teacher,learner,3_000_000)
+        self.assertEqual(result["maxIntervalGapUs"],0)
+        self.assertEqual(result["p95AbsFrameStartDeltaUs"],33333)
+        self.assertEqual(result["status"],"FRAME_COVERAGE_WITHIN_TARGET")
+        with self.assertRaises(ValueError):
+            frame_intervals([0,45000],100000,30)
 
     def test_empty_screen_capture_has_no_fabricated_metrics(self):
         result = summarize([], 30, 3_000_000)
