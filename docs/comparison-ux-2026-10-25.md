@@ -98,3 +98,15 @@ final result: passed
 - 基准：`docs/session/comparison-ux-20261025/16-source-before.png`；最终：`16-main-final.png`；历史：`16-history-opened.png`。系统选片取消、历史恢复、菜单与数据检查 XML/JSON，以及构建/安装/测试日志均位于同一忽略的 session 目录。
 
 final result: passed
+
+
+## 选片无边框与历史图标补充（2026-10-25）
+
+- 用户要求：移除老师/学生下拉选片的边框，顶部历史仅保留图标。实现仅调整 BorderSide.none 和 IconButton；保留“历史”tooltip/无障碍名称及 48dp 触控。
+- 代码提交：`0fbf334e95feff59543dfb16e784220019699033`；当前分支未推送。
+- 受影响的既有小屏选片/历史/交换交互测试 1 项通过，改动文件静态检查无问题；未重复未变更的全套回归或 Release QA。
+- Debug APK 已安装，272643635 bytes，本机与安装 SHA256 一致：`cee6ad51afab7beae8755ef63dfdd4ad9e6b8be50f164402ced1ebea31270190`。
+- 真机确认无边框角色控件、仅历史图标；图标可打开历史并返回。用户更新前已交换视频，现为 -1.450s，原锚点与播放位置在安装和操作后保留。
+- 最终图：`docs/session/comparison-ux-20261025/17-main-final.png`。与上一版 `16-main-final.png` 比较界面；视频顺序为用户后续改变，不作为本次图像差异。`17-before.png` 捕获到了首页，不用作对比页基准。
+
+final result: passed
