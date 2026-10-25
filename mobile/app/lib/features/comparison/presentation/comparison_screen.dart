@@ -139,7 +139,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                 leading: const Icon(Icons.video_library_outlined),
                 title: Text(project.title),
                 subtitle: Text(
-                  '${project.teacher?.name ?? '待选老师'} · ${project.learner?.name ?? '待选学生'}',
+                  '${project.teacher?.name ?? '待选参考'} · ${project.learner?.name ?? '待选目标'}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -272,9 +272,30 @@ class _ComparisonScreenState extends State<ComparisonScreen>
         !controller.matching &&
         !_finishingManual &&
         !_rotating,
-    icon: Icon(
-      _sideBySide ? Icons.view_column_outlined : Icons.view_agenda_outlined,
-      size: 20,
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _sideBySide ? '左右' : '上下',
+              style: const TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 1),
+            const Icon(
+              Icons.arrow_drop_down_rounded,
+              color: AppTheme.textSecondary,
+              size: 18,
+            ),
+          ],
+        ),
+      ),
     ),
     onSelected: (action) {
       switch (action) {
@@ -325,15 +346,11 @@ class _ComparisonScreenState extends State<ComparisonScreen>
         resizeToAvoidBottomInset: false,
         backgroundColor: AppTheme.flowBackground,
         appBar: AppBar(
-          title: Text(
-            _manualSession != null ? '手动校准' : '舞蹈对比',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          title: _viewMenu(),
           leading: BackButton(onPressed: _exit),
-          centerTitle: false,
+          centerTitle: true,
+          titleSpacing: 0,
           actions: [
-            _viewMenu(),
             if (_manualSession == null) ...[
               IconButton(
                 key: const ValueKey('comparison-history'),
@@ -367,7 +384,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                   PopupMenuItem(
                     value: _ComparisonProjectAction.swap,
                     enabled: controller.project.hasPair,
-                    child: const Text('交换老师和学生'),
+                    child: const Text('交换参考和目标'),
                   ),
                 ],
               ),
@@ -420,31 +437,75 @@ class _ComparisonScreenState extends State<ComparisonScreen>
       ),
     ),
   );
-  Widget _source(String role, String label, ComparisonSource? source) =>
-      Tooltip(
-        message: source == null ? '选择$label视频' : source.name,
-        child: OutlinedButton.icon(
-          key: ValueKey('comparison-pick-$role'),
-          onPressed: controller.busy ? null : () => controller.pick(role),
-          style: OutlinedButton.styleFrom(
-            backgroundColor: Colors.black.withValues(alpha: .72),
-            foregroundColor: AppTheme.flowTextPrimary,
-            minimumSize: const Size(48, 48),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            side: BorderSide.none,
+  Widget _sourceSlot(String role, String label, ComparisonSource? source) {
+    final onSelect = controller.busy
+        ? null
+        : () => unawaited(controller.pick(role));
+    return Semantics(
+      key: ValueKey('comparison-pick-$role'),
+      label: '${source == null ? '选择' : '更换'}$label视频',
+      button: true,
+      enabled: onSelect != null,
+      onTap: onSelect,
+      excludeSemantics: true,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onSelect,
+          excludeFromSemantics: true,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (!controller.project.hasPair)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          source == null
+                              ? Icons.add_rounded
+                              : Icons.check_circle_outline_rounded,
+                          size: 28,
+                          color: AppTheme.flowTextMuted,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          source == null ? '选择$label视频' : '$label视频已选择',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppTheme.flowTextSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              Positioned(
+                top: 8,
+                left: 8,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    child: Text(label, style: const TextStyle(fontSize: 12)),
+                  ),
+                ),
+              ),
+            ],
           ),
-          iconAlignment: IconAlignment.end,
-          icon: Icon(
-            source == null ? Icons.add : Icons.expand_more,
-            size: 16,
-            semanticLabel: source == null ? '选择视频' : '更换视频',
-          ),
-          label: Text(label, style: const TextStyle(fontSize: 12)),
         ),
-      );
+      ),
+    );
+  }
 
   Widget _preview(bool horizontal) => LayoutBuilder(
     builder: (context, viewport) {
@@ -469,46 +530,29 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                 textureId: state.textureId,
                 filterQuality: FilterQuality.low,
               ),
-            if (!controller.project.hasPair)
-              Flex(
-                direction: horizontal ? Axis.horizontal : Axis.vertical,
-                children: [
-                  for (final entry in [
-                    ('老师', controller.project.teacher),
-                    ('学生', controller.project.learner),
-                  ])
-                    Expanded(
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Text(
-                            entry.$2 == null
-                                ? '待选择${entry.$1}视频'
-                                : '已选择${entry.$1}视频',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: AppTheme.flowTextSecondary,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
             if (controller.project.hasPair &&
                 (state == null || state.phase == 'opening'))
               const Center(
                 child: CircularProgressIndicator(color: AppTheme.gold),
               ),
-            Positioned(
-              top: 8,
-              left: 8,
-              child: _source('teacher', '老师', controller.project.teacher),
-            ),
-            Positioned(
-              top: horizontal ? 8 : viewport.maxHeight / 2 + 8,
-              left: horizontal ? viewport.maxWidth / 2 + 8 : 8,
-              child: _source('learner', '学生', controller.project.learner),
+            Flex(
+              direction: horizontal ? Axis.horizontal : Axis.vertical,
+              children: [
+                Expanded(
+                  child: _sourceSlot(
+                    'teacher',
+                    '参考',
+                    controller.project.teacher,
+                  ),
+                ),
+                Expanded(
+                  child: _sourceSlot(
+                    'learner',
+                    '目标',
+                    controller.project.learner,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -541,7 +585,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
             controller.matching
                 ? '正在自动校准…'
                 : !paired
-                ? '先选择老师和学生视频'
+                ? '先选择参考和目标视频'
                 : _alignmentLabel + (aligned ? ' · $_offsetLabel' : ''),
             maxLines: 2,
             style: const TextStyle(

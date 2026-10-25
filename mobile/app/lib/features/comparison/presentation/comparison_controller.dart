@@ -15,7 +15,7 @@ class ComparisonController extends ChangeNotifier {
   ComparisonProject project;
   List<ComparisonProject> projects = [];
   ComparisonPlaybackDto? playback;
-  String message = '选择老师和自己的视频，按共同音乐开始对比。';
+  String message = '选择参考和目标视频，按共同音乐开始对比。';
   String? error;
   bool initialized = false, picking = false, matching = false, saving = false;
   bool calibrating = false;
@@ -407,7 +407,7 @@ class ComparisonController extends ChangeNotifier {
     await gateway.close();
     project = _newProject();
     playback = null;
-    message = '选择老师和自己的视频，按共同音乐开始对比。';
+    message = '选择参考和目标视频，按共同音乐开始对比。';
     error = null;
     _notify();
   }

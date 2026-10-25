@@ -86,7 +86,7 @@ class ComparisonManualView extends StatelessWidget {
   );
   Widget _pane(BuildContext context, int role) {
     final video = session.videos[role];
-    final label = role == 0 ? '老师' : '学生';
+    final label = role == 0 ? '参考' : '目标';
     final value = session.position(role);
     final duration = math.max(1, session.duration(role));
     return Container(

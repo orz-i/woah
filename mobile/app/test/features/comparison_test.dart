@@ -342,8 +342,10 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pump();
-      expect(find.text('舞蹈对比'), findsOneWidget);
-      expect(find.text('老师'), findsWidgets);
+      expect(find.text('舞蹈对比'), findsNothing);
+      expect(find.text('参考'), findsOneWidget);
+      expect(find.text('目标'), findsOneWidget);
+      expect(find.byIcon(Icons.expand_more), findsNothing);
       expect(find.byKey(const ValueKey('comparison-stage')), findsOneWidget);
       expect(
         find.byKey(const ValueKey('comparison-calibration')),
@@ -372,7 +374,7 @@ void main() {
         final source = find.byKey(ValueKey('comparison-pick-$role'));
         final rect = tester.getRect(source);
         expect(stage.contains(rect.center), isTrue);
-        await tester.tap(source);
+        await tester.tapAt(rect.bottomRight - const Offset(12, 12));
         await tester.pumpAndSettle();
         expect(gateway.pickedRoles.last, role);
       }
@@ -380,7 +382,11 @@ void main() {
         tester
             .getTopLeft(find.byKey(const ValueKey('comparison-pick-learner')))
             .dy,
-        greaterThan(stage.center.dy),
+        greaterThanOrEqualTo(stage.center.dy),
+      );
+      expect(
+        tester.getCenter(find.byKey(const ValueKey('comparison-view'))).dx,
+        closeTo(160, .1),
       );
       expect(find.text('项目'), findsNothing);
       await tester.tap(find.byKey(const ValueKey('comparison-history')));
@@ -391,7 +397,7 @@ void main() {
       for (final expected in [-2000000, 2000000]) {
         await tester.tap(find.byKey(const ValueKey('comparison-project-menu')));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('交换老师和学生'));
+        await tester.tap(find.text('交换参考和目标'));
         await tester.pumpAndSettle();
         expect(gateway.projects.first.offsetUs, expected);
       }
@@ -514,6 +520,10 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 400));
       expect(tester.takeException(), isNull);
+      expect(
+        tester.getCenter(find.byKey(const ValueKey('comparison-view'))).dx,
+        closeTo(400, .1),
+      );
       await tester.ensureVisible(find.byKey(const ValueKey('comparison-play')));
       expect(
         tester.getRect(find.byKey(const ValueKey('comparison-play'))).right,
@@ -522,6 +532,10 @@ void main() {
       tester.view.physicalSize = const Size(320, 640);
       await tester.pump(const Duration(milliseconds: 400));
       expect(tester.takeException(), isNull);
+      expect(
+        tester.getCenter(find.byKey(const ValueKey('comparison-view'))).dx,
+        closeTo(160, .1),
+      );
       await tester.ensureVisible(
         find.byKey(const ValueKey('comparison-speed')),
       );
@@ -546,9 +560,9 @@ void main() {
           expect(slider.width, greaterThanOrEqualTo(120));
           expect(controls.bottom, lessThanOrEqualTo(size.height));
           for (final label in [
-            role == 0 ? '播放老师' : '播放学生',
-            role == 0 ? '老师后退0.1秒' : '学生后退0.1秒',
-            role == 0 ? '老师前进0.1秒' : '学生前进0.1秒',
+            role == 0 ? '播放参考' : '播放目标',
+            role == 0 ? '参考后退0.1秒' : '目标后退0.1秒',
+            role == 0 ? '参考前进0.1秒' : '目标前进0.1秒',
           ]) {
             final target = tester.getSize(find.byTooltip(label));
             expect(target.width, greaterThanOrEqualTo(48));
@@ -740,7 +754,7 @@ void main() {
       final learnerRect = tester.getRect(
         find.byKey(const ValueKey('comparison-pick-learner')),
       );
-      expect(learnerRect.left, greaterThan(teacherRect.right));
+      expect(learnerRect.left, greaterThanOrEqualTo(teacherRect.right));
       expect(learnerRect.top, teacherRect.top);
       await tester.tap(find.byKey(const ValueKey('comparison-view')));
       await tester.pumpAndSettle();
@@ -852,6 +866,53 @@ void main() {
       expect(gateway.projects.first.learnerAnchorUs, 2000000);
       expect(gateway.projects.first.sideBySide, false);
       expect(gateway.projects.first.offsetUs, 2000000);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    },
+  );
+
+  testWidgets(
+    'empty reference and target slots select their own source and start automatic calibration',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final gateway = FakeComparisonGateway();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.darkTheme,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(2)),
+            child: child!,
+          ),
+          home: ComparisonScreen(gateway: gateway),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      expect(find.text('舞蹈对比'), findsNothing);
+      expect(find.text('选择参考视频'), findsOneWidget);
+      expect(find.text('选择目标视频'), findsOneWidget);
+      gateway.picked = teacher;
+      await tester.tap(find.byKey(const ValueKey('comparison-pick-teacher')));
+      await tester.pumpAndSettle();
+      expect(find.text('参考视频已选择'), findsOneWidget);
+      expect(find.text('选择目标视频'), findsOneWidget);
+      expect(gateway.alignCalls, 0);
+      gateway.picked = learner;
+      await tester.tap(find.byKey(const ValueKey('comparison-pick-learner')));
+      await tester.pumpAndSettle();
+      expect(gateway.pickedRoles, ['teacher', 'learner']);
+      expect(gateway.alignCalls, 1);
+      expect(gateway.projects.first.offsetUs, 3000000);
+      expect(gateway.projects.first.alignment, 'auto');
+      expect(find.text('参考'), findsOneWidget);
+      expect(find.text('目标'), findsOneWidget);
+      expect(find.byIcon(Icons.expand_more), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
