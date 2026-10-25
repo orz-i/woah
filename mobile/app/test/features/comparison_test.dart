@@ -335,12 +335,12 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('comparison-match')));
       await tester.pumpAndSettle();
-      expect(find.text('候选 1'), findsOneWidget);
+      expect(find.textContaining('候选 1'), findsOneWidget);
       await tester.tap(
         find.byKey(const ValueKey('comparison-calibration-close')),
       );
       await tester.pumpAndSettle();
-      expect(find.text('其他音乐位置'), findsNothing);
+      expect(find.text('匹配位置'), findsNothing);
       expect(
         tester.getSize(find.byKey(const ValueKey('comparison-stage'))),
         before,

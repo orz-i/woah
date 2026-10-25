@@ -481,6 +481,15 @@ class _ComparisonScreenState extends State<ComparisonScreen>
               ),
               const SizedBox(height: 8),
               Text(
+                '老师 ${comparisonTime(controller.project.teacherAnchorUs ?? math.max(0, -controller.project.offsetUs))}'
+                ' 对应学生 ${comparisonTime(controller.project.learnerAnchorUs ?? math.max(0, controller.project.offsetUs))}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.flowTextSecondary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
                 controller.message,
                 style: const TextStyle(
                   fontSize: 13,
@@ -521,7 +530,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
               if (!controller.matching && controller.candidates.isNotEmpty) ...[
                 const Divider(height: 32),
                 const Text(
-                  '其他音乐位置',
+                  '匹配位置',
                   style: TextStyle(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
@@ -545,7 +554,12 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                             Row(
                               children: [
                                 Expanded(
-                                  child: Text('候选 ${i + 1}'),
+                                  child: Text(
+                                    controller.candidates[i].offsetUs ==
+                                            controller.project.offsetUs
+                                        ? '候选 ${i + 1} · 当前'
+                                        : '候选 ${i + 1}',
+                                  ),
                                 ),
                                 TextButton(
                                   onPressed: () {
@@ -561,13 +575,11 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                               ],
                             ),
                             Text(
-                              '音乐偏移 ${(controller.candidates[i].offsetUs / 1e6)
-                                      .toStringAsFixed(3)} 秒',
+                              '音乐偏移 ${(controller.candidates[i].offsetUs / 1e6).toStringAsFixed(3)} 秒',
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '${controller.candidates[i].consistentWindows}/3 段一致 · 共同段约 ${controller.candidates[i].supportedSeconds
-                                      .toStringAsFixed(1)} 秒',
+                              '${controller.candidates[i].consistentWindows}/3 段一致 · 共同段约 ${controller.candidates[i].supportedSeconds.toStringAsFixed(1)} 秒',
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: AppTheme.flowTextSecondary,
@@ -627,10 +639,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
             forward ? Icons.forward_rounded : Icons.replay_rounded,
             size: 22,
           ),
-          Text(
-            '${stepUs ~/ 1000000}秒',
-            style: const TextStyle(fontSize: 11),
-          ),
+          Text('${stepUs ~/ 1000000}秒', style: const TextStyle(fontSize: 11)),
         ],
       ),
     ),
