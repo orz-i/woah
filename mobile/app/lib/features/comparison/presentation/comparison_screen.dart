@@ -32,6 +32,12 @@ class _ComparisonScreenState extends State<ComparisonScreen>
   ComparisonManualSession? _manualSession;
   bool _finishingManual = false, _orientationOverridden = false;
   bool _rotating = false;
+  static const _orientationChannel = MethodChannel(
+    'art.gaoge.dance/orientation',
+  );
+  DeviceOrientation? _returnOrientation;
+  int? _returnRotation;
+  Future<void>? _restoringOrientation;
   bool get _landscape =>
       MediaQuery.orientationOf(context) == Orientation.landscape;
   bool get _sideBySide => controller.project.sideBySide ?? _landscape;
@@ -68,6 +74,8 @@ class _ComparisonScreenState extends State<ComparisonScreen>
       _exiting = false;
       return;
     }
+    await _restoreOrientation();
+    if (!mounted) return;
     setState(() => _allowPop = true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) context.pop();
@@ -77,9 +85,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    if (_orientationOverridden) {
-      unawaited(SystemChrome.setPreferredOrientations([]));
-    }
+    if (_orientationOverridden) unawaited(_restoreOrientation());
     if (_manualSession != null) unawaited(_manualSession!.close());
     controller.dispose();
     super.dispose();
@@ -194,6 +200,24 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     final landscape = _landscape;
     setState(() => _rotating = true);
     try {
+      if (_returnOrientation == null) {
+        try {
+          _returnRotation = await _orientationChannel.invokeMethod<int>(
+            'getRotation',
+          );
+        } on MissingPluginException {
+          // Other platforms can still restore the entry orientation class.
+        }
+        if (!mounted) return;
+        final reversed = (_returnRotation ?? 0) >= 2;
+        _returnOrientation = landscape
+            ? (reversed
+                  ? DeviceOrientation.landscapeRight
+                  : DeviceOrientation.landscapeLeft)
+            : (reversed
+                  ? DeviceOrientation.portraitDown
+                  : DeviceOrientation.portraitUp);
+      }
       _orientationOverridden = true;
       await SystemChrome.setPreferredOrientations(
         landscape
@@ -209,6 +233,34 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     } finally {
       if (mounted) setState(() => _rotating = false);
     }
+  }
+
+  Future<void> _restoreOrientation() {
+    if (!_orientationOverridden) return Future.value();
+    return _restoringOrientation ??= () async {
+      try {
+        if (_returnOrientation != null) {
+          // Returning directly to OS policy can retain the forced angle on the
+          // current Android device. Restore its entry angle first, then release.
+          await SystemChrome.setPreferredOrientations([_returnOrientation!]);
+          if (_returnRotation != null) {
+            try {
+              await _orientationChannel.invokeMethod<void>(
+                'waitForRotation',
+                _returnRotation,
+              );
+            } on PlatformException {
+              // Release the override even when a device refuses rotation.
+            } on MissingPluginException {
+              // The platform may not expose an angle acknowledgement.
+            }
+          }
+        }
+      } finally {
+        await SystemChrome.setPreferredOrientations([]);
+        _orientationOverridden = false;
+      }
+    }();
   }
 
   Widget _viewMenu() => PopupMenuButton<_ComparisonViewAction>(

@@ -684,6 +684,16 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       final directions = <List<dynamic>>[];
+      final restoredAngles = <int>[];
+      const angleChannel = MethodChannel('art.gaoge.dance/orientation');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(angleChannel, (call) async {
+            if (call.method == 'getRotation') return 0;
+            if (call.method == 'waitForRotation') {
+              restoredAngles.add(call.arguments as int);
+            }
+            return null;
+          });
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(SystemChannels.platform, (call) async {
             if (call.method == 'SystemChrome.setPreferredOrientations') {
@@ -694,6 +704,8 @@ void main() {
       addTearDown(() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(SystemChannels.platform, null);
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(angleChannel, null);
       });
       final gateway = FakeComparisonGateway(saved: [savedProject()]);
       await tester.pumpWidget(
@@ -759,7 +771,11 @@ void main() {
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
+      expect(directions[directions.length - 2], [
+        'DeviceOrientation.portraitUp',
+      ]);
       expect(directions.last, isEmpty);
+      expect(restoredAngles, [0]);
       final restored = ComparisonController(gateway);
       await restored.initialize();
       expect(restored.project.sideBySide, false);
