@@ -10,6 +10,7 @@ import android.os.Handler
 import android.view.Surface
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 internal class ComparisonGlCancelled : RuntimeException()
 
@@ -34,6 +35,7 @@ internal class ComparisonCodecVideo(
     private var codec: MediaCodec? = null
     private val surface = Surface(texture)
     private val signal = Semaphore(0)
+    private val everSignalled = AtomicBoolean(false)
     private val bufferInfo = MediaCodec.BufferInfo()
     private var pending: Output? = null
     private var inputEos = false
@@ -83,7 +85,10 @@ internal class ComparisonCodecVideo(
             f.setInteger(MediaFormat.KEY_ROTATION, 0)
             extractor.selectTrack(videoIndex)
             texture.setDefaultBufferSize(width, height)
-            texture.setOnFrameAvailableListener({ signal.release() }, callbackHandler)
+            texture.setOnFrameAvailableListener({
+                everSignalled.set(true)
+                signal.release()
+            }, callbackHandler)
             val decoder = MediaCodec.createDecoderByType(mime)
             codec = decoder
             description = ComparisonVideoDescription(width, height, rotation,
@@ -103,6 +108,10 @@ internal class ComparisonCodecVideo(
         val decoder = codec ?: error("Decoder closed")
         pending?.let { decoder.releaseOutputBuffer(it.index, false) }
         pending = null
+        // Cancellation may leave a queued producer image without a fresh
+        // callback (SurfaceTexture coalesces frame-available notifications).
+        // Consume it on this GL thread before resetting the codec generation.
+        if (everSignalled.get()) texture.updateTexImage()
         decoder.flush()
         extractor.seekTo(sourceUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
         inputEos = false
@@ -196,11 +205,19 @@ internal class ComparisonCodecVideo(
         val deadline = System.nanoTime() + 1_000_000_000L
         while (true) {
             checkCurrent()
-            if (signal.tryAcquire(5, TimeUnit.MILLISECONDS)) {
+            if (!signal.tryAcquire(5, TimeUnit.MILLISECONDS)) textureWaits++
+            // A cancelled seek can consume/drain the only callback while its
+            // image remains queued. Poll the actual consumer as well as the
+            // wakeup; the source timestamp, never callback count, is the gate.
+            // A new empty texture reports timestamp zero, so it must first have
+            // received a real producer notification before zero-PTS can pass.
+            if (everSignalled.get()) {
                 texture.updateTexImage()
                 if (kotlin.math.abs(texture.timestamp / 1000L - ptsUs) <= 1L) break
-            } else textureWaits++
-            check(System.nanoTime() < deadline) { "SurfaceTexture PTS latch timeout" }
+            }
+            check(System.nanoTime() < deadline) {
+                "SurfaceTexture PTS latch timeout: expected=$ptsUs actual=${texture.timestamp/1000L}"
+            }
         }
         texture.getTransformMatrix(matrix)
         displayedPtsUs = ptsUs
