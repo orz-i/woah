@@ -139,11 +139,12 @@ class FakeComparisonGateway implements ComparisonGateway {
 }
 
 class FakeCueVideo extends VideoPlayerController {
-  FakeCueVideo(String source, this.events)
+  FakeCueVideo(String source, this.events, {this.onDispose})
     : super.contentUri(Uri.parse(source)) {
     events.add('preview-create');
   }
   final List<String> events;
+  final VoidCallback? onDispose;
   bool closed = false;
   @override
   Future<void> initialize() async {
@@ -171,6 +172,7 @@ class FakeCueVideo extends VideoPlayerController {
 
   @override
   Future<void> dispose() async {
+    onDispose?.call();
     closed = true;
     events.add('preview-close');
     await super.dispose();
@@ -494,7 +496,11 @@ void main() {
           home: ComparisonScreen(
             gateway: gateway,
             manualVideoFactory: (uri) {
-              final video = FakeCueVideo(uri, gateway.events);
+              final video = FakeCueVideo(
+                uri,
+                gateway.events,
+                onDispose: () => expect(find.byType(VideoPlayer), findsNothing),
+              );
               previews.add(video);
               return video;
             },

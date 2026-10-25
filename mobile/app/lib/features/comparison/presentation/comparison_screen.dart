@@ -48,6 +48,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
   }
 
   Future<void> _exit() async {
+    if (_finishingManual) return;
     if (_manualSession != null) {
       await _finishManual(false);
       return;
@@ -160,9 +161,12 @@ class _ComparisonScreenState extends State<ComparisonScreen>
         if (!mounted) return;
         if (!await controller.manual(anchors.$1, anchors.$2)) return;
       }
+      // Remove both preview Texture widgets and their listeners before releasing
+      // their producers. The shared GL surface is opened only after that frame.
+      setState(() => _manualSession = null);
+      await WidgetsBinding.instance.endOfFrame;
       await session.close();
       if (!mounted) return;
-      setState(() => _manualSession = null);
       await controller.leaveManualCalibration(applied: apply);
     } catch (_) {
       if (mounted) {
