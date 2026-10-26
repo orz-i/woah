@@ -266,3 +266,21 @@ final result: passed
 - Checklist：布局切换、保存兼容、页面横竖屏、手动窄栏、播放恢复、退出还原、真机证据均完成。详见 docs/comparison-views-2026-10-26.md。
 
 final result: passed
+
+
+## 中央视图与参考/目标画面选片 — 2026-10-26
+
+- Source visual truth：用户四项明确调整，以及 docs/session/comparison-ux-20261025/21-reference-target-before.png；隐私打码页的 `_buildTopActions` 文字与箭头排列作为入口样式参照。实施沿用现有 Flutter 页面、主题、原生图标和素材。
+- Implementation：1831a65、8319f20；最终 22-empty-final.png、22-loaded-final.png、22-centered-menu.png 和 22-landscape-menu.png。
+- Viewport/state：KB2000，竖屏 1080×2400 / DPR 3，横屏 2400×1080；原空槽图与最终空槽图同尺寸。用户本轮已改自动 +1.490s、17.899s、1×，不与上一轮 +1.450s 素材帧作像素相等比较。
+- Full-view/focused evidence：原空槽、最终空槽、最终竖屏菜单和横屏菜单在同一视觉输入中对照；检查导航、角色、选片入口、公共控制台与弹出面板。完整图可读，无需额外裁切。
+- Fonts/typography：中央文字使用 13.5sp / w500，箭头 18dp；角色标签 12sp，沿用 AppTheme 字体。320×640、800×360 与 2 倍字号回归无溢出。
+- Spacing/layout：移除标题与角色下拉，整个 pane 作为选片命中区域；标题保留 104×48dp 隐形触控区，菜单宽 200dp。竖屏菜单与入口中心同为 540px，横屏安全区同为 1252px；顶部历史仍只有图标。
+- Colors/tokens：沿用黑色舞台、石墨控制台、银白文字、金色播放与滑条；角色无描边，顶部入口不增加胶囊装饰。
+- Image quality：保持原视频适配比例；使用原生加号和角色文字表达空槽，无新图片。参考源内自带播放器和结尾暗帧继续保留。
+- Copy/content：页面与手动页统一“参考 / 目标”，包含空槽提示、选片/更换无障碍名称、交换菜单和历史缺片回退文案；内部保存字段兼容。
+- Findings/iterations：初版仅触发文字居中，弹出面板仍偏右（21-centered-view-menu.png），记录为 P2。8319f20 通过显式宽度与偏移修正，并补充实际弹出条目中心断言；最终真机横竖屏均关闭该 P2。无待处理的本次 P0/P1/P2。
+- Validation：17 项专项回归、静态检查、Debug 构建及覆盖安装通过，本地/安装 APK SHA-256 一致。两路已加载画面和空槽选片均可取消返回；手动取消保留校准；两条历史的 ID、标题、偏移、校准状态、锚点、位置、速度和布局均保留。最终运行日志无应用异常。
+- Checklist/limits：四项明确调整与相关检查完成；单台 Android 14 结论，原素材自带 UI 的限制保留；不扩展全产品可访问性、多机型或全量 Release 验收。详细数据见 docs/comparison-reference-target-2026-10-26.md。
+
+final result: passed
