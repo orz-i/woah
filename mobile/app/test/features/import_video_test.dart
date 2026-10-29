@@ -13,7 +13,12 @@ void main() {
       final semantics = tester.ensureSemantics();
 
       await tester.pumpWidget(
-        const ProviderScope(child: MaterialApp(home: ImportVideoScreen())),
+        ProviderScope(
+          child: MaterialApp(
+            theme: AppTheme.darkTheme,
+            home: const ImportVideoScreen(),
+          ),
+        ),
       );
       await tester.pump();
 
@@ -59,7 +64,12 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
 
       await tester.pumpWidget(
-        const ProviderScope(child: MaterialApp(home: ImportVideoScreen())),
+        ProviderScope(
+          child: MaterialApp(
+            theme: AppTheme.darkTheme,
+            home: const ImportVideoScreen(),
+          ),
+        ),
       );
       await tester.pump();
 
@@ -87,8 +97,9 @@ void main() {
       );
 
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
+        MaterialApp(
+          theme: AppTheme.darkTheme,
+          home: const Scaffold(
             body: VideoMetadataCard(
               info: horizontalInfo,
               fileName: 'dance_clip_01.mp4',
@@ -129,8 +140,9 @@ void main() {
         );
 
         await tester.pumpWidget(
-          const MaterialApp(
-            home: Scaffold(
+          MaterialApp(
+            theme: AppTheme.darkTheme,
+            home: const Scaffold(
               body: VideoMetadataCard(
                 info: verticalRotatedInfo,
                 fileName: 'phone_recorded_dance.mp4',

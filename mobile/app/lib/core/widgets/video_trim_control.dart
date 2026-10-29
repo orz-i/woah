@@ -41,9 +41,11 @@ class _VideoTrimControlState extends State<VideoTrimControl> {
       key: const ValueKey('integrated-video-trim-control'),
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 9),
       decoration: BoxDecoration(
-        color: AppTheme.flowSurfaceSoft.withValues(alpha: 0.72),
+        color: AppTheme.of(context).flowSurfaceSoft.withValues(alpha: 0.72),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.flowBorder.withValues(alpha: 0.72)),
+        border: Border.all(
+          color: AppTheme.of(context).flowBorder.withValues(alpha: 0.72),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -198,7 +200,7 @@ class _VideoTrimControlState extends State<VideoTrimControl> {
                   child: Container(
                     decoration: BoxDecoration(
                       border: Border.all(
-                        color: AppTheme.editorSelection,
+                        color: AppTheme.of(context).editorSelection,
                         width: 2,
                       ),
                       borderRadius: BorderRadius.circular(8),
@@ -252,12 +254,15 @@ class _TrimHandle extends StatelessWidget {
       width: 14,
       height: 54,
       decoration: BoxDecoration(
-        color: AppTheme.flowSurface,
+        color: AppTheme.of(context).flowSurface,
         borderRadius: BorderRadius.horizontal(
           left: Radius.circular(isLeft ? 8 : 3),
           right: Radius.circular(isLeft ? 3 : 8),
         ),
-        border: Border.all(color: AppTheme.editorSelection, width: 2),
+        border: Border.all(
+          color: AppTheme.of(context).editorSelection,
+          width: 2,
+        ),
         boxShadow: const [
           BoxShadow(
             color: Color(0x22000000),
@@ -271,7 +276,7 @@ class _TrimHandle extends StatelessWidget {
         width: 2.5,
         height: 16,
         decoration: BoxDecoration(
-          color: AppTheme.editorSelection,
+          color: AppTheme.of(context).editorSelection,
           borderRadius: BorderRadius.circular(1.5),
         ),
       ),
@@ -297,8 +302,8 @@ class _Metric extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: AppTheme.flowTextSecondary,
+          style: TextStyle(
+            color: AppTheme.of(context).flowTextSecondary,
             fontSize: 10.5,
             fontWeight: FontWeight.w500,
           ),
@@ -308,8 +313,8 @@ class _Metric extends StatelessWidget {
           value,
           style: TextStyle(
             color: emphasize
-                ? AppTheme.editorSelection
-                : AppTheme.flowTextPrimary,
+                ? AppTheme.of(context).editorSelection
+                : AppTheme.of(context).flowTextPrimary,
             fontSize: 13,
             fontWeight: FontWeight.w700,
             fontFeatures: const [FontFeature.tabularFigures()],
@@ -329,7 +334,7 @@ class _MetricDivider extends StatelessWidget {
       width: 1,
       height: 28,
       margin: const EdgeInsets.symmetric(horizontal: 5),
-      color: AppTheme.flowBorder,
+      color: AppTheme.of(context).flowBorder,
     );
   }
 }

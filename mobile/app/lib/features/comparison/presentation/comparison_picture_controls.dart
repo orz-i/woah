@@ -44,8 +44,8 @@ class ComparisonPictureControls extends StatelessWidget {
       onPressed: saving ? null : onApply,
       key: const ValueKey('comparison-picture-apply'),
       style: FilledButton.styleFrom(
-        backgroundColor: AppTheme.brandAction,
-        foregroundColor: AppTheme.textOnAccent,
+        backgroundColor: AppTheme.of(context).brandAction,
+        foregroundColor: AppTheme.of(context).textOnAccent,
         minimumSize: const Size(48, 48),
       ),
       child: Text(saving ? '正在保存…' : '完成调整'),
@@ -75,7 +75,7 @@ class ComparisonPictureControls extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (error != null)
-            Text(error!, style: const TextStyle(color: AppTheme.error)),
+            Text(error!, style: TextStyle(color: AppTheme.of(context).error)),
           LayoutBuilder(
             builder: (context, bounds) => bounds.maxWidth < 280
                 ? Column(
@@ -93,9 +93,12 @@ class ComparisonPictureControls extends StatelessWidget {
                   ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             '双指缩放，放大后拖动',
-            style: TextStyle(fontSize: 12, color: AppTheme.flowTextSecondary),
+            style: TextStyle(
+              fontSize: 12,
+              color: AppTheme.of(context).flowTextSecondary,
+            ),
           ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

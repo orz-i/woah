@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'router.dart';
 import 'brand.dart';
@@ -33,10 +34,23 @@ class _WoahAppState extends ConsumerState<WoahApp> with WidgetsBindingObserver {
   }
 
   @override
+  void didChangePlatformBrightness() {
+    // MaterialApp's ThemeMode.system rebuilds its inherited Theme on its own.
+    // System navigation icons are managed outside Flutter's widget tree.
+    SystemChrome.setSystemUIOverlayStyle(
+      appSystemUiStyleFor(
+        WidgetsBinding.instance.platformDispatcher.platformBrightness,
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
       title: AppBrand.english,
-      theme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
       routerConfig: appRouter,
       debugShowCheckedModeBanner: false,
     );

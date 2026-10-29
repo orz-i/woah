@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'palette.dart';
 
 /// Woah (舞哇) / Quiet Frame v1.1 product color roles.
 ///
@@ -98,63 +99,128 @@ class AppTheme {
     );
   }
 
-  static ThemeData get darkTheme {
+  /// The dark palette is the existing approved Quiet Frame identity.
+  static const darkColors = WoahPalette(
+    background: background,
+    flowBackground: flowBackground,
+    flowSurface: flowSurface,
+    flowSurfaceSoft: flowSurfaceSoft,
+    flowTextPrimary: flowTextPrimary,
+    flowTextSecondary: flowTextSecondary,
+    flowTextMuted: flowTextMuted,
+    flowBorder: flowBorder,
+    surfaceElevated: surfaceElevated,
+    surfaceHigh: surfaceHigh,
+    surfaceBorder: surfaceBorder,
+    sliderTrackInactive: sliderTrackInactive,
+    brandAction: brandAction,
+    brandOnAction: brandOnAction,
+    editorSelection: editorSelection,
+    editorSelectionSubtle: editorSelectionSubtle,
+    controlBorder: controlBorder,
+    textPrimary: textPrimary,
+    textSecondary: textSecondary,
+    textMuted: textMuted,
+    textOnAccent: textOnAccent,
+    error: error,
+    statusWarning: statusWarning,
+    statusWarningSubtle: statusWarningSubtle,
+    statusSuccess: statusSuccess,
+  );
+
+  /// Pearl-background companion palette: same Woah identity, not inverted video.
+  static const lightColors = WoahPalette(
+    background: Color(0xFFF2F6F3),
+    flowBackground: Color(0xFFF2F6F3),
+    flowSurface: Color(0xFFFFFFFF),
+    flowSurfaceSoft: Color(0xFFE7F0EC),
+    flowTextPrimary: Color(0xFF142123),
+    flowTextSecondary: Color(0xFF435E59),
+    flowTextMuted: Color(0xFF52706A),
+    flowBorder: Color(0xFFB7CFC7),
+    surfaceElevated: Color(0xFFFFFFFF),
+    surfaceHigh: Color(0xFFE3EEE9),
+    surfaceBorder: Color(0xFFB7CFC7),
+    sliderTrackInactive: Color(0xFFA4BBB4),
+    brandAction: Color(0xFF216A5E),
+    brandOnAction: Color(0xFFFFFFFF),
+    editorSelection: Color(0xFF216A5E),
+    editorSelectionSubtle: Color(0x28216A5E),
+    controlBorder: Color(0xFF718F85),
+    textPrimary: Color(0xFF142123),
+    textSecondary: Color(0xFF435E59),
+    textMuted: Color(0xFF52706A),
+    textOnAccent: Color(0xFFFFFFFF),
+    error: Color(0xFFAD3044),
+    statusWarning: Color(0xFF865A17),
+    statusWarningSubtle: Color(0x22865A17),
+    statusSuccess: Color(0xFF216A5E),
+  );
+
+  /// Reading the inherited Theme ensures screens update on an OS appearance
+  /// change, including when a media editor is already open.
+  static WoahPalette of(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+      ? darkColors
+      : lightColors;
+
+  static ThemeData get darkTheme => _buildTheme(darkColors, Brightness.dark);
+
+  static ThemeData get lightTheme => _buildTheme(lightColors, Brightness.light);
+
+  static ThemeData _buildTheme(WoahPalette c, Brightness brightness) {
     final base = ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
-      scaffoldBackgroundColor: background,
-      colorScheme: const ColorScheme(
-        brightness: Brightness.dark,
-        primary: brandAction,
-        onPrimary: brandOnAction,
-        secondary: brandSecondary,
-        onSecondary: brandInk,
-        surface: surface,
-        onSurface: textPrimary,
-        error: error,
-        onError: brandInk,
+      brightness: brightness,
+      scaffoldBackgroundColor: c.background,
+      colorScheme: ColorScheme(
+        brightness: brightness,
+        primary: c.brandAction,
+        onPrimary: c.brandOnAction,
+        secondary: c.flowTextSecondary,
+        onSecondary: c.background,
+        surface: c.flowSurface,
+        onSurface: c.textPrimary,
+        error: c.error,
+        onError: c.background,
       ),
     );
 
     return base.copyWith(
       textTheme: base.textTheme.copyWith(
-        headlineLarge: const TextStyle(
-          color: textPrimary,
+        headlineLarge: TextStyle(
+          color: c.textPrimary,
           fontSize: 36,
           height: 1.05,
           fontWeight: FontWeight.w700,
           letterSpacing: -1.2,
         ),
-        headlineSmall: const TextStyle(
-          color: textPrimary,
+        headlineSmall: TextStyle(
+          color: c.textPrimary,
           fontSize: 22,
           height: 1.2,
           fontWeight: FontWeight.w700,
           letterSpacing: -0.4,
         ),
-        titleLarge: const TextStyle(
-          color: textPrimary,
+        titleLarge: TextStyle(
+          color: c.textPrimary,
           fontSize: 18,
           height: 1.25,
           fontWeight: FontWeight.w600,
         ),
-        titleMedium: const TextStyle(
-          color: textPrimary,
+        titleMedium: TextStyle(
+          color: c.textPrimary,
           fontSize: 16,
           height: 1.3,
           fontWeight: FontWeight.w600,
         ),
-        bodyLarge: const TextStyle(
-          color: textPrimary,
-          fontSize: 15,
-          height: 1.45,
-        ),
-        bodyMedium: const TextStyle(
-          color: textSecondary,
+        bodyLarge: TextStyle(color: c.textPrimary, fontSize: 15, height: 1.45),
+        bodyMedium: TextStyle(
+          color: c.textSecondary,
           fontSize: 14,
           height: 1.45,
         ),
-        bodySmall: const TextStyle(color: textMuted, fontSize: 12, height: 1.4),
+        bodySmall: TextStyle(color: c.textMuted, fontSize: 12, height: 1.4),
         labelLarge: const TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w600,
@@ -162,22 +228,22 @@ class AppTheme {
         ),
       ),
       cardTheme: CardThemeData(
-        color: surfaceElevated,
+        color: c.surfaceElevated,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusMedium),
-          side: const BorderSide(color: controlBorder, width: 1),
+          side: BorderSide(color: c.controlBorder, width: 1),
         ),
       ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: background,
+      appBarTheme: AppBarTheme(
+        backgroundColor: c.background,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        iconTheme: IconThemeData(color: textPrimary),
+        iconTheme: IconThemeData(color: c.textPrimary),
         titleTextStyle: TextStyle(
-          color: textPrimary,
+          color: c.textPrimary,
           fontSize: 16,
           fontWeight: FontWeight.w600,
           letterSpacing: -0.1,
@@ -186,10 +252,10 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           minimumSize: const Size(minTouchTarget, minTouchTarget),
-          backgroundColor: surfaceHigh,
-          foregroundColor: textPrimary,
-          disabledBackgroundColor: surfaceHigh,
-          disabledForegroundColor: metalLow,
+          backgroundColor: c.surfaceHigh,
+          foregroundColor: c.textPrimary,
+          disabledBackgroundColor: c.surfaceHigh,
+          disabledForegroundColor: c.textMuted,
           elevation: 0,
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
           shape: RoundedRectangleBorder(
@@ -200,8 +266,8 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(minTouchTarget, minTouchTarget),
-          foregroundColor: textPrimary,
-          side: const BorderSide(color: surfaceBorder, width: 1),
+          foregroundColor: c.textPrimary,
+          side: BorderSide(color: c.controlBorder, width: 1),
           textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusMedium),
@@ -211,65 +277,65 @@ class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           minimumSize: const Size(minTouchTarget, minTouchTarget),
-          foregroundColor: textPrimary,
+          foregroundColor: c.textPrimary,
           textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
           minimumSize: const Size(minTouchTarget, minTouchTarget),
-          foregroundColor: textPrimary,
+          foregroundColor: c.textPrimary,
         ),
       ),
-      dividerTheme: const DividerThemeData(
-        color: surfaceBorder,
+      dividerTheme: DividerThemeData(
+        color: c.surfaceBorder,
         thickness: 1,
         space: 24,
       ),
-      sliderTheme: const SliderThemeData(
-        activeTrackColor: editorSelection,
-        inactiveTrackColor: sliderTrackInactive,
-        thumbColor: editorSelection,
-        overlayColor: editorSelectionSubtle,
+      sliderTheme: SliderThemeData(
+        activeTrackColor: c.editorSelection,
+        inactiveTrackColor: c.sliderTrackInactive,
+        thumbColor: c.editorSelection,
+        overlayColor: c.editorSelectionSubtle,
         trackHeight: 4,
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return brandOnAction;
-          return metalMid;
+          if (states.contains(WidgetState.selected)) return c.brandOnAction;
+          return c.textMuted;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return brandAction;
-          return surfaceHigh;
+          if (states.contains(WidgetState.selected)) return c.brandAction;
+          return c.surfaceHigh;
         }),
-        trackOutlineColor: WidgetStateProperty.all(surfaceBorder),
+        trackOutlineColor: WidgetStateProperty.all(c.surfaceBorder),
       ),
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: flowSurface,
-        contentTextStyle: const TextStyle(
-          color: flowTextPrimary,
+        backgroundColor: c.flowSurface,
+        contentTextStyle: TextStyle(
+          color: c.flowTextPrimary,
           fontSize: 13,
           fontWeight: FontWeight.w500,
         ),
-        actionTextColor: brandAction,
+        actionTextColor: c.brandAction,
         elevation: 8,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusMedium),
-          side: const BorderSide(color: flowBorder),
+          side: BorderSide(color: c.flowBorder),
         ),
       ),
-      bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: surface,
-        modalBackgroundColor: surface,
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: c.flowSurface,
+        modalBackgroundColor: c.flowSurface,
         surfaceTintColor: Colors.transparent,
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: surfaceElevated,
+        backgroundColor: c.surfaceElevated,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusLarge),
-          side: const BorderSide(color: controlBorder),
+          side: BorderSide(color: c.controlBorder),
         ),
       ),
     );

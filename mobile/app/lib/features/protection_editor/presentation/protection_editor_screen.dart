@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../../app/system_ui.dart';
 import '../../../app/theme.dart';
 import '../../effect_editor/domain/effect_editor_state.dart';
 import '../../effect_editor/presentation/effect_editor_controller.dart';
@@ -500,18 +501,9 @@ class _ProtectionEditorScreenState
         _requestReturn();
       },
       child: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: const SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.light,
-          statusBarBrightness: Brightness.dark,
-          systemNavigationBarColor: Color(0xFF111112),
-          systemNavigationBarIconBrightness: Brightness.light,
-          systemNavigationBarDividerColor: Colors.transparent,
-          systemStatusBarContrastEnforced: false,
-          systemNavigationBarContrastEnforced: false,
-        ),
+        value: appSystemUiStyleFor(Theme.of(context).brightness),
         child: Scaffold(
-          backgroundColor: const Color(0xFF050506),
+          backgroundColor: AppTheme.of(context).background,
           resizeToAvoidBottomInset: false,
           body: SafeArea(
             bottom: false,
@@ -587,7 +579,7 @@ class _ProtectionEditorScreenState
                 button: true,
                 child: Icon(
                   Icons.close_rounded,
-                  color: AppTheme.textPrimary,
+                  color: AppTheme.of(context).textPrimary,
                   size: 24,
                 ),
               ),
@@ -607,16 +599,16 @@ class _ProtectionEditorScreenState
                 children: [
                   Text(
                     resLabel,
-                    style: const TextStyle(
-                      color: AppTheme.textPrimary,
+                    style: TextStyle(
+                      color: AppTheme.of(context).textPrimary,
                       fontSize: 13.5,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   const SizedBox(width: 1),
-                  const Icon(
+                  Icon(
                     Icons.arrow_drop_down_rounded,
-                    color: AppTheme.textSecondary,
+                    color: AppTheme.of(context).textSecondary,
                     size: 18,
                   ),
                 ],
@@ -637,8 +629,8 @@ class _ProtectionEditorScreenState
                 child: Icon(
                   Icons.file_upload_outlined,
                   color: nextEnabled
-                      ? AppTheme.editorSelection
-                      : AppTheme.textMuted,
+                      ? AppTheme.of(context).editorSelection
+                      : AppTheme.of(context).textMuted,
                   size: 24,
                 ),
               ),
@@ -672,9 +664,11 @@ class _ProtectionEditorScreenState
                 child: Container(
                   width: 248,
                   decoration: BoxDecoration(
-                    color: AppTheme.surfaceElevated,
+                    color: AppTheme.of(context).surfaceElevated,
                     borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                    border: Border.all(color: AppTheme.surfaceBorder),
+                    border: Border.all(
+                      color: AppTheme.of(context).surfaceBorder,
+                    ),
                     boxShadow: const [
                       BoxShadow(
                         color: Color(0x7F000000),
@@ -695,7 +689,10 @@ class _ProtectionEditorScreenState
                         current,
                         effectController,
                       ),
-                      const Divider(height: 1, color: AppTheme.surfaceBorder),
+                      Divider(
+                        height: 1,
+                        color: AppTheme.of(context).surfaceBorder,
+                      ),
                       _buildResolutionDialogItem(
                         dialogContext,
                         OutputResolutionPreset.fhd,
@@ -704,7 +701,10 @@ class _ProtectionEditorScreenState
                         current,
                         effectController,
                       ),
-                      const Divider(height: 1, color: AppTheme.surfaceBorder),
+                      Divider(
+                        height: 1,
+                        color: AppTheme.of(context).surfaceBorder,
+                      ),
                       _buildResolutionDialogItem(
                         dialogContext,
                         OutputResolutionPreset.hd,
@@ -763,8 +763,8 @@ class _ProtectionEditorScreenState
                     label,
                     style: TextStyle(
                       color: isSelected
-                          ? AppTheme.editorSelection
-                          : AppTheme.textPrimary,
+                          ? AppTheme.of(context).editorSelection
+                          : AppTheme.of(context).textPrimary,
                       fontSize: 14,
                       fontWeight: isSelected
                           ? FontWeight.w700
@@ -774,8 +774,8 @@ class _ProtectionEditorScreenState
                   const SizedBox(height: 2),
                   Text(
                     desc,
-                    style: const TextStyle(
-                      color: AppTheme.textMuted,
+                    style: TextStyle(
+                      color: AppTheme.of(context).textMuted,
                       fontSize: 11,
                     ),
                   ),
@@ -783,9 +783,9 @@ class _ProtectionEditorScreenState
               ),
             ),
             if (isSelected)
-              const Icon(
+              Icon(
                 Icons.check_rounded,
-                color: AppTheme.editorSelection,
+                color: AppTheme.of(context).editorSelection,
                 size: 18,
               ),
           ],
@@ -896,21 +896,23 @@ class _ProtectionEditorScreenState
                     decoration: BoxDecoration(
                       color: const Color(0xE619191B),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppTheme.surfaceBorder),
+                      border: Border.all(
+                        color: AppTheme.darkColors.surfaceBorder,
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.person_search_outlined,
                           size: 17,
-                          color: AppTheme.editorSelection,
+                          color: AppTheme.darkColors.editorSelection,
                         ),
                         const SizedBox(width: 6),
-                        const Text(
+                        Text(
                           '轻触人物选择主角',
                           style: TextStyle(
-                            color: AppTheme.textPrimary,
+                            color: AppTheme.darkColors.textPrimary,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -930,10 +932,10 @@ class _ProtectionEditorScreenState
                             effectController.showSourceFrame(false);
                             _scheduleProfilePersist();
                           },
-                          icon: const Icon(
+                          icon: Icon(
                             Icons.close_rounded,
                             size: 18,
-                            color: AppTheme.textSecondary,
+                            color: AppTheme.darkColors.textSecondary,
                           ),
                         ),
                       ],
@@ -953,10 +955,10 @@ class _ProtectionEditorScreenState
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.touch_app_rounded,
                       size: 14,
-                      color: AppTheme.editorSelection,
+                      color: AppTheme.darkColors.editorSelection,
                       shadows: [
                         Shadow(
                           color: Colors.black87,
@@ -970,8 +972,8 @@ class _ProtectionEditorScreenState
                       selectionState.privacyTargetIds.isEmpty
                           ? '轻触人物选择保护对象'
                           : '轻触画面中的人物可调整保护对象',
-                      style: const TextStyle(
-                        color: AppTheme.textPrimary,
+                      style: TextStyle(
+                        color: AppTheme.darkColors.textPrimary,
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                         shadows: [
@@ -1058,8 +1060,8 @@ class _ProtectionEditorScreenState
               icon,
               size: iconSize + 3,
               color: enabled
-                  ? AppTheme.textPrimary
-                  : AppTheme.textMuted.withAlpha(120),
+                  ? AppTheme.darkColors.textPrimary
+                  : AppTheme.darkColors.textMuted.withAlpha(120),
               shadows: const [
                 Shadow(
                   color: Colors.black87,
@@ -1090,8 +1092,8 @@ class _ProtectionEditorScreenState
               width: 84,
               child: Text(
                 '$currentStr / $totalStr',
-                style: const TextStyle(
-                  color: AppTheme.textSecondary,
+                style: TextStyle(
+                  color: AppTheme.darkColors.textSecondary,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                   fontFeatures: [FontFeature.tabularFigures()],
@@ -1144,8 +1146,8 @@ class _ProtectionEditorScreenState
                             : Icons.volume_off_rounded,
                         size: 22,
                         color: _originalAudioEnabled
-                            ? AppTheme.editorSelection
-                            : AppTheme.textMuted.withAlpha(140),
+                            ? AppTheme.darkColors.editorSelection
+                            : AppTheme.darkColors.textMuted.withAlpha(140),
                       ),
                     ),
                   ),
@@ -1235,10 +1237,10 @@ class _ProtectionEditorScreenState
                   height: bgHeight,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: AppTheme.surfaceElevated,
+                      color: AppTheme.of(context).surfaceElevated,
                       borderRadius: BorderRadius.circular(3),
                       border: Border.all(
-                        color: AppTheme.surfaceBorder,
+                        color: AppTheme.darkColors.surfaceBorder,
                         width: 0.8,
                       ),
                     ),
@@ -1284,9 +1286,9 @@ class _ProtectionEditorScreenState
                   height: trackHeight,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: AppTheme.editorSelection.withAlpha(25),
+                      color: AppTheme.darkColors.editorSelection.withAlpha(25),
                       border: Border.all(
-                        color: AppTheme.editorSelection,
+                        color: AppTheme.darkColors.editorSelection,
                         width: 1.2,
                       ),
                       borderRadius: BorderRadius.circular(4),
@@ -1437,11 +1439,15 @@ class _ProtectionEditorScreenState
                       vertical: 7,
                     ),
                     decoration: BoxDecoration(
-                      color: AppTheme.surfaceElevated.withValues(alpha: 0.94),
+                      color: AppTheme.of(
+                        context,
+                      ).surfaceElevated.withValues(alpha: 0.94),
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: AppTheme.surfaceBorder),
+                      border: Border.all(
+                        color: AppTheme.darkColors.surfaceBorder,
+                      ),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         SizedBox(
@@ -1449,14 +1455,14 @@ class _ProtectionEditorScreenState
                           height: 13,
                           child: CircularProgressIndicator(
                             strokeWidth: 1.7,
-                            color: AppTheme.editorSelection,
+                            color: AppTheme.darkColors.editorSelection,
                           ),
                         ),
                         SizedBox(width: 7),
                         Text(
                           '更新预览…',
                           style: TextStyle(
-                            color: AppTheme.textSecondary,
+                            color: AppTheme.darkColors.textSecondary,
                             fontSize: 12,
                           ),
                         ),
@@ -1480,14 +1486,16 @@ class _ProtectionEditorScreenState
                       color: const Color(0xFF211719).withValues(alpha: 0.96),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: AppTheme.editorSelection.withAlpha(100),
+                        color: AppTheme.of(
+                          context,
+                        ).editorSelection.withAlpha(100),
                       ),
                     ),
-                    child: const Text(
+                    child: Text(
                       '预览暂时无法更新，选择与参数仍会保留。',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: AppTheme.textSecondary,
+                        color: AppTheme.darkColors.textSecondary,
                         fontSize: 12,
                       ),
                     ),
@@ -1501,19 +1509,22 @@ class _ProtectionEditorScreenState
   }
 
   Widget _buildPreviewPlaceholder() {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             Icons.movie_filter_outlined,
             size: 36,
-            color: AppTheme.textMuted,
+            color: AppTheme.darkColors.textMuted,
           ),
           SizedBox(height: 10),
           Text(
             '保护效果预览',
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+            style: TextStyle(
+              color: AppTheme.darkColors.textSecondary,
+              fontSize: 12,
+            ),
           ),
         ],
       ),
@@ -1584,7 +1595,7 @@ class _ProtectionEditorScreenState
   ) {
     return ColoredBox(
       key: const ValueKey('protection-editor-workspace-panel'),
-      color: const Color(0xFF151516),
+      color: AppTheme.of(context).surfaceElevated,
       child: Column(
         children: [
           Expanded(
@@ -1603,7 +1614,7 @@ class _ProtectionEditorScreenState
               ),
             ),
           ),
-          const Divider(height: 1, color: AppTheme.surfaceBorder),
+          Divider(height: 1, color: AppTheme.of(context).surfaceBorder),
           SafeArea(
             top: false,
             child: SizedBox(height: 72, child: _buildToolNavigation()),
@@ -1669,16 +1680,16 @@ class _ProtectionEditorScreenState
                   item.$3,
                   size: 22,
                   color: selected
-                      ? AppTheme.editorSelection
-                      : AppTheme.textMuted,
+                      ? AppTheme.of(context).editorSelection
+                      : AppTheme.of(context).textMuted,
                 ),
                 const SizedBox(height: 3),
                 Text(
                   item.$2,
                   style: TextStyle(
                     color: selected
-                        ? AppTheme.editorSelection
-                        : AppTheme.textMuted,
+                        ? AppTheme.of(context).editorSelection
+                        : AppTheme.of(context).textMuted,
                     fontSize: 11,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   ),
@@ -1735,19 +1746,21 @@ class _ProtectionEditorScreenState
                       height: 46,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: isSelected ? Colors.white : AppTheme.surfaceHigh,
+                        color: isSelected
+                            ? AppTheme.of(context).editorSelectionSubtle
+                            : AppTheme.of(context).surfaceHigh,
                         border: Border.all(
                           color: isSelected
-                              ? AppTheme.editorSelection
-                              : AppTheme.surfaceBorder,
+                              ? AppTheme.of(context).editorSelection
+                              : AppTheme.of(context).surfaceBorder,
                           width: isSelected ? 2 : 1,
                         ),
                       ),
                       child: Icon(
                         prop.icon,
                         color: isSelected
-                            ? const Color(0xFF111111)
-                            : Colors.white,
+                            ? AppTheme.of(context).editorSelection
+                            : AppTheme.of(context).textPrimary,
                         size: 22,
                       ),
                     ),
@@ -1756,8 +1769,8 @@ class _ProtectionEditorScreenState
                       prop.label,
                       style: TextStyle(
                         color: isSelected
-                            ? AppTheme.editorSelection
-                            : AppTheme.textSecondary,
+                            ? AppTheme.of(context).editorSelection
+                            : AppTheme.of(context).textSecondary,
                         fontSize: 11,
                         fontWeight: isSelected
                             ? FontWeight.w600
@@ -1852,11 +1865,11 @@ class _ProtectionEditorScreenState
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   '智能拉腿',
                   style: TextStyle(
-                    color: AppTheme.textPrimary,
+                    color: AppTheme.of(context).textPrimary,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1864,8 +1877,10 @@ class _ProtectionEditorScreenState
               ),
               Switch(
                 value: effects.legStretchEnabled,
-                activeThumbColor: AppTheme.editorSelection,
-                activeTrackColor: AppTheme.editorSelection.withAlpha(120),
+                activeThumbColor: AppTheme.of(context).editorSelection,
+                activeTrackColor: AppTheme.of(
+                  context,
+                ).editorSelection.withAlpha(120),
                 onChanged: (val) {
                   effectController.updateLegStretch(
                     enabled: val,
@@ -1911,8 +1926,8 @@ class _ProtectionEditorScreenState
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
-                  color: AppTheme.textPrimary,
+                style: TextStyle(
+                  color: AppTheme.of(context).textPrimary,
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1920,8 +1935,8 @@ class _ProtectionEditorScreenState
             ),
             Text(
               displayValue,
-              style: const TextStyle(
-                color: AppTheme.editorSelection,
+              style: TextStyle(
+                color: AppTheme.of(context).editorSelection,
                 fontSize: 12.5,
                 fontWeight: FontWeight.w700,
                 fontFeatures: [FontFeature.tabularFigures()],
@@ -1931,10 +1946,10 @@ class _ProtectionEditorScreenState
         ),
         const SizedBox(height: 4),
         SliderTheme(
-          data: const SliderThemeData(
-            activeTrackColor: AppTheme.editorSelection,
-            inactiveTrackColor: AppTheme.sliderTrackInactive,
-            thumbColor: AppTheme.editorSelection,
+          data: SliderThemeData(
+            activeTrackColor: AppTheme.of(context).editorSelection,
+            inactiveTrackColor: AppTheme.of(context).sliderTrackInactive,
+            thumbColor: AppTheme.of(context).editorSelection,
             trackHeight: 5,
             thumbShape: RoundSliderThumbShape(enabledThumbRadius: 8),
           ),
@@ -1977,7 +1992,7 @@ class _ProtectionEditorScreenState
         const SizedBox(height: 10),
         _buildPrivacyModeSwitch(selectionState, effectController),
         const SizedBox(height: 16),
-        const Divider(height: 1, color: AppTheme.surfaceBorder),
+        Divider(height: 1, color: AppTheme.of(context).surfaceBorder),
         const SizedBox(height: 14),
         // Mask style section
         Row(
@@ -1987,7 +2002,7 @@ class _ProtectionEditorScreenState
               onPressed: () =>
                   _resetCurrentEffect(selectionState, effectController),
               style: TextButton.styleFrom(
-                foregroundColor: AppTheme.textSecondary,
+                foregroundColor: AppTheme.of(context).textSecondary,
                 visualDensity: VisualDensity.compact,
               ),
               icon: const Icon(Icons.restart_alt_rounded, size: 17),
@@ -2012,7 +2027,7 @@ class _ProtectionEditorScreenState
       children: [
         _buildPlaybackBar(),
         const SizedBox(height: 16),
-        const Divider(height: 1, color: AppTheme.surfaceBorder),
+        Divider(height: 1, color: AppTheme.of(context).surfaceBorder),
         const SizedBox(height: 16),
         // Quick tools row (screenshot 3 style: split, replace, delete, crop, speed, reorder)
         Padding(
@@ -2041,7 +2056,7 @@ class _ProtectionEditorScreenState
         ),
         if (_trimApplying) ...[
           const SizedBox(height: 10),
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SizedBox(
@@ -2049,13 +2064,16 @@ class _ProtectionEditorScreenState
                 height: 13,
                 child: CircularProgressIndicator(
                   strokeWidth: 1.7,
-                  color: AppTheme.editorSelection,
+                  color: AppTheme.of(context).editorSelection,
                 ),
               ),
               SizedBox(width: 7),
               Text(
                 '正在按新舞段重新识别人…',
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                style: TextStyle(
+                  color: AppTheme.of(context).textSecondary,
+                  fontSize: 12,
+                ),
               ),
             ],
           ),
@@ -2080,16 +2098,16 @@ class _ProtectionEditorScreenState
             icon,
             size: 21,
             color: isEnabled
-                ? AppTheme.textPrimary
-                : AppTheme.textMuted.withAlpha(100),
+                ? AppTheme.of(context).textPrimary
+                : AppTheme.of(context).textMuted.withAlpha(100),
           ),
           const SizedBox(height: 4),
           Text(
             label,
             style: TextStyle(
               color: isEnabled
-                  ? AppTheme.textSecondary
-                  : AppTheme.textMuted.withAlpha(100),
+                  ? AppTheme.of(context).textSecondary
+                  : AppTheme.of(context).textMuted.withAlpha(100),
               fontSize: 10.5,
               fontWeight: FontWeight.w500,
             ),
@@ -2125,15 +2143,21 @@ class _ProtectionEditorScreenState
         }),
         if (_selectingFollowTarget) ...[
           const SizedBox(height: 14),
-          const Text(
+          Text(
             '轻触画面选择主角；若主角已被保护，会自动取消其保护。',
-            style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+            style: TextStyle(
+              fontSize: 12,
+              color: AppTheme.of(context).textSecondary,
+            ),
           ),
         ] else if (follow.enabled) ...[
           const SizedBox(height: 14),
           Text(
             '主角：人物 ${(follow.targetPersonId ?? 0) + 1} · 自动平滑跟随',
-            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+            style: TextStyle(
+              fontSize: 12,
+              color: AppTheme.of(context).textSecondary,
+            ),
           ),
           const SizedBox(height: 6),
           Wrap(
@@ -2166,9 +2190,12 @@ class _ProtectionEditorScreenState
             ],
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             '当前为首帧构图；导出时跟随主角。清空保护对象可仅裁切。',
-            style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+            style: TextStyle(
+              fontSize: 12,
+              color: AppTheme.of(context).textSecondary,
+            ),
           ),
         ],
       ],
@@ -2215,13 +2242,13 @@ class _ProtectionEditorScreenState
         height: 64,
         decoration: BoxDecoration(
           color: isSelected
-              ? AppTheme.editorSelection.withAlpha(24)
-              : AppTheme.surfaceHigh,
+              ? AppTheme.of(context).editorSelection.withAlpha(24)
+              : AppTheme.of(context).surfaceHigh,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected
-                ? AppTheme.editorSelection
-                : AppTheme.surfaceBorder,
+                ? AppTheme.of(context).editorSelection
+                : AppTheme.of(context).surfaceBorder,
             width: isSelected ? 1.5 : 1.0,
           ),
         ),
@@ -2234,8 +2261,8 @@ class _ProtectionEditorScreenState
               decoration: BoxDecoration(
                 border: Border.all(
                   color: isSelected
-                      ? AppTheme.editorSelection
-                      : AppTheme.textSecondary,
+                      ? AppTheme.of(context).editorSelection
+                      : AppTheme.of(context).textSecondary,
                   width: 1.3,
                 ),
                 borderRadius: BorderRadius.circular(2),
@@ -2246,8 +2273,8 @@ class _ProtectionEditorScreenState
               label,
               style: TextStyle(
                 color: isSelected
-                    ? AppTheme.editorSelection
-                    : AppTheme.textSecondary,
+                    ? AppTheme.of(context).editorSelection
+                    : AppTheme.of(context).textSecondary,
                 fontSize: 11.5,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
               ),
@@ -2262,7 +2289,9 @@ class _ProtectionEditorScreenState
     return Text(
       text,
       style: TextStyle(
-        color: subdued ? AppTheme.textSecondary : AppTheme.textPrimary,
+        color: subdued
+            ? AppTheme.of(context).textSecondary
+            : AppTheme.of(context).textPrimary,
         fontSize: subdued ? 12.5 : 13.5,
         fontWeight: FontWeight.w700,
       ),
@@ -2349,13 +2378,13 @@ class _ProtectionEditorScreenState
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
                 decoration: BoxDecoration(
                   color: selected
-                      ? AppTheme.surfaceHigh
-                      : AppTheme.surfaceElevated,
+                      ? AppTheme.of(context).surfaceHigh
+                      : AppTheme.of(context).surfaceElevated,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: selected
-                        ? AppTheme.editorSelection
-                        : AppTheme.surfaceBorder,
+                        ? AppTheme.of(context).editorSelection
+                        : AppTheme.of(context).surfaceBorder,
                     width: selected ? 1.5 : 1,
                   ),
                 ),
@@ -2366,16 +2395,16 @@ class _ProtectionEditorScreenState
                       item.$3,
                       size: 21,
                       color: selected
-                          ? AppTheme.editorSelection
-                          : AppTheme.textSecondary,
+                          ? AppTheme.of(context).editorSelection
+                          : AppTheme.of(context).textSecondary,
                     ),
                     const SizedBox(height: 4),
                     Text(
                       item.$2,
                       style: TextStyle(
                         color: selected
-                            ? AppTheme.editorSelection
-                            : AppTheme.textPrimary,
+                            ? AppTheme.of(context).editorSelection
+                            : AppTheme.of(context).textPrimary,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -2426,23 +2455,25 @@ class _ProtectionEditorScreenState
                   child: Container(
                     width: 58,
                     decoration: BoxDecoration(
-                      color: AppTheme.surfaceElevated,
+                      color: AppTheme.of(context).surfaceElevated,
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: AppTheme.surfaceBorder),
+                      border: Border.all(
+                        color: AppTheme.of(context).surfaceBorder,
+                      ),
                     ),
                     child: Center(
                       child: _stickerImporting
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: AppTheme.editorSelection,
+                                color: AppTheme.of(context).editorSelection,
                               ),
                             )
-                          : const Icon(
+                          : Icon(
                               Icons.add_photo_alternate_outlined,
-                              color: AppTheme.editorSelection,
+                              color: AppTheme.of(context).editorSelection,
                               size: 25,
                             ),
                     ),
@@ -2459,10 +2490,10 @@ class _ProtectionEditorScreenState
                     key: const ValueKey('sticker-custom-current'),
                     width: 58,
                     decoration: BoxDecoration(
-                      color: AppTheme.surfaceHigh,
+                      color: AppTheme.of(context).surfaceHigh,
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(
-                        color: AppTheme.editorSelection,
+                        color: AppTheme.of(context).editorSelection,
                         width: 2,
                       ),
                     ),
@@ -2473,17 +2504,17 @@ class _ProtectionEditorScreenState
                         Image.file(
                           customFile,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => const Icon(
+                          errorBuilder: (_, _, _) => Icon(
                             Icons.broken_image_outlined,
-                            color: AppTheme.textSecondary,
+                            color: AppTheme.of(context).textSecondary,
                           ),
                         ),
-                        const Positioned(
+                        Positioned(
                           right: 4,
                           bottom: 4,
                           child: Icon(
                             Icons.check_circle_rounded,
-                            color: AppTheme.editorSelection,
+                            color: AppTheme.of(context).editorSelection,
                             size: 18,
                           ),
                         ),
@@ -2516,8 +2547,8 @@ class _ProtectionEditorScreenState
                             borderRadius: BorderRadius.circular(18),
                             border: Border.all(
                               color: selected
-                                  ? AppTheme.editorSelection
-                                  : AppTheme.surfaceBorder,
+                                  ? AppTheme.of(context).editorSelection
+                                  : AppTheme.of(context).surfaceBorder,
                               width: selected ? 2 : 1,
                             ),
                           ),
@@ -2526,16 +2557,16 @@ class _ProtectionEditorScreenState
                             children: [
                               Icon(
                                 item.$3,
-                                color: AppTheme.textPrimary,
+                                color: AppTheme.of(context).textPrimary,
                                 size: 24,
                               ),
                               if (selected)
-                                const Positioned(
+                                Positioned(
                                   right: 4,
                                   bottom: 4,
                                   child: Icon(
                                     Icons.check_circle_rounded,
-                                    color: AppTheme.editorSelection,
+                                    color: AppTheme.of(context).editorSelection,
                                     size: 18,
                                   ),
                                 ),
@@ -2630,8 +2661,8 @@ class _ProtectionEditorScreenState
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: selected
-                          ? AppTheme.editorSelection
-                          : AppTheme.surfaceBorder,
+                          ? AppTheme.of(context).editorSelection
+                          : AppTheme.of(context).surfaceBorder,
                       width: selected ? 3 : 1,
                     ),
                   ),
@@ -2937,13 +2968,13 @@ class _EditorStatus extends StatelessWidget {
                 child: CircularProgressIndicator(strokeWidth: 2.5),
               )
             else
-              Icon(icon, size: 42, color: AppTheme.editorSelection),
+              Icon(icon, size: 42, color: AppTheme.of(context).editorSelection),
             const SizedBox(height: 18),
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
+              style: TextStyle(
+                color: AppTheme.of(context).textPrimary,
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
               ),
@@ -2952,8 +2983,8 @@ class _EditorStatus extends StatelessWidget {
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppTheme.textSecondary,
+              style: TextStyle(
+                color: AppTheme.of(context).textSecondary,
                 fontSize: 13,
               ),
             ),
@@ -2961,8 +2992,8 @@ class _EditorStatus extends StatelessWidget {
               const SizedBox(height: 20),
               OutlinedButton(
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.editorSelection,
-                  side: const BorderSide(color: AppTheme.surfaceBorder),
+                  foregroundColor: AppTheme.of(context).editorSelection,
+                  side: BorderSide(color: AppTheme.of(context).surfaceBorder),
                 ),
                 onPressed: onAction,
                 child: Text(actionLabel!),
@@ -3006,12 +3037,14 @@ class _PrivacySlot extends StatelessWidget {
           width: 76,
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
           decoration: BoxDecoration(
-            color: selected ? AppTheme.surfaceHigh : AppTheme.surfaceElevated,
+            color: selected
+                ? AppTheme.of(context).surfaceHigh
+                : AppTheme.of(context).surfaceElevated,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: selected
-                  ? AppTheme.editorSelection
-                  : AppTheme.surfaceBorder,
+                  ? AppTheme.of(context).editorSelection
+                  : AppTheme.of(context).surfaceBorder,
               width: selected ? 1.5 : 1,
             ),
           ),
@@ -3022,16 +3055,16 @@ class _PrivacySlot extends StatelessWidget {
                 icon,
                 size: 21,
                 color: selected
-                    ? AppTheme.editorSelection
-                    : AppTheme.textSecondary,
+                    ? AppTheme.of(context).editorSelection
+                    : AppTheme.of(context).textSecondary,
               ),
               const SizedBox(height: 4),
               Text(
                 label,
                 style: TextStyle(
                   color: selected
-                      ? AppTheme.editorSelection
-                      : AppTheme.textPrimary,
+                      ? AppTheme.of(context).editorSelection
+                      : AppTheme.of(context).textPrimary,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -3054,7 +3087,7 @@ class _IntegratedTrimHandle extends StatelessWidget {
       width: 10,
       height: 14,
       decoration: BoxDecoration(
-        color: AppTheme.editorSelection,
+        color: AppTheme.of(context).editorSelection,
         borderRadius: BorderRadius.horizontal(
           left: isLeft ? const Radius.circular(3) : Radius.zero,
           right: !isLeft ? const Radius.circular(3) : Radius.zero,

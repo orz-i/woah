@@ -238,9 +238,9 @@ class _ComparisonExportDialogState extends State<ComparisonExportDialog> {
                     widget.full!.project.teacher!.hasAudio
                         ? '使用参考音频，画面与当前预览一致'
                         : '参考视频无音轨，导出静音视频',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppTheme.flowTextSecondary,
+                      color: AppTheme.of(context).flowTextSecondary,
                     ),
                   ),
                   if (_previous != null) ...[
@@ -248,13 +248,13 @@ class _ComparisonExportDialogState extends State<ComparisonExportDialog> {
                     if (_previous!.state == 'completed' &&
                         _previous!.savedUri == null &&
                         _previous!.outputPath != null)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.only(bottom: 8),
                         child: Text(
                           '上次导出尚未保存，开始新导出需要确认替换。',
                           style: TextStyle(
                             fontSize: 12,
-                            color: AppTheme.flowTextSecondary,
+                            color: AppTheme.of(context).flowTextSecondary,
                           ),
                         ),
                       ),
@@ -292,9 +292,9 @@ class _ComparisonExportDialogState extends State<ComparisonExportDialog> {
                       isIOS
                           ? 'iOS 后台运行时间由系统限制，建议保持应用在前台；中断后可返回重试。'
                           : '切到后台后会继续导出',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppTheme.flowTextSecondary,
+                        color: AppTheme.of(context).flowTextSecondary,
                       ),
                     ),
                   ] else
@@ -307,7 +307,7 @@ class _ComparisonExportDialogState extends State<ComparisonExportDialog> {
                       padding: const EdgeInsets.only(top: 12),
                       child: Text(
                         job.error!,
-                        style: const TextStyle(color: AppTheme.error),
+                        style: TextStyle(color: AppTheme.of(context).error),
                       ),
                     ),
                 ],
@@ -316,7 +316,7 @@ class _ComparisonExportDialogState extends State<ComparisonExportDialog> {
                     padding: const EdgeInsets.only(top: 12),
                     child: Text(
                       _error!,
-                      style: const TextStyle(color: AppTheme.error),
+                      style: TextStyle(color: AppTheme.of(context).error),
                     ),
                   ),
               ],

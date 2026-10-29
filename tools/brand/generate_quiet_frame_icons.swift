@@ -7,6 +7,22 @@ import AppKit
 let ink = CGColor(red: 11/255.0, green: 20/255.0, blue: 21/255.0, alpha: 1)
 let mint = CGColor(red: 120/255.0, green: 220/255.0, blue: 199/255.0, alpha: 1)
 let pearl = CGColor(red: 242/255.0, green: 246/255.0, blue: 243/255.0, alpha: 1)
+let deepMint = CGColor(red: 33/255.0, green: 106/255.0, blue: 94/255.0, alpha: 1)
+
+// DeviceRGB encodes slightly different pixel values on some macOS profiles.
+// Single Size app icons and themed Android fallbacks must use literal sRGB
+// token values so branded backgrounds match their native resource palettes.
+let sRGB = CGColorSpace(name: CGColorSpace.sRGB)!
+func brandedRGB(_ red: CGFloat, _ green: CGFloat, _ blue: CGFloat) -> CGColor {
+    CGColor(colorSpace: sRGB,
+            components: [red / 255, green / 255, blue / 255, 1])!
+}
+let iconLightBG = brandedRGB(242, 246, 243)
+let iconLightFG = brandedRGB(33, 106, 94)
+let iconDarkBG = brandedRGB(11, 20, 21)
+let iconDarkFG = brandedRGB(120, 220, 199)
+let iconTintBG = brandedRGB(16, 16, 16)
+let iconTintFG = brandedRGB(250, 250, 250)
 
 func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: x, y: y) }
 func leftHalf() -> CGPath {
@@ -31,11 +47,13 @@ func leftHalf() -> CGPath {
     return p
 }
 
-func png(width: Int, height: Int, markWidth: CGFloat, background: CGColor?, fill: CGColor) -> Data {
-    let space = CGColorSpaceCreateDeviceRGB()
+func png(width: Int, height: Int, markWidth: CGFloat,
+         background: CGColor?, fill: CGColor, opaque: Bool = false) -> Data {
+    let space = opaque ? sRGB : CGColorSpaceCreateDeviceRGB()
     guard let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8,
                              bytesPerRow: 0, space: space,
-                             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
+                             bitmapInfo: (opaque ? CGImageAlphaInfo.noneSkipLast
+                                                 : CGImageAlphaInfo.premultipliedLast).rawValue) else {
         fatalError("Cannot create bitmap CGContext")
     }
     ctx.setAllowsAntialiasing(true)
@@ -79,20 +97,37 @@ let root = FileManager.default.currentDirectoryPath
 let app = root + "/mobile/app"
 let assets = app + "/ios/Runner/Assets.xcassets"
 let iconSet = assets + "/AppIcon.appiconset"
+// The iOS 17-compatible Single Size catalog provides three native appearances.
+// Do not register an .icon bundle of the same name in the Xcode project: Icon
+// Composer replaces this catalog and may change the legacy iOS appearance.
 let jsonData = try! Data(contentsOf: URL(fileURLWithPath: iconSet + "/Contents.json"))
-let iconContents = try! JSONSerialization.jsonObject(with: jsonData) as! [String: Any]
-let images = iconContents["images"] as! [[String: Any]]
-var made = Set<String>()
+let contents = try! JSONSerialization.jsonObject(with: jsonData) as! [String: Any]
+let images = contents["images"] as! [[String: Any]]
+precondition(images.count == 3, "AppIcon needs Any / Dark / Tinted")
 for entry in images {
-    guard let filename = entry["filename"] as? String,
-          let sizeLabel = entry["size"] as? String,
-          let scaleLabel = entry["scale"] as? String,
-          let logical = Double(sizeLabel.components(separatedBy: "x")[0]),
-          let scale = Double(scaleLabel.dropLast()) else { continue }
-    if !made.insert(filename).inserted { continue }
-    let side = Int((logical * scale).rounded())
-    write(iconSet + "/" + filename, png(width: side, height: side,
-         markWidth: CGFloat(side) * 0.703125, background: ink, fill: mint))
+    guard let filename = entry["filename"] as? String else {
+        fatalError("An AppIcon variant has no filename")
+    }
+    precondition(entry["size"] as? String == "1024x1024")
+    precondition(entry["idiom"] as? String == "universal")
+    let appearances = entry["appearances"] as? [[String: String]] ?? []
+    let appearance = appearances.first?["value"] ?? "any"
+    let colors: (background: CGColor, foreground: CGColor)
+    switch appearance {
+    case "any":
+        colors = (iconLightBG, iconLightFG)
+    case "dark":
+        colors = (iconDarkBG, iconDarkFG)
+    case "tinted":
+        // Grayscale pixels, no alpha channel. iOS owns the final user tint.
+        colors = (iconTintBG, iconTintFG)
+    default:
+        fatalError("Unsupported AppIcon appearance: \(appearance)")
+    }
+    write(iconSet + "/" + filename,
+          png(width: 1024, height: 1024, markWidth: 720,
+              background: colors.background, fill: colors.foreground,
+              opaque: true))
 }
 // Fixed-size transparent symbol for runtime; no font dependency.
 write(app + "/assets/brand/woah-symbol-256.png", png(width: 256, height: 160,
@@ -102,17 +137,37 @@ write(app + "/assets/brand/woah-icon-default-1024.png", png(width: 1024, height:
      markWidth: 720, background: ink, fill: mint))
 write(app + "/assets/brand/woah-icon-monochrome-1024.png", png(width: 1024, height: 1024,
      markWidth: 720, background: nil, fill: pearl))
-// Static launch illustration; no forced pause, no loop, no font loading.
+write(app + "/assets/brand/woah-icon-light-1024.png", png(width: 1024, height: 1024,
+     markWidth: 720, background: iconLightBG, fill: iconLightFG, opaque: true))
+write(app + "/assets/brand/woah-icon-dark-1024.png", png(width: 1024, height: 1024,
+     markWidth: 720, background: iconDarkBG, fill: iconDarkFG, opaque: true))
+write(app + "/assets/brand/woah-icon-tinted-1024.png", png(width: 1024, height: 1024,
+     markWidth: 720, background: iconTintBG, fill: iconTintFG,
+     opaque: true))
+// Platform launch appearance: deep mint on Pearl, soft Mint on Ink.
+// Assets are flat/static; there is no launch animation or extra startup wait.
 for factor in 1...3 {
     let prefix = factor == 1 ? "" : "@\(factor)x"
     write(assets + "/LaunchImage.imageset/LaunchImage\(prefix).png",
           png(width: 168 * factor, height: 105 * factor,
-              markWidth: CGFloat(168 * factor) * 0.92, background: nil, fill: mint))
+              markWidth: CGFloat(168 * factor) * 0.92,
+              background: nil, fill: deepMint))
+    write(assets + "/LaunchImage.imageset/LaunchImage_dark\(prefix).png",
+          png(width: 168 * factor, height: 105 * factor,
+              markWidth: CGFloat(168 * factor) * 0.92,
+              background: nil, fill: mint))
 }
 let densities: [(String, Int)] = [("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),
                                    ("xxhdpi", 144), ("xxxhdpi", 192)]
 for (density, side) in densities {
+    // Android 7 / legacy launcher PNGs are also configuration-qualified.
+    // Android 8+ resolves adaptive layers, and Android 13+ can theme monochrome.
     write(app + "/android/app/src/main/res/mipmap-\(density)/ic_launcher.png",
           png(width: side, height: side,
-              markWidth: CGFloat(side) * 0.703125, background: ink, fill: mint))
+              markWidth: CGFloat(side) * 0.703125,
+              background: iconLightBG, fill: iconLightFG, opaque: true))
+    write(app + "/android/app/src/main/res/mipmap-night-\(density)/ic_launcher.png",
+          png(width: side, height: side,
+              markWidth: CGFloat(side) * 0.703125,
+              background: iconDarkBG, fill: iconDarkFG, opaque: true))
 }

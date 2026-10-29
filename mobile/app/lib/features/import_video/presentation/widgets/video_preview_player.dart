@@ -125,13 +125,13 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer>
         height: 220,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: AppTheme.flowSurface,
+          color: AppTheme.of(context).flowSurface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.flowBorder),
+          border: Border.all(color: AppTheme.of(context).flowBorder),
         ),
         child: Text(
           _errorMessage!,
-          style: const TextStyle(color: AppTheme.brandAction),
+          style: TextStyle(color: AppTheme.of(context).brandAction),
         ),
       );
     }
@@ -141,21 +141,21 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer>
         height: 220,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: AppTheme.flowSurface,
+          color: AppTheme.of(context).flowSurface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.flowBorder),
+          border: Border.all(color: AppTheme.of(context).flowBorder),
         ),
-        child: const Column(
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircularProgressIndicator(
               strokeWidth: 2,
-              color: AppTheme.brandAction,
+              color: AppTheme.of(context).brandAction,
             ),
             SizedBox(height: 12),
             Text(
               '加载视频流中...',
-              style: TextStyle(color: AppTheme.flowTextSecondary),
+              style: TextStyle(color: AppTheme.of(context).flowTextSecondary),
             ),
           ],
         ),
@@ -197,15 +197,15 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer>
                             child: Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: AppTheme.background.withValues(
-                                  alpha: 0.72,
-                                ),
+                                color: AppTheme.of(
+                                  context,
+                                ).background.withValues(alpha: 0.72),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.play_arrow,
                                 size: 48,
-                                color: AppTheme.flowTextPrimary,
+                                color: AppTheme.of(context).flowTextPrimary,
                               ),
                             ),
                           ),
@@ -219,10 +219,10 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer>
             VideoProgressIndicator(
               controller,
               allowScrubbing: true,
-              colors: const VideoProgressColors(
-                playedColor: AppTheme.brandAction,
-                bufferedColor: AppTheme.flowTextMuted,
-                backgroundColor: AppTheme.surfaceHigh,
+              colors: VideoProgressColors(
+                playedColor: AppTheme.of(context).brandAction,
+                bufferedColor: AppTheme.of(context).flowTextMuted,
+                backgroundColor: AppTheme.of(context).surfaceHigh,
               ),
             ),
           ],

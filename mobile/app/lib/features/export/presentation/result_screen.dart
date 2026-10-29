@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/system_ui.dart';
 import '../../../app/theme.dart';
 import '../../../repositories/native_processing_repository.dart';
 import '../../import_video/presentation/widgets/video_preview_player.dart';
@@ -147,18 +148,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final navigationEnabled = !_isSaving;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-        systemNavigationBarColor: AppTheme.flowBackground,
-        systemNavigationBarIconBrightness: Brightness.light,
-        systemNavigationBarDividerColor: Colors.transparent,
-        systemStatusBarContrastEnforced: false,
-        systemNavigationBarContrastEnforced: false,
-      ),
+      value: appSystemUiStyleFor(Theme.of(context).brightness),
       child: Scaffold(
-        backgroundColor: AppTheme.flowBackground,
+        backgroundColor: AppTheme.of(context).flowBackground,
         body: SafeArea(
           child: Column(
             key: const ValueKey('result-content-stack'),
@@ -187,12 +179,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                             child: AnimatedOpacity(
                               duration: const Duration(milliseconds: 120),
                               opacity: navigationEnabled ? 1 : 0.42,
-                              child: const Padding(
+                              child: Padding(
                                 padding: EdgeInsets.all(8),
                                 child: Icon(
                                   Icons.close_rounded,
                                   size: 24,
-                                  color: AppTheme.textPrimary,
+                                  color: AppTheme.of(context).textPrimary,
                                 ),
                               ),
                             ),
@@ -216,18 +208,20 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                               child: Padding(
                                 padding: const EdgeInsets.all(8),
                                 child: _isSharing
-                                    ? const SizedBox(
+                                    ? SizedBox(
                                         width: 24,
                                         height: 24,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2,
-                                          color: AppTheme.brandAction,
+                                          color: AppTheme.of(
+                                            context,
+                                          ).brandAction,
                                         ),
                                       )
-                                    : const Icon(
+                                    : Icon(
                                         Icons.ios_share_rounded,
                                         size: 24,
-                                        color: AppTheme.brandAction,
+                                        color: AppTheme.of(context).brandAction,
                                       ),
                               ),
                             ),
@@ -245,9 +239,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   color: Colors.black,
                   alignment: Alignment.center,
                   child: outputPath.isEmpty
-                      ? const Icon(
+                      ? Icon(
                           Icons.movie_outlined,
-                          color: AppTheme.flowTextMuted,
+                          color: AppTheme.of(context).flowTextMuted,
                           size: 48,
                         )
                       : VideoPreviewPlayer(
@@ -274,41 +268,41 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       title = '正在保存到相册';
       subtitle = '保存完成后即可直接分享';
       icon = Icons.downloading_rounded;
-      iconColor = AppTheme.brandAction;
+      iconColor = AppTheme.of(context).brandAction;
     } else if (_isSaved) {
       title = '已保存至系统相册';
       subtitle = fileSizeMb == null ? '视频已安全脱敏存储' : '视频已安全脱敏 · $fileSizeMb MB';
       icon = Icons.check_circle_outline_rounded;
-      iconColor = AppTheme.statusSuccess;
+      iconColor = AppTheme.of(context).statusSuccess;
     } else if (_saveError != null) {
       title = '尚未存入系统相册';
       subtitle = '视频仍保留在设备中，可重新保存';
       icon = Icons.error_outline_rounded;
-      iconColor = AppTheme.error;
+      iconColor = AppTheme.of(context).error;
     } else {
       title = '视频处理完成';
       subtitle = '正在准备写入媒体库';
       icon = Icons.check_circle_outline_rounded;
-      iconColor = AppTheme.flowTextSecondary;
+      iconColor = AppTheme.of(context).flowTextSecondary;
     }
 
     return Container(
       key: const ValueKey('result-status-panel'),
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
-      decoration: const BoxDecoration(
-        color: AppTheme.flowBackground,
-        border: Border(top: BorderSide(color: AppTheme.flowBorder)),
+      decoration: BoxDecoration(
+        color: AppTheme.of(context).flowBackground,
+        border: Border(top: BorderSide(color: AppTheme.of(context).flowBorder)),
       ),
       child: Row(
         children: [
           if (_isSaving)
-            const SizedBox(
+            SizedBox(
               width: 20,
               height: 20,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: AppTheme.brandAction,
+                color: AppTheme.of(context).brandAction,
               ),
             )
           else
@@ -321,8 +315,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: AppTheme.flowTextPrimary,
+                  style: TextStyle(
+                    color: AppTheme.of(context).flowTextPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
@@ -330,8 +324,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: const TextStyle(
-                    color: AppTheme.flowTextSecondary,
+                  style: TextStyle(
+                    color: AppTheme.of(context).flowTextSecondary,
                     fontSize: 12,
                   ),
                 ),
@@ -346,7 +340,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 key: const ValueKey('result-resave-action'),
                 borderRadius: BorderRadius.circular(10),
                 onTap: _isSaving ? null : () => _saveToGallery(),
-                child: const Padding(
+                child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -354,13 +348,13 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                       Icon(
                         Icons.refresh_rounded,
                         size: 16,
-                        color: AppTheme.brandAction,
+                        color: AppTheme.of(context).brandAction,
                       ),
                       SizedBox(width: 4),
                       Text(
                         '重新保存',
                         style: TextStyle(
-                          color: AppTheme.brandAction,
+                          color: AppTheme.of(context).brandAction,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
@@ -390,25 +384,25 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (_isOpening)
-                          const SizedBox(
+                          SizedBox(
                             width: 15,
                             height: 15,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: AppTheme.brandAction,
+                              color: AppTheme.of(context).brandAction,
                             ),
                           )
                         else
-                          const Icon(
+                          Icon(
                             Icons.play_circle_outline_rounded,
                             size: 17,
-                            color: AppTheme.brandAction,
+                            color: AppTheme.of(context).brandAction,
                           ),
                         const SizedBox(width: 5),
                         Text(
                           _isOpening ? '正在打开…' : '查看视频',
-                          style: const TextStyle(
-                            color: AppTheme.brandAction,
+                          style: TextStyle(
+                            color: AppTheme.of(context).brandAction,
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
@@ -460,17 +454,17 @@ class _ResultDiagnosticsButton extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.bug_report_outlined,
                     size: 14,
-                    color: AppTheme.flowTextMuted,
+                    color: AppTheme.of(context).flowTextMuted,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     isExporting ? '正在导出…' : '导出诊断包',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppTheme.flowTextMuted,
+                      color: AppTheme.of(context).flowTextMuted,
                     ),
                   ),
                 ],

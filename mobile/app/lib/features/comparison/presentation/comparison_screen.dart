@@ -460,16 +460,16 @@ class _ComparisonScreenState extends State<ComparisonScreen>
           children: [
             Text(
               _sideBySide ? '左右' : '上下',
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
+              style: TextStyle(
+                color: AppTheme.of(context).textPrimary,
                 fontSize: 13.5,
                 fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(width: 1),
-            const Icon(
+            Icon(
               Icons.arrow_drop_down_rounded,
-              color: AppTheme.textSecondary,
+              color: AppTheme.of(context).textSecondary,
               size: 18,
             ),
           ],
@@ -547,7 +547,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
       animation: controller,
       builder: (context, _) => Scaffold(
         resizeToAvoidBottomInset: false,
-        backgroundColor: AppTheme.flowBackground,
+        backgroundColor: AppTheme.of(context).flowBackground,
         appBar: AppBar(
           title: _viewMenu(),
           leading: BackButton(onPressed: _exit),
@@ -703,7 +703,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                         child: DecoratedBox(
                           decoration: BoxDecoration(
                             border: Border.all(
-                              color: AppTheme.brandAction,
+                              color: AppTheme.of(context).brandAction,
                               width: 1.5,
                             ),
                           ),
@@ -722,15 +722,15 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                                   ? Icons.add_rounded
                                   : Icons.check_circle_outline_rounded,
                               size: 28,
-                              color: AppTheme.flowTextMuted,
+                              color: AppTheme.of(context).flowTextMuted,
                             ),
                             const SizedBox(height: 8),
                             Text(
                               source == null ? '选择$label视频' : '$label视频已选择',
                               textAlign: TextAlign.center,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
-                                color: AppTheme.flowTextSecondary,
+                                color: AppTheme.of(context).flowTextSecondary,
                               ),
                             ),
                           ],
@@ -792,8 +792,10 @@ class _ComparisonScreenState extends State<ComparisonScreen>
             if (controller.project.hasPair &&
                 !controller.exporting &&
                 (state == null || state.phase == 'opening'))
-              const Center(
-                child: CircularProgressIndicator(color: AppTheme.brandAction),
+              Center(
+                child: CircularProgressIndicator(
+                  color: AppTheme.of(context).brandAction,
+                ),
               ),
             Flex(
               direction: horizontal ? Axis.horizontal : Axis.vertical,
@@ -837,7 +839,9 @@ class _ComparisonScreenState extends State<ComparisonScreen>
         Icon(
           Icons.graphic_eq_rounded,
           size: 18,
-          color: aligned ? AppTheme.brandAction : AppTheme.flowTextSecondary,
+          color: aligned
+              ? AppTheme.of(context).brandAction
+              : AppTheme.of(context).flowTextSecondary,
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -853,9 +857,9 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                           ? ' · 目标音乐 ${(1 / controller.project.timeScale).toStringAsFixed(3)}×'
                           : ''),
             maxLines: 2,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
-              color: AppTheme.flowTextPrimary,
+              color: AppTheme.of(context).flowTextPrimary,
             ),
           ),
         ),
@@ -906,8 +910,8 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     key: const ValueKey('comparison-play'),
     onPressed: controller.canPlay ? controller.toggle : null,
     style: FilledButton.styleFrom(
-      backgroundColor: AppTheme.brandAction,
-      foregroundColor: AppTheme.textOnAccent,
+      backgroundColor: AppTheme.of(context).brandAction,
+      foregroundColor: AppTheme.of(context).textOnAccent,
       minimumSize: const Size(48, 56),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -939,11 +943,11 @@ class _ComparisonScreenState extends State<ComparisonScreen>
         height: 1.2,
       ),
     );
-    const label = Text(
+    final label = Text(
       '倍速',
       style: TextStyle(
         fontSize: 11,
-        color: AppTheme.flowTextSecondary,
+        color: AppTheme.of(context).flowTextSecondary,
         height: 1.3,
       ),
     );
@@ -983,9 +987,9 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     final ended = duration > 0 && position >= duration - 100000;
     return DecoratedBox(
       key: const ValueKey('comparison-console'),
-      decoration: const BoxDecoration(
-        color: AppTheme.flowSurface,
-        border: Border(top: BorderSide(color: AppTheme.flowBorder)),
+      decoration: BoxDecoration(
+        color: AppTheme.of(context).flowSurface,
+        border: Border(top: BorderSide(color: AppTheme.of(context).flowBorder)),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
@@ -997,7 +1001,10 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
                   controller.error!,
-                  style: const TextStyle(fontSize: 13, color: AppTheme.error),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.of(context).error,
+                  ),
                 ),
               ),
             _musicSummary(),
@@ -1051,8 +1058,8 @@ class _ComparisonScreenState extends State<ComparisonScreen>
         tooltip: project.loopEnabled ? '暂停 A/B 循环' : '启用 A/B 循环',
         isSelected: project.loopEnabled,
         color: project.loopEnabled
-            ? AppTheme.brandAction
-            : AppTheme.flowTextSecondary,
+            ? AppTheme.of(context).brandAction
+            : AppTheme.of(context).flowTextSecondary,
         onPressed:
             !controller.busy &&
                 project.loopStartUs != null &&
