@@ -184,6 +184,9 @@ No actionable P0/P1/P2 findings remain.
 final result: passed
 
 
+
+
+
 # Android 舞蹈对比 UI QA — 2026-10-25
 
 此节仅记录对比页面，保留上方既有首页 QA 内容。
@@ -284,3 +287,83 @@ final result: passed
 - Checklist/limits：四项明确调整与相关检查完成；单台 Android 14 结论，原素材自带 UI 的限制保留；不扩展全产品可访问性、多机型或全量 Release 验收。详细数据见 docs/comparison-reference-target-2026-10-26.md。
 
 final result: passed
+
+
+## A/B 循环、独立镜像与真实 PTS 逐帧 — 2026-10-26
+
+- Source：用户明确要求的三项练习功能，沿用既有对比页和主题；原参考为 22-loaded-final.png，新增控件不改变视频比例、整区域选片和中央视图入口。
+- Implementation：当前 feat/dance-comparison-m0 工作区，HEAD e286cf6，未提交/推送/合并；最终 APK SHA-256 为 07d40f7df2969716493fb9d4f463ab5700a4cdad4c5211cfe4910300b702df3c。
+- Full-view evidence：已查看完整竖屏练习页、横屏镜像与控件、双独立手动预览、真实素材暂停和最终原项目恢复图；证据在本地忽略目录 docs/session/comparison-practice-20261026/。
+- Layout/type/tokens：保留现有石墨色控制台、银白文字及金色选中状态；新增一排 A/B、循环和帧按钮。640×320 窄横屏分两排以保留 48dp 触控，320×640、800×360 与 2 倍字体无溢出且可滚动访问；24 项 Flutter 专项通过。
+- Image/copy：视图菜单使用“参考镜像 / 目标镜像”；镜像只作用于视频，文字标签与控件不翻转。共同时间、音乐偏移和动作差异保留；逐帧使用参考实际解码 PTS，包含 VFR 的不同帧间隔。
+- Pixel evidence：同一暂停帧检查参考单独、目标单独、两路和均不镜像四种状态；排除 UI 覆盖后的反射误差 <0.75，另一侧原像素不变。真实素材参考/目标镜像误差分别约 0.39/1.22；镜像前后暂停位置与校准保持。
+- Findings/repair：真机发现循环回跳准备期暂停按钮禁用。原生改为 buffering 并保留暂停，逐帧等待画面就绪；新增控件回归及真机单次暂停通过，后续无自动循环。原片尾与重播状态通过定向回归。
+- Persistence/lifecycle：循环点和镜像随项目保存、交换及冷启动恢复；横竖屏、手动取消、循环中后台与清除后越过 B 均通过。最终恢复原两条历史的内容字段；一条更新时间变化。临时项目及媒体已清理，原亮屏设置和旋转值均为 0。
+- Validation/scope：原生专项 49 项、静态检查、Release Kotlin 定向编译、Debug 构建和覆盖安装哈希通过。按未改动代码范围复用早期逐帧/镜像证据，未重跑完整 M0 矩阵或全量 Release QA。循环使用共同 seek，保留短暂定位开销，不宣称无缝音频；未新增长原片、多机型或物理显示测量。
+- Report：[comparison-practice-2026-10-26.md](docs/comparison-practice-2026-10-26.md)。本次要求及必要验证完成，无未关闭的本次 P0/P1/P2。
+
+final result: passed
+
+
+## 独立缩放平移与问题片段 — 2026-10-26
+
+- Source/implementation：用户明确要求的两项练习功能，沿用现有 Flutter 对比页、GL 合成器和 AppTheme。当前 feat/dance-comparison-m0 工作区，HEAD e286cf6；本次未提交、推送或合并。
+- Full-view evidence：已查看竖屏实际拖动、横屏左右布局、手动双预览、真实素材调整页及原项目恢复完整图。截图、XML 与原始日志位于本地忽略目录 docs/session/comparison-picture-markers-20261026/。
+- Layout/type/tokens：中央视图菜单新增「调整画面」，专用模式提供参考/目标选择、1–4× 缩放、平移、单路重置、完成/取消；金色边框标记选中画面。延续现有字体与图标，保留 48dp 触控；窄栏和大字体可滚动访问。书签角标使用现有 Badge，无新图片资源。
+- Image/gesture：每路在自身 pane 缩放和裁剪，保留原比例，兼容镜像与横竖布局。手机完成按钮放大及实际单指拖动，参考改变时目标像素误差为 0；两路相对预期变换的像素平均绝对差为 2.21895 / 1.39230。Flutter 多指针测试覆盖双指缩放；手机 shell 注入 helper 被系统以 137 结束，真机双指未据此记为通过，helper 已移除。
+- Copy/flow：使用「问题片段 / 开始时间 / 结束时间 / 问题备注」；可创建、编辑、删除、暂停定位及设为 A/B。源锚点在交换后保留，换源或无可用范围时提示并禁用定位/循环；备注仍可保留。
+- Findings/repair：大字体窄栏的缩放标签溢出已通过弹性布局修复；真机发现数量角标覆盖读屏名称，已明确图标语义并排除角标文字。最终组件断言与手机 XML 均确认「问题片段」名称保留。
+- Persistence/lifecycle：两路画面与标记保存、取消、后台未确认草稿、冷启动、横竖屏及手动取消通过；微秒起止点保留。手机实际循环两次，交换后负偏移映射通过，删除可跨冷启动保留。临时项目、合成素材与触控 helper 清理完成，原两条历史的内容及更新时间保留，系统设置保持原值。
+- Validation/scope：33 项 Flutter、55 项原生、静态检查、Release Kotlin 定向编译、Debug 构建和覆盖安装哈希通过。最终 APK SHA-256 为 3c6135b9ce87f7847c6d1749d78d16789f997be21b4761600dee4b174513ff35。仅语义修复后的包复用未改动的原生/像素检查结果；没有重跑全量 M0 或全量 Release QA。
+- Report：[comparison-picture-markers-2026-10-26.md](docs/comparison-picture-markers-2026-10-26.md)。本机素材与覆盖范围内功能完成；长时原片、多机型、导出与 iOS 未新增验收。
+
+final result: passed within recorded scope
+
+
+## A/B 同轨剪辑式选段与单一时间读数 — 2026-10-26
+
+- Source visual truth：原对比页 `docs/session/comparison-ab-timeline-20261026/00-source-before.png`、四时间版本 `00-centered-before-interaction.png`，以及隐私打码页既有 `_buildIntegratedTrimTrack` / `_IntegratedTrimHandle`。按用户最终要求使用轨道中线剪辑式选区，时间整合为一个情境读数。
+- Implementation：最终截图 `00-one-clock-before-interaction.png`、`03-B-dragged-live.png`、`08-landscape.png`。当前分支 feat/dance-comparison-m0，HEAD e286cf6；未提交、推送或合并。
+- Viewport/state：竖屏 1080×2400 / Flutter 360×800 / DPR 3；横屏 2400×1080 / 800×360。前后使用同一暂停位置 8.344 秒、+1.490 秒偏移、上下排列与镜像设置。原生媒体等比适配可用区域，不将邻近视频帧当作像素完全相等。
+- Combined comparison：已将前后图组合到 `qa-one-clock-full.png` 与 `qa-one-clock-focused.png` 并查看；前者检查整体层级，后者检查时间与轨道细节。横屏及拖动中的实际界面也已查看。
+- Fonts/typography：沿用系统字体，常态仅一个 12sp 等宽数字时间；拖动时同处临时显示 A/B 端点时间。总时长和两端常驻数字移除，完整微秒数据仍保留于项目及读屏。窄栏、大字体专项无溢出。
+- Spacing/layout：选区框 14dp 高、把手 10×14dp，均与播放轨道中线对齐；白色播放针 2×18dp。触控/语义目标保留 48dp，近邻端点可分别操作；移除下挂浮标和多余时间行，预览获得更多空间，播放及练习入口仍可见。
+- Colors/tokens：沿用 AppTheme 的石墨背景、灰轨、金色选区和银白播放针；沿用现有剪辑页圆角与细边框，没有新增卡片或装饰。
+- Image quality/assets：沿用真实视频 Texture 和现有图标，无新图片或生产字体资产；原素材自带播放器及暗帧保留。
+- Copy/interaction：默认显示当前播放位置，拖动 A/B 时显示当前调整值；点击轨道/远离把手处拖动定位，拖把手选段。循环、逐帧与问题片段保持可用，选区可带入片段表单。
+- Comparison history：初版进度填充与选段混淆，修复为明确区间框与播放针。金色方框、下挂竖柄被用户指出不协调，改用已有剪辑页的同轨居中把手。四处常驻时间被指出冗余，改为单一情境读数。最终同视口对照及真机已确认上述 P2 修复；无待处理的本次 P0/P1/P2。
+- Functional checks：41 项 Flutter、静态检查、Debug 构建及安装哈希通过。最终手机完成中线把手拖动、独立定位、3 次共同循环、单时间临时切换、冷启动、横竖屏、片段默认选区和清除。原两条历史内容保持，一条更新时间变化，临时项目已清理；设备设置保持原值。
+- Scope/checklist：核对字体、布局、颜色、图像、文案及核心操作。原生 11 个相关输入未变化，复用此前 55 项结果；未重跑全量 M0 或全量 Release QA。仅本机与所用素材范围，无新增导出、iOS 或多机型覆盖。
+- Report：[comparison-ab-timeline-2026-10-26.md](docs/comparison-ab-timeline-2026-10-26.md)。最终 APK SHA-256：8ac68213d742f3d116fb10462ce816d4a48bf43cd9575afd31c2125a8a4e7aa0。
+
+final result: passed
+
+
+## 2026-10-26：恒定音乐速率与双锚点校准
+
+本轮沿用现有对比页、单一共同时间读数和剪辑式 A/B 轨道。手动页增加「只调位置 / 校准速度差」及前后音乐点步骤；正常观看仅在存在速率差时增加相对音乐速度读数。真机发现底部步骤区压缩横屏预览，已改为横屏侧栏并保留原上下/左右排列；最终两路预览各约 243px，高于 48dp 最小可见区检查。模式选择使用既有金色状态，保持 48dp 操作目标。
+
+最终截图已查看：`layout-landscape-manual.png`、`layout-portrait.png`、`layout-manual-applied.png`、`real-music-matched.png`、`final-original-restored.png`，位于忽略目录 `docs/session/comparison-music-rate-20261026/`。实机完成双锚点记录/应用/取消与冷启动；标记、逆映射、真实 PTS 和循环定向检查通过。Flutter 53 项、原生 50 项唯一用例及静态检查通过。
+
+16kHz 无需重采样的输入现在直接消费 PCM，避免调用未启用的 Sonic；真实音乐副本的时间戳问题通过修正验收素材解决，未削弱产品时间契约。原两条项目内容与时间戳保持，临时项目和媒体已清理。最终包 SHA-256 `418acfc6fea58704126fcb358095fc4bcf1bfbe5ef70e6e345f127876a67d5a1`。本轮范围内无待处理阻断问题；未重复全量 M0 或 Release QA。完整边界与证据见 `docs/comparison-music-rate-2026-10-26.md` / `.json`。
+
+
+## 2026-10-26：Android 对比视频导出
+
+正式对比页「更多操作」增加导出入口，面板沿用现有 Material/AppTheme，提供全段或 A/B 选段、尺寸/1× 编码说明、进度、取消、重试和相册动作。无新装饰资产或时间轴改版。活动后台任务先恢复进度，结束后再恢复预览，避免占用四路视频解码。
+
+Flutter 62 项唯一用例、相关原生 30 项及静态检查通过。真机通过专项 instrumentation 验证正式管线与前台服务；独立检查全段/精确 A/B、正逆音乐速率映射、布局及独立画面设置、VFR 真实 PTS、HEVC/44.1kHz 真实音乐派生副本、静音 AAC、1080×1800 输出，以及取消/重试/相册哈希和幂等保存。修正 AAC 固有延迟与尾部封装后，音频比对偏差 0–1 个采样，时长偏差最多 74µs。
+
+用户解锁后已补齐正式页全段/A/B、后台完成、取消选项、运行中取消、冻结设置重试、返回键取消及预览恢复/播放暂停。已查看选项、进度、完成、取消恢复和系统相册播放截图；默认 OPPO 视频的首次协议未同意，改用已就绪的本地相册实际播放，没有更改默认应用。文件核对发现初版 A/B 少一帧，已修复异步 Surface 队列，并加入逐帧提交/编码 PTS 一致性保护；修复后手机画布 1080×1402 的 A/B 143 帧、全段 591 帧均完整。
+
+本轮验收已完成，清理后手机自动锁屏不影响已完成结果。只运行本轮导出相关检查，没有重复全量 M0 或 Release QA。原两条项目逐字节恢复，测试文件和相册条目已清理，导出服务/唤醒锁释放，设备设置保持。完整范围、最终包哈希与待办见 `docs/comparison-export-2026-10-26.md` / `.json`。
+
+最终 APK SHA-256：`e72f19222394696364872224c86ce672df61d2fc317799f5a7c2a0595db91b42`。代码未提交、未推送、未合并。
+
+## 2026-10-26：iOS 舞蹈对比接入
+
+沿用现有参考/目标、单一时间读数和剪辑式 A/B 轨道，iOS 首页开放正式对比入口。复用 Flutter 页面，通过 Swift/Pigeon 接入共同音频时钟、双画面合成、恒定音乐速率校准、真实 PTS 逐帧、独立画面设置、标记及项目保存恢复；导出复用同一时间/画面设置，提供全段与 A/B 的 1× H.264/AAC、有限后台任务、Photos 保存和本地播放。
+
+iOS 17 独立模拟器 16 阶段全部通过。已查看跨安装容器变更后的正式对比页截图：双纹理、1.250s 位置、音乐映射、镜像/缩放平移、A/B 和一个标记恢复正常；项目 JSON 和媒体内容保留稳定身份。最终成片 26 帧均通过时序与像素检查，音频 lag=0，视频/音频/container 时长误差均为 0。Flutter 47 个有效用例及定向静态检查通过，相关 Mac 原生门禁通过；正式 `lib/main.dart` 的 iPhoneOS 无签名 Debug 和模拟器构建通过。
+
+本轮修复视频输出重建导致 seek 时钟提前推进、压缩媒体原 PTS 未应用编辑列表偏移，以及 CMTime 过早取整的边界问题；591 个可见帧索引已与独立解码逐项核对。Windows/Mac 沿用同分支同步，未提交、推送或合并，未重跑全量 M0 或 Release QA。物理 iPhone/iPad、后台额度实际到期、PHPicker 手动选入与权限弹窗/拒绝仍未验证。完整证据与接续命令见 `docs/comparison-ios-2026-10-26.md` / `.json`。

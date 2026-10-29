@@ -1,0 +1,71 @@
+{
+  "recordedAt": "2026-10-26",
+  "decision": "findings_resolved",
+  "openP1": 0,
+  "openP2": 0,
+  "priorFixedFindings": 4,
+  "branch": "feat/dance-comparison-m0",
+  "head": "e286cf6116357838421c047f166aa95147a66428",
+  "baselineManifest": "session/comparison-premerge-fixes-20261026/final-source-manifest.json",
+  "baselineVerifiedFiles": 113,
+  "productionCodeChanged": false,
+  "findings": [
+    {
+      "id": "comparison-reaudit-1",
+      "priority": "P2",
+      "status": "fixed",
+      "title": "Obsolete practice or playback responses can overwrite a different project",
+      "file": "mobile/app/lib/features/comparison/presentation/comparison_controller.dart",
+      "line": 844,
+      "rollbackLine": 848,
+      "relatedControlLine": 876,
+      "validation": "actual screen widget menu interaction and controlled late playback result",
+      "evidence": "session/comparison-reaudit-20261026/await-repros.log",
+      "fixReport": "comparison-reaudit-fixes-2026-10-29.md"
+    },
+    {
+      "id": "comparison-reaudit-2",
+      "priority": "P2",
+      "status": "fixed",
+      "title": "Cancelling music alignment during mapping application does not prevent committing its result",
+      "file": "mobile/app/lib/features/comparison/presentation/comparison_controller.dart",
+      "line": 350,
+      "commitLine": 381,
+      "validation": "actual screen widget Cancel interaction after analysis and before native mapping completion",
+      "expectedOffsetUs": 0,
+      "actualSavedOffsetUs": 3000000,
+      "actualSavedAlignment": "auto",
+      "saveCallsAfterCancel": 1,
+      "evidence": "session/comparison-reaudit-20261026/await-repros.log",
+      "fixReport": "comparison-reaudit-fixes-2026-10-29.md"
+    }
+  ],
+  "verification": {
+    "newReproductions": 3,
+    "correctBehaviorAssertionsFailed": 3,
+    "actualScreenWidgetReproductions": 2,
+    "controllerReproductions": 1,
+    "previousChecksReused": true,
+    "newDeviceValidation": false,
+    "fullM0Repeated": false,
+    "releaseQARepeated": false
+  },
+  "deferredValidation": {
+    "iosPhysicalDevice": {
+      "status": "deferred_no_device",
+      "reason": "用户当前没有 iOS 真机"
+    }
+  },
+  "sourceManifest": "session/comparison-reaudit-20261026/final-source-manifest.json",
+  "sourceSyncReceipt": "session/comparison-reaudit-20261026/mac-source-receipt.json",
+  "gitActions": {
+    "committed": false,
+    "pushed": false,
+    "merged": false
+  },
+  "auditDecisionBeforeFixes": "changes_required",
+  "fixRecordedAt": "2026-10-29",
+  "latestFixReport": "comparison-reaudit-fixes-2026-10-29.md",
+  "latestSourceManifest": "session/comparison-reaudit-fixes-20261029/final-source-manifest.json",
+  "latestSourceSyncReceipt": "session/comparison-reaudit-fixes-20261029/mac-source-receipt.json"
+}

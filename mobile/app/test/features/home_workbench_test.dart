@@ -94,6 +94,10 @@ GoRouter _testRouter() => GoRouter(
   routes: [
     GoRoute(path: '/', builder: (_, _) => const ImportVideoScreen()),
     GoRoute(
+      path: '/comparison',
+      builder: (_, _) => const Scaffold(body: Text('TEST_COMPARISON')),
+    ),
+    GoRoute(
       path: '/protection_editor',
       builder: (context, state) {
         final args = state.extra! as ProtectionEditorArgs;
@@ -122,6 +126,7 @@ Future<void> _pumpWorkbench(
   GoRouter router, {
   NativeProcessingRepository? repository,
   double textScale = 1,
+  TargetPlatform platform = TargetPlatform.android,
 }) async {
   await tester.pumpWidget(
     ProviderScope(
@@ -130,7 +135,7 @@ Future<void> _pumpWorkbench(
           nativeRepositoryProvider.overrideWithValue(repository),
       ],
       child: MaterialApp.router(
-        theme: AppTheme.darkTheme,
+        theme: AppTheme.darkTheme.copyWith(platform: platform),
         routerConfig: router,
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(
@@ -150,6 +155,41 @@ void main() {
     expect(HomeToolCatalog.standalone.length, 2);
     final all = [...HomeToolCatalog.standalone];
     expect(all.map((tool) => tool.id).toSet().length, all.length);
+  });
+
+  test('comparison is available on iOS and Android only', () {
+    for (final platform in TargetPlatform.values) {
+      expect(
+        HomeToolCatalog.forPlatform(
+          platform,
+        ).any((tool) => tool.launch == HomeToolLaunch.danceComparison),
+        platform == TargetPlatform.iOS || platform == TargetPlatform.android,
+        reason: platform.name,
+      );
+    }
+  });
+
+  testWidgets('iOS workbench launches the comparison workflow', (tester) async {
+    final router = _testRouter();
+    addTearDown(router.dispose);
+    await _pumpWorkbench(tester, router, platform: TargetPlatform.iOS);
+    await tester.drag(find.byType(PageView), const Offset(-280, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('舞蹈对比'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('home-comparison-card')));
+    await tester.pumpAndSettle();
+    expect(find.text('TEST_COMPARISON'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('desktop workbench keeps comparison hidden', (tester) async {
+    final router = _testRouter();
+    addTearDown(router.dispose);
+    await _pumpWorkbench(tester, router, platform: TargetPlatform.macOS);
+    expect(find.byKey(const ValueKey('home-import-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-comparison-card')), findsNothing);
+    expect(find.byType(PageView), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('standalone workflows exclude editor-internal tools', (

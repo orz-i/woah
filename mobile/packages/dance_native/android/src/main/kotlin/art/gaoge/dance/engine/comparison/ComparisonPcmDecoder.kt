@@ -37,6 +37,7 @@ internal class ComparisonPcmDecoder(private val context: Context) {
             codec.configure(format,null,null,0);codec.start()
             val info=MediaCodec.BufferInfo()
             var channels=0;var inputRate=0;var encoding=AudioFormat.ENCODING_PCM_16BIT
+            var expectedOutputUs: Long?=null
             var inputEnded=false;var outputEnded=false;var lastOutput=SystemClock.elapsedRealtime()
             fun configure(output: MediaFormat) {
                 val nextRate=output.getInteger(MediaFormat.KEY_SAMPLE_RATE)
@@ -46,10 +47,6 @@ internal class ComparisonPcmDecoder(private val context: Context) {
                 encoding=if (output.containsKey(MediaFormat.KEY_PCM_ENCODING)) output.getInteger(MediaFormat.KEY_PCM_ENCODING) else AudioFormat.ENCODING_PCM_16BIT
                 check(channels in 1..8 && encoding in listOf(AudioFormat.ENCODING_PCM_16BIT,AudioFormat.ENCODING_PCM_FLOAT))
                 if (sonic==null) sonic=ComparisonMusicResampling.create(inputRate)
-            }
-            fun drain() {
-                val output=sonic!!.output.order(ByteOrder.nativeOrder())
-                while (output.remaining()>=2) builder!!.add(output.short/32768f)
             }
             while (!outputEnded) {
                 if (!current()) throw ComparisonAlignmentCancelled()
@@ -74,6 +71,12 @@ internal class ComparisonPcmDecoder(private val context: Context) {
                             output.position(info.offset);output.limit(info.offset+info.size)
                             val bytes=if (encoding==AudioFormat.ENCODING_PCM_FLOAT) 4 else 2
                             val count=info.size/(bytes*channels)
+                            if (expectedOutputUs?.let { kotlin.math.abs(info.presentationTimeUs-it)>20_000 }==true) {
+                                if (art.gaoge.dance.engine.BuildConfig.DEBUG) android.util.Log.i("WoahComparison",
+                                    "music_pcm_gap expected_us=$expectedOutputUs actual_us=${info.presentationTimeUs} samples=$count rate=$inputRate")
+                                throw ComparisonDiscontinuousAudio()
+                            }
+                            expectedOutputUs=info.presentationTimeUs+count*1_000_000L/inputRate
                             val mono=ByteBuffer.allocateDirect(count*2).order(ByteOrder.nativeOrder())
                             repeat(count) {
                                 var sum=0.0
@@ -81,7 +84,7 @@ internal class ComparisonPcmDecoder(private val context: Context) {
                                 mono.putShort((sum/channels).toInt().coerceIn(-32768,32767).toShort())
                             }
                             mono.flip()
-                            while (mono.hasRemaining()) { sonic!!.queueInput(mono);drain() }
+                            ComparisonMusicResampling.queue(sonic!!,mono,builder!!::add)
                         }
                         outputEnded=info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM!=0
                     } finally { codec.releaseOutputBuffer(index,false) }
@@ -89,7 +92,7 @@ internal class ComparisonPcmDecoder(private val context: Context) {
                 check(SystemClock.elapsedRealtime()-lastOutput<5000) { "音频解码超时，请手动校准。" }
             }
             if (builder==null || sonic==null) throw ComparisonNoAudio()
-            sonic!!.queueEndOfStream();drain()
+            ComparisonMusicResampling.end(sonic!!,builder!!::add)
             if (!current()) throw ComparisonAlignmentCancelled()
             return builder!!.finish()
         } finally {
@@ -107,5 +110,22 @@ internal object ComparisonMusicResampling {
         setOutputSampleRateHz(ComparisonMusicFeatureBuilder.RATE)
         configure(AudioProcessor.AudioFormat(inputRate,1,C.ENCODING_PCM_16BIT))
         flush(AudioProcessor.StreamMetadata.DEFAULT)
+    }
+    private fun consume(buffer: ByteBuffer,output: (Float)->Unit) {
+        buffer.order(ByteOrder.nativeOrder())
+        while (buffer.remaining()>=2) output(buffer.short/32768f)
+    }
+    fun queue(processor: SonicAudioProcessor,input: ByteBuffer,output: (Float)->Unit) {
+        // Same-rate PCM makes Sonic inactive; queueInput then has no Sonic instance.
+        if (!processor.isActive) consume(input,output)
+        else while (input.hasRemaining()) {
+            processor.queueInput(input);consume(processor.output,output)
+        }
+    }
+    fun end(processor: SonicAudioProcessor,output: (Float)->Unit) {
+        if (processor.isActive) {
+            processor.queueEndOfStream()
+            while (!processor.isEnded) consume(processor.output,output)
+        }
     }
 }

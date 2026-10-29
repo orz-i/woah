@@ -4,6 +4,7 @@ import 'package:app/app/theme.dart';
 import 'package:app/features/comparison/data/comparison_gateway.dart';
 import 'package:app/features/comparison/presentation/comparison_controller.dart';
 import 'package:app/features/comparison/presentation/comparison_screen.dart';
+import 'package:app/features/comparison/presentation/comparison_timeline.dart';
 import 'package:dance_domain/dance_domain.dart';
 import 'package:dance_native/dance_native.dart';
 import 'package:flutter/material.dart';
@@ -58,6 +59,10 @@ class FakeComparisonGateway implements ComparisonGateway {
   int opens = 0, cancels = 0, saves = 0, alignCalls = 0;
   final List<String> events = [];
   final layouts = <bool>[];
+  final frameSteps = <bool>[];
+  ComparisonProject? practice;
+  Completer<ComparisonPlaybackDto>? pendingFrame;
+  final pendingOpens = <Completer<ComparisonPlaybackDto>>[];
   MusicAlignmentDto? alignmentResult;
   bool failSave = false;
   Completer<void>? firstSaveGate;
@@ -97,9 +102,18 @@ class FakeComparisonGateway implements ComparisonGateway {
     opens++;
     events.add('shared-open');
     layouts.add(horizontal);
+    if (pendingOpens.isNotEmpty) return pendingOpens.removeAt(0).future;
     current.offsetUs = p.offsetUs;
+    current.timeScale = p.timeScale;
+    final range = p.musicMapping.overlap(
+      p.teacher!.durationUs,
+      p.learner!.durationUs,
+    )!;
+    current.teacherStartUs = range.$1;
+    current.durationUs = range.$2 - range.$1;
     current.positionUs = p.positionUs;
     current.speed = p.speed;
+    practice = p;
     return current;
   }
 
@@ -125,6 +139,24 @@ class FakeComparisonGateway implements ComparisonGateway {
   }
 
   @override
+  Future<ComparisonPlaybackDto> setAlignment(
+    int offsetUs,
+    double timeScale,
+  ) async {
+    current.offsetUs = offsetUs;
+    current.timeScale = timeScale;
+    if (practice != null) {
+      final range = ComparisonMusicMapping(
+        offsetUs,
+        timeScale,
+      ).overlap(practice!.teacher!.durationUs, practice!.learner!.durationUs)!;
+      current.teacherStartUs = range.$1;
+      current.durationUs = range.$2 - range.$1;
+    }
+    return current;
+  }
+
+  @override
   Future<ComparisonPlaybackDto> resize(int w, int h, bool horizontal) async {
     layouts.add(horizontal);
     return current;
@@ -132,6 +164,36 @@ class FakeComparisonGateway implements ComparisonGateway {
 
   @override
   Future<ComparisonPlaybackDto> state() async => current;
+  @override
+  Future<ComparisonPlaybackDto> setPractice(ComparisonProject p) async {
+    final loopChanged =
+        p.loopEnabled &&
+        (practice?.loopEnabled != true ||
+            practice?.loopStartUs != p.loopStartUs ||
+            practice?.loopEndUs != p.loopEndUs);
+    practice = p;
+    if (loopChanged &&
+        (current.positionUs < p.loopStartUs! ||
+            current.positionUs >= p.loopEndUs!)) {
+      current.positionUs = p.loopStartUs!;
+    }
+    return current;
+  }
+
+  @override
+  Future<ComparisonPlaybackDto> stepFrame(bool forward) async {
+    frameSteps.add(forward);
+    if (pendingFrame != null) return pendingFrame!.future;
+    current.phase = 'paused';
+    current.positionUs = forward ? 1041007 : 999991;
+    current.teacherFrameUs = current.positionUs;
+    current.learnerFrameUs = ComparisonMusicMapping(
+      current.offsetUs,
+      current.timeScale ?? 1,
+    ).target(current.teacherStartUs + current.positionUs);
+    return current;
+  }
+
   @override
   Future<MusicAlignmentDto> align(ComparisonProject p) {
     alignCalls++;
@@ -143,6 +205,22 @@ class FakeComparisonGateway implements ComparisonGateway {
     cancels++;
   }
 
+  @override
+  Future<ComparisonExportDto?> getExport() async => null;
+  @override
+  Future<ComparisonExportDto> startExport(ComparisonExportPlan p) async =>
+      throw UnimplementedError();
+  @override
+  Future<ComparisonExportDto> cancelExport(String id) async =>
+      throw UnimplementedError();
+  @override
+  Future<ComparisonExportDto> retryExport(String id) async =>
+      throw UnimplementedError();
+  @override
+  Future<ComparisonExportDto> saveExport(String id) async =>
+      throw UnimplementedError();
+  @override
+  Future<void> openExport(String id) async {}
   @override
   Future<void> close() async {
     events.add('shared-close');
@@ -191,6 +269,292 @@ class FakeCueVideo extends VideoPlayerController {
 }
 
 void main() {
+  testWidgets(
+    'compact landscape preserves 48dp practice targets at large text',
+    (tester) async {
+      tester.view.physicalSize = const Size(640, 320);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.darkTheme,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(2)),
+            child: child!,
+          ),
+          home: ComparisonScreen(
+            gateway: FakeComparisonGateway(saved: [savedProject()]),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      for (final key in [
+        'comparison-frame-back',
+        'comparison-frame-forward',
+        'comparison-loop-A',
+        'comparison-loop-B',
+        'comparison-loop-toggle',
+      ]) {
+        final target = find.byKey(ValueKey(key));
+        await tester.ensureVisible(target);
+        final size = tester.getSize(target);
+        expect(size.width, greaterThanOrEqualTo(48));
+        expect(size.height, greaterThanOrEqualTo(48));
+        expect(tester.getRect(target).bottom, lessThanOrEqualTo(320));
+      }
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    },
+  );
+  testWidgets(
+    'loop buffering keeps pause available and disables frame navigation until ready',
+    (tester) async {
+      final gateway = FakeComparisonGateway(
+        saved: [
+          savedProject().copyWith(
+            loopStartUs: 1000000,
+            loopEndUs: 3000000,
+            loopEnabled: true,
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.darkTheme,
+          home: ComparisonScreen(gateway: gateway),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      final paused = gateway.current;
+      gateway.current = ComparisonPlaybackDto(
+        textureId: paused.textureId,
+        phase: 'buffering',
+        positionUs: paused.positionUs,
+        durationUs: paused.durationUs,
+        teacherStartUs: paused.teacherStartUs,
+        offsetUs: paused.offsetUs,
+        speed: paused.speed,
+      );
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pumpAndSettle();
+      expect(find.text('暂停'), findsOneWidget);
+      expect(
+        tester
+            .widget<IconButton>(
+              find.byKey(const ValueKey('comparison-frame-forward')),
+            )
+            .onPressed,
+        isNull,
+      );
+      await tester.ensureVisible(find.byKey(const ValueKey('comparison-play')));
+      await tester.tap(find.byKey(const ValueKey('comparison-play')));
+      await tester.pumpAndSettle();
+      expect(gateway.current.phase, 'paused');
+      expect(find.text('播放'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    },
+  );
+  testWidgets(
+    'timeline sets A/B, practice controls step frames and mirror only the chosen preview',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final gateway = FakeComparisonGateway(saved: [savedProject()]);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.darkTheme,
+          home: ComparisonScreen(
+            gateway: gateway,
+            manualVideoFactory: (uri) => FakeCueVideo(uri, gateway.events),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      await tester
+          .widget<ComparisonTimeline>(find.byType(ComparisonTimeline))
+          .onRange(1000000, 3000000);
+      await tester.pumpAndSettle();
+      expect(gateway.projects.first.loopStartUs, 1000000);
+      expect(gateway.projects.first.loopEndUs, 3000000);
+      expect(find.byTooltip('暂停 A/B 循环'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('comparison-frame-forward')));
+      await tester.pumpAndSettle();
+      expect(gateway.frameSteps, [true]);
+      expect(gateway.projects.first.positionUs, 1041007);
+      await tester.tap(find.byKey(const ValueKey('comparison-view')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.ancestor(
+          of: find.text('参考镜像'),
+          matching: find.byWidgetPredicate(
+            (widget) => widget is CheckedPopupMenuItem,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(gateway.projects.first.mirrorTeacher, true);
+      expect(gateway.projects.first.mirrorLearner, false);
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('comparison-calibration')),
+      );
+      await tester.tap(find.byKey(const ValueKey('comparison-calibration')));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<Transform>(
+              find.byKey(const ValueKey('comparison-manual-mirror-0')),
+            )
+            .transform
+            .entry(0, 0),
+        -1,
+      );
+      expect(
+        tester
+            .widget<Transform>(
+              find.byKey(const ValueKey('comparison-manual-mirror-1')),
+            )
+            .transform
+            .entry(0, 0),
+        1,
+      );
+      await tester.tap(find.text('取消'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('comparison-project-menu')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('清除 A/B 循环'));
+      await tester.pumpAndSettle();
+      expect(gateway.projects.first.loopStartUs, isNull);
+      expect(gateway.projects.first.loopEnabled, false);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    },
+  );
+  test(
+    'practice state round trips, swaps with sources and reads older projects',
+    () {
+      final p = savedProject().copyWith(
+        mirrorTeacher: true,
+        loopStartUs: 1000000,
+        loopEndUs: 3000000,
+        loopEnabled: true,
+      );
+      final restored = ComparisonProject.fromJson(
+        jsonDecode(jsonEncode(p.toJson())),
+      );
+      expect(restored.mirrorTeacher, true);
+      expect(restored.mirrorLearner, false);
+      expect(restored.loopStartUs, 1000000);
+      expect(restored.loopEndUs, 3000000);
+      expect(restored.loopEnabled, true);
+      final swapped = restored.swapSources();
+      expect(swapped.mirrorTeacher, false);
+      expect(swapped.mirrorLearner, true);
+      expect(swapped.loopStartUs, 1000000);
+      expect(swapped.loopEnabled, true);
+      final old = p.toJson()
+        ..remove('mirrorTeacher')
+        ..remove('mirrorLearner')
+        ..remove('loopStartUs')
+        ..remove('loopEndUs')
+        ..remove('loopEnabled');
+      final legacy = ComparisonProject.fromJson(old);
+      expect(legacy.mirrorTeacher, false);
+      expect(legacy.loopStartUs, isNull);
+      expect(legacy.loopEnabled, false);
+      final invalid = p.toJson()..['loopEndUs'] = 500000;
+      expect(() => ComparisonProject.fromJson(invalid), throwsFormatException);
+    },
+  );
+  test(
+    'A/B range saves both endpoints, rejects reversed points and saves disabled bounds',
+    () async {
+      final gateway = FakeComparisonGateway(saved: [savedProject()]);
+      final controller = ComparisonController(gateway);
+      addTearDown(controller.dispose);
+      controller.setViewport(320, 480, false);
+      await controller.initialize();
+      expect(await controller.setLoopRange(3000000, 1000000), false);
+      expect(controller.error, contains('B 点'));
+      expect(controller.project.loopStartUs, isNull);
+      expect(await controller.setLoopRange(1000000, 3000000), true);
+      expect(controller.project.loopEndUs, 3000000);
+      expect(controller.project.loopEnabled, true);
+      expect(gateway.practice!.offsetUs, 2000000);
+      expect(gateway.current.positionUs, 1000000);
+      await controller.toggleLoop();
+      expect(gateway.projects.first.loopEnabled, false);
+      expect(gateway.projects.first.loopEndUs, 3000000);
+      await controller.clearLoop();
+      expect(gateway.projects.first.loopStartUs, isNull);
+      expect(gateway.projects.first.loopEndUs, isNull);
+    },
+  );
+  test(
+    'frame requests use the native result exactly and ignore duplicate taps while pending',
+    () async {
+      final gateway = FakeComparisonGateway(saved: [savedProject()]);
+      final controller = ComparisonController(gateway);
+      addTearDown(controller.dispose);
+      controller.setViewport(320, 480, false);
+      await controller.initialize();
+      gateway.pendingFrame = Completer<ComparisonPlaybackDto>();
+      final step = controller.stepFrame(true);
+      expect(controller.stepping, true);
+      await controller.stepFrame(true);
+      expect(gateway.frameSteps, [true]);
+      gateway.current.positionUs = 1041007;
+      gateway.current.phase = 'paused';
+      gateway.pendingFrame!.complete(gateway.current);
+      await step;
+      expect(controller.project.positionUs, 1041007);
+      expect(gateway.projects.first.positionUs, 1041007);
+      expect(controller.playing, false);
+      gateway.pendingFrame = null;
+      await controller.stepFrame(false);
+      expect(controller.project.positionUs, 999991);
+      expect(gateway.frameSteps, [true, false]);
+    },
+  );
+  test(
+    'independent mirrors survive manual cancel and recalibration retains source A/B',
+    () async {
+      final p = savedProject().copyWith(
+        loopStartUs: 0,
+        loopEndUs: 3000000,
+        loopEnabled: true,
+      );
+      final gateway = FakeComparisonGateway(saved: [p]);
+      final controller = ComparisonController(gateway);
+      addTearDown(controller.dispose);
+      controller.setViewport(320, 480, false);
+      await controller.initialize();
+      await controller.setMirror(true);
+      expect(gateway.practice!.mirrorTeacher, true);
+      expect(gateway.practice!.mirrorLearner, false);
+      expect(controller.project.offsetUs, p.offsetUs);
+      await controller.enterManualCalibration();
+      await controller.setMirror(false);
+      await controller.leaveManualCalibration(applied: false);
+      expect(controller.project.mirrorTeacher, true);
+      expect(controller.project.mirrorLearner, true);
+      expect(controller.project.loopEnabled, true);
+      await controller.manual(0, 2500000);
+      expect(controller.project.loopStartUs, 0);
+      expect(controller.project.loopEndUs, 3000000);
+      expect(controller.project.loopEnabled, true);
+    },
+  );
   test(
     'projects round trip, source swap preserves manual event and reverses offset',
     () {
@@ -214,6 +578,57 @@ void main() {
       expect(() => ComparisonProject.fromJson(invalid), throwsFormatException);
     },
   );
+  for (final oldFails in [true, false]) {
+    testWidgets(
+      'same-revision open keeps newer state after older ${oldFails ? 'failure' : 'success'}',
+      (tester) async {
+        final older = Completer<ComparisonPlaybackDto>();
+        final newer = Completer<ComparisonPlaybackDto>();
+        final gateway = FakeComparisonGateway(saved: [savedProject()])
+          ..pendingOpens.addAll([older, newer]);
+        final controller = ComparisonController(gateway);
+        try {
+          controller.setViewport(320, 480, false);
+          final initializing = controller.initialize();
+          await tester.pump();
+          expect(gateway.opens, 1);
+
+          // A new viewport arrives while the initial native open is still loading.
+          // The debounce opens again without changing the project's revision.
+          controller.setViewport(480, 320, true);
+          await tester.pump(const Duration(milliseconds: 180));
+          expect(gateway.opens, 2);
+          final latest = ComparisonPlaybackDto(
+            textureId: 19,
+            phase: 'paused',
+            positionUs: 2000000,
+            durationUs: 12000000,
+            teacherStartUs: 0,
+            offsetUs: 2000000,
+            speed: 1,
+          );
+          final stale = gateway.current;
+          gateway.current = latest;
+          newer.complete(latest);
+          await tester.pump();
+          expect(controller.playback, same(latest));
+
+          if (oldFails) {
+            older.completeError(StateError('superseded native open'));
+          } else {
+            older.complete(stale);
+          }
+          await initializing;
+          await tester.pump();
+          expect(controller.playback, same(latest));
+          expect(controller.error, isNull);
+          expect(controller.canPlay, isTrue);
+        } finally {
+          controller.dispose();
+        }
+      },
+    );
+  }
   test(
     'canceling a picker retains saved calibration and source references',
     () async {
@@ -572,6 +987,9 @@ void main() {
         tester.getRect(find.byKey(const ValueKey('comparison-speed'))).bottom,
         lessThanOrEqualTo(640),
       );
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('comparison-calibration')),
+      );
       await tester.tap(find.byKey(const ValueKey('comparison-calibration')));
       await tester.pumpAndSettle();
       for (final size in [const Size(320, 640), const Size(800, 360)]) {
@@ -584,7 +1002,7 @@ void main() {
           final slider = tester.getRect(
             find.byKey(ValueKey('comparison-manual-seek-$role')),
           );
-          expect(controls.height, 48);
+          expect(controls.height, greaterThanOrEqualTo(48));
           expect(slider.height, greaterThanOrEqualTo(48));
           expect(slider.width, greaterThanOrEqualTo(120));
           expect(controls.bottom, lessThanOrEqualTo(size.height));

@@ -1,0 +1,77 @@
+{
+  "recordedAt": "2026-10-29",
+  "decision": "findings_resolved",
+  "branch": "feat/dance-comparison-m0",
+  "head": "e286cf6116357838421c047f166aa95147a66428",
+  "initialAudit": "comparison-premerge-third-audit-2026-10-29.md",
+  "findings": [
+    {
+      "id": "comparison-third-audit-1",
+      "status": "fixed",
+      "resolution": "Reserve practice entry before the first await, fence continuations by project/player identity, and recheck ownership before creating two manual previews"
+    },
+    {
+      "id": "comparison-third-audit-2",
+      "status": "fixed",
+      "resolution": "Close the export dialog exactly once through a route-owned closing guard; ignore late replies and retain pending Back intent during cancellation"
+    }
+  ],
+  "verification": {
+    "flutter": {
+      "passed": 98,
+      "newEntryRouteTests": 11,
+      "staticAnalysis": "passed",
+      "report": "session/comparison-third-audit-fixes-20261029/flutter-final.log"
+    },
+    "androidFormalBuildAndSmoke": {
+      "passed": true,
+      "installedApkHashMatches": true,
+      "projectBytesUnchanged": true,
+      "originalProjectCount": 2,
+      "startupErrors": [],
+      "report": "session/comparison-third-audit-fixes-20261029/android-build-smoke.json"
+    },
+    "iosFormalBuilds": {
+      "passed": true,
+      "target": "lib/main.dart",
+      "simulatorRun": false,
+      "physicalDeviceUsed": false,
+      "report": "session/comparison-third-audit-fixes-20261029/ios-formal-builds.json"
+    },
+    "unaffectedNativeChecksReused": true,
+    "fullM0Repeated": false,
+    "releaseQARepeated": false
+  },
+  "productionFilesChanged": 3,
+  "regressionFilesAdded": 1,
+  "sourceManifest": "session/comparison-third-audit-fixes-20261029/final-source-manifest.json",
+  "sourceSyncReceipt": "session/comparison-third-audit-fixes-20261029/mac-source-receipt.json",
+  "deferredValidation": {
+    "iosPhysicalDevice": {
+      "status": "deferred_no_device",
+      "reason": "用户当前没有 iOS 真机"
+    }
+  },
+  "gitActions": {
+    "committed": false,
+    "pushed": false,
+    "merged": false
+  },
+  "resolvedThisTurn": 2,
+  "totalPriorFindingsResolved": 8,
+  "artifacts": {
+    "androidApkSha256": "2ade29729c88bcde78fbcbc40b709a440d8d89914563bacc92a301b6d217907e",
+    "ios": {
+      "iphoneos": {
+        "Runner": "6e59af9519f45aac79960daf7bef9bb0be9f8e4e3a73e5f8958c3457fcabf1b7",
+        "Runner.debug.dylib": "85e9e1ba18054504071d4fe56d694423e8294fb97856c6cb2884a368d87bbb45",
+        "Frameworks/App.framework/flutter_assets/kernel_blob.bin": "0a5f67f7e25655925916c825f616f6536acfef9196eb84e69fe8ac33793dee64"
+      },
+      "iphonesimulator": {
+        "Runner": "f5144f0486f093e82968be2a506f06e00b7f28afadbc707b1de71f63892e9e42",
+        "Runner.debug.dylib": "caea1c5816873947d0d0950ca947c1f9b73ebe85c91b0f5880a326030fc344a2",
+        "Frameworks/App.framework/flutter_assets/kernel_blob.bin": "0a5f67f7e25655925916c825f616f6536acfef9196eb84e69fe8ac33793dee64"
+      }
+    }
+  }
+}

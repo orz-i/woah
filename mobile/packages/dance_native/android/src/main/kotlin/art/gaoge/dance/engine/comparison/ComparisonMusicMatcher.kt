@@ -3,10 +3,10 @@ package art.gaoge.dance.engine.comparison
 import kotlin.math.*
 
 internal data class MusicCandidate(val offsetUs: Long,val score: Double,
-    val consistentWindows: Long,val supportedSeconds: Double,val residualMs: Double)
+    val consistentWindows: Long,val supportedSeconds: Double,val residualMs: Double,val timeScale: Double=1.0)
 internal data class MusicAlignmentResult(val status: String,val message: String,val candidates: List<MusicCandidate>)
 
-/** A constant MUSIC offset only. Motion, frame rates and playback speed are not matching inputs. */
+/** Match MUSIC only. Motion, nominal video frame rate and viewing speed are never inputs. */
 internal object ComparisonMusicMatcher {
     private data class Landmark(val hash: Int,val timeUs: Long)
     private fun landmarks(f: MusicFeatures): List<Landmark> {
@@ -27,6 +27,12 @@ internal object ComparisonMusicMatcher {
     }
     private fun check(current: ()->Boolean) { if (!current()) throw ComparisonAlignmentCancelled() }
     fun match(teacher: MusicFeatures,learner: MusicFeatures,current: ()->Boolean={true}): MusicAlignmentResult {
+        val constant=matchConstant(teacher,learner,current)
+        if (constant.status=="matched") return constant
+        val affine=ComparisonMusicRateMatcher.match(teacher,learner,current)
+        return affine ?: constant
+    }
+    private fun matchConstant(teacher: MusicFeatures,learner: MusicFeatures,current: ()->Boolean): MusicAlignmentResult {
         if (teacher.frames.size<200 || learner.frames.size<200)
             return MusicAlignmentResult("no_match","共同音乐太短或声音不足，请手动校准。",emptyList())
         val t=landmarks(teacher);val l=landmarks(learner)

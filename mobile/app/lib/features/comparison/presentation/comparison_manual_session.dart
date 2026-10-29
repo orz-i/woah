@@ -14,6 +14,13 @@ class ComparisonManualSession extends ChangeNotifier {
          (factory ?? _create)(project.teacher!.uri),
          (factory ?? _create)(project.learner!.uri),
        ] {
+    rateCalibration =
+        project.teacherAnchor2Us != null && project.learnerAnchor2Us != null;
+    if (rateCalibration) {
+      firstAnchor = (project.teacherAnchorUs!, project.learnerAnchorUs!);
+      secondAnchor = (project.teacherAnchor2Us!, project.learnerAnchor2Us!);
+      anchorIndex = 1;
+    }
     for (final video in videos) {
       video.addListener(_tick);
     }
@@ -24,7 +31,59 @@ class ComparisonManualSession extends ChangeNotifier {
   final List<Timer?> _timers = [null, null];
   final List<Future<void>?> _workers = [null, null];
   final List<bool> _dragging = [false, false];
+  final List<bool> _seekSucceeded = [false, false];
   bool ready = false, _closed = false;
+  bool rateCalibration = false, anchoring = false;
+  int anchorIndex = 0;
+  (int, int)? firstAnchor, secondAnchor;
+  void setRateCalibration(bool value) {
+    if (anchoring) return;
+    rateCalibration = value;
+    if (value && firstAnchor == null) anchorIndex = 0;
+    _tick();
+  }
+
+  Future<void> selectAnchor(int index) async {
+    if (anchoring) return;
+    await pause();
+    anchorIndex = index;
+    final anchor = index == 0 ? firstAnchor : secondAnchor;
+    if (anchor != null) {
+      await Future.wait([seek(0, anchor.$1), seek(1, anchor.$2)]);
+    }
+    _tick();
+  }
+
+  Future<void> recordFirstAnchor() async {
+    if (anchoring || _closed) return;
+    anchoring = true;
+    _tick();
+    try {
+      final value = await anchors();
+      if (duration(0) - value.$1 < 2001000 ||
+          duration(1) - value.$2 < 2001000) {
+        error = '第一组音乐点太靠近片尾，请向前选择，给第二组留出至少 2 秒';
+        _tick();
+        return;
+      }
+      firstAnchor = value;
+      anchorIndex = 1;
+      final reference =
+          secondAnchor?.$1 ??
+          value.$1 + ((duration(0) - value.$1) * .6).round();
+      final target =
+          secondAnchor?.$2 ??
+          value.$2 + ((reference - value.$1) * project.timeScale).round();
+      await Future.wait([seek(0, reference), seek(1, target)]);
+      _tick();
+    } catch (_) {
+      if (!_closed) error = '音乐点定位未完成，请重新预览后重试。';
+    } finally {
+      anchoring = false;
+      _tick();
+    }
+  }
+
   String? error;
   static VideoPlayerController _create(String source) =>
       source.startsWith('content://')
@@ -56,10 +115,15 @@ class ComparisonManualSession extends ChangeNotifier {
     try {
       await Future.wait(videos.map((v) => v.initialize()));
       if (_closed) return;
-      final teacherUs = max(0, -project.offsetUs) + project.positionUs;
+      final start =
+          project.musicMapping
+              .overlap(project.teacher!.durationUs, project.learner!.durationUs)
+              ?.$1 ??
+          0;
+      final teacherUs = secondAnchor?.$1 ?? start + project.positionUs;
       await Future.wait([
         seek(0, teacherUs),
-        seek(1, teacherUs + project.offsetUs),
+        seek(1, secondAnchor?.$2 ?? project.musicMapping.target(teacherUs)),
       ]);
       if (_closed) return;
       ready = true;
@@ -111,6 +175,7 @@ class ComparisonManualSession extends ChangeNotifier {
 
   Future<void> _seek(int role, int targetUs) {
     if (_closed) return Future.value();
+    _seekSucceeded[role] = false;
     error = null;
     _scrub[role] = targetUs.clamp(0, max(0, duration(role) - 1000));
     _pending[role] = _scrub[role];
@@ -124,6 +189,7 @@ class ComparisonManualSession extends ChangeNotifier {
           _pending[role] = null;
           await videos[role].seekTo(Duration(microseconds: next));
         }
+        _seekSucceeded[role] = !_closed;
       } catch (_) {
         if (!_closed) error = '此位置暂时无法预览，请再拖动一次。';
       } finally {
@@ -137,8 +203,15 @@ class ComparisonManualSession extends ChangeNotifier {
   }
 
   Future<(int, int)> anchors() async {
+    if (_closed || !ready) throw StateError('音乐点预览尚未就绪。');
     await pause();
     await Future.wait([for (var i = 0; i < 2; i++) seek(i, position(i))]);
+    if (_closed ||
+        !_seekSucceeded.every((succeeded) => succeeded) ||
+        error != null ||
+        videos.any((video) => video.value.hasError)) {
+      throw StateError('音乐点定位未完成，请重试。');
+    }
     return (position(0), position(1));
   }
 

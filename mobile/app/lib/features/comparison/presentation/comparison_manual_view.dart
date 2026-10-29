@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'package:dance_domain/dance_domain.dart';
 import '../../../app/theme.dart';
 import 'comparison_manual_session.dart';
 import 'comparison_time.dart';
+import 'comparison_picture_surface.dart';
 
 class ComparisonManualView extends StatelessWidget {
   const ComparisonManualView({
@@ -14,12 +16,18 @@ class ComparisonManualView extends StatelessWidget {
     required this.onCancel,
     this.saving = false,
     this.sideBySide,
+    this.mirrorTeacher = false,
+    this.mirrorLearner = false,
+    this.teacherPicture = const ComparisonPicture(),
+    this.learnerPicture = const ComparisonPicture(),
     this.error,
   });
   final ComparisonManualSession session;
   final VoidCallback onApply, onCancel;
   final bool saving;
   final bool? sideBySide;
+  final bool mirrorTeacher, mirrorLearner;
+  final ComparisonPicture teacherPicture, learnerPicture;
   final String? error;
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
@@ -29,6 +37,11 @@ class ComparisonManualView extends StatelessWidget {
         final panes = [
           for (var i = 0; i < 2; i++) Expanded(child: _pane(context, i)),
         ];
+        final preview = (sideBySide ?? (bounds.maxWidth > bounds.maxHeight))
+            ? Row(children: panes)
+            : Column(children: panes);
+        final wide =
+            bounds.maxWidth >= 600 && bounds.maxWidth > bounds.maxHeight;
         return Column(
           children: [
             if (error != null || session.error != null)
@@ -43,47 +56,142 @@ class ComparisonManualView extends StatelessWidget {
                 ),
               ),
             Expanded(
-              child: (sideBySide ?? (bounds.maxWidth > bounds.maxHeight))
-                  ? Row(children: panes)
-                  : Column(children: panes),
-            ),
-            Container(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-              decoration: const BoxDecoration(
-                color: AppTheme.flowSurface,
-                border: Border(top: BorderSide(color: AppTheme.flowBorder)),
-              ),
-              child: Row(
-                children: [
-                  OutlinedButton(
-                    onPressed: saving ? null : onCancel,
-                    child: const Text('取消'),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton.icon(
-                      key: const ValueKey('comparison-manual-apply'),
-                      onPressed:
-                          session.ready && session.error == null && !saving
-                          ? onApply
-                          : null,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppTheme.gold,
-                        foregroundColor: AppTheme.textOnAccent,
-                        minimumSize: const Size(48, 48),
-                      ),
-                      icon: const Icon(Icons.check, size: 20),
-                      label: Text(saving ? '正在保存…' : '完成校准'),
+              child: wide
+                  ? Row(
+                      children: [
+                        Expanded(child: preview),
+                        SizedBox(
+                          width: math.min(300, bounds.maxWidth * .4),
+                          child: Center(
+                            child: SingleChildScrollView(child: _footer(true)),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      children: [
+                        Expanded(child: preview),
+                        _footer(false),
+                      ],
                     ),
-                  ),
-                ],
-              ),
             ),
           ],
         );
       },
     ),
   );
+
+  Widget _footer(bool sidebar) => Container(
+    key: const ValueKey('comparison-manual-actions'),
+    padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+    decoration: BoxDecoration(
+      color: AppTheme.flowSurface,
+      border: sidebar
+          ? const Border(left: BorderSide(color: AppTheme.flowBorder))
+          : const Border(top: BorderSide(color: AppTheme.flowBorder)),
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment(value: false, label: Text('只调位置')),
+              ButtonSegment(value: true, label: Text('校准速度差')),
+            ],
+            style: ButtonStyle(
+              foregroundColor: WidgetStateProperty.resolveWith(
+                (states) => states.contains(WidgetState.selected)
+                    ? AppTheme.gold
+                    : AppTheme.flowTextSecondary,
+              ),
+              backgroundColor: WidgetStateProperty.resolveWith(
+                (states) => states.contains(WidgetState.selected)
+                    ? AppTheme.gold.withAlpha(28)
+                    : Colors.transparent,
+              ),
+              side: const WidgetStatePropertyAll(
+                BorderSide(color: AppTheme.flowBorder),
+              ),
+              textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
+            ),
+            selected: {session.rateCalibration},
+            onSelectionChanged: saving || session.anchoring
+                ? null
+                : (v) => session.setRateCalibration(v.first),
+            showSelectedIcon: false,
+          ),
+        ),
+        if (session.rateCalibration)
+          Row(
+            children: [
+              for (var i = 0; i < 2; i++)
+                Expanded(
+                  child: TextButton(
+                    key: ValueKey('comparison-anchor-$i'),
+                    onPressed:
+                        saving ||
+                            session.anchoring ||
+                            (i == 1 && session.firstAnchor == null)
+                        ? null
+                        : () => session.selectAnchor(i),
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(48, 48),
+                      foregroundColor: session.anchorIndex == i
+                          ? AppTheme.gold
+                          : AppTheme.flowTextSecondary,
+                    ),
+                    child: Text(
+                      i == 0
+                          ? '前段音乐点${session.firstAnchor != null ? ' ✓' : ''}'
+                          : '后段音乐点',
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            OutlinedButton(
+              onPressed: saving || session.anchoring ? null : onCancel,
+              child: const Text('取消'),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: FilledButton.icon(
+                key: const ValueKey('comparison-manual-apply'),
+                onPressed:
+                    session.ready &&
+                        session.error == null &&
+                        !saving &&
+                        !session.anchoring
+                    ? session.rateCalibration && session.anchorIndex == 0
+                          ? () => session.recordFirstAnchor()
+                          : onApply
+                    : null,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppTheme.gold,
+                  foregroundColor: AppTheme.textOnAccent,
+                  minimumSize: const Size(48, 48),
+                ),
+                icon: const Icon(Icons.check, size: 20),
+                label: Text(
+                  saving
+                      ? '正在保存…'
+                      : session.rateCalibration && session.anchorIndex == 0
+                      ? '记录前段音乐点'
+                      : '完成校准',
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+
   Widget _pane(BuildContext context, int role) {
     final video = session.videos[role];
     final label = role == 0 ? '参考' : '目标';
@@ -99,10 +207,20 @@ class ComparisonManualView extends StatelessWidget {
               fit: StackFit.expand,
               children: [
                 if (video.value.isInitialized)
-                  Center(
-                    child: AspectRatio(
-                      aspectRatio: video.value.aspectRatio,
-                      child: VideoPlayer(video),
+                  ComparisonPictureSurface(
+                    aspectRatio: video.value.aspectRatio,
+                    picture: role == 0 ? teacherPicture : learnerPicture,
+                    child: Center(
+                      child: AspectRatio(
+                        aspectRatio: video.value.aspectRatio,
+                        child: Transform.scale(
+                          key: ValueKey('comparison-manual-mirror-$role'),
+                          scaleX: (role == 0 ? mirrorTeacher : mirrorLearner)
+                              ? -1
+                              : 1,
+                          child: VideoPlayer(video),
+                        ),
+                      ),
                     ),
                   )
                 else
@@ -172,7 +290,7 @@ class ComparisonManualView extends StatelessWidget {
                   IconButton(
                     key: ValueKey('comparison-manual-play-$role'),
                     tooltip: (video.value.isPlaying ? '暂停' : '播放') + label,
-                    onPressed: session.ready && !saving
+                    onPressed: session.ready && !saving && !session.anchoring
                         ? () => session.toggle(role)
                         : null,
                     icon: Icon(
@@ -207,13 +325,16 @@ class ComparisonManualView extends StatelessWidget {
                                 .toDouble(),
                             semanticFormatterCallback: (v) =>
                                 comparisonTime(v.round()),
-                            onChangeStart: session.ready && !saving
+                            onChangeStart:
+                                session.ready && !saving && !session.anchoring
                                 ? (_) => unawaited(session.pause())
                                 : null,
-                            onChanged: session.ready && !saving
+                            onChanged:
+                                session.ready && !saving && !session.anchoring
                                 ? (v) => session.scrub(role, v.round())
                                 : null,
-                            onChangeEnd: session.ready && !saving
+                            onChangeEnd:
+                                session.ready && !saving && !session.anchoring
                                 ? (v) => session.seek(role, v.round())
                                 : null,
                           ),
@@ -223,14 +344,14 @@ class ComparisonManualView extends StatelessWidget {
                   ),
                   IconButton(
                     tooltip: '$label后退0.1秒',
-                    onPressed: session.ready && !saving
+                    onPressed: session.ready && !saving && !session.anchoring
                         ? () => session.seek(role, value - 100000)
                         : null,
                     icon: const Icon(Icons.chevron_left, size: 22),
                   ),
                   IconButton(
                     tooltip: '$label前进0.1秒',
-                    onPressed: session.ready && !saving
+                    onPressed: session.ready && !saving && !session.anchoring
                         ? () => session.seek(role, value + 100000)
                         : null,
                     icon: const Icon(Icons.chevron_right, size: 22),

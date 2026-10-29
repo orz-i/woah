@@ -23,10 +23,19 @@ abstract interface class ComparisonGateway {
     int valueUs,
     double speed,
   );
+  Future<ComparisonPlaybackDto> setAlignment(int offsetUs, double timeScale);
   Future<ComparisonPlaybackDto> resize(int width, int height, bool horizontal);
+  Future<ComparisonPlaybackDto> setPractice(ComparisonProject project);
+  Future<ComparisonPlaybackDto> stepFrame(bool forward);
   Future<ComparisonPlaybackDto> state();
   Future<MusicAlignmentDto> align(ComparisonProject project);
   Future<void> cancelAlignment();
+  Future<ComparisonExportDto> startExport(ComparisonExportPlan plan);
+  Future<ComparisonExportDto?> getExport();
+  Future<ComparisonExportDto> cancelExport(String id);
+  Future<ComparisonExportDto> retryExport(String id);
+  Future<ComparisonExportDto> saveExport(String id);
+  Future<void> openExport(String id);
   Future<void> close();
 }
 
@@ -84,13 +93,42 @@ class NativeComparisonGateway implements ComparisonGateway {
     width,
     height,
     horizontal,
+    _practice(p),
+    p.timeScale,
   );
+  static ComparisonPracticeDto _practice(ComparisonProject p) =>
+      ComparisonPracticeDto(
+        mirrorTeacher: p.mirrorTeacher,
+        mirrorLearner: p.mirrorLearner,
+        loopStartUs: p.loopStartUs,
+        loopEndUs: p.loopEndUs,
+        loopEnabled: p.loopEnabled,
+        teacherPicture: ComparisonPictureDto(
+          zoom: p.teacherPicture.zoom,
+          panX: p.teacherPicture.panX,
+          panY: p.teacherPicture.panY,
+        ),
+        learnerPicture: ComparisonPictureDto(
+          zoom: p.learnerPicture.zoom,
+          panX: p.learnerPicture.panX,
+          panY: p.learnerPicture.panY,
+        ),
+      );
+  @override
+  Future<ComparisonPlaybackDto> setPractice(ComparisonProject p) =>
+      _api.setPractice(_practice(p));
+  @override
+  Future<ComparisonPlaybackDto> stepFrame(bool forward) =>
+      _api.stepFrame(forward);
   @override
   Future<ComparisonPlaybackDto> control(
     ComparisonCommand command,
     int valueUs,
     double speed,
   ) => _api.control(command, valueUs, speed);
+  @override
+  Future<ComparisonPlaybackDto> setAlignment(int offsetUs, double timeScale) =>
+      _api.setAlignment(offsetUs, timeScale);
   @override
   Future<ComparisonPlaybackDto> resize(
     int width,
@@ -104,6 +142,27 @@ class NativeComparisonGateway implements ComparisonGateway {
       _api.alignMusic(p.teacher!.uri, p.learner!.uri);
   @override
   Future<void> cancelAlignment() => _api.cancelAlignment();
+  @override
+  Future<ComparisonExportDto> startExport(ComparisonExportPlan p) =>
+      _api.startExport(
+        jsonEncode(p.project.toJson()),
+        p.startUs,
+        p.endUs,
+        p.width,
+        p.height,
+        p.gap,
+        p.sideBySide,
+      );
+  @override
+  Future<ComparisonExportDto?> getExport() => _api.getExport();
+  @override
+  Future<ComparisonExportDto> cancelExport(String id) => _api.cancelExport(id);
+  @override
+  Future<ComparisonExportDto> retryExport(String id) => _api.retryExport(id);
+  @override
+  Future<ComparisonExportDto> saveExport(String id) => _api.saveExport(id);
+  @override
+  Future<void> openExport(String id) => _api.openExport(id);
   @override
   Future<void> close() => _api.close();
 }

@@ -4,8 +4,9 @@ import kotlin.math.*
 
 internal class ComparisonAlignmentCancelled : RuntimeException("匹配已取消")
 internal class ComparisonAlignmentTooLong : RuntimeException("自动匹配暂支持十分钟内的视频；可以使用手动校准。")
+internal class ComparisonDiscontinuousAudio : RuntimeException("音轨时间不连续，请手动校准。")
 internal class ComparisonNoAudio : RuntimeException("视频没有音轨")
-internal data class MusicFrame(val timeUs: Long,val spectrum: FloatArray,val onset: FloatArray,val peaks: IntArray)
+internal data class MusicFrame(val timeUs: Long,val spectrum: FloatArray,val onset: FloatArray,val peaks: IntArray,val pitchSpectrum: FloatArray=FloatArray(0))
 internal data class MusicFeatures(val frames: List<MusicFrame>,val distinctHashes: Int=0) {
     val startUs get()=frames.firstOrNull()?.timeUs ?: 0L
     val endUs get()=(frames.lastOrNull()?.timeUs ?: 0L)+10_000
@@ -22,6 +23,7 @@ internal class ComparisonMusicFeatureBuilder(private val originUs: Long) {
     private val sine=DoubleArray(FFT/2) { sin(-2*PI*it/FFT) }
     private val reverse=IntArray(FFT) { Integer.reverse(it) ushr 22 }
     private val edges=intArrayOf(2,4,6,9,13,19,27,38,54,76,108,152,214,300,380,450,512)
+    private val pitchBins=DoubleArray(48) { 4.0*2.0.pow(it/8.0) }
     private val frames=ArrayList<MusicFrame>()
     private var samples=0L
     private var previous=FloatArray(16)
@@ -59,7 +61,17 @@ internal class ComparisonMusicFeatureBuilder(private val originUs: Long) {
         val mean=power.average()
         val peaks=(4 until 500).filter { power[it]>power[it-1] && power[it]>=power[it+1] && power[it]>mean*3 }
             .sortedByDescending { power[it] }.take(4).toIntArray()
-        frames.add(MusicFrame(originUs+(samples-FFT/2)*1_000_000/RATE,bands,onset,peaks))
+        val pitch=FloatArray(48) { b ->
+            val center=pitchBins[b];val lo=max(1,floor(center/2.0.pow(1.0/8)).toInt())
+            val hi=min(power.lastIndex,ceil(center*2.0.pow(1.0/8)).toInt())
+            var sum=0.0;var weight=0.0
+            for (i in lo..hi) {
+                val w=(1-abs(ln(i/center)/ln(2.0)*8)).coerceAtLeast(0.0)
+                sum+=power[i]*w;weight+=w
+            }
+            ln(1+sum/max(.01,weight)*100).toFloat()
+        }
+        frames.add(MusicFrame(originUs+(samples-FFT/2)*1_000_000/RATE,bands,onset,peaks,pitch))
     }
     fun finish(): MusicFeatures {
         if (frames.isEmpty()) return MusicFeatures(emptyList())
@@ -68,7 +80,14 @@ internal class ComparisonMusicFeatureBuilder(private val originUs: Long) {
         for (b in 0..15) means[b]/=frames.size
         for (row in frames) for (b in 0..15) deviations[b]+=(row.spectrum[b]-means[b]).pow(2)
         for (b in 0..15) deviations[b]=sqrt(deviations[b]/frames.size).coerceAtLeast(.25)
+        val pitchMean=DoubleArray(48);val pitchDev=DoubleArray(48)
+        for (row in frames) for (b in 0..47) pitchMean[b]+=row.pitchSpectrum[b]
+        for (b in 0..47) pitchMean[b]/=frames.size
+        for (row in frames) for (b in 0..47) pitchDev[b]+=(row.pitchSpectrum[b]-pitchMean[b]).pow(2)
+        for (b in 0..47) pitchDev[b]=sqrt(pitchDev[b]/frames.size).coerceAtLeast(.25)
         for (row in frames) {
+            for (b in 0..47) row.pitchSpectrum[b]=((row.pitchSpectrum[b]-pitchMean[b])/pitchDev[b]).toFloat()
+            normalize(row.pitchSpectrum)
             for (b in 0..15) row.spectrum[b]=((row.spectrum[b]-means[b])/deviations[b]).toFloat()
             normalize(row.spectrum);normalize(row.onset)
         }

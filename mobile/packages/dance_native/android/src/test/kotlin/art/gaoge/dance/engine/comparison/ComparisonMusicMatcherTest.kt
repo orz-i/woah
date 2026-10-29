@@ -59,11 +59,14 @@ class ComparisonMusicMatcherTest {
         assertEquals("matched",result.status,result.toString())
         assertTrue(abs(result.candidates.first().offsetUs+2_300_000)<25_000,result.toString())
     }
-    @Test fun aTempoChangeCannotBePublishedAsAConfidentConstantOffset() {
+    @Test fun aConstantTempoChangeIsEstimatedInsteadOfPretendingItIsAnOffset() {
         val song=music(12)
         val changed=FloatArray((song.size/1.025).toInt()) { song[(it*1.025).toInt()] }
         val result=ComparisonMusicMatcher.match(features(song),features(changed))
-        assertNotEquals("matched",result.status,result.toString())
+        assertEquals("matched",result.status,result.toString())
+        val best=result.candidates.first()
+        assertTrue(abs(best.timeScale-1/1.025)<.003,result.toString())
+        assertTrue(abs(best.timeScale*10_000_000+best.offsetUs-10_000_000/1.025)<30_000,result.toString())
     }
     @Test fun delayedRoomReflectionsAndAnotherSoundTrackRetainTheCommonMusic() {
         val song=music(12)

@@ -2,14 +2,15 @@ package art.gaoge.dance.engine.comparison
 
 import kotlin.math.abs
 import kotlin.math.ceil
+import kotlin.math.roundToLong
 
 /** GL submission metadata only. Captured/physical pixels need independent evidence. */
 internal class ComparisonGlDiagnostics {
     data class Sample(val teacherUs: Long, val learnerUs: Long, val targetUs: Long,
                       val offsetUs: Long, val submitNs: Long, val clockAgeUs: Long,
                       val coverageValid: Boolean,val workUs: Long=0,val swapUs: Long=0,
-                      val prepareUs: Long=0,val latchUs: Long=0) {
-        val errorUs: Long get() = learnerUs - teacherUs - offsetUs
+                      val prepareUs: Long=0,val latchUs: Long=0,val timeScale: Double=1.0) {
+        val errorUs: Long get() = learnerUs - (teacherUs*timeScale).roundToLong() - offsetUs
     }
     data class Window(val startUs: Long, val samples: Int, val p95Us: Long,
                       val maxUs: Long, val meanSignedUs: Double)

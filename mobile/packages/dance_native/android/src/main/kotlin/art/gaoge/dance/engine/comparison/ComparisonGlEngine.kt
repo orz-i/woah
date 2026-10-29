@@ -3,6 +3,7 @@ package art.gaoge.dance.engine.comparison
 import android.content.Context
 import android.graphics.SurfaceTexture
 import android.net.Uri
+import android.opengl.EGLExt
 import android.opengl.EGL14
 import android.opengl.EGLConfig
 import android.opengl.EGLContext
@@ -27,24 +28,23 @@ import java.util.concurrent.atomic.AtomicReference
 
 internal data class ComparisonViewport(val x: Int, val top: Int, val width: Int, val height: Int)
 internal object ComparisonGlLayout {
+    fun pane(width: Int,height: Int,gap: Int,teacher: Boolean,sideBySide: Boolean): ComparisonViewport {
+        if (sideBySide) {
+            val first=(width-gap)/2
+            val left=if (teacher) 0 else first+gap
+            return ComparisonViewport(left,0,if (teacher) first else width-left,height)
+        }
+        val first=(height-gap)/2
+        val top=if (teacher) 0 else first+gap
+        return ComparisonViewport(0,top,width,if (teacher) first else height-top)
+    }
     fun viewport(width: Int, height: Int, gap: Int, videoWidth: Int,
                  videoHeight: Int, teacher: Boolean, sideBySide: Boolean = false): ComparisonViewport {
-        if (sideBySide) {
-            val firstWidth=(width-gap)/2
-            val left=if (teacher) 0 else firstWidth+gap
-            val paneWidth=if (teacher) firstWidth else width-left
-            val aspect=videoWidth.toDouble()/videoHeight
-            val w=minOf(paneWidth,(height*aspect).toInt()).coerceAtLeast(1)
-            val h=minOf(height,(paneWidth/aspect).toInt()).coerceAtLeast(1)
-            return ComparisonViewport(left+(paneWidth-w)/2,(height-h)/2,w,h)
-        }
-        val firstHeight = (height-gap)/2
-        val top = if (teacher) 0 else firstHeight+gap
-        val stageHeight = if (teacher) firstHeight else height-top
+        val pane=pane(width,height,gap,teacher,sideBySide)
         val aspect = videoWidth.toDouble()/videoHeight
-        val w = minOf(width,(stageHeight*aspect).toInt()).coerceAtLeast(1)
-        val h = minOf(stageHeight,(width/aspect).toInt()).coerceAtLeast(1)
-        return ComparisonViewport((width-w)/2,top+(stageHeight-h)/2,w,h)
+        val w = minOf(pane.width,(pane.height*aspect).toInt()).coerceAtLeast(1)
+        val h = minOf(pane.height,(pane.width/aspect).toInt()).coerceAtLeast(1)
+        return ComparisonViewport(pane.x+(pane.width-w)/2,pane.top+(pane.height-h)/2,w,h)
     }
 }
 
@@ -56,7 +56,13 @@ internal class ComparisonGlEngine(
     private val failed: (Throwable) -> Unit,
     private val stalled: () -> Unit,
     private val recovered: () -> Unit,
-    initialSideBySide: Boolean = false
+    initialSideBySide: Boolean = false,
+    initialMirrorTeacher: Boolean = false,
+    initialMirrorLearner: Boolean = false,
+    initialTeacherPicture: ComparisonPicture = ComparisonPicture(),
+    initialLearnerPicture: ComparisonPicture = ComparisonPicture(),
+    private val recordable: Boolean = false,
+    private val exportCurrent: () -> Boolean = { true }
 ) {
     private val main = Handler(Looper.getMainLooper())
     private val thread = HandlerThread("WoahComparisonGL").apply { start() }
@@ -65,7 +71,7 @@ internal class ComparisonGlEngine(
     private val frameHandler = Handler(frameThread.looper)
     private val closed = AtomicBoolean(false)
     private val request = AtomicLong(0)
-    private data class RenderRequest(val teacherUs: Long,val offsetUs: Long,
+    private data class RenderRequest(val teacherUs: Long,val offsetUs: Long,val timeScale: Double,
         val clockNs: Long,val generation: Long,val observation: Long,
         val complete: (() -> Unit)? = null)
     private val tickPending = AtomicBoolean(false)
@@ -86,9 +92,21 @@ internal class ComparisonGlEngine(
     private var height = initialHeight
     private var gap = initialGap
     private var sideBySide = initialSideBySide
+    private var mirrorTeacher = initialMirrorTeacher
+    private var mirrorLearner = initialMirrorLearner
+    private var teacherPicture = initialTeacherPicture
+    private var learnerPicture = initialLearnerPicture
+    private data class PictureRequest(val reference: Boolean,val target: Boolean,
+        val referencePicture: ComparisonPicture,val targetPicture: ComparisonPicture)
+    private val latestPicture=AtomicReference<PictureRequest?>(null)
+    private val picturePending=AtomicBoolean(false)
+    @Volatile var presentedFrame: Pair<Long, Long>? = null
+        private set
+    private var presentedReference: ComparisonFrameInterval? = null
     private var redraw = true
     private var lastTarget: Long? = null
     private var lastOffset = 0L
+    private var lastTimeScale = 1.0
     private var lastTeacher = -1L
     private var lastLearner = -1L
     private val diagnostics = ComparisonGlDiagnostics()
@@ -98,7 +116,7 @@ internal class ComparisonGlEngine(
                              -1f,1f,0f,1f, 1f,1f,1f,1f)); position(0)
         }
 
-    private fun current(): Boolean = !closed.get() && request.get()==activeRequest
+    private fun current(): Boolean = !closed.get() && request.get()==activeRequest && exportCurrent()
     private fun checkCurrent() { if (!current()) throw ComparisonGlCancelled() }
     private fun error(error: Throwable) {
         if (error !is ComparisonGlCancelled && !closed.get()) main.post { failed(error) }
@@ -130,13 +148,13 @@ internal class ComparisonGlEngine(
             // must repaint the already latched PAIR without waiting for play.
             val target=lastTarget
             if (target!=null && current() && window!=EGL14.EGL_NO_SURFACE) {
-                try { drawAt(target,lastOffset,System.nanoTime(),diagnostics.generation()) }
+                try { drawAt(target,lastOffset,System.nanoTime(),diagnostics.generation(),lastTimeScale) }
                 catch (e: Throwable) { error(e) }
             }
         }
     }
 
-    fun seek(teacherUs: Long,offsetUs: Long,complete: () -> Unit) {
+    fun seek(teacherUs: Long,offsetUs: Long,timeScale: Double = 1.0,complete: () -> Unit) {
         val generation=request.incrementAndGet()
         latestTick.set(null)
         val observation=diagnostics.reset()
@@ -146,18 +164,92 @@ internal class ComparisonGlEngine(
             try {
                 lastTarget=null
                 teacher!!.seek(teacherUs)
-                learner!!.seek(teacherUs+offsetUs)
+                learner!!.seek(ComparisonMusicMapping(offsetUs,timeScale).learnerTimeUs(teacherUs))
                 redraw=true
-                drawAt(teacherUs,offsetUs,System.nanoTime(),observation)
+                drawAt(teacherUs,offsetUs,System.nanoTime(),observation,timeScale)
                 main.post { if (!closed.get() && generation==request.get()) complete() }
             } catch (e: Throwable) { error(e) }
         }
     }
 
-    fun render(teacherUs: Long,offsetUs: Long,clockSampleNs: Long,
+    /** Offline output uses the SAME decoded coverage, geometry and shader as preview. */
+    fun exportFrame(teacherUs: Long,offsetUs: Long,timeScale: Double,outputPtsUs: Long,
+        complete: (ComparisonFrameInterval)->Unit,onError: (Throwable)->Unit) {
+        val generation=request.incrementAndGet()
+        handler.post {
+            activeRequest=generation
+            try {
+                checkCurrent()
+                if (lastTarget==null || teacherUs<(lastTarget ?: teacherUs)) {
+                    teacher!!.seek(teacherUs)
+                    learner!!.seek(ComparisonMusicMapping(offsetUs,timeScale).learnerTimeUs(teacherUs))
+                }
+                redraw=true
+                drawAt(teacherUs,offsetUs,System.nanoTime(),diagnostics.generation(),timeScale,outputPtsUs)
+                complete(requireNotNull(presentedReference))
+            } catch (e: Throwable) { onError(e) }
+        }
+    }
+
+    fun setPicture(reference: Boolean, target: Boolean,
+        referencePicture: ComparisonPicture,targetPicture: ComparisonPicture) {
+        latestPicture.set(PictureRequest(reference,target,referencePicture,targetPicture))
+        schedulePicture()
+    }
+    private fun schedulePicture() {
+        if (!picturePending.compareAndSet(false,true)) return
+        handler.post {
+            try {
+                val value=latestPicture.getAndSet(null) ?: return@post
+                if (closed.get()) return@post
+                mirrorTeacher=value.reference; mirrorLearner=value.target; redraw=true
+                teacherPicture=value.referencePicture;learnerPicture=value.targetPicture
+                lastTarget?.let {
+                    if (current()) try { drawAt(it,lastOffset,System.nanoTime(),diagnostics.generation(),lastTimeScale) }
+                    catch (e: Throwable) { error(e) }
+                }
+            } finally {
+                picturePending.set(false)
+                if (latestPicture.get()!=null && !closed.get()) schedulePicture()
+            }
+        }
+    }
+
+    fun stepFrame(forward: Boolean, overlap: ComparisonOverlap, fallbackUs: Long,
+        complete: (Long) -> Unit) {
+        val generation=request.incrementAndGet()
+        latestTick.set(null)
+        val observation=diagnostics.reset()
+        handler.post {
+            if (closed.get() || generation!=request.get()) return@post
+            activeRequest=generation
+            try {
+                val a=teacher!!; val b=learner!!
+                if (a.displayedFrame==null || a.displayedFrame!=presentedReference ||
+                    a.hasPreparedFrame || b.hasPreparedFrame || b.displayedFrame?.startUs!=presentedFrame?.second) {
+                    val base=(presentedReference?.startUs ?: fallbackUs)
+                        .coerceIn(overlap.teacherStartUs,overlap.teacherEndUs-1)
+                    a.seek(base); b.seek(overlap.mapping.learnerTimeUs(base))
+                    drawAt(base,overlap.offsetUs,System.nanoTime(),observation,overlap.timeScale)
+                }
+                val target=ComparisonFrameNavigation.target(a.displayedFrame!!,forward,overlap) { probe ->
+                    a.seek(probe)
+                    a.prepareAt(probe)
+                }
+                // Forward stepping consumes the held next output. Backward stepping
+                // decodes from a real sync point to the previous presentation interval.
+                if (!forward || target<(lastTarget ?: target)) b.seek(overlap.mapping.learnerTimeUs(target))
+                redraw=true
+                drawAt(target,overlap.offsetUs,System.nanoTime(),observation,overlap.timeScale)
+                main.post { if (!closed.get() && generation==request.get()) complete(target) }
+            } catch (e: Throwable) { error(e) }
+        }
+    }
+
+    fun render(teacherUs: Long,offsetUs: Long,clockSampleNs: Long,timeScale: Double = 1.0,
                complete: (() -> Unit)? = null) {
         if (closed.get()) return
-        val next=RenderRequest(teacherUs,offsetUs,clockSampleNs,request.get(),
+        val next=RenderRequest(teacherUs,offsetUs,timeScale,clockSampleNs,request.get(),
             diagnostics.generation(),complete)
         if (complete!=null) {
             latestTick.set(null)
@@ -197,7 +289,7 @@ internal class ComparisonGlEngine(
         try {
             val delay=testStallMs.getAndSet(0)
             if (delay>0) { injectedStalls++; Thread.sleep(delay) }
-            drawAt(next.teacherUs,next.offsetUs,next.clockNs,next.observation)
+            drawAt(next.teacherUs,next.offsetUs,next.clockNs,next.observation,next.timeScale)
             main.post {
                 if (!closed.get() && next.generation==request.get()) {
                     next.complete?.invoke()
@@ -211,24 +303,26 @@ internal class ComparisonGlEngine(
         }
     }
 
-    private fun drawAt(teacherUs: Long,offsetUs: Long,clockNs: Long,observation: Long) {
+    private fun drawAt(teacherUs: Long,offsetUs: Long,clockNs: Long,observation: Long,timeScale: Double = 1.0,outputPtsUs: Long? = null) {
         checkCurrent()
         val a=teacher ?: error("Teacher decoder missing")
         val b=learner ?: error("Learner decoder missing")
         val beginNs=System.nanoTime()
         val ta=a.prepareAt(teacherUs)
-        val lb=b.prepareAt(teacherUs+offsetUs)
+        val learnerUs=ComparisonMusicMapping(offsetUs,timeScale).learnerTimeUs(teacherUs)
+        val lb=b.prepareAt(learnerUs)
         val preparedNs=System.nanoTime()
         a.latchPrepared()
         b.latchPrepared()
         val latchedNs=System.nanoTime()
         checkCurrent()
-        check(ta.contains(teacherUs) && lb.contains(teacherUs+offsetUs)) {
+        check(ta.contains(teacherUs) && lb.contains(learnerUs)) {
             "Joint frame coverage failed"
         }
-        lastTarget=teacherUs; lastOffset=offsetUs
+        lastTarget=teacherUs; lastOffset=offsetUs; lastTimeScale=timeScale
         if (!redraw && ta.startUs==lastTeacher && lb.startUs==lastLearner) return
         GLES20.glViewport(0,0,width,height)
+        GLES20.glDisable(GLES20.GL_SCISSOR_TEST)
         GLES20.glClearColor(0f,0f,0f,1f)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
         drawTexture(a,textures[0],true)
@@ -236,13 +330,18 @@ internal class ComparisonGlEngine(
         check(GLES20.glGetError()==GLES20.GL_NO_ERROR) { "GL composition error" }
         checkCurrent()
         val submitNs=System.nanoTime()
+        if (outputPtsUs!=null) check(EGLExt.eglPresentationTimeANDROID(display,window,outputPtsUs*1000L)) {
+            "Export presentation time failed"
+        }
         check(EGL14.eglSwapBuffers(display,window)) { "EGL joint swap failed" }
         val swappedNs=System.nanoTime()
         diagnostics.add(observation,ComparisonGlDiagnostics.Sample(ta.startUs,
             lb.startUs,teacherUs,offsetUs,submitNs,(submitNs-clockNs)/1000L,true,
             (swappedNs-beginNs)/1000L,(swappedNs-submitNs)/1000L,
-            (preparedNs-beginNs)/1000L,(latchedNs-preparedNs)/1000L))
+            (preparedNs-beginNs)/1000L,(latchedNs-preparedNs)/1000L,timeScale))
         lastTeacher=ta.startUs; lastLearner=lb.startUs; redraw=false
+        presentedFrame=ta.startUs to lb.startUs
+        presentedReference=ta
     }
 
     private fun drawTexture(video: ComparisonCodecVideo,textureId: Int,isTeacher: Boolean) {
@@ -250,8 +349,17 @@ internal class ComparisonGlEngine(
         val rotated=d.rotation%180!=0
         val rect=ComparisonGlLayout.viewport(width,height,gap,
             if (rotated) d.height else d.width,if (rotated) d.width else d.height,isTeacher,sideBySide)
-        GLES20.glViewport(rect.x,height-rect.top-rect.height,rect.width,rect.height)
+        val pane=ComparisonGlLayout.pane(width,height,gap,isTeacher,sideBySide)
+        val picture=if (isTeacher) teacherPicture else learnerPicture
+        val quad=picture.quad(pane,rect)
+        GLES20.glViewport(pane.x,height-pane.top-pane.height,pane.width,pane.height)
+        GLES20.glEnable(GLES20.GL_SCISSOR_TEST)
+        GLES20.glScissor(pane.x,height-pane.top-pane.height,pane.width,pane.height)
         GLES20.glUseProgram(program)
+        GLES20.glUniform2f(GLES20.glGetUniformLocation(program,"frameScale"),quad.scaleX,quad.scaleY)
+        GLES20.glUniform2f(GLES20.glGetUniformLocation(program,"frameShift"),quad.shiftX,quad.shiftY)
+        GLES20.glUniform1f(GLES20.glGetUniformLocation(program,"mirrorX"),
+            if (if (isTeacher) mirrorTeacher else mirrorLearner) -1f else 1f)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES,textureId)
         GLES20.glUniform1i(GLES20.glGetUniformLocation(program,"image"),0)
@@ -296,7 +404,8 @@ internal class ComparisonGlEngine(
         val attributes=intArrayOf(EGL14.EGL_RED_SIZE,8,EGL14.EGL_GREEN_SIZE,8,
             EGL14.EGL_BLUE_SIZE,8,EGL14.EGL_ALPHA_SIZE,8,
             EGL14.EGL_RENDERABLE_TYPE,EGL14.EGL_OPENGL_ES2_BIT,
-            EGL14.EGL_SURFACE_TYPE,EGL14.EGL_WINDOW_BIT,EGL14.EGL_NONE)
+            EGL14.EGL_SURFACE_TYPE,EGL14.EGL_WINDOW_BIT) +
+            if (recordable) intArrayOf(0x3142,1,EGL14.EGL_NONE) else intArrayOf(EGL14.EGL_NONE)
         check(EGL14.eglChooseConfig(display,attributes,0,configs,0,1,count,0) && count[0]>0)
         eglContext=EGL14.eglCreateContext(display,configs[0],EGL14.EGL_NO_CONTEXT,
             intArrayOf(EGL14.EGL_CONTEXT_CLIENT_VERSION,2,EGL14.EGL_NONE),0)
@@ -304,11 +413,14 @@ internal class ComparisonGlEngine(
             intArrayOf(EGL14.EGL_NONE),0)
         check(eglContext!=EGL14.EGL_NO_CONTEXT && window!=EGL14.EGL_NO_SURFACE)
         check(EGL14.eglMakeCurrent(display,window,window,eglContext))
+        // Interval zero makes Android's producer queue asynchronous: a fast export
+        // can replace queued frames. Keep synchronous backpressure for every frame.
         EGL14.eglSwapInterval(display,1)
         val vertex=shader(GLES20.GL_VERTEX_SHADER,"""
             attribute vec2 position; attribute vec2 uv;
-            uniform mat4 texMatrix; varying vec2 texUv;
-            void main() { gl_Position=vec4(position,0.0,1.0);
+            uniform mat4 texMatrix; uniform float mirrorX;
+            uniform vec2 frameScale; uniform vec2 frameShift; varying vec2 texUv;
+            void main() { gl_Position=vec4(vec2(position.x*mirrorX,position.y)*frameScale+frameShift,0.0,1.0);
               texUv=(texMatrix*vec4(uv,0.0,1.0)).xy; }
         """.trimIndent())
         val fragment=shader(GLES20.GL_FRAGMENT_SHADER,"""
@@ -379,6 +491,8 @@ internal class ComparisonGlEngine(
                     s.examples.forEach { row -> put(JSONObject().apply {
                         put("teacherPtsUs",row.teacherUs); put("learnerPtsUs",row.learnerUs)
                         put("targetTeacherUs",row.targetUs); put("errorUs",row.errorUs)
+                        put("timeScale",row.timeScale)
+                        put("targetLearnerUs",ComparisonMusicMapping(row.offsetUs,row.timeScale).learnerTimeUs(row.targetUs))
                         put("clockSampleAgeUs",row.clockAgeUs)
                     }) }
                 })
@@ -389,6 +503,7 @@ internal class ComparisonGlEngine(
 
     fun close() {
         if (!closed.compareAndSet(false,true)) return
+        latestPicture.set(null)
         request.incrementAndGet()
         val released=CountDownLatch(1)
         handler.post {

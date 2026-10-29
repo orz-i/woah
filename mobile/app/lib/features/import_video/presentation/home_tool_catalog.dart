@@ -34,7 +34,7 @@ abstract final class HomeToolCatalog {
     ),
   ];
   static List<HomeTool> forPlatform(TargetPlatform platform) =>
-      platform == TargetPlatform.android
+      platform == TargetPlatform.android || platform == TargetPlatform.iOS
       ? standalone
       : standalone
             .where((tool) => tool.launch != HomeToolLaunch.danceComparison)

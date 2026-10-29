@@ -1,0 +1,368 @@
+{
+  "date": "2026-10-26",
+  "status": "verified",
+  "branch": "feat/dance-comparison-m0",
+  "head": "e286cf6116357838421c047f166aa95147a66428",
+  "committed": false,
+  "pushed": false,
+  "merged": false,
+  "format": {
+    "video": "H.264",
+    "audio": "AAC",
+    "container": "MP4",
+    "speed": 1.0,
+    "maxLongEdge": 1920
+  },
+  "tests": {
+    "flutterUniquePassed": 62,
+    "nativeUniquePassed": 30,
+    "nativeClasses": {
+      "ComparisonExportTest": 7,
+      "ComparisonMusicRateTest": 12,
+      "ComparisonPictureTest": 6,
+      "ComparisonPracticeTest": 5
+    },
+    "analyze": "passed",
+    "flutterEvidence": [
+      "flutter-tests-final.log: prior 53 passed; the one new recovery failure was subsequently fixed",
+      "flutter-export-final.log: final 9 export tests passed"
+    ],
+    "nativeEvidence": [
+      "native-tests-final.log: unchanged 12 music-rate tests reused",
+      "native-frame-integrity-tests.log: export 7, picture 6, practice 5 passed"
+    ],
+    "device": "OnePlus KB2000 / Android 14",
+    "fullM0Repeated": false,
+    "fullReleaseQaRepeated": false,
+    "flutterSourcesUnchangedSince62Tests": true
+  },
+  "cases": [
+    {
+      "label": "integrity-ab",
+      "width": 384,
+      "height": 640,
+      "durationUs": 5530864,
+      "frameCount": 143,
+      "ptsMaxErrorUs": 1,
+      "durationErrorUs": 3,
+      "audioDurationErrorUs": 11,
+      "containerDurationErrorUs": 11,
+      "frameIntervalsUs": [
+        32100,
+        33333,
+        33334,
+        66666,
+        66667
+      ],
+      "sourceOriginUs": 0,
+      "timeScale": 0.8,
+      "offsetUs": 1200000,
+      "sideBySide": true,
+      "audio": {
+        "sampleRate": 16000,
+        "lagSamples": 1,
+        "lagUs": 62,
+        "correlation": 0.995181679725647,
+        "decodedSamples": 88494
+      },
+      "fileSha256": "8928dbd4bca9ddc63ad775c67c17aa3ea5c31f62042b1875590131630f7c0d9f"
+    },
+    {
+      "label": "integrity-canvas-ab",
+      "width": 1080,
+      "height": 1402,
+      "durationUs": 5530864,
+      "frameCount": 143,
+      "ptsMaxErrorUs": 1,
+      "durationErrorUs": 3,
+      "audioDurationErrorUs": 11,
+      "containerDurationErrorUs": 11,
+      "frameIntervalsUs": [
+        32100,
+        33333,
+        33334,
+        66666,
+        66667
+      ],
+      "sourceOriginUs": 0,
+      "timeScale": 0.8,
+      "offsetUs": 1200000,
+      "sideBySide": true,
+      "audio": {
+        "sampleRate": 16000,
+        "lagSamples": 1,
+        "lagUs": 62,
+        "correlation": 0.995181679725647,
+        "decodedSamples": 88494
+      },
+      "fileSha256": "0eff63224e6fce886343077ba229de869c81392dc8f7b2f061568e8b586a5830"
+    },
+    {
+      "label": "integrity-full",
+      "width": 384,
+      "height": 640,
+      "durationUs": 23000000,
+      "frameCount": 591,
+      "ptsMaxErrorUs": 0,
+      "durationErrorUs": 0,
+      "audioDurationErrorUs": 0,
+      "containerDurationErrorUs": 0,
+      "frameIntervalsUs": [
+        33333,
+        33334,
+        66666,
+        66667
+      ],
+      "sourceOriginUs": 0,
+      "timeScale": 0.8,
+      "offsetUs": 1200000,
+      "sideBySide": false,
+      "audio": {
+        "sampleRate": 16000,
+        "lagSamples": 0,
+        "lagUs": 0,
+        "correlation": 0.9998197555541992,
+        "decodedSamples": 368000
+      },
+      "fileSha256": "f21b471227c02af999ee6239dd4f96ac75b2b87e2609e07a39333b1c4160fccb"
+    },
+    {
+      "label": "integrity-inverse",
+      "width": 384,
+      "height": 640,
+      "durationUs": 5530864,
+      "frameCount": 166,
+      "ptsMaxErrorUs": 1,
+      "durationErrorUs": 3,
+      "audioDurationErrorUs": 11,
+      "containerDurationErrorUs": 11,
+      "frameIntervalsUs": [
+        32100,
+        33333,
+        33334
+      ],
+      "sourceOriginUs": 1200000,
+      "timeScale": 1.25,
+      "offsetUs": -1500000,
+      "sideBySide": false,
+      "audio": {
+        "sampleRate": 16000,
+        "lagSamples": 1,
+        "lagUs": 62,
+        "correlation": 0.9950115084648132,
+        "decodedSamples": 88494
+      },
+      "fileSha256": "1b63777dd578106f0d1ed5fcae488e9951163e7c07e72f28d0e7b5abe77bc4c8"
+    },
+    {
+      "label": "integrity-silent",
+      "width": 384,
+      "height": 640,
+      "durationUs": 2345678,
+      "frameCount": 61,
+      "ptsMaxErrorUs": 0,
+      "durationErrorUs": 0,
+      "audioDurationErrorUs": 74,
+      "containerDurationErrorUs": 0,
+      "frameIntervalsUs": [
+        22222,
+        33333,
+        33334,
+        66666,
+        66667
+      ],
+      "sourceOriginUs": 0,
+      "timeScale": 0.8,
+      "offsetUs": 1200000,
+      "sideBySide": true,
+      "audio": {
+        "sampleRate": 48000,
+        "silentRms": 0.0,
+        "decodedSamples": 112589
+      },
+      "fileSha256": "250b24495e6dd07c018e825fb5dde04170c29a9715420256ad9ceb30af29d25f"
+    },
+    {
+      "label": "integrity-real",
+      "width": 384,
+      "height": 640,
+      "durationUs": 5530864,
+      "frameCount": 166,
+      "ptsMaxErrorUs": 1,
+      "durationErrorUs": 3,
+      "audioDurationErrorUs": 43,
+      "containerDurationErrorUs": 43,
+      "frameIntervalsUs": [
+        32100,
+        33333,
+        33334
+      ],
+      "sourceOriginUs": 0,
+      "timeScale": 0.8,
+      "offsetUs": 1200000,
+      "sideBySide": false,
+      "audio": {
+        "sampleRate": 44100,
+        "lagSamples": 1,
+        "lagUs": 23,
+        "correlation": 0.9932970404624939,
+        "decodedSamples": 243911
+      },
+      "fileSha256": "1824781f5ce9eefc47ae1139ccfd04cce951cd40e2e4ee2a25c99a1149c3e602"
+    },
+    {
+      "label": "ui-fixed-ab",
+      "width": 1080,
+      "height": 1402,
+      "durationUs": 5530864,
+      "frameCount": 143,
+      "ptsMaxErrorUs": 1,
+      "durationErrorUs": 3,
+      "audioDurationErrorUs": 11,
+      "containerDurationErrorUs": 11,
+      "frameIntervalsUs": [
+        32100,
+        33333,
+        33334,
+        66666,
+        66667
+      ],
+      "sourceOriginUs": 0,
+      "timeScale": 0.8,
+      "offsetUs": 1200000,
+      "sideBySide": true,
+      "audio": {
+        "sampleRate": 16000,
+        "lagSamples": 1,
+        "lagUs": 62,
+        "correlation": 0.995181679725647,
+        "decodedSamples": 88494
+      },
+      "fileSha256": "88589d6c3a0a8aaf11c8859e65923b092c937ce7f15e59e40c9459a45e0cb739"
+    },
+    {
+      "label": "ui-fixed-full",
+      "width": 1080,
+      "height": 1402,
+      "durationUs": 23000000,
+      "frameCount": 591,
+      "ptsMaxErrorUs": 0,
+      "durationErrorUs": 0,
+      "audioDurationErrorUs": 0,
+      "containerDurationErrorUs": 0,
+      "frameIntervalsUs": [
+        33333,
+        33334,
+        66666,
+        66667
+      ],
+      "sourceOriginUs": 0,
+      "timeScale": 0.8,
+      "offsetUs": 1200000,
+      "sideBySide": true,
+      "audio": {
+        "sampleRate": 16000,
+        "lagSamples": 0,
+        "lagUs": 0,
+        "correlation": 0.9998197555541992,
+        "decodedSamples": 368000
+      },
+      "fileSha256": "4a3dc7225476a1ceec7f8779a2dfbee8ffcd4d682f95865c886767ab5de2cd35"
+    }
+  ],
+  "service": {
+    "cancel": "passed",
+    "retry": "passed",
+    "albumHashMatches": true,
+    "repeatedSaveSameUri": true,
+    "runtimeFatalException": false,
+    "runtimeFlutterError": false,
+    "evidence": "instrument-service-final.log",
+    "currentPageEvidence": "ui-fixed-exports.log",
+    "frameIntegrityEvidence": "instrument-frame-integrity.log"
+  },
+  "manualUi": {
+    "status": "passed",
+    "passed": true,
+    "screenshotsCaptured": true,
+    "remaining": [],
+    "checks": {
+      "abRangeSelected": true,
+      "fullRangeSelected": true,
+      "backgroundCompleted": true,
+      "optionsCancelRestoredPreview": true,
+      "activeCancelRestoredPreview": true,
+      "retryFrozenSpec": true,
+      "backCancelRestoredPreview": true,
+      "previewPlayPause": true,
+      "localGalleryPlayed": true,
+      "defaultOppoViewerOpenedConsentNotAccepted": true,
+      "previewRestoredSettings": {
+        "offsetUs": 1200000,
+        "timeScale": 0.8,
+        "speed": 0.5,
+        "positionUs": 3456789
+      }
+    }
+  },
+  "restoration": {
+    "projectCount": 2,
+    "projectBytesMatchBaseline": true,
+    "temporaryFolders": {
+      "files/comparison-export-20261026": [],
+      "cache/comparison-export-probe": [],
+      "files/comparison-exports": [],
+      "cache/comparison-exports": [],
+      "no_backup/comparison-exports": []
+    },
+    "settings": {
+      "user_rotation": "0",
+      "stay_on_while_plugged_in": "0"
+    },
+    "comparisonWakeLockReleased": true,
+    "comparisonServicesStopped": true,
+    "uiTestPublicOutputsRemoved": 5,
+    "originalOffsetsUs": [
+      1490000,
+      1490000
+    ],
+    "originalPositionsUs": [
+      4286000,
+      17899000
+    ]
+  },
+  "apk": {
+    "path": "mobile/app/build/app/outputs/flutter-apk/app-debug.apk",
+    "bytes": 272762648,
+    "sha256": "e72f19222394696364872224c86ce672df61d2fc317799f5a7c2a0595db91b42",
+    "installedSha256": "e72f19222394696364872224c86ce672df61d2fc317799f5a7c2a0595db91b42",
+    "nativeBuildConfig": {
+      "GIT_COMMIT_SHA": "e286cf6116357838421c047f166aa95147a66428",
+      "BUILD_TIMESTAMP": "2026-10-26T06:28:54.023388700Z"
+    }
+  },
+  "relatedSources": {
+    "count": 56,
+    "aggregateSha256": "ef8025bb181aedcdeb897a4553c78bff335beb395f98721516e1573dc8c9c112"
+  },
+  "limitations": [
+    "Android 24-28 SAF save is implemented but not device-tested.",
+    "The HEVC/44.1kHz case uses known-rate derivatives of real music, not an acceptance claim for the original pair.",
+    "No new long-original, provenance-confirmed 60fps, multi-device, iOS or physical audio/display latency coverage."
+  ],
+  "resolvedIssues": [
+    {
+      "issue": "surface async queue omitted one frame",
+      "oldAbFrameCount": 142,
+      "expectedAbFrameCount": 143,
+      "finalAbFrameCount": 143,
+      "missingRelativePtsUs": 298766,
+      "fix": "synchronous Surface backpressure, concurrent output drain while GL waits, exact submitted/output PTS ledger"
+    },
+    {
+      "issue": "AAC priming and truncated tail",
+      "fix": "measure selected codec delay, feed bounded tail and preserve negative preroll/EOS"
+    }
+  ],
+  "viewerHandling": "Default OPPO player reached first-use terms; no consent was given. Existing system Gallery played the exported file without changing default apps."
+}

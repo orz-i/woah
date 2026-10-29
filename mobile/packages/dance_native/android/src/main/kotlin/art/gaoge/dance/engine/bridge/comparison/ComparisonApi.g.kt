@@ -270,7 +270,12 @@ data class ComparisonPlaybackDto (
   val teacherStartUs: Long,
   val offsetUs: Long,
   val speed: Double,
-  val error: String? = null
+  val error: String? = null,
+  val teacherFrameUs: Long? = null,
+  val learnerFrameUs: Long? = null,
+  val teacherAspect: Double? = null,
+  val learnerAspect: Double? = null,
+  val timeScale: Double? = null
 )
  {
   companion object {
@@ -283,7 +288,12 @@ data class ComparisonPlaybackDto (
       val offsetUs = pigeonVar_list[5] as Long
       val speed = pigeonVar_list[6] as Double
       val error = pigeonVar_list[7] as String?
-      return ComparisonPlaybackDto(textureId, phase, positionUs, durationUs, teacherStartUs, offsetUs, speed, error)
+      val teacherFrameUs = pigeonVar_list[8] as Long?
+      val learnerFrameUs = pigeonVar_list[9] as Long?
+      val teacherAspect = pigeonVar_list[10] as Double?
+      val learnerAspect = pigeonVar_list[11] as Double?
+      val timeScale = pigeonVar_list[12] as Double?
+      return ComparisonPlaybackDto(textureId, phase, positionUs, durationUs, teacherStartUs, offsetUs, speed, error, teacherFrameUs, learnerFrameUs, teacherAspect, learnerAspect, timeScale)
     }
   }
   fun toList(): List<Any?> {
@@ -296,6 +306,11 @@ data class ComparisonPlaybackDto (
       offsetUs,
       speed,
       error,
+      teacherFrameUs,
+      learnerFrameUs,
+      teacherAspect,
+      learnerAspect,
+      timeScale,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -306,7 +321,7 @@ data class ComparisonPlaybackDto (
       return true
     }
     val other = other as ComparisonPlaybackDto
-    return ComparisonApiPigeonUtils.deepEquals(this.textureId, other.textureId) && ComparisonApiPigeonUtils.deepEquals(this.phase, other.phase) && ComparisonApiPigeonUtils.deepEquals(this.positionUs, other.positionUs) && ComparisonApiPigeonUtils.deepEquals(this.durationUs, other.durationUs) && ComparisonApiPigeonUtils.deepEquals(this.teacherStartUs, other.teacherStartUs) && ComparisonApiPigeonUtils.deepEquals(this.offsetUs, other.offsetUs) && ComparisonApiPigeonUtils.deepEquals(this.speed, other.speed) && ComparisonApiPigeonUtils.deepEquals(this.error, other.error)
+    return ComparisonApiPigeonUtils.deepEquals(this.textureId, other.textureId) && ComparisonApiPigeonUtils.deepEquals(this.phase, other.phase) && ComparisonApiPigeonUtils.deepEquals(this.positionUs, other.positionUs) && ComparisonApiPigeonUtils.deepEquals(this.durationUs, other.durationUs) && ComparisonApiPigeonUtils.deepEquals(this.teacherStartUs, other.teacherStartUs) && ComparisonApiPigeonUtils.deepEquals(this.offsetUs, other.offsetUs) && ComparisonApiPigeonUtils.deepEquals(this.speed, other.speed) && ComparisonApiPigeonUtils.deepEquals(this.error, other.error) && ComparisonApiPigeonUtils.deepEquals(this.teacherFrameUs, other.teacherFrameUs) && ComparisonApiPigeonUtils.deepEquals(this.learnerFrameUs, other.learnerFrameUs) && ComparisonApiPigeonUtils.deepEquals(this.teacherAspect, other.teacherAspect) && ComparisonApiPigeonUtils.deepEquals(this.learnerAspect, other.learnerAspect) && ComparisonApiPigeonUtils.deepEquals(this.timeScale, other.timeScale)
   }
 
   override fun hashCode(): Int {
@@ -319,10 +334,121 @@ data class ComparisonPlaybackDto (
     result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.offsetUs)
     result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.speed)
     result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.error)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.teacherFrameUs)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.learnerFrameUs)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.teacherAspect)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.learnerAspect)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.timeScale)
     return result
   }
   override fun toString(): String {
-    return "ComparisonPlaybackDto(textureId=$textureId, phase=$phase, positionUs=$positionUs, durationUs=$durationUs, teacherStartUs=$teacherStartUs, offsetUs=$offsetUs, speed=$speed, error=$error)"
+    return "ComparisonPlaybackDto(textureId=$textureId, phase=$phase, positionUs=$positionUs, durationUs=$durationUs, teacherStartUs=$teacherStartUs, offsetUs=$offsetUs, speed=$speed, error=$error, teacherFrameUs=$teacherFrameUs, learnerFrameUs=$learnerFrameUs, teacherAspect=$teacherAspect, learnerAspect=$learnerAspect, timeScale=$timeScale)"
+  }
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
+data class ComparisonPictureDto (
+  val zoom: Double,
+  val panX: Double,
+  val panY: Double
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): ComparisonPictureDto {
+      val zoom = pigeonVar_list[0] as Double
+      val panX = pigeonVar_list[1] as Double
+      val panY = pigeonVar_list[2] as Double
+      return ComparisonPictureDto(zoom, panX, panY)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      zoom,
+      panX,
+      panY,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as ComparisonPictureDto
+    return ComparisonApiPigeonUtils.deepEquals(this.zoom, other.zoom) && ComparisonApiPigeonUtils.deepEquals(this.panX, other.panX) && ComparisonApiPigeonUtils.deepEquals(this.panY, other.panY)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.zoom)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.panX)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.panY)
+    return result
+  }
+  override fun toString(): String {
+    return "ComparisonPictureDto(zoom=$zoom, panX=$panX, panY=$panY)"
+  }
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
+data class ComparisonPracticeDto (
+  val mirrorTeacher: Boolean,
+  val mirrorLearner: Boolean,
+  val loopStartUs: Long? = null,
+  val loopEndUs: Long? = null,
+  val loopEnabled: Boolean,
+  val teacherPicture: ComparisonPictureDto? = null,
+  val learnerPicture: ComparisonPictureDto? = null
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): ComparisonPracticeDto {
+      val mirrorTeacher = pigeonVar_list[0] as Boolean
+      val mirrorLearner = pigeonVar_list[1] as Boolean
+      val loopStartUs = pigeonVar_list[2] as Long?
+      val loopEndUs = pigeonVar_list[3] as Long?
+      val loopEnabled = pigeonVar_list[4] as Boolean
+      val teacherPicture = pigeonVar_list[5] as ComparisonPictureDto?
+      val learnerPicture = pigeonVar_list[6] as ComparisonPictureDto?
+      return ComparisonPracticeDto(mirrorTeacher, mirrorLearner, loopStartUs, loopEndUs, loopEnabled, teacherPicture, learnerPicture)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      mirrorTeacher,
+      mirrorLearner,
+      loopStartUs,
+      loopEndUs,
+      loopEnabled,
+      teacherPicture,
+      learnerPicture,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as ComparisonPracticeDto
+    return ComparisonApiPigeonUtils.deepEquals(this.mirrorTeacher, other.mirrorTeacher) && ComparisonApiPigeonUtils.deepEquals(this.mirrorLearner, other.mirrorLearner) && ComparisonApiPigeonUtils.deepEquals(this.loopStartUs, other.loopStartUs) && ComparisonApiPigeonUtils.deepEquals(this.loopEndUs, other.loopEndUs) && ComparisonApiPigeonUtils.deepEquals(this.loopEnabled, other.loopEnabled) && ComparisonApiPigeonUtils.deepEquals(this.teacherPicture, other.teacherPicture) && ComparisonApiPigeonUtils.deepEquals(this.learnerPicture, other.learnerPicture)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.mirrorTeacher)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.mirrorLearner)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.loopStartUs)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.loopEndUs)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.loopEnabled)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.teacherPicture)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.learnerPicture)
+    return result
+  }
+  override fun toString(): String {
+    return "ComparisonPracticeDto(mirrorTeacher=$mirrorTeacher, mirrorLearner=$mirrorLearner, loopStartUs=$loopStartUs, loopEndUs=$loopEndUs, loopEnabled=$loopEnabled, teacherPicture=$teacherPicture, learnerPicture=$learnerPicture)"
   }
 }
 
@@ -332,7 +458,8 @@ data class MusicCandidateDto (
   val score: Double,
   val consistentWindows: Long,
   val supportedSeconds: Double,
-  val residualMs: Double
+  val residualMs: Double,
+  val timeScale: Double? = null
 )
  {
   companion object {
@@ -342,7 +469,8 @@ data class MusicCandidateDto (
       val consistentWindows = pigeonVar_list[2] as Long
       val supportedSeconds = pigeonVar_list[3] as Double
       val residualMs = pigeonVar_list[4] as Double
-      return MusicCandidateDto(offsetUs, score, consistentWindows, supportedSeconds, residualMs)
+      val timeScale = pigeonVar_list[5] as Double?
+      return MusicCandidateDto(offsetUs, score, consistentWindows, supportedSeconds, residualMs, timeScale)
     }
   }
   fun toList(): List<Any?> {
@@ -352,6 +480,7 @@ data class MusicCandidateDto (
       consistentWindows,
       supportedSeconds,
       residualMs,
+      timeScale,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -362,7 +491,7 @@ data class MusicCandidateDto (
       return true
     }
     val other = other as MusicCandidateDto
-    return ComparisonApiPigeonUtils.deepEquals(this.offsetUs, other.offsetUs) && ComparisonApiPigeonUtils.deepEquals(this.score, other.score) && ComparisonApiPigeonUtils.deepEquals(this.consistentWindows, other.consistentWindows) && ComparisonApiPigeonUtils.deepEquals(this.supportedSeconds, other.supportedSeconds) && ComparisonApiPigeonUtils.deepEquals(this.residualMs, other.residualMs)
+    return ComparisonApiPigeonUtils.deepEquals(this.offsetUs, other.offsetUs) && ComparisonApiPigeonUtils.deepEquals(this.score, other.score) && ComparisonApiPigeonUtils.deepEquals(this.consistentWindows, other.consistentWindows) && ComparisonApiPigeonUtils.deepEquals(this.supportedSeconds, other.supportedSeconds) && ComparisonApiPigeonUtils.deepEquals(this.residualMs, other.residualMs) && ComparisonApiPigeonUtils.deepEquals(this.timeScale, other.timeScale)
   }
 
   override fun hashCode(): Int {
@@ -372,10 +501,11 @@ data class MusicCandidateDto (
     result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.consistentWindows)
     result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.supportedSeconds)
     result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.residualMs)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.timeScale)
     return result
   }
   override fun toString(): String {
-    return "MusicCandidateDto(offsetUs=$offsetUs, score=$score, consistentWindows=$consistentWindows, supportedSeconds=$supportedSeconds, residualMs=$residualMs)"
+    return "MusicCandidateDto(offsetUs=$offsetUs, score=$score, consistentWindows=$consistentWindows, supportedSeconds=$supportedSeconds, residualMs=$residualMs, timeScale=$timeScale)"
   }
 }
 
@@ -423,6 +553,87 @@ data class MusicAlignmentDto (
     return "MusicAlignmentDto(status=$status, message=$message, candidates=$candidates)"
   }
 }
+
+/** Generated class from Pigeon that represents data sent in messages. */
+data class ComparisonExportDto (
+  val jobId: String,
+  val projectId: String,
+  val state: String,
+  val stage: String,
+  val progress: Double,
+  val startUs: Long,
+  val endUs: Long,
+  val width: Long,
+  val height: Long,
+  val outputPath: String? = null,
+  val savedUri: String? = null,
+  val error: String? = null
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): ComparisonExportDto {
+      val jobId = pigeonVar_list[0] as String
+      val projectId = pigeonVar_list[1] as String
+      val state = pigeonVar_list[2] as String
+      val stage = pigeonVar_list[3] as String
+      val progress = pigeonVar_list[4] as Double
+      val startUs = pigeonVar_list[5] as Long
+      val endUs = pigeonVar_list[6] as Long
+      val width = pigeonVar_list[7] as Long
+      val height = pigeonVar_list[8] as Long
+      val outputPath = pigeonVar_list[9] as String?
+      val savedUri = pigeonVar_list[10] as String?
+      val error = pigeonVar_list[11] as String?
+      return ComparisonExportDto(jobId, projectId, state, stage, progress, startUs, endUs, width, height, outputPath, savedUri, error)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      jobId,
+      projectId,
+      state,
+      stage,
+      progress,
+      startUs,
+      endUs,
+      width,
+      height,
+      outputPath,
+      savedUri,
+      error,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as ComparisonExportDto
+    return ComparisonApiPigeonUtils.deepEquals(this.jobId, other.jobId) && ComparisonApiPigeonUtils.deepEquals(this.projectId, other.projectId) && ComparisonApiPigeonUtils.deepEquals(this.state, other.state) && ComparisonApiPigeonUtils.deepEquals(this.stage, other.stage) && ComparisonApiPigeonUtils.deepEquals(this.progress, other.progress) && ComparisonApiPigeonUtils.deepEquals(this.startUs, other.startUs) && ComparisonApiPigeonUtils.deepEquals(this.endUs, other.endUs) && ComparisonApiPigeonUtils.deepEquals(this.width, other.width) && ComparisonApiPigeonUtils.deepEquals(this.height, other.height) && ComparisonApiPigeonUtils.deepEquals(this.outputPath, other.outputPath) && ComparisonApiPigeonUtils.deepEquals(this.savedUri, other.savedUri) && ComparisonApiPigeonUtils.deepEquals(this.error, other.error)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.jobId)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.projectId)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.state)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.stage)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.progress)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.startUs)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.endUs)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.width)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.height)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.outputPath)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.savedUri)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.error)
+    return result
+  }
+  override fun toString(): String {
+    return "ComparisonExportDto(jobId=$jobId, projectId=$projectId, state=$state, stage=$stage, progress=$progress, startUs=$startUs, endUs=$endUs, width=$width, height=$height, outputPath=$outputPath, savedUri=$savedUri, error=$error)"
+  }
+}
 private open class ComparisonApiPigeonCodec : StandardMessageCodec() {
   override fun readValueOfType(type: Byte, buffer: ByteBuffer): Any? {
     return when (type) {
@@ -443,12 +654,27 @@ private open class ComparisonApiPigeonCodec : StandardMessageCodec() {
       }
       132.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          MusicCandidateDto.fromList(it)
+          ComparisonPictureDto.fromList(it)
         }
       }
       133.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
+          ComparisonPracticeDto.fromList(it)
+        }
+      }
+      134.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          MusicCandidateDto.fromList(it)
+        }
+      }
+      135.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
           MusicAlignmentDto.fromList(it)
+        }
+      }
+      136.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          ComparisonExportDto.fromList(it)
         }
       }
       else -> super.readValueOfType(type, buffer)
@@ -468,12 +694,24 @@ private open class ComparisonApiPigeonCodec : StandardMessageCodec() {
         stream.write(131)
         writeValue(stream, value.toList())
       }
-      is MusicCandidateDto -> {
+      is ComparisonPictureDto -> {
         stream.write(132)
         writeValue(stream, value.toList())
       }
-      is MusicAlignmentDto -> {
+      is ComparisonPracticeDto -> {
         stream.write(133)
+        writeValue(stream, value.toList())
+      }
+      is MusicCandidateDto -> {
+        stream.write(134)
+        writeValue(stream, value.toList())
+      }
+      is MusicAlignmentDto -> {
+        stream.write(135)
+        writeValue(stream, value.toList())
+      }
+      is ComparisonExportDto -> {
+        stream.write(136)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -487,12 +725,21 @@ interface DanceComparisonApi {
   suspend fun pickVideo(role: String): ComparisonSourceDto?
   suspend fun loadProjects(): List<String>
   suspend fun saveProject(projectJson: String)
-  suspend fun open(teacherUri: String, learnerUri: String, offsetUs: Long, positionUs: Long, speed: Double, width: Long, height: Long, sideBySide: Boolean): ComparisonPlaybackDto
+  suspend fun open(teacherUri: String, learnerUri: String, offsetUs: Long, positionUs: Long, speed: Double, width: Long, height: Long, sideBySide: Boolean, practice: ComparisonPracticeDto, timeScale: Double): ComparisonPlaybackDto
   suspend fun control(command: ComparisonCommand, valueUs: Long, speed: Double): ComparisonPlaybackDto
+  suspend fun setAlignment(offsetUs: Long, timeScale: Double): ComparisonPlaybackDto
   suspend fun resize(width: Long, height: Long, sideBySide: Boolean): ComparisonPlaybackDto
+  suspend fun setPractice(practice: ComparisonPracticeDto): ComparisonPlaybackDto
+  suspend fun stepFrame(forward: Boolean): ComparisonPlaybackDto
   suspend fun getState(): ComparisonPlaybackDto
   suspend fun alignMusic(teacherUri: String, learnerUri: String): MusicAlignmentDto
   suspend fun cancelAlignment()
+  suspend fun startExport(projectJson: String, startUs: Long, endUs: Long, width: Long, height: Long, gap: Long, sideBySide: Boolean): ComparisonExportDto
+  suspend fun getExport(): ComparisonExportDto?
+  suspend fun cancelExport(jobId: String): ComparisonExportDto
+  suspend fun retryExport(jobId: String): ComparisonExportDto
+  suspend fun saveExport(jobId: String): ComparisonExportDto
+  suspend fun openExport(jobId: String)
   suspend fun close()
 
   companion object {
@@ -573,9 +820,11 @@ interface DanceComparisonApi {
             val widthArg = args[5] as Long
             val heightArg = args[6] as Long
             val sideBySideArg = args[7] as Boolean
+            val practiceArg = args[8] as ComparisonPracticeDto
+            val timeScaleArg = args[9] as Double
             CoroutineScope(Dispatchers.Main).launch {
               val wrapped: List<Any?> = try {
-                listOf(api.open(teacherUriArg, learnerUriArg, offsetUsArg, positionUsArg, speedArg, widthArg, heightArg, sideBySideArg))
+                listOf(api.open(teacherUriArg, learnerUriArg, offsetUsArg, positionUsArg, speedArg, widthArg, heightArg, sideBySideArg, practiceArg, timeScaleArg))
               } catch (exception: Throwable) {
                 ComparisonApiPigeonUtils.wrapError(exception)
               }
@@ -608,6 +857,26 @@ interface DanceComparisonApi {
         }
       }
       run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.dance_native.DanceComparisonApi.setAlignment$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val offsetUsArg = args[0] as Long
+            val timeScaleArg = args[1] as Double
+            CoroutineScope(Dispatchers.Main).launch {
+              val wrapped: List<Any?> = try {
+                listOf(api.setAlignment(offsetUsArg, timeScaleArg))
+              } catch (exception: Throwable) {
+                ComparisonApiPigeonUtils.wrapError(exception)
+              }
+              reply.reply(wrapped)
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.dance_native.DanceComparisonApi.resize$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { message, reply ->
@@ -618,6 +887,44 @@ interface DanceComparisonApi {
             CoroutineScope(Dispatchers.Main).launch {
               val wrapped: List<Any?> = try {
                 listOf(api.resize(widthArg, heightArg, sideBySideArg))
+              } catch (exception: Throwable) {
+                ComparisonApiPigeonUtils.wrapError(exception)
+              }
+              reply.reply(wrapped)
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.dance_native.DanceComparisonApi.setPractice$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val practiceArg = args[0] as ComparisonPracticeDto
+            CoroutineScope(Dispatchers.Main).launch {
+              val wrapped: List<Any?> = try {
+                listOf(api.setPractice(practiceArg))
+              } catch (exception: Throwable) {
+                ComparisonApiPigeonUtils.wrapError(exception)
+              }
+              reply.reply(wrapped)
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.dance_native.DanceComparisonApi.stepFrame$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val forwardArg = args[0] as Boolean
+            CoroutineScope(Dispatchers.Main).launch {
+              val wrapped: List<Any?> = try {
+                listOf(api.stepFrame(forwardArg))
               } catch (exception: Throwable) {
                 ComparisonApiPigeonUtils.wrapError(exception)
               }
@@ -672,6 +979,125 @@ interface DanceComparisonApi {
             CoroutineScope(Dispatchers.Main).launch {
               val wrapped: List<Any?> = try {
                 api.cancelAlignment()
+                listOf(null)
+              } catch (exception: Throwable) {
+                ComparisonApiPigeonUtils.wrapError(exception)
+              }
+              reply.reply(wrapped)
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.dance_native.DanceComparisonApi.startExport$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val projectJsonArg = args[0] as String
+            val startUsArg = args[1] as Long
+            val endUsArg = args[2] as Long
+            val widthArg = args[3] as Long
+            val heightArg = args[4] as Long
+            val gapArg = args[5] as Long
+            val sideBySideArg = args[6] as Boolean
+            CoroutineScope(Dispatchers.Main).launch {
+              val wrapped: List<Any?> = try {
+                listOf(api.startExport(projectJsonArg, startUsArg, endUsArg, widthArg, heightArg, gapArg, sideBySideArg))
+              } catch (exception: Throwable) {
+                ComparisonApiPigeonUtils.wrapError(exception)
+              }
+              reply.reply(wrapped)
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.dance_native.DanceComparisonApi.getExport$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            CoroutineScope(Dispatchers.Main).launch {
+              val wrapped: List<Any?> = try {
+                listOf(api.getExport())
+              } catch (exception: Throwable) {
+                ComparisonApiPigeonUtils.wrapError(exception)
+              }
+              reply.reply(wrapped)
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.dance_native.DanceComparisonApi.cancelExport$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val jobIdArg = args[0] as String
+            CoroutineScope(Dispatchers.Main).launch {
+              val wrapped: List<Any?> = try {
+                listOf(api.cancelExport(jobIdArg))
+              } catch (exception: Throwable) {
+                ComparisonApiPigeonUtils.wrapError(exception)
+              }
+              reply.reply(wrapped)
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.dance_native.DanceComparisonApi.retryExport$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val jobIdArg = args[0] as String
+            CoroutineScope(Dispatchers.Main).launch {
+              val wrapped: List<Any?> = try {
+                listOf(api.retryExport(jobIdArg))
+              } catch (exception: Throwable) {
+                ComparisonApiPigeonUtils.wrapError(exception)
+              }
+              reply.reply(wrapped)
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.dance_native.DanceComparisonApi.saveExport$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val jobIdArg = args[0] as String
+            CoroutineScope(Dispatchers.Main).launch {
+              val wrapped: List<Any?> = try {
+                listOf(api.saveExport(jobIdArg))
+              } catch (exception: Throwable) {
+                ComparisonApiPigeonUtils.wrapError(exception)
+              }
+              reply.reply(wrapped)
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.dance_native.DanceComparisonApi.openExport$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val jobIdArg = args[0] as String
+            CoroutineScope(Dispatchers.Main).launch {
+              val wrapped: List<Any?> = try {
+                api.openExport(jobIdArg)
                 listOf(null)
               } catch (exception: Throwable) {
                 ComparisonApiPigeonUtils.wrapError(exception)

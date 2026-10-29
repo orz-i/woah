@@ -10,11 +10,21 @@ import '../data/comparison_gateway.dart';
 import 'comparison_controller.dart';
 import 'comparison_manual_session.dart';
 import 'comparison_manual_view.dart';
-import 'comparison_time.dart';
+import 'comparison_picture_controls.dart';
+import 'comparison_markers_sheet.dart';
+import 'comparison_timeline.dart';
+import 'comparison_export_dialog.dart';
 
-enum _ComparisonProjectAction { create, save, swap }
+enum _ComparisonProjectAction { create, save, swap, clearLoop, export }
 
-enum _ComparisonViewAction { stacked, sideBySide, rotate }
+enum _ComparisonViewAction {
+  stacked,
+  sideBySide,
+  mirrorTeacher,
+  mirrorLearner,
+  adjust,
+  rotate,
+}
 
 class ComparisonScreen extends StatefulWidget {
   final ComparisonGateway? gateway;
@@ -32,6 +42,11 @@ class _ComparisonScreenState extends State<ComparisonScreen>
   ComparisonManualSession? _manualSession;
   bool _finishingManual = false, _orientationOverridden = false;
   bool _rotating = false;
+  bool _pictureReference = true, _finishingPicture = false;
+  ComparisonPicture? _gesturePicture;
+  Offset? _gestureFocal;
+  bool? _gestureReference;
+  double? _referenceAspect, _targetAspect;
   static const _viewTriggerWidth = 104.0, _viewMenuWidth = 200.0;
   static const _orientationChannel = MethodChannel(
     'art.gaoge.dance/orientation',
@@ -49,7 +64,27 @@ class _ComparisonScreenState extends State<ComparisonScreen>
       widget.gateway ?? NativeComparisonGateway(),
     );
     WidgetsBinding.instance.addObserver(this);
-    unawaited(controller.initialize());
+    unawaited(_initialize());
+  }
+
+  Future<void> _initialize() async {
+    await controller.initialize();
+    final job = controller.pendingExport;
+    if (!mounted || job == null) return;
+    try {
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => ComparisonExportDialog(
+          gateway: controller.gateway,
+          full: null,
+          selection: null,
+          existingJob: job,
+        ),
+      );
+    } finally {
+      if (mounted) await controller.finishExport();
+    }
   }
 
   @override
@@ -62,7 +97,11 @@ class _ComparisonScreenState extends State<ComparisonScreen>
   }
 
   Future<void> _exit() async {
-    if (_finishingManual) return;
+    if (_finishingManual || _finishingPicture) return;
+    if (controller.adjusting) {
+      await _finishPicture(false);
+      return;
+    }
     if (_manualSession != null) {
       await _finishManual(false);
       return;
@@ -90,6 +129,24 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     if (_manualSession != null) unawaited(_manualSession!.close());
     controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _export() async {
+    final plans = await controller.prepareExport();
+    if (!mounted || plans == null) return;
+    try {
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => ComparisonExportDialog(
+          gateway: controller.gateway,
+          full: plans.$1,
+          selection: plans.$2,
+        ),
+      );
+    } finally {
+      if (mounted) await controller.finishExport();
+    }
   }
 
   Future<void> _save() async {
@@ -159,7 +216,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     if (_manualSession != null || !await controller.enterManualCalibration()) {
       return;
     }
-    if (!mounted) return;
+    if (!mounted || _manualSession != null || !controller.calibrating) return;
     final session = ComparisonManualSession(
       controller.project,
       factory: widget.manualVideoFactory,
@@ -167,6 +224,109 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     setState(() => _manualSession = session);
     unawaited(session.initialize());
   }
+
+  Future<void> _adjustPicture() async {
+    _referenceAspect = controller.playback?.teacherAspect;
+    _targetAspect = controller.playback?.learnerAspect;
+    if (!await controller.beginPictureAdjustment() || !mounted) return;
+    setState(() => _pictureReference = true);
+  }
+
+  Future<void> _finishPicture(bool apply) async {
+    if (_finishingPicture) return;
+    setState(() => _finishingPicture = true);
+    await controller.finishPictureAdjustment(applied: apply);
+    if (mounted) setState(() => _finishingPicture = false);
+  }
+
+  Future<void> _markers() async {
+    await controller.pause();
+    await controller.save();
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => FractionallySizedBox(
+        heightFactor: .78,
+        child: ComparisonMarkersSheet(controller: controller),
+      ),
+    );
+  }
+
+  void _startPictureGesture(bool reference, ScaleStartDetails details) {
+    if (!controller.adjusting || _finishingPicture) return;
+    setState(() => _pictureReference = reference);
+    _gestureReference = reference;
+    _gesturePicture = reference
+        ? controller.project.teacherPicture
+        : controller.project.learnerPicture;
+    _gestureFocal = details.localFocalPoint;
+  }
+
+  void _updatePictureGesture(
+    bool reference,
+    ScaleUpdateDetails details,
+    Size size,
+  ) {
+    final initial = _gesturePicture, focal = _gestureFocal;
+    if (!controller.adjusting ||
+        _finishingPicture ||
+        initial == null ||
+        focal == null ||
+        _gestureReference != reference) {
+      return;
+    }
+    final zoom = (initial.zoom * details.scale).clamp(1.0, 4.0).toDouble();
+    if (zoom == 1) {
+      controller.previewPicture(reference, const ComparisonPicture());
+      return;
+    }
+    final center = Offset(size.width / 2, size.height / 2);
+    final aspect =
+        (reference ? _referenceAspect : _targetAspect) ??
+        size.width / size.height;
+    final fit = Size(
+      math.min(size.width, size.height * aspect),
+      math.min(size.height, size.width / aspect),
+    );
+    Offset travel(double z) => z == 1
+        ? Offset.zero
+        : Offset(
+            (fit.width * z - size.width).abs() / 2,
+            (fit.height * z - size.height).abs() / 2,
+          );
+    final initialTravel = travel(initial.zoom), nextTravel = travel(zoom);
+    final translation = Offset(
+      initial.panX * initialTravel.dx,
+      initial.panY * initialTravel.dy,
+    );
+    final next =
+        details.localFocalPoint -
+        center -
+        (focal - center - translation) * (zoom / initial.zoom);
+    controller.previewPicture(
+      reference,
+      ComparisonPicture.clamped(
+        zoom,
+        nextTravel.dx < .001 ? 0 : next.dx / nextTravel.dx,
+        nextTravel.dy < .001 ? 0 : next.dy / nextTravel.dy,
+      ),
+    );
+  }
+
+  Widget _mainControls() => controller.adjusting
+      ? ComparisonPictureControls(
+          project: controller.project,
+          reference: _pictureReference,
+          saving: _finishingPicture,
+          error: controller.error,
+          onSelect: (value) => setState(() => _pictureReference = value),
+          onChange: (value) =>
+              controller.previewPicture(_pictureReference, value),
+          onApply: () => _finishPicture(true),
+          onCancel: () => _finishPicture(false),
+        )
+      : _controls();
 
   Future<void> _finishManual(bool apply) async {
     final session = _manualSession;
@@ -176,7 +336,16 @@ class _ComparisonScreenState extends State<ComparisonScreen>
       if (apply) {
         final anchors = await session.anchors();
         if (!mounted) return;
-        if (!await controller.manual(anchors.$1, anchors.$2)) return;
+        final first = session.rateCalibration ? session.firstAnchor : anchors;
+        if (first == null) throw const FormatException('请先记录前段音乐点');
+        if (!await controller.manual(
+          first.$1,
+          first.$2,
+          teacher2Us: session.rateCalibration ? anchors.$1 : null,
+          learner2Us: session.rateCalibration ? anchors.$2 : null,
+        )) {
+          return;
+        }
       }
       // Remove both preview Texture widgets and their listeners before releasing
       // their producers. The shared GL surface is opened only after that frame.
@@ -185,11 +354,15 @@ class _ComparisonScreenState extends State<ComparisonScreen>
       await session.close();
       if (!mounted) return;
       await controller.leaveManualCalibration(applied: apply);
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('校准未完成，请重试。')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error is FormatException ? error.message : '校准未完成，请重试。',
+            ),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _finishingManual = false);
@@ -273,6 +446,9 @@ class _ComparisonScreenState extends State<ComparisonScreen>
         controller.initialized &&
         !controller.picking &&
         !controller.matching &&
+        !controller.stepping &&
+        !controller.adjusting &&
+        !controller.enteringPractice &&
         !_finishingManual &&
         !_rotating,
     child: SizedBox(
@@ -306,6 +482,12 @@ class _ComparisonScreenState extends State<ComparisonScreen>
           unawaited(controller.setSideBySide(false));
         case _ComparisonViewAction.sideBySide:
           unawaited(controller.setSideBySide(true));
+        case _ComparisonViewAction.mirrorTeacher:
+          unawaited(controller.setMirror(true));
+        case _ComparisonViewAction.mirrorLearner:
+          unawaited(controller.setMirror(false));
+        case _ComparisonViewAction.adjust:
+          unawaited(_adjustPicture());
         case _ComparisonViewAction.rotate:
           unawaited(_rotate());
       }
@@ -322,6 +504,24 @@ class _ComparisonScreenState extends State<ComparisonScreen>
         child: const Text('左右视图'),
       ),
       const PopupMenuDivider(),
+      CheckedPopupMenuItem(
+        value: _ComparisonViewAction.mirrorTeacher,
+        checked: controller.project.mirrorTeacher,
+        enabled: controller.project.teacher != null,
+        child: const Text('参考镜像'),
+      ),
+      CheckedPopupMenuItem(
+        value: _ComparisonViewAction.mirrorLearner,
+        checked: controller.project.mirrorLearner,
+        enabled: controller.project.learner != null,
+        child: const Text('目标镜像'),
+      ),
+      const PopupMenuDivider(),
+      PopupMenuItem(
+        value: _ComparisonViewAction.adjust,
+        enabled: controller.canPlay && _manualSession == null,
+        child: const Text('调整画面'),
+      ),
       PopupMenuItem(
         value: _ComparisonViewAction.rotate,
         child: ListTile(
@@ -367,15 +567,24 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                 enabled: !controller.busy && !controller.saving,
                 onSelected: (action) {
                   switch (action) {
+                    case _ComparisonProjectAction.export:
+                      unawaited(_export());
                     case _ComparisonProjectAction.create:
                       unawaited(controller.newProject());
                     case _ComparisonProjectAction.save:
                       unawaited(_save());
                     case _ComparisonProjectAction.swap:
                       unawaited(controller.swap());
+                    case _ComparisonProjectAction.clearLoop:
+                      unawaited(controller.clearLoop());
                   }
                 },
                 itemBuilder: (_) => [
+                  PopupMenuItem(
+                    value: _ComparisonProjectAction.export,
+                    enabled: controller.canPlay,
+                    child: const Text('导出对比视频'),
+                  ),
                   const PopupMenuItem(
                     value: _ComparisonProjectAction.save,
                     child: Text('保存并重命名'),
@@ -389,6 +598,13 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                     enabled: controller.project.hasPair,
                     child: const Text('交换参考和目标'),
                   ),
+                  PopupMenuItem(
+                    value: _ComparisonProjectAction.clearLoop,
+                    enabled:
+                        controller.project.loopStartUs != null ||
+                        controller.project.loopEndUs != null,
+                    child: const Text('清除 A/B 循环'),
+                  ),
                 ],
               ),
             ],
@@ -401,6 +617,10 @@ class _ComparisonScreenState extends State<ComparisonScreen>
               ? ComparisonManualView(
                   session: _manualSession!,
                   sideBySide: _sideBySide,
+                  mirrorTeacher: controller.project.mirrorTeacher,
+                  mirrorLearner: controller.project.mirrorLearner,
+                  teacherPicture: controller.project.teacherPicture,
+                  learnerPicture: controller.project.learnerPicture,
                   saving: _finishingManual,
                   error: controller.error,
                   onApply: () => _finishManual(true),
@@ -417,7 +637,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                             width: math.min(340, viewport.maxWidth * .43),
                             child: SingleChildScrollView(
                               padding: const EdgeInsets.all(8),
-                              child: _controls(),
+                              child: _mainControls(),
                             ),
                           ),
                         ],
@@ -430,7 +650,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                           constraints: BoxConstraints(
                             maxHeight: viewport.maxHeight * .46,
                           ),
-                          child: SingleChildScrollView(child: _controls()),
+                          child: SingleChildScrollView(child: _mainControls()),
                         ),
                       ],
                     );
@@ -441,69 +661,105 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     ),
   );
   Widget _sourceSlot(String role, String label, ComparisonSource? source) {
-    final onSelect = controller.busy
-        ? null
-        : () => unawaited(controller.pick(role));
-    return Semantics(
-      key: ValueKey('comparison-pick-$role'),
-      label: '${source == null ? '选择' : '更换'}$label视频',
-      button: true,
-      enabled: onSelect != null,
-      onTap: onSelect,
-      excludeSemantics: true,
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
+    final reference = role == 'teacher';
+    final adjusting = controller.adjusting;
+    final VoidCallback? onSelect = adjusting
+        ? (_finishingPicture
+              ? null
+              : () => setState(() => _pictureReference = reference))
+        : (controller.busy ? null : () => unawaited(controller.pick(role)));
+    return LayoutBuilder(
+      builder: (context, bounds) => GestureDetector(
+        key: ValueKey('comparison-picture-pane-$role'),
+        behavior: HitTestBehavior.opaque,
+        excludeFromSemantics: true,
+        onScaleStart: adjusting && !_finishingPicture
+            ? (details) => _startPictureGesture(reference, details)
+            : null,
+        onScaleUpdate: adjusting && !_finishingPicture
+            ? (details) =>
+                  _updatePictureGesture(reference, details, bounds.biggest)
+            : null,
+        child: Semantics(
+          key: ValueKey('comparison-pick-$role'),
+          label: adjusting
+              ? '调整$label画面'
+              : '${source == null ? '选择' : '更换'}$label视频',
+          button: true,
+          enabled: onSelect != null,
           onTap: onSelect,
-          excludeFromSemantics: true,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (!controller.project.hasPair)
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          source == null
-                              ? Icons.add_rounded
-                              : Icons.check_circle_outline_rounded,
-                          size: 28,
-                          color: AppTheme.flowTextMuted,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          source == null ? '选择$label视频' : '$label视频已选择',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppTheme.flowTextSecondary,
+          excludeSemantics: true,
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              onTap: onSelect,
+              excludeFromSemantics: true,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (adjusting && _pictureReference == reference)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: AppTheme.gold,
+                              width: 1.5,
+                            ),
                           ),
                         ),
-                      ],
+                      ),
+                    ),
+                  if (!controller.project.hasPair)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              source == null
+                                  ? Icons.add_rounded
+                                  : Icons.check_circle_outline_rounded,
+                              size: 28,
+                              color: AppTheme.flowTextMuted,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              source == null ? '选择$label视频' : '$label视频已选择',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppTheme.flowTextSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        child: Text(
+                          label,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              Positioned(
-                top: 8,
-                left: 8,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    child: Text(label, style: const TextStyle(fontSize: 12)),
-                  ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -534,6 +790,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                 filterQuality: FilterQuality.low,
               ),
             if (controller.project.hasPair &&
+                !controller.exporting &&
                 (state == null || state.phase == 'opening'))
               const Center(
                 child: CircularProgressIndicator(color: AppTheme.gold),
@@ -589,7 +846,12 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                 ? '正在自动校准…'
                 : !paired
                 ? '先选择参考和目标视频'
-                : _alignmentLabel + (aligned ? ' · $_offsetLabel' : ''),
+                : _alignmentLabel +
+                      (aligned ? ' · $_offsetLabel' : '') +
+                      (aligned &&
+                              (controller.project.timeScale - 1).abs() > .0001
+                          ? ' · 目标音乐 ${(1 / controller.project.timeScale).toStringAsFixed(3)}×'
+                          : ''),
             maxLines: 2,
             style: const TextStyle(
               fontSize: 13,
@@ -709,13 +971,6 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     );
   }
 
-  String _displayTime(int value) {
-    final formatted = comparisonTime(value);
-    return MediaQuery.textScalerOf(context).scale(13) > 18
-        ? formatted.split('.').first
-        : formatted;
-  }
-
   Widget _controls() {
     final state = controller.playback;
     final duration = state?.durationUs ?? 0;
@@ -746,53 +1001,19 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                 ),
               ),
             _musicSummary(),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(
-                  child: Text(
-                    _displayTime(position.round()),
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontFeatures: [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                ),
-                Flexible(
-                  child: Text(
-                    _displayTime(duration),
-                    textAlign: TextAlign.end,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppTheme.flowTextSecondary,
-                      fontFeatures: [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                ),
-              ],
+            ComparisonTimeline(
+              durationUs: duration,
+              positionUs: position.round(),
+              startUs: controller.project.loopStartUs,
+              endUs: controller.project.loopEndUs,
+              loopEnabled: controller.project.loopEnabled,
+              enabled: controller.canPlay,
+              onScrub: (value) => setState(() => _scrub = value?.toDouble()),
+              onSeek: (value) => unawaited(controller.seek(value)),
+              onRangeStart: controller.pause,
+              onRange: controller.setLoopRange,
             ),
-            Semantics(
-              label: '共同进度',
-              child: Slider(
-                key: const ValueKey('comparison-seek'),
-                min: 0,
-                max: math.max(1, duration).toDouble(),
-                value: position,
-                semanticFormatterCallback: (value) =>
-                    comparisonTime(value.round()),
-                onChanged: duration > 0 && !controller.busy
-                    ? (value) => setState(() => _scrub = value)
-                    : null,
-                onChangeEnd: duration > 0 && !controller.busy
-                    ? (value) {
-                        setState(() => _scrub = null);
-                        unawaited(controller.seek(value.round()));
-                      }
-                    : null,
-              ),
-            ),
+            _practiceControls(),
             Row(
               children: [
                 _stepButton(false, stepUs, position.round()),
@@ -811,6 +1032,70 @@ class _ComparisonScreenState extends State<ComparisonScreen>
           ],
         ),
       ),
+    );
+  }
+
+  Widget _practiceControls() {
+    final project = controller.project;
+    final actions = <Widget>[
+      IconButton(
+        key: const ValueKey('comparison-frame-back'),
+        tooltip: '参考上一帧',
+        onPressed: controller.canStep
+            ? () => controller.stepFrame(false)
+            : null,
+        icon: const Icon(Icons.skip_previous_rounded),
+      ),
+      IconButton(
+        key: const ValueKey('comparison-loop-toggle'),
+        tooltip: project.loopEnabled ? '暂停 A/B 循环' : '启用 A/B 循环',
+        isSelected: project.loopEnabled,
+        color: project.loopEnabled ? AppTheme.gold : AppTheme.flowTextSecondary,
+        onPressed:
+            !controller.busy &&
+                project.loopStartUs != null &&
+                project.loopEndUs != null
+            ? controller.toggleLoop
+            : null,
+        icon: const Icon(Icons.repeat_rounded),
+      ),
+      IconButton(
+        key: const ValueKey('comparison-frame-forward'),
+        tooltip: '参考下一帧',
+        onPressed: controller.canStep ? () => controller.stepFrame(true) : null,
+        icon: const Icon(Icons.skip_next_rounded),
+      ),
+      IconButton(
+        key: const ValueKey('comparison-markers'),
+        tooltip: '问题片段',
+        onPressed: controller.busy ? null : _markers,
+        icon: Badge(
+          isLabelVisible: project.markers.isNotEmpty,
+          label: ExcludeSemantics(child: Text('${project.markers.length}')),
+          child: const Icon(
+            Icons.bookmark_outline_rounded,
+            semanticLabel: '问题片段',
+          ),
+        ),
+      ),
+    ];
+    return LayoutBuilder(
+      key: const ValueKey('comparison-practice'),
+      builder: (context, bounds) => bounds.maxWidth >= 192
+          ? Row(
+              children: [
+                actions[0],
+                const Spacer(),
+                actions[1],
+                actions[3],
+                const Spacer(),
+                actions[2],
+              ],
+            )
+          : Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              children: [actions[0], actions[1], actions[3], actions[2]],
+            ),
     );
   }
 }

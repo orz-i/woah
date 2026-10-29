@@ -44,6 +44,9 @@ internal class ComparisonCodecVideo(
     private var displayedEndUs = -1L
     private var preparedPtsUs: Long? = null
     private var preparedEndUs = -1L
+    val displayedFrame: ComparisonFrameInterval?
+        get() = if (displayedPtsUs >= 0) ComparisonFrameInterval(displayedPtsUs, displayedEndUs) else null
+    val hasPreparedFrame: Boolean get() = preparedPtsUs != null
     val matrix = FloatArray(16)
     val description: ComparisonVideoDescription
     var decodedFrames = 0L
