@@ -36,7 +36,7 @@
 ## 三、原生启动屏与系统栏
 
 - Android：`values/` + `values-night/` 配置浅色/深色启动背景，`drawable/` + `drawable-night/` 为对应 W 颜色。API 31+ 原生 SplashScreen 引用同一夜间资源，并配有 `values-night-v31/` 的主题。自适应应用图标与用户导出素材均未改。
-- iOS：通过 `WoahLaunchBackground.colorset` 和 `LaunchImage.imageset` 的 `luminosity: dark` 变体，让 storyboard 上的 W 标识和背景随系统主题配置。应用图标保留原品牌色，不依赖系统强制改变。
+- iOS：通过 `WoahLaunchBackground.colorset` 和 `LaunchImage.imageset` 的 `luminosity: dark` 变体，让 storyboard 上的 W 标识和背景随系统主题配置。桌面图标后续追加独立的 Light / Dark / Tinted 资产；详见 `quiet-frame-launcher-icon-2026-10-29.md`。
 - System UI：顶部状态栏保持编辑器既有沉浸规则，底部系统导航图标按照当前主题切换深浅；Android 35+ edge-to-edge 行为的导航背景仍需真机复核，不将 setSystemUIOverlayStyle 对背景颜色的请求等同于已生效。
 
 ## 四、验收矩阵与限制

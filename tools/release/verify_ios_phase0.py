@@ -100,7 +100,8 @@ def verify_app_icons() -> None:
         if not filename:
             continue
         logical_size = float(entry["size"].split("x", 1)[0])
-        scale = float(entry["scale"].rstrip("x"))
+        # Xcode generates legacy sizes from a 1024x1024 Single Size catalog.
+        scale = float(entry.get("scale", "1x").rstrip("x"))
         expected = round(logical_size * scale)
         path = root / filename
         check(path.is_file(), f"Missing iOS app icon: {filename}")

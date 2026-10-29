@@ -69,7 +69,7 @@ for item in contents['images']:
     if not name:
         continue
     logical = float(item['size'].split('x')[0])
-    scale = float(item['scale'].removesuffix('x'))
+    scale = float(item.get('scale', '1x').removesuffix('x'))
     required = round(logical * scale)
     assert png_size(icon_catalog / name) == (required, required), name
 assert not (IOS / 'zh-Hans.lproj/InfoPlist.strings').exists()
