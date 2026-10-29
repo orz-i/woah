@@ -207,7 +207,7 @@ void main() {
     expect(find.text('人脸贴纸'), findsNothing);
     expect(find.text('人物特效'), findsNothing);
     expect(find.text(AppBrand.english), findsOneWidget);
-    expect(find.text(AppBrand.chinese), findsOneWidget);
+    expect(find.text(AppBrand.chinese), findsNothing);
     expect(find.text('导入视频'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

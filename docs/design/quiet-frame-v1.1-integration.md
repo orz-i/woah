@@ -8,15 +8,15 @@
 ## 1. 正式品牌决议
 
 - 正式中文名 **舞哇**，正式英文名 **Woah**；`Quiet Frame` 是 VI 设计方向，不是另一款应用名称。
-- Android 在简体中文区域使用 `@string/app_name` → `舞哇`，默认英语 `Woah`；iOS `Info.plist` 默认为 `Woah`，`zh-Hans.lproj/InfoPlist.strings` 为 `舞哇`。Flutter 统一入口 `AppBrand` 同步维护品牌名称。
-- 保持双侧 W 和中心留白的几何；原 v1.0 的标识绘制路径未改，仅适度放大移动系统图标中的光学占比。中文 / 英文双语字标以 v1.1 品牌资源为准；产品工作台上的常规文本并非视觉商标的重新排版。
+- **当前不支持应用名称的多语言切换**：首页品牌文字、Android 启动器名称（`@string/app_name`）、iOS 桌面名称（`CFBundleDisplayName`）均只显示 `Woah`。`舞哇` 保留为正式中文品牌名称，仅用于品牌定义，不作为应用内第二字标或系统语言覆盖。
+- 保持双侧 W 和中心留白的几何；原 v1.0 的标识绘制路径未改，仅适度放大移动系统图标中的光学占比。正式应用品牌展示仅使用 W 标识与 `Woah` 英文字样，避免同一处重复展示中英文名称。
 - 隐私保护方向沿用文案「看见舞步，留住边界。」；双视频对比不强制搭配隐私文案；品牌标识或绿色状态均不构成保护完成证明。
 
 ## 2. 产品范围：双独立工作流
 
 - **视频保护**：人物分割 / 追踪、全身与人脸效果、画幅、导出；显示人物时使用真实 segmentation mask 区域，编辑器选择状态与保护完成状态分离。
 - **舞蹈对比**：参考 / 目标视频、共同音乐校准、同步播放、时间轴、偏移、导出；不增加品牌框线，不修改同步算法或控件操作方式。
-- **首页**：保留既有滑动任务卡片和两个独立入口，不以 PDF 的人工编辑器示意重建 UX；品牌 W 和 Woah / 舞哇作为轻量顶部识别，保留长按品牌进入原彩蛋。Buddy 不用于人物标记。
+- **首页**：保留既有滑动任务卡片和两个独立入口，不以 PDF 的人工编辑器示意重建 UX；品牌 W 和 Woah 作为轻量顶部识别，保留长按品牌进入原彩蛋。Buddy 不用于人物标记。
 
 ## 3. 已接入的语义 Token
 
@@ -47,8 +47,12 @@
 
 - `flutter pub get --offline`：通过；`flutter analyze --no-pub`：通过。
 - 相关 Flutter 8 文件 **86/86 通过**；全量 `flutter test --no-pub` **184/184 通过**，覆盖主题、首页、导入、比较播放/时间轴/标记、导出和入口路由。
-- 使用隔离 XDG Flutter 设置关闭 Swift Package Manager（不修改用户级设置），`flutter build ios --simulator --debug --no-pub`：**成功**；iOS `ibtool` 启动 storyboard 检查：通过；构建产物包含 `zh-Hans.lproj/InfoPlist.strings`。
-- Android SDK / APK/JVM/真机：**未运行**。iOS 模拟器实际 UI 点击、启动截图及 iOS 真机：**未运行**。Icon Composer 项目与系统外观：**待验收**。
+- 使用隔离 XDG Flutter 设置关闭 Swift Package Manager（不修改用户级设置），`flutter build ios --simulator --debug --no-pub`：**成功**；iOS `ibtool` 启动 storyboard 检查：通过；简体中文应用名称覆盖已移除，系统显示名称统一为 `Woah`。
+- Android SDK / APK/JVM/真机：**未运行**。iOS 17 / iOS 27 模拟器已完成本轮正式 `Runner.app` 安装、启动、首页截图和进程存活检查，**首页品牌仅显示 W + Woah**；并验证新产物 `CFBundleDisplayName=Woah`，无旧 `InfoPlist.strings`。模拟器内视频导入、编辑交互、导出及 iOS 真机仍未运行；Icon Composer 外观：**待验收**。
 - 上述为代码与构建证据，不代表应用商店上架及实际视频隐私效果通过。原全链路 M0 结果不得代替此轮回归。
 
 **合并条件**：Android 真实资源编译、至少一台 Android 实机图标与白闪检查、iOS 模拟器实际启动与系统图标外观、保护及对比工作流回归、主按钮对比度和大字体检查均通过，再请求用户允许合并及推送。
+
+## 6. 2026-10-29 命名显示修订
+
+根据最新视觉复核，移除首页中文名并取消 Android/iOS 安装名称本地化覆盖；**品牌注册名称保持“舞哇 / Woah”，产品界面仅呈现“Woah”**。上述修订只涉及展示及平台资源，不改变既有业务工作流。

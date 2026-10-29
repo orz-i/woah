@@ -134,7 +134,7 @@ class _HomeBrand extends StatelessWidget {
       child: Align(
         alignment: Alignment.centerLeft,
         child: Semantics(
-          label: '舞哇 Woah',
+          label: AppBrand.english,
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 2, vertical: 2),
             child: Row(
@@ -156,15 +156,6 @@ class _HomeBrand extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     letterSpacing: -1.0,
                     height: 1.12,
-                  ),
-                ),
-                SizedBox(width: 9),
-                Text(
-                  AppBrand.chinese,
-                  style: TextStyle(
-                    color: AppTheme.flowTextSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
