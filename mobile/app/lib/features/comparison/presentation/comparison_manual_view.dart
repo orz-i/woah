@@ -103,12 +103,12 @@ class ComparisonManualView extends StatelessWidget {
             style: ButtonStyle(
               foregroundColor: WidgetStateProperty.resolveWith(
                 (states) => states.contains(WidgetState.selected)
-                    ? AppTheme.gold
+                    ? AppTheme.brandAction
                     : AppTheme.flowTextSecondary,
               ),
               backgroundColor: WidgetStateProperty.resolveWith(
                 (states) => states.contains(WidgetState.selected)
-                    ? AppTheme.gold.withAlpha(28)
+                    ? AppTheme.brandAction.withAlpha(28)
                     : Colors.transparent,
               ),
               side: const WidgetStatePropertyAll(
@@ -139,7 +139,7 @@ class ComparisonManualView extends StatelessWidget {
                     style: TextButton.styleFrom(
                       minimumSize: const Size(48, 48),
                       foregroundColor: session.anchorIndex == i
-                          ? AppTheme.gold
+                          ? AppTheme.brandAction
                           : AppTheme.flowTextSecondary,
                     ),
                     child: Text(
@@ -172,7 +172,7 @@ class ComparisonManualView extends StatelessWidget {
                           : onApply
                     : null,
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppTheme.gold,
+                  backgroundColor: AppTheme.brandAction,
                   foregroundColor: AppTheme.textOnAccent,
                   minimumSize: const Size(48, 48),
                 ),

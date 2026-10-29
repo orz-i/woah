@@ -197,7 +197,10 @@ class _VideoTrimControlState extends State<VideoTrimControl> {
                 child: IgnorePointer(
                   child: Container(
                     decoration: BoxDecoration(
-                      border: Border.all(color: AppTheme.coral, width: 2),
+                      border: Border.all(
+                        color: AppTheme.editorSelection,
+                        width: 2,
+                      ),
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
@@ -254,7 +257,7 @@ class _TrimHandle extends StatelessWidget {
           left: Radius.circular(isLeft ? 8 : 3),
           right: Radius.circular(isLeft ? 3 : 8),
         ),
-        border: Border.all(color: AppTheme.coral, width: 2),
+        border: Border.all(color: AppTheme.editorSelection, width: 2),
         boxShadow: const [
           BoxShadow(
             color: Color(0x22000000),
@@ -268,7 +271,7 @@ class _TrimHandle extends StatelessWidget {
         width: 2.5,
         height: 16,
         decoration: BoxDecoration(
-          color: AppTheme.coral,
+          color: AppTheme.editorSelection,
           borderRadius: BorderRadius.circular(1.5),
         ),
       ),
@@ -304,7 +307,9 @@ class _Metric extends StatelessWidget {
         Text(
           value,
           style: TextStyle(
-            color: emphasize ? AppTheme.coralStrong : AppTheme.flowTextPrimary,
+            color: emphasize
+                ? AppTheme.editorSelection
+                : AppTheme.flowTextPrimary,
             fontSize: 13,
             fontWeight: FontWeight.w700,
             fontFeatures: const [FontFeature.tabularFigures()],

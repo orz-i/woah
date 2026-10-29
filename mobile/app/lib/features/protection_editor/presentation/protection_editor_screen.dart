@@ -624,7 +624,7 @@ class _ProtectionEditorScreenState
             ),
           ),
           const Spacer(),
-          // Right: Export icon action (golden icon, no capsule background)
+          // Right: Export icon action (brand-accent icon, no capsule background)
           GestureDetector(
             key: const ValueKey('protection-editor-export-action'),
             onTap: nextEnabled ? _continueToExport : null,
@@ -636,7 +636,9 @@ class _ProtectionEditorScreenState
                 button: true,
                 child: Icon(
                   Icons.file_upload_outlined,
-                  color: nextEnabled ? AppTheme.gold : AppTheme.textMuted,
+                  color: nextEnabled
+                      ? AppTheme.editorSelection
+                      : AppTheme.textMuted,
                   size: 24,
                 ),
               ),
@@ -760,7 +762,9 @@ class _ProtectionEditorScreenState
                   Text(
                     label,
                     style: TextStyle(
-                      color: isSelected ? AppTheme.gold : AppTheme.textPrimary,
+                      color: isSelected
+                          ? AppTheme.editorSelection
+                          : AppTheme.textPrimary,
                       fontSize: 14,
                       fontWeight: isSelected
                           ? FontWeight.w700
@@ -779,7 +783,11 @@ class _ProtectionEditorScreenState
               ),
             ),
             if (isSelected)
-              const Icon(Icons.check_rounded, color: AppTheme.gold, size: 18),
+              const Icon(
+                Icons.check_rounded,
+                color: AppTheme.editorSelection,
+                size: 18,
+              ),
           ],
         ),
       ),
@@ -896,7 +904,7 @@ class _ProtectionEditorScreenState
                         const Icon(
                           Icons.person_search_outlined,
                           size: 17,
-                          color: AppTheme.coral,
+                          color: AppTheme.editorSelection,
                         ),
                         const SizedBox(width: 6),
                         const Text(
@@ -948,7 +956,7 @@ class _ProtectionEditorScreenState
                     const Icon(
                       Icons.touch_app_rounded,
                       size: 14,
-                      color: AppTheme.gold,
+                      color: AppTheme.editorSelection,
                       shadows: [
                         Shadow(
                           color: Colors.black87,
@@ -1136,7 +1144,7 @@ class _ProtectionEditorScreenState
                             : Icons.volume_off_rounded,
                         size: 22,
                         color: _originalAudioEnabled
-                            ? AppTheme.gold
+                            ? AppTheme.editorSelection
                             : AppTheme.textMuted.withAlpha(140),
                       ),
                     ),
@@ -1268,7 +1276,7 @@ class _ProtectionEditorScreenState
                       ),
                     ),
                   ),
-                // Amber-gold highlighted slim selected range
+                // Editor selection highlight over the trim timeline
                 Positioned(
                   left: startX,
                   width: (endX - startX).clamp(0.0, trackWidth),
@@ -1276,8 +1284,11 @@ class _ProtectionEditorScreenState
                   height: trackHeight,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: AppTheme.gold.withAlpha(25),
-                      border: Border.all(color: AppTheme.gold, width: 1.2),
+                      color: AppTheme.editorSelection.withAlpha(25),
+                      border: Border.all(
+                        color: AppTheme.editorSelection,
+                        width: 1.2,
+                      ),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
@@ -1438,7 +1449,7 @@ class _ProtectionEditorScreenState
                           height: 13,
                           child: CircularProgressIndicator(
                             strokeWidth: 1.7,
-                            color: AppTheme.coral,
+                            color: AppTheme.editorSelection,
                           ),
                         ),
                         SizedBox(width: 7),
@@ -1468,7 +1479,9 @@ class _ProtectionEditorScreenState
                     decoration: BoxDecoration(
                       color: const Color(0xFF211719).withValues(alpha: 0.96),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.coral.withAlpha(100)),
+                      border: Border.all(
+                        color: AppTheme.editorSelection.withAlpha(100),
+                      ),
                     ),
                     child: const Text(
                       '预览暂时无法更新，选择与参数仍会保留。',
@@ -1655,13 +1668,17 @@ class _ProtectionEditorScreenState
                 Icon(
                   item.$3,
                   size: 22,
-                  color: selected ? AppTheme.gold : AppTheme.textMuted,
+                  color: selected
+                      ? AppTheme.editorSelection
+                      : AppTheme.textMuted,
                 ),
                 const SizedBox(height: 3),
                 Text(
                   item.$2,
                   style: TextStyle(
-                    color: selected ? AppTheme.gold : AppTheme.textMuted,
+                    color: selected
+                        ? AppTheme.editorSelection
+                        : AppTheme.textMuted,
                     fontSize: 11,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   ),
@@ -1721,7 +1738,7 @@ class _ProtectionEditorScreenState
                         color: isSelected ? Colors.white : AppTheme.surfaceHigh,
                         border: Border.all(
                           color: isSelected
-                              ? AppTheme.gold
+                              ? AppTheme.editorSelection
                               : AppTheme.surfaceBorder,
                           width: isSelected ? 2 : 1,
                         ),
@@ -1739,7 +1756,7 @@ class _ProtectionEditorScreenState
                       prop.label,
                       style: TextStyle(
                         color: isSelected
-                            ? AppTheme.gold
+                            ? AppTheme.editorSelection
                             : AppTheme.textSecondary,
                         fontSize: 11,
                         fontWeight: isSelected
@@ -1847,8 +1864,8 @@ class _ProtectionEditorScreenState
               ),
               Switch(
                 value: effects.legStretchEnabled,
-                activeThumbColor: AppTheme.gold,
-                activeTrackColor: AppTheme.gold.withAlpha(120),
+                activeThumbColor: AppTheme.editorSelection,
+                activeTrackColor: AppTheme.editorSelection.withAlpha(120),
                 onChanged: (val) {
                   effectController.updateLegStretch(
                     enabled: val,
@@ -1904,7 +1921,7 @@ class _ProtectionEditorScreenState
             Text(
               displayValue,
               style: const TextStyle(
-                color: AppTheme.gold,
+                color: AppTheme.editorSelection,
                 fontSize: 12.5,
                 fontWeight: FontWeight.w700,
                 fontFeatures: [FontFeature.tabularFigures()],
@@ -1915,9 +1932,9 @@ class _ProtectionEditorScreenState
         const SizedBox(height: 4),
         SliderTheme(
           data: const SliderThemeData(
-            activeTrackColor: AppTheme.gold,
+            activeTrackColor: AppTheme.editorSelection,
             inactiveTrackColor: AppTheme.sliderTrackInactive,
-            thumbColor: AppTheme.gold,
+            thumbColor: AppTheme.editorSelection,
             trackHeight: 5,
             thumbShape: RoundSliderThumbShape(enabledThumbRadius: 8),
           ),
@@ -2032,7 +2049,7 @@ class _ProtectionEditorScreenState
                 height: 13,
                 child: CircularProgressIndicator(
                   strokeWidth: 1.7,
-                  color: AppTheme.gold,
+                  color: AppTheme.editorSelection,
                 ),
               ),
               SizedBox(width: 7),
@@ -2198,11 +2215,13 @@ class _ProtectionEditorScreenState
         height: 64,
         decoration: BoxDecoration(
           color: isSelected
-              ? AppTheme.gold.withAlpha(24)
+              ? AppTheme.editorSelection.withAlpha(24)
               : AppTheme.surfaceHigh,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? AppTheme.gold : AppTheme.surfaceBorder,
+            color: isSelected
+                ? AppTheme.editorSelection
+                : AppTheme.surfaceBorder,
             width: isSelected ? 1.5 : 1.0,
           ),
         ),
@@ -2214,7 +2233,9 @@ class _ProtectionEditorScreenState
               height: isVerticalRatio ? 22 : 14,
               decoration: BoxDecoration(
                 border: Border.all(
-                  color: isSelected ? AppTheme.gold : AppTheme.textSecondary,
+                  color: isSelected
+                      ? AppTheme.editorSelection
+                      : AppTheme.textSecondary,
                   width: 1.3,
                 ),
                 borderRadius: BorderRadius.circular(2),
@@ -2224,7 +2245,9 @@ class _ProtectionEditorScreenState
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? AppTheme.gold : AppTheme.textSecondary,
+                color: isSelected
+                    ? AppTheme.editorSelection
+                    : AppTheme.textSecondary,
                 fontSize: 11.5,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
               ),
@@ -2330,7 +2353,9 @@ class _ProtectionEditorScreenState
                       : AppTheme.surfaceElevated,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: selected ? AppTheme.gold : AppTheme.surfaceBorder,
+                    color: selected
+                        ? AppTheme.editorSelection
+                        : AppTheme.surfaceBorder,
                     width: selected ? 1.5 : 1,
                   ),
                 ),
@@ -2340,13 +2365,17 @@ class _ProtectionEditorScreenState
                     Icon(
                       item.$3,
                       size: 21,
-                      color: selected ? AppTheme.gold : AppTheme.textSecondary,
+                      color: selected
+                          ? AppTheme.editorSelection
+                          : AppTheme.textSecondary,
                     ),
                     const SizedBox(height: 4),
                     Text(
                       item.$2,
                       style: TextStyle(
-                        color: selected ? AppTheme.gold : AppTheme.textPrimary,
+                        color: selected
+                            ? AppTheme.editorSelection
+                            : AppTheme.textPrimary,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -2408,12 +2437,12 @@ class _ProtectionEditorScreenState
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: AppTheme.gold,
+                                color: AppTheme.editorSelection,
                               ),
                             )
                           : const Icon(
                               Icons.add_photo_alternate_outlined,
-                              color: AppTheme.gold,
+                              color: AppTheme.editorSelection,
                               size: 25,
                             ),
                     ),
@@ -2432,7 +2461,10 @@ class _ProtectionEditorScreenState
                     decoration: BoxDecoration(
                       color: AppTheme.surfaceHigh,
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: AppTheme.gold, width: 2),
+                      border: Border.all(
+                        color: AppTheme.editorSelection,
+                        width: 2,
+                      ),
                     ),
                     clipBehavior: Clip.antiAlias,
                     child: Stack(
@@ -2451,7 +2483,7 @@ class _ProtectionEditorScreenState
                           bottom: 4,
                           child: Icon(
                             Icons.check_circle_rounded,
-                            color: AppTheme.gold,
+                            color: AppTheme.editorSelection,
                             size: 18,
                           ),
                         ),
@@ -2484,7 +2516,7 @@ class _ProtectionEditorScreenState
                             borderRadius: BorderRadius.circular(18),
                             border: Border.all(
                               color: selected
-                                  ? AppTheme.gold
+                                  ? AppTheme.editorSelection
                                   : AppTheme.surfaceBorder,
                               width: selected ? 2 : 1,
                             ),
@@ -2503,7 +2535,7 @@ class _ProtectionEditorScreenState
                                   bottom: 4,
                                   child: Icon(
                                     Icons.check_circle_rounded,
-                                    color: AppTheme.gold,
+                                    color: AppTheme.editorSelection,
                                     size: 18,
                                   ),
                                 ),
@@ -2597,7 +2629,9 @@ class _ProtectionEditorScreenState
                     color: Color(argb),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: selected ? AppTheme.gold : AppTheme.surfaceBorder,
+                      color: selected
+                          ? AppTheme.editorSelection
+                          : AppTheme.surfaceBorder,
                       width: selected ? 3 : 1,
                     ),
                   ),
@@ -2903,7 +2937,7 @@ class _EditorStatus extends StatelessWidget {
                 child: CircularProgressIndicator(strokeWidth: 2.5),
               )
             else
-              Icon(icon, size: 42, color: AppTheme.coral),
+              Icon(icon, size: 42, color: AppTheme.editorSelection),
             const SizedBox(height: 18),
             Text(
               title,
@@ -2927,7 +2961,7 @@ class _EditorStatus extends StatelessWidget {
               const SizedBox(height: 20),
               OutlinedButton(
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.coral,
+                  foregroundColor: AppTheme.editorSelection,
                   side: const BorderSide(color: AppTheme.surfaceBorder),
                 ),
                 onPressed: onAction,
@@ -2975,7 +3009,9 @@ class _PrivacySlot extends StatelessWidget {
             color: selected ? AppTheme.surfaceHigh : AppTheme.surfaceElevated,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: selected ? AppTheme.gold : AppTheme.surfaceBorder,
+              color: selected
+                  ? AppTheme.editorSelection
+                  : AppTheme.surfaceBorder,
               width: selected ? 1.5 : 1,
             ),
           ),
@@ -2985,13 +3021,17 @@ class _PrivacySlot extends StatelessWidget {
               Icon(
                 icon,
                 size: 21,
-                color: selected ? AppTheme.gold : AppTheme.textSecondary,
+                color: selected
+                    ? AppTheme.editorSelection
+                    : AppTheme.textSecondary,
               ),
               const SizedBox(height: 4),
               Text(
                 label,
                 style: TextStyle(
-                  color: selected ? AppTheme.gold : AppTheme.textPrimary,
+                  color: selected
+                      ? AppTheme.editorSelection
+                      : AppTheme.textPrimary,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -3014,7 +3054,7 @@ class _IntegratedTrimHandle extends StatelessWidget {
       width: 10,
       height: 14,
       decoration: BoxDecoration(
-        color: AppTheme.gold,
+        color: AppTheme.editorSelection,
         borderRadius: BorderRadius.horizontal(
           left: isLeft ? const Radius.circular(3) : Radius.zero,
           right: !isLeft ? const Radius.circular(3) : Radius.zero,

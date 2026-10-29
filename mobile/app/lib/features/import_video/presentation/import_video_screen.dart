@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/system_ui.dart';
+import '../../../app/brand.dart';
 import '../../../app/theme.dart';
 import '../domain/video_import_state.dart';
 import 'home_tool_catalog.dart';
@@ -130,32 +131,44 @@ class _HomeBrand extends StatelessWidget {
       key: const ValueKey('home-brand'),
       behavior: HitTestBehavior.translucent,
       onLongPress: onLongPress,
-      child: const Align(
+      child: Align(
         alignment: Alignment.centerLeft,
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Woah',
-                style: TextStyle(
-                  color: AppTheme.flowTextPrimary,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -1.0,
-                  height: 1.12,
+        child: Semantics(
+          label: '舞哇 Woah',
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image(
+                  image: AssetImage('assets/brand/woah-symbol-256.png'),
+                  width: 32,
+                  height: 20,
+                  filterQuality: FilterQuality.high,
+                  excludeFromSemantics: true,
                 ),
-              ),
-              SizedBox(width: 7),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AppTheme.gold,
-                  shape: BoxShape.circle,
+                SizedBox(width: 10),
+                Text(
+                  AppBrand.english,
+                  style: TextStyle(
+                    color: AppTheme.flowTextPrimary,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -1.0,
+                    height: 1.12,
+                  ),
                 ),
-                child: SizedBox(width: 5, height: 5),
-              ),
-            ],
+                SizedBox(width: 9),
+                Text(
+                  AppBrand.chinese,
+                  style: TextStyle(
+                    color: AppTheme.flowTextSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -197,7 +210,7 @@ class _ImportActionCard extends StatelessWidget {
             boxShadow: [
               // Low-key ambient separation from the near-black canvas.
               BoxShadow(
-                color: Color(0x29454750),
+                color: Color(0x29345854),
                 offset: Offset(0, 15),
                 blurRadius: 34,
                 spreadRadius: -8,
@@ -227,9 +240,9 @@ class _ImportActionCard extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Color(0xFF242427),
-                    Color(0xFF18181B),
-                    Color(0xFF141416),
+                    Color(0xFF243638),
+                    Color(0xFF1B2B2D),
+                    Color(0xFF142123),
                   ],
                 ),
               ),
@@ -245,7 +258,7 @@ class _ImportActionCard extends StatelessWidget {
                           height: 34,
                           width: 34,
                           child: CircularProgressIndicator(
-                            color: AppTheme.gold,
+                            color: AppTheme.brandAction,
                             strokeWidth: 2.2,
                           ),
                         )
@@ -255,7 +268,7 @@ class _ImportActionCard extends StatelessWidget {
                               ? Icons.add_rounded
                               : Icons.compare_rounded,
                           size: 38,
-                          color: AppTheme.goldLight,
+                          color: AppTheme.brandAction,
                         ),
                       const SizedBox(height: 20),
                       Text(
@@ -376,7 +389,7 @@ class _HomeToolDeckState extends State<_HomeToolDeck> {
                 margin: const EdgeInsets.symmetric(horizontal: 3),
                 decoration: BoxDecoration(
                   color: i == _selectedIndex
-                      ? AppTheme.gold
+                      ? AppTheme.brandAction
                       : AppTheme.flowTextMuted,
                   borderRadius: BorderRadius.circular(5),
                 ),

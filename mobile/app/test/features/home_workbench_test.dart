@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:app/app/theme.dart';
+import 'package:app/app/brand.dart';
 import 'package:app/features/import_video/domain/video_import_state.dart';
 import 'package:app/features/import_video/presentation/home_tool_catalog.dart';
 import 'package:app/features/import_video/presentation/import_video_controller.dart';
@@ -205,6 +206,8 @@ void main() {
     expect(find.text('智能裁切'), findsNothing);
     expect(find.text('人脸贴纸'), findsNothing);
     expect(find.text('人物特效'), findsNothing);
+    expect(find.text(AppBrand.english), findsOneWidget);
+    expect(find.text(AppBrand.chinese), findsOneWidget);
     expect(find.text('导入视频'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

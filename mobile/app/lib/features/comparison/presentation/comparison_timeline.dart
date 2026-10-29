@@ -269,7 +269,9 @@ class _ComparisonTimelineState extends State<ComparisonTimeline> {
           .toDouble();
       final hasRange =
           widget.startUs != null || widget.endUs != null || _draft != null;
-      final rangeColor = !_enabled ? AppTheme.flowTextMuted : AppTheme.gold;
+      final rangeColor = !_enabled
+          ? AppTheme.flowTextMuted
+          : AppTheme.editorSelection;
       final editingRange = _draft != null && _startHandle != null;
       final clock =
           (editingRange
@@ -383,9 +385,9 @@ class _ComparisonTimelineState extends State<ComparisonTimeline> {
                               color: !_enabled
                                   ? AppTheme.flowTextMuted
                                   : _active(start)
-                                  ? AppTheme.goldLight
+                                  ? AppTheme.editorSelection
                                   : hasRange
-                                  ? AppTheme.gold
+                                  ? AppTheme.editorSelection
                                   : AppTheme.flowTextSecondary,
                               focused: _focusedHandle == start,
                             ),

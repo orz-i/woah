@@ -188,7 +188,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: AppTheme.gold,
+                        color: AppTheme.brandAction,
                       ),
                     )
                   : const Icon(
@@ -296,7 +296,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                               Icon(
                                 Icons.warning_amber_rounded,
                                 size: 16,
-                                color: AppTheme.gold,
+                                color: AppTheme.brandAction,
                                 shadows: [
                                   Shadow(
                                     color: Colors.black87,
@@ -309,7 +309,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                               Text(
                                 '导出失败',
                                 style: TextStyle(
-                                  color: AppTheme.gold,
+                                  color: AppTheme.brandAction,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                   shadows: [
@@ -348,7 +348,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                   : Icons.movie_filter_outlined,
               size: 44,
               color: state.isFailed
-                  ? AppTheme.gold.withAlpha(180)
+                  ? AppTheme.brandAction.withAlpha(180)
                   : AppTheme.flowTextMuted,
             ),
             const SizedBox(height: 9),
@@ -430,7 +430,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               Text(
                 '$percent%',
                 style: const TextStyle(
-                  color: AppTheme.gold,
+                  color: AppTheme.brandAction,
                   fontSize: 36,
                   height: 1,
                   fontWeight: FontWeight.w600,
@@ -459,7 +459,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               value: progress > 0 ? progress : null,
               minHeight: 5,
               backgroundColor: AppTheme.surfaceHigh,
-              valueColor: const AlwaysStoppedAnimation(AppTheme.gold),
+              valueColor: const AlwaysStoppedAnimation(AppTheme.brandAction),
             ),
           ),
           const SizedBox(height: 13),
@@ -470,7 +470,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                 height: 16,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: AppTheme.gold,
+                  color: AppTheme.brandAction,
                 ),
               ),
               const SizedBox(width: 9),
@@ -724,12 +724,12 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       height: 34,
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          color: AppTheme.coralPale,
+                          color: AppTheme.statusWarningSubtle,
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
                           Icons.close_rounded,
-                          color: AppTheme.coral,
+                          color: AppTheme.statusWarning,
                           size: 19,
                         ),
                       ),
@@ -785,8 +785,8 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       style: TextButton.styleFrom(
                         minimumSize: const Size(84, 44),
                         padding: const EdgeInsets.symmetric(horizontal: 12),
-                        foregroundColor: AppTheme.coralStrong,
-                        backgroundColor: AppTheme.coralPale,
+                        foregroundColor: AppTheme.statusWarning,
+                        backgroundColor: AppTheme.statusWarningSubtle,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -847,10 +847,10 @@ class _InlineAction extends StatelessWidget {
         child: Ink(
           height: 46,
           decoration: BoxDecoration(
-            color: primary ? AppTheme.gold : AppTheme.flowSurface,
+            color: primary ? AppTheme.brandAction : AppTheme.flowSurface,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: primary ? AppTheme.gold : AppTheme.flowBorder,
+              color: primary ? AppTheme.brandAction : AppTheme.flowBorder,
             ),
           ),
           child: Row(

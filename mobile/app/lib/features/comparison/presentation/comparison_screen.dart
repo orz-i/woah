@@ -703,7 +703,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                         child: DecoratedBox(
                           decoration: BoxDecoration(
                             border: Border.all(
-                              color: AppTheme.gold,
+                              color: AppTheme.brandAction,
                               width: 1.5,
                             ),
                           ),
@@ -793,7 +793,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                 !controller.exporting &&
                 (state == null || state.phase == 'opening'))
               const Center(
-                child: CircularProgressIndicator(color: AppTheme.gold),
+                child: CircularProgressIndicator(color: AppTheme.brandAction),
               ),
             Flex(
               direction: horizontal ? Axis.horizontal : Axis.vertical,
@@ -837,7 +837,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
         Icon(
           Icons.graphic_eq_rounded,
           size: 18,
-          color: aligned ? AppTheme.gold : AppTheme.flowTextSecondary,
+          color: aligned ? AppTheme.brandAction : AppTheme.flowTextSecondary,
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -906,7 +906,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     key: const ValueKey('comparison-play'),
     onPressed: controller.canPlay ? controller.toggle : null,
     style: FilledButton.styleFrom(
-      backgroundColor: AppTheme.gold,
+      backgroundColor: AppTheme.brandAction,
       foregroundColor: AppTheme.textOnAccent,
       minimumSize: const Size(48, 56),
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1050,7 +1050,9 @@ class _ComparisonScreenState extends State<ComparisonScreen>
         key: const ValueKey('comparison-loop-toggle'),
         tooltip: project.loopEnabled ? '暂停 A/B 循环' : '启用 A/B 循环',
         isSelected: project.loopEnabled,
-        color: project.loopEnabled ? AppTheme.gold : AppTheme.flowTextSecondary,
+        color: project.loopEnabled
+            ? AppTheme.brandAction
+            : AppTheme.flowTextSecondary,
         onPressed:
             !controller.busy &&
                 project.loopStartUs != null &&
