@@ -7,6 +7,7 @@ import AppKit
 let ink = CGColor(red: 11/255.0, green: 20/255.0, blue: 21/255.0, alpha: 1)
 let mint = CGColor(red: 120/255.0, green: 220/255.0, blue: 199/255.0, alpha: 1)
 let pearl = CGColor(red: 242/255.0, green: 246/255.0, blue: 243/255.0, alpha: 1)
+let deepMint = CGColor(red: 33/255.0, green: 106/255.0, blue: 94/255.0, alpha: 1)
 
 func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: x, y: y) }
 func leftHalf() -> CGPath {
@@ -102,12 +103,18 @@ write(app + "/assets/brand/woah-icon-default-1024.png", png(width: 1024, height:
      markWidth: 720, background: ink, fill: mint))
 write(app + "/assets/brand/woah-icon-monochrome-1024.png", png(width: 1024, height: 1024,
      markWidth: 720, background: nil, fill: pearl))
-// Static launch illustration; no forced pause, no loop, no font loading.
+// Platform launch appearance: deep mint on Pearl, soft Mint on Ink.
+// Assets are flat/static; there is no launch animation or extra startup wait.
 for factor in 1...3 {
     let prefix = factor == 1 ? "" : "@\(factor)x"
     write(assets + "/LaunchImage.imageset/LaunchImage\(prefix).png",
           png(width: 168 * factor, height: 105 * factor,
-              markWidth: CGFloat(168 * factor) * 0.92, background: nil, fill: mint))
+              markWidth: CGFloat(168 * factor) * 0.92,
+              background: nil, fill: deepMint))
+    write(assets + "/LaunchImage.imageset/LaunchImage_dark\(prefix).png",
+          png(width: 168 * factor, height: 105 * factor,
+              markWidth: CGFloat(168 * factor) * 0.92,
+              background: nil, fill: mint))
 }
 let densities: [(String, Int)] = [("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),
                                    ("xxhdpi", 144), ("xxxhdpi", 192)]

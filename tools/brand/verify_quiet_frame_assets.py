@@ -39,7 +39,7 @@ assert "english = 'Woah'" in BRAND
 assert "chinese = '舞哇'" in BRAND
 assert 'static const Color brandMint = Color(0xFF78DCC7)' in THEME
 assert 'static const Color brandInk = Color(0xFF0B1415)' in THEME
-assert 'onPrimary: brandOnAction' in THEME
+assert 'onPrimary: c.brandOnAction' in THEME
 assert 'static const Color effectPaletteAmber = Color(0xFFF5A623)' in THEME
 assert ratio('#0B1415', '#78DCC7') >= 7
 assert ratio('#F2F6F3', '#78DCC7') < 4.5
@@ -77,14 +77,17 @@ assert 'InfoPlist.strings' not in (APP / 'ios/Runner.xcodeproj/project.pbxproj')
 assert '<string>Woah</string>' in (IOS / 'Info.plist').read_text()
 launch = (IOS / 'Base.lproj/LaunchScreen.storyboard').read_text()
 ET.fromstring(launch)
-assert 'red="0.043137255"' in launch and 'image="LaunchImage"' in launch
+assert 'name="WoahLaunchBackground"' in launch and 'image="LaunchImage"' in launch
 assert png_size(IOS / 'Assets.xcassets/LaunchImage.imageset/LaunchImage.png') == (168, 105)
+assert png_size(IOS / 'Assets.xcassets/LaunchImage.imageset/LaunchImage_dark.png') == (168, 105)
 
 for density, side in [('mdpi',48),('hdpi',72),('xhdpi',96),('xxhdpi',144),('xxxhdpi',192)]:
     assert png_size(RES / f'mipmap-{density}/ic_launcher.png') == (side, side)
 for relative in ('mipmap-anydpi-v26/ic_launcher.xml', 'mipmap-anydpi-v33/ic_launcher.xml',
                  'drawable/woah_icon_foreground.xml', 'drawable/woah_icon_monochrome.xml',
                  'drawable/launch_background.xml', 'drawable-v21/launch_background.xml',
+                 'drawable/woah_launch_mark.xml', 'drawable-night/woah_launch_mark.xml',
+                 'values-night-v31/styles.xml', 'values-night/colors.xml',
                  'values-v31/styles.xml', 'values/strings.xml'):
     ET.parse(RES / relative)
 mono = (RES / 'mipmap-anydpi-v33/ic_launcher.xml').read_text()
@@ -94,6 +97,7 @@ assert 'android:translateX="24.5"' in (RES / 'drawable/woah_icon_foreground.xml'
 assert '#011758' not in (RES / 'values/colors.xml').read_text()
 for path in (RES / x for x in ('drawable/launch_background.xml','drawable-v21/launch_background.xml')):
     assert '@android:color/white' not in path.read_text()
+    assert '@color/woah_launch_background' in path.read_text()
 assert not (RES / 'values-zh-rCN/strings.xml').exists()
 assert '<string name="app_name">Woah</string>' in (RES / 'values/strings.xml').read_text()
 assert 'android:label="@string/app_name"' in (APP / 'android/app/src/main/AndroidManifest.xml').read_text()

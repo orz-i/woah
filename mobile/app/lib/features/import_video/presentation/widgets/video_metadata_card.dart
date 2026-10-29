@@ -17,9 +17,9 @@ class VideoMetadataCard extends StatelessWidget {
     return Container(
       key: const ValueKey('video-metadata-card'),
       decoration: BoxDecoration(
-        color: AppTheme.flowSurface,
+        color: AppTheme.of(context).flowSurface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.flowBorder),
+        border: Border.all(color: AppTheme.of(context).flowBorder),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -28,9 +28,9 @@ class VideoMetadataCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.movie_outlined,
-                  color: AppTheme.flowTextSecondary,
+                  color: AppTheme.of(context).flowTextSecondary,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
@@ -39,7 +39,7 @@ class VideoMetadataCard extends StatelessWidget {
                     fileName ?? '视频基本信息',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.flowTextPrimary,
+                      color: AppTheme.of(context).flowTextPrimary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -51,16 +51,16 @@ class VideoMetadataCard extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: AppTheme.flowSurfaceSoft,
+                    color: AppTheme.of(context).flowSurfaceSoft,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppTheme.flowBorder),
+                    border: Border.all(color: AppTheme.of(context).flowBorder),
                   ),
                   child: Text(
                     isVertical ? '竖屏' : '横屏',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: AppTheme.flowTextPrimary,
+                      color: AppTheme.of(context).flowTextPrimary,
                     ),
                   ),
                 ),
@@ -105,24 +105,24 @@ class VideoMetadataCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppTheme.flowSurfaceSoft,
+                  color: AppTheme.of(context).flowSurfaceSoft,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppTheme.flowBorder),
+                  border: Border.all(color: AppTheme.of(context).flowBorder),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.info_outline,
-                      color: AppTheme.flowTextSecondary,
+                      color: AppTheme.of(context).flowTextSecondary,
                       size: 18,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         '检测到录制朝向 ${info.rotation}°，画面已自动校准为最佳播放方向。',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: AppTheme.flowTextSecondary,
+                          color: AppTheme.of(context).flowTextSecondary,
                         ),
                       ),
                     ),
@@ -162,24 +162,24 @@ class VideoMetadataCard extends StatelessWidget {
   ) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: AppTheme.flowTextMuted),
+        Icon(icon, size: 18, color: AppTheme.of(context).flowTextMuted),
         const SizedBox(width: 6),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: AppTheme.flowTextMuted,
+                color: AppTheme.of(context).flowTextMuted,
               ),
             ),
             Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.flowTextPrimary,
+                color: AppTheme.of(context).flowTextPrimary,
               ),
             ),
           ],

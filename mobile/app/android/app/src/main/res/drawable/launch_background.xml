@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Match Woah's dark first Flutter frame without loading a video or delaying startup. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@color/woah_ink" />
-    <item android:gravity="center" android:drawable="@drawable/woah_icon_foreground" />
+    <item android:drawable="@color/woah_launch_background" />
+    <item android:gravity="center" android:drawable="@drawable/woah_launch_mark" />
 </layer-list>

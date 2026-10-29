@@ -44,9 +44,9 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
     };
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: appSystemUiStyle,
+      value: appSystemUiStyleFor(Theme.of(context).brightness),
       child: Scaffold(
-        backgroundColor: AppTheme.flowBackground,
+        backgroundColor: AppTheme.of(context).flowBackground,
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, viewport) {
@@ -140,18 +140,24 @@ class _HomeBrand extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Image(
-                  image: AssetImage('assets/brand/woah-symbol-256.png'),
-                  width: 32,
-                  height: 20,
-                  filterQuality: FilterQuality.high,
-                  excludeFromSemantics: true,
+                ColorFiltered(
+                  colorFilter: ColorFilter.mode(
+                    AppTheme.of(context).brandAction,
+                    BlendMode.srcIn,
+                  ),
+                  child: Image(
+                    image: const AssetImage('assets/brand/woah-symbol-256.png'),
+                    width: 32,
+                    height: 20,
+                    filterQuality: FilterQuality.high,
+                    excludeFromSemantics: true,
+                  ),
                 ),
                 SizedBox(width: 10),
                 Text(
                   AppBrand.english,
                   style: TextStyle(
-                    color: AppTheme.flowTextPrimary,
+                    color: AppTheme.of(context).flowTextPrimary,
                     fontSize: 28,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -1.0,
@@ -196,20 +202,20 @@ class _ImportActionCard extends StatelessWidget {
                 ? 'home-card-elevation'
                 : 'home-comparison-elevation',
           ),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             borderRadius: radius,
             boxShadow: [
-              // Low-key ambient separation from the near-black canvas.
               BoxShadow(
-                color: Color(0x29345854),
-                offset: Offset(0, 15),
+                color: AppTheme.of(context).homeCardShadow,
+                offset: const Offset(0, 15),
                 blurRadius: 34,
                 spreadRadius: -8,
               ),
-              // Weighted toward the lower edge for a restrained lift.
               BoxShadow(
-                color: Color(0xAA000000),
-                offset: Offset(0, 22),
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xAA000000)
+                    : const Color(0x160B1415),
+                offset: const Offset(0, 22),
                 blurRadius: 30,
                 spreadRadius: -9,
               ),
@@ -218,7 +224,7 @@ class _ImportActionCard extends StatelessWidget {
           child: Material(
             borderRadius: radius,
             clipBehavior: Clip.antiAlias,
-            color: AppTheme.flowSurface,
+            color: AppTheme.of(context).flowSurface,
             child: Ink(
               key: ValueKey(
                 tool.launch == HomeToolLaunch.videoProtection
@@ -227,14 +233,20 @@ class _ImportActionCard extends StatelessWidget {
               ),
               decoration: BoxDecoration(
                 borderRadius: radius,
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF243638),
-                    Color(0xFF1B2B2D),
-                    Color(0xFF142123),
-                  ],
+                  colors: Theme.of(context).brightness == Brightness.dark
+                      ? const [
+                          Color(0xFF243638),
+                          Color(0xFF1B2B2D),
+                          Color(0xFF142123),
+                        ]
+                      : [
+                          AppTheme.of(context).flowSurface,
+                          AppTheme.of(context).flowSurfaceSoft,
+                          AppTheme.of(context).flowSurface,
+                        ],
                 ),
               ),
               child: InkWell(
@@ -245,11 +257,11 @@ class _ImportActionCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       if (isBusy)
-                        const SizedBox(
+                        SizedBox(
                           height: 34,
                           width: 34,
                           child: CircularProgressIndicator(
-                            color: AppTheme.brandAction,
+                            color: AppTheme.of(context).brandAction,
                             strokeWidth: 2.2,
                           ),
                         )
@@ -259,14 +271,14 @@ class _ImportActionCard extends StatelessWidget {
                               ? Icons.add_rounded
                               : Icons.compare_rounded,
                           size: 38,
-                          color: AppTheme.brandAction,
+                          color: AppTheme.of(context).brandAction,
                         ),
                       const SizedBox(height: 20),
                       Text(
                         actionLabel,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: AppTheme.flowTextPrimary,
+                        style: TextStyle(
+                          color: AppTheme.of(context).flowTextPrimary,
                           fontSize: 20,
                           height: 1.3,
                           letterSpacing: -0.25,
@@ -279,8 +291,8 @@ class _ImportActionCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: AppTheme.flowTextSecondary,
+                        style: TextStyle(
+                          color: AppTheme.of(context).flowTextSecondary,
                           fontSize: 13,
                           height: 1.4,
                         ),
@@ -380,8 +392,8 @@ class _HomeToolDeckState extends State<_HomeToolDeck> {
                 margin: const EdgeInsets.symmetric(horizontal: 3),
                 decoration: BoxDecoration(
                   color: i == _selectedIndex
-                      ? AppTheme.brandAction
-                      : AppTheme.flowTextMuted,
+                      ? AppTheme.of(context).brandAction
+                      : AppTheme.of(context).flowTextMuted,
                   borderRadius: BorderRadius.circular(5),
                 ),
               ),

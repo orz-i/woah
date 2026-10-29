@@ -78,6 +78,57 @@ void main() {
     );
   });
 
+  test(
+    'light palette keeps controls readable while dark palette is stable',
+    () {
+      double contrast(Color a, Color b) {
+        final x = a.computeLuminance();
+        final y = b.computeLuminance();
+        return ((x > y ? x : y) + .05) / ((x < y ? x : y) + .05);
+      }
+
+      final light = AppTheme.lightColors;
+      final dark = AppTheme.darkColors;
+      expect(AppTheme.lightTheme.brightness, Brightness.light);
+      expect(AppTheme.darkTheme.brightness, Brightness.dark);
+      expect(light.flowBackground, const Color(0xFFF2F6F3));
+      expect(dark.flowBackground, AppTheme.brandInk);
+      expect(light.brandAction, const Color(0xFF216A5E));
+      expect(dark.brandAction, AppTheme.brandMint);
+      expect(light.textOnAccent, Colors.white);
+      expect(
+        contrast(light.flowTextPrimary, light.flowSurface),
+        greaterThan(7),
+      );
+      expect(
+        contrast(light.flowTextSecondary, light.flowSurface),
+        greaterThan(4.5),
+      );
+      expect(
+        contrast(light.flowTextMuted, light.flowSurface),
+        greaterThan(4.5),
+      );
+      expect(
+        contrast(light.brandAction, light.brandOnAction),
+        greaterThan(4.5),
+      );
+      expect(contrast(light.controlBorder, light.flowSurface), greaterThan(3));
+      expect(AppTheme.effectPaletteAmber, const Color(0xFFF5A623));
+      expect(AppTheme.canvas, Colors.black);
+    },
+  );
+
+  test('system bar icons follow the active appearance', () {
+    final light = appSystemUiStyleFor(Brightness.light);
+    final dark = appSystemUiStyleFor(Brightness.dark);
+    expect(light.statusBarIconBrightness, Brightness.dark);
+    expect(light.systemNavigationBarIconBrightness, Brightness.dark);
+    expect(light.systemNavigationBarColor, AppTheme.lightColors.flowBackground);
+    expect(dark.statusBarIconBrightness, Brightness.light);
+    expect(dark.systemNavigationBarIconBrightness, Brightness.light);
+    expect(dark.systemNavigationBarColor, AppTheme.darkColors.flowBackground);
+  });
+
   test('system chrome is configured for the dark main flow', () {
     expect(appSystemUiStyle.statusBarIconBrightness, Brightness.light);
     expect(appSystemUiStyle.statusBarBrightness, Brightness.dark);

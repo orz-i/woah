@@ -270,8 +270,8 @@ class _ComparisonTimelineState extends State<ComparisonTimeline> {
       final hasRange =
           widget.startUs != null || widget.endUs != null || _draft != null;
       final rangeColor = !_enabled
-          ? AppTheme.flowTextMuted
-          : AppTheme.editorSelection;
+          ? AppTheme.of(context).flowTextMuted
+          : AppTheme.of(context).editorSelection;
       final editingRange = _draft != null && _startHandle != null;
       final clock =
           (editingRange
@@ -301,9 +301,9 @@ class _ComparisonTimelineState extends State<ComparisonTimeline> {
                   child: Text(
                     clockText,
                     key: const ValueKey('comparison-time-readout'),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppTheme.flowTextSecondary,
+                      color: AppTheme.of(context).flowTextSecondary,
                       fontFeatures: [FontFeature.tabularFigures()],
                     ),
                   ),
@@ -345,7 +345,7 @@ class _ComparisonTimelineState extends State<ComparisonTimeline> {
                         child: IgnorePointer(
                           child: DecoratedBox(
                             decoration: BoxDecoration(
-                              color: AppTheme.sliderTrackInactive,
+                              color: AppTheme.of(context).sliderTrackInactive,
                               borderRadius: BorderRadius.circular(3),
                             ),
                           ),
@@ -383,12 +383,12 @@ class _ComparisonTimelineState extends State<ComparisonTimeline> {
                               ),
                               start: start,
                               color: !_enabled
-                                  ? AppTheme.flowTextMuted
+                                  ? AppTheme.of(context).flowTextMuted
                                   : _active(start)
-                                  ? AppTheme.editorSelection
+                                  ? AppTheme.of(context).editorSelection
                                   : hasRange
-                                  ? AppTheme.editorSelection
-                                  : AppTheme.flowTextSecondary,
+                                  ? AppTheme.of(context).editorSelection
+                                  : AppTheme.of(context).flowTextSecondary,
                               focused: _focusedHandle == start,
                             ),
                           ),
@@ -435,8 +435,8 @@ class _ComparisonTimelineState extends State<ComparisonTimeline> {
                           child: DecoratedBox(
                             decoration: BoxDecoration(
                               color: _enabled
-                                  ? AppTheme.flowTextPrimary
-                                  : AppTheme.flowTextMuted,
+                                  ? AppTheme.of(context).flowTextPrimary
+                                  : AppTheme.of(context).flowTextMuted,
                               borderRadius: BorderRadius.circular(1),
                             ),
                           ),
@@ -507,7 +507,9 @@ class _ClipHandle extends StatelessWidget {
         left: start ? const Radius.circular(3) : Radius.zero,
         right: start ? Radius.zero : const Radius.circular(3),
       ),
-      border: focused ? Border.all(color: AppTheme.flowTextPrimary) : null,
+      border: focused
+          ? Border.all(color: AppTheme.of(context).flowTextPrimary)
+          : null,
     ),
     child: Center(
       child: Container(

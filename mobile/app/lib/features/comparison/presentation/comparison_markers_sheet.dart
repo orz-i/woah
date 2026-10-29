@@ -58,7 +58,7 @@ class ComparisonMarkersSheet extends StatelessWidget {
                 padding: const EdgeInsets.all(12),
                 child: Text(
                   controller.error!,
-                  style: const TextStyle(color: AppTheme.error),
+                  style: TextStyle(color: AppTheme.of(context).error),
                 ),
               ),
             Expanded(
@@ -284,7 +284,10 @@ class _MarkerEditorState extends State<_MarkerEditor> {
                 decoration: const InputDecoration(labelText: '问题备注（可选）'),
               ),
               if (error != null)
-                Text(error!, style: const TextStyle(color: AppTheme.error)),
+                Text(
+                  error!,
+                  style: TextStyle(color: AppTheme.of(context).error),
+                ),
             ],
           ),
         ),

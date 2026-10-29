@@ -10,14 +10,14 @@ import '../../app/theme.dart';
 class MediaStageFrame extends StatelessWidget {
   final Widget child;
   final double radius;
-  final Color backgroundColor;
+  final Color? backgroundColor;
   final bool elevated;
 
   const MediaStageFrame({
     super.key,
     required this.child,
     this.radius = 26,
-    this.backgroundColor = AppTheme.flowSurfaceSoft,
+    this.backgroundColor,
     this.elevated = true,
   });
 
@@ -25,7 +25,7 @@ class MediaStageFrame extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: backgroundColor ?? AppTheme.of(context).flowSurfaceSoft,
         borderRadius: BorderRadius.circular(radius),
         boxShadow: elevated
             ? const [
@@ -39,7 +39,7 @@ class MediaStageFrame extends StatelessWidget {
       ),
       foregroundDecoration: BoxDecoration(
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: AppTheme.flowBorder),
+        border: Border.all(color: AppTheme.of(context).flowBorder),
       ),
       clipBehavior: Clip.antiAlias,
       child: child,

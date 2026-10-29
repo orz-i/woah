@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/system_ui.dart';
 import '../../../app/theme.dart';
 import '../../../repositories/native_processing_repository.dart';
 import '../domain/export_state.dart';
@@ -76,18 +77,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         state.status == ExportJobState.queued || state.isProcessing;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-        systemNavigationBarColor: AppTheme.flowBackground,
-        systemNavigationBarIconBrightness: Brightness.light,
-        systemNavigationBarDividerColor: Colors.transparent,
-        systemStatusBarContrastEnforced: false,
-        systemNavigationBarContrastEnforced: false,
-      ),
+      value: appSystemUiStyleFor(Theme.of(context).brightness),
       child: Scaffold(
-        backgroundColor: AppTheme.flowBackground,
+        backgroundColor: AppTheme.of(context).flowBackground,
         body: SafeArea(
           child: Column(
             children: [
@@ -141,12 +133,12 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                     HapticFeedback.selectionClick();
                     context.pop();
                   },
-                  child: const Padding(
+                  child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: 4, vertical: 6),
                     child: Icon(
                       Icons.arrow_back_ios_new_rounded,
                       size: 22,
-                      color: AppTheme.textPrimary,
+                      color: AppTheme.of(context).textPrimary,
                     ),
                   ),
                 ),
@@ -183,18 +175,18 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
               child: _cancelInFlight
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: AppTheme.brandAction,
+                        color: AppTheme.of(context).brandAction,
                       ),
                     )
-                  : const Icon(
+                  : Icon(
                       Icons.close_rounded,
                       size: 24,
-                      color: AppTheme.textPrimary,
+                      color: AppTheme.of(context).textPrimary,
                     ),
             ),
           ),
@@ -282,7 +274,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                         ),
                       ),
                     if (state.isFailed)
-                      const Positioned(
+                      Positioned(
                         right: 12,
                         top: 12,
                         child: Padding(
@@ -296,7 +288,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                               Icon(
                                 Icons.warning_amber_rounded,
                                 size: 16,
-                                color: AppTheme.brandAction,
+                                color: AppTheme.of(context).brandAction,
                                 shadows: [
                                   Shadow(
                                     color: Colors.black87,
@@ -309,7 +301,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                               Text(
                                 '导出失败',
                                 style: TextStyle(
-                                  color: AppTheme.brandAction,
+                                  color: AppTheme.of(context).brandAction,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                   shadows: [
@@ -348,14 +340,14 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                   : Icons.movie_filter_outlined,
               size: 44,
               color: state.isFailed
-                  ? AppTheme.brandAction.withAlpha(180)
-                  : AppTheme.flowTextMuted,
+                  ? AppTheme.darkColors.brandAction.withAlpha(180)
+                  : AppTheme.darkColors.flowTextMuted,
             ),
             const SizedBox(height: 9),
             Text(
               state.isFailed ? '没有可用的失败预览' : '实时画面已关闭',
-              style: const TextStyle(
-                color: AppTheme.flowTextSecondary,
+              style: TextStyle(
+                color: AppTheme.darkColors.flowTextSecondary,
                 fontSize: 12.5,
               ),
             ),
@@ -417,9 +409,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       key: const ValueKey('export-progress-deck'),
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
-      decoration: const BoxDecoration(
-        color: AppTheme.flowBackground,
-        border: Border(top: BorderSide(color: AppTheme.flowBorder)),
+      decoration: BoxDecoration(
+        color: AppTheme.of(context).flowBackground,
+        border: Border(top: BorderSide(color: AppTheme.of(context).flowBorder)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -429,8 +421,8 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
             children: [
               Text(
                 '$percent%',
-                style: const TextStyle(
-                  color: AppTheme.brandAction,
+                style: TextStyle(
+                  color: AppTheme.of(context).brandAction,
                   fontSize: 36,
                   height: 1,
                   fontWeight: FontWeight.w600,
@@ -443,8 +435,8 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                 padding: const EdgeInsets.only(bottom: 2),
                 child: Text(
                   _remainingTimeLabel(state),
-                  style: const TextStyle(
-                    color: AppTheme.flowTextSecondary,
+                  style: TextStyle(
+                    color: AppTheme.of(context).flowTextSecondary,
                     fontSize: 12.5,
                     fontWeight: FontWeight.w500,
                   ),
@@ -458,27 +450,29 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
             child: LinearProgressIndicator(
               value: progress > 0 ? progress : null,
               minHeight: 5,
-              backgroundColor: AppTheme.surfaceHigh,
-              valueColor: const AlwaysStoppedAnimation(AppTheme.brandAction),
+              backgroundColor: AppTheme.of(context).surfaceHigh,
+              valueColor: AlwaysStoppedAnimation(
+                AppTheme.of(context).brandAction,
+              ),
             ),
           ),
           const SizedBox(height: 13),
           Row(
             children: [
-              const SizedBox(
+              SizedBox(
                 width: 16,
                 height: 16,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: AppTheme.brandAction,
+                  color: AppTheme.of(context).brandAction,
                 ),
               ),
               const SizedBox(width: 9),
               Expanded(
                 child: Text(
                   _statusTitle(state.status),
-                  style: const TextStyle(
-                    color: AppTheme.flowTextPrimary,
+                  style: TextStyle(
+                    color: AppTheme.of(context).flowTextPrimary,
                     fontSize: 13.5,
                     fontWeight: FontWeight.w600,
                   ),
@@ -491,10 +485,10 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(
+                Icon(
                   Icons.high_quality_outlined,
                   size: 16,
-                  color: AppTheme.flowTextMuted,
+                  color: AppTheme.of(context).flowTextMuted,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -502,8 +496,8 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                     '裁切清晰度恢复 · '
                     '${state.exportPlan!.cropClarityScale.toStringAsFixed(1)}× · '
                     '${state.exportPlan!.width}×${state.exportPlan!.height}',
-                    style: const TextStyle(
-                      color: AppTheme.flowTextMuted,
+                    style: TextStyle(
+                      color: AppTheme.of(context).flowTextMuted,
                       fontSize: 11.5,
                       height: 1.35,
                     ),
@@ -517,18 +511,18 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(
+                Icon(
                   Icons.high_quality_outlined,
                   size: 16,
-                  color: AppTheme.flowTextMuted,
+                  color: AppTheme.of(context).flowTextMuted,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     '设备编码能力限制，输出调整为 '
                     '${state.exportPlan!.width}×${state.exportPlan!.height}；帧时间保持源视频。',
-                    style: const TextStyle(
-                      color: AppTheme.flowTextMuted,
+                    style: TextStyle(
+                      color: AppTheme.of(context).flowTextMuted,
                       fontSize: 11.5,
                       height: 1.35,
                     ),
@@ -540,28 +534,28 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
           const SizedBox(height: 10),
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.verified_user_outlined,
                 size: 16,
-                color: AppTheme.flowTextMuted,
+                color: AppTheme.of(context).flowTextMuted,
               ),
               const SizedBox(width: 7),
-              const Expanded(
+              Expanded(
                 child: Text(
                   '纯端侧离线处理，视频数据不离开本地',
                   style: TextStyle(
-                    color: AppTheme.flowTextMuted,
+                    color: AppTheme.of(context).flowTextMuted,
                     fontSize: 11.5,
                   ),
                 ),
               ),
               if (showBackgroundHint)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.only(left: 10),
                   child: Icon(
                     Icons.phone_android_rounded,
                     size: 15,
-                    color: AppTheme.flowTextMuted,
+                    color: AppTheme.of(context).flowTextMuted,
                   ),
                 ),
             ],
@@ -576,26 +570,29 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       key: const ValueKey('export-failure-summary'),
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
-      decoration: const BoxDecoration(
-        color: AppTheme.flowBackground,
-        border: Border(top: BorderSide(color: AppTheme.flowBorder)),
+      decoration: BoxDecoration(
+        color: AppTheme.of(context).flowBackground,
+        border: Border(top: BorderSide(color: AppTheme.of(context).flowBorder)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             '这次没有生成视频',
             style: TextStyle(
-              color: AppTheme.flowTextPrimary,
+              color: AppTheme.of(context).flowTextPrimary,
               fontSize: 18,
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             '当前编辑内容仍然保留，可重试或返回编辑。',
-            style: TextStyle(color: AppTheme.flowTextSecondary, fontSize: 12.5),
+            style: TextStyle(
+              color: AppTheme.of(context).flowTextSecondary,
+              fontSize: 12.5,
+            ),
           ),
           const SizedBox(height: 14),
           Row(
@@ -701,9 +698,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
             key: _cancelDialogKey,
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
             decoration: BoxDecoration(
-              color: AppTheme.flowSurface,
+              color: AppTheme.of(context).flowSurface,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppTheme.flowBorder),
+              border: Border.all(color: AppTheme.of(context).flowBorder),
               boxShadow: const [
                 BoxShadow(
                   color: Color(0x38000000),
@@ -716,7 +713,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Row(
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     SizedBox(
@@ -724,12 +721,12 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       height: 34,
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          color: AppTheme.statusWarningSubtle,
+                          color: AppTheme.of(context).statusWarningSubtle,
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
                           Icons.close_rounded,
-                          color: AppTheme.statusWarning,
+                          color: AppTheme.of(context).statusWarning,
                           size: 19,
                         ),
                       ),
@@ -739,7 +736,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       child: Text(
                         '取消处理？',
                         style: TextStyle(
-                          color: AppTheme.flowTextPrimary,
+                          color: AppTheme.of(context).flowTextPrimary,
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
                         ),
@@ -748,16 +745,16 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   '当前处理进度不会保留。',
                   style: TextStyle(
-                    color: AppTheme.flowTextSecondary,
+                    color: AppTheme.of(context).flowTextSecondary,
                     fontSize: 12.5,
                     height: 1.4,
                   ),
                 ),
                 const SizedBox(height: 14),
-                const Divider(height: 1, color: AppTheme.flowBorder),
+                Divider(height: 1, color: AppTheme.of(context).flowBorder),
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -768,7 +765,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       style: TextButton.styleFrom(
                         minimumSize: const Size(72, 44),
                         padding: const EdgeInsets.symmetric(horizontal: 12),
-                        foregroundColor: AppTheme.flowTextSecondary,
+                        foregroundColor: AppTheme.of(context).flowTextSecondary,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -785,8 +782,10 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       style: TextButton.styleFrom(
                         minimumSize: const Size(84, 44),
                         padding: const EdgeInsets.symmetric(horizontal: 12),
-                        foregroundColor: AppTheme.statusWarning,
-                        backgroundColor: AppTheme.statusWarningSubtle,
+                        foregroundColor: AppTheme.of(context).statusWarning,
+                        backgroundColor: AppTheme.of(
+                          context,
+                        ).statusWarningSubtle,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -847,10 +846,14 @@ class _InlineAction extends StatelessWidget {
         child: Ink(
           height: 46,
           decoration: BoxDecoration(
-            color: primary ? AppTheme.brandAction : AppTheme.flowSurface,
+            color: primary
+                ? AppTheme.of(context).brandAction
+                : AppTheme.of(context).flowSurface,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: primary ? AppTheme.brandAction : AppTheme.flowBorder,
+              color: primary
+                  ? AppTheme.of(context).brandAction
+                  : AppTheme.of(context).flowBorder,
             ),
           ),
           child: Row(
@@ -860,16 +863,16 @@ class _InlineAction extends StatelessWidget {
                 icon,
                 size: 18,
                 color: primary
-                    ? AppTheme.textOnAccent
-                    : AppTheme.flowTextPrimary,
+                    ? AppTheme.of(context).textOnAccent
+                    : AppTheme.of(context).flowTextPrimary,
               ),
               const SizedBox(width: 8),
               Text(
                 label,
                 style: TextStyle(
                   color: primary
-                      ? AppTheme.textOnAccent
-                      : AppTheme.flowTextPrimary,
+                      ? AppTheme.of(context).textOnAccent
+                      : AppTheme.of(context).flowTextPrimary,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
@@ -907,11 +910,15 @@ class _SquareAction extends StatelessWidget {
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: AppTheme.flowSurface,
+              color: AppTheme.of(context).flowSurface,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppTheme.flowBorder),
+              border: Border.all(color: AppTheme.of(context).flowBorder),
             ),
-            child: Icon(icon, size: 19, color: AppTheme.flowTextSecondary),
+            child: Icon(
+              icon,
+              size: 19,
+              color: AppTheme.of(context).flowTextSecondary,
+            ),
           ),
         ),
       ),
