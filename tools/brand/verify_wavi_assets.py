@@ -28,6 +28,11 @@ assert 'primaryActionKey' not in widget
 assert '_StarFieldPainter' not in widget
 assert '_NightBackground' not in widget
 assert '_RevealCard' not in widget
+assert '_Signature' not in widget
+assert 'WoahBuildInfo' not in widget
+assert 'WOAH  /  A LITTLE MOMENT' not in widget
+assert '免费开源' not in widget
+assert '轻触小精灵，开启一份小惊喜' not in widget
 assert 'Wavi 节奏小精灵' in widget
 assert (ROOT / 'tools/brand/generate_wavi_mascot.swift').exists()
 

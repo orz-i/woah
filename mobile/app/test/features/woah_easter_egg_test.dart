@@ -1,4 +1,3 @@
-import 'package:app/core/metadata/woah_build_info.dart';
 import 'package:app/features/import_video/presentation/import_video_screen.dart';
 import 'package:app/features/import_video/presentation/woah_easter_egg_screen.dart';
 import 'package:app/repositories/native_processing_repository.dart';
@@ -6,27 +5,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-const _buildInfo = WoahBuildInfo(
-  versionName: '2.3.4',
-  buildNumber: '57',
-  gitCommit: 'abcdef1234567890',
-  buildType: 'release',
-);
-
 void main() {
   testWidgets('Wavi reveals and cycles short messages by tapping the mascot', (
     tester,
   ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: WoahEasterEggScreen(buildInfoLoader: () async => _buildInfo),
-      ),
-    );
+    await tester.pumpWidget(MaterialApp(home: const WoahEasterEggScreen()));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1));
 
     expect(find.text('嘿，你找到这里了。'), findsOneWidget);
-    expect(find.text('轻触小精灵，开启一份小惊喜'), findsOneWidget);
+    expect(find.text('轻触小精灵，开启一份小惊喜'), findsNothing);
+    expect(find.text('WOAH  /  A LITTLE MOMENT'), findsNothing);
+    expect(find.textContaining('免费开源'), findsNothing);
+    expect(find.textContaining('art.gaoge.dance'), findsNothing);
     expect(find.text('不用每一步都完美'), findsNothing);
     expect(find.byKey(WoahEasterEggScreen.messageKey), findsNothing);
     expect(find.text('点一点星星'), findsNothing);
@@ -36,7 +27,7 @@ void main() {
     await tester.tap(find.byKey(WoahEasterEggScreen.mascotTapKey));
     await tester.pump();
     _expectPose(tester, WoahEasterEggScreen.peekAsset);
-    expect(find.text('Wavi 正在转身…'), findsOneWidget);
+    expect(find.text('Wavi 正在转身…'), findsNothing);
 
     // Duplicate taps while transitioning cannot skip a surprise.
     await tester.tap(find.byKey(WoahEasterEggScreen.mascotTapKey));
@@ -44,18 +35,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('不用每一步都完美'), findsOneWidget);
     expect(find.text('跟着自己的节奏就好。'), findsOneWidget);
-    expect(find.textContaining('01/05'), findsOneWidget);
+    expect(find.textContaining('再轻触一次'), findsNothing);
     _expectPose(tester, WoahEasterEggScreen.joyAsset);
 
     await tester.tap(find.byKey(WoahEasterEggScreen.mascotTapKey));
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pumpAndSettle();
     expect(find.text('今天也有新的舞步'), findsOneWidget);
-    expect(find.textContaining('02/05'), findsOneWidget);
+    expect(find.textContaining('02/05'), findsNothing);
     _expectPose(tester, WoahEasterEggScreen.waveAsset);
 
-    expect(find.text('WOAH  ·  CJ  ·  v2.3.4  ·  #57'), findsOneWidget);
-    expect(find.text('abcdef123456  ·  art.gaoge.dance'), findsOneWidget);
+    expect(find.textContaining('WOAH  ·  CJ'), findsNothing);
+    expect(find.textContaining('art.gaoge.dance'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -75,7 +66,7 @@ void main() {
           ).copyWith(textScaler: const TextScaler.linear(1.6)),
           child: child!,
         ),
-        home: WoahEasterEggScreen(buildInfoLoader: () async => _buildInfo),
+        home: const WoahEasterEggScreen(),
       ),
     );
     await tester.pump();
@@ -96,7 +87,7 @@ void main() {
       MaterialApp(
         home: MediaQuery(
           data: const MediaQueryData(disableAnimations: true),
-          child: WoahEasterEggScreen(buildInfoLoader: () async => _buildInfo),
+          child: const WoahEasterEggScreen(),
         ),
       ),
     );

@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../app/theme.dart';
-import '../../../core/metadata/woah_build_info.dart';
 
 /// A hidden, nonessential moment reached by long-pressing the home brand.
 /// Wavi is a playful IP character, not a privacy badge or a replacement logo.
 class WoahEasterEggScreen extends StatefulWidget {
-  const WoahEasterEggScreen({super.key, this.buildInfoLoader});
+  const WoahEasterEggScreen({super.key});
 
   static const contentKey = ValueKey('woah-easter-egg-content');
   static const mascotKey = ValueKey('woah-easter-egg-mascot');
@@ -18,8 +17,6 @@ class WoahEasterEggScreen extends StatefulWidget {
   static const peekAsset = 'assets/ip/wavi/wavi_peek.png';
   static const joyAsset = 'assets/ip/wavi/wavi_joy.png';
   static const waveAsset = 'assets/ip/wavi/wavi_wave.png';
-
-  final Future<WoahBuildInfo> Function()? buildInfoLoader;
 
   @override
   State<WoahEasterEggScreen> createState() => _WoahEasterEggScreenState();
@@ -43,16 +40,9 @@ class _WoahEasterEggScreenState extends State<WoahEasterEggScreen> {
     _Surprise('谢谢你找到这里', '愿每次舞动都有好心情。'),
   ];
 
-  late final Future<WoahBuildInfo> _buildInfo;
   _Moment _moment = _Moment.idle;
   int _surpriseIndex = 0;
   int _transitionToken = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _buildInfo = (widget.buildInfoLoader ?? WoahBuildInfo.load)();
-  }
 
   @override
   void dispose() {
@@ -116,18 +106,12 @@ class _WoahEasterEggScreenState extends State<WoahEasterEggScreen> {
           children: [
             const Positioned.fill(child: _AmbientBackground()),
             SafeArea(
-              child: FutureBuilder<WoahBuildInfo>(
-                future: _buildInfo,
-                builder: (context, snapshot) => _MomentContent(
-                  key: WoahEasterEggScreen.contentKey,
-                  moment: _moment,
-                  pose: _pose,
-                  message: _surprises[_surpriseIndex],
-                  messageNumber: _surpriseIndex + 1,
-                  messageCount: _surprises.length,
-                  info: snapshot.data,
-                  onTapMascot: _tapWavi,
-                ),
+              child: _MomentContent(
+                key: WoahEasterEggScreen.contentKey,
+                moment: _moment,
+                pose: _pose,
+                message: _surprises[_surpriseIndex],
+                onTapMascot: _tapWavi,
               ),
             ),
           ],
@@ -161,18 +145,12 @@ class _MomentContent extends StatelessWidget {
     required this.moment,
     required this.pose,
     required this.message,
-    required this.messageNumber,
-    required this.messageCount,
-    required this.info,
     required this.onTapMascot,
   });
 
   final _Moment moment;
   final String pose;
   final _Surprise message;
-  final int messageNumber;
-  final int messageCount;
-  final WoahBuildInfo? info;
   final VoidCallback onTapMascot;
 
   @override
@@ -203,7 +181,7 @@ class _MomentContent extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const _MomentHeader(),
+                const _CloseAction(),
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -244,33 +222,19 @@ class _MomentContent extends StatelessWidget {
                       child: _MessageDisplay(
                         key: ValueKey(
                           moment == _Moment.revealed
-                              ? 'note-$messageNumber'
+                              ? 'note-${message.title}'
                               : 'intro-${moment.name}',
                         ),
                         moment: moment,
                         message: message,
                       ),
                     ),
-                    SizedBox(height: compact ? 12 : 20),
-                    Text(
-                      moment == _Moment.idle
-                          ? '轻触小精灵，开启一份小惊喜'
-                          : moment == _Moment.turning
-                          ? 'Wavi 正在转身…'
-                          : '再轻触一次，换一段心情  ·  '
-                                '${messageNumber.toString().padLeft(2, '0')}/'
-                                '${messageCount.toString().padLeft(2, '0')}',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        height: 1.5,
-                        color: AppTheme.brandMint,
-                      ),
-                    ),
                     SizedBox(height: compact ? 18 : 28),
                   ],
                 ),
-                _Signature(info: info),
+                // Keep the character composition vertically balanced without
+                // adding decorative text to the lower portion of the page.
+                const SizedBox(height: 48),
               ],
             ),
           ),
@@ -280,35 +244,22 @@ class _MomentContent extends StatelessWidget {
   }
 }
 
-class _MomentHeader extends StatelessWidget {
-  const _MomentHeader();
+class _CloseAction extends StatelessWidget {
+  const _CloseAction();
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Expanded(
-          child: Text(
-            'WOAH  /  A LITTLE MOMENT',
-            style: TextStyle(
-              fontSize: 10,
-              height: 1.3,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1.6,
-              color: AppTheme.brandSecondary,
-            ),
-          ),
-        ),
-        IconButton(
-          tooltip: '返回首页',
-          onPressed: Navigator.of(context).canPop()
-              ? () => Navigator.of(context).pop()
-              : null,
-          icon: const Icon(Icons.close_rounded, size: 22),
-          color: AppTheme.brandPearl,
-          style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
-        ),
-      ],
+    return Align(
+      alignment: Alignment.centerRight,
+      child: IconButton(
+        tooltip: '返回首页',
+        onPressed: Navigator.of(context).canPop()
+            ? () => Navigator.of(context).pop()
+            : null,
+        icon: const Icon(Icons.close_rounded, size: 22),
+        color: AppTheme.brandPearl,
+        style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
+      ),
     );
   }
 }
@@ -458,57 +409,6 @@ class _MessageDisplay extends StatelessWidget {
             fontSize: 14,
             height: 1.5,
             color: AppTheme.brandSecondary,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _Signature extends StatelessWidget {
-  const _Signature({required this.info});
-
-  final WoahBuildInfo? info;
-
-  @override
-  Widget build(BuildContext context) {
-    final v = info;
-    final release = v == null
-        ? 'WOAH  ·  CJ'
-        : 'WOAH  ·  CJ  ·  v${v.versionName}  ·  #${v.buildNumber}';
-    final revision = v == null
-        ? 'art.gaoge.dance'
-        : '${v.shortCommit}  ·  art.gaoge.dance';
-
-    return Column(
-      children: [
-        const Text(
-          '免费开源 · 请从可信来源获取',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppTheme.brandSecondary,
-            fontSize: 11,
-            height: 1.45,
-          ),
-        ),
-        const SizedBox(height: 9),
-        Text(
-          release,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppTheme.brandSecondary.withAlpha(150),
-            fontSize: 9,
-            letterSpacing: 0.6,
-          ),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          revision,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppTheme.brandSecondary.withAlpha(130),
-            fontSize: 8,
-            letterSpacing: 0.3,
           ),
         ),
       ],
