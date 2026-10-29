@@ -1,0 +1,119 @@
+{
+  "date": "2026-10-26",
+  "branch": "feat/dance-comparison-m0",
+  "codeCommit": "2801d1f78ca285f7617369e38d824f19f83bc617",
+  "pushed": false,
+  "device": {
+    "model": "OnePlus 8T KB2000",
+    "android": 14,
+    "portraitPixels": [
+      1080,
+      2400
+    ],
+    "landscapePixels": [
+      2400,
+      1080
+    ],
+    "dpr": 3
+  },
+  "apk": {
+    "bytes": 272649543,
+    "sha256": "0c17a93052f7e8b485dd2c0de1e17d97149c58bea3eacf1e38ed9d2cd1382d7f",
+    "installedHashMatches": true
+  },
+  "tests": {
+    "flutterComparison": 16,
+    "nativeComparison": 44,
+    "flutterAnalyze": "passed",
+    "nativeEvidenceReusedAfterDirectionOnlyFix": true
+  },
+  "scenarios": {
+    "displayCombinations": 4,
+    "layoutSwitchWhilePlayingEndUs": 3467000,
+    "pausedOrientationSeekBeforeUs": 8946000,
+    "pausedOrientationSeekAfterUs": 8946000,
+    "playingOrientationBeforeUs": 8946000,
+    "playingOrientationAfterUs": 13039000,
+    "playingOrientationWallSeconds": 4.688,
+    "manualTeacherBeforeUs": 13039000,
+    "manualTeacherAfterUs": 4474000,
+    "manualLearnerUnchangedUs": 14489000,
+    "backgroundPausedUs": 1234000,
+    "exitOrientationRestoreCycles": 2
+  },
+  "finalProject": {
+    "sideBySide": true,
+    "offsetUs": 1450000,
+    "teacherAnchorUs": 2393000,
+    "learnerAnchorUs": 3843000,
+    "positionUs": 0,
+    "speed": 1
+  },
+  "systemRotation": {
+    "before": {
+      "accelerometer_rotation": 0,
+      "user_rotation": 0
+    },
+    "duringForcedLandscapeUserRotation": 1,
+    "after": {
+      "accelerometer_rotation": 0,
+      "user_rotation": 0
+    },
+    "finalAcceptedRunWritesSystemSettings": false
+  },
+  "evidenceCommits": {
+    "playbackAndManual": "08a227d",
+    "orientationRestore": "2801d1f78ca285f7617369e38d824f19f83bc617"
+  },
+  "screenshots": {
+    "18-view-baseline.png": {
+      "path": "docs/session/comparison-ux-20261025/18-view-baseline.png",
+      "pixels": [
+        1080,
+        2400
+      ],
+      "sha256": "f9960d7b6662e9d218c1146f8c1dc8f5c0df703a5fb57bb98714c93e6e62546e"
+    },
+    "20-portrait-ready.png": {
+      "path": "docs/session/comparison-ux-20261025/20-portrait-ready.png",
+      "pixels": [
+        1080,
+        2400
+      ],
+      "sha256": "c528e61df0d7227f100829e861840ea7d9fed315434cf031faffc5a249727140"
+    },
+    "20-landscape-final-zero.png": {
+      "path": "docs/session/comparison-ux-20261025/20-landscape-final-zero.png",
+      "pixels": [
+        2400,
+        1080
+      ],
+      "sha256": "52df3b845671b97bd784312790ea98859d225392319828e9219d2ce67d6d4cc9"
+    },
+    "20-view-menu.png": {
+      "path": "docs/session/comparison-ux-20261025/20-view-menu.png",
+      "pixels": [
+        1080,
+        2400
+      ],
+      "sha256": "5d28d39171d47d3ef1a42d762a833b6fc51d529d07ebbdbcb72b2d2cce7848e5"
+    },
+    "18-manual-portrait-side.png": {
+      "path": "docs/session/comparison-ux-20261025/18-manual-portrait-side.png",
+      "pixels": [
+        1080,
+        2400
+      ],
+      "sha256": "460f730f3d86e99fa0e87738d2f1a56716fcf22eaf9c5283580f3731e40762e8"
+    },
+    "18-manual-landscape-side.png": {
+      "path": "docs/session/comparison-ux-20261025/18-manual-landscape-side.png",
+      "pixels": [
+        2400,
+        1080
+      ],
+      "sha256": "1b82b73293f65c6fc23e20ea18660668ad7f2c986e26400c241309466dfba130"
+    }
+  },
+  "result": "passed"
+}

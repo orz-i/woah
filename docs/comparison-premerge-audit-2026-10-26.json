@@ -1,0 +1,180 @@
+{
+  "recordedAt": "2026-10-26",
+  "decision": "findings_resolved",
+  "workspace": "D:\\dance-anonymizer",
+  "branch": "feat/dance-comparison-m0",
+  "head": "e286cf6116357838421c047f166aa95147a66428",
+  "mergeBase": "ccb405f88b3e8779433c6da00eab8f97cea1e5b9",
+  "targetBranch": "master",
+  "remoteTargetVerified": true,
+  "commitsSinceBase": 42,
+  "includesUncommittedImplementation": true,
+  "baselineWorkingTreeManifest": "session/comparison-ios-20261026/final-working-tree-manifest.json",
+  "baselineManifestFiles": 105,
+  "productionSourcesChangedDuringAudit": false,
+  "findings": [
+    {
+      "id": "comparison-audit-1",
+      "priority": "P1",
+      "status": "fixed",
+      "title": "Android interrupted export retry leaves an old worker throwing from its cleanup",
+      "file": "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/comparison/ComparisonExportManager.kt",
+      "line": 140,
+      "validation": "production manager JVM test with controlled Android and codec boundaries",
+      "actual": "IllegalArgumentException: 导出任务已变化，请重新打开导出",
+      "deviceCrashObserved": false,
+      "evidence": "session/comparison-premerge-audit-20261026/android-manager-junit.xml",
+      "resolution": "Capture each worker cancellation token atomically; fence progress, cleanup, album publishing and service lifecycle by job ID"
+    },
+    {
+      "id": "comparison-audit-2",
+      "priority": "P2",
+      "status": "fixed",
+      "title": "Play inside an active tail A/B loop incorrectly seeks to full-clip zero",
+      "file": "mobile/packages/dance_native/ios/dance_native/Sources/dance_native/IOSComparisonPlayer.swift",
+      "line": 127,
+      "androidFile": "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/comparison/ComparisonSession.kt",
+      "androidLine": 219,
+      "validation": "iOS 17 native Pigeon/AVFoundation simulator reproduction; matching Android branch inspected",
+      "durationUs": 23000000,
+      "selection": [
+        22900000,
+        23000000
+      ],
+      "positionAfterPlayUs": 0,
+      "evidence": "session/comparison-premerge-audit-20261026/native-tail-ab-report.json",
+      "resolution": "Keep the complete active-loop branch separate from the full-clip EOF replay branch on Android and iOS"
+    },
+    {
+      "id": "comparison-audit-3",
+      "priority": "P2",
+      "status": "fixed",
+      "title": "Final manual anchor seek failure is swallowed and calibration is saved",
+      "file": "mobile/app/lib/features/comparison/presentation/comparison_manual_session.dart",
+      "line": 200,
+      "callerFile": "mobile/app/lib/features/comparison/presentation/comparison_screen.dart",
+      "callerLine": 337,
+      "validation": "controlled failing video source in session and actual ComparisonScreen widget tests",
+      "actual": "anchors returned old positions; editor closed after final seek failure",
+      "evidence": "session/comparison-premerge-audit-20261026/flutter-all-repros.log",
+      "resolution": "Reject final anchors unless both source seeks succeeded; retain editor and persisted calibration on failure"
+    },
+    {
+      "id": "comparison-audit-4",
+      "priority": "P2",
+      "status": "fixed",
+      "title": "An obsolete resize response or cancellation can modify a new project",
+      "file": "mobile/app/lib/features/comparison/presentation/comparison_controller.dart",
+      "line": 128,
+      "validation": "two controller tests with a controlled delayed resize future",
+      "actual": [
+        "empty new project regained texture 7",
+        "cancelled old request added a resize error to the new project"
+      ],
+      "evidence": "session/comparison-premerge-audit-20261026/flutter-all-repros.log",
+      "resolution": "Validate project revision, player-open request and latest viewport request before accepting resize success or failure"
+    }
+  ],
+  "deferredValidation": {
+    "iosPhysicalDevice": {
+      "status": "deferred_no_device",
+      "reason": "用户当前没有 iOS 真机",
+      "scope": [
+        "manual video import and permission prompts or denial",
+        "background expiration, lock/resume and process interruption",
+        "physical device performance and thermal behavior"
+      ]
+    }
+  },
+  "gitActions": {
+    "committed": false,
+    "pushed": false,
+    "merged": false
+  },
+  "resolvedAt": "2026-10-26",
+  "fixReport": "comparison-premerge-fixes-2026-10-26.md",
+  "initialVerification": {
+    "newReproductions": {
+      "flutter": 4,
+      "androidManager": 1,
+      "iosNative": 1,
+      "expectedBehaviorAssertionsFailed": 6
+    },
+    "previousValidChecksReused": true,
+    "fullM0Repeated": false,
+    "releaseQARepeated": false,
+    "gitDiffCheckPassed": true,
+    "androidPhysicalDeviceUsedThisAudit": false,
+    "macFormalAppAndTargetRestored": true,
+    "macPersistedProjectBytesUnchanged": true,
+    "macSimulatorShutdown": true,
+    "restoreReceipt": "session/comparison-premerge-audit-20261026/mac-restore-receipt.json"
+  },
+  "verification": {
+    "flutter": {
+      "passed": 65,
+      "newLifecycleTests": 6,
+      "staticAnalysis": "passed",
+      "report": "session/comparison-premerge-fixes-20261026/flutter-final-regression.log"
+    },
+    "androidJvm": {
+      "passed": 19,
+      "manager": 3,
+      "sessionPlayback": 4,
+      "existingExport": 7,
+      "existingPractice": 5,
+      "report": "session/comparison-premerge-fixes-20261026/android-junit-summary.json"
+    },
+    "androidDevice": {
+      "passed": true,
+      "device": "OnePlus KB2000",
+      "android": 14,
+      "interruptedBeforeRetry": true,
+      "completed": true,
+      "albumHashMatches": true,
+      "repeatedSaveSameUri": true,
+      "originalProjectFiles": 2,
+      "originalFilesRestored": true,
+      "apkSha256": "ec113901e593ab641e00c9c3dc48d18ab3b6973a0c3a49cc5ce9a72f8420c7c7",
+      "installedApkHashMatches": true,
+      "exportSha256": "27da002fb5b25af17004a912dc42b88794425682cdc48033bd5daa7f82aae683",
+      "matchesPreviousServiceArtifact": false,
+      "movie": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "aac",
+            "codec_type": "audio"
+          },
+          {
+            "codec_name": "h264",
+            "codec_type": "video",
+            "width": 1080,
+            "height": 1800
+          }
+        ],
+        "format": {
+          "duration": "23.000000"
+        }
+      },
+      "report": "session/comparison-premerge-fixes-20261026/android-run-receipt.json"
+    },
+    "iosSimulator": {
+      "passed": true,
+      "playbackCasesPassed": 4,
+      "projectBytesUnchanged": true,
+      "formalTargetRestored": true,
+      "simulatorShutdown": true,
+      "report": "session/comparison-premerge-fixes-20261026/ios-run-state.json"
+    },
+    "formalBuilds": {
+      "androidDebug": true,
+      "iosSimulatorDebug": true,
+      "iphoneosDebugUnsigned": true,
+      "target": "lib/main.dart"
+    },
+    "fullM0Repeated": false,
+    "releaseQARepeated": false
+  }
+}

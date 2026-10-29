@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets(
-    'home has one real video protection card in the shared dark theme',
+    'home preserves its video protection card alongside standalone workflows',
     (tester) async {
       final semantics = tester.ensureSemantics();
 

@@ -159,6 +159,8 @@ tasks.withType<org.gradle.api.tasks.compile.JavaCompile>().configureEach {
 }
 
 dependencies {
+    // Shared comparison session; match video_player_android's Media3 version.
+    implementation("androidx.media3:media3-exoplayer:1.9.2")
     implementation("com.google.ai.edge.litert:litert:2.1.5")
     // Face locator runtime is packaged but remains dormant until an explicit
     // internal caller opts in. YOLO/TrackManager remains identity authority.

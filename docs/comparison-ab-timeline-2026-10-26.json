@@ -1,0 +1,76 @@
+{
+  "date": "2026-10-26",
+  "branch": "feat/dance-comparison-m0",
+  "head": "e286cf6116357838421c047f166aa95147a66428",
+  "committed": false,
+  "pushed": false,
+  "merged": false,
+  "flutterTestsPassed": 41,
+  "staticAnalysis": "passed",
+  "debugBuild": "passed",
+  "nativePriorTestsReused": 55,
+  "unchangedNativeInputs": 11,
+  "fullM0Repeated": false,
+  "apk": {
+    "bytes": 272722348,
+    "sha256": "8ac68213d742f3d116fb10462ce816d4a48bf43cd9575afd31c2125a8a4e7aa0",
+    "installedHashMatches": true,
+    "buildTagInDex": "e286cf6116357838421c047f166aa95147a66428+ab-timeline-one-clock"
+  },
+  "sourceSetSha256": "dace2f89993efea477033c54c8b57a5b2a9368d955b4066903c421e59661abaa",
+  "filesChangedSincePictureMarkersSnapshot": [
+    "mobile/app/lib/features/comparison/presentation/comparison_controller.dart",
+    "mobile/app/lib/features/comparison/presentation/comparison_screen.dart",
+    "mobile/app/lib/features/comparison/presentation/comparison_timeline.dart",
+    "mobile/app/test/features/comparison_test.dart",
+    "mobile/app/test/features/comparison_timeline_test.dart"
+  ],
+  "device": "OnePlus KB2000 / Android 14",
+  "evidence": {
+    "range": {
+      "startUs": 0,
+      "endUs": 1990801,
+      "AAndBDrag": true,
+      "minimum48dpTargets": true,
+      "commitPausesAndSeeksA": true,
+      "otherPracticeFieldsUnchanged": true
+    },
+    "seek": {
+      "seekBeyondBWhilePaused": true,
+      "ABUnchanged": true,
+      "positionUs": 14315856
+    },
+    "loop": {
+      "restarts": 3,
+      "wallSeconds": 7,
+      "pausedAfterwards": true
+    },
+    "restore-clear": {
+      "coldRestoresExactBounds": true,
+      "landscapePortrait": true,
+      "markersUseSelectedRange": true,
+      "clearRemovesBoundsAndHighlight": true
+    },
+    "cleanup": {
+      "originalProjects": 2,
+      "originalContentUnchanged": true,
+      "updateTimeChangedCount": 1,
+      "temporaryProjectRemoved": true,
+      "settingsUnchanged": true,
+      "originalRestoredPaused": true
+    }
+  },
+  "finalOriginalState": {
+    "positionUs": 17899999,
+    "offsetUs": 1490000,
+    "speed": 1.0,
+    "sideBySide": false,
+    "mirrorTeacher": false,
+    "mirrorLearner": true,
+    "loopStartUs": 16899999,
+    "loopEndUs": null,
+    "loopEnabled": false
+  },
+  "visualReadout": "One current-position clock; editing temporarily shows A or B in the same clock",
+  "designQa": "passed"
+}

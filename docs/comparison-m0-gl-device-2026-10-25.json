@@ -1,0 +1,4313 @@
+{
+  "schema": "woah.comparison.m0.gl-device-validation.v1",
+  "date": "2026-10-25",
+  "m0Gate": "PASS_SHARED_AUDIO_DUAL_MEDIACODEC_SINGLE_GL_ON_TESTED_DEVICE",
+  "acceptanceScope": "Android Debug prototype; tested local H264/AAC fixtures on OnePlus 8T; source-PTS metadata plus encoded compositor screen evidence",
+  "actualDisplayAcceptance": "NOT_PROVEN_PHYSICAL_PANEL",
+  "testedApkSourceCommit": "c57c2681e3ff4f57b3a87755a1d2c131410dea58",
+  "testedApkSha256": "00383eaa7b3ddf874dbf7ee21339dc9074d8db888494adfa4c64b37203a798df",
+  "testedApkBytes": 240487633,
+  "branch": "feat/dance-comparison-m0",
+  "pushed": false,
+  "m1Started": false,
+  "installedApkSha256": "00383eaa7b3ddf874dbf7ee21339dc9074d8db888494adfa4c64b37203a798df",
+  "fixtureSets": [
+    {
+      "label": "30-positive",
+      "manifest": {
+        "schema": "woah.comparison.m0.fixtures.v1",
+        "expectedOffsetUs": 3000000,
+        "teacherMusicStartUs": 2000000,
+        "learnerMusicStartUs": 5000000,
+        "musicDurationUs": 10000000,
+        "fps": 30,
+        "size": "640x360",
+        "sources": {
+          "teacher": {
+            "name": "teacher.mp4",
+            "durationUs": 12000000,
+            "frameCount": 360,
+            "sha256": "433c1329c541ac6bcea0d6d4b8390c199b79c62ee99a5923e3a122e2fc34e433",
+            "ffprobe": {
+              "programs": [],
+              "stream_groups": [],
+              "streams": [
+                {
+                  "codec_name": "h264",
+                  "codec_type": "video",
+                  "width": 640,
+                  "height": 360,
+                  "avg_frame_rate": "30/1",
+                  "time_base": "1/15360",
+                  "start_time": "0.000000",
+                  "duration": "12.000000",
+                  "nb_frames": "360"
+                },
+                {
+                  "codec_name": "aac",
+                  "codec_type": "audio",
+                  "sample_rate": "16000",
+                  "channels": 1,
+                  "avg_frame_rate": "0/0",
+                  "time_base": "1/16000",
+                  "start_time": "0.000000",
+                  "duration": "12.000000",
+                  "nb_frames": "189"
+                }
+              ],
+              "format": {
+                "duration": "12.000000"
+              }
+            }
+          },
+          "learner": {
+            "name": "learner.mp4",
+            "durationUs": 15000000,
+            "frameCount": 450,
+            "sha256": "bb22c5f102881b9858c76bb5a4d4e9a9991d69178267f2750ae26d090384e83b",
+            "ffprobe": {
+              "programs": [],
+              "stream_groups": [],
+              "streams": [
+                {
+                  "codec_name": "h264",
+                  "codec_type": "video",
+                  "width": 640,
+                  "height": 360,
+                  "avg_frame_rate": "30/1",
+                  "time_base": "1/15360",
+                  "start_time": "0.000000",
+                  "duration": "15.000000",
+                  "nb_frames": "450"
+                },
+                {
+                  "codec_name": "aac",
+                  "codec_type": "audio",
+                  "sample_rate": "16000",
+                  "channels": 1,
+                  "avg_frame_rate": "0/0",
+                  "time_base": "1/16000",
+                  "start_time": "0.000000",
+                  "duration": "15.000000",
+                  "nb_frames": "236"
+                }
+              ],
+              "format": {
+                "duration": "15.000000"
+              }
+            }
+          }
+        },
+        "renderer": "stdlib_rgb_bitmap_v1",
+        "frameCode": {
+          "bits": 20,
+          "x": 24,
+          "y": 240,
+          "cellWidth": 26,
+          "height": 48,
+          "order": "most_significant_bit_first",
+          "referenceSize": [
+            640,
+            360
+          ]
+        },
+        "notes": "Shared PCM source encoded separately as AAC; the printed frame time is source PTS."
+      },
+      "files": [
+        {
+          "path": "testdata/comparison/generated/teacher.mp4",
+          "bytes": 194005,
+          "sha256": "433c1329c541ac6bcea0d6d4b8390c199b79c62ee99a5923e3a122e2fc34e433"
+        },
+        {
+          "path": "testdata/comparison/generated/learner.mp4",
+          "bytes": 206395,
+          "sha256": "bb22c5f102881b9858c76bb5a4d4e9a9991d69178267f2750ae26d090384e83b"
+        }
+      ]
+    },
+    {
+      "label": "24-negative-short",
+      "manifest": {
+        "schema": "woah.comparison.m0.fixtures.v1",
+        "expectedOffsetUs": -1000000,
+        "teacherMusicStartUs": 2000000,
+        "learnerMusicStartUs": 1000000,
+        "musicDurationUs": 10000000,
+        "fps": 24,
+        "size": "1280x720",
+        "sources": {
+          "teacher": {
+            "name": "teacher.mp4",
+            "durationUs": 12000000,
+            "frameCount": 288,
+            "sha256": "796d8a064256e026e88d30458689cde0209ce0fd5291f5f2a319e27c9e7e83a8",
+            "ffprobe": {
+              "programs": [],
+              "stream_groups": [],
+              "streams": [
+                {
+                  "codec_name": "h264",
+                  "codec_type": "video",
+                  "width": 1280,
+                  "height": 720,
+                  "avg_frame_rate": "24/1",
+                  "time_base": "1/12288",
+                  "start_time": "0.000000",
+                  "duration": "12.000000",
+                  "nb_frames": "288"
+                },
+                {
+                  "codec_name": "aac",
+                  "codec_type": "audio",
+                  "sample_rate": "16000",
+                  "channels": 1,
+                  "avg_frame_rate": "0/0",
+                  "time_base": "1/16000",
+                  "start_time": "0.000000",
+                  "duration": "12.000000",
+                  "nb_frames": "189"
+                }
+              ],
+              "format": {
+                "duration": "12.000000"
+              }
+            }
+          },
+          "learner": {
+            "name": "learner.mp4",
+            "durationUs": 11000000,
+            "frameCount": 264,
+            "sha256": "6cf0d48539d65f3f88495a75621c26c2d0fd374efc99ed0a525259f9deeec68d",
+            "ffprobe": {
+              "programs": [],
+              "stream_groups": [],
+              "streams": [
+                {
+                  "codec_name": "h264",
+                  "codec_type": "video",
+                  "width": 1280,
+                  "height": 720,
+                  "avg_frame_rate": "24/1",
+                  "time_base": "1/12288",
+                  "start_time": "0.000000",
+                  "duration": "11.000000",
+                  "nb_frames": "264"
+                },
+                {
+                  "codec_name": "aac",
+                  "codec_type": "audio",
+                  "sample_rate": "16000",
+                  "channels": 1,
+                  "avg_frame_rate": "0/0",
+                  "time_base": "1/16000",
+                  "start_time": "0.000000",
+                  "duration": "11.000000",
+                  "nb_frames": "173"
+                }
+              ],
+              "format": {
+                "duration": "11.000000"
+              }
+            }
+          }
+        },
+        "renderer": "stdlib_rgb_bitmap_v1",
+        "frameCode": {
+          "bits": 20,
+          "x": 24,
+          "y": 240,
+          "cellWidth": 26,
+          "height": 48,
+          "order": "most_significant_bit_first",
+          "referenceSize": [
+            640,
+            360
+          ]
+        },
+        "notes": "Shared PCM source encoded separately as AAC; the printed frame time is source PTS."
+      },
+      "files": [
+        {
+          "path": "docs/session/comparison-m0-20261025/fixtures-24-negative/teacher.mp4",
+          "bytes": 245145,
+          "sha256": "796d8a064256e026e88d30458689cde0209ce0fd5291f5f2a319e27c9e7e83a8"
+        },
+        {
+          "path": "docs/session/comparison-m0-20261025/fixtures-24-negative/learner.mp4",
+          "bytes": 220189,
+          "sha256": "6cf0d48539d65f3f88495a75621c26c2d0fd374efc99ed0a525259f9deeec68d"
+        }
+      ]
+    },
+    {
+      "label": "60-positive",
+      "manifest": {
+        "schema": "woah.comparison.m0.fixtures.v1",
+        "expectedOffsetUs": 3000000,
+        "teacherMusicStartUs": 2000000,
+        "learnerMusicStartUs": 5000000,
+        "musicDurationUs": 10000000,
+        "fps": 60,
+        "size": "1920x1080",
+        "sources": {
+          "teacher": {
+            "name": "teacher.mp4",
+            "durationUs": 12000000,
+            "frameCount": 720,
+            "sha256": "3a8206b293339548dea17f962f4bbedc147ae56623d0e9ce19d4e4f6ef9ceead",
+            "ffprobe": {
+              "programs": [],
+              "stream_groups": [],
+              "streams": [
+                {
+                  "codec_name": "h264",
+                  "codec_type": "video",
+                  "width": 1920,
+                  "height": 1080,
+                  "avg_frame_rate": "60/1",
+                  "time_base": "1/15360",
+                  "start_time": "0.000000",
+                  "duration": "12.000000",
+                  "nb_frames": "720"
+                },
+                {
+                  "codec_name": "aac",
+                  "codec_type": "audio",
+                  "sample_rate": "16000",
+                  "channels": 1,
+                  "avg_frame_rate": "0/0",
+                  "time_base": "1/16000",
+                  "start_time": "0.000000",
+                  "duration": "12.000000",
+                  "nb_frames": "189"
+                }
+              ],
+              "format": {
+                "duration": "12.000000"
+              }
+            }
+          },
+          "learner": {
+            "name": "learner.mp4",
+            "durationUs": 15000000,
+            "frameCount": 900,
+            "sha256": "54d982c11d1f6757d65a8e8b8676c049bb7f6541748bfae7867b0303f1ae433d",
+            "ffprobe": {
+              "programs": [],
+              "stream_groups": [],
+              "streams": [
+                {
+                  "codec_name": "h264",
+                  "codec_type": "video",
+                  "width": 1920,
+                  "height": 1080,
+                  "avg_frame_rate": "60/1",
+                  "time_base": "1/15360",
+                  "start_time": "0.000000",
+                  "duration": "15.000000",
+                  "nb_frames": "900"
+                },
+                {
+                  "codec_name": "aac",
+                  "codec_type": "audio",
+                  "sample_rate": "16000",
+                  "channels": 1,
+                  "avg_frame_rate": "0/0",
+                  "time_base": "1/16000",
+                  "start_time": "0.000000",
+                  "duration": "15.000000",
+                  "nb_frames": "236"
+                }
+              ],
+              "format": {
+                "duration": "15.000000"
+              }
+            }
+          }
+        },
+        "renderer": "stdlib_rgb_bitmap_v1",
+        "frameCode": {
+          "bits": 20,
+          "x": 24,
+          "y": 240,
+          "cellWidth": 26,
+          "height": 48,
+          "order": "most_significant_bit_first",
+          "referenceSize": [
+            640,
+            360
+          ]
+        },
+        "notes": "Shared PCM source encoded separately as AAC; the printed frame time is source PTS."
+      },
+      "files": [
+        {
+          "path": "docs/session/comparison-m0-20261025/fixtures-60-1080p/teacher.mp4",
+          "bytes": 795086,
+          "sha256": "3a8206b293339548dea17f962f4bbedc147ae56623d0e9ce19d4e4f6ef9ceead"
+        },
+        {
+          "path": "docs/session/comparison-m0-20261025/fixtures-60-1080p/learner.mp4",
+          "bytes": 901813,
+          "sha256": "54d982c11d1f6757d65a8e8b8676c049bb7f6541748bfae7867b0303f1ae433d"
+        }
+      ]
+    },
+    {
+      "label": "24-negative-long",
+      "manifest": {
+        "schema": "woah.comparison.m0.fixtures.v1",
+        "expectedOffsetUs": -1000000,
+        "teacherMusicStartUs": 2000000,
+        "learnerMusicStartUs": 1000000,
+        "musicDurationUs": 120000000,
+        "fps": 24,
+        "size": "1280x720",
+        "sources": {
+          "teacher": {
+            "name": "teacher.mp4",
+            "durationUs": 122000000,
+            "frameCount": 2928,
+            "sha256": "ff09687521f4e537c030deea2e35054aef3eaa093d1353851d81240f44d7d5f6",
+            "ffprobe": {
+              "programs": [],
+              "stream_groups": [],
+              "streams": [
+                {
+                  "codec_name": "h264",
+                  "codec_type": "video",
+                  "width": 1280,
+                  "height": 720,
+                  "avg_frame_rate": "24/1",
+                  "time_base": "1/12288",
+                  "start_time": "0.000000",
+                  "duration": "122.000000",
+                  "nb_frames": "2928"
+                },
+                {
+                  "codec_name": "aac",
+                  "codec_type": "audio",
+                  "sample_rate": "16000",
+                  "channels": 1,
+                  "avg_frame_rate": "0/0",
+                  "time_base": "1/16000",
+                  "start_time": "0.000000",
+                  "duration": "122.000000",
+                  "nb_frames": "1908"
+                }
+              ],
+              "format": {
+                "duration": "122.000000"
+              }
+            }
+          },
+          "learner": {
+            "name": "learner.mp4",
+            "durationUs": 121000000,
+            "frameCount": 2904,
+            "sha256": "c16940de90e6d76415a0aa993a7569e4986a32f8e444354d789c15dc0b65ab56",
+            "ffprobe": {
+              "programs": [],
+              "stream_groups": [],
+              "streams": [
+                {
+                  "codec_name": "h264",
+                  "codec_type": "video",
+                  "width": 1280,
+                  "height": 720,
+                  "avg_frame_rate": "24/1",
+                  "time_base": "1/12288",
+                  "start_time": "0.000000",
+                  "duration": "121.000000",
+                  "nb_frames": "2904"
+                },
+                {
+                  "codec_name": "aac",
+                  "codec_type": "audio",
+                  "sample_rate": "16000",
+                  "channels": 1,
+                  "avg_frame_rate": "0/0",
+                  "time_base": "1/16000",
+                  "start_time": "0.000000",
+                  "duration": "121.000000",
+                  "nb_frames": "1892"
+                }
+              ],
+              "format": {
+                "duration": "121.000000"
+              }
+            }
+          }
+        },
+        "renderer": "stdlib_rgb_bitmap_v1",
+        "frameCode": {
+          "bits": 20,
+          "x": 24,
+          "y": 240,
+          "cellWidth": 26,
+          "height": 48,
+          "order": "most_significant_bit_first",
+          "referenceSize": [
+            640,
+            360
+          ]
+        },
+        "notes": "Shared PCM source encoded separately as AAC; the printed frame time is source PTS."
+      },
+      "files": [
+        {
+          "path": "docs/session/comparison-gl-m0-20261025/fixtures-24-negative-120s/teacher.mp4",
+          "bytes": 2564065,
+          "sha256": "ff09687521f4e537c030deea2e35054aef3eaa093d1353851d81240f44d7d5f6"
+        },
+        {
+          "path": "docs/session/comparison-gl-m0-20261025/fixtures-24-negative-120s/learner.mp4",
+          "bytes": 2442271,
+          "sha256": "c16940de90e6d76415a0aa993a7569e4986a32f8e444354d789c15dc0b65ab56"
+        }
+      ]
+    },
+    {
+      "label": "vfr",
+      "manifest": {
+        "expectedOffsetUs": 3000000,
+        "referenceCodeFps": 30,
+        "sources": {
+          "teacher": {
+            "frames": 327,
+            "frameIntervalUs": [
+              33333,
+              33334,
+              66666,
+              66667
+            ],
+            "audio": "AAC stream copy",
+            "printedPtsPreserved": true
+          },
+          "learner": {
+            "frames": 386,
+            "frameIntervalUs": [
+              33333,
+              33334,
+              66666,
+              66667
+            ],
+            "audio": "AAC stream copy",
+            "printedPtsPreserved": true
+          }
+        }
+      },
+      "files": [
+        {
+          "path": "docs/session/comparison-gl-m0-20261025/fixtures-vfr/teacher.mp4",
+          "bytes": 193075,
+          "sha256": "e87aecf4089b9c0e7db28f28a6d0682e74ced94c2c0b025b9ef7ae170bdcb521"
+        },
+        {
+          "path": "docs/session/comparison-gl-m0-20261025/fixtures-vfr/learner.mp4",
+          "bytes": 205730,
+          "sha256": "a666ce3fab2ea5f22aeb931864b8bb17366964e877c06469717f08624b23e7e5"
+        }
+      ]
+    }
+  ],
+  "device": {
+    "model": "OnePlus KB2000 / OnePlus 8T",
+    "android": "14",
+    "api": 34,
+    "soc": "SM8250"
+  },
+  "implementation": {
+    "audioPlayers": 1,
+    "videoDecoders": 2,
+    "glWindowSurfaces": 1,
+    "clock": "Media3 1.9.2 audio-only renderer position with bounded monotonic resampling",
+    "maxInterpolationAheadUs": 15000,
+    "frameSelection": "actual source [PTS,nextPTS) coverage; two OES textures validated by SurfaceTexture.timestamp before one EGL swap",
+    "boundedQueue": "one running request plus one latest request; stale seek generation cancelled",
+    "stallPolicy": "50ms renderer watchdog pauses shared audio; joint catch-up barrier resumes it"
+  },
+  "regression": {
+    "kotlinComparisonTests": 19,
+    "pythonTests": {
+      "Windows": 23,
+      "LinuxWSL": 23,
+      "macOS": 23
+    },
+    "pythonVersions": {
+      "Windows": "3.12.12",
+      "LinuxWSL": "3.9.23",
+      "macOS": "3.12.14"
+    },
+    "debugApkBuild": "PASS",
+    "debugAndReleaseKotlinCompile": "PASS; Release sources unchanged; no full Release QA",
+    "fontFreeFixtures": "existing stdlib bitmap renderer reused; full Windows MP4 decode passed"
+  },
+  "equalCfrTotals": {
+    "cases": 10,
+    "screenSamples": 12296,
+    "nativeJointSubmissions": 11027,
+    "maxScreenP95Us": 0,
+    "maxScreenErrorUs": 0,
+    "invalidScreenCodes": 0,
+    "coverageMisses": 0
+  },
+  "cases": [
+    {
+      "tag": "priority-24-negative-1x",
+      "description": "24fps / -1s / 短片",
+      "metadataEvaluation": "JOINT_GL_METADATA_WITHIN_TARGET",
+      "probe": {
+        "schema": "woah.comparison.m0.gl.v1",
+        "backend": "shared_audio_dual_mediacodec_single_gl",
+        "buildSha": "c57c2681e3ff4f57b3a87755a1d2c131410dea58",
+        "media3": "1.9.2",
+        "device": "OnePlus KB2000",
+        "apiLevel": 34,
+        "offsetUs": -1000000,
+        "speed": 1,
+        "sourceError": null,
+        "audioClockSource": "single_media3_audio_position_bounded_monotonic_interpolation",
+        "audioSelected": true,
+        "audioPlayerCount": 1,
+        "audioVideoTrackDisabled": true,
+        "videoWindowSurfaces": 1,
+        "teacherDurationMs": 12000,
+        "learnerDurationMs": 11000,
+        "teacherFrameRate": 24,
+        "learnerFrameRate": 24,
+        "teacherVideoWidth": 1280,
+        "teacherVideoHeight": 720,
+        "learnerVideoWidth": 1280,
+        "learnerVideoHeight": 720,
+        "overlapDurationUs": 11000000,
+        "seekEvents": 2,
+        "bufferingEvents": 2,
+        "rendererStalls": 0,
+        "resourceCloseFailures": 0,
+        "clockBacksteps": 0,
+        "maxClockBackstepUs": 0,
+        "maxAudioPublishedStepUs": 42000,
+        "maxAudioInterpolationAheadUs": 15000,
+        "audioInterpolationBoundUs": 15000,
+        "processPssKb": 183147,
+        "evidenceType": "joint_gl_submission_source_pts_only",
+        "actualDisplayAcceptance": "NOT_PROVEN",
+        "injectedTestStalls": 0,
+        "jointSubmissions": 239,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0,
+        "p95ClockSampleAgeUs": 14158,
+        "p95RenderWorkUs": 15099,
+        "p95SwapWaitUs": 2156,
+        "p95PrepareUs": 11029,
+        "p95TextureLatchUs": 2303,
+        "maxClockSampleAgeUs": 21546,
+        "coverageMisses": 0,
+        "observationDurationUs": 9937896,
+        "diagnosticsSaturated": false,
+        "teacherDecoder": "OMX.qcom.video.decoder.avc",
+        "learnerDecoder": "OMX.qcom.video.decoder.avc",
+        "teacherDecodedOutputs": 314,
+        "learnerDecodedOutputs": 266,
+        "teacherSkippedOutputs": 48,
+        "learnerSkippedOutputs": 0,
+        "textureWaits": 0,
+        "windows": [
+          {
+            "startUs": 0,
+            "samples": 120,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 5000000,
+            "samples": 119,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          }
+        ]
+      },
+      "screen": {
+        "schema": "woah.comparison.m0.screen.v1",
+        "status": "SCREEN_CAPTURE_WITHIN_TARGET",
+        "actualDisplayAcceptance": "NOT_PROVEN_PHYSICAL_PANEL",
+        "evidenceType": "decoded_frame_codes_in_compositor_capture",
+        "samples": 228,
+        "fps": 24,
+        "expectedOffsetUs": -1000000,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0.0,
+        "firstCaptureSeconds": 2.218878,
+        "lastCaptureSeconds": 11.187244,
+        "windows": [
+          {
+            "startSeconds": 0,
+            "samples": 73,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 5,
+            "samples": 125,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 10,
+            "samples": 30,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          }
+        ],
+        "limitation": "Screen encoder/compositor can drop frames or sample the two surfaces at different display phases. No panel/scanout proof; thresholds apply only to equal-fps CFR sources.",
+        "decodedCaptureFrames": 355,
+        "invalidCodes": 0,
+        "excludedFrames": 127,
+        "teacherRect": [
+          0,
+          307,
+          1080,
+          607
+        ],
+        "learnerRect": [
+          0,
+          1083,
+          1080,
+          607
+        ]
+      },
+      "rawPrefix": "docs/session/comparison-gl-m0-20261025/final/priority-24-negative-1x"
+    },
+    {
+      "tag": "priority-24-negative-075x",
+      "description": "24fps / -1s / 短片",
+      "metadataEvaluation": "JOINT_GL_METADATA_WITHIN_TARGET",
+      "probe": {
+        "schema": "woah.comparison.m0.gl.v1",
+        "backend": "shared_audio_dual_mediacodec_single_gl",
+        "buildSha": "c57c2681e3ff4f57b3a87755a1d2c131410dea58",
+        "media3": "1.9.2",
+        "device": "OnePlus KB2000",
+        "apiLevel": 34,
+        "offsetUs": -1000000,
+        "speed": 0.75,
+        "sourceError": null,
+        "audioClockSource": "single_media3_audio_position_bounded_monotonic_interpolation",
+        "audioSelected": true,
+        "audioPlayerCount": 1,
+        "audioVideoTrackDisabled": true,
+        "videoWindowSurfaces": 1,
+        "teacherDurationMs": 12000,
+        "learnerDurationMs": 11000,
+        "teacherFrameRate": 24,
+        "learnerFrameRate": 24,
+        "teacherVideoWidth": 1280,
+        "teacherVideoHeight": 720,
+        "learnerVideoWidth": 1280,
+        "learnerVideoHeight": 720,
+        "overlapDurationUs": 11000000,
+        "seekEvents": 3,
+        "bufferingEvents": 3,
+        "rendererStalls": 0,
+        "resourceCloseFailures": 0,
+        "clockBacksteps": 0,
+        "maxClockBackstepUs": 0,
+        "maxAudioPublishedStepUs": 42000,
+        "maxAudioInterpolationAheadUs": 15000,
+        "audioInterpolationBoundUs": 15000,
+        "processPssKb": 183369,
+        "evidenceType": "joint_gl_submission_source_pts_only",
+        "actualDisplayAcceptance": "NOT_PROVEN",
+        "injectedTestStalls": 0,
+        "jointSubmissions": 244,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0,
+        "p95ClockSampleAgeUs": 14929,
+        "p95RenderWorkUs": 15485,
+        "p95SwapWaitUs": 2225,
+        "p95PrepareUs": 11491,
+        "p95TextureLatchUs": 2320,
+        "maxClockSampleAgeUs": 23559,
+        "coverageMisses": 0,
+        "observationDurationUs": 13491137,
+        "diagnosticsSaturated": false,
+        "teacherDecoder": "OMX.qcom.video.decoder.avc",
+        "learnerDecoder": "OMX.qcom.video.decoder.avc",
+        "teacherDecodedOutputs": 602,
+        "learnerDecodedOutputs": 530,
+        "teacherSkippedOutputs": 72,
+        "learnerSkippedOutputs": 0,
+        "textureWaits": 0,
+        "windows": [
+          {
+            "startUs": 0,
+            "samples": 91,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 5000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 10000000,
+            "samples": 63,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          }
+        ]
+      },
+      "screen": {
+        "schema": "woah.comparison.m0.screen.v1",
+        "status": "SCREEN_CAPTURE_WITHIN_TARGET",
+        "actualDisplayAcceptance": "NOT_PROVEN_PHYSICAL_PANEL",
+        "evidenceType": "decoded_frame_codes_in_compositor_capture",
+        "samples": 245,
+        "fps": 24,
+        "expectedOffsetUs": -1000000,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0.0,
+        "firstCaptureSeconds": 2.543856,
+        "lastCaptureSeconds": 14.504122,
+        "windows": [
+          {
+            "startSeconds": 0,
+            "samples": 51,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 5,
+            "samples": 100,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 10,
+            "samples": 94,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          }
+        ],
+        "limitation": "Screen encoder/compositor can drop frames or sample the two surfaces at different display phases. No panel/scanout proof; thresholds apply only to equal-fps CFR sources.",
+        "decodedCaptureFrames": 367,
+        "invalidCodes": 0,
+        "excludedFrames": 122,
+        "teacherRect": [
+          0,
+          307,
+          1080,
+          607
+        ],
+        "learnerRect": [
+          0,
+          1083,
+          1080,
+          607
+        ]
+      },
+      "rawPrefix": "docs/session/comparison-gl-m0-20261025/final/priority-24-negative-075x"
+    },
+    {
+      "tag": "priority-24-negative-05x",
+      "description": "24fps / -1s / 短片",
+      "metadataEvaluation": "JOINT_GL_METADATA_WITHIN_TARGET",
+      "probe": {
+        "schema": "woah.comparison.m0.gl.v1",
+        "backend": "shared_audio_dual_mediacodec_single_gl",
+        "buildSha": "c57c2681e3ff4f57b3a87755a1d2c131410dea58",
+        "media3": "1.9.2",
+        "device": "OnePlus KB2000",
+        "apiLevel": 34,
+        "offsetUs": -1000000,
+        "speed": 0.5,
+        "sourceError": null,
+        "audioClockSource": "single_media3_audio_position_bounded_monotonic_interpolation",
+        "audioSelected": true,
+        "audioPlayerCount": 1,
+        "audioVideoTrackDisabled": true,
+        "videoWindowSurfaces": 1,
+        "teacherDurationMs": 12000,
+        "learnerDurationMs": 11000,
+        "teacherFrameRate": 24,
+        "learnerFrameRate": 24,
+        "teacherVideoWidth": 1280,
+        "teacherVideoHeight": 720,
+        "learnerVideoWidth": 1280,
+        "learnerVideoHeight": 720,
+        "overlapDurationUs": 11000000,
+        "seekEvents": 4,
+        "bufferingEvents": 4,
+        "rendererStalls": 0,
+        "resourceCloseFailures": 0,
+        "clockBacksteps": 0,
+        "maxClockBackstepUs": 0,
+        "maxAudioPublishedStepUs": 42000,
+        "maxAudioInterpolationAheadUs": 15000,
+        "audioInterpolationBoundUs": 15000,
+        "processPssKb": 183905,
+        "evidenceType": "joint_gl_submission_source_pts_only",
+        "actualDisplayAcceptance": "NOT_PROVEN",
+        "injectedTestStalls": 0,
+        "jointSubmissions": 249,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0,
+        "p95ClockSampleAgeUs": 18400,
+        "p95RenderWorkUs": 18584,
+        "p95SwapWaitUs": 2580,
+        "p95PrepareUs": 14591,
+        "p95TextureLatchUs": 2440,
+        "maxClockSampleAgeUs": 26318,
+        "coverageMisses": 0,
+        "observationDurationUs": 20710434,
+        "diagnosticsSaturated": false,
+        "teacherDecoder": "OMX.qcom.video.decoder.avc",
+        "learnerDecoder": "OMX.qcom.video.decoder.avc",
+        "teacherDecodedOutputs": 890,
+        "learnerDecodedOutputs": 794,
+        "teacherSkippedOutputs": 96,
+        "learnerSkippedOutputs": 0,
+        "textureWaits": 0,
+        "windows": [
+          {
+            "startUs": 0,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 5000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 10000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 15000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 20000000,
+            "samples": 9,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          }
+        ]
+      },
+      "screen": {
+        "schema": "woah.comparison.m0.screen.v1",
+        "status": "SCREEN_CAPTURE_WITHIN_TARGET",
+        "actualDisplayAcceptance": "NOT_PROVEN_PHYSICAL_PANEL",
+        "evidenceType": "decoded_frame_codes_in_compositor_capture",
+        "samples": 274,
+        "fps": 24,
+        "expectedOffsetUs": -1000000,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0.0,
+        "firstCaptureSeconds": 3.094489,
+        "lastCaptureSeconds": 21.006356,
+        "windows": [
+          {
+            "startSeconds": 0,
+            "samples": 27,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 5,
+            "samples": 77,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 10,
+            "samples": 76,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 15,
+            "samples": 78,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 20,
+            "samples": 16,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          }
+        ],
+        "limitation": "Screen encoder/compositor can drop frames or sample the two surfaces at different display phases. No panel/scanout proof; thresholds apply only to equal-fps CFR sources.",
+        "decodedCaptureFrames": 415,
+        "invalidCodes": 0,
+        "excludedFrames": 141,
+        "teacherRect": [
+          0,
+          307,
+          1080,
+          607
+        ],
+        "learnerRect": [
+          0,
+          1083,
+          1080,
+          607
+        ]
+      },
+      "rawPrefix": "docs/session/comparison-gl-m0-20261025/final/priority-24-negative-05x"
+    },
+    {
+      "tag": "long-24-negative-1x",
+      "description": "24fps / -1s / 120s音乐",
+      "metadataEvaluation": "JOINT_GL_METADATA_WITHIN_TARGET",
+      "probe": {
+        "schema": "woah.comparison.m0.gl.v1",
+        "backend": "shared_audio_dual_mediacodec_single_gl",
+        "buildSha": "c57c2681e3ff4f57b3a87755a1d2c131410dea58",
+        "media3": "1.9.2",
+        "device": "OnePlus KB2000",
+        "apiLevel": 34,
+        "offsetUs": -1000000,
+        "speed": 1,
+        "sourceError": null,
+        "audioClockSource": "single_media3_audio_position_bounded_monotonic_interpolation",
+        "audioSelected": true,
+        "audioPlayerCount": 1,
+        "audioVideoTrackDisabled": true,
+        "videoWindowSurfaces": 1,
+        "teacherDurationMs": 122000,
+        "learnerDurationMs": 121000,
+        "teacherFrameRate": 24,
+        "learnerFrameRate": 24,
+        "teacherVideoWidth": 1280,
+        "teacherVideoHeight": 720,
+        "learnerVideoWidth": 1280,
+        "learnerVideoHeight": 720,
+        "overlapDurationUs": 121000000,
+        "seekEvents": 2,
+        "bufferingEvents": 2,
+        "rendererStalls": 0,
+        "resourceCloseFailures": 0,
+        "clockBacksteps": 0,
+        "maxClockBackstepUs": 0,
+        "maxAudioPublishedStepUs": 42000,
+        "maxAudioInterpolationAheadUs": 15000,
+        "audioInterpolationBoundUs": 15000,
+        "processPssKb": 187375,
+        "evidenceType": "joint_gl_submission_source_pts_only",
+        "actualDisplayAcceptance": "NOT_PROVEN",
+        "injectedTestStalls": 0,
+        "jointSubmissions": 2879,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0,
+        "p95ClockSampleAgeUs": 14663,
+        "p95RenderWorkUs": 15460,
+        "p95SwapWaitUs": 2173,
+        "p95PrepareUs": 11246,
+        "p95TextureLatchUs": 2581,
+        "maxClockSampleAgeUs": 27578,
+        "coverageMisses": 0,
+        "observationDurationUs": 119967542,
+        "diagnosticsSaturated": false,
+        "teacherDecoder": "OMX.qcom.video.decoder.avc",
+        "learnerDecoder": "OMX.qcom.video.decoder.avc",
+        "teacherDecodedOutputs": 2954,
+        "learnerDecodedOutputs": 2906,
+        "teacherSkippedOutputs": 48,
+        "learnerSkippedOutputs": 0,
+        "textureWaits": 1,
+        "windows": [
+          {
+            "startUs": 0,
+            "samples": 119,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 5000000,
+            "samples": 121,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 10000000,
+            "samples": 120,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 15000000,
+            "samples": 120,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 20000000,
+            "samples": 120,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 25000000,
+            "samples": 120,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 30000000,
+            "samples": 120,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 35000000,
+            "samples": 119,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 40000000,
+            "samples": 121,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 45000000,
+            "samples": 120,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 50000000,
+            "samples": 120,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 55000000,
+            "samples": 120,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 60000000,
+            "samples": 120,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 65000000,
+            "samples": 120,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 70000000,
+            "samples": 120,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 75000000,
+            "samples": 120,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 80000000,
+            "samples": 120,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 85000000,
+            "samples": 120,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 90000000,
+            "samples": 120,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 95000000,
+            "samples": 120,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 100000000,
+            "samples": 120,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 105000000,
+            "samples": 120,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 110000000,
+            "samples": 120,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 115000000,
+            "samples": 119,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          }
+        ]
+      },
+      "screen": {
+        "schema": "woah.comparison.m0.screen.v1",
+        "status": "SCREEN_CAPTURE_WITHIN_TARGET",
+        "actualDisplayAcceptance": "NOT_PROVEN_PHYSICAL_PANEL",
+        "evidenceType": "decoded_frame_codes_in_compositor_capture",
+        "samples": 3060,
+        "fps": 24,
+        "expectedOffsetUs": -1000000,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0.0,
+        "firstCaptureSeconds": 2.196733,
+        "lastCaptureSeconds": 121.165444,
+        "windows": [
+          {
+            "startSeconds": 0,
+            "samples": 73,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 5,
+            "samples": 129,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 10,
+            "samples": 129,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 15,
+            "samples": 129,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 20,
+            "samples": 127,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 25,
+            "samples": 130,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 30,
+            "samples": 128,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 35,
+            "samples": 128,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 40,
+            "samples": 125,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 45,
+            "samples": 129,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 50,
+            "samples": 128,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 55,
+            "samples": 128,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 60,
+            "samples": 126,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 65,
+            "samples": 129,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 70,
+            "samples": 132,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 75,
+            "samples": 130,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 80,
+            "samples": 128,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 85,
+            "samples": 126,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 90,
+            "samples": 125,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 95,
+            "samples": 132,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 100,
+            "samples": 129,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 105,
+            "samples": 131,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 110,
+            "samples": 129,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 115,
+            "samples": 129,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 120,
+            "samples": 31,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          }
+        ],
+        "limitation": "Screen encoder/compositor can drop frames or sample the two surfaces at different display phases. No panel/scanout proof; thresholds apply only to equal-fps CFR sources.",
+        "decodedCaptureFrames": 3229,
+        "invalidCodes": 0,
+        "excludedFrames": 169,
+        "teacherRect": [
+          0,
+          307,
+          1080,
+          607
+        ],
+        "learnerRect": [
+          0,
+          1083,
+          1080,
+          607
+        ],
+        "teacherSourceSpanUs": 118958333,
+        "uniqueTeacherFrames": 2838
+      },
+      "rawPrefix": "docs/session/comparison-gl-m0-20261025/final/long-24-negative-1x"
+    },
+    {
+      "tag": "long-24-negative-075x",
+      "description": "24fps / -1s / 120s音乐",
+      "metadataEvaluation": "JOINT_GL_METADATA_WITHIN_TARGET",
+      "probe": {
+        "schema": "woah.comparison.m0.gl.v1",
+        "backend": "shared_audio_dual_mediacodec_single_gl",
+        "buildSha": "c57c2681e3ff4f57b3a87755a1d2c131410dea58",
+        "media3": "1.9.2",
+        "device": "OnePlus KB2000",
+        "apiLevel": 34,
+        "offsetUs": -1000000,
+        "speed": 0.75,
+        "sourceError": null,
+        "audioClockSource": "single_media3_audio_position_bounded_monotonic_interpolation",
+        "audioSelected": true,
+        "audioPlayerCount": 1,
+        "audioVideoTrackDisabled": true,
+        "videoWindowSurfaces": 1,
+        "teacherDurationMs": 122000,
+        "learnerDurationMs": 121000,
+        "teacherFrameRate": 24,
+        "learnerFrameRate": 24,
+        "teacherVideoWidth": 1280,
+        "teacherVideoHeight": 720,
+        "learnerVideoWidth": 1280,
+        "learnerVideoHeight": 720,
+        "overlapDurationUs": 121000000,
+        "seekEvents": 3,
+        "bufferingEvents": 3,
+        "rendererStalls": 0,
+        "resourceCloseFailures": 0,
+        "clockBacksteps": 0,
+        "maxClockBackstepUs": 0,
+        "maxAudioPublishedStepUs": 44000,
+        "maxAudioInterpolationAheadUs": 15000,
+        "audioInterpolationBoundUs": 15000,
+        "processPssKb": 189736,
+        "evidenceType": "joint_gl_submission_source_pts_only",
+        "actualDisplayAcceptance": "NOT_PROVEN",
+        "injectedTestStalls": 0,
+        "jointSubmissions": 2884,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0,
+        "p95ClockSampleAgeUs": 14551,
+        "p95RenderWorkUs": 15450,
+        "p95SwapWaitUs": 2350,
+        "p95PrepareUs": 11308,
+        "p95TextureLatchUs": 2411,
+        "maxClockSampleAgeUs": 22605,
+        "coverageMisses": 0,
+        "observationDurationUs": 160181217,
+        "diagnosticsSaturated": false,
+        "teacherDecoder": "OMX.qcom.video.decoder.avc",
+        "learnerDecoder": "OMX.qcom.video.decoder.avc",
+        "teacherDecodedOutputs": 5882,
+        "learnerDecodedOutputs": 5810,
+        "teacherSkippedOutputs": 72,
+        "learnerSkippedOutputs": 0,
+        "textureWaits": 2,
+        "windows": [
+          {
+            "startUs": 0,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 5000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 10000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 15000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 20000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 25000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 30000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 35000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 40000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 45000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 50000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 55000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 60000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 65000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 70000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 75000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 80000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 85000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 90000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 95000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 100000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 105000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 110000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 115000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 120000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 125000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 130000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 135000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 140000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 145000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 150000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 155000000,
+            "samples": 90,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 160000000,
+            "samples": 4,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          }
+        ]
+      },
+      "screen": {
+        "schema": "woah.comparison.m0.screen.v1",
+        "status": "SCREEN_CAPTURE_WITHIN_TARGET",
+        "actualDisplayAcceptance": "NOT_PROVEN_PHYSICAL_PANEL",
+        "evidenceType": "decoded_frame_codes_in_compositor_capture",
+        "samples": 3248,
+        "fps": 24,
+        "expectedOffsetUs": -1000000,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0.0,
+        "firstCaptureSeconds": 2.472322,
+        "lastCaptureSeconds": 161.070189,
+        "windows": [
+          {
+            "startSeconds": 0,
+            "samples": 51,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 5,
+            "samples": 104,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 10,
+            "samples": 101,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 15,
+            "samples": 100,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 20,
+            "samples": 106,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 25,
+            "samples": 103,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 30,
+            "samples": 101,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 35,
+            "samples": 104,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 40,
+            "samples": 105,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 45,
+            "samples": 104,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 50,
+            "samples": 103,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 55,
+            "samples": 103,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 60,
+            "samples": 104,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 65,
+            "samples": 99,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 70,
+            "samples": 101,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 75,
+            "samples": 100,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 80,
+            "samples": 103,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 85,
+            "samples": 103,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 90,
+            "samples": 101,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 95,
+            "samples": 100,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 100,
+            "samples": 100,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 105,
+            "samples": 105,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 110,
+            "samples": 104,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 115,
+            "samples": 103,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 120,
+            "samples": 103,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 125,
+            "samples": 104,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 130,
+            "samples": 103,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 135,
+            "samples": 99,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 140,
+            "samples": 103,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 145,
+            "samples": 104,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 150,
+            "samples": 100,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 155,
+            "samples": 102,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 160,
+            "samples": 22,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          }
+        ],
+        "limitation": "Screen encoder/compositor can drop frames or sample the two surfaces at different display phases. No panel/scanout proof; thresholds apply only to equal-fps CFR sources.",
+        "decodedCaptureFrames": 3409,
+        "invalidCodes": 0,
+        "excludedFrames": 161,
+        "teacherRect": [
+          0,
+          307,
+          1080,
+          607
+        ],
+        "learnerRect": [
+          0,
+          1083,
+          1080,
+          607
+        ],
+        "teacherSourceSpanUs": 118958333,
+        "uniqueTeacherFrames": 2852
+      },
+      "rawPrefix": "docs/session/comparison-gl-m0-20261025/final/long-24-negative-075x"
+    },
+    {
+      "tag": "long-24-negative-05x",
+      "description": "24fps / -1s / 120s音乐",
+      "metadataEvaluation": "JOINT_GL_METADATA_WITHIN_TARGET",
+      "probe": {
+        "schema": "woah.comparison.m0.gl.v1",
+        "backend": "shared_audio_dual_mediacodec_single_gl",
+        "buildSha": "c57c2681e3ff4f57b3a87755a1d2c131410dea58",
+        "media3": "1.9.2",
+        "device": "OnePlus KB2000",
+        "apiLevel": 34,
+        "offsetUs": -1000000,
+        "speed": 0.5,
+        "sourceError": null,
+        "audioClockSource": "single_media3_audio_position_bounded_monotonic_interpolation",
+        "audioSelected": true,
+        "audioPlayerCount": 1,
+        "audioVideoTrackDisabled": true,
+        "videoWindowSurfaces": 1,
+        "teacherDurationMs": 122000,
+        "learnerDurationMs": 121000,
+        "teacherFrameRate": 24,
+        "learnerFrameRate": 24,
+        "teacherVideoWidth": 1280,
+        "teacherVideoHeight": 720,
+        "learnerVideoWidth": 1280,
+        "learnerVideoHeight": 720,
+        "overlapDurationUs": 121000000,
+        "seekEvents": 4,
+        "bufferingEvents": 4,
+        "rendererStalls": 0,
+        "resourceCloseFailures": 0,
+        "clockBacksteps": 0,
+        "maxClockBackstepUs": 0,
+        "maxAudioPublishedStepUs": 44000,
+        "maxAudioInterpolationAheadUs": 15000,
+        "audioInterpolationBoundUs": 15000,
+        "processPssKb": 192974,
+        "evidenceType": "joint_gl_submission_source_pts_only",
+        "actualDisplayAcceptance": "NOT_PROVEN",
+        "injectedTestStalls": 0,
+        "jointSubmissions": 2890,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0,
+        "p95ClockSampleAgeUs": 14678,
+        "p95RenderWorkUs": 15662,
+        "p95SwapWaitUs": 2383,
+        "p95PrepareUs": 11526,
+        "p95TextureLatchUs": 2254,
+        "maxClockSampleAgeUs": 27634,
+        "coverageMisses": 0,
+        "observationDurationUs": 240792058,
+        "diagnosticsSaturated": false,
+        "teacherDecoder": "OMX.qcom.video.decoder.avc",
+        "learnerDecoder": "OMX.qcom.video.decoder.avc",
+        "teacherDecodedOutputs": 8810,
+        "learnerDecodedOutputs": 8714,
+        "teacherSkippedOutputs": 96,
+        "learnerSkippedOutputs": 0,
+        "textureWaits": 4,
+        "windows": [
+          {
+            "startUs": 0,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 5000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 10000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 15000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 20000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 25000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 30000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 35000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 40000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 45000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 50000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 55000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 60000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 65000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 70000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 75000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 80000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 85000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 90000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 95000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 100000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 105000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 110000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 115000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 120000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 125000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 130000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 135000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 140000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 145000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 150000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 155000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 160000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 165000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 170000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 175000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 180000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 185000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 190000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 195000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 200000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 205000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 210000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 215000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 220000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 225000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 230000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 235000000,
+            "samples": 60,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 240000000,
+            "samples": 10,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          }
+        ]
+      },
+      "screen": {
+        "schema": "woah.comparison.m0.screen.v1",
+        "status": "SCREEN_CAPTURE_WITHIN_TARGET",
+        "actualDisplayAcceptance": "NOT_PROVEN_PHYSICAL_PANEL",
+        "evidenceType": "decoded_frame_codes_in_compositor_capture",
+        "samples": 3687,
+        "fps": 24,
+        "expectedOffsetUs": -1000000,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0.0,
+        "firstCaptureSeconds": 3.108067,
+        "lastCaptureSeconds": 241.057011,
+        "windows": [
+          {
+            "startSeconds": 0,
+            "samples": 31,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 5,
+            "samples": 76,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 10,
+            "samples": 78,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 15,
+            "samples": 77,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 20,
+            "samples": 77,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 25,
+            "samples": 77,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 30,
+            "samples": 79,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 35,
+            "samples": 79,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 40,
+            "samples": 76,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 45,
+            "samples": 80,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 50,
+            "samples": 78,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 55,
+            "samples": 76,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 60,
+            "samples": 78,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 65,
+            "samples": 77,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 70,
+            "samples": 76,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 75,
+            "samples": 81,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 80,
+            "samples": 78,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 85,
+            "samples": 76,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 90,
+            "samples": 78,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 95,
+            "samples": 83,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 100,
+            "samples": 75,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 105,
+            "samples": 79,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 110,
+            "samples": 78,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 115,
+            "samples": 73,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 120,
+            "samples": 76,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 125,
+            "samples": 78,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 130,
+            "samples": 77,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 135,
+            "samples": 80,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 140,
+            "samples": 79,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 145,
+            "samples": 76,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 150,
+            "samples": 78,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 155,
+            "samples": 77,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 160,
+            "samples": 75,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 165,
+            "samples": 77,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 170,
+            "samples": 78,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 175,
+            "samples": 77,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 180,
+            "samples": 75,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 185,
+            "samples": 80,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 190,
+            "samples": 79,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 195,
+            "samples": 78,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 200,
+            "samples": 75,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 205,
+            "samples": 80,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 210,
+            "samples": 76,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 215,
+            "samples": 78,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 220,
+            "samples": 72,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 225,
+            "samples": 82,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 230,
+            "samples": 75,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 235,
+            "samples": 77,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 240,
+            "samples": 16,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          }
+        ],
+        "limitation": "Screen encoder/compositor can drop frames or sample the two surfaces at different display phases. No panel/scanout proof; thresholds apply only to equal-fps CFR sources.",
+        "decodedCaptureFrames": 3858,
+        "invalidCodes": 0,
+        "excludedFrames": 171,
+        "teacherRect": [
+          0,
+          307,
+          1080,
+          607
+        ],
+        "learnerRect": [
+          0,
+          1083,
+          1080,
+          607
+        ],
+        "teacherSourceSpanUs": 118958333,
+        "uniqueTeacherFrames": 2853
+      },
+      "rawPrefix": "docs/session/comparison-gl-m0-20261025/final/long-24-negative-05x"
+    },
+    {
+      "tag": "regression-30-positive-1x",
+      "description": "30fps / +3s / 短片",
+      "metadataEvaluation": "JOINT_GL_METADATA_WITHIN_TARGET",
+      "probe": {
+        "schema": "woah.comparison.m0.gl.v1",
+        "backend": "shared_audio_dual_mediacodec_single_gl",
+        "buildSha": "c57c2681e3ff4f57b3a87755a1d2c131410dea58",
+        "media3": "1.9.2",
+        "device": "OnePlus KB2000",
+        "apiLevel": 34,
+        "offsetUs": 3000000,
+        "speed": 1,
+        "sourceError": null,
+        "audioClockSource": "single_media3_audio_position_bounded_monotonic_interpolation",
+        "audioSelected": true,
+        "audioPlayerCount": 1,
+        "audioVideoTrackDisabled": true,
+        "videoWindowSurfaces": 1,
+        "teacherDurationMs": 12000,
+        "learnerDurationMs": 15000,
+        "teacherFrameRate": 30,
+        "learnerFrameRate": 30,
+        "teacherVideoWidth": 640,
+        "teacherVideoHeight": 360,
+        "learnerVideoWidth": 640,
+        "learnerVideoHeight": 360,
+        "overlapDurationUs": 12000000,
+        "seekEvents": 2,
+        "bufferingEvents": 2,
+        "rendererStalls": 0,
+        "resourceCloseFailures": 0,
+        "clockBacksteps": 0,
+        "maxClockBackstepUs": 0,
+        "maxAudioPublishedStepUs": 32000,
+        "maxAudioInterpolationAheadUs": 15000,
+        "audioInterpolationBoundUs": 15000,
+        "processPssKb": 148958,
+        "evidenceType": "joint_gl_submission_source_pts_only",
+        "actualDisplayAcceptance": "NOT_PROVEN",
+        "injectedTestStalls": 0,
+        "jointSubmissions": 329,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0,
+        "p95ClockSampleAgeUs": 15482,
+        "p95RenderWorkUs": 15989,
+        "p95SwapWaitUs": 2100,
+        "p95PrepareUs": 11712,
+        "p95TextureLatchUs": 3592,
+        "maxClockSampleAgeUs": 20908,
+        "coverageMisses": 0,
+        "observationDurationUs": 10954935,
+        "diagnosticsSaturated": false,
+        "teacherDecoder": "OMX.qcom.video.decoder.avc",
+        "learnerDecoder": "OMX.qcom.video.decoder.avc",
+        "teacherDecodedOutputs": 362,
+        "learnerDecodedOutputs": 542,
+        "teacherSkippedOutputs": 0,
+        "learnerSkippedOutputs": 180,
+        "textureWaits": 0,
+        "windows": [
+          {
+            "startUs": 0,
+            "samples": 149,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 5000000,
+            "samples": 150,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 10000000,
+            "samples": 30,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          }
+        ]
+      },
+      "screen": {
+        "schema": "woah.comparison.m0.screen.v1",
+        "status": "SCREEN_CAPTURE_WITHIN_TARGET",
+        "actualDisplayAcceptance": "NOT_PROVEN_PHYSICAL_PANEL",
+        "evidenceType": "decoded_frame_codes_in_compositor_capture",
+        "samples": 308,
+        "fps": 30,
+        "expectedOffsetUs": 3000000,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0.0,
+        "firstCaptureSeconds": 2.243578,
+        "lastCaptureSeconds": 12.239033,
+        "windows": [
+          {
+            "startSeconds": 0,
+            "samples": 85,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 5,
+            "samples": 155,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 10,
+            "samples": 68,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          }
+        ],
+        "limitation": "Screen encoder/compositor can drop frames or sample the two surfaces at different display phases. No panel/scanout proof; thresholds apply only to equal-fps CFR sources.",
+        "decodedCaptureFrames": 434,
+        "invalidCodes": 0,
+        "excludedFrames": 126,
+        "teacherRect": [
+          0,
+          307,
+          1080,
+          607
+        ],
+        "learnerRect": [
+          0,
+          1083,
+          1080,
+          607
+        ]
+      },
+      "rawPrefix": "docs/session/comparison-gl-m0-20261025/final/regression-30-positive-1x"
+    },
+    {
+      "tag": "regression-30-positive-075x",
+      "description": "30fps / +3s / 短片",
+      "metadataEvaluation": "JOINT_GL_METADATA_WITHIN_TARGET",
+      "probe": {
+        "schema": "woah.comparison.m0.gl.v1",
+        "backend": "shared_audio_dual_mediacodec_single_gl",
+        "buildSha": "c57c2681e3ff4f57b3a87755a1d2c131410dea58",
+        "media3": "1.9.2",
+        "device": "OnePlus KB2000",
+        "apiLevel": 34,
+        "offsetUs": 3000000,
+        "speed": 0.75,
+        "sourceError": null,
+        "audioClockSource": "single_media3_audio_position_bounded_monotonic_interpolation",
+        "audioSelected": true,
+        "audioPlayerCount": 1,
+        "audioVideoTrackDisabled": true,
+        "videoWindowSurfaces": 1,
+        "teacherDurationMs": 12000,
+        "learnerDurationMs": 15000,
+        "teacherFrameRate": 30,
+        "learnerFrameRate": 30,
+        "teacherVideoWidth": 640,
+        "teacherVideoHeight": 360,
+        "learnerVideoWidth": 640,
+        "learnerVideoHeight": 360,
+        "overlapDurationUs": 12000000,
+        "seekEvents": 3,
+        "bufferingEvents": 3,
+        "rendererStalls": 0,
+        "resourceCloseFailures": 0,
+        "clockBacksteps": 0,
+        "maxClockBackstepUs": 0,
+        "maxAudioPublishedStepUs": 35000,
+        "maxAudioInterpolationAheadUs": 15000,
+        "audioInterpolationBoundUs": 15000,
+        "processPssKb": 147805,
+        "evidenceType": "joint_gl_submission_source_pts_only",
+        "actualDisplayAcceptance": "NOT_PROVEN",
+        "injectedTestStalls": 0,
+        "jointSubmissions": 335,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0,
+        "p95ClockSampleAgeUs": 14402,
+        "p95RenderWorkUs": 15720,
+        "p95SwapWaitUs": 2278,
+        "p95PrepareUs": 11115,
+        "p95TextureLatchUs": 2435,
+        "maxClockSampleAgeUs": 23667,
+        "coverageMisses": 0,
+        "observationDurationUs": 14857126,
+        "diagnosticsSaturated": false,
+        "teacherDecoder": "OMX.qcom.video.decoder.avc",
+        "learnerDecoder": "OMX.qcom.video.decoder.avc",
+        "teacherDecodedOutputs": 722,
+        "learnerDecodedOutputs": 992,
+        "teacherSkippedOutputs": 0,
+        "learnerSkippedOutputs": 270,
+        "textureWaits": 0,
+        "windows": [
+          {
+            "startUs": 0,
+            "samples": 113,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 5000000,
+            "samples": 112,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 10000000,
+            "samples": 110,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          }
+        ]
+      },
+      "screen": {
+        "schema": "woah.comparison.m0.screen.v1",
+        "status": "SCREEN_CAPTURE_WITHIN_TARGET",
+        "actualDisplayAcceptance": "NOT_PROVEN_PHYSICAL_PANEL",
+        "evidenceType": "decoded_frame_codes_in_compositor_capture",
+        "samples": 328,
+        "fps": 30,
+        "expectedOffsetUs": 3000000,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0.0,
+        "firstCaptureSeconds": 2.5357,
+        "lastCaptureSeconds": 15.8211,
+        "windows": [
+          {
+            "startSeconds": 0,
+            "samples": 60,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 5,
+            "samples": 124,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 10,
+            "samples": 124,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 15,
+            "samples": 20,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          }
+        ],
+        "limitation": "Screen encoder/compositor can drop frames or sample the two surfaces at different display phases. No panel/scanout proof; thresholds apply only to equal-fps CFR sources.",
+        "decodedCaptureFrames": 470,
+        "invalidCodes": 0,
+        "excludedFrames": 142,
+        "teacherRect": [
+          0,
+          307,
+          1080,
+          607
+        ],
+        "learnerRect": [
+          0,
+          1083,
+          1080,
+          607
+        ]
+      },
+      "rawPrefix": "docs/session/comparison-gl-m0-20261025/final/regression-30-positive-075x"
+    },
+    {
+      "tag": "regression-30-positive-05x",
+      "description": "30fps / +3s / 短片",
+      "metadataEvaluation": "JOINT_GL_METADATA_WITHIN_TARGET",
+      "probe": {
+        "schema": "woah.comparison.m0.gl.v1",
+        "backend": "shared_audio_dual_mediacodec_single_gl",
+        "buildSha": "c57c2681e3ff4f57b3a87755a1d2c131410dea58",
+        "media3": "1.9.2",
+        "device": "OnePlus KB2000",
+        "apiLevel": 34,
+        "offsetUs": 3000000,
+        "speed": 0.5,
+        "sourceError": null,
+        "audioClockSource": "single_media3_audio_position_bounded_monotonic_interpolation",
+        "audioSelected": true,
+        "audioPlayerCount": 1,
+        "audioVideoTrackDisabled": true,
+        "videoWindowSurfaces": 1,
+        "teacherDurationMs": 12000,
+        "learnerDurationMs": 15000,
+        "teacherFrameRate": 30,
+        "learnerFrameRate": 30,
+        "teacherVideoWidth": 640,
+        "teacherVideoHeight": 360,
+        "learnerVideoWidth": 640,
+        "learnerVideoHeight": 360,
+        "overlapDurationUs": 12000000,
+        "seekEvents": 4,
+        "bufferingEvents": 4,
+        "rendererStalls": 0,
+        "resourceCloseFailures": 0,
+        "clockBacksteps": 0,
+        "maxClockBackstepUs": 0,
+        "maxAudioPublishedStepUs": 35000,
+        "maxAudioInterpolationAheadUs": 15000,
+        "audioInterpolationBoundUs": 15000,
+        "processPssKb": 148405,
+        "evidenceType": "joint_gl_submission_source_pts_only",
+        "actualDisplayAcceptance": "NOT_PROVEN",
+        "injectedTestStalls": 0,
+        "jointSubmissions": 342,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0,
+        "p95ClockSampleAgeUs": 16667,
+        "p95RenderWorkUs": 17060,
+        "p95SwapWaitUs": 2307,
+        "p95PrepareUs": 13037,
+        "p95TextureLatchUs": 2456,
+        "maxClockSampleAgeUs": 23122,
+        "coverageMisses": 0,
+        "observationDurationUs": 22747400,
+        "diagnosticsSaturated": false,
+        "teacherDecoder": "OMX.qcom.video.decoder.avc",
+        "learnerDecoder": "OMX.qcom.video.decoder.avc",
+        "teacherDecodedOutputs": 1082,
+        "learnerDecodedOutputs": 1442,
+        "teacherSkippedOutputs": 0,
+        "learnerSkippedOutputs": 360,
+        "textureWaits": 0,
+        "windows": [
+          {
+            "startUs": 0,
+            "samples": 75,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 5000000,
+            "samples": 75,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 10000000,
+            "samples": 75,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 15000000,
+            "samples": 75,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 20000000,
+            "samples": 42,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          }
+        ]
+      },
+      "screen": {
+        "schema": "woah.comparison.m0.screen.v1",
+        "status": "SCREEN_CAPTURE_WITHIN_TARGET",
+        "actualDisplayAcceptance": "NOT_PROVEN_PHYSICAL_PANEL",
+        "evidenceType": "decoded_frame_codes_in_compositor_capture",
+        "samples": 350,
+        "fps": 30,
+        "expectedOffsetUs": 3000000,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0.0,
+        "firstCaptureSeconds": 3.104422,
+        "lastCaptureSeconds": 23.062333,
+        "windows": [
+          {
+            "startSeconds": 0,
+            "samples": 33,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 5,
+            "samples": 88,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 10,
+            "samples": 86,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 15,
+            "samples": 88,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 20,
+            "samples": 55,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          }
+        ],
+        "limitation": "Screen encoder/compositor can drop frames or sample the two surfaces at different display phases. No panel/scanout proof; thresholds apply only to equal-fps CFR sources.",
+        "decodedCaptureFrames": 498,
+        "invalidCodes": 0,
+        "excludedFrames": 148,
+        "teacherRect": [
+          0,
+          307,
+          1080,
+          607
+        ],
+        "learnerRect": [
+          0,
+          1083,
+          1080,
+          607
+        ]
+      },
+      "rawPrefix": "docs/session/comparison-gl-m0-20261025/final/regression-30-positive-05x"
+    },
+    {
+      "tag": "profile-60-1080p",
+      "description": "1080p60 / +3s",
+      "metadataEvaluation": "JOINT_GL_METADATA_WITHIN_TARGET",
+      "probe": {
+        "schema": "woah.comparison.m0.gl.v1",
+        "backend": "shared_audio_dual_mediacodec_single_gl",
+        "buildSha": "c57c2681e3ff4f57b3a87755a1d2c131410dea58",
+        "media3": "1.9.2",
+        "device": "OnePlus KB2000",
+        "apiLevel": 34,
+        "offsetUs": 3000000,
+        "speed": 1,
+        "sourceError": null,
+        "audioClockSource": "single_media3_audio_position_bounded_monotonic_interpolation",
+        "audioSelected": true,
+        "audioPlayerCount": 1,
+        "audioVideoTrackDisabled": true,
+        "videoWindowSurfaces": 1,
+        "teacherDurationMs": 12000,
+        "learnerDurationMs": 15000,
+        "teacherFrameRate": 60,
+        "learnerFrameRate": 60,
+        "teacherVideoWidth": 1920,
+        "teacherVideoHeight": 1080,
+        "learnerVideoWidth": 1920,
+        "learnerVideoHeight": 1080,
+        "overlapDurationUs": 12000000,
+        "seekEvents": 1,
+        "bufferingEvents": 1,
+        "rendererStalls": 0,
+        "resourceCloseFailures": 0,
+        "clockBacksteps": 0,
+        "maxClockBackstepUs": 0,
+        "maxAudioPublishedStepUs": 32000,
+        "maxAudioInterpolationAheadUs": 15000,
+        "audioInterpolationBoundUs": 15000,
+        "processPssKb": 225610,
+        "evidenceType": "joint_gl_submission_source_pts_only",
+        "actualDisplayAcceptance": "NOT_PROVEN",
+        "injectedTestStalls": 0,
+        "jointSubmissions": 636,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0,
+        "p95ClockSampleAgeUs": 14094,
+        "p95RenderWorkUs": 13945,
+        "p95SwapWaitUs": 1294,
+        "p95PrepareUs": 9828,
+        "p95TextureLatchUs": 3600,
+        "maxClockSampleAgeUs": 20378,
+        "coverageMisses": 0,
+        "observationDurationUs": 10969471,
+        "diagnosticsSaturated": false,
+        "teacherDecoder": "OMX.qcom.video.decoder.avc",
+        "learnerDecoder": "OMX.qcom.video.decoder.avc",
+        "teacherDecodedOutputs": 720,
+        "learnerDecodedOutputs": 900,
+        "teacherSkippedOutputs": 28,
+        "learnerSkippedOutputs": 208,
+        "textureWaits": 2,
+        "windows": [
+          {
+            "startUs": 0,
+            "samples": 292,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 5000000,
+            "samples": 290,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          },
+          {
+            "startUs": 10000000,
+            "samples": 54,
+            "p95AbsMediaErrorUs": 0,
+            "maxAbsMediaErrorUs": 0,
+            "meanSignedMediaErrorUs": 0
+          }
+        ]
+      },
+      "screen": {
+        "schema": "woah.comparison.m0.screen.v1",
+        "status": "SCREEN_CAPTURE_WITHIN_TARGET",
+        "actualDisplayAcceptance": "NOT_PROVEN_PHYSICAL_PANEL",
+        "evidenceType": "decoded_frame_codes_in_compositor_capture",
+        "samples": 568,
+        "fps": 60,
+        "expectedOffsetUs": 3000000,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0.0,
+        "firstCaptureSeconds": 2.426311,
+        "lastCaptureSeconds": 12.419778,
+        "windows": [
+          {
+            "startSeconds": 0,
+            "samples": 149,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 5,
+            "samples": 280,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          },
+          {
+            "startSeconds": 10,
+            "samples": 139,
+            "meanSignedErrorUs": 0.0,
+            "maxAbsErrorUs": 0
+          }
+        ],
+        "limitation": "Screen encoder/compositor can drop frames or sample the two surfaces at different display phases. No panel/scanout proof; thresholds apply only to equal-fps CFR sources.",
+        "decodedCaptureFrames": 732,
+        "invalidCodes": 0,
+        "excludedFrames": 164,
+        "teacherRect": [
+          0,
+          307,
+          1080,
+          607
+        ],
+        "learnerRect": [
+          0,
+          1083,
+          1080,
+          607
+        ]
+      },
+      "rawPrefix": "docs/session/comparison-gl-m0-20261025/final/profile-60-1080p"
+    }
+  ],
+  "mixedAndVfr": [
+    {
+      "tag": "mixed-24-30",
+      "probe": {
+        "schema": "woah.comparison.m0.gl.v1",
+        "backend": "shared_audio_dual_mediacodec_single_gl",
+        "buildSha": "c57c2681e3ff4f57b3a87755a1d2c131410dea58",
+        "media3": "1.9.2",
+        "device": "OnePlus KB2000",
+        "apiLevel": 34,
+        "offsetUs": 3000000,
+        "speed": 1,
+        "sourceError": null,
+        "audioClockSource": "single_media3_audio_position_bounded_monotonic_interpolation",
+        "audioSelected": true,
+        "audioPlayerCount": 1,
+        "audioVideoTrackDisabled": true,
+        "videoWindowSurfaces": 1,
+        "teacherDurationMs": 12000,
+        "learnerDurationMs": 15000,
+        "teacherFrameRate": 24,
+        "learnerFrameRate": 30,
+        "teacherVideoWidth": 1280,
+        "teacherVideoHeight": 720,
+        "learnerVideoWidth": 640,
+        "learnerVideoHeight": 360,
+        "overlapDurationUs": 12000000,
+        "seekEvents": 1,
+        "bufferingEvents": 1,
+        "rendererStalls": 0,
+        "resourceCloseFailures": 0,
+        "clockBacksteps": 0,
+        "maxClockBackstepUs": 0,
+        "maxAudioPublishedStepUs": 40000,
+        "maxAudioInterpolationAheadUs": 15000,
+        "audioInterpolationBoundUs": 15000,
+        "processPssKb": 169565,
+        "evidenceType": "joint_gl_submission_source_pts_only",
+        "actualDisplayAcceptance": "NOT_PROVEN",
+        "injectedTestStalls": 0,
+        "jointSubmissions": 453,
+        "p95AbsMediaErrorUs": 33333,
+        "maxAbsMediaErrorUs": 33334,
+        "meanSignedMediaErrorUs": 4267.852097130243,
+        "p95ClockSampleAgeUs": 13229,
+        "p95RenderWorkUs": 13456,
+        "p95SwapWaitUs": 2085,
+        "p95PrepareUs": 9762,
+        "p95TextureLatchUs": 3139,
+        "maxClockSampleAgeUs": 22967,
+        "coverageMisses": 0,
+        "observationDurationUs": 10971413,
+        "diagnosticsSaturated": false,
+        "teacherDecoder": "OMX.qcom.video.decoder.avc",
+        "learnerDecoder": "OMX.qcom.video.decoder.avc",
+        "teacherDecodedOutputs": 288,
+        "learnerDecodedOutputs": 450,
+        "teacherSkippedOutputs": 0,
+        "learnerSkippedOutputs": 90,
+        "textureWaits": 1,
+        "windows": [
+          {
+            "startUs": 0,
+            "samples": 205,
+            "p95AbsMediaErrorUs": 33333,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 4674.804878048781
+          },
+          {
+            "startUs": 5000000,
+            "samples": 207,
+            "p95AbsMediaErrorUs": 33333,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": 4388.091787439614
+          },
+          {
+            "startUs": 10000000,
+            "samples": 41,
+            "p95AbsMediaErrorUs": 25000,
+            "maxAbsMediaErrorUs": 33333,
+            "meanSignedMediaErrorUs": 1626.0243902439024
+          }
+        ]
+      },
+      "screenFrameCoverage": {
+        "schema": "woah.comparison.m0.frame-coverage.v1",
+        "status": "FRAME_COVERAGE_WITHIN_TARGET",
+        "actualDisplayAcceptance": "NOT_PROVEN_PHYSICAL_PANEL",
+        "evidenceType": "captured_fixture_codes_and_actual_source_pts_intervals",
+        "samples": 412,
+        "expectedOffsetUs": 3000000,
+        "p95IntervalGapUs": 0,
+        "maxIntervalGapUs": 0,
+        "intervalQuantizationToleranceUs": 1,
+        "p95AbsFrameStartDeltaUs": 33333,
+        "maxAbsFrameStartDeltaUs": 33334,
+        "teacherSourceSpanUs": 9958333,
+        "learnerSourceSpanUs": 9966667,
+        "uniqueTeacherFrames": 240,
+        "uniqueLearnerFrames": 299,
+        "limitation": "Frame intervals may overlap or touch within 1us quantization. Start-PTS deltas can differ naturally for mixed/VFR sources; this checks captured frame coverage, not audio latency or panel scanout."
+      }
+    },
+    {
+      "tag": "vfr-30",
+      "probe": {
+        "schema": "woah.comparison.m0.gl.v1",
+        "backend": "shared_audio_dual_mediacodec_single_gl",
+        "buildSha": "c57c2681e3ff4f57b3a87755a1d2c131410dea58",
+        "media3": "1.9.2",
+        "device": "OnePlus KB2000",
+        "apiLevel": 34,
+        "offsetUs": 3000000,
+        "speed": 1,
+        "sourceError": null,
+        "audioClockSource": "single_media3_audio_position_bounded_monotonic_interpolation",
+        "audioSelected": true,
+        "audioPlayerCount": 1,
+        "audioVideoTrackDisabled": true,
+        "videoWindowSurfaces": 1,
+        "teacherDurationMs": 12000,
+        "learnerDurationMs": 15033,
+        "teacherFrameRate": 27,
+        "learnerFrameRate": 26,
+        "teacherVideoWidth": 640,
+        "teacherVideoHeight": 360,
+        "learnerVideoWidth": 640,
+        "learnerVideoHeight": 360,
+        "overlapDurationUs": 12000000,
+        "seekEvents": 1,
+        "bufferingEvents": 1,
+        "rendererStalls": 0,
+        "resourceCloseFailures": 0,
+        "clockBacksteps": 0,
+        "maxClockBackstepUs": 0,
+        "maxAudioPublishedStepUs": 41000,
+        "maxAudioInterpolationAheadUs": 15000,
+        "audioInterpolationBoundUs": 15000,
+        "processPssKb": 151688,
+        "evidenceType": "joint_gl_submission_source_pts_only",
+        "actualDisplayAcceptance": "NOT_PROVEN",
+        "injectedTestStalls": 0,
+        "jointSubmissions": 326,
+        "p95AbsMediaErrorUs": 33334,
+        "maxAbsMediaErrorUs": 33334,
+        "meanSignedMediaErrorUs": -1738.239263803681,
+        "p95ClockSampleAgeUs": 13891,
+        "p95RenderWorkUs": 14540,
+        "p95SwapWaitUs": 1833,
+        "p95PrepareUs": 10368,
+        "p95TextureLatchUs": 3088,
+        "maxClockSampleAgeUs": 20523,
+        "coverageMisses": 0,
+        "observationDurationUs": 10954852,
+        "diagnosticsSaturated": false,
+        "teacherDecoder": "OMX.qcom.video.decoder.avc",
+        "learnerDecoder": "OMX.qcom.video.decoder.avc",
+        "teacherDecodedOutputs": 327,
+        "learnerDecodedOutputs": 386,
+        "teacherSkippedOutputs": 0,
+        "learnerSkippedOutputs": 77,
+        "textureWaits": 1,
+        "windows": [
+          {
+            "startUs": 0,
+            "samples": 149,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -1789.7046979865772
+          },
+          {
+            "startUs": 5000000,
+            "samples": 147,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -1814.061224489796
+          },
+          {
+            "startUs": 10000000,
+            "samples": 30,
+            "p95AbsMediaErrorUs": 33334,
+            "maxAbsMediaErrorUs": 33334,
+            "meanSignedMediaErrorUs": -1111.1
+          }
+        ]
+      },
+      "screenFrameCoverage": {
+        "schema": "woah.comparison.m0.frame-coverage.v1",
+        "status": "FRAME_COVERAGE_WITHIN_TARGET",
+        "actualDisplayAcceptance": "NOT_PROVEN_PHYSICAL_PANEL",
+        "evidenceType": "captured_fixture_codes_and_actual_source_pts_intervals",
+        "samples": 303,
+        "expectedOffsetUs": 3000000,
+        "p95IntervalGapUs": 0,
+        "maxIntervalGapUs": 0,
+        "intervalQuantizationToleranceUs": 1,
+        "p95AbsFrameStartDeltaUs": 33334,
+        "maxAbsFrameStartDeltaUs": 33334,
+        "teacherSourceSpanUs": 9966667,
+        "learnerSourceSpanUs": 9966667,
+        "uniqueTeacherFrames": 270,
+        "uniqueLearnerFrames": 255,
+        "limitation": "Frame intervals may overlap or touch within 1us quantization. Start-PTS deltas can differ naturally for mixed/VFR sources; this checks captured frame coverage, not audio latency or panel scanout."
+      }
+    }
+  ],
+  "controls": [
+    {
+      "case": "initial",
+      "teacherFrame": 0,
+      "learnerFrame": 90,
+      "expectedTeacherFrame": 0,
+      "expectedLearnerFrame": 90,
+      "pass": true
+    },
+    {
+      "case": "seek-50",
+      "teacherFrame": 180,
+      "learnerFrame": 270,
+      "expectedTeacherFrame": 180,
+      "expectedLearnerFrame": 270,
+      "pass": true
+    },
+    {
+      "case": "seek-90",
+      "teacherFrame": 324,
+      "learnerFrame": 414,
+      "expectedTeacherFrame": 324,
+      "expectedLearnerFrame": 414,
+      "pass": true
+    },
+    {
+      "case": "seek-0",
+      "teacherFrame": 0,
+      "learnerFrame": 90,
+      "expectedTeacherFrame": 0,
+      "expectedLearnerFrame": 90,
+      "pass": true
+    },
+    {
+      "case": "jump-plus10",
+      "teacherFrame": 300,
+      "learnerFrame": 390,
+      "expectedTeacherFrame": 300,
+      "expectedLearnerFrame": 390,
+      "pass": true
+    },
+    {
+      "case": "jump-minus10",
+      "teacherFrame": 0,
+      "learnerFrame": 90,
+      "expectedTeacherFrame": 0,
+      "expectedLearnerFrame": 90,
+      "pass": true
+    },
+    {
+      "case": "offset-plus100ms",
+      "teacherFrame": 0,
+      "learnerFrame": 93,
+      "expectedTeacherFrame": 0,
+      "expectedLearnerFrame": 93,
+      "pass": true
+    },
+    {
+      "case": "offset-restored100ms",
+      "teacherFrame": 0,
+      "learnerFrame": 90,
+      "expectedTeacherFrame": 0,
+      "expectedLearnerFrame": 90,
+      "pass": true
+    },
+    {
+      "case": "offset-plus10ms",
+      "teacherFrame": 0,
+      "learnerFrame": 90,
+      "expectedTeacherFrame": 0,
+      "expectedLearnerFrame": 90,
+      "pass": true
+    },
+    {
+      "case": "offset-restored10ms",
+      "teacherFrame": 0,
+      "learnerFrame": 90,
+      "expectedTeacherFrame": 0,
+      "expectedLearnerFrame": 90,
+      "pass": true
+    },
+    {
+      "case": "rapid-seek-final90",
+      "teacherFrame": 324,
+      "learnerFrame": 414,
+      "expectedTeacherFrame": 324,
+      "expectedLearnerFrame": 414,
+      "pass": true
+    },
+    {
+      "case": "pause",
+      "teacherFrame": 57,
+      "learnerFrame": 147
+    },
+    {
+      "case": "pause-held",
+      "teacherFrame": 57,
+      "learnerFrame": 147,
+      "expectedTeacherFrame": 57,
+      "expectedLearnerFrame": 147,
+      "pass": true
+    },
+    {
+      "case": "background-resume-paused",
+      "teacherFrame": 57,
+      "learnerFrame": 147,
+      "expectedTeacherFrame": 57,
+      "expectedLearnerFrame": 147,
+      "pass": true
+    },
+    {
+      "case": "resume-play",
+      "teacherFrame": 116,
+      "learnerFrame": 206,
+      "bothAdvanced": true
+    },
+    {
+      "case": "playing-seek-recovered",
+      "teacherFrame": 188,
+      "learnerFrame": 278,
+      "nearTargetAndPaired": true
+    }
+  ],
+  "negativeOffsetControls": [
+    {
+      "case": "initial",
+      "frames": [
+        24,
+        0
+      ],
+      "expected": [
+        24,
+        0
+      ],
+      "pass": true
+    },
+    {
+      "case": "seek-50",
+      "frames": [
+        156,
+        132
+      ],
+      "expected": [
+        156,
+        132
+      ],
+      "pass": true
+    },
+    {
+      "case": "seek-90",
+      "frames": [
+        261,
+        237
+      ],
+      "expected": [
+        261,
+        237
+      ],
+      "pass": true
+    },
+    {
+      "case": "seek-0",
+      "frames": [
+        24,
+        0
+      ],
+      "expected": [
+        24,
+        0
+      ],
+      "pass": true
+    }
+  ],
+  "bufferRecovery": {
+    "before": [
+      60,
+      150
+    ],
+    "after": [
+      135,
+      225
+    ],
+    "injectedMs": 150,
+    "injectedTestStalls": 1,
+    "rendererStalls": 1,
+    "coverageMisses": 0,
+    "sourceError": null,
+    "screen": "SCREEN_CAPTURE_WITHIN_TARGET"
+  },
+  "bufferRecoveryScreen": {
+    "schema": "woah.comparison.m0.screen.v1",
+    "status": "SCREEN_CAPTURE_WITHIN_TARGET",
+    "actualDisplayAcceptance": "NOT_PROVEN_PHYSICAL_PANEL",
+    "evidenceType": "decoded_frame_codes_in_compositor_capture",
+    "samples": 301,
+    "fps": 30,
+    "expectedOffsetUs": 3000000,
+    "p95AbsMediaErrorUs": 0,
+    "maxAbsMediaErrorUs": 0,
+    "meanSignedMediaErrorUs": 0.0,
+    "firstCaptureSeconds": 2.343689,
+    "lastCaptureSeconds": 12.037722,
+    "windows": [
+      {
+        "startSeconds": 0,
+        "samples": 80,
+        "meanSignedErrorUs": 0.0,
+        "maxAbsErrorUs": 0
+      },
+      {
+        "startSeconds": 5,
+        "samples": 156,
+        "meanSignedErrorUs": 0.0,
+        "maxAbsErrorUs": 0
+      },
+      {
+        "startSeconds": 10,
+        "samples": 65,
+        "meanSignedErrorUs": 0.0,
+        "maxAbsErrorUs": 0
+      }
+    ],
+    "worstExamples": [
+      {
+        "captureSeconds": 2.343689,
+        "teacherFrame": 30,
+        "learnerFrame": 120,
+        "errorUs": 0
+      },
+      {
+        "captureSeconds": 2.376556,
+        "teacherFrame": 31,
+        "learnerFrame": 121,
+        "errorUs": 0
+      },
+      {
+        "captureSeconds": 2.409078,
+        "teacherFrame": 32,
+        "learnerFrame": 122,
+        "errorUs": 0
+      },
+      {
+        "captureSeconds": 2.441378,
+        "teacherFrame": 33,
+        "learnerFrame": 123,
+        "errorUs": 0
+      },
+      {
+        "captureSeconds": 2.459144,
+        "teacherFrame": 34,
+        "learnerFrame": 124,
+        "errorUs": 0
+      },
+      {
+        "captureSeconds": 2.508556,
+        "teacherFrame": 35,
+        "learnerFrame": 125,
+        "errorUs": 0
+      },
+      {
+        "captureSeconds": 2.542656,
+        "teacherFrame": 36,
+        "learnerFrame": 126,
+        "errorUs": 0
+      },
+      {
+        "captureSeconds": 2.576211,
+        "teacherFrame": 37,
+        "learnerFrame": 127,
+        "errorUs": 0
+      },
+      {
+        "captureSeconds": 2.625678,
+        "teacherFrame": 38,
+        "learnerFrame": 128,
+        "errorUs": 0
+      },
+      {
+        "captureSeconds": 2.640644,
+        "teacherFrame": 39,
+        "learnerFrame": 129,
+        "errorUs": 0
+      },
+      {
+        "captureSeconds": 2.6753,
+        "teacherFrame": 40,
+        "learnerFrame": 130,
+        "errorUs": 0
+      },
+      {
+        "captureSeconds": 2.708833,
+        "teacherFrame": 41,
+        "learnerFrame": 131,
+        "errorUs": 0
+      }
+    ],
+    "limitation": "Screen encoder/compositor can drop frames or sample the two surfaces at different display phases. No panel/scanout proof; thresholds apply only to equal-fps CFR sources.",
+    "recording": "docs\\session\\comparison-gl-m0-20261025\\final\\buffer-recovery.mp4",
+    "decodedCaptureFrames": 364,
+    "invalidCodes": 0,
+    "excludedFrames": 63,
+    "teacherRect": [
+      0,
+      307,
+      1080,
+      607
+    ],
+    "learnerRect": [
+      0,
+      1083,
+      1080,
+      607
+    ]
+  },
+  "lifecycle": {
+    "originalSettings": {
+      "accelerometer_rotation": "0",
+      "user_rotation": "0"
+    },
+    "originalWmRotation": "lock 0",
+    "rotationControl": "wm user-rotation",
+    "before": [
+      180,
+      270
+    ],
+    "cycles": [
+      {
+        "cycle": 1,
+        "frames": [
+          180,
+          270
+        ],
+        "processPssKb": 116323,
+        "sourceError": null,
+        "resourceCloseFailures": 0
+      },
+      {
+        "cycle": 2,
+        "frames": [
+          180,
+          270
+        ],
+        "processPssKb": 126358,
+        "sourceError": null,
+        "resourceCloseFailures": 0
+      },
+      {
+        "cycle": 3,
+        "frames": [
+          180,
+          270
+        ],
+        "processPssKb": 126713,
+        "sourceError": null,
+        "resourceCloseFailures": 0
+      }
+    ],
+    "landscapePixels": {
+      "bluePixels": 2629,
+      "purplePixels": 3280,
+      "size": [
+        2400,
+        1080
+      ]
+    },
+    "portraitRestored": [
+      180,
+      270
+    ],
+    "restoredWmRotation": "lock 0",
+    "restoredSettings": {
+      "accelerometer_rotation": "0",
+      "user_rotation": "0"
+    }
+  },
+  "fixtureAacCalibration": {
+    "fixture": "24fps negative-one-second long MP4 decoded AAC",
+    "teacherTrimSeconds": [
+      2,
+      5
+    ],
+    "learnerTrimSeconds": [
+      1,
+      4
+    ],
+    "expectedOffsetUs": -1000000,
+    "alignedLocalCorrelationSamples": 46464,
+    "meanAlignedCorrelation": 0.9910735682181542,
+    "minimumAlignedCorrelation": 0.0,
+    "maximumAlignedCorrelation": 0.9999949336051941,
+    "method": "FFmpeg axcorrelate size=1024 algo=fast after known fixture music-start trim",
+    "limitation": "Source fixture calibration only; not phone acoustic output latency or song matching acceptance"
+  },
+  "rapidNegativeSeeks": [
+    {
+      "burst": 1,
+      "requestOrder": [
+        0.1,
+        0.5,
+        0.9
+      ],
+      "frames": [
+        261,
+        237
+      ],
+      "expected": [
+        261,
+        237
+      ],
+      "pass": true
+    },
+    {
+      "burst": 2,
+      "requestOrder": [
+        0.9,
+        0.1,
+        0.5
+      ],
+      "frames": [
+        156,
+        132
+      ],
+      "expected": [
+        156,
+        132
+      ],
+      "pass": true
+    },
+    {
+      "burst": 3,
+      "requestOrder": [
+        0.5,
+        0.9,
+        0.1
+      ],
+      "frames": [
+        50,
+        26
+      ],
+      "expected": [
+        50,
+        26
+      ],
+      "pass": true
+    },
+    {
+      "burst": 4,
+      "requestOrder": [
+        0.1,
+        0.5,
+        0.9
+      ],
+      "frames": [
+        261,
+        237
+      ],
+      "expected": [
+        261,
+        237
+      ],
+      "pass": true
+    },
+    {
+      "burst": 5,
+      "requestOrder": [
+        0.9,
+        0.1,
+        0.5
+      ],
+      "frames": [
+        156,
+        132
+      ],
+      "expected": [
+        156,
+        132
+      ],
+      "pass": true
+    },
+    {
+      "burst": 6,
+      "requestOrder": [
+        0.5,
+        0.9,
+        0.1
+      ],
+      "frames": [
+        50,
+        26
+      ],
+      "expected": [
+        50,
+        26
+      ],
+      "pass": true
+    },
+    {
+      "burst": 7,
+      "requestOrder": [
+        0.1,
+        0.5,
+        0.9
+      ],
+      "frames": [
+        261,
+        237
+      ],
+      "expected": [
+        261,
+        237
+      ],
+      "pass": true
+    },
+    {
+      "burst": 8,
+      "requestOrder": [
+        0.9,
+        0.1,
+        0.5
+      ],
+      "frames": [
+        156,
+        132
+      ],
+      "expected": [
+        156,
+        132
+      ],
+      "pass": true
+    },
+    {
+      "burst": 9,
+      "requestOrder": [
+        0.5,
+        0.9,
+        0.1
+      ],
+      "frames": [
+        50,
+        26
+      ],
+      "expected": [
+        50,
+        26
+      ],
+      "pass": true
+    },
+    {
+      "burst": 10,
+      "requestOrder": [
+        0.1,
+        0.5,
+        0.9
+      ],
+      "frames": [
+        261,
+        237
+      ],
+      "expected": [
+        261,
+        237
+      ],
+      "pass": true
+    }
+  ],
+  "playingBackgroundReturn": {
+    "returnedPausedFrames": [
+      60,
+      150
+    ],
+    "heldFrames": [
+      60,
+      150
+    ],
+    "resumedFrames": [
+      103,
+      193
+    ],
+    "sourceError": null,
+    "resourceCloseFailures": 0,
+    "buildSha": "c57c2681e3ff4f57b3a87755a1d2c131410dea58"
+  },
+  "longRunLogCheck": {
+    "pid": "12234",
+    "matches": {
+      "FATAL EXCEPTION": 0,
+      "Shared-clock backend failed": 0,
+      "Resource release failed": 0
+    }
+  },
+  "unrecorded60PerformanceControl": {
+    "schema": "woah.comparison.m0.gl.v1",
+    "backend": "shared_audio_dual_mediacodec_single_gl",
+    "buildSha": "c57c2681e3ff4f57b3a87755a1d2c131410dea58",
+    "media3": "1.9.2",
+    "device": "OnePlus KB2000",
+    "apiLevel": 34,
+    "offsetUs": 3000000,
+    "speed": 1,
+    "sourceError": null,
+    "audioClockSource": "single_media3_audio_position_bounded_monotonic_interpolation",
+    "audioSelected": true,
+    "audioPlayerCount": 1,
+    "audioVideoTrackDisabled": true,
+    "videoWindowSurfaces": 1,
+    "teacherDurationMs": 12000,
+    "learnerDurationMs": 15000,
+    "teacherFrameRate": 60,
+    "learnerFrameRate": 60,
+    "teacherVideoWidth": 1920,
+    "teacherVideoHeight": 1080,
+    "learnerVideoWidth": 1920,
+    "learnerVideoHeight": 1080,
+    "overlapDurationUs": 12000000,
+    "seekEvents": 1,
+    "bufferingEvents": 1,
+    "rendererStalls": 0,
+    "resourceCloseFailures": 0,
+    "clockBacksteps": 0,
+    "maxClockBackstepUs": 0,
+    "maxAudioPublishedStepUs": 40000,
+    "maxAudioInterpolationAheadUs": 15000,
+    "audioInterpolationBoundUs": 15000,
+    "processPssKb": 222407,
+    "evidenceType": "joint_gl_submission_source_pts_only",
+    "actualDisplayAcceptance": "NOT_PROVEN",
+    "injectedTestStalls": 0,
+    "jointSubmissions": 639,
+    "p95AbsMediaErrorUs": 0,
+    "maxAbsMediaErrorUs": 0,
+    "meanSignedMediaErrorUs": 0,
+    "p95ClockSampleAgeUs": 12347,
+    "p95RenderWorkUs": 12498,
+    "p95SwapWaitUs": 1575,
+    "p95PrepareUs": 9099,
+    "p95TextureLatchUs": 2306,
+    "maxClockSampleAgeUs": 35527,
+    "coverageMisses": 0,
+    "observationDurationUs": 10976156,
+    "diagnosticsSaturated": false,
+    "teacherDecoder": "OMX.qcom.video.decoder.avc",
+    "learnerDecoder": "OMX.qcom.video.decoder.avc",
+    "teacherDecodedOutputs": 720,
+    "learnerDecodedOutputs": 900,
+    "teacherSkippedOutputs": 25,
+    "learnerSkippedOutputs": 205,
+    "textureWaits": 0,
+    "windows": [
+      {
+        "startUs": 0,
+        "samples": 291,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0
+      },
+      {
+        "startUs": 5000000,
+        "samples": 289,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0
+      },
+      {
+        "startUs": 10000000,
+        "samples": 59,
+        "p95AbsMediaErrorUs": 0,
+        "maxAbsMediaErrorUs": 0,
+        "meanSignedMediaErrorUs": 0
+      }
+    ],
+    "samples": [
+      {
+        "teacherPtsUs": 11600000,
+        "learnerPtsUs": 14600000,
+        "targetTeacherUs": 11605135,
+        "errorUs": 0,
+        "clockSampleAgeUs": 9051
+      },
+      {
+        "teacherPtsUs": 11616666,
+        "learnerPtsUs": 14616666,
+        "targetTeacherUs": 11621730,
+        "errorUs": 0,
+        "clockSampleAgeUs": 8419
+      },
+      {
+        "teacherPtsUs": 11633333,
+        "learnerPtsUs": 14633333,
+        "targetTeacherUs": 11638069,
+        "errorUs": 0,
+        "clockSampleAgeUs": 7353
+      },
+      {
+        "teacherPtsUs": 11650000,
+        "learnerPtsUs": 14650000,
+        "targetTeacherUs": 11654687,
+        "errorUs": 0,
+        "clockSampleAgeUs": 9740
+      },
+      {
+        "teacherPtsUs": 11666666,
+        "learnerPtsUs": 14666666,
+        "targetTeacherUs": 11670979,
+        "errorUs": 0,
+        "clockSampleAgeUs": 7874
+      },
+      {
+        "teacherPtsUs": 11683333,
+        "learnerPtsUs": 14683333,
+        "targetTeacherUs": 11687350,
+        "errorUs": 0,
+        "clockSampleAgeUs": 12450
+      },
+      {
+        "teacherPtsUs": 11700000,
+        "learnerPtsUs": 14700000,
+        "targetTeacherUs": 11706991,
+        "errorUs": 0,
+        "clockSampleAgeUs": 7306
+      },
+      {
+        "teacherPtsUs": 11716666,
+        "learnerPtsUs": 14716666,
+        "targetTeacherUs": 11726022,
+        "errorUs": 0,
+        "clockSampleAgeUs": 9192
+      },
+      {
+        "teacherPtsUs": 11733333,
+        "learnerPtsUs": 14733333,
+        "targetTeacherUs": 11736788,
+        "errorUs": 0,
+        "clockSampleAgeUs": 7390
+      },
+      {
+        "teacherPtsUs": 11750000,
+        "learnerPtsUs": 14750000,
+        "targetTeacherUs": 11754226,
+        "errorUs": 0,
+        "clockSampleAgeUs": 7552
+      },
+      {
+        "teacherPtsUs": 11766666,
+        "learnerPtsUs": 14766666,
+        "targetTeacherUs": 11770360,
+        "errorUs": 0,
+        "clockSampleAgeUs": 7386
+      },
+      {
+        "teacherPtsUs": 11783333,
+        "learnerPtsUs": 14783333,
+        "targetTeacherUs": 11787100,
+        "errorUs": 0,
+        "clockSampleAgeUs": 7337
+      },
+      {
+        "teacherPtsUs": 11800000,
+        "learnerPtsUs": 14800000,
+        "targetTeacherUs": 11803270,
+        "errorUs": 0,
+        "clockSampleAgeUs": 7461
+      },
+      {
+        "teacherPtsUs": 11816666,
+        "learnerPtsUs": 14816666,
+        "targetTeacherUs": 11819755,
+        "errorUs": 0,
+        "clockSampleAgeUs": 7531
+      },
+      {
+        "teacherPtsUs": 11833333,
+        "learnerPtsUs": 14833333,
+        "targetTeacherUs": 11836294,
+        "errorUs": 0,
+        "clockSampleAgeUs": 8191
+      },
+      {
+        "teacherPtsUs": 11850000,
+        "learnerPtsUs": 14850000,
+        "targetTeacherUs": 11852248,
+        "errorUs": 0,
+        "clockSampleAgeUs": 7491
+      },
+      {
+        "teacherPtsUs": 11866666,
+        "learnerPtsUs": 14866666,
+        "targetTeacherUs": 11869497,
+        "errorUs": 0,
+        "clockSampleAgeUs": 5884
+      },
+      {
+        "teacherPtsUs": 11883333,
+        "learnerPtsUs": 14883333,
+        "targetTeacherUs": 11885897,
+        "errorUs": 0,
+        "clockSampleAgeUs": 7155
+      },
+      {
+        "teacherPtsUs": 11900000,
+        "learnerPtsUs": 14900000,
+        "targetTeacherUs": 11902488,
+        "errorUs": 0,
+        "clockSampleAgeUs": 4929
+      },
+      {
+        "teacherPtsUs": 11916666,
+        "learnerPtsUs": 14916666,
+        "targetTeacherUs": 11919208,
+        "errorUs": 0,
+        "clockSampleAgeUs": 6508
+      },
+      {
+        "teacherPtsUs": 11933333,
+        "learnerPtsUs": 14933333,
+        "targetTeacherUs": 11935859,
+        "errorUs": 0,
+        "clockSampleAgeUs": 5384
+      },
+      {
+        "teacherPtsUs": 11950000,
+        "learnerPtsUs": 14950000,
+        "targetTeacherUs": 11952621,
+        "errorUs": 0,
+        "clockSampleAgeUs": 6646
+      },
+      {
+        "teacherPtsUs": 11966666,
+        "learnerPtsUs": 14966666,
+        "targetTeacherUs": 11968992,
+        "errorUs": 0,
+        "clockSampleAgeUs": 5154
+      },
+      {
+        "teacherPtsUs": 11983333,
+        "learnerPtsUs": 14983333,
+        "targetTeacherUs": 11985393,
+        "errorUs": 0,
+        "clockSampleAgeUs": 5594
+      }
+    ]
+  },
+  "previousBackend": {
+    "report": "docs/comparison-m0-device-2026-10-25.json",
+    "gate": "REJECT_CURRENT_DUAL_EXOPLAYER_COORDINATOR",
+    "priority24NegativeScreenP95Us": 83333.33333333333,
+    "priority24NegativeScreenMaxUs": 83333.33333333333
+  },
+  "limitations": [
+    "Encoded compositor capture is not physical panel scanout or external high-speed camera evidence.",
+    "No acoustic output latency or automatic song alignment acceptance; only one audio track is selected and used as master.",
+    "Known local zero-based finite H264/AAC fixtures only; no universal device/codec/real-dance footage certification.",
+    "1080p60 measured submission cadence is reported, not guaranteed lossless 60fps.",
+    "M1, iOS, export, automatic matching, unrelated Release QA and remote push remain outside this run."
+  ],
+  "rawEvidenceRoot": "docs/session/comparison-gl-m0-20261025"
+}

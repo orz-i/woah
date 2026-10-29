@@ -1,0 +1,186 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-25",
+  "branch": "feat/dance-comparison-m0",
+  "verdict": "pass_for_current_android_device_and_selected_real_pair",
+  "codeCommit": "1a2566989398e29dc28e9161040fc13d049460d9",
+  "apk": {
+    "path": "mobile/app/build/app/outputs/flutter-apk/app-debug.apk",
+    "bytes": 272629751,
+    "sha256": "4e2da43e93195ec38762565cac68669e1aacc0975facada0be891df6e31480aa",
+    "installedHashVerified": true
+  },
+  "device": {
+    "model": "OnePlus KB2000 (8T)",
+    "android": 14,
+    "api": 34
+  },
+  "sources": {
+    "teacher": {
+      "fps": "30/1",
+      "durationUs": 17900000,
+      "audioRate": 44100
+    },
+    "learner": {
+      "fps": "60000/1001",
+      "durationUs": 19868889,
+      "audioRate": 48000,
+      "format": "3840x2160 HEVC Main10"
+    }
+  },
+  "automaticMusic": {
+    "status": "matched",
+    "elapsedMs": 8134,
+    "offsetUs": 1490000,
+    "spectralScoreNotProbability": 0.5626138020966862,
+    "agreeingWindows": 3,
+    "supportSeconds": 17.84,
+    "maxWindowResidualMs": 10.0,
+    "independentHostEstimateUs": 1500000,
+    "hostGridUs": 10000,
+    "humanRoughAnchor": {
+      "teacherUs": 0,
+      "learnerUs": 2000000,
+      "precision": "approximate_only"
+    },
+    "manuallyLabeledExactGroundTruth": false
+  },
+  "renderSubmissionChecks": [
+    {
+      "case": "final-1x",
+      "speed": 1,
+      "jointSubmissions": 423,
+      "p95AbsMediaErrorUs": 27600,
+      "maxAbsMediaErrorUs": 31800,
+      "coverageMisses": 0,
+      "diagnosticsSaturated": false
+    },
+    {
+      "case": "final-half",
+      "speed": 0.5,
+      "jointSubmissions": 211,
+      "p95AbsMediaErrorUs": 29333,
+      "maxAbsMediaErrorUs": 30433,
+      "coverageMisses": 0,
+      "diagnosticsSaturated": false
+    },
+    {
+      "case": "final-three-quarter",
+      "speed": 0.75,
+      "jointSubmissions": 249,
+      "p95AbsMediaErrorUs": 29200,
+      "maxAbsMediaErrorUs": 31233,
+      "coverageMisses": 0,
+      "diagnosticsSaturated": false
+    }
+  ],
+  "pixelEvidence": {
+    "capture": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "width": 1080,
+          "height": 2400,
+          "avg_frame_rate": "756000/19963",
+          "nb_frames": "462"
+        }
+      ],
+      "format": {
+        "duration": "12.199611"
+      }
+    },
+    "sampleSeconds": [
+      2,
+      4,
+      6,
+      8
+    ],
+    "roiLumaStandardDeviation": {
+      "teacher": [
+        79.32357788085938,
+        79.50146484375,
+        78.4952163696289,
+        77.16205596923828
+      ],
+      "learner": [
+        80.11669158935547,
+        80.94841766357422,
+        79.88679504394531,
+        79.9258804321289
+      ]
+    },
+    "successiveRoiMeanAbsDifference": {
+      "teacher": [
+        6.415770053863525,
+        9.901618003845215,
+        19.136014938354492
+      ],
+      "learner": [
+        42.82135009765625,
+        32.54267501831055,
+        55.441463470458984
+      ]
+    },
+    "meaning": "screen recording shows both source image regions painted and changing; not an optical sensor measurement of display-time skew"
+  },
+  "projectRecovery": {
+    "oldPid": "3492",
+    "newPid": "6021",
+    "sourcesRetained": true,
+    "nameRetained": true,
+    "offsetUs": 1490000,
+    "positionUs": 13569000,
+    "speed": 0.75,
+    "paused": true
+  },
+  "deviceFlowsPassed": [
+    "formal-home-entry",
+    "restore-existing-granted-real-pair",
+    "automatic-music-apply",
+    "candidate-audition-auto-pause",
+    "manual-0-to-2-seconds",
+    "1x",
+    "0.75x",
+    "0.5x",
+    "shared-slider-seek",
+    "background-pause-and-explicit-resume",
+    "portrait-landscape-portrait",
+    "save-name-edit",
+    "force-stop-cold-restore",
+    "new-project-history-restore",
+    "system-document-picker-cancel",
+    "exit-save-and-reopen"
+  ],
+  "validation": {
+    "flutterFullBeforeFinalScopedFixes": 88,
+    "flutterFocusedAfterFinalScopedFixes": 10,
+    "nativeComparisonTests": 43,
+    "flutterAnalyze": "pass",
+    "releaseMainKotlinCompile": "pass",
+    "fullReleaseQA": "not_run"
+  },
+  "finalDeviceState": {
+    "title": "Woah-Real-Dance",
+    "offsetUs": 1490000,
+    "speed": 1.0,
+    "positionUs": 0,
+    "phase": "paused"
+  },
+  "limits": [
+    "one device and one real pair; broader song corpus and device coverage pending",
+    "automatic matching limited to ten minutes; longest real originals unavailable and not a blocker",
+    "constant music offset only; no motion warping or tempo compensation",
+    "submission PTS and screen pixels are separate evidence, not optical panel timing",
+    "iOS comparison and comparison export are outside this delivery"
+  ],
+  "reusedUnchangedDeviceFlowEvidence": {
+    "codeCommit": "b8942b0946338bb5e7f710cd99ee06e6b01db7cf",
+    "apkSha256": "78e6e1679c42a6f1696ae8a66bd8834305d192c6e0a9de571daab76d55631143",
+    "flows": [
+      "candidate-audition-auto-pause",
+      "manual-0-to-2-seconds"
+    ],
+    "reason": "These two paths were unchanged by the final music-decision and save-failure fixes; passed real-device results were reused."
+  }
+}

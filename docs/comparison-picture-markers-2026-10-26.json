@@ -1,0 +1,134 @@
+{
+  "date": "2026-10-26",
+  "branch": "feat/dance-comparison-m0",
+  "head": "e286cf6116357838421c047f166aa95147a66428",
+  "committed": false,
+  "pushed": false,
+  "merged": false,
+  "fullM0Repeated": false,
+  "flutterTestsPassed": 33,
+  "nativeTestsPassed": 55,
+  "staticAnalysis": "passed",
+  "debugBuild": "passed",
+  "releaseKotlinCompile": "passed",
+  "apk": {
+    "bytes": 272705780,
+    "sha256": "3c6135b9ce87f7847c6d1749d78d16789f997be21b4761600dee4b174513ff35",
+    "installedHashMatches": true
+  },
+  "mobileSourceSetSha256": "a929855ad5f55cc0631d2268cff00c4e384fdb9132d267b6676abd29fcfddef8",
+  "mobileSourceFiles": 25,
+  "device": "OnePlus KB2000 / Android 14",
+  "evidence": {
+    "gesture": {
+      "actualDrag": true,
+      "zoomButtons": true,
+      "previewNotSavedUntilDone": true,
+      "teacherPicture": {
+        "zoom": 2.0,
+        "panX": 0.184691478587963,
+        "panY": 0.2349443738957597
+      },
+      "targetUnchanged": true,
+      "phonePinchAutomation": "shell helper terminated with exit 137; multi-touch covered by Flutter test"
+    },
+    "pixel": [
+      {
+        "image": "pose-参考",
+        "role": "reference",
+        "meanAbsolutePixelError": 2.21895,
+        "pixels": 627700
+      },
+      {
+        "image": "pose-参考",
+        "role": "target",
+        "meanAbsolutePixelError": 0.0,
+        "pixels": 627700
+      },
+      {
+        "image": "pixels-both",
+        "role": "reference",
+        "meanAbsolutePixelError": 2.21895,
+        "pixels": 627700
+      },
+      {
+        "image": "pixels-both",
+        "role": "target",
+        "meanAbsolutePixelError": 1.3923,
+        "pixels": 627700
+      }
+    ],
+    "picture-cancel-background": {
+      "cancelRestoresBoth": true,
+      "unconfirmedBackgroundDraftNotSaved": true,
+      "coldRestoresCommitted": true
+    },
+    "marker-create-loop": {
+      "microsecondsPreserved": true,
+      "noteSaved": true,
+      "sourceAnchored": true,
+      "loopStartUs": 1234567,
+      "loopEndUs": 3456789,
+      "loopRestarts": 2,
+      "selectedPaused": true
+    },
+    "marker-edit-jump": {
+      "noteEdited": true,
+      "sourceTimesRetained": true,
+      "jumpPaused": true,
+      "jumpDisablesOldLoop": true
+    },
+    "rotation-restore": {
+      "coldPicturesAndMarkers": true,
+      "landscapeBothPoses": true,
+      "leftRightLayout": true,
+      "portraitReturn": true,
+      "manualPreviewAndCancel": true,
+      "sourceTimeMappingUnchanged": true
+    },
+    "marker-swap": {
+      "picturesFollowSources": true,
+      "markerSourceAnchorsUnchanged": true,
+      "negativeOffsetUs": -3000000,
+      "sameMappedRange": true,
+      "loopSelectedPaused": true
+    },
+    "real-source": {
+      "independentPictures": true,
+      "realOffsetUs": 1490000,
+      "playbackWithTransforms": true,
+      "sourceReplacementPreservesUnavailableNotes": true,
+      "unavailableLoopDisabled": true
+    },
+    "marker-delete": {
+      "deletedInProject": true,
+      "deletionSurvivesColdStart": true
+    },
+    "cleanup": {
+      "originalProjects": 2,
+      "originalContentUnchanged": true,
+      "normalizedNewDefaults": true,
+      "updateTimeChangedCount": 0,
+      "temporaryProjectAndMediaRemoved": true,
+      "testTouchHelperRemoved": true,
+      "originalRestoredPaused": true,
+      "settingsUnchanged": {
+        "user_rotation": "0",
+        "stay_on_while_plugged_in": "0"
+      }
+    }
+  },
+  "finalOriginalState": {
+    "offsetUs": 1490000,
+    "positionUs": 8344000,
+    "speed": 1.0,
+    "sideBySide": false,
+    "mirrorTeacher": false,
+    "mirrorLearner": true,
+    "loopStartUs": 1490000,
+    "loopEndUs": 2343000,
+    "loopEnabled": false
+  },
+  "phonePinchVerified": false,
+  "multiPointerWidgetTestPassed": true
+}

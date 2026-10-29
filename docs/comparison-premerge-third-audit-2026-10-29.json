@@ -1,0 +1,74 @@
+{
+  "recordedAt": "2026-10-29",
+  "decision": "findings_resolved",
+  "openP1": 0,
+  "openP2": 0,
+  "priorFixedFindings": 6,
+  "branch": "feat/dance-comparison-m0",
+  "head": "e286cf6116357838421c047f166aa95147a66428",
+  "baselineManifest": "session/comparison-reaudit-fixes-20261029/final-source-manifest.json",
+  "baselineVerifiedFiles": 119,
+  "productionCodeChanged": false,
+  "findings": [
+    {
+      "id": "comparison-third-audit-1",
+      "priority": "P2",
+      "status": "fixed",
+      "title": "Repeated manual-calibration entry creates a second source session and leaks the first",
+      "file": "mobile/app/lib/features/comparison/presentation/comparison_controller.dart",
+      "line": 546,
+      "relatedFile": "mobile/app/lib/features/comparison/presentation/comparison_screen.dart",
+      "relatedLine": 215,
+      "observedCreatedPreviews": 4,
+      "observedDisposedPreviews": 2,
+      "evidence": "session/comparison-third-audit-20261029/entry-repros.log",
+      "fixReport": "comparison-third-audit-fixes-2026-10-29.md"
+    },
+    {
+      "id": "comparison-third-audit-2",
+      "priority": "P2",
+      "status": "fixed",
+      "title": "Concurrent export cancellation and progress results can pop both dialog and comparison route",
+      "file": "mobile/app/lib/features/comparison/presentation/comparison_export_dialog.dart",
+      "line": 71,
+      "relatedLine": 104,
+      "observedPoppedRoutes": [
+        null,
+        "comparison"
+      ],
+      "remainingComparisonScreens": 0,
+      "callbackOrdersReproduced": 2,
+      "evidence": [
+        "session/comparison-third-audit-20261029/export-close-repro.log",
+        "session/comparison-third-audit-20261029/export-close-order-repro.log"
+      ],
+      "fixReport": "comparison-third-audit-fixes-2026-10-29.md"
+    }
+  ],
+  "verification": {
+    "newReproductions": 3,
+    "correctBehaviorAssertionsFailed": 3,
+    "actualScreenWidgetReproductions": 3,
+    "previousChecksReused": true,
+    "newDeviceValidation": false,
+    "fullM0Repeated": false,
+    "releaseQARepeated": false
+  },
+  "deferredValidation": {
+    "iosPhysicalDevice": {
+      "status": "deferred_no_device",
+      "reason": "用户当前没有 iOS 真机"
+    }
+  },
+  "sourceManifest": "session/comparison-third-audit-20261029/final-source-manifest.json",
+  "sourceSyncReceipt": "session/comparison-third-audit-20261029/mac-source-receipt.json",
+  "gitActions": {
+    "committed": false,
+    "pushed": false,
+    "merged": false
+  },
+  "auditDecisionBeforeFixes": "changes_required",
+  "fixReport": "comparison-third-audit-fixes-2026-10-29.md",
+  "latestSourceManifest": "session/comparison-third-audit-fixes-20261029/final-source-manifest.json",
+  "latestSourceSyncReceipt": "session/comparison-third-audit-fixes-20261029/mac-source-receipt.json"
+}

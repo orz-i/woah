@@ -1,0 +1,482 @@
+{
+  "date": "2026-10-26",
+  "status": "implemented_and_simulator_validated",
+  "branch": "feat/dance-comparison-m0",
+  "head": "e286cf6116357838421c047f166aa95147a66428",
+  "windowsWorkspace": "D:/dance-anonymizer",
+  "macWorkspace": "/Users/mini/Coding/woah-comparison-m0",
+  "macPrimaryPreserved": {
+    "path": "/Users/mini/Coding/woah",
+    "branch": "feat/crop-clarity-phase2-quality-performance",
+    "head": "506616bbf2021a260882ca868c4348e618cf628e"
+  },
+  "gitActions": {
+    "committed": false,
+    "pushed": false,
+    "merged": false
+  },
+  "validation": {
+    "flutter": {
+      "passed": 65,
+      "newLifecycleTests": 6,
+      "staticAnalysis": "passed",
+      "report": "session/comparison-premerge-fixes-20261026/flutter-final-regression.log"
+    },
+    "nativeMacGates": [
+      "music core",
+      "PCM formats and source timeline",
+      "time/geometry",
+      "composition render/VFR/trim/transform",
+      "owned media and project integrity",
+      "export spec/lifecycle",
+      "AVFoundation export",
+      "591 visible B-frame/edit-list timestamps",
+      "CMTime exact mapping boundary"
+    ],
+    "iosSimulator": {
+      "device": "iPhone 15",
+      "os": "iOS 17.0.1",
+      "passed": true,
+      "stages": [
+        {
+          "name": "picker_open_cancel",
+          "status": "passed",
+          "elapsedMs": 608
+        },
+        {
+          "name": "music_alignment",
+          "status": "passed",
+          "elapsedMs": 12044
+        },
+        {
+          "name": "overlapping_alignment_cancel",
+          "status": "passed",
+          "elapsedMs": 158
+        },
+        {
+          "name": "open_texture",
+          "status": "passed",
+          "elapsedMs": 150
+        },
+        {
+          "name": "play_half_speed_pause",
+          "status": "passed",
+          "elapsedMs": 655
+        },
+        {
+          "name": "seek_real_pts_step",
+          "status": "passed",
+          "elapsedMs": 29
+        },
+        {
+          "name": "layout_resize",
+          "status": "passed",
+          "elapsedMs": 117
+        },
+        {
+          "name": "independent_picture_and_loop",
+          "status": "passed",
+          "elapsedMs": 2040
+        },
+        {
+          "name": "alignment_mapping",
+          "status": "passed",
+          "elapsedMs": 135
+        },
+        {
+          "name": "save_load_project_marker",
+          "status": "passed",
+          "elapsedMs": 18
+        },
+        {
+          "name": "manual_dual_video_backend",
+          "status": "passed",
+          "elapsedMs": 113
+        },
+        {
+          "name": "close_reopen",
+          "status": "passed",
+          "elapsedMs": 99
+        },
+        {
+          "name": "export_ab_h264_aac",
+          "status": "passed",
+          "elapsedMs": 210
+        },
+        {
+          "name": "reopen_after_export",
+          "status": "passed",
+          "elapsedMs": 70
+        },
+        {
+          "name": "close_final",
+          "status": "passed",
+          "elapsedMs": 1
+        },
+        {
+          "name": "photos_save_deduplicate_open",
+          "status": "passed",
+          "elapsedMs": 140
+        }
+      ],
+      "report": "session/comparison-ios-20261026/smoke-final-report.json",
+      "scope": "initial implementation smoke before premerge fixes"
+    },
+    "movie": {
+      "label": "smoke-final-export",
+      "width": 320,
+      "height": 240,
+      "durationUs": 1000000,
+      "frameCount": 26,
+      "ptsMaxErrorUs": 0,
+      "durationErrorUs": 0,
+      "audioDurationErrorUs": 0,
+      "containerDurationErrorUs": 0,
+      "frameIntervalsUs": [
+        33333,
+        33334,
+        66666,
+        66667
+      ],
+      "sourceOriginUs": 0,
+      "timeScale": 0.8,
+      "offsetUs": 1200000,
+      "sideBySide": true,
+      "frames": [
+        {
+          "outputUs": 0,
+          "referencePtsUs": 966667,
+          "targetPtsUs": 2000000,
+          "codes": [
+            29,
+            60
+          ],
+          "checkedBits": [
+            17,
+            14
+          ]
+        },
+        {
+          "outputUs": 66667,
+          "referencePtsUs": 1066667,
+          "targetPtsUs": 2033333,
+          "codes": [
+            32,
+            61
+          ],
+          "checkedBits": [
+            17,
+            14
+          ]
+        },
+        {
+          "outputUs": 166667,
+          "referencePtsUs": 1166667,
+          "targetPtsUs": 2133333,
+          "codes": [
+            35,
+            64
+          ],
+          "checkedBits": [
+            17,
+            14
+          ]
+        },
+        {
+          "outputUs": 300000,
+          "referencePtsUs": 1300000,
+          "targetPtsUs": 2233333,
+          "codes": [
+            39,
+            67
+          ],
+          "checkedBits": [
+            17,
+            14
+          ]
+        },
+        {
+          "outputUs": 366667,
+          "referencePtsUs": 1366667,
+          "targetPtsUs": 2266667,
+          "codes": [
+            41,
+            68
+          ],
+          "checkedBits": [
+            17,
+            14
+          ]
+        },
+        {
+          "outputUs": 433333,
+          "referencePtsUs": 1433333,
+          "targetPtsUs": 2333333,
+          "codes": [
+            43,
+            70
+          ],
+          "checkedBits": [
+            17,
+            14
+          ]
+        },
+        {
+          "outputUs": 566667,
+          "referencePtsUs": 1566667,
+          "targetPtsUs": 2433333,
+          "codes": [
+            47,
+            73
+          ],
+          "checkedBits": [
+            17,
+            14
+          ]
+        },
+        {
+          "outputUs": 666667,
+          "referencePtsUs": 1666667,
+          "targetPtsUs": 2533333,
+          "codes": [
+            50,
+            76
+          ],
+          "checkedBits": [
+            17,
+            14
+          ]
+        },
+        {
+          "outputUs": 766667,
+          "referencePtsUs": 1766667,
+          "targetPtsUs": 2600000,
+          "codes": [
+            53,
+            78
+          ],
+          "checkedBits": [
+            17,
+            14
+          ]
+        },
+        {
+          "outputUs": 833333,
+          "referencePtsUs": 1833333,
+          "targetPtsUs": 2666667,
+          "codes": [
+            55,
+            80
+          ],
+          "checkedBits": [
+            17,
+            14
+          ]
+        },
+        {
+          "outputUs": 966667,
+          "referencePtsUs": 1966667,
+          "targetPtsUs": 2766667,
+          "codes": [
+            59,
+            83
+          ],
+          "checkedBits": [
+            17,
+            14
+          ]
+        }
+      ],
+      "audio": {
+        "sampleRate": 48000,
+        "lagSamples": 0,
+        "lagUs": 0,
+        "correlation": 0.9966785311698914,
+        "decodedSamples": 48000
+      }
+    },
+    "movieSha256": "2b1d8f566a514f6c4ee190d0d9a6e007a865a0b8382b57e1cd9e32691d603468",
+    "reinstallation": {
+      "containerChanged": true,
+      "persistedProjectUnchanged": true,
+      "stableMediaAndMarkerIdentities": true,
+      "formalPageRendered": true,
+      "screenshot": "session/comparison-ios-20261026/comparison-restored.png"
+    },
+    "validatorRegression": {
+      "boundaryTestsPassed": 3,
+      "oldAndroidArtifactCompatibilityPassed": true
+    },
+    "productionBuilds": {
+      "target": "lib/main.dart",
+      "iphoneosDebugUnsignedPassed": true,
+      "simulatorDebugPassed": true,
+      "artifacts": {
+        "iphoneos": {
+          "exists": true,
+          "files": {
+            "Runner": {
+              "bytes": 72552,
+              "sha256": "6e59af9519f45aac79960daf7bef9bb0be9f8e4e3a73e5f8958c3457fcabf1b7"
+            },
+            "Runner.debug.dylib": {
+              "bytes": 13066360,
+              "sha256": "85e9e1ba18054504071d4fe56d694423e8294fb97856c6cb2884a368d87bbb45"
+            },
+            "Frameworks/App.framework/flutter_assets/kernel_blob.bin": {
+              "bytes": 99150512,
+              "sha256": "00903104cdf6fe040655dfa34fe445f7bd667a619ef62dff46f877caaab21c30"
+            }
+          }
+        },
+        "iphonesimulator": {
+          "exists": true,
+          "files": {
+            "Runner": {
+              "bytes": 89296,
+              "sha256": "71b52125ef7488feeaf1cfacaaca299670ba1d1a97747f7c4d6fa09fcb6d618c"
+            },
+            "Runner.debug.dylib": {
+              "bytes": 26645344,
+              "sha256": "caea1c5816873947d0d0950ca947c1f9b73ebe85c91b0f5880a326030fc344a2"
+            },
+            "Frameworks/App.framework/flutter_assets/kernel_blob.bin": {
+              "bytes": 99150512,
+              "sha256": "00903104cdf6fe040655dfa34fe445f7bd667a619ef62dff46f877caaab21c30"
+            }
+          }
+        }
+      },
+      "evidence": "session/comparison-premerge-fixes-20261026/ios-run-state.json"
+    },
+    "fullM0Repeated": false,
+    "releaseQARepeated": false,
+    "flutterBeforePremergeFixes": {
+      "uniquePassed": 47,
+      "threeFileSuiteBeforeRaceTests": 45,
+      "comparisonFileAfterTwoNewRaceTests": 26,
+      "unaffectedReused": 21,
+      "staticAnalysis": "passed"
+    },
+    "premergePlayback": {
+      "passed": true,
+      "playbackCasesPassed": 4,
+      "projectBytesUnchanged": true,
+      "formalTargetRestored": true,
+      "simulatorShutdown": true,
+      "report": "session/comparison-premerge-fixes-20261026/ios-run-state.json"
+    },
+    "productionBuildsBeforePremergeFixes": {
+      "target": "lib/main.dart",
+      "iphoneosDebugUnsignedPassed": true,
+      "simulatorDebugPassed": true,
+      "artifacts": {
+        "iphoneos": {
+          "exists": true,
+          "files": {
+            "Runner": {
+              "bytes": 72552,
+              "sha256": "6e59af9519f45aac79960daf7bef9bb0be9f8e4e3a73e5f8958c3457fcabf1b7"
+            },
+            "Runner.debug.dylib": {
+              "bytes": 13066360,
+              "sha256": "84f01bbd7e84a7234df921ec998d9707b273a58540d41393d6df170bd58bd19c"
+            },
+            "Frameworks/App.framework/flutter_assets/kernel_blob.bin": {
+              "bytes": 99149744,
+              "sha256": "61df6c0d5245205467906a761771b80a20969ae6d42adc43095f225572bf2b07"
+            }
+          }
+        },
+        "iphonesimulator": {
+          "exists": true,
+          "files": {
+            "Runner": {
+              "bytes": 89296,
+              "sha256": "fdd474d661687b3d9aece19e0a9a08d8403dca4db32fcb1cbc1694e2a2a4dda5"
+            },
+            "Runner.debug.dylib": {
+              "bytes": 26645344,
+              "sha256": "3c16efa1716606a2c08ae233ca6e5778312de64b5bb92d0bafdf15af294d7f07"
+            },
+            "Frameworks/App.framework/flutter_assets/kernel_blob.bin": {
+              "bytes": 99149744,
+              "sha256": "61df6c0d5245205467906a761771b80a20969ae6d42adc43095f225572bf2b07"
+            }
+          }
+        }
+      }
+    },
+    "reauditAsync": {
+      "passed": true,
+      "flutter": 87,
+      "newAsyncTests": 14,
+      "iosNativePlayerCases": 3,
+      "androidNativePlayerCases": 3,
+      "controlledDartReplyTiming": true,
+      "report": "session/comparison-reaudit-fixes-20261029/ios-run-state.json",
+      "iosPhysicalDeviceUsed": false
+    },
+    "reauditFormalBuilds": {
+      "passed": true,
+      "target": "lib/main.dart",
+      "artifacts": {
+        "iphoneos": {
+          "Runner": "6e59af9519f45aac79960daf7bef9bb0be9f8e4e3a73e5f8958c3457fcabf1b7",
+          "Runner.debug.dylib": "85e9e1ba18054504071d4fe56d694423e8294fb97856c6cb2884a368d87bbb45",
+          "Frameworks/App.framework/flutter_assets/kernel_blob.bin": "a3212d03bfbbefa271d1312dc4353c733163b2626affc3ba9950414f24f34231"
+        },
+        "iphonesimulator": {
+          "Runner": "34f2b4b0002fe39d0745a5abe1decf3552ee1b6fa2cba78ec6a3f57bcf04d118",
+          "Runner.debug.dylib": "caea1c5816873947d0d0950ca947c1f9b73ebe85c91b0f5880a326030fc344a2",
+          "Frameworks/App.framework/flutter_assets/kernel_blob.bin": "a3212d03bfbbefa271d1312dc4353c733163b2626affc3ba9950414f24f34231"
+        }
+      },
+      "report": "session/comparison-reaudit-fixes-20261029/ios-run-state.json"
+    },
+    "thirdAuditFixes": {
+      "flutter": 98,
+      "newEntryRouteTests": 11,
+      "iosSimulatorBuild": true,
+      "iphoneosUnsignedBuild": true,
+      "simulatorRun": false,
+      "iosPhysicalDeviceUsed": false,
+      "report": "comparison-third-audit-fixes-2026-10-29.md"
+    }
+  },
+  "sourceManifest": "session/comparison-third-audit-fixes-20261029/final-source-manifest.json",
+  "limitations": [
+    "Physical iPhone/iPad performance and thermal behavior untested",
+    "Actual background time expiration and process interruption during Photos transaction untested on-device",
+    "PHPicker manual selection/import and permission dialogs/denial untested; simulator presentation/cancel and normal Photos save/dedup passed",
+    "Unsigned device app; no IPA distribution or provisioning performed"
+  ],
+  "premergeAudit": {
+    "report": "comparison-premerge-audit-2026-10-26.md",
+    "decision": "findings_resolved",
+    "openP1": 0,
+    "openP2": 0,
+    "resolved": 8,
+    "fixReport": "comparison-premerge-fixes-2026-10-26.md",
+    "latestReport": "comparison-third-audit-fixes-2026-10-29.md",
+    "latestFixReport": "comparison-third-audit-fixes-2026-10-29.md"
+  },
+  "deferredValidation": {
+    "iosPhysicalDevice": {
+      "status": "deferred_no_device",
+      "reason": "用户当前没有 iOS 真机，暂记待补；本轮继续合并前代码审计",
+      "recordedAt": "2026-10-26",
+      "scope": [
+        "iPhone/iPad manual video import and permission prompts",
+        "background time expiration, lock/resume and process interruption",
+        "physical device performance and thermal behavior"
+      ]
+    }
+  },
+  "sourceManifestBeforePremergeFixes": "session/comparison-ios-20261026/final-working-tree-manifest.json",
+  "sourceSyncReceipt": "session/comparison-third-audit-fixes-20261029/mac-source-receipt.json",
+  "sourceManifestBeforeReaudit": "session/comparison-premerge-fixes-20261026/final-source-manifest.json",
+  "sourceManifestBeforeReauditFixes": "session/comparison-reaudit-20261026/final-source-manifest.json",
+  "sourceManifestBeforeThirdAudit": "session/comparison-reaudit-fixes-20261029/final-source-manifest.json",
+  "sourceManifestBeforeThirdAuditFixes": "session/comparison-third-audit-20261029/final-source-manifest.json"
+}

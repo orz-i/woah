@@ -1,0 +1,102 @@
+{
+  "recordedAt": "2026-10-29",
+  "decision": "findings_resolved",
+  "branch": "feat/dance-comparison-m0",
+  "head": "e286cf6116357838421c047f166aa95147a66428",
+  "initialAudit": "comparison-premerge-reaudit-2026-10-26.md",
+  "findings": [
+    {
+      "id": "comparison-reaudit-1",
+      "status": "fixed",
+      "resolution": "Stage practice settings until native success; fence playback/practice results, failures and saves by player session, project and operation identity"
+    },
+    {
+      "id": "comparison-reaudit-2",
+      "status": "fixed",
+      "resolution": "Stage mapping through native apply and queued persistence; cancel and restore complete native/durable snapshot before allowing edits; protect success messages"
+    }
+  ],
+  "verification": {
+    "flutter": {
+      "passed": 87,
+      "newAsyncTests": 14,
+      "staticAnalysis": "passed",
+      "report": "session/comparison-reaudit-fixes-20261029/flutter-final.log"
+    },
+    "androidDevice": {
+      "passed": true,
+      "nativePlayerCasesPassed": 3,
+      "controlledDartReplyTiming": true,
+      "report": "session/comparison-reaudit-fixes-20261029/android-run-state.json",
+      "device": "OnePlus KB2000",
+      "android": 14,
+      "baselineProjectCount": 2,
+      "projectBytesUnchanged": true,
+      "formalTargetRestored": true,
+      "installedApkHashMatches": true,
+      "apkSha256": "eee322085cce4dd6a574c4779093152ce0b1c262f3802bbeaa08ea261ceaf2ec",
+      "formalStartupErrors": []
+    },
+    "iosSimulator": {
+      "passed": true,
+      "nativePlayerCasesPassed": 3,
+      "controlledDartReplyTiming": true,
+      "baselineProjectCount": 0,
+      "freshIsolatedSimulator": true,
+      "formalTargetRestored": true,
+      "simulatorShutdown": true,
+      "report": "session/comparison-reaudit-fixes-20261029/ios-run-state.json",
+      "projectBytesUnchanged": true
+    },
+    "formalBuilds": {
+      "iosSimulatorDebug": true,
+      "iphoneosDebugUnsigned": true,
+      "androidDebug": true,
+      "target": "lib/main.dart"
+    },
+    "unchangedNativeChecksReused": {
+      "androidJvm": 19,
+      "iosPlaybackBoundary": 4
+    },
+    "fullM0Repeated": false,
+    "releaseQARepeated": false
+  },
+  "productionFilesChanged": 1,
+  "regressionFilesAdded": 2,
+  "sourceManifest": "session/comparison-reaudit-fixes-20261029/final-source-manifest.json",
+  "sourceSyncReceipt": "session/comparison-reaudit-fixes-20261029/mac-source-receipt.json",
+  "deferredValidation": {
+    "iosPhysicalDevice": {
+      "status": "deferred_no_device",
+      "reason": "用户当前没有 iOS 真机"
+    }
+  },
+  "gitActions": {
+    "committed": false,
+    "pushed": false,
+    "merged": false
+  },
+  "artifacts": {
+    "androidFormalApkSha256": "eee322085cce4dd6a574c4779093152ce0b1c262f3802bbeaa08ea261ceaf2ec",
+    "ios": {
+      "iphoneos": {
+        "Runner": "6e59af9519f45aac79960daf7bef9bb0be9f8e4e3a73e5f8958c3457fcabf1b7",
+        "Runner.debug.dylib": "85e9e1ba18054504071d4fe56d694423e8294fb97856c6cb2884a368d87bbb45",
+        "Frameworks/App.framework/flutter_assets/kernel_blob.bin": "a3212d03bfbbefa271d1312dc4353c733163b2626affc3ba9950414f24f34231"
+      },
+      "iphonesimulator": {
+        "Runner": "34f2b4b0002fe39d0745a5abe1decf3552ee1b6fa2cba78ec6a3f57bcf04d118",
+        "Runner.debug.dylib": "caea1c5816873947d0d0950ca947c1f9b73ebe85c91b0f5880a326030fc344a2",
+        "Frameworks/App.framework/flutter_assets/kernel_blob.bin": "a3212d03bfbbefa271d1312dc4353c733163b2626affc3ba9950414f24f34231"
+      }
+    }
+  },
+  "subsequentAudit": {
+    "report": "comparison-premerge-third-audit-2026-10-29.md",
+    "decision": "findings_resolved",
+    "openP2": 0,
+    "sourceManifest": "session/comparison-third-audit-20261029/final-source-manifest.json",
+    "fixReport": "comparison-third-audit-fixes-2026-10-29.md",
+    "latestSourceManifest": "session/comparison-third-audit-fixes-20261029/final-source-manifest.json"
+  }
+}

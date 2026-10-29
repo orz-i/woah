@@ -1,0 +1,181 @@
+{
+  "date": "2026-10-26",
+  "status": "passed",
+  "scope": "Android comparison practice tools on KB2000 / Android 14",
+  "branch": "feat/dance-comparison-m0",
+  "head": "e286cf6116357838421c047f166aa95147a66428",
+  "changesCommitted": false,
+  "pushed": false,
+  "merged": false,
+  "sourceFingerprintSha256": "12b7438cabc700a7dde82f0ab91868d8c75f8d34af8eae6b238fb1d4cf135069",
+  "apk": {
+    "path": "mobile/app/build/app/outputs/flutter-apk/app-debug.apk",
+    "bytes": 272662074,
+    "sha256": "07d40f7df2969716493fb9d4f463ab5700a4cdad4c5211cfe4910300b702df3c",
+    "installedHashMatches": true,
+    "buildGitLabel": "e286cf6116357838421c047f166aa95147a66428+practice-pause",
+    "buildTimestampUtc": "2026-10-26T01:00:24.567294Z"
+  },
+  "checks": {
+    "flutterTests": 24,
+    "nativeTests": 49,
+    "staticAnalysis": "no issues",
+    "releaseKotlinCompile": true,
+    "positiveOffsetVfrSteps": 12,
+    "negativeOffsetVfrSteps": 3,
+    "loopRuns": [
+      {
+        "speed": "1×\n倍速",
+        "wallSeconds": 8,
+        "restarts": 3
+      },
+      {
+        "speed": "0.5×\n倍速",
+        "wallSeconds": 10,
+        "restarts": 3
+      }
+    ],
+    "independentMirror": {
+      "checks": [
+        {
+          "state": "reference",
+          "screenCodes": [
+            66,
+            155
+          ],
+          "pixelMeanAbsoluteError": [
+            0.7433,
+            0.0
+          ]
+        },
+        {
+          "state": "both",
+          "screenCodes": [
+            66,
+            155
+          ],
+          "pixelMeanAbsoluteError": [
+            0.7433,
+            0.6367
+          ]
+        },
+        {
+          "state": "target",
+          "screenCodes": [
+            66,
+            155
+          ],
+          "pixelMeanAbsoluteError": [
+            0.0,
+            0.6367
+          ]
+        },
+        {
+          "state": "neither",
+          "screenCodes": [
+            66,
+            155
+          ],
+          "pixelMeanAbsoluteError": [
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "outsideLoopPositionUs": 0,
+      "mirrorPreservesOutsidePosition": true
+    },
+    "restoration": {
+      "coldStart": true,
+      "paused": true,
+      "rotationAndFrame": true,
+      "manualCancelPreservesPractice": true
+    },
+    "realSources": {
+      "offsetUs": 1490000,
+      "frameSteps": [
+        {
+          "forward": true,
+          "positionUs": 2033333,
+          "teacherPtsUs": 2033333,
+          "learnerPtsUs": 3519233
+        },
+        {
+          "forward": false,
+          "positionUs": 2000000,
+          "teacherPtsUs": 2000000,
+          "learnerPtsUs": 3485866
+        }
+      ],
+      "loopRestarts": 3,
+      "mirrorPixels": [
+        {
+          "state": "reference",
+          "pixelMeanAbsoluteError": [
+            0.3897,
+            0.0
+          ]
+        },
+        {
+          "state": "both",
+          "pixelMeanAbsoluteError": [
+            0.3897,
+            1.2165
+          ]
+        }
+      ]
+    },
+    "pauseAtLoopRestart": {
+      "singleTapDuringLoopRestartPauses": true,
+      "noFurtherRestartsAfterPause": true
+    },
+    "backgroundAndClear": {
+      "backgroundPausesLoop": true,
+      "foregroundStaysPaused": true,
+      "clearRemovesBounds": true,
+      "playbackBeyondFormerB": true
+    },
+    "naturalEnd": {
+      "naturalEndPreservesPosition": true,
+      "replayStartsAtBeginning": true
+    }
+  },
+  "retention": {
+    "originalProjects": 2,
+    "originalProjectContentUnchanged": true,
+    "updateTimeChangedCount": 1,
+    "temporaryProjectsRemoved": true,
+    "temporaryMediaRemoved": true,
+    "screenAwakeSettingUnchanged": true,
+    "rotation": "0",
+    "originalRestoredPaused": true,
+    "finalControlLabel": "重播",
+    "finalOffsetUs": 1490000,
+    "finalPositionUs": 17899000,
+    "finalSpeed": 1,
+    "finalSideBySide": true
+  },
+  "reuse": {
+    "initialPracticeApk": "d76b6b1bf9795e2a2a17ccb2bed7b200557a4905de425c116f84e6501761d199",
+    "initialEvidence": [
+      "VFR PTS and visible frame codes",
+      "four mirror combinations",
+      "1x/0.5x loops",
+      "cold restore / rotation / manual cancel",
+      "negative offset after swap"
+    ],
+    "pauseFixedApk": "9366fb5aefb7e9dc7a54cdfc556a56a6184b5ed2bcf959fcb389eb83fe52aa62",
+    "pauseFixedEvidence": [
+      "single pause during loop restart",
+      "real-source stepping / loops / mirror pixels",
+      "natural end and replay"
+    ],
+    "finalChange": "Flutter-only compact-landscape touch layout; 24 tests, analyze, build, install/hash, route restore, background/clear and original-data checks"
+  },
+  "limits": [
+    "Loop restarts seek both decoders and audio together; not gapless audio",
+    "Single Android device; no new long-original or multi-device acceptance",
+    "Screen captures and decoded PTS are not optical-panel or acoustic latency measurements",
+    "No export/iOS implementation, full M0 matrix, or full Release QA in this change"
+  ]
+}

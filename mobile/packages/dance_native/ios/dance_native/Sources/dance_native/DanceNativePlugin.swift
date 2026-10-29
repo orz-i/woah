@@ -3,6 +3,7 @@ import UIKit
 
 public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
   private let mediaBridge = IOSMediaLibraryBridge()
+  private var comparison: IOSComparisonNativeApi?
   private let yoloRunner = IOSYoloRunner()
   private let analysisCache = IOSAnalysisCache()
   private var processingEvents: DanceProcessingEvents?
@@ -32,6 +33,26 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
     registrar.addMethodCallDelegate(instance, channel: buildInfoChannel)
     instance.processingEvents = DanceProcessingEvents(binaryMessenger: registrar.messenger())
     DanceNativeApiSetup.setUp(binaryMessenger: registrar.messenger(), api: instance)
+    MainActor.assumeIsolated {
+      let comparison = IOSComparisonNativeApi(registry: registrar.textures(), presenter: {
+        let root = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+          .flatMap(\.windows).first(where: \.isKeyWindow)?.rootViewController
+        var current = root
+        while let presented = current?.presentedViewController { current = presented }
+        return current
+      })
+      instance.comparison = comparison
+      DanceComparisonApiSetup.setUp(binaryMessenger: registrar.messenger(), api: comparison)
+    }
+    registrar.publish(instance)
+  }
+
+  public func detachFromEngine(for registrar: FlutterPluginRegistrar) {
+    MainActor.assumeIsolated {
+      DanceComparisonApiSetup.setUp(binaryMessenger: registrar.messenger(), api: nil)
+      comparison?.detach()
+      comparison = nil
+    }
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {

@@ -1,0 +1,193 @@
+{
+  "schema": "woah.comparison.music-rate.validation.v1",
+  "date": "2026-10-26",
+  "status": "passed",
+  "branch": "feat/dance-comparison-m0",
+  "head": "e286cf6116357838421c047f166aa95147a66428",
+  "committed": false,
+  "pushed": false,
+  "merged": false,
+  "mapping": "targetSourceUs = round(referenceSourceUs * timeScale) + offsetUs",
+  "allowedTimeScale": [
+    0.5,
+    2
+  ],
+  "checks": {
+    "flutterPassed": 53,
+    "nativeUniquePassed": 50,
+    "staticAnalysis": "no_issues",
+    "debugBuild": true,
+    "fullM0Run": false,
+    "fullReleaseQaRun": false
+  },
+  "apk": {
+    "bytes": 272742986,
+    "sha256": "418acfc6fea58704126fcb358095fc4bcf1bfbe5ef70e6e345f127876a67d5a1",
+    "installedHashMatches": true,
+    "buildTag": "e286cf6116357838421c047f166aa95147a66428+music-rate-pcm-diagnostic",
+    "buildTimestampUtc": "2026-10-26T04:24:22.710222600Z"
+  },
+  "mobileSourceSet": {
+    "files": 40,
+    "sha256": "cbed7b816b12288cac2a676a1db6bdd0112e97ac29545bc60a01c60785f13ee7",
+    "includesPreviousUncommittedPracticeChanges": true
+  },
+  "automatic": {
+    "pitchPreserved": {
+      "timeScale": 0.7999901500627373,
+      "offsetUs": 1204665,
+      "expectedTimeScale": 0.8,
+      "expectedOffsetUs": 1200000,
+      "mappingErrorsUs": [
+        4635.450188212097,
+        4566.500627372414,
+        4487.70112927258
+      ],
+      "alignment": "auto",
+      "sampleReferenceTimesUs": [
+        3000000,
+        10000000,
+        18000000
+      ]
+    },
+    "pitchShifted": {
+      "timeScale": 1.3326556481102378,
+      "offsetUs": 677117,
+      "expectedTimeScale": 1.3333333333333333,
+      "expectedOffsetUs": 666667,
+      "mappingErrorsUs": [
+        8416.944330713712,
+        3673.1477690469474,
+        1748.3340157195926
+      ],
+      "alignment": "auto",
+      "sampleReferenceTimesUs": [
+        3000000,
+        10000000,
+        18000000
+      ]
+    },
+    "realMusicDerivative": {
+      "timeScale": 0.7995962576542485,
+      "offsetUs": 709833,
+      "expectedTimeScale": 0.8,
+      "expectedOffsetUs": 700000,
+      "mappingErrorsUs": [
+        9429.257654248504,
+        6603.061233988032,
+        3776.8648137263954
+      ],
+      "sourceKind": "existing_real_music_controlled_tempo_derivative",
+      "sourceAudioRateHz": 44100,
+      "inputSourceSha256": "8fdc019e205c1e18abe6177edb040228b28e387666d560acb4e9e9c17ffacf0e",
+      "sampleReferenceTimesUs": [
+        1000000,
+        8000000,
+        15000000
+      ]
+    }
+  },
+  "frameChecks": {
+    "forwardMapping": 18,
+    "inverseMapping": 6,
+    "nativePtsExternalPtsAndScreenCodesAgree": true
+  },
+  "motion": {
+    "screenCodes": [
+      300,
+      276
+    ],
+    "observedMotionPhases": [
+      -3.389467675182308e-05,
+      0.8788461538461538
+    ],
+    "expectedMotionPhases": [
+      0.0,
+      0.8800000000000008
+    ],
+    "deliberateLateMusicUs": 120000,
+    "visiblePhaseDifference": 0.12111995147709431,
+    "musicAloneDeterminesMapping": true
+  },
+  "loop": [
+    {
+      "restarts": 3,
+      "wallSeconds": 7,
+      "timeScale": 0.7999901500627373,
+      "offsetUs": 1204665
+    },
+    {
+      "restarts": 3,
+      "wallSeconds": 7,
+      "timeScale": 1.2550083517923452,
+      "offsetUs": -1537088
+    }
+  ],
+  "manual": {
+    "timeScale": 0.7968074463981424,
+    "offsetUs": 1224763,
+    "teacherAnchorUs": 2994661,
+    "learnerAnchorUs": 3610931,
+    "teacherAnchor2Us": 13016795,
+    "learnerAnchor2Us": 11596642,
+    "loopStartUs": 3000000,
+    "loopEndUs": 5000000
+  },
+  "markersAndSwap": {
+    "markerSourceTimesPreserved": true,
+    "notePreserved": true,
+    "inverseTimeScale": 1.2550083517923452,
+    "inverseOffsetUs": -1537088,
+    "loopStartUs": 2390422,
+    "loopEndUs": 3984036
+  },
+  "layout": {
+    "landscape": true,
+    "portrait": true,
+    "dualAnchorRestore": true,
+    "cancelPreservesMappingAndPractice": true,
+    "actualPreviewHeightsPx": [
+      243,
+      243
+    ],
+    "sidebarAnchorsRecordedAndApplied": true
+  },
+  "cleanup": {
+    "originalProjectCount": 2,
+    "contentPreserved": true,
+    "originalUpdatedAtMsChanged": 0,
+    "settingsUnchanged": true,
+    "temporaryProjectRemoved": true,
+    "temporaryPhoneMediaRemoved": true,
+    "restoredPositionUs": 17899999,
+    "restoredOffsetUs": 1490000
+  },
+  "limits": [
+    "Constant music rate only; no nonlinear warping",
+    "Variable rate and insufficient evidence require manual calibration",
+    "Rate search requires about 6s of common music and retains the existing 10min per-source limit",
+    "Two manual events must be separated by at least 2s in both sources",
+    "A/B uses shared seek with a short pause, not seamless audio looping",
+    "One Android device; no new long raw-footage, native-60fps provenance, export, iOS or physical AV-latency certification"
+  ],
+  "evidenceDirectory": "docs/session/comparison-music-rate-20261026",
+  "evidenceFiles": [
+    "flutter-responsive-final.log",
+    "analyze-responsive.log",
+    "native-final.log",
+    "native-pcm-verified.log",
+    "build-pcm-diagnostic.log",
+    "install-pcm-diagnostic.log",
+    "auto-learner-runtime.log",
+    "auto-pitched-runtime.log",
+    "real-music-runtime.log",
+    "frames-validation.json",
+    "inverse-frames-validation.json",
+    "motion-validation.json",
+    "manual-validation.json",
+    "marker-swap-validation.json",
+    "layout-validation.json",
+    "cleanup-validation.json",
+    "source-manifest.json"
+  ]
+}

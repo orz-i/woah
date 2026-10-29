@@ -1,0 +1,306 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-29",
+  "status": "passed_android_scoped_validation",
+  "branch": "feat/dance-comparison-m0",
+  "validatedCommit": "0a25d05b1d2271f311951b3d38c181bbeeff5a7d",
+  "device": {
+    "model": "OnePlus KB2000",
+    "android": "14"
+  },
+  "productCodeChanged": false,
+  "kotlin": {
+    "passed": 13,
+    "failed": 0,
+    "suites": [
+      {
+        "name": "art.gaoge.dance.engine.comparison.ComparisonExportManagerTest",
+        "passed": 6
+      },
+      {
+        "name": "art.gaoge.dance.engine.comparison.ComparisonExportTest",
+        "passed": 7
+      }
+    ],
+    "newTestsActuallyExecuted": [
+      "unsavedCompletedExportIsNotSilentlyOverwritten",
+      "confirmedReplacementReclaimsPreviousPrivateMovieAndAgedOrphans",
+      "savedCompletedExportNeedsNoReplacementFlag"
+    ]
+  },
+  "flutter": {
+    "passed": 25,
+    "failed": 0,
+    "files": [
+      "comparison_export_test.dart",
+      "comparison_entry_route_regression_test.dart"
+    ],
+    "priorMac109NotDoubleCounted": true
+  },
+  "apk": {
+    "passed": true,
+    "apkSha256": "198a69796d8b0827daf891c0566ba4b92e500d433f8dd927a4e58980dc887bad",
+    "bytes": 272770962,
+    "installedHashMatches": true,
+    "target": "lib/main.dart",
+    "originalProjectsUnchanged": true,
+    "head": "0a25d05b1d2271f311951b3d38c181bbeeff5a7d"
+  },
+  "deviceChecks": [
+    {
+      "id": "unsaved_restart",
+      "passed": true,
+      "evidence": "06-restart-result.json"
+    },
+    {
+      "id": "replacement_cancel_paths",
+      "passed": true,
+      "evidence": "07-cancel-result.json"
+    },
+    {
+      "id": "confirmed_replacement",
+      "passed": true,
+      "evidence": "08-replacement-result.json"
+    },
+    {
+      "id": "save_failure_retry_and_saved_restart",
+      "passed": true,
+      "evidence": "10-save-retry-result.json"
+    },
+    {
+      "id": "saved_replacement_and_ab_export",
+      "passed": true,
+      "evidence": "11-saved-replacement-result.json"
+    },
+    {
+      "id": "ab_container_and_codecs",
+      "passed": true,
+      "evidence": "11-ab-format-result.json"
+    },
+    {
+      "id": "six_picker_replacements",
+      "passed": true,
+      "evidence": "13-cycle-results.json"
+    },
+    {
+      "id": "historical_project_and_source_retention",
+      "passed": true,
+      "evidence": "13-history-retention-result.json"
+    },
+    {
+      "id": "running_cancel_and_restart",
+      "passed": true,
+      "evidence": "15-cancel-restart-result.json"
+    },
+    {
+      "id": "three_history_playbacks",
+      "passed": true,
+      "evidence": "20-history-playback-result.json"
+    },
+    {
+      "id": "history_cold_restart",
+      "passed": true,
+      "evidence": "21-history-restart-result.json"
+    },
+    {
+      "id": "restore_and_cleanup",
+      "passed": true,
+      "evidence": "22-cleanup-result.json"
+    }
+  ],
+  "faultInjection": {
+    "scope": "only synthetic UUID export output",
+    "trigger": "chmod 000 after validated partial renamed to final MP4; actual publish read fails",
+    "recovery": "chmod 600; native save via production Flutter button after cold restart",
+    "taskMetadataFabricated": false,
+    "storageFilled": false,
+    "albumPermissionChanged": false,
+    "failedMediaStoreRowsCleaned": true,
+    "effectiveEvidencePrefixes": [
+      "04-",
+      "08-"
+    ]
+  },
+  "history": {
+    "actualPickerReplacements": 6,
+    "originalProjectsPlayed": 2,
+    "syntheticHistoryPlayed": 1,
+    "historicalSourceHashesPreserved": true,
+    "restoredPositionUs": 3223000,
+    "mapping": {
+      "timeScale": 0.8,
+      "offsetUs": 1200000
+    },
+    "markerPreserved": true
+  },
+  "cleanup": {
+    "passed": true,
+    "originalProjectCount": 2,
+    "originalProjectsBytewiseRestored": true,
+    "originalExportStateRestored": true,
+    "exportRowsRemoved": 3,
+    "pickerFilesRemoved": 4,
+    "syntheticProjectsRemoved": 2,
+    "privateOutputAndCacheEmpty": true,
+    "exportServiceAbsent": true,
+    "exportWakeLockAbsent": true,
+    "screenSettingUnchanged": true,
+    "runtimeErrors": [],
+    "finalEntry": "art.gaoge.dance/.MainActivity"
+  },
+  "sourceSnapshot": {
+    "fileCount": 353,
+    "allHashesStillMatch": true,
+    "manifestSha256": "4f7f6d03be89564f9ca0d857c4e53860e8fd0a241bbc2483a4f6c705a65ec624"
+  },
+  "notCovered": [
+    "Android API 24-28 SAF interaction",
+    "natural storage exhaustion",
+    "iOS PHPicker private-copy GC on physical device",
+    "long continuous import stress"
+  ],
+  "iosPhysical": "deferred_no_device",
+  "fullM0Rerun": false,
+  "releaseQARerun": false,
+  "gitActions": {
+    "phase": "validation_before_publication",
+    "committed": false,
+    "pushed": false,
+    "merged": false
+  },
+  "evidenceDirectory": "docs/session/comparison-storage-lifecycle-20261029",
+  "evidence": [
+    {
+      "path": "06-restart-result.json",
+      "sha256": "a374a85631fed4afe7a132d71ab2b8bb541f57cae9502a1f7b1b1e3e87a96d31"
+    },
+    {
+      "path": "07-cancel-result.json",
+      "sha256": "b661a49f1007d091ecd82974f6446f261f2d9ba067ebddb1088cad53dc48db2e"
+    },
+    {
+      "path": "08-replacement-result.json",
+      "sha256": "c4e81325b16f008e7cd35d71a2906b6020f216372e2b67111c1621178901d81a"
+    },
+    {
+      "path": "10-save-retry-result.json",
+      "sha256": "5169c81528dafc779d6607c8c11d76841ca8db3e8d107afdd45b8d8e7bd94d18"
+    },
+    {
+      "path": "11-saved-replacement-result.json",
+      "sha256": "f682d514c7557049a7c92948c0cd44e84bb7eac34cd4f287ccf7224201f9b6b4"
+    },
+    {
+      "path": "11-ab-format-result.json",
+      "sha256": "1fc1a4f16784e10e16c7e95e6b09db70d710a65d08dcbfb380b52eb37c11419c"
+    },
+    {
+      "path": "13-cycle-results.json",
+      "sha256": "cfb2fdd7e4838de354404e60ff51eb857109c3ad9eb55b94a2e8eb13406940e2"
+    },
+    {
+      "path": "13-history-retention-result.json",
+      "sha256": "a4b55f9656a39d2794519d218af6b2840fd65cac4378d4bebcc78d09e9c729b6"
+    },
+    {
+      "path": "15-cancel-restart-result.json",
+      "sha256": "36cd594b39b93ad22eb7f87ac520225cb87a0831c14ac03db0d76dc3b05831ea"
+    },
+    {
+      "path": "20-history-playback-result.json",
+      "sha256": "23fad1933479503973859391a7e4f53ff5bb3411492a59d951a6f521478bc829"
+    },
+    {
+      "path": "21-history-restart-result.json",
+      "sha256": "a5f4d50e84c27822aa506a462e2ac28140f058e7b719163db1ad08370d5eacb2"
+    },
+    {
+      "path": "22-cleanup-result.json",
+      "sha256": "50140148e541d5f5ae6a0064edf3456542d5e575b65214c403c9869a9e4188a7"
+    },
+    {
+      "path": "kotlin-results.json",
+      "sha256": "cef1a5e01994462a6eb94a5d1349d3970bd6fc0a3f793300340008c1757654de"
+    },
+    {
+      "path": "kotlin-tests.log",
+      "sha256": "3595cdfbd2477a3284c79fd7826957348db8dee7d344f81365b0a1913d865acc"
+    },
+    {
+      "path": "flutter-export-tests.log",
+      "sha256": "f536380af3371aa9a73770e3d1ac9857d0a8337d6cd1372ee7b9b587ffc0eb76"
+    },
+    {
+      "path": "android-build.json",
+      "sha256": "5989733df5d904691a39f9ea4359033dd39e507b244548f2fb115f068ab2506c"
+    },
+    {
+      "path": "android-build.log",
+      "sha256": "740374e6f88dbf953c880e48022f7f39059079e880a34fba4bcbbba517a44e15"
+    },
+    {
+      "path": "04-fault-injection.log",
+      "sha256": "aad70c9e74f928c952d746545e7e60ea4e23ff299d35b613dfeed1fc341339ea"
+    },
+    {
+      "path": "08-confirmed-replacement-injection.log",
+      "sha256": "cf058cd972816fdc17f9f24b2c0fd3a79a13ecdf0002638aa8abf0dcd515cb94"
+    },
+    {
+      "path": "04-unsaved-record-private.json",
+      "sha256": "5a004686ed1d6e4e229530f4f835ea785468737d09b025f61fe36821c8fef1e4"
+    },
+    {
+      "path": "08-confirmed-replacement-unsaved-record-private.json",
+      "sha256": "b4769f33a6aed422c4c3d1b21bc53503a12a987f9ed5910cbfdbb6da5dc11df7"
+    },
+    {
+      "path": "03-auto-saved.png",
+      "sha256": "fed74eb697a9e26b8bf1c5e13efd899c331356ddacba0011ca68c2c518669a0a"
+    },
+    {
+      "path": "04-unsaved-completed.png",
+      "sha256": "063b59087b5584efdb56dc46d3b6b7dea1f2393a01f9c30fc3d8c7b6103c7940"
+    },
+    {
+      "path": "07-replacement-confirm.png",
+      "sha256": "6428ccfe2681f0a7df414c8d86667b8019a3e33acd44246de80a5b837fe7e0fa"
+    },
+    {
+      "path": "09-save-retry-succeeded.png",
+      "sha256": "fed74eb697a9e26b8bf1c5e13efd899c331356ddacba0011ca68c2c518669a0a"
+    },
+    {
+      "path": "13-cycle-6-ready.png",
+      "sha256": "ff781edefade4f80fb945e4ec3b902db6b416a17fceb18ab7fe4e58dfccaa553"
+    },
+    {
+      "path": "20-history-1-playing.png",
+      "sha256": "93ba8f8dc8b063f5747b6123ef883f6491daba63305398cb203c61eb499f8a02"
+    },
+    {
+      "path": "20-history-2-playing.png",
+      "sha256": "bdd7a8ed055676226821f3aaab867a6facf2f8f75c03f47813c8c860998f7491"
+    },
+    {
+      "path": "20-history-3-playing.png",
+      "sha256": "2bb7cb971b887eeb813fe7c4a8270bafbc2c3a24cc5c7c1c22cf0faf13dfbbb8"
+    },
+    {
+      "path": "21-last-history-restarted.png",
+      "sha256": "fea2b37e0e7851ed6d005702bea0e7a59379efb92e3ac01fcca0d1e22036abfa"
+    },
+    {
+      "path": "22-final-home.png",
+      "sha256": "c7f2d08cfdc6dd319f59942b2ea569d130493b22288c7ffd9e4a05144c0c6bf1"
+    },
+    {
+      "path": "22-runtime.log",
+      "sha256": "72aa9896bfcab41b0ed672fff0dcfbdb563c780484079454c5b9f7979c57e74a"
+    },
+    {
+      "path": "android-source-manifest.json",
+      "sha256": "4f7f6d03be89564f9ca0d857c4e53860e8fd0a241bbc2483a4f6c705a65ec624"
+    }
+  ]
+}
