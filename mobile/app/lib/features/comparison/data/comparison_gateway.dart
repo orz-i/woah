@@ -30,7 +30,10 @@ abstract interface class ComparisonGateway {
   Future<ComparisonPlaybackDto> state();
   Future<MusicAlignmentDto> align(ComparisonProject project);
   Future<void> cancelAlignment();
-  Future<ComparisonExportDto> startExport(ComparisonExportPlan plan);
+  Future<ComparisonExportDto> startExport(
+    ComparisonExportPlan plan, {
+    bool replacePreviousUnsaved = false,
+  });
   Future<ComparisonExportDto?> getExport();
   Future<ComparisonExportDto> cancelExport(String id);
   Future<ComparisonExportDto> retryExport(String id);
@@ -143,16 +146,19 @@ class NativeComparisonGateway implements ComparisonGateway {
   @override
   Future<void> cancelAlignment() => _api.cancelAlignment();
   @override
-  Future<ComparisonExportDto> startExport(ComparisonExportPlan p) =>
-      _api.startExport(
-        jsonEncode(p.project.toJson()),
-        p.startUs,
-        p.endUs,
-        p.width,
-        p.height,
-        p.gap,
-        p.sideBySide,
-      );
+  Future<ComparisonExportDto> startExport(
+    ComparisonExportPlan p, {
+    bool replacePreviousUnsaved = false,
+  }) => _api.startExport(
+    jsonEncode(p.project.toJson()),
+    p.startUs,
+    p.endUs,
+    p.width,
+    p.height,
+    p.gap,
+    p.sideBySide,
+    replacePreviousUnsaved,
+  );
   @override
   Future<ComparisonExportDto?> getExport() => _api.getExport();
   @override

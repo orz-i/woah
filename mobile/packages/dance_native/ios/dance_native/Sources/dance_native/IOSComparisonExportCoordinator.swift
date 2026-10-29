@@ -44,6 +44,9 @@ final class IOSComparisonExportCoordinator {
         // are retained even when another export becomes the latest job.
         try? FileManager.default.removeItem(at: partial(record.id))
       }
+      if let retained = current {
+        try? IOSComparisonExportFiles.prune(directory: directory, keeping: retained.id)
+      }
     } catch {
       // A damaged latest record must not prevent a fresh export. An unwritable
       // directory is detected again by the atomic initial metadata write.
@@ -53,6 +56,7 @@ final class IOSComparisonExportCoordinator {
 
   func start(projectJson: String, startUs: Int64, endUs: Int64,
     width: Int, height: Int, gap: Int, sideBySide: Bool,
+    replacePreviousUnsaved: Bool,
     completion: @escaping (Result<ComparisonExportDto, Error>) -> Void) {
     do {
       let spec = try IOSComparisonExportSpec.fromProject(projectJson, startUs: startUs,
@@ -60,7 +64,8 @@ final class IOSComparisonExportCoordinator {
       // Fail before creating a job when its stored source is inaccessible.
       _ = try IOSComparisonFiles.resolve(spec.teacherURI)
       _ = try IOSComparisonFiles.resolve(spec.learnerURI)
-      deliver(completion, .success(try launch(spec: spec)))
+      deliver(completion, .success(try launch(spec: spec,
+        replacePreviousUnsaved: replacePreviousUnsaved)))
     } catch { deliver(completion, .failure(error)) }
   }
 
@@ -153,17 +158,30 @@ final class IOSComparisonExportCoordinator {
     }
   }
 
-  private func launch(spec: IOSComparisonExportSpec, id: String = UUID().uuidString) throws -> ComparisonExportDto {
+  private func launch(spec: IOSComparisonExportSpec, id: String = UUID().uuidString,
+    replacePreviousUnsaved: Bool = false) throws -> ComparisonExportDto {
     let cancellation = IOSComparisonExportCancellation()
     let background = IOSComparisonExportBackgroundTask()
+    var replacedId: String?
     let initial = try withLock { () throws -> ComparisonExportDto in
       guard runtime == nil, current?.active != true else { throw failure("已有对比视频正在导出") }
+      let previous = current
+      if let previous, IOSComparisonExportFiles.needsReplacementConsent(
+        state: previous.state, savedIdentifier: previous.savedAssetIdentifier,
+        outputExists: FileManager.default.fileExists(atPath: output(previous.id).path),
+        confirmed: replacePreviousUnsaved) {
+        throw failure("上次导出尚未保存，请先保存或确认替换旧成片")
+      }
       let record = IOSComparisonExportRecord(id: id, spec: spec)
       try record.validate()
       try persistLocked(record)
+      replacedId = previous?.id
       runtime = Runtime(id: id, cancellation: cancellation, background: background)
       return dto(record)
     }
+    // New metadata is durable before retiring the previous local movie.
+    // The replacement flag is accepted only for this explicitly consented job.
+    try? IOSComparisonExportFiles.prune(directory: directory, keeping: id, replacing: replacedId)
     background.begin { [weak self, weak cancellation] in
       guard cancellation?.cancel(.backgroundExpired) == true else { return }
       self?.backgroundExpired(id: id)

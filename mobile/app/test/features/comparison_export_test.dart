@@ -46,12 +46,17 @@ class ExportGateway extends FakeComparisonGateway {
   ExportGateway() : super(saved: [exportProject()]);
   ComparisonExportDto? status;
   ComparisonExportPlan? submitted;
+  bool replacementConfirmed = false;
   int cancelled = 0, retried = 0, published = 0, viewed = 0;
   @override
   Future<ComparisonExportDto?> getExport() async => status;
   @override
-  Future<ComparisonExportDto> startExport(ComparisonExportPlan p) async {
+  Future<ComparisonExportDto> startExport(
+    ComparisonExportPlan p, {
+    bool replacePreviousUnsaved = false,
+  }) async {
     submitted = p;
+    replacementConfirmed = replacePreviousUnsaved;
     return status = job('encoding');
   }
 
@@ -166,6 +171,54 @@ void main() {
     await tester.tap(find.text('完成'));
     await tester.pumpAndSettle();
     expect(find.byType(ComparisonExportDialog), findsNothing);
+  });
+
+  testWidgets(
+    'unsaved result requires replacement consent, including a different project',
+    (tester) async {
+      final prior = job('completed')
+        ..projectId = 'another_project'
+        ..outputPath = '/private/exports/old.mp4';
+      final g = ExportGateway()..status = prior;
+      await showExport(tester, g, platform: TargetPlatform.iOS);
+      expect(find.textContaining('上次导出尚未保存，开始新导出需要确认替换'), findsOneWidget);
+      await tester.tap(find.text('开始导出'));
+      await tester.pumpAndSettle();
+      expect(find.text('替换未保存的导出？'), findsOneWidget);
+      await tester.tap(find.text('返回保存'));
+      await tester.pumpAndSettle();
+      expect(g.submitted, isNull);
+      expect(g.replacementConfirmed, false);
+      await tester.tap(find.text('开始导出'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('替换旧成片'));
+      await tester.pumpAndSettle();
+      expect(g.submitted, isNotNull);
+      expect(g.replacementConfirmed, true);
+      await tester.tap(find.text('取消导出'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('完成'));
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets('saved result starts a new export without replacement consent', (
+    tester,
+  ) async {
+    final g = ExportGateway()
+      ..status = (job('completed')
+        ..outputPath = '/private/exports/old.mp4'
+        ..savedUri = 'ph://already-saved');
+    await showExport(tester, g, platform: TargetPlatform.iOS);
+    await tester.tap(find.text('开始导出'));
+    await tester.pumpAndSettle();
+    expect(find.text('替换未保存的导出？'), findsNothing);
+    expect(g.submitted, isNotNull);
+    expect(g.replacementConfirmed, false);
+    await tester.tap(find.text('取消导出'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('完成'));
+    await tester.pumpAndSettle();
   });
 
   testWidgets('iOS saved export opens without another Photos request', (

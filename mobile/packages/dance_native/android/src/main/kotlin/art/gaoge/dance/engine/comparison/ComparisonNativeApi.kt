@@ -197,11 +197,11 @@ internal class ComparisonNativeApi(private val context: Context,private val regi
         }
     }
     override suspend fun startExport(projectJson: String,startUs: Long,endUs: Long,width: Long,height: Long,
-        gap: Long,sideBySide: Boolean): ComparisonExportDto {
+        gap: Long,sideBySide: Boolean,replacePreviousUnsaved: Boolean): ComparisonExportDto {
         require(width in 16..1920 && height in 16..1920 && gap in 1..64)
         val spec=ComparisonExportSpec.fromProject(projectJson,startUs,endUs,width.toInt(),height.toInt(),gap.toInt(),sideBySide)
         session?.close();session=null
-        return exports.start(spec)
+        return exports.start(spec,replacePreviousUnsaved)
     }
     override suspend fun getExport(): ComparisonExportDto? = exports.latest()
     override suspend fun cancelExport(jobId: String): ComparisonExportDto = exports.cancel(jobId)

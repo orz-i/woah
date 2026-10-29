@@ -88,6 +88,9 @@ final class IOSComparisonPicker: NSObject, PHPickerViewControllerDelegate, UIAda
           let url = try IOSComparisonFiles.newMediaURL(extension: suffix)
           destination = url
           try FileManager.default.copyItem(at: temporary, to: url)
+          // Providers may preserve the source's years-old modification time.
+          // Reset the managed copy's age so the 24h orphan grace starts at import.
+          try FileManager.default.setAttributes([.modificationDate: Date()], ofItemAtPath: url.path)
           copied = .success(url)
         } catch {
           if let destination { try? FileManager.default.removeItem(at: destination) }

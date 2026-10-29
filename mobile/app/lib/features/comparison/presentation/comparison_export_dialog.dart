@@ -27,7 +27,7 @@ class _ComparisonExportDialogState extends State<ComparisonExportDialog> {
   Timer? _timer;
   bool _loading = true, _working = false, _polling = false, _selection = false;
   bool _closeAfterCancel = false;
-  bool _closing = false;
+  bool _closing = false, _confirmingReplacement = false;
   String? _error;
   bool _active(ComparisonExportDto? value) =>
       value != null &&
@@ -53,7 +53,9 @@ class _ComparisonExportDialogState extends State<ComparisonExportDialog> {
         _job = previous ?? widget.existingJob;
       } else if (_active(previous)) {
         _job = previous;
-      } else if (previous?.projectId == widget.full?.project.id) {
+      } else if (previous != null) {
+        // Keep the preceding result visible even when it belongs to a different
+        // project: an unsaved local movie must not be silently replaced.
         _previous = previous;
       }
     } catch (_) {
@@ -96,6 +98,51 @@ class _ComparisonExportDialogState extends State<ComparisonExportDialog> {
     } finally {
       if (mounted && !_closing) setState(() => _working = false);
     }
+  }
+
+  Future<void> _startExport(ComparisonExportPlan plan) async {
+    if (_working || _closing || _confirmingReplacement || !mounted) return;
+    final previous = _previous;
+    var replacePreviousUnsaved = false;
+    if (previous != null &&
+        previous.state == 'completed' &&
+        previous.outputPath != null &&
+        previous.savedUri == null) {
+      setState(() => _confirmingReplacement = true);
+      bool? confirmed;
+      try {
+        confirmed = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Text('替换未保存的导出？'),
+            content: const Text(
+              '上次导出的本地视频尚未保存到相册或文件。开始新导出后，旧成片将从应用中删除，且无法恢复。建议先保存上次导出。',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('返回保存'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('替换旧成片'),
+              ),
+            ],
+          ),
+        );
+      } finally {
+        if (mounted) setState(() => _confirmingReplacement = false);
+      }
+      if (!mounted || _closing || confirmed != true) return;
+      replacePreviousUnsaved = true;
+    }
+    await _run(
+      () => widget.gateway.startExport(
+        plan,
+        replacePreviousUnsaved: replacePreviousUnsaved,
+      ),
+    );
   }
 
   Future<void> _cancel({bool close = false}) async {
@@ -198,6 +245,19 @@ class _ComparisonExportDialogState extends State<ComparisonExportDialog> {
                   ),
                   if (_previous != null) ...[
                     const SizedBox(height: 12),
+                    if (_previous!.state == 'completed' &&
+                        _previous!.savedUri == null &&
+                        _previous!.outputPath != null)
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          '上次导出尚未保存，开始新导出需要确认替换。',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.flowTextSecondary,
+                          ),
+                        ),
+                      ),
                     if (_previous!.state == 'completed')
                       TextButton(
                         onPressed: _working
@@ -271,9 +331,9 @@ class _ComparisonExportDialogState extends State<ComparisonExportDialog> {
             ),
           if (job == null)
             FilledButton(
-              onPressed: _working || _loading
+              onPressed: _working || _loading || _confirmingReplacement
                   ? null
-                  : () => _run(() => widget.gateway.startExport(plan!)),
+                  : () => _startExport(plan!),
               child: const Text('开始导出'),
             )
           else if (active)

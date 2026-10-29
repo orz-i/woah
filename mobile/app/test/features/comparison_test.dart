@@ -208,8 +208,10 @@ class FakeComparisonGateway implements ComparisonGateway {
   @override
   Future<ComparisonExportDto?> getExport() async => null;
   @override
-  Future<ComparisonExportDto> startExport(ComparisonExportPlan p) async =>
-      throw UnimplementedError();
+  Future<ComparisonExportDto> startExport(
+    ComparisonExportPlan p, {
+    bool replacePreviousUnsaved = false,
+  }) async => throw UnimplementedError();
   @override
   Future<ComparisonExportDto> cancelExport(String id) async =>
       throw UnimplementedError();

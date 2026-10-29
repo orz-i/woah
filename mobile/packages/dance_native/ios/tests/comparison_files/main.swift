@@ -95,3 +95,55 @@ try Data([5]).write(to: missingMedia)
 let recovered = try IOSComparisonProjectStore.load().compactMap(object).first { $0["id"] as? String == missingID }!
 precondition((recovered["teacher"] as! [String: Any])["uri"] as! String == missingMedia.absoluteString)
 print("Comparison media path / atomic project / corrupt entry / marker identity integrity gate passed (macOS)")
+
+
+// Age-gated reclamation is based on ALL persisted project sources and markers,
+// plus the latest frozen export. An unreadable project must block deletion.
+let gcRoot = FileManager.default.temporaryDirectory.appendingPathComponent("woah-media-gc-\(UUID().uuidString)")
+let gcMedia = gcRoot.appendingPathComponent("media", isDirectory: true)
+let gcProjects = gcRoot.appendingPathComponent("projects", isDirectory: true)
+let gcExport = gcRoot.appendingPathComponent("exports/latest.json")
+try FileManager.default.createDirectory(at: gcMedia, withIntermediateDirectories: true)
+try FileManager.default.createDirectory(at: gcProjects, withIntermediateDirectories: true)
+try FileManager.default.createDirectory(at: gcExport.deletingLastPathComponent(), withIntermediateDirectories: true)
+defer { try? FileManager.default.removeItem(at: gcRoot) }
+func gcFile(_ ext: String = "mov", old: Bool = true) throws -> URL {
+  let url = gcMedia.appendingPathComponent("\(UUID().uuidString.lowercased()).\(ext)")
+  try Data([1, 2, 3]).write(to: url)
+  if old { try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 100)],
+    ofItemAtPath: url.path) }
+  return url
+}
+func gcURI(_ url: URL) -> String { "woah-comparison-media://\(url.lastPathComponent)" }
+let referenced = try gcFile()
+let referencedMarker = try gcFile()
+let exported = try gcFile()
+let orphan = try gcFile()
+let recent = try gcFile(old: false)
+let foreign = gcMedia.appendingPathComponent("not-managed.mp4")
+try Data([9]).write(to: foreign)
+let symlinkGC = gcMedia.appendingPathComponent("\(UUID().uuidString.lowercased()).mov")
+try FileManager.default.createSymbolicLink(at: symlinkGC, withDestinationURL: external)
+var gcProject = project("gc-project", gcURI(referenced))
+gcProject["markers"] = [["id": "gc-marker", "sourceUri": gcURI(referencedMarker), "startUs": 1, "endUs": 2]]
+try Data(try json(gcProject).utf8).write(to: gcProjects.appendingPathComponent("project.json"))
+let frozen = ["spec": ["teacherURI": gcURI(exported), "learnerURI": gcURI(referenced)]]
+try Data(try json(frozen).utf8).write(to: gcExport)
+let gcNow = Date(timeIntervalSince1970: 200_000)
+let removed1 = try IOSComparisonProjectStore.pruneStaleImports(now: gcNow, minimumAge: 100,
+  projects: gcProjects, exports: gcExport, media: gcMedia)
+require(removed1 == 1, "Only an unreferenced, old import should be reclaimed")
+for url in [referenced, referencedMarker, exported, recent, foreign, symlinkGC] {
+  require(FileManager.default.fileExists(atPath: url.path), "Protected or young file was removed: \(url.lastPathComponent)")
+}
+try Data("{corrupt".utf8).write(to: gcProjects.appendingPathComponent("corrupt.json"))
+let blocked = try IOSComparisonProjectStore.pruneStaleImports(now: gcNow, minimumAge: 100,
+  projects: gcProjects, exports: gcExport, media: gcMedia)
+require(blocked == 0, "Corrupt project must disable pruning")
+try FileManager.default.removeItem(at: gcProjects.appendingPathComponent("corrupt.json"))
+try FileManager.default.removeItem(at: gcExport)
+let removed2 = try IOSComparisonProjectStore.pruneStaleImports(now: gcNow, minimumAge: 100,
+  projects: gcProjects, exports: gcExport, media: gcMedia)
+require(removed2 == 1 && !FileManager.default.fileExists(atPath: exported.path),
+  "Old export source should become reclaimable only after its reference disappears")
+print("Comparison imported media GC honors references, young imports, exports and unreadable projects")

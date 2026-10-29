@@ -64,6 +64,38 @@ enum IOSComparisonFiles {
     return url.standardizedFileURL
   }
 
+  /// Reclaim only aged, unreferenced imported copies; UUID-only files and a
+  /// fixed owned directory prevent deleting unrelated files or symlink targets.
+  /// Recent copies are leased while the picker/editor completes its async save.
+  static func pruneUnreferenced(_ referencedURIs: Set<String>, now: Date = Date(),
+    minimumAge: TimeInterval = 24 * 60 * 60, directory explicitDirectory: URL? = nil) throws -> Int {
+    let directory = try (explicitDirectory ?? mediaDirectory()).standardizedFileURL
+    let keep = Set(referencedURIs.compactMap { uri -> String? in
+      if let components = URLComponents(string: uri),
+         components.scheme?.lowercased() == mediaScheme,
+         components.path.isEmpty, components.query == nil, components.fragment == nil,
+         let filename = components.host, validFilename(filename) { return filename.lowercased() }
+      guard let url = try? localURL(uri) else { return nil }
+      return (try? ownedFilename(url))?.lowercased()
+    })
+    let keys: Set<URLResourceKey> = [.isRegularFileKey, .isSymbolicLinkKey, .contentModificationDateKey]
+    let candidates = try FileManager.default.contentsOfDirectory(at: directory,
+      includingPropertiesForKeys: Array(keys), options: [.skipsHiddenFiles])
+    var removed = 0
+    for candidate in candidates {
+      guard validFilename(candidate.lastPathComponent),
+            !keep.contains(candidate.lastPathComponent.lowercased()),
+            candidate.deletingLastPathComponent().standardizedFileURL == directory else { continue }
+      let attributes = try candidate.resourceValues(forKeys: keys)
+      guard attributes.isRegularFile == true, attributes.isSymbolicLink != true,
+            let modified = attributes.contentModificationDate,
+            modified <= now.addingTimeInterval(-minimumAge) else { continue }
+      try FileManager.default.removeItem(at: candidate)
+      removed += 1
+    }
+    return removed
+  }
+
   private static func validFilename(_ filename: String) -> Bool {
     filename.range(of: "^[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}\\.[A-Za-z0-9]{1,10}$",
       options: .regularExpression) != nil

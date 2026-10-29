@@ -41,6 +41,49 @@ class ComparisonExportManagerTest {
     private fun spec()=ComparisonExportSpec("test_project","file:///reference.mp4","file:///target.mp4",
         0,1.0,0,1_000_000,320,240,8,true,false,false,ComparisonPicture(),ComparisonPicture())
 
+    private fun completed(manager: ComparisonExportManager,root: File,savedUri: String?=null): File {
+        val record=ComparisonExportRecord("old-completed",spec(),state="completed",progress=1.0,savedUri=savedUri)
+        val field=ComparisonExportManager::class.java.getDeclaredField("current")
+        field.isAccessible=true
+        field.set(manager,record)
+        return File(root,"files/comparison-exports/${record.id}.mp4").apply {
+            parentFile!!.mkdirs();writeText("single local movie")
+        }
+    }
+
+    @Test fun unsavedCompletedExportIsNotSilentlyOverwritten() = withManager { manager,root ->
+        val old=completed(manager,root)
+        assertFailsWith<IllegalStateException> { manager.start(spec()) }
+        assertEquals("old-completed",manager.latest()?.jobId)
+        assertEquals("completed",manager.latest()?.state)
+        assertEquals("single local movie",old.readText())
+    }
+
+    @Test fun confirmedReplacementReclaimsPreviousPrivateMovieAndAgedOrphans() = withManager { manager,root ->
+        val old=completed(manager,root)
+        val directory=old.parentFile!!
+        val aged=File(directory,"old-orphan.mp4").apply {
+            writeText("legacy");setLastModified(System.currentTimeMillis()-10L*24*60*60*1000)
+        }
+        val young=File(directory,"new-orphan.mp4").apply { writeText("recent") }
+        val unmanaged=File(directory,"some-file.txt").apply { writeText("do not touch") }
+        val replacement=manager.start(spec(),replacePreviousUnsaved=true)
+        assertEquals("queued",replacement.state)
+        assertNotEquals("old-completed",replacement.jobId)
+        assertFalse(old.exists(),"Old local movie must be retired after acknowledged replacement")
+        assertFalse(aged.exists(),"Stale legacy unindexed MP4 must be reclaimed")
+        assertTrue(young.exists(),"Recent legacy file still has a grace period")
+        assertTrue(unmanaged.exists(),"Non-export files must never be touched")
+    }
+
+    @Test fun savedCompletedExportNeedsNoReplacementFlag() = withManager { manager,root ->
+        val old=completed(manager,root,savedUri="content://media/external/video/media/42")
+        val replacement=manager.start(spec())
+        assertEquals("queued",replacement.state)
+        assertFalse(old.exists(),"Private duplicate can be retired; MediaStore URI remains external")
+    }
+
+
     @Test fun interruptedWorkerCannotThrowOrModifyItsRetry() = withManager { manager,root ->
         val first=manager.start(spec())
         val entered=CountDownLatch(1);val release=CountDownLatch(1)

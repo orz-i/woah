@@ -52,6 +52,8 @@ internal class ComparisonExportManager private constructor(private val context: 
             }
             partial(it.id).delete();packets(it.id).delete();persist()
         }
+        // Never guess ownership if the last export metadata was unreadable.
+        if (current!=null) prunePrivateOutputs(current!!.id)
     }
     /** Only this app's exact export row may be recovered or removed. */
     private fun pendingState(job: ComparisonExportRecord,uri: Uri): Int? {
@@ -77,6 +79,23 @@ internal class ComparisonExportManager private constructor(private val context: 
     private fun output(id: String)=File(directory,"$id.mp4")
     private fun partial(id: String)=File(directory,"$id.partial.mp4")
     private fun packets(id: String)=File(temporary,"$id.aacbin")
+    private fun prunePrivateOutputs(keepId: String, replacedId: String?=null) {
+        // Older versions retained unreachable completed files. Sweep only
+        // managed, regular MP4s aged at least seven days, plus the one output
+        // explicitly replaced by starting this new job. Never touch MediaStore.
+        val cutoff=System.currentTimeMillis()-7L*24*60*60*1000
+        directory.listFiles()?.forEach { file ->
+            val ownedFile=runCatching {
+                file.isFile && file.canonicalFile==File(directory.canonicalFile,file.name)
+            }.getOrDefault(false)
+            if (ownedFile && file.name.matches(Regex("[A-Za-z0-9_-]{1,80}\\.mp4")) &&
+                file.name!="$keepId.mp4" &&
+                ((replacedId!=null && file.name=="$replacedId.mp4") ||
+                    (file.lastModified()>0 && file.lastModified()<=cutoff))) {
+                runCatching { file.delete() }
+            }
+        }
+    }
     @Synchronized private fun persist() {
         val value=current ?: return
         val stream=metadata.startWrite()
@@ -90,17 +109,31 @@ internal class ComparisonExportManager private constructor(private val context: 
         value.progress,value.spec.startUs,value.spec.endUs,value.spec.width.toLong(),value.spec.height.toLong(),
         if (value.state=="completed" && output(value.id).isFile) output(value.id).absolutePath else null,value.savedUri,value.error)
     @Synchronized private fun requireJob(id: String) = requireNotNull(current?.takeIf { it.id==id }) { "导出任务已变化，请重新打开导出" }
-    @Synchronized fun start(spec: ComparisonExportSpec): ComparisonExportDto {
+    @Synchronized fun start(spec: ComparisonExportSpec, replacePreviousUnsaved: Boolean=false): ComparisonExportDto {
         check(current?.active!=true) { "已有对比视频正在导出" }
-        current?.let { old ->
-            cleanupPending(old)
-            if (old.savedUri!=null) output(old.id).delete()
+        val previous=current
+        if (previous?.state=="completed" && previous.savedUri==null &&
+            output(previous.id).isFile && !replacePreviousUnsaved) {
+            error("上次导出尚未保存，请先保存或确认替换旧成片")
         }
         val job=ComparisonExportRecord(UUID.randomUUID().toString(),spec)
-        current=job;cancelled=AtomicBoolean(false);persist()
+        val oldCancellation=cancelled
+        current=job;cancelled=AtomicBoolean(false)
+        try { persist() }
+        catch (e: Throwable) { current=previous;cancelled=oldCancellation;throw e }
         try { ComparisonExportService.start(context,job.id) }
         catch (e: Throwable) {
-            current=job.copy(state="failed",stage="导出未启动",error="无法启动导出，请回到应用后重试");persist();throw e
+            // If Android refused the foreground service, retain the old job
+            // and its sole local movie so a failed launch never discards data.
+            if (previous!=null) { current=previous;cancelled=oldCancellation;persist() }
+            else { current=job.copy(state="failed",stage="导出未启动",error="无法启动导出，请回到应用后重试");persist() }
+            throw e
+        }
+        // The new job owns the latest record. Only now can the user-confirmed
+        // predecessor be retired; orphan cleanup is best effort.
+        runCatching {
+            previous?.let { cleanupPending(it) }
+            prunePrivateOutputs(job.id,previous?.id)
         }
         return dto(current!!)
     }

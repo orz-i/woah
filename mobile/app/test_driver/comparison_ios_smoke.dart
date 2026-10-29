@@ -567,6 +567,7 @@ class _ComparisonSmoke extends ChangeNotifier {
           240,
           8,
           true,
+          false,
         ),
       );
       texture = null;

@@ -39,8 +39,15 @@ final class IOSComparisonNativeApi: DanceComparisonApi {
     guard let view = presenter() else { throw invalid("请回到应用后选择视频") }
     return try await picker.choose(from: view)
   }
-  func loadProjects() async throws -> [String] { try IOSComparisonProjectStore.load() }
-  func saveProject(projectJson: String) async throws { try IOSComparisonProjectStore.save(projectJson) }
+  func loadProjects() async throws -> [String] {
+    let projects = try IOSComparisonProjectStore.load()
+    // Run maintenance after reading projects but before opening any player.
+    try? IOSComparisonProjectStore.pruneStaleImports()
+    return projects
+  }
+  func saveProject(projectJson: String) async throws {
+    try IOSComparisonProjectStore.save(projectJson)
+  }
 
   func open(teacherUri: String, learnerUri: String, offsetUs: Int64, positionUs: Int64,
     speed: Double, width: Int64, height: Int64, sideBySide: Bool,
@@ -49,10 +56,15 @@ final class IOSComparisonNativeApi: DanceComparisonApi {
     guard !activeExport else { throw invalid("对比视频正在导出，请先查看导出进度") }
     if player == nil { player = IOSComparisonPlayer(registry: registry) }
     let player = try requirePlayer()
-    return try await player.open(referenceURL: IOSComparisonFiles.resolve(teacherUri),
+    let state = try await player.open(referenceURL: IOSComparisonFiles.resolve(teacherUri),
       targetURL: IOSComparisonFiles.resolve(learnerUri), offsetUs: offsetUs, positionUs: positionUs,
       speed: speed, width: Int(width), height: Int(height), sideBySide: sideBySide,
       practice: practice, timeScale: timeScale)
+    // Reclaim only after the prior player has switched away from its source.
+    Task.detached(priority: .utility) {
+      try? IOSComparisonProjectStore.pruneStaleImports()
+    }
+    return state
   }
   func control(command: ComparisonCommand, valueUs: Int64, speed: Double) async throws -> ComparisonPlaybackDto {
     try await requirePlayer().control(command: command, valueUs: valueUs, speed: speed)
@@ -114,13 +126,15 @@ final class IOSComparisonNativeApi: DanceComparisonApi {
   }
 
   func startExport(projectJson: String, startUs: Int64, endUs: Int64,
-    width: Int64, height: Int64, gap: Int64, sideBySide: Bool) async throws -> ComparisonExportDto {
+    width: Int64, height: Int64, gap: Int64, sideBySide: Bool,
+    replacePreviousUnsaved: Bool) async throws -> ComparisonExportDto {
     try canvas(width, height)
     guard gap > 0 && gap <= 64 else { throw invalid("画面间距无效") }
     closePlayer()
     return try await withCheckedThrowingContinuation { continuation in
       exports.start(projectJson: projectJson, startUs: startUs, endUs: endUs,
-        width: Int(width), height: Int(height), gap: Int(gap), sideBySide: sideBySide) {
+        width: Int(width), height: Int(height), gap: Int(gap), sideBySide: sideBySide,
+        replacePreviousUnsaved: replacePreviousUnsaved) {
         continuation.resume(with: $0)
       }
     }
@@ -142,6 +156,9 @@ final class IOSComparisonNativeApi: DanceComparisonApi {
   func close() async throws {
     matchRevision &+= 1
     picker.cancel(); closePlayer(); await stopMatching()
+    Task.detached(priority: .utility) {
+      try? IOSComparisonProjectStore.pruneStaleImports()
+    }
   }
 
   func detach() {

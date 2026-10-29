@@ -33,6 +33,55 @@ enum IOSComparisonProjectStore {
     }
   }
 
+  /// Keep every project's source/marker and the most recent frozen export source.
+  /// A damaged or unreadable record blocks all reclamation, rather than risking
+  /// a reference that we could not inspect. This is best-effort maintenance.
+  static func pruneStaleImports(now: Date = Date(), minimumAge: TimeInterval = 24 * 60 * 60,
+    projects overrideProjects: URL? = nil, exports overrideExports: URL? = nil,
+    media overrideMedia: URL? = nil) throws -> Int {
+    lock.lock()
+    defer { lock.unlock() }
+    let projects = try overrideProjects ?? projectDirectory(create: false)
+    var references = Set<String>()
+    if FileManager.default.fileExists(atPath: projects.path) {
+      let entries = try FileManager.default.contentsOfDirectory(at: projects,
+        includingPropertiesForKeys: [.isRegularFileKey], options: [.skipsHiddenFiles])
+      for entry in entries where entry.pathExtension == "json" {
+        let values = try entry.resourceValues(forKeys: [.isRegularFileKey])
+        guard values.isRegularFile == true,
+              let data = try? Data(contentsOf: entry),
+              let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              number(object["schemaVersion"])?.intValue == 1 else { return 0 }
+        for key in ["teacher", "learner"] {
+          if object[key] is NSNull || object[key] == nil { continue }
+          guard let source = object[key] as? [String: Any],
+                let uri = source["uri"] as? String else { return 0 }
+          references.insert(uri)
+        }
+        if let markers = object["markers"] {
+          guard let list = markers as? [[String: Any]] else { return 0 }
+          for marker in list {
+            guard let uri = marker["sourceUri"] as? String else { return 0 }
+            references.insert(uri)
+          }
+        }
+      }
+    }
+    let metadata = overrideExports ?? FileManager.default.urls(for: .applicationSupportDirectory,
+      in: .userDomainMask)[0].appendingPathComponent("WoahComparisonExports/latest.json")
+    if FileManager.default.fileExists(atPath: metadata.path) {
+      guard let data = try? Data(contentsOf: metadata),
+            let record = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+            let spec = record["spec"] as? [String: Any],
+            let reference = spec["teacherURI"] as? String,
+            let target = spec["learnerURI"] as? String else { return 0 }
+      references.insert(reference)
+      references.insert(target)
+    }
+    return try IOSComparisonFiles.pruneUnreferenced(references, now: now,
+      minimumAge: minimumAge, directory: overrideMedia)
+  }
+
   static func save(_ projectJson: String) throws {
     guard let data = projectJson.data(using: .utf8),
           var project = try JSONSerialization.jsonObject(with: data) as? [String: Any],

@@ -127,7 +127,7 @@ abstract class DanceComparisonApi {
   void cancelAlignment();
   @async
   ComparisonExportDto startExport(String projectJson, int startUs, int endUs,
-    int width, int height, int gap, bool sideBySide);
+    int width, int height, int gap, bool sideBySide, bool replacePreviousUnsaved);
   @async
   ComparisonExportDto? getExport();
   @async
