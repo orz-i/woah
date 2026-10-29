@@ -1,43 +1,60 @@
 import 'package:flutter/material.dart';
 
-/// Woah V2 visual system.
+/// Woah (舞哇) / Quiet Frame v1.1 product color roles.
 ///
-/// The product intentionally stays monochrome: media is the visual focus while
-/// chrome uses restrained black, graphite, silver and white surfaces. Semantic
-/// red is kept only for destructive/error states.
+/// Brand/action colors intentionally do not alias user-configurable render
+/// effects. Person selection follows the segmentation mask geometry; neither
+/// selection nor a mint tint certifies that privacy protection is complete.
 class AppTheme {
-  // Main-flow chrome shared by import, editor, export and result. Media stays
-  // visually dominant while every transition remains in the same graphite
-  // luminance family.
-  // Professional Video Editor Visual System Tokens
-  // Immersive black canvas with amber-gold accent hierarchy
-  static const Color flowBackground = Color(0xFF0C0C0E);
-  static const Color flowSurface = Color(0xFF161618);
-  static const Color flowSurfaceSoft = Color(0xFF18181B);
-  static const Color flowTextPrimary = Color(0xFFF4F4F5);
-  static const Color flowTextSecondary = Color(0xFFB3B3B8);
-  static const Color flowTextMuted = Color(0xFF77777D);
-  static const Color flowBorder = Color(0xFF262628);
+  // Locked Quiet Frame palette, sRGB.
+  static const Color brandMint = Color(0xFF78DCC7);
+  static const Color brandInk = Color(0xFF0B1415);
+  static const Color brandSurface = Color(0xFF142123);
+  static const Color brandPearl = Color(0xFFF2F6F3);
+  static const Color brandSecondary = Color(0xFFB4C8C6);
+  static const Color brandDeepMint = Color(0xFF216A5E);
 
-  // Amber Gold Accent Hierarchy
-  static const Color gold = Color(0xFFF5A623);
+  // Semantic roles: these may share a value, but do not share a meaning.
+  static const Color brandAction = brandMint;
+  static const Color brandOnAction = brandInk;
+  static const Color brandActionPressed = Color(0xFF59C5AF);
+  static const Color editorSelection = brandMint;
+  static const Color editorSelectionSubtle = Color(0x2678DCC7);
+  static const Color controlBorder = Color(0xFF607D80);
+  static const Color decorativeDivider = Color(0xFF2D4548);
+  static const Color statusWarning = Color(0xFFF0C879);
+  static const Color statusWarningSubtle = Color(0x20F0C879);
+  static const Color statusError = Color(0xFFFF9C9F);
+  static const Color statusSuccess = Color(0xFF9DD6B9);
+
+  // Main workflow chrome (import, protection, comparison, export, results).
+  static const Color flowBackground = brandInk;
+  static const Color flowSurface = brandSurface;
+  static const Color flowSurfaceSoft = Color(0xFF1B2B2D);
+  static const Color flowTextPrimary = brandPearl;
+  static const Color flowTextSecondary = brandSecondary;
+  static const Color flowTextMuted = Color(0xFF8DA6A4);
+  static const Color flowBorder = decorativeDivider;
+
+  // The amber option is a *user-selectable video effect color*, not the brand
+  // action color. Do not replace or remap the integer stored in project data.
+  static const Color effectPaletteAmber = Color(0xFFF5A623);
+  static const Color gold = effectPaletteAmber; // Legacy effect palette alias.
   static const Color goldStrong = Color(0xFFE59800);
   static const Color goldLight = Color(0xFFFFC043);
   static const Color goldPale = Color(0xFF332612);
-
-  // Compatibility aliases
-  static const Color coral = gold;
+  static const Color coral = effectPaletteAmber; // Legacy; no UI usages.
   static const Color coralStrong = goldStrong;
   static const Color coralSoft = goldLight;
   static const Color coralPale = goldPale;
 
-  static const LinearGradient goldActionGradient = LinearGradient(
+  static const LinearGradient brandActionGradient = LinearGradient(
     begin: Alignment.centerLeft,
     end: Alignment.centerRight,
-    colors: [goldStrong, gold, goldLight],
+    colors: [brandActionPressed, brandAction, brandMint],
   );
-
-  static const LinearGradient coralActionGradient = goldActionGradient;
+  static const LinearGradient goldActionGradient = brandActionGradient;
+  static const LinearGradient coralActionGradient = brandActionGradient;
 
   static const LinearGradient mediaPickerGradient = LinearGradient(
     begin: Alignment.topLeft,
@@ -46,24 +63,25 @@ class AppTheme {
     stops: [0.0, 0.48, 1.0],
   );
 
-  static const Color background = Color(0xFF050506);
+  // Video remains pure black; the surrounding interface uses Quiet Frame Ink.
+  static const Color background = brandInk;
   static const Color canvas = Color(0xFF000000);
-  static const Color surface = Color(0xFF141416);
-  static const Color surfaceElevated = Color(0xFF1C1C1E);
-  static const Color surfaceHigh = Color(0xFF262628);
-  static const Color surfacePill = Color(0xFF2A2A2C);
-  static const Color surfaceBorder = Color(0xFF2A2A2E);
-  static const Color sliderTrackInactive = Color(0xFF38383A);
+  static const Color surface = brandSurface;
+  static const Color surfaceElevated = Color(0xFF1B2B2D);
+  static const Color surfaceHigh = Color(0xFF243638);
+  static const Color surfacePill = Color(0xFF2B4143);
+  static const Color surfaceBorder = decorativeDivider;
+  static const Color sliderTrackInactive = Color(0xFF385153);
 
-  static const Color metalHigh = Color(0xFFE6E6E9);
-  static const Color metalMid = Color(0xFFA8A8AE);
-  static const Color metalLow = Color(0xFF66666D);
+  static const Color metalHigh = brandPearl;
+  static const Color metalMid = brandSecondary;
+  static const Color metalLow = Color(0xFF8DA6A4);
 
-  static const Color textPrimary = Color(0xFFF4F4F5);
-  static const Color textSecondary = Color(0xFFB3B3B8);
-  static const Color textMuted = Color(0xFF77777D);
-  static const Color textOnAccent = Color(0xFF111111);
-  static const Color error = Color(0xFFEF5350);
+  static const Color textPrimary = brandPearl;
+  static const Color textSecondary = brandSecondary;
+  static const Color textMuted = Color(0xFF8DA6A4);
+  static const Color textOnAccent = brandOnAction;
+  static const Color error = statusError;
 
   static const double radiusSmall = 8;
   static const double radiusMedium = 12;
@@ -87,14 +105,14 @@ class AppTheme {
       scaffoldBackgroundColor: background,
       colorScheme: const ColorScheme(
         brightness: Brightness.dark,
-        primary: coral,
-        onPrimary: Colors.white,
-        secondary: metalMid,
-        onSecondary: Color(0xFF09090B),
+        primary: brandAction,
+        onPrimary: brandOnAction,
+        secondary: brandSecondary,
+        onSecondary: brandInk,
         surface: surface,
         onSurface: textPrimary,
         error: error,
-        onError: Colors.white,
+        onError: brandInk,
       ),
     );
 
@@ -149,7 +167,7 @@ class AppTheme {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusMedium),
-          side: const BorderSide(color: surfaceBorder, width: 1),
+          side: const BorderSide(color: controlBorder, width: 1),
         ),
       ),
       appBarTheme: const AppBarTheme(
@@ -209,19 +227,19 @@ class AppTheme {
         space: 24,
       ),
       sliderTheme: const SliderThemeData(
-        activeTrackColor: gold,
+        activeTrackColor: editorSelection,
         inactiveTrackColor: sliderTrackInactive,
-        thumbColor: gold,
-        overlayColor: Color(0x33F5A623),
+        thumbColor: editorSelection,
+        overlayColor: editorSelectionSubtle,
         trackHeight: 4,
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return Colors.white;
+          if (states.contains(WidgetState.selected)) return brandOnAction;
           return metalMid;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return coral;
+          if (states.contains(WidgetState.selected)) return brandAction;
           return surfaceHigh;
         }),
         trackOutlineColor: WidgetStateProperty.all(surfaceBorder),
@@ -233,7 +251,7 @@ class AppTheme {
           fontSize: 13,
           fontWeight: FontWeight.w500,
         ),
-        actionTextColor: coralStrong,
+        actionTextColor: brandAction,
         elevation: 8,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
@@ -251,7 +269,7 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusLarge),
-          side: const BorderSide(color: surfaceBorder),
+          side: const BorderSide(color: controlBorder),
         ),
       ),
     );

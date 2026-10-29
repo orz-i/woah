@@ -44,7 +44,7 @@ class ComparisonPictureControls extends StatelessWidget {
       onPressed: saving ? null : onApply,
       key: const ValueKey('comparison-picture-apply'),
       style: FilledButton.styleFrom(
-        backgroundColor: AppTheme.gold,
+        backgroundColor: AppTheme.brandAction,
         foregroundColor: AppTheme.textOnAccent,
         minimumSize: const Size(48, 48),
       ),

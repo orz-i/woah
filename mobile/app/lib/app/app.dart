@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'router.dart';
+import 'brand.dart';
 import 'system_ui.dart';
 import 'theme.dart';
 
@@ -34,7 +35,7 @@ class _WoahAppState extends ConsumerState<WoahApp> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Woah',
+      title: AppBrand.english,
       theme: AppTheme.darkTheme,
       routerConfig: appRouter,
       debugShowCheckedModeBanner: false,

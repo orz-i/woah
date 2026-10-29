@@ -221,13 +221,13 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                                         height: 24,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2,
-                                          color: AppTheme.gold,
+                                          color: AppTheme.brandAction,
                                         ),
                                       )
                                     : const Icon(
                                         Icons.ios_share_rounded,
                                         size: 24,
-                                        color: AppTheme.gold,
+                                        color: AppTheme.brandAction,
                                       ),
                               ),
                             ),
@@ -274,12 +274,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       title = '正在保存到相册';
       subtitle = '保存完成后即可直接分享';
       icon = Icons.downloading_rounded;
-      iconColor = AppTheme.gold;
+      iconColor = AppTheme.brandAction;
     } else if (_isSaved) {
       title = '已保存至系统相册';
       subtitle = fileSizeMb == null ? '视频已安全脱敏存储' : '视频已安全脱敏 · $fileSizeMb MB';
       icon = Icons.check_circle_outline_rounded;
-      iconColor = const Color(0xFF71C991);
+      iconColor = AppTheme.statusSuccess;
     } else if (_saveError != null) {
       title = '尚未存入系统相册';
       subtitle = '视频仍保留在设备中，可重新保存';
@@ -308,7 +308,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               height: 20,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: AppTheme.gold,
+                color: AppTheme.brandAction,
               ),
             )
           else
@@ -351,12 +351,16 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.refresh_rounded, size: 16, color: AppTheme.gold),
+                      Icon(
+                        Icons.refresh_rounded,
+                        size: 16,
+                        color: AppTheme.brandAction,
+                      ),
                       SizedBox(width: 4),
                       Text(
                         '重新保存',
                         style: TextStyle(
-                          color: AppTheme.gold,
+                          color: AppTheme.brandAction,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
@@ -391,20 +395,20 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                             height: 15,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: AppTheme.gold,
+                              color: AppTheme.brandAction,
                             ),
                           )
                         else
                           const Icon(
                             Icons.play_circle_outline_rounded,
                             size: 17,
-                            color: AppTheme.gold,
+                            color: AppTheme.brandAction,
                           ),
                         const SizedBox(width: 5),
                         Text(
                           _isOpening ? '正在打开…' : '查看视频',
                           style: const TextStyle(
-                            color: AppTheme.gold,
+                            color: AppTheme.brandAction,
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),

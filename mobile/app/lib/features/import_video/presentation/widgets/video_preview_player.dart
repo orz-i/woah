@@ -131,7 +131,7 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer>
         ),
         child: Text(
           _errorMessage!,
-          style: const TextStyle(color: AppTheme.coral),
+          style: const TextStyle(color: AppTheme.brandAction),
         ),
       );
     }
@@ -148,7 +148,10 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer>
         child: const Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(strokeWidth: 2, color: AppTheme.coral),
+            CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppTheme.brandAction,
+            ),
             SizedBox(height: 12),
             Text(
               '加载视频流中...',
@@ -217,7 +220,7 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer>
               controller,
               allowScrubbing: true,
               colors: const VideoProgressColors(
-                playedColor: AppTheme.coral,
+                playedColor: AppTheme.brandAction,
                 bufferedColor: AppTheme.flowTextMuted,
                 backgroundColor: AppTheme.surfaceHigh,
               ),
