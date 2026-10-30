@@ -279,10 +279,52 @@ void main() {
       11,
     );
     expect(find.byKey(const ValueKey('home-privacy-cover')), findsOneWidget);
+    final privacyCover = tester.getRect(
+      find.byKey(const ValueKey('home-privacy-cover')),
+    );
+    expect(privacyCover.size, first.size);
+    expect(
+      find.byKey(const ValueKey('home-privacy-text-overlay')),
+      findsOneWidget,
+    );
+    final privacyTitleBottom = tester.getRect(find.text('视频保护')).bottom;
+    final privacySubtitleBottom = tester
+        .getRect(find.text('保留主角，遮挡其他人物'))
+        .bottom;
+    expect(
+      tester.widget<Text>(find.text('视频保护')).style?.color,
+      AppTheme.brandPearl,
+    );
 
     await tester.drag(find.byType(PageView), const Offset(-300, 0));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('home-comparison-cover')), findsOneWidget);
+    final comparison = tester.getRect(
+      find.byKey(const ValueKey('home-comparison-elevation')),
+    );
+    final comparisonCover = tester.getRect(
+      find.byKey(const ValueKey('home-comparison-cover')),
+    );
+    expect(comparisonCover.size, comparison.size);
+    expect(comparison.size, first.size);
+    expect(
+      find.byKey(const ValueKey('home-comparison-text-overlay')),
+      findsOneWidget,
+    );
+    // Both photo covers fill their cards. Native text shares the same
+    // fixed bottom anchor, rather than sitting in separate color blocks.
+    expect(
+      tester.getRect(find.text('舞蹈对比')).bottom,
+      closeTo(privacyTitleBottom, 0.5),
+    );
+    expect(
+      tester.getRect(find.text('同步两段视频，对照练习动作')).bottom,
+      closeTo(privacySubtitleBottom, 0.5),
+    );
+    expect(
+      tester.widget<Text>(find.text('舞蹈对比')).style?.color,
+      AppTheme.brandPearl,
+    );
     expect(
       find.byKey(const ValueKey('home-comparison-card')).hitTestable(),
       findsOneWidget,

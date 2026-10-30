@@ -402,3 +402,23 @@ final result: passed
 - Scope/build：当前 `codex/editor-p1-ux` 工作区，未提交或推送。最终 APK SHA-256：`cdefe5cd9ffd32ecdaaf1e50a4f343de850fe8af7062b329965cf55b3df0ce4e`。本次范围内无未关闭的 P0/P1/P2；仅单台 Android 深色真机，未新增 iOS、完整 TalkBack、全产品或原生导出管线验收。
 
 final result: passed
+
+## 2026-10-30 · 首页电影感卡片全幅封面与底部文字覆盖（独立分支）
+
+- **Design target：** 用户提出“两张卡片不要区分色块、文字悬浮封面底部、卡片视觉对齐”。上一轮卡片布局的四态截图 `/tmp/_woah_bleed_{dark,light}_{privacy,comparison}.png` 是修改前对照，原视觉基线为用户确认的两张摄影封面与左右滑动栈。
+- **Implementation：** `mobile/app/lib/features/import_video/presentation/import_video_screen.dart`，运行时素材 `mobile/app/assets/home/home-video-protection.jpg` / `home-dance-comparison.jpg`；修改后四态截图 `/tmp/_woah_bleed_v2_{dark,light}_{privacy,comparison}.png`。Viewport 390×844 logical px / 测试 DPR 1；紧凑状态为 320×568 / 1.6 倍字号。前后图来自同一个 Flutter Widget Test 的相同 viewport，不依赖屏幕外设备边框；无额外缩放。两版对比图片保留在当前对话附件。
+- **Full-view comparison：** 旧视频保护卡片已基本具备全幅效果，保留用户已选定主角的全部原有摄影内容。旧舞蹈对比卡受 2.3:1 图片影响，位于高卡片中央的小横幅使人物太小，底部文字与素材缺乏连贯性；新卡片以同原图的独立左右半幅制作竖向全幅画面，两人身形占比与视频保护主角更接近，中心视频分隔线依旧明确。两张卡同尺寸、同阴影、同圆角、同底部文字锚点。
+- **Focused region comparison：** 在两个 390×844 暗色首卡/次卡状态比较标题与说明的底部位置、整体图像覆盖比例和卡片边缘；亮色主题再次核对固定白色媒体文字。细节足以观察封面裁切和底部渐变，不足以检验中文真实字形。
+- **Fonts/typography：** 原生 Flutter `20sp / w600` 标题、`13.5sp` 辅助文案，Pearl 与浅青色；两张标题/说明底部 Y 坐标差 ≤0.5dp。默认系统中文字体在 widget 截图中缺失、显示方框，真实中文宽度/抗锯齿须设备复核。
+- **Spacing/layout：** 每卡等宽等高，照片 `BoxFit.cover` 铺满；固定 20dp 左右与底部偏移，整卡 InkWell 不变，左右相邻边缘露出和分页点不变。320×568 + 1.6× 字体下未发生 RenderFlex 溢出。
+- **Colors/tokens：** 原有 Quiet Frame 页面底色与悬浮阴影不变；文字区只叠加连续的透明→Ink 渐变，不绘制分区色块。媒体文字独立于明暗系统主题保持高对比，动效/交互薄荷色不受影响。
+- **Image quality：** 视频保护 JPEG 字节不变、无新的分割 Mask；舞蹈对比将原图左右视频分别裁切、柔和延长成 600×672 的生产图，人物、姿态和左右对应关系未生成或改变。源图片可从上一 Git 提交恢复。新 JPEG 体积约 65KiB（原约 206KiB），Android/iOS 绘制时无需每帧模糊滤镜。
+- **Copy/content/interaction：** 文案沿用「视频保护 / 保留主角，遮挡其他人物」「舞蹈对比 / 同步两段视频，对照练习动作」，保持现有选取/导入忙碌状态、对比入口、主题模式切换和 Wavi 彩蛋。
+- **Findings/history：** [P2 resolved] 舞蹈对比封面只有窄横向图片条且人物显著小于另一卡；由原图制作全幅双路裁切，最终四态截图复核。未发现本轮组件截图中新的 P0/P1/P2 几何或交互问题；[P3] 竖幅裁切造成部分伸展手臂靠近图片边缘，保留真实比例而不拉伸人体。设备级中文字体和真实触摸仍需验收。
+- **Validation：** `flutter analyze --no-pub` 0 问题；`flutter test --no-pub` 206/206 PASS；`flutter build ios --simulator --debug --no-pub` PASS，安装包内资源与源码一致。`simctl` 8 秒无响应，无法运行 iOS 模拟器；未新增 Android 真机安装或导出管线测试。
+
+component-level design QA: passed
+
+final result: blocked
+
+> Blocker: native Android/iOS screenshot and real Chinese font/gesture validation not performed. This does not block local branch handoff for device testing, but prevents claiming device-level visual acceptance.

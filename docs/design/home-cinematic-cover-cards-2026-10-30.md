@@ -8,7 +8,7 @@
 
 - **视频保护：** 采用 [用户指定的 ChatGPT 分享图片](https://chatgpt.com/s/m_6ae421ff14508191ae0520fbe4bc0364) 中的第一张原图。清晰主角与左右柔化配角；不再使用边界错位的人工 Mask。原始 PNG SHA-256：`c123c0e9b4a2edff3d45702ad83ec85a5964d30b5c314ea98c4646409f756863`（1536 × 1024）。
 - **舞蹈对比：** 采用独立左右双视频封面，不是双人在同一场景中起舞的合照；原始 PNG SHA-256：`1b25fba72898294d0eff853dda23c51d526c2c0966c9d1172362843d491b3077`（1536 × 668）。
-- 两张运行期资源位于 `mobile/app/assets/home/home-video-protection.jpg` 与 `home-dance-comparison.jpg`，各约 255/206 KiB。原始 PNG 不加入安装包。
+- 两张运行期资源位于 `mobile/app/assets/home/home-video-protection.jpg` 与 `home-dance-comparison.jpg`，分别约 255/65 KiB。舞蹈对比使用由原始双视频 PNG 裁切得到的卡片专用竖幅合成图，原始 PNG 不加入安装包。
 - 图片只作为功能概念展示，**不是**隐私保护正确率、人物 Mask 或舞蹈动作分析的实际输出验证。
 
 ## 最新布局：保留原有左右滑动栈
@@ -16,8 +16,8 @@
 - 移动端继续使用原生 `PageView.builder` 横向分页，`PageController.viewportFraction` 跟随宽度按 `cardWidth * 0.90 / viewportWidth` 计算；通过 `clipBehavior: Clip.none` 与左右相邻卡片露出部分体现滑动方向。
 - 卡片宽度 `min(300dp, 可用宽度 × 0.88)`，高度 `(宽度 × 1.12).clamp(250dp, 336dp)`，圆角 22dp、无可见描边、底部柔和双层投影。分页指示当前卡为 17×5dp、其他为 5×5dp，点击交互为整卡单一操作。
 - 首卡「视频保护」，左滑后显示「舞蹈对比」；第二张左侧可见上一张的局部。卡片仍是两个独立可执行工作流。设备仅支持一个工作流时不创建轮播页或分页点。
-- **适配竖向卡比例的关键设计：** 视频保护图作为上方封面，`BoxFit.cover` 保持中心主角清晰；舞蹈对比图为横屏双视频场景，不用 `BoxFit.cover` 强裁两侧舞者，而在柔和虚化的同图背景上将完整双视频横屏影像按 2.30:1 居中显示。封面不承载原生按钮或标题。
-- 顶部 Woah W 字标保留长按彩蛋；卡片下半部使用 Flutter 原生标题、描述、箭头与导入忙碌状态。文本语义及颜色来自 `AppTheme.of(context)`，深浅主题无画面反色。
+- **适配竖向卡比例的最新方案：** 两卡统一使用 `BoxFit.cover` 铺满全部 300×336dp 卡片。视频保护保留主角居中，舞蹈对比将原始横屏双视频的左右半幅分别按人物为中心裁切成竖幅，并以原始像素的柔和延展填充画面上下；中线仍明确标示双视频。不存在独立横幅图片条或上下硬分区。
+- 顶部 Woah W 字标保留长按彩蛋；卡片标题、描述、箭头与导入忙碌状态浮在封面底部，同一固定 20dp 左右/底部边距；以连续透明→Ink 深色渐变保护文字可读性，没有独立色块。相机画面上的文字固定高对比 Pearl/浅青与 Mint；页面背景及非媒体 UI 继续来自 `AppTheme.of(context)`，深浅主题不反转封面像素。
 - 保留 `HomeToolCatalog` 注册表，继续调用原有 `launchHomeTool`。失败提示停留首页卡片下方；取消选择及处理后返回逻辑不变。
 - 分页状态由 `_HomeToolDeckState` 管理；系统浅深主题变化不重置当前页，横竖布局宽度改变时 `PageController` 保留当前页索引。
 
@@ -47,3 +47,23 @@
 - `flutter build ios --simulator --debug --no-pub`：PASS，已确认 `Runner.app/Frameworks/App.framework/flutter_assets/assets/home/` 中两张原图资源与源文件字节一致。
 - `xcrun simctl list devices booted`：本轮 8 秒超时，设备服务不可用，未进行 iOS 模拟器安装/启动/触控；也未进行 Android APK/真机验证。因此当前合格范围为静态、组件测试和构建，不是双平台设备最终验收。
 - 仅修改本功能分支中的首页布局、对应回归和本设计说明；视频素材未被替换，检测/隐私/同步/导出算法未改变。
+
+## 2026-10-30 全幅封面与文字叠加修订
+
+- **用户要求：** 去掉照片与文字间的色块分区，文字浮在图片底部，并使两张卡在视觉尺寸、主体比例及文字基线方面对齐。
+- **实现：** 两张卡片内都以单个 `Image.asset` 在 `StackFit.expand` 铺满整个卡片；用一个高度连续的底部渐变作为文字 scrim，而不是第二个实体面板。原生标题 `20sp / w600 / #F2F6F3`、说明 `13.5sp / #D9E6E2`、箭头 `23dp / #78DCC7` 固定距左右 20dp、底部 20dp。Flutter InkWell 继续覆盖全部图片及文字。
+- **视频保护封面：** 用户确认的原有 JPEG 完全不变，主角真实清晰，未新增或移动任何 Mask。
+- **舞蹈对比封面：** 运行时 `home-dance-comparison.jpg` 现在为 600×672 / ~65 KiB 的竖版双路裁切，直接取自前一提交中 1536×668 的双视频照片：两半各取以舞者为中心的纵向视区，按 0.75 倍原比例置入等宽的左/右 300px 画面，背景用相同照片柔化延伸并进行纵向羽化，在中间保留细分界线。没有新生成人物、增添特效 Mask 或调换两路角色；原照片可从 Git 历史版本 `d71cd0b` 恢复。
+- **视觉对齐：** 两张卡片共享 `PageView` 的固定宽高、同一 `BoxFit.cover`、圆角与阴影、相同底部文字坐标。Flutter widget 测试比较卡片与图片矩形尺寸、两张标题及说明的底部 Y 坐标（偏差 ≤0.5dp）。
+- **全尺寸截图：** 390×844 / DPR 1 深色和浅色、视频保护与舞蹈对比共 4 张，分别保存到 Mac 的 `/tmp/_woah_bleed_v2_{dark,light}_{privacy,comparison}.png`；同时验证 320×568 / 1.6× 字号两页不溢出。
+- **限度：** Flutter 字体测试环境会将部分汉字显示成方框，无法直接证明 Android/iOS 本地字体表现及深浅主题触感；图片只是功能视觉示意，不代表隐私分割算法真实输出。
+
+### 本轮全幅改造最终验证回执
+
+- 最终 `flutter analyze --no-pub`：PASS（0 问题）；`flutter test --no-pub`：206/206 PASS。
+- 390×844：两张卡片图片均与卡片尺寸完全一致，且标题、说明在同一底部 Y 坐标（Widget 测试允许误差 0.5dp）。双路封面不再通过中间横幅与其余背景分区。
+- 320×568 / 1.6 倍字体：能滑动并显示两张卡片，未出现溢出；原图片在大字体下可能被文字覆盖更多，属于系统文字放大的预期布局。
+- 四个光照/滑动状态截图：`/tmp/_woah_bleed_v2_dark_privacy.png`、`/tmp/_woah_bleed_v2_dark_comparison.png`、`/tmp/_woah_bleed_v2_light_privacy.png`、`/tmp/_woah_bleed_v2_light_comparison.png`。另有 320×568、1.6× 字体截图 `/tmp/_woah_bleed_compact_{privacy,comparison}.png`。源/实施对比确认原比较卡只有横向图片条且两侧背景虚化，现在双舞者贯穿卡片主体。
+- iOS Simulator Debug `flutter build ios --simulator --debug --no-pub`：PASS，`Runner.app` 内两张 JPEG 与源码逐字节一致，复用本轮最终源码。
+- CoreSimulator `simctl list devices booted`：8 秒超时，未证明实际 iOS 模拟器安装、点击与中文字体渲染；Android 真机也没有新增验证。不宣称完成设备级 UI 验收。
+- 实际生产图片的 Mask/隐私算法不在本轮改动范围，卡片截图只是功能表达。

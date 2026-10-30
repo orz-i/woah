@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -233,118 +232,106 @@ class _HomeActionCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: ClipRect(
-                        child: isProtection
-                            ? Image.asset(
-                                tool.coverAsset,
-                                key: const ValueKey('home-privacy-cover'),
-                                fit: BoxFit.cover,
-                                alignment: const Alignment(0, -0.3),
-                                filterQuality: FilterQuality.medium,
-                                excludeFromSemantics: true,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    _HomeCoverFallback(isProtection: true),
-                              )
-                            : Stack(
-                                fit: StackFit.expand,
-                                children: [
-                                  // A softened background fills the taller card
-                                  // while retaining the entire two-video image.
-                                  ImageFiltered(
-                                    imageFilter: ui.ImageFilter.blur(
-                                      sigmaX: 16,
-                                      sigmaY: 16,
-                                    ),
-                                    child: ColorFiltered(
-                                      colorFilter: const ColorFilter.mode(
-                                        Color(0x660B1415),
-                                        BlendMode.darken,
-                                      ),
-                                      child: Image.asset(
-                                        tool.coverAsset,
-                                        fit: BoxFit.cover,
-                                        excludeFromSemantics: true,
-                                      ),
-                                    ),
-                                  ),
-                                  Center(
-                                    child: AspectRatio(
-                                      aspectRatio: 2.30,
-                                      child: Image.asset(
-                                        tool.coverAsset,
-                                        key: const ValueKey(
-                                          'home-comparison-cover',
-                                        ),
-                                        fit: BoxFit.cover,
-                                        excludeFromSemantics: true,
-                                        errorBuilder:
-                                            (context, error, stackTrace) =>
-                                                _HomeCoverFallback(
-                                                  isProtection: false,
-                                                ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 14, 18, 17),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  tool.title,
-                                  style: TextStyle(
-                                    color: palette.flowTextPrimary,
-                                    fontSize: 19,
-                                    height: 1.25,
-                                    letterSpacing: -0.25,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 5),
-                                Text(
-                                  visibleDescription,
-                                  style: TextStyle(
-                                    color: palette.flowTextSecondary,
-                                    fontSize: 13.5,
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          if (isBusy && isProtection)
-                            SizedBox(
-                              width: 21,
-                              height: 21,
-                              child: CircularProgressIndicator(
-                                color: palette.brandAction,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          else
-                            Icon(
-                              Icons.arrow_outward_rounded,
-                              color: palette.brandAction,
-                              size: 22,
-                            ),
+                // Both cards share a full-bleed media stage. The comparison
+                // asset is a derived crop of its original two-video image,
+                // preserving both dancers without a separate image strip.
+                Image.asset(
+                  tool.coverAsset,
+                  key: ValueKey(
+                    isProtection
+                        ? 'home-privacy-cover'
+                        : 'home-comparison-cover',
+                  ),
+                  fit: BoxFit.cover,
+                  alignment: isProtection
+                      ? const Alignment(0, -0.30)
+                      : Alignment.center,
+                  filterQuality: FilterQuality.medium,
+                  excludeFromSemantics: true,
+                  errorBuilder: (context, error, stackTrace) =>
+                      _HomeCoverFallback(isProtection: isProtection),
+                ),
+                // One continuous image surface with a graduated text scrim.
+                const IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        stops: [0.0, 0.36, 0.72, 1.0],
+                        colors: [
+                          Color(0x000B1415),
+                          Color(0x180B1415),
+                          Color(0xB50B1415),
+                          Color(0xF50B1415),
                         ],
                       ),
                     ),
-                  ],
+                  ),
+                ),
+                Positioned(
+                  key: ValueKey(
+                    isProtection
+                        ? 'home-privacy-text-overlay'
+                        : 'home-comparison-text-overlay',
+                  ),
+                  left: 20,
+                  right: 20,
+                  bottom: 20,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              tool.title,
+                              style: const TextStyle(
+                                color: Color(0xFFF2F6F3),
+                                fontSize: 20,
+                                height: 1.22,
+                                letterSpacing: -0.25,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              visibleDescription,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFFD9E6E2),
+                                fontSize: 13.5,
+                                height: 1.42,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 1),
+                        child: isBusy && isProtection
+                            ? const SizedBox(
+                                height: 22,
+                                width: 22,
+                                child: CircularProgressIndicator(
+                                  color: AppTheme.brandMint,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Icon(
+                                Icons.arrow_outward_rounded,
+                                color: isBusy
+                                    ? const Color(0xFF9AAEAA)
+                                    : AppTheme.brandMint,
+                                size: 23,
+                              ),
+                      ),
+                    ],
+                  ),
                 ),
                 // Entire card is a single action, including its cover.
                 Positioned.fill(
