@@ -144,8 +144,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final fileSizeMb = file.existsSync()
         ? (file.lengthSync() / (1024 * 1024)).toStringAsFixed(1)
         : null;
-    final shareEnabled = !_isSharing && !_isSaving && _saveError == null;
-    final navigationEnabled = !_isSaving;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: appSystemUiStyleFor(Theme.of(context).brightness),
@@ -161,73 +159,35 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   child: Row(
                     children: [
-                      Semantics(
+                      IconButton(
                         key: const ValueKey('result-next-action'),
-                        button: true,
-                        enabled: navigationEnabled,
-                        label: '返回首页',
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: navigationEnabled
-                                ? () {
-                                    HapticFeedback.mediumImpact();
-                                    context.go('/');
-                                  }
-                                : null,
-                            borderRadius: BorderRadius.circular(16),
-                            child: AnimatedOpacity(
-                              duration: const Duration(milliseconds: 120),
-                              opacity: navigationEnabled ? 1 : 0.42,
-                              child: Padding(
-                                padding: EdgeInsets.all(8),
-                                child: Icon(
-                                  Icons.close_rounded,
-                                  size: 24,
-                                  color: AppTheme.of(context).textPrimary,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
+                        tooltip: '返回首页',
+                        onPressed: _isSaving
+                            ? null
+                            : () {
+                                HapticFeedback.mediumImpact();
+                                context.go('/');
+                              },
+                        icon: const Icon(Icons.close_rounded),
                       ),
                       const Spacer(),
-                      Semantics(
-                        key: const ValueKey('result-share-action'),
-                        button: true,
-                        enabled: shareEnabled,
-                        label: _isSharing ? '正在分享' : '分享',
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: shareEnabled ? _shareVideo : null,
-                            borderRadius: BorderRadius.circular(16),
-                            child: AnimatedOpacity(
-                              duration: const Duration(milliseconds: 120),
-                              opacity: shareEnabled ? 1 : 0.42,
-                              child: Padding(
-                                padding: const EdgeInsets.all(8),
-                                child: _isSharing
-                                    ? SizedBox(
-                                        width: 24,
-                                        height: 24,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: AppTheme.of(
-                                            context,
-                                          ).brandAction,
-                                        ),
-                                      )
-                                    : Icon(
-                                        Icons.ios_share_rounded,
-                                        size: 24,
-                                        color: AppTheme.of(context).brandAction,
-                                      ),
+                      if (kDebugMode)
+                        PopupMenuButton<String>(
+                          key: const ValueKey('result-more-action'),
+                          tooltip: '更多操作',
+                          icon: const Icon(Icons.more_horiz_rounded),
+                          onSelected: (_) => _exportDiagnostics(),
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              key: const ValueKey('result-diagnostics-action'),
+                              value: 'diagnostics',
+                              enabled: !_isExportingDiagnostics,
+                              child: Text(
+                                _isExportingDiagnostics ? '正在准备诊断包…' : '导出诊断包',
                               ),
                             ),
-                          ),
+                          ],
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -259,6 +219,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   }
 
   Widget _buildResultStatusPanel(String? fileSizeMb) {
+    final colors = AppTheme.of(context);
     final String title;
     final String subtitle;
     final IconData icon;
@@ -266,212 +227,126 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 
     if (_isSaving) {
       title = '正在保存到相册';
-      subtitle = '保存完成后即可直接分享';
+      subtitle = '保存完成后即可查看和分享';
       icon = Icons.downloading_rounded;
-      iconColor = AppTheme.of(context).brandAction;
+      iconColor = colors.brandAction;
     } else if (_isSaved) {
       title = '已保存至系统相册';
-      subtitle = fileSizeMb == null ? '视频已安全脱敏存储' : '视频已安全脱敏 · $fileSizeMb MB';
+      subtitle = fileSizeMb == null ? '可在相册中查看或分享' : '$fileSizeMb MB';
       icon = Icons.check_circle_outline_rounded;
-      iconColor = AppTheme.of(context).statusSuccess;
+      iconColor = colors.statusSuccess;
     } else if (_saveError != null) {
       title = '尚未存入系统相册';
       subtitle = '视频仍保留在设备中，可重新保存';
       icon = Icons.error_outline_rounded;
-      iconColor = AppTheme.of(context).error;
+      iconColor = colors.error;
     } else {
       title = '视频处理完成';
       subtitle = '正在准备写入媒体库';
       icon = Icons.check_circle_outline_rounded;
-      iconColor = AppTheme.of(context).flowTextSecondary;
+      iconColor = colors.flowTextSecondary;
     }
 
+    final openEnabled = !_isSaving && !_isOpening;
+    final shareEnabled = !_isSharing && !_isSaving && _saveError == null;
     return Container(
       key: const ValueKey('result-status-panel'),
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
       decoration: BoxDecoration(
-        color: AppTheme.of(context).flowBackground,
-        border: Border(top: BorderSide(color: AppTheme.of(context).flowBorder)),
+        color: colors.flowBackground,
+        border: Border(top: BorderSide(color: colors.flowBorder)),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_isSaving)
-            SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: AppTheme.of(context).brandAction,
-              ),
-            )
-          else
-            Icon(icon, size: 21, color: iconColor),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Semantics(
+            liveRegion: true,
+            child: Row(
               children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: AppTheme.of(context).flowTextPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: AppTheme.of(context).flowTextSecondary,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          if (_saveError != null)
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                key: const ValueKey('result-resave-action'),
-                borderRadius: BorderRadius.circular(10),
-                onTap: _isSaving ? null : () => _saveToGallery(),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                if (_isSaving)
+                  SizedBox(
+                    width: 21,
+                    height: 21,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: iconColor,
+                    ),
+                  )
+                else
+                  Icon(icon, size: 21, color: iconColor),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.refresh_rounded,
-                        size: 16,
-                        color: AppTheme.of(context).brandAction,
-                      ),
-                      SizedBox(width: 4),
                       Text(
-                        '重新保存',
+                        title,
+                        key: const ValueKey('result-save-status'),
                         style: TextStyle(
-                          color: AppTheme.of(context).brandAction,
-                          fontSize: 13,
+                          color: colors.flowTextPrimary,
+                          fontSize: 14,
                           fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          color: colors.flowTextSecondary,
+                          fontSize: 12,
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            )
-          else
-            Semantics(
-              key: const ValueKey('result-open-action'),
-              button: true,
-              enabled: !_isSaving && !_isOpening,
-              label: _isOpening ? '正在打开…' : '查看视频',
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: !_isSaving && !_isOpening ? _openSavedVideo : null,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 6,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (_isOpening)
-                          SizedBox(
-                            width: 15,
-                            height: 15,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AppTheme.of(context).brandAction,
-                            ),
-                          )
-                        else
-                          Icon(
-                            Icons.play_circle_outline_rounded,
-                            size: 17,
-                            color: AppTheme.of(context).brandAction,
-                          ),
-                        const SizedBox(width: 5),
-                        Text(
-                          _isOpening ? '正在打开…' : '查看视频',
-                          style: TextStyle(
-                            color: AppTheme.of(context).brandAction,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          if (kDebugMode) ...[
-            const SizedBox(width: 4),
-            _ResultDiagnosticsButton(
-              key: const ValueKey('result-diagnostics-action'),
-              isExporting: _isExportingDiagnostics,
-              onTap: _isExportingDiagnostics ? null : _exportDiagnostics,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _ResultDiagnosticsButton extends StatelessWidget {
-  final bool isExporting;
-  final VoidCallback? onTap;
-
-  const _ResultDiagnosticsButton({
-    super.key,
-    required this.isExporting,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: isExporting ? '正在准备诊断包' : '导出诊断包',
-      child: Tooltip(
-        message: isExporting ? '正在准备诊断包' : '导出诊断包',
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(10),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.bug_report_outlined,
-                    size: 14,
-                    color: AppTheme.of(context).flowTextMuted,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    isExporting ? '正在导出…' : '导出诊断包',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.of(context).flowTextMuted,
-                    ),
-                  ),
-                ],
-              ),
+              ],
             ),
           ),
-        ),
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _saveError != null
+                    ? OutlinedButton.icon(
+                        key: const ValueKey('result-resave-action'),
+                        onPressed: _isSaving ? null : () => _saveToGallery(),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(0, AppTheme.minTouchTarget),
+                        ),
+                        icon: const Icon(Icons.refresh_rounded, size: 18),
+                        label: const Text('重新保存'),
+                      )
+                    : OutlinedButton.icon(
+                        key: const ValueKey('result-open-action'),
+                        onPressed: openEnabled ? _openSavedVideo : null,
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(0, AppTheme.minTouchTarget),
+                        ),
+                        icon: const Icon(
+                          Icons.play_circle_outline_rounded,
+                          size: 18,
+                        ),
+                        label: Text(_isOpening ? '正在打开…' : '查看视频'),
+                      ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.icon(
+                  key: const ValueKey('result-share-action'),
+                  onPressed: shareEnabled ? _shareVideo : null,
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, AppTheme.minTouchTarget),
+                  ),
+                  icon: const Icon(Icons.ios_share_rounded, size: 18),
+                  label: Text(_isSharing ? '正在分享…' : '分享视频'),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

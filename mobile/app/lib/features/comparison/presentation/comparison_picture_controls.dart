@@ -57,6 +57,16 @@ class ComparisonPictureControls extends StatelessWidget {
     );
     final selector = SegmentedButton<bool>(
       showSelectedIcon: false,
+      style: ButtonStyle(
+        side: const WidgetStatePropertyAll(BorderSide.none),
+        backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? AppTheme.of(context).brandAction
+              : AppTheme.of(context).flowTextSecondary,
+        ),
+        minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
+      ),
       segments: const [
         ButtonSegment(value: true, label: Text('参考')),
         ButtonSegment(value: false, label: Text('目标')),
@@ -93,13 +103,6 @@ class ComparisonPictureControls extends StatelessWidget {
                   ),
           ),
           const SizedBox(height: 8),
-          Text(
-            '双指缩放，放大后拖动',
-            style: TextStyle(
-              fontSize: 12,
-              color: AppTheme.of(context).flowTextSecondary,
-            ),
-          ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

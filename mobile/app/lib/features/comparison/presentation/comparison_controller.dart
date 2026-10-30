@@ -1198,6 +1198,12 @@ class ComparisonController extends ChangeNotifier {
     await save();
     await _writeTail.catchError((Object _) {});
     if (!_lastSaveSucceeded) return false;
+    // Rotation restoration can keep the route mounted after native close.
+    // Stop observing that idle player before it can overwrite the saved position.
+    _closed = true;
+    _poll?.cancel();
+    _autosave?.cancel();
+    _resize?.cancel();
     _invalidatePlayer();
     await gateway.close();
     return true;

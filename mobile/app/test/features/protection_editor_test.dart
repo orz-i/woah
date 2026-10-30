@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:ui' show SemanticsAction, SemanticsActionEvent, Tristate;
+
+import 'package:app/app/theme.dart';
 import 'package:app/features/effect_editor/presentation/effect_editor_controller.dart';
 import 'package:app/features/export/presentation/export_screen.dart';
 import 'package:app/features/person_selection/domain/person_selection_state.dart';
@@ -15,6 +19,9 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> _selectTool(WidgetTester tester, String tool) async {
+  if (find.byKey(ValueKey('editor-tool-content-$tool')).evaluate().isNotEmpty) {
+    return;
+  }
   final button = find.byKey(ValueKey('editor-tool-$tool'));
   expect(button, findsOneWidget);
   await tester.tap(button);
@@ -25,6 +32,71 @@ void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues(<String, Object>{});
   });
+
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'preview error stays readable in ${brightness.name} appearance',
+      (tester) async {
+        final repository = _FakeProtectionRepository()..failPreview = true;
+        final container = ProviderContainer(
+          overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+        );
+        addTearDown(container.dispose);
+        final now = DateTime.now();
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              theme: brightness == Brightness.dark
+                  ? AppTheme.darkTheme
+                  : AppTheme.lightTheme,
+              home: ProtectionEditorScreen(
+                project: DanceProject(
+                  id: 'preview-error-contrast',
+                  sourceUri: 'file:///preview-error.mp4',
+                  videoInfo: const VideoInfo(
+                    codedWidth: 720,
+                    codedHeight: 1280,
+                    displayWidth: 720,
+                    displayHeight: 1280,
+                    fps: 30,
+                    durationMs: 4000,
+                    rotation: 0,
+                    videoCodec: 'h264',
+                    hasAudio: false,
+                  ),
+                  trimStartMs: 400,
+                  trimEndMs: 3200,
+                  createdAt: now,
+                  updatedAt: now,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final message = find.text('预览暂时无法更新，选择与参数仍会保留。');
+        expect(message, findsOneWidget);
+        final text = tester.widget<Text>(message);
+        final panel = tester.widget<Container>(
+          find.ancestor(of: message, matching: find.byType(Container)).first,
+        );
+        final color = (panel.decoration! as BoxDecoration).color!;
+        final foreground = text.style!.color!;
+        for (final videoColor in [Colors.black, Colors.white]) {
+          final background = Color.alphaBlend(color, videoColor);
+          final a = Color.alphaBlend(foreground, background).computeLuminance();
+          final b = background.computeLuminance();
+          final contrast = a > b
+              ? (a + .05) / (b + .05)
+              : (b + .05) / (a + .05);
+          expect(contrast, greaterThanOrEqualTo(4.5));
+        }
+        expect(repository.lastSelectedPersonIds, isNotEmpty);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 
   final now = DateTime.utc(2026, 9, 14);
   final project = DanceProject(
@@ -45,6 +117,182 @@ void main() {
     trimEndMs: 3200,
     createdAt: now,
     updatedAt: now,
+  );
+
+  testWidgets('tools start closed and can be deselected without losing edits', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final container = ProviderContainer(
+      overrides: [
+        nativeRepositoryProvider.overrideWithValue(_FakeProtectionRepository()),
+      ],
+    );
+    addTearDown(container.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(home: ProtectionEditorScreen(project: project)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    const tools = ['trim', 'mask', 'frame', 'adjust'];
+    void expectSelected(String? selectedTool) {
+      for (final tool in tools) {
+        final data = tester
+            .getSemantics(find.byKey(ValueKey('editor-tool-$tool')))
+            .getSemanticsData();
+        expect(
+          data.flagsCollection.isSelected,
+          tool == selectedTool ? Tristate.isTrue : Tristate.isFalse,
+        );
+        expect(
+          find.byKey(ValueKey('editor-tool-content-$tool')),
+          tool == selectedTool ? findsOneWidget : findsNothing,
+        );
+      }
+    }
+
+    expectSelected(null);
+    final closedHeight = tester
+        .getSize(find.byKey(const ValueKey('protection-editor-media-stage')))
+        .height;
+    await _selectTool(tester, 'mask');
+    expectSelected('mask');
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('protection-editor-media-stage')))
+          .height,
+      lessThan(closedHeight),
+    );
+    await tester.tap(find.byKey(const ValueKey('protection-style-blur')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('editor-tool-mask')));
+    await tester.pumpAndSettle();
+    expectSelected(null);
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('protection-editor-media-stage')))
+          .height,
+      closedHeight,
+    );
+    expect(
+      container.read(effectEditorControllerProvider).effects.fillMode,
+      FillMode.blur,
+    );
+    for (final tool in tools) {
+      await _selectTool(tester, tool);
+      expectSelected(tool);
+      await tester.tap(find.byKey(ValueKey('editor-tool-$tool')));
+      await tester.pumpAndSettle();
+      expectSelected(null);
+    }
+    await _selectTool(tester, 'trim');
+    await tester.tap(find.byTooltip('播放预览'));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byKey(const ValueKey('editor-tool-trim')));
+    await tester.pump(const Duration(milliseconds: 100));
+    expectSelected(null);
+    await tester.tap(find.byKey(const ValueKey('editor-tool-trim')));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byTooltip('播放预览'), findsOneWidget);
+    expect(find.byTooltip('暂停预览'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('editor-tool-trim')));
+    await tester.pumpAndSettle();
+    expect(
+      container.read(effectEditorControllerProvider).effects.fillMode,
+      FillMode.blur,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'empty recognition offers local recovery and retry opens editor',
+    (tester) async {
+      final repository = _FakeProtectionRepository()..personIds = const [];
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(home: ProtectionEditorScreen(project: project)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('没有找到可保护的人物'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, '重新选择视频'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, '重新识别'), findsOneWidget);
+      repository.personIds = const [0, 1];
+      await tester.tap(find.text('重新识别'));
+      await tester.pumpAndSettle();
+      expect(repository.analyzeRequestCount, 2);
+      expect(
+        find.byKey(const ValueKey('protection-editor-media-stage')),
+        findsOneWidget,
+      );
+      expect(
+        container.read(personSelectionControllerProvider).privacyTargetIds,
+        {0, 1},
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'trim distinguishes output bounds and supports precise end adjustment',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final repository = _FakeProtectionRepository();
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(home: ProtectionEditorScreen(project: project)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _selectTool(tester, 'trim');
+      expect(find.text('起点 00:00.4'), findsOneWidget);
+      expect(find.text('终点 00:03.2'), findsOneWidget);
+      expect(find.text('保留 2.8 秒'), findsOneWidget);
+      for (final boundary in ['start', 'end']) {
+        final size = tester.getSize(
+          find.byKey(ValueKey('trim-$boundary-control')),
+        );
+        expect(size.width, greaterThanOrEqualTo(48));
+        expect(size.height, greaterThanOrEqualTo(48));
+      }
+      final end = tester.getSemantics(
+        find.byKey(const ValueKey('trim-end-control')),
+      );
+      tester.binding.performSemanticsAction(
+        SemanticsActionEvent(
+          nodeId: end.id,
+          type: SemanticsAction.decrease,
+          viewId: tester.view.viewId,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('终点 00:03.1'), findsOneWidget);
+      expect(find.text('保留 2.7 秒'), findsOneWidget);
+      expect(repository.analyzeRequestCount, 1);
+      expect(
+        container.read(effectEditorControllerProvider).project!.trimEndMs,
+        3100,
+      );
+      expect(tester.takeException(), isNull);
+    },
   );
 
   testWidgets('unified editor uses fixed media workspace and four real tools', (
@@ -70,6 +318,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await _selectTool(tester, 'mask');
 
     expect(
       find.byKey(const ValueKey('protection-editor-media-stage')),
@@ -88,7 +337,6 @@ void main() {
       find.byKey(const ValueKey('protection-editor-tool-mask')),
       findsOneWidget,
     );
-    expect(find.text('保护范围'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('privacy-mode-full-body')),
       findsOneWidget,
@@ -185,15 +433,89 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await _selectTool(tester, 'mask');
 
     await tester.tap(find.byKey(const ValueKey('privacy-mode-face-only')));
     await tester.pumpAndSettle();
 
+    await tester.tap(find.byKey(const ValueKey('protection-sticker-options')));
+    await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('sticker-import')), findsOneWidget);
     expect(find.text('贴纸大小'), findsOneWidget);
     expect(find.byType(Slider), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'compact ${brightness.name} editor shows all protection styles',
+      (tester) async {
+        tester.view.physicalSize = const Size(360, 640);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+        final container = ProviderContainer(
+          overrides: [
+            nativeRepositoryProvider.overrideWithValue(
+              _FakeProtectionRepository(),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              theme: ThemeData(brightness: brightness, useMaterial3: true),
+              home: ProtectionEditorScreen(project: project),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await _selectTool(tester, 'mask');
+        await tester.tap(find.byKey(const ValueKey('privacy-mode-face-only')));
+        await tester.pumpAndSettle();
+
+        final viewport = tester.getRect(
+          find.byKey(const ValueKey('editor-tool-content-mask')),
+        );
+        for (final mode in ['sticker', 'mosaic', 'blur', 'solid', 'gradient']) {
+          final option = find.byKey(ValueKey('protection-style-$mode'));
+          expect(option.hitTestable(), findsOneWidget);
+          final rect = tester.getRect(option);
+          expect(rect.top, greaterThanOrEqualTo(viewport.top));
+          expect(rect.bottom, lessThanOrEqualTo(viewport.bottom));
+          expect(
+            tester
+                .getSemantics(option)
+                .getSemanticsData()
+                .hasAction(SemanticsAction.tap),
+            isTrue,
+          );
+        }
+        expect(
+          tester
+              .getSemantics(
+                find.byKey(const ValueKey('privacy-mode-face-only')),
+              )
+              .getSemanticsData()
+              .hasAction(SemanticsAction.tap),
+          isTrue,
+        );
+        for (final scope in ['full-body', 'face-only']) {
+          final size = tester.getSize(
+            find.byKey(ValueKey('privacy-mode-$scope')),
+          );
+          expect(size.width, greaterThanOrEqualTo(48));
+          expect(size.height, greaterThanOrEqualTo(48));
+        }
+        expect(find.text('保护 2 人'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 
   testWidgets('leg stretch appears only after selecting a protagonist', (
     tester,
@@ -493,6 +815,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await _selectTool(tester, 'mask');
 
     expect(
       find.byKey(const ValueKey('bottom_control_drawer_handle')),
@@ -680,6 +1003,207 @@ void main() {
     expect(selectionState.selectedPersonIds, equals({0, 1}));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('queued trim accessibility changes cannot outrun reanalysis', (
+    tester,
+  ) async {
+    final repository = _FakeProtectionRepository();
+    final container = ProviderContainer(
+      overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(home: ProtectionEditorScreen(project: project)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _selectTool(tester, 'trim');
+    final gate = Completer<void>();
+    repository.analyzeGate = gate;
+    final start = tester.getSemantics(
+      find.byKey(const ValueKey('trim-start-control')),
+    );
+    for (var event = 0; event < 2; event++) {
+      tester.binding.performSemanticsAction(
+        SemanticsActionEvent(
+          nodeId: start.id,
+          type: SemanticsAction.increase,
+          viewId: tester.view.viewId,
+        ),
+      );
+    }
+    expect(repository.lastAnalyzeTrimStartMs, 500);
+    gate.complete();
+    await tester.pumpAndSettle();
+    await _selectTool(tester, 'trim');
+    expect(find.text('起点 00:00.5'), findsOneWidget);
+    expect(
+      container.read(personSelectionControllerProvider).project!.trimStartMs,
+      500,
+    );
+    expect(
+      container.read(effectEditorControllerProvider).project!.trimStartMs,
+      500,
+    );
+    expect(repository.analyzeRequestCount, 2);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'shortening the end preserves subject, face style and analyzed IDs',
+    (tester) async {
+      final repository = _FakeProtectionRepository();
+      final analysis = await repository.analyzeVideo(
+        videoUri: project.sourceUri,
+      );
+      final configured = project.copyWith(
+        analysisCacheId: analysis.analysisCacheId,
+        persons: analysis.persons.map((person) => person.toDomain()).toList(),
+        faceOnlyPersonIds: const {0},
+        follow: const FollowConfig(
+          enabled: true,
+          targetPersonId: 1,
+          outputAspectRatio: 9 / 16,
+        ),
+        effects: const EffectConfig(
+          fillMode: FillMode.sticker,
+          faceStickerEnabled: true,
+          stickerAssetId: 'builtin:panda',
+          stickerScale: 1.4,
+        ),
+        outputResolutionPreset: OutputResolutionPreset.fhd,
+      );
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(home: ProtectionEditorScreen(project: configured)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _selectTool(tester, 'trim');
+      await tester.drag(
+        find.byKey(const ValueKey('trim-end-handle')),
+        const Offset(-60, 0),
+        warnIfMissed: false,
+      );
+      await tester.pumpAndSettle();
+
+      final selection = container.read(personSelectionControllerProvider);
+      final effects = container.read(effectEditorControllerProvider);
+      expect(repository.analyzeRequestCount, 1);
+      expect(selection.privacyMode, ProjectPrivacyMode.faceOnly);
+      expect(selection.faceOnlyPersonIds, {0});
+      expect(effects.project!.follow.targetPersonId, 1);
+      expect(effects.project!.follow.enabled, isTrue);
+      expect(effects.project!.trimEndMs, lessThan(configured.trimEndMs!));
+      expect(
+        effects.project!.outputResolutionPreset,
+        OutputResolutionPreset.fhd,
+      );
+      expect(effects.effects.stickerAssetId, 'builtin:panda');
+      expect(effects.effects.stickerScale, 1.4);
+      expect(
+        find.byKey(const ValueKey('trim-confirm-selection')),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'new trim start keeps face style and requires review of new IDs',
+    (tester) async {
+      final repository = _FakeProtectionRepository();
+      final analysis = await repository.analyzeVideo(
+        videoUri: project.sourceUri,
+      );
+      final configured = project.copyWith(
+        analysisCacheId: analysis.analysisCacheId,
+        persons: analysis.persons.map((person) => person.toDomain()).toList(),
+        faceOnlyPersonIds: const {0},
+        follow: const FollowConfig(
+          enabled: true,
+          targetPersonId: 1,
+          outputAspectRatio: 9 / 16,
+        ),
+        effects: const EffectConfig(
+          fillMode: FillMode.sticker,
+          faceStickerEnabled: true,
+          stickerAssetId: 'builtin:panda',
+          stickerScale: 1.4,
+        ),
+      );
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(home: ProtectionEditorScreen(project: configured)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      repository.personIds = [10, 11];
+      await _selectTool(tester, 'trim');
+      await tester.drag(
+        find.byKey(const ValueKey('trim-start-handle')),
+        const Offset(48, 0),
+        warnIfMissed: false,
+      );
+      await tester.pumpAndSettle();
+
+      final selection = container.read(personSelectionControllerProvider);
+      final effects = container.read(effectEditorControllerProvider);
+      expect(repository.analyzeRequestCount, 2);
+      expect(selection.privacyMode, ProjectPrivacyMode.faceOnly);
+      expect(selection.faceOnlyPersonIds, {10, 11});
+      expect(effects.project!.follow.enabled, isFalse);
+      expect(effects.effects.stickerAssetId, 'builtin:panda');
+      expect(effects.effects.stickerScale, 1.4);
+      expect(find.text('主角需重选，范围与样式已保留'), findsOneWidget);
+      final export = find.byKey(
+        const ValueKey('protection-editor-export-action'),
+      );
+      expect(tester.widget<GestureDetector>(export).onTap, isNull);
+      expect(
+        find.byKey(const ValueKey('trim-confirm-selection')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('trim-reselect-subject')));
+      await tester.pumpAndSettle();
+      expect(find.text('主角保留清晰，并自动跟随'), findsOneWidget);
+      await tester.tap(
+        find.byKey(const ValueKey('protection-person-target-10')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        container
+            .read(effectEditorControllerProvider)
+            .project!
+            .follow
+            .targetPersonId,
+        10,
+      );
+      expect(
+        container.read(personSelectionControllerProvider).faceOnlyPersonIds,
+        {11},
+      );
+      expect(tester.widget<GestureDetector>(export).onTap, isNotNull);
+      expect(
+        find.byKey(const ValueKey('trim-confirm-selection')),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('reopening with cached analysis does not rerun person analysis', (
     tester,
@@ -882,6 +1406,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await _selectTool(tester, 'mask');
 
       await tester.ensureVisible(find.text('人脸保护'));
       await tester.tap(find.byKey(const ValueKey('privacy-mode-face-only')));
@@ -1408,6 +1933,9 @@ class _MemoryProtectionProfileStore implements ProtectionProfileStore {
 }
 
 class _FakeProtectionRepository implements NativeProcessingRepository {
+  List<int> personIds = const [0, 1];
+  bool failPreview = false;
+  Completer<void>? analyzeGate;
   int analyzeRequestCount = 0;
   int? lastAnalyzeTrimStartMs;
   Set<int> lastSelectedPersonIds = const {};
@@ -1425,6 +1953,7 @@ class _FakeProtectionRepository implements NativeProcessingRepository {
   }) async {
     analyzeRequestCount += 1;
     lastAnalyzeTrimStartMs = trimStartMs;
+    if (analyzeGate != null) await analyzeGate!.future;
     return AnalyzeResultDto(
       analysisCacheId: 'unified-cache',
       videoInfo: VideoInfoDto(
@@ -1440,24 +1969,26 @@ class _FakeProtectionRepository implements NativeProcessingRepository {
         hasAudio: false,
       ),
       persons: [
-        DetectedPersonDto(
-          id: 0,
-          x1: 0.08,
-          y1: 0.12,
-          x2: 0.42,
-          y2: 0.88,
-          thumbnailPath: '',
-          confidence: 0.94,
-        ),
-        DetectedPersonDto(
-          id: 1,
-          x1: 0.55,
-          y1: 0.14,
-          x2: 0.88,
-          y2: 0.90,
-          thumbnailPath: '',
-          confidence: 0.91,
-        ),
+        if (personIds.isNotEmpty)
+          DetectedPersonDto(
+            id: personIds[0],
+            x1: 0.08,
+            y1: 0.12,
+            x2: 0.42,
+            y2: 0.88,
+            thumbnailPath: '',
+            confidence: 0.94,
+          ),
+        if (personIds.length > 1)
+          DetectedPersonDto(
+            id: personIds[1],
+            x1: 0.55,
+            y1: 0.14,
+            x2: 0.88,
+            y2: 0.90,
+            thumbnailPath: '',
+            confidence: 0.91,
+          ),
       ],
     );
   }
@@ -1478,6 +2009,7 @@ class _FakeProtectionRepository implements NativeProcessingRepository {
     lastPreviewTimestampMs = timestampMs;
     lastTightMaskPreview = tightMaskPreview;
     lastFollow = follow;
+    if (failPreview) throw StateError('preview rendering failed');
     return PreviewFrameDto(
       thumbnailPath: '',
       renderTimeMs: 2,

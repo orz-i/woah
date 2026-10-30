@@ -67,7 +67,7 @@ class ComparisonManualView extends StatelessWidget {
                           width: math.min(300, bounds.maxWidth * .4),
                           child: Center(
                             child: SingleChildScrollView(
-                              child: _footer(context, true),
+                              child: _footer(context),
                             ),
                           ),
                         ),
@@ -76,7 +76,7 @@ class ComparisonManualView extends StatelessWidget {
                   : Column(
                       children: [
                         Expanded(child: preview),
-                        _footer(context, false),
+                        _footer(context),
                       ],
                     ),
             ),
@@ -86,15 +86,9 @@ class ComparisonManualView extends StatelessWidget {
     ),
   );
 
-  Widget _footer(BuildContext context, bool sidebar) => Container(
+  Widget _footer(BuildContext context) => Padding(
     key: const ValueKey('comparison-manual-actions'),
     padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-    decoration: BoxDecoration(
-      color: AppTheme.of(context).flowSurface,
-      border: sidebar
-          ? Border(left: BorderSide(color: AppTheme.of(context).flowBorder))
-          : Border(top: BorderSide(color: AppTheme.of(context).flowBorder)),
-    ),
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -111,14 +105,8 @@ class ComparisonManualView extends StatelessWidget {
                     ? AppTheme.of(context).brandAction
                     : AppTheme.of(context).flowTextSecondary,
               ),
-              backgroundColor: WidgetStateProperty.resolveWith(
-                (states) => states.contains(WidgetState.selected)
-                    ? AppTheme.of(context).brandAction.withAlpha(28)
-                    : Colors.transparent,
-              ),
-              side: WidgetStatePropertyAll(
-                BorderSide(color: AppTheme.of(context).flowBorder),
-              ),
+              backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
+              side: const WidgetStatePropertyAll(BorderSide.none),
               textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
             ),
             selected: {session.rateCalibration},
@@ -159,7 +147,7 @@ class ComparisonManualView extends StatelessWidget {
         const SizedBox(height: 8),
         Row(
           children: [
-            OutlinedButton(
+            TextButton(
               onPressed: saving || session.anchoring ? null : onCancel,
               child: const Text('取消'),
             ),
@@ -288,7 +276,9 @@ class ComparisonManualView extends StatelessWidget {
           ),
           ColoredBox(
             key: ValueKey('comparison-manual-controls-$role'),
-            color: AppTheme.of(context).flowSurface,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.black
+                : AppTheme.of(context).background,
             child: LayoutBuilder(
               builder: (context, bounds) {
                 final controls = <Widget>[

@@ -41,6 +41,39 @@ class QueuedResizeGateway extends FakeComparisonGateway {
 }
 
 void main() {
+  testWidgets(
+    'finished sessions cannot overwrite the saved position while the route exits',
+    (tester) async {
+      final original = savedProject();
+      final gateway = FakeComparisonGateway(saved: [original]);
+      final controller = ComparisonController(gateway);
+      addTearDown(controller.dispose);
+      controller.setViewport(320, 240, false);
+      await controller.initialize();
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(await controller.finish(), isTrue);
+      final saves = gateway.saves;
+      final opens = gateway.opens;
+      // A closed native player reports its idle position while rotation is restored.
+      gateway.current = ComparisonPlaybackDto(
+        textureId: -1,
+        phase: 'idle',
+        positionUs: 0,
+        durationUs: 0,
+        teacherStartUs: 0,
+        offsetUs: 0,
+        speed: 1,
+      );
+      controller.setViewport(640, 320, true);
+      await tester.pump(const Duration(seconds: 4));
+      await controller.background();
+      expect(controller.project.positionUs, original.positionUs);
+      expect(gateway.projects.first.positionUs, original.positionUs);
+      expect(gateway.saves, saves);
+      expect(gateway.opens, opens);
+    },
+  );
+
   testWidgets('a pending resize cannot restore a closed project texture', (
     tester,
   ) async {

@@ -17,7 +17,7 @@ class ImportVideoController extends StateNotifier<VideoImportState> {
   ImportVideoController(this._repository) : super(const VideoImportState());
 
   /// Pick video from device filesystem / gallery and probe metadata
-  Future<void> pickAndProbeVideo() async {
+  Future<bool> pickAndProbeVideo() async {
     try {
       state = state.copyWith(status: VideoImportStatus.picking);
 
@@ -31,7 +31,7 @@ class ImportVideoController extends StateNotifier<VideoImportState> {
               ? VideoImportStatus.ready
               : VideoImportStatus.idle,
         );
-        return;
+        return false;
       }
 
       final file = files.first;
@@ -39,12 +39,14 @@ class ImportVideoController extends StateNotifier<VideoImportState> {
       final name = file.name;
 
       await probeVideoPath(path, name: name);
+      return state.isReady;
     } catch (e, stack) {
       AppLogger.e('ImportVideoController', 'Failed to pick video', e, stack);
       state = state.copyWith(
         status: VideoImportStatus.error,
         errorMessage: '选择视频失败: $e',
       );
+      return false;
     }
   }
 
