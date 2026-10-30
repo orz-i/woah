@@ -191,8 +191,8 @@ void main() {
     final router = _testRouter();
     addTearDown(router.dispose);
     await _pumpWorkbench(tester, router, platform: TargetPlatform.iOS);
-    await tester.drag(find.byType(PageView), const Offset(-280, 0));
-    await tester.pumpAndSettle();
+    expect(find.byType(PageView), findsNothing);
+    expect(find.byKey(const ValueKey('home-import-card')), findsOneWidget);
     expect(find.text('舞蹈对比'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('home-comparison-card')));
     await tester.pumpAndSettle();
@@ -217,7 +217,10 @@ void main() {
     addTearDown(router.dispose);
     await _pumpWorkbench(tester, router);
     expect(find.byKey(const ValueKey('home-import-card')), findsOneWidget);
-    expect(find.byType(PageView), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-comparison-card')), findsOneWidget);
+    expect(find.byType(PageView), findsNothing);
+    expect(find.byKey(const ValueKey('home-privacy-cover')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-comparison-cover')), findsOneWidget);
     expect(find.text('全部工具'), findsNothing);
     expect(find.text('编辑器内功能'), findsNothing);
     expect(find.text('智能裁切'), findsNothing);
@@ -225,7 +228,55 @@ void main() {
     expect(find.text('人物特效'), findsNothing);
     expect(find.text(AppBrand.english), findsOneWidget);
     expect(find.text(AppBrand.chinese), findsNothing);
-    expect(find.text('导入视频'), findsOneWidget);
+    expect(find.text('视频保护'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('both photo entry cards are fully visible at 390 x 844', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final router = _testRouter();
+    addTearDown(router.dispose);
+    await _pumpWorkbench(tester, router, platform: TargetPlatform.iOS);
+    await tester.pumpAndSettle();
+
+    final first = tester.getRect(
+      find.byKey(const ValueKey('home-card-elevation')),
+    );
+    final second = tester.getRect(
+      find.byKey(const ValueKey('home-comparison-elevation')),
+    );
+    expect(first.width, closeTo(second.width, 0.01));
+    expect(first.top, greaterThan(0));
+    expect(second.top, greaterThan(first.bottom));
+    expect(second.bottom, lessThanOrEqualTo(844));
+    expect(find.byType(PageView), findsNothing);
+    expect(find.byKey(const ValueKey('home-privacy-cover')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-comparison-cover')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('comparison remains accessible on compact 320 x 568', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final router = _testRouter();
+    addTearDown(router.dispose);
+    await _pumpWorkbench(tester, router, platform: TargetPlatform.android);
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('home-comparison-card')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('home-comparison-card')));
+    await tester.pumpAndSettle();
+    expect(find.text('TEST_COMPARISON'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -257,7 +308,7 @@ void main() {
       ).read(importVideoControllerProvider).status,
       VideoImportStatus.idle,
     );
-    expect(find.text('导入视频'), findsOneWidget);
+    expect(find.text('视频保护'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -282,7 +333,7 @@ void main() {
     pending.complete([]);
     await tester.pumpAndSettle();
     expect(picker.calls, 1);
-    expect(find.text('导入视频'), findsOneWidget);
+    expect(find.text('视频保护'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -309,9 +360,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('large text fits compact home and scrollable tool library', (
-    tester,
-  ) async {
+  testWidgets('large text fits compact home cards', (tester) async {
     tester.view.physicalSize = const Size(320, 568);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);

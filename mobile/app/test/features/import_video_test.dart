@@ -24,14 +24,23 @@ void main() {
 
       expect(find.text('Woah'), findsOneWidget);
       expect(find.text('记录每一个闪闪发光的你'), findsNothing);
-      expect(find.text('导入视频'), findsOneWidget);
-      expect(find.text('从设备中选择视频'), findsOneWidget);
+      expect(find.text('视频保护'), findsOneWidget);
+      expect(find.text('保留主角，遮挡其他人物'), findsOneWidget);
       expect(find.byKey(const ValueKey('home-import-card')), findsOneWidget);
-      final cardInk = tester.widget<Ink>(
-        find.byKey(const ValueKey('home-import-card')),
+      final cardMaterial = tester.widget<Material>(
+        find
+            .descendant(
+              of: find.byKey(const ValueKey('home-card-elevation')),
+              matching: find.byType(Material),
+            )
+            .first,
       );
-      final cardDecoration = cardInk.decoration! as BoxDecoration;
-      expect(cardDecoration.border, isNull);
+      expect(cardMaterial.color, AppTheme.darkColors.flowSurface);
+      expect(find.byKey(const ValueKey('home-privacy-cover')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('home-comparison-cover')),
+        findsOneWidget,
+      );
       final elevation = tester.widget<DecoratedBox>(
         find.byKey(const ValueKey('home-card-elevation')),
       );
@@ -42,7 +51,7 @@ void main() {
         elevationDecoration.boxShadow!.every((shadow) => shadow.offset.dy > 0),
         isTrue,
       );
-      expect(find.bySemanticsLabel('导入视频，从设备中选择视频'), findsOneWidget);
+      expect(find.bySemanticsLabel('视频保护，保留主角，遮挡其他人物'), findsOneWidget);
       expect(find.byIcon(Icons.close_rounded), findsNothing);
       expect(find.text('人脸贴纸'), findsNothing);
       expect(find.text('智能裁切'), findsNothing);
@@ -74,7 +83,7 @@ void main() {
       await tester.pump();
 
       expect(find.byKey(const ValueKey('home-import-card')), findsOneWidget);
-      expect(find.text('从设备中选择视频'), findsOneWidget);
+      expect(find.text('保留主角，遮挡其他人物'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }
