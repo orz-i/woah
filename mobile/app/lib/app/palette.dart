@@ -52,5 +52,5 @@ class WoahPalette {
   /// Small item shadows should be softer on a pale background.
   Color get homeCardShadow => background.computeLuminance() > 0.5
       ? const Color(0x180B1415)
-      : const Color(0xAA000000);
+      : const Color(0x45000000);
 }

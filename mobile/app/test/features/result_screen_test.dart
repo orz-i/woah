@@ -11,6 +11,50 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 void main() {
+  testWidgets('failed auto-save exposes retry and blocks share until saved', (
+    tester,
+  ) async {
+    final repository = _FailedSaveResultRepository();
+    final container = ProviderContainer(
+      overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+    final router = _buildRouter(_completedState());
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('尚未存入系统相册'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const ValueKey('result-share-action')),
+          )
+          .onPressed,
+      isNull,
+    );
+    repository.fail = false;
+    await tester.tap(find.byKey(const ValueKey('result-resave-action')));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('已保存至系统相册'), findsOneWidget);
+    expect(find.byKey(const ValueKey('result-resave-action')), findsNothing);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const ValueKey('result-share-action')),
+          )
+          .onPressed,
+      isNotNull,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'portrait reframe result uses output aspect instead of source aspect',
     (tester) async {
@@ -50,7 +94,7 @@ void main() {
   );
 
   testWidgets(
-    'success result prioritizes share with only user-facing surrounding actions',
+    'result separates save status and actions and hides diagnostics in more',
     (tester) async {
       final repository = _ResultRepository();
       final container = ProviderContainer(
@@ -73,8 +117,14 @@ void main() {
       expect(find.text('舞段已完成'), findsNothing);
       expect(find.text('分享'), findsNothing);
       expect(find.text('下一个'), findsNothing);
-      expect(find.bySemanticsLabel('分享'), findsOneWidget);
-      expect(find.bySemanticsLabel('返回首页'), findsOneWidget);
+      expect(find.bySemanticsLabel('分享视频'), findsOneWidget);
+      expect(
+        tester
+            .getSemantics(find.byKey(const ValueKey('result-next-action')))
+            .getSemanticsData()
+            .tooltip,
+        '返回首页',
+      );
       expect(find.text('查看视频'), findsOneWidget);
       expect(find.text('更多选项'), findsNothing);
       expect(find.text('视频已安全保存到你的设备'), findsNothing);
@@ -87,7 +137,7 @@ void main() {
       expect(find.byKey(const ValueKey('result-copy-action')), findsNothing);
       expect(
         find.byKey(const ValueKey('result-diagnostics-action')),
-        findsOneWidget,
+        findsNothing,
       );
 
       final shareCenter = tester.getCenter(
@@ -100,18 +150,12 @@ void main() {
         find.byKey(const ValueKey('result-open-action')),
       );
       expect(nextCenter.dx, lessThan(shareCenter.dx));
-      expect(nextCenter.dy, closeTo(shareCenter.dy, 1));
-      expect(openCenter.dy, greaterThan(shareCenter.dy));
-      expect(
-        tester
-            .getCenter(find.byKey(const ValueKey('result-diagnostics-action')))
-            .dy,
-        greaterThan(shareCenter.dy),
-      );
+      expect(nextCenter.dy, lessThan(shareCenter.dy));
+      expect(openCenter.dy, closeTo(shareCenter.dy, 1));
       final stageRect = tester.getRect(
         find.byKey(const ValueKey('result-media-stage')),
       );
-      expect(stageRect.top, greaterThan(shareCenter.dy));
+      expect(stageRect.top, greaterThan(nextCenter.dy));
       expect(stageRect.bottom, lessThan(openCenter.dy));
     },
   );
@@ -149,6 +193,8 @@ void main() {
 
     expect(find.byKey(const ValueKey('result-copy-action')), findsNothing);
 
+    await tester.tap(find.byKey(const ValueKey('result-more-action')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('result-diagnostics-action')));
     await tester.pump();
     await tester.pump();
@@ -199,6 +245,18 @@ void main() {
     );
     expect(stageSize.height, greaterThanOrEqualTo(240));
     expect(stageSize.height, greaterThan(statusSize.height));
+    expect(
+      tester.getSize(find.byKey(const ValueKey('result-save-status'))).height,
+      lessThan(24),
+    );
+    expect(
+      tester.getSize(find.byKey(const ValueKey('result-open-action'))).height,
+      greaterThanOrEqualTo(48),
+    );
+    expect(
+      tester.getSize(find.byKey(const ValueKey('result-share-action'))).height,
+      greaterThanOrEqualTo(48),
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -223,16 +281,28 @@ void main() {
     await tester.pump();
 
     expect(find.text('正在保存到相册'), findsOneWidget);
-    final nextInk = find.descendant(
-      of: find.byKey(const ValueKey('result-next-action')),
-      matching: find.byType(InkWell),
+    expect(
+      tester
+          .widget<IconButton>(find.byKey(const ValueKey('result-next-action')))
+          .onPressed,
+      isNull,
     );
-    final openInk = find.descendant(
-      of: find.byKey(const ValueKey('result-open-action')),
-      matching: find.byType(InkWell),
+    expect(
+      tester
+          .widget<OutlinedButton>(
+            find.byKey(const ValueKey('result-open-action')),
+          )
+          .onPressed,
+      isNull,
     );
-    expect(tester.widget<InkWell>(nextInk).onTap, isNull);
-    expect(tester.widget<InkWell>(openInk).onTap, isNull);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const ValueKey('result-share-action')),
+          )
+          .onPressed,
+      isNull,
+    );
 
     await tester.tap(find.byKey(const ValueKey('result-next-action')));
     await tester.tap(find.byKey(const ValueKey('result-open-action')));
@@ -334,6 +404,16 @@ class _ResultRepository implements NativeProcessingRepository {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FailedSaveResultRepository extends _ResultRepository {
+  bool fail = true;
+
+  @override
+  Future<String?> saveVideoToGallery(String filePath) async {
+    if (fail) throw StateError('gallery unavailable');
+    return super.saveVideoToGallery(filePath);
+  }
 }
 
 class _DeferredSaveResultRepository extends _ResultRepository {

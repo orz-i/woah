@@ -67,12 +67,7 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
 
               return SingleChildScrollView(
                 physics: const ClampingScrollPhysics(),
-                padding: EdgeInsets.fromLTRB(
-                  horizontalPadding,
-                  verticalPadding,
-                  horizontalPadding,
-                  verticalPadding,
-                ),
+                padding: EdgeInsets.symmetric(vertical: verticalPadding),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
                     minHeight: math.max(
@@ -83,18 +78,23 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _HomeBrand(onLongPress: _openEasterEgg),
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: horizontalPadding,
+                        ),
+                        child: _HomeBrand(onLongPress: _openEasterEgg),
+                      ),
                       SizedBox(height: gapAboveCard),
-                      Center(
-                        child: SizedBox(
-                          width: cardWidth,
-                          height: cardHeight,
-                          child: _HomeToolDeck(
-                            isBusy: isBusy,
-                            actionLabel: actionLabel,
-                            onLaunch: (tool) =>
-                                launchHomeTool(context, ref, tool),
-                          ),
+                      SizedBox(
+                        height: cardHeight,
+                        child: _HomeToolDeck(
+                          cardWidth: cardWidth,
+                          viewportFraction:
+                              cardWidth * 0.90 / viewport.maxWidth,
+                          isBusy: isBusy,
+                          actionLabel: actionLabel,
+                          onLaunch: (tool) =>
+                              launchHomeTool(context, ref, tool),
                         ),
                       ),
                       if (state.errorMessage != null) ...[
@@ -207,17 +207,17 @@ class _ImportActionCard extends StatelessWidget {
             boxShadow: [
               BoxShadow(
                 color: AppTheme.of(context).homeCardShadow,
-                offset: const Offset(0, 15),
-                blurRadius: 34,
-                spreadRadius: -8,
+                offset: const Offset(0, 10),
+                blurRadius: 24,
+                spreadRadius: -6,
               ),
               BoxShadow(
                 color: Theme.of(context).brightness == Brightness.dark
-                    ? const Color(0xAA000000)
-                    : const Color(0x160B1415),
-                offset: const Offset(0, 22),
-                blurRadius: 30,
-                spreadRadius: -9,
+                    ? const Color(0x24000000)
+                    : const Color(0x100B1415),
+                offset: const Offset(0, 18),
+                blurRadius: 22,
+                spreadRadius: -8,
               ),
             ],
           ),
@@ -313,12 +313,16 @@ class _ImportActionCard extends StatelessWidget {
 /// second independent workflow is shipped; editor-only features are excluded.
 class _HomeToolDeck extends StatefulWidget {
   const _HomeToolDeck({
+    required this.cardWidth,
+    required this.viewportFraction,
     required this.isBusy,
     required this.actionLabel,
     required this.onLaunch,
   });
 
   final bool isBusy;
+  final double cardWidth;
+  final double viewportFraction;
   final String actionLabel;
   final ValueChanged<HomeTool> onLaunch;
 
@@ -327,13 +331,26 @@ class _HomeToolDeck extends StatefulWidget {
 }
 
 class _HomeToolDeckState extends State<_HomeToolDeck> {
-  late final PageController _pageController;
+  late PageController _pageController;
   int _selectedIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(viewportFraction: 0.90);
+    _pageController = PageController(viewportFraction: widget.viewportFraction);
+  }
+
+  @override
+  void didUpdateWidget(covariant _HomeToolDeck oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.viewportFraction != widget.viewportFraction) {
+      final previousController = _pageController;
+      _pageController = PageController(
+        initialPage: _selectedIndex,
+        viewportFraction: widget.viewportFraction,
+      );
+      previousController.dispose();
+    }
   }
 
   @override
@@ -348,11 +365,17 @@ class _HomeToolDeckState extends State<_HomeToolDeck> {
     assert(tools.isNotEmpty);
 
     if (tools.length == 1) {
-      return _ImportActionCard(
-        tool: tools.single,
-        isBusy: widget.isBusy,
-        actionLabel: widget.actionLabel,
-        onTap: widget.isBusy ? null : () => widget.onLaunch(tools.single),
+      return Center(
+        child: SizedBox(
+          width: widget.cardWidth,
+          height: double.infinity,
+          child: _ImportActionCard(
+            tool: tools.single,
+            isBusy: widget.isBusy,
+            actionLabel: widget.actionLabel,
+            onTap: widget.isBusy ? null : () => widget.onLaunch(tools.single),
+          ),
+        ),
       );
     }
 
@@ -360,6 +383,8 @@ class _HomeToolDeckState extends State<_HomeToolDeck> {
       children: [
         Expanded(
           child: PageView.builder(
+            // Paint shadows through the page edges, not a narrow card window.
+            clipBehavior: Clip.none,
             controller: _pageController,
             itemCount: tools.length,
             onPageChanged: (index) => setState(() => _selectedIndex = index),

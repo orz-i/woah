@@ -35,12 +35,13 @@ Future<void> startVideoProtectionFlow(
 
   HapticFeedback.mediumImpact();
   final controller = ref.read(importVideoControllerProvider.notifier);
-  await controller.pickAndProbeVideo();
+  final selected = await controller.pickAndProbeVideo();
   if (!context.mounted) return;
 
   // An error or canceled selection must not open the editor.
-  if (ref.read(importVideoControllerProvider).status !=
-      VideoImportStatus.ready) {
+  if (!selected ||
+      ref.read(importVideoControllerProvider).status !=
+          VideoImportStatus.ready) {
     return;
   }
   final project = controller.createProject();

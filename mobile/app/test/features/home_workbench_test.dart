@@ -151,6 +151,23 @@ Future<void> _pumpWorkbench(
 }
 
 void main() {
+  test(
+    'canceling a replacement does not reuse the previously selected video',
+    () async {
+      final original = FilePickerPlatform.instance;
+      FilePickerPlatform.instance = _FakeVideoPicker();
+      addTearDown(() => FilePickerPlatform.instance = original);
+      final repository = _FakeProbeRepository();
+      final controller = ImportVideoController(repository);
+      addTearDown(controller.dispose);
+      await controller.probeVideoPath('/fake/dance.mp4');
+      expect(await controller.pickAndProbeVideo(), isFalse);
+      expect(controller.state.videoPath, '/fake/dance.mp4');
+      expect(controller.state.isReady, isTrue);
+      expect(repository.probes, 1);
+    },
+  );
+
   test('catalog never promotes in-editor capabilities to launchable cards', () {
     expect(HomeToolCatalog.standalone, isNotEmpty);
     expect(HomeToolCatalog.standalone.length, 2);

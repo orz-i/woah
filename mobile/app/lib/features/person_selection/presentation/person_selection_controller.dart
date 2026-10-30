@@ -59,6 +59,7 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
   Future<void> analyzeProject(
     DanceProject project, {
     bool selectionPreviewEnabled = true,
+    ProjectPrivacyMode? privacyMode,
   }) async {
     _selectionPreviewEnabled = selectionPreviewEnabled;
     try {
@@ -68,7 +69,7 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
         persons: const [],
         selectedPersonIds: const {},
         faceOnlyPersonIds: const {},
-        privacyMode: ProjectPrivacyMode.fullBody,
+        privacyMode: privacyMode ?? ProjectPrivacyMode.fullBody,
         errorMessage: null,
         clearAnalysisCacheId: true,
         clearSelectionPreviewPath: true,
@@ -111,6 +112,7 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
         project: project,
         persons: persons,
         analysisCacheId: result.analysisCacheId,
+        privacyMode: privacyMode,
       );
 
       if (_selectionPreviewEnabled) {
@@ -144,6 +146,7 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
     required DanceProject project,
     required List<PersonTrack> persons,
     required String analysisCacheId,
+    ProjectPrivacyMode? privacyMode,
   }) {
     final personIds = persons.map((person) => person.id).toSet();
     final storedTargets = {
@@ -159,10 +162,11 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
     // Legacy mixed projects are normalized to full-body for privacy safety.
     // A pure face-only project remains face-only when revisited.
     final initialMode =
-        project.selectedPersonIds.isEmpty &&
-            project.faceOnlyPersonIds.isNotEmpty
-        ? ProjectPrivacyMode.faceOnly
-        : ProjectPrivacyMode.fullBody;
+        privacyMode ??
+        (project.selectedPersonIds.isEmpty &&
+                project.faceOnlyPersonIds.isNotEmpty
+            ? ProjectPrivacyMode.faceOnly
+            : ProjectPrivacyMode.fullBody);
 
     state = state.copyWith(
       status: PersonSelectionStatus.ready,

@@ -345,7 +345,7 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 250));
       await tester.pumpAndSettle();
-      expect(find.text('暂停'), findsOneWidget);
+      expect(find.byTooltip('暂停'), findsOneWidget);
       expect(
         tester
             .widget<IconButton>(
@@ -358,7 +358,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('comparison-play')));
       await tester.pumpAndSettle();
       expect(gateway.current.phase, 'paused');
-      expect(find.text('播放'), findsOneWidget);
+      expect(find.byTooltip('播放'), findsOneWidget);
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
     },
@@ -398,9 +398,7 @@ void main() {
       await tester.tap(
         find.ancestor(
           of: find.text('参考镜像'),
-          matching: find.byWidgetPredicate(
-            (widget) => widget is CheckedPopupMenuItem,
-          ),
+          matching: find.byWidgetPredicate((widget) => widget is PopupMenuItem),
         ),
       );
       await tester.pumpAndSettle();
@@ -809,9 +807,7 @@ void main() {
       await tester.pumpAndSettle();
       final menuItem = find.ancestor(
         of: find.text('左右视图'),
-        matching: find.byWidgetPredicate(
-          (widget) => widget is CheckedPopupMenuItem,
-        ),
+        matching: find.byWidgetPredicate((widget) => widget is PopupMenuItem),
       );
       expect(tester.getCenter(menuItem).dx, closeTo(160, .1));
       await tester.tapAt(const Offset(12, 60));
@@ -910,6 +906,11 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('comparison-step-back')));
       await tester.pump();
       expect(gateway.current.positionUs, 1000000);
+      final speedSemantics = tester
+          .getSemantics(find.byKey(const ValueKey('comparison-speed')))
+          .getSemanticsData();
+      expect(speedSemantics.label, '播放速度');
+      expect(speedSemantics.value, '1倍');
       await tester.tap(find.byKey(const ValueKey('comparison-speed')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('0.5×'));
@@ -960,7 +961,7 @@ void main() {
               find.ancestor(
                 of: find.text('左右视图'),
                 matching: find.byWidgetPredicate(
-                  (widget) => widget is CheckedPopupMenuItem,
+                  (widget) => widget is PopupMenuItem,
                 ),
               ),
             )
@@ -1186,9 +1187,7 @@ void main() {
       await tester.tap(
         find.ancestor(
           of: find.text('左右视图'),
-          matching: find.byWidgetPredicate(
-            (widget) => widget is CheckedPopupMenuItem,
-          ),
+          matching: find.byWidgetPredicate((widget) => widget is PopupMenuItem),
         ),
       );
       await tester.pumpAndSettle();
@@ -1218,9 +1217,7 @@ void main() {
       await tester.tap(
         find.ancestor(
           of: find.text('上下视图'),
-          matching: find.byWidgetPredicate(
-            (widget) => widget is CheckedPopupMenuItem,
-          ),
+          matching: find.byWidgetPredicate((widget) => widget is PopupMenuItem),
         ),
       );
       await tester.pumpAndSettle();
@@ -1301,9 +1298,7 @@ void main() {
       await tester.tap(
         find.ancestor(
           of: find.text('上下视图'),
-          matching: find.byWidgetPredicate(
-            (widget) => widget is CheckedPopupMenuItem,
-          ),
+          matching: find.byWidgetPredicate((widget) => widget is PopupMenuItem),
         ),
       );
       await tester.pumpAndSettle();

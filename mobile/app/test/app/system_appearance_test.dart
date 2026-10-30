@@ -12,6 +12,10 @@ void main() {
   testWidgets(
     'system appearance switches Home live without losing the workflow',
     (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
       tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
       addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
 
@@ -63,13 +67,18 @@ void main() {
       // Switching system appearance must preserve the selected workflow card.
       await tester.drag(find.byType(PageView), const Offset(-280, 0));
       await tester.pumpAndSettle();
-      expect(find.text('舞蹈对比'), findsOneWidget);
+      expect(find.text('舞蹈对比').hitTestable(), findsOneWidget);
+
+      // A wider viewport must not reset the active card or leave it untappable.
+      tester.view.physicalSize = const Size(390, 844);
+      await tester.pumpAndSettle();
+      expect(find.text('舞蹈对比').hitTestable(), findsOneWidget);
 
       // Reversing the system mode restores the original dark baseline.
       tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
       await tester.pumpAndSettle();
       expect(scaffold().backgroundColor, AppTheme.darkColors.flowBackground);
-      expect(find.text('舞蹈对比'), findsOneWidget);
+      expect(find.text('舞蹈对比').hitTestable(), findsOneWidget);
     },
   );
 

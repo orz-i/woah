@@ -197,7 +197,7 @@ void main() {
             .ancestor(
               of: find.text('参考镜像'),
               matching: find.byWidgetPredicate(
-                (widget) => widget is CheckedPopupMenuItem,
+                (widget) => widget is PopupMenuItem,
               ),
             )
             .first,

@@ -143,7 +143,7 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('comparison-calibration')));
         // Also invoke the already-dispatched callback before the next rebuild.
         tester
-            .widget<TextButton>(
+            .widget<IconButton>(
               find.byKey(const ValueKey('comparison-calibration')),
             )
             .onPressed!();
@@ -151,7 +151,7 @@ void main() {
         expect(gateway.saves, 1);
         expect(
           tester
-              .widget<TextButton>(
+              .widget<IconButton>(
                 find.byKey(const ValueKey('comparison-calibration')),
               )
               .onPressed,
