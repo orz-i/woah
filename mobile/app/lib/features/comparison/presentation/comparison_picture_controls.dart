@@ -59,10 +59,16 @@ class ComparisonPictureControls extends StatelessWidget {
       showSelectedIcon: false,
       style: ButtonStyle(
         side: const WidgetStatePropertyAll(BorderSide.none),
-        backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
+        // Keep the compact borderless control, but make its selection
+        // legible by both shape (tinted segment) and color.
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? AppTheme.of(context).editorSelectionSubtle
+              : Colors.transparent,
+        ),
         foregroundColor: WidgetStateProperty.resolveWith(
           (states) => states.contains(WidgetState.selected)
-              ? AppTheme.of(context).brandAction
+              ? AppTheme.of(context).editorSelection
               : AppTheme.of(context).flowTextSecondary,
         ),
         minimumSize: const WidgetStatePropertyAll(Size(48, 48)),

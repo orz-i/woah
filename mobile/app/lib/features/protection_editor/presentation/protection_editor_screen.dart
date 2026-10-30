@@ -1894,23 +1894,39 @@ class _ProtectionEditorScreenState
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    item.$3,
-                    size: 22,
-                    color: selected
-                        ? AppTheme.of(context).editorSelection
-                        : AppTheme.of(context).textMuted,
+                  Container(
+                    key: ValueKey('editor-tool-glyph-${item.$1.name}'),
+                    width: 36,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? AppTheme.of(context).editorSelectionSubtle
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      item.$3,
+                      size: 22,
+                      color: selected
+                          ? AppTheme.of(context).editorSelection
+                          : AppTheme.of(context).textSecondary,
+                    ),
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 1),
                   Text(
                     item.$2,
                     style: TextStyle(
                       color: selected
                           ? AppTheme.of(context).editorSelection
-                          : AppTheme.of(context).textMuted,
+                          : AppTheme.of(context).textSecondary,
                       fontSize: 11,
                       fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                     ),
+                  ),
+                  const SizedBox(height: 1),
+                  _SelectionIndicator(
+                    selected: selected,
+                    id: 'tool-${item.$1.name}',
                   ),
                 ],
               ),
@@ -1950,40 +1966,68 @@ class _ProtectionEditorScreenState
             itemBuilder: (context, index) {
               final prop = properties[index];
               final isSelected = activeProperty == prop;
-              return GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  setState(() => _activeAdjustProperty = prop);
-                },
-                behavior: HitTestBehavior.opaque,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      width: AppTheme.minTouchTarget,
-                      height: AppTheme.minTouchTarget,
-                      child: Icon(
-                        prop.icon,
-                        color: isSelected
-                            ? AppTheme.of(context).editorSelection
-                            : AppTheme.of(context).textMuted,
-                        size: 22,
+              void selectProperty() {
+                HapticFeedback.selectionClick();
+                setState(() => _activeAdjustProperty = prop);
+              }
+
+              return Semantics(
+                key: ValueKey('editor-adjust-option-${prop.name}'),
+                button: true,
+                selected: isSelected,
+                label: prop.label,
+                excludeSemantics: true,
+                onTap: selectProperty,
+                child: GestureDetector(
+                  onTap: selectProperty,
+                  behavior: HitTestBehavior.opaque,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: AppTheme.minTouchTarget,
+                        height: 34,
+                        child: Center(
+                          child: Container(
+                            key: ValueKey('editor-adjust-glyph-${prop.name}'),
+                            width: 36,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? AppTheme.of(context).editorSelectionSubtle
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              prop.icon,
+                              color: isSelected
+                                  ? AppTheme.of(context).editorSelection
+                                  : AppTheme.of(context).textSecondary,
+                              size: 22,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      prop.label,
-                      style: TextStyle(
-                        color: isSelected
-                            ? AppTheme.of(context).editorSelection
-                            : AppTheme.of(context).textMuted,
-                        fontSize: 11,
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.w500,
+                      const SizedBox(height: 1),
+                      Text(
+                        prop.label,
+                        style: TextStyle(
+                          color: isSelected
+                              ? AppTheme.of(context).editorSelection
+                              : AppTheme.of(context).textSecondary,
+                          fontSize: 11,
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 1),
+                      _SelectionIndicator(
+                        selected: isSelected,
+                        id: 'adjust-${prop.name}',
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -2346,40 +2390,50 @@ class _ProtectionEditorScreenState
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
+    return Semantics(
+      key: ValueKey('editor-ratio-option-$label'),
+      button: true,
+      selected: isSelected,
+      label: label,
+      excludeSemantics: true,
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 68,
-        height: 64,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 18,
-              height: isVerticalRatio ? 22 : 14,
-              decoration: BoxDecoration(
-                border: Border.all(
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          width: 68,
+          height: 64,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 18,
+                height: isVerticalRatio ? 22 : 14,
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: isSelected
+                        ? AppTheme.of(context).editorSelection
+                        : AppTheme.of(context).textSecondary,
+                    width: isSelected ? 2 : 1.3,
+                  ),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                style: TextStyle(
                   color: isSelected
                       ? AppTheme.of(context).editorSelection
-                      : AppTheme.of(context).textMuted,
-                  width: 1.3,
+                      : AppTheme.of(context).textSecondary,
+                  fontSize: 11.5,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 ),
-                borderRadius: BorderRadius.circular(2),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected
-                    ? AppTheme.of(context).editorSelection
-                    : AppTheme.of(context).textMuted,
-                fontSize: 11.5,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-              ),
-            ),
-          ],
+              const SizedBox(height: 3),
+              _SelectionIndicator(selected: isSelected, id: 'ratio-$label'),
+            ],
+          ),
         ),
       ),
     );
@@ -2480,30 +2534,38 @@ class _ProtectionEditorScreenState
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 6,
-                    vertical: 7,
+                    vertical: 1,
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
                         item.$3,
-                        size: 21,
+                        size: 19,
                         color: selected
                             ? AppTheme.of(context).editorSelection
-                            : AppTheme.of(context).textMuted,
+                            : AppTheme.of(context).textSecondary,
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 1),
                       Text(
                         item.$2,
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: selected
                               ? AppTheme.of(context).editorSelection
-                              : AppTheme.of(context).textMuted,
+                              : AppTheme.of(context).textSecondary,
                           fontSize: 12,
                           fontWeight: selected
-                              ? FontWeight.w600
+                              ? FontWeight.w700
                               : FontWeight.w500,
                         ),
+                      ),
+                      const SizedBox(height: 2),
+                      _SelectionIndicator(
+                        selected: selected,
+                        id: 'style-${item.$1.name}',
                       ),
                     ],
                   ),
@@ -3294,6 +3356,37 @@ class _EditorStatus extends StatelessWidget {
   }
 }
 
+/// A non-color cue shared by the editor's selection controls. The 3dp
+/// space is reserved in both states to prevent movement when toggled.
+class _SelectionIndicator extends StatelessWidget {
+  const _SelectionIndicator({
+    required this.selected,
+    required this.id,
+    this.width = 24,
+  });
+
+  final bool selected;
+  final String id;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      height: 3,
+      child: selected
+          ? DecoratedBox(
+              key: ValueKey('editor-selection-$id'),
+              decoration: BoxDecoration(
+                color: AppTheme.of(context).editorSelection,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            )
+          : null,
+    );
+  }
+}
+
 class _PrivacySlot extends StatelessWidget {
   final String label;
   final IconData icon;
@@ -3326,25 +3419,42 @@ class _PrivacySlot extends StatelessWidget {
         onTap: selectScope,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Stack(
+            fit: StackFit.expand,
             children: [
-              Icon(
-                icon,
-                size: 17,
-                color: selected
-                    ? AppTheme.of(context).editorSelection
-                    : AppTheme.of(context).textMuted,
+              Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      icon,
+                      size: 17,
+                      color: selected
+                          ? AppTheme.of(context).editorSelection
+                          : AppTheme.of(context).textSecondary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: selected
+                            ? AppTheme.of(context).editorSelection
+                            : AppTheme.of(context).textSecondary,
+                        fontSize: 12,
+                        fontWeight: selected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  color: selected
-                      ? AppTheme.of(context).editorSelection
-                      : AppTheme.of(context).textMuted,
-                  fontSize: 12,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: _SelectionIndicator(
+                  selected: selected,
+                  id: 'scope-$label',
+                  width: 32,
                 ),
               ),
             ],

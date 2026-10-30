@@ -119,6 +119,192 @@ void main() {
     updatedAt: now,
   );
 
+  for (final brightness in Brightness.values) {
+    testWidgets('selection cues are visible in ${brightness.name} theme', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final colors = brightness == Brightness.dark
+          ? AppTheme.darkColors
+          : AppTheme.lightColors;
+      final container = ProviderContainer(
+        overrides: [
+          nativeRepositoryProvider.overrideWithValue(
+            _FakeProtectionRepository(),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: brightness == Brightness.dark
+                ? AppTheme.darkTheme
+                : AppTheme.lightTheme,
+            home: ProtectionEditorScreen(project: project),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final markerColor = colors.editorSelection;
+      final surface = brightness == Brightness.dark
+          ? Colors.black
+          : colors.background;
+      final a = markerColor.computeLuminance();
+      final b = surface.computeLuminance();
+      expect(
+        (a > b ? (a + .05) / (b + .05) : (b + .05) / (a + .05)),
+        greaterThanOrEqualTo(3),
+      );
+
+      void assertMarker(String id) {
+        final mark = find.byKey(ValueKey('editor-selection-$id'));
+        expect(mark, findsOneWidget);
+        final box = tester.widget<DecoratedBox>(mark);
+        expect((box.decoration as BoxDecoration).color, markerColor);
+        expect(tester.getSize(mark).height, 3);
+      }
+
+      expect(
+        find.byKey(const ValueKey('editor-selection-tool-mask')),
+        findsNothing,
+      );
+      await _selectTool(tester, 'mask');
+      assertMarker('tool-mask');
+      assertMarker('scope-全身保护');
+      expect(
+        find.byKey(const ValueKey('editor-selection-scope-人脸保护')),
+        findsNothing,
+      );
+
+      final activeGlyph = tester.widget<Container>(
+        find.byKey(const ValueKey('editor-tool-glyph-mask')),
+      );
+      expect(
+        (activeGlyph.decoration! as BoxDecoration).color,
+        colors.editorSelectionSubtle,
+      );
+      final idleGlyph = tester.widget<Container>(
+        find.byKey(const ValueKey('editor-tool-glyph-trim')),
+      );
+      expect(
+        (idleGlyph.decoration! as BoxDecoration).color,
+        Colors.transparent,
+      );
+      final idleToolText = tester.widget<Text>(
+        find.descendant(
+          of: find.byKey(const ValueKey('editor-tool-trim')),
+          matching: find.text('剪辑'),
+        ),
+      );
+      expect(idleToolText.style!.color, colors.textSecondary);
+
+      await tester.tap(find.byKey(const ValueKey('protection-style-blur')));
+      await tester.pumpAndSettle();
+      assertMarker('style-blur');
+      await tester.tap(find.byKey(const ValueKey('protection-style-solid')));
+      await tester.pumpAndSettle();
+      assertMarker('style-solid');
+      expect(
+        find.byKey(const ValueKey('editor-selection-style-blur')),
+        findsNothing,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('privacy-mode-face-only')));
+      await tester.pumpAndSettle();
+      assertMarker('scope-人脸保护');
+      expect(
+        find.byKey(const ValueKey('editor-selection-scope-全身保护')),
+        findsNothing,
+      );
+
+      await _selectTool(tester, 'frame');
+      assertMarker('tool-frame');
+      assertMarker('ratio-原始');
+      expect(
+        tester
+            .getSemantics(find.byKey(const ValueKey('editor-ratio-option-原始')))
+            .getSemanticsData()
+            .flagsCollection
+            .isSelected,
+        Tristate.isTrue,
+      );
+      await _selectTool(tester, 'adjust');
+      assertMarker('tool-adjust');
+      assertMarker('adjust-opacity');
+      expect(
+        tester
+            .getSemantics(
+              find.byKey(const ValueKey('editor-adjust-option-opacity')),
+            )
+            .getSemanticsData()
+            .flagsCollection
+            .isSelected,
+        Tristate.isTrue,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final scale in [1.6, 2.0]) {
+    testWidgets('selection cues fit compact large-text at $scale', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final container = ProviderContainer(
+        overrides: [
+          nativeRepositoryProvider.overrideWithValue(
+            _FakeProtectionRepository(),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: TextScaler.linear(scale)),
+              child: child!,
+            ),
+            home: ProtectionEditorScreen(project: project),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _selectTool(tester, 'mask');
+      await tester.tap(find.byKey(const ValueKey('privacy-mode-face-only')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('editor-selection-scope-人脸保护')),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const ValueKey('protection-style-blur')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('editor-selection-style-blur')),
+        findsOneWidget,
+      );
+      await _selectTool(tester, 'adjust');
+      expect(
+        find.byKey(const ValueKey('editor-selection-tool-adjust')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('tools start closed and can be deselected without losing edits', (
     tester,
   ) async {

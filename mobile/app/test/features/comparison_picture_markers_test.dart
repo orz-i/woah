@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:app/app/theme.dart';
 import 'package:app/features/comparison/presentation/comparison_controller.dart';
 import 'package:app/features/comparison/presentation/comparison_screen.dart';
+import 'package:app/features/comparison/presentation/comparison_picture_controls.dart';
 import 'package:app/features/comparison/presentation/comparison_time.dart';
 import 'package:dance_domain/dance_domain.dart';
 import 'package:dance_native/dance_native.dart';
@@ -46,6 +47,97 @@ Future<void> enterAdjustment(WidgetTester tester) async {
 }
 
 void main() {
+  for (final brightness in Brightness.values) {
+    testWidgets('view options show check on active state ${brightness.name}', (
+      tester,
+    ) async {
+      final gateway = FakeComparisonGateway(saved: [savedProject()]);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: brightness == Brightness.dark
+              ? AppTheme.darkTheme
+              : AppTheme.lightTheme,
+          home: ComparisonScreen(gateway: gateway),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('comparison-view')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('comparison-view-selected-mark')),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('左右视图'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('comparison-view')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('comparison-view-selected-mark')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final brightness in Brightness.values) {
+    testWidgets('picture target selection tonal cue ${brightness.name}', (
+      tester,
+    ) async {
+      var reference = true;
+      final colors = brightness == Brightness.dark
+          ? AppTheme.darkColors
+          : AppTheme.lightColors;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: brightness == Brightness.dark
+              ? AppTheme.darkTheme
+              : AppTheme.lightTheme,
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (context, setState) => ComparisonPictureControls(
+                project: savedProject(),
+                reference: reference,
+                onSelect: (v) => setState(() => reference = v),
+                onChange: (_) {},
+                onApply: () {},
+                onCancel: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      SegmentedButton<bool> segment() => tester.widget<SegmentedButton<bool>>(
+        find.byType(SegmentedButton<bool>),
+      );
+      expect(segment().showSelectedIcon, isFalse);
+      final background = segment().style!.backgroundColor!;
+      final foreground = segment().style!.foregroundColor!;
+      expect(
+        background.resolve({WidgetState.selected}),
+        colors.editorSelectionSubtle,
+      );
+      expect(background.resolve({}), Colors.transparent);
+      expect(
+        foreground.resolve({WidgetState.selected}),
+        colors.editorSelection,
+      );
+      expect(foreground.resolve({}), colors.flowTextSecondary);
+      expect(segment().selected, {true});
+
+      await tester.tap(find.text('目标'));
+      await tester.pumpAndSettle();
+      expect(reference, isFalse);
+      expect(segment().selected, {false});
+      expect(
+        background.resolve({WidgetState.selected}),
+        colors.editorSelectionSubtle,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets(
     'large text keeps picture actions reachable and marker retry saves exactly once',
     (tester) async {

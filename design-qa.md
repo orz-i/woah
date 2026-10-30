@@ -453,3 +453,24 @@ final result: blocked
 
 > Android/iOS device appearance verification remains outstanding.
 - **中间态截图修订：** 另保存 /tmp/woah-home-spacing-final-midgesture.png（360×800 / DPR1 / 浅色）。对模拟手势先移动 24dp、再移动 116dp，并在手指尚未松开时断言卡片位置实际偏移超过 40dp 后捕获，确认同时显示两卡且照片与底部文字都处于同一垂直卡片轨道。先前仅移动一次导致截图仍显示第一页，旧图不得作为滑动过渡视觉证据。
+
+## 2026-10-30 · 隐私编辑器选择态及跨页面巡检
+
+- **Source visual truth：** 用户当前对话的 Android 真机四张截图 Screenshot_2026-10-30-16-06-{43-30,36-50,06-19,05-58}-...jpg，原图均为 921×2048；深/浅主题与已选中遮挡样式、工具栏状态清晰可见。截图的真实人员遮挡属于媒体像素，不等同于界面选中色。
+- **目标：** 让当前工具、隐私方式和遮挡样式在深浅主题中可立即区分；不以色相差异作为唯一信号；巡检其他功能页面的同型选择器，不引入大按钮或厚框。
+- **旧版问题：** [P2] 浅色模式绿色与灰绿过近且所有选项处于同一几何形状；深色模式状态仍只靠颜色/字重。审计在比较页面发现透明分段控制、菜单选中仅绿字、音乐锚点/循环工具仅变色的重复问题。已有贴纸描边勾选、导出主次动作、首页页码的状态表达较明确，不重复修补。
+- **实施：** 工具栏和调节属性增加小块浅绿图标底纹 + 3dp 短线；全身/人脸、遮挡样式和画幅比例增加短线，已选字重提高且非选中可用项采用 textSecondary；画幅和调节补上 selected 读屏语义。对比页面参考/目标与校准模式采用 selected 色面，锚点和循环同样添加浅底；视图/镜像选中项追加勾选图标。具体文件与状态矩阵见 docs/design/quiet-frame-selection-state-audit-2026-10-30.md。
+- **Fonts/typography：** 保持系统字体和已有字号，保留中文文案及关键 48dp 控件。新增 320×568、1.6×/2× 字号回归先发现编辑器固定工具行溢出；通过压缩图标装饰间距、限制遮挡样式标签一行并保留完整 Semantics 解决。小屏极端字体下会出现视觉省略，需真实设备审美复核。
+- **Spacing/layout：** 64dp 遮挡样式行、64dp 底部工具栏与 48dp 隐私方式触控高度未改变；微小图标底纹与指示线避免增加新面板、分区和布局跳变。其他页面使用自身已有的分段选项范围与触控布局。
+- **Colors/tokens：** 沿用 Quiet Frame 既有 editorSelection、editorSelectionSubtle 和 textSecondary，无新主题 Token；纯色计算相对于典型背景的颜色对比度：浅色 selected 5.86:1、未选中 6.45:1；深色 selected 12.86:1、未选中 12.02:1。选中另有下划线、底纹、加粗或勾选形状，不依赖颜色差。
+- **Image quality：** 不修改视频帧、人物分割 Mask、音视频同步、处理参数及任何摄影封面资源；变化仅限编辑器按钮状态。
+- **Copy/content/interaction：** 全身保护/人脸保护、马赛克/模糊/色块/渐变、剪辑/遮挡/画幅/调节等标签保持；选择回调、导入、导出、取消和返回语义不改变。
+- **Implementation capture：** Mac Flutter widget golden /tmp/_woah_selection_visual_{light,dark}_{mask,frame}.png，360×800 logical px / DPR 1，测试 FakeRepository 没有真实媒体帧，中文字形为方框。已把用户原图的底部区域与新 light-mask 组件截图并列对照（当前对话中的 woah_selected_state_focused_qa.png），但两个画面运行环境、DPR、字体和媒体状态不同，**只能比较控件几何与新状态标识，不能做真实设备逐像素 QA**。dark/light 组件截图均人工查看，新增小色面和选中短线可辨。
+- **Test/QA history：** 新增亮/暗主题状态、选中下划线与颜色、模式切换、SegmentedButton 背景、视图勾选、音频锚点、A/B 循环等用例。大字测试首次发现固定高度行溢出，完成视觉修复后重跑 1.6× 和 2× 均通过。最终 Flutter analyze 0 问题；flutter test 224/224 PASS；flutter build ios --simulator --debug --no-pub PASS。
+- **Known limits：** 当前未安装新的 Android APK 或实际控制 iOS Simulator 检查交互；未完成 Android 简体中文字形、TalkBack 和 iOS VoiceOver 的实际验收。不能仅凭 Widget 测试将两端可访问性宣布为完全合规。
+
+component-level design QA: passed
+
+final result: blocked
+
+> 需要深色/浅色 Android 修订版同状态真机截图以及必要的读屏验证，才能把设备级视觉验收从 blocked 改为 passed。

@@ -105,7 +105,11 @@ class ComparisonManualView extends StatelessWidget {
                     ? AppTheme.of(context).brandAction
                     : AppTheme.of(context).flowTextSecondary,
               ),
-              backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
+              backgroundColor: WidgetStateProperty.resolveWith(
+                (states) => states.contains(WidgetState.selected)
+                    ? AppTheme.of(context).editorSelectionSubtle
+                    : Colors.transparent,
+              ),
               side: const WidgetStatePropertyAll(BorderSide.none),
               textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
             ),
@@ -134,6 +138,12 @@ class ComparisonManualView extends StatelessWidget {
                       foregroundColor: session.anchorIndex == i
                           ? AppTheme.of(context).brandAction
                           : AppTheme.of(context).flowTextSecondary,
+                      backgroundColor: session.anchorIndex == i
+                          ? AppTheme.of(context).editorSelectionSubtle
+                          : Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     child: Text(
                       i == 0
