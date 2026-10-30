@@ -934,6 +934,51 @@ void main() {
     expect(find.text('取消处理？'), findsNothing);
   });
 
+  test('late terminal events cannot revive a cancelled export', () async {
+    final repository = _PreviewToggleRepository();
+    addTearDown(repository.dispose);
+    final controller = ExportController(repository);
+    addTearDown(controller.dispose);
+
+    await controller.startExport(_testProject(), 'cancelled.mp4');
+    await controller.cancelExport();
+
+    expect(repository.cancelCalls, 1);
+    expect(controller.state.status, ExportJobState.cancelled);
+    expect(controller.state.errorMessage, isNull);
+    repository.emitFailure('late native cleanup error');
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.state.status, ExportJobState.cancelled);
+    expect(controller.state.isFailed, isFalse);
+    repository.emitCompleted('/tmp/late-result.mp4');
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.state.isCompleted, isFalse);
+    expect(controller.state.outputUri, isNull);
+  });
+
+  test('genuine cancel API errors restore normal failure handling', () async {
+    final repository = _PreviewToggleRepository()
+      ..cancelCompleter = Completer<void>();
+    addTearDown(repository.dispose);
+    final controller = ExportController(repository);
+    addTearDown(controller.dispose);
+
+    await controller.startExport(_testProject(), 'pending.mp4');
+    final cancelFuture = controller.cancelExport();
+    final cancelError = expectLater(cancelFuture, throwsA(isA<StateError>()));
+
+    // A real terminal error may arrive while the cancellation RPC is still
+    // pending. It must stay hidden until cancellation is known to have failed.
+    repository.emitFailure('encoder failed before cancel was rejected');
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.state.isFailed, isFalse);
+
+    repository.cancelCompleter!.completeError(StateError('cancel denied'));
+    await cancelError;
+    expect(controller.state.isFailed, isTrue);
+    expect(controller.state.errorMessage, contains('encoder failed'));
+  });
+
   testWidgets(
     'confirmed cancel waits for native cancellation before returning',
     (tester) async {
@@ -997,6 +1042,33 @@ void main() {
             )
             .onTap,
         isNull,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('export-cancel-action')),
+          matching: find.byType(CircularProgressIndicator),
+        ),
+        findsOneWidget,
+      );
+
+      // Android's export service can emit a late failed status from native
+      // teardown after the user has already requested cancellation. This
+      // must not briefly replace the export page with a red failure screen.
+      repository.emitFailure('CancellationException: export was cancelled');
+      await tester.pump();
+      expect(
+        find.byKey(const ValueKey('export-failure-summary')),
+        findsNothing,
+      );
+      expect(find.text('导出失败'), findsNothing);
+      // Another terminal event might race after cancellation, including a
+      // completion notification from a near-finished native export.
+      repository.emitCompleted('/tmp/too-late-result.mp4');
+      await tester.pump();
+      expect(find.text('edit-marker').hitTestable(), findsNothing);
+      expect(
+        find.byKey(const ValueKey('export-failure-summary')),
+        findsNothing,
       );
       expect(
         find.descendant(
@@ -1304,6 +1376,20 @@ class _PreviewToggleRepository implements NativeProcessingRepository {
         fps: 10,
         progress: frame / 100,
         currentPreviewPath: path,
+      ),
+    );
+  }
+
+  void emitCompleted(String outputUri) {
+    _progress.add(
+      JobStatusDto(
+        jobId: 'preview-toggle-job',
+        state: 'completed',
+        currentFrame: 100,
+        totalFrames: 100,
+        fps: 10,
+        progress: 1.0,
+        outputUri: outputUri,
       ),
     );
   }

@@ -7,6 +7,7 @@ import android.opengl.GLES20
 import android.os.Handler
 import android.os.HandlerThread
 import android.view.Surface
+import art.gaoge.dance.engine.export.ExportTerminalStatus
 import art.gaoge.dance.engine.bridge.DanceNativeException
 import art.gaoge.dance.engine.bridge.DanceProcessingEvents
 import art.gaoge.dance.engine.bridge.ExportRequestDto
@@ -2614,20 +2615,26 @@ class ExportPipeline(
 
             } catch (e: Throwable) {
                 tempOutFile.delete()
-                val stackTraceStr = android.util.Log.getStackTraceString(e)
-                android.util.Log.e("ExportPipeline", "Export failed: $stackTraceStr", e)
-                status = status.copy(
-                    state = "failed",
+                val cancelRequested = isCancelled.get()
+                if (cancelRequested) {
+                    android.util.Log.i(
+                        "ExportPipeline",
+                        "Export cancellation interrupted native processing during cleanup"
+                    )
+                } else {
+                    android.util.Log.e("ExportPipeline", "Export failed", e)
+                }
+                status = ExportTerminalStatus.afterException(
+                    previous = status,
+                    cancelRequested = cancelRequested,
                     errorCode = "EXPORT_FAILED",
                     errorMessage = "${e.javaClass.simpleName}: ${e.message}\n${e.stackTrace.take(8).joinToString("\n")}"
                 )
                 emitProgress(status, onStatusChange)
                 art.gaoge.dance.engine.diagnostics.NativeDiagnostics.recordPipelineLifecycle(
-                    stage = "FAILED",
+                    stage = if (cancelRequested) "CANCELLED" else "FAILED",
                     jobId = jobId,
-                    fields = mapOf(
-                        "error_type" to e.javaClass.simpleName
-                    )
+                    fields = mapOf("error_type" to e.javaClass.simpleName)
                 )
                 pipelineException = e
             } finally {

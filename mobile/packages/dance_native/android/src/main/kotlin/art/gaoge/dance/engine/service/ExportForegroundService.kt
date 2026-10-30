@@ -12,6 +12,7 @@ import android.os.IBinder
 import art.gaoge.dance.engine.bridge.DanceNativeException
 import art.gaoge.dance.engine.bridge.JobStatusDto
 import art.gaoge.dance.engine.export.ExportCoordinator
+import art.gaoge.dance.engine.export.ExportTerminalStatus
 import art.gaoge.dance.engine.inference.YoloLiteRtSegmenter
 import art.gaoge.dance.engine.pipeline.ExportPipeline
 import kotlinx.coroutines.CoroutineScope
@@ -132,20 +133,27 @@ class ExportForegroundService : Service() {
                                     }
                                 )
                             } catch (e: Throwable) {
-                                android.util.Log.e("ExportForegroundService", "Export execution error: ${e.message}", e)
-                                val errorCode = if (e is DanceNativeException) e.code else DanceNativeException.EXPORT_FAILED
-                                val failedStatus = JobStatusDto(
-                                    jobId = jobId,
-                                    state = "failed",
-                                    currentFrame = 0L,
-                                    totalFrames = 0L,
-                                    fps = 0.0,
-                                    progress = 0.0,
-                                    outputUri = null,
-                                    errorCode = errorCode,
+                                val cancelRequested = isCancelled.get()
+                                if (cancelRequested) {
+                                    android.util.Log.i(
+                                        "ExportForegroundService",
+                                        "Export cancelled during worker cleanup"
+                                    )
+                                } else {
+                                    android.util.Log.e(
+                                        "ExportForegroundService",
+                                        "Export execution error",
+                                        e
+                                    )
+                                }
+                                val terminalStatus = ExportTerminalStatus.afterException(
+                                    previous = coordinator.getJobStatus(jobId),
+                                    cancelRequested = cancelRequested,
+                                    errorCode = if (e is DanceNativeException) e.code
+                                        else DanceNativeException.EXPORT_FAILED,
                                     errorMessage = "${e.javaClass.simpleName}: ${e.message}\n${e.stackTrace.take(8).joinToString("\n")}"
                                 )
-                                coordinator.notifyProgress(failedStatus)
+                                coordinator.notifyProgress(terminalStatus)
                             } finally {
                                 runningJobs.remove(jobId)
                                 coordinator.onJobFinished(jobId)
