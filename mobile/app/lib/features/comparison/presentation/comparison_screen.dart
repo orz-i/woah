@@ -476,6 +476,15 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                 ),
               ),
             ),
+            if (selected) ...[
+              const SizedBox(width: 6),
+              Icon(
+                Icons.check_rounded,
+                key: const ValueKey('comparison-view-selected-mark'),
+                size: 17,
+                color: colors.editorSelection,
+              ),
+            ],
           ],
         ),
       ),
@@ -1106,6 +1115,11 @@ class _ComparisonScreenState extends State<ComparisonScreen>
             color: project.loopEnabled
                 ? AppTheme.of(context).brandAction
                 : AppTheme.of(context).flowTextSecondary,
+            style: IconButton.styleFrom(
+              backgroundColor: project.loopEnabled
+                  ? AppTheme.of(context).editorSelectionSubtle
+                  : Colors.transparent,
+            ),
             onPressed:
                 !controller.busy &&
                     project.loopStartUs != null &&

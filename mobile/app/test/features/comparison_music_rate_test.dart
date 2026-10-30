@@ -36,6 +36,21 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
+        final colors = brightness == Brightness.dark
+            ? AppTheme.darkColors
+            : AppTheme.lightColors;
+        final rateSegment = tester.widget<SegmentedButton<bool>>(
+          find.byType(SegmentedButton<bool>),
+        );
+        expect(rateSegment.showSelectedIcon, isFalse);
+        expect(
+          rateSegment.style!.backgroundColor!.resolve({WidgetState.selected}),
+          colors.editorSelectionSubtle,
+        );
+        expect(
+          rateSegment.style!.backgroundColor!.resolve({}),
+          Colors.transparent,
+        );
         for (var role = 0; role < 2; role++) {
           final controls = find.byKey(
             ValueKey('comparison-manual-controls-$role'),
@@ -64,6 +79,19 @@ void main() {
             );
           }
         }
+        session.setRateCalibration(true);
+        await tester.pumpAndSettle();
+        final first = tester.widget<TextButton>(
+          find.byKey(const ValueKey('comparison-anchor-0')),
+        );
+        final second = tester.widget<TextButton>(
+          find.byKey(const ValueKey('comparison-anchor-1')),
+        );
+        expect(
+          first.style!.backgroundColor!.resolve({}),
+          colors.editorSelectionSubtle,
+        );
+        expect(second.style!.backgroundColor!.resolve({}), Colors.transparent);
         await tester.pumpWidget(const SizedBox.shrink());
       },
     );

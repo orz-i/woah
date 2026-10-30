@@ -271,6 +271,48 @@ class FakeCueVideo extends VideoPlayerController {
 }
 
 void main() {
+  for (final brightness in Brightness.values) {
+    testWidgets('loop button uses a non-color active cue ${brightness.name}', (
+      tester,
+    ) async {
+      final gateway = FakeComparisonGateway(
+        saved: [
+          savedProject().copyWith(
+            loopStartUs: 1000000,
+            loopEndUs: 3000000,
+            loopEnabled: true,
+          ),
+        ],
+      );
+      final colors = brightness == Brightness.dark
+          ? AppTheme.darkColors
+          : AppTheme.lightColors;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: brightness == Brightness.dark
+              ? AppTheme.darkTheme
+              : AppTheme.lightTheme,
+          home: ComparisonScreen(gateway: gateway),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      IconButton loop() => tester.widget<IconButton>(
+        find.byKey(const ValueKey('comparison-loop-toggle')),
+      );
+      expect(loop().isSelected, isTrue);
+      expect(
+        loop().style!.backgroundColor!.resolve({}),
+        colors.editorSelectionSubtle,
+      );
+      await tester.tap(find.byKey(const ValueKey('comparison-loop-toggle')));
+      await tester.pumpAndSettle();
+      expect(loop().isSelected, isFalse);
+      expect(loop().style!.backgroundColor!.resolve({}), Colors.transparent);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets(
     'compact landscape preserves 48dp practice targets at large text',
     (tester) async {
