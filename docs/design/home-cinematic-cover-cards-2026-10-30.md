@@ -77,3 +77,25 @@
 - **回归：** 390×844 两卡标题与说明首行几何误差 ≤0.5dp；360×800 字体 1.0×/1.6×；360×800 保持手指未松开的 -140dp 中间帧直接比较双卡；导入忙碌文本变更仍不移动标题。
 - **组件截图：** Mac `/tmp/woah-midgesture-aligned.png（实际为 /tmp/woah-midgesture-aligned.png），Flutter 截图缺少真实 Android 中文字体，只证明组件布局。
 - **验证：** Flutter Analyze PASS，Flutter 209/209 测试 PASS，iOS Simulator Debug 构建 PASS。Android 修订版尚未重新安装实拍，不能宣称设备视觉已验收。
+
+## 2026-10-30 竖向留白与卡片占比收敛
+
+### 用户问题与定位
+
+用户 Android 首页截图在上一轮已证实卡片边界对齐；此次继续指出顶部品牌与卡片之间、分页点与页面底部的留白仍过多。旧卡片被限制在最多约 300×336dp 的轮播舞台，垂直间距公式在底部额外预留 76dp，使底部留白明显大于顶部。问题属于首页布局与卡片比例，并非滑动中间态或字幕基线。
+
+### 实施
+
+- 轮播卡片宽度从 min(300, usableWidth × 0.88) 改为 min(360, usableWidth × 0.98)，PageController.viewportFraction 同步调整为 cardWidth / viewportWidth。保留下一张边缘预告与整卡点击。
+- 轮播舞台高度改为 (cardWidth × 1.52 + 17).clamp(365, 580)，其中 17dp 对应分页点及间距。卡片继续使用单一连续摄影背景，不增加面板或按钮。
+- 品牌底边至卡片顶边，与分页点底边至屏幕底边按可用高度配平：gapAboveCard = ((remainingHeight + verticalPadding) / 2).clamp(32,160)。去除旧方案不对称的 76dp 冗余。紧凑屏使用 SingleChildScrollView 兜底。
+- 原有摄影封面、统一说明双行槽位、颜色主题、滑动索引及点击入口不变。无隐私、追踪或视频同步算法修改。
+
+### 度量与验收边界
+
+- 360×800 / Flutter DPR1：旧代码卡片约 239×291dp，新卡片 **298×465dp**；品牌底边到卡片顶部约 **128dp**，分页点底边到屏幕底部约 **129dp**，旧方案底部约 268dp。旧尺寸依据前一提交布局公式计算，非用户屏幕直接像素测量。
+- 390×844：卡片约 **327×509dp**，左右滑动中保留相邻卡片露出，分页点可用。
+- 五档布局：320×568、360×640、360×800、390×844、440×956。检查卡片占比、上下留白差≤18dp、邻卡露出与渲染异常。
+- 360×800 组件截图保存在 Mac：/tmp/_woah_home_final_spacing_Brightness.light-protection.png、对应 light-comparison / light-midgesture / dark 等状态。Widget 截图没有正常中文系统字体，不代表 Android 真机视觉验收。
+- 全量分析/测试、iOS 模拟器构建以本轮实际结果为准。真机截图仍待复核。
+- **真实滑动中间态组件截图：** /tmp/woah-home-spacing-final-midgesture.png；Flutter 手势先移动 24dp 以让横向识别器接管，再保持按住移动 116dp，确认主卡横向实际位移超过 40dp 后截图。该照片同时可见两卡，既不是静止页也不是截图误标。底部悬浮文字共用标题与说明基线。

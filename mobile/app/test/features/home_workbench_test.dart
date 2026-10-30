@@ -240,6 +240,52 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  for (final size in [
+    const Size(320, 568),
+    const Size(360, 640),
+    const Size(360, 800),
+    const Size(390, 844),
+    const Size(440, 956),
+  ]) {
+    testWidgets('home uses available height without asymmetric gaps $size', (
+      tester,
+    ) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final router = _testRouter();
+      addTearDown(router.dispose);
+      await _pumpWorkbench(tester, router, platform: TargetPlatform.android);
+      await tester.pumpAndSettle();
+
+      final brand = tester.getRect(find.byKey(const ValueKey('home-brand')));
+      final card = tester.getRect(
+        find.byKey(const ValueKey('home-card-elevation')),
+      );
+      final pageIndicator = tester.getRect(
+        find.byKey(const ValueKey('home-card-page-indicator')),
+      );
+      final nextCard = tester.getRect(
+        find.byKey(const ValueKey('home-comparison-elevation')),
+      );
+      final brandToCard = card.top - brand.bottom;
+      final bottomWhitespace = size.height - pageIndicator.bottom;
+
+      // Large photographic cards should make use of the screen instead of
+      // remaining at the old 300x336dp maximum stage size.
+      expect(card.width, greaterThan(size.width * 0.74));
+      expect(card.height, greaterThan(size.height * 0.49));
+      expect(brandToCard, greaterThanOrEqualTo(30));
+      expect(bottomWhitespace, greaterThanOrEqualTo(28));
+      expect((brandToCard - bottomWhitespace).abs(), lessThanOrEqualTo(18));
+      // The right neighbor remains discoverable after enlarging the cards.
+      expect(nextCard.left, lessThan(size.width));
+      expect(nextCard.left, greaterThan(card.right));
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('photo cards retain side peek and pager at 390 x 844', (
     tester,
   ) async {
@@ -412,10 +458,17 @@ void main() {
 
       // Reproduce the user's screenshot: keep the finger down, with both
       // cards partly visible, instead of snapping to a completed page.
+      final initialLeft = tester
+          .getRect(find.byKey(const ValueKey('home-card-elevation')))
+          .left;
       final gesture = await tester.startGesture(
         tester.getCenter(find.byType(PageView)),
       );
-      await gesture.moveBy(const Offset(-140, 0));
+      // Move twice so the horizontal recognizer accepts the gesture before
+      // collecting the screenshot-like in-between scroll position.
+      await gesture.moveBy(const Offset(-24, 0));
+      await tester.pump();
+      await gesture.moveBy(const Offset(-116, 0));
       await tester.pump();
 
       final left = tester.getRect(
@@ -424,6 +477,7 @@ void main() {
       final right = tester.getRect(
         find.byKey(const ValueKey('home-comparison-elevation')),
       );
+      expect(left.left, lessThan(initialLeft - 40));
       expect(left.right, greaterThan(0));
       expect(right.left, lessThan(360));
       expect(

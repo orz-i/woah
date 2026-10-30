@@ -54,17 +54,25 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
               final horizontalPadding = viewport.maxWidth < 360 ? 20.0 : 24.0;
               final verticalPadding = viewport.maxHeight < 650 ? 18.0 : 26.0;
               final availableWidth = viewport.maxWidth - 2 * horizontalPadding;
-              final cardWidth = math.min(300.0, availableWidth * 0.88);
-              final cardHeight = (cardWidth * 1.12).clamp(250.0, 336.0);
-              final gapAboveCard = math.max(
-                46.0,
-                (viewport.maxHeight -
-                        2 * verticalPadding -
-                        cardHeight -
-                        36.0 -
-                        76.0) /
-                    2,
-              );
+              // The old 300 × 336dp deck left too much unused space above
+              // and below the photographic cards on tall phones. Grow the
+              // active card while retaining about 24–30dp of side peek.
+              final cardWidth = math.min(360.0, availableWidth * 0.98);
+              // Includes the 17dp reserved by the pager indicator and gap.
+              final cardHeight = (cardWidth * 1.52 + 17).clamp(365.0, 580.0);
+              final remainingHeight =
+                  viewport.maxHeight -
+                  2 * verticalPadding -
+                  36.0 - // Woah brand row
+                  cardHeight;
+              // Bring the media stage closer to the brand without pushing it
+              // out of the viewport on compact screens. Scroll remains a
+              // fallback for smaller devices and large accessibility fonts.
+              // Match the visible gap after the brand to the empty space
+              // below the pager. Include bottom safe padding in the balance;
+              // the previous placement left the pager stranded too high.
+              final gapAboveCard = ((remainingHeight + verticalPadding) / 2)
+                  .clamp(32.0, 160.0);
 
               return SingleChildScrollView(
                 physics: const ClampingScrollPhysics(),
@@ -90,8 +98,7 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
                         height: cardHeight,
                         child: _HomeToolDeck(
                           cardWidth: cardWidth,
-                          viewportFraction:
-                              cardWidth * 0.90 / viewport.maxWidth,
+                          viewportFraction: cardWidth / viewport.maxWidth,
                           isBusy: isBusy,
                           actionLabel: actionLabel,
                           onLaunch: (tool) =>

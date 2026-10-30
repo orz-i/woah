@@ -436,3 +436,20 @@ component-level regression: passed
 final result: blocked
 
 > Android post-fix mid-gesture screenshot pending.
+
+## 2026-10-30 · Woah 首页卡片占比与纵向留白
+
+- **来源与目标：** 用户截图刻意捕获 Android 首页滑动中间态，上一轮修复标题基线后仍反馈大量留白。需求是让媒体卡片成为屏幕视觉主体，削减品牌与卡片间、分页点与屏幕底部不均衡空白。
+- **前后对照：** 改造前 Flutter 最大轮播舞台约 300×336dp，另有 76dp 底部空白常数；改造后扩大宽高，并重新平衡上下间距。前后画面使用同一两张摄影素材与 Flutter 原生文字，无额外内容模块。
+- **尺寸与间距：** 在 360×800 / DPR1 下，旧代码推得卡片约 239×291dp；新截图实际卡片 Rect(31.1,189.1)-(328.9,653.9)，即 298×465dp。品牌底部→卡片顶部约 128dp，分页底部→屏幕底部约 129dp。旧布局下方留白约 268dp，现明显缩减。
+- **视觉证据：** Flutter 组件图位于 /tmp/_woah_home_final_spacing_Brightness.{light,dark}-{protection,midgesture,comparison}.png。Flutter 缺少真实中文系统字体，图中汉字可能显示方框，不能把此图当作 Android 中文排版真机复核。
+- **布局/字体/色彩/影像/文案：** 轮播尺寸和位置改变；保留原始文本、两行说明槽位、Quiet Frame 深浅主题、卡片照片、渐变、无框阴影、分页点、Wavi 品牌彩蛋。不重新生成图片，也不改变真实视频像素与 Mask。
+- **测试范围：** 320×568、360×640、360×800、390×844、440×956 五种视口分别验证上/下空白平衡差≤18dp、照片卡片尺寸及右侧下一张的可见性；保留原全部工作流回归。
+- **设备边界：** 本轮尚未实拍更新后的 Android/iOS 设备。Flutter 布局单测与 iOS Build 通过不构成正式真机 UI 验收。
+
+component-level design QA: passed
+
+final result: blocked
+
+> Android/iOS device appearance verification remains outstanding.
+- **中间态截图修订：** 另保存 /tmp/woah-home-spacing-final-midgesture.png（360×800 / DPR1 / 浅色）。对模拟手势先移动 24dp、再移动 116dp，并在手指尚未松开时断言卡片位置实际偏移超过 40dp 后捕获，确认同时显示两卡且照片与底部文字都处于同一垂直卡片轨道。先前仅移动一次导致截图仍显示第一页，旧图不得作为滑动过渡视觉证据。
