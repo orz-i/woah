@@ -14,7 +14,8 @@ import 'video_import_error_notice.dart';
 import 'video_import_flow.dart';
 import 'woah_easter_egg_screen.dart';
 
-/// Standalone workflow launcher. Editor-internal tools stay inside their editors.
+/// Two standalone workflows share the original swipeable card deck.
+/// Covers are decorative; labels and interactions stay native Flutter UI.
 class ImportVideoScreen extends ConsumerStatefulWidget {
   const ImportVideoScreen({super.key});
 
@@ -53,17 +54,25 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
               final horizontalPadding = viewport.maxWidth < 360 ? 20.0 : 24.0;
               final verticalPadding = viewport.maxHeight < 650 ? 18.0 : 26.0;
               final availableWidth = viewport.maxWidth - 2 * horizontalPadding;
-              final cardWidth = math.min(300.0, availableWidth * 0.88);
-              final cardHeight = (cardWidth * 1.12).clamp(250.0, 336.0);
-              final gapAboveCard = math.max(
-                46.0,
-                (viewport.maxHeight -
-                        2 * verticalPadding -
-                        cardHeight -
-                        36.0 -
-                        76.0) /
-                    2,
-              );
+              // The old 300 × 336dp deck left too much unused space above
+              // and below the photographic cards on tall phones. Grow the
+              // active card while retaining about 24–30dp of side peek.
+              final cardWidth = math.min(360.0, availableWidth * 0.98);
+              // Includes the 17dp reserved by the pager indicator and gap.
+              final cardHeight = (cardWidth * 1.52 + 17).clamp(365.0, 580.0);
+              final remainingHeight =
+                  viewport.maxHeight -
+                  2 * verticalPadding -
+                  36.0 - // Woah brand row
+                  cardHeight;
+              // Bring the media stage closer to the brand without pushing it
+              // out of the viewport on compact screens. Scroll remains a
+              // fallback for smaller devices and large accessibility fonts.
+              // Match the visible gap after the brand to the empty space
+              // below the pager. Include bottom safe padding in the balance;
+              // the previous placement left the pager stranded too high.
+              final gapAboveCard = ((remainingHeight + verticalPadding) / 2)
+                  .clamp(32.0, 160.0);
 
               return SingleChildScrollView(
                 physics: const ClampingScrollPhysics(),
@@ -89,8 +98,7 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
                         height: cardHeight,
                         child: _HomeToolDeck(
                           cardWidth: cardWidth,
-                          viewportFraction:
-                              cardWidth * 0.90 / viewport.maxWidth,
+                          viewportFraction: cardWidth / viewport.maxWidth,
                           isBusy: isBusy,
                           actionLabel: actionLabel,
                           onLaunch: (tool) =>
@@ -136,7 +144,7 @@ class _HomeBrand extends StatelessWidget {
         child: Semantics(
           label: AppBrand.english,
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -145,15 +153,15 @@ class _HomeBrand extends StatelessWidget {
                     AppTheme.of(context).brandAction,
                     BlendMode.srcIn,
                   ),
-                  child: Image(
-                    image: const AssetImage('assets/brand/woah-symbol-256.png'),
+                  child: const Image(
+                    image: AssetImage('assets/brand/woah-symbol-256.png'),
                     width: 32,
                     height: 20,
                     filterQuality: FilterQuality.high,
                     excludeFromSemantics: true,
                   ),
                 ),
-                SizedBox(width: 10),
+                const SizedBox(width: 10),
                 Text(
                   AppBrand.english,
                   style: TextStyle(
@@ -173,8 +181,8 @@ class _HomeBrand extends StatelessWidget {
   }
 }
 
-class _ImportActionCard extends StatelessWidget {
-  const _ImportActionCard({
+class _HomeActionCard extends StatelessWidget {
+  const _HomeActionCard({
     required this.tool,
     required this.isBusy,
     required this.actionLabel,
@@ -189,24 +197,27 @@ class _ImportActionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const radius = BorderRadius.all(Radius.circular(22));
+    final palette = AppTheme.of(context);
+    final isProtection = tool.launch == HomeToolLaunch.videoProtection;
+    final visibleDescription = isBusy && isProtection
+        ? actionLabel
+        : tool.description;
 
     return Semantics(
       button: true,
       enabled: !isBusy,
-      label: isBusy ? actionLabel : '${tool.title}，${tool.description}',
+      label: '${tool.title}，$visibleDescription',
       child: ExcludeSemantics(
-        // Keep the shadow outside Material's rounded clipping boundary.
+        // Retain the original bottom-biased, borderless floating-card shadow.
         child: DecoratedBox(
           key: ValueKey(
-            tool.launch == HomeToolLaunch.videoProtection
-                ? 'home-card-elevation'
-                : 'home-comparison-elevation',
+            isProtection ? 'home-card-elevation' : 'home-comparison-elevation',
           ),
           decoration: BoxDecoration(
             borderRadius: radius,
             boxShadow: [
               BoxShadow(
-                color: AppTheme.of(context).homeCardShadow,
+                color: palette.homeCardShadow,
                 offset: const Offset(0, 10),
                 blurRadius: 24,
                 spreadRadius: -6,
@@ -222,85 +233,145 @@ class _ImportActionCard extends StatelessWidget {
             ],
           ),
           child: Material(
+            color: palette.flowSurface,
             borderRadius: radius,
             clipBehavior: Clip.antiAlias,
-            color: AppTheme.of(context).flowSurface,
-            child: Ink(
-              key: ValueKey(
-                tool.launch == HomeToolLaunch.videoProtection
-                    ? 'home-import-card'
-                    : 'home-comparison-card',
-              ),
-              decoration: BoxDecoration(
-                borderRadius: radius,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: Theme.of(context).brightness == Brightness.dark
-                      ? const [
-                          Color(0xFF243638),
-                          Color(0xFF1B2B2D),
-                          Color(0xFF142123),
-                        ]
-                      : [
-                          AppTheme.of(context).flowSurface,
-                          AppTheme.of(context).flowSurfaceSoft,
-                          AppTheme.of(context).flowSurface,
-                        ],
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // Both cards share a full-bleed media stage. The comparison
+                // asset is a derived crop of its original two-video image,
+                // preserving both dancers without a separate image strip.
+                Image.asset(
+                  tool.coverAsset,
+                  key: ValueKey(
+                    isProtection
+                        ? 'home-privacy-cover'
+                        : 'home-comparison-cover',
+                  ),
+                  fit: BoxFit.cover,
+                  alignment: isProtection
+                      ? const Alignment(0, -0.30)
+                      : Alignment.center,
+                  filterQuality: FilterQuality.medium,
+                  excludeFromSemantics: true,
+                  errorBuilder: (context, error, stackTrace) =>
+                      _HomeCoverFallback(isProtection: isProtection),
                 ),
-              ),
-              child: InkWell(
-                onTap: onTap,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                // One continuous image surface with a graduated text scrim.
+                const IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        stops: [0.0, 0.36, 0.72, 1.0],
+                        colors: [
+                          Color(0x000B1415),
+                          Color(0x180B1415),
+                          Color(0xB50B1415),
+                          Color(0xF50B1415),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  key: ValueKey(
+                    isProtection
+                        ? 'home-privacy-text-overlay'
+                        : 'home-comparison-text-overlay',
+                  ),
+                  left: 20,
+                  right: 20,
+                  bottom: 20,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      if (isBusy)
-                        SizedBox(
-                          height: 34,
-                          width: 34,
-                          child: CircularProgressIndicator(
-                            color: AppTheme.of(context).brandAction,
-                            strokeWidth: 2.2,
-                          ),
-                        )
-                      else
-                        Icon(
-                          tool.launch == HomeToolLaunch.videoProtection
-                              ? Icons.add_rounded
-                              : Icons.compare_rounded,
-                          size: 38,
-                          color: AppTheme.of(context).brandAction,
-                        ),
-                      const SizedBox(height: 20),
-                      Text(
-                        actionLabel,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppTheme.of(context).flowTextPrimary,
-                          fontSize: 20,
-                          height: 1.3,
-                          letterSpacing: -0.25,
-                          fontWeight: FontWeight.w600,
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              tool.title,
+                              style: const TextStyle(
+                                color: Color(0xFFF2F6F3),
+                                fontSize: 20,
+                                height: 1.22,
+                                letterSpacing: -0.25,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            // Always reserve two subtitle lines, even when
+                            // this particular description fits on one line.
+                            // Anchoring the whole group at the card bottom
+                            // otherwise raises the title of the longer card.
+                            SizedBox(
+                              key: ValueKey(
+                                isProtection
+                                    ? 'home-privacy-description-slot'
+                                    : 'home-comparison-description-slot',
+                              ),
+                              height: MediaQuery.textScalerOf(
+                                context,
+                              ).scale(13.5 * 1.42 * 2),
+                              child: Align(
+                                alignment: Alignment.topLeft,
+                                child: Text(
+                                  visibleDescription,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Color(0xFFD9E6E2),
+                                    fontSize: 13.5,
+                                    height: 1.42,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 7),
-                      Text(
-                        isBusy ? '请稍候' : tool.description,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppTheme.of(context).flowTextSecondary,
-                          fontSize: 13,
-                          height: 1.4,
-                        ),
+                      const SizedBox(width: 12),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 1),
+                        child: isBusy && isProtection
+                            ? const SizedBox(
+                                height: 22,
+                                width: 22,
+                                child: CircularProgressIndicator(
+                                  color: AppTheme.brandMint,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Icon(
+                                Icons.arrow_outward_rounded,
+                                color: isBusy
+                                    ? const Color(0xFF9AAEAA)
+                                    : AppTheme.brandMint,
+                                size: 23,
+                              ),
                       ),
                     ],
                   ),
                 ),
-              ),
+                // Entire card is a single action, including its cover.
+                Positioned.fill(
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: InkWell(
+                      key: ValueKey(
+                        isProtection
+                            ? 'home-import-card'
+                            : 'home-comparison-card',
+                      ),
+                      onTap: onTap,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -309,8 +380,29 @@ class _ImportActionCard extends StatelessWidget {
   }
 }
 
-/// One real action produces one visible card. Paging stays dormant until a
-/// second independent workflow is shipped; editor-only features are excluded.
+class _HomeCoverFallback extends StatelessWidget {
+  const _HomeCoverFallback({required this.isProtection});
+
+  final bool isProtection;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppTheme.of(context);
+    return ColoredBox(
+      color: palette.flowSurfaceSoft,
+      child: Center(
+        child: Icon(
+          isProtection ? Icons.movie_outlined : Icons.compare_outlined,
+          color: palette.brandAction,
+          size: 36,
+        ),
+      ),
+    );
+  }
+}
+
+/// Preserve the previous swipeable card stack and its visible page indicator.
+/// On a non-mobile platform with only one supported task, paging is dormant.
 class _HomeToolDeck extends StatefulWidget {
   const _HomeToolDeck({
     required this.cardWidth,
@@ -320,9 +412,9 @@ class _HomeToolDeck extends StatefulWidget {
     required this.onLaunch,
   });
 
-  final bool isBusy;
   final double cardWidth;
   final double viewportFraction;
+  final bool isBusy;
   final String actionLabel;
   final ValueChanged<HomeTool> onLaunch;
 
@@ -344,12 +436,12 @@ class _HomeToolDeckState extends State<_HomeToolDeck> {
   void didUpdateWidget(covariant _HomeToolDeck oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.viewportFraction != widget.viewportFraction) {
-      final previousController = _pageController;
+      final previous = _pageController;
       _pageController = PageController(
         initialPage: _selectedIndex,
         viewportFraction: widget.viewportFraction,
       );
-      previousController.dispose();
+      previous.dispose();
     }
   }
 
@@ -369,7 +461,7 @@ class _HomeToolDeckState extends State<_HomeToolDeck> {
         child: SizedBox(
           width: widget.cardWidth,
           height: double.infinity,
-          child: _ImportActionCard(
+          child: _HomeActionCard(
             tool: tools.single,
             isBusy: widget.isBusy,
             actionLabel: widget.actionLabel,
@@ -383,7 +475,8 @@ class _HomeToolDeckState extends State<_HomeToolDeck> {
       children: [
         Expanded(
           child: PageView.builder(
-            // Paint shadows through the page edges, not a narrow card window.
+            key: const ValueKey('home-card-pager'),
+            // Do not clip the next-card peek or the bottom-biased shadows.
             clipBehavior: Clip.none,
             controller: _pageController,
             itemCount: tools.length,
@@ -392,14 +485,10 @@ class _HomeToolDeckState extends State<_HomeToolDeck> {
               final tool = tools[index];
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: _ImportActionCard(
+                child: _HomeActionCard(
                   tool: tool,
                   isBusy: widget.isBusy,
-                  actionLabel:
-                      widget.isBusy &&
-                          tool.launch == HomeToolLaunch.videoProtection
-                      ? widget.actionLabel
-                      : tool.title,
+                  actionLabel: widget.actionLabel,
                   onTap: widget.isBusy ? null : () => widget.onLaunch(tool),
                 ),
               );
@@ -408,10 +497,12 @@ class _HomeToolDeckState extends State<_HomeToolDeck> {
         ),
         const SizedBox(height: 12),
         Row(
+          key: const ValueKey('home-card-page-indicator'),
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             for (var i = 0; i < tools.length; i++)
               Container(
+                key: ValueKey('home-card-page-dot-$i'),
                 width: i == _selectedIndex ? 17 : 5,
                 height: 5,
                 margin: const EdgeInsets.symmetric(horizontal: 3),

@@ -56,29 +56,58 @@ void main() {
         lightStyle.value.systemNavigationBarIconBrightness,
         Brightness.dark,
       );
-      final card = tester.widget<Ink>(
-        find.byKey(const ValueKey('home-import-card')),
+      final cardMaterial = tester.widget<Material>(
+        find
+            .descendant(
+              of: find.byKey(const ValueKey('home-card-elevation')),
+              matching: find.byType(Material),
+            )
+            .first,
       );
-      final decoration = card.decoration! as BoxDecoration;
-      expect(decoration.gradient, isNotNull);
-      final gradient = decoration.gradient! as LinearGradient;
-      expect(gradient.colors.first, AppTheme.lightColors.flowSurface);
+      expect(cardMaterial.color, AppTheme.lightColors.flowSurface);
+      expect(find.byKey(const ValueKey('home-privacy-cover')), findsOneWidget);
 
-      // Switching system appearance must preserve the selected workflow card.
+      // Restore the two-page horizontal deck and retain the active page on theme changes.
+      expect(find.byType(PageView), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('home-card-page-indicator')),
+        findsOneWidget,
+      );
       await tester.drag(find.byType(PageView), const Offset(-280, 0));
       await tester.pumpAndSettle();
-      expect(find.text('舞蹈对比').hitTestable(), findsOneWidget);
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('home-card-page-dot-1')))
+            .width,
+        23,
+      );
+      expect(
+        find.byKey(const ValueKey('home-comparison-card')).hitTestable(),
+        findsOneWidget,
+      );
 
-      // A wider viewport must not reset the active card or leave it untappable.
+      // A wider viewport must preserve the selected carousel page and entry.
       tester.view.physicalSize = const Size(390, 844);
       await tester.pumpAndSettle();
-      expect(find.text('舞蹈对比').hitTestable(), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('home-comparison-card')).hitTestable(),
+        findsOneWidget,
+      );
 
       // Reversing the system mode restores the original dark baseline.
       tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
       await tester.pumpAndSettle();
       expect(scaffold().backgroundColor, AppTheme.darkColors.flowBackground);
-      expect(find.text('舞蹈对比').hitTestable(), findsOneWidget);
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('home-card-page-dot-1')))
+            .width,
+        23,
+      );
+      expect(
+        find.byKey(const ValueKey('home-comparison-card')).hitTestable(),
+        findsOneWidget,
+      );
     },
   );
 

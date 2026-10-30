@@ -122,7 +122,7 @@ void main() {
     await tester.binding.handlePopRoute();
     await tester.pump();
     await tester.pumpAndSettle();
-    expect(find.text('导入视频'), findsOneWidget);
+    expect(find.text('视频保护'), findsOneWidget);
     expect(find.text('嘿，你找到这里了。'), findsNothing);
   });
 }
