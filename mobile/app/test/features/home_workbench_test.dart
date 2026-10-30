@@ -191,9 +191,12 @@ void main() {
     final router = _testRouter();
     addTearDown(router.dispose);
     await _pumpWorkbench(tester, router, platform: TargetPlatform.iOS);
-    expect(find.byType(PageView), findsNothing);
+    expect(find.byType(PageView), findsOneWidget);
     expect(find.byKey(const ValueKey('home-import-card')), findsOneWidget);
+    await tester.drag(find.byType(PageView), const Offset(-300, 0));
+    await tester.pumpAndSettle();
     expect(find.text('舞蹈对比'), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-comparison-cover')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('home-comparison-card')));
     await tester.pumpAndSettle();
     expect(find.text('TEST_COMPARISON'), findsOneWidget);
@@ -217,9 +220,14 @@ void main() {
     addTearDown(router.dispose);
     await _pumpWorkbench(tester, router);
     expect(find.byKey(const ValueKey('home-import-card')), findsOneWidget);
-    expect(find.byKey(const ValueKey('home-comparison-card')), findsOneWidget);
-    expect(find.byType(PageView), findsNothing);
+    expect(find.byType(PageView), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('home-card-page-indicator')),
+      findsOneWidget,
+    );
     expect(find.byKey(const ValueKey('home-privacy-cover')), findsOneWidget);
+    await tester.drag(find.byType(PageView), const Offset(-300, 0));
+    await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('home-comparison-cover')), findsOneWidget);
     expect(find.text('全部工具'), findsNothing);
     expect(find.text('编辑器内功能'), findsNothing);
@@ -232,7 +240,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('both photo entry cards are fully visible at 390 x 844', (
+  testWidgets('photo cards retain side peek and pager at 390 x 844', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -244,23 +252,58 @@ void main() {
     await _pumpWorkbench(tester, router, platform: TargetPlatform.iOS);
     await tester.pumpAndSettle();
 
+    expect(find.byType(PageView), findsOneWidget);
     final first = tester.getRect(
       find.byKey(const ValueKey('home-card-elevation')),
     );
-    final second = tester.getRect(
+    expect(first.width, lessThan(340));
+    expect(first.height, greaterThan(250));
+    expect(first.left, greaterThan(0));
+    expect(first.right, lessThan(390));
+    // The next card must visibly peek into the viewport before any swipe.
+    final nextCard = tester.getRect(
       find.byKey(const ValueKey('home-comparison-elevation')),
     );
-    expect(first.width, closeTo(second.width, 0.01));
-    expect(first.top, greaterThan(0));
-    expect(second.top, greaterThan(first.bottom));
-    expect(second.bottom, lessThanOrEqualTo(844));
-    expect(find.byType(PageView), findsNothing);
+    expect(nextCard.left, greaterThan(first.right));
+    expect(nextCard.left, lessThan(390));
+    expect(
+      find.byKey(const ValueKey('home-card-page-indicator')),
+      findsOneWidget,
+    );
+    expect(
+      tester.getSize(find.byKey(const ValueKey('home-card-page-dot-0'))).width,
+      23,
+    );
+    expect(
+      tester.getSize(find.byKey(const ValueKey('home-card-page-dot-1'))).width,
+      11,
+    );
     expect(find.byKey(const ValueKey('home-privacy-cover')), findsOneWidget);
+
+    await tester.drag(find.byType(PageView), const Offset(-300, 0));
+    await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('home-comparison-cover')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('home-comparison-card')).hitTestable(),
+      findsOneWidget,
+    );
+    final previous = tester.getRect(
+      find.byKey(const ValueKey('home-card-elevation')),
+    );
+    expect(previous.right, greaterThan(0));
+    expect(previous.right, lessThan(390));
+    expect(
+      tester.getSize(find.byKey(const ValueKey('home-card-page-dot-0'))).width,
+      11,
+    );
+    expect(
+      tester.getSize(find.byKey(const ValueKey('home-card-page-dot-1'))).width,
+      23,
+    );
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('comparison remains accessible on compact 320 x 568', (
+  testWidgets('comparison remains accessible by swiping on compact 320 x 568', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(320, 568);
@@ -270,9 +313,7 @@ void main() {
     final router = _testRouter();
     addTearDown(router.dispose);
     await _pumpWorkbench(tester, router, platform: TargetPlatform.android);
-    await tester.ensureVisible(
-      find.byKey(const ValueKey('home-comparison-card')),
-    );
+    await tester.drag(find.byType(PageView), const Offset(-250, 0));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('home-comparison-card')));
     await tester.pumpAndSettle();
@@ -372,6 +413,9 @@ void main() {
     expect(find.byKey(const ValueKey('home-import-card')), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.ensureVisible(find.byKey(const ValueKey('home-import-card')));
+    await tester.drag(find.byType(PageView), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('home-comparison-card')), findsOneWidget);
     expect(find.text('全部工具'), findsNothing);
     expect(tester.takeException(), isNull);
   });

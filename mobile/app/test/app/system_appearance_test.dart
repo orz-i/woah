@@ -9,86 +9,107 @@ import 'package:flutter_test/flutter_test.dart';
 /// The test uses MaterialApp's actual platform-brightness signal, not a
 /// separate app setting. Routing/content must remain mounted on OS changes.
 void main() {
-  testWidgets('system appearance switches Home live without losing the workflow', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(360, 640);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
-    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+  testWidgets(
+    'system appearance switches Home live without losing the workflow',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+      addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
 
-    await tester.pumpWidget(
-      ProviderScope(
-        child: MaterialApp(
-          theme: AppTheme.lightTheme,
-          darkTheme: AppTheme.darkTheme,
-          themeMode: ThemeMode.system,
-          home: const ImportVideoScreen(),
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: ThemeMode.system,
+            home: const ImportVideoScreen(),
+          ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    Scaffold scaffold() => tester.widget<Scaffold>(find.byType(Scaffold).first);
-    expect(scaffold().backgroundColor, AppTheme.darkColors.flowBackground);
-    expect(find.text('Woah'), findsOneWidget);
-    expect(find.byKey(const ValueKey('home-import-card')), findsOneWidget);
-    final darkStyle = tester.widget<AnnotatedRegion<SystemUiOverlayStyle>>(
-      find.byType(AnnotatedRegion<SystemUiOverlayStyle>).first,
-    );
-    expect(darkStyle.value.systemNavigationBarIconBrightness, Brightness.light);
+      );
+      await tester.pumpAndSettle();
+      Scaffold scaffold() =>
+          tester.widget<Scaffold>(find.byType(Scaffold).first);
+      expect(scaffold().backgroundColor, AppTheme.darkColors.flowBackground);
+      expect(find.text('Woah'), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-import-card')), findsOneWidget);
+      final darkStyle = tester.widget<AnnotatedRegion<SystemUiOverlayStyle>>(
+        find.byType(AnnotatedRegion<SystemUiOverlayStyle>).first,
+      );
+      expect(
+        darkStyle.value.systemNavigationBarIconBrightness,
+        Brightness.light,
+      );
 
-    // The system changes while Home is visible: no app restart or manual tap.
-    tester.platformDispatcher.platformBrightnessTestValue = Brightness.light;
-    await tester.pumpAndSettle();
-    expect(scaffold().backgroundColor, AppTheme.lightColors.flowBackground);
-    expect(find.text('Woah'), findsOneWidget);
-    expect(find.byKey(const ValueKey('home-import-card')), findsOneWidget);
-    final lightStyle = tester.widget<AnnotatedRegion<SystemUiOverlayStyle>>(
-      find.byType(AnnotatedRegion<SystemUiOverlayStyle>).first,
-    );
-    expect(lightStyle.value.systemNavigationBarIconBrightness, Brightness.dark);
-    final cardMaterial = tester.widget<Material>(
-      find
-          .descendant(
-            of: find.byKey(const ValueKey('home-card-elevation')),
-            matching: find.byType(Material),
-          )
-          .first,
-    );
-    expect(cardMaterial.color, AppTheme.lightColors.flowSurface);
-    expect(find.byKey(const ValueKey('home-privacy-cover')), findsOneWidget);
+      // The system changes while Home is visible: no app restart or manual tap.
+      tester.platformDispatcher.platformBrightnessTestValue = Brightness.light;
+      await tester.pumpAndSettle();
+      expect(scaffold().backgroundColor, AppTheme.lightColors.flowBackground);
+      expect(find.text('Woah'), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-import-card')), findsOneWidget);
+      final lightStyle = tester.widget<AnnotatedRegion<SystemUiOverlayStyle>>(
+        find.byType(AnnotatedRegion<SystemUiOverlayStyle>).first,
+      );
+      expect(
+        lightStyle.value.systemNavigationBarIconBrightness,
+        Brightness.dark,
+      );
+      final cardMaterial = tester.widget<Material>(
+        find
+            .descendant(
+              of: find.byKey(const ValueKey('home-card-elevation')),
+              matching: find.byType(Material),
+            )
+            .first,
+      );
+      expect(cardMaterial.color, AppTheme.lightColors.flowSurface);
+      expect(find.byKey(const ValueKey('home-privacy-cover')), findsOneWidget);
 
-    // Both independent workflows remain discoverable without horizontal paging.
-    expect(find.byType(PageView), findsNothing);
-    expect(find.byKey(const ValueKey('home-comparison-card')), findsOneWidget);
-    await tester.ensureVisible(
-      find.byKey(const ValueKey('home-comparison-card')),
-    );
-    await tester.pumpAndSettle();
-    expect(
-      find.byKey(const ValueKey('home-comparison-card')).hitTestable(),
-      findsOneWidget,
-    );
+      // Restore the two-page horizontal deck and retain the active page on theme changes.
+      expect(find.byType(PageView), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('home-card-page-indicator')),
+        findsOneWidget,
+      );
+      await tester.drag(find.byType(PageView), const Offset(-280, 0));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('home-card-page-dot-1')))
+            .width,
+        23,
+      );
+      expect(
+        find.byKey(const ValueKey('home-comparison-card')).hitTestable(),
+        findsOneWidget,
+      );
 
-    // A wider viewport must preserve the secondary entry and leave it tappable.
-    tester.view.physicalSize = const Size(390, 844);
-    await tester.pumpAndSettle();
-    expect(
-      find.byKey(const ValueKey('home-comparison-card')).hitTestable(),
-      findsOneWidget,
-    );
+      // A wider viewport must preserve the selected carousel page and entry.
+      tester.view.physicalSize = const Size(390, 844);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('home-comparison-card')).hitTestable(),
+        findsOneWidget,
+      );
 
-    // Reversing the system mode restores the original dark baseline.
-    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
-    await tester.pumpAndSettle();
-    expect(scaffold().backgroundColor, AppTheme.darkColors.flowBackground);
-    expect(
-      find.byKey(const ValueKey('home-comparison-card')).hitTestable(),
-      findsOneWidget,
-    );
-  });
+      // Reversing the system mode restores the original dark baseline.
+      tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+      await tester.pumpAndSettle();
+      expect(scaffold().backgroundColor, AppTheme.darkColors.flowBackground);
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('home-card-page-dot-1')))
+            .width,
+        23,
+      );
+      expect(
+        find.byKey(const ValueKey('home-comparison-card')).hitTestable(),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('hidden Wavi stage stays cinematic in both system modes', (
     tester,

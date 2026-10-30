@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,8 +15,8 @@ import 'video_import_error_notice.dart';
 import 'video_import_flow.dart';
 import 'woah_easter_egg_screen.dart';
 
-/// The two actual standalone workflows are visible without horizontal paging.
-/// Their imagery is decorative: text and navigation remain native Flutter UI.
+/// Two standalone workflows share the original swipeable card deck.
+/// Covers are decorative; labels and interactions stay native Flutter UI.
 class ImportVideoScreen extends ConsumerStatefulWidget {
   const ImportVideoScreen({super.key});
 
@@ -37,7 +38,6 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(importVideoControllerProvider);
-    final tools = HomeToolCatalog.forPlatform(Theme.of(context).platform);
     final isBusy = state.isLoading;
     final actionLabel = switch (state.status) {
       VideoImportStatus.picking => '正在导入视频…',
@@ -55,27 +55,21 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
               final horizontalPadding = viewport.maxWidth < 360 ? 20.0 : 24.0;
               final verticalPadding = viewport.maxHeight < 650 ? 18.0 : 26.0;
               final availableWidth = viewport.maxWidth - 2 * horizontalPadding;
-              final cardWidth = math.min(440.0, availableWidth);
-              final estimatedHeight =
-                  tools.length *
-                      (cardWidth / _HomeActionCard.coverAspect + 92) +
-                  math.max(0, tools.length - 1) * 16;
-              // Keep the brand near the top and the cards near the middle.
-              // Short screens or large type use the surrounding scroll view.
-              final gapAboveCards =
-                  ((viewport.maxHeight -
-                              verticalPadding * 2 -
-                              estimatedHeight -
-                              40) *
-                          0.45)
-                      .clamp(24.0, 120.0);
+              final cardWidth = math.min(300.0, availableWidth * 0.88);
+              final cardHeight = (cardWidth * 1.12).clamp(250.0, 336.0);
+              final gapAboveCard = math.max(
+                46.0,
+                (viewport.maxHeight -
+                        2 * verticalPadding -
+                        cardHeight -
+                        36.0 -
+                        76.0) /
+                    2,
+              );
 
               return SingleChildScrollView(
                 physics: const ClampingScrollPhysics(),
-                padding: EdgeInsets.symmetric(
-                  horizontal: horizontalPadding,
-                  vertical: verticalPadding,
-                ),
+                padding: EdgeInsets.symmetric(vertical: verticalPadding),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
                     minHeight: math.max(
@@ -83,34 +77,40 @@ class _ImportVideoScreenState extends ConsumerState<ImportVideoScreen> {
                       viewport.maxHeight - 2 * verticalPadding,
                     ),
                   ),
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 440),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: _HomeBrand(onLongPress: _openEasterEgg),
-                          ),
-                          SizedBox(height: gapAboveCards),
-                          _HomeToolDeck(
-                            tools: tools,
-                            isBusy: isBusy,
-                            actionLabel: actionLabel,
-                            onLaunch: (tool) =>
-                                launchHomeTool(context, ref, tool),
-                          ),
-                          if (state.errorMessage != null) ...[
-                            const SizedBox(height: 18),
-                            VideoImportErrorNotice(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: horizontalPadding,
+                        ),
+                        child: _HomeBrand(onLongPress: _openEasterEgg),
+                      ),
+                      SizedBox(height: gapAboveCard),
+                      SizedBox(
+                        height: cardHeight,
+                        child: _HomeToolDeck(
+                          cardWidth: cardWidth,
+                          viewportFraction:
+                              cardWidth * 0.90 / viewport.maxWidth,
+                          isBusy: isBusy,
+                          actionLabel: actionLabel,
+                          onLaunch: (tool) =>
+                              launchHomeTool(context, ref, tool),
+                        ),
+                      ),
+                      if (state.errorMessage != null) ...[
+                        const SizedBox(height: 18),
+                        Center(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(maxWidth: cardWidth),
+                            child: VideoImportErrorNotice(
                               message: state.errorMessage!,
                             ),
-                          ],
-                        ],
-                      ),
-                    ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               );
@@ -183,8 +183,6 @@ class _HomeActionCard extends StatelessWidget {
     required this.onTap,
   });
 
-  static const double coverAspect = 2.30;
-
   final HomeTool tool;
   final bool isBusy;
   final String actionLabel;
@@ -192,7 +190,7 @@ class _HomeActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const radius = BorderRadius.all(Radius.circular(20));
+    const radius = BorderRadius.all(Radius.circular(22));
     final palette = AppTheme.of(context);
     final isProtection = tool.launch == HomeToolLaunch.videoProtection;
     final visibleDescription = isBusy && isProtection
@@ -204,6 +202,7 @@ class _HomeActionCard extends StatelessWidget {
       enabled: !isBusy,
       label: '${tool.title}，$visibleDescription',
       child: ExcludeSemantics(
+        // Retain the original bottom-biased, borderless floating-card shadow.
         child: DecoratedBox(
           key: ValueKey(
             isProtection ? 'home-card-elevation' : 'home-comparison-elevation',
@@ -232,39 +231,66 @@ class _HomeActionCard extends StatelessWidget {
             borderRadius: radius,
             clipBehavior: Clip.antiAlias,
             child: Stack(
+              fit: StackFit.expand,
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    AspectRatio(
-                      aspectRatio: coverAspect,
-                      child: Image.asset(
-                        tool.coverAsset,
-                        key: ValueKey(
-                          isProtection
-                              ? 'home-privacy-cover'
-                              : 'home-comparison-cover',
-                        ),
-                        fit: BoxFit.cover,
-                        alignment: isProtection
-                            ? const Alignment(0, -0.30)
-                            : Alignment.center,
-                        filterQuality: FilterQuality.medium,
-                        excludeFromSemantics: true,
-                        errorBuilder: (context, error, stackTrace) =>
-                            ColoredBox(
-                              color: palette.flowSurfaceSoft,
-                              child: Center(
-                                child: Icon(
-                                  isProtection
-                                      ? Icons.movie_outlined
-                                      : Icons.compare_outlined,
-                                  color: palette.brandAction,
-                                  size: 36,
-                                ),
+                    Expanded(
+                      child: ClipRect(
+                        child: isProtection
+                            ? Image.asset(
+                                tool.coverAsset,
+                                key: const ValueKey('home-privacy-cover'),
+                                fit: BoxFit.cover,
+                                alignment: const Alignment(0, -0.3),
+                                filterQuality: FilterQuality.medium,
+                                excludeFromSemantics: true,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    _HomeCoverFallback(isProtection: true),
+                              )
+                            : Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  // A softened background fills the taller card
+                                  // while retaining the entire two-video image.
+                                  ImageFiltered(
+                                    imageFilter: ui.ImageFilter.blur(
+                                      sigmaX: 16,
+                                      sigmaY: 16,
+                                    ),
+                                    child: ColorFiltered(
+                                      colorFilter: const ColorFilter.mode(
+                                        Color(0x660B1415),
+                                        BlendMode.darken,
+                                      ),
+                                      child: Image.asset(
+                                        tool.coverAsset,
+                                        fit: BoxFit.cover,
+                                        excludeFromSemantics: true,
+                                      ),
+                                    ),
+                                  ),
+                                  Center(
+                                    child: AspectRatio(
+                                      aspectRatio: 2.30,
+                                      child: Image.asset(
+                                        tool.coverAsset,
+                                        key: const ValueKey(
+                                          'home-comparison-cover',
+                                        ),
+                                        fit: BoxFit.cover,
+                                        excludeFromSemantics: true,
+                                        errorBuilder:
+                                            (context, error, stackTrace) =>
+                                                _HomeCoverFallback(
+                                                  isProtection: false,
+                                                ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
                       ),
                     ),
                     Padding(
@@ -320,8 +346,7 @@ class _HomeActionCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                // Transparent overlay keeps the full cover and footer tappable
-                // and paints the press feedback above the image.
+                // Entire card is a single action, including its cover.
                 Positioned.fill(
                   child: Material(
                     type: MaterialType.transparency,
@@ -344,33 +369,141 @@ class _HomeActionCard extends StatelessWidget {
   }
 }
 
-class _HomeToolDeck extends StatelessWidget {
+class _HomeCoverFallback extends StatelessWidget {
+  const _HomeCoverFallback({required this.isProtection});
+
+  final bool isProtection;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppTheme.of(context);
+    return ColoredBox(
+      color: palette.flowSurfaceSoft,
+      child: Center(
+        child: Icon(
+          isProtection ? Icons.movie_outlined : Icons.compare_outlined,
+          color: palette.brandAction,
+          size: 36,
+        ),
+      ),
+    );
+  }
+}
+
+/// Preserve the previous swipeable card stack and its visible page indicator.
+/// On a non-mobile platform with only one supported task, paging is dormant.
+class _HomeToolDeck extends StatefulWidget {
   const _HomeToolDeck({
-    required this.tools,
+    required this.cardWidth,
+    required this.viewportFraction,
     required this.isBusy,
     required this.actionLabel,
     required this.onLaunch,
   });
 
-  final List<HomeTool> tools;
+  final double cardWidth;
+  final double viewportFraction;
   final bool isBusy;
   final String actionLabel;
   final ValueChanged<HomeTool> onLaunch;
 
   @override
+  State<_HomeToolDeck> createState() => _HomeToolDeckState();
+}
+
+class _HomeToolDeckState extends State<_HomeToolDeck> {
+  late PageController _pageController;
+  int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: widget.viewportFraction);
+  }
+
+  @override
+  void didUpdateWidget(covariant _HomeToolDeck oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.viewportFraction != widget.viewportFraction) {
+      final previous = _pageController;
+      _pageController = PageController(
+        initialPage: _selectedIndex,
+        viewportFraction: widget.viewportFraction,
+      );
+      previous.dispose();
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (var index = 0; index < tools.length; index++) ...[
-          if (index > 0) const SizedBox(height: 16),
-          _HomeActionCard(
-            tool: tools[index],
-            isBusy: isBusy,
-            actionLabel: actionLabel,
-            onTap: isBusy ? null : () => onLaunch(tools[index]),
+    final tools = HomeToolCatalog.forPlatform(Theme.of(context).platform);
+    assert(tools.isNotEmpty);
+
+    if (tools.length == 1) {
+      return Center(
+        child: SizedBox(
+          width: widget.cardWidth,
+          height: double.infinity,
+          child: _HomeActionCard(
+            tool: tools.single,
+            isBusy: widget.isBusy,
+            actionLabel: widget.actionLabel,
+            onTap: widget.isBusy ? null : () => widget.onLaunch(tools.single),
           ),
-        ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        Expanded(
+          child: PageView.builder(
+            key: const ValueKey('home-card-pager'),
+            // Do not clip the next-card peek or the bottom-biased shadows.
+            clipBehavior: Clip.none,
+            controller: _pageController,
+            itemCount: tools.length,
+            onPageChanged: (index) => setState(() => _selectedIndex = index),
+            itemBuilder: (context, index) {
+              final tool = tools[index];
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: _HomeActionCard(
+                  tool: tool,
+                  isBusy: widget.isBusy,
+                  actionLabel: widget.actionLabel,
+                  onTap: widget.isBusy ? null : () => widget.onLaunch(tool),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          key: const ValueKey('home-card-page-indicator'),
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            for (var i = 0; i < tools.length; i++)
+              Container(
+                key: ValueKey('home-card-page-dot-$i'),
+                width: i == _selectedIndex ? 17 : 5,
+                height: 5,
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                decoration: BoxDecoration(
+                  color: i == _selectedIndex
+                      ? AppTheme.of(context).brandAction
+                      : AppTheme.of(context).flowTextMuted,
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+          ],
+        ),
       ],
     );
   }
