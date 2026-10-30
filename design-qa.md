@@ -422,3 +422,17 @@ component-level design QA: passed
 final result: blocked
 
 > Blocker: native Android/iOS screenshot and real Chinese font/gesture validation not performed. This does not block local branch handoff for device testing, but prevents claiming device-level visual acceptance.
+
+
+## 2026-10-30 · 用户 Android 滑动中间态证实标题基线问题
+
+- **证据与更正：** 用户截图展示手指还按住的卡片中间态，而非停稳状态。两张卡的外边界已对齐；原“卡片未居中”判定不成立。截图中真正的 [P2] 问题是第二卡说明折为两行，使动态文本列自底部向上扩张，标题比第一张更高。
+- **根因与测试盲点：** 既有 Widget 测试字体不是真实 Android 中文字体，原先的标题 bottom 对齐断言不足以检测中英文换行差异，需替换为 title top 与 description first-line top 对齐断言。
+- **修复与验证：** 说明两行固定高槽位、当前字体缩放自适应；卡片图片/轮播/点击语义完全不变。新增 -140dp 未松手姿态几何测试与 1.0×/1.6× 字体、忙碌时标题位置检查。后期截取的 Flutter 360×800 浅色中间态见 /tmp/woah-midgesture-aligned.png；全量测试 209/209、Analyze 和 iOS Simulator Build PASS。
+- **证据限制：** Flutter golden 缺少真实系统中文字体。仍需 Android 相同拖动状态截图才能完成设备级视觉收口。
+
+component-level regression: passed
+
+final result: blocked
+
+> Android post-fix mid-gesture screenshot pending.

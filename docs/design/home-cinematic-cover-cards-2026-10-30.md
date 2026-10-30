@@ -67,3 +67,13 @@
 - iOS Simulator Debug `flutter build ios --simulator --debug --no-pub`：PASS，`Runner.app` 内两张 JPEG 与源码逐字节一致，复用本轮最终源码。
 - CoreSimulator `simctl list devices booted`：8 秒超时，未证明实际 iOS 模拟器安装、点击与中文字体渲染；Android 真机也没有新增验证。不宣称完成设备级 UI 验收。
 - 实际生产图片的 Mask/隐私算法不在本轮改动范围，卡片截图只是功能表达。
+
+
+## 2026-10-30 Android 滑动中间态：标题基线修复
+
+- **真实证据：** 用户主动保持手指未松开并截取 Android 首页两卡同时出现的照片（Screenshot_2026-10-30-14-39-55-03_07b3adb6d9524e5cdc0bf7b5cdbfde65.jpg）。两卡外框顶部/底部本来对齐；此前把中间态误判为回弹或居中异常，现更正。
+- **原因：**「视频保护」说明为一行，「舞蹈对比」说明在真实中文字体下为两行。原 `Positioned(bottom:20)` 固定整个动态高度的标题和说明 `Column`，因此后者标题上移约一行。
+- **修复：** 保留图片、文字、卡片尺寸与滑动手势，仅对说明固定预留两行高度（`MediaQuery.textScalerOf(context).scale(13.5 * 1.42 * 2)`），以 `Align.topLeft` 排列首行，保证两个标题、两个说明首行共用顶部坐标。忙碌时仍保留同一标题位置。
+- **回归：** 390×844 两卡标题与说明首行几何误差 ≤0.5dp；360×800 字体 1.0×/1.6×；360×800 保持手指未松开的 -140dp 中间帧直接比较双卡；导入忙碌文本变更仍不移动标题。
+- **组件截图：** Mac `/tmp/woah-midgesture-aligned.png（实际为 /tmp/woah-midgesture-aligned.png），Flutter 截图缺少真实 Android 中文字体，只证明组件布局。
+- **验证：** Flutter Analyze PASS，Flutter 209/209 测试 PASS，iOS Simulator Debug 构建 PASS。Android 修订版尚未重新安装实拍，不能宣称设备视觉已验收。

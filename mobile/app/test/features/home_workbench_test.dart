@@ -287,10 +287,11 @@ void main() {
       find.byKey(const ValueKey('home-privacy-text-overlay')),
       findsOneWidget,
     );
-    final privacyTitleBottom = tester.getRect(find.text('视频保护')).bottom;
-    final privacySubtitleBottom = tester
-        .getRect(find.text('保留主角，遮挡其他人物'))
-        .bottom;
+    final privacyTitleTop = tester.getRect(find.text('视频保护')).top;
+    final privacySubtitleTop = tester.getRect(find.text('保留主角，遮挡其他人物')).top;
+    final privacySlotHeight = tester
+        .getSize(find.byKey(const ValueKey('home-privacy-description-slot')))
+        .height;
     expect(
       tester.widget<Text>(find.text('视频保护')).style?.color,
       AppTheme.brandPearl,
@@ -311,15 +312,23 @@ void main() {
       find.byKey(const ValueKey('home-comparison-text-overlay')),
       findsOneWidget,
     );
-    // Both photo covers fill their cards. Native text shares the same
-    // fixed bottom anchor, rather than sitting in separate color blocks.
+    // The two subtitles can wrap differently on real devices, so both
+    // titles AND the first subtitle line must share a top baseline.
     expect(
-      tester.getRect(find.text('舞蹈对比')).bottom,
-      closeTo(privacyTitleBottom, 0.5),
+      tester.getRect(find.text('舞蹈对比')).top,
+      closeTo(privacyTitleTop, 0.5),
     );
     expect(
-      tester.getRect(find.text('同步两段视频，对照练习动作')).bottom,
-      closeTo(privacySubtitleBottom, 0.5),
+      tester.getRect(find.text('同步两段视频，对照练习动作')).top,
+      closeTo(privacySubtitleTop, 0.5),
+    );
+    expect(
+      tester
+          .getSize(
+            find.byKey(const ValueKey('home-comparison-description-slot')),
+          )
+          .height,
+      closeTo(privacySlotHeight, 0.5),
     );
     expect(
       tester.widget<Text>(find.text('舞蹈对比')).style?.color,
@@ -344,6 +353,93 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+
+  for (final scale in [1.0, 1.6]) {
+    testWidgets('full-bleed titles share top baseline at 360dp scale $scale', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final router = _testRouter();
+      addTearDown(router.dispose);
+      await _pumpWorkbench(
+        tester,
+        router,
+        platform: TargetPlatform.android,
+        textScale: scale,
+      );
+      await tester.pumpAndSettle();
+
+      final titleTop = tester.getRect(find.text('视频保护')).top;
+      final descriptionTop = tester.getRect(find.text('保留主角，遮挡其他人物')).top;
+      final slotHeight = tester
+          .getSize(find.byKey(const ValueKey('home-privacy-description-slot')))
+          .height;
+      expect(slotHeight, closeTo(13.5 * 1.42 * 2 * scale, 0.01));
+
+      await tester.drag(find.byType(PageView), const Offset(-290, 0));
+      await tester.pumpAndSettle();
+      expect(tester.getRect(find.text('舞蹈对比')).top, closeTo(titleTop, 0.5));
+      expect(
+        tester.getRect(find.text('同步两段视频，对照练习动作')).top,
+        closeTo(descriptionTop, 0.5),
+      );
+      expect(
+        tester
+            .getSize(
+              find.byKey(const ValueKey('home-comparison-description-slot')),
+            )
+            .height,
+        closeTo(slotHeight, 0.01),
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets(
+    'mid-gesture two-card view keeps title and subtitle top aligned',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final router = _testRouter();
+      addTearDown(router.dispose);
+      await _pumpWorkbench(tester, router, platform: TargetPlatform.android);
+      await tester.pumpAndSettle();
+
+      // Reproduce the user's screenshot: keep the finger down, with both
+      // cards partly visible, instead of snapping to a completed page.
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byType(PageView)),
+      );
+      await gesture.moveBy(const Offset(-140, 0));
+      await tester.pump();
+
+      final left = tester.getRect(
+        find.byKey(const ValueKey('home-card-elevation')),
+      );
+      final right = tester.getRect(
+        find.byKey(const ValueKey('home-comparison-elevation')),
+      );
+      expect(left.right, greaterThan(0));
+      expect(right.left, lessThan(360));
+      expect(
+        tester.getRect(find.text('视频保护')).top,
+        closeTo(tester.getRect(find.text('舞蹈对比')).top, 0.5),
+      );
+      expect(
+        tester.getRect(find.text('保留主角，遮挡其他人物')).top,
+        closeTo(tester.getRect(find.text('同步两段视频，对照练习动作')).top, 0.5),
+      );
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('comparison remains accessible by swiping on compact 320 x 568', (
     tester,
@@ -407,9 +503,11 @@ void main() {
     addTearDown(router.dispose);
 
     await _pumpWorkbench(tester, router);
+    final titleTop = tester.getRect(find.text('视频保护')).top;
     await tester.tap(find.byKey(const ValueKey('home-import-card')));
     await tester.pump();
     expect(find.text('正在导入视频…'), findsOneWidget);
+    expect(tester.getRect(find.text('视频保护')).top, closeTo(titleTop, 0.5));
 
     await tester.tap(find.byKey(const ValueKey('home-import-card')));
     expect(picker.calls, 1);

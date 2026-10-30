@@ -297,14 +297,31 @@ class _HomeActionCard extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 6),
-                            Text(
-                              visibleDescription,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Color(0xFFD9E6E2),
-                                fontSize: 13.5,
-                                height: 1.42,
+                            // Always reserve two subtitle lines, even when
+                            // this particular description fits on one line.
+                            // Anchoring the whole group at the card bottom
+                            // otherwise raises the title of the longer card.
+                            SizedBox(
+                              key: ValueKey(
+                                isProtection
+                                    ? 'home-privacy-description-slot'
+                                    : 'home-comparison-description-slot',
+                              ),
+                              height: MediaQuery.textScalerOf(
+                                context,
+                              ).scale(13.5 * 1.42 * 2),
+                              child: Align(
+                                alignment: Alignment.topLeft,
+                                child: Text(
+                                  visibleDescription,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Color(0xFFD9E6E2),
+                                    fontSize: 13.5,
+                                    height: 1.42,
+                                  ),
+                                ),
                               ),
                             ),
                           ],
