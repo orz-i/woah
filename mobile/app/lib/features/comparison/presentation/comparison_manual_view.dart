@@ -276,7 +276,9 @@ class ComparisonManualView extends StatelessWidget {
           ),
           ColoredBox(
             key: ValueKey('comparison-manual-controls-$role'),
-            color: Colors.black,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.black
+                : AppTheme.of(context).background,
             child: LayoutBuilder(
               builder: (context, bounds) {
                 final controls = <Widget>[

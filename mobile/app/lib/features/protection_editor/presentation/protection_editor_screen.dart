@@ -1518,6 +1518,7 @@ class _ProtectionEditorScreenState
   }
 
   void _nudgeTrim(bool isStart, int deltaMs) {
+    if (_trimApplying) return;
     if (isStart) {
       _setTrimStart(_trimStartMs + deltaMs);
     } else {
@@ -1683,7 +1684,7 @@ class _ProtectionEditorScreenState
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF211719).withValues(alpha: 0.96),
+                      color: AppTheme.of(context).surfaceElevated,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: AppTheme.of(

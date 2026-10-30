@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:ui' show SemanticsAction, SemanticsActionEvent, Tristate;
 
+import 'package:app/app/theme.dart';
 import 'package:app/features/effect_editor/presentation/effect_editor_controller.dart';
 import 'package:app/features/export/presentation/export_screen.dart';
 import 'package:app/features/person_selection/domain/person_selection_state.dart';
@@ -30,6 +32,71 @@ void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues(<String, Object>{});
   });
+
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'preview error stays readable in ${brightness.name} appearance',
+      (tester) async {
+        final repository = _FakeProtectionRepository()..failPreview = true;
+        final container = ProviderContainer(
+          overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+        );
+        addTearDown(container.dispose);
+        final now = DateTime.now();
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              theme: brightness == Brightness.dark
+                  ? AppTheme.darkTheme
+                  : AppTheme.lightTheme,
+              home: ProtectionEditorScreen(
+                project: DanceProject(
+                  id: 'preview-error-contrast',
+                  sourceUri: 'file:///preview-error.mp4',
+                  videoInfo: const VideoInfo(
+                    codedWidth: 720,
+                    codedHeight: 1280,
+                    displayWidth: 720,
+                    displayHeight: 1280,
+                    fps: 30,
+                    durationMs: 4000,
+                    rotation: 0,
+                    videoCodec: 'h264',
+                    hasAudio: false,
+                  ),
+                  trimStartMs: 400,
+                  trimEndMs: 3200,
+                  createdAt: now,
+                  updatedAt: now,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final message = find.text('预览暂时无法更新，选择与参数仍会保留。');
+        expect(message, findsOneWidget);
+        final text = tester.widget<Text>(message);
+        final panel = tester.widget<Container>(
+          find.ancestor(of: message, matching: find.byType(Container)).first,
+        );
+        final color = (panel.decoration! as BoxDecoration).color!;
+        final foreground = text.style!.color!;
+        for (final videoColor in [Colors.black, Colors.white]) {
+          final background = Color.alphaBlend(color, videoColor);
+          final a = Color.alphaBlend(foreground, background).computeLuminance();
+          final b = background.computeLuminance();
+          final contrast = a > b
+              ? (a + .05) / (b + .05)
+              : (b + .05) / (a + .05);
+          expect(contrast, greaterThanOrEqualTo(4.5));
+        }
+        expect(repository.lastSelectedPersonIds, isNotEmpty);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 
   final now = DateTime.utc(2026, 9, 14);
   final project = DanceProject(
@@ -937,6 +1004,53 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('queued trim accessibility changes cannot outrun reanalysis', (
+    tester,
+  ) async {
+    final repository = _FakeProtectionRepository();
+    final container = ProviderContainer(
+      overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(home: ProtectionEditorScreen(project: project)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _selectTool(tester, 'trim');
+    final gate = Completer<void>();
+    repository.analyzeGate = gate;
+    final start = tester.getSemantics(
+      find.byKey(const ValueKey('trim-start-control')),
+    );
+    for (var event = 0; event < 2; event++) {
+      tester.binding.performSemanticsAction(
+        SemanticsActionEvent(
+          nodeId: start.id,
+          type: SemanticsAction.increase,
+          viewId: tester.view.viewId,
+        ),
+      );
+    }
+    expect(repository.lastAnalyzeTrimStartMs, 500);
+    gate.complete();
+    await tester.pumpAndSettle();
+    await _selectTool(tester, 'trim');
+    expect(find.text('起点 00:00.5'), findsOneWidget);
+    expect(
+      container.read(personSelectionControllerProvider).project!.trimStartMs,
+      500,
+    );
+    expect(
+      container.read(effectEditorControllerProvider).project!.trimStartMs,
+      500,
+    );
+    expect(repository.analyzeRequestCount, 2);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'shortening the end preserves subject, face style and analyzed IDs',
     (tester) async {
@@ -1820,6 +1934,8 @@ class _MemoryProtectionProfileStore implements ProtectionProfileStore {
 
 class _FakeProtectionRepository implements NativeProcessingRepository {
   List<int> personIds = const [0, 1];
+  bool failPreview = false;
+  Completer<void>? analyzeGate;
   int analyzeRequestCount = 0;
   int? lastAnalyzeTrimStartMs;
   Set<int> lastSelectedPersonIds = const {};
@@ -1837,6 +1953,7 @@ class _FakeProtectionRepository implements NativeProcessingRepository {
   }) async {
     analyzeRequestCount += 1;
     lastAnalyzeTrimStartMs = trimStartMs;
+    if (analyzeGate != null) await analyzeGate!.future;
     return AnalyzeResultDto(
       analysisCacheId: 'unified-cache',
       videoInfo: VideoInfoDto(
@@ -1892,6 +2009,7 @@ class _FakeProtectionRepository implements NativeProcessingRepository {
     lastPreviewTimestampMs = timestampMs;
     lastTightMaskPreview = tightMaskPreview;
     lastFollow = follow;
+    if (failPreview) throw StateError('preview rendering failed');
     return PreviewFrameDto(
       thumbnailPath: '',
       renderTimeMs: 2,

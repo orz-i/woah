@@ -2,6 +2,7 @@ import 'package:app/app/theme.dart';
 import 'package:app/features/comparison/presentation/comparison_controller.dart';
 import 'package:app/features/comparison/presentation/comparison_screen.dart';
 import 'package:app/features/comparison/presentation/comparison_manual_session.dart';
+import 'package:app/features/comparison/presentation/comparison_manual_view.dart';
 import 'package:dance_domain/dance_domain.dart';
 import 'package:dance_native/dance_native.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,64 @@ import 'comparison_test.dart'
     show teacher, learner, savedProject, FakeComparisonGateway, FakeCueVideo;
 
 void main() {
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'manual controls keep contrast in ${brightness.name} appearance',
+      (tester) async {
+        final session = ComparisonManualSession(
+          savedProject(),
+          factory: (uri) => FakeCueVideo(uri, []),
+        );
+        addTearDown(session.close);
+        await session.initialize();
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: brightness == Brightness.dark
+                ? AppTheme.darkTheme
+                : AppTheme.lightTheme,
+            home: Scaffold(
+              body: ComparisonManualView(
+                session: session,
+                onApply: () {},
+                onCancel: () {},
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        for (var role = 0; role < 2; role++) {
+          final controls = find.byKey(
+            ValueKey('comparison-manual-controls-$role'),
+          );
+          final background = tester.widget<ColoredBox>(controls).color;
+          final icons = find.descendant(
+            of: controls,
+            matching: find.byType(Icon),
+          );
+          expect(icons, findsNWidgets(3));
+          for (final element in icons.evaluate()) {
+            final icon = element.widget as Icon;
+            final foreground = icon.color ?? IconTheme.of(element).color!;
+            final a = Color.alphaBlend(
+              foreground,
+              background,
+            ).computeLuminance();
+            final b = background.computeLuminance();
+            final contrast = a > b
+                ? (a + .05) / (b + .05)
+                : (b + .05) / (a + .05);
+            expect(
+              contrast,
+              greaterThanOrEqualTo(3),
+              reason: 'manual role $role',
+            );
+          }
+        }
+        await tester.pumpWidget(const SizedBox.shrink());
+      },
+    );
+  }
+
   test(
     'a repeated first-anchor action cannot recapture the suggested second position',
     () async {
