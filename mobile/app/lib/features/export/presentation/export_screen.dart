@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:dance_domain/dance_domain.dart';
 import 'package:flutter/foundation.dart';
@@ -77,77 +79,185 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         state.status == ExportJobState.queued || state.isProcessing;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: appSystemUiStyleFor(Theme.of(context).brightness),
+      // Processing is deliberately cinematic in both system appearances.
+      // Light mode still uses its own colors for dialogs and failure states.
+      value: appSystemUiStyleFor(
+        isFailed ? Theme.of(context).brightness : Brightness.dark,
+      ),
       child: Scaffold(
-        backgroundColor: AppTheme.of(context).flowBackground,
+        backgroundColor: isFailed
+            ? AppTheme.of(context).flowBackground
+            : const Color(0xFF141615),
         body: SafeArea(
-          child: Column(
-            children: [
-              _buildTopBar(
-                state,
-                controller,
-                isActive: isActive,
-                isFailed: isFailed,
-              ),
-              Expanded(
-                child: _buildMediaPreview(
+          child: isFailed
+              ? Column(
+                  children: [
+                    _buildFailureTopBar(),
+                    Expanded(
+                      child: _buildMediaPreview(
+                        state,
+                        controller,
+                        livePreviewToggleEnabled: false,
+                      ),
+                    ),
+                    _buildFailurePanel(state),
+                  ],
+                )
+              : _buildCinematicProgressPage(
                   state,
                   controller,
-                  livePreviewToggleEnabled: isActive,
+                  isActive: isActive,
                 ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCinematicProgressPage(
+    ExportState state,
+    ExportController controller, {
+    required bool isActive,
+  }) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          stops: [0, 0.30, 0.68, 1],
+          colors: [
+            Color(0xFF40454D),
+            Color(0xFF29282A),
+            Color(0xFF1C1B17),
+            Color(0xFF111310),
+          ],
+        ),
+      ),
+      child: LayoutBuilder(
+        builder: (context, viewport) {
+          final height = viewport.maxHeight;
+          final compact = height < 700;
+          final frameWidth = math.min(
+            viewport.maxWidth - (viewport.maxWidth < 360 ? 32 : 44),
+            460.0,
+          );
+          // Keep the stage at the reference's editorial ~1.4:1 framing.
+          // The actual video remains aspect-correct inside it.
+          final frameHeight = math.min(
+            frameWidth / 1.40,
+            height * (compact ? 0.32 : 0.38),
+          );
+          // On taller phones the reference favors more breathing room above
+          // the photo and between its glow and the status. Compress the gap
+          // before the stop action so it stays comfortably in view.
+          final roomy = ((height - 700) / 144).clamp(0.0, 1.0);
+          final topGap = compact
+              ? height * .045
+              : height * (.12 + .063 * roomy);
+          final mediaToStatusGap = compact
+              ? 28.0
+              : height * (.125 + .058 * roomy);
+          final progressToStopGap = compact
+              ? 22.0
+              : height * (.060 - .046 * roomy);
+          final bottomGap = compact ? 20.0 : height * .07;
+
+          return SingleChildScrollView(
+            key: const ValueKey('export-cinematic-scroll'),
+            physics: const ClampingScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: height),
+              child: Column(
+                children: [
+                  SizedBox(height: topGap),
+                  _buildCinematicPreview(
+                    state,
+                    controller,
+                    frameWidth: frameWidth,
+                    frameHeight: frameHeight,
+                    livePreviewToggleEnabled: isActive,
+                  ),
+                  SizedBox(height: mediaToStatusGap),
+                  _buildProgressPanel(state),
+                  SizedBox(height: progressToStopGap),
+                  _buildCancelAction(
+                    controller,
+                    enabled: isActive && state.jobId != null,
+                  ),
+                  SizedBox(height: bottomGap),
+                ],
               ),
-              if (isFailed)
-                _buildFailurePanel(state)
-              else
-                _buildProgressPanel(
-                  state,
-                  showBackgroundHint: Platform.isAndroid,
-                ),
-            ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildCinematicPreview(
+    ExportState state,
+    ExportController controller, {
+    required double frameWidth,
+    required double frameHeight,
+    required bool livePreviewToggleEnabled,
+  }) {
+    // Keep the media's rounded silhouette, without a decorative border
+    // or glow that competes with the video itself.
+    return SizedBox(
+      key: const ValueKey('export-cinematic-stage'),
+      width: double.infinity,
+      height: frameHeight,
+      child: Center(
+        child: Container(
+          key: const ValueKey('export-cinematic-frame'),
+          width: frameWidth,
+          height: frameHeight,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: Colors.black,
+            borderRadius: BorderRadius.circular(30),
+          ),
+          child: _buildMediaPreview(
+            state,
+            controller,
+            livePreviewToggleEnabled: livePreviewToggleEnabled,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildTopBar(
-    ExportState state,
-    ExportController controller, {
-    required bool isActive,
-    required bool isFailed,
-  }) {
+  Widget _buildFailureTopBar() {
+    // Only failure keeps a conventional back action; active processing has
+    // one bottom-centered stop control like the supplied visual reference.
     return SizedBox(
       height: 56,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14),
         child: Row(
           children: [
-            if (isFailed)
-              Semantics(
-                button: true,
-                label: '返回编辑',
-                child: GestureDetector(
-                  key: _failedBackKey,
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    context.pop();
-                  },
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-                    child: Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      size: 22,
-                      color: AppTheme.of(context).textPrimary,
-                    ),
+            Semantics(
+              button: true,
+              label: '返回编辑',
+              child: GestureDetector(
+                key: _failedBackKey,
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  context.pop();
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 6,
+                  ),
+                  child: Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    size: 22,
+                    color: AppTheme.of(context).textPrimary,
                   ),
                 ),
-              )
-            else
-              _buildCancelAction(
-                controller,
-                enabled: isActive && state.jobId != null,
               ),
+            ),
           ],
         ),
       ),
@@ -170,23 +280,34 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
           behavior: HitTestBehavior.opaque,
           onTap: actionEnabled ? () => _confirmCancel(controller) : null,
           child: AnimatedOpacity(
-            duration: const Duration(milliseconds: 120),
-            opacity: actionEnabled || _cancelInFlight ? 1 : 0.42,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+            duration: const Duration(milliseconds: 140),
+            opacity: actionEnabled || _cancelInFlight ? 1 : 0.5,
+            child: Container(
+              key: const ValueKey('export-stop-circle'),
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0x2EFFFFFF),
+                border: Border.all(color: const Color(0x25FFFFFF), width: 1),
+              ),
+              alignment: Alignment.center,
               child: _cancelInFlight
-                  ? SizedBox(
-                      width: 20,
-                      height: 20,
+                  ? const SizedBox(
+                      width: 25,
+                      height: 25,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: AppTheme.of(context).brandAction,
+                        color: Colors.white,
                       ),
                     )
-                  : Icon(
-                      Icons.close_rounded,
-                      size: 24,
-                      color: AppTheme.of(context).textPrimary,
+                  : Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(5),
+                      ),
                     ),
             ),
           ),
@@ -248,16 +369,48 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                   fit: StackFit.expand,
                   children: [
                     if (displayPath != null)
-                      Image.file(
-                        File(displayPath),
-                        fit: BoxFit.contain,
-                        gaplessPlayback: true,
-                        filterQuality: FilterQuality.low,
-                        errorBuilder: (context, error, stackTrace) =>
-                            _buildPreviewPlaceholder(state),
+                      Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          // The blurred edge fill is UI-only. The centered
+                          // image keeps its actual output aspect and never
+                          // crops people from the exported media preview.
+                          ImageFiltered(
+                            imageFilter: ui.ImageFilter.blur(
+                              sigmaX: 8,
+                              sigmaY: 8,
+                            ),
+                            child: Image.file(
+                              File(displayPath),
+                              fit: BoxFit.cover,
+                              gaplessPlayback: true,
+                              filterQuality: FilterQuality.low,
+                              color: const Color(0x55000000),
+                              colorBlendMode: BlendMode.darken,
+                              errorBuilder: (_, _, _) =>
+                                  const ColoredBox(color: Colors.black),
+                            ),
+                          ),
+                          Image.file(
+                            File(displayPath),
+                            fit: BoxFit.contain,
+                            gaplessPlayback: true,
+                            filterQuality: FilterQuality.low,
+                            errorBuilder: (context, error, stackTrace) =>
+                                _buildPreviewPlaceholder(state),
+                          ),
+                        ],
                       )
                     else
                       _buildPreviewPlaceholder(state),
+                    if (displayPath != null && !state.isFailed)
+                      const Positioned.fill(
+                        child: IgnorePointer(
+                          child: CustomPaint(
+                            painter: _ExportStageDotsPainter(),
+                          ),
+                        ),
+                      ),
                     if (livePreviewToggleEnabled)
                       Positioned(
                         right: 12,
@@ -361,205 +514,85 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     required IconData icon,
     required String label,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: Colors.white,
-            size: 16,
-            shadows: const [
-              Shadow(
-                color: Colors.black87,
-                blurRadius: 4,
-                offset: Offset(0, 1),
-              ),
-            ],
-          ),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              shadows: [
-                Shadow(
-                  color: Colors.black87,
-                  blurRadius: 4,
-                  offset: Offset(0, 1),
-                ),
-              ],
-            ),
-          ),
-        ],
+    // The whole media frame remains tappable; this small unobtrusive badge
+    // preserves discoverability without covering the preview with a caption.
+    return Tooltip(
+      message: label,
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: const BoxDecoration(
+          color: Color(0xA0000000),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: Colors.white, size: 18),
       ),
     );
   }
 
-  Widget _buildProgressPanel(
-    ExportState state, {
-    required bool showBackgroundHint,
-  }) {
+  Widget _buildProgressPanel(ExportState state) {
     final progress = state.progress.clamp(0.0, 1.0);
     final percent = (progress * 100).round();
-    return Container(
+    return Padding(
       key: const ValueKey('export-progress-deck'),
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
-      decoration: BoxDecoration(
-        color: AppTheme.of(context).flowBackground,
-        border: Border(top: BorderSide(color: AppTheme.of(context).flowBorder)),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 22),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '$percent%',
-                style: TextStyle(
-                  color: AppTheme.of(context).brandAction,
-                  fontSize: 36,
-                  height: 1,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -1.4,
-                  fontFeatures: [FontFeature.tabularFigures()],
-                ),
-              ),
-              const Spacer(),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Text(
-                  _remainingTimeLabel(state),
-                  style: TextStyle(
-                    color: AppTheme.of(context).flowTextSecondary,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 11),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: progress > 0 ? progress : null,
-              minHeight: 5,
-              backgroundColor: AppTheme.of(context).surfaceHigh,
-              valueColor: AlwaysStoppedAnimation(
-                AppTheme.of(context).brandAction,
-              ),
+          _ExportProgressMark(progress: progress),
+          const SizedBox(height: 20),
+          Text(
+            '${_statusTitle(state.status)}… $percent%',
+            key: const ValueKey('export-progress-headline'),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            style: const TextStyle(
+              color: Color(0xFFF2F6F3),
+              fontSize: 22,
+              height: 1.22,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.35,
+              fontFeatures: [FontFeature.tabularFigures()],
             ),
           ),
-          const SizedBox(height: 13),
-          Row(
-            children: [
-              SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppTheme.of(context).brandAction,
-                ),
-              ),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Text(
-                  _statusTitle(state.status),
-                  style: TextStyle(
-                    color: AppTheme.of(context).flowTextPrimary,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
+          const SizedBox(height: 12),
+          Text(
+            _remainingTimeLabel(state),
+            key: const ValueKey('export-time-estimate'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFF9AA8A5),
+              fontSize: 11.5,
+              height: 1.4,
+            ),
           ),
           if (state.exportPlan?.hasCropClarityRestoration == true) ...[
-            const SizedBox(height: 9),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.high_quality_outlined,
-                  size: 16,
-                  color: AppTheme.of(context).flowTextMuted,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '裁切清晰度恢复 · '
-                    '${state.exportPlan!.cropClarityScale.toStringAsFixed(1)}× · '
-                    '${state.exportPlan!.width}×${state.exportPlan!.height}',
-                    style: TextStyle(
-                      color: AppTheme.of(context).flowTextMuted,
-                      fontSize: 11.5,
-                      height: 1.35,
-                    ),
-                  ),
-                ),
-              ],
+            const SizedBox(height: 8),
+            Text(
+              '裁切清晰度恢复 · '
+              '${state.exportPlan!.cropClarityScale.toStringAsFixed(1)}× · '
+              '${state.exportPlan!.width}×${state.exportPlan!.height}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFFC0CBC8),
+                fontSize: 11,
+                height: 1.4,
+              ),
             ),
           ],
           if (state.exportPlan?.hasFallback == true) ...[
-            const SizedBox(height: 9),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.high_quality_outlined,
-                  size: 16,
-                  color: AppTheme.of(context).flowTextMuted,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '设备编码能力限制，输出调整为 '
-                    '${state.exportPlan!.width}×${state.exportPlan!.height}；帧时间保持源视频。',
-                    style: TextStyle(
-                      color: AppTheme.of(context).flowTextMuted,
-                      fontSize: 11.5,
-                      height: 1.35,
-                    ),
-                  ),
-                ),
-              ],
+            const SizedBox(height: 8),
+            Text(
+              '设备编码能力限制，输出调整为 '
+              '${state.exportPlan!.width}×${state.exportPlan!.height}；帧时间保持源视频。',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFFD5C19A),
+                fontSize: 11,
+                height: 1.4,
+              ),
             ),
           ],
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Icon(
-                Icons.verified_user_outlined,
-                size: 16,
-                color: AppTheme.of(context).flowTextMuted,
-              ),
-              const SizedBox(width: 7),
-              Expanded(
-                child: Text(
-                  '纯端侧离线处理，视频数据不离开本地',
-                  style: TextStyle(
-                    color: AppTheme.of(context).flowTextMuted,
-                    fontSize: 11.5,
-                  ),
-                ),
-              ),
-              if (showBackgroundHint)
-                Padding(
-                  padding: EdgeInsets.only(left: 10),
-                  child: Icon(
-                    Icons.phone_android_rounded,
-                    size: 15,
-                    color: AppTheme.of(context).flowTextMuted,
-                  ),
-                ),
-            ],
-          ),
         ],
       ),
     );
@@ -634,10 +667,10 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
 
   String _statusTitle(ExportJobState status) {
     return switch (status) {
-      ExportJobState.queued => '正在准备裁剪后的片段',
-      ExportJobState.preparing => '正在准备裁剪后的片段',
-      ExportJobState.processing => '正在处理裁剪后的片段',
-      ExportJobState.muxing => '正在保存保护后的舞段',
+      ExportJobState.queued => '正在准备视频',
+      ExportJobState.preparing => '正在准备视频',
+      ExportJobState.processing => '正在保护画面',
+      ExportJobState.muxing => '正在保存视频',
       ExportJobState.completed => '处理完成',
       ExportJobState.cancelled => '已取消',
       ExportJobState.failed => '处理没有完成',
@@ -924,4 +957,91 @@ class _SquareAction extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Quiet Frame progress symbol: a lightweight dotted halo and a small smile.
+/// This is a UI progress ornament, not an effect drawn into the exported video.
+class _ExportProgressMark extends StatelessWidget {
+  const _ExportProgressMark({required this.progress});
+
+  final double progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final percent = (progress * 100).round();
+    return Semantics(
+      label: '导出进度',
+      value: '$percent%',
+      child: CustomPaint(
+        key: const ValueKey('export-progress-mark'),
+        size: const Size(48, 48),
+        painter: _ExportProgressMarkPainter(progress),
+      ),
+    );
+  }
+}
+
+class _ExportProgressMarkPainter extends CustomPainter {
+  const _ExportProgressMarkPainter(this.progress);
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    const count = 12;
+    for (var i = 0; i < count; i++) {
+      final angle = -math.pi / 2 + (2 * math.pi * i / count);
+      final dot = center + Offset(math.cos(angle) * 19, math.sin(angle) * 19);
+      final isLit = i / count <= progress;
+      canvas.drawCircle(
+        dot,
+        2.6,
+        Paint()
+          ..color = Colors.white.withValues(alpha: isLit ? 1 : 0.62)
+          ..isAntiAlias = true,
+      );
+    }
+
+    final face = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.3
+      ..strokeCap = StrokeCap.round;
+    final smile = Path()
+      ..moveTo(center.dx - 8, center.dy + 5)
+      ..quadraticBezierTo(
+        center.dx,
+        center.dy + 13,
+        center.dx + 8,
+        center.dy + 5,
+      );
+    canvas.drawPath(smile, face);
+    final eyes = Paint()..color = Colors.white;
+    canvas.drawCircle(center.translate(-6, -3), 1.4, eyes);
+    canvas.drawCircle(center.translate(6, -3), 1.4, eyes);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ExportProgressMarkPainter old) =>
+      progress != old.progress;
+}
+
+/// Subtle grid from the supplied visual reference. It only decorates preview
+/// UI when there is an actual frame; it never alters the export's output.
+class _ExportStageDotsPainter extends CustomPainter {
+  const _ExportStageDotsPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final dot = Paint()..color = const Color(0x33FFFFFF);
+    for (var y = 10.0; y < size.height; y += 18) {
+      for (var x = 10.0; x < size.width; x += 18) {
+        canvas.drawCircle(Offset(x, y), 0.7, dot);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ExportStageDotsPainter old) => false;
 }

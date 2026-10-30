@@ -474,3 +474,43 @@ component-level design QA: passed
 final result: blocked
 
 > 需要深色/浅色 Android 修订版同状态真机截图以及必要的读屏验证，才能把设备级视觉验收从 blocked 改为 passed。
+
+## 2026-10-30 · Privacy Export / Cinematic Progress redesign
+
+- **Target/source**: 用户当前对话附件 Screenshot_2026-10-21-15-21-44-01_99c04817c0de5652397fc8b56c3b3817.jpg（939×2048），灰黑至暖黑暗色导出页，顶端发光影像框、进度点状微笑标志、居中状态+百分比、底部圆形停止。
+- **Implementation**: mobile/app/lib/features/export/presentation/export_screen.dart；组件截图 /tmp/_woah_export_release_dark.png 和 /tmp/_woah_export_release_light.png（390×844 / DPR1）。对照图 /tmp/woah_export_design_qa_comparison.png 已将参考等比裁成 390×844 后与 Flutter 截图并列。临时预览测试照片源自用户参考图内部道路画面，仅用于组件截图，没有加入代码包。
+- **Full-screen comparison**: 对照图显示舞台顶部约 155dp（参考归一化约 158dp），媒体框宽约 346dp、比例约 1.4:1，发光金紫蓝边框和底部停止按钮中心与参考主结构接近。当前部件未显示原始参考图的过大营销承诺文字，而显示导出阶段、真实百分比、预计剩余时间及真实降级信息。差异：媒体采用当前项目输出长宽比，因 QA 照片不是该测试项目所用的 16:9 视频，在框内留下自然比例边界；UI-only 同帧柔化填充周边，不拉伸/裁切主体。
+- **Focused region**: 对比媒体框的上部发光边缘、圆角大小、内图可见性、进度点阵尺寸及停止圆圈；首轮发现边缘光晕偏厚、标题过长换行、进度图标稍大，之后调低光晕与缩短阶段文案至“正在保护画面”等，点环减为 48dp，并重新对照最终截图。停止按钮 72dp，白色方形 20dp；测试截屏的停止方形在取消按钮刚刚 enable 时会暂处于 140ms 透明度动画，真实设备需复查最后不透明状态。
+- **Typography**: 系统字体、状态标题 22sp bold、数字 tabular figures；真实当前阶段与百分比，备选说明 12.5sp、预计时间 11.5sp。由于 Flutter widget Golden 环境没有正常中文 font，屏幕中的中文字形呈方块，不能按当前 QA 图片评价中文字宽、折行或锯齿。相应 390×844 单行标题的矩形几何和真实 Flutter 文案在测试中已经断言。
+- **Spacing/layout**: 宽屏最大 460dp，紧凑 320×568 使用比例缩小和 SingleChildScrollView；居中阶段和底部停止操作分层，不遮挡预览，也不插入底部导航、厚重卡片或顶部关闭图标。320×568 字号 1.6×/2× 可滚动至停止操作，Dialog 可打开。
+- **Colors/tokens**: 采用暗色渐变背景 #40454D → #111310，金色/冷紫/蓝色微光细线作为媒体聚焦元素；不替换应用已有浅色主题（失败页/弹窗），活跃处理页在两种系统外观下统一电影暗调。并非视频隐私算法 Mask 的颜色与覆盖保证。
+- **Image quality**: 只显示导出页真实静态或实时预览帧；BoxFit.contain 正片不裁切，BoxFit.cover 的同帧柔化层只填充 UI，不进入视频输出。粒子点阵也是 UI 装饰。无照片、字体、视频文件资源被新增打包。
+- **Copy & interactions**: 不复刻参考“智能移除路人、杂物”的营销宣称。保留 ExportController 的真实进度与 ETA、清晰度恢复/编码限制、live preview 默认 off、整图点击开启实时预览、原 native 取消确认/失败重试/结果跳转，未修改数据算法与媒体处理合同。
+- **Iteration & tests**: 原本的 export_test.dart 按旧上方取消与底部进度面板预期失败，已基于用户确认的参考图更新为新的 media→progress→stop 布局断言；加入真实 63% 模拟进度、320/390 两视口及深浅主题、2× 字号操作可达、内外照片拟合区别。Flutter analyze 和 Flutter 全量测试须以最终提交前的本轮实际日志为准。
+- **Build environment**: Mac 默认 Flutter SPM 配置生成插件包装包时丢失 file_picker_darwin module，iOS simulator Debug 首轮失败。临时切换 CocoaPods、重新生成依赖/Pods 后本地构建成功，随后已恢复 Flutter 全局设置与 Git 跟踪的 Xcode 工程；未把构建系统调整作为本次 UI 代码改动。该环境问题仍需在普通 SPM 构建路径中另行验证。
+- **Evidence limits**: 当前只实际验证 Flutter 组件/本地 iOS Debug 构建。尚未以用户真实媒体在 Android/iOS 设备完整运行处理、取消、完成、长视频媒体预览，也未得到真实中文字形与 TalkBack/VoiceOver 截图或读屏证据。不能据此断言两端正式视觉发布验收完成。
+
+component-level design QA: passed
+
+final result: blocked
+
+> Android/iOS 设备级预览、中文字体与完整取消/完成链路视觉验收仍缺失。后续由用户实机构建提供诊断和截图时收口。
+
+Latest local verification: flutter analyze --no-pub PASS (0 findings), flutter test --no-pub PASS (231/231), export_test.dart PASS (29/29), final Flutter iOS Simulator Debug PASS using temporary CocoaPods compatibility mode. Git-tracked Xcode project and global Flutter SPM setting were restored afterward. Device-level design QA remains blocked as noted above.
+
+## 2026-10-30 · Export Progress / Remove decorative glow and redundant descriptions
+
+- **Source / changed intent:** 用户要求从已实现的导出页中移除彩色发光预览框，以及“正在本机处理已选的视频编辑设置”“视频仅在本设备离线处理”两处说明。基础参考仍是 2026-10-21-15-21-44-01 参考图；本轮明确覆盖此前的彩色发光设计。
+- **Implementation:** mobile/app/lib/features/export/presentation/export_screen.dart；从 30dp 圆角媒体容器移除发光渐变边框与彩色 BoxShadow。保留黑色底色和防裁切视频预览；两处文字和仅供 Android 提示的参数已删除。标题与预计剩余时间之间保留 12dp 间距，裁切清晰度、真实剩余时间、设备编码回退和底部停止功能均保留。
+- **Matched visual evidence:** Flutter Widget Test 390×844 / DPR1，dark 和 light，分别为 /tmp/_woah_export_borderless_dark.png、/tmp/_woah_export_borderless_light.png。与旧版 /tmp/_woah_export_release_dark.png（同一参考图测试帧）对照，预览由彩色发光外框变为单一圆角，状态区减少两处文案，没有增加新的元素。测试图不在安装包中。
+- **Typography / spacing / color / image / content:** 不改系统字体及标题字号，删除 12.5sp 和 10.5sp 的两行弱信息；中部内容缩短，停止动作自然上移。取消金紫蓝装饰，维持 Quiet Frame 暗背景。媒体仍按 BoxFit.contain 展示完整帧，模糊填充层仅用于 UI。删除冗余文案不影响技术策略。
+- **Tests:** 更新回归断言媒体容器 border、gradient、boxShadow 均为 null，且两处文案在明暗主题、紧凑与正常屏幕均不存在。取消确认、失败重试、真实进度和预览行为继续由现有测试覆盖。
+- **Limit:** Flutter Golden 缺少真实中文系统字体，尚未获得 Android/iOS 真机同状态视频预览和中文截图，设备级视觉验收仍需复核。
+
+component-level design QA: passed
+
+final result: blocked
+
+> Awaiting actual Android/iOS device capture to close visual acceptance.
+
+Final local verification for the borderless export revision: Flutter analyze PASS (0 findings), Flutter tests 231/231 PASS, export tests 29/29 PASS, iOS Simulator Debug build PASS under temporary CocoaPods compatibility mode. Global SPM configuration restored, no tracked Xcode project change. Device visual acceptance still pending.

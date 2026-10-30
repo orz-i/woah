@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:app/app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -411,7 +412,7 @@ void main() {
       await tester.pump();
 
       expect(container.read(exportControllerProvider).showLivePreview, isFalse);
-      expect(find.text('点击查看实时画面'), findsOneWidget);
+      expect(find.byTooltip('点击查看实时画面'), findsOneWidget);
 
       await tester.tap(
         find.byKey(const ValueKey('export-live-preview-toggle')),
@@ -421,7 +422,7 @@ void main() {
 
       expect(container.read(exportControllerProvider).showLivePreview, isTrue);
       expect(repository.livePreviewToggles.last, isTrue);
-      expect(find.text('正在开启实时画面…'), findsOneWidget);
+      expect(find.byTooltip('正在开启实时画面…'), findsOneWidget);
 
       repository.emitPreview('/cache/live_widget.jpg', frame: 8);
       await tester.pump();
@@ -429,7 +430,7 @@ void main() {
         container.read(exportControllerProvider).currentPreviewPath,
         '/cache/live_widget.jpg',
       );
-      expect(find.text('点击关闭实时画面'), findsOneWidget);
+      expect(find.byTooltip('点击关闭实时画面'), findsOneWidget);
 
       await tester.tap(
         find.byKey(const ValueKey('export-live-preview-toggle')),
@@ -443,7 +444,7 @@ void main() {
         isNull,
       );
       expect(repository.livePreviewToggles.last, isFalse);
-      expect(find.text('点击查看实时画面'), findsOneWidget);
+      expect(find.byTooltip('点击查看实时画面'), findsOneWidget);
     },
   );
 
@@ -538,7 +539,7 @@ void main() {
   );
 
   testWidgets(
-    'active export is a media stage with a compact top cancel action',
+    'active export uses a clean rounded preview and bottom stop action',
     (tester) async {
       final repository = _PreviewToggleRepository();
       addTearDown(repository.dispose);
@@ -567,8 +568,17 @@ void main() {
       final cancelRect = tester.getRect(
         find.byKey(const ValueKey('export-cancel-action')),
       );
-      expect(cancelRect.height, lessThanOrEqualTo(40));
-      expect(cancelRect.width, lessThan(100));
+      expect(cancelRect.height, closeTo(72, 0.5));
+      expect(cancelRect.width, closeTo(72, 0.5));
+      expect(find.byKey(const ValueKey('export-stop-circle')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('export-cinematic-frame')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('export-progress-mark')),
+        findsOneWidget,
+      );
 
       final stage = find.byKey(const ValueKey('export-media-stage'));
       final progressDeck = find.byKey(const ValueKey('export-progress-deck'));
@@ -577,8 +587,23 @@ void main() {
       final stageRect = tester.getRect(stage);
       final progressRect = tester.getRect(progressDeck);
       expect(stageRect.top, lessThan(progressRect.top));
-      expect(stageRect.height, greaterThan(progressRect.height));
-      expect(progressRect.top - stageRect.bottom, closeTo(0, 0.5));
+      expect(stageRect.height, greaterThan(100));
+      expect(progressRect.top, greaterThan(stageRect.bottom + 20));
+      expect(cancelRect.top, greaterThan(progressRect.bottom));
+      expect(find.textContaining('正在本机处理已选的视频编辑设置'), findsNothing);
+      expect(find.textContaining('视频仅在本设备离线处理'), findsNothing);
+      expect(find.textContaining('智能移除路人'), findsNothing);
+
+      final previewFrame = tester.widget<Container>(
+        find.byKey(const ValueKey('export-cinematic-frame')),
+      );
+      final decoration = previewFrame.decoration! as BoxDecoration;
+      expect(previewFrame.clipBehavior, Clip.antiAlias);
+      expect(decoration.borderRadius, BorderRadius.circular(30));
+      expect(decoration.color, Colors.black);
+      expect(decoration.border, isNull);
+      expect(decoration.gradient, isNull);
+      expect(decoration.boxShadow, isNull);
 
       await tester.tap(find.byKey(const ValueKey('export-cancel-action')));
       await tester.pump();
@@ -642,10 +667,186 @@ void main() {
       find.byKey(const ValueKey('export-cancel-action')),
     );
 
-    expect(stageRect.width, closeTo(360, 0.5));
-    expect(stageRect.height, greaterThan(statusRect.height));
-    expect(stageRect.top, greaterThan(cancelRect.bottom));
-    expect(statusRect.top, closeTo(stageRect.bottom, 0.5));
+    expect(stageRect.width, lessThan(360));
+    expect(stageRect.width, greaterThan(260));
+    expect(stageRect.height, greaterThan(150));
+    expect(stageRect.top, lessThan(statusRect.top));
+    expect(statusRect.top, greaterThan(stageRect.bottom + 15));
+    expect(cancelRect.top, greaterThan(statusRect.bottom));
+    final frameRect = tester.getRect(
+      find.byKey(const ValueKey('export-cinematic-frame')),
+    );
+    expect(frameRect.width, closeTo(stageRect.width, 0.5));
+    expect(frameRect.height, closeTo(stageRect.height, 0.5));
+    expect(frameRect.center.dx, closeTo(180, 0.5));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('central export headline tracks actual native progress', (
+    tester,
+  ) async {
+    final repository = _PreviewToggleRepository();
+    addTearDown(repository.dispose);
+    final container = ProviderContainer(
+      overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(home: ExportScreen(project: _testProject())),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.textContaining('0%'), findsOneWidget);
+    expect(container.read(exportControllerProvider).showLivePreview, isFalse);
+
+    repository.emitPreview('/cache/unused.jpg', frame: 63);
+    await tester.pump();
+    expect(find.textContaining('63%'), findsOneWidget);
+    expect(find.text('预计还需 4 秒'), findsOneWidget);
+    expect(find.byKey(const ValueKey('export-progress-mark')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final brightness in Brightness.values) {
+    for (final size in [const Size(320, 568), const Size(390, 844)]) {
+      testWidgets(
+        'cinematic export keeps stop reachable at $size ${brightness.name}',
+        (tester) async {
+          tester.view.physicalSize = size;
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          final repository = _PreviewToggleRepository();
+          addTearDown(repository.dispose);
+          final container = ProviderContainer(
+            overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+          );
+          addTearDown(container.dispose);
+          await tester.pumpWidget(
+            UncontrolledProviderScope(
+              container: container,
+              child: MaterialApp(
+                theme: brightness == Brightness.dark
+                    ? AppTheme.darkTheme
+                    : AppTheme.lightTheme,
+                builder: (context, child) => MediaQuery(
+                  data: MediaQuery.of(
+                    context,
+                  ).copyWith(textScaler: const TextScaler.linear(1.6)),
+                  child: child!,
+                ),
+                home: ExportScreen(project: _testProject()),
+              ),
+            ),
+          );
+          await tester.pump();
+          await tester.pump();
+          final card = tester.getRect(
+            find.byKey(const ValueKey('export-cinematic-frame')),
+          );
+          expect(find.text('正在本机处理已选的视频编辑设置'), findsNothing);
+          expect(find.text('视频仅在本设备离线处理'), findsNothing);
+          final frame = tester.widget<Container>(
+            find.byKey(const ValueKey('export-cinematic-frame')),
+          );
+          final decoration = frame.decoration! as BoxDecoration;
+          expect(decoration.border, isNull);
+          expect(decoration.gradient, isNull);
+          expect(decoration.boxShadow, isNull);
+          expect(card.left, greaterThan(0));
+          expect(card.right, lessThan(size.width));
+          expect(card.width / card.height, greaterThan(1.2));
+          await tester.ensureVisible(
+            find.byKey(const ValueKey('export-cancel-action')),
+          );
+          await tester.pump();
+          final stop = tester.getRect(
+            find.byKey(const ValueKey('export-cancel-action')),
+          );
+          expect(stop.top, greaterThan(0));
+          expect(stop.bottom, lessThanOrEqualTo(size.height));
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
+
+  testWidgets('cinematic frame preserves uncropped content above edge fill', (
+    tester,
+  ) async {
+    final repo = _PreviewToggleRepository();
+    addTearDown(repo.dispose);
+    final scope = ProviderContainer(
+      overrides: [nativeRepositoryProvider.overrideWithValue(repo)],
+    );
+    addTearDown(scope.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: scope,
+        child: MaterialApp(
+          home: ExportScreen(
+            project: _testProject(),
+            initialPreviewPath: '/tmp/not_a_real_frame.jpg',
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    final images = find.descendant(
+      of: find.byKey(const ValueKey('export-media-stage')),
+      matching: find.byType(Image),
+    );
+    expect(images, findsNWidgets(2));
+    final fits = images.evaluate().map(
+      (element) => (element.widget as Image).fit,
+    );
+    expect(fits, contains(BoxFit.cover));
+    expect(fits, contains(BoxFit.contain));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('compact 2x text keeps confirmation stop available', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final repo = _PreviewToggleRepository();
+    addTearDown(repo.dispose);
+    final scope = ProviderContainer(
+      overrides: [nativeRepositoryProvider.overrideWithValue(repo)],
+    );
+    addTearDown(scope.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: scope,
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(2)),
+            child: child!,
+          ),
+          home: ExportScreen(project: _testProject()),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('export-cancel-action')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('export-cancel-action')));
+    await tester.pump();
+    expect(find.text('取消处理？'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
