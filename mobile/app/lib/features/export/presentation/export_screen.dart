@@ -177,10 +177,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                     livePreviewToggleEnabled: isActive,
                   ),
                   SizedBox(height: mediaToStatusGap),
-                  _buildProgressPanel(
-                    state,
-                    showBackgroundHint: Platform.isAndroid,
-                  ),
+                  _buildProgressPanel(state),
                   SizedBox(height: progressToStopGap),
                   _buildCancelAction(
                     controller,
@@ -203,7 +200,8 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     required double frameHeight,
     required bool livePreviewToggleEnabled,
   }) {
-    final radius = BorderRadius.circular(30);
+    // Keep the media's rounded silhouette, without a decorative border
+    // or glow that competes with the video itself.
     return SizedBox(
       key: const ValueKey('export-cinematic-stage'),
       width: double.infinity,
@@ -213,46 +211,15 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
           key: const ValueKey('export-cinematic-frame'),
           width: frameWidth,
           height: frameHeight,
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            borderRadius: radius,
-            gradient: const LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [
-                Color(0xFFFFE07D),
-                Color(0xFFFFEACA),
-                Color(0xFFD9C4EF),
-                Color(0xFF8DBBFF),
-              ],
-            ),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x55F5D56F),
-                offset: Offset(-4, 2),
-                blurRadius: 30,
-                spreadRadius: -4,
-              ),
-              BoxShadow(
-                color: Color(0x5589B9FF),
-                offset: Offset(4, -1),
-                blurRadius: 30,
-                spreadRadius: -4,
-              ),
-              BoxShadow(
-                color: Color(0x35000000),
-                offset: Offset(0, 18),
-                blurRadius: 34,
-              ),
-            ],
+            color: Colors.black,
+            borderRadius: BorderRadius.circular(30),
           ),
-          padding: const EdgeInsets.all(3),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(27),
-            child: _buildMediaPreview(
-              state,
-              controller,
-              livePreviewToggleEnabled: livePreviewToggleEnabled,
-            ),
+          child: _buildMediaPreview(
+            state,
+            controller,
+            livePreviewToggleEnabled: livePreviewToggleEnabled,
           ),
         ),
       ),
@@ -563,10 +530,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     );
   }
 
-  Widget _buildProgressPanel(
-    ExportState state, {
-    required bool showBackgroundHint,
-  }) {
+  Widget _buildProgressPanel(ExportState state) {
     final progress = state.progress.clamp(0.0, 1.0);
     final percent = (progress * 100).round();
     return Padding(
@@ -591,17 +555,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               fontFeatures: [FontFeature.tabularFigures()],
             ),
           ),
-          const SizedBox(height: 9),
-          const Text(
-            '正在本机处理已选的视频编辑设置',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Color(0xFFBAC5C2),
-              fontSize: 12.5,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 7),
+          const SizedBox(height: 12),
           Text(
             _remainingTimeLabel(state),
             key: const ValueKey('export-time-estimate'),
@@ -637,14 +591,6 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                 fontSize: 11,
                 height: 1.4,
               ),
-            ),
-          ],
-          if (showBackgroundHint) ...[
-            const SizedBox(height: 8),
-            const Text(
-              '视频仅在本设备离线处理',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFF8E9C99), fontSize: 10.5),
             ),
           ],
         ],

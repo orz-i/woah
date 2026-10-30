@@ -497,3 +497,20 @@ final result: blocked
 > Android/iOS 设备级预览、中文字体与完整取消/完成链路视觉验收仍缺失。后续由用户实机构建提供诊断和截图时收口。
 
 Latest local verification: flutter analyze --no-pub PASS (0 findings), flutter test --no-pub PASS (231/231), export_test.dart PASS (29/29), final Flutter iOS Simulator Debug PASS using temporary CocoaPods compatibility mode. Git-tracked Xcode project and global Flutter SPM setting were restored afterward. Device-level design QA remains blocked as noted above.
+
+## 2026-10-30 · Export Progress / Remove decorative glow and redundant descriptions
+
+- **Source / changed intent:** 用户要求从已实现的导出页中移除彩色发光预览框，以及“正在本机处理已选的视频编辑设置”“视频仅在本设备离线处理”两处说明。基础参考仍是 2026-10-21-15-21-44-01 参考图；本轮明确覆盖此前的彩色发光设计。
+- **Implementation:** mobile/app/lib/features/export/presentation/export_screen.dart；从 30dp 圆角媒体容器移除发光渐变边框与彩色 BoxShadow。保留黑色底色和防裁切视频预览；两处文字和仅供 Android 提示的参数已删除。标题与预计剩余时间之间保留 12dp 间距，裁切清晰度、真实剩余时间、设备编码回退和底部停止功能均保留。
+- **Matched visual evidence:** Flutter Widget Test 390×844 / DPR1，dark 和 light，分别为 /tmp/_woah_export_borderless_dark.png、/tmp/_woah_export_borderless_light.png。与旧版 /tmp/_woah_export_release_dark.png（同一参考图测试帧）对照，预览由彩色发光外框变为单一圆角，状态区减少两处文案，没有增加新的元素。测试图不在安装包中。
+- **Typography / spacing / color / image / content:** 不改系统字体及标题字号，删除 12.5sp 和 10.5sp 的两行弱信息；中部内容缩短，停止动作自然上移。取消金紫蓝装饰，维持 Quiet Frame 暗背景。媒体仍按 BoxFit.contain 展示完整帧，模糊填充层仅用于 UI。删除冗余文案不影响技术策略。
+- **Tests:** 更新回归断言媒体容器 border、gradient、boxShadow 均为 null，且两处文案在明暗主题、紧凑与正常屏幕均不存在。取消确认、失败重试、真实进度和预览行为继续由现有测试覆盖。
+- **Limit:** Flutter Golden 缺少真实中文系统字体，尚未获得 Android/iOS 真机同状态视频预览和中文截图，设备级视觉验收仍需复核。
+
+component-level design QA: passed
+
+final result: blocked
+
+> Awaiting actual Android/iOS device capture to close visual acceptance.
+
+Final local verification for the borderless export revision: Flutter analyze PASS (0 findings), Flutter tests 231/231 PASS, export tests 29/29 PASS, iOS Simulator Debug build PASS under temporary CocoaPods compatibility mode. Global SPM configuration restored, no tracked Xcode project change. Device visual acceptance still pending.

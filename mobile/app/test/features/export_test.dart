@@ -539,7 +539,7 @@ void main() {
   );
 
   testWidgets(
-    'active export uses the reference-inspired glowing stage and bottom stop action',
+    'active export uses a clean rounded preview and bottom stop action',
     (tester) async {
       final repository = _PreviewToggleRepository();
       addTearDown(repository.dispose);
@@ -590,8 +590,20 @@ void main() {
       expect(stageRect.height, greaterThan(100));
       expect(progressRect.top, greaterThan(stageRect.bottom + 20));
       expect(cancelRect.top, greaterThan(progressRect.bottom));
-      expect(find.textContaining('正在本机处理已选的视频编辑设置'), findsOneWidget);
+      expect(find.textContaining('正在本机处理已选的视频编辑设置'), findsNothing);
+      expect(find.textContaining('视频仅在本设备离线处理'), findsNothing);
       expect(find.textContaining('智能移除路人'), findsNothing);
+
+      final previewFrame = tester.widget<Container>(
+        find.byKey(const ValueKey('export-cinematic-frame')),
+      );
+      final decoration = previewFrame.decoration! as BoxDecoration;
+      expect(previewFrame.clipBehavior, Clip.antiAlias);
+      expect(decoration.borderRadius, BorderRadius.circular(30));
+      expect(decoration.color, Colors.black);
+      expect(decoration.border, isNull);
+      expect(decoration.gradient, isNull);
+      expect(decoration.boxShadow, isNull);
 
       await tester.tap(find.byKey(const ValueKey('export-cancel-action')));
       await tester.pump();
@@ -664,8 +676,8 @@ void main() {
     final frameRect = tester.getRect(
       find.byKey(const ValueKey('export-cinematic-frame')),
     );
-    expect(frameRect.width, closeTo(stageRect.width + 6, 0.5));
-    expect(frameRect.height, closeTo(stageRect.height + 6, 0.5));
+    expect(frameRect.width, closeTo(stageRect.width, 0.5));
+    expect(frameRect.height, closeTo(stageRect.height, 0.5));
     expect(frameRect.center.dx, closeTo(180, 0.5));
     expect(tester.takeException(), isNull);
   });
@@ -736,6 +748,15 @@ void main() {
           final card = tester.getRect(
             find.byKey(const ValueKey('export-cinematic-frame')),
           );
+          expect(find.text('正在本机处理已选的视频编辑设置'), findsNothing);
+          expect(find.text('视频仅在本设备离线处理'), findsNothing);
+          final frame = tester.widget<Container>(
+            find.byKey(const ValueKey('export-cinematic-frame')),
+          );
+          final decoration = frame.decoration! as BoxDecoration;
+          expect(decoration.border, isNull);
+          expect(decoration.gradient, isNull);
+          expect(decoration.boxShadow, isNull);
           expect(card.left, greaterThan(0));
           expect(card.right, lessThan(size.width));
           expect(card.width / card.height, greaterThan(1.2));
