@@ -1,44 +1,33 @@
 # Woah 项目治理
 
-本目录把 2026 年 10 月 31 日的实际审计、工程规范草案和整改验收放在一起。结论是：**先恢复失败的 iOS 构建并建立可信合并门禁，再修复已复现的导出异步缺陷及原生资源、隐私生命周期问题；不要先做全量架构重写。**
+本轮只治理 **Android / iOS 与仍使用的构建／模型工具链**。桌面 / Web 已废弃，历史源码和许可证保留；不再进行桌面产品修复。目标是有限、可验收的 G1–G3，不是持续扩张的“下一批”。
 
 ## 当前状态
 
-- 审计基线：`master@0aef51eab4ef8a8a65f29e83883b87ca1de77e46`，仓库 [orz-i/woah](https://github.com/orz-i/woah)。
-- 第一批 [PR #7](https://github.com/orz-i/woah/pull/7) 的最终 head `96a7287` 已通过 [Production CI](https://github.com/orz-i/woah/actions/runs/41163397751) 与 [iOS Cloud CI](https://github.com/orz-i/woah/actions/runs/41163397758)。维护者授权后于 2026-10-31 合并为 `747721d1c073170cbae4a3940778ca16e81ac07d`。两项导出生命周期修复的真机／持续清理失败边界仍见验证记录。
-- 第二批正在实施 GOV-02：每个 PR 保守运行双平台、四包 analyze、手写 Dart format、显式 Android lint 和 fail-closed 汇总；[第二批验证记录](evidence/second-batch-ci-governance-2026-10-31.md) 区分本地、远端与未完成项。仓库保护规则尚未启用。
-- [第一批本地验证记录](evidence/first-batch-local-verification-2026-10-31.md) 记录通过项、原始审计测试的等待契约差异、工具链更新、隔离设备适配及尚未关闭的原生清理限制。
-- **规范是待维护者采纳的提案，不代表已执行或已启用。** 整改状态见下表所链接的台账；审计时 iOS CI 仍失败。
-- 证据日期与官方资料检索日期均为 **2026-10-31 UTC**，不代表所有官方页面都在当天发布。后续提交改变了代码时，应重新验证对应结论。
+- 原始审计基线：`master@0aef51eab4ef8a8a65f29e83883b87ca1de77e46`，见[审计快照](audit-2026-10-31.md)。保留当时事实，不重写为今天状态。
+- [PR #7](https://github.com/orz-i/woah/pull/7) 已合并：Swift 编译与两个导出生命周期修复；真机／持续平台调用失败边界仍有待验收项。
+- [PR #8](https://github.com/orz-i/woah/pull/8) 已合并：固定 Flutter、format、四包分析、显式 Android lint、完整双平台及 fail-closed 汇总。PR exact head 的[远端检查](https://github.com/orz-i/woah/actions/runs/41169895229)全部成功；合并提交[另行复验](https://github.com/orz-i/woah/actions/runs/41175865394)。
+- G1 预算仅既有 #7／#8 加一个文档 PR；G2 最多 4 个实现 PR，G3 最多 4 个。ARCH-01 是长期待办，原桌面修复阶段取消。
+- **仓库保护规则未启用。** 一般仓库处理授权不替代安全设置的具体确认；待确认不阻止其余 G1 验收。
+- 89 条既有 lint warnings 不转成清零目标，不自动升级依赖或重写架构。
 
 ## 阅读顺序
 
-| 文档 | 用途 |
+| 文档 | 唯一用途 |
 | --- | --- |
-| [实际审计](audit-2026-10-31.md) | 快照、实际测试、复现与静态风险，明确未验证的边界 |
-| [工程规范草案](engineering-standard.md) | 将审计发现映射成可执行的开发、评审、CI 和发布规则 |
-| [整改台账](remediation-plan.md) | 优先级、负责人角色、依赖、验收标准和退出条件 |
-| [第一批本地验收](evidence/first-batch-local-verification-2026-10-31.md) | 修复提交、19 项生命周期回归、iOS 同 gate 隔离验证与发布边界 |
-| [第二批 CI 治理](evidence/second-batch-ci-governance-2026-10-31.md) | 常驻汇总、双平台调用链、format/analyze/lint 与验收边界 |
+| [冻结治理路线图](governance-roadmap.md) | G1–G3 阶段卡、预算、进入／退出／停止条件、审批和范围变更 |
+| [15 项整改台账](remediation-plan.md) | 每个发现的唯一归属、当前状态、已交付证据与未关闭边界 |
+| [实际审计](audit-2026-10-31.md) | 2026-10-31 原始测试、复现与静态风险快照 |
+| [工程规范](engineering-standard.md) | 稳定开发原则；不是自动实施所有建议的授权 |
+| [第一批证据](evidence/first-batch-local-verification-2026-10-31.md) | 编译／生命周期修复、本地验收与限制 |
+| [第二批证据](evidence/second-batch-ci-governance-2026-10-31.md) | CI 调用链、format/analyze/lint 与本地快照；最终远端记录见 PR8 |
+| [桌面过期说明](../../desktop/README.md) | 取消部署宣传、保留历史与共享工具、旧实例未验证边界 |
 
-优先级中的 P0 是本项目建议的**立即恢复合并可信度**阶段，不等同于已发生线上重大事故。台账负责人均是角色建议，不是已分派给某个人的承诺。
+## 执行原则
 
-## 最先推进的三项
+- 当前阶段只有一个在制实现 PR，可并行只读调查和独立审查。常规提交／push／正常 PR 收口不反复询问；方向、预算、产品策略或安全敏感事项单独确认。
+- 达到冻结验收就停止并报告，不把新发现、代码行数、工具新版本或历史 warning 自动加入当前阶段。
+- Shared / Face-only / Full-Body-only、实际 effective lane、同设备 golden 和既有[双线流程](../privacy_performance_dual_line_workflow.md)继续保留；不以 mock／静态绿灯替代真实平台或设备证据。
+- 产品退出、工程已交付、设备待验收、服务器保护待确认是不同状态，不混为“全部整改完成”。
 
-1. 修复当前 iOS 编译红灯，验证 required checks 能阻止失败合并。
-2. 修复 retry/cancel 与 dispose 晚回包两项已复现导出缺陷。
-3. 补齐原生资源交接、缓存释放和主线程 I/O 的生命周期约束。
-
-## 应保留的基础
-
-Woah 已有 `app / dance_domain / dance_native / dance_ui` 分层、纯 Dart 领域模型、Flutter 测试、Android 原生单测与编译、iOS 分阶段契约和 smoke gate、模型哈希校验，以及 [Face 与 Full Body 双线性能流程](../privacy_performance_dual_line_workflow.md)。这些是治理基础，而不是要替换掉的历史包袱。
-
-尤其保留既有 Shared / Face-only / Full-Body-only 分类、实际硬件执行通道、同设备同通道 golden 和里程碑设备门禁。不要用“测试绿了”“配置了 GPU”或静态字符串契约替代隐私正确性与真机证据。
-
-## 采纳方式
-
-1. 维护者先确认整改范围和角色归属。
-2. 每项修复独立成可回滚 PR，附对应发现 ID、失败到通过的证据与风险测试。
-3. CI 自身稳定后，再由有权限的维护者批准启用 required checks / ruleset；文档不能代替设置。
-4. 例外必须有原因、风险、补偿措施、负责人和明确失效日期；没有永久豁免。
-5. 完成一项后更新台账证据，不把“写了规范”当作“债务已清零”。
+官方资料检索与审计日期为 2026-10-31 UTC，不代表每个官方页面当天发布。后续代码改变时需针对性复验，不无限扩大阶段。

@@ -1,6 +1,6 @@
 # Woah 工程规范草案
 
-**状态：整体仍为提案，部分 CI 规则已在第二批实施分支实现，待验收；仓库保护未启用。** 本文基于 [2026-10-31 审计](audit-2026-10-31.md)，面向当前以单维护者为主、Flutter / Kotlin / Swift 加 Python 桌面工具的仓库。文中“必须”是建议采纳后的项目规则，不是声称官方强制要求或仓库现已执行。
+**范围：按[冻结路线图 G1–G3](governance-roadmap.md)分阶段落实；PR8 的 CI 规则已合并，仓库保护未启用。** 本文基于 [2026-10-31 审计](audit-2026-10-31.md)，面向单维护者为主的 Flutter / Kotlin / Swift 移动产品及仍使用的 Python 模型／验证工具。桌面 / Web 已废弃。这里的工程原则不是官方强制规定，也不是自动实施所有建议的授权；实际交付和未完成项以[台账](remediation-plan.md)为准。
 
 目标是把真实失败变成可复现测试和门禁，而不是先增加复杂流程。保留已有包边界、Riverpod / controller / repository、平台 smoke 与隐私性能流程；不强制全量 MVVM、换状态管理或拆成更多服务。
 
@@ -11,14 +11,14 @@
 | R1 合并可信 | 当前提交必需检查成功才合并，检查有稳定名称且每个 PR 都报告 | GOV-01、GOV-02 |
 | R2 异步所有权 | 每个操作有 owner、generation、取消、终态与资源释放契约 | DART-01、DART-02、NATIVE-01 |
 | R3 主线程与错误 | UI 不做整文件 I/O；错误不吞取消、不遗留半成品；每次调用只终结一次 | NATIVE-02 |
-| R4 隐私生命周期 | 原始媒体及衍生缓存有保留、删除、配额、脱敏和平台声明 | PRIV-01、PRIV-02、PRIV-03、DESKTOP-01 |
-| R5 可复现输入 | 工具链、依赖、schema 产物、模型与 vendor 来源可追溯 | GEN-01、DEP-01、MODEL-01 |
+| R4 隐私生命周期 | 原始媒体及衍生缓存有保留、删除、配额、脱敏和平台声明 | PRIV-01、PRIV-02、PRIV-03；DESKTOP-01 产品退出 |
+| R5 可复现输入 | 移动及仍用工具链、依赖、schema 产物、模型与 vendor 来源可追溯 | GEN-01、DEP-01；桌面 MODEL-01 产品退出 |
 | R6 风险驱动测试 | 修复要有失败回归；算法/隐私/加速变更不能只凭单测绿灯 | 全部，尤其 NATIVE / PRIV / MODEL |
 | R7 渐进偿债 | 以职责和风险拆分；例外有 owner、失效日和退出证据 | ARCH-01、DOC-01 |
 
 ## 代码与资产边界
 
-- **手写产品代码**：app feature、domain、repository、共享 UI、native pipeline / bridge 实现、桌面 API / engine。格式、静态分析、测试和评审适用。
+- **手写产品代码**：app feature、domain、repository、共享 UI、native pipeline / bridge 实现。格式、静态分析、测试和评审适用。桌面 API / engine 为过期历史代码，不在本轮维护范围。
 - **接口源**：`mobile/packages/dance_native/pigeons/dance_api.dart` 与 `comparison_api.dart` 是 Pigeon 契约源。字段类型、nullable、错误码、线程、生命周期及兼容性在源与测试中说明。
 - **生成代码**：这两套 schema 对应的 Dart / Kotlin / Swift 六份产物不手改、不当作手写复杂度或覆盖率分母。生成后不再用普通 formatter 改造输出；由固定生成器和无差异检查治理。
 - **第三方代码**：`desktop/vendor/**` 不混入普通业务重构。保留许可证和 notices，记录上游 URL / revision、引入原因、本地补丁、升级/退出方案；安全修复以独立 patch 审查。
@@ -58,11 +58,11 @@
 
 **日志与诊断。** release 默认只记录错误码、阶段、匿名 job ID 和必要数值。原始路径、URI、文件名、人像、音视频、token 不直接输出；显式诊断同样脱敏并标记保留期。日志采样和性能探针不得改变隐私选择、跟踪或渲染状态。
 
-**模型发布。** 加载前验证批准摘要，下载先写临时文件并校验再原子替换；已缓存文件同样验证。禁止在声称离线的流程中默默下载；首次准备阶段提示网络需求。变更来源、模型字节、预处理、tensor layout、delegate、线程数均按算法变更处理，不仅看文件名或版本号。保留移动端已有 SHA 工具，并修复桌面 model_path 与实际 loader 不一致。
+**模型发布。** 加载前验证批准摘要，下载先写临时文件并校验再原子替换；已缓存文件同样验证。禁止在声称离线的流程中默默下载；首次准备阶段提示网络需求。变更来源、模型字节、预处理、tensor layout、delegate、线程数均按算法变更处理，不仅看文件名或版本号。保留移动端已有 SHA 与重现工具；桌面 model_path 发现因产品废弃退出修复范围，不能据此声称已修复。
 
 **算法质量。** 沿用 [双线流程](../privacy_performance_dual_line_workflow.md)：Shared 改动验证 Face 与 Full Body；path-only 豁免有调用图证据；比较使用 actual/effective accelerator 与 fallback 等完整 lane；相同设备同 lane 的 accepted golden 才是通常比较基线。更换 lane 的报告不直接成为性能晋级证据；CPU4T 身份拓扑等既有 exact invariant 继续有效。阈值以该流程和冻结基线为准。
 
-**桌面服务。** local-only 默认 loopback；对外监听是明确 opt-in 的网络产品模式，必须有认证、上传/队列/磁盘限额、清理权限、数据保留和威胁模型。随机 task ID 不代替鉴权；局域网可达也不自动等同公网暴露。Mac / Windows 安装路径分别验证，不能把带 CUDA 源的 Linux lock 未经验证推广到全部平台。
+**桌面退役。** 不再提供桌面 / Web 部署支持或建设新的网络模式。历史服务风险未修复、旧实例是否下线未全面验证；保留源码和许可证，见[过期说明](../../desktop/README.md)。根 Python lock 和模型工具仍被移动 CI 使用，不能整体删除，也不能将 Linux CUDA 解析环境冒充 Mac 桌面安装入口。
 
 ## 依赖 工具链和供应链
 
@@ -74,7 +74,7 @@
 
 ## 分层 CI 设计
 
-以下是目标分层。第二批已实现 `governance / required` 汇总、format/analyze/lint 和双平台常驻调用；Pigeon、发布及设备层并未全部实现。实际状态以[第二批证据](evidence/second-batch-ci-governance-2026-10-31.md)为准；稳定后另行批准纳入 required checks。
+以下是目标分层。第二批已实现 `governance / required` 汇总、format/analyze/lint 和双平台常驻调用；Pigeon、发布及设备层并未全部实现。实际状态以[台账](remediation-plan.md)和 PR8 最终远端记录为准；服务器 required checks 仍需具体确认后应用。
 
 | 层级 | 触发与内容 | 合并或发布要求 |
 | --- | --- | --- |
@@ -100,7 +100,7 @@ flutter test --no-pub ../packages/dance_native/test
 ```
 
 ```bash
-# 已有 CI 命令；本次未在本机执行完整原生验证
+# 已有 CI 命令；原审计阶段未完整执行，后续实际验收见第一／第二批证据
 # 从仓库根目录，先按现有流程完成依赖与模型准备
 python tools/release/verify_export_media_contract.py
 python -m unittest tools.release.test_verify_export_media_contract -q
@@ -130,7 +130,7 @@ python tools/ios/run_phase6_macos_gate.py
 | 缓存和隐私 | 多次导入放弃后空间有界、重启扫孤儿、用户删除、在用不误删、日志脱敏、archive manifest |
 | Pigeon | 两 schema 三语言一致、nullable/enum/error round-trip、取消与线程契约 |
 | 模型 / tracking / renderer | 来源与 hash、预处理 tensor、质量 fixtures、Shared 两条隐私路径、同设备同 effective lane golden |
-| 桌面网络 | loopback 默认、显式网络模式鉴权、未授权读/删被拒、上传限额和保留策略 |
+| 桌面产品退出 | 文档不再推荐部署，历史源码／许可证保留，服务下线未验证边界明确；无本轮网络产品实现 |
 
 测试 fixture 应合成或具备授权，公开 artifact 不含用户真实媒体。覆盖率、文件长度与 PR 行数可先观察趋势；不把 80% 覆盖率、500 行文件等经验数字伪装成官方强制门槛。
 
