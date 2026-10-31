@@ -1,17 +1,14 @@
 package art.gaoge.dance.engine
 
-import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.media.MediaScannerConnection
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.Process
-import android.provider.MediaStore
 import art.gaoge.dance.engine.bridge.DanceNativeApi
 import art.gaoge.dance.engine.bridge.DanceNativeApiImpl
 import art.gaoge.dance.engine.bridge.DanceProcessingEvents
@@ -30,8 +27,6 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import java.io.File
 import java.io.FileInputStream
-import java.io.FileNotFoundException
-import java.io.IOException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
@@ -67,13 +62,27 @@ class DanceNativePlugin :
     private var apiImpl: DanceNativeApiImpl? = null
     private var mainHandler: Handler? = null
     private var thumbnailExecutor: ExecutorService? = null
+    private var gallerySaveWorker: art.gaoge.dance.engine.media.GallerySaveWorker? = null
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         val appCtx = flutterPluginBinding.applicationContext
         comparisonApi=ComparisonNativeApi(appCtx,flutterPluginBinding.textureRegistry)
         DanceComparisonApi.setUp(flutterPluginBinding.binaryMessenger,comparisonApi)
         context = appCtx
-        mainHandler = Handler(Looper.getMainLooper())
+        val replyHandler = Handler(Looper.getMainLooper())
+        mainHandler = replyHandler
+        gallerySaveWorker?.close()
+        gallerySaveWorker = art.gaoge.dance.engine.media.GallerySaveWorker(
+            executor = Executors.newSingleThreadExecutor { runnable ->
+                Thread(runnable, "WoahGallerySave").apply { isDaemon = true }
+            },
+            postReply = { callback -> replyHandler.post { callback() } },
+            save = { sourcePath, control ->
+                art.gaoge.dance.engine.media.GallerySaveTransaction(
+                    art.gaoge.dance.engine.media.MediaStoreVideoSaveBackend(appCtx.contentResolver)
+                ).save({ FileInputStream(File(sourcePath)) }, control)
+            }
+        )
         thumbnailExecutor?.shutdownNow()
         thumbnailExecutor = Executors.newSingleThreadExecutor { runnable ->
             Thread(runnable, "DanceTrimThumbnail").apply { isDaemon = true }
@@ -210,12 +219,25 @@ class DanceNativePlugin :
                     result.error("INVALID_ARGS", "filePath or context is null", null)
                     return
                 }
-                try {
-                    val uri = saveVideoToMediaStore(ctx, filePath)
-                    result.success(uri)
-                } catch (e: Exception) {
-                    android.util.Log.e("DanceNativePlugin", "Failed to save video to gallery: ${e.message}", e)
-                    result.error("SAVE_FAILED", e.message ?: "Failed to save video to gallery", null)
+                val worker = gallerySaveWorker
+                if (worker == null) {
+                    result.error("PLUGIN_DETACHED", "Gallery save worker is unavailable", null)
+                    return
+                }
+                worker.submit(filePath) { outcome ->
+                    try {
+                        outcome.fold(
+                            onSuccess = { result.success(it) },
+                            onFailure = { error ->
+                                val code = (error as? art.gaoge.dance.engine.media.GallerySaveFailure)?.code
+                                    ?: "SAVE_FAILED"
+                                result.error(code, "Gallery save did not complete", null)
+                            }
+                        )
+                    } catch (_: Throwable) {
+                        // An engine may disappear after commit; do not undo a successful save.
+                        android.util.Log.w("DanceNativePlugin", "Gallery save reply is unavailable")
+                    }
                 }
             }
             "shareVideo" -> {
@@ -313,60 +335,14 @@ class DanceNativePlugin :
         }
     }
 
-    private fun saveVideoToMediaStore(ctx: Context, filePath: String): String {
-        val file = File(filePath)
-        if (!file.exists()) {
-            throw FileNotFoundException("File does not exist: $filePath")
-        }
-
-        val filename = "Woah_${System.currentTimeMillis()}.mp4"
-        val values = ContentValues().apply {
-            put(MediaStore.Video.Media.DISPLAY_NAME, filename)
-            put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/Woah")
-                put(MediaStore.Video.Media.IS_PENDING, 1)
-            }
-        }
-
-        val resolver = ctx.contentResolver
-        val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-        } else {
-            MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-        }
-
-        val itemUri = resolver.insert(collection, values) ?: throw IOException("Failed to create MediaStore record")
-
-        resolver.openOutputStream(itemUri).use { out ->
-            if (out == null) throw IOException("Failed to open output stream for $itemUri")
-            FileInputStream(file).use { input ->
-                input.copyTo(out)
-            }
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            values.clear()
-            values.put(MediaStore.Video.Media.IS_PENDING, 0)
-            resolver.update(itemUri, values, null, null)
-        }
-
-        MediaScannerConnection.scanFile(
-            ctx,
-            arrayOf(file.absolutePath),
-            arrayOf("video/mp4"),
-            null
-        )
-
-        return itemUri.toString()
-    }
-
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         onDetachedFromActivity()
         DanceComparisonApi.setUp(binding.binaryMessenger,null)
         comparisonApi?.dispose();comparisonApi=null
         channel.setMethodCallHandler(null)
         DanceNativeApi.setUp(binding.binaryMessenger, null)
+        gallerySaveWorker?.close()
+        gallerySaveWorker = null
         thumbnailExecutor?.shutdownNow()
         thumbnailExecutor = null
         mainHandler = null

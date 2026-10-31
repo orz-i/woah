@@ -22,8 +22,8 @@
 | GOV-02 | G1 | PR8 已合并，PR head 远端三检查成功；merge 证据按 G1 收尾记录。CI owner | 每个 PR 保守双平台、format/analyze/lint、always 汇总；失败／取消／意外 skipped 拒绝。无需为了完成本项再增加路径分类器 |
 | DART-01 | G1 | PR7 已交付，真实资源回收边界待验收。Flutter owner | retry/cancel 使用当前 operation/job；持久原生调用失败或 start RPC 永不返回 ID 的限制保留，不虚称所有设备零孤儿 |
 | DART-02 | G1 | PR7 已交付，真机与持续失败边界待验收。Flutter owner | dispose 后不更新失效 state，晚 job 接管／取消回归已过；原生 drain 完成不等同取消请求已接收 |
-| NATIVE-01 | G2-A | 软件切片已实现，待最终 PR／merge 检查与 Android 真机验收。Android owner／Flutter owner | [交接证据](evidence/g2-a-native-resource-handoff-2026-10-31.md)：15 项确定性回归、进程级 owner／drain、Bitmap 锁内复制；没有以 JVM 通过代替真机；不是重写全部 GPU 模型 |
-| NATIVE-02 | G2-B | 未实施。Android owner | worker I/O，失败／取消回滚本次新建 MediaStore 条目，源文件不变；不声称已发生过 ANR |
+| NATIVE-01 | G2-A | [PR10](https://github.com/orz-i/woah/pull/10) 软件切片已合并，PR／merge CI 成功；Android 真机待验收。Android owner／Flutter owner | [交接证据](evidence/g2-a-native-resource-handoff-2026-10-31.md)：15 项确定性回归、进程级 owner／drain、Bitmap 锁内复制；没有以 JVM 通过代替真机；不是重写全部 GPU 模型 |
+| NATIVE-02 | G2-B | 软件切片已实现，待最终 PR／merge 检查及实际 provider 验收。Android owner | [相册事务证据](evidence/g2-b-gallery-save-2026-10-31.md)：25 JVM 回归，worker I/O、单次回包、本次 URI 回滚、源文件不变；真实 provider／强杀／回滚拒绝边界保留，不声称已发生过 ANR |
 | PRIV-01 | G2-C | 未实施；策略缺口需明确。隐私／两平台 owner | 自建可再生缓存生命周期、在用租约、用户删除与重启清理；范围／TTL／配额按已批准策略，不整体清空所有 cache |
 | PRIV-03 | G2-D | 未实施。Flutter／隐私 owner | 合成敏感 path／URI／文件名在 release 与诊断包不可检出，保留可诊断错误类别 |
 | DEP-01 | G3，至多两个切片 | Flutter 版本已对齐，其余未完成。CI owner | 仅移动与仍用模型／Python 工具；锁真实解析链、保留兼容版本，不建设桌面安装路径或大升级 |
