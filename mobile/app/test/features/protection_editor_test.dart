@@ -2175,7 +2175,129 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ExportScreen), findsNothing);
       expect(find.byType(ProtectionEditorScreen), findsOneWidget);
+      expect(repository.releasedCaches, isEmpty);
       expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+      expect(repository.releasedCaches, ['unified-cache-1']);
+    },
+  );
+
+  testWidgets(
+    'session survives export result back and releases only on final home',
+    (tester) async {
+      final repository = _FakeProtectionRepository();
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+      ExportArgs? borrowed;
+      final router = GoRouter(
+        initialLocation: '/protect',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => const Scaffold(body: Text('home')),
+          ),
+          GoRoute(
+            path: '/protect',
+            builder: (_, _) => ProtectionEditorScreen(project: project),
+          ),
+          GoRoute(
+            path: '/export',
+            builder: (_, state) {
+              borrowed = state.extra! as ExportArgs;
+              return const Scaffold(body: Text('export fixture'));
+            },
+          ),
+          GoRoute(
+            path: '/result',
+            builder: (_, _) => const Scaffold(body: Text('result fixture')),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('protection-editor-export-action')),
+      );
+      await tester.pumpAndSettle();
+      expect(borrowed!.session!.isClosed, isFalse);
+      expect(repository.releasedCaches, isEmpty);
+      router.pushReplacement('/result');
+      await tester.pumpAndSettle();
+      expect(repository.releasedCaches, isEmpty);
+      router.pop();
+      await tester.pumpAndSettle();
+      expect(find.byType(ProtectionEditorScreen), findsOneWidget);
+      expect(repository.releasedCaches, isEmpty);
+      await tester.tap(
+        find.byKey(const ValueKey('protection-editor-export-action')),
+      );
+      await tester.pumpAndSettle();
+      router.pushReplacement('/result');
+      await tester.pumpAndSettle();
+      router.go('/');
+      await tester.pumpAndSettle();
+      expect(borrowed!.session!.isClosed, isTrue);
+      expect(repository.releasedCaches, ['unified-cache-1']);
+    },
+  );
+
+  testWidgets(
+    'replacing editor releases only the old explicitly owned session',
+    (tester) async {
+      final repository = _FakeProtectionRepository();
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+      final router = GoRouter(
+        initialLocation: '/protect',
+        routes: [
+          GoRoute(path: '/', builder: (_, _) => const Scaffold()),
+          GoRoute(
+            path: '/protect',
+            builder: (_, state) {
+              final current = state.extra as DanceProject? ?? project;
+              return ProtectionEditorScreen(
+                key: ValueKey(current.id),
+                project: current,
+              );
+            },
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+      router.pushReplacement(
+        '/protect',
+        extra: project.copyWith(
+          id: 'replacement',
+          sourceUri: 'file:///replacement.mp4',
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(repository.releasedCaches, ['unified-cache-1']);
+      expect(
+        container.read(personSelectionControllerProvider).analysisCacheId,
+        'unified-cache-2',
+      );
+      router.go('/');
+      await tester.pumpAndSettle();
+      expect(repository.releasedCaches, ['unified-cache-1', 'unified-cache-2']);
     },
   );
 
@@ -2321,6 +2443,12 @@ class _CancelRoundTripRepository extends _FakeProtectionRepository {
 
 class _FakeProtectionRepository implements NativeProcessingRepository {
   List<int> personIds = const [0, 1];
+  final releasedCaches = <String>[];
+  @override
+  Future<void> releaseProject(String projectId) async {
+    releasedCaches.add(projectId);
+  }
+
   bool failPreview = false;
   Completer<void>? analyzeGate;
   int analyzeRequestCount = 0;
@@ -2338,11 +2466,11 @@ class _FakeProtectionRepository implements NativeProcessingRepository {
     String modelProfile = 'balanced',
     int trimStartMs = 0,
   }) async {
-    analyzeRequestCount += 1;
+    final requestNumber = ++analyzeRequestCount;
     lastAnalyzeTrimStartMs = trimStartMs;
     if (analyzeGate != null) await analyzeGate!.future;
     return AnalyzeResultDto(
-      analysisCacheId: 'unified-cache',
+      analysisCacheId: 'unified-cache-$requestNumber',
       videoInfo: VideoInfoDto(
         codedWidth: 720,
         codedHeight: 1280,

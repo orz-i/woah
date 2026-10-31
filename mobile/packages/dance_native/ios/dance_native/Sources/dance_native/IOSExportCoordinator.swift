@@ -5,6 +5,7 @@ final class IOSExportCoordinator {
 
   private let pipeline: IOSExportPipeline
   private let observer: StatusObserver
+  private let registry: IOSRegenerableCacheRegistry
   private let lock = NSLock()
   private var statuses: [String: JobStatusDto] = [:]
   private var cancellations: [String: IOSExportCancellationFlag] = [:]
@@ -14,6 +15,7 @@ final class IOSExportCoordinator {
     analysisCache: IOSAnalysisCache,
     inferenceProvider: IOSExportPipeline.InferenceProvider? = nil,
     faceLocatorProvider: IOSExportPipeline.FaceLocatorProvider? = nil,
+    registry: IOSRegenerableCacheRegistry = .shared,
     observer: @escaping StatusObserver
   ) {
     pipeline = IOSExportPipeline(
@@ -22,6 +24,7 @@ final class IOSExportCoordinator {
       faceLocatorProvider: faceLocatorProvider
     )
     self.observer = observer
+    self.registry = registry
   }
 
   func start(request: ExportRequestDto) throws -> String {
@@ -36,6 +39,7 @@ final class IOSExportCoordinator {
       )
     }
 
+    let cacheLease = request.analysisCacheId.isEmpty ? nil : try registry.acquire(cacheId: request.analysisCacheId)
     let jobId = "job_\(Int64(Date().timeIntervalSince1970 * 1000))_\(UUID().uuidString.prefix(8))"
     let cancellation = IOSExportCancellationFlag()
     let initial = JobStatusDto(
@@ -60,7 +64,8 @@ final class IOSExportCoordinator {
     // this launch gate, an immediate validation failure can clean up before the
     // task is inserted and leave a stale task entry that blocks future exports.
     let launchGate = DispatchSemaphore(value: 0)
-    let task = Task.detached(priority: .userInitiated) { [weak self] in
+    let task = Task.detached(priority: .userInitiated) { [weak self, cacheLease] in
+      defer { cacheLease?.close() }
       launchGate.wait()
       guard let self else { return }
       do {

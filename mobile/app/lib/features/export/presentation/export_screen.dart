@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/system_ui.dart';
+import '../../../core/cache/analysis_session.dart';
 import '../../../app/theme.dart';
 import '../../../repositories/native_processing_repository.dart';
 import '../domain/export_state.dart';
@@ -19,17 +20,24 @@ class ExportArgs {
   final DanceProject project;
   final String? initialPreviewPath;
 
-  const ExportArgs({required this.project, this.initialPreviewPath});
+  final AnalysisSession? session;
+  const ExportArgs({
+    required this.project,
+    this.initialPreviewPath,
+    this.session,
+  });
 }
 
 class ExportScreen extends ConsumerStatefulWidget {
   final DanceProject project;
   final String? initialPreviewPath;
+  final AnalysisSession? session;
 
   const ExportScreen({
     super.key,
     required this.project,
     this.initialPreviewPath,
+    this.session,
   });
 
   @override
@@ -54,6 +62,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   }
 
   void _startExportJob() {
+    if (!mounted || (widget.session?.isClosed ?? false)) return;
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     ref
         .read(exportControllerProvider.notifier)

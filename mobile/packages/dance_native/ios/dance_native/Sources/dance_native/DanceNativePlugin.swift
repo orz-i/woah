@@ -2,14 +2,18 @@ import Flutter
 import UIKit
 
 public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
-  private let mediaBridge = IOSMediaLibraryBridge()
+  private let cacheRegistry = IOSRegenerableCacheRegistry.shared
+  private let cacheOwner = IOSRegenerableCacheRegistry.Owner()
+  private lazy var mediaBridge = IOSMediaLibraryBridge(registry: cacheRegistry, owner: cacheOwner)
   private var comparison: IOSComparisonNativeApi?
   private let yoloRunner = IOSYoloRunner()
   private let analysisCache = IOSAnalysisCache()
   private var processingEvents: DanceProcessingEvents?
   private lazy var analyzePipeline = IOSAnalyzePipeline(
     cache: analysisCache,
-    runner: yoloRunner
+    runner: yoloRunner,
+    registry: cacheRegistry,
+    owner: cacheOwner
   )
   private lazy var previewPipeline = IOSPreviewPipeline(
     analysisCache: analysisCache,
@@ -25,6 +29,11 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
   public static func register(with registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(name: "dance_native", binaryMessenger: registrar.messenger())
     let instance = DanceNativePlugin()
+    let preview = instance.previewPipeline
+    instance.cacheRegistry.setOwnerCleanup(instance.cacheOwner) { [weak preview] id in
+      preview?.clearForAnalysis(cacheId: id)
+    }
+    instance.cacheRegistry.maintainIfNeeded()
     registrar.addMethodCallDelegate(instance, channel: channel)
     let buildInfoChannel = FlutterMethodChannel(
       name: "art.gaoge.dance/build_info",
@@ -48,6 +57,9 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
   }
 
   public func detachFromEngine(for registrar: FlutterPluginRegistrar) {
+    cacheRegistry.detachOwner(cacheOwner)
+    processingEvents = nil
+    DanceNativeApiSetup.setUp(binaryMessenger: registrar.messenger(), api: nil)
     MainActor.assumeIsolated {
       DanceComparisonApiSetup.setUp(binaryMessenger: registrar.messenger(), api: nil)
       comparison?.detach()
@@ -321,6 +333,16 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
           await MainActor.run { result(flutterError) }
         }
       }
+    case "runIOSCacheLifecycleSmoke":
+      Task {
+        do {
+          let report = try await Task.detached(priority: .utility) { try IOSCacheLifecycleSmoke.run() }.value
+          await MainActor.run { result(report) }
+        } catch {
+          let flutterError = Self.flutterError(from: error, fallbackCode: "IOS_CACHE_LIFECYCLE_SMOKE_FAILED")
+          await MainActor.run { result(flutterError) }
+        }
+      }
     default:
       result(FlutterMethodNotImplemented)
     }
@@ -372,8 +394,7 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
 
   func releaseProject(projectId: String) async throws {
     guard !projectId.isEmpty else { return }
-    previewPipeline.clearForAnalysis(cacheId: projectId)
-    try analysisCache.clearAnalysisCache(cacheId: projectId)
+    cacheRegistry.requestRelease(cacheId: projectId, owner: cacheOwner)
   }
 
   private func emitExportStatus(_ status: JobStatusDto) {

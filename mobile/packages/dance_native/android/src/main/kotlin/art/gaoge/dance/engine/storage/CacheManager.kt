@@ -9,10 +9,11 @@ import java.io.FileOutputStream
 class CacheManager(private val context: Context) {
 
     fun getAnalysisDir(cacheId: String): File {
-        val dir = File(context.cacheDir, "analysis/$cacheId")
-        if (!dir.exists()) {
-            dir.mkdirs()
-        }
+        require(Regex("[A-Za-z0-9_-]+").matches(cacheId)) { "INVALID_CACHE_ID" }
+        val root = context.cacheDir.canonicalFile
+        val parent = File(root, "analysis")
+        val dir = File(parent, cacheId)
+        require(parent.canonicalFile == parent && dir.canonicalFile == dir) { "INVALID_CACHE_PATH" }
         return dir
     }
 
@@ -22,8 +23,8 @@ class CacheManager(private val context: Context) {
         frameBitmap: Bitmap,
         bbox: FloatRect
     ): String {
-        val dir = getAnalysisDir(cacheId)
-        val file = File(dir, "person_$personId.webp")
+        require(personId >= 0) { "INVALID_PERSON_ID" }
+        val file = cacheFile(cacheId, "person_$personId.webp", create = true)
 
         val w = frameBitmap.width
         val h = frameBitmap.height
@@ -60,20 +61,16 @@ class CacheManager(private val context: Context) {
     }
 
     fun saveVideoUri(cacheId: String, videoUri: String) {
-        val dir = getAnalysisDir(cacheId)
-        val file = File(dir, "source_uri.txt")
-        file.writeText(videoUri)
+        cacheFile(cacheId, "source_uri.txt", create = true).writeText(videoUri)
     }
 
     fun getVideoUri(cacheId: String): String? {
-        val dir = getAnalysisDir(cacheId)
-        val file = File(dir, "source_uri.txt")
+        val file = cacheFile(cacheId, "source_uri.txt")
         return if (file.exists()) file.readText().trim() else null
     }
 
     fun saveAnalysisMetadata(cacheId: String, metadata: AnalysisMetadata) {
-        val dir = getAnalysisDir(cacheId)
-        val file = File(dir, "analysis.json")
+        val file = cacheFile(cacheId, "analysis.json", create = true)
         val root = org.json.JSONObject().apply {
             put("schemaVersion", metadata.schemaVersion)
             put("sourceUri", metadata.sourceUri)
@@ -98,8 +95,7 @@ class CacheManager(private val context: Context) {
     }
 
     fun getAnalysisMetadata(cacheId: String): AnalysisMetadata? {
-        val dir = getAnalysisDir(cacheId)
-        val file = File(dir, "analysis.json")
+        val file = cacheFile(cacheId, "analysis.json")
         if (!file.exists()) return null
         return try {
             val root = org.json.JSONObject(file.readText())
@@ -127,11 +123,22 @@ class CacheManager(private val context: Context) {
         }
     }
 
+    private fun cacheFile(cacheId: String, name: String, create: Boolean = false): File {
+        val dir = getAnalysisDir(cacheId)
+        if (create) check(dir.isDirectory || dir.mkdirs()) { "CACHE_DIRECTORY_FAILED" }
+        val file = File(dir, name)
+        require(file.canonicalFile == file) { "INVALID_CACHE_PATH" }
+        return file
+    }
+
+    // Fixture-only cleanup; production release goes through the process-wide lease registry.
     fun clearAnalysisCache(cacheId: String) {
-        val dir = File(context.cacheDir, "analysis/$cacheId")
-        if (dir.exists()) {
-            dir.deleteRecursively()
-        }
+        val dir = getAnalysisDir(cacheId)
+        val files = dir.listFiles() ?: return
+        val names = Regex("(?:source_uri\\.txt|analysis\\.json|person_[0-9]+\\.webp)")
+        if (files.any { !names.matches(it.name) || !it.isFile || it.canonicalFile != it }) return
+        files.forEach { it.delete() }
+        if (dir.list()?.isEmpty() == true) dir.delete()
     }
 }
 

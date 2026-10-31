@@ -153,9 +153,14 @@ def verify_runtime_wiring_and_gates() -> None:
             'code: "PLATFORM_NOT_SUPPORTED"' in export_block,
             "Phase 3 must keep startExport gated until Phase 4",
         )
+    registry = text("IOSRegenerableCacheRegistry.swift")
     check(
-        "previewPipeline.clearForAnalysis(cacheId: projectId)" in release_block,
-        "releaseProject must clear in-memory/on-disk preview state",
+        "cacheRegistry.requestRelease(cacheId: projectId, owner: cacheOwner)" in release_block
+        and "cacheRegistry.setOwnerCleanup(instance.cacheOwner)" in plugin
+        and "preview?.clearForAnalysis(cacheId: id)" in plugin
+        and "$0.released && $0.leases == 0" in registry
+        and "listeners.forEach { $0(id) }" in registry,
+        "releaseProject must defer in-memory/on-disk preview cleanup until actual cache leases drain",
     )
 
 

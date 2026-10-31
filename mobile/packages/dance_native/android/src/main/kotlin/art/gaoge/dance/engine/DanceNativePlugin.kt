@@ -62,6 +62,7 @@ class DanceNativePlugin :
     private var apiImpl: DanceNativeApiImpl? = null
     private var mainHandler: Handler? = null
     private var thumbnailExecutor: ExecutorService? = null
+    private var trimCacheOwner: Pair<art.gaoge.dance.engine.storage.RegenerableCacheRegistry, art.gaoge.dance.engine.storage.RegenerableCacheRegistry.Owner>? = null
     private var gallerySaveWorker: art.gaoge.dance.engine.media.GallerySaveWorker? = null
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
@@ -83,7 +84,9 @@ class DanceNativePlugin :
                 ).save({ FileInputStream(File(sourcePath)) }, control)
             }
         )
-        thumbnailExecutor?.shutdownNow()
+        thumbnailExecutor?.shutdown()
+        trimCacheOwner?.let { (registry, owner) -> registry.releaseOwner(owner) }
+        trimCacheOwner = ExportCoordinator.getInstance(appCtx).cacheRegistry to art.gaoge.dance.engine.storage.RegenerableCacheRegistry.Owner()
         thumbnailExecutor = Executors.newSingleThreadExecutor { runnable ->
             Thread(runnable, "DanceTrimThumbnail").apply { isDaemon = true }
         }
@@ -103,7 +106,8 @@ class DanceNativePlugin :
     private fun createTrimThumbnails(
         ctx: Context,
         videoUri: String,
-        timestampsMs: List<Number>
+        timestampsMs: List<Number>,
+        batchId: String
     ): List<String> {
         val retriever = MediaMetadataRetriever()
         try {
@@ -113,8 +117,9 @@ class DanceNativePlugin :
                 retriever.setDataSource(videoUri.removePrefix("file://"))
             }
 
-            val dir = File(ctx.cacheDir, "trim_thumbnails").apply { mkdirs() }
-            val token = System.currentTimeMillis()
+            val dir = File(ctx.cacheDir.canonicalFile, "trim_thumbnails")
+            check(dir.canonicalFile == dir) { "INVALID_CACHE_PATH" }
+            check(dir.isDirectory || dir.mkdirs()) { "CACHE_DIRECTORY_FAILED" }
             return timestampsMs.mapIndexedNotNull { index, value ->
                 if (Thread.currentThread().isInterrupted) return@mapIndexedNotNull null
 
@@ -122,7 +127,8 @@ class DanceNativePlugin :
                 val bitmap = getTrimThumbnailFrame(retriever, timestampUs)
                     ?: return@mapIndexedNotNull null
                 try {
-                    val out = File(dir, "trim_${token}_${index}.jpg")
+                    val out = File(dir, "${batchId}_${index}.jpg")
+                    check(out.canonicalFile == out) { "INVALID_CACHE_PATH" }
                     val written = out.outputStream().use { stream ->
                         bitmap.compress(Bitmap.CompressFormat.JPEG, 72, stream)
                     }
@@ -297,24 +303,34 @@ class DanceNativePlugin :
 
                 val executor = thumbnailExecutor
                 val replyHandler = mainHandler
-                if (executor == null || replyHandler == null) {
+                val cacheOwner = trimCacheOwner
+                if (executor == null || replyHandler == null || cacheOwner == null) {
                     result.error("PLUGIN_DETACHED", "Thumbnail worker is unavailable", null)
                     return
                 }
+                val (registry, owner) = cacheOwner
+                val lease = registry.beginTrim(owner)
                 try {
                     executor.execute {
+                        var delivered = false
                         try {
+                            registry.acquire(lease.id).close()
                             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
-                            val paths = createTrimThumbnails(ctx, videoUri, timestampsMs)
-                            replyHandler.post { result.success(paths) }
+                            val paths = createTrimThumbnails(ctx, videoUri, timestampsMs, lease.id)
+                            delivered = replyHandler.post { result.success(paths) }
                         } catch (e: Exception) {
                             android.util.Log.e("DanceNativePlugin", "Failed to create trim thumbnails: ${e.message}", e)
                             replyHandler.post {
                                 result.error("THUMBNAIL_FAILED", e.message ?: "Failed to create trim thumbnails", null)
                             }
+                        } finally {
+                            if (!delivered) registry.releaseProject(owner, lease.id)
+                            lease.close()
                         }
                     }
                 } catch (e: RejectedExecutionException) {
+                    registry.releaseProject(owner, lease.id)
+                    lease.close()
                     result.error("PLUGIN_DETACHED", "Thumbnail worker is shutting down", null)
                 }
             }
@@ -343,7 +359,9 @@ class DanceNativePlugin :
         DanceNativeApi.setUp(binding.binaryMessenger, null)
         gallerySaveWorker?.close()
         gallerySaveWorker = null
-        thumbnailExecutor?.shutdownNow()
+        trimCacheOwner?.let { (registry, owner) -> registry.releaseOwner(owner) }
+        trimCacheOwner = null
+        thumbnailExecutor?.shutdown()
         thumbnailExecutor = null
         mainHandler = null
         try {

@@ -4,20 +4,25 @@ import Foundation
 final class IOSAnalyzePipeline {
   private let cache: IOSAnalysisCache
   private let runner: IOSYoloRunner
+  private let registry: IOSRegenerableCacheRegistry
+  private let owner: IOSRegenerableCacheRegistry.Owner
 
-  init(cache: IOSAnalysisCache, runner: IOSYoloRunner) {
+  init(cache: IOSAnalysisCache, runner: IOSYoloRunner,
+       registry: IOSRegenerableCacheRegistry = .shared, owner: IOSRegenerableCacheRegistry.Owner = .init()) {
     self.cache = cache
     self.runner = runner
+    self.registry = registry
+    self.owner = owner
   }
 
   func analyze(request: AnalyzeRequestDto) async throws -> AnalyzeResultDto {
     let videoInfo = try await IOSVideoProbe.probe(uri: request.videoUri)
     let cacheId = Self.makeCacheId()
+    let lease = try registry.beginAnalysis(owner: owner, cacheId: cacheId)
     var committed = false
     defer {
-      if !committed {
-        try? cache.clearAnalysisCache(cacheId: cacheId)
-      }
+      if !committed { registry.requestRelease(cacheId: cacheId, owner: owner) }
+      lease.close()
     }
 
     let sourceURL = IOSVideoProbe.assetURL(from: request.videoUri)

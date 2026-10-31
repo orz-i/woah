@@ -243,7 +243,9 @@ def verify_real_video_gate() -> None:
         "outputInfo.minFrameDurationSeconds >= 0.015",
         "readOutputCenterPixel",
         "missingObservationCount",
-        "coordinator.cancel(jobId: cancelJobId)",
+        "cancelCoordinator.cancel(jobId: cancelJobId)",
+        "CACHE_LEASE_RELEASED_EARLY",
+        "CACHE_LEASE_NOT_RELEASED",
         "cancel_partial_clean",
     ):
         check(token in smoke, f"Phase 4 real-video smoke missing: {token}")

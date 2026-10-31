@@ -23,8 +23,8 @@
 | DART-01 | G1 | PR7 已交付，真实资源回收边界待验收。Flutter owner | retry/cancel 使用当前 operation/job；持久原生调用失败或 start RPC 永不返回 ID 的限制保留，不虚称所有设备零孤儿 |
 | DART-02 | G1 | PR7 已交付，真机与持续失败边界待验收。Flutter owner | dispose 后不更新失效 state，晚 job 接管／取消回归已过；原生 drain 完成不等同取消请求已接收 |
 | NATIVE-01 | G2-A | [PR10](https://github.com/orz-i/woah/pull/10) 软件切片已合并，PR／merge CI 成功；Android 真机待验收。Android owner／Flutter owner | [交接证据](evidence/g2-a-native-resource-handoff-2026-10-31.md)：15 项确定性回归、进程级 owner／drain、Bitmap 锁内复制；没有以 JVM 通过代替真机；不是重写全部 GPU 模型 |
-| NATIVE-02 | G2-B | 软件切片已实现，待最终 PR／merge 检查及实际 provider 验收。Android owner | [相册事务证据](evidence/g2-b-gallery-save-2026-10-31.md)：25 JVM 回归，worker I/O、单次回包、本次 URI 回滚、源文件不变；真实 provider／强杀／回滚拒绝边界保留，不声称已发生过 ANR |
-| PRIV-01 | G2-C | 未实施；策略缺口需明确。隐私／两平台 owner | 自建可再生缓存生命周期、在用租约、用户删除与重启清理；范围／TTL／配额按已批准策略，不整体清空所有 cache |
+| NATIVE-02 | G2-B | [PR11](https://github.com/orz-i/woah/pull/11) 已合并，head／merge CI 全绿；实际 provider 验收待设备。Android owner | [相册事务证据](evidence/g2-b-gallery-save-2026-10-31.md)：25 JVM 回归，worker I/O、单次回包、本次 URI 回滚、源文件不变；真实 provider／强杀／回滚拒绝边界保留，不声称已发生过 ANR |
+| PRIV-01 | G2-C | 软件已实施，独立审查／精确 CI 与矩阵验收按 [G2-C 证据](evidence/g2-c-regenerable-cache-2026-10-31.md) 记录。隐私／两平台 owner | 明确 session owner、晚回包隔离、真实 analysis／preview／export lease；只清可再生白名单，24h／256MiB 为 inactive 内部软策略；最终导出／源媒体等排除，不清整个 cache |
 | PRIV-03 | G2-D | 未实施。Flutter／隐私 owner | 合成敏感 path／URI／文件名在 release 与诊断包不可检出，保留可诊断错误类别 |
 | DEP-01 | G3，至多两个切片 | Flutter 版本已对齐，其余未完成。CI owner | 仅移动与仍用模型／Python 工具；锁真实解析链、保留兼容版本，不建设桌面安装路径或大升级 |
 | GEN-01 | G3 | 未实施；依赖生成工具固定。Flutter／CI owner | 两 schema 六产物统一再生成，两次无漂移，故意缺产物失败；Pigeon format 排除不是生成一致性证据 |

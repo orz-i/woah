@@ -12,6 +12,8 @@ class ExportCoordinator private constructor(private val appContext: Context) {
 
     val jobStore = ExportJobStore(appContext)
     val resourceGate = PreviewExportResourceGate()
+    val cacheRegistry = art.gaoge.dance.engine.storage.RegenerableCacheRegistry(appContext.cacheDir)
+    private val cacheLeases = ConcurrentHashMap<String, art.gaoge.dance.engine.storage.RegenerableCacheRegistry.Lease>()
     private val activeCancellations = ConcurrentHashMap<String, AtomicBoolean>()
     private val activeLivePreviews = ConcurrentHashMap<String, AtomicBoolean>()
     private val cachedRequests = ConcurrentHashMap<String, ExportRequestDto>()
@@ -20,6 +22,7 @@ class ExportCoordinator private constructor(private val appContext: Context) {
     init {
         // Startup reconciliation: any jobs left in active state without a running service become interrupted
         jobStore.markActiveJobsAsInterrupted()
+        cacheRegistry.pruneInactive()
     }
 
     fun setEventEmitter(emitter: DanceProcessingEvents?) {
@@ -27,12 +30,19 @@ class ExportCoordinator private constructor(private val appContext: Context) {
     }
 
     fun registerJobRequest(jobId: String, request: ExportRequestDto): ExportJobRecord {
-        val record = ExportJobRecord.fromRequest(jobId, request, initialState = "preparing")
-        jobStore.saveJob(record)
-        cachedRequests[jobId] = request
-        activeCancellations[jobId] = AtomicBoolean(false)
-        activeLivePreviews[jobId] = AtomicBoolean(request.enableLivePreview)
-        return record
+        val lease = request.analysisCacheId.takeIf { it.isNotBlank() }?.let(cacheRegistry::acquire)
+        try {
+            val record = ExportJobRecord.fromRequest(jobId, request, initialState = "preparing")
+            jobStore.saveJob(record)
+            if (lease != null) check(cacheLeases.putIfAbsent(jobId, lease) == null) { "Duplicate export job" }
+            cachedRequests[jobId] = request
+            activeCancellations[jobId] = AtomicBoolean(false)
+            activeLivePreviews[jobId] = AtomicBoolean(request.enableLivePreview)
+            return record
+        } catch (error: Throwable) {
+            lease?.close()
+            throw error
+        }
     }
 
     fun getRequest(jobId: String): ExportRequestDto? {
@@ -101,6 +111,7 @@ class ExportCoordinator private constructor(private val appContext: Context) {
         activeCancellations.remove(jobId)
         activeLivePreviews.remove(jobId)
         cachedRequests.remove(jobId)
+        cacheLeases.remove(jobId)?.close()
         resourceGate.finishExport(jobId)
     }
 

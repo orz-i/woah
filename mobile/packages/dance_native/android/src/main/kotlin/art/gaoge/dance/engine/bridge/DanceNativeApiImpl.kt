@@ -17,6 +17,7 @@ class DanceNativeApiImpl(
 ) : DanceNativeApi {
 
     private val coordinator = ExportCoordinator.getInstance(context)
+    private val cacheOwner = art.gaoge.dance.engine.storage.RegenerableCacheRegistry.Owner()
 
     init {
         coordinator.setEventEmitter(eventEmitter)
@@ -79,6 +80,11 @@ class DanceNativeApiImpl(
         segmenter.close()
     }
 
+    init {
+        val weakPreview = java.lang.ref.WeakReference(previewPipeline)
+        coordinator.cacheRegistry.setOwnerCleanup(cacheOwner) { id -> weakPreview.get()?.clearForAnalysis(id) }
+    }
+
     override suspend fun analyzeVideo(request: AnalyzeRequestDto): AnalyzeResultDto = withContext(Dispatchers.Default) {
         if (request.videoUri.isBlank()) {
             throw DanceNativeException(
@@ -86,8 +92,10 @@ class DanceNativeApiImpl(
                 "videoUri cannot be empty"
             )
         }
+        val lease = coordinator.cacheRegistry.beginAnalysis(cacheOwner)
+        var committed = false
         try {
-            analyzePipeline.analyze(request)
+            analyzePipeline.analyze(request, lease.id).also { committed = true }
         } catch (e: DanceNativeException) {
             throw e
         } catch (e: Throwable) {
@@ -97,6 +105,9 @@ class DanceNativeApiImpl(
                 "Failed to analyze video ${request.videoUri}: ${e.message}",
                 e
             )
+        } finally {
+            if (!committed) coordinator.cacheRegistry.releaseProject(cacheOwner, lease.id)
+            lease.close()
         }
     }
 
@@ -107,6 +118,7 @@ class DanceNativeApiImpl(
                 "analysisCacheId cannot be empty"
             )
         }
+        val cacheLease = coordinator.cacheRegistry.acquire(request.analysisCacheId)
         try {
             coordinator.resourceGate.withPreview(previewOwner) {
                 previewPipeline.renderPreview(request)
@@ -120,6 +132,8 @@ class DanceNativeApiImpl(
                 "Failed to render preview frame: ${e.message}",
                 e
             )
+        } finally {
+            cacheLease.close()
         }
     }
 
@@ -193,12 +207,7 @@ class DanceNativeApiImpl(
     }
 
     override suspend fun releaseProject(projectId: String) = withContext(Dispatchers.IO) {
-        if (projectId.isNotBlank()) {
-            coordinator.resourceGate.withPreviewResources {
-                cacheManager.clearAnalysisCache(projectId)
-                previewPipeline.clearForAnalysis(projectId)
-            }
-        }
+        if (projectId.isNotBlank()) coordinator.cacheRegistry.releaseProject(cacheOwner, projectId)
     }
 
     fun close() {
@@ -206,6 +215,7 @@ class DanceNativeApiImpl(
         // waiting for an in-flight preview's preprocessing / inference / output read.
         if (!previewOwner.closing.compareAndSet(false, true)) return
         coordinator.setEventEmitter(null)
+        coordinator.cacheRegistry.releaseOwner(cacheOwner)
         cleanupScope.launch {
             try {
                 coordinator.resourceGate.closePreview(previewOwner)
