@@ -77,6 +77,9 @@ jobs:
       - name: Verify fresh locked Dart resolution
         run: python tools/ci/check_dependency_locks.py --fresh-dart
 
+      - name: Verify Pigeon generation and failure fixtures
+        run: python tools/ci/pigeon_codegen.py --self-test
+
       - name: Check handwritten Dart formatting
         run: python tools/ci/check_dart_format.py
 

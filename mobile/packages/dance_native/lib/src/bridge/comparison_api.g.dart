@@ -10,9 +10,9 @@ import 'package:flutter/services.dart';
 import 'package:meta/meta.dart' show immutable, protected, visibleForTesting;
 
 Object? _extractReplyValueOrThrow(
-  List<Object?>? replyList,
-  String channelName, {
-  required bool isNullValid,
+    List<Object?>? replyList,
+    String channelName, {
+    required bool isNullValid,
 }) {
   if (replyList == null) {
     throw PlatformException(
@@ -46,9 +46,8 @@ bool _deepEquals(Object? a, Object? b) {
   }
   if (a is List && b is List) {
     return a.length == b.length &&
-        a.indexed.every(
-          ((int, dynamic) item) => _deepEquals(item.$2, b[item.$1]),
-        );
+        a.indexed
+            .every(((int, dynamic) item) => _deepEquals(item.$2, b[item.$1]));
   }
   if (a is Map && b is Map) {
     if (a.length != b.length) {
@@ -97,7 +96,14 @@ int _deepHash(Object? value) {
   return value.hashCode;
 }
 
-enum ComparisonCommand { play, pause, seek, setOffset, setSpeed }
+
+enum ComparisonCommand {
+  play,
+  pause,
+  seek,
+  setOffset,
+  setSpeed;
+}
 
 class ComparisonSourceDto {
   ComparisonSourceDto({
@@ -116,12 +122,16 @@ class ComparisonSourceDto {
   bool hasAudio;
 
   List<Object?> _toList() {
-    return <Object?>[uri, name, durationUs, hasAudio];
+    return <Object?>[
+      uri,
+      name,
+      durationUs,
+      hasAudio,
+    ];
   }
 
   Object encode() {
-    return _toList();
-  }
+    return _toList();  }
 
   static ComparisonSourceDto decode(Object result) {
     result as List<Object?>;
@@ -142,10 +152,7 @@ class ComparisonSourceDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(uri, other.uri) &&
-        _deepEquals(name, other.name) &&
-        _deepEquals(durationUs, other.durationUs) &&
-        _deepEquals(hasAudio, other.hasAudio);
+    return _deepEquals(uri, other.uri) && _deepEquals(name, other.name) && _deepEquals(durationUs, other.durationUs) && _deepEquals(hasAudio, other.hasAudio);
   }
 
   @override
@@ -220,8 +227,7 @@ class ComparisonPlaybackDto {
   }
 
   Object encode() {
-    return _toList();
-  }
+    return _toList();  }
 
   static ComparisonPlaybackDto decode(Object result) {
     result as List<Object?>;
@@ -251,19 +257,7 @@ class ComparisonPlaybackDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(textureId, other.textureId) &&
-        _deepEquals(phase, other.phase) &&
-        _deepEquals(positionUs, other.positionUs) &&
-        _deepEquals(durationUs, other.durationUs) &&
-        _deepEquals(teacherStartUs, other.teacherStartUs) &&
-        _deepEquals(offsetUs, other.offsetUs) &&
-        _deepEquals(speed, other.speed) &&
-        _deepEquals(error, other.error) &&
-        _deepEquals(teacherFrameUs, other.teacherFrameUs) &&
-        _deepEquals(learnerFrameUs, other.learnerFrameUs) &&
-        _deepEquals(teacherAspect, other.teacherAspect) &&
-        _deepEquals(learnerAspect, other.learnerAspect) &&
-        _deepEquals(timeScale, other.timeScale);
+    return _deepEquals(textureId, other.textureId) && _deepEquals(phase, other.phase) && _deepEquals(positionUs, other.positionUs) && _deepEquals(durationUs, other.durationUs) && _deepEquals(teacherStartUs, other.teacherStartUs) && _deepEquals(offsetUs, other.offsetUs) && _deepEquals(speed, other.speed) && _deepEquals(error, other.error) && _deepEquals(teacherFrameUs, other.teacherFrameUs) && _deepEquals(learnerFrameUs, other.learnerFrameUs) && _deepEquals(teacherAspect, other.teacherAspect) && _deepEquals(learnerAspect, other.learnerAspect) && _deepEquals(timeScale, other.timeScale);
   }
 
   @override
@@ -290,12 +284,15 @@ class ComparisonPictureDto {
   double panY;
 
   List<Object?> _toList() {
-    return <Object?>[zoom, panX, panY];
+    return <Object?>[
+      zoom,
+      panX,
+      panY,
+    ];
   }
 
   Object encode() {
-    return _toList();
-  }
+    return _toList();  }
 
   static ComparisonPictureDto decode(Object result) {
     result as List<Object?>;
@@ -315,9 +312,7 @@ class ComparisonPictureDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(zoom, other.zoom) &&
-        _deepEquals(panX, other.panX) &&
-        _deepEquals(panY, other.panY);
+    return _deepEquals(zoom, other.zoom) && _deepEquals(panX, other.panX) && _deepEquals(panY, other.panY);
   }
 
   @override
@@ -368,8 +363,7 @@ class ComparisonPracticeDto {
   }
 
   Object encode() {
-    return _toList();
-  }
+    return _toList();  }
 
   static ComparisonPracticeDto decode(Object result) {
     result as List<Object?>;
@@ -393,13 +387,7 @@ class ComparisonPracticeDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(mirrorTeacher, other.mirrorTeacher) &&
-        _deepEquals(mirrorLearner, other.mirrorLearner) &&
-        _deepEquals(loopStartUs, other.loopStartUs) &&
-        _deepEquals(loopEndUs, other.loopEndUs) &&
-        _deepEquals(loopEnabled, other.loopEnabled) &&
-        _deepEquals(teacherPicture, other.teacherPicture) &&
-        _deepEquals(learnerPicture, other.learnerPicture);
+    return _deepEquals(mirrorTeacher, other.mirrorTeacher) && _deepEquals(mirrorLearner, other.mirrorLearner) && _deepEquals(loopStartUs, other.loopStartUs) && _deepEquals(loopEndUs, other.loopEndUs) && _deepEquals(loopEnabled, other.loopEnabled) && _deepEquals(teacherPicture, other.teacherPicture) && _deepEquals(learnerPicture, other.learnerPicture);
   }
 
   @override
@@ -446,8 +434,7 @@ class MusicCandidateDto {
   }
 
   Object encode() {
-    return _toList();
-  }
+    return _toList();  }
 
   static MusicCandidateDto decode(Object result) {
     result as List<Object?>;
@@ -470,12 +457,7 @@ class MusicCandidateDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(offsetUs, other.offsetUs) &&
-        _deepEquals(score, other.score) &&
-        _deepEquals(consistentWindows, other.consistentWindows) &&
-        _deepEquals(supportedSeconds, other.supportedSeconds) &&
-        _deepEquals(residualMs, other.residualMs) &&
-        _deepEquals(timeScale, other.timeScale);
+    return _deepEquals(offsetUs, other.offsetUs) && _deepEquals(score, other.score) && _deepEquals(consistentWindows, other.consistentWindows) && _deepEquals(supportedSeconds, other.supportedSeconds) && _deepEquals(residualMs, other.residualMs) && _deepEquals(timeScale, other.timeScale);
   }
 
   @override
@@ -502,12 +484,15 @@ class MusicAlignmentDto {
   List<MusicCandidateDto> candidates;
 
   List<Object?> _toList() {
-    return <Object?>[status, message, candidates];
+    return <Object?>[
+      status,
+      message,
+      candidates,
+    ];
   }
 
   Object encode() {
-    return _toList();
-  }
+    return _toList();  }
 
   static MusicAlignmentDto decode(Object result) {
     result as List<Object?>;
@@ -527,9 +512,7 @@ class MusicAlignmentDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(status, other.status) &&
-        _deepEquals(message, other.message) &&
-        _deepEquals(candidates, other.candidates);
+    return _deepEquals(status, other.status) && _deepEquals(message, other.message) && _deepEquals(candidates, other.candidates);
   }
 
   @override
@@ -600,8 +583,7 @@ class ComparisonExportDto {
   }
 
   Object encode() {
-    return _toList();
-  }
+    return _toList();  }
 
   static ComparisonExportDto decode(Object result) {
     result as List<Object?>;
@@ -630,18 +612,7 @@ class ComparisonExportDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(jobId, other.jobId) &&
-        _deepEquals(projectId, other.projectId) &&
-        _deepEquals(state, other.state) &&
-        _deepEquals(stage, other.stage) &&
-        _deepEquals(progress, other.progress) &&
-        _deepEquals(startUs, other.startUs) &&
-        _deepEquals(endUs, other.endUs) &&
-        _deepEquals(width, other.width) &&
-        _deepEquals(height, other.height) &&
-        _deepEquals(outputPath, other.outputPath) &&
-        _deepEquals(savedUri, other.savedUri) &&
-        _deepEquals(error, other.error);
+    return _deepEquals(jobId, other.jobId) && _deepEquals(projectId, other.projectId) && _deepEquals(state, other.state) && _deepEquals(stage, other.stage) && _deepEquals(progress, other.progress) && _deepEquals(startUs, other.startUs) && _deepEquals(endUs, other.endUs) && _deepEquals(width, other.width) && _deepEquals(height, other.height) && _deepEquals(outputPath, other.outputPath) && _deepEquals(savedUri, other.savedUri) && _deepEquals(error, other.error);
   }
 
   @override
@@ -654,6 +625,7 @@ class ComparisonExportDto {
   }
 }
 
+
 class _PigeonCodec extends StandardMessageCodec {
   const _PigeonCodec();
   @override
@@ -661,28 +633,28 @@ class _PigeonCodec extends StandardMessageCodec {
     if (value is int) {
       buffer.putUint8(4);
       buffer.putInt64(value);
-    } else if (value is ComparisonCommand) {
+    }    else if (value is ComparisonCommand) {
       buffer.putUint8(129);
       writeValue(buffer, value.index);
-    } else if (value is ComparisonSourceDto) {
+    }    else if (value is ComparisonSourceDto) {
       buffer.putUint8(130);
       writeValue(buffer, value.encode());
-    } else if (value is ComparisonPlaybackDto) {
+    }    else if (value is ComparisonPlaybackDto) {
       buffer.putUint8(131);
       writeValue(buffer, value.encode());
-    } else if (value is ComparisonPictureDto) {
+    }    else if (value is ComparisonPictureDto) {
       buffer.putUint8(132);
       writeValue(buffer, value.encode());
-    } else if (value is ComparisonPracticeDto) {
+    }    else if (value is ComparisonPracticeDto) {
       buffer.putUint8(133);
       writeValue(buffer, value.encode());
-    } else if (value is MusicCandidateDto) {
+    }    else if (value is MusicCandidateDto) {
       buffer.putUint8(134);
       writeValue(buffer, value.encode());
-    } else if (value is MusicAlignmentDto) {
+    }    else if (value is MusicAlignmentDto) {
       buffer.putUint8(135);
       writeValue(buffer, value.encode());
-    } else if (value is ComparisonExportDto) {
+    }    else if (value is ComparisonExportDto) {
       buffer.putUint8(136);
       writeValue(buffer, value.encode());
     } else {
@@ -721,42 +693,39 @@ class DanceComparisonApi {
   /// available for dependency injection. If it is left null, the default
   /// BinaryMessenger will be used which routes to the host platform.
   DanceComparisonApi({
-    BinaryMessenger? binaryMessenger,
-    String messageChannelSuffix = '',
-  }) : pigeonVar_binaryMessenger = binaryMessenger,
-       pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty
-           ? '.$messageChannelSuffix'
-           : '';
+      BinaryMessenger? binaryMessenger, 
+      String messageChannelSuffix = '', 
+      })
+      : pigeonVar_binaryMessenger = binaryMessenger,
+        pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
 
   final BinaryMessenger? pigeonVar_binaryMessenger;
   static const MessageCodec<Object?> pigeonChannelCodec = _PigeonCodec();
 
   final String pigeonVar_messageChannelSuffix;
 
+
   Future<ComparisonSourceDto?> pickVideo(String role) async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.dance_native.DanceComparisonApi.pickVideo$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.pickVideo$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[role],
-    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[role]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: true,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
     return pigeonVar_replyValue as ComparisonSourceDto?;
   }
 
   Future<List<String>> loadProjects() async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.dance_native.DanceComparisonApi.loadProjects$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.loadProjects$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -766,196 +735,148 @@ class DanceComparisonApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: false,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
     return (pigeonVar_replyValue! as List<Object?>).cast<String>();
   }
 
   Future<void> saveProject(String projectJson) async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.dance_native.DanceComparisonApi.saveProject$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.saveProject$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[projectJson],
-    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[projectJson]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: true,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
   }
 
-  Future<ComparisonPlaybackDto> open(
-    String teacherUri,
-    String learnerUri,
-    int offsetUs,
-    int positionUs,
-    double speed,
-    int width,
-    int height,
-    bool sideBySide,
-    ComparisonPracticeDto practice,
-    double timeScale,
-  ) async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.dance_native.DanceComparisonApi.open$pigeonVar_messageChannelSuffix';
+  Future<ComparisonPlaybackDto> open(String teacherUri, String learnerUri, int offsetUs, int positionUs, double speed, int width, int height, bool sideBySide, ComparisonPracticeDto practice, double timeScale) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.open$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel
-        .send(<Object?>[
-          teacherUri,
-          learnerUri,
-          offsetUs,
-          positionUs,
-          speed,
-          width,
-          height,
-          sideBySide,
-          practice,
-          timeScale,
-        ]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[teacherUri, learnerUri, offsetUs, positionUs, speed, width, height, sideBySide, practice, timeScale]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: false,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
     return pigeonVar_replyValue! as ComparisonPlaybackDto;
   }
 
-  Future<ComparisonPlaybackDto> control(
-    ComparisonCommand command,
-    int valueUs,
-    double speed,
-  ) async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.dance_native.DanceComparisonApi.control$pigeonVar_messageChannelSuffix';
+  Future<ComparisonPlaybackDto> control(ComparisonCommand command, int valueUs, double speed) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.control$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[command, valueUs, speed],
-    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[command, valueUs, speed]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: false,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
     return pigeonVar_replyValue! as ComparisonPlaybackDto;
   }
 
-  Future<ComparisonPlaybackDto> setAlignment(
-    int offsetUs,
-    double timeScale,
-  ) async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.dance_native.DanceComparisonApi.setAlignment$pigeonVar_messageChannelSuffix';
+  Future<ComparisonPlaybackDto> setAlignment(int offsetUs, double timeScale) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.setAlignment$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[offsetUs, timeScale],
-    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[offsetUs, timeScale]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: false,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
     return pigeonVar_replyValue! as ComparisonPlaybackDto;
   }
 
-  Future<ComparisonPlaybackDto> resize(
-    int width,
-    int height,
-    bool sideBySide,
-  ) async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.dance_native.DanceComparisonApi.resize$pigeonVar_messageChannelSuffix';
+  Future<ComparisonPlaybackDto> resize(int width, int height, bool sideBySide) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.resize$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[width, height, sideBySide],
-    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[width, height, sideBySide]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: false,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
     return pigeonVar_replyValue! as ComparisonPlaybackDto;
   }
 
-  Future<ComparisonPlaybackDto> setPractice(
-    ComparisonPracticeDto practice,
-  ) async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.dance_native.DanceComparisonApi.setPractice$pigeonVar_messageChannelSuffix';
+  Future<ComparisonPlaybackDto> setPractice(ComparisonPracticeDto practice) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.setPractice$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[practice],
-    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[practice]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: false,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
     return pigeonVar_replyValue! as ComparisonPlaybackDto;
   }
 
   Future<ComparisonPlaybackDto> stepFrame(bool forward) async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.dance_native.DanceComparisonApi.stepFrame$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.stepFrame$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[forward],
-    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[forward]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: false,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
     return pigeonVar_replyValue! as ComparisonPlaybackDto;
   }
 
   Future<ComparisonPlaybackDto> getState() async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.dance_native.DanceComparisonApi.getState$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.getState$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -965,40 +886,35 @@ class DanceComparisonApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: false,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
     return pigeonVar_replyValue! as ComparisonPlaybackDto;
   }
 
-  Future<MusicAlignmentDto> alignMusic(
-    String teacherUri,
-    String learnerUri,
-  ) async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.dance_native.DanceComparisonApi.alignMusic$pigeonVar_messageChannelSuffix';
+  Future<MusicAlignmentDto> alignMusic(String teacherUri, String learnerUri) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.alignMusic$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[teacherUri, learnerUri],
-    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[teacherUri, learnerUri]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: false,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
     return pigeonVar_replyValue! as MusicAlignmentDto;
   }
 
   Future<void> cancelAlignment() async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.dance_native.DanceComparisonApi.cancelAlignment$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.cancelAlignment$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -1008,54 +924,34 @@ class DanceComparisonApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: true,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
   }
 
-  Future<ComparisonExportDto> startExport(
-    String projectJson,
-    int startUs,
-    int endUs,
-    int width,
-    int height,
-    int gap,
-    bool sideBySide,
-    bool replacePreviousUnsaved,
-  ) async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.dance_native.DanceComparisonApi.startExport$pigeonVar_messageChannelSuffix';
+  Future<ComparisonExportDto> startExport(String projectJson, int startUs, int endUs, int width, int height, int gap, bool sideBySide, bool replacePreviousUnsaved) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.startExport$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[
-        projectJson,
-        startUs,
-        endUs,
-        width,
-        height,
-        gap,
-        sideBySide,
-        replacePreviousUnsaved,
-      ],
-    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[projectJson, startUs, endUs, width, height, gap, sideBySide, replacePreviousUnsaved]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: false,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
     return pigeonVar_replyValue! as ComparisonExportDto;
   }
 
   Future<ComparisonExportDto?> getExport() async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.dance_native.DanceComparisonApi.getExport$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.getExport$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -1065,99 +961,91 @@ class DanceComparisonApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: true,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
     return pigeonVar_replyValue as ComparisonExportDto?;
   }
 
   Future<ComparisonExportDto> cancelExport(String jobId) async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.dance_native.DanceComparisonApi.cancelExport$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.cancelExport$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[jobId],
-    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[jobId]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: false,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
     return pigeonVar_replyValue! as ComparisonExportDto;
   }
 
   Future<ComparisonExportDto> retryExport(String jobId) async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.dance_native.DanceComparisonApi.retryExport$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.retryExport$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[jobId],
-    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[jobId]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: false,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
     return pigeonVar_replyValue! as ComparisonExportDto;
   }
 
   Future<ComparisonExportDto> saveExport(String jobId) async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.dance_native.DanceComparisonApi.saveExport$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.saveExport$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[jobId],
-    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[jobId]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: false,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
     return pigeonVar_replyValue! as ComparisonExportDto;
   }
 
   Future<void> openExport(String jobId) async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.dance_native.DanceComparisonApi.openExport$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.openExport$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[jobId],
-    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[jobId]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: true,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
   }
 
   Future<void> close() async {
-    final pigeonVar_channelName =
-        'dev.flutter.pigeon.dance_native.DanceComparisonApi.close$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.close$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -1167,9 +1055,10 @@ class DanceComparisonApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-      pigeonVar_replyList,
-      pigeonVar_channelName,
-      isNullValid: true,
-    );
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
   }
 }
