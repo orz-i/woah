@@ -118,7 +118,7 @@ python tools/ios/run_phase6_macos_gate.py
 (cd mobile/app && flutter build apk --debug)
 ```
 
-第二批已确认并执行 `cd mobile/app/android && ./gradlew :dance_native:lintDebug :app:lintDebug`，format 入口为 `python tools/ci/check_dart_format.py`，CI 汇总也已实现，具体通过／待验收项见第二批证据。Pigeon 单命令 wrapper、生成锁仍未实现。四包独立 analyze/test 必须先在各自正确依赖上下文中解析，不能把依赖 URI 缺失当成产品 bug。
+第二批已确认并执行 `cd mobile/app/android && ./gradlew :dance_native:lintDebug :app:lintDebug`，format 入口为 `python tools/ci/check_dart_format.py`，CI 汇总也已实现，具体通过／待验收项见第二批证据。Pigeon 29.0.4 单一入口为 `python tools/ci/pigeon_codegen.py --self-test`；有意更新 schema 后用 `--write`，生成产物不另跑 formatter，详见 [G3-C 证据](evidence/g3-c-pigeon-generation-2026-10-31.md)。四包独立 analyze/test 必须先在各自正确依赖上下文中解析，不能把依赖 URI 缺失当成产品 bug。
 
 ## 测试风险矩阵
 
