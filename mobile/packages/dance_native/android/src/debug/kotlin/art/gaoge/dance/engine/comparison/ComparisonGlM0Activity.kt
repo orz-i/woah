@@ -32,6 +32,7 @@ import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
@@ -175,9 +176,8 @@ class ComparisonGlM0Activity : Activity() {
         val filter=IntentFilter("art.gaoge.dance.M0_GL_TEST")
         // Selected-media copying is callable by ADB/system debugging only.
         // Ordinary apps must not be able to trigger copying of a picked URI.
-        if (Build.VERSION.SDK_INT>=33)
-            registerReceiver(testReceiver,filter,android.Manifest.permission.DUMP,null,Context.RECEIVER_EXPORTED)
-        else @Suppress("DEPRECATION") registerReceiver(testReceiver,filter,android.Manifest.permission.DUMP,null)
+        ContextCompat.registerReceiver(this,testReceiver,filter,
+            android.Manifest.permission.DUMP,null,ContextCompat.RECEIVER_EXPORTED)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {

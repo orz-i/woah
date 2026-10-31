@@ -13,7 +13,12 @@ class AppLogger {
     }
   }
 
-  static void e(String tag, String message, [Object? error, StackTrace? stack]) {
+  static void e(
+    String tag,
+    String message, [
+    Object? error,
+    StackTrace? stack,
+  ]) {
     debugPrint('[$tag] ❌ $message ${error != null ? ': $error' : ''}');
     if (stack != null && kDebugMode) {
       debugPrint(stack.toString());

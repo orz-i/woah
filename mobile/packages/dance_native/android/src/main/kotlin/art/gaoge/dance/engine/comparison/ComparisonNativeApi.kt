@@ -63,8 +63,9 @@ internal class ComparisonNativeApi(private val context: Context,private val regi
         if (requestCode==exportRequestCode) {
             val pending=exportPicker;exportPicker=null
             val uri=if (resultCode==Activity.RESULT_OK) data?.data else null
-            if (uri!=null) runCatching { context.contentResolver.takePersistableUriPermission(uri,
-                (data!!.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION))) }
+            if (uri!=null) runCatching {
+                persistGrantedUriPermissions(context.contentResolver,uri,data!!.flags)
+            }
             if (pending?.isActive==true) pending.resume(uri)
             return true
         }

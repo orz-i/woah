@@ -55,9 +55,7 @@ class _MetalSmokeAppState extends State<_MetalSmokeApp> {
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
-      home: Scaffold(
-        body: Center(child: Text('Woah iOS Metal Phase 3 smoke')),
-      ),
+      home: Scaffold(body: Center(child: Text('Woah iOS Metal Phase 3 smoke'))),
     );
   }
 }

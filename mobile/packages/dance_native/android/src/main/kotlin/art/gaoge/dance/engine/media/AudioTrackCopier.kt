@@ -7,6 +7,14 @@ import android.media.MediaFormat
 import android.net.Uri
 import java.nio.ByteBuffer
 
+internal fun muxableAudioSampleIsSync(sampleFlags: Int): Boolean {
+    // This passthrough has no decryptor or partial-access-unit assembler.
+    require(sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC.inv() == 0) {
+        "Cannot mux encrypted, partial, or unknown audio sample flags"
+    }
+    return sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC != 0
+}
+
 class AudioTrackCopier(
     private val context: Context,
     private val sourceUri: String,
@@ -63,7 +71,13 @@ class AudioTrackCopier(
             bufferInfo.offset = 0
             bufferInfo.size = sampleSize
             bufferInfo.presentationTimeUs = (sampleTimeUs - startUs).coerceAtLeast(0L)
-            bufferInfo.flags = extractor.sampleFlags
+            // Extractor and Codec flag values are not interchangeable: encrypted
+            // (2) would become codec-config, partial-frame (4) would become EOS.
+            bufferInfo.flags = if (muxableAudioSampleIsSync(extractor.sampleFlags)) {
+                MediaCodec.BUFFER_FLAG_KEY_FRAME
+            } else {
+                0
+            }
 
             muxer.writeAudioSample(buffer, bufferInfo)
             extractor.advance()

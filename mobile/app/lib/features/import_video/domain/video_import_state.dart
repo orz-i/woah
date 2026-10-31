@@ -1,12 +1,6 @@
 import 'package:dance_domain/dance_domain.dart';
 
-enum VideoImportStatus {
-  idle,
-  picking,
-  probing,
-  ready,
-  error,
-}
+enum VideoImportStatus { idle, picking, probing, ready, error }
 
 class VideoImportState {
   final VideoImportStatus status;
@@ -25,7 +19,8 @@ class VideoImportState {
 
   bool get isReady => status == VideoImportStatus.ready && videoInfo != null;
   bool get isLoading =>
-      status == VideoImportStatus.picking || status == VideoImportStatus.probing;
+      status == VideoImportStatus.picking ||
+      status == VideoImportStatus.probing;
 
   VideoImportState copyWith({
     VideoImportStatus? status,

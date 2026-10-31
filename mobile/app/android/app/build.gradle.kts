@@ -113,7 +113,8 @@ android {
     }
 
     lint {
-        abortOnError = false
+        // CI runs lintDebug explicitly; errors must fail the build.
+        abortOnError = true
         checkReleaseBuilds = false
     }
 }

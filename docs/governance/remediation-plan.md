@@ -1,6 +1,6 @@
 # Woah 整改台账
 
-**状态更新（2026-10-31）：维护者已授权第一批本地修复。** GOV-01 的 Swift 编译、DART-01 / DART-02 及回归已实现；本地验收与待完成项见[验证记录](evidence/first-batch-local-verification-2026-10-31.md)。原审计基线见 [审计](audit-2026-10-31.md)，约束见 [工程规范草案](engineering-standard.md)。之后已按维护者授权推送并创建[草稿 PR #7](https://github.com/orz-i/woah/pull/7) 进行远端验证；未合并、修改仓库规则或发布版本，其余条目仍待采纳。
+**状态更新（2026-10-31）：第一批 PR #7 已验证并按维护者授权合并；第二批 GOV-02 实施中。** 第一批合并 SHA 为 `747721d1c073170cbae4a3940778ca16e81ac07d`，本地与边界见[验证记录](evidence/first-batch-local-verification-2026-10-31.md)，最终 head 的 [Production CI](https://github.com/orz-i/woah/actions/runs/41163397751) 和 [iOS CI](https://github.com/orz-i/woah/actions/runs/41163397758) 成功。第二批证据见 [CI 治理记录](evidence/second-batch-ci-governance-2026-10-31.md)。原审计基线见 [审计](audit-2026-10-31.md)，约束见 [工程规范草案](engineering-standard.md)。未启用仓库保护规则或发布版本，未实施条目仍待采纳。
 
 ## 先做哪三件事
 
@@ -19,7 +19,7 @@ P0 是恢复项目可信基线的顺序，不是宣告生产事故。P1 是影�
 - **隐私与模型 owner / 桌面 owner**：数据生命周期、模型/服务边界与安装路径。
 - 同一人可兼任多个角色；这些是待认领角色，不是已经指定的人名。高风险修改可邀请其他人评审，但不把第二位审批者作为当前无法满足的硬条件。
 
-状态流：待采纳 → 已认领 → 实施中 → 待验收 → 已关闭。阻塞时记录依赖和解除条件，不用“暂缓”无限搁置。除第一批已授权的 GOV-01 编译子项、DART-01 / DART-02 外，下列条目仍为 **待采纳／未实施**；本地实现与测试不自动满足远端 CI、设备和发布退出条件。
+状态流：待采纳 → 已认领 → 实施中 → 待验收 → 已关闭。阻塞时记录依赖和解除条件，不用“暂缓”无限搁置。除第一批已授权的 GOV-01 编译子项、DART-01 / DART-02 和第二批 GOV-02 外，下列条目仍为 **待采纳／未实施**；本地实现与测试不自动满足远端 CI、设备和发布退出条件。
 
 ## 优先队列
 
@@ -45,9 +45,10 @@ P0 是恢复项目可信基线的顺序，不是宣告生产事故。P1 是影�
 
 ## 第一批执行状态
 
-- **DART-01 / DART-02：本地实现与回归通过，待发布验收。** 由本次授权修复任务实施，19 项新生命周期回归、全部 256 项 app 测试、5 项 native Dart DTO 测试及 analyze 通过。修复与回归本地提交为 `e71929574bed03ac3cffe07a67935bfa9aca9756`，已纳入草稿 PR #7，未合并；证据及持续清理失败的限制见[验证记录](evidence/first-batch-local-verification-2026-10-31.md)。
-- **GOV-01：本地编译修复验收通过，待远端 CI 验收。** 两个 iOS 构建入口、两个 SDK 的 Metal 编译和完整 Phase 6 gate（仅隔离设备选择适配）全部通过，详见验证记录。本机 Xcode 27.2 与远端实际 Xcode 26.6 不同；PR #7 首轮 Production CI 通过，但 iOS 仍类型检查超时，已进一步拆分峰值表达式并补回归，等待新 head 远端验证，不宣称已转绿。
-- **GOV-02 与仓库保护：未实施、未启用。** 本轮未授权合并、版本发布或仓库规则变更；仅授权分支推送、草稿 PR 与远端 CI 验证。
+- **DART-01 / DART-02：已合并、本地与远端回归通过，真机／持续清理失败边界仍待验收。** 由本次授权修复任务实施，19 项新生命周期回归、全部 256 项 app 测试、5 项 native Dart DTO 测试及 analyze 通过。修复与回归本地提交为 `e71929574bed03ac3cffe07a67935bfa9aca9756`，已纳入并合并 PR #7；证据及持续清理失败的限制见[验证记录](evidence/first-batch-local-verification-2026-10-31.md)。
+- **GOV-01：编译子项已合并且本地／远端验收通过，保护规则子项仍打开。** 两个 iOS 构建入口、两个 SDK 的 Metal 编译和完整 Phase 6 gate 均通过。首轮 Xcode 26.6 超时后进一步拆分表达式，最终 head `96a7287` 已获两条远端 CI 成功，见上方链接。不能将成功检查等同于仓库已阻止失败合并。
+- **GOV-02：第二批实施中。** 常驻 `governance / required` 汇总、双平台复用工作流、四包分析与显式 lint 的实现及证据见第二批记录。所有 PR 暂保守执行双平台，不使用路径分类跳过。
+- **仓库保护：未启用。** 需检查稳定后另行明确批准；第二批 PR 的存在不授权自动合并或规则变更。
 
 ## P0 恢复可信基线
 
@@ -62,11 +63,11 @@ P0 是恢复项目可信基线的顺序，不是宣告生产事故。P1 是影�
 ### GOV-02 使所有 PR 都有可信汇总结果
 
 - 范围：加入手写 Dart format、四包 analyze、显式 Android lint；保留已有 tests/native compile/build；把 iOS gate 调用图显式化并修补路径依赖。
-- 现有 phase1 在 macOS GitHub 环境会调用 phase6，重构时不得误删它所提供的 Metal / simulator / smoke 证据。
+- 审计基线 phase1 在 macOS GitHub 环境隐式调用 phase6；第二批改为工作流显式调用，保留原 Metal / simulator / smoke 证据，且四个 phase 的回归要求该入口存在。
 - 验收样例：只改 dance_ui、tools/ios runner、phase4 verifier、模型/Metal 输入时，应运行相应 iOS gate；纯无关文档变更可明确 not applicable，但汇总仍报告。
 - 故障样例：分析失败、平台失败、取消、分类器失败、意外 skipped 均不能让汇总为绿。不要用 workflow 级 paths 跳过必需汇总。
 - 先记录稳定 job 名和结果，再启用 required checks / 防 force push；单维护者用 PR 自审 + 自动 gate，不设不可满足的审批人数。
-- 待新增 wrapper / 汇总 job 尚不存在；见规范的[命令入口](engineering-standard.md#已有入口和拟议验收命令)，不要把拟议名字当作现成脚本。
+- 第二批实现 `tools/ci/check_dart_format.py`、`tools/ci/check_required_jobs.py` 与汇总 job；见规范的[命令入口](engineering-standard.md#已有入口和拟议验收命令)。Pigeon 生成 wrapper 仍待 GEN-01，不应混同为本批已完成。
 
 ## P1 正确性与生命周期
 

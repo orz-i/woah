@@ -198,7 +198,6 @@ def verify_metal_validation_lanes() -> None:
     smoke_main_text = smoke_main.read_text(encoding="utf-8")
     smoke_swift_text = smoke_swift.read_text(encoding="utf-8")
     workflow_text = workflow.read_text(encoding="utf-8")
-    phase1_text = phase1_verifier.read_text(encoding="utf-8")
     plugin = text("DanceNativePlugin.swift")
 
     check("private static let kernelSource" in extractor_text,
@@ -220,16 +219,10 @@ def verify_metal_validation_lanes() -> None:
     check("xcrun" in simulator_text and "simctl" in simulator_text and "--console" in simulator_text,
           "Simulator smoke runner must boot/install/launch through simctl")
     check("python tools/release/verify_ios_phase1.py" in workflow_text,
-          "iOS Cloud CI must retain the Phase 1 verifier hook used by the Phase 3 macOS gate")
+          "iOS Cloud CI must retain the Phase 1 static verifier")
     check(
-        (
-            "run_phase3_macos_gate.py" in phase1_text
-            or "run_phase4_macos_gate.py" in phase1_text
-            or "run_phase5_macos_gate.py" in phase1_text
-            or "run_phase6_macos_gate.py" in phase1_text
-        )
-        and 'GITHUB_ACTIONS' in phase1_text,
-        "The GitHub macOS Phase 1 hook must invoke an Apple-only gate that preserves Phase 3",
+        "run: python tools/ios/run_phase6_macos_gate.py" in workflow_text,
+        "iOS Cloud CI must explicitly invoke the Phase 6 gate preserving Phase 3",
     )
     check(
         "compile_phase3_metal.py" in macos_gate_text

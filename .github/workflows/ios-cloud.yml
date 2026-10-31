@@ -1,26 +1,9 @@
 name: iOS Cloud CI
 
 on:
-  push:
-    branches: [main, master]
-    paths:
-      - 'mobile/app/**'
-      - 'mobile/packages/dance_native/**'
-      - 'mobile/packages/dance_domain/**'
-      - 'tools/release/verify_export_media_contract.py'
-      - 'tools/release/verify_ios_phase0.py'
-      - 'tools/release/verify_ios_phase1.py'
-      - '.github/workflows/ios-cloud.yml'
-  pull_request:
-    branches: [main, master]
-    paths:
-      - 'mobile/app/**'
-      - 'mobile/packages/dance_native/**'
-      - 'mobile/packages/dance_domain/**'
-      - 'tools/release/verify_export_media_contract.py'
-      - 'tools/release/verify_ios_phase0.py'
-      - 'tools/release/verify_ios_phase1.py'
-      - '.github/workflows/ios-cloud.yml'
+  # Production CI calls this exact revision once per push/PR. Keeping the
+  # workflow independently dispatchable supports targeted Apple diagnostics.
+  workflow_call:
   workflow_dispatch:
 
 permissions:
@@ -66,6 +49,11 @@ jobs:
           # Explicitly verify the supported protagonist leg-stretch contract.
           python tools/release/verify_ios_phase4.py
           python -m unittest tools.release.test_verify_ios_phase4 -q
+
+      # Strongest Apple-only lane: model provisioning, both Metal SDKs,
+      # simulator build and Phase 6 runtime smoke. Do not replace with static checks.
+      - name: Run full iOS Phase 6 gate
+        run: python tools/ios/run_phase6_macos_gate.py
 
       - name: Resolve Flutter and native dependencies
         working-directory: mobile/app

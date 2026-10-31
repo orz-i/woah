@@ -18,18 +18,18 @@ class NormalizedRect {
   double get centerY => top + height / 2.0;
 
   Map<String, dynamic> toJson() => {
-        'left': left,
-        'top': top,
-        'right': right,
-        'bottom': bottom,
-      };
+    'left': left,
+    'top': top,
+    'right': right,
+    'bottom': bottom,
+  };
 
   factory NormalizedRect.fromJson(Map<String, dynamic> json) => NormalizedRect(
-        left: (json['left'] as num).toDouble(),
-        top: (json['top'] as num).toDouble(),
-        right: (json['right'] as num).toDouble(),
-        bottom: (json['bottom'] as num).toDouble(),
-      );
+    left: (json['left'] as num).toDouble(),
+    top: (json['top'] as num).toDouble(),
+    right: (json['right'] as num).toDouble(),
+    bottom: (json['bottom'] as num).toDouble(),
+  );
 
   NormalizedRect copyWith({
     double? left,
