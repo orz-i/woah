@@ -20,15 +20,15 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
-          python-version: '3.11'
+          python-version: '3.11.9'
 
       - name: Set up Flutter 3.44.2
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           flutter-version: '3.44.2'
           cache: true
@@ -75,7 +75,7 @@ jobs:
             artifacts/Woah-ios-debug-app.zip
 
       - name: Upload iOS build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: woah-ios-debug-${{ github.sha }}
           path: mobile/app/artifacts/Woah-ios-debug-app.zip

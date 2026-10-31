@@ -50,16 +50,16 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
-          python-version: '3.11'
+          python-version: '3.11.17'
 
       - name: Restore generated YOLO model cache
         id: model-cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
             models/pytorch/yolo11n-seg.pt
@@ -68,9 +68,9 @@ jobs:
 
       - name: Set up uv for model export
         if: steps.model-cache.outputs.cache-hit != 'true'
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
-          version: 'latest'
+          version: '0.13.6'
 
       - name: Install locked model-export dependencies
         if: steps.model-cache.outputs.cache-hit != 'true'
@@ -78,7 +78,7 @@ jobs:
 
       - name: Generate and stage canonical iOS YOLO model
         if: steps.model-cache.outputs.cache-hit != 'true'
-        run: uv run python tools/release/provision_ios_yolo_ci.py
+        run: uv run --locked python tools/release/provision_ios_yolo_ci.py
 
       - name: Verify cached canonical YOLO model
         if: steps.model-cache.outputs.cache-hit == 'true'
@@ -89,7 +89,7 @@ jobs:
           python tools/release/verify_ios_phase1.py --require-model --allow-unpinned-hash
 
       - name: Upload canonical model for macOS build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: woah-ios-phase1-model-${{ github.run_id }}
           path: models/litert/yolo11n-seg-fp16.tflite
@@ -104,15 +104,15 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
-          python-version: '3.11'
+          python-version: '3.11.9'
 
       - name: Download canonical Phase 1 model
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: woah-ios-phase1-model-${{ github.run_id }}
           path: models/litert
@@ -124,7 +124,7 @@ jobs:
           python tools/release/verify_ios_phase1.py --require-model --allow-unpinned-hash
 
       - name: Set up Flutter 3.44.2
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           flutter-version: '3.44.2'
           cache: true
@@ -176,7 +176,7 @@ jobs:
 
       - name: Upload Phase 1 evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: woah-ios-phase1-browserstack-${{ github.run_id }}
           path: |
