@@ -28,7 +28,7 @@
 - Android Release Kotlin、native/app Debug lint 通过：既有 70／19 warnings，0 errors；没有刷新 baseline 或全清警告。
 - Flutter：新增 8 项纯 session/controller 回归与 2 项路由回归；包括乱序成功／失败、dispose 后回包、已有 cache 复用、同路径替换、export/result 往返及最终 home。现有真实取消回编辑回归新增未释放断言。focused 44 tests 通过；四包最终 analyze／format 与 299 tests（27／1／5／266）全部通过。
 - Swift registry／100-cycle smoke 可注入独立临时根与时钟，已在 Mac Foundation 测试通过；这不冒充 iOS pipeline 验证。
-- 20 项 CI Python 测试（新增 3 个接线守卫）与原有 10 项契约测试通过；iOS phase0／1／3／4／5／6／cloud 静态检查通过。Phase3 静态 verifier 改为验证 deferred cleanup callback 与零 lease 条件；Phase4 保留既有取消／成片断言并加强 cache lease 条件；Phase6 runner 强制要求新 cache smoke marker，未降低门槛。
+- 26 项 CI Python 测试（新增 3 个接线守卫及 6 个 Phase2 verifier 正／负向回归）与原有 10 项契约测试通过；iOS phase0／1／2／3／4／5／6／cloud 静态检查通过。Phase3 静态 verifier 改为验证 deferred cleanup callback 与零 lease 条件；Phase4 保留既有取消／成片断言并加强 cache lease 条件；Phase6 runner 强制要求新 cache smoke marker，未降低门槛。
 - Debug APK 构建通过：273585473 bytes，SHA-256 `158430c217b2f1e7a6859b79e6d8376d4979ceb5e479f2f1b30f3abac4caa0bd`。
 - 本地完整 Simulator build 通过（Xcode 27.2，显式 `DEVELOPER_DIR`，不改变全局 Xcode 选择）；Metal 两 SDK offline compile 通过。
 - 本地日志：`/tmp/woah-g2-c/` 的 `native-fourth.log`、`flutter-focused-key.log`、`swift-smoke-second.log`、`ios-build-second.log`、`metal.log`、`shared-complete.log`；精确提交／远端 CI 链接在 PR 正文追加，不制造状态专用代码提交。
@@ -50,3 +50,5 @@
 ## 审查与关闭条件
 
 Android、Swift、Dart 三路独立只读审查无剩余阻断；其中空 ID 兼容、内存预览延期清理、释放账本增长与同路由 State 复用均在原切片内修正并回归。仍须最终提交 exact-head 双平台三检查成功、正常 PR 合并、merge SHA 复验。硬件缺口与 iOS17 runtime 限制如实保留，不新增整改阶段填补。
+
+首次 PR CI 的 Phase2 静态检查仍要求旧的立即删除、裸 appendingPathComponent 与仅毫秒 cache ID 字面量，因而在 runtime 前失败。补充更新该 verifier 为 safeFile／严格 ID 与 symlink 校验、失败 release 意图＋真实 lease close、零 lease 后物理清理及 UUID 防碰撞；原 metadata／缩略图／CPU backend／0.60 选择阈值保留。5 项负向 mutation 确认移除路径守卫、实际 close、失败 release、零 lease 条件或 UUID 时检查确实失败，不删除检查来通过 CI。

@@ -33,22 +33,25 @@ def verify_cache_contract() -> None:
     cache = path.read_text(encoding="utf-8")
     for token in (
         'appendingPathComponent("analysis", isDirectory: true)',
-        'appendingPathComponent("source_uri.txt")',
-        'appendingPathComponent("analysis.json")',
+        'safeFile(directory, "source_uri.txt")',
+        'safeFile(directory, "analysis.json")',
         "schemaVersion: Int",
         "sourceUri: String",
         "persons: [IOSCachedPerson]",
         "let thumbnailWidth = 160",
         "let thumbnailHeight = 240",
         "kCGImageDestinationLossyCompressionQuality: 0.85",
-        'appendingPathComponent("person_\\(personId).jpg")',
+        'safeFile(directory, "person_\\(personId).jpg")',
         "func clearAnalysisCache(cacheId: String) throws",
     ):
         check(token in cache, f"iOS analysis cache contract missing: {token}")
     check(
         'code: "INVALID_CACHE_ID"' in cache
-        and '!cacheId.contains("/")' in cache,
-        "iOS cache cleanup must reject path-like cache identifiers",
+        and 'cacheId.range(of: "^[A-Za-z0-9_-]+$", options: .regularExpression)' in cache
+        and "directory.resolvingSymlinksInPath() == directory" in cache
+        and "file.resolvingSymlinksInPath() == file" in cache
+        and "FileAttributeType) != .typeSymbolicLink" in cache,
+        "iOS cache paths must reject invalid identifiers and directory/leaf symlink escapes",
     )
 
 
@@ -84,8 +87,12 @@ def verify_analyze_pipeline() -> None:
         "Phase 2 selection analysis must stay on deterministic CPU/XNNPACK like Android",
     )
     check(
-        "if !committed" in pipeline and "clearAnalysisCache(cacheId: cacheId)" in pipeline,
-        "Failed Phase 2 analysis must clean its partial cache",
+        "if !committed { registry.requestRelease(cacheId: cacheId, owner: owner) }" in pipeline
+        and "let lease = try registry.beginAnalysis(owner: owner, cacheId: cacheId)" in pipeline
+        and "defer {" in pipeline
+        and "lease.close()" in pipeline
+        and pipeline.find("registry.beginAnalysis") < pipeline.find("cache.saveVideoUri"),
+        "Failed Phase 2 analysis must request cleanup and close its real write lease",
     )
 
 
@@ -134,9 +141,13 @@ def verify_plugin_gating() -> None:
             'code: "PLATFORM_NOT_SUPPORTED"' in export_block,
             "startExport must remain gated until Phase 4",
         )
+    registry = (SOURCES / "IOSRegenerableCacheRegistry.swift").read_text(encoding="utf-8")
     check(
-        "analysisCache.clearAnalysisCache(cacheId: projectId)" in release_block,
-        "releaseProject must clear the iOS analysis cache",
+        "cacheRegistry.requestRelease(cacheId: projectId, owner: cacheOwner)" in release_block
+        and "analysisCache.clearAnalysisCache" not in release_block
+        and "$0.released && $0.leases == 0" in registry
+        and "if self.deleteGroup(id) { self.finishDeletion(id) }" in registry,
+        "releaseProject must defer physical cleanup until actual operation leases reach zero",
     )
 
 
@@ -150,8 +161,8 @@ def verify_cross_platform_selection_contract() -> None:
         / "mobile/app/lib/features/person_selection/presentation/person_selection_controller.dart"
     ).read_text(encoding="utf-8")
     check(
-        'val cacheId = "analysis_${System.currentTimeMillis()}"' in android,
-        "Android analysis cache identity contract unexpectedly changed",
+        'cacheId: String = "analysis_${System.currentTimeMillis()}_${java.util.UUID.randomUUID()}"' in android,
+        "Android analysis cache IDs must preserve the analysis namespace and avoid same-millisecond collisions",
     )
     check(
         "selectionCandidateMinConfidence = 0.60" in app_selection,
