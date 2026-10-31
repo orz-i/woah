@@ -45,6 +45,7 @@ jobs:
           python tools/release/verify_export_media_contract.py
           python -m unittest tools.release.test_verify_export_media_contract -q
           python tools/release/verify_ios_phase0.py
+          python tools/ci/check_ios_privacy_archive.py
           python tools/release/verify_ios_phase1.py
           # Explicitly verify the supported protagonist leg-stretch contract.
           python tools/release/verify_ios_phase4.py
@@ -66,9 +67,6 @@ jobs:
         run: |
           flutter build ios --debug --no-codesign --target lib/main.dart
 
-      - name: Reject dependency lock drift
-        run: python tools/ci/check_dependency_locks.py --check-tracked
-
       - name: Archive no-codesign app
         working-directory: mobile/app
         run: |
@@ -77,10 +75,35 @@ jobs:
             build/ios/iphoneos/Runner.app \
             artifacts/Woah-ios-debug-app.zip
 
+      # A zip of a Debug .app is not an Xcode archive. Keep the existing Debug
+      # evidence and additionally verify real unsigned Release archive materials.
+      - name: Build unsigned Release archive
+        working-directory: mobile/app
+        run: flutter build ipa --release --no-codesign --no-pub --target lib/main.dart
+
+      - name: Verify archived privacy materials
+        run: |
+          python tools/ci/check_ios_privacy_archive.py --archive \
+            mobile/app/build/ios/archive/Runner.xcarchive \
+            --report mobile/app/artifacts/Woah-ios-privacy-report.json
+
+      - name: Reject dependency lock drift
+        run: python tools/ci/check_dependency_locks.py --check-tracked
+
+      - name: Package verified unsigned archive
+        working-directory: mobile/app
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/ios/archive/Runner.xcarchive \
+            artifacts/Woah-ios-unsigned-archive.zip
+
       - name: Upload iOS build artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: woah-ios-debug-${{ github.sha }}
-          path: mobile/app/artifacts/Woah-ios-debug-app.zip
+          path: |
+            mobile/app/artifacts/Woah-ios-debug-app.zip
+            mobile/app/artifacts/Woah-ios-unsigned-archive.zip
+            mobile/app/artifacts/Woah-ios-privacy-report.json
           if-no-files-found: error
           retention-days: 14
