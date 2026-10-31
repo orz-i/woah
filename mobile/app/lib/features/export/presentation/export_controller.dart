@@ -17,6 +17,8 @@ final exportControllerProvider =
 class ExportController extends StateNotifier<ExportState> {
   final NativeProcessingRepository _repository;
   StreamSubscription<JobStatusDto>? _progressSub;
+  bool _cancelRequested = false;
+  JobStatusDto? _deferredTerminalStatus;
 
   ExportController(this._repository) : super(const ExportState()) {
     _subscribeProgress();
@@ -26,23 +28,40 @@ class ExportController extends StateNotifier<ExportState> {
     _progressSub = _repository.progressStream.listen((statusDto) {
       if (state.jobId != null && statusDto.jobId != state.jobId) return;
 
-      final newPreviewPath = state.showLivePreview
-          ? statusDto.currentPreviewPath
-          : null;
+      // Native teardown can publish a late failed/completed status after the
+      // user's cancel request. Keep the cancelling view stable until the
+      // cancellation RPC has succeeded or failed.
+      if (_cancelRequested) {
+        if (statusDto.state == 'failed' || statusDto.state == 'completed') {
+          _deferredTerminalStatus = statusDto;
+          AppLogger.w(
+            'ExportController',
+            'Deferred late ${statusDto.state} while cancellation is pending',
+          );
+        }
+        return;
+      }
 
-      final jobState = ExportJobState.fromString(statusDto.state);
-      state = state.copyWith(
-        status: jobState,
-        progress: statusDto.progress,
-        currentFrame: statusDto.currentFrame,
-        totalFrames: statusDto.totalFrames,
-        fps: statusDto.fps,
-        outputUri: statusDto.outputUri,
-        currentPreviewPath: newPreviewPath,
-        clearCurrentPreviewPath: !state.showLivePreview,
-        errorMessage: statusDto.errorMessage,
-      );
+      _applyProgress(statusDto);
     });
+  }
+
+  void _applyProgress(JobStatusDto statusDto) {
+    final newPreviewPath = state.showLivePreview
+        ? statusDto.currentPreviewPath
+        : null;
+    final jobState = ExportJobState.fromString(statusDto.state);
+    state = state.copyWith(
+      status: jobState,
+      progress: statusDto.progress,
+      currentFrame: statusDto.currentFrame,
+      totalFrames: statusDto.totalFrames,
+      fps: statusDto.fps,
+      outputUri: statusDto.outputUri,
+      currentPreviewPath: newPreviewPath,
+      clearCurrentPreviewPath: !state.showLivePreview,
+      errorMessage: statusDto.errorMessage,
+    );
   }
 
   /// Toggle real-time rendered frame preview display
@@ -78,6 +97,8 @@ class ExportController extends StateNotifier<ExportState> {
 
   /// Launch export pipeline
   Future<void> startExport(DanceProject project, String outputPath) async {
+    _cancelRequested = false;
+    _deferredTerminalStatus = null;
     try {
       state = state.copyWith(
         status: ExportJobState.preparing,
@@ -152,10 +173,28 @@ class ExportController extends StateNotifier<ExportState> {
   /// Cancel current export job
   Future<void> cancelExport() async {
     final jobId = state.jobId;
-    if (jobId != null) {
-      AppLogger.d('ExportController', 'Cancelling job $jobId');
+    if (jobId == null || _cancelRequested) return;
+
+    _cancelRequested = true;
+    AppLogger.d('ExportController', 'Cancelling job $jobId');
+    try {
       await _repository.cancelJob(jobId);
-      state = state.copyWith(status: ExportJobState.cancelled);
+      if (!mounted) return;
+      state = state.copyWith(
+        status: ExportJobState.cancelled,
+        clearErrorMessage: true,
+        clearCurrentPreviewPath: true,
+      );
+    } catch (_) {
+      // If cancellation itself failed, a previously deferred native terminal
+      // status is real and must be replayed rather than silently discarded.
+      _cancelRequested = false;
+      final pendingTerminalStatus = _deferredTerminalStatus;
+      _deferredTerminalStatus = null;
+      if (mounted && pendingTerminalStatus != null) {
+        _applyProgress(pendingTerminalStatus);
+      }
+      rethrow;
     }
   }
 

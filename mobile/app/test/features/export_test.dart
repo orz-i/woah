@@ -934,6 +934,131 @@ void main() {
     expect(find.text('取消处理？'), findsNothing);
   });
 
+  test('late terminal events cannot revive a cancelled export', () async {
+    final repository = _PreviewToggleRepository();
+    addTearDown(repository.dispose);
+    final controller = ExportController(repository);
+    addTearDown(controller.dispose);
+
+    await controller.startExport(_testProject(), 'cancelled.mp4');
+    await controller.cancelExport();
+
+    expect(repository.cancelCalls, 1);
+    expect(controller.state.status, ExportJobState.cancelled);
+    expect(controller.state.errorMessage, isNull);
+    repository.emitFailure('late native cleanup error');
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.state.status, ExportJobState.cancelled);
+    expect(controller.state.isFailed, isFalse);
+    repository.emitCompleted('/tmp/late-result.mp4');
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.state.isCompleted, isFalse);
+    expect(controller.state.outputUri, isNull);
+  });
+
+  test('genuine cancel API errors restore normal failure handling', () async {
+    final repository = _PreviewToggleRepository()
+      ..cancelCompleter = Completer<void>();
+    addTearDown(repository.dispose);
+    final controller = ExportController(repository);
+    addTearDown(controller.dispose);
+
+    await controller.startExport(_testProject(), 'pending.mp4');
+    final cancelFuture = controller.cancelExport();
+    final cancelError = expectLater(cancelFuture, throwsA(isA<StateError>()));
+
+    // A real terminal error may arrive while the cancellation RPC is still
+    // pending. It must stay hidden until cancellation is known to have failed.
+    repository.emitFailure('encoder failed before cancel was rejected');
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.state.isFailed, isFalse);
+
+    repository.cancelCompleter!.completeError(StateError('cancel denied'));
+    await cancelError;
+    expect(controller.state.isFailed, isTrue);
+    expect(controller.state.errorMessage, contains('encoder failed'));
+  });
+
+  for (final initialMode in [ThemeMode.light, ThemeMode.dark]) {
+    testWidgets(
+      'cancel dialog theme survives export route exit ${initialMode.name}',
+      (tester) async {
+        final repository = _PreviewToggleRepository();
+        addTearDown(repository.dispose);
+        final container = ProviderContainer(
+          overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+        );
+        addTearDown(container.dispose);
+        final router = GoRouter(
+          initialLocation: '/edit',
+          routes: [
+            GoRoute(
+              path: '/edit',
+              builder: (_, _) =>
+                  const Scaffold(body: Center(child: Text('edit-marker'))),
+            ),
+            GoRoute(
+              path: '/export',
+              builder: (_, _) => ExportScreen(project: _testProject()),
+            ),
+          ],
+        );
+        addTearDown(router.dispose);
+        final mode = ValueNotifier<ThemeMode>(initialMode);
+        addTearDown(mode.dispose);
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: ValueListenableBuilder<ThemeMode>(
+              valueListenable: mode,
+              builder: (_, selectedMode, _) => MaterialApp.router(
+                theme: AppTheme.lightTheme,
+                darkTheme: AppTheme.darkTheme,
+                themeMode: selectedMode,
+                routerConfig: router,
+              ),
+            ),
+          ),
+        );
+        router.push('/export');
+        await tester.pumpAndSettle();
+        expect(find.byType(ExportScreen), findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey('export-cancel-action')));
+        await tester.pumpAndSettle();
+        final confirm = find.byKey(const ValueKey('export-cancel-confirm'));
+        expect(confirm, findsOneWidget);
+        expect(
+          tester
+              .getRect(
+                find.byKey(const ValueKey('export-cancel-confirm-dialog')),
+              )
+              .width,
+          greaterThan(100),
+        );
+
+        await tester.tap(confirm);
+        await tester.pump(const Duration(milliseconds: 1));
+        mode.value = initialMode == ThemeMode.dark
+            ? ThemeMode.light
+            : ThemeMode.dark;
+        for (var frame = 0; frame < 24; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(
+            tester.takeException(),
+            isNull,
+            reason:
+                'Dialog must never read a deactivated export context '
+                'while Navigator and Theme rebuild at frame $frame',
+          );
+        }
+        await tester.pumpAndSettle();
+        expect(find.text('edit-marker').hitTestable(), findsOneWidget);
+        expect(find.byType(ExportScreen), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets(
     'confirmed cancel waits for native cancellation before returning',
     (tester) async {
@@ -997,6 +1122,33 @@ void main() {
             )
             .onTap,
         isNull,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('export-cancel-action')),
+          matching: find.byType(CircularProgressIndicator),
+        ),
+        findsOneWidget,
+      );
+
+      // Android's export service can emit a late failed status from native
+      // teardown after the user has already requested cancellation. This
+      // must not briefly replace the export page with a red failure screen.
+      repository.emitFailure('CancellationException: export was cancelled');
+      await tester.pump();
+      expect(
+        find.byKey(const ValueKey('export-failure-summary')),
+        findsNothing,
+      );
+      expect(find.text('导出失败'), findsNothing);
+      // Another terminal event might race after cancellation, including a
+      // completion notification from a near-finished native export.
+      repository.emitCompleted('/tmp/too-late-result.mp4');
+      await tester.pump();
+      expect(find.text('edit-marker').hitTestable(), findsNothing);
+      expect(
+        find.byKey(const ValueKey('export-failure-summary')),
+        findsNothing,
       );
       expect(
         find.descendant(
@@ -1304,6 +1456,20 @@ class _PreviewToggleRepository implements NativeProcessingRepository {
         fps: 10,
         progress: frame / 100,
         currentPreviewPath: path,
+      ),
+    );
+  }
+
+  void emitCompleted(String outputUri) {
+    _progress.add(
+      JobStatusDto(
+        jobId: 'preview-toggle-job',
+        state: 'completed',
+        currentFrame: 100,
+        totalFrames: 100,
+        fps: 10,
+        progress: 1.0,
+        outputUri: outputUri,
       ),
     );
   }
