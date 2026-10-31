@@ -80,19 +80,13 @@ class PreviewPipeline(
 
         val videoInfo = VideoProbe.probe(context, sourceUri)
         val cacheKey = "${request.analysisCacheId}_${request.timestampMs}"
-        val cachedEntry = analysisCache.get(cacheKey)
+        val cachedEntry = analysisCache.copyForUse(cacheKey)
 
         val rotatedBitmap: Bitmap
         val trackedPersons: List<art.gaoge.dance.engine.tracking.TrackedPerson>
 
-        if (cachedEntry != null && !cachedEntry.frameBitmap.isRecycled) {
-            val srcBmp = cachedEntry.frameBitmap
-            val cfg = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && srcBmp.config == Bitmap.Config.HARDWARE) {
-                Bitmap.Config.ARGB_8888
-            } else {
-                srcBmp.config ?: Bitmap.Config.ARGB_8888
-            }
-            rotatedBitmap = srcBmp.copy(cfg, true)
+        if (cachedEntry != null) {
+            rotatedBitmap = cachedEntry.frameBitmap
             trackedPersons = cachedEntry.trackedPersons
         } else {
             // 1. Extract frame Bitmap at requested timestamp

@@ -34,9 +34,17 @@ class PreviewAnalysisCache(val maxEntries: Int = 4) {
         } catch (_: Throwable) {}
     }
 
-    fun get(cacheKey: String): CachedPreviewAnalysis? {
+    /** The caller owns this copy; eviction can recycle only the cached original. */
+    fun copyForUse(cacheKey: String): CachedPreviewAnalysis? {
         synchronized(lock) {
-            return lruMap[cacheKey]
+            val item = lruMap[cacheKey] ?: return null
+            val bitmap = item.frameBitmap
+            if (bitmap.isRecycled) return null
+            val config = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O &&
+                bitmap.config == Bitmap.Config.HARDWARE) Bitmap.Config.ARGB_8888
+                else bitmap.config ?: Bitmap.Config.ARGB_8888
+            val copy = bitmap.copy(config, true) ?: return null
+            return item.copy(frameBitmap = copy, trackedPersons = item.trackedPersons.toList())
         }
     }
 

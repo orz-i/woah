@@ -4,7 +4,11 @@ import android.content.Context
 import art.gaoge.dance.engine.device.DeviceCapabilities
 import art.gaoge.dance.engine.export.ExportCoordinator
 import art.gaoge.dance.engine.export.ExportServiceController
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
+import java.util.UUID
 import kotlinx.coroutines.withContext
 
 class DanceNativeApiImpl(
@@ -69,6 +73,11 @@ class DanceNativeApiImpl(
     private val cacheManager = art.gaoge.dance.engine.storage.CacheManager(context)
     private val analyzePipeline = art.gaoge.dance.engine.pipeline.AnalyzePipeline(context, cacheManager)
     private val previewPipeline = art.gaoge.dance.engine.pipeline.PreviewPipeline(context, segmenter, cacheManager)
+    private val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val previewOwner = art.gaoge.dance.engine.export.PreviewExportResourceGate.PreviewOwner {
+        previewPipeline.clear()
+        segmenter.close()
+    }
 
     override suspend fun analyzeVideo(request: AnalyzeRequestDto): AnalyzeResultDto = withContext(Dispatchers.Default) {
         if (request.videoUri.isBlank()) {
@@ -99,7 +108,9 @@ class DanceNativeApiImpl(
             )
         }
         try {
-            previewPipeline.renderPreview(request)
+            coordinator.resourceGate.withPreview(previewOwner) {
+                previewPipeline.renderPreview(request)
+            }
         } catch (e: DanceNativeException) {
             throw e
         } catch (e: Throwable) {
@@ -127,34 +138,19 @@ class DanceNativeApiImpl(
             )
         }
 
-        val jobId = "job_${System.currentTimeMillis()}"
-
-        // 1. Persist initial request and state into ExportJobStore
-        coordinator.registerJobRequest(jobId, request)
+        val jobId = "job_${UUID.randomUUID()}"
+        check(!previewOwner.closing.get()) { "Native API is detached" }
+        coordinator.resourceGate.reserveExport(jobId)
 
         try {
-            // Preview owns the reusable GPU LiteRT YOLO runner. Analysis uses a one-shot strict
-            // CPU runner, so only the preview runner needs to be released before
-            // starting the foreground export service so the export runner can
-            // acquire the GPU/OpenCL delegate without competing with a stale
-            // preview CompiledModel.  Preview is lazy-initialized on the next
-            // render call, so this handoff is reversible if the user returns.
-            try {
-                previewPipeline.clear()
-                segmenter.close()
-                art.gaoge.dance.engine.diagnostics.NativeDiagnostics.event(
-                    level = "INFO",
-                    component = "DanceNativeApiImpl",
-                    event = "YOLO_PREVIEW_GPU_RELEASED_FOR_EXPORT",
-                    fields = mapOf("job_id" to jobId)
-                )
-            } catch (releaseError: Throwable) {
-                android.util.Log.w(
-                    "DanceNativeApiImpl",
-                    "Failed to release preview YOLO before export: ${releaseError.message}",
-                    releaseError
-                )
-            }
+            // The reservation is process-wide and already drained every preview owner.
+            coordinator.registerJobRequest(jobId, request)
+            art.gaoge.dance.engine.diagnostics.NativeDiagnostics.event(
+                level = "INFO",
+                component = "DanceNativeApiImpl",
+                event = "YOLO_PREVIEW_GPU_RELEASED_FOR_EXPORT",
+                fields = mapOf("job_id" to jobId)
+            )
 
             // 2. Trigger ForegroundService to take ownership of execution
             ExportServiceController.startExportService(context, jobId)
@@ -171,8 +167,11 @@ class DanceNativeApiImpl(
                 errorCode = DanceNativeException.EXPORT_FAILED,
                 errorMessage = "Failed to start export service: ${e.message}"
             )
-            coordinator.jobStore.updateStatus(jobId, failedStatus)
-            coordinator.onJobFinished(jobId)
+            try {
+                coordinator.jobStore.updateStatus(jobId, failedStatus)
+            } finally {
+                coordinator.onJobFinished(jobId)
+            }
             throw DanceNativeException(
                 DanceNativeException.EXPORT_FAILED,
                 "Could not start export foreground service: ${e.message}",
@@ -195,19 +194,25 @@ class DanceNativeApiImpl(
 
     override suspend fun releaseProject(projectId: String) = withContext(Dispatchers.IO) {
         if (projectId.isNotBlank()) {
-            cacheManager.clearAnalysisCache(projectId)
-            previewPipeline.clearForAnalysis(projectId)
+            coordinator.resourceGate.withPreviewResources {
+                cacheManager.clearAnalysisCache(projectId)
+                previewPipeline.clearForAnalysis(projectId)
+            }
         }
     }
 
     fun close() {
+        // Detach must reject new calls immediately, but must not block the main thread
+        // waiting for an in-flight preview's preprocessing / inference / output read.
+        if (!previewOwner.closing.compareAndSet(false, true)) return
         coordinator.setEventEmitter(null)
-        try {
-            previewPipeline.clear()
-        } catch (_: Throwable) {}
-        try {
-            segmenter.close()
-        } catch (_: Throwable) {}
+        cleanupScope.launch {
+            try {
+                coordinator.resourceGate.closePreview(previewOwner)
+            } catch (error: Throwable) {
+                android.util.Log.e("DanceNativeApiImpl", "Preview cleanup failed", error)
+            }
+        }
     }
 }
 
