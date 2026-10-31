@@ -97,14 +97,19 @@ final class IOSComparisonMusicFeatureBuilder {
       }
       length *= 2
     }
-    let power = (0..<(Self.fft / 2)).map { real[$0] * real[$0] + imaginary[$0] * imaginary[$0] }
+    let power: [Double] = (0..<(Self.fft / 2)).map { index -> Double in
+      let realPower: Double = real[index] * real[index]
+      let imaginaryPower: Double = imaginary[index] * imaginary[index]
+      return realPower + imaginaryPower
+    }
     let bands: [Float] = (0..<16).map { band in
-      let sum = power[edges[band]..<edges[band + 1]].reduce(0, +)
+      let sum: Double = power[edges[band]..<edges[band + 1]].reduce(0.0, +)
       return Float(log(1 + sum / Double(edges[band + 1] - edges[band]) * 100))
     }
     let onset = (0..<16).map { max(0, bands[$0] - previous[$0]) }
     previous = bands
-    let mean = power.reduce(0, +) / Double(power.count)
+    let totalPower: Double = power.reduce(0.0, +)
+    let mean: Double = totalPower / Double(power.count)
     let peaks = Array((4..<500).filter {
       power[$0] > power[$0 - 1] && power[$0] >= power[$0 + 1] && power[$0] > mean * 3
     }.sorted { power[$0] == power[$1] ? $0 < $1 : power[$0] > power[$1] }.prefix(4))

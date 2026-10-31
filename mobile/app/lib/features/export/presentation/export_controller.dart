@@ -14,67 +14,92 @@ final exportControllerProvider =
       return ExportController(repo);
     });
 
+enum _ExportPhase { starting, running, cancelling, terminal }
+
+// Object identity is the generation token. This owner outlives the notifier
+// while a start/cancel RPC is pending, so late native IDs reach cleanup even
+// after route exit. Persistent platform failures are logged, not called success.
+class _ExportOperation {
+  _ExportPhase phase = _ExportPhase.starting;
+  final startSettled = Completer<void>();
+  final earlyStatuses = <String, JobStatusDto>{};
+  String? jobId;
+  bool submitted = false;
+  Future<void>? cancellation;
+  Future<void>? cleanup;
+  JobStatusDto? deferredTerminal;
+}
+
 class ExportController extends StateNotifier<ExportState> {
   final NativeProcessingRepository _repository;
   StreamSubscription<JobStatusDto>? _progressSub;
-  bool _cancelRequested = false;
-  JobStatusDto? _deferredTerminalStatus;
+  _ExportOperation? _operation;
 
   ExportController(this._repository) : super(const ExportState()) {
-    _subscribeProgress();
+    _progressSub = _repository.progressStream.listen(_onProgress);
   }
 
-  void _subscribeProgress() {
-    _progressSub = _repository.progressStream.listen((statusDto) {
-      if (state.jobId != null && statusDto.jobId != state.jobId) return;
+  bool _owns(_ExportOperation operation) =>
+      mounted && identical(_operation, operation);
 
-      // Native teardown can publish a late failed/completed status after the
-      // user's cancel request. Keep the cancelling view stable until the
-      // cancellation RPC has succeeded or failed.
-      if (_cancelRequested) {
-        if (statusDto.state == 'failed' || statusDto.state == 'completed') {
-          _deferredTerminalStatus = statusDto;
-          AppLogger.w(
-            'ExportController',
-            'Deferred late ${statusDto.state} while cancellation is pending',
-          );
+  static bool _isTerminal(String status) =>
+      status == 'failed' || status == 'completed' || status == 'cancelled';
+
+  void _onProgress(JobStatusDto status) {
+    final operation = _operation;
+    if (!mounted ||
+        operation == null ||
+        operation.phase == _ExportPhase.terminal) {
+      return;
+    }
+    if (operation.jobId == null) {
+      // Native events can arrive before the start RPC replies. Buffer only
+      // while submitted and only apply the returned ID, never unrelated jobs.
+      if (operation.submitted) {
+        final previous = operation.earlyStatuses[status.jobId];
+        if (previous == null || !_isTerminal(previous.state)) {
+          operation.earlyStatuses[status.jobId] = status;
         }
-        return;
       }
-
-      _applyProgress(statusDto);
-    });
+      return;
+    }
+    if (status.jobId != operation.jobId) return;
+    if (operation.phase == _ExportPhase.cancelling) {
+      if (_isTerminal(status.state)) {
+        operation.deferredTerminal ??= status;
+      }
+      return;
+    }
+    _applyProgress(operation, status);
   }
 
-  void _applyProgress(JobStatusDto statusDto) {
-    final newPreviewPath = state.showLivePreview
-        ? statusDto.currentPreviewPath
-        : null;
-    final jobState = ExportJobState.fromString(statusDto.state);
+  void _applyProgress(_ExportOperation operation, JobStatusDto statusDto) {
+    if (!_owns(operation) || operation.phase == _ExportPhase.terminal) return;
+    if (_isTerminal(statusDto.state)) operation.phase = _ExportPhase.terminal;
     state = state.copyWith(
-      status: jobState,
+      status: ExportJobState.fromString(statusDto.state),
       progress: statusDto.progress,
       currentFrame: statusDto.currentFrame,
       totalFrames: statusDto.totalFrames,
       fps: statusDto.fps,
       outputUri: statusDto.outputUri,
-      currentPreviewPath: newPreviewPath,
+      currentPreviewPath: state.showLivePreview
+          ? statusDto.currentPreviewPath
+          : null,
       clearCurrentPreviewPath: !state.showLivePreview,
       errorMessage: statusDto.errorMessage,
     );
   }
 
-  /// Toggle real-time rendered frame preview display
+  /// Toggle real-time rendered frame preview display.
   void toggleLivePreview(bool enabled) {
-    if (state.showLivePreview == enabled) return;
-
+    if (!mounted || state.showLivePreview == enabled) return;
     final jobId = state.jobId;
     state = state.copyWith(
       showLivePreview: enabled,
       clearCurrentPreviewPath: true,
     );
-
-    if (jobId != null) {
+    if (jobId != null && _operation?.phase == _ExportPhase.running) {
       unawaited(_setNativeLivePreview(jobId, enabled));
     }
   }
@@ -88,32 +113,35 @@ class ExportController extends StateNotifier<ExportState> {
     } catch (e, stack) {
       AppLogger.e(
         'ExportController',
-        'Failed to toggle live preview for $jobId',
+        'Failed to toggle live preview',
         e,
         stack,
       );
     }
   }
 
-  /// Launch export pipeline
+  /// Launch once; repeated starts cannot replace an owned native operation.
   Future<void> startExport(DanceProject project, String outputPath) async {
-    _cancelRequested = false;
-    _deferredTerminalStatus = null;
+    if (!mounted ||
+        (_operation != null && _operation!.phase != _ExportPhase.terminal)) {
+      return;
+    }
+    final operation = _ExportOperation();
+    _operation = operation;
+    // Construct a fresh state: nullable copyWith fields cannot clear old IDs,
+    // output, preview, plan, counters or errors from a previous terminal job.
+    state = ExportState(
+      project: project,
+      showLivePreview: state.showLivePreview,
+    );
     try {
-      state = state.copyWith(
-        status: ExportJobState.preparing,
-        project: project,
-        progress: 0.0,
-        clearErrorMessage: true,
-      );
-
       final plan = await _resolveExportPlan(project);
+      if (!_owns(operation) || operation.phase != _ExportPhase.starting) return;
       state = state.copyWith(exportPlan: plan);
-      AppLogger.d(
-        'ExportController',
-        'Starting export for project ${project.id} with $plan (profile: quality)',
-      );
+      // A synchronous state listener can cancel or dispose during publication.
+      if (!_owns(operation) || operation.phase != _ExportPhase.starting) return;
       final livePreviewAtLaunch = state.showLivePreview;
+      operation.submitted = true;
       final jobId = await _repository.startExport(
         sourceUri: project.sourceUri,
         analysisCacheId: project.analysisCacheId ?? '',
@@ -128,26 +156,48 @@ class ExportController extends StateNotifier<ExportState> {
         videoBitrate: plan.videoBitrate,
         processingProfile: 'quality',
         cropClarityScale: plan.cropClarityScale,
-        // Android supports a runtime capture gate and starts with it disabled.
-        // Other platforms keep the previous eager-capture behavior so their
-        // UI toggle remains backwards-compatible.
         enableLivePreview: Platform.isAndroid ? livePreviewAtLaunch : true,
         trimStartMs: project.trimStartMs,
         trimEndMs: project.trimEndMs,
       );
-
-      final desiredLivePreview = state.showLivePreview;
-      state = state.copyWith(jobId: jobId, clearCurrentPreviewPath: true);
-      if (Platform.isAndroid && desiredLivePreview != livePreviewAtLaunch) {
-        unawaited(_setNativeLivePreview(jobId, desiredLivePreview));
+      operation.jobId = jobId;
+      final earlyStatus = operation.earlyStatuses[jobId];
+      operation.earlyStatuses.clear();
+      if (!_owns(operation) || operation.phase == _ExportPhase.cancelling) {
+        if (earlyStatus != null && _isTerminal(earlyStatus.state)) {
+          operation.deferredTerminal ??= earlyStatus;
+        }
+      } else {
+        operation.phase = _ExportPhase.running;
+        final desiredLivePreview = state.showLivePreview;
+        state = state.copyWith(jobId: jobId, clearCurrentPreviewPath: true);
+        // Publication may synchronously request cancellation or dispose.
+        // Replay through the same phase checks as a live native event.
+        if (earlyStatus != null) _onProgress(earlyStatus);
+        if (operation.phase == _ExportPhase.running &&
+            Platform.isAndroid &&
+            desiredLivePreview != livePreviewAtLaunch) {
+          unawaited(_setNativeLivePreview(jobId, desiredLivePreview));
+        }
       }
     } catch (e, stack) {
       AppLogger.e('ExportController', 'Failed to start export', e, stack);
-      state = state.copyWith(
-        status: ExportJobState.failed,
-        errorMessage: '启动导出失败: $e',
-      );
+      if (_owns(operation) && operation.phase != _ExportPhase.cancelling) {
+        operation.phase = _ExportPhase.terminal;
+        state = state.copyWith(
+          status: ExportJobState.failed,
+          errorMessage: '启动导出失败: $e',
+        );
+      }
+    } finally {
+      operation.earlyStatuses.clear();
+      operation.startSettled.complete();
     }
+    // A disposed owner still finishes cleanup; cancellation errors are delivered
+    // to cancelExport's caller (or logged by dispose), not this ignored UI Future.
+    try {
+      await (operation.cleanup ?? operation.cancellation);
+    } catch (_) {}
   }
 
   Future<ExportPlan> _resolveExportPlan(DanceProject project) async {
@@ -159,9 +209,6 @@ class ExportController extends StateNotifier<ExportState> {
         maxEncodeHeight: capabilities.maxEncodeHeight.toInt(),
       );
     } catch (error) {
-      // Capability discovery is advisory. If it is unavailable, keep the ideal
-      // source-derived contract and let the encoder fail explicitly rather than
-      // silently degrading resolution or frame timing.
       AppLogger.w(
         'ExportController',
         'Encoder capability probe unavailable; preserving requested media contract: $error',
@@ -170,37 +217,84 @@ class ExportController extends StateNotifier<ExportState> {
     }
   }
 
-  /// Cancel current export job
-  Future<void> cancelExport() async {
-    final jobId = state.jobId;
-    if (jobId == null || _cancelRequested) return;
+  /// Pending startup cancellation waits for native ownership before reporting
+  /// success. Repeated requests share the same in-flight cancellation.
+  Future<void> cancelExport() {
+    final operation = _operation;
+    if (!mounted ||
+        operation == null ||
+        operation.phase == _ExportPhase.terminal) {
+      return Future<void>.value();
+    }
+    return _cancelOperation(operation);
+  }
 
-    _cancelRequested = true;
-    AppLogger.d('ExportController', 'Cancelling job $jobId');
+  Future<void> _cancelOperation(_ExportOperation operation) {
+    if (operation.cancellation != null) return operation.cancellation!;
+    operation.phase = _ExportPhase.cancelling;
+    final future = _performCancellation(operation);
+    operation.cancellation = future;
+    return future;
+  }
+
+  Future<void> _performCancellation(_ExportOperation operation) async {
+    // Install the shared Future before a synchronous repository error can reset it.
+    await Future<void>.value();
     try {
-      await _repository.cancelJob(jobId);
-      if (!mounted) return;
-      state = state.copyWith(
-        status: ExportJobState.cancelled,
-        clearErrorMessage: true,
-        clearCurrentPreviewPath: true,
-      );
+      if (operation.submitted) await operation.startSettled.future;
+      final jobId = operation.jobId;
+      if (jobId != null) await _repository.cancelJob(jobId);
+      operation.phase = _ExportPhase.terminal;
+      operation.deferredTerminal = null;
+      if (_owns(operation)) {
+        state = state.copyWith(
+          status: ExportJobState.cancelled,
+          clearErrorMessage: true,
+          clearCurrentPreviewPath: true,
+        );
+      }
     } catch (_) {
-      // If cancellation itself failed, a previously deferred native terminal
-      // status is real and must be replayed rather than silently discarded.
-      _cancelRequested = false;
-      final pendingTerminalStatus = _deferredTerminalStatus;
-      _deferredTerminalStatus = null;
-      if (mounted && pendingTerminalStatus != null) {
-        _applyProgress(pendingTerminalStatus);
+      operation.cancellation = null;
+      operation.phase = _ExportPhase.running;
+      final deferred = operation.deferredTerminal;
+      operation.deferredTerminal = null;
+      if (_owns(operation)) {
+        // In a cancelled startup window the ID was never published to state.
+        state = state.copyWith(jobId: operation.jobId);
+        if (deferred != null) _applyProgress(operation, deferred);
       }
       rethrow;
     }
   }
 
+  Future<void> _cleanupDisposedOperation(_ExportOperation operation) async {
+    // Both native coordinators accept repeated cancellation of the same ID.
+    // Retry a transient channel failure once, without touching notifier state.
+    for (var attempt = 0; attempt < 2; attempt++) {
+      try {
+        await _cancelOperation(operation);
+        return;
+      } catch (error, stack) {
+        if (attempt == 1) {
+          AppLogger.e(
+            'ExportController',
+            'Export cleanup failed for job ${operation.jobId}',
+            error,
+            stack,
+          );
+        }
+      }
+    }
+  }
+
   @override
   void dispose() {
+    final operation = _operation;
     _progressSub?.cancel();
+    if (operation != null && operation.phase != _ExportPhase.terminal) {
+      operation.cleanup = _cleanupDisposedOperation(operation);
+      unawaited(operation.cleanup!);
+    }
     super.dispose();
   }
 }
