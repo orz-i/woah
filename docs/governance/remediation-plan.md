@@ -22,7 +22,7 @@
 | GOV-02 | G1 | PR8 已合并，PR head 远端三检查成功；merge 证据按 G1 收尾记录。CI owner | 每个 PR 保守双平台、format/analyze/lint、always 汇总；失败／取消／意外 skipped 拒绝。无需为了完成本项再增加路径分类器 |
 | DART-01 | G1 | PR7 已交付，真实资源回收边界待验收。Flutter owner | retry/cancel 使用当前 operation/job；持久原生调用失败或 start RPC 永不返回 ID 的限制保留，不虚称所有设备零孤儿 |
 | DART-02 | G1 | PR7 已交付，真机与持续失败边界待验收。Flutter owner | dispose 后不更新失效 state，晚 job 接管／取消回归已过；原生 drain 完成不等同取消请求已接收 |
-| NATIVE-01 | G2-A | 未实施。Android owner／Flutter owner | 确定性交接竞争测试、资源 owner／借用期、冻结设备矩阵；不是重写全部 GPU 模型 |
+| NATIVE-01 | G2-A | 软件切片已实现，待最终 PR／merge 检查与 Android 真机验收。Android owner／Flutter owner | [交接证据](evidence/g2-a-native-resource-handoff-2026-10-31.md)：15 项确定性回归、进程级 owner／drain、Bitmap 锁内复制；没有以 JVM 通过代替真机；不是重写全部 GPU 模型 |
 | NATIVE-02 | G2-B | 未实施。Android owner | worker I/O，失败／取消回滚本次新建 MediaStore 条目，源文件不变；不声称已发生过 ANR |
 | PRIV-01 | G2-C | 未实施；策略缺口需明确。隐私／两平台 owner | 自建可再生缓存生命周期、在用租约、用户删除与重启清理；范围／TTL／配额按已批准策略，不整体清空所有 cache |
 | PRIV-03 | G2-D | 未实施。Flutter／隐私 owner | 合成敏感 path／URI／文件名在 release 与诊断包不可检出，保留可诊断错误类别 |

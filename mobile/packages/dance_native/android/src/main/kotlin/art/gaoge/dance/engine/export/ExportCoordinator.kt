@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 class ExportCoordinator private constructor(private val appContext: Context) {
 
     val jobStore = ExportJobStore(appContext)
+    val resourceGate = PreviewExportResourceGate()
     private val activeCancellations = ConcurrentHashMap<String, AtomicBoolean>()
     private val activeLivePreviews = ConcurrentHashMap<String, AtomicBoolean>()
     private val cachedRequests = ConcurrentHashMap<String, ExportRequestDto>()
@@ -100,6 +101,7 @@ class ExportCoordinator private constructor(private val appContext: Context) {
         activeCancellations.remove(jobId)
         activeLivePreviews.remove(jobId)
         cachedRequests.remove(jobId)
+        resourceGate.finishExport(jobId)
     }
 
     companion object {
