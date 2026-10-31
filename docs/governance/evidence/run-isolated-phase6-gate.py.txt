@@ -1,0 +1,56 @@
+"""Run unchanged gate assertions with an explicitly isolated simulator.
+
+Usage: WOAH_REPO=/absolute/repo WOAH_GATE_UDID=... python3 this-file.py.txt
+Only simulator selection differs. Original subprocess errors propagate.
+"""
+import importlib.util
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+ROOT = Path(os.environ["WOAH_REPO"]).resolve()
+UDID = os.environ["WOAH_GATE_UDID"]
+
+
+def load(name, path):
+    spec = importlib.util.spec_from_file_location(name, ROOT / path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def isolated_device():
+    payload = json.loads(subprocess.check_output(
+        ["xcrun", "simctl", "list", "devices", "available", "-j"], text=True))
+    for runtime, devices in payload["devices"].items():
+        for device in devices:
+            if device["udid"] == UDID:
+                if not device["name"].startswith("Woah Fix Gate "):
+                    raise SystemExit("Refusing a non-isolated simulator")
+                return runtime, device["name"], UDID
+    raise SystemExit("Requested isolated simulator is unavailable")
+
+
+if "--smoke" in sys.argv:
+    smoke = load("isolated_smoke", "tools/ios/run_phase4_simulator_smoke.py")
+    smoke.choose_iphones = lambda: [isolated_device()]
+    sys.argv = [sys.argv[0], "--app",
+                str(ROOT / "mobile/app/build/ios/iphonesimulator/Runner.app"),
+                "--require-phase6"]
+    raise SystemExit(smoke.main())
+
+isolated_device()  # Fail before any build if the supplied device is unsafe.
+gate = load("isolated_gate", "tools/ios/run_phase6_macos_gate.py")
+original_run = gate.run
+
+
+def run(command, **kwargs):
+    if len(command) > 1 and command[1] == "tools/ios/run_phase4_simulator_smoke.py":
+        command = [sys.executable, str(Path(__file__).resolve()), "--smoke"]
+    return original_run(command, **kwargs)
+
+
+gate.run = run
+raise SystemExit(gate.main())

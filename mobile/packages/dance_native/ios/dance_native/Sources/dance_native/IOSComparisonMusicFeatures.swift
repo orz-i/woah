@@ -97,17 +97,18 @@ final class IOSComparisonMusicFeatureBuilder {
       }
       length *= 2
     }
-    let power = (0..<(Self.fft / 2)).map { real[$0] * real[$0] + imaginary[$0] * imaginary[$0] }
+    let power: [Double] = (0..<(Self.fft / 2)).map { index -> Double in
+      let realPower: Double = real[index] * real[index]
+      let imaginaryPower: Double = imaginary[index] * imaginary[index]
+      return realPower + imaginaryPower
+    }
     let bands: [Float] = (0..<16).map { band in
-      let sum = power[edges[band]..<edges[band + 1]].reduce(0, +)
+      let sum: Double = power[edges[band]..<edges[band + 1]].reduce(0.0, +)
       return Float(log(1 + sum / Double(edges[band + 1] - edges[band]) * 100))
     }
     let onset = (0..<16).map { max(0, bands[$0] - previous[$0]) }
     previous = bands
-    let mean = power.reduce(0, +) / Double(power.count)
-    let peaks = Array((4..<500).filter {
-      power[$0] > power[$0 - 1] && power[$0] >= power[$0 + 1] && power[$0] > mean * 3
-    }.sorted { power[$0] == power[$1] ? $0 < $1 : power[$0] > power[$1] }.prefix(4))
+    let peaks: [Int] = Self.peakBins(power)
     let pitch: [Float] = (0..<48).map { b in
       let center = pitchBins[b]
       let lo = max(1, Int(floor(center / pow(2, 1.0 / 8))))
@@ -124,6 +125,32 @@ final class IOSComparisonMusicFeatureBuilder {
     let timeUs = originUs + (samples - Int64(Self.fft / 2)) * 1_000_000 / Int64(Self.rate)
     frames.append(IOSComparisonMusicFrame(timeUs: timeUs, spectrum: bands,
       onset: onset, peaks: peaks, pitchSpectrum: pitch))
+  }
+
+  // Split filtering, ordering and truncation to reduce Xcode 26 constraint-
+  // solver complexity without changing the peak selection rules.
+  // Input is the 512-bin power spectrum produced by extract().
+  static func peakBins(_ power: [Double]) -> [Int] {
+    var totalPower: Double = 0.0
+    for value in power { totalPower += value }
+    let mean: Double = totalPower / Double(power.count)
+    let threshold: Double = mean * 3.0
+    var candidates: [Int] = []
+    for index in 4..<500 {
+      let value: Double = power[index]
+      let left: Double = power[index - 1]
+      let right: Double = power[index + 1]
+      if value > left && value >= right && value > threshold {
+        candidates.append(index)
+      }
+    }
+    candidates.sort { (left: Int, right: Int) -> Bool in
+      let leftPower: Double = power[left]
+      let rightPower: Double = power[right]
+      if leftPower == rightPower { return left < right }
+      return leftPower > rightPower
+    }
+    return Array(candidates.prefix(4))
   }
 
   func finish() -> IOSComparisonMusicFeatures {

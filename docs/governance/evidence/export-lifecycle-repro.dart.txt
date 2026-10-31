@@ -1,0 +1,223 @@
+import 'dart:async';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:app/features/export/presentation/export_controller.dart';
+import 'package:app/repositories/native_processing_repository.dart';
+import 'package:dance_domain/dance_domain.dart';
+import 'package:dance_native/dance_native.dart';
+
+void main() {
+  test('AUDIT retry cancellation must not target previous failed job', () async {
+    final repository = _AuditRecordingRepository();
+    addTearDown(repository.dispose);
+    final controller = ExportController(repository);
+    addTearDown(controller.dispose);
+    await controller.startExport(_testProject(), 'first.mp4');
+    repository.emitFailure('first failed');
+    await Future<void>.delayed(Duration.zero);
+    repository.startCompleter = Completer<String>();
+    final retry = controller.startExport(_testProject(), 'second.mp4');
+    await Future<void>.delayed(Duration.zero);
+    await controller.cancelExport();
+    repository.startCompleter!.complete('second-job');
+    await retry;
+    print('AUDIT cancellation targets=${repository.cancelledIds}; final job=${controller.state.jobId}; final status=${controller.state.status}');
+    expect(repository.cancelledIds, isNot(contains('preview-toggle-job')));
+  });
+
+  test('AUDIT dispose during startExport must not access disposed state', () async {
+    final repository = _PreviewToggleRepository()..startCompleter = Completer<String>();
+    addTearDown(repository.dispose);
+    final controller = ExportController(repository);
+    final operation = controller.startExport(_testProject(), 'audit.mp4');
+    await Future<void>.delayed(Duration.zero);
+    controller.dispose();
+    final check = expectLater(operation, completes);
+    repository.startCompleter!.complete('audit-job');
+    await check;
+  });
+  test('AUDIT retry must not retain previous job id while launching', () async {
+    final repository = _PreviewToggleRepository();
+    addTearDown(repository.dispose);
+    final controller = ExportController(repository);
+    addTearDown(controller.dispose);
+    await controller.startExport(_testProject(), 'first.mp4');
+    repository.emitFailure('first failed');
+    await Future<void>.delayed(Duration.zero);
+    repository.startCompleter = Completer<String>();
+    final retry = controller.startExport(_testProject(), 'second.mp4');
+    await Future<void>.delayed(Duration.zero);
+    final retained = controller.state.jobId;
+    repository.startCompleter!.complete('second-job');
+    await retry;
+    expect(retained, isNull);
+  });
+
+}
+
+DanceProject _testProject() {
+  final now = DateTime.utc(2026, 9, 5);
+  return DanceProject(
+    id: 'export-preview-toggle',
+    sourceUri: '/preview-toggle.mp4',
+    videoInfo: const VideoInfo(
+      codedWidth: 1280,
+      codedHeight: 720,
+      displayWidth: 1280,
+      displayHeight: 720,
+      fps: 30,
+      durationMs: 12000,
+      rotation: 0,
+      videoCodec: 'h264',
+      hasAudio: true,
+    ),
+    analysisCacheId: 'cache-preview-toggle',
+    selectedPersonIds: const {0},
+    createdAt: now,
+    updatedAt: now,
+  );
+}
+
+class _PreviewToggleRepository implements NativeProcessingRepository {
+  final int maxEncodeWidth;
+  final int maxEncodeHeight;
+  final StreamController<JobStatusDto> _progress =
+      StreamController<JobStatusDto>.broadcast();
+  final List<bool> livePreviewToggles = [];
+  int startExportCalls = 0;
+  bool diagnosticShared = false;
+  int cancelCalls = 0;
+  Completer<String>? startCompleter;
+  Completer<void>? cancelCompleter;
+
+  _PreviewToggleRepository({
+    this.maxEncodeWidth = 3840,
+    this.maxEncodeHeight = 2160,
+  });
+
+  @override
+  Stream<JobStatusDto> get progressStream => _progress.stream;
+
+  @override
+  Future<NativeCapabilitiesDto> getCapabilities() async =>
+      NativeCapabilitiesDto(
+        platform: 'test',
+        osVersion: '1',
+        gpuSupported: true,
+        h264Encoder: true,
+        hevcEncoder: true,
+        maxEncodeWidth: maxEncodeWidth,
+        maxEncodeHeight: maxEncodeHeight,
+        cpuCores: 8,
+        recommendedProfile: 'quality',
+        supportedProfiles: const ['quality'],
+        inferenceBackends: const ['test'],
+      );
+
+  @override
+  Future<String> startExport({
+    required String sourceUri,
+    required String analysisCacheId,
+    required String outputFilePath,
+    required List<int> selectedPersonIds,
+    List<int> faceOnlyPersonIds = const [],
+    required EffectConfig effects,
+    FollowConfig follow = const FollowConfig(),
+    int targetWidth = 1920,
+    int targetHeight = 1080,
+    double targetFps = 30.0,
+    int videoBitrate = 8000000,
+    String processingProfile = 'quality',
+    double cropClarityScale = 1.0,
+    bool enableLivePreview = false,
+    int trimStartMs = 0,
+    int? trimEndMs,
+  }) {
+    startExportCalls++;
+    return startCompleter?.future ?? Future<String>.value('preview-toggle-job');
+  }
+
+  @override
+  Future<void> setExportLivePreviewEnabled({
+    required String jobId,
+    required bool enabled,
+  }) async {
+    livePreviewToggles.add(enabled);
+  }
+
+  @override
+  Future<void> cancelJob(String jobId) {
+    cancelCalls += 1;
+    return cancelCompleter?.future ?? Future<void>.value();
+  }
+
+  void emitPreview(String path, {required int frame}) {
+    _progress.add(
+      JobStatusDto(
+        jobId: 'preview-toggle-job',
+        state: 'processing',
+        currentFrame: frame,
+        totalFrames: 100,
+        fps: 10,
+        progress: frame / 100,
+        currentPreviewPath: path,
+      ),
+    );
+  }
+
+  void emitCompleted(String outputUri) {
+    _progress.add(
+      JobStatusDto(
+        jobId: 'preview-toggle-job',
+        state: 'completed',
+        currentFrame: 100,
+        totalFrames: 100,
+        fps: 10,
+        progress: 1.0,
+        outputUri: outputUri,
+      ),
+    );
+  }
+
+  void emitFailure(String message) {
+    _progress.add(
+      JobStatusDto(
+        jobId: 'preview-toggle-job',
+        state: 'failed',
+        currentFrame: 8,
+        totalFrames: 100,
+        fps: 10,
+        progress: 0.08,
+        errorMessage: message,
+      ),
+    );
+  }
+
+  @override
+  Future<Map<dynamic, dynamic>?> createDiagnosticBundle() async {
+    return <dynamic, dynamic>{'filePath': '/tmp/diag.zip'};
+  }
+
+  @override
+  Future<Map<dynamic, dynamic>?> shareDiagnosticBundle({
+    String? filePath,
+    String? publicUri,
+  }) async {
+    diagnosticShared = true;
+    return <dynamic, dynamic>{'shared': true};
+  }
+
+  void dispose() {
+    _progress.close();
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _AuditRecordingRepository extends _PreviewToggleRepository {
+  final List<String> cancelledIds = [];
+  @override Future<void> cancelJob(String jobId) {
+    cancelledIds.add(jobId);
+    return super.cancelJob(jobId);
+  }
+}
