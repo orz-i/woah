@@ -41,3 +41,15 @@
 - 对新 Kotlin 终态分类辅助类进行了独立 Kotlin/JVM 编译与两种分支的逻辑断言，结果 PASS。该独立测试使用与生成 DTO 同字段的简化类型，只用于核对辅助类语法与逻辑，不能代替完整 Android Gradle 编译和模块单测。
 
 下一轮在拥有 Android SDK/JDK 的构建环境中执行 Android 编译与 Kotlin 单元测试。将新 APK 安装到 OnePlus，导入真实视频，进入隐私导出，分别在准备、处理中和接近完成时确认取消。观察是否不再闪出失败页、是否成功返回编辑器、是否无后台残留任务。稳定 ADB 后，使用有界 screenrecord 和 logcat 捕获取消窗口，不需要人工瞬时截图。若仍出现完整 Flutter 红屏或堆栈，按堆栈重新定位，不能仅凭本轮竞态修复宣称最终设备问题已彻底解决。
+
+
+## 2026-10-31 OnePlus 8T 恢复连接后的真机复核
+
+- **ADB 实际连通：** Android Platform-Tools 37.0.1 识别 OnePlus 8T / Android 14、1080×2400 / 480dpi；旧版已安装 Woah 0.1.0、Debuggable，最后更新时间 2026-10-30 20:45:31。连接仍偶尔断开，但本轮已成功运行命令、启动应用、导入视频、取消任务和拉取图像。
+- **隐私友好素材：** 取仓库内 `home-video-protection.jpg` 的居中舞者区域，通过 ffmpeg 制作 540×960、20fps、30 秒 H.264、约 183KB 的本地合成视频。经 ADB 放入 `Movies/WoahQA`，通过 Android 文件选择器导入，隐私编辑器成功识别并默认保护 1 名人物。没有使用、导出或备份用户手机上的私人素材。
+- **旧版真实取消试验：** 2026-10-31 08:05:58 开始导出；输出目标 540×960@20fps。导出进度约 64% 时点击停止并确认取消，08:07:52.819 记录到 `[ExportController] Cancelling job`，native pipeline 随后上报统计 `decoded=387, rendered=387, encoded=387`，页面返回隐私编辑器且没有崩溃。
+- **瞬时画面证据：** Android 自带 `screenrecord` 在该设备直接退出 139，无法生成可用视频。改用 ADB 连续 `screencap`，在确认取消前后采样 32 帧。本轮 32 帧均未包含红色错误屏；合成接触图位于 Mac `/tmp/woah-cancel-device-qa/old-burst-contact-sheet.jpg`，原始 32 帧保存在 `/tmp/woah-cancel-device-qa/old-burst/`。只能表述为该次没有复现，不能推断所有偶发闪屏均已消失。
+- **日志证据：** `/tmp/woah-cancel-device-qa/app-logcat-live.txt` 保存测试 App PID 的事件。该次取消窗口可见取消操作及 native pipeline telemetry，未捕获 Flutter widget exception / AndroidRuntime fatal stack。不能将系统通用媒体编解码日志当成确定的红屏根因。
+- **善后：** 已停止后台 logcat，会话关闭；仅删除这轮新建的 `Movies/WoahQA` 合成视频和取消画面采样目录，没有清除 App 数据、安装其他 APK 或动用户已有视频。手机仍保留原 Debug APK。
+- **版本限定：** 这次真实操作运行的是设备**旧版 APK**，不是修复分支的新 Kotlin/Dart 代码，因此只能确认旧版的一次取消表现。修复代码的 Flutter 受控竞态测试 234/234、独立 Kotlin/JVM 终态分类断言和 iOS 编译已通过，但完整 Android Gradle 编译以及 Android 新版真机再测仍缺失。
+- **后续验收：** 在具备 Android SDK/JDK 的构建环境编译 `fix/export-cancel-failure-flash`，运行 `ExportTerminalStatusTest`，安装 Debug APK（保留 App 数据），以相同合成视频分别在刚开始处理、处理约 50%、接近结束时取消。采集 Flutter 异常、native 取消终态与 UI 过渡，确保无失败页闪屏、无结果页误跳，取消失败时仍可提示真实错误。若仍出现红色 Flutter 异常，按实际堆栈另行定位。
