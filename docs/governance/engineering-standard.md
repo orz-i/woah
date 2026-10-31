@@ -74,7 +74,7 @@
 
 ## 分层 CI 设计
 
-以下是目标分层。第二批已实现 `governance / required` 汇总、format/analyze/lint 和双平台常驻调用；Pigeon、发布及设备层并未全部实现。实际状态以[台账](remediation-plan.md)和 PR8 最终远端记录为准；服务器 required checks 仍需具体确认后应用。
+以下是目标分层。第二批已实现 `governance / required` 汇总、format/analyze/lint 和双平台常驻调用；Pigeon、发布及设备层并未全部实现。实际状态以[台账](remediation-plan.md)和 PR8 最终远端记录为准；服务器 required checks 按 G1-EX-01 本轮不启用，结束后再评估。
 
 | 层级 | 触发与内容 | 合并或发布要求 |
 | --- | --- | --- |
@@ -138,7 +138,7 @@ python tools/ios/run_phase6_macos_gate.py
 
 单维护者也通过 PR 保存可检索的风险和验收记录。自审至少覆盖“功能正确”与“失败/取消/隐私”两个视角；多人参与时再对高风险域请求 owner 评审。CODEOWNERS 只是路由规则，本身不强制审批；是否必须批准由 ruleset / branch protection 决定。[Code owners](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners)
 
-建议由维护者批准并启用：主分支经 PR 合并、可信 required checks、禁止 force push / 删除、受控例外或 bypass。不要在只有一个可用维护者时要求不可满足的第二人审批；也不要为了方便永久跳过红灯。[GitHub rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets)
+以下是本轮结束后再评估的服务器设置建议，维护者已明确本轮不启用（G1-EX-01）：主分支经 PR 合并、可信 required checks、禁止 force push / 删除、受控例外或 bypass。不要在只有一个可用维护者时要求不可满足的第二人审批；也不要为了方便永久跳过红灯。[GitHub rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets)
 
 PR 记录最少包含：
 
@@ -154,4 +154,4 @@ Actions 默认最小权限 `contents: read`，需要写入的 job 单独升权�
 
 [整改台账](remediation-plan.md) 是此轮事实来源。每项有角色 owner、依赖、验收、状态和关闭证据；完成后记录实际个人、commit / PR / run。例外至少写：规则 ID、原因、影响范围、补偿措施、负责人、批准人、明确失效日期、退出条件；到期未复核即失效。
 
-当前没有批准任何例外，也没有任何整改因写入本文而自动关闭。规范调整本身走小 PR，说明哪条规则没有有效发现问题或成本不合适，再用证据修订。
+G1-EX-01 是已明确的设置范围延期，按维护者指定的“本轮结束”触发复评，不虚构日历到期日；其他实施性绕过仍须满足上面的期限要求。任何整改不因写入本文而自动关闭。规范调整本身走小 PR，说明哪条规则没有有效发现问题或成本不合适，再用证据修订。
