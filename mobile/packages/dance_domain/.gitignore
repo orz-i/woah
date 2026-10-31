@@ -2,6 +2,6 @@
 # Created by `dart pub`
 .dart_tool/
 
-# Avoid committing pubspec.lock for library packages; see
+# Internal CI package: preserve its tested dependency resolution; see
 # https://dart.dev/tools/pub/private-files#pubspec-lock.
-pubspec.lock
+!pubspec.lock

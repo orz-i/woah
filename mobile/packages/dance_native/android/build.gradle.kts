@@ -352,3 +352,6 @@ tasks.matching { it.name.startsWith("preBuild") || it.name.startsWith("compile")
         verifyNoPlayServicesLiteRt
     )
 }
+
+// Shared, repository-owned dependency resolution policy.
+apply(from = file("../../../../tools/gradle/woah-dependency-locking.gradle.kts"))

@@ -133,7 +133,7 @@ jobs:
         working-directory: mobile/app
         run: |
           flutter config --enable-swift-package-manager
-          flutter pub get
+          python ../../tools/ci/resolve_ios_dependencies.py
 
       - name: Build dedicated cloud-probe app
         working-directory: mobile/app
