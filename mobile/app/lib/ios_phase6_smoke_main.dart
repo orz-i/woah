@@ -60,9 +60,7 @@ class _Phase6SmokeAppState extends State<_Phase6SmokeApp> {
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
-      home: Scaffold(
-        body: Center(child: Text('Woah iOS Phase 6 smoke')),
-      ),
+      home: Scaffold(body: Center(child: Text('Woah iOS Phase 6 smoke'))),
     );
   }
 }

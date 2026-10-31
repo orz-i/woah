@@ -26,21 +26,22 @@ class PersonTrack {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'normalizedInitialBox': normalizedInitialBox.toJson(),
-        'thumbnailPath': thumbnailPath,
-        'confidence': confidence,
-        'selected': selected,
-      };
+    'id': id,
+    'normalizedInitialBox': normalizedInitialBox.toJson(),
+    'thumbnailPath': thumbnailPath,
+    'confidence': confidence,
+    'selected': selected,
+  };
 
   factory PersonTrack.fromJson(Map<String, dynamic> json) => PersonTrack(
-        id: json['id'] as int,
-        normalizedInitialBox: NormalizedRect.fromJson(
-            json['normalizedInitialBox'] as Map<String, dynamic>),
-        thumbnailPath: json['thumbnailPath'] as String,
-        confidence: (json['confidence'] as num).toDouble(),
-        selected: json['selected'] as bool? ?? true,
-      );
+    id: json['id'] as int,
+    normalizedInitialBox: NormalizedRect.fromJson(
+      json['normalizedInitialBox'] as Map<String, dynamic>,
+    ),
+    thumbnailPath: json['thumbnailPath'] as String,
+    confidence: (json['confidence'] as num).toDouble(),
+    selected: json['selected'] as bool? ?? true,
+  );
 
   PersonTrack copyWith({
     int? id,

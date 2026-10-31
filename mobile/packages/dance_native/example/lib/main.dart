@@ -45,9 +45,7 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
-        appBar: AppBar(
-          title: const Text('DanceNative Plugin Example'),
-        ),
+        appBar: AppBar(title: const Text('DanceNative Plugin Example')),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -55,11 +53,15 @@ class _MyAppState extends State<MyApp> {
               Text('Status: $_status'),
               if (_capabilities != null) ...[
                 const SizedBox(height: 16),
-                Text('Platform: ${_capabilities!.platform} ${_capabilities!.osVersion}'),
+                Text(
+                  'Platform: ${_capabilities!.platform} ${_capabilities!.osVersion}',
+                ),
                 Text('GPU Supported: ${_capabilities!.gpuSupported}'),
                 Text('H264 Encoder: ${_capabilities!.h264Encoder}'),
                 Text('CPU Cores: ${_capabilities!.cpuCores}'),
-                Text('Recommended Profile: ${_capabilities!.recommendedProfile}'),
+                Text(
+                  'Recommended Profile: ${_capabilities!.recommendedProfile}',
+                ),
               ],
             ],
           ),

@@ -34,30 +34,30 @@ class VideoInfo {
   double get aspectRatio => height == 0 ? 1.0 : width / height;
 
   Map<String, dynamic> toJson() => {
-        'codedWidth': codedWidth,
-        'codedHeight': codedHeight,
-        'displayWidth': displayWidth,
-        'displayHeight': displayHeight,
-        'fps': fps,
-        'durationMs': durationMs,
-        'rotation': rotation,
-        'videoCodec': videoCodec,
-        'audioCodec': audioCodec,
-        'hasAudio': hasAudio,
-      };
+    'codedWidth': codedWidth,
+    'codedHeight': codedHeight,
+    'displayWidth': displayWidth,
+    'displayHeight': displayHeight,
+    'fps': fps,
+    'durationMs': durationMs,
+    'rotation': rotation,
+    'videoCodec': videoCodec,
+    'audioCodec': audioCodec,
+    'hasAudio': hasAudio,
+  };
 
   factory VideoInfo.fromJson(Map<String, dynamic> json) => VideoInfo(
-        codedWidth: json['codedWidth'] as int,
-        codedHeight: json['codedHeight'] as int,
-        displayWidth: json['displayWidth'] as int,
-        displayHeight: json['displayHeight'] as int,
-        fps: (json['fps'] as num).toDouble(),
-        durationMs: json['durationMs'] as int,
-        rotation: json['rotation'] as int,
-        videoCodec: json['videoCodec'] as String,
-        audioCodec: json['audioCodec'] as String?,
-        hasAudio: json['hasAudio'] as bool? ?? false,
-      );
+    codedWidth: json['codedWidth'] as int,
+    codedHeight: json['codedHeight'] as int,
+    displayWidth: json['displayWidth'] as int,
+    displayHeight: json['displayHeight'] as int,
+    fps: (json['fps'] as num).toDouble(),
+    durationMs: json['durationMs'] as int,
+    rotation: json['rotation'] as int,
+    videoCodec: json['videoCodec'] as String,
+    audioCodec: json['audioCodec'] as String?,
+    hasAudio: json['hasAudio'] as bool? ?? false,
+  );
 
   VideoInfo copyWith({
     int? codedWidth,
