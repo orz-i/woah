@@ -53,3 +53,12 @@
 - **善后：** 已停止后台 logcat，会话关闭；仅删除这轮新建的 `Movies/WoahQA` 合成视频和取消画面采样目录，没有清除 App 数据、安装其他 APK 或动用户已有视频。手机仍保留原 Debug APK。
 - **版本限定：** 这次真实操作运行的是设备**旧版 APK**，不是修复分支的新 Kotlin/Dart 代码，因此只能确认旧版的一次取消表现。修复代码的 Flutter 受控竞态测试 234/234、独立 Kotlin/JVM 终态分类断言和 iOS 编译已通过，但完整 Android Gradle 编译以及 Android 新版真机再测仍缺失。
 - **后续验收：** 在具备 Android SDK/JDK 的构建环境编译 `fix/export-cancel-failure-flash`，运行 `ExportTerminalStatusTest`，安装 Debug APK（保留 App 数据），以相同合成视频分别在刚开始处理、处理约 50%、接近结束时取消。采集 Flutter 异常、native 取消终态与 UI 过渡，确保无失败页闪屏、无结果页误跳，取消失败时仍可提示真实错误。若仍出现红色 Flutter 异常，按实际堆栈另行定位。
+
+## 2026-10-31 用户反馈仍出现红色 Flutter 异常：重新打开调查
+
+- **反馈：** 用户报告拉取修复分支后，点击「取消处理」仍会瞬时出现红色报错，然后自动返回。上轮关于问题已修复的判断不再作为设备级结论。已证实的 native failed/Flutter failure-panel 竞态只是候选原因之一，不足以解释完整的 Flutter 红色异常界面。
+- **版本核实缺口：** 上次 ADB 成功读取的 OnePlus 8T `lastUpdateTime=2026-10-30 20:45:31`。上轮修复最新提交 `055814e` 的提交时间为 `2026-10-31 08:12:01 +0800`。因此那一次已记录的设备测试运行的是修复前构建。用户此后是否已安装新 APK 必须通过再次读取设备安装信息/构建提交核实，不能假定用户没有更新。
+- **补充测试：** 新增真实 `ProtectionEditorScreen -> ExportScreen -> ProtectionEditorScreen` 的 GoRouter 集成回归，分别模拟 (a) cancel RPC 悬而未决时迟到 `failed`，(b) cancel RPC 立即成功、Dialog 关闭动画期间返回。逐帧调用 `tester.takeException()`，两条路径均未发现 Flutter 框架异常。仍缺少能展示用户完整红屏错误内容的真机堆栈。
+- **连接复核：** 设备物理 USB 仍显示 OnePlus 8T，但 Mac ADB 37.0.1 再次出现 USB read/write `e00002ed` 与空 `adb devices -l`，无法在本轮捕获已安装 APK 的新版本信息或真实取消瞬间的 logcat。
+- **采集准备：** Mac 临时工具 `/tmp/woah-cancel-device-qa/capture_red_flash_once.sh` 已通过 Bash 语法检查。ADB 在线且 Woah 位于前台时，可执行 `bash /tmp/woah-cancel-device-qa/capture_red_flash_once.sh 334da6a3 18`，以 18 秒有界窗口保存 app PID `logcat`、前置日志、连续 `screencap` 和包安装时间到独立 /tmp 目录。不清空 App 数据、不清空系统日志、不安装 APK；截屏可能含用户视频，只保留本机待核查。
+- **状态：** 真实红屏根因 `NOT_PROVEN`，不额外修改生产代码或将其误认成已排除的失败面板。需要 ADB 在线且**已确认包含修复提交的 APK**，并取得红屏 Flutter stack/logcat 后才能精确继续修复。

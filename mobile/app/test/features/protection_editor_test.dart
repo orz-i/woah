@@ -2052,6 +2052,133 @@ void main() {
     },
   );
 
+  testWidgets(
+    'real editor export fast native cancellation does not flash an error',
+    (tester) async {
+      final repository = _CancelRoundTripRepository()..immediateCancel = true;
+      addTearDown(repository.dispose);
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+      final router = GoRouter(
+        initialLocation: '/protect',
+        routes: [
+          GoRoute(
+            path: '/protect',
+            builder: (_, _) => ProtectionEditorScreen(project: project),
+          ),
+          GoRoute(
+            path: '/export',
+            builder: (_, state) =>
+                ExportScreen(project: (state.extra! as ExportArgs).project),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+      router.push('/export', extra: ExportArgs(project: project));
+      await tester.pumpAndSettle();
+      expect(find.byType(ExportScreen), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('export-cancel-action')));
+      await tester.pump();
+      await tester.tap(find.text('取消处理'));
+
+      // Check every individual frame, not merely the final stable route.
+      for (var frame = 0; frame < 15; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        final exception = tester.takeException();
+        expect(exception, isNull, reason: 'Flutter error at frame $frame');
+      }
+      expect(repository.cancelCalls, 1);
+      expect(find.byType(ExportScreen), findsNothing);
+      expect(find.byType(ProtectionEditorScreen), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('export-failure-summary')),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets(
+    'real editor export route returns cleanly after cancellation race',
+    (tester) async {
+      final repository = _CancelRoundTripRepository();
+      addTearDown(repository.dispose);
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+      final router = GoRouter(
+        initialLocation: '/protect',
+        routes: [
+          GoRoute(
+            path: '/protect',
+            builder: (_, _) => ProtectionEditorScreen(project: project),
+          ),
+          GoRoute(
+            path: '/export',
+            builder: (_, state) {
+              final args = state.extra! as ExportArgs;
+              return ExportScreen(project: args.project);
+            },
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(ProtectionEditorScreen), findsOneWidget);
+
+      router.push('/export', extra: ExportArgs(project: project));
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(ExportScreen), findsOneWidget);
+      for (
+        var attempt = 0;
+        attempt < 5 && repository.startExportCalls == 0;
+        attempt++
+      ) {
+        await tester.pump(const Duration(milliseconds: 1));
+      }
+      expect(repository.startExportCalls, 1);
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.byKey(const ValueKey('export-cancel-action')));
+      await tester.pump();
+      await tester.tap(find.text('取消处理'));
+      await tester.pump();
+      expect(repository.cancelCalls, 1);
+      repository.emitFailureAfterCancel();
+      await tester.pump();
+      expect(
+        find.byKey(const ValueKey('export-failure-summary')),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+
+      repository.finishCancel();
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      await tester.pumpAndSettle();
+      expect(find.byType(ExportScreen), findsNothing);
+      expect(find.byType(ProtectionEditorScreen), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('single next action goes directly to export', (tester) async {
     final repository = _FakeProtectionRepository();
     final container = ProviderContainer(
@@ -2116,6 +2243,80 @@ class _MemoryProtectionProfileStore implements ProtectionProfileStore {
     saveCount += 1;
     this.profile = profile;
   }
+}
+
+class _CancelRoundTripRepository extends _FakeProtectionRepository {
+  final _progress = StreamController<JobStatusDto>.broadcast();
+  final Completer<void> _cancelGate = Completer<void>();
+  bool immediateCancel = false;
+  int cancelCalls = 0;
+  int startExportCalls = 0;
+
+  @override
+  Stream<JobStatusDto> get progressStream => _progress.stream;
+
+  @override
+  Future<NativeCapabilitiesDto> getCapabilities() async =>
+      NativeCapabilitiesDto(
+        platform: 'test',
+        osVersion: '1',
+        gpuSupported: true,
+        h264Encoder: true,
+        hevcEncoder: true,
+        maxEncodeWidth: 3840,
+        maxEncodeHeight: 2160,
+        cpuCores: 8,
+        recommendedProfile: 'quality',
+        supportedProfiles: const ['quality'],
+        inferenceBackends: const ['test'],
+      );
+
+  @override
+  Future<String> startExport({
+    required String sourceUri,
+    required String analysisCacheId,
+    required String outputFilePath,
+    required List<int> selectedPersonIds,
+    List<int> faceOnlyPersonIds = const [],
+    required EffectConfig effects,
+    FollowConfig follow = const FollowConfig(),
+    int targetWidth = 1920,
+    int targetHeight = 1080,
+    double targetFps = 30,
+    int videoBitrate = 8000000,
+    String processingProfile = 'quality',
+    double cropClarityScale = 1.0,
+    bool enableLivePreview = false,
+    int trimStartMs = 0,
+    int? trimEndMs,
+  }) async {
+    startExportCalls++;
+    return 'roundtrip-job';
+  }
+
+  @override
+  Future<void> cancelJob(String jobId) {
+    cancelCalls++;
+    return immediateCancel ? Future<void>.value() : _cancelGate.future;
+  }
+
+  void emitFailureAfterCancel() {
+    _progress.add(
+      JobStatusDto(
+        jobId: 'roundtrip-job',
+        state: 'failed',
+        currentFrame: 4,
+        totalFrames: 100,
+        fps: 30,
+        progress: 0.04,
+        errorMessage: 'native teardown after cancel',
+      ),
+    );
+  }
+
+  void finishCancel() => _cancelGate.complete();
+
+  void dispose() => _progress.close();
 }
 
 class _FakeProtectionRepository implements NativeProcessingRepository {
