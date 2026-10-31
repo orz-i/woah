@@ -62,3 +62,35 @@
 - **连接复核：** 设备物理 USB 仍显示 OnePlus 8T，但 Mac ADB 37.0.1 再次出现 USB read/write `e00002ed` 与空 `adb devices -l`，无法在本轮捕获已安装 APK 的新版本信息或真实取消瞬间的 logcat。
 - **采集准备：** Mac 临时工具 `/tmp/woah-cancel-device-qa/capture_red_flash_once.sh` 已通过 Bash 语法检查。ADB 在线且 Woah 位于前台时，可执行 `bash /tmp/woah-cancel-device-qa/capture_red_flash_once.sh 334da6a3 18`，以 18 秒有界窗口保存 app PID `logcat`、前置日志、连续 `screencap` 和包安装时间到独立 /tmp 目录。不清空 App 数据、不清空系统日志、不安装 APK；截屏可能含用户视频，只保留本机待核查。
 - **状态：** 真实红屏根因 `NOT_PROVEN`，不额外修改生产代码或将其误认成已排除的失败面板。需要 ADB 在线且**已确认包含修复提交的 APK**，并取得红屏 Flutter stack/logcat 后才能精确继续修复。
+
+## 2026-10-31 Dart VM 原生调试事件确认根因（取代此前猜测）
+
+### 设备和真实失败证据
+
+- 本次 OnePlus 8T / Android 14 的 ADB 连接恢复，设备上 Woah 0.1.0 Debug APK 显示最后安装时间为 **2026-10-31 08:33:51 +0800**（晚于先前修复提交，但该时间戳本身不能证明编译所用的具体 Git SHA）。本次只使用无私人素材的 30 秒合成视频。
+- 2026-10-31 **08:50:41.659 +0800**，在导出 0% 刚开始阶段确认“取消处理”后，通过已经连接到运行中 Dart VM 的 `Extension` 事件流捕获到 **Flutter.Error**，而不只是 native job 的 failed 状态。原始事件保存在 Mac `/tmp/woah-cancel-device-qa/second-pass-20261031/actual_flutter_error.json`；完整事件流保存在同目录 `vm-events.ndjson`，未存储在 Git 中。
+- 精确错误：`Looking up a deactivated widget's ancestor is unsafe.`；`The following assertion was thrown building Builder`。
+- 精确堆栈：`Element._debugCheckStateIsActiveForAncestorLookup` → `Element.dependOnInheritedWidgetOfExactType` → `Theme.of` → `AppTheme.of` → `_ExportScreenState._confirmCancel.<anonymous closure>`（`package:app/features/export/presentation/export_screen.dart:734:31`）→ `Builder.build`。出错关联的 Navigator 由 go_router 构建。
+- 原因是弹窗 builder 在取消成功、导出页面被 deactivate 后的路由退场期间仍被重建，但 builder 从已失活的 **导出 State.context** 读取继承式 Theme。Flutter 因此生成红色 Widgets 错误画面；不是隐私模型、GPU、视频导出失败提示或失败面板本身导致。
+- 手机本地连续 35 帧 screenshot（Mac `/tmp/woah-cancel-device-qa/second-pass-20261031/vm-burst-pulled`）没有采样到红色像素，说明该帧极短；这**不推翻**同时刻真实捕获的 `Flutter.Error` 结构化事件。
+
+### 精确代码修复与前后对照
+
+- 仅修正 `export_screen.dart` 的 `_confirmCancel` builder：内部所有 10 处 `AppTheme.of(...)` 都改为使用 **有效的 `dialogContext`**，不再闭包捕获外层 ExportScreen 的 BuildContext 查询主题。showDialog 入口仍使用原 context，取消 API、导航、失败处理及 native 算法均保持不变。
+- 新增 Flutter Widget 回归，覆盖明暗主题下“确认取消 → 出口路由退场 → MaterialApp Theme 立即重建”的真实失活上下文情形，逐帧检查 `tester.takeException()` 与返回编辑页。运行临时还原原始 unsafe Theme 查询的测试：2/2 用例以**同一条** `Looking up a deactivated widget's ancestor is unsafe` 异常失败（Mac `/tmp/woah-export-dialog-old-context-baseline.log`）；重新恢复修复代码后 2/2 PASS（Mac `/tmp/woah-cancel-dialog-route-rebuild-tests.log`）。这是针对实际红屏错误的修复前/后对照，不只是一般流程测试。
+- Mac `flutter attach --debug-url` 成功连接现有 Android Debug App，Hot Reload `export_screen.dart` 成功：`Reloaded 1 of 2205 libraries in 857ms`（Mac `/tmp/woah-cancel-device-qa/second-pass-20261031/flutter-attach.log`）。应用 PID 保持 17224，没有安装新 APK、清除数据或重新启动 Dart VM。
+- 同一手机/合成视频/点击确认步骤，Hot Reload **之前**：一次真实 Flutter.Error；Hot Reload **之后**：两次取消均成功返回编辑器，在新的独立 VM `Extension` 监控中均未观察到 Flutter.Error。修订后监控文件：`/tmp/woah-cancel-device-qa/second-pass-20261031/vm-events-after-hot-reload.ndjson`。
+- 注意：Hot Reload **仅改变当次运行进程内的 Dart 代码**，设备已安装 APK 不会永久更新；App 被完全关闭/重启将恢复 APK 内原有实现。后续仍需要在具备 Android SDK/JDK 的构建环境重建、安装修复 APK，再复核相同操作。
+
+### 验收边界
+
+- Flutter 全量 Analyze/Tests（以及 iOS 本地 Debug 构建）以本轮最终日志为准；Android Kotlin 单测和完整 APK 的编译/安装仍需要 Android 构建环境。
+- 本次修复针对明确的 Widgets/Theme/deactivated-context 错误，之前的取消状态竞态修复保留为另一项真实但不是本轮红色 Flutter 异常的原因。
+
+### 最终本地 QA 与设备清理
+
+- 最新 `flutter analyze --no-pub`：**0 issues**；`flutter test --no-pub`：**237/237 PASS**（包括新加的明暗主题退出重建测试）。
+- iOS Simulator Debug 构建：**PASS**（Mac 临时 CocoaPods 兼容模式）。Flutter 全局 Swift Package Manager 已恢复原状，跟踪的 Xcode 工程未留改动；该构建不等价于 Android 新 APK 验收。
+- 本轮手机测试总计成功进行三次导出取消：修复前早期取消一次捕获 **1** 条 Flutter.Error，Hot Reload 后早期和中段取消两次捕获 **0** 条 Flutter.Error，设备 App 进程保持存活；并未安装修复 APK。
+- 已停止 Dart VM 和 PID 日志采集工具、Flutter attach 会话；仅删除手机上本轮测试创建的 `Movies/WoahQA` 合成视频与连续截屏目录，Mac `/tmp/woah-cancel-device-qa/second-pass-20261031/` 的原始结构化事件与抽样图片仍保留以备复核。没有清除用户手机 App 数据或修改其他个人媒体。
+- 还需要将本分支永久编译进 Android Debug APK，在真正安装新版 APK、完整进程重启后重现同样操作，才能将设备级验证从 `Hot Reload verified` 更新为 `installed-build accepted`。

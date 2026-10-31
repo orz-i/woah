@@ -979,6 +979,86 @@ void main() {
     expect(controller.state.errorMessage, contains('encoder failed'));
   });
 
+  for (final initialMode in [ThemeMode.light, ThemeMode.dark]) {
+    testWidgets(
+      'cancel dialog theme survives export route exit ${initialMode.name}',
+      (tester) async {
+        final repository = _PreviewToggleRepository();
+        addTearDown(repository.dispose);
+        final container = ProviderContainer(
+          overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+        );
+        addTearDown(container.dispose);
+        final router = GoRouter(
+          initialLocation: '/edit',
+          routes: [
+            GoRoute(
+              path: '/edit',
+              builder: (_, _) =>
+                  const Scaffold(body: Center(child: Text('edit-marker'))),
+            ),
+            GoRoute(
+              path: '/export',
+              builder: (_, _) => ExportScreen(project: _testProject()),
+            ),
+          ],
+        );
+        addTearDown(router.dispose);
+        final mode = ValueNotifier<ThemeMode>(initialMode);
+        addTearDown(mode.dispose);
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: ValueListenableBuilder<ThemeMode>(
+              valueListenable: mode,
+              builder: (_, selectedMode, _) => MaterialApp.router(
+                theme: AppTheme.lightTheme,
+                darkTheme: AppTheme.darkTheme,
+                themeMode: selectedMode,
+                routerConfig: router,
+              ),
+            ),
+          ),
+        );
+        router.push('/export');
+        await tester.pumpAndSettle();
+        expect(find.byType(ExportScreen), findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey('export-cancel-action')));
+        await tester.pumpAndSettle();
+        final confirm = find.byKey(const ValueKey('export-cancel-confirm'));
+        expect(confirm, findsOneWidget);
+        expect(
+          tester
+              .getRect(
+                find.byKey(const ValueKey('export-cancel-confirm-dialog')),
+              )
+              .width,
+          greaterThan(100),
+        );
+
+        await tester.tap(confirm);
+        await tester.pump(const Duration(milliseconds: 1));
+        mode.value = initialMode == ThemeMode.dark
+            ? ThemeMode.light
+            : ThemeMode.dark;
+        for (var frame = 0; frame < 24; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(
+            tester.takeException(),
+            isNull,
+            reason:
+                'Dialog must never read a deactivated export context '
+                'while Navigator and Theme rebuild at frame $frame',
+          );
+        }
+        await tester.pumpAndSettle();
+        expect(find.text('edit-marker').hitTestable(), findsOneWidget);
+        expect(find.byType(ExportScreen), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets(
     'confirmed cancel waits for native cancellation before returning',
     (tester) async {

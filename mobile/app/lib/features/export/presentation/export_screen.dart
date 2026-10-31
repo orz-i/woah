@@ -721,6 +721,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     showDialog<void>(
       context: context,
       barrierColor: const Color(0x66000000),
+      // The dialog remains mounted during its exit animation, potentially
+      // after the export route deactivates. Never resolve inherited theme
+      // data through the export State.context from this dialog builder.
       builder: (dialogContext) => Dialog(
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
@@ -731,9 +734,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
             key: _cancelDialogKey,
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
             decoration: BoxDecoration(
-              color: AppTheme.of(context).flowSurface,
+              color: AppTheme.of(dialogContext).flowSurface,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppTheme.of(context).flowBorder),
+              border: Border.all(color: AppTheme.of(dialogContext).flowBorder),
               boxShadow: const [
                 BoxShadow(
                   color: Color(0x38000000),
@@ -754,12 +757,12 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       height: 34,
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          color: AppTheme.of(context).statusWarningSubtle,
+                          color: AppTheme.of(dialogContext).statusWarningSubtle,
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
                           Icons.close_rounded,
-                          color: AppTheme.of(context).statusWarning,
+                          color: AppTheme.of(dialogContext).statusWarning,
                           size: 19,
                         ),
                       ),
@@ -769,7 +772,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       child: Text(
                         '取消处理？',
                         style: TextStyle(
-                          color: AppTheme.of(context).flowTextPrimary,
+                          color: AppTheme.of(dialogContext).flowTextPrimary,
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
                         ),
@@ -781,13 +784,16 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                 Text(
                   '当前处理进度不会保留。',
                   style: TextStyle(
-                    color: AppTheme.of(context).flowTextSecondary,
+                    color: AppTheme.of(dialogContext).flowTextSecondary,
                     fontSize: 12.5,
                     height: 1.4,
                   ),
                 ),
                 const SizedBox(height: 14),
-                Divider(height: 1, color: AppTheme.of(context).flowBorder),
+                Divider(
+                  height: 1,
+                  color: AppTheme.of(dialogContext).flowBorder,
+                ),
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -798,7 +804,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       style: TextButton.styleFrom(
                         minimumSize: const Size(72, 44),
                         padding: const EdgeInsets.symmetric(horizontal: 12),
-                        foregroundColor: AppTheme.of(context).flowTextSecondary,
+                        foregroundColor: AppTheme.of(
+                          dialogContext,
+                        ).flowTextSecondary,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -815,9 +823,11 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       style: TextButton.styleFrom(
                         minimumSize: const Size(84, 44),
                         padding: const EdgeInsets.symmetric(horizontal: 12),
-                        foregroundColor: AppTheme.of(context).statusWarning,
+                        foregroundColor: AppTheme.of(
+                          dialogContext,
+                        ).statusWarning,
                         backgroundColor: AppTheme.of(
-                          context,
+                          dialogContext,
                         ).statusWarningSubtle,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
