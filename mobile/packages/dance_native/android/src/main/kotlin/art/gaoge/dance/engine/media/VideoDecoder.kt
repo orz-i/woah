@@ -63,8 +63,8 @@ class VideoDecoder(
         val decoder = MediaCodec.createDecoderByType(mime)
         codecName = decoder.name
         if (outputSurface != null) {
-            // Ensure format does not carry conflicting raw pixel format when rendering to surface
-            videoFormat!!.removeKey(MediaFormat.KEY_COLOR_FORMAT)
+            // setInteger replaces the existing value on every supported API.
+            // removeKey is API 29+ and is unnecessary before overwriting it.
             try {
                 videoFormat!!.setInteger(MediaFormat.KEY_COLOR_FORMAT, android.media.MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
             } catch (_: Throwable) {}
