@@ -5,10 +5,21 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Deliberately run both platforms for every PR, including documentation-only
+# changes. This avoids an untested path classifier silently skipping a gate.
+concurrency:
+  group: production-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -26,6 +37,9 @@ jobs:
       - name: Install Python Dependencies (locked)
         run: |
           uv sync --locked
+
+      - name: Test CI governance contracts
+        run: uv run python -m unittest discover -s tools/ci -p 'test_*.py' -v
 
       - name: Verify Python Tools
         run: |
@@ -49,7 +63,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          flutter-version: '3.44.2'
           cache: true
 
       - name: Install Flutter Dependencies
@@ -58,6 +72,15 @@ jobs:
           cd ../dance_ui && flutter pub get
           cd ../dance_native && flutter pub get
           cd ../../app && flutter pub get
+
+      - name: Check handwritten Dart formatting
+        run: python tools/ci/check_dart_format.py
+
+      - name: Analyze all Dart packages
+        run: |
+          for package in mobile/packages/dance_domain mobile/packages/dance_ui mobile/packages/dance_native mobile/app; do
+            (cd "$package" && flutter analyze --no-pub)
+          done
 
       - name: Run Flutter Tests
         run: |
@@ -92,8 +115,27 @@ jobs:
           cd mobile/app/android
           ./gradlew :dance_native:compileReleaseKotlin
 
+      - name: Run Android Lint
+        working-directory: mobile/app/android
+        run: ./gradlew :dance_native:lintDebug :app:lintDebug
+
       - name: Build Android Debug APK
         run: |
           cd mobile/app
           flutter build apk --debug
 
+  ios:
+    uses: ./.github/workflows/ios-cloud.yml
+
+  required:
+    name: governance / required
+    if: ${{ always() }}
+    needs: [validate-and-test, ios]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require every platform to succeed
+        env:
+          CI_NEEDS_JSON: ${{ toJSON(needs) }}
+        run: python3 tools/ci/check_required_jobs.py

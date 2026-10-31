@@ -5,7 +5,8 @@
 ## 当前状态
 
 - 审计基线：`master@0aef51eab4ef8a8a65f29e83883b87ca1de77e46`，仓库 [orz-i/woah](https://github.com/orz-i/woah)。
-- 审计阶段只新增治理文档与隔离证据；之后维护者授权第一批修复，已在本地提交 `e719295` 修复 iOS 编译和两项导出生命周期缺陷并补回归。首次本地验收通过；随后按维护者授权推送并创建[草稿 PR #7](https://github.com/orz-i/woah/pull/7)。首轮 Production CI 通过，iOS 在 Xcode 26.6 仍有类型检查超时，已补充拆分峰值表达式继续验证。未合并、修改工作流或仓库设置。
+- 第一批 [PR #7](https://github.com/orz-i/woah/pull/7) 的最终 head `96a7287` 已通过 [Production CI](https://github.com/orz-i/woah/actions/runs/41163397751) 与 [iOS Cloud CI](https://github.com/orz-i/woah/actions/runs/41163397758)。维护者授权后于 2026-10-31 合并为 `747721d1c073170cbae4a3940778ca16e81ac07d`。两项导出生命周期修复的真机／持续清理失败边界仍见验证记录。
+- 第二批正在实施 GOV-02：每个 PR 保守运行双平台、四包 analyze、手写 Dart format、显式 Android lint 和 fail-closed 汇总；[第二批验证记录](evidence/second-batch-ci-governance-2026-10-31.md) 区分本地、远端与未完成项。仓库保护规则尚未启用。
 - [第一批本地验证记录](evidence/first-batch-local-verification-2026-10-31.md) 记录通过项、原始审计测试的等待契约差异、工具链更新、隔离设备适配及尚未关闭的原生清理限制。
 - **规范是待维护者采纳的提案，不代表已执行或已启用。** 整改状态见下表所链接的台账；审计时 iOS CI 仍失败。
 - 证据日期与官方资料检索日期均为 **2026-10-31 UTC**，不代表所有官方页面都在当天发布。后续提交改变了代码时，应重新验证对应结论。
@@ -18,6 +19,7 @@
 | [工程规范草案](engineering-standard.md) | 将审计发现映射成可执行的开发、评审、CI 和发布规则 |
 | [整改台账](remediation-plan.md) | 优先级、负责人角色、依赖、验收标准和退出条件 |
 | [第一批本地验收](evidence/first-batch-local-verification-2026-10-31.md) | 修复提交、19 项生命周期回归、iOS 同 gate 隔离验证与发布边界 |
+| [第二批 CI 治理](evidence/second-batch-ci-governance-2026-10-31.md) | 常驻汇总、双平台调用链、format/analyze/lint 与验收边界 |
 
 优先级中的 P0 是本项目建议的**立即恢复合并可信度**阶段，不等同于已发生线上重大事故。台账负责人均是角色建议，不是已分派给某个人的承诺。
 

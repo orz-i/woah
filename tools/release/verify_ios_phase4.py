@@ -216,7 +216,7 @@ def verify_real_video_gate() -> None:
     dart = text(ROOT / "mobile/app/lib/ios_phase4_smoke_main.dart", "combined iOS smoke entrypoint")
     simulator = text(ROOT / "tools/ios/run_phase4_simulator_smoke.py", "Phase 4 Simulator runner")
     macos_gate = text(ROOT / "tools/ios/run_phase4_macos_gate.py", "Phase 4 macOS gate")
-    phase1 = text(ROOT / "tools/release/verify_ios_phase1.py", "Phase 1 verifier hook")
+    workflow = text(ROOT / ".github/workflows/ios-cloud.yml", "iOS Cloud CI")
 
     for token in (
         "AVAssetWriter(outputURL: videoURL, fileType: .mp4)",
@@ -272,13 +272,8 @@ def verify_real_video_gate() -> None:
     ):
         check(token in macos_gate, f"Phase 4 macOS gate missing preserved/required lane: {token}")
     check(
-        (
-            "run_phase4_macos_gate.py" in phase1
-            or "run_phase5_macos_gate.py" in phase1
-            or "run_phase6_macos_gate.py" in phase1
-        )
-        and 'GITHUB_ACTIONS' in phase1,
-        "Existing GitHub iOS workflow hook must invoke Phase 4 or a stronger Apple-only gate",
+        "run: python tools/ios/run_phase6_macos_gate.py" in workflow,
+        "iOS Cloud CI must explicitly invoke the Phase 6 gate preserving Phase 4",
     )
 
 

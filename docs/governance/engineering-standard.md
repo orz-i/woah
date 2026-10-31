@@ -1,6 +1,6 @@
 # Woah 工程规范草案
 
-**状态：提案，尚未启用。** 本文基于 [2026-10-31 审计](audit-2026-10-31.md)，面向当前以单维护者为主、Flutter / Kotlin / Swift 加 Python 桌面工具的仓库。文中“必须”是建议采纳后的项目规则，不是声称官方强制要求或仓库现已执行。
+**状态：整体仍为提案，部分 CI 规则已在第二批实施分支实现，待验收；仓库保护未启用。** 本文基于 [2026-10-31 审计](audit-2026-10-31.md)，面向当前以单维护者为主、Flutter / Kotlin / Swift 加 Python 桌面工具的仓库。文中“必须”是建议采纳后的项目规则，不是声称官方强制要求或仓库现已执行。
 
 目标是把真实失败变成可复现测试和门禁，而不是先增加复杂流程。保留已有包边界、Riverpod / controller / repository、平台 smoke 与隐私性能流程；不强制全量 MVVM、换状态管理或拆成更多服务。
 
@@ -74,7 +74,7 @@
 
 ## 分层 CI 设计
 
-以下 job 名称是**拟议名称，不是现有工作流**。部署时先验证正常与失败样例，稳定后再纳入 required checks。
+以下是目标分层。第二批已实现 `governance / required` 汇总、format/analyze/lint 和双平台常驻调用；Pigeon、发布及设备层并未全部实现。实际状态以[第二批证据](evidence/second-batch-ci-governance-2026-10-31.md)为准；稳定后另行批准纳入 required checks。
 
 | 层级 | 触发与内容 | 合并或发布要求 |
 | --- | --- | --- |
@@ -83,9 +83,9 @@
 | 隐私 模型与发布层 | 权限/manifest/archive、模型字节与预处理、取消/失败/恢复、磁盘与内存资源、实际媒体输出、Face / Full Body 对应设备 golden | 不用 mock 单测或静态 token 检查替代真实运行证据 |
 | 里程碑层 | 按既有性能流程扩展设备/有效 accelerator 矩阵、长时导出、升级/恢复、baseline 晋级 | 由冻结基线与已有质量契约验收，不臆造统一覆盖率或性能百分比 |
 
-拟议 `governance / required` 汇总 job 使用 always-run 语义，显式检查所有依赖结果；需要执行的 job 失败、取消或意外跳过都失败。只有变更分类明确认定无关的平台 job 才可标注“not applicable”，不能把任何 skipped 都当成功。required workflow 本身不使用会让其完全不产生 check 的 path skip；分类器变化也要测试。
+第二批 `governance / required` 汇总 job 使用 always-run 语义，显式检查所有依赖结果；必要 job 失败、取消或意外跳过都失败。当前每个 PR 保守运行双平台，不设 not applicable 路径。以后只有经测试的变更分类明确认定无关的平台才可优化，不能把任意 skipped 当成功。required workflow 本身不使用会让其完全不产生 check 的 path skip。
 
-iOS 依赖至少覆盖 app、全部相关 package（含 dance_ui）、`tools/ios/**`、实际调用和读取的 `tools/release/**`、模型/Metal 输入及契约所读文档。采用目录级保守覆盖再优化，比遗漏 phase4 / phase6 gate 更安全。保留现有 Phase 6 隐式调用直到替代入口验证通过，随后显式化调用图，避免重复构建和“本地静态、CI 动态”的意外差异。
+iOS 依赖至少覆盖 app、全部相关 package（含 dance_ui）、`tools/ios/**`、实际调用和读取的 `tools/release/**`、模型/Metal 输入及契约所读文档。第二批选择每个 PR 完整双平台覆盖，后续可按目录级保守分类优化。Phase 6 已从 phase1 的隐式调用迁移到工作流显式步骤，原 gate 内容不变；回归确保只执行一次、移除调用会失败，远端验收状态见第二批记录。
 
 ### 已有入口和拟议验收命令
 
@@ -118,7 +118,7 @@ python tools/ios/run_phase6_macos_gate.py
 (cd mobile/app && flutter build apk --debug)
 ```
 
-新增 lint 的拟议入口为 `cd mobile/app/android && ./gradlew :dance_native:lintDebug :app:lintDebug`；采用前先用 Gradle task 列表确认实际模块和 variant，本次未运行。新增 format 检查须枚举手写文件；新增 Pigeon 单命令 wrapper、生成锁、CI 汇总 job **尚不存在**，不得把示例名称写成现成可运行脚本。四包的独立 analyze/test 必须先在各自正确依赖上下文中解析，不能把本次 URI 缺失当成待修产品 bug。
+第二批已确认并执行 `cd mobile/app/android && ./gradlew :dance_native:lintDebug :app:lintDebug`，format 入口为 `python tools/ci/check_dart_format.py`，CI 汇总也已实现，具体通过／待验收项见第二批证据。Pigeon 单命令 wrapper、生成锁仍未实现。四包独立 analyze/test 必须先在各自正确依赖上下文中解析，不能把依赖 URI 缺失当成产品 bug。
 
 ## 测试风险矩阵
 

@@ -598,7 +598,7 @@ def verify_android_reference_boundary() -> None:
 def verify_cloud_gate() -> None:
     simulator = text(ROOT / "tools/ios/run_phase4_simulator_smoke.py", "hardened Simulator runner")
     macos = text(ROOT / "tools/ios/run_phase5_macos_gate.py", "Phase 5 macOS gate")
-    phase1 = text(ROOT / "tools/release/verify_ios_phase1.py", "Phase 1 GitHub hook")
+    workflow = text(ROOT / ".github/workflows/ios-cloud.yml", "iOS Cloud CI")
     for token in (
         "GOLDEN_TRACE_PASS_MARKER",
         '"--require-phase5"',
@@ -617,12 +617,8 @@ def verify_cloud_gate() -> None:
     ):
         check(token in macos, f"Phase 5 macOS gate missing inherited/required lane: {token}")
     check(
-        (
-            "run_phase5_macos_gate.py" in phase1
-            or "run_phase6_macos_gate.py" in phase1
-        )
-        and "GITHUB_ACTIONS" in phase1,
-        "Existing GitHub iOS workflow hook must invoke Phase 5 or a stronger Apple-only gate",
+        "run: python tools/ios/run_phase6_macos_gate.py" in workflow,
+        "iOS Cloud CI must explicitly invoke the Phase 6 gate preserving Phase 5",
     )
 
 
