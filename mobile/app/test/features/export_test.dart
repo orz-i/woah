@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:app/app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -976,7 +977,8 @@ void main() {
     repository.cancelCompleter!.completeError(StateError('cancel denied'));
     await cancelError;
     expect(controller.state.isFailed, isTrue);
-    expect(controller.state.errorMessage, contains('encoder failed'));
+    expect(controller.state.errorMessage, '导出未完成，请重试（UNKNOWN_ERROR）。');
+    expect(controller.state.errorCode, 'UNKNOWN_ERROR');
   });
 
   for (final initialMode in [ThemeMode.light, ThemeMode.dark]) {
@@ -1248,6 +1250,18 @@ void main() {
   testWidgets(
     'failed export debug actions keep copy and diagnostics available',
     (tester) async {
+      String? copied;
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'Clipboard.setData') {
+          copied = (call.arguments as Map)['text'] as String;
+        }
+        return null;
+      });
+      addTearDown(
+        () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
+      );
       final repository = _PreviewToggleRepository();
       addTearDown(repository.dispose);
       final container = ProviderContainer(
@@ -1269,6 +1283,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('export-failed-copy')));
       await tester.pump();
       expect(find.text('错误详情已复制'), findsOneWidget);
+      expect(copied, 'stage=export; code=UNKNOWN_ERROR');
 
       await tester.tap(find.byKey(const ValueKey('export-failed-diagnostics')));
       await tester.pump();

@@ -59,17 +59,20 @@ object DiagnosticBundleExporter {
         val lifecycleJson = lifecycleFile?.let {
             try { JSONObject(it.readText(Charsets.UTF_8)) } catch (_: Throwable) { null }
         }
-        val lifecycleStage = lifecycleJson?.optString("stage")?.takeIf { it.isNotBlank() } ?: "UNKNOWN"
-        val lifecycleJobId = lifecycleJson?.optString("job_id")?.takeIf { it.isNotBlank() && it != "null" }
+        val lifecycleStage = lifecycleJson?.optString("stage")?.takeIf { it in setOf("PREVIEW", "PREPARING", "EXPORTING", "COMPLETED", "FAILED", "CANCELLED") } ?: "UNKNOWN"
+        val lifecycleJobId = lifecycleJson?.optString("job_id")?.takeIf { DiagnosticTextPrivacy.validJob(it) }
 
         val filesToZip = stagedFiles.filter {
-            it.isFile &&
+            it.isFile && it.canonicalFile == it.absoluteFile &&
                 it.length() > 0L &&
                 shouldIncludeSnapshotFile(it.name, sessionId, lifecycleJobId)
         }.toMutableList()
         val excludedSnapshotFileCount = stagedFiles.count {
             it.isFile && it.length() > 0L && !shouldIncludeSnapshotFile(it.name, sessionId, lifecycleJobId)
         }
+        // Sanitize staging copies, including historic text written before this boundary.
+        // Raw quality artifacts remain byte-identical and debug-only, NOT anonymous media.
+        filesToZip.forEach(DiagnosticTextPrivacy::sanitizeStagedText)
         val perJobPipelineSummaries = filesToZip.filter {
             it.name.startsWith("pipeline_summary_") && it.name.endsWith(".json")
         }
@@ -89,6 +92,9 @@ object DiagnosticBundleExporter {
 
         val manifestJson = JSONObject().apply {
             put("session_id", sessionId)
+            put("privacy_scope", "text_redacted_debug_quality_evidence")
+            put("contains_raw_media_evidence", filesToZip.any { it.extension in setOf("rgba", "yuvs", "f32s") })
+            put("privacy_notice", "Debug bundle may contain identifiable frame/tensor evidence; not an anonymous sharing package.")
             put("created_at", SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
                 timeZone = TimeZone.getTimeZone("UTC")
             }.format(Date()))
@@ -196,7 +202,7 @@ object DiagnosticBundleExporter {
                     }
                 }
             } catch (t: Throwable) {
-                Log.w(TAG, "Failed to publish diagnostic bundle to MediaStore: ${t.message}")
+                Log.w(TAG, "DIAGNOSTIC_PUBLISH_FAILED")
             }
         } else {
             // Android < 29
@@ -209,7 +215,7 @@ object DiagnosticBundleExporter {
                     publicUriStr = try { Uri.fromFile(destFile)?.toString() } catch (_: Throwable) { null }
                 }
             } catch (t: Throwable) {
-                Log.w(TAG, "Failed to save diagnostic bundle to external files: ${t.message}")
+                Log.w(TAG, "DIAGNOSTIC_PUBLISH_FAILED")
             }
         }
 
@@ -245,29 +251,15 @@ object DiagnosticBundleExporter {
         sessionId: String,
         lifecycleJobId: String?
     ): Boolean {
-        if (fileName.startsWith("session_") && fileName.endsWith(".jsonl")) {
-            return fileName.startsWith("session_${sessionId}_")
-        }
-
-        if (fileName.startsWith("pipeline_summary_") && fileName.endsWith(".json")) {
-            return lifecycleJobId != null && fileName == "pipeline_summary_${safeId(lifecycleJobId)}.json"
-        }
-
-        if (fileName.startsWith("yolo_tensor_")) {
-            return lifecycleJobId != null && fileName.startsWith("yolo_tensor_${safeId(lifecycleJobId)}_")
-        }
-        if (fileName.startsWith("inference_rgba_")) {
-            return lifecycleJobId != null && fileName.startsWith("inference_rgba_${safeId(lifecycleJobId)}_")
-        }
-        if (fileName.startsWith("decoder_yuv_")) {
-            return lifecycleJobId != null && fileName.startsWith("decoder_yuv_${safeId(lifecycleJobId)}_")
-        }
-
-        return fileName in SHARED_SNAPSHOT_FILES
+        if (fileName in SHARED_SNAPSHOT_FILES) return true
+        if (!DiagnosticTextPrivacy.validSession(sessionId)) return false
+        if (Regex("session_${Regex.escape(sessionId)}_[0-9]{3,}\\.jsonl").matches(fileName)) return true
+        if (!DiagnosticTextPrivacy.validJob(lifecycleJobId)) return false
+        val id = Regex.escape(requireNotNull(lifecycleJobId))
+        if (fileName == "pipeline_summary_${lifecycleJobId}.json") return true
+        return DiagnosticTextPrivacy.validArtifact(fileName) &&
+            Regex("(?:yolo_tensor|inference_rgba|decoder_yuv)_${id}_.*").matches(fileName)
     }
-
-    private fun safeId(value: String): String =
-        value.replace(Regex("[^A-Za-z0-9._-]"), "_")
 
     private val SHARED_SNAPSHOT_FILES = setOf(
         "process_exit.json",
@@ -313,7 +305,7 @@ object DiagnosticBundleExporter {
 
             return mapOf("success" to true)
         } catch (t: Throwable) {
-            Log.e(TAG, "Failed to launch share intent: ${t.message}", t)
+            Log.e(TAG, "DIAGNOSTIC_SHARE_FAILED")
             return mapOf("success" to false, "error" to (t.message ?: "Unknown error"))
         }
     }

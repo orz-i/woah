@@ -26,6 +26,50 @@ void main() {
     await repo.events.close();
   });
 
+  test('native errors are private and clean progress clears errors', () async {
+    await controller.startExport(project(), 'out.mp4');
+    void status(String state, {String? code, String? message}) {
+      repo.events.add(
+        JobStatusDto(
+          jobId: 'job-1',
+          state: state,
+          currentFrame: 1,
+          totalFrames: 2,
+          fps: 30,
+          progress: .5,
+          errorCode: code,
+          errorMessage: message,
+          outputUri: state == 'completed' ? 'file:///业务 原样.mp4' : null,
+        ),
+      );
+    }
+
+    status('processing', code: 'EXPORT_BUSY', message: '/Users/私密 视频.mp4');
+    await tick();
+    expect(controller.state.errorCode, 'EXPORT_BUSY');
+    expect(controller.state.errorMessage, '导出未完成，请重试（EXPORT_BUSY）。');
+    status('processing', code: 'file:///秘密%20名称.mp4');
+    await tick();
+    expect(controller.state.errorCode, 'UNKNOWN_ERROR');
+    expect(controller.state.errorMessage, isNot(contains('秘密')));
+    status('completed');
+    await tick();
+    expect(controller.state.isCompleted, isTrue);
+    expect(controller.state.isFailed, isFalse);
+    expect(controller.state.errorMessage, isNull);
+    expect(controller.state.errorCode, isNull);
+    expect(controller.state.outputUri, 'file:///业务 原样.mp4');
+  });
+
+  test('explicit clear removes message and code together', () {
+    final state = const ExportState(
+      errorCode: 'EXPORT_FAILED',
+      errorMessage: 'safe',
+    ).copyWith(clearErrorMessage: true);
+    expect(state.errorCode, isNull);
+    expect(state.errorMessage, isNull);
+  });
+
   test(
     'autoDispose provider cleans pending native start after listener leaves',
     () async {

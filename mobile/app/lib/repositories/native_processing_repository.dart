@@ -24,12 +24,12 @@ class NativeProcessingRepository {
   Stream<JobStatusDto> get progressStream => _client.progressStream;
 
   Future<NativeCapabilitiesDto> getCapabilities() async {
-    AppLogger.d('NativeRepository', 'Checking native capabilities...');
+    AppLogger.d('NativeRepository', 'CAPABILITIES_REQUEST');
     return _client.getCapabilities();
   }
 
   Future<VideoInfo> probeVideo(String uri) async {
-    AppLogger.d('NativeRepository', 'Probing video: $uri');
+    AppLogger.d('NativeRepository', 'VIDEO_PROBE_REQUEST');
     return _client.probeVideo(uri);
   }
 
@@ -38,10 +38,7 @@ class NativeProcessingRepository {
     String modelProfile = 'balanced',
     int trimStartMs = 0,
   }) async {
-    AppLogger.d(
-      'NativeRepository',
-      'Analyzing video: $videoUri (profile: $modelProfile)',
-    );
+    AppLogger.d('NativeRepository', 'VIDEO_ANALYSIS_REQUEST');
     return _client.analyzeVideo(
       videoUri: videoUri,
       modelProfile: modelProfile,
@@ -141,25 +138,22 @@ class NativeProcessingRepository {
   }
 
   Future<String?> saveVideoToGallery(String filePath) {
-    AppLogger.d(
-      'NativeRepository',
-      'Saving video to system gallery: $filePath',
-    );
+    AppLogger.d('NativeRepository', 'GALLERY_SAVE_REQUEST');
     return _client.saveVideoToGallery(filePath);
   }
 
   Future<void> shareVideo(String publicUri) {
-    AppLogger.d('NativeRepository', 'Sharing exported video: $publicUri');
+    AppLogger.d('NativeRepository', 'VIDEO_SHARE_REQUEST');
     return _client.shareVideo(publicUri);
   }
 
   Future<void> openVideo(String publicUri) {
-    AppLogger.d('NativeRepository', 'Opening exported video: $publicUri');
+    AppLogger.d('NativeRepository', 'VIDEO_OPEN_REQUEST');
     return _client.openVideo(publicUri);
   }
 
   Future<Map<dynamic, dynamic>?> createDiagnosticBundle() {
-    AppLogger.d('NativeRepository', 'Creating diagnostic bundle...');
+    AppLogger.d('NativeRepository', 'DIAGNOSTIC_CREATE_REQUEST');
     return _client.createDiagnosticBundle();
   }
 
@@ -167,7 +161,7 @@ class NativeProcessingRepository {
     String? filePath,
     String? publicUri,
   }) {
-    AppLogger.d('NativeRepository', 'Sharing diagnostic bundle...');
+    AppLogger.d('NativeRepository', 'DIAGNOSTIC_SHARE_REQUEST');
     return _client.shareDiagnosticBundle(
       filePath: filePath,
       publicUri: publicUri,
@@ -175,7 +169,7 @@ class NativeProcessingRepository {
   }
 
   Future<void> clearDiagnosticLogs() {
-    AppLogger.d('NativeRepository', 'Clearing diagnostic logs...');
+    AppLogger.d('NativeRepository', 'DIAGNOSTIC_CLEAR_REQUEST');
     return _client.clearDiagnosticLogs();
   }
 }

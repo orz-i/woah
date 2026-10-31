@@ -61,7 +61,7 @@ class ExportJobStore(
             }
             diskWriteCount++
         } catch (e: Throwable) {
-            android.util.Log.e("ExportJobStore", "Failed to persist jobs to disk: ${e.message}")
+            android.util.Log.e("ExportJobStore", "JOB_PERSIST_FAILED")
         }
     }
 
@@ -87,8 +87,10 @@ class ExportJobStore(
             record.fps = status.fps
             record.progress = status.progress
             record.outputUri = status.outputUri ?: record.outputUri
-            record.errorCode = status.errorCode ?: record.errorCode
-            record.errorMessage = status.errorMessage ?: record.errorMessage
+            if (status.errorCode != null || status.errorMessage != null) {
+                record.errorCode = art.gaoge.dance.engine.diagnostics.NativeDiagnosticPrivacy.safeCode(status.errorCode)
+                record.errorMessage = art.gaoge.dance.engine.diagnostics.NativeDiagnosticPrivacy.message(record.errorCode, "export")
+            }
             val now = System.currentTimeMillis()
             record.updatedAt = now
 

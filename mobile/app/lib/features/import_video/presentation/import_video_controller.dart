@@ -41,10 +41,10 @@ class ImportVideoController extends StateNotifier<VideoImportState> {
       await probeVideoPath(path, name: name);
       return state.isReady;
     } catch (e, stack) {
-      AppLogger.e('ImportVideoController', 'Failed to pick video', e, stack);
+      AppLogger.e('ImportVideoController', 'IMPORT_PICK_FAILED', e, stack);
       state = state.copyWith(
         status: VideoImportStatus.error,
-        errorMessage: '选择视频失败: $e',
+        errorMessage: '选择视频失败，请重试（IMPORT_PICK_FAILED）。',
       );
       return false;
     }
@@ -59,7 +59,7 @@ class ImportVideoController extends StateNotifier<VideoImportState> {
         videoName: name ?? path.split(RegExp(r'[\\/]')).last,
       );
 
-      AppLogger.d('ImportVideoController', 'Probing video at $path');
+      AppLogger.d('ImportVideoController', 'VIDEO_PROBE_REQUEST');
       final videoInfo = await _repository.probeVideo(path);
 
       state = state.copyWith(
@@ -68,15 +68,10 @@ class ImportVideoController extends StateNotifier<VideoImportState> {
         errorMessage: null,
       );
     } catch (e, stack) {
-      AppLogger.e(
-        'ImportVideoController',
-        'Failed to probe video at $path',
-        e,
-        stack,
-      );
+      AppLogger.e('ImportVideoController', 'VIDEO_PROBE_FAILED', e, stack);
       state = state.copyWith(
         status: VideoImportStatus.error,
-        errorMessage: '解析视频规格失败: $e',
+        errorMessage: '解析视频规格失败，请重试（VIDEO_PROBE_FAILED）。',
       );
     }
   }

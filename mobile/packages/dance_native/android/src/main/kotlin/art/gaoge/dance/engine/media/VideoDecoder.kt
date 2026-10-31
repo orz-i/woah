@@ -145,7 +145,7 @@ class VideoDecoder(
             try {
                 codec?.releaseOutputBuffer(bufferIndex, render)
             } catch (t: Throwable) {
-                android.util.Log.w("VideoDecoder", "releaseOutputBuffer failed: ${t.message}")
+                android.util.Log.w("VideoDecoder", "OUTPUT_BUFFER_RELEASE_FAILED")
             }
         }
     }

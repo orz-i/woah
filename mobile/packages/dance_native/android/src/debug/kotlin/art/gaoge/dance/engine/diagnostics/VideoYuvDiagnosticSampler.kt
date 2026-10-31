@@ -145,7 +145,7 @@ object VideoYuvDiagnosticSampler {
                 }
             }
         } catch (t: Throwable) {
-            recordFailure(jobId, "${t.javaClass.simpleName}:${t.message ?: "unknown"}")
+            recordFailure(jobId, NativeDiagnosticPrivacy.reason(t, "decode"))
         } finally {
             try { decoder?.stop() } catch (_: Throwable) {}
             try { decoder?.release() } catch (_: Throwable) {}

@@ -394,7 +394,7 @@ class GlRenderer : FrameRenderer {
         GLES20.glGetProgramiv(programId, GLES20.GL_LINK_STATUS, linkStatus, 0)
         if (linkStatus[0] == 0) {
             val log = GLES20.glGetProgramInfoLog(programId)
-            android.util.Log.e("GlRenderer", "Program link failed: $log")
+            android.util.Log.e("GlRenderer", "SHADER_LINK_FAILED")
             throw RuntimeException("Program link failed: $log")
         }
 
@@ -1163,7 +1163,7 @@ class GlRenderer : FrameRenderer {
         GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compiled, 0)
         if (compiled[0] == 0) {
             val log = GLES20.glGetShaderInfoLog(shader)
-            android.util.Log.e("GlRenderer", "Shader compilation failed ($type): $log")
+            android.util.Log.e("GlRenderer", "SHADER_COMPILE_FAILED type=$type")
             throw RuntimeException("Shader compilation failed ($type): $log")
         }
         return shader

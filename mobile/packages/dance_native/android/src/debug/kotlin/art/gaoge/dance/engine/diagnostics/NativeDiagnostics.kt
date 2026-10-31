@@ -13,8 +13,6 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.FileWriter
-import java.io.PrintWriter
-import java.io.StringWriter
 import java.io.InputStream
 import java.security.MessageDigest
 import java.text.SimpleDateFormat
@@ -44,7 +42,6 @@ object NativeDiagnostics {
     private const val TAG = "NativeDiagnostics"
     private const val MAX_SEGMENT_BYTES = 8L * 1024L * 1024L // 8 MiB per segment
     private const val MAX_RETAINED_SESSIONS = 4
-    private const val MAX_TRACE_BYTES = 2L * 1024L * 1024L // 2 MiB
 
     private val initialized = AtomicBoolean(false)
     private var appContext: Context? = null
@@ -126,7 +123,7 @@ object NativeDiagnostics {
                 persistDeviceInfo(appCtx, diagDir)
                 rotateLogs(diagDir)
             } catch (t: Throwable) {
-                Log.w(TAG, "Background diagnostics maintenance error: ${t.message}")
+                Log.w(TAG, "DIAGNOSTICS_OPERATION_FAILED")
             }
         }
     }
@@ -146,7 +143,7 @@ object NativeDiagnostics {
                     put("updated_at", isoFormat.format(Date()))
                     val details = JSONObject()
                     for ((k, v) in fields) {
-                        details.put(k, sanitizeValue(v))
+                        details.put(k, sanitizeValue(v, k))
                     }
                     put("details", details)
                 }
@@ -154,19 +151,19 @@ object NativeDiagnostics {
                 val targetFile = File(diagDir, "pipeline_lifecycle.json")
                 val tmpFile = File(diagDir, "pipeline_lifecycle.json.tmp")
                 FileOutputStream(tmpFile).use { fos ->
-                    fos.write(json.toString(2).toByteArray(Charsets.UTF_8))
+                    fos.write(DiagnosticTextPrivacy.json(json).toString(2).toByteArray(Charsets.UTF_8))
                     fos.flush()
                 }
                 if (targetFile.exists()) targetFile.delete()
                 if (!tmpFile.renameTo(targetFile)) {
                     FileOutputStream(targetFile).use { fos ->
-                        fos.write(json.toString(2).toByteArray(Charsets.UTF_8))
+                        fos.write(DiagnosticTextPrivacy.json(json).toString(2).toByteArray(Charsets.UTF_8))
                         fos.flush()
                     }
                     tmpFile.delete()
                 }
             } catch (t: Throwable) {
-                Log.w(TAG, "Failed to write pipeline_lifecycle.json: ${t.message}")
+                Log.w(TAG, "DIAGNOSTICS_OPERATION_FAILED")
             }
         }
     }
@@ -184,7 +181,7 @@ object NativeDiagnostics {
         try {
             currentWriter = BufferedWriter(FileWriter(logFile, true))
         } catch (e: Throwable) {
-            Log.e(TAG, "Failed to initialize diagnostic writer: ${e.message}", e)
+            Log.w(TAG, "DIAGNOSTICS_OPERATION_FAILED")
         }
     }
 
@@ -211,7 +208,7 @@ object NativeDiagnostics {
                     fos.flush()
                 }
             } catch (t: Throwable) {
-                Log.w(TAG, "Failed to write diagnostic artifact $safeName: ${t.message}")
+                Log.w(TAG, "DIAGNOSTICS_OPERATION_FAILED")
             }
         }
     }
@@ -283,31 +280,30 @@ object NativeDiagnostics {
         return snapshot
     }
 
-    private fun snapshotValue(value: Any?): Any? = when (value) {
+    private fun snapshotValue(value: Any?, depth: Int = 0): Any? = if (depth > 24) DiagnosticTextPrivacy.REDACTED else when (value) {
         null -> null
         is Number, is Boolean, is String -> value
-        is List<*> -> value.map(::snapshotValue)
+        is List<*> -> value.map { snapshotValue(it, depth + 1) }
         is Map<*, *> -> {
             val snapshot = LinkedHashMap<String, Any?>(value.size)
             for ((key, item) in value) {
-                if (key != null) snapshot[key.toString()] = snapshotValue(item)
+                if (key is String) snapshot[key] = snapshotValue(item, depth + 1)
             }
             snapshot
         }
-        else -> value.toString()
+        else -> DiagnosticTextPrivacy.REDACTED
     }
 
     private fun snapshotThrowable(throwable: Throwable): EventThrowableSnapshot {
         val root = rootCause(throwable)
-        val sw = StringWriter()
-        throwable.printStackTrace(PrintWriter(sw))
+        // Never materialize nested exception descriptions or stack traces.
         return EventThrowableSnapshot(
-            exceptionClass = throwable.javaClass.name,
-            exceptionMessage = throwable.message ?: "",
-            rootCauseClass = root.javaClass.name,
-            rootCauseMessage = root.message ?: "",
+            exceptionClass = NativeDiagnosticPrivacy.type(throwable),
+            exceptionMessage = NativeDiagnosticPrivacy.code(throwable),
+            rootCauseClass = NativeDiagnosticPrivacy.type(root),
+            rootCauseMessage = NativeDiagnosticPrivacy.code(root),
             causeChain = buildCauseChain(throwable),
-            stackTrace = sw.toString().take(4000)
+            stackTrace = DiagnosticTextPrivacy.REDACTED
         )
     }
 
@@ -325,11 +321,12 @@ object NativeDiagnostics {
 
             val fieldsObj = JSONObject()
             for ((key, value) in snapshot.fields) {
-                fieldsObj.put(key, sanitizeValue(value))
+                fieldsObj.put(key, sanitizeValue(value, key))
             }
             json.put("fields", fieldsObj)
 
             snapshot.throwable?.let { throwable ->
+                json.put("error_code", throwable.exceptionMessage)
                 json.put("exception_class", throwable.exceptionClass)
                 json.put("exception_message", throwable.exceptionMessage)
                 json.put("root_cause_class", throwable.rootCauseClass)
@@ -337,7 +334,7 @@ object NativeDiagnostics {
                 json.put("cause_chain", throwable.causeChain)
                 json.put("stack_trace", throwable.stackTrace)
             }
-            json.toString()
+            DiagnosticTextPrivacy.json(json).toString()
         } catch (_: Throwable) {
             null
         }
@@ -363,7 +360,7 @@ object NativeDiagnostics {
                 put("stage", stage)
                 val fObj = JSONObject()
                 for ((k, v) in fields) {
-                    fObj.put(k, sanitizeValue(v))
+                    fObj.put(k, sanitizeValue(v, k))
                 }
                 put("fields", fObj)
             }
@@ -372,7 +369,7 @@ object NativeDiagnostics {
             val tempFile = File(diagDir, "last_breadcrumb.json.tmp.${now}")
 
             FileOutputStream(tempFile).use { fos ->
-                fos.write(json.toString(2).toByteArray(Charsets.UTF_8))
+                fos.write(DiagnosticTextPrivacy.json(json).toString(2).toByteArray(Charsets.UTF_8))
                 fos.flush()
             }
 
@@ -384,7 +381,7 @@ object NativeDiagnostics {
                 }
             }
         } catch (t: Throwable) {
-            Log.w(TAG, "Failed to write breadcrumb: ${t.message}")
+            Log.w(TAG, "DIAGNOSTICS_OPERATION_FAILED")
         }
     }
 
@@ -413,10 +410,14 @@ object NativeDiagnostics {
 
                 // 3. Copy all diagnostic files to staging directory
                 val copiedFiles = mutableListOf<File>()
-                val sourceFiles = diagDir.listFiles() ?: emptyArray()
+                val sourceRoot = diagDir.canonicalFile
+                val targetRoot = stagingDir.canonicalFile
+                val sourceFiles = sourceRoot.listFiles() ?: emptyArray()
                 for (src in sourceFiles) {
-                    if (src.isFile && !src.name.endsWith(".tmp") && !src.name.contains(".tmp.")) {
-                        val dest = File(stagingDir, src.name)
+                    if (src.isFile && src.canonicalFile == File(sourceRoot, src.name) &&
+                        !src.name.endsWith(".tmp") && !src.name.contains(".tmp.")) {
+                        val dest = File(targetRoot, src.name)
+                        if (dest.canonicalFile != dest) continue
                         src.copyTo(dest, overwrite = true)
                         copiedFiles.add(dest)
                     }
@@ -429,7 +430,7 @@ object NativeDiagnostics {
         return try {
             task.get(timeoutMs, TimeUnit.MILLISECONDS)
         } catch (e: Throwable) {
-            Log.e(TAG, "Snapshot barrier timed out or failed: ${e.message}", e)
+            Log.w(TAG, "DIAGNOSTICS_OPERATION_FAILED")
             null
         }
     }
@@ -455,18 +456,18 @@ object NativeDiagnostics {
             try {
                 val json = JSONObject()
                 for ((k, v) in caps) {
-                    json.put(k, sanitizeValue(v))
+                    json.put(k, sanitizeValue(v, k))
                 }
                 json.put("updated_at", isoFormat.format(Date()))
                 json.put("session_id", sessionId)
 
                 val targetFile = File(diagDir, "capabilities.json")
                 FileOutputStream(targetFile).use { fos ->
-                    fos.write(json.toString(2).toByteArray(Charsets.UTF_8))
+                    fos.write(DiagnosticTextPrivacy.json(json).toString(2).toByteArray(Charsets.UTF_8))
                     fos.flush()
                 }
             } catch (t: Throwable) {
-                Log.w(TAG, "Failed to write capabilities.json: ${t.message}")
+                Log.w(TAG, "DIAGNOSTICS_OPERATION_FAILED")
             }
         }
     }
@@ -481,11 +482,11 @@ object NativeDiagnostics {
                 json.put("created_at", isoFormat.format(Date()))
                 val sObj = JSONObject()
                 for ((k, v) in summary) {
-                    sObj.put(k, sanitizeValue(v))
+                    sObj.put(k, sanitizeValue(v, k))
                 }
                 json.put("summary", sObj)
 
-                val contentBytes = json.toString(2).toByteArray(Charsets.UTF_8)
+                val contentBytes = DiagnosticTextPrivacy.json(json).toString(2).toByteArray(Charsets.UTF_8)
 
                 // 1. Write per-job summary file
                 val perJobFile = File(diagDir, "pipeline_summary_${jobId}.json")
@@ -512,7 +513,7 @@ object NativeDiagnostics {
                     }
                 }
             } catch (t: Throwable) {
-                Log.w(TAG, "Failed to write pipeline_summary.json: ${t.message}")
+                Log.w(TAG, "DIAGNOSTICS_OPERATION_FAILED")
             }
         }
     }
@@ -529,7 +530,7 @@ object NativeDiagnostics {
                     }
                 }
             } catch (t: Throwable) {
-                Log.w(TAG, "Failed to clear old diagnostics: ${t.message}")
+                Log.w(TAG, "DIAGNOSTICS_OPERATION_FAILED")
             }
         }
     }
@@ -540,7 +541,7 @@ object NativeDiagnostics {
     fun rootCause(t: Throwable): Throwable {
         var curr: Throwable = t
         val seen = mutableSetOf<Throwable>()
-        while (curr.cause != null && curr.cause !== curr && !seen.contains(curr.cause)) {
+        while (seen.size < 16 && curr.cause != null && curr.cause !== curr && !seen.contains(curr.cause)) {
             seen.add(curr)
             curr = curr.cause!!
         }
@@ -552,10 +553,10 @@ object NativeDiagnostics {
         var curr: Throwable? = t
         var idx = 0
         val seen = mutableSetOf<Throwable>()
-        while (curr != null && !seen.contains(curr)) {
+        while (curr != null && idx < 16 && !seen.contains(curr)) {
             seen.add(curr)
             if (idx > 0) sb.append(" -> ")
-            sb.append("${curr.javaClass.simpleName}: ${curr.message}")
+            sb.append(NativeDiagnosticPrivacy.type(curr))
             curr = curr.cause
             idx++
         }
@@ -580,7 +581,7 @@ object NativeDiagnostics {
                     }
                 }
             } catch (e: Throwable) {
-                Log.e(TAG, "Error writing log line: ${e.message}")
+                Log.w(TAG, "DIAGNOSTICS_OPERATION_FAILED")
             }
         }
     }
@@ -603,7 +604,7 @@ object NativeDiagnostics {
                             put("reason_name", processExitReasonName(info.reason))
                             put("status", info.status)
                             put("importance", info.importance)
-                            put("description", info.description ?: "")
+                            put("description", DiagnosticTextPrivacy.REDACTED)
                             put("pss_kb", info.pss)
                             put("rss_kb", info.rss)
                         }
@@ -612,16 +613,8 @@ object NativeDiagnostics {
                         if (!traceSaved && traceStream != null) {
                             try {
                                 val traceFile = File(diagDir, "process_exit_trace.txt")
-                                traceStream.use { input ->
-                                    FileOutputStream(traceFile).use { output ->
-                                        val buf = ByteArray(8192)
-                                        var total = 0L
-                                        var r: Int
-                                        while (input.read(buf).also { r = it } != -1 && total < MAX_TRACE_BYTES) {
-                                            output.write(buf, 0, r)
-                                            total += r
-                                        }
-                                    }
+                                traceStream.use {
+                                    traceFile.writeText("stage=diagnostics; code=PROCESS_EXIT_TRACE_REDACTED\n")
                                 }
                                 obj.put("trace_available", true)
                                 obj.put("trace_file", "process_exit_trace.txt")
@@ -639,11 +632,11 @@ object NativeDiagnostics {
                     rootJson.put("process_exits", array)
                     val exitFile = File(diagDir, "process_exit.json")
                     FileOutputStream(exitFile).use { fos ->
-                        fos.write(rootJson.toString(2).toByteArray(Charsets.UTF_8))
+                        fos.write(DiagnosticTextPrivacy.json(rootJson).toString(2).toByteArray(Charsets.UTF_8))
                     }
                 }
             } catch (t: Throwable) {
-                Log.w(TAG, "Failed to extract ApplicationExitInfo: ${t.message}")
+                Log.w(TAG, "DIAGNOSTICS_OPERATION_FAILED")
             }
         }
     }
@@ -671,16 +664,16 @@ object NativeDiagnostics {
             val json = generateDeviceJson(context)
             val devFile = File(diagDir, "device.json")
             FileOutputStream(devFile).use { fos ->
-                fos.write(json.toString(2).toByteArray(Charsets.UTF_8))
+                fos.write(DiagnosticTextPrivacy.json(json).toString(2).toByteArray(Charsets.UTF_8))
             }
         } catch (t: Throwable) {
-            Log.w(TAG, "Failed to persist device.json: ${t.message}")
+            Log.w(TAG, "DIAGNOSTICS_OPERATION_FAILED")
             try {
                 val fallback = JSONObject().apply {
                     put("SDK_INT", Build.VERSION.SDK_INT)
                     put("MODEL", Build.MODEL)
                 }
-                File(diagDir, "device.json").writeText(fallback.toString(2))
+                File(diagDir, "device.json").writeText(DiagnosticTextPrivacy.json(fallback).toString(2))
             } catch (_: Throwable) {}
         }
     }
@@ -792,30 +785,5 @@ object NativeDiagnostics {
         return "${ts}_${shortUuid}"
     }
 
-    private fun sanitizeString(str: String): String {
-        return str
-            .replace(Regex("""content://media/external/video/media/(\d+)"""), "content://media/.../$1")
-            .replace(Regex("""/storage/emulated/0/[^"\s]+"""), "/storage/emulated/0/...")
-    }
-
-    private fun sanitizeValue(value: Any?): Any {
-        return when (value) {
-            null -> JSONObject.NULL
-            is Number, is Boolean -> value
-            is String -> sanitizeString(value)
-            is List<*> -> {
-                val arr = JSONArray()
-                for (item in value) arr.put(sanitizeValue(item))
-                arr
-            }
-            is Map<*, *> -> {
-                val obj = JSONObject()
-                for ((k, v) in value) {
-                    if (k != null) obj.put(k.toString(), sanitizeValue(v))
-                }
-                obj
-            }
-            else -> value.toString()
-        }
-    }
+    private fun sanitizeValue(value: Any?, key: String): Any = DiagnosticTextPrivacy.value(value, key)
 }

@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'core/logging/app_logger.dart';
+
 import 'package:dance_native/dance_native.dart';
 import 'package:flutter/material.dart';
 
@@ -50,7 +52,7 @@ class _CloudProbeAppState extends State<_CloudProbeApp> {
           reports.add({
             'backend': backend,
             'ok': false,
-            'error': error.toString(),
+            'error': 'stage=inference; code=${AppLogger.errorCode(error)}',
           });
         }
       }
@@ -63,7 +65,9 @@ class _CloudProbeAppState extends State<_CloudProbeApp> {
       setState(() => _status = 'WOAH_PHASE1_REPORT:$payload');
     } catch (error) {
       if (!mounted) return;
-      setState(() => _status = 'WOAH_PHASE1_ERROR:${error.toString()}');
+      setState(
+        () => _status = 'WOAH_PHASE1_ERROR:${AppLogger.errorCode(error)}',
+      );
     } finally {
       client.dispose();
     }
@@ -82,7 +86,7 @@ class _CloudProbeAppState extends State<_CloudProbeApp> {
     if (value == null || value is num || value is bool || value is String) {
       return value;
     }
-    return value.toString();
+    return '[redacted]';
   }
 
   @override

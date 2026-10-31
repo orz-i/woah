@@ -285,7 +285,7 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
     } catch {
       if current == generation && !closed {
         ready = false; wantsPlay = false; player?.pause()
-        if !(error is CancellationError) { playbackError = error.localizedDescription }
+        if !(error is CancellationError) { playbackError = IOSDiagnosticPrivacy.message(code: nil, stage: .playback) }
       }
       throw error
     }
@@ -339,7 +339,7 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
     } catch {
       if current == generation && revision == seekRevision {
         seeking = false; wantsPlay = false; player.pause()
-        if !(error is CancellationError) { playbackError = error.localizedDescription }
+        if !(error is CancellationError) { playbackError = IOSDiagnosticPrivacy.message(code: nil, stage: .playback) }
       }
       throw error
     }
@@ -364,7 +364,7 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
     guard !closed, ready, !seeking else { return }
     if item?.status == .failed {
       pendingUs = positionUs(); wantsPlay = false; player?.pause()
-      playbackError = item?.error?.localizedDescription ?? "视频暂时无法播放。"
+      playbackError = "视频暂时无法播放。"
       return
     }
     if wantsPlay && foreground && !loopSeeking {
@@ -416,7 +416,7 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
       defer { if current == self.generation { self.loopSeeking = false } }
       guard current == self.generation, self.wantsPlay, self.foreground else { return }
       do { try await self.seek(to: position, resume: true) }
-      catch { if current == self.generation && !(error is CancellationError) { self.playbackError = error.localizedDescription } }
+      catch { if current == self.generation && !(error is CancellationError) { self.playbackError = IOSDiagnosticPrivacy.message(code: nil, stage: .playback) } }
     }
   }
 

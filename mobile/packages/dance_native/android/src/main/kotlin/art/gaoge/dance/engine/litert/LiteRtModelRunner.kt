@@ -111,25 +111,17 @@ class LiteRtModelRunner(
                 outputBuffers = outBufs
                 effective = LiteRtAccelerator.GPU
             } catch (gpuEx: Throwable) {
-                fallbackReason = "${gpuEx.javaClass.simpleName}: ${gpuEx.message}"
+                fallbackReason = art.gaoge.dance.engine.diagnostics.NativeDiagnosticPrivacy.reason(gpuEx, "model")
                 closeResources(gpuModel, inBufs, outBufs)
                 if (!policy.allowCpuFallback) {
-                    Log.e(
-                        TAG,
-                        "[LiteRT] model=$modelName requested=GPU strict GPU initialization failed: ${gpuEx.message}",
-                        gpuEx
-                    )
+                    Log.w(TAG, "MODEL_OPERATION_FAILED")
                     throw DanceNativeException(
                         DanceNativeException.MODEL_INIT_FAILED,
                         "Failed strict GPU initialization for LiteRT model '$modelName': ${gpuEx.message}",
                         gpuEx
                     )
                 } else {
-                    Log.w(
-                        TAG,
-                        "[LiteRT] model=$modelName requested=GPU gpu_compile_failed=$fallbackReason -> falling back to CPU",
-                        gpuEx
-                    )
+                    Log.w(TAG, "MODEL_OPERATION_FAILED")
                 }
             }
         }
@@ -162,7 +154,7 @@ class LiteRtModelRunner(
                 effective = LiteRtAccelerator.CPU
             } catch (cpuEx: Throwable) {
                 closeResources(cpuModel, inBufs, outBufs)
-                Log.e(TAG, "[LiteRT] model=$modelName CPU initialization failed: ${cpuEx.message}", cpuEx)
+                Log.w(TAG, "MODEL_OPERATION_FAILED")
                 throw DanceNativeException(
                     DanceNativeException.MODEL_INIT_FAILED,
                     "Failed to initialize LiteRT model '$modelName' (GPU & CPU failed): ${cpuEx.message}",
@@ -330,7 +322,7 @@ class LiteRtModelRunner(
                 }
             } catch (t: Throwable) {
                 extractException = t
-                Log.w(TAG, "Asset extraction to disk info for '$assetPath': ${t.message}")
+                Log.w(TAG, "MODEL_OPERATION_FAILED")
             }
 
             val exists = targetFile.exists() && targetFile.length() > 0L

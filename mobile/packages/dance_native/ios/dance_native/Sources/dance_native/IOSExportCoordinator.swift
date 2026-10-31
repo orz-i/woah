@@ -88,13 +88,13 @@ final class IOSExportCoordinator {
         self.finishFailed(
           jobId: jobId,
           code: error.code,
-          message: error.message ?? "iOS export failed."
+          message: IOSDiagnosticPrivacy.message(code: error.code, stage: .export)
         )
       } catch {
         self.finishFailed(
           jobId: jobId,
           code: "EXPORT_FAILED",
-          message: String(describing: error)
+          message: IOSDiagnosticPrivacy.message(code: "EXPORT_FAILED", stage: .export)
         )
       }
     }
@@ -202,8 +202,8 @@ final class IOSExportCoordinator {
       progress: current.progress,
       outputUri: nil,
       currentPreviewPath: current.currentPreviewPath,
-      errorCode: code,
-      errorMessage: message
+      errorCode: IOSDiagnosticPrivacy.safeCode(code),
+      errorMessage: IOSDiagnosticPrivacy.message(code: code, stage: .export)
     )
     setTerminal(failed)
   }

@@ -38,8 +38,10 @@ data class ExportJobRecord(
             fps = fps,
             progress = progress,
             outputUri = outputUri,
-            errorCode = errorCode,
-            errorMessage = errorMessage
+            errorCode = if (errorCode != null || errorMessage != null)
+                art.gaoge.dance.engine.diagnostics.NativeDiagnosticPrivacy.safeCode(errorCode) else null,
+            errorMessage = if (errorCode != null || errorMessage != null)
+                art.gaoge.dance.engine.diagnostics.NativeDiagnosticPrivacy.message(errorCode, "export") else null
         )
     }
 
@@ -64,8 +66,9 @@ data class ExportJobRecord(
         obj.put("totalFrames", totalFrames)
         obj.put("fps", fps)
         obj.put("outputUri", outputUri ?: JSONObject.NULL)
-        obj.put("errorCode", errorCode ?: JSONObject.NULL)
-        obj.put("errorMessage", errorMessage ?: JSONObject.NULL)
+        val safeStatus = toJobStatusDto()
+        obj.put("errorCode", safeStatus.errorCode ?: JSONObject.NULL)
+        obj.put("errorMessage", safeStatus.errorMessage ?: JSONObject.NULL)
         obj.put("processingProfile", processingProfile)
         obj.put("effectsJson", effectsJson)
         obj.put("followJson", followJson)

@@ -192,7 +192,7 @@ internal class ComparisonNativeApi(private val context: Context,private val regi
                 MusicAlignmentDto("no_audio","视频没有可供匹配的音轨，可以手动校准时间。",emptyList())
             } catch (error: Exception) {
                 // Never log selected URIs or source names. Stack locations suffice for diagnosis.
-                debug("music failed="+error.javaClass.simpleName+" locations="+error.stackTrace.take(8).joinToString())
+                debug(art.gaoge.dance.engine.diagnostics.NativeDiagnosticPrivacy.reason(error, "comparison"))
                 MusicAlignmentDto("error","本次音乐匹配未完成，可以重试或手动校准。",emptyList())
             }
         }

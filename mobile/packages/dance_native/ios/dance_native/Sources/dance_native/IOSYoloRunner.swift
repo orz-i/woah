@@ -151,7 +151,7 @@ final class IOSYoloRunner {
         guard let next = backendQueue.first else { throw error }
         backendQueue.removeFirst()
         if let failed = effectiveBackend {
-          fallbackReasons.append("\(failed.rawValue): \(String(describing: error))")
+          fallbackReasons.append("\(failed.rawValue): \(IOSDiagnosticPrivacy.pigeon(error, stage: .inference).code)")
         }
         interpreter = nil
         activeDelegate = nil
@@ -193,7 +193,7 @@ final class IOSYoloRunner {
         return
       } catch {
         lastError = error
-        fallbackReasons.append("\(backend.rawValue): \(String(describing: error))")
+        fallbackReasons.append("\(backend.rawValue): \(IOSDiagnosticPrivacy.pigeon(error, stage: .inference).code)")
       }
     }
     throw lastError ?? runtimeError("No iOS YOLO backend could be initialized.")

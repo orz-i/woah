@@ -68,7 +68,8 @@ class DanceNativePlugin :
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         val appCtx = flutterPluginBinding.applicationContext
         comparisonApi=ComparisonNativeApi(appCtx,flutterPluginBinding.textureRegistry)
-        DanceComparisonApi.setUp(flutterPluginBinding.binaryMessenger,comparisonApi)
+        DanceComparisonApi.setUp(flutterPluginBinding.binaryMessenger,
+            art.gaoge.dance.engine.bridge.comparison.PrivateComparisonApi(requireNotNull(comparisonApi)))
         context = appCtx
         val replyHandler = Handler(Looper.getMainLooper())
         mainHandler = replyHandler
@@ -100,7 +101,8 @@ class DanceNativePlugin :
         val eventEmitter = DanceProcessingEvents(flutterPluginBinding.binaryMessenger)
         val impl = DanceNativeApiImpl(appCtx, eventEmitter)
         apiImpl = impl
-        DanceNativeApi.setUp(flutterPluginBinding.binaryMessenger, impl)
+        DanceNativeApi.setUp(flutterPluginBinding.binaryMessenger,
+            art.gaoge.dance.engine.bridge.PrivateDanceNativeApi(impl))
     }
 
     private fun createTrimThumbnails(
@@ -214,8 +216,8 @@ class DanceNativePlugin :
                     file.outputStream().use { it.write(bytes) }
                     result.success(file.absolutePath)
                 } catch (e: Exception) {
-                    android.util.Log.e("DanceNativePlugin", "Failed to persist sticker: ${e.message}", e)
-                    result.error("STICKER_PERSIST_FAILED", e.message ?: "Failed to persist sticker", null)
+                    android.util.Log.e("DanceNativePlugin", "STICKER_PERSIST_FAILED")
+                    result.error("STICKER_PERSIST_FAILED", "Sticker persistence failed", null)
                 }
             }
             "saveVideoToGallery" -> {
@@ -267,8 +269,8 @@ class DanceNativePlugin :
                     ctx.startActivity(chooser)
                     result.success(null)
                 } catch (e: Exception) {
-                    android.util.Log.e("DanceNativePlugin", "Failed to share video: ${e.message}", e)
-                    result.error("SHARE_VIDEO_FAILED", e.message ?: "Failed to share video", null)
+                    android.util.Log.e("DanceNativePlugin", "SHARE_VIDEO_FAILED")
+                    result.error("SHARE_VIDEO_FAILED", "Video sharing failed", null)
                 }
             }
             "openVideo" -> {
@@ -288,8 +290,8 @@ class DanceNativePlugin :
                     ctx.startActivity(viewIntent)
                     result.success(null)
                 } catch (e: Exception) {
-                    android.util.Log.e("DanceNativePlugin", "Failed to open video: ${e.message}", e)
-                    result.error("OPEN_VIDEO_FAILED", e.message ?: "Failed to open video", null)
+                    android.util.Log.e("DanceNativePlugin", "OPEN_VIDEO_FAILED")
+                    result.error("OPEN_VIDEO_FAILED", "Video opening failed", null)
                 }
             }
             "getVideoFrameThumbnails" -> {
@@ -319,9 +321,9 @@ class DanceNativePlugin :
                             val paths = createTrimThumbnails(ctx, videoUri, timestampsMs, lease.id)
                             delivered = replyHandler.post { result.success(paths) }
                         } catch (e: Exception) {
-                            android.util.Log.e("DanceNativePlugin", "Failed to create trim thumbnails: ${e.message}", e)
+                            android.util.Log.e("DanceNativePlugin", "THUMBNAIL_FAILED")
                             replyHandler.post {
-                                result.error("THUMBNAIL_FAILED", e.message ?: "Failed to create trim thumbnails", null)
+                                result.error("THUMBNAIL_FAILED", "Thumbnail generation failed", null)
                             }
                         } finally {
                             if (!delivered) registry.releaseProject(owner, lease.id)

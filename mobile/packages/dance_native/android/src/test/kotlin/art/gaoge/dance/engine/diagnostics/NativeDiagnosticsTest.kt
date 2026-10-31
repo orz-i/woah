@@ -22,10 +22,10 @@ class NativeDiagnosticsTest {
 
         NativeDiagnostics.event(
             level = "INFO",
-            component = "TestComponent",
-            event = "TEST_EVENT",
+            component = "ExportPipeline",
+            event = "YOLO_EXPORT_CPU_FALLBACK",
             fields = mapOf(
-                "key1" to "value1",
+                "profile" to "balanced",
                 "count" to 42,
                 "uri" to "content://media/external/video/media/12345"
             )
@@ -43,17 +43,17 @@ class NativeDiagnosticsTest {
         val lastLine = lines.last()
         val json = JSONObject(lastLine)
         assertEquals("INFO", json.getString("level"))
-        assertEquals("TestComponent", json.getString("component"))
-        assertEquals("TEST_EVENT", json.getString("event"))
+        assertEquals("ExportPipeline", json.getString("component"))
+        assertEquals("YOLO_EXPORT_CPU_FALLBACK", json.getString("event"))
 
         val fields = json.getJSONObject("fields")
-        assertEquals("value1", fields.getString("key1"))
+        assertEquals("balanced", fields.getString("profile"))
         assertEquals(42, fields.getInt("count"))
 
         // Ensure URI sanitization (no raw content://media/external path)
         val sanitizedUri = fields.getString("uri")
         assertFalse(sanitizedUri.contains("/external/video/media/12345"))
-        assertTrue(sanitizedUri.contains("12345"))
+        assertFalse(sanitizedUri.contains("12345"))
     }
 
     @Test
@@ -69,7 +69,7 @@ class NativeDiagnosticsTest {
         NativeDiagnostics.initialize(mockContext)
         NativeDiagnostics.recordPipelineLifecycle(
             stage = "EXPORTING",
-            jobId = "job-123",
+            jobId = "job_123",
             fields = mapOf("rendered_frames" to 42)
         )
         NativeDiagnostics.flushCriticalNow(1000L)
@@ -78,7 +78,7 @@ class NativeDiagnosticsTest {
         assertNotNull(diagDir)
         val lifecycle = JSONObject(File(diagDir, "pipeline_lifecycle.json").readText())
         assertEquals("EXPORTING", lifecycle.getString("stage"))
-        assertEquals("job-123", lifecycle.getString("job_id"))
+        assertEquals("job_123", lifecycle.getString("job_id"))
         assertEquals(42, lifecycle.getJSONObject("details").getInt("rendered_frames"))
     }
 
@@ -155,9 +155,9 @@ class NativeDiagnosticsTest {
         assertEquals("Root cause error", unwrapped.message)
 
         val chain = NativeDiagnostics.buildCauseChain(wrapper2)
-        assertTrue(chain.contains("RuntimeException"))
-        assertTrue(chain.contains("ExecutionException"))
-        assertTrue(chain.contains("IllegalArgumentException"))
+        assertTrue(chain.contains("NATIVE"))
+        assertFalse(chain.contains("Wrapper"))
+        assertTrue(chain.contains("ARGUMENT"))
     }
 
     @Test
@@ -184,7 +184,7 @@ class NativeDiagnosticsTest {
         val snapshotItems = snapshot["items"] as List<*>
         assertEquals("original", snapshotItems[0])
         assertEquals(7, (snapshotItems[1] as Map<*, *>)["value"])
-        assertEquals("before", snapshot["label"])
+        assertEquals("[redacted]", snapshot["label"])
         assertFalse(snapshot.containsKey("late"))
     }
 

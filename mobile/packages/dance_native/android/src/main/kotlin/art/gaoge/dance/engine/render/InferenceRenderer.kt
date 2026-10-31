@@ -194,7 +194,7 @@ void main() {
         GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compiled, 0)
         if (compiled[0] == 0) {
             val log = GLES20.glGetShaderInfoLog(shader)
-            android.util.Log.e("InferenceRenderer", "Shader compilation failed: $log")
+            android.util.Log.e("InferenceRenderer", "SHADER_COMPILE_FAILED")
             throw RuntimeException("Shader compilation failed: $log")
         }
         return shader

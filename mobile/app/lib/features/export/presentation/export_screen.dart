@@ -6,6 +6,7 @@ import 'package:dance_domain/dance_domain.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/logging/app_logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -657,7 +658,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                   key: _failedCopyKey,
                   icon: Icons.content_copy_rounded,
                   tooltip: '复制错误详情',
-                  onTap: () => _copyError(state.errorMessage),
+                  onTap: () => _copyError(state.errorCode),
                 ),
                 const SizedBox(width: 8),
                 _SquareAction(
@@ -702,8 +703,10 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     return remainder == 0 ? '预计还需 $minutes 分钟' : '预计还需 $minutes 分 $remainder 秒';
   }
 
-  void _copyError(String? errorMessage) {
-    Clipboard.setData(ClipboardData(text: errorMessage ?? '未知错误'));
+  void _copyError(String? errorCode) {
+    Clipboard.setData(
+      ClipboardData(text: AppLogger.exportErrorDetails(errorCode)),
+    );
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('错误详情已复制')));

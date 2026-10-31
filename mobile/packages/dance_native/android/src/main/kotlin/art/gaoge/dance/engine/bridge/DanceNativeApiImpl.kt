@@ -61,10 +61,10 @@ class DanceNativeApiImpl(
         } catch (e: DanceNativeException) {
             throw e
         } catch (e: Throwable) {
-            android.util.Log.e("DanceNativeApiImpl", "Failed to probe video: $uri", e)
+            android.util.Log.e("DanceNativeApiImpl", "NATIVE_OPERATION_FAILED")
             throw DanceNativeException(
                 DanceNativeException.VIDEO_OPEN_FAILED,
-                "Failed to probe video $uri: ${e.message}",
+                "Video probe failed",
                 e
             )
         }
@@ -99,10 +99,10 @@ class DanceNativeApiImpl(
         } catch (e: DanceNativeException) {
             throw e
         } catch (e: Throwable) {
-            android.util.Log.e("DanceNativeApiImpl", "Failed to analyze video: ${request.videoUri}", e)
+            android.util.Log.e("DanceNativeApiImpl", "NATIVE_OPERATION_FAILED")
             throw DanceNativeException(
                 DanceNativeException.ANALYSIS_FAILED,
-                "Failed to analyze video ${request.videoUri}: ${e.message}",
+                "Video analysis failed",
                 e
             )
         } finally {
@@ -126,10 +126,10 @@ class DanceNativeApiImpl(
         } catch (e: DanceNativeException) {
             throw e
         } catch (e: Throwable) {
-            android.util.Log.e("DanceNativeApiImpl", "Failed to render preview frame: ${e.message}", e)
+            android.util.Log.e("DanceNativeApiImpl", "NATIVE_OPERATION_FAILED")
             throw DanceNativeException(
                 DanceNativeException.RENDER_FAILED,
-                "Failed to render preview frame: ${e.message}",
+                "Preview failed",
                 e
             )
         } finally {
@@ -169,7 +169,7 @@ class DanceNativeApiImpl(
             // 2. Trigger ForegroundService to take ownership of execution
             ExportServiceController.startExportService(context, jobId)
         } catch (e: Throwable) {
-            android.util.Log.e("DanceNativeApiImpl", "Failed to start export foreground service: ${e.message}", e)
+            android.util.Log.e("DanceNativeApiImpl", "NATIVE_OPERATION_FAILED")
             val failedStatus = JobStatusDto(
                 jobId = jobId,
                 state = "failed",
@@ -179,7 +179,7 @@ class DanceNativeApiImpl(
                 progress = 0.0,
                 outputUri = null,
                 errorCode = DanceNativeException.EXPORT_FAILED,
-                errorMessage = "Failed to start export service: ${e.message}"
+                errorMessage = "Export start failed"
             )
             try {
                 coordinator.jobStore.updateStatus(jobId, failedStatus)
@@ -188,7 +188,7 @@ class DanceNativeApiImpl(
             }
             throw DanceNativeException(
                 DanceNativeException.EXPORT_FAILED,
-                "Could not start export foreground service: ${e.message}",
+                "Export start failed",
                 e
             )
         }
@@ -220,7 +220,7 @@ class DanceNativeApiImpl(
             try {
                 coordinator.resourceGate.closePreview(previewOwner)
             } catch (error: Throwable) {
-                android.util.Log.e("DanceNativeApiImpl", "Preview cleanup failed", error)
+                android.util.Log.e("DanceNativeApiImpl", "NATIVE_OPERATION_FAILED")
             }
         }
     }

@@ -577,7 +577,7 @@ class ComparisonGlM0Activity : Activity() {
     }
 
     private fun fail(error: Throwable) {
-        Log.e("WoahComparisonGL","Shared-clock backend failed",error)
+        Log.e("WoahComparisonGL","COMPARISON_BACKEND_FAILED")
         // Keep source URIs and file names out of diagnostic exports.
         sourceError="共享后端失败 (${error.javaClass.simpleName})，详见本机 logcat"
         wantToPlay=false; audio?.pause(); updateStatus()
@@ -742,7 +742,7 @@ class ComparisonGlM0Activity : Activity() {
         audio?.release(); audio=null
         runCatching { engine?.close() }.onFailure {
             closeFailures++
-            Log.e("WoahComparisonGL","Resource release failed",it)
+            Log.e("WoahComparisonGL","COMPARISON_RESOURCE_RELEASE_FAILED")
         }
         engine=null; overlap=null; teacherInfo=null; learnerInfo=null
     }
