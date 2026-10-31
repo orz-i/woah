@@ -10,7 +10,8 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
 PACKAGES = ('mobile/packages/dance_domain', 'mobile/packages/dance_ui',
-            'mobile/packages/dance_native', 'mobile/app')
+            'mobile/packages/dance_native', 'mobile/packages/dance_native/example',
+            'mobile/app')
 LOCKS = tuple(f'{package}/pubspec.lock' for package in PACKAGES) + (
     'mobile/app/ios/Podfile.lock', 'mobile/app/android/app/gradle.lockfile',
     'mobile/packages/dance_native/android/gradle.lockfile', 'uv.lock')

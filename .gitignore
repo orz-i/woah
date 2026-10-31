@@ -72,6 +72,7 @@ pubspec.lock
 !mobile/packages/dance_domain/pubspec.lock
 !mobile/packages/dance_ui/pubspec.lock
 !mobile/packages/dance_native/pubspec.lock
+!mobile/packages/dance_native/example/pubspec.lock
 !uv.lock
 
 

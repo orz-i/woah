@@ -26,7 +26,7 @@
 | NATIVE-02 | G2-B | [PR11](https://github.com/orz-i/woah/pull/11) 已合并，head／merge CI 全绿；实际 provider 验收待设备。Android owner | [相册事务证据](evidence/g2-b-gallery-save-2026-10-31.md)：25 JVM 回归，worker I/O、单次回包、本次 URI 回滚、源文件不变；真实 provider／强杀／回滚拒绝边界保留，不声称已发生过 ANR |
 | PRIV-01 | G2-C | 软件已合并（PR #12 head／merge CI 成功），设备矩阵缺口按 [G2-C 证据](evidence/g2-c-regenerable-cache-2026-10-31.md) 记录。隐私／两平台 owner | 明确 session owner、晚回包隔离、真实 analysis／preview／export lease；只清可再生白名单，24h／256MiB 为 inactive 内部软策略；最终导出／源媒体等排除，不清整个 cache |
 | PRIV-03 | G2-D | 软件已实施，独立审查／精确 CI 及剩余边界按 [G2-D 证据](evidence/g2-d-diagnostic-privacy-2026-10-31.md)。Flutter／隐私 owner | 日志／错误／诊断文本及文件名出口脱敏，保留安全 stage/code；既有 debug raw 质量媒体非匿名，不宣称全部诊断内容匿名；硬件缺口保留 |
-| DEP-01 | G3，两个切片 | G3-A / PR14 已合并且双次 CI 成功；G3-B 解析锁已实现，验收按 [依赖证据](evidence/g3-b-dependency-resolution-2026-10-31.md) 与 PR 完成记录。CI owner | 固定直接工具、四 Pub／Pod／两 Gradle／uv 真实链；ABI／metadata 精确版本守卫及 hosted OS／传递 Action 边界明确，不建设桌面安装路径或大升级 |
+| DEP-01 | G3，两个切片 | G3-A / PR14 已合并且双次 CI 成功；G3-B 解析锁已实现，验收按 [依赖证据](evidence/g3-b-dependency-resolution-2026-10-31.md) 与 PR 完成记录。CI owner | 固定直接工具、五 Pub（含既有 example 验证）／Pod／两 Gradle／uv 真实链；ABI／metadata 精确版本守卫及 hosted OS／传递 Action 边界明确，不建设桌面安装路径或大升级 |
 | GEN-01 | G3 | 未实施；依赖生成工具固定。Flutter／CI owner | 两 schema 六产物统一再生成，两次无漂移，故意缺产物失败；Pigeon format 排除不是生成一致性证据 |
 | PRIV-02 | G3 | 未实施。iOS owner | API 用途／原因／组件与实际 archive manifest 一致；无产物证据不关闭，不宣称商店拒审已发生 |
 | DESKTOP-01 | G1 产品退出记录 | 桌面产品废弃，退出修复范围。维护者 | 历史监听／鉴权问题未修复；没有证明所有旧部署下线。不得继续以受支持服务宣传 |

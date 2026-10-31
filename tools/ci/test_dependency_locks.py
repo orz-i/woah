@@ -6,9 +6,9 @@ from tools.ci.check_dependency_locks import ROOT, LOCKS, fingerprints
 
 
 class DependencyLockTests(unittest.TestCase):
-    def test_all_eight_real_locks_are_present(self):
+    def test_all_nine_real_locks_are_present(self):
         result = fingerprints(ROOT)
-        self.assertEqual(len(result), 8)
+        self.assertEqual(len(result), 9)
         self.assertTrue(all(len(value) == 64 for value in result.values()))
 
     def test_missing_lock_fails(self):
@@ -47,7 +47,8 @@ class DependencyLockTests(unittest.TestCase):
 
     def test_workflow_resolves_locks_before_build(self):
         ci = (ROOT / '.github/workflows/ci.yml').read_text()
-        self.assertEqual(ci.count('flutter pub get --enforce-lockfile --no-example'), 4)
+        self.assertEqual(ci.count('flutter pub get --enforce-lockfile --no-example'), 5)
+        self.assertIn('(cd example && flutter pub get --enforce-lockfile --no-example)', ci)
         self.assertIn('check_dependency_locks.py --fresh-dart', ci)
         self.assertIn(':app:verifyWoahDependencyLocks :dance_native:verifyWoahDependencyLocks', ci)
         for name in ('ios-cloud.yml', 'ios-browserstack.yml'):

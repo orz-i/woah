@@ -71,6 +71,7 @@ jobs:
           cd mobile/packages/dance_domain && flutter pub get --enforce-lockfile --no-example
           cd ../dance_ui && flutter pub get --enforce-lockfile --no-example
           cd ../dance_native && flutter pub get --enforce-lockfile --no-example
+          (cd example && flutter pub get --enforce-lockfile --no-example)
           cd ../../app && flutter pub get --enforce-lockfile --no-example
 
       - name: Verify fresh locked Dart resolution
