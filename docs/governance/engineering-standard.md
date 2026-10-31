@@ -50,7 +50,7 @@
 - 明确 MainActor UI / plugin 回调边界、actor 隔离和 Sendable 传递。新增 `@unchecked Sendable` / `@preconcurrency` 必须解释同步不变量、依赖限制、测试和退出条件；第三方 / Objective-C callback 的能力要实测，不能以编译通过替代运行安全。[渐进迁移](https://github.com/swiftlang/swift-migration-guide/blob/main/Guide.docc/IncrementalAdoption.md)
 - Task 取消是协作式的；非结构化任务由创建方保存、取消并等待/接管结果。与 Flutter 端共享 operation ID 和终态协议。[Swift concurrency](https://github.com/swiftlang/swift-book/blob/main/TSPL.docc/LanguageGuide/Concurrency.md)
 - 保留既有 XCTest。工具链允许时，新 Swift 单测可用 Swift Testing，UI 测试继续用 XCTest；不为迁移测试框架改动稳定业务代码。[Xcode 测试](https://developer.apple.com/documentation/xcode/testing)
-- required-reason API、权限文案、app / SDK manifest 归属和最终 archive 一起审查。对本次 File Timestamp 发现先核实 URL 所属容器及实际用途，再选择原因；不能只抄原因码。[Apple required-reason 声明](https://developer.apple.com/documentation/bundleresources/describing-use-of-required-reason-api)
+- required-reason API、权限文案、app / SDK manifest 归属和最终 archive 一起审查。G3-D入口为 `python tools/ci/check_ios_privacy_archive.py --archive mobile/app/build/ios/archive/Runner.xcarchive`；真实unsigned Release归档与源码声明核验见 [归档证据](evidence/g3-d-privacy-archive-2026-10-31.md)，不替代签名／商店审核。对本次 File Timestamp 发现先核实 URL 所属容器及实际用途，再选择原因；不能只抄原因码。[Apple required-reason 声明](https://developer.apple.com/documentation/bundleresources/describing-use-of-required-reason-api)
 
 ## 隐私 缓存 模型与桌面边界
 
@@ -74,7 +74,7 @@
 
 ## 分层 CI 设计
 
-以下是目标分层。第二批已实现 `governance / required` 汇总、format/analyze/lint 和双平台常驻调用；Pigeon、发布及设备层并未全部实现。实际状态以[台账](remediation-plan.md)和 PR8 最终远端记录为准；服务器 required checks 按 G1-EX-01 本轮不启用，结束后再评估。
+以下是目标分层。第二批已实现 `governance / required` 汇总、format/analyze/lint 和双平台常驻调用；G3已加入Pigeon一致性及unsigned archive材料验证；正式签名／分发和设备层仍未全部验收。实际状态以[台账](remediation-plan.md)和 PR8 最终远端记录为准；服务器 required checks 按 G1-EX-01 本轮不启用，结束后再评估。
 
 | 层级 | 触发与内容 | 合并或发布要求 |
 | --- | --- | --- |

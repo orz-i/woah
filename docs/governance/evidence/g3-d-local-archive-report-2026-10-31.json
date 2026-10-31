@@ -1,0 +1,148 @@
+{
+  "archive": "Runner.xcarchive",
+  "application_path": "Applications/Runner.app",
+  "bundle_identifier": "art.gaoge.dance",
+  "platform": "iPhoneOS",
+  "executable_sha256": "b2ac47f768301c8035e66e9f5613a7cd74c67ee717e4abdc0039d3aa2a455ea4",
+  "owned_manifests": [
+    "PrivacyInfo.xcprivacy",
+    "dance_native_privacy.bundle/PrivacyInfo.xcprivacy"
+  ],
+  "manifest_inventory": [
+    {
+      "path": "Frameworks/Flutter.framework/PrivacyInfo.xcprivacy",
+      "sha256": "9f95d7e7862a4b56b66ed926bd6d622d2a6545a827d19847278b438d571d4212",
+      "accessed_api_types": [
+        {
+          "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+          "NSPrivacyAccessedAPITypeReasons": [
+            "0A2A.1",
+            "C617.1"
+          ]
+        },
+        {
+          "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategorySystemBootTime",
+          "NSPrivacyAccessedAPITypeReasons": [
+            "35F9.1"
+          ]
+        }
+      ],
+      "tracking": false,
+      "collected_data_types": []
+    },
+    {
+      "path": "PrivacyInfo.xcprivacy",
+      "sha256": "10da67f217824f019288ec328ababc290ab0399c52e9be77a24d494339137da2",
+      "accessed_api_types": [
+        {
+          "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+          "NSPrivacyAccessedAPITypeReasons": [
+            "C617.1"
+          ]
+        }
+      ],
+      "tracking": false,
+      "collected_data_types": []
+    },
+    {
+      "path": "TensorFlowLite.bundle/PrivacyInfo.xcprivacy",
+      "sha256": "8d65d0b43a1262cfe29e83396c00b3db94fb120d44d1188d927341f14a6c223c",
+      "accessed_api_types": [],
+      "tracking": false,
+      "collected_data_types": []
+    },
+    {
+      "path": "TensorFlowLiteC.bundle/PrivacyInfo.xcprivacy",
+      "sha256": "03b2c70833a331a2b1efd11ff168ed02a8eadfd5e7d1fbf30eecc7509a4aea47",
+      "accessed_api_types": [
+        {
+          "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+          "NSPrivacyAccessedAPITypeReasons": [
+            "C617.1"
+          ]
+        }
+      ],
+      "tracking": false,
+      "collected_data_types": []
+    },
+    {
+      "path": "TensorFlowLiteCCoreML.bundle/PrivacyInfo.xcprivacy",
+      "sha256": "48cc0b37278ab7dcf1e15e016a08bc0e0d643d9cae2d061c4d94253f2d52c88a",
+      "accessed_api_types": [
+        {
+          "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+          "NSPrivacyAccessedAPITypeReasons": [
+            "C617.1"
+          ]
+        },
+        {
+          "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategorySystemBootTime",
+          "NSPrivacyAccessedAPITypeReasons": [
+            "35F9.1"
+          ]
+        }
+      ],
+      "tracking": false,
+      "collected_data_types": []
+    },
+    {
+      "path": "TensorFlowLiteCMetal.bundle/PrivacyInfo.xcprivacy",
+      "sha256": "03b2c70833a331a2b1efd11ff168ed02a8eadfd5e7d1fbf30eecc7509a4aea47",
+      "accessed_api_types": [
+        {
+          "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+          "NSPrivacyAccessedAPITypeReasons": [
+            "C617.1"
+          ]
+        }
+      ],
+      "tracking": false,
+      "collected_data_types": []
+    },
+    {
+      "path": "dance_native_privacy.bundle/PrivacyInfo.xcprivacy",
+      "sha256": "f372e53a7265763f3d275bb557bd96f5607697f2aa6790def7e1a5d844da6d78",
+      "accessed_api_types": [
+        {
+          "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+          "NSPrivacyAccessedAPITypeReasons": [
+            "C617.1"
+          ]
+        }
+      ],
+      "tracking": false,
+      "collected_data_types": []
+    },
+    {
+      "path": "file_picker_darwin_file_picker_darwin.bundle/PrivacyInfo.xcprivacy",
+      "sha256": "204d035a88eab2281b3d914f46c796766ae78e3cb82537711928dca9e28dbbb8",
+      "accessed_api_types": [],
+      "tracking": false,
+      "collected_data_types": []
+    },
+    {
+      "path": "shared_preferences_foundation_shared_preferences_foundation.bundle/PrivacyInfo.xcprivacy",
+      "sha256": "056428b938bd57018a60019d15c3c1ee2fa727f23687598bbbd934848b180b1a",
+      "accessed_api_types": [
+        {
+          "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+          "NSPrivacyAccessedAPITypeReasons": [
+            "1C8F.1"
+          ]
+        }
+      ],
+      "tracking": false,
+      "collected_data_types": []
+    },
+    {
+      "path": "video_player_avfoundation_video_player_avfoundation.bundle/PrivacyInfo.xcprivacy",
+      "sha256": "6d2da0d8d930227d428c1d9363b0ad6e3a12e2c9b68c5ce297158a7412fc8c31",
+      "accessed_api_types": [],
+      "tracking": false,
+      "collected_data_types": []
+    }
+  ],
+  "validation_scope": "unsigned archive materials only; no signing, device or App Store acceptance",
+  "git_commit": "45cd5770d5ffff1d0e0f779f68105ff9d082712c",
+  "working_tree_dirty": true
+}
