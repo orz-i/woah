@@ -90,6 +90,16 @@ python3 docs/governance/evidence/run-isolated-phase6-gate.py.txt
 
 这属于“同 gate 检查，隔离设备选择适配”，不是字节完全不改地执行原 wrapper。原 wrapper 的自动候选回退会 shutdown 其他现有设备，所以不在有 Memora 运行的机器上直接完成该路径。
 
+## PR #7：Xcode 26.6 兼容性补充
+
+以下是发布后新增的验收事实；上文是首次本地验收快照。
+
+维护者随后授权公开推送并创建[草稿 PR #7](https://github.com/orz-i/woah/pull/7)。首轮 head `c9c7749` 的 [Production CI](https://github.com/orz-i/woah/actions/runs/41161752140) 全部通过，包括 Flutter、Android native unit tests、Release Kotlin 和 Debug APK；[iOS Cloud CI](https://github.com/orz-i/woah/actions/runs/41161752176) 在实际 **Xcode 26.6 (17F113)** 上仍报告本文件类型检查超时（Flutter 显示位置 112:16）。两个 SDK Metal 编译已通过，但 simulator 构建失败，后续 production 入口被跳过。没有把这次失败归因于网络或重跑相同代码。
+
+兼容性补充把峰值计算拆为 `peakBins`：Double 顺序求和、均值 / 阈值、升序扫描 4..<500、明确的功率降序 / 索引升序比较和前四项截断。保留 strict-left、inclusive-right 和 strict-threshold 语义；不改 FFT、时间轴或归一化。独立 Swift 回归增加 plateau、相同功率排序、前四限制、恰好阈值排除和略高于阈值纳入断言。独立代码复核未发现语义偏差。不能仅从报告行号断言复合表达式是唯一原因，最终兼容性以远端同 head 的完整 gate 为准。
+
+补充修复本地验证结果：扩展后的独立 Swift 回归通过；完整同 gate 隔离设备检查再次 PASS / exit0（含两个 SDK Metal、phase3–6 smoke）；production main no-codesign 再构建 PASS / exit0（20.2 秒）。独立审查确认峰值选择语义保持不变。创建隔离设备时曾遇本机 runtime 挂载切换的瞬态失败；只读复查确认 runtime 重新 available 后，仅重试一次创建并成功，不重装 runtime、不重启服务、不干预其他设备。远端新 head 结果以 PR checks 为准。
+
 ## 发布状态
 
-本地检查不等于远端 CI 已绿。远端 master 仍指向旧提交，原失败 run 没有被本轮操作替换；GOV-01 的远端验收与 GOV-02 仓库规则启用均未完成。未做实体 iPhone / Android 资源竞争、商店签名、release archive 或用户真实媒体测试。
+本地检查不等于远端 CI 已绿。master 未合并本分支，原失败 run 保留；分支已按后续授权推送并创建草稿 PR #7。GOV-01 的远端验收正在该 PR 进行，GOV-02 仓库规则仍未启用。未做实体 iPhone / Android 资源竞争、商店签名、release archive 或用户真实媒体测试。

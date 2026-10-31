@@ -108,11 +108,7 @@ final class IOSComparisonMusicFeatureBuilder {
     }
     let onset = (0..<16).map { max(0, bands[$0] - previous[$0]) }
     previous = bands
-    let totalPower: Double = power.reduce(0.0, +)
-    let mean: Double = totalPower / Double(power.count)
-    let peaks = Array((4..<500).filter {
-      power[$0] > power[$0 - 1] && power[$0] >= power[$0 + 1] && power[$0] > mean * 3
-    }.sorted { power[$0] == power[$1] ? $0 < $1 : power[$0] > power[$1] }.prefix(4))
+    let peaks: [Int] = Self.peakBins(power)
     let pitch: [Float] = (0..<48).map { b in
       let center = pitchBins[b]
       let lo = max(1, Int(floor(center / pow(2, 1.0 / 8))))
@@ -129,6 +125,32 @@ final class IOSComparisonMusicFeatureBuilder {
     let timeUs = originUs + (samples - Int64(Self.fft / 2)) * 1_000_000 / Int64(Self.rate)
     frames.append(IOSComparisonMusicFrame(timeUs: timeUs, spectrum: bands,
       onset: onset, peaks: peaks, pitchSpectrum: pitch))
+  }
+
+  // Split filtering, ordering and truncation to reduce Xcode 26 constraint-
+  // solver complexity without changing the peak selection rules.
+  // Input is the 512-bin power spectrum produced by extract().
+  static func peakBins(_ power: [Double]) -> [Int] {
+    var totalPower: Double = 0.0
+    for value in power { totalPower += value }
+    let mean: Double = totalPower / Double(power.count)
+    let threshold: Double = mean * 3.0
+    var candidates: [Int] = []
+    for index in 4..<500 {
+      let value: Double = power[index]
+      let left: Double = power[index - 1]
+      let right: Double = power[index + 1]
+      if value > left && value >= right && value > threshold {
+        candidates.append(index)
+      }
+    }
+    candidates.sort { (left: Int, right: Int) -> Bool in
+      let leftPower: Double = power[left]
+      let rightPower: Double = power[right]
+      if leftPower == rightPower { return left < right }
+      return leftPower > rightPower
+    }
+    return Array(candidates.prefix(4))
   }
 
   func finish() -> IOSComparisonMusicFeatures {

@@ -36,6 +36,23 @@ struct ComparisonMusicFeaturesRegression {
       try tone.add(.nan)
       preconditionFailure("Non-finite PCM must be rejected")
     } catch IOSComparisonMusicError.decode { }
+    // Preserve strict-left / inclusive-right plateau handling, descending
+    // power order, ascending bin tie-break and the four-peak limit.
+    var peaks = [Double](repeating: 0, count: 512)
+    peaks[10] = 10
+    peaks[20] = 10
+    peaks[30] = 20
+    peaks[40] = 10
+    peaks[41] = 10
+    peaks[50] = 10
+    precondition(IOSComparisonMusicFeatureBuilder.peakBins(peaks) == [30, 10, 20, 40])
+    var boundary = [Double](repeating: 1, count: 512)
+    boundary[10] = 3
+    boundary[11] = 0
+    boundary[12] = 0 // Total 512: bin 10 is exactly mean * 3, so excluded.
+    precondition(IOSComparisonMusicFeatureBuilder.peakBins(boundary).isEmpty)
+    boundary[10] = 3.01
+    precondition(IOSComparisonMusicFeatureBuilder.peakBins(boundary) == [10])
     print("IOS_COMPARISON_MUSIC_FEATURES_REGRESSION=PASS")
   }
 }
