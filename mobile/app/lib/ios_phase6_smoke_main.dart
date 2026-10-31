@@ -46,6 +46,11 @@ class _Phase6SmokeAppState extends State<_Phase6SmokeApp> {
       );
       stdout.writeln('WOAH_PRIVACY_CLASS_PHASE6_SMOKE=PASS');
       stdout.writeln('WOAH_PRIVACY_CLASS_PHASE6_REPORT=$phase6Report');
+      final cacheReport = await _channel.invokeMapMethod<String, dynamic>(
+        'runIOSCacheLifecycleSmoke',
+      );
+      stdout.writeln('WOAH_CACHE_LIFECYCLE_SMOKE=PASS');
+      stdout.writeln('WOAH_CACHE_LIFECYCLE_REPORT=$cacheReport');
       await stdout.flush();
       exit(0);
     } catch (error, stackTrace) {

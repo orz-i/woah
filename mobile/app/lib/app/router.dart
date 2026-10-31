@@ -31,13 +31,17 @@ final appRouter = GoRouter(
         final extra = state.extra;
         if (extra is ProtectionEditorArgs) {
           return ProtectionEditorScreen(
+            key: ValueKey(extra.project.id),
             project: extra.project,
             fullBodyDraft: extra.fullBodyDraft,
             faceOnlyDraft: extra.faceOnlyDraft,
           );
         }
         final project = extra as DanceProject;
-        return ProtectionEditorScreen(project: project);
+        return ProtectionEditorScreen(
+          key: ValueKey(project.id),
+          project: project,
+        );
       },
     ),
     GoRoute(
@@ -49,6 +53,7 @@ final appRouter = GoRouter(
           return ExportScreen(
             project: args.project,
             initialPreviewPath: args.initialPreviewPath,
+            session: args.session,
           );
         }
         final project = state.extra as DanceProject;

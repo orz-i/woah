@@ -413,13 +413,13 @@ class PreviewPipeline(
 
         // 5. Save preview file with unique timestamp nonce to prevent Flutter image caching
         try {
-            val oldFiles = context.cacheDir.listFiles { _, name ->
-                name.startsWith("preview_${request.analysisCacheId}_") && name.endsWith(".jpg")
-            }
-            oldFiles?.forEach { it.delete() }
+            val exactName = Regex("preview_${Regex.escape(request.analysisCacheId)}_[0-9]+_[0-9]+\\.jpg")
+            val oldFiles = context.cacheDir.canonicalFile.listFiles { _, name -> exactName.matches(name) }
+            oldFiles?.filter { it.isFile && it.canonicalFile == it }?.forEach { it.delete() }
         } catch (_: Exception) {}
 
-        val previewOutFile = File(context.cacheDir, "preview_${request.analysisCacheId}_${request.timestampMs}_${System.currentTimeMillis()}.jpg")
+        val previewOutFile = File(context.cacheDir.canonicalFile, "preview_${request.analysisCacheId}_${request.timestampMs}_${System.currentTimeMillis()}.jpg")
+        check(previewOutFile.canonicalFile == previewOutFile) { "INVALID_CACHE_PATH" }
         FileOutputStream(previewOutFile).use { out ->
             renderedBitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
         }

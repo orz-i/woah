@@ -3,6 +3,7 @@ import 'package:dance_native/dance_native.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../../../core/logging/app_logger.dart';
+import '../../../core/cache/analysis_session.dart';
 import '../../../repositories/native_processing_repository.dart';
 import '../domain/person_selection_state.dart';
 
@@ -22,14 +23,31 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
 
   final NativeProcessingRepository _repository;
   bool _selectionPreviewEnabled = true;
+  int _analysisGeneration = 0;
+
+  bool _accepts(int generation, AnalysisSession? session) =>
+      mounted &&
+      generation == _analysisGeneration &&
+      !(session?.isClosed ?? false);
+
+  @override
+  void dispose() {
+    _analysisGeneration++;
+    _previewRequestId++;
+    super.dispose();
+  }
 
   PersonSelectionController(this._repository)
     : super(const PersonSelectionState());
 
-  Future<void> prepareProject(
+  Future<bool> prepareProject(
     DanceProject project, {
     bool selectionPreviewEnabled = true,
+    AnalysisSession? session,
   }) async {
+    final generation = ++_analysisGeneration;
+    _previewRequestId++;
+    if (!_accepts(generation, session)) return false;
     _selectionPreviewEnabled = selectionPreviewEnabled;
 
     final cacheId = project.analysisCacheId;
@@ -39,6 +57,7 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
             (person) => person.confidence >= selectionCandidateMinConfidence,
           )
           .toList();
+      session?.track(cacheId);
       _applyReadyState(
         project: project,
         persons: persons,
@@ -47,20 +66,25 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
       if (_selectionPreviewEnabled) {
         await _executePreviewRequest();
       }
-      return;
+      return _accepts(generation, session);
     }
 
-    await analyzeProject(
+    return analyzeProject(
       project,
       selectionPreviewEnabled: selectionPreviewEnabled,
+      session: session,
     );
   }
 
-  Future<void> analyzeProject(
+  Future<bool> analyzeProject(
     DanceProject project, {
     bool selectionPreviewEnabled = true,
     ProjectPrivacyMode? privacyMode,
+    AnalysisSession? session,
   }) async {
+    final generation = ++_analysisGeneration;
+    _previewRequestId++;
+    if (!_accepts(generation, session)) return false;
     _selectionPreviewEnabled = selectionPreviewEnabled;
     try {
       state = state.copyWith(
@@ -86,6 +110,17 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
         trimStartMs: project.trimStartMs,
       );
 
+      if (!_accepts(generation, session)) {
+        if (session != null) {
+          await session.releaseUnadopted(result.analysisCacheId);
+        } else {
+          try {
+            await _repository.releaseProject(result.analysisCacheId);
+          } catch (_) {}
+        }
+        return false;
+      }
+      session?.track(result.analysisCacheId);
       final analyzedPersons = result.persons
           .map((dto) => dto.toDomain())
           .toList();
@@ -118,13 +153,16 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
       if (_selectionPreviewEnabled) {
         await _executePreviewRequest();
       }
+      return _accepts(generation, session);
     } catch (e, stack) {
+      if (!_accepts(generation, session)) return false;
       AppLogger.e('PersonSelectionController', 'Analysis failed', e, stack);
       state = state.copyWith(
         status: PersonSelectionStatus.error,
         errorMessage: '人物分析失败，请重试。',
         selectionPreviewLoading: false,
       );
+      return true;
     }
   }
 

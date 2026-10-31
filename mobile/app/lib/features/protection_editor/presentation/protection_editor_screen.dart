@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../app/system_ui.dart';
+import '../../../core/cache/analysis_session.dart';
 import '../../../app/theme.dart';
 import '../../../repositories/native_processing_repository.dart';
 import '../../effect_editor/domain/effect_editor_state.dart';
@@ -84,6 +85,7 @@ class _ProtectionEditorScreenState
   static const int _minimumClipMs = 1000;
   static const double _toolNavigationHeight = 64;
 
+  late final AnalysisSession _analysisSession;
   EffectConfig? _fullBodyDraft;
   EffectConfig? _faceOnlyDraft;
   late int _trimStartMs;
@@ -118,6 +120,9 @@ class _ProtectionEditorScreenState
   @override
   void initState() {
     super.initState();
+    _analysisSession = AnalysisSession(
+      releaseCache: ref.read(nativeRepositoryProvider).releaseProject,
+    );
     _fullBodyDraft = widget.fullBodyDraft;
     _faceOnlyDraft = widget.faceOnlyDraft;
     final durationMs = math.max(widget.project.videoInfo.durationMs, 1);
@@ -136,6 +141,7 @@ class _ProtectionEditorScreenState
     _committedTrimStartMs = _trimStartMs;
     _committedTrimEndMs = _trimEndMs;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       unawaited(_initializeEditor());
       unawaited(_initVideoPlayer());
     });
@@ -163,18 +169,18 @@ class _ProtectionEditorScreenState
     final selectionController = ref.read(
       personSelectionControllerProvider.notifier,
     );
-    if (forceAnalyze) {
-      await selectionController.analyzeProject(
-        initialProject,
-        selectionPreviewEnabled: false,
-      );
-    } else {
-      await selectionController.prepareProject(
-        initialProject,
-        selectionPreviewEnabled: false,
-      );
-    }
-    if (!mounted) return;
+    final accepted = forceAnalyze
+        ? await selectionController.analyzeProject(
+            initialProject,
+            selectionPreviewEnabled: false,
+            session: _analysisSession,
+          )
+        : await selectionController.prepareProject(
+            initialProject,
+            selectionPreviewEnabled: false,
+            session: _analysisSession,
+          );
+    if (!mounted || !accepted || _analysisSession.isClosed) return;
 
     if (savedProfile != null) {
       selectionController.setProjectPrivacyMode(savedProfile.privacyMode);
@@ -376,6 +382,7 @@ class _ProtectionEditorScreenState
 
   @override
   void dispose() {
+    unawaited(_analysisSession.close());
     _playbackTimer?.cancel();
     _profileSaveDebounce?.cancel();
     _videoController?.removeListener(_onVideoTick);
@@ -461,12 +468,13 @@ class _ProtectionEditorScreenState
       _recoveryPreviewPath = null;
     });
     _profileSaveDebounce?.cancel();
-    await selectionController.analyzeProject(
+    final accepted = await selectionController.analyzeProject(
       analysisProject,
       selectionPreviewEnabled: false,
       privacyMode: privacyMode,
+      session: _analysisSession,
     );
-    if (!mounted) return;
+    if (!mounted || !accepted || _analysisSession.isClosed) return;
 
     final selectionState = ref.read(personSelectionControllerProvider);
     final configured = selectionController.buildConfiguredProject();
@@ -3010,12 +3018,13 @@ class _ProtectionEditorScreenState
     }
     final project = ref.read(personSelectionControllerProvider).project;
     final privacyMode = ref.read(personSelectionControllerProvider).privacyMode;
-    await selectionController.analyzeProject(
+    final accepted = await selectionController.analyzeProject(
       project ?? widget.project,
       selectionPreviewEnabled: false,
       privacyMode: privacyMode,
+      session: _analysisSession,
     );
-    if (!mounted) return;
+    if (!mounted || !accepted || _analysisSession.isClosed) return;
     final configured = selectionController.buildConfiguredProject();
     if (configured == null) return;
     final state = ref.read(personSelectionControllerProvider);
@@ -3263,6 +3272,7 @@ class _ProtectionEditorScreenState
       extra: ExportArgs(
         project: project,
         initialPreviewPath: initialPreviewPath,
+        session: _analysisSession,
       ),
     );
   }

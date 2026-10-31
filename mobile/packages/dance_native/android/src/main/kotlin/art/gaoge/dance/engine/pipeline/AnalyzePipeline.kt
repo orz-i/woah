@@ -27,9 +27,11 @@ class AnalyzePipeline(
     private val cacheManager: CacheManager
 ) {
 
-    suspend fun analyze(request: AnalyzeRequestDto): AnalyzeResultDto = withContext(Dispatchers.Default) {
+    suspend fun analyze(
+        request: AnalyzeRequestDto,
+        cacheId: String = "analysis_${System.currentTimeMillis()}_${java.util.UUID.randomUUID()}"
+    ): AnalyzeResultDto = withContext(Dispatchers.Default) {
         val videoInfo = VideoProbe.probe(context, request.videoUri)
-        val cacheId = "analysis_${System.currentTimeMillis()}"
         cacheManager.saveVideoUri(cacheId, request.videoUri)
 
         val trimStartUs = request.trimStartMs.coerceAtLeast(0L) * 1000L

@@ -6,6 +6,11 @@ import UIKit
 
 final class IOSMediaLibraryBridge {
   private static let thumbnailMaxDimension = 240.0
+  private let registry: IOSRegenerableCacheRegistry
+  private let owner: IOSRegenerableCacheRegistry.Owner
+  init(registry: IOSRegenerableCacheRegistry = .shared, owner: IOSRegenerableCacheRegistry.Owner = .init()) {
+    self.registry = registry; self.owner = owner
+  }
 
   func saveVideoToGallery(filePath: String) async throws -> String {
     let sourceURL = try localFileURL(from: filePath)
@@ -45,6 +50,12 @@ final class IOSMediaLibraryBridge {
     videoUri: String,
     timestampsMs: [Int64]
   ) async throws -> [String] {
+    let lease = try registry.beginTrim(owner: owner)
+    var committed = false
+    defer {
+      if !committed { registry.requestRelease(cacheId: lease.id, owner: owner) }
+      lease.close()
+    }
     let sourceURL = IOSVideoProbe.assetURL(from: videoUri)
     let securityScoped = sourceURL.isFileURL && sourceURL.startAccessingSecurityScopedResource()
     defer {
@@ -66,14 +77,17 @@ final class IOSMediaLibraryBridge {
     let fileManager = FileManager.default
     let cacheRoot = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first
       ?? fileManager.temporaryDirectory
-    let directory = cacheRoot.appendingPathComponent("trim_thumbnails", isDirectory: true)
+    let directory = cacheRoot.standardizedFileURL.resolvingSymlinksInPath()
+      .appendingPathComponent("trim_thumbnails", isDirectory: true)
+    guard directory.resolvingSymlinksInPath() == directory else {
+      throw PigeonError(code: "INVALID_CACHE_PATH", message: "Temporary cache is unavailable.", details: nil)
+    }
     try fileManager.createDirectory(
       at: directory,
       withIntermediateDirectories: true,
       attributes: nil
     )
 
-    let token = UUID().uuidString
     var paths: [String] = []
     paths.reserveCapacity(timestampsMs.count)
 
@@ -86,7 +100,7 @@ final class IOSMediaLibraryBridge {
           continue
         }
         let outputURL = directory.appendingPathComponent(
-          "trim_\(token)_\(index).jpg",
+          "\(lease.id)_\(index).jpg",
           isDirectory: false
         )
         try jpeg.write(to: outputURL, options: .atomic)
@@ -97,6 +111,7 @@ final class IOSMediaLibraryBridge {
         continue
       }
     }
+    committed = true
     return paths
   }
 

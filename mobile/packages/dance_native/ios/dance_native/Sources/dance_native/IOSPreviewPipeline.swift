@@ -14,6 +14,7 @@ final class IOSPreviewPipeline {
   private let analysisCache: IOSAnalysisCache
   private let runner: IOSYoloRunner
   private let fileManager: FileManager
+  private let registry: IOSRegenerableCacheRegistry
   private let cacheLock = NSLock()
   private var frameAnalysisCache: [String: CachedFrameAnalysis] = [:]
   private var facePrivacyResolvers: [String: IOSFacePrivacyTemporalResolver] = [:]
@@ -22,11 +23,13 @@ final class IOSPreviewPipeline {
   init(
     analysisCache: IOSAnalysisCache,
     runner: IOSYoloRunner,
-    fileManager: FileManager = .default
+    fileManager: FileManager = .default,
+    registry: IOSRegenerableCacheRegistry = .shared
   ) {
     self.analysisCache = analysisCache
     self.runner = runner
     self.fileManager = fileManager
+    self.registry = registry
   }
 
   func render(request: PreviewRequestDto) async throws -> PreviewFrameDto {
@@ -38,6 +41,8 @@ final class IOSPreviewPipeline {
         details: nil
       )
     }
+    let lease = try registry.acquire(cacheId: request.analysisCacheId)
+    defer { lease.close() }
     guard let sourceUri = try analysisCache.loadVideoUri(cacheId: request.analysisCacheId),
           !sourceUri.isEmpty else {
       throw PigeonError(
@@ -152,7 +157,7 @@ final class IOSPreviewPipeline {
   func clearForAnalysis(cacheId: String) {
     cacheLock.lock()
     frameAnalysisCache = frameAnalysisCache.filter { key, _ in
-      !key.hasPrefix("\(cacheId)_")
+      key.range(of: "^\(NSRegularExpression.escapedPattern(for: cacheId))_[0-9]+$", options: .regularExpression) == nil
     }
     facePrivacyResolvers.removeValue(forKey: cacheId)?.reset()
     cacheLock.unlock()
@@ -262,9 +267,13 @@ final class IOSPreviewPipeline {
     let root = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first
       ?? URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
     let nonce = Int64((Date().timeIntervalSince1970 * 1000.0).rounded())
-    let file = root.appendingPathComponent(
+    let file = root.standardizedFileURL.resolvingSymlinksInPath().appendingPathComponent(
       "preview_\(cacheId)_\(timestampMs)_\(nonce).jpg"
     )
+    guard file.resolvingSymlinksInPath() == file,
+          (try? fileManager.attributesOfItem(atPath: file.path)[.type] as? FileAttributeType) != .typeSymbolicLink else {
+      throw PigeonError(code: "INVALID_CACHE_PATH", message: "Temporary cache is unavailable.", details: nil)
+    }
     guard let destination = CGImageDestinationCreateWithURL(
       file as CFURL,
       UTType.jpeg.identifier as CFString,
@@ -295,13 +304,14 @@ final class IOSPreviewPipeline {
   private func removePreviewFiles(cacheId: String) {
     let root = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first
       ?? URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-    let prefix = "preview_\(cacheId)_"
+    let pattern = "^preview_\(NSRegularExpression.escapedPattern(for: cacheId))_[0-9]+_[0-9]+\\.jpg$"
     guard let files = try? fileManager.contentsOfDirectory(
-      at: root,
+      at: root.standardizedFileURL.resolvingSymlinksInPath(),
       includingPropertiesForKeys: nil
     ) else { return }
-    for file in files where file.lastPathComponent.hasPrefix(prefix)
-      && file.pathExtension.lowercased() == "jpg" {
+    for file in files where file.lastPathComponent.range(of: pattern, options: .regularExpression) != nil {
+      guard file.resolvingSymlinksInPath().standardizedFileURL == file.standardizedFileURL,
+            (try? fileManager.attributesOfItem(atPath: file.path)[.type] as? FileAttributeType) == .typeRegular else { continue }
       try? fileManager.removeItem(at: file)
     }
   }

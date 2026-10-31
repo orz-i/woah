@@ -30,7 +30,8 @@ final class IOSAnalysisCache {
     self.fileManager = fileManager
     let cacheRoot = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first
       ?? URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-    rootDirectory = cacheRoot.appendingPathComponent("analysis", isDirectory: true)
+    rootDirectory = cacheRoot.standardizedFileURL.resolvingSymlinksInPath()
+      .appendingPathComponent("analysis", isDirectory: true)
   }
 
   func createAnalysisDirectory(cacheId: String) throws -> URL {
@@ -46,15 +47,14 @@ final class IOSAnalysisCache {
   func saveVideoUri(cacheId: String, videoUri: String) throws {
     let directory = try createAnalysisDirectory(cacheId: cacheId)
     try videoUri.write(
-      to: directory.appendingPathComponent("source_uri.txt"),
+      to: try safeFile(directory, "source_uri.txt"),
       atomically: true,
       encoding: .utf8
     )
   }
 
   func loadVideoUri(cacheId: String) throws -> String? {
-    let file = try analysisDirectory(cacheId: cacheId)
-      .appendingPathComponent("source_uri.txt")
+    let file = try safeFile(analysisDirectory(cacheId: cacheId), "source_uri.txt")
     guard fileManager.fileExists(atPath: file.path) else { return nil }
     return try String(contentsOf: file, encoding: .utf8)
       .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -66,14 +66,13 @@ final class IOSAnalysisCache {
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
     let data = try encoder.encode(metadata)
     try data.write(
-      to: directory.appendingPathComponent("analysis.json"),
+      to: try safeFile(directory, "analysis.json"),
       options: .atomic
     )
   }
 
   func loadMetadata(cacheId: String) throws -> IOSAnalysisMetadata? {
-    let file = try analysisDirectory(cacheId: cacheId)
-      .appendingPathComponent("analysis.json")
+    let file = try safeFile(analysisDirectory(cacheId: cacheId), "analysis.json")
     guard fileManager.fileExists(atPath: file.path) else { return nil }
     return try JSONDecoder().decode(
       IOSAnalysisMetadata.self,
@@ -157,7 +156,8 @@ final class IOSAnalysisCache {
     }
 
     let directory = try createAnalysisDirectory(cacheId: cacheId)
-    let file = directory.appendingPathComponent("person_\(personId).jpg")
+    guard personId >= 0 else { throw cacheError("Invalid person id.") }
+    let file = try safeFile(directory, "person_\(personId).jpg")
     guard let destination = CGImageDestinationCreateWithURL(
       file as CFURL,
       UTType.jpeg.identifier as CFString,
@@ -179,22 +179,42 @@ final class IOSAnalysisCache {
   func clearAnalysisCache(cacheId: String) throws {
     let directory = try analysisDirectory(cacheId: cacheId)
     guard fileManager.fileExists(atPath: directory.path) else { return }
-    try fileManager.removeItem(at: directory)
+    let files = try fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+    let pattern = "^(?:source_uri\\.txt|analysis\\.json|person_[0-9]+\\.jpg)$"
+    guard files.allSatisfy({ file in
+      file.lastPathComponent.range(of: pattern, options: .regularExpression) != nil &&
+        file.resolvingSymlinksInPath() == file &&
+        (try? fileManager.attributesOfItem(atPath: file.path)[.type] as? FileAttributeType) == .typeRegular
+    }) else { return }
+    for file in files { try fileManager.removeItem(at: file) }
+    if (try fileManager.contentsOfDirectory(atPath: directory.path)).isEmpty {
+      try fileManager.removeItem(at: directory)
+    }
   }
 
   private func analysisDirectory(cacheId: String) throws -> URL {
-    guard !cacheId.isEmpty,
-          cacheId != ".",
-          cacheId != "..",
-          !cacheId.contains("/"),
-          !cacheId.contains("\\") else {
+    guard cacheId.range(of: "^[A-Za-z0-9_-]+$", options: .regularExpression) != nil else {
       throw PigeonError(
         code: "INVALID_CACHE_ID",
         message: "Invalid iOS analysis cache id.",
         details: cacheId
       )
     }
-    return rootDirectory.appendingPathComponent(cacheId, isDirectory: true)
+    let directory = rootDirectory.appendingPathComponent(cacheId, isDirectory: true)
+    guard directory.resolvingSymlinksInPath() == directory,
+          rootDirectory.resolvingSymlinksInPath() == rootDirectory else {
+      throw cacheError("Invalid analysis cache path.")
+    }
+    return directory
+  }
+
+  private func safeFile(_ directory: URL, _ name: String) throws -> URL {
+    let file = directory.appendingPathComponent(name)
+    guard file.resolvingSymlinksInPath() == file,
+          (try? fileManager.attributesOfItem(atPath: file.path)[.type] as? FileAttributeType) != .typeSymbolicLink else {
+      throw cacheError("Invalid analysis cache file.")
+    }
+    return file
   }
 
   private func clamp(_ value: Int, lower: Int, upper: Int) -> Int {

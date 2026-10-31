@@ -43,8 +43,13 @@ enum IOSExportPhase4Smoke {
     }
 
     let cache = IOSAnalysisCache()
-    let cacheId = "phase4_smoke_\(nonce)"
-    defer { try? cache.clearAnalysisCache(cacheId: cacheId) }
+    let cacheId = "analysis_\(Int64(Date().timeIntervalSince1970 * 1000))_\(UUID().uuidString)"
+    let cacheOwner = IOSRegenerableCacheRegistry.Owner()
+    let creationLease = try IOSRegenerableCacheRegistry.shared.beginAnalysis(owner: cacheOwner, cacheId: cacheId)
+    defer {
+      IOSRegenerableCacheRegistry.shared.requestRelease(cacheId: cacheId, owner: cacheOwner)
+      creationLease.close()
+    }
     try cache.saveVideoUri(cacheId: cacheId, videoUri: sourceURL.absoluteString)
     try cache.saveMetadata(
       cacheId: cacheId,
@@ -61,6 +66,7 @@ enum IOSExportPhase4Smoke {
       )
     )
 
+    creationLease.close()
     let inferenceState = InferenceState()
     let provider: IOSExportPipeline.InferenceProvider = { image in
       try inferenceState.infer(image: image)
@@ -205,14 +211,38 @@ enum IOSExportPhase4Smoke {
     while coordinator.hasActiveRuntime(jobId: jobId) {
       try await Task.sleep(nanoseconds: 10_000_000)
     }
-    let cancelJobId = try coordinator.start(request: exportRequest(
+    let inferenceEntered = DispatchSemaphore(value: 0)
+    let inferenceDrain = DispatchSemaphore(value: 0)
+    let cancelCoordinator = IOSExportCoordinator(
+      analysisCache: cache,
+      inferenceProvider: { image in
+        inferenceEntered.signal()
+        guard inferenceDrain.wait(timeout: .now() + 30) == .success else {
+          throw smokeError("CACHE_LEASE_FIXTURE_TIMEOUT", "Synthetic inference did not drain.")
+        }
+        return try inferenceState.infer(image: image)
+      },
+      observer: { _ in }
+    )
+    defer { inferenceDrain.signal() }
+    let cancelJobId = try cancelCoordinator.start(request: exportRequest(
       sourceURL: sourceURL,
       cacheId: cacheId,
       outputURL: cancelURL
     ))
-    coordinator.cancel(jobId: cancelJobId)
+    let enteredInference = await Task.detached {
+      inferenceEntered.wait(timeout: .now() + 30) == .success
+    }.value
+    guard enteredInference else { throw smokeError("CACHE_LEASE_FIXTURE_NOT_ENTERED", "Synthetic export did not enter inference.") }
+    cancelCoordinator.cancel(jobId: cancelJobId)
+    IOSRegenerableCacheRegistry.shared.requestRelease(cacheId: cacheId, owner: cacheOwner)
+    IOSRegenerableCacheRegistry.shared.drainForTesting()
+    guard try cache.loadMetadata(cacheId: cacheId) != nil else {
+      throw smokeError("CACHE_LEASE_RELEASED_EARLY", "Cancelled status released a running export's cache.")
+    }
+    inferenceDrain.signal()
     let cancelled = try await waitForTerminal(
-      coordinator: coordinator,
+      coordinator: cancelCoordinator,
       jobId: cancelJobId,
       timeoutSeconds: 30,
       onPoll: { _ in }
@@ -221,11 +251,17 @@ enum IOSExportPhase4Smoke {
       throw smokeError("EXPORT_SMOKE_CANCEL_STATE_MISMATCH", "cancelJob did not produce a cancelled terminal state.")
     }
     let cancelCleanupDeadline = Date().addingTimeInterval(30)
-    while coordinator.hasActiveRuntime(jobId: cancelJobId), Date() < cancelCleanupDeadline {
+    while cancelCoordinator.hasActiveRuntime(jobId: cancelJobId), Date() < cancelCleanupDeadline {
       try await Task.sleep(nanoseconds: 20_000_000)
     }
-    guard !coordinator.hasActiveRuntime(jobId: cancelJobId) else {
+    guard !cancelCoordinator.hasActiveRuntime(jobId: cancelJobId) else {
       throw smokeError("EXPORT_SMOKE_CANCEL_TIMEOUT", "Cancelled export runtime did not unwind in time.")
+    }
+    while try cache.loadMetadata(cacheId: cacheId) != nil, Date() < cancelCleanupDeadline {
+      try await Task.sleep(nanoseconds: 10_000_000)
+    }
+    guard try cache.loadMetadata(cacheId: cacheId) == nil else {
+      throw smokeError("CACHE_LEASE_NOT_RELEASED", "Export cache remained after actual worker completion.")
     }
     guard !fileManager.fileExists(atPath: cancelURL.path) else {
       throw smokeError("EXPORT_SMOKE_CANCEL_OUTPUT_LEAK", "Cancelled export left a final output file.")
@@ -270,6 +306,7 @@ enum IOSExportPhase4Smoke {
       "privacy_pixel_rgba": [privacyPixel.r, privacyPixel.g, privacyPixel.b, privacyPixel.a],
       "cancel_state": cancelled.state,
       "cancel_partial_clean": !leakedPartial,
+      "cancel_cache_lease_drained": true,
       "phase5_face_only_e2e": faceOnlyReport,
     ]
   }
@@ -338,8 +375,13 @@ enum IOSExportPhase4Smoke {
       preferBundledImage: false
     )
     let cache = IOSAnalysisCache()
-    let cacheId = "phase5_face_export_smoke_\(nonce)"
-    defer { try? cache.clearAnalysisCache(cacheId: cacheId) }
+    let cacheId = "analysis_\(Int64(Date().timeIntervalSince1970 * 1000))_\(UUID().uuidString)"
+    let cacheOwner = IOSRegenerableCacheRegistry.Owner()
+    let creationLease = try IOSRegenerableCacheRegistry.shared.beginAnalysis(owner: cacheOwner, cacheId: cacheId)
+    defer {
+      IOSRegenerableCacheRegistry.shared.requestRelease(cacheId: cacheId, owner: cacheOwner)
+      creationLease.close()
+    }
     try cache.saveVideoUri(cacheId: cacheId, videoUri: sourceURL.absoluteString)
     try cache.saveMetadata(
       cacheId: cacheId,
@@ -356,6 +398,7 @@ enum IOSExportPhase4Smoke {
       )
     )
 
+    creationLease.close()
     let inferenceState = FaceOnlyInferenceState()
     let faceLocator = FaceOnlyLocatorState()
     let coordinator = IOSExportCoordinator(
