@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import re
 import sys
 from pathlib import Path
 
@@ -43,7 +44,7 @@ def verify_workflows() -> None:
           "macOS real-device job must be gated behind the secret check")
     check("phase1-model:" in browserstack and "runs-on: ubuntu-latest" in browserstack,
           "Phase 1 model reproduction must run on Linux before the macOS device build")
-    check("actions/download-artifact@v4" in browserstack and "models/litert" in browserstack,
+    check(re.search(r"uses: actions/download-artifact@[0-9a-f]{40}(?:\s|$)", browserstack) is not None and "models/litert" in browserstack,
           "macOS BrowserStack job must consume the verified Linux-produced TFLite artifact")
     check("runs-on: macos-26" in browserstack, "BrowserStack build lane must use macOS 26")
     check("--target lib/cloud_probe_main.dart" in browserstack,
