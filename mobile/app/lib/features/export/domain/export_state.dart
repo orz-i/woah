@@ -30,6 +30,7 @@ class ExportState {
   final String? currentPreviewPath;
   final bool showLivePreview;
   final String? errorMessage;
+  final String? errorCode;
 
   const ExportState({
     this.status = ExportJobState.preparing,
@@ -44,6 +45,7 @@ class ExportState {
     this.currentPreviewPath,
     this.showLivePreview = false,
     this.errorMessage,
+    this.errorCode,
   });
 
   bool get isProcessing =>
@@ -69,6 +71,7 @@ class ExportState {
     String? currentPreviewPath,
     bool? showLivePreview,
     String? errorMessage,
+    String? errorCode,
     bool clearErrorMessage = false,
     bool clearCurrentPreviewPath = false,
   }) {
@@ -86,6 +89,7 @@ class ExportState {
           ? null
           : (currentPreviewPath ?? this.currentPreviewPath),
       showLivePreview: showLivePreview ?? this.showLivePreview,
+      errorCode: clearErrorMessage ? null : (errorCode ?? this.errorCode),
       errorMessage: clearErrorMessage
           ? null
           : (errorMessage ?? this.errorMessage),

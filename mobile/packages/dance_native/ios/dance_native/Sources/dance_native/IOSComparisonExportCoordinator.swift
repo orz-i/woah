@@ -315,7 +315,7 @@ final class IOSComparisonExportCoordinator {
     }) { [self] success, error in
       finishSave(jobId: jobId, identifier: success ? identifier : nil,
         error: success && identifier != nil ? nil :
-          "视频已导出，保存相册失败，可以再次保存\(error.map { "（\($0.localizedDescription)）" } ?? "")",
+          "视频已导出，保存相册失败，可以再次保存",
         completion: completion)
     }
   }
@@ -367,7 +367,7 @@ final class IOSComparisonExportCoordinator {
       startUs: record.spec.startUs, endUs: record.spec.endUs,
       width: Int64(record.spec.width), height: Int64(record.spec.height),
       outputPath: hasOutput ? output(record.id).path : nil,
-      savedUri: record.savedAssetIdentifier.map { "ph://\($0)" }, error: record.error)
+      savedUri: record.savedAssetIdentifier.map { "ph://\($0)" }, error: IOSDiagnosticPrivacy.comparisonMessage(record.error))
   }
 
   private func output(_ id: String) -> URL { directory.appendingPathComponent("\(id).mp4") }
@@ -380,8 +380,10 @@ final class IOSComparisonExportCoordinator {
     if nsError.domain == NSCocoaErrorDomain && nsError.code == NSFileWriteOutOfSpaceError {
       return "存储空间不足，请释放空间后重试"
     }
-    if let known = error as? IOSComparisonExportError { return known.message }
-    return "导出未完成，请重试或重新关联源视频（\(error.localizedDescription)）"
+    if let known = error as? IOSComparisonExportError {
+      return IOSDiagnosticPrivacy.comparisonMessage(known.message) ?? "导出未完成，请重试或重新关联源视频"
+    }
+    return "导出未完成，请重试或重新关联源视频"
   }
   private func withLock<T>(_ body: () throws -> T) rethrows -> T {
     lock.lock(); defer { lock.unlock() }

@@ -76,6 +76,10 @@ class ExportController extends StateNotifier<ExportState> {
   void _applyProgress(_ExportOperation operation, JobStatusDto statusDto) {
     if (!_owns(operation) || operation.phase == _ExportPhase.terminal) return;
     if (_isTerminal(statusDto.state)) operation.phase = _ExportPhase.terminal;
+    final hasError =
+        statusDto.state == 'failed' ||
+        (statusDto.errorMessage?.isNotEmpty ?? false) ||
+        (statusDto.errorCode?.isNotEmpty ?? false);
     state = state.copyWith(
       status: ExportJobState.fromString(statusDto.state),
       progress: statusDto.progress,
@@ -87,7 +91,11 @@ class ExportController extends StateNotifier<ExportState> {
           ? statusDto.currentPreviewPath
           : null,
       clearCurrentPreviewPath: !state.showLivePreview,
-      errorMessage: statusDto.errorMessage,
+      errorMessage: hasError
+          ? AppLogger.exportErrorMessage(statusDto.errorCode)
+          : null,
+      errorCode: hasError ? AppLogger.safeCode(statusDto.errorCode) : null,
+      clearErrorMessage: !hasError,
     );
   }
 
@@ -111,12 +119,7 @@ class ExportController extends StateNotifier<ExportState> {
         enabled: enabled,
       );
     } catch (e, stack) {
-      AppLogger.e(
-        'ExportController',
-        'Failed to toggle live preview',
-        e,
-        stack,
-      );
+      AppLogger.e('ExportController', 'EXPORT_PREVIEW_TOGGLE_FAILED', e, stack);
     }
   }
 
@@ -181,12 +184,13 @@ class ExportController extends StateNotifier<ExportState> {
         }
       }
     } catch (e, stack) {
-      AppLogger.e('ExportController', 'Failed to start export', e, stack);
+      AppLogger.e('ExportController', 'EXPORT_START_FAILED', e, stack);
       if (_owns(operation) && operation.phase != _ExportPhase.cancelling) {
         operation.phase = _ExportPhase.terminal;
         state = state.copyWith(
           status: ExportJobState.failed,
-          errorMessage: '启动导出失败: $e',
+          errorMessage: AppLogger.exportErrorMessage(AppLogger.errorCode(e)),
+          errorCode: AppLogger.errorCode(e),
         );
       }
     } finally {
@@ -209,10 +213,7 @@ class ExportController extends StateNotifier<ExportState> {
         maxEncodeHeight: capabilities.maxEncodeHeight.toInt(),
       );
     } catch (error) {
-      AppLogger.w(
-        'ExportController',
-        'Encoder capability probe unavailable; preserving requested media contract: $error',
-      );
+      AppLogger.w('ExportController', 'EXPORT_CAPABILITIES_FALLBACK');
       return ExportPlan.forProject(project);
     }
   }
@@ -278,7 +279,7 @@ class ExportController extends StateNotifier<ExportState> {
         if (attempt == 1) {
           AppLogger.e(
             'ExportController',
-            'Export cleanup failed for job ${operation.jobId}',
+            'EXPORT_CLEANUP_FAILED',
             error,
             stack,
           );

@@ -79,7 +79,7 @@ class YoloLiteRtSegmenter(
         } catch (e: DanceNativeException) {
             throw e
         } catch (e: Throwable) {
-            Log.e(TAG, "[LiteRT YOLO] Failed to initialize: ", e)
+            Log.e(TAG, "MODEL_INIT_FAILED")
             throw DanceNativeException(
                 DanceNativeException.MODEL_INIT_FAILED,
                 "Failed to initialize LiteRT YOLO Segmenter: ${e.javaClass.simpleName}: ${e.message}",
@@ -197,7 +197,7 @@ class YoloLiteRtSegmenter(
         } catch (e: DanceNativeException) {
             throw e
         } catch (e: Throwable) {
-            Log.e(TAG, "[LiteRT YOLO] Inference error: ", e)
+            Log.e(TAG, "MODEL_INFERENCE_FAILED")
             throw DanceNativeException(
                 DanceNativeException.MODEL_INFERENCE_FAILED,
                 "Inference execution failed on LiteRT YOLO: ${e.javaClass.simpleName}: ${e.message}",
@@ -273,7 +273,7 @@ class YoloLiteRtSegmenter(
         } catch (e: DanceNativeException) {
             throw e
         } catch (e: Throwable) {
-            Log.e(TAG, "[LiteRT YOLO] Inference error: ", e)
+            Log.e(TAG, "MODEL_INFERENCE_FAILED")
             throw DanceNativeException(
                 DanceNativeException.MODEL_INFERENCE_FAILED,
                 "Inference execution failed on LiteRT YOLO: ${e.javaClass.simpleName}: ${e.message}",

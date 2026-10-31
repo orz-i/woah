@@ -206,6 +206,7 @@ def main() -> int:
             required_markers.extend([
                 PRIVACY_CLASS_PHASE6_PASS_MARKER,
                 "WOAH_CACHE_LIFECYCLE_SMOKE=PASS",
+                "WOAH_DIAGNOSTIC_PRIVACY_SMOKE=PASS",
             ])
         missing = [
             marker
@@ -223,6 +224,7 @@ def main() -> int:
         if args.require_phase6:
             print("IOS_SIMULATOR_PHASE6_PRIVACY_CLASS_SMOKE=PASS")
             print("IOS_SIMULATOR_CACHE_LIFECYCLE_SMOKE=PASS")
+            print("IOS_SIMULATOR_DIAGNOSTIC_PRIVACY_SMOKE=PASS")
         return 0
     finally:
         # Teardown is deliberately best-effort. Phase 3 CI demonstrated that a

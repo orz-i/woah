@@ -220,7 +220,7 @@ class ExportPipeline(
                     )
                 )
             } catch (t: Throwable) {
-                cpuMt4ProbeFallbackReason = "${t.javaClass.simpleName}:${t.message ?: "unknown"}"
+                cpuMt4ProbeFallbackReason = art.gaoge.dance.engine.diagnostics.NativeDiagnosticPrivacy.reason(t, "inference")
                 try { cpuMt4ProbeSegmenter?.close() } catch (_: Throwable) {}
                 cpuMt4ProbeSegmenter = null
                 art.gaoge.dance.engine.diagnostics.NativeDiagnostics.event(
@@ -611,7 +611,7 @@ class ExportPipeline(
                             }
                         )
                     } catch (t: Throwable) {
-                        canonicalInferenceFallbackReason = "${t.javaClass.simpleName}:${t.message ?: "unknown"}"
+                        canonicalInferenceFallbackReason = art.gaoge.dance.engine.diagnostics.NativeDiagnosticPrivacy.reason(t, "inference")
                         try { canonicalInferenceDecoder?.close() } catch (_: Throwable) {}
                         canonicalInferenceDecoder = null
                         art.gaoge.dance.engine.diagnostics.NativeDiagnostics.event(
@@ -866,7 +866,7 @@ class ExportPipeline(
                             surfacePtsDeltaSamples.add(deltaUs)
                         }
                     } catch (e: Throwable) {
-                        android.util.Log.w("ExportPipeline", "updateTexImage warning: ${e.message}")
+                        android.util.Log.w("ExportPipeline", "TEXTURE_UPDATE_FAILED")
                         continue
                     }
 
@@ -902,7 +902,7 @@ class ExportPipeline(
                                         }
                                     } catch (t: Throwable) {
                                         canonicalInferenceFallbackReason =
-                                            "${t.javaClass.simpleName}:${t.message ?: "unknown"}"
+                                            art.gaoge.dance.engine.diagnostics.NativeDiagnosticPrivacy.reason(t, "inference")
                                         try { canonicalDecoder.close() } catch (_: Throwable) {}
                                         canonicalInferenceDecoder = null
                                         art.gaoge.dance.engine.diagnostics.NativeDiagnostics.event(
@@ -992,7 +992,7 @@ class ExportPipeline(
                                         }
                                     } catch (t: Throwable) {
                                         cpuMt4ProbeFallbackReason =
-                                            "${t.javaClass.simpleName}:${t.message ?: "unknown"}"
+                                            art.gaoge.dance.engine.diagnostics.NativeDiagnosticPrivacy.reason(t, "inference")
                                         try { cpuMt4Probe.close() } catch (_: Throwable) {}
                                         cpuMt4ProbeSegmenter = null
                                         art.gaoge.dance.engine.diagnostics.NativeDiagnostics.event(
@@ -2296,7 +2296,7 @@ class ExportPipeline(
                                         }
                                     } catch (e: Throwable) {
                                         try { capturedBmp.recycle() } catch (_: Throwable) {}
-                                        android.util.Log.w("ExportPipeline", "Live preview capture async warning: ${e.message}")
+                                        android.util.Log.w("ExportPipeline", "LIVE_PREVIEW_CAPTURE_FAILED")
                                     } finally {
                                         isPreviewSaving.set(false)
                                     }
@@ -2622,13 +2622,13 @@ class ExportPipeline(
                         "Export cancellation interrupted native processing during cleanup"
                     )
                 } else {
-                    android.util.Log.e("ExportPipeline", "Export failed", e)
+                    android.util.Log.e("ExportPipeline", "EXPORT_FAILED")
                 }
                 status = ExportTerminalStatus.afterException(
                     previous = status,
                     cancelRequested = cancelRequested,
                     errorCode = "EXPORT_FAILED",
-                    errorMessage = "${e.javaClass.simpleName}: ${e.message}\n${e.stackTrace.take(8).joinToString("\n")}"
+                    errorMessage = art.gaoge.dance.engine.diagnostics.NativeDiagnosticPrivacy.message("EXPORT_FAILED", "export")
                 )
                 emitProgress(status, onStatusChange)
                 art.gaoge.dance.engine.diagnostics.NativeDiagnostics.recordPipelineLifecycle(

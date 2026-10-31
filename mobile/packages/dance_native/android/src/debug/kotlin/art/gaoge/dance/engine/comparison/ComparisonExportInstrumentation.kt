@@ -26,7 +26,7 @@ class ComparisonExportInstrumentation : Instrumentation() {
                 File(targetContext.cacheDir,"comparison-export-probe"))
             finish(Activity.RESULT_OK,Bundle().apply { putString("comparisonExport",if (managerMode) "foreground service, cancel, retry and album passed" else "device outputs and cancellation passed") })
         } catch (e: Throwable) {
-            finish(Activity.RESULT_CANCELED,Bundle().apply { putString("comparisonExportError",e.stackTraceToString()) })
+            finish(Activity.RESULT_CANCELED,Bundle().apply { putString("comparisonExportError",art.gaoge.dance.engine.diagnostics.NativeDiagnosticPrivacy.reason(e, "comparison")) })
         }
     }
 }

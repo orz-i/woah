@@ -57,7 +57,7 @@ class AnalyzePipeline(
             ).also { it.prepare() }
             canonicalFrame = canonicalDecoder.decodeRgbaAtOrAfterPts(trimStartUs, mapper)
         } catch (t: Throwable) {
-            canonicalFallbackReason = "${t.javaClass.simpleName}:${t.message ?: "unknown"}"
+            canonicalFallbackReason = art.gaoge.dance.engine.diagnostics.NativeDiagnosticPrivacy.reason(t, "analysis")
             try { canonicalDecoder?.close() } catch (_: Throwable) {}
             canonicalDecoder = null
             canonicalFrame = null
@@ -89,10 +89,10 @@ class AnalyzePipeline(
                 ?: retriever.frameAtTime
         } catch (e: Exception) {
             try { canonicalDecoder?.close() } catch (_: Throwable) {}
-            android.util.Log.e("AnalyzePipeline", "Failed to retrieve first frame", e)
+            android.util.Log.e("AnalyzePipeline", "FIRST_FRAME_FAILED")
             throw art.gaoge.dance.engine.bridge.DanceNativeException(
                 art.gaoge.dance.engine.bridge.DanceNativeException.VIDEO_OPEN_FAILED,
-                "Failed to extract first frame from video: ${request.videoUri} (${e.message})",
+                "First frame extraction failed",
                 e
             )
         } finally {

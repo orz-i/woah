@@ -118,7 +118,7 @@ class CacheManager(private val context: Context) {
             }
             AnalysisMetadata(schemaVersion, sourceUri, persons)
         } catch (e: Exception) {
-            android.util.Log.w("CacheManager", "Failed to parse analysis.json for cache $cacheId", e)
+            android.util.Log.w("CacheManager", "ANALYSIS_CACHE_PARSE_FAILED")
             null
         }
     }

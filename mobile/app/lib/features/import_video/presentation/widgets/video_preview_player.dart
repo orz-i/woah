@@ -99,7 +99,7 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = '播放器初始化失败: $e';
+          _errorMessage = '播放器初始化失败，请重试（VIDEO_PLAYER_INIT_FAILED）。';
         });
       }
     }

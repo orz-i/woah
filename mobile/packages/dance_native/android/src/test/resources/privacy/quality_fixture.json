@@ -1,0 +1,430 @@
+{
+  "events": [
+    {
+      "session_id": "__SESSION__",
+      "event": "ANALYZE_SELECTION_SIGNATURE",
+      "fields": {
+        "job_id": "__JOB__",
+        "pts_us": 0,
+        "analysis_cache_id": "analysis_1",
+        "requested_trim_start_us": 0,
+        "analysis_pts_us": 0,
+        "input_path": "CANONICAL_YUV_CPU",
+        "canonical_rgba_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "diagnostic_candidate_ids_ge_0_60": [
+          1
+        ],
+        "detections": [
+          {
+            "index": 0,
+            "confidence_q1e4": 9500,
+            "bbox_q0_0625px": [
+              16,
+              32,
+              320,
+              640
+            ],
+            "mask_width": 2,
+            "mask_height": 2,
+            "mask_assoc_binary_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "mask_assoc_foreground_pixels": 3,
+            "mask_assoc_near_threshold_pixels": 1
+          }
+        ]
+      }
+    },
+    {
+      "session_id": "__SESSION__",
+      "event": "YOLO_TENSOR_CAPTURED",
+      "fields": {
+        "job_id": "__JOB__",
+        "pts_us": 0,
+        "detections": [
+          {
+            "index": 0,
+            "confidence_q1e4": 9500,
+            "bbox_q0_0625px": [
+              16,
+              32,
+              320,
+              640
+            ],
+            "mask_width": 2,
+            "mask_height": 2,
+            "mask_assoc_binary_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "mask_assoc_foreground_pixels": 3,
+            "mask_assoc_near_threshold_pixels": 1
+          }
+        ],
+        "input_artifact": "yolo_tensor___JOB___0_input.f32s"
+      }
+    },
+    {
+      "session_id": "__SESSION__",
+      "event": "YOLO_TENSOR_CAPTURED",
+      "fields": {
+        "job_id": "__JOB___cpu_mt4_probe",
+        "pts_us": 0,
+        "detections": [
+          {
+            "index": 0,
+            "confidence_q1e4": 9500,
+            "bbox_q0_0625px": [
+              16,
+              32,
+              320,
+              640
+            ],
+            "mask_width": 2,
+            "mask_height": 2,
+            "mask_assoc_binary_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "mask_assoc_foreground_pixels": 3,
+            "mask_assoc_near_threshold_pixels": 1
+          }
+        ],
+        "input_artifact": "yolo_tensor___JOB___cpu_mt4_probe_0_input.f32s"
+      }
+    },
+    {
+      "session_id": "__SESSION__",
+      "event": "YOLO_TENSOR_CAPTURED",
+      "fields": {
+        "job_id": "__JOB___cpu_probe",
+        "pts_us": 0,
+        "detections": [
+          {
+            "index": 0,
+            "confidence_q1e4": 9500,
+            "bbox_q0_0625px": [
+              16,
+              32,
+              320,
+              640
+            ],
+            "mask_width": 2,
+            "mask_height": 2,
+            "mask_assoc_binary_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "mask_assoc_foreground_pixels": 3,
+            "mask_assoc_near_threshold_pixels": 1
+          }
+        ],
+        "input_artifact": "yolo_tensor___JOB___cpu_probe_0_input.f32s"
+      }
+    },
+    {
+      "session_id": "__SESSION__",
+      "event": "YOLO_CPU_MT4_TRACK_SHADOW",
+      "fields": {
+        "job_id": "__JOB__",
+        "pts_us": 0,
+        "cpu_inference_ordinal": 1,
+        "should_infer": true,
+        "identity_protected_track_ids": [
+          1
+        ],
+        "cpu_full_tracks": [
+          {
+            "id": 1,
+            "state": "ACTIVE",
+            "bbox_q0_0625px": [
+              16,
+              32,
+              320,
+              640
+            ],
+            "observed_this_frame": true,
+            "frames_since_last_observation": 0,
+            "missed_frames": 0,
+            "occluded_by_track_ids": []
+          }
+        ],
+        "adaptive_tracks": {
+          "dense": [
+            {
+              "id": 1,
+              "state": "ACTIVE",
+              "bbox_q0_0625px": [
+                16,
+                32,
+                320,
+                640
+              ],
+              "observed_this_frame": true,
+              "frames_since_last_observation": 0,
+              "missed_frames": 0,
+              "occluded_by_track_ids": []
+            }
+          ]
+        },
+        "adaptive_sources": {
+          "dense": "CPU"
+        },
+        "adaptive_reasons": {
+          "dense": "INITIALIZE"
+        },
+        "adaptive_metrics": {
+          "dense": {
+            "protected_track_count": 1
+          }
+        }
+      }
+    },
+    {
+      "session_id": "__SESSION__",
+      "event": "FACE_ONLY_IDENTITY_ROOTS_RESOLVED",
+      "fields": {
+        "job_id": "__JOB__",
+        "pts_us": 0,
+        "face_only_person_ids": [
+          1
+        ]
+      }
+    },
+    {
+      "session_id": "__SESSION__",
+      "event": "FACE_ONLY_PRODUCTION_TRACK_SIGNATURE",
+      "fields": {
+        "job_id": "__JOB__",
+        "pts_us": 0,
+        "tracks": [
+          {
+            "id": 1,
+            "state": "ACTIVE",
+            "bbox_q0_0625px": [
+              16,
+              32,
+              320,
+              640
+            ],
+            "observed_this_frame": true,
+            "frames_since_last_observation": 0,
+            "missed_frames": 0,
+            "occluded_by_track_ids": []
+          }
+        ]
+      }
+    },
+    {
+      "session_id": "__SESSION__",
+      "event": "FULL_BODY_PRODUCTION_TRACK_SIGNATURE",
+      "fields": {
+        "job_id": "__JOB__",
+        "pts_us": 0,
+        "tracks": [
+          {
+            "id": 1,
+            "state": "ACTIVE",
+            "bbox_q0_0625px": [
+              16,
+              32,
+              320,
+              640
+            ],
+            "observed_this_frame": true,
+            "frames_since_last_observation": 0,
+            "missed_frames": 0,
+            "occluded_by_track_ids": []
+          }
+        ]
+      }
+    },
+    {
+      "session_id": "__SESSION__",
+      "event": "FULL_BODY_PRIVACY_INPUT_SIGNATURE",
+      "fields": {
+        "job_id": "__JOB__",
+        "pts_us": 0,
+        "full_body_person_ids": [
+          1
+        ],
+        "fresh_selected_covered_track_ids": [
+          1
+        ],
+        "prefer_fresh_class_primary": true,
+        "evidence": [
+          {
+            "detection_index": 0,
+            "selection_class": "SELECTED",
+            "conservative_unknown": false,
+            "residual_track_ids": [
+              1
+            ],
+            "bbox_q0_0625px": [
+              16,
+              32,
+              320,
+              640
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "session_id": "__SESSION__",
+      "event": "FACE_ONLY_STICKER_PLACEMENT_SIGNATURE",
+      "fields": {
+        "job_id": "__JOB__",
+        "pts_us": 0,
+        "geometry_source": "CPU_MT4_REFERENCE",
+        "mask_source": "PRODUCTION_TRACKS",
+        "placements": [
+          {
+            "track_id": 1,
+            "source": "DETECTED_FACE",
+            "source_rect_q0_0625px": [
+              16,
+              32,
+              80,
+              96
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "session_id": "__SESSION__",
+      "event": "FACE_ONLY_CLASS_FALLBACK",
+      "fields": {
+        "job_id": "__JOB__",
+        "pts_us": 0,
+        "detection_indices": [
+          0
+        ],
+        "body_mask_guided_detection_indices": [
+          0
+        ],
+        "residual_track_ids": [
+          1
+        ],
+        "synthetic_track_ids": []
+      }
+    },
+    {
+      "session_id": "__SESSION__",
+      "event": "FACE_PRIVACY_TEMPORAL_CLASS_EVIDENCE",
+      "fields": {
+        "job_id": "__JOB__",
+        "pts_us": 0,
+        "selected_detection_indices": [
+          0
+        ],
+        "unknown_detection_indices": [],
+        "mapped_detection_indices": [
+          0
+        ],
+        "mapped_unknown_detection_indices": [],
+        "mapped_residual_track_ids": [
+          1
+        ],
+        "elapsed_ms": 1.5
+      }
+    },
+    {
+      "session_id": "__SESSION__",
+      "event": "FACE_ROI_DETECTOR_DIAGNOSTIC",
+      "fields": {
+        "job_id": "__JOB__",
+        "pts_us": 0,
+        "track_id": 1,
+        "phase": "NORMAL",
+        "render_mode": "DIRECT",
+        "rgba_grid_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "observation_count": 1,
+        "selected_face": true,
+        "detector_rejected": false,
+        "pixel_reject_reason": null,
+        "source_rect_q0_0625px": [
+          16,
+          32,
+          80,
+          96
+        ],
+        "person_bbox_q0_0625px": [
+          16,
+          32,
+          320,
+          640
+        ],
+        "roi_pixel_source": "CANONICAL_MODEL_RGBA"
+      }
+    }
+  ],
+  "summary": {
+    "selected_ids": [
+      1
+    ],
+    "face_only_ids": [
+      1
+    ],
+    "decoded_frames": 1,
+    "latched_frames": 1,
+    "rendered_frames": 1,
+    "encoded_frames": 1,
+    "fresh_full_body_class_primary_enabled": true,
+    "face_deterministic_cpu_primary_preferred": true,
+    "face_deterministic_cpu_primary_inference_frames": 1,
+    "face_deterministic_cpu_primary_fallback_frames": 0,
+    "face_detector_calls_by_track_id": {
+      "1": 1
+    },
+    "face_pixel_motion_frames_by_track_id": {
+      "1": 1
+    },
+    "face_pixel_motion_rejected_frames_by_track_id": {
+      "1": 0
+    },
+    "face_roi_read_count": 1,
+    "yolo_requested_accelerator": "GPU",
+    "yolo_effective_accelerator": "CPU",
+    "yolo_gpu_fallback_reason": "model:IO:NATIVE_OPERATION_FAILED",
+    "yolo_effective_cpu_num_threads": 4,
+    "yolo_inference_input_path": "CANONICAL_YUV_CPU",
+    "cpu_mt4_probe_threads": 4,
+    "cpu_mt4_signature_scope": "FULL_EXPORT",
+    "cpu_mt4_probe_fallback_reason": null,
+    "cpu_mt4_probe_inference_frames": 1,
+    "cpu_mt4_production_reuse_frames": 0,
+    "cpu_mt4_production_reuse_parity_frames": 1,
+    "cpu_mt4_production_reuse_parity_exact": true,
+    "cpu_mt4_reference_source_policy": "INDEPENDENT_CPU4T_FULL_EXPORT",
+    "cross_device_adaptive_shadow_matrix_enabled": true,
+    "cross_device_adaptive_shadow_tracker_steps": 1,
+    "cpu_mt4_shadow_adaptive_schedules": [
+      "dense",
+      "safe",
+      "balanced",
+      "aggressive",
+      "sparse"
+    ],
+    "stage_timings": {
+      "yoloCpuInference": {
+        "count": 1,
+        "avg_ms": 2,
+        "p50_ms": 2,
+        "p95_ms": 2,
+        "max_ms": 2
+      },
+      "yoloCpuMt4Probe": {
+        "count": 1,
+        "avg_ms": 2,
+        "p50_ms": 2,
+        "p95_ms": 2,
+        "max_ms": 2
+      },
+      "yoloCpuMt4Probe_yoloLiteRtRun": {
+        "count": 1,
+        "avg_ms": 2,
+        "p50_ms": 2,
+        "p95_ms": 2,
+        "max_ms": 2
+      },
+      "faceRoiReadback": {
+        "count": 1,
+        "avg_ms": 2,
+        "p50_ms": 2,
+        "p95_ms": 2,
+        "max_ms": 2
+      }
+    }
+  }
+}

@@ -16,7 +16,7 @@ class DiagnosticBundleExporterTest {
 
     @Test
     fun bundleScopeExcludesHistoricalSessionsAndJobs() {
-        val session = "20260902_094235_current"
+        val session = "20260902_094235_1234abcd"
         val job = "job_123"
 
         assertTrue(DiagnosticBundleExporter.shouldIncludeSnapshotFile("session_${session}_000.jsonl", session, job))
@@ -43,7 +43,7 @@ class DiagnosticBundleExporterTest {
 
     @Test
     fun previewBundleRejectsAllPerJobArtifactsWhenNoLifecycleJobExists() {
-        val session = "20260902_preview_current"
+        val session = "20260902_094235_1234abcd"
         assertTrue(DiagnosticBundleExporter.shouldIncludeSnapshotFile("session_${session}_000.jsonl", session, null))
         assertTrue(DiagnosticBundleExporter.shouldIncludeSnapshotFile("device.json", session, null))
         assertFalse(DiagnosticBundleExporter.shouldIncludeSnapshotFile("pipeline_summary_job_old.json", session, null))

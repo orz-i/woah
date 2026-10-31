@@ -23,8 +23,8 @@ internal object DiagnosticsChannelBridge {
                 try {
                     result.success(DiagnosticBundleExporter.createBundle(ctx))
                 } catch (e: Exception) {
-                    Log.e("DanceNativePlugin", "Failed to create diagnostic bundle: ${e.message}", e)
-                    result.error("BUNDLE_FAILED", e.message ?: "Failed to create diagnostic bundle", null)
+                    Log.e("DanceNativePlugin", "BUNDLE_FAILED")
+                    result.error("BUNDLE_FAILED", "Diagnostic bundle creation failed", null)
                 }
                 return true
             }
@@ -40,8 +40,8 @@ internal object DiagnosticsChannelBridge {
                 try {
                     result.success(DiagnosticBundleExporter.shareBundle(ctx, filePath, publicUri))
                 } catch (e: Exception) {
-                    Log.e("DanceNativePlugin", "Failed to share diagnostic bundle: ${e.message}", e)
-                    result.error("SHARE_FAILED", e.message ?: "Failed to share diagnostic bundle", null)
+                    Log.e("DanceNativePlugin", "SHARE_FAILED")
+                    result.error("SHARE_FAILED", "Diagnostic bundle sharing failed", null)
                 }
                 return true
             }

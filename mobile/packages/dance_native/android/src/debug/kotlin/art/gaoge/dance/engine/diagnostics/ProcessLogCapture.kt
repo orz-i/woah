@@ -53,7 +53,8 @@ object ProcessLogCapture {
                             FileOutputStream(outputFile, false).use { fos ->
                                 while (isCapturing.get()) {
                                     val line = reader.readLine() ?: break
-                                    val lineWithSep = "$line\n"
+                                    // Raw process lines can contain SDK paths and nested exception text.
+                                    val lineWithSep = "stage=diagnostics; code=NATIVE_LOG_REDACTED\n"
                                     val b = lineWithSep.toByteArray(Charsets.UTF_8)
                                     if (totalBytes + b.size > MAX_LOG_BYTES) break
                                     fos.write(b)
@@ -64,7 +65,7 @@ object ProcessLogCapture {
                         }
                     }
                 } catch (e: Throwable) {
-                    Log.w(TAG, "ProcessLogCapture reader stopped: ${e.message}")
+                    Log.w(TAG, "PROCESS_LOG_READER_STOPPED")
                 }
             }, "NativeLogCaptureReader").apply {
                 isDaemon = true
@@ -72,9 +73,9 @@ object ProcessLogCapture {
             }
         } catch (t: Throwable) {
             isAvailable = false
-            captureError = "${t.javaClass.simpleName}: ${t.message}"
+            captureError = NativeDiagnosticPrivacy.reason(t, "diagnostics")
             isCapturing.set(false)
-            Log.w(TAG, "ProcessLogCapture could not start: ${t.message}")
+            Log.w(TAG, "PROCESS_LOG_START_FAILED")
         }
     }
 

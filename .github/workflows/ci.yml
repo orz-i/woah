@@ -102,10 +102,18 @@ jobs:
           python tools/setup_models.py --android
 
       - name: Run Android Native Unit Tests
+        env:
+          WOAH_PRIVACY_FIXTURE_DIR: ${{ runner.temp }}/woah-privacy-fixtures
         run: |
           cd mobile/app/android
           chmod +x gradlew
           ./gradlew :dance_native:testDebugUnitTest
+
+      - name: Verify synthetic diagnostic privacy consumer compatibility
+        run: |
+          python tools/ci/check_diagnostic_privacy_fixture.py \
+            "${{ runner.temp }}/woah-privacy-fixtures/before.zip" \
+            "${{ runner.temp }}/woah-privacy-fixtures/after.zip"
 
       # Compile the native Release variant without requiring any signing key.
       # This checks the safety backport's Release ABI, not publishable APK

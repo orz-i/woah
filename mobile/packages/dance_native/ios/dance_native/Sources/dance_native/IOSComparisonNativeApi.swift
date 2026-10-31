@@ -35,81 +35,123 @@ final class IOSComparisonNativeApi: DanceComparisonApi {
   }
 
   func pickVideo(role: String) async throws -> ComparisonSourceDto? {
-    guard role == "teacher" || role == "learner" else { throw invalid("视频角色无效") }
-    guard let view = presenter() else { throw invalid("请回到应用后选择视频") }
-    return try await picker.choose(from: view)
+    do {
+      guard role == "teacher" || role == "learner" else { throw invalid("视频角色无效") }
+          guard let view = presenter() else { throw invalid("请回到应用后选择视频") }
+          return try await picker.choose(from: view)
+    } catch {
+      throw IOSDiagnosticPrivacy.pigeon(error, stage: .comparison)
+    }
   }
   func loadProjects() async throws -> [String] {
-    let projects = try IOSComparisonProjectStore.load()
-    // Run maintenance after reading projects but before opening any player.
-    try? IOSComparisonProjectStore.pruneStaleImports()
-    return projects
+    do {
+      let projects = try IOSComparisonProjectStore.load()
+          // Run maintenance after reading projects but before opening any player.
+          try? IOSComparisonProjectStore.pruneStaleImports()
+          return projects
+    } catch {
+      throw IOSDiagnosticPrivacy.pigeon(error, stage: .comparison)
+    }
   }
   func saveProject(projectJson: String) async throws {
-    try IOSComparisonProjectStore.save(projectJson)
+    do {
+      try IOSComparisonProjectStore.save(projectJson)
+    } catch {
+      throw IOSDiagnosticPrivacy.pigeon(error, stage: .comparison)
+    }
   }
 
   func open(teacherUri: String, learnerUri: String, offsetUs: Int64, positionUs: Int64,
     speed: Double, width: Int64, height: Int64, sideBySide: Bool,
     practice: ComparisonPracticeDto, timeScale: Double) async throws -> ComparisonPlaybackDto {
-    try canvas(width, height)
-    guard !activeExport else { throw invalid("对比视频正在导出，请先查看导出进度") }
-    if player == nil { player = IOSComparisonPlayer(registry: registry) }
-    let player = try requirePlayer()
-    let state = try await player.open(referenceURL: IOSComparisonFiles.resolve(teacherUri),
-      targetURL: IOSComparisonFiles.resolve(learnerUri), offsetUs: offsetUs, positionUs: positionUs,
-      speed: speed, width: Int(width), height: Int(height), sideBySide: sideBySide,
-      practice: practice, timeScale: timeScale)
-    // Reclaim only after the prior player has switched away from its source.
-    Task.detached(priority: .utility) {
-      try? IOSComparisonProjectStore.pruneStaleImports()
+    do {
+      try canvas(width, height)
+          guard !activeExport else { throw invalid("对比视频正在导出，请先查看导出进度") }
+          if player == nil { player = IOSComparisonPlayer(registry: registry) }
+          let player = try requirePlayer()
+          let state = try await player.open(referenceURL: IOSComparisonFiles.resolve(teacherUri),
+            targetURL: IOSComparisonFiles.resolve(learnerUri), offsetUs: offsetUs, positionUs: positionUs,
+            speed: speed, width: Int(width), height: Int(height), sideBySide: sideBySide,
+            practice: practice, timeScale: timeScale)
+          // Reclaim only after the prior player has switched away from its source.
+          Task.detached(priority: .utility) {
+            try? IOSComparisonProjectStore.pruneStaleImports()
+          }
+          return state
+    } catch {
+      throw IOSDiagnosticPrivacy.pigeon(error, stage: .comparison)
     }
-    return state
   }
   func control(command: ComparisonCommand, valueUs: Int64, speed: Double) async throws -> ComparisonPlaybackDto {
-    try await requirePlayer().control(command: command, valueUs: valueUs, speed: speed)
+    do {
+      return try await requirePlayer().control(command: command, valueUs: valueUs, speed: speed)
+    } catch {
+      throw IOSDiagnosticPrivacy.pigeon(error, stage: .comparison)
+    }
   }
   func setAlignment(offsetUs: Int64, timeScale: Double) async throws -> ComparisonPlaybackDto {
-    try await requirePlayer().setAlignment(offsetUs: offsetUs, timeScale: timeScale)
+    do {
+      return try await requirePlayer().setAlignment(offsetUs: offsetUs, timeScale: timeScale)
+    } catch {
+      throw IOSDiagnosticPrivacy.pigeon(error, stage: .comparison)
+    }
   }
   func resize(width: Int64, height: Int64, sideBySide: Bool) async throws -> ComparisonPlaybackDto {
-    try canvas(width, height)
-    return try await requirePlayer().resize(width: Int(width), height: Int(height), sideBySide: sideBySide)
+    do {
+      try canvas(width, height)
+          return try await requirePlayer().resize(width: Int(width), height: Int(height), sideBySide: sideBySide)
+    } catch {
+      throw IOSDiagnosticPrivacy.pigeon(error, stage: .comparison)
+    }
   }
   func setPractice(practice: ComparisonPracticeDto) async throws -> ComparisonPlaybackDto {
-    try await requirePlayer().setPractice(practice)
+    do {
+      return try await requirePlayer().setPractice(practice)
+    } catch {
+      throw IOSDiagnosticPrivacy.pigeon(error, stage: .comparison)
+    }
   }
-  func stepFrame(forward: Bool) async throws -> ComparisonPlaybackDto { try await requirePlayer().stepFrame(forward: forward) }
+  func stepFrame(forward: Bool) async throws -> ComparisonPlaybackDto {
+    do {
+      return try await requirePlayer().stepFrame(forward: forward)
+    } catch {
+      throw IOSDiagnosticPrivacy.pigeon(error, stage: .comparison)
+    }
+  }
   func getState() async throws -> ComparisonPlaybackDto {
     player?.state() ?? ComparisonPlaybackDto(textureId: -1, phase: "closed", positionUs: 0,
       durationUs: 0, teacherStartUs: 0, offsetUs: 0, speed: 1)
   }
 
   func alignMusic(teacherUri: String, learnerUri: String) async throws -> MusicAlignmentDto {
-    matchRevision &+= 1
-    let revision = matchRevision
-    await stopMatching()
-    guard revision == matchRevision else { return cancelledMatch() }
-    let reference = try IOSComparisonFiles.resolve(teacherUri)
-    let target = try IOSComparisonFiles.resolve(learnerUri)
-    let cancellation = IOSComparisonMatchCancellation()
-    let task = Task.detached(priority: .userInitiated) {
-      try IOSComparisonMusicAligner().align(referenceURL: reference, targetURL: target,
-        isCancelled: { cancellation.isCancelled || Task.isCancelled })
-    }
-    matchCancellation = cancellation; matchTask = task
-    defer {
-      if matchCancellation === cancellation { matchCancellation = nil; matchTask = nil }
-    }
     do {
-      let result = try await task.value
-      return revision == matchRevision ? result : cancelledMatch()
-    }
-    catch {
-      if revision != matchRevision || cancellation.isCancelled || error is CancellationError {
-        return cancelledMatch()
-      }
-      return MusicAlignmentDto(status: "error", message: "音乐匹配未完成，可以重试或手动校准。", candidates: [])
+      matchRevision &+= 1
+          let revision = matchRevision
+          await stopMatching()
+          guard revision == matchRevision else { return cancelledMatch() }
+          let reference = try IOSComparisonFiles.resolve(teacherUri)
+          let target = try IOSComparisonFiles.resolve(learnerUri)
+          let cancellation = IOSComparisonMatchCancellation()
+          let task = Task.detached(priority: .userInitiated) {
+            try IOSComparisonMusicAligner().align(referenceURL: reference, targetURL: target,
+              isCancelled: { cancellation.isCancelled || Task.isCancelled })
+          }
+          matchCancellation = cancellation; matchTask = task
+          defer {
+            if matchCancellation === cancellation { matchCancellation = nil; matchTask = nil }
+          }
+          do {
+            let result = try await task.value
+            return revision == matchRevision ? result : cancelledMatch()
+          }
+          catch {
+            if revision != matchRevision || cancellation.isCancelled || error is CancellationError {
+              return cancelledMatch()
+            }
+            return MusicAlignmentDto(status: "error", message: "音乐匹配未完成，可以重试或手动校准。", candidates: [])
+          }
+    } catch {
+      throw IOSDiagnosticPrivacy.pigeon(error, stage: .comparison)
     }
   }
   func cancelAlignment() async throws { matchRevision &+= 1; await stopMatching() }
@@ -128,31 +170,55 @@ final class IOSComparisonNativeApi: DanceComparisonApi {
   func startExport(projectJson: String, startUs: Int64, endUs: Int64,
     width: Int64, height: Int64, gap: Int64, sideBySide: Bool,
     replacePreviousUnsaved: Bool) async throws -> ComparisonExportDto {
-    try canvas(width, height)
-    guard gap > 0 && gap <= 64 else { throw invalid("画面间距无效") }
-    closePlayer()
-    return try await withCheckedThrowingContinuation { continuation in
-      exports.start(projectJson: projectJson, startUs: startUs, endUs: endUs,
-        width: Int(width), height: Int(height), gap: Int(gap), sideBySide: sideBySide,
-        replacePreviousUnsaved: replacePreviousUnsaved) {
-        continuation.resume(with: $0)
-      }
+    do {
+      try canvas(width, height)
+          guard gap > 0 && gap <= 64 else { throw invalid("画面间距无效") }
+          closePlayer()
+          return try await withCheckedThrowingContinuation { continuation in
+            exports.start(projectJson: projectJson, startUs: startUs, endUs: endUs,
+              width: Int(width), height: Int(height), gap: Int(gap), sideBySide: sideBySide,
+              replacePreviousUnsaved: replacePreviousUnsaved) {
+              continuation.resume(with: $0)
+            }
+          }
+    } catch {
+      throw IOSDiagnosticPrivacy.pigeon(error, stage: .comparison)
     }
   }
   func getExport() async throws -> ComparisonExportDto? { exports.latest() }
-  func cancelExport(jobId: String) async throws -> ComparisonExportDto { try exports.cancel(jobId: jobId) }
+  func cancelExport(jobId: String) async throws -> ComparisonExportDto {
+    do {
+      return try exports.cancel(jobId: jobId)
+    } catch {
+      throw IOSDiagnosticPrivacy.pigeon(error, stage: .comparison)
+    }
+  }
   func retryExport(jobId: String) async throws -> ComparisonExportDto {
-    closePlayer()
-    return try await withCheckedThrowingContinuation { continuation in
-      exports.retry(jobId: jobId) { continuation.resume(with: $0) }
+    do {
+      closePlayer()
+          return try await withCheckedThrowingContinuation { continuation in
+            exports.retry(jobId: jobId) { continuation.resume(with: $0) }
+          }
+    } catch {
+      throw IOSDiagnosticPrivacy.pigeon(error, stage: .comparison)
     }
   }
   func saveExport(jobId: String) async throws -> ComparisonExportDto {
-    try await withCheckedThrowingContinuation { continuation in
-      exports.save(jobId: jobId) { continuation.resume(with: $0) }
+    do {
+      return try await withCheckedThrowingContinuation { continuation in
+            exports.save(jobId: jobId) { continuation.resume(with: $0) }
+          }
+    } catch {
+      throw IOSDiagnosticPrivacy.pigeon(error, stage: .comparison)
     }
   }
-  func openExport(jobId: String) async throws { try exports.open(jobId: jobId) }
+  func openExport(jobId: String) async throws {
+    do {
+      try exports.open(jobId: jobId)
+    } catch {
+      throw IOSDiagnosticPrivacy.pigeon(error, stage: .comparison)
+    }
+  }
   func close() async throws {
     matchRevision &+= 1
     picker.cancel(); closePlayer(); await stopMatching()

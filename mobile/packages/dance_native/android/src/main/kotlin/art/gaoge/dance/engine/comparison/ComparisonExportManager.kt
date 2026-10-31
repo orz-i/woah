@@ -107,7 +107,7 @@ internal class ComparisonExportManager private constructor(private val context: 
     @Synchronized private fun status(id: String): ComparisonExportDto? = current?.takeIf { it.id==id }?.let { dto(it) }
     private fun dto(value: ComparisonExportRecord) = ComparisonExportDto(value.id,value.spec.projectId,value.state,value.stage,
         value.progress,value.spec.startUs,value.spec.endUs,value.spec.width.toLong(),value.spec.height.toLong(),
-        if (value.state=="completed" && output(value.id).isFile) output(value.id).absolutePath else null,value.savedUri,value.error)
+        if (value.state=="completed" && output(value.id).isFile) output(value.id).absolutePath else null,value.savedUri,art.gaoge.dance.engine.diagnostics.NativeDiagnosticPrivacy.comparisonMessage(value.error))
     @Synchronized private fun requireJob(id: String) = requireNotNull(current?.takeIf { it.id==id }) { "导出任务已变化，请重新打开导出" }
     @Synchronized fun start(spec: ComparisonExportSpec, replacePreviousUnsaved: Boolean=false): ComparisonExportDto {
         check(current?.active!=true) { "已有对比视频正在导出" }

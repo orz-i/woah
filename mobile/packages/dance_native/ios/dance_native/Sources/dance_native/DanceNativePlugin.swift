@@ -110,7 +110,7 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
         result(FlutterError(
           code: "STICKER_PERSIST_FAILED",
           message: "Failed to persist sticker asset.",
-          details: String(describing: error)
+          details: nil
         ))
       }
     case "saveVideoToGallery":
@@ -333,6 +333,16 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
           await MainActor.run { result(flutterError) }
         }
       }
+    case "runIOSDiagnosticPrivacySmoke":
+      Task {
+        do {
+          let report = try await IOSDiagnosticPrivacySmoke.run(plugin: self)
+          await MainActor.run { result(report) }
+        } catch {
+          let safe = Self.flutterError(from: error, fallbackCode: "IOS_DIAGNOSTIC_PRIVACY_SMOKE_FAILED")
+          await MainActor.run { result(safe) }
+        }
+      }
     case "runIOSCacheLifecycleSmoke":
       Task {
         do {
@@ -355,19 +365,23 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
   }
 
   func probeVideo(uri: String) async throws -> VideoInfoDto {
-    return try await IOSVideoProbe.probe(uri: uri)
+    do { return try await IOSVideoProbe.probe(uri: uri) }
+    catch { throw IOSDiagnosticPrivacy.pigeon(error, stage: .probe) }
   }
 
   func analyzeVideo(request: AnalyzeRequestDto) async throws -> AnalyzeResultDto {
-    return try await analyzePipeline.analyze(request: request)
+    do { return try await analyzePipeline.analyze(request: request) }
+    catch { throw IOSDiagnosticPrivacy.pigeon(error, stage: .analysis) }
   }
 
   func getPreviewFrame(request: PreviewRequestDto) async throws -> PreviewFrameDto {
-    return try await previewPipeline.render(request: request)
+    do { return try await previewPipeline.render(request: request) }
+    catch { throw IOSDiagnosticPrivacy.pigeon(error, stage: .preview) }
   }
 
   func startExport(request: ExportRequestDto) async throws -> String {
-    return try exportCoordinator.start(request: request)
+    do { return try exportCoordinator.start(request: request) }
+    catch { throw IOSDiagnosticPrivacy.pigeon(error, stage: .export) }
   }
 
   func cancelJob(jobId: String) async throws {
@@ -388,7 +402,7 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
       outputUri: nil,
       currentPreviewPath: nil,
       errorCode: "JOB_NOT_FOUND",
-      errorMessage: "Job \(jobId) was not found in the iOS export registry."
+      errorMessage: IOSDiagnosticPrivacy.message(code: "JOB_NOT_FOUND", stage: .export)
     )
   }
 
@@ -449,17 +463,7 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
     from error: Error,
     fallbackCode: String
   ) -> FlutterError {
-    if let pigeonError = error as? PigeonError {
-      return FlutterError(
-        code: pigeonError.code,
-        message: pigeonError.message,
-        details: pigeonError.details
-      )
-    }
-    return FlutterError(
-      code: fallbackCode,
-      message: String(describing: error),
-      details: nil
-    )
+    let safe = IOSDiagnosticPrivacy.pigeon(error, stage: .media, fallbackCode: fallbackCode)
+    return FlutterError(code: safe.code, message: safe.message, details: nil)
   }
 }

@@ -100,10 +100,7 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
         selectionPreviewLoading: false,
       );
 
-      AppLogger.d(
-        'PersonSelectionController',
-        'Analyzing video: ${project.sourceUri}',
-      );
+      AppLogger.d('PersonSelectionController', 'VIDEO_ANALYSIS_REQUEST');
       final result = await _repository.analyzeVideo(
         videoUri: project.sourceUri,
         modelProfile: 'balanced',
@@ -138,8 +135,7 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
       if (excludedPersons.isNotEmpty) {
         AppLogger.d(
           'PersonSelectionController',
-          'Excluded low-confidence first-frame selection candidates: '
-              '${excludedPersons.map((person) => '${person.id}:${person.confidence.toStringAsFixed(3)}').join(', ')}',
+          'SELECTION_CANDIDATES_FILTERED',
         );
       }
 
@@ -156,7 +152,12 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
       return _accepts(generation, session);
     } catch (e, stack) {
       if (!_accepts(generation, session)) return false;
-      AppLogger.e('PersonSelectionController', 'Analysis failed', e, stack);
+      AppLogger.e(
+        'PersonSelectionController',
+        'VIDEO_ANALYSIS_FAILED',
+        e,
+        stack,
+      );
       state = state.copyWith(
         status: PersonSelectionStatus.error,
         errorMessage: '人物分析失败，请重试。',
@@ -260,10 +261,7 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
         );
       }
     } catch (e) {
-      AppLogger.d(
-        'PersonSelectionController',
-        'Selection stage preview unavailable: $e',
-      );
+      AppLogger.d('PersonSelectionController', 'SELECTION_PREVIEW_FAILED');
       if (mounted &&
           state.analysisCacheId == cacheId &&
           currentRequestId == _previewRequestId) {

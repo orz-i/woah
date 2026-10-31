@@ -138,7 +138,7 @@ internal class ComparisonSession(
     private fun fail(cause: Throwable) {
         if (closed) return
         pendingUs=positionUs()
-        android.util.Log.w("WoahComparison","Comparison session failed (${cause.javaClass.simpleName})")
+        android.util.Log.w("WoahComparison", art.gaoge.dance.engine.diagnostics.NativeDiagnosticPrivacy.reason(cause, "comparison"))
         error="视频暂时无法播放，请重新关联源视频后重试。"
         wantsPlay=false; ready=false; pauseClock()
         pendingStep?.let { if (it.isActive) it.resumeWithException(cause) }; pendingStep=null

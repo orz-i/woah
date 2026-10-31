@@ -992,7 +992,7 @@ class FaceOnlyPrivacyFrameProcessor(
                     }
                 } catch (t: Throwable) {
                     batchedDetectorResultByTrackId.clear()
-                    Log.w(TAG, "Parallel face-detector batch failed; falling back to sequential calls", t)
+                    Log.w(TAG, "FACE_BATCH_FALLBACK")
                 }
             }
         }
@@ -1199,9 +1199,9 @@ class FaceOnlyPrivacyFrameProcessor(
                     }
                 } catch (t: Throwable) {
                     if (isDormantProbe) {
-                        Log.w(TAG, "Dormant face reactivation probe failed for track=$trackId; keeping pixel result if available", t)
+                        Log.w(TAG, "FACE_REACTIVATION_FAILED track=$trackId")
                     } else {
-                        Log.w(TAG, "Face ROI detection failed for track=$trackId; keeping ROI pixel result before fallback", t)
+                        Log.w(TAG, "FACE_ROI_FAILED track=$trackId")
                     }
                 }
             }
@@ -1314,7 +1314,7 @@ class FaceOnlyPrivacyFrameProcessor(
                             }
                         }
                     } catch (t: Throwable) {
-                        Log.w(TAG, "Expanded occlusion face reacquire failed for track=$trackId", t)
+                        Log.w(TAG, "FACE_REACQUIRE_FAILED track=$trackId")
                     }
                 }
             }

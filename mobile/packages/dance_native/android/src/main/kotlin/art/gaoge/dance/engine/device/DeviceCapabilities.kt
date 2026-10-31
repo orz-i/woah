@@ -61,7 +61,7 @@ data class DeviceCapabilities(
                     }
                 }
             } catch (e: Throwable) {
-                android.util.Log.w("DeviceCapabilities", "Failed to query MediaCodecList: ${e.message}")
+                android.util.Log.w("DeviceCapabilities", "CODEC_CAPABILITY_QUERY_FAILED")
                 // Unknown capability must stay unknown. ExportPlan treats zero
                 // dimensions as "no reliable cap" and preserves the requested
                 // contract so encoder failure is explicit rather than assuming
