@@ -1,173 +1,67 @@
-# Woah 整改台账
+# Woah 整改台账：15 项唯一归属
 
-**状态更新（2026-10-31）：第一批 PR #7 已验证并按维护者授权合并；第二批 GOV-02 实施中。** 第一批合并 SHA 为 `747721d1c073170cbae4a3940778ca16e81ac07d`，本地与边界见[验证记录](evidence/first-batch-local-verification-2026-10-31.md)，最终 head 的 [Production CI](https://github.com/orz-i/woah/actions/runs/41163397751) 和 [iOS CI](https://github.com/orz-i/woah/actions/runs/41163397758) 成功。第二批证据见 [CI 治理记录](evidence/second-batch-ci-governance-2026-10-31.md)。原审计基线见 [审计](audit-2026-10-31.md)，约束见 [工程规范草案](engineering-standard.md)。未启用仓库保护规则或发布版本，未实施条目仍待采纳。
+**范围版本：2026-10-31，按[冻结路线图 G1–G3](governance-roadmap.md)执行。** 桌面 / Web 已废弃，不再有桌面修复阶段；ARCH-01 为长期待办。P0/P1/P2 是原审计优先级，不再充当没有停止条件的滚动阶段。
 
-## 先做哪三件事
+原始发现和当时的证据保留在[实际审计](audit-2026-10-31.md)。本台账是状态来源；阶段卡、预算、依赖、非目标、验收／停止条件和范围变更流程只在路线图维护，避免重复出两套计划。
 
-1. **恢复 iOS 红灯并收紧合并入口**：修复 GOV-01 的 Swift 编译问题，验证失败传播，再批准启用稳定 required checks。
-2. **关闭两个已复现导出缺陷**：DART-01 / DART-02 用同一套 operation generation、启动/取消状态和资源接管契约修复。
-3. **补原生与隐私生命周期闭环**：优先 NATIVE-01 / NATIVE-02 / PRIV-01，同时把 GEN-01、PRIV-02 的生成与发布证据接入门禁。
+## 状态语义
 
-P0 是恢复项目可信基线的顺序，不是宣告生产事故。P1 是影响正确性、隐私边界或发布可靠性的下一批；P2 是可排期但需要可验证退出条件的偿债项。没有承诺虚构的工时或发布日期。
+- **已交付**：实现／文档已经合并，列出实际验证范围；不自动表示设备／发布／服务器设置也完成。
+- **待验收**：明确的退出证据未齐，必须写缺口，不能用“测试绿”覆盖。
+- **未实施**：未来固定阶段条目，不能因写入规范自动关闭。
+- **产品退出**：不再属于支持产品，历史缺陷未修复；不是认可继续带风险运行。
+- **长期待办**：不占用本轮实施预算，不自动开工。
 
-## 角色与状态
+关闭发现时仍需负责人／执行角色、PR／commit／run、实际命令／设备、结果、残留及复核依据。所有角色可由同一维护者兼任，不设置当前无法满足的第二人审批要求。
 
-- **维护者**：采纳规则、PR 自审、权限与发布决策。
-- **Flutter owner**：Dart 状态、路由、跨平台契约。
-- **Android owner / iOS owner**：平台实现与设备证据。
-- **CI owner**：构建图、依赖解析、required checks。
-- **隐私与模型 owner / 桌面 owner**：数据生命周期、模型/服务边界与安装路径。
-- 同一人可兼任多个角色；这些是待认领角色，不是已经指定的人名。高风险修改可邀请其他人评审，但不把第二位审批者作为当前无法满足的硬条件。
+## 唯一映射
 
-状态流：待采纳 → 已认领 → 实施中 → 待验收 → 已关闭。阻塞时记录依赖和解除条件，不用“暂缓”无限搁置。除第一批已授权的 GOV-01 编译子项、DART-01 / DART-02 和第二批 GOV-02 外，下列条目仍为 **待采纳／未实施**；本地实现与测试不自动满足远端 CI、设备和发布退出条件。
+| ID | 唯一归属 | 当前状态与责任角色 | 验收／关闭边界 |
+| --- | --- | --- | --- |
+| GOV-01 | G1 | 编译子项已交付；服务器保护按 G1-EX-01 本轮明确延期。iOS owner／维护者 | PR7 两个 iOS 构建入口及最终远端成功；保护未启用，不能称失败合并已被服务器禁止 |
+| GOV-02 | G1 | PR8 已合并，PR head 远端三检查成功；merge 证据按 G1 收尾记录。CI owner | 每个 PR 保守双平台、format/analyze/lint、always 汇总；失败／取消／意外 skipped 拒绝。无需为了完成本项再增加路径分类器 |
+| DART-01 | G1 | PR7 已交付，真实资源回收边界待验收。Flutter owner | retry/cancel 使用当前 operation/job；持久原生调用失败或 start RPC 永不返回 ID 的限制保留，不虚称所有设备零孤儿 |
+| DART-02 | G1 | PR7 已交付，真机与持续失败边界待验收。Flutter owner | dispose 后不更新失效 state，晚 job 接管／取消回归已过；原生 drain 完成不等同取消请求已接收 |
+| NATIVE-01 | G2-A | 未实施。Android owner／Flutter owner | 确定性交接竞争测试、资源 owner／借用期、冻结设备矩阵；不是重写全部 GPU 模型 |
+| NATIVE-02 | G2-B | 未实施。Android owner | worker I/O，失败／取消回滚本次新建 MediaStore 条目，源文件不变；不声称已发生过 ANR |
+| PRIV-01 | G2-C | 未实施；策略缺口需明确。隐私／两平台 owner | 自建可再生缓存生命周期、在用租约、用户删除与重启清理；范围／TTL／配额按已批准策略，不整体清空所有 cache |
+| PRIV-03 | G2-D | 未实施。Flutter／隐私 owner | 合成敏感 path／URI／文件名在 release 与诊断包不可检出，保留可诊断错误类别 |
+| DEP-01 | G3，至多两个切片 | Flutter 版本已对齐，其余未完成。CI owner | 仅移动与仍用模型／Python 工具；锁真实解析链、保留兼容版本，不建设桌面安装路径或大升级 |
+| GEN-01 | G3 | 未实施；依赖生成工具固定。Flutter／CI owner | 两 schema 六产物统一再生成，两次无漂移，故意缺产物失败；Pigeon format 排除不是生成一致性证据 |
+| PRIV-02 | G3 | 未实施。iOS owner | API 用途／原因／组件与实际 archive manifest 一致；无产物证据不关闭，不宣称商店拒审已发生 |
+| DESKTOP-01 | G1 产品退出记录 | 桌面产品废弃，退出修复范围。维护者 | 历史监听／鉴权问题未修复；没有证明所有旧部署下线。不得继续以受支持服务宣传 |
+| MODEL-01 | G1 产品退出记录 | 桌面 loader 废弃，退出交付验收。维护者 | 桌面 model_path／下载完整性问题未修复；移动模型来源／摘要工具仍保留在 DEP-01 范围 |
+| DOC-01 | G1 唯一文档 PR | 替换为废弃标记与撤部署宣传。维护者 | README 不再引导桌面安装／启动；desktop 历史标记、共享工具保留边界和未验证部署状态清楚。不修复桌面入门体验 |
+| ARCH-01 | 长期待办 | 未实施，默认不启动。Flutter owner | 只有具体维护痛点和新范围批准后才选一个职责切片；不以文件行数决定全量重构 |
 
-## 优先队列
+G1 合并／文档的工程交付完成，不将本表的“待验收／明确延期”状态自动改为已关闭。G2/G3 预算分别最多 4 个 PR，禁止通过滚动“小批次”无限延长。
 
-| ID | 阶段 | 建议负责人角色 | 依赖 | 完成证据摘要 |
-| --- | --- | --- | --- | --- |
-| GOV-01 | P0 | iOS owner + 维护者 | 无 | 当前提交两个 iOS 构建入口绿灯；失败示例被门禁阻止 |
-| GOV-02 | P0 | CI owner | GOV-01 稳定后启用保护 | 常驻汇总、完整路径分类、analyze/format/lint 结果可追溯 |
-| DART-01 | P1 | Flutter owner | 可与 DART-02 同一原子修复 | retry/cancel 不引用旧 job，不遗留新 job |
-| DART-02 | P1 | Flutter owner | DART-01 状态契约 | dispose 后无状态写入，晚 native job 已取消或接管 |
-| NATIVE-01 | P1 | Android owner + Flutter owner | 明确 job / resource owner | 确定性 preview/export 竞争测试和设备验证通过 |
-| NATIVE-02 | P1，回滚子项 P2 | Android owner | 无 | I/O 不在主线程，失败/取消不留 MediaStore 半成品 |
-| PRIV-01 | P1，配额子项 P2 | 隐私 owner + 两平台 owner | NATIVE-01 在用租约 | session 释放、重启孤儿清理、删除与配额测试 |
-| PRIV-02 | 发布前 P1 | iOS owner | 最终 archive 构建可用 | API/原因/组件匹配，archive 中 manifest 可验证 |
-| GEN-01 | P1 | Flutter owner + CI owner | DEP-01 生成工具版本 | 两 schema、三语言再生成无 diff，契约测试通过 |
-| DEP-01 | P1 工具链，P2 安装收敛 | CI owner + 桌面 owner | 记录当前可用版本 | 锁解析稳定；Mac/Windows 安装不绕过权威策略 |
-| DESKTOP-01 | P1 条件性 | 桌面 owner + 隐私 owner | 决定 local-only / 网络模式 | 默认 loopback；显式网络模式具有认证和限额测试 |
-| MODEL-01 | P2，发布前关闭 | 模型 owner + 桌面 owner | DEP-01 安装路径 | 配置路径有效、load 前摘要验证、离线行为可解释 |
-| PRIV-03 | P2 | Flutter owner + 隐私 owner | 定义错误码/日志字段 | release / 诊断包不含路径、URI、文件名或媒体 |
-| ARCH-01 | P2 | Flutter owner | DART / NATIVE 关键回归先固定 | 按职责小步拆分，行为与测试不退化 |
-| DOC-01 | P2 | 维护者 + 桌面 owner | DEP-01、DESKTOP-01 决策 | 干净环境按 README 能执行正确入口与安装步骤 |
+## 已交付证据
 
-每项均须在关闭时补上 **实际负责人、PR / commit、测试命令、结果和证据链接**。未有这些字段时仍为打开；文档和未来计划不是关闭证据。
+### PR7：编译与导出生命周期
 
-## 第一批执行状态
+- [PR #7](https://github.com/orz-i/woah/pull/7)，合并 `747721d1c073170cbae4a3940778ca16e81ac07d`。
+- 最终 head `96a7287` 的 [Production CI](https://github.com/orz-i/woah/actions/runs/41163397751) 与 [iOS CI](https://github.com/orz-i/woah/actions/runs/41163397758) 成功。
+- [第一批本地证据](evidence/first-batch-local-verification-2026-10-31.md)：19 新生命周期回归、256 app tests、5 native Dart DTO tests；本地两个 iOS 入口／Metal／完整 Phase6 验证，以及工具链与隔离设备说明。
+- 持续取消失败／RPC 不返回 ID 的边界、真机原生资源清理仍需针对性证据。原始审计复现文本保持不变，不假称原始等待契约的测试未经调整全部通过。
 
-- **DART-01 / DART-02：已合并、本地与远端回归通过，真机／持续清理失败边界仍待验收。** 由本次授权修复任务实施，19 项新生命周期回归、全部 256 项 app 测试、5 项 native Dart DTO 测试及 analyze 通过。修复与回归本地提交为 `e71929574bed03ac3cffe07a67935bfa9aca9756`，已纳入并合并 PR #7；证据及持续清理失败的限制见[验证记录](evidence/first-batch-local-verification-2026-10-31.md)。
-- **GOV-01：编译子项已合并且本地／远端验收通过，保护规则子项仍打开。** 两个 iOS 构建入口、两个 SDK 的 Metal 编译和完整 Phase 6 gate 均通过。首轮 Xcode 26.6 超时后进一步拆分表达式，最终 head `96a7287` 已获两条远端 CI 成功，见上方链接。不能将成功检查等同于仓库已阻止失败合并。
-- **GOV-02：第二批实施中。** 常驻 `governance / required` 汇总、双平台复用工作流、四包分析与显式 lint 的实现及证据见第二批记录。所有 PR 暂保守执行双平台，不使用路径分类跳过。
-- **仓库保护：未启用。** 需检查稳定后另行明确批准；第二批 PR 的存在不授权自动合并或规则变更。
+### PR8：可信汇总与新增检查
 
-## P0 恢复可信基线
+- [PR #8](https://github.com/orz-i/woah/pull/8)，2026-10-31 正常合并为 `c38a142732c47044084e0836a391523b7c4bc5d3`；未提交 approving review、未使用管理员绕过。
+- PR head `dad7f377e4650405dd764e3ed04b76950986bbc4` 的真实 PR 事件 [run 41169895229](https://github.com/orz-i/woah/actions/runs/41169895229) 中 Android／质量检查、完整 iOS、`governance / required` 全部成功。
+- 合并提交的 [push CI](https://github.com/orz-i/woah/actions/runs/41175865394) 另行验证，不把 PR head 的成功等同于 merge SHA 成功。
+- [第二批本地证据](evidence/second-batch-ci-governance-2026-10-31.md)：107 手写文件 format、四包 analyze、289 Flutter tests、490 native tests、14 Python CI 回归、10 原契约回归、Release Kotlin、两模块 lint 及 APK。PR 正文追加最终远端证据，文件保留提交时快照。
+- native 70／app 19 warnings 已列账，未清零；app Release lint、Pigeon 再生成、依赖完整锁、真机特殊音轨／API／provider 矩阵不因此完成。
 
-### GOV-01 修复当前 iOS 编译并重新确认合并条件
+## 尚待明确的决策与非阻断工作
 
-- 范围：只先修 `IOSComparisonMusicFeatures.swift` 的复杂表达式推导，显式中间值和类型；保持计算语义。
-- 验收：现有 `python tools/ios/run_phase6_macos_gate.py` 通过，包括 simulator smoke；`mobile/app` 下 `flutter build ios --debug --no-codesign --target lib/main.dart` 通过。工具环境和模型输入与 CI 一致。
-- 保留证据：当前失败 run、修复 commit、两个构建结果、相关计算单测；不得以仅静态 phase verifier 通过宣布恢复。
-- 退出条件：新提交 iOS 与 Production CI 都成功，再进入 GOV-02 规则启用步骤。
-- 设置变更需要维护者明确批准；本次未替用户修改 ruleset。
+1. **仓库保护：** 维护者明确本轮不启用，待本轮结束再评估；按路线图 G1-EX-01 记录延期，未应用、不重复询问，不阻止 G1 常规收口。
+2. **G2 缓存策略：** 保留／删除语义和白名单、TTL／配额需确定。缺策略只阻塞依赖该决定的实现，不阻塞安全的只读调查或确定性测试设计；不得擅自把提案变为产品承诺。
+3. **设备／正式产物：** 缺硬件、签名或最终 archive 时标未运行／待验收，集中报告最小解除条件；不得伪称全平台验收或用无关实现填补。
+4. **架构与桌面：** 无本轮额外实施额度。重新启动必须先变更范围，不能作为 G2/G3 的“顺手优化”。
 
-### GOV-02 使所有 PR 都有可信汇总结果
+## 例外与停止记录
 
-- 范围：加入手写 Dart format、四包 analyze、显式 Android lint；保留已有 tests/native compile/build；把 iOS gate 调用图显式化并修补路径依赖。
-- 审计基线 phase1 在 macOS GitHub 环境隐式调用 phase6；第二批改为工作流显式调用，保留原 Metal / simulator / smoke 证据，且四个 phase 的回归要求该入口存在。
-- 验收样例：只改 dance_ui、tools/ios runner、phase4 verifier、模型/Metal 输入时，应运行相应 iOS gate；纯无关文档变更可明确 not applicable，但汇总仍报告。
-- 故障样例：分析失败、平台失败、取消、分类器失败、意外 skipped 均不能让汇总为绿。不要用 workflow 级 paths 跳过必需汇总。
-- 先记录稳定 job 名和结果，再启用 required checks / 防 force push；单维护者用 PR 自审 + 自动 gate，不设不可满足的审批人数。
-- 第二批实现 `tools/ci/check_dart_format.py`、`tools/ci/check_required_jobs.py` 与汇总 job；见规范的[命令入口](engineering-standard.md#已有入口和拟议验收命令)。Pigeon 生成 wrapper 仍待 GEN-01，不应混同为本批已完成。
+**G1-EX-01 已获维护者明确决定：仓库保护本轮不启用，G1–G3 本轮结束或提前终止时复评，不自动延续。** 详见路线图的原因／风险／补偿／责任与复评触发。没有承诺日历截止日期，不虚构日期；它不是红灯绕过、永久 ignore、golden 放宽或已生效保护。桌面产品退出也不是运行安全例外。
 
-## P1 正确性与生命周期
-
-### DART-01 和 DART-02 导出状态机的统一修复
-
-- 先重放 [隔离回归](evidence/README.md)，基线预期 3 个失败断言；将必要测试移入正式测试目录应是后续修复 PR，不是本次文档提交。
-- 每次启动有新 generation，并清空旧 job/output/error/terminal；新 RPC 未绑定时的 cancel 要有明确语义。
-- 在所有 await / event 边界验证 owner 和 generation；晚成功的 native job 必须取消或移交，不能只丢回包。
-- 验收至少覆盖：失败后立即 retry/cancel、两次启动交错、旧事件晚到、启动前/中/后返回页面、RPC 成功与失败晚到、重复 cancel/terminal。
-- 退出条件：隔离失败变通过，正式 237 测试基线及新增回归通过；真机确认没有后台孤儿导出。若真机证据未完成，状态仍为待验收。
-
-### NATIVE-01 Preview 与 export 资源交接
-
-- 定义 segmenter / runner / buffer / Bitmap 的 owner 和借用期；在原生边界设置 drain / lease / 取消确认，不只禁 Dart 按钮。
-- 以 latch / controllable executor 暂停 preview 的 buffer 写入或提交窗口，再开始 export/clear/close，验证提交、释放和 callback 次序。
-- 验收：无 recycled Bitmap、已关闭 buffer、shutdown 后任务提交、重复完成或未释放资源；设备上快速改效果→导出→取消→重试不崩溃。
-- 注意保持同 executor 已有的 inference/close 序列化，不能误把本发现当作需要重写全部 GPU 执行模型。
-
-### NATIVE-02 相册写入与失败回滚
-
-- 整文件 I/O 放到明确的 worker，结果回到正确平台线程；取消、detach 和异常只终结一次。
-- 插入后 copy/close/发布任何步骤失败，删除本次新建条目；源文件不受影响。
-- 验收：大视频/慢盘下 UI 响应与 StrictMode 证据；磁盘满、读失败、权限失败、取消的故障注入；媒体库无新残留 pending / 空文件。
-- 未实测 ANR，不以“修复 ANR 已发生事故”描述此项。
-
-### PRIV-01 缓存的结束释放和空间边界
-
-- 为 analysis thumbnails、trim thumbnails、preview、项目缓存和导出临时文件分别定义 owner、TTL、配额、删除入口、在用 lease。
-- 复用现有 releaseProject、失败回滚、LRU、comparison TTL，补 app session 完成/放弃/替换/删除调用链。
-- 验收：连续至少 100 次合成素材导入后放弃，资源在定义上限内；重启能清除过期孤儿；用户删除生效；正在预览或导出的文件不被清理。
-- “100 次”是本项目建议的压力用例，不是官方通用阈值；产品保留时间与空间配额要明确批准并写入测试。
-
-### PRIV-02 iOS required-reason 与打包证据
-
-- 核对 File Timestamp 调用目标 URL、用途及代码所属组件；适用容器内时间戳用途再选择 C617.1，外部文档场景另核原因。
-- 修改真正拥有调用代码且会进入产物的 manifest，验证 app / SDK 归属；不以宿主声明替代 SDK 自身责任。
-- 验收：最终 archive 中对应 bundle 含正确 manifest，API/原因清单与实际使用匹配；记录 archive、检查命令和报告。
-- 这是发布前核验项，不是已确认商店拒审。只有源码 XML 改好而未检查产物时不能关闭。
-
-### GEN-01 Pigeon 再生成的一致性
-
-- 固定生成器解析环境，建立一个维护者可运行的统一入口，覆盖两 schema 的 Dart / Kotlin / Swift 六份输出。
-- 生成器 wrapper 与 lock 策略是待实现内容；不手写更改 generated 文件代替 schema 修复。
-- 验收：干净 checkout 连续生成两次均无非预期变化；CI 再生成后 `git diff --exit-code`；故意改 schema 不提交产物时检查失败。
-- 增补 DTO、nullable、错误、取消和线程契约回归。当前没有证据证明产物已漂移，验收针对可复现性缺口。
-
-### DEP-01 工具链与依赖解析
-
-- 第一批统一两条 CI 的 Flutter/Dart、固定 uv 与 Action 供应链策略；记录 Gradle/JDK/Xcode 的实际版本。
-- 评估当前支持的 actions.lock 工具链；能使用时由官方工具生成；不能时完整 SHA pin。reusable workflow 仍单独完整 SHA。
-- 核实 iOS 正在使用的解析器和应用锁策略，Gradle 锁定适用配置；不能凭 Podfile.lock 忽略规则就认定当前 SPM 构建一定读取它。
-- 桌面先按 Mac/Windows 选择并验证权威安装路径，处理根 CUDA source 约束，再让 legacy requirements 由统一策略导出或停止误用。
-- 验收：全新环境重复解析无非预期 diff；独立升级 PR 包含锁差异和平台测试；普通 CI 不再跟随 latest 漂移。
-
-### DESKTOP-01 明确本地与网络服务模式
-
-- 本地用途默认监听 loopback；对外监听必须由使用者显式开启，不能只在文档显示 localhost。
-- 网络模式明确认证、授权清理/读取、上传和队列/磁盘限额及保留规则。
-- 验收：默认启动不绑定非 loopback；网络模式未经授权不能分析/读取/删除他人任务，配置限额生效；测试使用合成数据，不暴露真实媒体。
-- 原审计没有运行服务或进行攻击；仅针对允许其他主机连接时的边界风险整改。
-
-## P2 可持续维护
-
-### MODEL-01 桌面模型来源与加载一致性
-
-- 配置的 model_path 必须实际决定加载路径，或显式废弃并迁移，不能静默改走 vendor 权重。
-- 下载 staging + 批准 SHA-256 + 原子发布 + 加载前校验；保留已有 MD5 检查事实但不以它代替新的 artifact 契约。
-- 验收：配置自定义已批准模型确实加载该文件；损坏/错误摘要不加载；首次下载中断无半成品被使用；无网络时错误明确；来源、版本与权重许可单独登记。
-- code/vendor license notices 继续保留；没有证据时不宣称任何权重违法。
-
-### PRIV-03 敏感日志
-
-- 统一错误码、脱敏字段和 release / 显式诊断策略，覆盖嵌套 error 对象，不只是修改一处字符串。
-- 验收：合成敏感 path/URI/文件名注入后，release 日志与诊断包中都不可检出；可定位错误阶段但不泄漏媒体标识。
-
-### ARCH-01 按职责拆分编辑页
-
-- 在关键异步竞争回归完成后，以 session coordinator、player、trim、store、presentation 为可选边界，每个 PR 只迁移一个明确职责。
-- 先用测试固定行为再移动；不因文件行数机械切类，不把 UI callback 搬到新文件就宣称架构问题解决。
-- 验收：接口更小、资源 owner 明确、测试不回退、无新增跨层依赖；不强制换状态库或全量重写。
-
-### DOC-01 修复真正可运行的入门路径
-
-- 分清 desktop CLI / Web、Mac / Windows、移动构建前提；去掉不存在的 desktop/app.py / 根 requirements.txt，写入经过验证的入口。
-- 验收：干净或隔离环境逐条执行文档；依赖、模型准备、端口/监听范围、启动和退出均可复现。
-- 不在平台锁与服务模式未决定时草率把所有平台替换成同一条 uv sync。
-
-## 例外与关闭记录
-
-当前没有已批准例外。任何绕过须新增记录：
-
-```text
-例外 ID：
-关联规则或发现：
-影响范围与理由：
-风险与补偿措施：
-实际负责人：
-批准人：
-失效日期（明确 YYYY-MM-DD，不写“以后”）：
-退出条件与复核证据：
-```
-
-不得用永久关闭 analyzer、忽略整个目录、跳过失败 iOS 或无依据刷新 golden 来“完成整改”。到期例外必须复核；关闭条目保留历史失败证据和修复后的 commit / run，防止以后重新引入。
+其他新增实施性例外需记录：关联发现、确切范围与原因、风险、补偿、负责人、批准依据、明确失效日期、退出／复核证据。缺这些条件不得实施；到期必须复核。新增独立发现按路线图范围变更流程处理，不自动扩大当前阶段。

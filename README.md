@@ -5,7 +5,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python)](https://www.python.org)
 [![Android](https://img.shields.io/badge/Android-MediaCodec%20%7C%20OpenGL%20ES-3DDC84?logo=android)](https://developer.android.com)
 
-**Woah** 是一款基于 AI 视觉分割与多目标追踪技术的智能舞蹈视频打码与隐私保护工具。支持在**移动端（Flutter + 原生硬件加速）**与**桌面/Web 端（Python + PyTorch）**双端运行。能够自动识别人体轮廓、精准追踪多人动态，并提供全身打码、马赛克/模糊、渐变遮罩、边缘轮廓、智能镜头跟随等专业后期特效。
+**Woah** 是一款基于 AI 视觉分割与多目标追踪技术的智能舞蹈视频打码与隐私保护工具。当前交付范围为 **Android / iOS 移动端（Flutter + 原生硬件加速）**。桌面 / Web 产品自 2026-10-31 起废弃，历史代码保留但不再维护或提供部署支持。能够自动识别人体轮廓、精准追踪多人动态，并提供全身打码、马赛克/模糊、渐变遮罩、边缘轮廓、智能镜头跟随等专业后期特效。
 
 ---
 
@@ -23,8 +23,7 @@
   - **零云端依赖**：视频无需上传服务器，保护隐私且离线可用；
   - **硬件加速链路**：`MediaCodec` 硬件解码/编码 + `OpenGL ES 2.0` 定制着色器流水线 + `LiteRT` 端侧推理；
   - **实时渲染监看视窗**：在视频导出过程中支持静态帧实时监看与 FPS 性能显示。
-- 🖥️ **桌面与 Web 高精度引擎**：
-  - 基于 FastAPI + PyTorch + CUTIE 的视频目标分割追踪系统，支持交互式选人、YOLO 首帧初始化与批量渲染导出。
+> 桌面 / Web 已过期，不应新部署。Python、模型导出及验证工具仍用于移动端构建，不属于被废弃的运行产品。详见[桌面退役说明](desktop/README.md)与[冻结治理阶段](docs/governance/governance-roadmap.md)。
 
 ---
 
@@ -38,11 +37,8 @@ woah/
 │       ├── dance_domain/    # 核心业务实体与领域模型
 │       ├── dance_native/    # Android (Kotlin/C++/GL) 与 iOS 原生能力桥接
 │       └── dance_ui/        # 共享 UI 组件库与设计规范
-├── desktop/                 # 🖥️ 桌面 & Web 端工程 (Python / FastAPI)
-│   ├── app.py               # Web 后端服务主入口
-│   ├── modules/             # 视频读取、推理追踪、特效渲染核心逻辑
-│   ├── templates/           # Web 前端交互页面
-│   └── vendor/              # 第三方算法库 (CUTIE 等)
+├── desktop/                 # 已废弃的桌面 / Web 历史代码，不再部署或维护
+│   └── vendor/              # 保留第三方来源与许可证，不属于删除授权
 ├── models/                  # 🧠 模型权重与导出脚本
 │   ├── pytorch/             # PyTorch 原生权重 (.pt)
 │   └── litert/              # 移动端 LiteRT / TFLite 模型
@@ -58,7 +54,7 @@ woah/
 ### 📱 移动端 (Android / iOS)
 
 #### 1. 环境准备
-- 安装 [Flutter SDK](https://flutter.dev/docs/get-started/install) (≥ 3.22.0)
+- 安装 [Flutter SDK](https://flutter.dev/docs/get-started/install)（当前已验证基线 3.44.2 / Dart 3.12.2）
 - 安装 [Android Studio](https://developer.android.com/studio) 及 Android SDK / NDK
 
 #### 2. 安装依赖并准备模型
@@ -84,30 +80,11 @@ flutter build apk --release
 
 ---
 
-### 🖥️ 桌面与 Web 端 (Python)
+### 已废弃：桌面与 Web
 
-#### 1. 环境准备
-- Python ≥ 3.10
-- 推荐使用现代包管理器 [uv](https://github.com/astral-sh/uv)（或标准 pip / conda）
+本仓库不再提供桌面 / Web 安装或启动教程。`desktop/` 只保留历史源码与许可证；这不代表旧服务的安全问题已修复或部署已下线。已有实例的停用需要单独核实，不能以删除文档代替实际下线。
 
-#### 2. 安装依赖
-```bash
-# 使用 uv (推荐)
-uv venv
-uv pip install -r requirements.txt
-
-# 或使用标准 pip
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-#### 3. 启动 Web 服务
-```bash
-# 启动 FastAPI 服务
-python desktop/app.py
-```
-浏览器访问：`http://localhost:8002`
+移动端仍使用 `tools/`、`models/`、`testdata/` 和根 Python 锁环境。不要因桌面废弃删除这些共享资产，也不要把 Linux CI 的 CUDA 解析策略直接当成 Mac 桌面安装指引。
 
 ---
 
@@ -118,11 +95,10 @@ python desktop/app.py
 | **移动端界面** | Flutter 3.x, Dart 3.x, Riverpod / Bloc, Pigeon IPC |
 | **移动端原生渲染** | Android MediaCodec, OpenGL ES 2.0 (GLSL), EGL, Kotlin Coroutines |
 | **移动端端侧推理** | LiteRT, YOLOv11 Nano Segmentation, Kalman Filter |
-| **服务端 / 桌面端** | Python 3.10+, FastAPI, OpenCV, PyTorch, TorchVision |
-| **高精度追踪算法** | CUTIE (Video Object Segmentation) |
+| **移动模型与验证工具** | Python、OpenCV、PyTorch / TorchVision、模型导出与契约测试（非桌面运行产品） |
 
 ---
 
 ## 📄 开源许可证
 
-本项目基于 [MIT License](file:///D:/woah/LICENSE) 协议开源。欢迎提交 Issue 与 Pull Request！
+本项目基于 [MIT License](LICENSE) 协议开源。欢迎提交 Issue 与 Pull Request！
