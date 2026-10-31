@@ -71,7 +71,7 @@ def main() -> int:
         ])
 
     run(["flutter", "config", "--enable-swift-package-manager"], cwd=APP)
-    run(["flutter", "pub", "get"], cwd=APP)
+    run([sys.executable, "tools/ci/resolve_ios_dependencies.py"])
     run([
         "flutter",
         "build",

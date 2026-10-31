@@ -68,10 +68,14 @@ jobs:
 
       - name: Install Flutter Dependencies
         run: |
-          cd mobile/packages/dance_domain && flutter pub get
-          cd ../dance_ui && flutter pub get
-          cd ../dance_native && flutter pub get
-          cd ../../app && flutter pub get
+          cd mobile/packages/dance_domain && flutter pub get --enforce-lockfile --no-example
+          cd ../dance_ui && flutter pub get --enforce-lockfile --no-example
+          cd ../dance_native && flutter pub get --enforce-lockfile --no-example
+          (cd example && flutter pub get --enforce-lockfile --no-example)
+          cd ../../app && flutter pub get --enforce-lockfile --no-example
+
+      - name: Verify fresh locked Dart resolution
+        run: python tools/ci/check_dependency_locks.py --fresh-dart
 
       - name: Check handwritten Dart formatting
         run: python tools/ci/check_dart_format.py
@@ -84,10 +88,10 @@ jobs:
 
       - name: Run Flutter Tests
         run: |
-          cd mobile/packages/dance_domain && flutter test
-          cd ../dance_ui && flutter test
-          cd ../dance_native && flutter test
-          cd ../../app && flutter test
+          cd mobile/packages/dance_domain && flutter test --no-pub
+          cd ../dance_ui && flutter test --no-pub
+          cd ../dance_native && flutter test --no-pub
+          cd ../../app && flutter test --no-pub
 
       - name: Verify LiteRT and Crop Clarity QA Contracts
         run: |
@@ -100,6 +104,10 @@ jobs:
       - name: Stage Android LiteRT assets
         run: |
           python tools/setup_models.py --android
+
+      - name: Verify locked Android resolution
+        working-directory: mobile/app/android
+        run: ./gradlew :app:verifyWoahDependencyLocks :dance_native:verifyWoahDependencyLocks
 
       - name: Run Android Native Unit Tests
         env:
@@ -131,6 +139,9 @@ jobs:
         run: |
           cd mobile/app
           flutter build apk --debug
+
+      - name: Reject dependency lock drift
+        run: python tools/ci/check_dependency_locks.py --check-tracked
 
   ios:
     uses: ./.github/workflows/ios-cloud.yml

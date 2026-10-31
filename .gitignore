@@ -68,6 +68,11 @@ models/litert/*
 **/build/
 pubspec.lock
 !mobile/app/pubspec.lock
+# Internal, non-published packages are independently tested/generated in CI.
+!mobile/packages/dance_domain/pubspec.lock
+!mobile/packages/dance_ui/pubspec.lock
+!mobile/packages/dance_native/pubspec.lock
+!mobile/packages/dance_native/example/pubspec.lock
 !uv.lock
 
 
@@ -93,6 +98,7 @@ mobile/app/android/key.properties
 **/ios/.symlinks/
 **/ios/Pods/
 **/ios/Podfile.lock
+!mobile/app/ios/Podfile.lock
 **/ios/Flutter/Flutter.framework
 **/ios/Flutter/Flutter.podspec
 **/ios/Flutter/App.framework

@@ -130,3 +130,6 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+// Shared, repository-owned dependency resolution policy.
+apply(from = file("../../../../tools/gradle/woah-dependency-locking.gradle.kts"))

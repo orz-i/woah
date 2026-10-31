@@ -59,12 +59,15 @@ jobs:
         working-directory: mobile/app
         run: |
           flutter config --enable-swift-package-manager
-          flutter pub get
+          python ../../tools/ci/resolve_ios_dependencies.py
 
       - name: Build production entrypoint for iPhoneOS
         working-directory: mobile/app
         run: |
           flutter build ios --debug --no-codesign --target lib/main.dart
+
+      - name: Reject dependency lock drift
+        run: python tools/ci/check_dependency_locks.py --check-tracked
 
       - name: Archive no-codesign app
         working-directory: mobile/app

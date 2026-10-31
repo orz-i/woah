@@ -1,0 +1,50 @@
+PODS:
+  - dance_native (0.0.1):
+    - Flutter
+    - TensorFlowLiteSwift/CoreML (= 2.17.0)
+    - TensorFlowLiteSwift/Metal (= 2.17.0)
+  - Flutter (1.0.0)
+  - TensorFlowLiteC (2.17.0):
+    - TensorFlowLiteC/Core (= 2.17.0)
+  - TensorFlowLiteC/Core (2.17.0)
+  - TensorFlowLiteC/CoreML (2.17.0):
+    - TensorFlowLiteC/Core
+  - TensorFlowLiteC/Metal (2.17.0):
+    - TensorFlowLiteC/Core
+  - TensorFlowLiteSwift/Core (2.17.0):
+    - TensorFlowLiteC (= 2.17.0)
+    - TensorFlowLiteSwift/Privacy (= 2.17.0)
+  - TensorFlowLiteSwift/CoreML (2.17.0):
+    - TensorFlowLiteC/CoreML (= 2.17.0)
+    - TensorFlowLiteSwift/Core (= 2.17.0)
+    - TensorFlowLiteSwift/Privacy (= 2.17.0)
+  - TensorFlowLiteSwift/Metal (2.17.0):
+    - TensorFlowLiteC/Metal (= 2.17.0)
+    - TensorFlowLiteSwift/Core (= 2.17.0)
+    - TensorFlowLiteSwift/Privacy (= 2.17.0)
+  - TensorFlowLiteSwift/Privacy (2.17.0)
+
+DEPENDENCIES:
+  - dance_native (from `.symlinks/plugins/dance_native/ios`)
+  - Flutter (from `Flutter`)
+
+SPEC REPOS:
+  trunk:
+    - TensorFlowLiteC
+    - TensorFlowLiteSwift
+
+EXTERNAL SOURCES:
+  dance_native:
+    :path: ".symlinks/plugins/dance_native/ios"
+  Flutter:
+    :path: Flutter
+
+SPEC CHECKSUMS:
+  dance_native: 59a236d2d84bc814a76a75c7fff1295710f43332
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  TensorFlowLiteC: eac6d689a8d391d1b202dc59e3d9165ba64aaf73
+  TensorFlowLiteSwift: 723fe42222815e72490c79feeff05305530de393
+
+PODFILE CHECKSUM: a409a572b05f394ce1fca5d08bea69ffac194079
+
+COCOAPODS: 1.17.0
