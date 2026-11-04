@@ -165,8 +165,12 @@ def verify_cross_platform_selection_contract() -> None:
         "Android analysis cache IDs must preserve the analysis namespace and avoid same-millisecond collisions",
     )
     check(
-        "selectionCandidateMinConfidence = 0.60" in app_selection,
-        "The shared first-frame selectable-person threshold must remain 0.60",
+        "final persons = result.persons.map((dto) => dto.toDomain()).toList();" in app_selection,
+        "Shared selection must retain every native analysis person without a second confidence filter",
+    )
+    check(
+        "persons: project.persons," in app_selection,
+        "Shared selection must retain every cached person and explicit privacy target",
     )
 
 
