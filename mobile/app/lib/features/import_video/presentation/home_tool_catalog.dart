@@ -26,14 +26,14 @@ abstract final class HomeToolCatalog {
       id: 'video-protection',
       title: '视频保护',
       description: '保留主角，遮挡其他人物',
-      coverAsset: 'assets/home/home-video-protection.jpg',
+      coverAsset: 'assets/home/home-video-protection-lime.jpg',
       launch: HomeToolLaunch.videoProtection,
     ),
     HomeTool(
       id: 'dance-comparison',
       title: '舞蹈对比',
       description: '同步两段视频，对照练习动作',
-      coverAsset: 'assets/home/home-dance-comparison.jpg',
+      coverAsset: 'assets/home/home-dance-comparison-lime.jpg',
       launch: HomeToolLaunch.danceComparison,
     ),
   ];

@@ -1,0 +1,33 @@
+{
+  "base_commit": "60ab1ce787967dbfee8ea3d6eef32e4e0eda0cd7",
+  "scope": "Lime Beat UI, native branding, design documentation and tests",
+  "checks": {
+    "assets-check.txt": "LIME_BEAT_ASSETS=PASS (naming, covers, PNG sizes, XML, role contrast, effect ARGB)\nDEVICE_VISUAL_QA=NOT_PROVEN",
+    "appearance-check.txt": "APPEARANCE_RESOURCE_CHECK=PASS (system, palettes, Android, iOS)\nNATIVE_THEME_SWITCH_QA=NOT_YET_PROVEN",
+    "launcher-check.txt": "IOS_APP_ICON=ANY:PASS\nIOS_APP_ICON=DARK:PASS\nIOS_APP_ICON=TINTED:PASS\nANDROID_LAUNCHER_ICON=PASS (adaptive day/night, themed mono, legacy)\nANDROID_LAUNCHER_RUNTIME_QA=NOT_PROVEN",
+    "flutter-analyze.txt": "Analyzing 2 items...                                            \nNo issues found! (ran in 4.9s)"
+  },
+  "flutter_tests": {
+    "total": 272,
+    "passed": 272,
+    "reused_unchanged_inputs": true,
+    "evidence": "reports/privacy-regression-2026-11-04/flutter-tests.txt"
+  },
+  "completed_device_regression_apk_sha256": "f79fc4263945e5add73bebc733649051ef52788c6ec2c90d311f73d14d2fba96",
+  "prior_ui_tracked_files_hash_verified": 62,
+  "runtime_assets_match_apk": [
+    "assets/home/home-video-protection-lime.jpg",
+    "assets/home/home-dance-comparison-lime.jpg",
+    "assets/brand/woah-symbol-256.png"
+  ],
+  "formal_delivery": {
+    "version": "2.2",
+    "zip_crc_valid": true,
+    "manifest_files_verified": 58,
+    "pdf_sha256": "42cc3099c2372277761efb1158bd4735571de07a0959b143b2190f9b69c9d6d7"
+  },
+  "limits": [
+    "No new iOS build or runtime verification",
+    "Static icon checks do not certify all Android launchers"
+  ]
+}

@@ -1,5 +1,7 @@
 # Woah · Wavi IP 与彩蛋页 · Quiet Frame 配套设计
 
+> 历史基线：产品 VI 现以 [Lime Beat 青柠节拍](lime-beat/README.md) 为准。Wavi 的既有形象、隐藏入口及互动保留；本文旧主色不再约束主工作流或首页。
+
 日期：2026-10-29
 基线：`feat/quiet-frame-vi-v1-1` / `0e2f785`
 实施分支：`feat/quiet-frame-easter-egg-ip`

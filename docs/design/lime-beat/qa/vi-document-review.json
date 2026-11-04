@@ -1,0 +1,15 @@
+{
+  "version": "Lime Beat VI 2.2",
+  "date": "2026-11-04",
+  "pages": 15,
+  "allPagesRendered": true,
+  "overviewReviewed": true,
+  "detailedPagesReviewed": [
+    10,
+    12
+  ],
+  "textBoundsIssues": [],
+  "logoAndPalette": "Lime primary retained; home wordmark 24sp, symbol 28dp; pale home footer #F0F6DA; body Ink / Olive",
+  "pdfSha256": "42cc3099c2372277761efb1158bd4735571de07a0959b143b2190f9b69c9d6d7",
+  "visualResult": "passed"
+}

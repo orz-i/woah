@@ -34,6 +34,10 @@ void main() {
           tester.widget<Scaffold>(find.byType(Scaffold).first);
       expect(scaffold().backgroundColor, AppTheme.darkColors.flowBackground);
       expect(find.text('Woah'), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.text('Woah')).style?.color,
+        AppTheme.darkColors.flowTextPrimary,
+      );
       expect(find.byKey(const ValueKey('home-import-card')), findsOneWidget);
       final darkStyle = tester.widget<AnnotatedRegion<SystemUiOverlayStyle>>(
         find.byType(AnnotatedRegion<SystemUiOverlayStyle>).first,
@@ -48,6 +52,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(scaffold().backgroundColor, AppTheme.lightColors.flowBackground);
       expect(find.text('Woah'), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.text('Woah')).style?.color,
+        AppTheme.brandLime,
+      );
       expect(find.byKey(const ValueKey('home-import-card')), findsOneWidget);
       final lightStyle = tester.widget<AnnotatedRegion<SystemUiOverlayStyle>>(
         find.byType(AnnotatedRegion<SystemUiOverlayStyle>).first,

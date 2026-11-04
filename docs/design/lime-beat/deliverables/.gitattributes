@@ -1,0 +1,3 @@
+# Preserve the verified delivery bytes; PDFs may contain mostly ASCII streams.
+*.pdf binary
+*.zip binary

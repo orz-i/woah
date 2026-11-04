@@ -1,5 +1,7 @@
 # Woah / Quiet Frame — 跟随系统的明暗主题
 
+> 历史基线：当前配色已调整为 [Lime Beat 青柠节拍](lime-beat/README.md)。跟随系统、状态保持和视频像素隔离规则继续适用；下表中的 Quiet Frame 色值与验证记录仅作为历史证据。
+
 日期：2026-10-29
 基线：`master` / `cf61a7ae73deff3bfc065a1d9eba823707c5bf81`
 分支：`feat/system-appearance-light-dark`

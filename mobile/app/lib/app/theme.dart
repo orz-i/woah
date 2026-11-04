@@ -1,28 +1,30 @@
 import 'package:flutter/material.dart';
 import 'palette.dart';
 
-/// Woah (舞哇) / Quiet Frame v1.1 product color roles.
+/// Woah (舞哇) / Lime Beat product color roles.
 ///
 /// Brand/action colors intentionally do not alias user-configurable render
 /// effects. Person selection follows the segmentation mask geometry; neither
-/// selection nor a mint tint certifies that privacy protection is complete.
+/// selection nor a brand tint certifies that privacy protection is complete.
 class AppTheme {
-  // Locked Quiet Frame palette, sRGB.
-  static const Color brandMint = Color(0xFF78DCC7);
-  static const Color brandInk = Color(0xFF0B1415);
-  static const Color brandSurface = Color(0xFF142123);
-  static const Color brandPearl = Color(0xFFF2F6F3);
-  static const Color brandSecondary = Color(0xFFB4C8C6);
-  static const Color brandDeepMint = Color(0xFF216A5E);
+  // Lime Beat palette, sRGB. The W uses Ink / Lime with the same geometry.
+  static const Color brandLime = Color(0xFFD8F54C);
+  static const Color brandLavender = Color(0xFFDCD7FA);
+  static const Color brandChalk = Color(0xFFF7F9F1);
+  static const Color brandOlive = Color(0xFF50670E);
+  static const Color brandInk = Color(0xFF17201C);
+  static const Color brandSurface = Color(0xFF222C24);
+  static const Color brandPearl = brandChalk;
+  static const Color brandSecondary = Color(0xFFC4CEBC);
 
   // Semantic roles: these may share a value, but do not share a meaning.
-  static const Color brandAction = brandMint;
+  static const Color brandAction = brandLime;
   static const Color brandOnAction = brandInk;
-  static const Color brandActionPressed = Color(0xFF59C5AF);
-  static const Color editorSelection = brandMint;
-  static const Color editorSelectionSubtle = Color(0x2678DCC7);
-  static const Color controlBorder = Color(0xFF607D80);
-  static const Color decorativeDivider = Color(0xFF2D4548);
+  static const Color brandActionPressed = Color(0xFFC3DF36);
+  static const Color editorSelection = brandLime;
+  static const Color editorSelectionSubtle = Color(0x26D8F54C);
+  static const Color controlBorder = Color(0xFF7B8874);
+  static const Color decorativeDivider = Color(0xFF3A493B);
   static const Color statusWarning = Color(0xFFF0C879);
   static const Color statusWarningSubtle = Color(0x20F0C879);
   static const Color statusError = Color(0xFFFF9C9F);
@@ -31,10 +33,10 @@ class AppTheme {
   // Main workflow chrome (import, protection, comparison, export, results).
   static const Color flowBackground = brandInk;
   static const Color flowSurface = brandSurface;
-  static const Color flowSurfaceSoft = Color(0xFF1B2B2D);
+  static const Color flowSurfaceSoft = Color(0xFF2B352B);
   static const Color flowTextPrimary = brandPearl;
   static const Color flowTextSecondary = brandSecondary;
-  static const Color flowTextMuted = Color(0xFF8DA6A4);
+  static const Color flowTextMuted = Color(0xFFA3B297);
   static const Color flowBorder = decorativeDivider;
 
   // The amber option is a *user-selectable video effect color*, not the brand
@@ -52,7 +54,7 @@ class AppTheme {
   static const LinearGradient brandActionGradient = LinearGradient(
     begin: Alignment.centerLeft,
     end: Alignment.centerRight,
-    colors: [brandActionPressed, brandAction, brandMint],
+    colors: [brandActionPressed, brandAction, brandLime],
   );
   static const LinearGradient goldActionGradient = brandActionGradient;
   static const LinearGradient coralActionGradient = brandActionGradient;
@@ -64,23 +66,23 @@ class AppTheme {
     stops: [0.0, 0.48, 1.0],
   );
 
-  // Video remains pure black; the surrounding interface uses Quiet Frame Ink.
+  // Video remains pure black; only the interface adopts the brand palette.
   static const Color background = brandInk;
   static const Color canvas = Color(0xFF000000);
   static const Color surface = brandSurface;
-  static const Color surfaceElevated = Color(0xFF1B2B2D);
-  static const Color surfaceHigh = Color(0xFF243638);
-  static const Color surfacePill = Color(0xFF2B4143);
+  static const Color surfaceElevated = flowSurfaceSoft;
+  static const Color surfaceHigh = Color(0xFF354130);
+  static const Color surfacePill = Color(0xFF40503A);
   static const Color surfaceBorder = decorativeDivider;
-  static const Color sliderTrackInactive = Color(0xFF385153);
+  static const Color sliderTrackInactive = Color(0xFF56644C);
 
   static const Color metalHigh = brandPearl;
   static const Color metalMid = brandSecondary;
-  static const Color metalLow = Color(0xFF8DA6A4);
+  static const Color metalLow = flowTextMuted;
 
   static const Color textPrimary = brandPearl;
   static const Color textSecondary = brandSecondary;
-  static const Color textMuted = Color(0xFF8DA6A4);
+  static const Color textMuted = flowTextMuted;
   static const Color textOnAccent = brandOnAction;
   static const Color error = statusError;
 
@@ -99,7 +101,7 @@ class AppTheme {
     );
   }
 
-  /// The dark palette is the existing approved Quiet Frame identity.
+  /// System-dark companion; it uses the same lime accent as the light palette.
   static const darkColors = WoahPalette(
     background: background,
     flowBackground: flowBackground,
@@ -128,29 +130,30 @@ class AppTheme {
     statusSuccess: statusSuccess,
   );
 
-  /// Pearl-background companion palette: same Woah identity, not inverted video.
+  /// Bright rehearsal-room palette. Lime fills use ink labels; small selected
+  /// text and control outlines use olive to remain readable on light surfaces.
   static const lightColors = WoahPalette(
-    background: Color(0xFFF2F6F3),
-    flowBackground: Color(0xFFF2F6F3),
+    background: brandChalk,
+    flowBackground: brandChalk,
     flowSurface: Color(0xFFFFFFFF),
-    flowSurfaceSoft: Color(0xFFE7F0EC),
-    flowTextPrimary: Color(0xFF142123),
-    flowTextSecondary: Color(0xFF435E59),
-    flowTextMuted: Color(0xFF52706A),
-    flowBorder: Color(0xFFB7CFC7),
+    flowSurfaceSoft: Color(0xFFEEF1E5),
+    flowTextPrimary: brandInk,
+    flowTextSecondary: Color(0xFF46513F),
+    flowTextMuted: Color(0xFF5D6B53),
+    flowBorder: Color(0xFFCDD4BF),
     surfaceElevated: Color(0xFFFFFFFF),
-    surfaceHigh: Color(0xFFE3EEE9),
-    surfaceBorder: Color(0xFFB7CFC7),
-    sliderTrackInactive: Color(0xFFA4BBB4),
-    brandAction: Color(0xFF216A5E),
-    brandOnAction: Color(0xFFFFFFFF),
-    editorSelection: Color(0xFF216A5E),
-    editorSelectionSubtle: Color(0x28216A5E),
-    controlBorder: Color(0xFF718F85),
-    textPrimary: Color(0xFF142123),
-    textSecondary: Color(0xFF435E59),
-    textMuted: Color(0xFF52706A),
-    textOnAccent: Color(0xFFFFFFFF),
+    surfaceHigh: Color(0xFFEAE5F4),
+    surfaceBorder: Color(0xFFCDD4BF),
+    sliderTrackInactive: Color(0xFFA5B194),
+    brandAction: brandLime,
+    brandOnAction: brandInk,
+    editorSelection: brandOlive,
+    editorSelectionSubtle: Color(0x2450670E),
+    controlBorder: Color(0xFF768369),
+    textPrimary: brandInk,
+    textSecondary: Color(0xFF46513F),
+    textMuted: Color(0xFF5D6B53),
+    textOnAccent: brandInk,
     error: Color(0xFFAD3044),
     statusWarning: Color(0xFF865A17),
     statusWarningSubtle: Color(0x22865A17),
@@ -179,6 +182,10 @@ class AppTheme {
         onPrimary: c.brandOnAction,
         secondary: c.flowTextSecondary,
         onSecondary: c.background,
+        secondaryContainer: brightness == Brightness.light
+            ? brandLavender
+            : const Color(0xFF3B354C),
+        onSecondaryContainer: c.textPrimary,
         surface: c.flowSurface,
         onSurface: c.textPrimary,
         error: c.error,
@@ -187,6 +194,21 @@ class AppTheme {
     );
 
     return base.copyWith(
+      // Primary is a bright fill. Focus indicators and cursors need the
+      // readable selection role on pale form surfaces instead.
+      textSelectionTheme: TextSelectionThemeData(
+        cursorColor: c.editorSelection,
+        selectionColor: c.editorSelectionSubtle,
+        selectionHandleColor: c.editorSelection,
+      ),
+      inputDecorationTheme: InputDecorationThemeData(
+        focusedBorder: UnderlineInputBorder(
+          borderSide: BorderSide(color: c.editorSelection, width: 2),
+        ),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: c.editorSelection,
+      ),
       textTheme: base.textTheme.copyWith(
         headlineLarge: TextStyle(
           color: c.textPrimary,
@@ -308,7 +330,11 @@ class AppTheme {
           if (states.contains(WidgetState.selected)) return c.brandAction;
           return c.surfaceHigh;
         }),
-        trackOutlineColor: WidgetStateProperty.all(c.surfaceBorder),
+        trackOutlineColor: WidgetStateProperty.resolveWith((states) {
+          return states.contains(WidgetState.selected)
+              ? c.editorSelection
+              : c.controlBorder;
+        }),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: c.flowSurface,
@@ -317,7 +343,7 @@ class AppTheme {
           fontSize: 13,
           fontWeight: FontWeight.w500,
         ),
-        actionTextColor: c.brandAction,
+        actionTextColor: c.editorSelection,
         elevation: 8,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(

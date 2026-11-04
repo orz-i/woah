@@ -1,13 +1,14 @@
-// Woah (舞哇) Quiet Frame v1.1 icon renderer.
+// Woah (舞哇) Lime Beat icon renderer (historical filename retained).
+// Windows equivalent: generate_lime_beat_assets.py; see docs/design/lime-beat.
 // Original identity geometry: the left half is mirrored around x=128.
 // Requires macOS AppKit only; no third-party font, SVG parser or raster pack.
 import Foundation
 import AppKit
 
-let ink = CGColor(red: 11/255.0, green: 20/255.0, blue: 21/255.0, alpha: 1)
-let mint = CGColor(red: 120/255.0, green: 220/255.0, blue: 199/255.0, alpha: 1)
-let pearl = CGColor(red: 242/255.0, green: 246/255.0, blue: 243/255.0, alpha: 1)
-let deepMint = CGColor(red: 33/255.0, green: 106/255.0, blue: 94/255.0, alpha: 1)
+let ink = CGColor(red: 23/255.0, green: 32/255.0, blue: 28/255.0, alpha: 1)
+let mint = CGColor(red: 216/255.0, green: 245/255.0, blue: 76/255.0, alpha: 1)
+let pearl = CGColor(red: 247/255.0, green: 249/255.0, blue: 241/255.0, alpha: 1)
+let markLime = CGColor(red: 216/255.0, green: 245/255.0, blue: 76/255.0, alpha: 1)
 
 // DeviceRGB encodes slightly different pixel values on some macOS profiles.
 // Single Size app icons and themed Android fallbacks must use literal sRGB
@@ -17,10 +18,10 @@ func brandedRGB(_ red: CGFloat, _ green: CGFloat, _ blue: CGFloat) -> CGColor {
     CGColor(colorSpace: sRGB,
             components: [red / 255, green / 255, blue / 255, 1])!
 }
-let iconLightBG = brandedRGB(242, 246, 243)
-let iconLightFG = brandedRGB(33, 106, 94)
-let iconDarkBG = brandedRGB(11, 20, 21)
-let iconDarkFG = brandedRGB(120, 220, 199)
+let iconLightBG = brandedRGB(247, 249, 241)
+let iconLightFG = brandedRGB(216, 245, 76)
+let iconDarkBG = brandedRGB(23, 32, 28)
+let iconDarkFG = brandedRGB(216, 245, 76)
 let iconTintBG = brandedRGB(16, 16, 16)
 let iconTintFG = brandedRGB(250, 250, 250)
 
@@ -131,10 +132,10 @@ for entry in images {
 }
 // Fixed-size transparent symbol for runtime; no font dependency.
 write(app + "/assets/brand/woah-symbol-256.png", png(width: 256, height: 160,
-     markWidth: 256, background: nil, fill: mint))
+     markWidth: 256, background: nil, fill: markLime))
 // Unrounded, layered-source-compatible variants for future Icon Composer work.
 write(app + "/assets/brand/woah-icon-default-1024.png", png(width: 1024, height: 1024,
-     markWidth: 720, background: ink, fill: mint))
+     markWidth: 720, background: iconLightBG, fill: iconLightFG, opaque: true))
 write(app + "/assets/brand/woah-icon-monochrome-1024.png", png(width: 1024, height: 1024,
      markWidth: 720, background: nil, fill: pearl))
 write(app + "/assets/brand/woah-icon-light-1024.png", png(width: 1024, height: 1024,
@@ -151,7 +152,7 @@ for factor in 1...3 {
     write(assets + "/LaunchImage.imageset/LaunchImage\(prefix).png",
           png(width: 168 * factor, height: 105 * factor,
               markWidth: CGFloat(168 * factor) * 0.92,
-              background: nil, fill: deepMint))
+              background: nil, fill: markLime))
     write(assets + "/LaunchImage.imageset/LaunchImage_dark\(prefix).png",
           png(width: 168 * factor, height: 105 * factor,
               markWidth: CGFloat(168 * factor) * 0.92,

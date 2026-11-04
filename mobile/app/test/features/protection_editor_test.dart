@@ -189,6 +189,24 @@ void main() {
         (activeGlyph.decoration! as BoxDecoration).color,
         colors.editorSelectionSubtle,
       );
+      final selectedToolColor = tester
+          .widget<Icon>(
+            find.descendant(
+              of: find.byKey(const ValueKey('editor-tool-glyph-mask')),
+              matching: find.byType(Icon),
+            ),
+          )
+          .color;
+      final floatingButtons = tester.widgetList<IconButton>(
+        find.descendant(
+          of: find.byKey(const ValueKey('protection-floating-toolbar')),
+          matching: find.byType(IconButton),
+        ),
+      );
+      expect(floatingButtons, hasLength(2));
+      for (final button in floatingButtons) {
+        expect(button.color, selectedToolColor);
+      }
       final idleGlyph = tester.widget<Container>(
         find.byKey(const ValueKey('editor-tool-glyph-trim')),
       );
@@ -697,7 +715,16 @@ void main() {
           expect(size.width, greaterThanOrEqualTo(48));
           expect(size.height, greaterThanOrEqualTo(48));
         }
-        expect(find.text('保护 2 人'), findsOneWidget);
+        expect(find.text('保护 2 人'), findsNothing);
+        expect(
+          tester
+              .getSemantics(
+                find.byKey(const ValueKey('protection-stage-prompt')),
+              )
+              .getSemanticsData()
+              .label,
+          contains('保护 2 人'),
+        );
         expect(tester.takeException(), isNull);
       },
     );
@@ -1012,6 +1039,33 @@ void main() {
     );
     expect(initialFrame.width / initialFrame.height, closeTo(16 / 9, .001));
 
+    void expectFloatingToolbar() {
+      final toolbar = find.byKey(const ValueKey('protection-floating-toolbar'));
+      final frame = tester.getRect(
+        find.byKey(const ValueKey('protection-editor-media-frame')),
+      );
+      final bounds = tester.getRect(toolbar);
+      expect(bounds.top, closeTo(frame.top + 8, .01));
+      expect(bounds.right, closeTo(frame.right - 8, .01));
+      expect(bounds.left, greaterThanOrEqualTo(frame.left));
+      expect(bounds.bottom, lessThanOrEqualTo(frame.bottom));
+      expect(
+        find.descendant(of: toolbar, matching: find.byType(Text)),
+        findsNothing,
+      );
+      for (final key in [
+        'protection-restore-default-action',
+        'protection-clear-target-action',
+      ]) {
+        final button = find.byKey(ValueKey(key));
+        expect(button.hitTestable(), findsOneWidget);
+        expect(tester.getSize(button).width, greaterThanOrEqualTo(48));
+        expect(tester.getSize(button).height, greaterThanOrEqualTo(48));
+      }
+    }
+
+    expectFloatingToolbar();
+
     await _selectTool(tester, 'mask');
     expect(
       find.byKey(const ValueKey('protection-editor-tool-mask')),
@@ -1033,6 +1087,7 @@ void main() {
 
     await _selectTool(tester, 'frame');
     expect(find.byKey(const ValueKey('reframe-mode')), findsOneWidget);
+    expectFloatingToolbar();
     expect(
       find.descendant(
         of: find.byKey(const ValueKey('editor-tool-content-frame')),
@@ -1049,6 +1104,8 @@ void main() {
 
     await _selectTool(tester, 'trim');
     expect(find.byKey(const ValueKey('trim-range-section')), findsOneWidget);
+    expect(find.text('原片预览'), findsNothing);
+    expectFloatingToolbar();
     expect(
       find.descendant(
         of: find.byKey(const ValueKey('editor-tool-content-trim')),
@@ -1064,6 +1121,7 @@ void main() {
     );
 
     await _selectTool(tester, 'adjust');
+    expectFloatingToolbar();
     expect(
       find.descendant(
         of: find.byKey(const ValueKey('editor-tool-content-adjust')),
@@ -1353,7 +1411,14 @@ void main() {
       expect(effects.project!.follow.enabled, isFalse);
       expect(effects.effects.stickerAssetId, 'builtin:panda');
       expect(effects.effects.stickerScale, 1.4);
-      expect(find.text('主角需重选，范围与样式已保留'), findsOneWidget);
+      expect(find.text('主角需重选，范围与样式已保留'), findsNothing);
+      expect(
+        tester
+            .getSemantics(find.byKey(const ValueKey('protection-stage-prompt')))
+            .getSemanticsData()
+            .label,
+        contains('主角需重选，范围与样式已保留'),
+      );
       final export = find.byKey(
         const ValueKey('protection-editor-export-action'),
       );
@@ -1365,7 +1430,14 @@ void main() {
 
       await tester.tap(find.byKey(const ValueKey('trim-reselect-subject')));
       await tester.pumpAndSettle();
-      expect(find.text('主角保留清晰，并自动跟随'), findsOneWidget);
+      expect(find.text('主角保留清晰，并自动跟随'), findsNothing);
+      expect(
+        tester
+            .getSemantics(find.byKey(const ValueKey('reframe-subject-prompt')))
+            .getSemanticsData()
+            .label,
+        contains('主角保留清晰，并自动跟随'),
+      );
       await tester.tap(
         find.byKey(const ValueKey('protection-person-target-10')),
       );
@@ -1723,7 +1795,14 @@ void main() {
         find.byKey(const ValueKey('reframe-subject-prompt')),
         findsOneWidget,
       );
-      expect(find.text('轻触人物选择主角'), findsOneWidget);
+      expect(find.text('轻触人物选择主角'), findsNothing);
+      expect(
+        tester
+            .getSemantics(find.byKey(const ValueKey('reframe-subject-prompt')))
+            .getSemanticsData()
+            .label,
+        contains('轻触人物选择主角'),
+      );
       expect(find.bySemanticsLabel('选择人物 2 为主角'), findsOneWidget);
       await tester.tap(
         find.byKey(const ValueKey('protection-person-target-1')),
@@ -1751,6 +1830,30 @@ void main() {
         find.byKey(const ValueKey('protection-editor-media-frame')),
       );
       expect(stageSize.width / stageSize.height, closeTo(9 / 16, .001));
+
+      // The floating icon keeps source/crop switching available independently
+      // from the tool drawer, without changing the configured follow target.
+      final sourceToggle = find.byKey(
+        const ValueKey('protection-source-preview-action'),
+      );
+      await tester.tap(sourceToggle);
+      await tester.pumpAndSettle();
+      expect(
+        container.read(effectEditorControllerProvider).showSourcePreview,
+        isTrue,
+      );
+      expect(repository.lastFollow.enabled, isFalse);
+      expect(
+        container.read(effectEditorControllerProvider).project!.follow.enabled,
+        isTrue,
+      );
+      await tester.tap(sourceToggle);
+      await tester.pumpAndSettle();
+      expect(
+        container.read(effectEditorControllerProvider).showSourcePreview,
+        isFalse,
+      );
+      expect(repository.lastFollow.targetPersonId, 1);
 
       // Source preview lives in the tool drawer. Subject selection collapses
       // the drawer so the media can dominate the screen, therefore reopen the

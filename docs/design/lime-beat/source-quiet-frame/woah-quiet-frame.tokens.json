@@ -1,0 +1,132 @@
+{
+  "$description": "Woah Quiet Frame v1.1 revision 2: segmentation-mask person marker. Proposed values, not applied to business code.",
+  "brand": {
+    "englishName": "Woah",
+    "chineseName": "舞哇",
+    "direction": "Quiet Frame",
+    "mint": "#78DCC7",
+    "ink": "#0B1415",
+    "pearl": "#F2F6F3",
+    "supportBlue": "#8CAACB"
+  },
+  "dark": {
+    "canvas": "#0B1415",
+    "surface": "#142123",
+    "textPrimary": "#F2F6F3",
+    "textSecondary": "#B4C8C6",
+    "textMuted": "#8DA6A4",
+    "dividerDecorative": "#2D4548",
+    "borderControl": "#607D80",
+    "action": "#78DCC7",
+    "onAction": "#0B1415",
+    "actionPressed": "#59C5AF",
+    "focus": "#78DCC7",
+    "error": "#FF9C9F",
+    "warning": "#F0C879"
+  },
+  "light": {
+    "canvas": "#F2F6F3",
+    "textPrimary": "#0B1415",
+    "textSecondary": "#496361",
+    "action": "#216A5E",
+    "onAction": "#F2F6F3"
+  },
+  "type": {
+    "latin": "IBM Plex Sans",
+    "chinese": "Noto Sans SC",
+    "weights": [
+      400,
+      500,
+      600
+    ],
+    "wordmarkWeight": 700,
+    "scale": {
+      "display": [
+        32,
+        40,
+        600
+      ],
+      "title": [
+        24,
+        32,
+        600
+      ],
+      "section": [
+        20,
+        28,
+        600
+      ],
+      "body": [
+        16,
+        24,
+        400
+      ],
+      "control": [
+        15,
+        20,
+        600
+      ],
+      "caption": [
+        12,
+        16,
+        500
+      ]
+    }
+  },
+  "layout": {
+    "space": [
+      4,
+      8,
+      12,
+      16,
+      24,
+      32,
+      48,
+      64
+    ],
+    "radius": {
+      "small": 8,
+      "control": 12,
+      "panel": 20,
+      "pill": 999
+    },
+    "touchTargetMin": 48,
+    "iconSize": 24,
+    "iconStroke": 2
+  },
+  "motion": {
+    "stateMs": 160,
+    "panelMs": 240,
+    "reduceMotion": "fade-only; no logo morph or forced startup delay"
+  },
+  "editor": {
+    "personMarker": {
+      "source": "segmentation mask",
+      "geometry": "filled pixel-region footprint following the person; no wireframe, bounding box or contour-only marker"
+    },
+    "selected": "current-object label; any mask emphasis follows the segmentation region, not a rectangular frame",
+    "maskIllustration": {
+      "color": "#78DCC7",
+      "illustrationOnly": true,
+      "note": "Hand-drawn filled region in the VI study; does not specify the current product color, opacity, or model accuracy."
+    },
+    "protection": "explicit label and actual effect preview, never color alone"
+  },
+  "brandGraphics": {
+    "openBrackets": "brand layout and campaign graphics; do not use as the editor person marker"
+  },
+  "product": {
+    "workflows": [
+      "videoProtection",
+      "danceComparison"
+    ],
+    "brandAction": "#78DCC7",
+    "onBrandAction": "#0B1415",
+    "editorSelection": "#78DCC7",
+    "effectPaletteAmber": "#F5A623",
+    "statusWarning": "#F0C879",
+    "statusError": "#FF9C9F",
+    "privacyMaskGeometry": "segmentation pixel region; not a rectangle",
+    "fontEmbedding": "system CJK fallback until size-and-accessibility QA"
+  }
+}

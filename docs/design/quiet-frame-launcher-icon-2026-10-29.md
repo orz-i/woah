@@ -1,5 +1,7 @@
 # Woah · Quiet Frame 桌面图标明暗与主题适配
 
+> 历史基线：当前图标 / 启动页采用 [Lime Beat 青柠节拍](lime-beat/README.md) 色值。原 W 几何及明暗 / 系统着色资源结构保留；本文旧配色与旧设备检查结果不代表本轮验收。
+
 日期：2026-10-29
 
 代码基线：`feat/system-appearance-light-dark` / `2873aa0`

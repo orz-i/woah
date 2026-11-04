@@ -1,5 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <color name="woah_launch_background">#0B1415</color>
-    <color name="woah_launcher_background">#0B1415</color>
+    <color name="woah_launch_background">#17201C</color>
+    <color name="woah_launcher_background">#17201C</color>
 </resources>

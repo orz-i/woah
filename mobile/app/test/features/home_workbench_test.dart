@@ -13,6 +13,7 @@ import 'package:dance_domain/dance_domain.dart';
 import 'package:dance_native/dance_native.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -340,7 +341,7 @@ void main() {
         .height;
     expect(
       tester.widget<Text>(find.text('视频保护')).style?.color,
-      AppTheme.brandPearl,
+      AppTheme.brandInk,
     );
 
     await tester.drag(find.byType(PageView), const Offset(-300, 0));
@@ -378,7 +379,7 @@ void main() {
     );
     expect(
       tester.widget<Text>(find.text('舞蹈对比')).style?.color,
-      AppTheme.brandPearl,
+      AppTheme.brandInk,
     );
     expect(
       find.byKey(const ValueKey('home-comparison-card')).hitTestable(),
@@ -420,6 +421,18 @@ void main() {
 
       final titleTop = tester.getRect(find.text('视频保护')).top;
       final descriptionTop = tester.getRect(find.text('保留主角，遮挡其他人物')).top;
+      double baseline(String text) {
+        final finder = find.text(text);
+        final paragraph = tester.renderObject<RenderParagraph>(finder);
+        return tester.getTopLeft(finder).dy +
+            paragraph.getDryBaseline(
+              paragraph.constraints,
+              TextBaseline.alphabetic,
+            )!;
+      }
+
+      final titleBaseline = baseline('视频保护');
+      final descriptionBaseline = baseline('保留主角，遮挡其他人物');
       final slotHeight = tester
           .getSize(find.byKey(const ValueKey('home-privacy-description-slot')))
           .height;
@@ -428,6 +441,8 @@ void main() {
       await tester.drag(find.byType(PageView), const Offset(-290, 0));
       await tester.pumpAndSettle();
       expect(tester.getRect(find.text('舞蹈对比')).top, closeTo(titleTop, 0.5));
+      expect(baseline('舞蹈对比'), closeTo(titleBaseline, 0.01));
+      expect(baseline('同步两段视频，对照练习动作'), closeTo(descriptionBaseline, 0.01));
       expect(
         tester.getRect(find.text('同步两段视频，对照练习动作')).top,
         closeTo(descriptionTop, 0.5),
@@ -488,6 +503,21 @@ void main() {
         tester.getRect(find.text('保留主角，遮挡其他人物')).top,
         closeTo(tester.getRect(find.text('同步两段视频，对照练习动作')).top, 0.5),
       );
+      for (final pair in const [
+        ['视频保护', '舞蹈对比'],
+        ['保留主角，遮挡其他人物', '同步两段视频，对照练习动作'],
+      ]) {
+        final baselines = pair.map((text) {
+          final finder = find.text(text);
+          final paragraph = tester.renderObject<RenderParagraph>(finder);
+          return tester.getTopLeft(finder).dy +
+              paragraph.getDryBaseline(
+                paragraph.constraints,
+                TextBaseline.alphabetic,
+              )!;
+        }).toList();
+        expect(baselines.first, closeTo(baselines.last, 0.01));
+      }
 
       await gesture.up();
       await tester.pumpAndSettle();

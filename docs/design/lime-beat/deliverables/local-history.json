@@ -1,0 +1,25 @@
+{
+  "policy": "Historical PDF/ZIP versions remain local; v2.2 is the tracked formal delivery.",
+  "artifacts": [
+    {
+      "file": "Woah-Lime-Beat-Assets-v2.0.zip",
+      "bytes": 22750731,
+      "sha256": "cba8a635a83e76a7ae075006367b6093a5f991ed4133a35e570637f213ed10f5"
+    },
+    {
+      "file": "Woah-Lime-Beat-Assets-v2.1.zip",
+      "bytes": 22728407,
+      "sha256": "2079c46db9e022527d3946cbe41953610408a5723c6997480ddc1ae0d1228b7f"
+    },
+    {
+      "file": "Woah-Lime-Beat-VI-v2.0.pdf",
+      "bytes": 6135642,
+      "sha256": "e5e4ed0c8336338c1d63f6002c66000d80dd766095ca2c68953332b9da3388d1"
+    },
+    {
+      "file": "Woah-Lime-Beat-VI-v2.1.pdf",
+      "bytes": 6127489,
+      "sha256": "05727698aa7ce425c47960e099d43d5ed486918f99fb469ff7be02f13228cc64"
+    }
+  ]
+}

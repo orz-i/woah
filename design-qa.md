@@ -1,4 +1,52 @@
-# Woah Home Screen Design QA
+# Woah Design QA
+
+## 当前基线：Lime Beat VI 2.2（2026-11-04）
+
+final result: passed
+
+隐私配置页补充验收（2026-11-04）：原预览横条已移入实际视频右上角，保留透明悬浮图标与轻微阴影，无底色或圆角包裹。按用户颜色差异反馈，悬浮图标改为与底部控件共用 editorSelection：亮色 #50670E，暗色 #D8F54C。源码静态分析通过；工具条接入时隐私编辑测试 36 / 36 通过，本次颜色一致性回归 2 / 2 通过。长按说明、读屏状态与原操作保留，品牌核心 VI 与首页方向继续沿用 v2.2。
+
+最终同色真机证据：`docs/design/lime-beat/qa/floating-preview-toolbar/04-after-matched-color.png`，恢复原视频及剪辑面板后已实际打开检查。像素核对确认悬浮图标与底部选中控件同为 #50670E；检查记录为同目录 `color-match-review.json`。
+
+VI 2.2 修订：按用户反馈减轻首页冲击，底部渐变从 76% 处淡入，终点为浅青柠 #F0F6DA，Woah 为 24sp、W 宽 28dp、间隔 8dp。青柠主标识、原摄影、卡片尺寸、文字基线与交互保留。相关主题、系统切换、首页和长按入口测试 32 / 32 通过；正式 15 页 PDF 及可编辑资产同步至 v2.2。
+
+适用范围：新 VI / 原生品牌资源、两张重新生成的首页封面和原首页交互。以下历史记录不作为当前视觉基线。
+
+- source visual truth: `docs/design/lime-beat/assets/selected-home.png`，用户选定方向；标识用色以“亮色时，使用浅色底，青柠主版本”为准。最新首页反馈要求减轻渐变和品牌的视觉冲击，因此渐变强度与标识尺寸按 v2.2 调整。
+- implementation screenshots: `docs/design/lime-beat/qa/alignment-fix/04-after-protection.png`、`05-after-comparison.png`；OnePlus 8T 真机，1080 × 2400 px，系统浅色，分别为第一 / 第二张卡片。
+- viewport / density: Android 14，物理 density 480，3.0 px / logical dp，对应 360 × 800 逻辑屏幕；原生系统占用区域保留。
+- full-view comparison: `docs/design/lime-beat/qa/reference-device-comparison.png`。参考和两张真机截图在同一张比较图中呈现，各自等比缩放至 990 px 高，不拉伸、不把生成参考的纵横比当作运行时约束。
+- focused comparison: `docs/design/lime-beat/qa/alignment-fix/06-aligned-label-proof.png`。按相同物理高度裁取两卡文字区域；实际基线由普通 / 放大 / 滑动中间状态的现有测试断言核对。
+- before / after: `docs/design/lime-beat/qa/soft-home/04-before-after.png`，同一设备、同一亮色模式与卡片，对照渐变色块和品牌尺寸；已实际打开复核。
+- 原生截图保留系统顶部黑区和底部手势条；它们不属于生成图的 app-owned 内容，未据此判定视觉偏差。
+
+### 必查视觉面
+
+| 项目 | 结果 |
+| --- | --- |
+| 字体 | 沿用原生系统字体，首页 Woah 从 28sp 缩为 24sp，W 从 32dp 缩为 28dp；卡片字号与两行说明槽位保留 |
+| 布局 | 原横向 PageView、卡片尺寸 / 位置、圆角、露边、分页和整卡点击保持；相对于生成参考略宽短的卡片沿用原产品几何，是用户要求保持现有结构下的有意选择 |
+| 色彩 | Chalk 页面、青柠 W / Woah 主标识、浅青柠局部渐变 #F0F6DA、Ink 文案与箭头；品牌色与图标配色沿用，首页与 VI 2.2 同步 |
+| 影像 | 两张均为新生成 1024 × 1536 照片资产，JPEG 仅编码；第一张人物手脚清楚，第二张双画面可辨，两卡底部地板提供文字空间，无 UI 烘焙进照片 |
+| 文案 | 保留“视频保护 / 保留主角，遮挡其他人物”和“舞蹈对比 / 同步两段视频，对照练习动作”，没有新增口号或虚假功能 |
+| 可读性 | 浅底青柠仅用于品牌主标识；正文、操作提示使用 Ink / Olive。青柠操作底使用 Ink；分页保留深色细边界与原位置、尺寸和行为 |
+
+### 交互与边界
+
+- 真机：冷启动、左右滑动、分页同步、比较整卡入口、返回保持页码、视频保护整卡打开原系统选择器、取消回到首页，均已验证。
+- 原比较项目当前无法关联源视频，页面显示原有错误提示。未读取或重新选择用户媒体，未声称真实播放 / 导出回归通过。
+- 现有全量 Flutter 测试 270 / 270 通过；最后焦点色调整后主题测试 6 / 6 与定向分析通过；最终 APK 构建、安装成功。
+- Android / iOS 图标及启动页静态校验通过。iOS 本轮未编译或运行，Android 其他启动器外观和深色真机切换不在本次已完成视觉范围。
+
+### 比较历史与后续
+
+首轮采用相同文字槽位，但只检查了文字框，未锁定实际基线；同时未更新原正式 VI PDF / ZIP。用户指出后，本轮补齐强制行高与普通 / 放大 / 滑动中间状态的基线检查，并完成整个 VI 2.0 交付；最新真机截图与同高度文字对照已复核。保留原字体与卡片几何、深色分页边界属于有意约束，未留待修复 P0 / P1 / P2 项。
+
+实施清单：新 VI 规范、两张新封面、语义主题色、标识 / 启动资源、历史规范标注、回归检查和真机首页证据均已落地；本次整理单独归档 UI 与品牌，不推送或发布。
+
+完整规范与限制：[Lime Beat](docs/design/lime-beat/README.md)、[验证记录](docs/design/lime-beat/verification.md)。
+
+## 历史验收记录
 
 - source visual truth: /tmp/woah_home_option3.png
 - selected direction: option 3, immersive star-function hub

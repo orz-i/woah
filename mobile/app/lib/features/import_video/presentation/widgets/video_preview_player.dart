@@ -131,7 +131,7 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer>
         ),
         child: Text(
           _errorMessage!,
-          style: TextStyle(color: AppTheme.of(context).brandAction),
+          style: TextStyle(color: AppTheme.of(context).error),
         ),
       );
     }
@@ -150,7 +150,7 @@ class _VideoPreviewPlayerState extends State<VideoPreviewPlayer>
           children: [
             CircularProgressIndicator(
               strokeWidth: 2,
-              color: AppTheme.of(context).brandAction,
+              color: AppTheme.of(context).editorSelection,
             ),
             SizedBox(height: 12),
             Text(
