@@ -1,5 +1,7 @@
 # 舞哇 / Woah · Quiet Frame v1.1 产品接入
 
+> 历史基线：主视觉已于 2026-11-04 被用户选定的 [Lime Beat 青柠节拍](lime-beat/README.md) 取代。以下色值、资源与验证结果属于当时版本，不作为当前 VI 的执行依据；名称、既有交互和媒体 / 特效隔离约束继续适用。
+
 日期：2026-10-29
 基线：`master` / `ae58a12523657b6a5d854fae1a4109f46d5f531e`
 实施分支：`feat/quiet-frame-vi-v1-1`

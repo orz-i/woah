@@ -16,6 +16,41 @@ import kotlin.test.assertTrue
 
 class FacePrivacyMaskBuilderTest {
     @Test
+    fun `adjacent opaque face masks close an isolated raster seam without mutating inputs`() {
+        val pixels = ByteBuffer.allocateDirect(25).apply {
+            repeat(25) { put(255.toByte()) }
+            put(12, 0)
+            put(0, 0)
+            position(7)
+        }
+        val original = NativeMask(5, 5, pixels, 960, 540)
+        val filled = assertNotNull(FacePrivacyMaskBuilder.fillIsolatedHoles(original))
+        assertEquals(255, filled.byteAt(2, 2))
+        assertEquals(0, filled.byteAt(0, 0))
+        assertEquals(0, original.byteAt(2, 2))
+        assertEquals(7, original.buffer.position())
+        assertEquals(original.originalWidth, filled.originalWidth)
+        assertEquals(original.originalHeight, filled.originalHeight)
+    }
+
+    @Test
+    fun `face seam closure preserves open edges and larger gaps`() {
+        val pixels = ByteBuffer.allocateDirect(25).apply {
+            repeat(25) { put(255.toByte()) }
+            put(12, 0)
+            put(13, 0)
+            put(1, 0)
+            put(6, 0)
+            rewind()
+        }
+        val original = NativeMask(5, 5, pixels, 960, 540)
+        assertTrue(original === FacePrivacyMaskBuilder.fillIsolatedHoles(original))
+        assertEquals(0, original.byteAt(2, 2))
+        assertEquals(0, original.byteAt(3, 2))
+        assertEquals(0, original.byteAt(1, 1))
+    }
+
+    @Test
     fun `selected roi face maps to expanded detected privacy ellipse`() {
         val plan = FaceHeadRoiPlan(
             sourceRect = FloatRect(100f, 200f, 500f, 600f),

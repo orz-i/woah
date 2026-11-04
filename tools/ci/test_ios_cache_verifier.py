@@ -54,6 +54,21 @@ class IOSCacheVerifierTests(unittest.TestCase):
         self.rejected_mutation('AnalyzePipeline.kt',
                                '${java.util.UUID.randomUUID()}', 'constant')
 
+    def test_fresh_selection_confidence_filter_regression_fails(self):
+        self.rejected_mutation(
+            'person_selection_controller.dart',
+            'final persons = result.persons.map((dto) => dto.toDomain()).toList();',
+            'final persons = result.persons.where((dto) => dto.confidence >= 0.60)'
+            '.map((dto) => dto.toDomain()).toList();',
+        )
+
+    def test_cached_selection_confidence_filter_regression_fails(self):
+        self.rejected_mutation(
+            'person_selection_controller.dart',
+            'persons: project.persons,',
+            'persons: project.persons.where((person) => person.confidence >= 0.60).toList(),',
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

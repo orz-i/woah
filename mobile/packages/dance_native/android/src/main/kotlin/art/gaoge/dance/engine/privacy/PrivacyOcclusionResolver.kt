@@ -932,7 +932,8 @@ object PrivacyOcclusionResolver {
         data class Candidate(
             val person: TrackedPerson,
             val maxFreshOverlap: Float,
-            val maxFreshSelectedOverlap: Float
+            val maxFreshUnselectedOverlap: Float,
+            val coveredByFreshSelected: Boolean
         )
 
         fun overlapRatio(a: FloatRect, b: FloatRect): Float {
@@ -943,6 +944,21 @@ object PrivacyOcclusionResolver {
             )
             return inter / minArea
         }
+
+        fun coveredByFreshSelected(person: TrackedPerson): Boolean {
+            val mask = person.mask ?: return false
+            val freshMasks = freshSelectedPersons.mapNotNull { it.mask }
+                .filter { it.width == mask.width && it.height == mask.height }
+            var support = 0
+            var covered = 0
+            for (index in 0 until minOf(mask.width * mask.height, mask.buffer.limit())) {
+                if ((mask.buffer.get(index).toInt() and 0xFF) < FULL_BODY_EXPORT_MASK_THRESHOLD_BYTE) continue
+                support++
+                if (freshMasks.any { (it.buffer.get(index).toInt() and 0xFF) >= FULL_BODY_EXPORT_MASK_THRESHOLD_BYTE }) covered++
+            }
+            return support > 0 && covered.toFloat() / support >= 0.85f
+        }
+        val freshSelectedIds = freshSelectedPersons.map { it.id }.toSet()
 
         val candidates = persons.asSequence()
             .filter {
@@ -956,17 +972,18 @@ object PrivacyOcclusionResolver {
                 Candidate(
                     person = person,
                     maxFreshOverlap = freshEvidencePersons.maxOfOrNull { overlapRatio(person.bbox, it.bbox) } ?: 0f,
-                    maxFreshSelectedOverlap = freshSelectedPersons.maxOfOrNull { overlapRatio(person.bbox, it.bbox) } ?: 0f
+                    maxFreshUnselectedOverlap = freshEvidencePersons.asSequence()
+                        .filter { it.id !in freshSelectedIds }
+                        .maxOfOrNull { overlapRatio(person.bbox, it.bbox) } ?: 0f,
+                    coveredByFreshSelected = coveredByFreshSelected(person)
                 )
             }
-            // A track already covered by any fresh detection is not spatially
-            // missing. In particular, do not let a stale selected identity land
-            // on a current fresh unselected person and create an extra privacy
-            // mask. Fresh-selected overlap still catches ordinary duplicates;
-            // all-fresh overlap also covers current unselected/unknown roster.
+            // Overlapping selected bodies are not duplicates: the rear person's
+            // visible limbs can lie outside the foreground silhouette. Suppress
+            // a duplicate only when fresh selected masks cover its actual pixels.
+            // Keep the stricter geometry gate against current unselected people.
             .filter {
-                it.maxFreshSelectedOverlap < 0.30f &&
-                    it.maxFreshOverlap < 0.30f
+                it.maxFreshUnselectedOverlap < 0.30f && !it.coveredByFreshSelected
             }
             .sortedWith(
                 compareBy<Candidate> { it.maxFreshOverlap }

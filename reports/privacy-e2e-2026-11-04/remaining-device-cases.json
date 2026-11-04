@@ -1,0 +1,15 @@
+[
+  "art.gaoge.dance.engine.face.MediaPipeFaceLocatorInstrumentedTest#parallelLocatorMatchesSequentialResultsAndReducesTwoCallWallTime",
+  "art.gaoge.dance.engine.inference.YoloMaskSigmoidInstrumentedTest#exactFloatThresholdSigmoidPreservesMaskBytesAndReducesDecodeWallTime",
+  "art.gaoge.dance.engine.pipeline.FaceOnlyPreviewPipelineInstrumentedTest#previewFaceOnlyMasksHeadAndMissingIdFailsClosed",
+  "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#detectorIsThrottledAt60FpsAndTrustedFaceMovesWithCurrentPersonBox",
+  "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#dormantFreshMotionOnlyOpensProbeAndDetectorMissKeepsStickerSuppressed",
+  "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#fullBodyTargetCannotActAsSecondaryOccluderAgainstFaceOnlyTarget",
+  "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#missingRequestedTrackFailsClosedInsteadOfRenderingTransparent",
+  "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyProductionStressInstrumentedTest#productionLocatorRunsThreeHundredFramesWithoutFallbackOrRuntimeFailure",
+  "art.gaoge.dance.engine.privacy.FacePrivacyMaskCompositorInstrumentedTest#faceMaskUsesExistingPrivacySamplerWithoutVerticalFlip",
+  "art.gaoge.dance.engine.privacy.PrivacyOcclusionResolverFaceOnlyInstrumentedTest#noCarveFaceOnlyFastPathsPreserveSequenceAndReduceWallTime",
+  "art.gaoge.dance.engine.render.FaceRoiRendererInstrumentedTest#texture2dAndOesProduceSameVisualSourceCrop",
+  "art.gaoge.dance.engine.render.FaceRoiRendererInstrumentedTest#benchmarkOesRenderAndReadback256",
+  "art.gaoge.dance.engine.render.FaceRoiRendererInstrumentedTest#oesReadbackFeedsMediaPipeWithoutCpuFlip"
+]

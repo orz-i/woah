@@ -342,7 +342,7 @@ class _RhythmArcs extends CustomPainter {
       height: size.height * .9,
     );
     final paint = Paint()
-      ..color = AppTheme.brandMint.withAlpha(27)
+      ..color = AppTheme.brandLime.withAlpha(27)
       ..strokeWidth = 1.1
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
@@ -389,7 +389,7 @@ class _MessageDisplay extends StatelessWidget {
       key: WoahEasterEggScreen.messageKey,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(height: 2, width: 28, color: AppTheme.brandMint),
+        Container(height: 2, width: 28, color: AppTheme.brandLime),
         const SizedBox(height: 14),
         Text(
           message.title,

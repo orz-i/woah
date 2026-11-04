@@ -37,10 +37,10 @@ for relative in ('values/colors.xml','values-night/colors.xml',
     ET.parse(RES / relative)
 light_colors = (RES / 'values/colors.xml').read_text()
 night_colors = (RES / 'values-night/colors.xml').read_text()
-assert '<color name="woah_launch_background">#F2F6F3</color>' in light_colors
-assert '<color name="woah_launch_background">#0B1415</color>' in night_colors
-assert '#216A5E' in (RES / 'drawable/woah_launch_mark.xml').read_text()
-assert '#78DCC7' in (RES / 'drawable-night/woah_launch_mark.xml').read_text()
+assert '<color name="woah_launch_background">#F7F9F1</color>' in light_colors
+assert '<color name="woah_launch_background">#17201C</color>' in night_colors
+assert '#D8F54C' in (RES / 'drawable/woah_launch_mark.xml').read_text()
+assert '#D8F54C' in (RES / 'drawable-night/woah_launch_mark.xml').read_text()
 for resdir in ('values','values-night','values-v31','values-night-v31'):
     s=(RES / resdir / 'styles.xml').read_text()
     assert '@color/woah_launch_background' in s

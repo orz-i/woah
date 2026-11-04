@@ -145,34 +145,40 @@ class _HomeBrand extends StatelessWidget {
           label: AppBrand.english,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ColorFiltered(
-                  colorFilter: ColorFilter.mode(
-                    AppTheme.of(context).brandAction,
-                    BlendMode.srcIn,
+            child: ConstrainedBox(
+              // Keep the existing header slot while reducing visual weight.
+              constraints: const BoxConstraints(minHeight: 32),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ColorFiltered(
+                    colorFilter: ColorFilter.mode(
+                      AppTheme.brandLime,
+                      BlendMode.srcIn,
+                    ),
+                    child: const Image(
+                      image: AssetImage('assets/brand/woah-symbol-256.png'),
+                      width: 28,
+                      height: 17.5,
+                      filterQuality: FilterQuality.high,
+                      excludeFromSemantics: true,
+                    ),
                   ),
-                  child: const Image(
-                    image: AssetImage('assets/brand/woah-symbol-256.png'),
-                    width: 32,
-                    height: 20,
-                    filterQuality: FilterQuality.high,
-                    excludeFromSemantics: true,
+                  const SizedBox(width: 8),
+                  Text(
+                    AppBrand.english,
+                    style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? AppTheme.brandLime
+                          : AppTheme.of(context).flowTextPrimary,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.8,
+                      height: 1.12,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  AppBrand.english,
-                  style: TextStyle(
-                    color: AppTheme.of(context).flowTextPrimary,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -1.0,
-                    height: 1.12,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -250,27 +256,26 @@ class _HomeActionCard extends StatelessWidget {
                         : 'home-comparison-cover',
                   ),
                   fit: BoxFit.cover,
-                  alignment: isProtection
-                      ? const Alignment(0, -0.30)
-                      : Alignment.center,
+                  alignment: Alignment.center,
                   filterQuality: FilterQuality.medium,
                   excludeFromSemantics: true,
                   errorBuilder: (context, error, stackTrace) =>
                       _HomeCoverFallback(isProtection: isProtection),
                 ),
-                // One continuous image surface with a graduated text scrim.
+                // A pale lime wash supports the native labels without a
+                // saturated block competing with the dance photography.
                 const IgnorePointer(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        stops: [0.0, 0.36, 0.72, 1.0],
+                        stops: [0.0, 0.76, 0.90, 1.0],
                         colors: [
-                          Color(0x000B1415),
-                          Color(0x180B1415),
-                          Color(0xB50B1415),
-                          Color(0xF50B1415),
+                          Color(0x00F7F9F1),
+                          Color(0x00F7F9F1),
+                          Color(0xE6F5F8EB),
+                          Color(0xFFF0F6DA),
                         ],
                       ),
                     ),
@@ -295,12 +300,18 @@ class _HomeActionCard extends StatelessWidget {
                           children: [
                             Text(
                               tool.title,
+                              strutStyle: const StrutStyle(
+                                fontSize: 20,
+                                height: 1.22,
+                                fontWeight: FontWeight.w700,
+                                forceStrutHeight: true,
+                              ),
                               style: const TextStyle(
-                                color: Color(0xFFF2F6F3),
+                                color: AppTheme.brandInk,
                                 fontSize: 20,
                                 height: 1.22,
                                 letterSpacing: -0.25,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                             const SizedBox(height: 6),
@@ -321,10 +332,15 @@ class _HomeActionCard extends StatelessWidget {
                                 alignment: Alignment.topLeft,
                                 child: Text(
                                   visibleDescription,
+                                  strutStyle: const StrutStyle(
+                                    fontSize: 13.5,
+                                    height: 1.42,
+                                    forceStrutHeight: true,
+                                  ),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
-                                    color: Color(0xFFD9E6E2),
+                                    color: Color(0xFF374232),
                                     fontSize: 13.5,
                                     height: 1.42,
                                   ),
@@ -342,15 +358,15 @@ class _HomeActionCard extends StatelessWidget {
                                 height: 22,
                                 width: 22,
                                 child: CircularProgressIndicator(
-                                  color: AppTheme.brandMint,
+                                  color: AppTheme.brandInk,
                                   strokeWidth: 2,
                                 ),
                               )
                             : Icon(
                                 Icons.arrow_outward_rounded,
                                 color: isBusy
-                                    ? const Color(0xFF9AAEAA)
-                                    : AppTheme.brandMint,
+                                    ? const Color(0xFF5D6B53)
+                                    : AppTheme.brandInk,
                                 size: 23,
                               ),
                       ),
@@ -393,7 +409,7 @@ class _HomeCoverFallback extends StatelessWidget {
       child: Center(
         child: Icon(
           isProtection ? Icons.movie_outlined : Icons.compare_outlined,
-          color: palette.brandAction,
+          color: palette.editorSelection,
           size: 36,
         ),
       ),
@@ -510,6 +526,12 @@ class _HomeToolDeckState extends State<_HomeToolDeck> {
                   color: i == _selectedIndex
                       ? AppTheme.of(context).brandAction
                       : AppTheme.of(context).flowTextMuted,
+                  border: i == _selectedIndex
+                      ? Border.all(
+                          color: AppTheme.of(context).editorSelection,
+                          width: 1,
+                        )
+                      : null,
                   borderRadius: BorderRadius.circular(5),
                 ),
               ),

@@ -15,6 +15,31 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class PrivacyFreshClassEvidenceTest {
+    @Test
+    fun overlappingSelectedBodiesRetainUncoveredRearSilhouette() {
+        val rear = TrackedPerson(
+            id = 1, bbox = FloatRect(200f, 100f, 400f, 500f),
+            mask = rectMask(left = 22, top = 12, right = 28, bottom = 48),
+            confidence = .35f, state = TrackState.OCCLUDED,
+            observedThisFrame = false, framesSinceLastObservation = 3
+        )
+        val front = FreshPrivacyClassEvidence(
+            selectionClass = PrivacySelectionClass.SELECTED, detectionIndex = 0,
+            detection = PersonDetection(
+                bbox = FloatRect(200f, 100f, 450f, 520f), confidence = .9f,
+                mask = rectMask(left = 30, top = 10, right = 43, bottom = 52)
+            ), residualTrackIds = setOf(2)
+        )
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = listOf(rear), selectedPersonIds = setOf(1, 2),
+            freshClassEvidence = listOf(front), preferFreshClassPrimary = true,
+            expectedSelectedCount = 2, applyDilationToPrivacyTargets = false
+        )
+        val mask = assertNotNull(resolved.privacyMask)
+        assertTrue((mask.buffer.get(40 * 64 + 25).toInt() and 0xFF) > 0,
+            "A selected foreground bbox must not discard the rear person's uncovered leg")
+    }
+
 
     private fun rectMask(
         width: Int = 64,

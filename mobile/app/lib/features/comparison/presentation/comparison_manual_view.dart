@@ -102,7 +102,7 @@ class ComparisonManualView extends StatelessWidget {
             style: ButtonStyle(
               foregroundColor: WidgetStateProperty.resolveWith(
                 (states) => states.contains(WidgetState.selected)
-                    ? AppTheme.of(context).brandAction
+                    ? AppTheme.of(context).editorSelection
                     : AppTheme.of(context).flowTextSecondary,
               ),
               backgroundColor: WidgetStateProperty.resolveWith(
@@ -136,7 +136,7 @@ class ComparisonManualView extends StatelessWidget {
                     style: TextButton.styleFrom(
                       minimumSize: const Size(48, 48),
                       foregroundColor: session.anchorIndex == i
-                          ? AppTheme.of(context).brandAction
+                          ? AppTheme.of(context).editorSelection
                           : AppTheme.of(context).flowTextSecondary,
                       backgroundColor: session.anchorIndex == i
                           ? AppTheme.of(context).editorSelectionSubtle

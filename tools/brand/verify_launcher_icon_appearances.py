@@ -95,8 +95,8 @@ for e in entries:
 assert set(names) == {'any', 'dark', 'tinted'}, names
 assert names['any'] == 'Icon-App-1024x1024@1x.png'
 expected = {
-    'any': ('woah-icon-light-1024.png', (242, 246, 243)),
-    'dark': ('woah-icon-dark-1024.png', (11, 20, 21)),
+    'any': ('woah-icon-light-1024.png', (247, 249, 241)),
+    'dark': ('woah-icon-dark-1024.png', (23, 32, 28)),
     'tinted': ('woah-icon-tinted-1024.png', (16, 16, 16)),
 }
 for variant, (source_name, background) in expected.items():
@@ -123,7 +123,7 @@ for version in ('mipmap-anydpi-v26','mipmap-anydpi-v33'):
 assert 'monochrome' not in icon_xml['mipmap-anydpi-v26']
 assert icon_xml['mipmap-anydpi-v33']['monochrome'] == '@drawable/woah_icon_monochrome'
 
-for dir_name, fill in [('drawable','#216A5E'),('drawable-night','#78DCC7')]:
+for dir_name, fill in [('drawable','#D8F54C'),('drawable-night','#D8F54C')]:
     path = RES / dir_name / 'woah_icon_foreground.xml'
     root = ET.parse(path).getroot()
     assert root.attrib[ANDROID+'viewportWidth'] == '108'
@@ -133,9 +133,9 @@ for dir_name, fill in [('drawable','#216A5E'),('drawable-night','#78DCC7')]:
     assert all(e.attrib.get(ANDROID+'pathData') == paths[0].attrib[ANDROID+'pathData'] for e in paths)
 mono = ET.parse(RES / 'drawable/woah_icon_monochrome.xml').getroot()
 assert len(mono.findall('.//path')) == 2
-assert all(e.attrib[ANDROID+'fillColor'] == '#F2F6F3' for e in mono.findall('.//path'))
+assert all(e.attrib[ANDROID+'fillColor'] == '#F7F9F1' for e in mono.findall('.//path'))
 
-for dir_name, color in [('values','#F2F6F3'),('values-night','#0B1415')]:
+for dir_name, color in [('values','#F7F9F1'),('values-night','#17201C')]:
     values = ET.parse(RES / dir_name / 'colors.xml').getroot()
     d = {v.attrib['name']: v.text for v in values.findall('color')}
     assert d['woah_launcher_background'] == color, dir_name
@@ -148,8 +148,8 @@ for density, side in [('mdpi',48),('hdpi',72),('xhdpi',96),('xxhdpi',144),('xxxh
     assert l[:2] == n[:2] == (side, side)
     assert l[3] != n[3], ('Day and night legacy icons must differ', density)
     assert l[2] == n[2] == 2, 'Android legacy icons must be opaque RGB'
-    assert decode_rgb(light)[0] == (242, 246, 243), density
-    assert decode_rgb(night)[0] == (11, 20, 21), density
+    assert decode_rgb(light)[0] == (247, 249, 241), density
+    assert decode_rgb(night)[0] == (23, 32, 28), density
 
 manifest = (APP / 'android/app/src/main/AndroidManifest.xml').read_text()
 assert 'android:icon="@mipmap/ic_launcher"' in manifest

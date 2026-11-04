@@ -1,0 +1,78 @@
+ACTIVITY MANAGER SERVICES (dumpsys activity services)
+  User 0 active services:
+  * ServiceRecord{ca31a44 u0 art.gaoge.dance.engine.test/com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService}
+    intent={cmp=art.gaoge.dance.engine.test/com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService mCallingUid=1000}
+    packageName=art.gaoge.dance.engine.test
+    processName=art.gaoge.dance.engine.test
+    permission=android.permission.BIND_JOB_SERVICE
+    baseDir=/data/app/~~nDLX6P3rn4DwojC5x_JQVw==/art.gaoge.dance.engine.test-USYJFP2thSs7AZQ3zWkzsw==/base.apk
+    dataDir=/data/user/0/art.gaoge.dance.engine.test
+    app=null
+    mAllowWhileInUsePermissionInFgsReason=DENIED
+    allowUiJobScheduling=false
+    recentCallingPackage=android
+    recentCallingUid=1000
+    allowStartForeground=DENIED
+    startForegroundCount=0
+    infoAllowStartForeground=null
+    createTime=-6m8s117ms startingBgTimeout=--
+    lastActivity=-6m8s116ms restartTime=-- createdFromFg=true
+    Bindings:
+    * IntentBindRecord{80b172d}:
+      intent={flg=0x4 cmp=art.gaoge.dance.engine.test/com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService mCallingUid=1000}
+      binder=null
+      requested=false received=false hasBound=false doRebind=false
+      * Client AppBindRecord{796c462 ProcessRecord{5a75e8c 2364:system/1000}}
+
+  * ServiceRecord{cc4b305 u0 art.gaoge.dance/.engine.service.ExportForegroundService}
+    intent={act=art.gaoge.dance.engine.service.ACTION_START cmp=art.gaoge.dance/.engine.service.ExportForegroundService mCallingUid=10383}
+    packageName=art.gaoge.dance
+    processName=art.gaoge.dance
+    baseDir=/data/app/~~8eScluzItj7fi5Cr-SBFtA==/art.gaoge.dance-1sM8JIoJJhhs7ZVDEJwurg==/base.apk
+    dataDir=/data/user/0/art.gaoge.dance
+    app=ProcessRecord{93d0621 16733:art.gaoge.dance/u0a383}
+    mAllowWhileInUsePermissionInFgsReason=PROC_STATE_TOP
+    allowUiJobScheduling=true
+    recentCallingPackage=art.gaoge.dance
+    recentCallingUid=10383
+    allowStartForeground=PROC_STATE_TOP
+    startForegroundCount=1
+    infoAllowStartForeground=[callingPackage: art.gaoge.dance; callingUid: 10383; uidState: TOP ; uidBFSL: [BFSL]; intent: Intent { act=art.gaoge.dance.engine.service.ACTION_START cmp=art.gaoge.dance/.engine.service.ExportForegroundService (has extras) mCallingUid=10383 }; code:PROC_STATE_TOP; tempAllowListReason:<null>; targetSdkVersion:36; callerTargetSdkVersion:36; startForegroundCount:0; bindFromPackage:null: isBindService:false]
+    isForeground=true foregroundId=1001 types=00000001 foregroundNoti=Notification(channel=dance_anon_export_channel shortcut=null contentView=null vibrate=null sound=null defaults=0x0 flags=0x42 color=0x00000000 vis=PRIVATE)
+    createTime=-28s421ms startingBgTimeout=--
+    lastActivity=-28s420ms restartTime=-28s420ms createdFromFg=true
+    startRequested=true delayedStop=false stopIfKilled=true callStart=true lastStartId=1
+ startCommandResult=2
+
+  * ServiceRecord{1adc0aa u0 art.gaoge.dance/com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService}
+    intent={cmp=art.gaoge.dance/com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService mCallingUid=1000}
+    packageName=art.gaoge.dance
+    processName=art.gaoge.dance
+    permission=android.permission.BIND_JOB_SERVICE
+    baseDir=/data/app/~~8eScluzItj7fi5Cr-SBFtA==/art.gaoge.dance-1sM8JIoJJhhs7ZVDEJwurg==/base.apk
+    dataDir=/data/user/0/art.gaoge.dance
+    app=ProcessRecord{93d0621 16733:art.gaoge.dance/u0a383}
+    mAllowWhileInUsePermissionInFgsReason=PROC_STATE_PERSISTENT
+    allowUiJobScheduling=false
+    recentCallingPackage=android
+    recentCallingUid=1000
+    allowStartForeground=PROC_STATE_PERSISTENT
+    startForegroundCount=0
+    infoAllowStartForeground=[callingPackage: android; callingUid: 1000; uidState: PER ; uidBFSL: [BFSL]; intent: Intent { flg=0x4 cmp=art.gaoge.dance/com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService (has extras) mCallingUid=1000 }; code:PROC_STATE_PERSISTENT; tempAllowListReason:<,reasonCode:SYSTEM_ALLOW_LISTED,duration:9223372036854775807,callingUid:-1>; targetSdkVersion:36; callerTargetSdkVersion:34; startForegroundCount:0; bindFromPackage:null: isBindService:true]
+    createTime=-2m57s772ms startingBgTimeout=--
+    lastActivity=-2m57s771ms restartTime=-2m57s771ms createdFromFg=true
+    Bindings:
+    * IntentBindRecord{d3a9f3 CREATE}:
+      intent={flg=0x4 cmp=art.gaoge.dance/com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService mCallingUid=1000}
+      binder=android.os.BinderProxy@cd996b0
+      requested=true received=true hasBound=true doRebind=false
+      * Client AppBindRecord{aef929 ProcessRecord{5a75e8c 2364:system/1000}}
+        Per-process Connections:
+          ConnectionRecord{cbab795 u0 CR !FG !PRCP art.gaoge.dance/com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService:@954db4c flags=0x8105}
+    All Connections:
+      ConnectionRecord{cbab795 u0 CR !FG !PRCP art.gaoge.dance/com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService:@954db4c flags=0x8105}
+
+  Connection bindings to services:
+  * ConnectionRecord{cbab795 u0 CR !FG !PRCP art.gaoge.dance/com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService:@954db4c flags=0x8105}
+    binding=AppBindRecord{aef929 art.gaoge.dance/com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService:system}
+    conn=android.app.LoadedApk$ServiceDispatcher$InnerConnection@954db4c flags=0x8105

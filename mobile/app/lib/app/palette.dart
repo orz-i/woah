@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 /// Colors of the *interface*, not the exported video or its mask effects.
 ///
 /// Media pixels and user-selected effect ARGB values are independent of theme.
-/// Quiet Frame brand colors remain fixed; light-mode controls use a deeper
-/// green so their labels and selected states retain adequate contrast.
+/// Lime Beat uses a lime action fill and ink labels in both appearances.
+/// Light-mode selected text and outlines use olive for sufficient contrast.
 @immutable
 class WoahPalette {
   const WoahPalette({

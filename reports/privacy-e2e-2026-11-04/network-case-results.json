@@ -1,0 +1,99 @@
+[
+  {
+    "case": "solo_face_mosaic",
+    "fill": "mosaic",
+    "result": "passed",
+    "elapsed_seconds": 18.66
+  },
+  {
+    "case": "solo_face_blur",
+    "fill": "blur",
+    "result": "passed",
+    "elapsed_seconds": 17.58
+  },
+  {
+    "case": "solo_face_solid",
+    "fill": "solid",
+    "result": "passed",
+    "elapsed_seconds": 19.84
+  },
+  {
+    "case": "solo_face_gradient",
+    "fill": "gradient",
+    "result": "passed",
+    "elapsed_seconds": 20.67
+  },
+  {
+    "case": "group_full_solid",
+    "fill": "solid",
+    "faceOnly": "false",
+    "input": "group-hd-8956295.mp4",
+    "width": "960",
+    "height": "540",
+    "result": "passed",
+    "elapsed_seconds": 21.64
+  },
+  {
+    "case": "group_full_mosaic",
+    "fill": "mosaic",
+    "faceOnly": "false",
+    "input": "group-hd-8956295.mp4",
+    "width": "960",
+    "height": "540",
+    "result": "passed",
+    "elapsed_seconds": 22.09
+  },
+  {
+    "case": "group_full_blur",
+    "fill": "blur",
+    "faceOnly": "false",
+    "input": "group-hd-8956295.mp4",
+    "width": "960",
+    "height": "540",
+    "result": "passed",
+    "elapsed_seconds": 22.17
+  },
+  {
+    "case": "group_full_gradient",
+    "fill": "gradient",
+    "faceOnly": "false",
+    "input": "group-hd-8956295.mp4",
+    "width": "960",
+    "height": "540",
+    "result": "passed",
+    "elapsed_seconds": 21.84
+  },
+  {
+    "case": "group_first_solid",
+    "fill": "solid",
+    "faceOnly": "false",
+    "input": "group-hd-8956295.mp4",
+    "width": "960",
+    "height": "540",
+    "select": "first",
+    "result": "passed",
+    "elapsed_seconds": 22.19
+  },
+  {
+    "case": "solo_face_balanced",
+    "fill": "sticker",
+    "profile": "balanced",
+    "result": "passed",
+    "elapsed_seconds": 18.59
+  },
+  {
+    "case": "solo_face_speed",
+    "fill": "sticker",
+    "profile": "speed",
+    "result": "passed",
+    "elapsed_seconds": 17.34
+  },
+  {
+    "case": "solo_nonzero_trim",
+    "fill": "sticker",
+    "startMs": "1000",
+    "endMs": "2600",
+    "result": "passed",
+    "elapsed_seconds": 20.17
+  }
+]

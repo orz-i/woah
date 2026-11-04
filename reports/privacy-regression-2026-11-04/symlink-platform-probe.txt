@@ -1,0 +1,1 @@
+JDK 17.0.20.8 / Windows: Files.isSymbolicLink(link)=true; link.getCanonicalFile() equals link.getAbsoluteFile(); link.toRealPath() resolves target.bin. Probe used only self-created fixture files.

@@ -17,10 +17,6 @@ final personSelectionControllerProvider =
     });
 
 class PersonSelectionController extends StateNotifier<PersonSelectionState> {
-  /// Selection-screen-only gate for the first-frame YOLO result.
-  /// Native analysis metadata remains untouched.
-  static const double selectionCandidateMinConfidence = 0.60;
-
   final NativeProcessingRepository _repository;
   bool _selectionPreviewEnabled = true;
   int _analysisGeneration = 0;
@@ -52,15 +48,10 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
 
     final cacheId = project.analysisCacheId;
     if (cacheId != null && cacheId.isNotEmpty && project.persons.isNotEmpty) {
-      final persons = project.persons
-          .where(
-            (person) => person.confidence >= selectionCandidateMinConfidence,
-          )
-          .toList();
       session?.track(cacheId);
       _applyReadyState(
         project: project,
-        persons: persons,
+        persons: project.persons,
         analysisCacheId: cacheId,
       );
       if (_selectionPreviewEnabled) {
@@ -118,26 +109,10 @@ class PersonSelectionController extends StateNotifier<PersonSelectionState> {
         return false;
       }
       session?.track(result.analysisCacheId);
-      final analyzedPersons = result.persons
-          .map((dto) => dto.toDomain())
-          .toList();
-      final persons = analyzedPersons
-          .where(
-            (person) => person.confidence >= selectionCandidateMinConfidence,
-          )
-          .toList();
-      final excludedPersons = analyzedPersons
-          .where(
-            (person) => person.confidence < selectionCandidateMinConfidence,
-          )
-          .toList();
-
-      if (excludedPersons.isNotEmpty) {
-        AppLogger.d(
-          'PersonSelectionController',
-          'SELECTION_CANDIDATES_FILTERED',
-        );
-      }
+      // Native analysis already applies its detection threshold. An occluded
+      // person can have low confidence while still exposing a real face; never
+      // silently remove that person from selection or the default protection.
+      final persons = result.persons.map((dto) => dto.toDomain()).toList();
 
       _applyReadyState(
         project: project,

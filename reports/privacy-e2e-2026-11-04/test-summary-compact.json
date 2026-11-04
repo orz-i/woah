@@ -1,0 +1,61 @@
+{
+  "flutter": {
+    "passed": 118,
+    "source": "flutter-tests-elevated.txt"
+  },
+  "android_jvm": {
+    "total": 545,
+    "passed": 544,
+    "failed": [
+      {
+        "case": "art.gaoge.dance.engine.diagnostics.DiagnosticPrivacyTest#actualZipRedactsHistoricTextPreservesQualityAndRejectsSourceLinks()",
+        "result": "failed",
+        "error": "org.opentest4j.AssertionFailedError: Expected value to be false."
+      }
+    ]
+  },
+  "device_runs": [
+    {
+      "file": "android-device-tests.txt",
+      "terminal_cases": 4,
+      "passed": 4,
+      "failed": 0,
+      "declared": "39",
+      "last_test": "noCarveFaceOnlyFastPathsPreserveSequenceAndReduceWallTime",
+      "runner_complete": false
+    },
+    {
+      "file": "android-face-export-isolated.txt",
+      "terminal_cases": 3,
+      "passed": 0,
+      "failed": 3,
+      "declared": "3",
+      "last_test": "faceOnlyRequestMasksHeadWithoutExpandingToFullBody",
+      "runner_complete": true
+    },
+    {
+      "file": "android-device-face-tests.txt",
+      "terminal_cases": 5,
+      "passed": 5,
+      "failed": 0,
+      "declared": "30",
+      "last_test": "parallelLocatorMatchesSequentialResultsAndReducesTwoCallWallTime",
+      "runner_complete": false
+    },
+    {
+      "file": "android-device-core-tests.txt",
+      "terminal_cases": 18,
+      "passed": 16,
+      "failed": 2,
+      "declared": "28",
+      "last_test": "dormantFreshMotionOnlyOpensProbeAndDetectorMissKeepsStickerSuppressed",
+      "runner_complete": false
+    }
+  ],
+  "device_totals": {
+    "total": 39,
+    "passed": 31,
+    "failed": 8,
+    "timeout": 0
+  }
+}

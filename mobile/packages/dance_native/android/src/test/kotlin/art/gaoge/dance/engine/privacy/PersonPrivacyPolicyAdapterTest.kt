@@ -14,6 +14,31 @@ import kotlin.test.assertTrue
 
 class PersonPrivacyPolicyAdapterTest {
     @Test
+    fun `foreground body evidence cannot punch a hole through face privacy`() {
+        val body = mask(10, 10, 1..8, 1..8)
+        val face = mask(10, 10, 3..6, 2..5)
+        val target = person(5, body).copy(
+            bbox = FloatRect(10f, 10f, 90f, 90f), footY = 75f, age = 10
+        )
+        val foreground = person(6, body).copy(
+            bbox = FloatRect(0f, 0f, 100f, 100f), footY = 100f, age = 10
+        )
+        val adapted = PersonPrivacyPolicyAdapter.adapt(
+            persons = listOf(target, foreground),
+            modeByTrackId = mapOf(5 to PersonPrivacyMode.FACE_ONLY),
+            faceMaskByTrackId = mapOf(5 to face),
+            includeUnselectedBodyOccluders = false
+        )
+        val resolved = PrivacyOcclusionResolver.resolveMasks(
+            persons = adapted.persons, selectedPersonIds = adapted.selectedPersonIds,
+            applyDilationToPrivacyTargets = false, occluderErosionRadius = 0
+        )
+        assertEquals(255, assertNotNull(resolved.privacyMask).buffer.get(3 * 10 + 4).toInt() and 0xFF)
+        assertFalse(resolved.hasOccluder)
+        assertTrue(adapted.persons.first { it.id == 6 }.mask == null)
+    }
+
+    @Test
     fun `face only substitutes privacy mask but preserves yolo identity geometry and state`() {
         val body = mask(10, 10, 1..7, 1..8)
         val face = mask(10, 10, 3..5, 1..3)

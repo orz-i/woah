@@ -1,0 +1,14 @@
+{"case": "group_all_faces", "fill": "solid", "input": "group-hd-8956295.mp4", "width": "960", "height": "540", "endMs": "3040", "result": "passed", "elapsed_seconds": 36.01, "apk_sha256": "f79fc4263945e5add73bebc733649051ef52788c6ec2c90d311f73d14d2fba96"}
+{"case": "group_face_sticker_follow", "fill": "sticker", "input": "group-hd-8956295.mp4", "hero": "6", "width": "720", "height": "1280", "endMs": "3040", "result": "passed", "elapsed_seconds": 36.14, "apk_sha256": "f79fc4263945e5add73bebc733649051ef52788c6ec2c90d311f73d14d2fba96"}
+{"case": "group_face_solid_follow", "fill": "solid", "input": "group-hd-8956295.mp4", "hero": "6", "width": "720", "height": "1280", "endMs": "3040", "result": "passed", "elapsed_seconds": 36.33, "apk_sha256": "f79fc4263945e5add73bebc733649051ef52788c6ec2c90d311f73d14d2fba96"}
+{"case": "solo_face_sticker", "fill": "sticker", "result": "passed", "elapsed_seconds": 19.42, "apk_sha256": "f79fc4263945e5add73bebc733649051ef52788c6ec2c90d311f73d14d2fba96"}
+{"case": "solo_face_mosaic", "fill": "mosaic", "result": "passed", "elapsed_seconds": 19.3, "apk_sha256": "f79fc4263945e5add73bebc733649051ef52788c6ec2c90d311f73d14d2fba96"}
+{"case": "solo_face_blur", "fill": "blur", "result": "passed", "elapsed_seconds": 19.25, "apk_sha256": "f79fc4263945e5add73bebc733649051ef52788c6ec2c90d311f73d14d2fba96"}
+{"case": "solo_face_solid", "fill": "solid", "result": "passed", "elapsed_seconds": 19.23, "apk_sha256": "f79fc4263945e5add73bebc733649051ef52788c6ec2c90d311f73d14d2fba96"}
+{"case": "solo_face_gradient", "fill": "gradient", "result": "passed", "elapsed_seconds": 19.11, "apk_sha256": "f79fc4263945e5add73bebc733649051ef52788c6ec2c90d311f73d14d2fba96"}
+{"case": "solo_face_balanced", "fill": "sticker", "profile": "balanced", "result": "passed", "elapsed_seconds": 17.77, "apk_sha256": "f79fc4263945e5add73bebc733649051ef52788c6ec2c90d311f73d14d2fba96"}
+{"case": "solo_face_speed", "fill": "sticker", "profile": "speed", "result": "passed", "elapsed_seconds": 16.48, "apk_sha256": "f79fc4263945e5add73bebc733649051ef52788c6ec2c90d311f73d14d2fba96"}
+{"case": "solo_nonzero_trim", "fill": "sticker", "startMs": "1000", "endMs": "2600", "result": "passed", "elapsed_seconds": 19.2, "apk_sha256": "f79fc4263945e5add73bebc733649051ef52788c6ec2c90d311f73d14d2fba96"}
+{"case": "solo_4k_sticker", "fill": "sticker", "input": "solo-portrait-7570258.mp4", "result": "passed", "elapsed_seconds": 19.72, "apk_sha256": "f79fc4263945e5add73bebc733649051ef52788c6ec2c90d311f73d14d2fba96"}
+group_full_length_follow passed in 226.25s
+lifecycle-final passed in 25.7s

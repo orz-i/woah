@@ -1,0 +1,80 @@
+[
+  {
+    "case": "art.gaoge.dance.engine.pipeline.FaceOnlyPreviewPipelineInstrumentedTest#previewFaceOnlyMasksHeadAndMissingIdFailsClosed",
+    "result": "failed",
+    "log": "remaining-device-00.txt",
+    "elapsed_seconds": 6.41
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#detectorIsThrottledAt60FpsAndTrustedFaceMovesWithCurrentPersonBox",
+    "result": "passed",
+    "log": "remaining-device-01.txt",
+    "elapsed_seconds": 1.17
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#dormantFreshMotionOnlyOpensProbeAndDetectorMissKeepsStickerSuppressed",
+    "result": "failed",
+    "log": "remaining-device-02.txt",
+    "elapsed_seconds": 1.17
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#fullBodyTargetCannotActAsSecondaryOccluderAgainstFaceOnlyTarget",
+    "result": "passed",
+    "log": "remaining-device-03.txt",
+    "elapsed_seconds": 1.19
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#missingRequestedTrackFailsClosedInsteadOfRenderingTransparent",
+    "result": "passed",
+    "log": "remaining-device-04.txt",
+    "elapsed_seconds": 0.92
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyProductionStressInstrumentedTest#productionLocatorRunsThreeHundredFramesWithoutFallbackOrRuntimeFailure",
+    "result": "failed",
+    "log": "remaining-device-05.txt",
+    "elapsed_seconds": 16.3
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FacePrivacyMaskCompositorInstrumentedTest#faceMaskUsesExistingPrivacySamplerWithoutVerticalFlip",
+    "result": "passed",
+    "log": "remaining-device-06.txt",
+    "elapsed_seconds": 1.14
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.PrivacyOcclusionResolverFaceOnlyInstrumentedTest#noCarveFaceOnlyFastPathsPreserveSequenceAndReduceWallTime",
+    "result": "passed",
+    "log": "remaining-device-07.txt",
+    "elapsed_seconds": 8.36
+  },
+  {
+    "case": "art.gaoge.dance.engine.render.FaceRoiRendererInstrumentedTest#texture2dAndOesProduceSameVisualSourceCrop",
+    "result": "passed",
+    "log": "remaining-device-08.txt",
+    "elapsed_seconds": 1.02
+  },
+  {
+    "case": "art.gaoge.dance.engine.render.FaceRoiRendererInstrumentedTest#oesReadbackFeedsMediaPipeWithoutCpuFlip",
+    "result": "passed",
+    "log": "remaining-device-09.txt",
+    "elapsed_seconds": 5.31
+  },
+  {
+    "case": "art.gaoge.dance.engine.face.MediaPipeFaceLocatorInstrumentedTest#parallelLocatorMatchesSequentialResultsAndReducesTwoCallWallTime",
+    "result": "passed",
+    "log": "remaining-device-10.txt",
+    "elapsed_seconds": 3.16
+  },
+  {
+    "case": "art.gaoge.dance.engine.inference.YoloMaskSigmoidInstrumentedTest#exactFloatThresholdSigmoidPreservesMaskBytesAndReducesDecodeWallTime",
+    "result": "passed",
+    "log": "remaining-device-11.txt",
+    "elapsed_seconds": 1.08
+  },
+  {
+    "case": "art.gaoge.dance.engine.render.FaceRoiRendererInstrumentedTest#benchmarkOesRenderAndReadback256",
+    "result": "passed",
+    "log": "remaining-device-12.txt",
+    "elapsed_seconds": 1.14
+  }
+]

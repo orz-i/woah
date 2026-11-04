@@ -1,0 +1,24 @@
+{
+  "recorded_at": "2026-11-04T08:52:08.712987+00:00",
+  "regression_started_ms": 1793782328712,
+  "serial": "334da6a3",
+  "model": "KB2000",
+  "android": "14",
+  "apk_sha256": "9a76459519bd5f1efa624c402a6256375470b21c1959b7685764d6de9a91ba1c",
+  "installed_apk_matches": true,
+  "fixture_sha256_matches_original_run": {
+    "duo-dance-6940536.mp4": "9a8553ea9eb07a4d5e11e6ea8059ca7bf302df703fe804ea5ba604ef08235a76",
+    "solo-hd-7570258.mp4": "21e0b8319470426718502c31bdabf43c2889b3013cda760c4c1ce8ee69decce0",
+    "solo-portrait-7570258.mp4": "f401df9259f7fcbf7b01121cbb720e744e0dbba6e3ebce2f64027d37c873d6a1",
+    "group-hd-8956295.mp4": "d95c0ba298ab0701c01e349185afa049d51ae1037b6907c960d6e1b8fcd01cd5",
+    "group-mirror-8956295.mp4": "376c2ae73c92c23dceb042d27450aaa45ba2f44a3d7b0a5f3c26e9bea6c2dd73",
+    "no-person-flower.mp4": "0cd83d944a6ca7822b4a8306cecc60a36e859b041f6702c6a1ad9ead78924451",
+    "custom-sticker.png": "9cfc5ad34e89b6eebddcd5ec715c224a86c99ea5b9fad999407dee7e32f681b6",
+    "corrupt-video.mp4": "630b36e85f6e26cd9371088fd201979ca82f1300b04aee24210c9e67df6e7e80"
+  },
+  "package": [
+    "versionCode=1 minSdk=24 targetSdk=36",
+    "versionName=0.1.0",
+    "lastUpdateTime=2026-11-04 16:51:59"
+  ]
+}

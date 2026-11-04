@@ -1,0 +1,12 @@
+{
+  "stages": [
+    "preview_0",
+    "export_0",
+    "preview_1",
+    "export_1",
+    "preview_2",
+    "export_2",
+    "final_preview"
+  ],
+  "state": "passed"
+}

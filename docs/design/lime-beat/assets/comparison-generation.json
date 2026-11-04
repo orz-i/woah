@@ -1,0 +1,28 @@
+{
+  "tool": "built-in image_gen",
+  "mode": "generate",
+  "date": "2026-11-04",
+  "prompt": "Use case: photorealistic-natural.\nAsset type: portrait photographic cover for the existing Woah mobile app's dance-comparison swipe card, not a UI mockup.\nPrimary request: create a NEW photographic cover in the selected Lime Beat art direction, replacing the old dark color system.\nInput images: Image 1 is the user's chosen Lime Beat UI, for daylight mood, lime and lilac color styling ONLY. Do not copy any interface, text, logo, card shape, or controls. Image 2 is the old dance-comparison cover, for the side-by-side two-video content concept ONLY, not its dark lighting or old colors.\nTarget dimensions: 1024 x 1536 pixels, vertical 2:3. One edge-to-edge image split into TWO equal-width vertical photographic panels with a very fine pale seam straight down the center.\nScene: bright high-ceiling daylight dance rehearsal studios, pale mint and pale lilac walls, clean pale wood floor and natural soft window light. The two panels read as reference and learner footage of the same dance phrase, not one physically continuous room.\nSubjects: exactly one East Asian ADULT dancer in each half, similar coordinated dynamic street-dance pose with slight natural differences. Left dancer wears a loose white top with lime color-block accents, pale lilac wide cargo dance trousers, white sneakers. Right dancer wears a loose pale lilac or white practice top, muted gray-green wide dance trousers and white sneakers. Fresh contemporary street dance practice, authentic texture, natural anatomy and fabric motion.\nComposition: both people fully visible head-to-shoes in their OWN half, with hands and feet kept within their respective panel edges. Bodies framed generously enough to survive an additional 6% crop at outer image edges. Heads around 18-23% down the total frame and shoe soles at approximately 76-79% down the frame. The bottom 20% must show real, bright, quiet studio floor, uncluttered and unpainted, so native UI text can be placed later. Do not place any text now. Use a strong diagonal body gesture but a STRAIGHT vertical panel division. Keep all limbs credible; no cropped shoes.\nLighting and mood: bright natural rehearsal energy, fresh, physical and confident. No dark stage, smoke, black background, neon nightclub or cinematic teal darkness.\nPalette: lime accent #D8F54C, pale lilac #DCD7FA, chalk #F7F9F1, pale mint studio tones, dark natural hair with no overall green color cast.\nConstraints: pure photo only; NO lettering, watermarks, logos, branding, UI, buttons, icons, timecodes, player controls, card borders, rounded masks, pagination dots, graphic overlays, gradient footer, or artificial floor paint. No black footer. No extra dancers. No exaggerated diagonal slash or warped perspective. One final cohesive 2:3 cover image.",
+  "reference_images": [
+    "docs/design/lime-beat/assets/selected-home.png",
+    "D:/dance-anonymizer/mobile/app/assets/home/home-dance-comparison.jpg"
+  ],
+  "generated_source": "C:/Users/mouta/.codex/generated_images/01a1a43f-509e-7281-a287-a66176406729/exec-4b9d28e2-3d5b-4e56-80bd-ec971f616746.png",
+  "target_dimensions": [
+    1024,
+    1536
+  ],
+  "actual_dimensions": [
+    1024,
+    1536
+  ],
+  "source_asset": "docs/design/lime-beat/assets/home-dance-comparison-source.png",
+  "runtime_asset": "mobile/app/assets/home/home-dance-comparison-lime.jpg",
+  "encoding": {
+    "format": "JPEG",
+    "quality": 90,
+    "optimize": true,
+    "crop": false
+  },
+  "inspection": "Bright side-by-side rehearsal photography, fine vertical seam, one adult dancer per panel, both dancers' hands and shoes visible, no text or UI, quiet lower floor for native text. Right elbow reaches outside edge slightly; hand remains visible. Pose differences communicate reference/learner comparison without claiming identical timing."
+}

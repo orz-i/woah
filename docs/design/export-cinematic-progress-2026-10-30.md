@@ -1,5 +1,7 @@
 # Woah 导出页 · Cinematic Progress / Quiet Frame
 
+> 视觉更新：产品现采用 [Lime Beat 青柠节拍](lime-beat/README.md) 语义颜色。本文的导出流程、控件和媒体呈现约束继续适用；旧 Quiet Frame 色值与历史设备证据不作为本轮视觉验收。
+
 日期：2026-10-30
 分支：feat/export-cinematic-progress
 实现：mobile/app/lib/features/export/presentation/export_screen.dart

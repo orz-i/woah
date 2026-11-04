@@ -1,0 +1,18 @@
+/* v1.1 sRGB role source; integrated via semantic Flutter tokens. */
+:root {
+  --woah-canvas: #0B1415;
+  --woah-surface: #142123;
+  --woah-textPrimary: #F2F6F3;
+  --woah-textSecondary: #B4C8C6;
+  --woah-textMuted: #8DA6A4;
+  --woah-dividerDecorative: #2D4548;
+  --woah-borderControl: #607D80;
+  --woah-action: #78DCC7;
+  --woah-onAction: #0B1415;
+  --woah-actionPressed: #59C5AF;
+  --woah-focus: #78DCC7;
+  --woah-error: #FF9C9F;
+  --woah-warning: #F0C879;
+  --woah-font-latin: "IBM Plex Sans";
+  --woah-font-cjk: "Noto Sans SC";
+}

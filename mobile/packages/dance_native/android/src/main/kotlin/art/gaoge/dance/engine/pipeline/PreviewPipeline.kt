@@ -301,7 +301,9 @@ class PreviewPipeline(
                     protoSize = referenceMask?.width ?: 160
                 )
 
-                val processor = FaceOnlyPrivacyFrameProcessor.create(context, faceMapper)
+                // A single-frame preview cannot amortize GPU model startup.
+                // Keep its CPU path; sustained export uses the GPU workers.
+                val processor = FaceOnlyPrivacyFrameProcessor.create(context, faceMapper, preferGpu = false)
                 faceOnlyPrivacyProcessor = processor
                 processor.resolveFrame(
                     frameTexture = frameTextureId,

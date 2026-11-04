@@ -1,5 +1,7 @@
 # Woah · 选择态清晰度及跨页面审计
 
+> 历史检查：当前视觉基准为 [Lime Beat 青柠节拍](lime-beat/README.md)，浅色选中文字 / 线条使用 Olive，填充主操作使用青柠配 Ink。以下对比度数值不适用于新配色；选中态不依赖颜色的要求继续适用。
+
 日期：2026-10-30
 分支：fix/editor-selection-affordances
 范围：Flutter 控件视觉及无障碍，不涉及隐私算法、视频像素、项目数据与导出协议。

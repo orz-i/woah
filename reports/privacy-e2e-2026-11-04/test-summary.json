@@ -1,0 +1,266 @@
+{
+  "flutter": {
+    "passed": 118,
+    "source": "flutter-tests-elevated.txt"
+  },
+  "android_jvm": {
+    "total": 545,
+    "passed": 544,
+    "failed": [
+      {
+        "case": "art.gaoge.dance.engine.diagnostics.DiagnosticPrivacyTest#actualZipRedactsHistoricTextPreservesQualityAndRejectsSourceLinks()",
+        "result": "failed",
+        "error": "org.opentest4j.AssertionFailedError: Expected value to be false."
+      }
+    ]
+  },
+  "device_runs": [
+    {
+      "file": "android-device-tests.txt",
+      "terminal_cases": 4,
+      "passed": 4,
+      "failed": 0,
+      "declared": "39",
+      "last_test": "noCarveFaceOnlyFastPathsPreserveSequenceAndReduceWallTime",
+      "runner_complete": false
+    },
+    {
+      "file": "android-face-export-isolated.txt",
+      "terminal_cases": 3,
+      "passed": 0,
+      "failed": 3,
+      "declared": "3",
+      "last_test": "faceOnlyRequestMasksHeadWithoutExpandingToFullBody",
+      "runner_complete": true
+    },
+    {
+      "file": "android-device-face-tests.txt",
+      "terminal_cases": 5,
+      "passed": 5,
+      "failed": 0,
+      "declared": "30",
+      "last_test": "parallelLocatorMatchesSequentialResultsAndReducesTwoCallWallTime",
+      "runner_complete": false
+    },
+    {
+      "file": "android-device-core-tests.txt",
+      "terminal_cases": 18,
+      "passed": 16,
+      "failed": 2,
+      "declared": "28",
+      "last_test": "dormantFreshMotionOnlyOpensProbeAndDetectorMissKeepsStickerSuppressed",
+      "runner_complete": false
+    }
+  ],
+  "device_unique_terminal_cases": [
+    {
+      "case": "art.gaoge.dance.engine.privacy.SecondaryResolvedPrivacyCompositorInstrumentedTest#fullBodyPrimaryAndSecondaryFacePrivacyRenderTogether",
+      "result": "passed",
+      "source": "android-device-tests.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.inference.YoloLiteRtSegmenterSmokeTest#testYoloLiteRtSegmenterInitializationAndBufferInferenceSmoke",
+      "result": "passed",
+      "source": "android-device-tests.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyClassTemporalTrackerInstrumentedTest#cachedSimilarityPreservesSequenceAndReducesWallTime",
+      "result": "passed",
+      "source": "android-device-tests.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyClassTemporalTrackerInstrumentedTest#cachedWarpedSupportPreservesSequenceAndReducesWallTimeBeyondSimilarityCache",
+      "result": "passed",
+      "source": "android-device-tests.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.FaceOnlyExportPipelineInstrumentedTest#mixedFullBodyAndFaceOnlyTargetsRemainIndependent",
+      "result": "failed",
+      "source": "android-face-export-isolated.txt",
+      "error": "java.lang.AssertionError: Mixed Export lost FACE_ONLY target sticker: PrivacyDeltaStats(count=0, minX=720, minY=1280, maxX=-1, maxY=-1)"
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.FaceOnlyExportPipelineInstrumentedTest#faceOnlyPrivacyFollowsDeterministicAffineDanceMotion",
+      "result": "failed",
+      "source": "android-face-export-isolated.txt",
+      "error": "java.lang.AssertionError: Dynamic frame 0 lost FACE_ONLY sticker: PrivacyDeltaStats(count=0, minX=720, minY=1280, maxX=-1, maxY=-1)"
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.FaceOnlyExportPipelineInstrumentedTest#faceOnlyRequestMasksHeadWithoutExpandingToFullBody",
+      "result": "failed",
+      "source": "android-face-export-isolated.txt",
+      "error": "java.lang.AssertionError: Expected a material FACE_ONLY sticker region; stats=PrivacyDeltaStats(count=0, minX=720, minY=1280, maxX=-1, maxY=-1)"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceRoiGrayConversionInstrumentedTest#bulkGrayPreservesTrackerSequenceAndReducesWallTime",
+      "result": "passed",
+      "source": "android-device-core-tests.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceRoiGrayConversionInstrumentedTest#compareEquivalentRgbaToGrayKernels",
+      "result": "passed",
+      "source": "android-device-core-tests.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.CanonicalFaceRoiSamplerInstrumentedTest#heapCachedCanonicalInputPreservesBytesAndReducesFiveRoiWallTime",
+      "result": "passed",
+      "source": "android-device-core-tests.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.CanonicalFaceRoiSamplerInstrumentedTest#opaquePreparedCanonicalInputPreservesBytesAndReducesFiveRoiWallTime",
+      "result": "passed",
+      "source": "android-device-core-tests.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.face.MediaPipeFaceLocatorInstrumentedTest#productionLocatorFindsReviewedDistantFaceRoi",
+      "result": "passed",
+      "source": "android-device-face-tests.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#currentPixelEvidenceKeepsDormantFaceRenderableUntilEvidenceActuallyBreaks",
+      "result": "passed",
+      "source": "android-device-core-tests.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#trustedLocalFaceRefreshTracksHeadMotionInsideStablePersonBox",
+      "result": "passed",
+      "source": "android-device-core-tests.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#reacquiringUnobservedFaceOnlyTrackUsesTightTrustedLocalDetectorRoi",
+      "result": "passed",
+      "source": "android-device-core-tests.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#dormantProbeRejectsLargeAmbiguousBodyTranslationBeforeFaceDetection",
+      "result": "passed",
+      "source": "android-device-core-tests.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#detectorMissAfterTrustedFaceKeepsShortLivedTrustedPrediction",
+      "result": "passed",
+      "source": "android-device-core-tests.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#recentLostFaceOnlyTrackKeepsTightLocalRefreshButDoesNotBecomeIndependentTracker",
+      "result": "failed",
+      "source": "android-device-core-tests.txt",
+      "error": "java.lang.AssertionError: expected:<0> but was:<1>"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#unambiguousFaceProducesDetectedFacePrivacyMask",
+      "result": "passed",
+      "source": "android-device-core-tests.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#failedParallelBatchFallsBackToHistoricalPerTrackCalls",
+      "result": "passed",
+      "source": "android-device-core-tests.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#startupAcquisitionCoversAllFaceOnlyTracksBeforeSteadyStateBudget",
+      "result": "passed",
+      "source": "android-device-core-tests.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#parallelBatchExecutionPreservesStartupDetectorSemantics",
+      "result": "passed",
+      "source": "android-device-core-tests.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#ambiguousFaceCandidatesFallBackToYoloHeadPrivacy",
+      "result": "passed",
+      "source": "android-device-core-tests.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#localRefreshPersonBboxShapeChangeCannotRatchetTrustedFaceSize",
+      "result": "passed",
+      "source": "android-device-core-tests.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#dormantFaceDetectorHitReactivatesWithoutScalingHiddenTrustedSize",
+      "result": "failed",
+      "source": "android-device-core-tests.txt",
+      "error": "java.lang.AssertionError: expected:<[52]> but was:<[]>"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#currentBodyMaskGuidesThrottledFaceFrameInsideStablePersonBox",
+      "result": "passed",
+      "source": "android-device-core-tests.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.FaceOnlyPreviewPipelineInstrumentedTest#previewFaceOnlyMasksHeadAndMissingIdFailsClosed",
+      "result": "failed",
+      "source": "remaining-device-00.txt",
+      "error": "java.lang.AssertionError: Expected visible FACE_ONLY preview sticker: PrivacyDeltaStats(count=0, minX=720, minY=1280, maxX=-1, maxY=-1)"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#detectorIsThrottledAt60FpsAndTrustedFaceMovesWithCurrentPersonBox",
+      "result": "passed",
+      "source": "remaining-device-01.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#dormantFreshMotionOnlyOpensProbeAndDetectorMissKeepsStickerSuppressed",
+      "result": "failed",
+      "source": "remaining-device-02.txt",
+      "error": "java.lang.AssertionError: expected:<[51]> but was:<[]>"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#fullBodyTargetCannotActAsSecondaryOccluderAgainstFaceOnlyTarget",
+      "result": "passed",
+      "source": "remaining-device-03.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#missingRequestedTrackFailsClosedInsteadOfRenderingTransparent",
+      "result": "passed",
+      "source": "remaining-device-04.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyProductionStressInstrumentedTest#productionLocatorRunsThreeHundredFramesWithoutFallbackOrRuntimeFailure",
+      "result": "failed",
+      "source": "remaining-device-05.txt",
+      "error": "java.lang.AssertionError: Production MediaPipe detector p95 unexpectedly high: 67.127031 ms"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyMaskCompositorInstrumentedTest#faceMaskUsesExistingPrivacySamplerWithoutVerticalFlip",
+      "result": "passed",
+      "source": "remaining-device-06.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyOcclusionResolverFaceOnlyInstrumentedTest#noCarveFaceOnlyFastPathsPreserveSequenceAndReduceWallTime",
+      "result": "passed",
+      "source": "remaining-device-07.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.FaceRoiRendererInstrumentedTest#texture2dAndOesProduceSameVisualSourceCrop",
+      "result": "passed",
+      "source": "remaining-device-08.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.FaceRoiRendererInstrumentedTest#oesReadbackFeedsMediaPipeWithoutCpuFlip",
+      "result": "passed",
+      "source": "remaining-device-09.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.face.MediaPipeFaceLocatorInstrumentedTest#parallelLocatorMatchesSequentialResultsAndReducesTwoCallWallTime",
+      "result": "passed",
+      "source": "remaining-device-10.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.inference.YoloMaskSigmoidInstrumentedTest#exactFloatThresholdSigmoidPreservesMaskBytesAndReducesDecodeWallTime",
+      "result": "passed",
+      "source": "remaining-device-11.txt"
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.FaceRoiRendererInstrumentedTest#benchmarkOesRenderAndReadback256",
+      "result": "passed",
+      "source": "remaining-device-12.txt"
+    }
+  ],
+  "device_totals": {
+    "total": 39,
+    "passed": 31,
+    "failed": 8,
+    "timeout": 0
+  }
+}

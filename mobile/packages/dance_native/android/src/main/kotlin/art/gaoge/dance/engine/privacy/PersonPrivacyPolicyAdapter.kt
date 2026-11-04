@@ -36,7 +36,8 @@ object PersonPrivacyPolicyAdapter {
     fun adapt(
         persons: List<TrackedPerson>,
         modeByTrackId: Map<Int, PersonPrivacyMode>,
-        faceMaskByTrackId: Map<Int, NativeMask>
+        faceMaskByTrackId: Map<Int, NativeMask>,
+        includeUnselectedBodyOccluders: Boolean = true
     ): PrivacyPolicyAdaptation {
         val selected = linkedSetOf<Int>()
         val faceOnly = linkedSetOf<Int>()
@@ -46,7 +47,7 @@ object PersonPrivacyPolicyAdapter {
 
         val adapted = persons.map { person ->
             when (modeByTrackId[person.id] ?: PersonPrivacyMode.NONE) {
-                PersonPrivacyMode.NONE -> person
+                PersonPrivacyMode.NONE -> if (includeUnselectedBodyOccluders) person else person.copy(mask = null)
 
                 PersonPrivacyMode.FULL_BODY -> {
                     selected += person.id

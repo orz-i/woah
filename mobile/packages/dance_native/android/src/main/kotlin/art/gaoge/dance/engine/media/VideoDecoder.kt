@@ -12,8 +12,7 @@ class VideoDecoder(
     private val context: Context,
     private val sourceUri: String,
     private val outputSurface: Surface? = null,
-    private val startUs: Long = 0L,
-    private val endUs: Long? = null
+    private val startUs: Long = 0L
 ) : AutoCloseable {
 
     private val extractor = MediaExtractor()
@@ -89,11 +88,9 @@ class VideoDecoder(
                 return false
             } else {
                 val pts = extractor.sampleTime
-                if (endUs != null && pts >= endUs) {
-                    codec!!.queueInputBuffer(inputIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                    isEOSInput = true
-                    return false
-                }
+                // Decode order differs from presentation order for B frames.
+                // A reference packet beyond the trim end may be required to
+                // decode earlier pictures. The consumer trims decoded PTS.
                 codec!!.queueInputBuffer(inputIndex, 0, sampleSize, pts, 0)
                 extractor.advance()
                 return true

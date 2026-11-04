@@ -130,7 +130,15 @@ class ExportForegroundService : Service() {
         }) {
             try {
                 if (isCancelled.get()) return@launch
-                segmenter = YoloLiteRtSegmenter(applicationContext, cpuNumThreads = YOLO_CPU_FALLBACK_THREADS)
+                // Quality exports use the same CPU backend as selection analysis;
+                // GPU rounding can drop a small occluded person from the roster.
+                segmenter = YoloLiteRtSegmenter(
+                    applicationContext,
+                    requestedAccelerator = if (request!!.processingProfile == "quality")
+                        art.gaoge.dance.engine.litert.LiteRtAccelerator.CPU
+                    else art.gaoge.dance.engine.litert.LiteRtAccelerator.GPU,
+                    cpuNumThreads = YOLO_CPU_FALLBACK_THREADS
+                )
                 ExportPipeline(applicationContext, segmenter!!).execute(
                     jobId = jobId,
                     sourceUri = request!!.sourceUri,

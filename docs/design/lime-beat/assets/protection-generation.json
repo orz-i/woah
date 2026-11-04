@@ -1,0 +1,14 @@
+{
+  "generated_at": "2026-11-04",
+  "mode": "built-in image_gen.imagegen",
+  "use_case": "photorealistic-natural",
+  "reference_image": "docs/design/lime-beat/assets/selected-home.png",
+  "source_image": "docs/design/lime-beat/assets/home-video-protection-source.png",
+  "runtime_image": "mobile/app/assets/home/home-video-protection-lime.jpg",
+  "actual_dimensions": [
+    1024,
+    1536
+  ],
+  "post_processing": "RGB JPEG encoding only; quality=90, optimize=true; no crop, drawing, or pixel edits",
+  "prompt": "Use case: photorealistic-natural. Asset type: production mobile home-card photographic cover for the existing Woah dance video tool. Generate a NEW standalone high-quality photographic image, NOT a UI screenshot. Target 1024 x 1536 pixels, portrait 2:3 aspect ratio, no transparent background. The attached image is a STYLE AND COMPOSITION REFERENCE ONLY: use the bright practice-studio mood, lime accents, lavender clothing, and physical energy of its photograph; do not reproduce any of the surrounding app UI. Scene: a spacious airy high-ceiling daylight dance rehearsal studio with pale mint walls, tall industrial windows, soft concrete details, and a light cool wooden studio floor. Subject: one East Asian ADULT woman dancer in the foreground wearing a white loose cropped sports top with fresh lime-green sleeve/shoulder panels, loose pale-lavender cargo dance trousers, clean white sneakers, natural dark hair in a lively ponytail. Dynamic confident street-dance movement with diagonal arms and expressive weight shift, correct believable anatomy and authentic skin/fabric texture. The complete dancer including both hands and both shoes must be comfortably inside the frame; allow at least 6 percent clear space at both left and right edges so a cover crop cannot amputate fingers or limbs. Her head should be near 20 percent of the image height; her lowest shoe should be no lower than 78 percent. Keep the bottom 20 percent as unobstructed real pale studio floor with a small amount of realistic lime environmental reflection, reserved for native app text applied later. Two other adult dancers can be softly out of focus far behind her in the rehearsal studio to imply the multi-person privacy use case, but do not show any artificial blur/mask/protection effects. All motion should feel athletic, joyful and spontaneous while crisp enough to read the pose. Natural bright window light, open shadows, gentle highlights, true photography rather than fantasy illustration. Color palette: chalk white, pale mint, lime #D8F54C accents, lavender #DCD7FA, restrained charcoal. Avoid the old dark teal theatrical stage palette completely. Absolutely no text, logo, watermark, typography, icons, arrows, card corners, panels, UI, phone, border, baked dark gradient, neon nightclub lighting, stage fog, or pasted photo montage. A single full-bleed bright photograph only."
+}

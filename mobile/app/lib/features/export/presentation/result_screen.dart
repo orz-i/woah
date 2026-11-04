@@ -229,7 +229,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       title = '正在保存到相册';
       subtitle = '保存完成后即可查看和分享';
       icon = Icons.downloading_rounded;
-      iconColor = colors.brandAction;
+      iconColor = colors.editorSelection;
     } else if (_isSaved) {
       title = '已保存至系统相册';
       subtitle = fileSizeMb == null ? '可在相册中查看或分享' : '$fileSizeMb MB';

@@ -916,27 +916,15 @@ class _ProtectionEditorScreenState
           );
         }
 
-        return Column(
-          children: [
-            _buildSelectionToolbar(
-              selectionState,
-              selectionController,
-              effectState,
-              effectController,
-            ),
-            Expanded(
-              child: SizedBox.expand(
-                key: const ValueKey('protection-editor-media-stage'),
-                child: _buildInteractivePreview(
-                  selectionState,
-                  selectionController,
-                  effectState,
-                  effectController,
-                  aspectRatio: aspectRatio,
-                ),
-              ),
-            ),
-          ],
+        return SizedBox.expand(
+          key: const ValueKey('protection-editor-media-stage'),
+          child: _buildInteractivePreview(
+            selectionState,
+            selectionController,
+            effectState,
+            effectController,
+            aspectRatio: aspectRatio,
+          ),
         );
       },
     );
@@ -948,7 +936,6 @@ class _ProtectionEditorScreenState
     EffectEditorState effectState,
     EffectEditorController effectController,
   ) {
-    final colors = AppTheme.of(context);
     final follow = effectState.project?.follow ?? const FollowConfig();
     final count = selectionState.privacyTargetIds.length;
     final title = _selectingFollowTarget
@@ -972,76 +959,53 @@ class _ProtectionEditorScreenState
         : canToggleSource
         ? (effectState.showSourcePreview ? '裁切预览' : '查看原片')
         : null;
-    final status = Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: colors.textPrimary,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          if (hint != null) ...[
-            const SizedBox(height: 3),
-            Text(
-              hint,
-              maxLines: 2,
-              style: TextStyle(
-                color: canToggleSource
-                    ? colors.editorSelection
-                    : colors.textSecondary,
-                fontSize: 11.5,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-
-    return Material(
+    return Semantics(
       key: ValueKey(
         _selectingFollowTarget
             ? 'reframe-subject-prompt'
             : 'protection-stage-prompt',
       ),
-      color: Colors.transparent,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-        child: Row(
+      liveRegion: true,
+      label: hint == null ? title : '$title。$hint',
+      child: Material(
+        key: const ValueKey('protection-floating-toolbar'),
+        type: MaterialType.transparency,
+        child: Wrap(
+          alignment: WrapAlignment.end,
           children: [
-            Expanded(
-              child: Semantics(
-                liveRegion: true,
-                child: canToggleSource
-                    ? InkWell(
-                        onTap: () => effectController.showSourceFrame(
-                          !effectState.showSourcePreview,
-                        ),
-                        child: status,
-                      )
-                    : status,
+            if (canToggleSource)
+              _buildStageCircleButton(
+                key: const ValueKey('protection-source-preview-action'),
+                tooltip: effectState.showSourcePreview ? '裁切预览' : '查看原片',
+                icon: effectState.showSourcePreview
+                    ? Icons.crop_rounded
+                    : Icons.visibility_outlined,
+                iconSize: 18,
+                enabled: true,
+                onTap: () => effectController.showSourceFrame(
+                  !effectState.showSourcePreview,
+                ),
               ),
-            ),
             if (_selectingFollowTarget) ...[
-              TextButton(
+              _buildStageCircleButton(
                 key: const ValueKey('reframe-cancel-selection'),
-                onPressed: () {
+                tooltip: '取消选择主角',
+                icon: Icons.close_rounded,
+                iconSize: 18,
+                enabled: true,
+                onTap: () {
                   setState(() => _selectingFollowTarget = false);
                   effectController.showSourceFrame(false);
                   _scheduleProfilePersist();
                 },
-                child: const Text('取消'),
               ),
-              TextButton(
+              _buildStageCircleButton(
                 key: const ValueKey('reframe-protect-all'),
-                onPressed: () {
+                tooltip: '保护全部',
+                icon: Icons.groups_rounded,
+                iconSize: 18,
+                enabled: true,
+                onTap: () {
                   selectionController.selectAll();
                   effectController.updateFollowConfig(enabled: false);
                   _syncSelectionToEffect(effectController);
@@ -1051,25 +1015,30 @@ class _ProtectionEditorScreenState
                     _trimResetFollow = false;
                   });
                 },
-                child: const Text('保护全部'),
               ),
             ] else if (_selectionNeedsReview) ...[
               if (_trimResetFollow)
-                TextButton(
+                _buildStageCircleButton(
                   key: const ValueKey('trim-reselect-subject'),
-                  onPressed: () {
+                  tooltip: '重选主角',
+                  icon: Icons.person_search_rounded,
+                  iconSize: 18,
+                  enabled: true,
+                  onTap: () {
                     setState(() => _selectingFollowTarget = true);
                     effectController.showSourceFrame(true);
                   },
-                  child: const Text('重选主角'),
                 ),
-              TextButton(
+              _buildStageCircleButton(
                 key: const ValueKey('trim-confirm-selection'),
-                onPressed: () => setState(() {
+                tooltip: '确认保护',
+                icon: Icons.check_rounded,
+                iconSize: 18,
+                enabled: true,
+                onTap: () => setState(() {
                   _selectionNeedsReview = false;
                   _trimResetFollow = false;
                 }),
-                child: const Text('确认保护'),
               ),
             ] else ...[
               _buildStageCircleButton(
@@ -1140,6 +1109,22 @@ class _ProtectionEditorScreenState
                 ),
               ),
             ),
+            // Anchor to the actual video frame, including letterboxed media,
+            // rather than reserving a separate row above the preview stage.
+            Positioned(
+              top: mediaTop + 8,
+              left: mediaLeft + 8,
+              right: mediaLeft + 8,
+              child: Align(
+                alignment: Alignment.topRight,
+                child: _buildSelectionToolbar(
+                  selectionState,
+                  selectionController,
+                  effectState,
+                  effectController,
+                ),
+              ),
+            ),
           ],
         );
       },
@@ -1154,25 +1139,23 @@ class _ProtectionEditorScreenState
     required bool enabled,
     required VoidCallback onTap,
   }) {
-    return Tooltip(
-      message: tooltip,
-      child: GestureDetector(
-        key: key,
-        behavior: HitTestBehavior.opaque,
-        onTap: enabled ? onTap : null,
-        child: SizedBox(
-          width: AppTheme.minTouchTarget,
-          height: AppTheme.minTouchTarget,
-          child: Center(
-            child: Icon(
-              icon,
-              size: iconSize + 3,
-              color: enabled
-                  ? AppTheme.of(context).textPrimary
-                  : AppTheme.of(context).textMuted.withAlpha(120),
-            ),
-          ),
-        ),
+    final color = AppTheme.of(context).editorSelection;
+    return IconButton(
+      key: key,
+      tooltip: tooltip,
+      constraints: const BoxConstraints.tightFor(
+        width: AppTheme.minTouchTarget,
+        height: AppTheme.minTouchTarget,
+      ),
+      onPressed: enabled ? onTap : null,
+      color: color,
+      disabledColor: color.withValues(alpha: .38),
+      iconSize: iconSize + 3,
+      icon: Icon(
+        icon,
+        shadows: const [
+          Shadow(color: Color(0xCC000000), blurRadius: 3, offset: Offset(0, 1)),
+        ],
       ),
     );
   }

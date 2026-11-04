@@ -454,7 +454,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     final color = !enabled
         ? colors.textMuted
         : selected
-        ? colors.brandAction
+        ? colors.editorSelection
         : colors.textPrimary;
     return PopupMenuItem(
       value: action,
@@ -898,7 +898,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
           Icons.graphic_eq_rounded,
           size: 18,
           color: aligned
-              ? AppTheme.of(context).brandAction
+              ? AppTheme.of(context).editorSelection
               : AppTheme.of(context).flowTextSecondary,
         ),
         const SizedBox(width: 8),
@@ -974,7 +974,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
         ? '重播'
         : '播放',
     style: IconButton.styleFrom(
-      foregroundColor: AppTheme.of(context).brandAction,
+      foregroundColor: AppTheme.of(context).editorSelection,
       minimumSize: const Size(56, 56),
     ),
     icon: Icon(
@@ -1113,7 +1113,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
             tooltip: project.loopEnabled ? '暂停 A/B 循环' : '启用 A/B 循环',
             isSelected: project.loopEnabled,
             color: project.loopEnabled
-                ? AppTheme.of(context).brandAction
+                ? AppTheme.of(context).editorSelection
                 : AppTheme.of(context).flowTextSecondary,
             style: IconButton.styleFrom(
               backgroundColor: project.loopEnabled

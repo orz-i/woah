@@ -1,0 +1,36 @@
+{
+  "direction": "Lime Beat",
+  "approved_on": "2026-11-04",
+  "brand": {
+    "lime": "#D8F54C",
+    "lavender": "#DCD7FA",
+    "chalk": "#F7F9F1",
+    "ink": "#17201C",
+    "mark": "#D8F54C",
+    "olive": "#50670E"
+  },
+  "light": {
+    "background": "#F7F9F1",
+    "surface": "#FFFFFF",
+    "surface_soft": "#EEF1E5",
+    "text_primary": "#17201C",
+    "text_secondary": "#46513F",
+    "text_muted": "#5D6B53",
+    "control_border": "#768369",
+    "selection": "#50670E",
+    "icon_background": "#F7F9F1",
+    "icon_foreground": "#D8F54C"
+  },
+  "dark": {
+    "background": "#17201C",
+    "surface": "#222C24",
+    "surface_soft": "#2B352B",
+    "text_primary": "#F7F9F1",
+    "text_secondary": "#C4CEBC",
+    "text_muted": "#A3B297",
+    "control_border": "#7B8874",
+    "selection": "#D8F54C",
+    "icon_background": "#17201C",
+    "icon_foreground": "#D8F54C"
+  }
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic Quiet Frame v1.1 resource/semantics checks; Python stdlib only.
+"""Deterministic Lime Beat resource/semantics checks; Python stdlib only.
 
 This is source-level QA, not a substitute for Android or iOS device rendering.
 """
@@ -37,13 +37,23 @@ def ratio(a, b):
 
 assert "english = 'Woah'" in BRAND
 assert "chinese = '舞哇'" in BRAND
-assert 'static const Color brandMint = Color(0xFF78DCC7)' in THEME
-assert 'static const Color brandInk = Color(0xFF0B1415)' in THEME
+assert "visualDirection = 'Lime Beat'" in BRAND
+assert 'static const Color brandInk = Color(0xFF17201C)' in THEME
+assert 'static const Color brandAction = brandLime' in THEME
 assert 'onPrimary: c.brandOnAction' in THEME
 assert 'static const Color effectPaletteAmber = Color(0xFFF5A623)' in THEME
-assert ratio('#0B1415', '#78DCC7') >= 7
-assert ratio('#F2F6F3', '#78DCC7') < 4.5
-assert ratio('#607D80', '#142123') >= 3
+palette = json.loads((ROOT / 'docs/design/lime-beat/palette.json').read_text())
+for role, token in [('lime','brandLime'), ('lavender','brandLavender'),
+                    ('chalk','brandChalk'), ('ink','brandInk'),
+                    ('mark','brandLime'), ('olive','brandOlive')]:
+    assert f'{token} = Color(0xFF{palette["brand"][role][1:]})' in THEME, token
+assert ratio('#17201C', '#D8F54C') >= 7
+assert ratio('#FFFFFF', '#D8F54C') < 4.5
+for mode in ('light', 'dark'):
+    colors = palette[mode]
+    for role in ('text_primary', 'text_secondary', 'text_muted', 'selection'):
+        assert ratio(colors[role], colors['surface']) >= 4.5, (mode, role)
+    assert ratio(colors['control_border'], colors['surface']) >= 3, mode
 
 # No legacy amber UI alias may survive in app screens. Literal effect palette
 # ARGB values remain untouched, including stored project and render values.
@@ -55,6 +65,9 @@ editor = (APP / 'lib/features/protection_editor/presentation/protection_editor_s
 assert "(0xFFF5A623, '琥珀金')" in editor
 home_catalog = (APP / 'lib/features/import_video/presentation/home_tool_catalog.dart').read_text()
 assert 'videoProtection' in home_catalog and 'danceComparison' in home_catalog
+for name in ('home-video-protection-lime.jpg', 'home-dance-comparison-lime.jpg'):
+    assert name in home_catalog
+    assert (APP / 'assets/home' / name).read_bytes().startswith(b'\xff\xd8'), name
 home = (APP / 'lib/features/import_video/presentation/import_video_screen.dart').read_text()
 assert 'AppBrand.english' in home and 'woah-symbol-256.png' in home
 assert 'AppBrand.chinese' not in home
@@ -101,5 +114,5 @@ for path in (RES / x for x in ('drawable/launch_background.xml','drawable-v21/la
 assert not (RES / 'values-zh-rCN/strings.xml').exists()
 assert '<string name="app_name">Woah</string>' in (RES / 'values/strings.xml').read_text()
 assert 'android:label="@string/app_name"' in (APP / 'android/app/src/main/AndroidManifest.xml').read_text()
-print('QUIET_FRAME_ASSETS=PASS (naming, PNG sizes, XML, role contrast, effect ARGB)')
+print('LIME_BEAT_ASSETS=PASS (naming, covers, PNG sizes, XML, role contrast, effect ARGB)')
 print('DEVICE_VISUAL_QA=NOT_PROVEN')

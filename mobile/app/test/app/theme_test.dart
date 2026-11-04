@@ -4,18 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('main-flow surfaces stay in the Quiet Frame dark luminance family', () {
-    expect(AppTheme.flowBackground.computeLuminance(), lessThan(0.01));
-    expect(AppTheme.flowSurface.computeLuminance(), lessThan(0.02));
-    expect(AppTheme.flowSurfaceSoft.computeLuminance(), lessThan(0.03));
-    expect(AppTheme.flowBorder.computeLuminance(), lessThan(0.07));
+  test('Lime Beat system-dark surfaces retain low luminance', () {
+    expect(AppTheme.flowBackground.computeLuminance(), lessThan(0.025));
+    expect(AppTheme.flowSurface.computeLuminance(), lessThan(0.04));
+    expect(AppTheme.flowSurfaceSoft.computeLuminance(), lessThan(0.06));
+    expect(AppTheme.flowBorder.computeLuminance(), lessThan(0.09));
 
     expect(AppTheme.flowTextPrimary.computeLuminance(), greaterThan(0.8));
     expect(AppTheme.flowTextSecondary.computeLuminance(), greaterThan(0.4));
   });
 
   test(
-    'material defaults use Quiet Frame surfaces and mint interaction accent',
+    'material defaults use Lime Beat surfaces and lime interaction accent',
     () {
       final theme = AppTheme.darkTheme;
 
@@ -34,7 +34,7 @@ void main() {
     },
   );
 
-  test('Quiet Frame color roles protect effect colors and contrast', () {
+  test('Lime Beat color roles protect effect colors and contrast', () {
     double contrast(Color x, Color y) {
       final a = x.computeLuminance();
       final b = y.computeLuminance();
@@ -43,8 +43,8 @@ void main() {
       return (high + 0.05) / (low + 0.05);
     }
 
-    expect(AppTheme.brandAction, const Color(0xFF78DCC7));
-    expect(AppTheme.brandOnAction, const Color(0xFF0B1415));
+    expect(AppTheme.brandAction, const Color(0xFFD8F54C));
+    expect(AppTheme.brandOnAction, const Color(0xFF17201C));
     expect(
       contrast(AppTheme.brandOnAction, AppTheme.brandAction),
       greaterThan(7),
@@ -64,7 +64,7 @@ void main() {
     );
     expect(AppTheme.effectPaletteAmber, const Color(0xFFF5A623));
     expect(AppTheme.effectPaletteAmber, isNot(AppTheme.brandAction));
-    expect(AppTheme.editorSelection, AppTheme.brandMint);
+    expect(AppTheme.editorSelection, AppTheme.brandLime);
     expect(AppTheme.statusError, isNot(AppTheme.brandAction));
     expect(AppTheme.statusWarning, isNot(AppTheme.brandAction));
     final theme = AppTheme.darkTheme;
@@ -79,7 +79,7 @@ void main() {
   });
 
   test(
-    'light palette keeps controls readable while dark palette is stable',
+    'light palette separates lime action fills from readable selected text',
     () {
       double contrast(Color a, Color b) {
         final x = a.computeLuminance();
@@ -91,11 +91,11 @@ void main() {
       final dark = AppTheme.darkColors;
       expect(AppTheme.lightTheme.brightness, Brightness.light);
       expect(AppTheme.darkTheme.brightness, Brightness.dark);
-      expect(light.flowBackground, const Color(0xFFF2F6F3));
+      expect(light.flowBackground, AppTheme.brandChalk);
       expect(dark.flowBackground, AppTheme.brandInk);
-      expect(light.brandAction, const Color(0xFF216A5E));
-      expect(dark.brandAction, AppTheme.brandMint);
-      expect(light.textOnAccent, Colors.white);
+      expect(light.brandAction, AppTheme.brandLime);
+      expect(dark.brandAction, AppTheme.brandLime);
+      expect(light.textOnAccent, AppTheme.brandInk);
       expect(
         contrast(light.flowTextPrimary, light.flowSurface),
         greaterThan(7),
@@ -113,8 +113,32 @@ void main() {
         greaterThan(4.5),
       );
       expect(contrast(light.controlBorder, light.flowSurface), greaterThan(3));
+      expect(
+        contrast(light.editorSelection, light.flowSurface),
+        greaterThan(4.5),
+      );
+      expect(
+        contrast(light.editorSelection, light.flowSurfaceSoft),
+        greaterThan(4.5),
+      );
+      expect(
+        contrast(light.editorSelection, light.brandAction),
+        greaterThan(3),
+      );
       expect(AppTheme.effectPaletteAmber, const Color(0xFFF5A623));
       expect(AppTheme.canvas, Colors.black);
+      final theme = AppTheme.lightTheme;
+      expect(
+        contrast(theme.textSelectionTheme.cursorColor!, light.flowSurface),
+        greaterThan(4.5),
+      );
+      expect(
+        contrast(
+          theme.inputDecorationTheme.focusedBorder!.borderSide.color,
+          light.flowSurface,
+        ),
+        greaterThan(3),
+      );
     },
   );
 

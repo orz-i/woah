@@ -1,5 +1,7 @@
 # Woah Mobile Warm Flow — Final Design Archive
 
+> Historical archive. The current visual baseline is [Lime Beat](../lime-beat/README.md), adopted on 2026-11-04. The warm/coral references and checks below are historical; existing workflow behavior is preserved unless a later product decision supersedes it.
+
 Status: **adopted / implemented**
 Archived: **2026-09-03**
 

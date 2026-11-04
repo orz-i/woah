@@ -452,8 +452,7 @@ class ExportPipeline(
                     context = context,
                     sourceUri = sourceUri,
                     outputSurface = decoderSurface,
-                    startUs = trimStartUs,
-                    endUs = trimEndUs
+                    startUs = trimStartUs
                 )
                 decoder.prepare()
 
@@ -542,7 +541,11 @@ class ExportPipeline(
                     )
                 } else null
                 val profile = ProcessingProfile.fromName(request.processingProfile)
-                val frameStride = profile.inferenceStride
+                val frameStride = profile.privacyInferenceStride(
+                    hasFullBodyTargets = fullBodyPersonIds.isNotEmpty(),
+                    hasFaceOnlyTargets = faceOnlyPersonIds.isNotEmpty(),
+                    scenePersonCount = analysisMetadata?.persons?.size ?: allPrivacyTargetIds.size
+                )
                 var lastProgressEmitTime = 0L
                 val preferDebugFaceDeterministicCpuPrimary = shouldPreferDebugFaceDeterministicCpuPrimary(
                     isDebugBuild = art.gaoge.dance.engine.BuildConfig.DEBUG,
@@ -1384,11 +1387,10 @@ class ExportPipeline(
                                     fullBodyTrackIds = selectedIds,
                                     protectedMotionEvidence = protectedMotionEvidence,
                                     freshPrivacyClassEvidence = freshFacePrivacyClassEvidence,
-                                    canonicalModelRgbaBottomUp = if (useCpuReferenceGeometry) {
-                                        canonicalModelRgbaForFace
-                                    } else {
-                                        null
-                                    },
+                                    // Face localization needs source-resolution pixels.
+                                    // The 640px YOLO diagnostic input loses small/occluded
+                                    // faces even though their body identities are retained.
+                                    canonicalModelRgbaBottomUp = null,
                                     ptsUs = ptsUs
                                 )
                             }

@@ -1,0 +1,13 @@
+{
+  "date": "2026-11-04",
+  "appearance": "light",
+  "sharedColor": "#50670E",
+  "exactColorPixelCounts": {
+    "floating": 460,
+    "bottom": 2122
+  },
+  "screenshot": "04-after-matched-color.png",
+  "result": "PASS",
+  "installedApkSha256": "1b8d246de608d81ef813792f427806a386d2964083bdbb33a4ed14b9294b5669",
+  "installedMatchesBuild": true
+}
