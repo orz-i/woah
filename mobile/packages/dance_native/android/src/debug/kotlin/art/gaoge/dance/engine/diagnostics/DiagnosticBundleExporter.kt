@@ -63,7 +63,7 @@ object DiagnosticBundleExporter {
         val lifecycleJobId = lifecycleJson?.optString("job_id")?.takeIf { DiagnosticTextPrivacy.validJob(it) }
 
         val filesToZip = stagedFiles.filter {
-            it.isFile && it.canonicalFile == it.absoluteFile &&
+            DiagnosticSnapshotFiles.isRegularFile(it) &&
                 it.length() > 0L &&
                 shouldIncludeSnapshotFile(it.name, sessionId, lifecycleJobId)
         }.toMutableList()

@@ -11,6 +11,22 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class ProcessingProfileTest {
+    @Test
+    fun fullBodyAndMultiPersonPrivacyNeverRenderWithSkippedSilhouetteObservations() {
+        for (profile in listOf(ProcessingProfile.QUALITY, ProcessingProfile.BALANCED, ProcessingProfile.SPEED)) {
+            assertEquals(1, profile.privacyInferenceStride(true, false, 7))
+            assertEquals(1, profile.privacyInferenceStride(false, true, 7))
+            assertEquals(1, profile.privacyInferenceStride(true, false, 1))
+        }
+    }
+
+    @Test
+    fun singleFacePixelTrackingKeepsTheRequestedAccelerationCadence() {
+        assertEquals(2, ProcessingProfile.BALANCED.privacyInferenceStride(false, true, 1))
+        assertEquals(3, ProcessingProfile.SPEED.privacyInferenceStride(false, true, 1))
+        assertEquals(3, ProcessingProfile.SPEED.privacyInferenceStride(false, false, 7))
+    }
+
 
     @Test
     fun testQualityProfileUsesStride1() {

@@ -8,6 +8,7 @@ import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.core.Delegate
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.facedetector.FaceDetector
+import java.io.File
 import java.nio.ByteBuffer
 
 /**
@@ -18,15 +19,27 @@ import java.nio.ByteBuffer
  */
 class MediaPipeFaceLocator(
     context: Context,
-    minDetectionConfidence: Float = DEFAULT_MIN_DETECTION_CONFIDENCE
+    minDetectionConfidence: Float = DEFAULT_MIN_DETECTION_CONFIDENCE,
+    delegate: Delegate = Delegate.CPU
 ) : FaceLocator {
     private val detector: FaceDetector
 
     init {
-        val baseOptions = BaseOptions.builder()
-            .setDelegate(Delegate.CPU)
+        val baseOptionsBuilder = BaseOptions.builder()
+            .setDelegate(delegate)
             .setModelAssetPath(MODEL_ASSET_PATH)
-            .build()
+        if (delegate == Delegate.GPU) {
+            val cache = File(context.codeCacheDir, "face_locator_gpu")
+            if (cache.isDirectory || cache.mkdirs()) {
+                baseOptionsBuilder.setDelegateOptions(
+                    BaseOptions.DelegateOptions.GpuOptions.builder()
+                        .setSerializedModelDir(cache.absolutePath)
+                        .setModelToken("blazeface-full-range-3698b18f063835bc")
+                        .build()
+                )
+            }
+        }
+        val baseOptions = baseOptionsBuilder.build()
         val options = FaceDetector.FaceDetectorOptions.builder()
             .setBaseOptions(baseOptions)
             .setMinDetectionConfidence(minDetectionConfidence)

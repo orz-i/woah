@@ -1,5 +1,6 @@
 package art.gaoge.dance.engine.face
 
+import art.gaoge.dance.engine.inference.FloatRect
 import kotlin.math.sqrt
 
 data class FaceRoiCandidateSelection(
@@ -18,6 +19,22 @@ data class FaceRoiCandidateSelection(
 object FaceRoiCandidateSelector {
     private const val MAX_ANCHOR_DISTANCE_RATIO = 0.22f
     private const val MIN_ANCHOR_SEPARATION_RATIO = 0.04f
+
+    fun ownedObservations(
+        faces: List<FaceObservation>,
+        plan: FaceHeadRoiPlan,
+        personBbox: FloatRect
+    ): List<FaceObservation> {
+        val marginX = personBbox.width * 0.08f
+        val marginY = personBbox.height * 0.08f
+        return faces.filter { face ->
+            val center = face.localizationCenter()
+            val sourceX = plan.sourceRect.left + center.x / plan.outputSize * plan.sourceRect.width
+            val sourceY = plan.sourceRect.top + center.y / plan.outputSize * plan.sourceRect.height
+            sourceX in (personBbox.left - marginX)..(personBbox.right + marginX) &&
+                sourceY in (personBbox.top - marginY)..(personBbox.top + personBbox.height * 0.60f)
+        }
+    }
 
     fun select(
         faces: List<FaceObservation>,

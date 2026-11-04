@@ -14,6 +14,21 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class PreviewExportResourceGateTest {
+    @Test fun serviceDeserializedJobIdReleasesTheReservationByValue() = runBlocking {
+        val gate = PreviewExportResourceGate()
+        val original = "job_12345".toCharArray().concatToString()
+        val fromIntent = original.toCharArray().concatToString()
+        assertFalse(original === fromIntent)
+        gate.reserveExport(original)
+        gate.finishExport(fromIntent)
+        assertFalse(gate.ownsExport(original))
+        gate.reserveExport("next_job")
+        gate.finishExport(original)
+        assertTrue(gate.ownsExport("next_job"))
+        gate.finishExport("next_job".toCharArray().concatToString())
+        assertEquals(1, gate.withPreview(PreviewExportResourceGate.PreviewOwner {}) { 1 })
+    }
+
     @Test fun exportWaitsForActualPreviewAndRejectsQueuedPreview() = runBlocking {
         val gate = PreviewExportResourceGate()
         var released = 0

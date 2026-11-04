@@ -414,10 +414,11 @@ object NativeDiagnostics {
                 val targetRoot = stagingDir.canonicalFile
                 val sourceFiles = sourceRoot.listFiles() ?: emptyArray()
                 for (src in sourceFiles) {
-                    if (src.isFile && src.canonicalFile == File(sourceRoot, src.name) &&
+                    if (DiagnosticSnapshotFiles.isRegularFile(src) &&
                         !src.name.endsWith(".tmp") && !src.name.contains(".tmp.")) {
                         val dest = File(targetRoot, src.name)
-                        if (dest.canonicalFile != dest) continue
+                        if (dest.canonicalFile != dest ||
+                            (dest.exists() && !DiagnosticSnapshotFiles.isRegularFile(dest))) continue
                         src.copyTo(dest, overwrite = true)
                         copiedFiles.add(dest)
                     }

@@ -47,14 +47,27 @@ class MediaPipeFaceLocatorInstrumentedTest {
 
     @Test
     fun parallelLocatorMatchesSequentialResultsAndReducesTwoCallWallTime() {
+        verifyParallelLocator(com.google.mediapipe.tasks.core.Delegate.CPU, requireSpeedup = true)
+    }
+
+    @Test
+    fun gpuWorkersPreserveSingleAndBatchResultsOnTheirOwningThreads() {
+        verifyParallelLocator(com.google.mediapipe.tasks.core.Delegate.GPU, requireSpeedup = false)
+    }
+
+    private fun verifyParallelLocator(
+        delegate: com.google.mediapipe.tasks.core.Delegate,
+        requireSpeedup: Boolean
+    ) {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val bitmap = context.assets.open(FACE_ROI_ASSET).use { input ->
             requireNotNull(BitmapFactory.decodeStream(input))
         }
         val rgba = toTopDownRgba(bitmap)
-        val sequential = MediaPipeFaceLocator(context)
-        val parallel = ParallelMediaPipeFaceLocator(context, workerCount = 2)
+        val sequential = MediaPipeFaceLocator(context, delegate = delegate)
+        val parallel = ParallelMediaPipeFaceLocator(context, workerCount = 2, preferredDelegate = delegate)
         try {
+            assertEquals(listOf(delegate, delegate), parallel.effectiveDelegates)
             // Warm both execution paths before comparing steady-state wall time.
             repeat(2) {
                 sequential.detectRgbaTopDown(rgba, bitmap.width, bitmap.height)
@@ -90,6 +103,11 @@ class MediaPipeFaceLocatorInstrumentedTest {
                     parallelResults.map(::observationSignature),
                     "parallel detector workers must preserve MediaPipe observations"
                 )
+                assertEquals(
+                    observationSignature(sequentialResults.first()),
+                    observationSignature(parallel.detectRgbaTopDown(rgba, bitmap.width, bitmap.height)),
+                    "single calls must use the same owning worker thread as batch calls"
+                )
             }
 
             val sequentialMedian = sequentialWallMs.sorted()[sequentialWallMs.size / 2]
@@ -99,11 +117,14 @@ class MediaPipeFaceLocatorInstrumentedTest {
                 "two_call_sequential_median_ms=$sequentialMedian " +
                     "two_call_parallel_median_ms=$parallelMedian"
             )
-            assertTrue(
-                parallelMedian < sequentialMedian * 0.90,
-                "parallel two-call path must reduce median wall time by at least 10%: " +
-                    "sequential=$sequentialMedian parallel=$parallelMedian"
-            )
+            assertEquals(listOf(delegate, delegate), parallel.effectiveDelegates)
+            if (requireSpeedup) {
+                assertTrue(
+                    parallelMedian < sequentialMedian * 0.90,
+                    "parallel two-call path must reduce median wall time by at least 10%: " +
+                        "sequential=$sequentialMedian parallel=$parallelMedian"
+                )
+            }
         } finally {
             parallel.close()
             sequential.close()

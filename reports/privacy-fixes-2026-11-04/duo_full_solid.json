@@ -1,0 +1,20 @@
+{
+  "case": "duo_full_solid",
+  "input": "duo-dance-6940536.mp4",
+  "face_only": false,
+  "fill": "solid",
+  "trim_start_ms": 0,
+  "trim_end_ms": 1600,
+  "detected_ids": [
+    0
+  ],
+  "selected_ids": [
+    0
+  ],
+  "state": "completed",
+  "frames": 48,
+  "output_bytes": 211536,
+  "expected_frames": 48,
+  "actual_frames": 48,
+  "last_output_pts_us": 1568233
+}

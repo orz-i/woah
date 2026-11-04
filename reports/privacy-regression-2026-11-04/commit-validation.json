@@ -1,0 +1,56 @@
+{
+  "base_commit": "9ef3d23bc7cb1f2823fef3d61a7e74e0246069b1",
+  "staged_code_patch_sha256": "7d10d5a35a1367f4ec00c15703a390d88fcdd971db388da40a629853ceeb3679",
+  "included_code_and_test_paths": [
+    "mobile/app/lib/features/person_selection/presentation/person_selection_controller.dart",
+    "mobile/app/test/features/privacy_selection_regression_test.dart",
+    "mobile/packages/dance_native/android/src/androidTest/kotlin/art/gaoge/dance/engine/face/MediaPipeFaceLocatorInstrumentedTest.kt",
+    "mobile/packages/dance_native/android/src/androidTest/kotlin/art/gaoge/dance/engine/pipeline/FaceOnlyExportPipelineInstrumentedTest.kt",
+    "mobile/packages/dance_native/android/src/androidTest/kotlin/art/gaoge/dance/engine/pipeline/FaceOnlyPreviewPipelineInstrumentedTest.kt",
+    "mobile/packages/dance_native/android/src/androidTest/kotlin/art/gaoge/dance/engine/pipeline/NetworkPrivacyWorkflowInstrumentedTest.kt",
+    "mobile/packages/dance_native/android/src/debug/kotlin/art/gaoge/dance/engine/diagnostics/DiagnosticBundleExporter.kt",
+    "mobile/packages/dance_native/android/src/debug/kotlin/art/gaoge/dance/engine/diagnostics/DiagnosticSnapshotFiles.kt",
+    "mobile/packages/dance_native/android/src/debug/kotlin/art/gaoge/dance/engine/diagnostics/NativeDiagnostics.kt",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/bridge/DanceNativeApiImpl.kt",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/export/PreviewExportResourceGate.kt",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/face/FaceLocatorProvider.kt",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/face/FaceRoiCandidateSelector.kt",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/face/MediaPipeFaceLocator.kt",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/face/ParallelMediaPipeFaceLocator.kt",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/media/VideoDecoder.kt",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/PreviewPipeline.kt",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ProcessingProfile.kt",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/FaceOnlyPrivacyFrameProcessor.kt",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/FacePrivacyMaskBuilder.kt",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/PersonBboxMotionEstimator.kt",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/PersonPrivacyPolicyAdapter.kt",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/PrivacyOcclusionResolver.kt",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/service/ExportForegroundService.kt",
+    "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/export/PreviewExportResourceGateTest.kt",
+    "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/face/FaceRoiCandidateSelectorTest.kt",
+    "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/pipeline/ProcessingProfileTest.kt",
+    "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/FacePrivacyMaskBuilderTest.kt",
+    "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/PersonBboxMotionEstimatorTest.kt",
+    "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/PersonPrivacyPolicyAdapterTest.kt",
+    "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/PrivacyFreshClassEvidenceTest.kt"
+  ],
+  "excluded_existing_ui_brand_changes": true,
+  "validation_source": "detached HEAD plus exact staged code/test files",
+  "flutter": {
+    "total": 272,
+    "passed": 272
+  },
+  "android_jvm": {
+    "tests": 555,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "commands": [
+    "flutter pub get --offline",
+    "flutter test --no-pub --reporter expanded",
+    "gradlew.bat :dance_native:testDebugUnitTest --console=plain"
+  ],
+  "device_regression_reused_without_reinstall": true
+}

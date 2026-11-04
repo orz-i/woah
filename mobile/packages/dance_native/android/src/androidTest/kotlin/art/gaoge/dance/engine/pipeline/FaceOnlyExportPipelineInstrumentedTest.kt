@@ -73,7 +73,7 @@ class FaceOnlyExportPipelineInstrumentedTest {
                         analysisCacheId = "",
                         outputFilePath = output.absolutePath,
                         selectedPersonIds = emptyList(),
-                        effects = solidRedEffects(),
+                        effects = solidBodyWithFaceStickerEffects(),
                         follow = disabledFollow(),
                         targetWidth = FRAME_W.toLong(),
                         targetHeight = FRAME_H.toLong(),
@@ -218,7 +218,7 @@ class FaceOnlyExportPipelineInstrumentedTest {
                         analysisCacheId = "",
                         outputFilePath = output.absolutePath,
                         selectedPersonIds = listOf(SECONDARY_PERSON_ID),
-                        effects = solidRedEffects(),
+                        effects = solidBodyWithFaceStickerEffects(),
                         follow = disabledFollow(),
                         targetWidth = FRAME_W.toLong(),
                         targetHeight = FRAME_H.toLong(),
@@ -322,7 +322,7 @@ class FaceOnlyExportPipelineInstrumentedTest {
                         analysisCacheId = "",
                         outputFilePath = output.absolutePath,
                         selectedPersonIds = emptyList(),
-                        effects = solidRedEffects(),
+                        effects = solidBodyWithFaceStickerEffects(),
                         follow = disabledFollow(),
                         targetWidth = FRAME_W.toLong(),
                         targetHeight = FRAME_H.toLong(),
@@ -628,15 +628,15 @@ class FaceOnlyExportPipelineInstrumentedTest {
         }
     }
 
-    private fun solidRedEffects() = EffectConfigDto(
+    private fun solidBodyWithFaceStickerEffects() = EffectConfigDto(
         fillMode = "solid",
         fillColorArgb = 0xFFFF0000L,
         borderColorArgb = 0x00000000L,
         opacity = 1.0,
         borderWidth = 0.0,
         blurStrength = 1.0,
-        faceStickerEnabled = false,
-        stickerAssetId = null,
+        faceStickerEnabled = true,
+        stickerAssetId = "builtin:sunglasses",
         stickerScale = 1.0,
         skinWhiten = 0.0,
         legStretchEnabled = false,

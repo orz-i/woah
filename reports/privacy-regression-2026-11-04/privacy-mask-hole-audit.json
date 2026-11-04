@@ -1,0 +1,30 @@
+[
+  {
+    "file": "group_face_solid_follow.mp4",
+    "sha256": "71fd893414696c8d0d421f9637675c6a4cc7690102649b60d3bf7a3d8456a050",
+    "frames": 76,
+    "frames_with_holes": 0,
+    "holes": []
+  },
+  {
+    "file": "group_all_faces.mp4",
+    "sha256": "dd6d4e6d1cf9fd0a699c8619677f22f28d6005c5403fb594483a774af90c3a35",
+    "frames": 76,
+    "frames_with_holes": 0,
+    "holes": []
+  },
+  {
+    "file": "solo_face_solid.mp4",
+    "sha256": "40274d605a5c852123c840c2ac98e4ea2e440b6f7d69f7b1d8e6dac339da9ecb",
+    "frames": 40,
+    "frames_with_holes": 0,
+    "holes": []
+  },
+  {
+    "file": "group_full_length_follow.mp4",
+    "sha256": "bc70cdd6879398d289f91cd703cad2e3c36f4c3746425a8a6be38fadadc2862a",
+    "frames": 581,
+    "frames_with_holes": 0,
+    "holes": []
+  }
+]

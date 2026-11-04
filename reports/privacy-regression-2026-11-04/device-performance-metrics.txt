@@ -1,0 +1,55 @@
+--------- beginning of main
+11-04 18:26:59.701 12906 12943 I ParallelFaceLocator: FACE_LOCATOR_READY worker=0 delegate=CPU
+11-04 18:26:59.794 12906 12943 I ParallelFaceLocator: FACE_LOCATOR_READY worker=1 delegate=CPU
+11-04 18:27:01.859 12906 12943 I ParallelFaceLocator: FACE_LOCATOR_READY worker=0 delegate=CPU
+11-04 18:27:01.955 12906 12943 I ParallelFaceLocator: FACE_LOCATOR_READY worker=1 delegate=CPU
+11-04 18:27:03.746 12906 12943 I ParallelFaceLocator: FACE_LOCATOR_READY worker=0 delegate=CPU
+11-04 18:27:03.844 12906 12943 I ParallelFaceLocator: FACE_LOCATOR_READY worker=1 delegate=CPU
+11-04 18:27:04.628 12906 12943 I ParallelFaceLocator: FACE_LOCATOR_READY worker=0 delegate=CPU
+11-04 18:27:04.723 12906 12943 I ParallelFaceLocator: FACE_LOCATOR_READY worker=1 delegate=CPU
+11-04 18:27:05.554 12906 12943 I ParallelFaceLocator: FACE_LOCATOR_READY worker=0 delegate=CPU
+11-04 18:27:05.651 12906 12943 I ParallelFaceLocator: FACE_LOCATOR_READY worker=1 delegate=CPU
+11-04 18:27:12.088 13282 13302 I FACE_ONLY_STRESS: stage=test_start
+11-04 18:27:12.088 13282 13302 I FACE_ONLY_STRESS: stage=context_ready
+11-04 18:27:12.497 13282 13302 I FACE_ONLY_STRESS: stage=foreground_host_ready
+11-04 18:27:12.501 13282 13302 I FACE_ONLY_STRESS: stage=source_ready
+11-04 18:27:12.503 13282 13302 I FACE_ONLY_STRESS: stage=egl_ready
+11-04 18:27:12.503 13282 13302 I FACE_ONLY_STRESS: stage=processor_create_start
+11-04 18:27:12.710 13282 13302 I ParallelFaceLocator: FACE_LOCATOR_READY worker=0 delegate=GPU
+11-04 18:27:12.867 13282 13302 I ParallelFaceLocator: FACE_LOCATOR_READY worker=1 delegate=GPU
+11-04 18:27:12.874 13282 13302 I FACE_ONLY_STRESS: stage=processor_create_done
+11-04 18:27:12.880 13282 13302 I FACE_ONLY_STRESS: stage=loop_start frames=300
+11-04 18:27:12.881 13282 13302 I FACE_ONLY_STRESS: stage=frame_start index=0 detector_calls=0
+11-04 18:27:13.182 13282 13302 I FACE_ONLY_STRESS: stage=frame_done index=0 detector_calls=1 detected=1 predicted=0 fallback=0
+11-04 18:27:14.232 13282 13302 I FACE_ONLY_STRESS: stage=frame_start index=25 detector_calls=25
+11-04 18:27:14.263 13282 13302 I FACE_ONLY_STRESS: stage=frame_done index=25 detector_calls=26 detected=26 predicted=0 fallback=0
+11-04 18:27:15.338 13282 13302 I FACE_ONLY_STRESS: stage=frame_start index=50 detector_calls=50
+11-04 18:27:15.382 13282 13302 I FACE_ONLY_STRESS: stage=frame_done index=50 detector_calls=51 detected=51 predicted=0 fallback=0
+11-04 18:27:16.267 13282 13302 I FACE_ONLY_STRESS: stage=frame_start index=75 detector_calls=75
+11-04 18:27:16.299 13282 13302 I FACE_ONLY_STRESS: stage=frame_done index=75 detector_calls=76 detected=76 predicted=0 fallback=0
+11-04 18:27:17.114 13282 13302 I FACE_ONLY_STRESS: stage=frame_start index=100 detector_calls=100
+11-04 18:27:17.147 13282 13302 I FACE_ONLY_STRESS: stage=frame_done index=100 detector_calls=101 detected=101 predicted=0 fallback=0
+11-04 18:27:18.002 13282 13302 I FACE_ONLY_STRESS: stage=frame_start index=125 detector_calls=125
+11-04 18:27:18.040 13282 13302 I FACE_ONLY_STRESS: stage=frame_done index=125 detector_calls=126 detected=126 predicted=0 fallback=0
+11-04 18:27:18.956 13282 13302 I FACE_ONLY_STRESS: stage=frame_start index=150 detector_calls=150
+11-04 18:27:19.000 13282 13302 I FACE_ONLY_STRESS: stage=frame_done index=150 detector_calls=151 detected=151 predicted=0 fallback=0
+11-04 18:27:19.918 13282 13302 I FACE_ONLY_STRESS: stage=frame_start index=175 detector_calls=175
+11-04 18:27:19.963 13282 13302 I FACE_ONLY_STRESS: stage=frame_done index=175 detector_calls=176 detected=176 predicted=0 fallback=0
+11-04 18:27:20.904 13282 13302 I FACE_ONLY_STRESS: stage=frame_start index=200 detector_calls=200
+11-04 18:27:20.942 13282 13302 I FACE_ONLY_STRESS: stage=frame_done index=200 detector_calls=201 detected=201 predicted=0 fallback=0
+11-04 18:27:21.831 13282 13302 I FACE_ONLY_STRESS: stage=frame_start index=225 detector_calls=225
+11-04 18:27:21.864 13282 13302 I FACE_ONLY_STRESS: stage=frame_done index=225 detector_calls=226 detected=226 predicted=0 fallback=0
+11-04 18:27:22.777 13282 13302 I FACE_ONLY_STRESS: stage=frame_start index=250 detector_calls=250
+11-04 18:27:22.815 13282 13302 I FACE_ONLY_STRESS: stage=frame_done index=250 detector_calls=251 detected=251 predicted=0 fallback=0
+11-04 18:27:23.721 13282 13302 I FACE_ONLY_STRESS: stage=frame_start index=275 detector_calls=275
+11-04 18:27:23.758 13282 13302 I FACE_ONLY_STRESS: stage=frame_done index=275 detector_calls=276 detected=276 predicted=0 fallback=0
+11-04 18:27:24.679 13282 13302 I FACE_ONLY_STRESS: stage=loop_done detector_calls=300
+11-04 18:27:24.679 13282 13302 I FACE_ONLY_STRESS: stage=processor_close_start
+11-04 18:27:24.748 13282 13302 I FACE_ONLY_STRESS: stage=processor_close_done
+11-04 18:27:24.755 13282 13302 I FACE_ONLY_STRESS: stage=egl_close_done
+11-04 18:27:24.776 13282 13302 I FACE_ONLY_STRESS: stage=foreground_host_closed
+11-04 18:27:24.792 13282 13302 I FACE_ONLY_STRESS: frames=300 detector_calls=300 rejected=0 detected=300 predicted=0 fallback=0 unresolved=0 detector_p95_ms=20.781875 native_heap_before=40210384 native_heap_after=13217808 pss_before_kb=127195 pss_after_kb=91474
+11-04 18:27:43.155 13659 13679 I ParallelFaceLocator: FACE_LOCATOR_READY worker=0 delegate=CPU
+11-04 18:27:43.251 13659 13679 I ParallelFaceLocator: FACE_LOCATOR_READY worker=1 delegate=CPU
+11-04 18:27:49.830 13833 13853 I ParallelFaceLocator: FACE_LOCATOR_READY worker=0 delegate=GPU
+11-04 18:27:50.074 13833 13853 I ParallelFaceLocator: FACE_LOCATOR_READY worker=1 delegate=GPU

@@ -1,0 +1,20 @@
+{
+  "case": "solo_face_sticker",
+  "input": "solo-hd-7570258.mp4",
+  "face_only": true,
+  "fill": "sticker",
+  "trim_start_ms": 0,
+  "trim_end_ms": 1600,
+  "detected_ids": [
+    0
+  ],
+  "selected_ids": [
+    0
+  ],
+  "state": "completed",
+  "frames": 40,
+  "output_bytes": 271859,
+  "expected_frames": 40,
+  "actual_frames": 40,
+  "last_output_pts_us": 1560000
+}

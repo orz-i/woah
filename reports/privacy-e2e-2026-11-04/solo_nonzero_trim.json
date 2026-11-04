@@ -1,0 +1,14 @@
+{
+  "case": "solo_nonzero_trim",
+  "input": "solo-hd-7570258.mp4",
+  "face_only": true,
+  "fill": "sticker",
+  "trim_start_ms": 1000,
+  "trim_end_ms": 2600,
+  "detected_ids": [
+    0
+  ],
+  "state": "completed",
+  "frames": 40,
+  "output_bytes": 244627
+}

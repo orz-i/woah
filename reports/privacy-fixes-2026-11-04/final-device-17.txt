@@ -1,0 +1,135 @@
+INSTRUMENTATION_STATUS: class=art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest
+
+INSTRUMENTATION_STATUS: current=1
+
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+
+INSTRUMENTATION_STATUS: numtests=1
+
+INSTRUMENTATION_STATUS: stream=
+
+art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest:
+
+INSTRUMENTATION_STATUS: test=recentLostFaceOnlyTrackKeepsTightLocalRefreshButDoesNotBecomeIndependentTracker
+
+INSTRUMENTATION_STATUS_CODE: 1
+
+INSTRUMENTATION_STATUS: class=art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest
+
+INSTRUMENTATION_STATUS: current=1
+
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+
+INSTRUMENTATION_STATUS: numtests=1
+
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: expected:<0> but was:<1>
+
+	at org.junit.Assert.fail(Assert.java:89)
+
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+
+	at org.junit.Assert.assertEquals(Assert.java:120)
+
+	at kotlin.test.junit.JUnitAsserter.assertEquals(JUnitSupport.kt:32)
+
+	at kotlin.test.AssertionsKt__AssertionsKt.assertEquals(Assertions.kt:63)
+
+	at kotlin.test.AssertionsKt.assertEquals(Unknown Source:1)
+
+	at kotlin.test.AssertionsKt__AssertionsKt.assertEquals$default(Assertions.kt:62)
+
+	at kotlin.test.AssertionsKt.assertEquals$default(Unknown Source:1)
+
+	at art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest.recentLostFaceOnlyTrackKeepsTightLocalRefreshButDoesNotBecomeIndependentTracker$lambda$0(FaceOnlyPrivacyFrameProcessorInstrumentedTest.kt:638)
+
+	at art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)
+
+	at art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest.withProcessor(FaceOnlyPrivacyFrameProcessorInstrumentedTest.kt:992)
+
+	at art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest.recentLostFaceOnlyTrackKeepsTightLocalRefreshButDoesNotBecomeIndependentTracker(FaceOnlyPrivacyFrameProcessorInstrumentedTest.kt:599)
+
+
+
+INSTRUMENTATION_STATUS: stream=
+
+Error in recentLostFaceOnlyTrackKeepsTightLocalRefreshButDoesNotBecomeIndependentTracker(art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest):
+
+java.lang.AssertionError: expected:<0> but was:<1>
+
+	at org.junit.Assert.fail(Assert.java:89)
+
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+
+	at org.junit.Assert.assertEquals(Assert.java:120)
+
+	at kotlin.test.junit.JUnitAsserter.assertEquals(JUnitSupport.kt:32)
+
+	at kotlin.test.AssertionsKt__AssertionsKt.assertEquals(Assertions.kt:63)
+
+	at kotlin.test.AssertionsKt.assertEquals(Unknown Source:1)
+
+	at kotlin.test.AssertionsKt__AssertionsKt.assertEquals$default(Assertions.kt:62)
+
+	at kotlin.test.AssertionsKt.assertEquals$default(Unknown Source:1)
+
+	at art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest.recentLostFaceOnlyTrackKeepsTightLocalRefreshButDoesNotBecomeIndependentTracker$lambda$0(FaceOnlyPrivacyFrameProcessorInstrumentedTest.kt:638)
+
+	at art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)
+
+	at art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest.withProcessor(FaceOnlyPrivacyFrameProcessorInstrumentedTest.kt:992)
+
+	at art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest.recentLostFaceOnlyTrackKeepsTightLocalRefreshButDoesNotBecomeIndependentTracker(FaceOnlyPrivacyFrameProcessorInstrumentedTest.kt:599)
+
+
+
+INSTRUMENTATION_STATUS: test=recentLostFaceOnlyTrackKeepsTightLocalRefreshButDoesNotBecomeIndependentTracker
+
+INSTRUMENTATION_STATUS_CODE: -2
+
+INSTRUMENTATION_RESULT: stream=
+
+
+
+Time: 0.286
+
+There was 1 failure:
+
+1) recentLostFaceOnlyTrackKeepsTightLocalRefreshButDoesNotBecomeIndependentTracker(art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest)
+
+java.lang.AssertionError: expected:<0> but was:<1>
+
+	at org.junit.Assert.fail(Assert.java:89)
+
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+
+	at org.junit.Assert.assertEquals(Assert.java:120)
+
+	at kotlin.test.junit.JUnitAsserter.assertEquals(JUnitSupport.kt:32)
+
+	at kotlin.test.AssertionsKt__AssertionsKt.assertEquals(Assertions.kt:63)
+
+	at kotlin.test.AssertionsKt.assertEquals(Unknown Source:1)
+
+	at kotlin.test.AssertionsKt__AssertionsKt.assertEquals$default(Assertions.kt:62)
+
+	at kotlin.test.AssertionsKt.assertEquals$default(Unknown Source:1)
+
+	at art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest.recentLostFaceOnlyTrackKeepsTightLocalRefreshButDoesNotBecomeIndependentTracker$lambda$0(FaceOnlyPrivacyFrameProcessorInstrumentedTest.kt:638)
+
+	at art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)
+
+	at art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest.withProcessor(FaceOnlyPrivacyFrameProcessorInstrumentedTest.kt:992)
+
+	at art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest.recentLostFaceOnlyTrackKeepsTightLocalRefreshButDoesNotBecomeIndependentTracker(FaceOnlyPrivacyFrameProcessorInstrumentedTest.kt:599)
+
+
+
+FAILURES!!!
+
+Tests run: 1,  Failures: 1
+
+
+
+
+
+INSTRUMENTATION_CODE: -1

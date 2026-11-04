@@ -47,6 +47,7 @@ class FaceOnlyPreviewPipelineInstrumentedTest {
         val pipeline = PreviewPipeline(context, segmenter, cache)
         var baselineBitmap: Bitmap? = null
         var faceBitmap: Bitmap? = null
+        var solidFaceBitmap: Bitmap? = null
         var mixedBitmap: Bitmap? = null
         var multiFaceBitmap: Bitmap? = null
         var conflictBitmap: Bitmap? = null
@@ -59,6 +60,19 @@ class FaceOnlyPreviewPipelineInstrumentedTest {
                 previewRequest(cacheId = cacheId, faceOnlyIds = null)
             )
             baselineBitmap = assertNotNull(BitmapFactory.decodeFile(baseline.thumbnailPath))
+
+            val solidFace = pipeline.renderPreview(
+                previewRequest(cacheId = cacheId, faceOnlyIds = listOf(TARGET_PERSON_ID)).copy(
+                    effects = solidBodyWithFaceStickerEffects().copy(
+                        faceStickerEnabled = false, stickerAssetId = null
+                    )
+                )
+            )
+            solidFaceBitmap = assertNotNull(BitmapFactory.decodeFile(solidFace.thumbnailPath))
+            val solidDelta = changedRedPrivacyStats(baselineBitmap, solidFaceBitmap)
+            assertTrue(solidDelta.count >= 350, "Expected solid FACE_ONLY head mask: $solidDelta")
+            assertTrue(solidDelta.height <= (solidFaceBitmap.height * 0.45).toInt())
+            assertTrue(meanRgbDelta(baselineBitmap, solidFaceBitmap, LOWER_X, LOWER_Y, SAMPLE_RADIUS) <= 45.0)
 
             val faceOnly = pipeline.renderPreview(
                 previewRequest(cacheId = cacheId, faceOnlyIds = listOf(TARGET_PERSON_ID))
@@ -196,6 +210,7 @@ class FaceOnlyPreviewPipelineInstrumentedTest {
         } finally {
             baselineBitmap?.recycle()
             faceBitmap?.recycle()
+            solidFaceBitmap?.recycle()
             mixedBitmap?.recycle()
             multiFaceBitmap?.recycle()
             conflictBitmap?.recycle()
@@ -268,7 +283,7 @@ class FaceOnlyPreviewPipelineInstrumentedTest {
         analysisCacheId = cacheId,
         timestampMs = 0L,
         selectedPersonIds = fullBodyIds,
-        effects = solidRedEffects(),
+        effects = solidBodyWithFaceStickerEffects(),
         follow = disabledFollow(),
         faceOnlyPersonIds = faceOnlyIds
     )
@@ -408,15 +423,15 @@ class FaceOnlyPreviewPipelineInstrumentedTest {
         return sum.toDouble() / channels.coerceAtLeast(1)
     }
 
-    private fun solidRedEffects() = EffectConfigDto(
+    private fun solidBodyWithFaceStickerEffects() = EffectConfigDto(
         fillMode = "solid",
         fillColorArgb = 0xFFFF0000L,
         borderColorArgb = 0x00000000L,
         opacity = 1.0,
         borderWidth = 0.0,
         blurStrength = 1.0,
-        faceStickerEnabled = false,
-        stickerAssetId = null,
+        faceStickerEnabled = true,
+        stickerAssetId = "builtin:sunglasses",
         stickerScale = 1.0,
         skinWhiten = 0.0,
         legStretchEnabled = false,

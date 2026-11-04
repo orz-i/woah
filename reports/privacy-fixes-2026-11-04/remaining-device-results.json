@@ -1,0 +1,236 @@
+[
+  {
+    "case": "art.gaoge.dance.engine.privacy.SecondaryResolvedPrivacyCompositorInstrumentedTest#fullBodyPrimaryAndSecondaryFacePrivacyRenderTogether",
+    "result": "passed",
+    "log": "remaining-device-00.txt",
+    "elapsed_seconds": 1.17
+  },
+  {
+    "case": "art.gaoge.dance.engine.inference.YoloLiteRtSegmenterSmokeTest#testYoloLiteRtSegmenterInitializationAndBufferInferenceSmoke",
+    "result": "passed",
+    "log": "remaining-device-01.txt",
+    "elapsed_seconds": 3.41
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.PrivacyClassTemporalTrackerInstrumentedTest#cachedSimilarityPreservesSequenceAndReducesWallTime",
+    "result": "passed",
+    "log": "remaining-device-02.txt",
+    "elapsed_seconds": 2.36
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.PrivacyClassTemporalTrackerInstrumentedTest#cachedWarpedSupportPreservesSequenceAndReducesWallTimeBeyondSimilarityCache",
+    "result": "passed",
+    "log": "remaining-device-03.txt",
+    "elapsed_seconds": 2.14
+  },
+  {
+    "case": "art.gaoge.dance.engine.pipeline.FaceOnlyExportPipelineInstrumentedTest#mixedFullBodyAndFaceOnlyTargetsRemainIndependent",
+    "result": "failed",
+    "log": "remaining-device-04.txt",
+    "elapsed_seconds": 17.14
+  },
+  {
+    "case": "art.gaoge.dance.engine.pipeline.FaceOnlyExportPipelineInstrumentedTest#faceOnlyPrivacyFollowsDeterministicAffineDanceMotion",
+    "result": "failed",
+    "log": "remaining-device-05.txt",
+    "elapsed_seconds": 15.51
+  },
+  {
+    "case": "art.gaoge.dance.engine.pipeline.FaceOnlyExportPipelineInstrumentedTest#faceOnlyRequestMasksHeadWithoutExpandingToFullBody",
+    "result": "failed",
+    "log": "remaining-device-06.txt",
+    "elapsed_seconds": 15.28
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceRoiGrayConversionInstrumentedTest#bulkGrayPreservesTrackerSequenceAndReducesWallTime",
+    "result": "passed",
+    "log": "remaining-device-07.txt",
+    "elapsed_seconds": 2.3
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceRoiGrayConversionInstrumentedTest#compareEquivalentRgbaToGrayKernels",
+    "result": "passed",
+    "log": "remaining-device-08.txt",
+    "elapsed_seconds": 1.66
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.CanonicalFaceRoiSamplerInstrumentedTest#heapCachedCanonicalInputPreservesBytesAndReducesFiveRoiWallTime",
+    "result": "passed",
+    "log": "remaining-device-09.txt",
+    "elapsed_seconds": 7.22
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.CanonicalFaceRoiSamplerInstrumentedTest#opaquePreparedCanonicalInputPreservesBytesAndReducesFiveRoiWallTime",
+    "result": "passed",
+    "log": "remaining-device-10.txt",
+    "elapsed_seconds": 6.2
+  },
+  {
+    "case": "art.gaoge.dance.engine.face.MediaPipeFaceLocatorInstrumentedTest#productionLocatorFindsReviewedDistantFaceRoi",
+    "result": "passed",
+    "log": "remaining-device-11.txt",
+    "elapsed_seconds": 1.45
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#currentPixelEvidenceKeepsDormantFaceRenderableUntilEvidenceActuallyBreaks",
+    "result": "passed",
+    "log": "remaining-device-12.txt",
+    "elapsed_seconds": 1.31
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#trustedLocalFaceRefreshTracksHeadMotionInsideStablePersonBox",
+    "result": "passed",
+    "log": "remaining-device-13.txt",
+    "elapsed_seconds": 1.09
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#reacquiringUnobservedFaceOnlyTrackUsesTightTrustedLocalDetectorRoi",
+    "result": "passed",
+    "log": "remaining-device-14.txt",
+    "elapsed_seconds": 1.09
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#dormantProbeRejectsLargeAmbiguousBodyTranslationBeforeFaceDetection",
+    "result": "passed",
+    "log": "remaining-device-15.txt",
+    "elapsed_seconds": 1.12
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#detectorMissAfterTrustedFaceKeepsShortLivedTrustedPrediction",
+    "result": "passed",
+    "log": "remaining-device-16.txt",
+    "elapsed_seconds": 1.12
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#recentLostFaceOnlyTrackKeepsTightLocalRefreshButDoesNotBecomeIndependentTracker",
+    "result": "failed",
+    "log": "remaining-device-17.txt",
+    "elapsed_seconds": 1.12
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#unambiguousFaceProducesDetectedFacePrivacyMask",
+    "result": "passed",
+    "log": "remaining-device-18.txt",
+    "elapsed_seconds": 1.03
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#failedParallelBatchFallsBackToHistoricalPerTrackCalls",
+    "result": "passed",
+    "log": "remaining-device-19.txt",
+    "elapsed_seconds": 1.11
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#startupAcquisitionCoversAllFaceOnlyTracksBeforeSteadyStateBudget",
+    "result": "passed",
+    "log": "remaining-device-20.txt",
+    "elapsed_seconds": 1.2
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#parallelBatchExecutionPreservesStartupDetectorSemantics",
+    "result": "passed",
+    "log": "remaining-device-21.txt",
+    "elapsed_seconds": 1.28
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#ambiguousFaceCandidatesFallBackToYoloHeadPrivacy",
+    "result": "passed",
+    "log": "remaining-device-22.txt",
+    "elapsed_seconds": 1.09
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#localRefreshPersonBboxShapeChangeCannotRatchetTrustedFaceSize",
+    "result": "passed",
+    "log": "remaining-device-23.txt",
+    "elapsed_seconds": 1.2
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#dormantFaceDetectorHitReactivatesWithoutScalingHiddenTrustedSize",
+    "result": "failed",
+    "log": "remaining-device-24.txt",
+    "elapsed_seconds": 1.12
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#currentBodyMaskGuidesThrottledFaceFrameInsideStablePersonBox",
+    "result": "passed",
+    "log": "remaining-device-25.txt",
+    "elapsed_seconds": 1.19
+  },
+  {
+    "case": "art.gaoge.dance.engine.pipeline.FaceOnlyPreviewPipelineInstrumentedTest#previewFaceOnlyMasksHeadAndMissingIdFailsClosed",
+    "result": "failed",
+    "log": "remaining-device-26.txt",
+    "elapsed_seconds": 6.23
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#detectorIsThrottledAt60FpsAndTrustedFaceMovesWithCurrentPersonBox",
+    "result": "passed",
+    "log": "remaining-device-27.txt",
+    "elapsed_seconds": 1.22
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#dormantFreshMotionOnlyOpensProbeAndDetectorMissKeepsStickerSuppressed",
+    "result": "failed",
+    "log": "remaining-device-28.txt",
+    "elapsed_seconds": 1.14
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#fullBodyTargetCannotActAsSecondaryOccluderAgainstFaceOnlyTarget",
+    "result": "passed",
+    "log": "remaining-device-29.txt",
+    "elapsed_seconds": 1.2
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessorInstrumentedTest#missingRequestedTrackFailsClosedInsteadOfRenderingTransparent",
+    "result": "passed",
+    "log": "remaining-device-30.txt",
+    "elapsed_seconds": 0.95
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FaceOnlyPrivacyProductionStressInstrumentedTest#productionLocatorRunsThreeHundredFramesWithoutFallbackOrRuntimeFailure",
+    "result": "failed",
+    "log": "remaining-device-31.txt",
+    "elapsed_seconds": 18.23
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.FacePrivacyMaskCompositorInstrumentedTest#faceMaskUsesExistingPrivacySamplerWithoutVerticalFlip",
+    "result": "passed",
+    "log": "remaining-device-32.txt",
+    "elapsed_seconds": 1.09
+  },
+  {
+    "case": "art.gaoge.dance.engine.privacy.PrivacyOcclusionResolverFaceOnlyInstrumentedTest#noCarveFaceOnlyFastPathsPreserveSequenceAndReduceWallTime",
+    "result": "passed",
+    "log": "remaining-device-33.txt",
+    "elapsed_seconds": 7.5
+  },
+  {
+    "case": "art.gaoge.dance.engine.render.FaceRoiRendererInstrumentedTest#texture2dAndOesProduceSameVisualSourceCrop",
+    "result": "passed",
+    "log": "remaining-device-34.txt",
+    "elapsed_seconds": 1.03
+  },
+  {
+    "case": "art.gaoge.dance.engine.render.FaceRoiRendererInstrumentedTest#oesReadbackFeedsMediaPipeWithoutCpuFlip",
+    "result": "passed",
+    "log": "remaining-device-35.txt",
+    "elapsed_seconds": 4.81
+  },
+  {
+    "case": "art.gaoge.dance.engine.face.MediaPipeFaceLocatorInstrumentedTest#parallelLocatorMatchesSequentialResultsAndReducesTwoCallWallTime",
+    "result": "passed",
+    "log": "remaining-device-36.txt",
+    "elapsed_seconds": 2.94
+  },
+  {
+    "case": "art.gaoge.dance.engine.inference.YoloMaskSigmoidInstrumentedTest#exactFloatThresholdSigmoidPreservesMaskBytesAndReducesDecodeWallTime",
+    "result": "passed",
+    "log": "remaining-device-37.txt",
+    "elapsed_seconds": 1.02
+  },
+  {
+    "case": "art.gaoge.dance.engine.render.FaceRoiRendererInstrumentedTest#benchmarkOesRenderAndReadback256",
+    "result": "passed",
+    "log": "remaining-device-38.txt",
+    "elapsed_seconds": 1.09
+  }
+]

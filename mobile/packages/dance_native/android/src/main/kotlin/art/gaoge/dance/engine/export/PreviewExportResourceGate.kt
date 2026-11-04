@@ -56,7 +56,10 @@ class PreviewExportResourceGate {
 
     /** Call only after the actual worker and its model have drained, never on cancel notification. */
     fun finishExport(jobId: String) {
-        exportOwner.compareAndSet(jobId, null)
+        // Service Intent extras recreate the String. CAS compares references,
+        // so use the stored instance after checking the task's value identity.
+        val currentOwner = exportOwner.get()
+        if (currentOwner == jobId) exportOwner.compareAndSet(currentOwner, null)
     }
 
     suspend fun closePreview(owner: PreviewOwner) {

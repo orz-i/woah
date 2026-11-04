@@ -1,0 +1,79 @@
+[
+  {
+    "file": "duo-dance-6940536.mp4",
+    "source": "https://www.pexels.com/video/couple-dancing-in-the-dance-studio-6940536/",
+    "size": 3748966,
+    "sha256": "9a8553ea9eb07a4d5e11e6ea8059ca7bf302df703fe804ea5ba604ef08235a76",
+    "width": 1920,
+    "height": 1080,
+    "fps": "30000/1001",
+    "duration_seconds": 6.2062,
+    "audio": false,
+    "download_url": "https://videos.pexels.com/video-files/6940536/6940536-hd_1920_1080_30fps.mp4"
+  },
+  {
+    "file": "solo-portrait-7570258.mp4",
+    "source": "https://www.pexels.com/video/woman-dancing-7570258/",
+    "size": 21156880,
+    "sha256": "f401df9259f7fcbf7b01121cbb720e744e0dbba6e3ebce2f64027d37c873d6a1",
+    "width": 2160,
+    "height": 4096,
+    "fps": "25/1",
+    "duration_seconds": 26.495,
+    "audio": true,
+    "download_url": "https://videos.pexels.com/video-files/7570258/7570258-uhd_2160_4096_25fps.mp4"
+  },
+  {
+    "file": "solo-hd-7570258.mp4",
+    "source": "https://www.pexels.com/video/woman-dancing-7570258/",
+    "size": 7454617,
+    "sha256": "21e0b8319470426718502c31bdabf43c2889b3013cda760c4c1ce8ee69decce0",
+    "width": 1080,
+    "height": 2048,
+    "fps": "25/1",
+    "duration_seconds": 26.495,
+    "audio": true,
+    "download_url": "https://videos.pexels.com/video-files/7570258/7570258-hd_1080_2048_25fps.mp4"
+  },
+  {
+    "file": "group-mirror-8956295.mp4",
+    "source": "https://www.pexels.com/video/women-dancing-in-the-studio-8956295/",
+    "size": 69505821,
+    "sha256": "376c2ae73c92c23dceb042d27450aaa45ba2f44a3d7b0a5f3c26e9bea6c2dd73",
+    "width": 3840,
+    "height": 2160,
+    "fps": "25/1",
+    "duration_seconds": 23.24,
+    "audio": false,
+    "download_url": "https://videos.pexels.com/video-files/8956295/8956295-uhd_3840_2160_25fps.mp4"
+  },
+  {
+    "file": "no-person-flower.mp4",
+    "source": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+    "size": 1128375,
+    "sha256": "0cd83d944a6ca7822b4a8306cecc60a36e859b041f6702c6a1ad9ead78924451",
+    "width": 960,
+    "height": 540,
+    "fps": "30000/1001",
+    "duration_seconds": 5.055,
+    "audio": true
+  },
+  {
+    "file": "custom-sticker.png",
+    "source": "https://github.com/twitter/twemoji/blob/master/assets/72x72/1f600.png",
+    "size": 806,
+    "sha256": "9cfc5ad34e89b6eebddcd5ec715c224a86c99ea5b9fad999407dee7e32f681b6"
+  },
+  {
+    "file": "group-hd-8956295.mp4",
+    "source": "https://www.pexels.com/video/women-dancing-in-the-studio-8956295/",
+    "size": 15726991,
+    "sha256": "d95c0ba298ab0701c01e349185afa049d51ae1037b6907c960d6e1b8fcd01cd5",
+    "width": 1920,
+    "height": 1080,
+    "fps": "25/1",
+    "duration_seconds": 23.24,
+    "audio": false,
+    "download_url": "https://videos.pexels.com/video-files/8956295/8956295-hd_1920_1080_25fps.mp4"
+  }
+]

@@ -1,0 +1,357 @@
+00:00 +0: loading D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/app/system_appearance_test.dart
+00:00 +0: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:00 +1: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:00 +2: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:00 +3: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:00 +4: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:00 +5: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:00 +6: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:01 +7: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:01 +8: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:01 +9: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:01 +10: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:01 +11: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:01 +12: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:01 +13: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:01 +14: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/core/flow_back_button_test.dart: FlowBackButton renders properly and fires callback on tap
+00:01 +15: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/analysis_session_test.dart: 100 synthetic sessions close once and late results release themselves
+00:01 +16: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/app/system_appearance_test.dart: hidden Wavi stage stays cinematic in both system modes
+00:01 +16: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/analysis_session_test.dart: a release failure can retry and never becomes an unhandled future
+[AnalysisSession] CACHE_RELEASE_DEFERRED
+00:01 +17: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/app/system_appearance_test.dart: hidden Wavi stage stays cinematic in both system modes
+00:01 +18: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/app/system_appearance_test.dart: hidden Wavi stage stays cinematic in both system modes
+00:01 +18: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/analysis_session_test.dart: older analysis completing after replacement cannot overwrite new state
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:01 +19: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/app/system_appearance_test.dart: hidden Wavi stage stays cinematic in both system modes
+00:01 +19: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/analysis_session_test.dart: late analysis error cannot replace a newer ready state
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:01 +20: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/app/system_appearance_test.dart: hidden Wavi stage stays cinematic in both system modes
+00:01 +20: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/analysis_session_test.dart: closed session receives no state update and releases late analysis
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:01 +21: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/app/system_appearance_test.dart: hidden Wavi stage stays cinematic in both system modes
+00:01 +21: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/analysis_session_test.dart: disposed controller releases its late response without reading state
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:01 +22: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/app/system_appearance_test.dart: hidden Wavi stage stays cinematic in both system modes
+00:01 +22: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/analysis_session_test.dart: preparing an already cached project invalidates an older analysis
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:01 +23: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/app/system_appearance_test.dart: hidden Wavi stage stays cinematic in both system modes
+00:02 +24: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_async_regression_test.dart: a failed old practice reopen cannot report into a new session
+00:02 +25: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_async_regression_test.dart: failed durable rollback remains visible and can be retried
+00:02 +26: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_async_regression_test.dart: mirror edits keep project actions disabled until settled
+00:03 +27: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_async_regression_test.dart: mirror edits keep project actions disabled until settled
+00:03 +28: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_async_regression_test.dart: mirror edits keep project actions disabled until settled
+00:03 +29: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_async_regression_test.dart: mirror edits keep project actions disabled until settled
+00:03 +30: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_async_regression_test.dart: mirror edits keep project actions disabled until settled
+00:03 +31: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_async_regression_test.dart: mirror edits keep project actions disabled until settled
+00:03 +32: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_entry_route_regression_test.dart: repeated manual entry creates and releases exactly two previews
+00:03 +33: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_entry_route_regression_test.dart: repeated manual entry creates and releases exactly two previews
+00:03 +34: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_entry_route_regression_test.dart: repeated manual entry creates and releases exactly two previews
+00:04 +35: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_entry_route_regression_test.dart: repeated manual entry creates and releases exactly two previews
+00:04 +36: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_entry_route_regression_test.dart: repeated manual entry creates and releases exactly two previews
+00:04 +37: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_entry_route_regression_test.dart: repeated manual entry creates and releases exactly two previews
+00:04 +38: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_lifecycle_regression_test.dart: failed manual preview must stay open instead of reporting applied calibration
+00:04 +39: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_lifecycle_regression_test.dart: failed manual preview must stay open instead of reporting applied calibration
+00:04 +40: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_lifecycle_regression_test.dart: failed manual preview must stay open instead of reporting applied calibration
+00:04 +41: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_lifecycle_regression_test.dart: failed manual preview must stay open instead of reporting applied calibration
+00:04 +42: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_lifecycle_regression_test.dart: failed manual preview must stay open instead of reporting applied calibration
+00:04 +43: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_lifecycle_regression_test.dart: failed manual preview must stay open instead of reporting applied calibration
+00:04 +44: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_lifecycle_regression_test.dart: failed manual preview must stay open instead of reporting applied calibration
+00:04 +45: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_lifecycle_regression_test.dart: failed manual preview must stay open instead of reporting applied calibration
+00:04 +46: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_lifecycle_regression_test.dart: failed manual preview must stay open instead of reporting applied calibration
+00:04 +47: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_lifecycle_regression_test.dart: failed manual preview must stay open instead of reporting applied calibration
+00:05 +48: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_lifecycle_regression_test.dart: failed manual preview must stay open instead of reporting applied calibration
+00:05 +49: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_async_regression_test.dart: visible Cancel restores native and saved state during ApplyStage.seek
+00:05 +50: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_async_regression_test.dart: visible Cancel restores native and saved state during ApplyStage.seek
+00:05 +51: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_async_regression_test.dart: visible Cancel restores native and saved state during ApplyStage.seek
+00:05 +52: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_entry_route_regression_test.dart: export exit pops only its dialog (false)
+00:05 +53: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_entry_route_regression_test.dart: export exit pops only its dialog (false)
+00:05 +54: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_async_regression_test.dart: visible Cancel restores native and saved state during ApplyStage.save
+00:05 +55: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_export_test.dart: an active background export resumes progress before opening preview decoders
+00:05 +56: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_export_test.dart: an active background export resumes progress before opening preview decoders
+00:05 +57: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_export_test.dart: an active background export resumes progress before opening preview decoders
+00:05 +58: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_export_test.dart: an active background export resumes progress before opening preview decoders
+00:05 +59: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_export_test.dart: an active background export resumes progress before opening preview decoders
+00:06 +60: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_entry_route_regression_test.dart: Back during a button cancellation closes once it finishes
+00:06 +61: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_entry_route_regression_test.dart: Back during a button cancellation closes once it finishes
+00:06 +62: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_entry_route_regression_test.dart: Back during a button cancellation closes once it finishes
+00:06 +63: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_entry_route_regression_test.dart: Back during a button cancellation closes once it finishes
+00:06 +64: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_entry_route_regression_test.dart: Back during a button cancellation closes once it finishes
+00:06 +65: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_export_test.dart: A/B export uses selected bounds and cancel returns a terminal result
+00:06 +66: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_entry_route_regression_test.dart: a failed cancellation stays open and allows retry
+00:06 +67: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_entry_route_regression_test.dart: a failed cancellation stays open and allows retry
+00:06 +68: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_music_rate_test.dart: manual controls keep contrast in dark appearance
+00:06 +69: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_music_rate_test.dart: manual controls keep contrast in dark appearance
+00:06 +70: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_music_rate_test.dart: manual controls keep contrast in dark appearance
+00:07 +71: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: view options show check on active state dark
+00:07 +72: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: view options show check on active state dark
+00:07 +73: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: view options show check on active state dark
+00:08 +74: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: loop button uses a non-color active cue dark
+00:08 +75: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: loop button uses a non-color active cue dark
+00:09 +76: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: loop button uses a non-color active cue dark
+00:09 +77: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: loop button uses a non-color active cue dark
+00:09 +78: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_music_rate_test.dart: dual-anchor controls remain reachable at large text Size(320.0, 640.0)
+00:09 +79: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_music_rate_test.dart: dual-anchor controls remain reachable at large text Size(320.0, 640.0)
+00:09 +80: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: picture target selection tonal cue dark
+00:09 +81: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: loop button uses a non-color active cue light
+00:09 +82: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: loop button uses a non-color active cue light
+00:09 +83: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: loop button uses a non-color active cue light
+00:09 +84: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_music_rate_test.dart: dual-anchor controls remain reachable at large text Size(640.0, 320.0)
+00:09 +85: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_music_rate_test.dart: dual-anchor controls remain reachable at large text Size(640.0, 320.0)
+00:09 +86: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_music_rate_test.dart: dual-anchor controls remain reachable at large text Size(640.0, 320.0)
+00:09 +87: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: compact landscape preserves 48dp practice targets at large text
+00:09 +88: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: compact landscape preserves 48dp practice targets at large text
+00:09 +89: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: compact landscape preserves 48dp practice targets at large text
+00:09 +90: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: compact landscape preserves 48dp practice targets at large text
+00:09 +91: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: compact landscape preserves 48dp practice targets at large text
+00:09 +92: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: compact landscape preserves 48dp practice targets at large text
+00:09 +93: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: compact landscape preserves 48dp practice targets at large text
+00:09 +94: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: compact landscape preserves 48dp practice targets at large text
+00:09 +95: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:09 +96: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:09 +97: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:09 +98: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:10 +99: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:10 +100: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:10 +101: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:10 +102: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:10 +103: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:10 +104: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:10 +105: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:10 +106: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +107: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +108: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +109: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +110: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +111: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +112: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +113: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +114: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +115: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +116: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +117: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +118: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +119: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +120: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +121: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +122: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +123: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +124: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +125: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +125: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/export_lifecycle_test.dart: synchronous plan listener can dispose before native submission
+[ExportController] EXPORT_START_FAILED code=UNKNOWN_ERROR
+00:11 +126: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +127: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +128: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +129: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +130: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +131: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +131: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/export_lifecycle_test.dart: native start failure after disposal is contained
+[ExportController] EXPORT_START_FAILED code=UNKNOWN_ERROR
+00:11 +132: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +133: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +133: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/export_lifecycle_test.dart: persistent disposed cleanup error is contained, not marked success
+[ExportController] EXPORT_CLEANUP_FAILED code=UNKNOWN_ERROR
+00:11 +134: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +135: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +136: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +137: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +138: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +139: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +140: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +141: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:12 +142: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:12 +143: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:12 +144: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:12 +145: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:12 +146: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:12 +147: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:12 +147: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/export_test.dart: ExportController forwards temporal trim bounds
+[ExportController] EXPORT_CLEANUP_FAILED code=UNKNOWN_ERROR
+00:12 +148: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:12 +148: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/export_test.dart: ExportController forwards portrait reframe output dimensions
+[ExportController] EXPORT_CLEANUP_FAILED code=UNKNOWN_ERROR
+00:12 +149: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:12 +149: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/export_test.dart: ExportController preserves 4K 59.94 media contract when capability allows it
+[ExportController] EXPORT_CLEANUP_FAILED code=UNKNOWN_ERROR
+00:12 +150: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:12 +150: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/export_test.dart: ExportController forwards adaptive crop clarity restoration
+[ExportController] EXPORT_CLEANUP_FAILED code=UNKNOWN_ERROR
+00:12 +151: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:12 +151: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/export_test.dart: ExportController applies user FHD preference before device fallback
+[ExportController] EXPORT_CLEANUP_FAILED code=UNKNOWN_ERROR
+00:12 +152: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:12 +152: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/export_test.dart: ExportController applies encoder dimension capability explicitly
+[ExportController] EXPORT_CLEANUP_FAILED code=UNKNOWN_ERROR
+00:12 +153: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:12 +154: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:12 +155: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:12 +156: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:12 +157: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:12 +158: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:12 +159: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:12 +160: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:12 +161: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:12 +162: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:12 +163: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:12 +164: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/export_test.dart: export live preview is opt-in and toggles by tapping the stage
+00:12 +165: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/export_test.dart: export live preview is opt-in and toggles by tapping the stage
+00:12 +166: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/export_test.dart: export live preview is opt-in and toggles by tapping the stage
+00:13 +167: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/export_test.dart: export live preview is opt-in and toggles by tapping the stage
+00:13 +168: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: picture controls, drag and pinch affect only the selected video and save on done
+00:13 +169: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: picture controls, drag and pinch affect only the selected video and save on done
+00:13 +170: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: picture controls, drag and pinch affect only the selected video and save on done
+00:13 +170: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/home_workbench_test.dart: canceling a replacement does not reuse the previously selected video
+[ImportVideoController] VIDEO_PROBE_REQUEST
+00:13 +171: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: picture controls, drag and pinch affect only the selected video and save on done
+00:13 +172: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: picture controls, drag and pinch affect only the selected video and save on done
+00:13 +173: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: picture controls, drag and pinch affect only the selected video and save on done
+00:13 +174: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: picture controls, drag and pinch affect only the selected video and save on done
+00:13 +175: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: picture controls, drag and pinch affect only the selected video and save on done
+00:13 +176: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: picture controls, drag and pinch affect only the selected video and save on done
+00:13 +177: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: picture controls, drag and pinch affect only the selected video and save on done
+00:13 +178: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: picture controls, drag and pinch affect only the selected video and save on done
+00:13 +179: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_picture_markers_test.dart: picture controls, drag and pinch affect only the selected video and save on done
+00:13 +180: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/home_workbench_test.dart: iOS workbench launches the comparison workflow
+00:13 +181: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/home_workbench_test.dart: iOS workbench launches the comparison workflow
+00:14 +182: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/home_workbench_test.dart: iOS workbench launches the comparison workflow
+00:14 +183: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/home_workbench_test.dart: iOS workbench launches the comparison workflow
+00:14 +184: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/home_workbench_test.dart: iOS workbench launches the comparison workflow
+00:14 +185: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/home_workbench_test.dart: iOS workbench launches the comparison workflow
+00:14 +186: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/home_workbench_test.dart: iOS workbench launches the comparison workflow
+00:14 +187: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/home_workbench_test.dart: iOS workbench launches the comparison workflow
+00:14 +188: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/home_workbench_test.dart: iOS workbench launches the comparison workflow
+00:14 +189: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/home_workbench_test.dart: iOS workbench launches the comparison workflow
+00:14 +190: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/export_test.dart: cancel dialog theme survives export route exit light
+00:14 +191: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/export_test.dart: cancel dialog theme survives export route exit light
+00:15 +192: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: failed manual saving keeps editing open and cancel restores the saved calibration
+00:15 +193: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: failed manual saving keeps editing open and cancel restores the saved calibration
+00:15 +194: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: failed manual saving keeps editing open and cancel restores the saved calibration
+00:15 +195: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: failed manual saving keeps editing open and cancel restores the saved calibration
+00:15 +196: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/export_test.dart: cancel dialog theme survives export route exit dark
+00:15 +197: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/export_test.dart: cancel dialog theme survives export route exit dark
+00:15 +198: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/import_video_test.dart: home preserves its video protection card alongside standalone workflows
+00:15 +199: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/import_video_test.dart: home preserves its video protection card alongside standalone workflows
+00:15 +200: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/import_video_test.dart: home preserves its video protection card alongside standalone workflows
+00:15 +201: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/import_video_test.dart: home preserves its video protection card alongside standalone workflows
+00:15 +202: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/import_video_test.dart: home preserves its video protection card alongside standalone workflows
+00:15 +203: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/import_video_test.dart: home preserves its video protection card alongside standalone workflows
+00:15 +204: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/import_video_test.dart: home preserves its video protection card alongside standalone workflows
+00:16 +205: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/import_video_test.dart: home preserves its video protection card alongside standalone workflows
+00:16 +206: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/import_video_test.dart: home preserves its video protection card alongside standalone workflows
+00:16 +207: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: view choices preserve playback and rotation override is released on exit
+00:16 +208: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: view choices preserve playback and rotation override is released on exit
+00:16 +209: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: view choices preserve playback and rotation override is released on exit
+00:16 +210: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: view choices preserve playback and rotation override is released on exit
+00:16 +211: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: view choices preserve playback and rotation override is released on exit
+00:16 +212: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: view choices preserve playback and rotation override is released on exit
+00:16 +213: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: view choices preserve playback and rotation override is released on exit
+00:16 +213: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/home_workbench_test.dart: single import completes and resets after editor
+[ImportVideoController] VIDEO_PROBE_REQUEST
+00:16 +214: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: view choices preserve playback and rotation override is released on exit
+00:16 +215: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/home_workbench_test.dart: picker cannot be launched twice while busy; cancel stays home
+00:17 +216: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: portrait side-by-side manual calibration keeps sliders usable and cancel only discards cue changes
+00:17 +216: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/home_workbench_test.dart: failed probe shows an error without navigating to editor
+[ImportVideoController] VIDEO_PROBE_REQUEST
+[ImportVideoController] VIDEO_PROBE_FAILED code=UNKNOWN_ERROR
+00:17 +217: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: portrait side-by-side manual calibration keeps sliders usable and cancel only discards cue changes
+00:17 +217: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/privacy_selection_regression_test.dart: occluded low confidence person remains protected when choosing a hero
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:17 +218: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: portrait side-by-side manual calibration keeps sliders usable and cancel only discards cue changes
+00:17 +219: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: portrait side-by-side manual calibration keeps sliders usable and cancel only discards cue changes
+00:17 +220: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/comparison_test.dart: portrait side-by-side manual calibration keeps sliders usable and cancel only discards cue changes
+00:18 +221: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: preview error stays readable in dark appearance
+00:18 +222: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: preview error stays readable in dark appearance
+00:18 +223: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: preview error stays readable in dark appearance
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:19 +224: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: preview error stays readable in light appearance
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:19 +225: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/result_screen_test.dart: failed auto-save exposes retry and blocks share until saved
+00:20 +225: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: selection cues are visible in dark theme
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:20 +226: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/result_screen_test.dart: failed auto-save exposes retry and blocks share until saved
+00:20 +227: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/result_screen_test.dart: failed auto-save exposes retry and blocks share until saved
+00:20 +227: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/privacy_logging_test.dart: real repository preserves source URI but import error is fixed
+[ImportVideoController] VIDEO_PROBE_REQUEST
+[NativeRepository] VIDEO_PROBE_REQUEST
+[ImportVideoController] VIDEO_PROBE_FAILED code=VIDEO_OPEN_FAILED
+00:20 +228: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/result_screen_test.dart: failed auto-save exposes retry and blocks share until saved
+00:20 +229: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/woah_easter_egg_test.dart: Wavi reveals and cycles short messages by tapping the mascot
+00:20 +229: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: selection cues are visible in light theme
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:20 +230: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/woah_easter_egg_test.dart: Wavi reveals and cycles short messages by tapping the mascot
+00:20 +231: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/woah_easter_egg_test.dart: Wavi reveals and cycles short messages by tapping the mascot
+00:20 +232: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/woah_easter_egg_test.dart: Wavi reveals and cycles short messages by tapping the mascot
+00:20 +233: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: selection cues fit compact large-text at 1.6
+00:20 +234: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: selection cues fit compact large-text at 1.6
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:20 +235: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/result_screen_test.dart: success result keeps share open diagnostics and next actions
+00:21 +236: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/result_screen_test.dart: success result keeps share open diagnostics and next actions
+00:21 +237: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: selection cues fit compact large-text at 2.0
+00:21 +238: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: selection cues fit compact large-text at 2.0
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:21 +239: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/woah_easter_egg_test.dart: long pressing the home Woah enters Wavi page and back exits
+00:21 +240: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/result_screen_test.dart: auto-save temporarily blocks navigation and open actions
+00:21 +241: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: tools start closed and can be deselected without losing edits
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:21 +242: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/widget_test.dart: App smoke test initializes correctly
+00:21 +242: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: empty recognition offers local recovery and retry opens editor
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:21 +243: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/widget_test.dart: App smoke test initializes correctly
+00:22 +243: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: trim distinguishes output bounds and supports precise end adjustment
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:22 +244: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/widget_test.dart: App smoke test initializes correctly
+00:22 +245: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: unified editor uses fixed media workspace and four real tools
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:22 +246: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: face sticker tool exposes custom import and size control
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:22 +247: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: compact dark editor shows all protection styles
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:22 +248: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: compact light editor shows all protection styles
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:22 +249: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: leg stretch appears only after selecting a protagonist
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:23 +250: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: saved Profile applies to a fresh video and stays collapsed
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:23 +251: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: Profile changes are persisted for the next video
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:23 +252: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: saved Profile never overrides an existing configured project
+00:23 +253: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: tool navigation keeps the media workspace stable
+00:23 +254: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: resolution preset updates project and survives trim reanalysis
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:23 +255: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: temporal trim change reanalyzes from the new first frame
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:23 +256: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: queued trim accessibility changes cannot outrun reanalysis
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:24 +257: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: shortening the end preserves subject, face style and analyzed IDs
+00:24 +258: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: new trim start keeps face style and requires review of new IDs
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:24 +259: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: reopening with cached analysis does not rerun person analysis
+00:24 +260: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: stage target changes feed the real effect preview request
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:24 +261: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: full-body and face effect drafts survive mode switching
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:24 +262: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: restore default targets preserves face-only scope without mixed rendering
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:24 +263: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: portrait subject auto-removes full-body privacy and survives export
+00:25 +264: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: portrait subject auto-removes face-only privacy
+00:25 +265: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: cancel subject selection leaves original privacy and framing intact
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:25 +266: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: reopening a crop-only project does not silently restore privacy targets
+00:25 +267: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: real editor export fast native cancellation does not flash an error
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:25 +268: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: real editor export route returns cleanly after cancellation race
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:25 +269: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: session survives export result back and releases only on final home
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:26 +270: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: replacing editor releases only the old explicitly owned session
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:26 +271: D:/Gaoge-Agent-Runtime/privacy-commit-20261104/validation/mobile/app/test/features/protection_editor_test.dart: single next action goes directly to export
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:26 +272: All tests passed!

@@ -1,0 +1,2781 @@
+{
+  "total": 555,
+  "passed": 555,
+  "cases": [
+    {
+      "case": "art.gaoge.dance.engine.bridge.DanceNativeExceptionTest#testExceptionMessageIncludesCodeAndMessage()",
+      "passed": true,
+      "seconds": 0.015
+    },
+    {
+      "case": "art.gaoge.dance.engine.bridge.DanceNativeExceptionTest#testExceptionWithCause()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.DynamicReframeContractTest#movingSubjectChangesFinalCropAndTextureMatrix()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.OcclusionProxyStabilizerTest#largeRealMotionBreaksOutImmediatelyAndConverges()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.OcclusionProxyStabilizerTest#alternatingMicroMotionStaysLocked()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.OcclusionProxyStabilizerTest#sustainedMotionIsApproximatelyFrameRateIndependent()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.OcclusionProxyStabilizerTest#resetDoesNotCarryPreviousProxyComposition()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.OcclusionProxyStabilizerTest#sustainedSmallDriftBreaksOutAfterConfirmation()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.ReframeGeometryTest#cropTextureMatrixMapsOutputUvIntoRequestedGlCrop()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.ReframeGeometryTest#postCropCompositionKeepsFullSourceAspectWithoutRenderingUnneededPixels()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.ReframeGeometryTest#exactPortraitPreviewMatchesExportGeometryAndNeverEnlarges()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.ReframeGeometryTest#fullFrameIsStableAcrossCoordinateConversion()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.ReframeGeometryTest#visualTopLeftCropConvertsToScreenGlWithoutChangingHorizontalBounds()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.ReframeGeometryTest#impossibleTinyFrameDoesNotClaimExactPortraitGeometry()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.SmoothFollowerTest#missingTargetDuringPanNeverMovesPastLastTrustedPosition()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.SmoothFollowerTest#reacquisitionIsSmoothedAndSpeedLimited()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.SmoothFollowerTest#missingTargetHoldsTrustedCompositionInsteadOfDrifting()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.SmoothFollowerTest#bodyBoxJitterInsideDeadZoneDoesNotMoveCamera()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.SmoothFollowerTest#narrowerPortraitCropsVerticallyInVisualTopLeftSpace()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.SmoothFollowerTest#landscapeToPortraitPreservesFullHeightAndCentersSelectedSubject()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.SmoothFollowerTest#portraitSourceIsNotNeedlesslyZoomed()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.SmoothFollowerTest#panUsesElapsedTimeRatherThanFrameCount()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.SmoothFollowerTest#invalidObservationsAndDuplicateTimestampsCannotPoisonCamera()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.SmoothFollowerTest#largePanRampsVelocityInsteadOfStartingAtFullSpeed()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.SmoothFollowerTest#moderateCompositionShiftOutsideNewDeadZoneEventuallyMovesCamera()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.SmoothFollowerTest#largePanCatchesUpFasterWithoutTeleporting()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.SmoothFollowerTest#edgesShiftRatherThanShrinkCropOrRevealBlackBars()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.SmoothFollowerTest#suddenDirectionReversalBrakesBeforeMovingOpposite()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.camera.SmoothFollowerTest#backwardSeekAndResetDoNotReusePreviousCamera()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.clarity.CropClarityBackendPolicyTest#missing model keeps deterministic shader fallback()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.clarity.CropClarityBackendPolicyTest#scale one disables restoration even when model exists()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.clarity.CropClarityBackendPolicyTest#valid model plus gpu compile selects neural candidate()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.clarity.CropClarityBackendPolicyTest#gpu compile failure keeps deterministic shader fallback()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.clarity.CropClarityBackendPolicyTest#mild upscale keeps deterministic shader even when neural is available()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.clarity.CropClarityQualityGateTest#boundedStrength()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.clarity.CropClarityQualityGateTest#debugAndCropRequired()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.clarity.CropClarityQualityGateTest#metadataOverestimateDoesNotSkipFinalSample()",
+      "passed": true,
+      "seconds": 0.013
+    },
+    {
+      "case": "art.gaoge.dance.engine.clarity.CropClarityQualityGateTest#firstMiddleNearEndAreUniqueAndBounded()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.clarity.CropClarityTilePlannerTest#small frame uses one partial tile with the full core()",
+      "passed": true,
+      "seconds": 0.004
+    },
+    {
+      "case": "art.gaoge.dance.engine.clarity.CropClarityTilePlannerTest#portrait crop tiles retain every source pixel exactly once()",
+      "passed": true,
+      "seconds": 0.031
+    },
+    {
+      "case": "art.gaoge.dance.engine.clarity.CropClarityTilePlannerTest#all tiles stay inside fixed neural input envelope()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonAudioClockTest#resamplesTenMillisecondPublicationsAtDisplayCadence()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonAudioClockTest#seekResetDiscardsOldAnchors()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonAudioClockTest#aStalledPublishedClockCannotRunAway()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonAudioClockTest#speedChangeResetsAndThenFollowsHalfSpeed()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonExportManagerTest#obsoleteQueuedWorkerIsIgnoredAfterRetry()",
+      "passed": true,
+      "seconds": 0.47
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonExportManagerTest#savedCompletedExportNeedsNoReplacementFlag()",
+      "passed": true,
+      "seconds": 0.018
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonExportManagerTest#confirmedReplacementReclaimsPreviousPrivateMovieAndAgedOrphans()",
+      "passed": true,
+      "seconds": 0.017
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonExportManagerTest#oldServiceInterruptionCannotCancelTheRetry()",
+      "passed": true,
+      "seconds": 0.011
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonExportManagerTest#interruptedWorkerCannotThrowOrModifyItsRetry()",
+      "passed": true,
+      "seconds": 0.029
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonExportManagerTest#unsavedCompletedExportIsNotSilentlyOverwritten()",
+      "passed": true,
+      "seconds": 0.02
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonExportTest#oldProjectsDefaultRateAndPicturesButPracticeSpeedNeverBecomesExportRate()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonExportTest#vfrLedgerAllowsCodecLatencyAndAnArbitraryAbStart()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonExportTest#jobIdentityCannotEscapeTheOwnedOutputDirectory()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonExportTest#frozenSettingsRoundTripPreservesMappingAndIndependentGeometry()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonExportTest#missingReorderedRetimedAndUnflushedFramesCannotBecomeSuccessfulFiles()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonExportTest#pcmClipUsesSampleBoundariesAndPreservesNonZeroSourcePts()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonExportTest#affineNegativeOffsetUsesRealSourceOriginAndExclusiveAbEnd()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonFrameProbeTest#mismatchedReleaseTimesCannotMasqueradeAsGoodSync()",
+      "passed": true,
+      "seconds": 0.005
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonFrameProbeTest#epochChangeRejectsOldObservations()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonFrameProbeTest#pairsByPlannedReleaseAndMeasuresMediaOffsetNotCallbackOrder()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonFrameProbeTest#timeWindowsExposeDriftAndKeepExportBounded()",
+      "passed": true,
+      "seconds": 0.009
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonGlTimingTest#staleObservationsCannotEnterNewSeekEpoch()",
+      "passed": true,
+      "seconds": 0.005
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonGlTimingTest#oneWindowPreservesExistingCaptureRectangles()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonGlTimingTest#bothArrangementsContainPortraitAndLandscapeSourcesWithoutOverlap()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonGlTimingTest#windowExportIsBoundedAndRetainsCoverageFailures()",
+      "passed": true,
+      "seconds": 0.006
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonGlTimingTest#coverageUsesActualPtsAcrossDifferentFrameIntervals()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonGlTimingTest#negativeOffsetStartsTeacherAtOneSecondAndLearnerAtZero()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonManualMusicAnchorTest#negativeOffsetRetainsTheCorrectNonzeroOverlapStart()",
+      "passed": true,
+      "seconds": 0.004
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonManualMusicAnchorTest#parsesExactMicrosecondsAndMinuteNotation()",
+      "passed": true,
+      "seconds": 0.007
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonManualMusicAnchorTest#positiveOffsetMapsTheExactMusicEventWithoutChangingMotion()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonManualMusicAnchorTest#rejectsAmbiguousPrecisionOverflowAndInvalidMinuteSeconds()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonManualMusicAnchorTest#rejectsEndpointsAndUnplayableAnchorsBeforeChangingThePlayer()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonMusicMatcherTest#rejectsSilenceAndUnrelatedMusic()",
+      "passed": true,
+      "seconds": 0.77
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonMusicMatcherTest#repeatedMusicReturnsAmbiguityInsteadOfInventingConfidence()",
+      "passed": true,
+      "seconds": 0.995
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonMusicMatcherTest#aConstantTempoChangeIsEstimatedInsteadOfPretendingItIsAnOffset()",
+      "passed": true,
+      "seconds": 0.361
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonMusicMatcherTest#oneSharedShortSectionCannotStandInForThreeAgreeingWindows()",
+      "passed": true,
+      "seconds": 0.505
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonMusicMatcherTest#findsPositiveMusicOffsetDespiteGainAndNoiseWithoutUsingVideo()",
+      "passed": true,
+      "seconds": 0.109
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonMusicMatcherTest#delayedRoomReflectionsAndAnotherSoundTrackRetainTheCommonMusic()",
+      "passed": true,
+      "seconds": 0.169
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonMusicMatcherTest#retainsNegativeOffsetAndNonzeroAudioSourceOrigins()",
+      "passed": true,
+      "seconds": 0.096
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonMusicMatcherTest#unrelatedSongsWithTheSameBeatGridNeverAutoApply()",
+      "passed": true,
+      "seconds": 1.774
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonMusicMatcherTest#findsAPartiallyOverlappingMusicPassageWithDifferentSourceTrims()",
+      "passed": true,
+      "seconds": 0.144
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonMusicMatcherTest#cancellationPropagatesBeforePublishingAMatch()",
+      "passed": true,
+      "seconds": 0.023
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonMusicRateTest#aDoubleSpeedVersion()",
+      "passed": true,
+      "seconds": 0.301
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonMusicRateTest#slowMusicWithPitchPreserved()",
+      "passed": true,
+      "seconds": 1.167
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonMusicRateTest#nonPresetMusicRate()",
+      "passed": true,
+      "seconds": 0.811
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonMusicRateTest#changingTempoCannotBecomeOneConfidentMapping()",
+      "passed": true,
+      "seconds": 0.694
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonMusicRateTest#slowMusicThatAlsoShiftsPitch()",
+      "passed": true,
+      "seconds": 0.986
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonMusicRateTest#negativeInterceptAndNonzeroSourceOrigins()",
+      "passed": true,
+      "seconds": 0.581
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonMusicRateTest#affineOverlapAndInversePreserveMusicCorrespondence()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonMusicRateTest#aHalfSpeedVersion()",
+      "passed": true,
+      "seconds": 1.254
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonMusicRateTest#slightClockDriftIsAContinuousRate()",
+      "passed": true,
+      "seconds": 0.707
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonMusicRateTest#fasterMusicWithPitchPreserved()",
+      "passed": true,
+      "seconds": 0.599
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonMusicRateTest#speedChangeThatAlsoShiftsPitch()",
+      "passed": true,
+      "seconds": 0.524
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonMusicRateTest#invalidScaleNeverReachesDecoders()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonMusicResamplingTest#sameRatePcmBypassesInactiveSonicWithoutLosingSamples()",
+      "passed": true,
+      "seconds": 0.011
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonMusicResamplingTest#resamplesBothRealSourceRatesAndDrainsTheirTails()",
+      "passed": true,
+      "seconds": 0.017
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonPictureTest#rejectsInvalidNumbersAndDefaultsOldBridgePayloads()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonPictureTest#zoomExpandsIntoThePaneRatherThanTheOriginalLetterboxedRectangle()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonPictureTest#extremePanCannotMoveANarrowPictureOutsideItsPane()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonPictureTest#panesDoNotOverlapAndTheDividerDoesNotBecomePictureArea()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonPictureTest#screenPanKeepsItsDirectionAcrossRotatedAspectAndMirrorChoice()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonPictureTest#identityPreservesTheExistingFitIncludingOddPixelRounding()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonPracticeTest#firstAndLastFramesStayInsideTheSharedOverlap()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonPracticeTest#forwardFollowsVfrPresentationBoundariesRatherThanAverageFps()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonPracticeTest#previousDecodesImmediatelyBeforeTheDisplayedFrameNotBeforeTheClock()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonPracticeTest#loopUsesExclusiveEndAndPreservesNegativeMusicMappingOnRestart()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonPracticeTest#previousFrameMayBeginBeforeTheCommonMusicRange()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonSelectedSourceCopyTest#cancellationNeverPublishesPartialMedia()",
+      "passed": true,
+      "seconds": 0.012
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonSelectedSourceCopyTest#brokenProviderNeverPublishesOrKeepsPartialMedia()",
+      "passed": true,
+      "seconds": 0.004
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonSelectedSourceCopyTest#copiesExactBytesAndDigestThenClosesInput()",
+      "passed": true,
+      "seconds": 0.006
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonSelectedSourceCopyTest#anExistingDestinationIsUntouchedAndTheNewInputIsClosed()",
+      "passed": true,
+      "seconds": 0.004
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonSessionPlaybackTest#outsideActiveLoopRestartsAtItsOwnA()",
+      "passed": true,
+      "seconds": 0.213
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonSessionPlaybackTest#final100msLoopDoesNotRestartTheFullClip()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonSessionPlaybackTest#withoutLoopTheFullClipStillReplaysFromZero()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonSessionPlaybackTest#pausedNearTheEndOfAWiderLoopKeepsItsPosition()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonSyncSeekTest#propagatesCancellationAndRejectsMissingSyncSamples()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonSyncSeekTest#boundsRetriesAndFailsRatherThanAcceptingAFutureFrame()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonSyncSeekTest#retriesAFutureBFrameSyncPointWithoutMovingTheRequestedTarget()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonSyncSeekTest#leavesAlreadyPrecedingSyncSeeksUnchangedIncludingZeroAndNegativeOffsets()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonTimeMappingTest#learnerMusicStartsEarlier()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonTimeMappingTest#noOverlapIsExplicit()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonTimeMappingTest#distinctNonZeroSourceValidRanges()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonTimeMappingTest#outOfRangeCompareTimeIsNotSilentlyClamped()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonTimeMappingTest#invalidInputsNeverWrap()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonTimeMappingTest#learnerMusicStartsThreeSecondsLater()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonUriPermissionsTest#persist only access returned by the picker()",
+      "passed": true,
+      "seconds": 0.049
+    },
+    {
+      "case": "art.gaoge.dance.engine.comparison.ComparisonUriPermissionsTest#no read or write grant does not request persistent access()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.DanceNativePluginTest#onMethodCall_getPlatformVersion_returnsExpectedValue()",
+      "passed": true,
+      "seconds": 0.892
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.CrossDeviceTrackingDiagnosticsTest#adaptiveSchedulerForcesCpuOnGapLocalOverlapAndProtectedTrackState()",
+      "passed": true,
+      "seconds": 0.009
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.CrossDeviceTrackingDiagnosticsTest#adaptiveSchedulerSkipsStableSeparatedGpuFrameWithoutGivingGpuIdentityAuthority()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.CrossDeviceTrackingDiagnosticsTest#adaptiveSchedulerForcesCpuWhenProtectedGpuCandidateIsMissing()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.CrossDeviceTrackingDiagnosticsTest#conservativeUnknownFaceEvidenceRejectsFarOrMultiOwnerGeometry()",
+      "passed": true,
+      "seconds": 0.007
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.CrossDeviceTrackingDiagnosticsTest#adaptiveSchedulerIgnoresUnrelatedOverlapAwayFromProtectedIdentity()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.CrossDeviceTrackingDiagnosticsTest#conservativeUnknownFaceEvidenceRequiresOneStrongDormantSelectedOwner()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.CrossDeviceTrackingDiagnosticsTest#productionTrackIdsAreMappedToCpuDetectionOrderByFirstFrameGeometry()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.CrossDeviceTrackingDiagnosticsTest#disablingAdaptiveMatrixPreservesCpuFullTrackingExactly()",
+      "passed": true,
+      "seconds": 0.026
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.DiagnosticBundleExporterTest#bundleScopeExcludesHistoricalSessionsAndJobs()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.DiagnosticBundleExporterTest#testBundleCreatesValidZipWithRequiredEntries()",
+      "passed": true,
+      "seconds": 0.037
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.DiagnosticBundleExporterTest#previewBundleRejectsAllPerJobArtifactsWhenNoLifecycleJobExists()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.DiagnosticPrivacyTest#exceptionsAndNonGeneratedChannelRejectArbitraryDescriptions()",
+      "passed": true,
+      "seconds": 0.04
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.DiagnosticPrivacyTest#actualZipRedactsHistoricTextPreservesQualityAndRejectsSourceLinks()",
+      "passed": true,
+      "seconds": 0.091
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.DiagnosticPrivacyTest#legacyJobErrorsAreProjectedOnNewWritesWithoutChangingMediaFields()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.DiagnosticPrivacyTest#recursiveFieldsAreBoundedAndNeverStringifyUnknownObjects()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.NativeDiagnosticsNoHotPathBlockingTest#testCriticalEventDoesNotBlockCallingThread()",
+      "passed": true,
+      "seconds": 0.004
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.NativeDiagnosticsSnapshotIntegrityTest#testSnapshotIntegrityWithHeavyConcurrentEvents()",
+      "passed": true,
+      "seconds": 0.174
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.NativeDiagnosticsTest#testPipelineLifecycleWritesLatestStageAtomically()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.NativeDiagnosticsTest#eventFieldSnapshotDetachesMutableCallerOwnedValues()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.NativeDiagnosticsTest#testEventWritesValidJsonLine()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.NativeDiagnosticsTest#testRootCauseUnwrap()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.NativeDiagnosticsTest#testConcurrentEventCallsDoNotCorruptFile()",
+      "passed": true,
+      "seconds": 0.018
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.NativeDiagnosticsTest#testBreadcrumbAtomicReplace()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.YoloTensorDiagnosticsTest#fullExportGeometrySignatureDoesNotScanOrHashMaskBytes()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.diagnostics.YoloTensorDiagnosticsTest#associationMaskSummaryUsesTrackManagerThresholdWithoutMutatingBufferPosition()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.export.ExportJobStoreTest#testThrottledDiskWritesAndImmediateTerminalPersistence()",
+      "passed": true,
+      "seconds": 0.007
+    },
+    {
+      "case": "art.gaoge.dance.engine.export.ExportJobStoreTest#testProcessingJobBecomesInterruptedAfterRecovery()",
+      "passed": true,
+      "seconds": 0.007
+    },
+    {
+      "case": "art.gaoge.dance.engine.export.ExportTerminalStatusTest#unexpectedFailureStillReportsAnActionableError()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.export.ExportTerminalStatusTest#cancellationDuringNativeCleanupNeverBecomesFailure()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.export.OwnedExportJobsTest#cancelledParentBeforeBodyEntryStillFinishesOnce()",
+      "passed": true,
+      "seconds": 0.01
+    },
+    {
+      "case": "art.gaoge.dance.engine.export.OwnedExportJobsTest#failedCleanupDoesNotReleaseNativeLane()",
+      "passed": true,
+      "seconds": 0.008
+    },
+    {
+      "case": "art.gaoge.dance.engine.export.OwnedExportJobsTest#fastWorkerCannotReinsertCompletedJob()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.export.OwnedExportJobsTest#oldServiceCancellationNeverTouchesNewReservation()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.export.OwnedExportJobsTest#latestDuplicateOrProgressStartIdIsUsedOnlyWhenIdle()",
+      "passed": true,
+      "seconds": 0.011
+    },
+    {
+      "case": "art.gaoge.dance.engine.export.OwnedExportJobsTest#cancellationDoesNotCloseOrReleaseBlockedNativeWork()",
+      "passed": true,
+      "seconds": 0.01
+    },
+    {
+      "case": "art.gaoge.dance.engine.export.OwnedExportJobsTest#duplicateStartDoesNotFinishOrReplaceExistingWorker()",
+      "passed": true,
+      "seconds": 0.005
+    },
+    {
+      "case": "art.gaoge.dance.engine.export.PreviewExportResourceGateTest#detachDrainsAndPermanentlyRejectsOldOwner()",
+      "passed": true,
+      "seconds": 0.007
+    },
+    {
+      "case": "art.gaoge.dance.engine.export.PreviewExportResourceGateTest#cancelledDrainRollsBackOnlyItsOwnReservation()",
+      "passed": true,
+      "seconds": 0.01
+    },
+    {
+      "case": "art.gaoge.dance.engine.export.PreviewExportResourceGateTest#serviceDeserializedJobIdReleasesTheReservationByValue()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.export.PreviewExportResourceGateTest#cancelNotificationDoesNotReleaseExportUntilWorkerFinishes()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.export.PreviewExportResourceGateTest#exportWaitsForActualPreviewAndRejectsQueuedPreview()",
+      "passed": true,
+      "seconds": 0.009
+    },
+    {
+      "case": "art.gaoge.dance.engine.export.PreviewExportResourceGateTest#exportDrainsAllEngineOwnersAndFailsBeforeStartingOnCleanupError()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.export.PreviewExportResourceGateTest#cacheMutationIsBlockedDuringExportAndWaitsForPreview()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.export.UnifiedCancellationTest#testCoordinatorCancelJobSetsFlagAndUpdatesJobStore()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.ExportJobRecordTest#testSerializationDeserializationRoundtrip()",
+      "passed": true,
+      "seconds": 0.041
+    },
+    {
+      "case": "art.gaoge.dance.engine.face.FaceHeadRoiPlannerTest#invalid person box is rejected()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.face.FaceHeadRoiPlannerTest#upper roi stays square and centers normal target head()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.face.FaceHeadRoiPlannerTest#roi shifts inside frame while preserving edge anchor()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.face.FaceLocatorProviderTest#face locator is disabled unless caller explicitly opts in()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.face.FacePersonAssociatorTest#one person cannot own two simultaneous face detections()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.face.FacePersonAssociatorTest#rejects a face-like box located in lower body()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.face.FacePersonAssociatorTest#allows partially clipped face above person box()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.face.FacePersonAssociatorTest#matches each face to the corresponding nearby person()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.face.FaceRoiCandidateSelectorTest#off anchor neighbor is rejected()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.face.FaceRoiCandidateSelectorTest#well separated central target still wins over neighbor()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.face.FaceRoiCandidateSelectorTest#shifted anchor supports target near frame boundary()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.face.FaceRoiCandidateSelectorTest#wide ROI cannot assign the adjacent person's face to the target()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.face.FaceRoiCandidateSelectorTest#central facial keypoints rescue profile bbox whose box center is off anchor()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.face.FaceRoiCandidateSelectorTest#central target wins over higher confidence neighboring face()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.face.FaceRoiCandidateSelectorTest#near tie around target anchor is rejected as ambiguous()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.inference.YoloLiteRtTensorAdapterTest#array production path matches buffer compatibility path exactly()",
+      "passed": true,
+      "seconds": 0.021
+    },
+    {
+      "case": "art.gaoge.dance.engine.inference.YoloLiteRtTensorAdapterTest#array production path exposes decode substage telemetry()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.inference.YoloMaskAwareNmsTest#testCaseC_NonOverlappingBboxesBothSurvive()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.inference.YoloMaskAwareNmsTest#arrayBackedProtoViewsMatchBufferBackedMaskBytesExactly()",
+      "passed": true,
+      "seconds": 0.006
+    },
+    {
+      "case": "art.gaoge.dance.engine.inference.YoloMaskAwareNmsTest#exactMaskByteSigmoidMatchesHistoricalAcrossFloatBoundaries()",
+      "passed": true,
+      "seconds": 0.249
+    },
+    {
+      "case": "art.gaoge.dance.engine.inference.YoloMaskAwareNmsTest#testCaseB_DuplicateDetectionIsSuppressed()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.inference.YoloMaskAwareNmsTest#channelMajorNchwDecodeMatchesPerPixelReferenceAcrossCandidateBounds()",
+      "passed": true,
+      "seconds": 0.022
+    },
+    {
+      "case": "art.gaoge.dance.engine.inference.YoloMaskAwareNmsTest#boundedCandidateSupportMaskIouMatchesFullScanExactly()",
+      "passed": true,
+      "seconds": 0.022
+    },
+    {
+      "case": "art.gaoge.dance.engine.inference.YoloMaskAwareNmsTest#testCaseA_TwoOverlappingPersonsBothSurvive()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.litert.LiteRtModelRunnerPolicyTest#testRunnerCloseIsIdempotent()",
+      "passed": true,
+      "seconds": 0.006
+    },
+    {
+      "case": "art.gaoge.dance.engine.litert.LiteRtModelRunnerPolicyTest#testPolicyDefaultsAndPresets()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.litert.LiteRtTelemetryTest#testStrictGpuExceptionMessagePreservesModelNameAndDetails()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.litert.LiteRtTelemetryTest#testLiteRtRuntimeInfoFields()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.MaskPrivacyProcessorTest#testDilationExpandsSinglePixel()",
+      "passed": true,
+      "seconds": 0.016
+    },
+    {
+      "case": "art.gaoge.dance.engine.MaskPrivacyProcessorTest#thresholdProducesCanonicalBinaryContour()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.AudioTrackCopierTest#ordinary audio access units preserve sync status()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.AudioTrackCopierTest#encrypted samples cannot masquerade as codec config()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.AudioTrackCopierTest#unknown flags fail closed()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.AudioTrackCopierTest#partial samples cannot masquerade as end of stream()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.CanonicalYuvInferenceDecoderTest#limitedRangeNeutralEndpointsMapToBlackAndWhite()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.CanonicalYuvInferenceDecoderTest#precomputedPlaneOffsetsMatchReferenceSamplerForPaddedInterleavedLayout()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.CanonicalYuvInferenceDecoderTest#optimizedPlaneSamplerMatchesFixedPointBilinearReference()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.CanonicalYuvInferenceDecoderTest#packedRgbaIntWritesSameLittleEndianByteContract()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.CanonicalYuvInferenceDecoderTest#fullRangeNeutralKeepsLumaExactly()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.CanonicalYuvInferenceDecoderTest#optimizedColorLookupIsByteExactAcrossStandardsAndRanges()",
+      "passed": true,
+      "seconds": 0.029
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.CanonicalYuvInferenceDecoderTest#inverseRotationMapsDisplayCornersBackToSource()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveTransactionTest#emptySourceNeverPublishesEmptyMedia()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveTransactionTest#inputCloseFailureDoesNotPublish()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveTransactionTest#outputCloseFailureDoesNotPublish()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveTransactionTest#publishFailureRollsBack()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveTransactionTest#rollbackFailureIsExplicitAndRetainsBothCauses()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveTransactionTest#cancellationAfterCommitStartsCannotDeletePublishedAsset()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveTransactionTest#fullDiskWriteFailureRollsBackOnlyOwnedUri()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveTransactionTest#insertFailureDoesNotDeleteAnyExistingMedia()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveTransactionTest#outputOpenFailureRollsBackOnlyOwnedUri()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveTransactionTest#failedSaveNeverChangesSyntheticSourceFile()",
+      "passed": true,
+      "seconds": 0.005
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveTransactionTest#flushFailureRollsBackBeforePublish()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveTransactionTest#closesBothStreamsBeforePublishingAndPreservesBytes()",
+      "passed": true,
+      "seconds": 0.008
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveTransactionTest#cancellationAfterCopyButBeforeCommitRollsBack()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveTransactionTest#preCancelledOperationNeverOpensSource()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveTransactionTest#readFailureRollsBackOnlyOwnedUri()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveTransactionTest#cancellationAfterInsertRollsBackBeforeOpeningOutput()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveTransactionTest#sourceOpenFailureDoesNotCreateDestination()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveWorkerTest#closeRacingSubmissionRejectionStillRepliesOnce()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveWorkerTest#oldAttachmentCloseCannotCancelNewAttachmentWork()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveWorkerTest#slowIoNeverRunsOnCallerAndReplyUsesCapturedDispatcher()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveWorkerTest#detachDuringCopyRollsBackBeforeSingleFailureReply()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveWorkerTest#queuedDetachDrainsCancellationAndRepliesExactlyOnce()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveWorkerTest#replyFailureNeverRollsBackCommittedMedia()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveWorkerTest#detachAfterCommitStartsDoesNotUndoSuccessfulSave()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.media.GallerySaveWorkerTest#submitAfterDetachRepliesWithoutSchedulingIo()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.ModelCoordinateMapperTest#testProtoMapping()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.ModelCoordinateMapperTest#test16x9LandscapeMapping()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.ModelCoordinateMapperTest#testMultiAspectRatioLetterboxInvariants()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.ModelCoordinateMapperTest#test9x16PortraitMapping()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ExportFollowObservationTest#lostTargetCanHandOffToUniqueGeometricContinuation()",
+      "passed": true,
+      "seconds": 0.004
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ExportFollowObservationTest#handoffStopsAfterMaximumContinuityWindow()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ExportFollowObservationTest#reacquiringDuplicateCanBeProxyOnlyWhenGeometryIsVeryClose()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ExportFollowObservationTest#lostTargetHandoffRejectsDistantOrScaleMismatchedTrack()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ExportFollowObservationTest#longGapCanBorrowExplicitObservedOccluderWithoutChangingIdentity()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ExportFollowObservationTest#lateStrongContinuationCanChainToNextCameraIdentity()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ExportFollowObservationTest#shortReacquireGapUsesPredictedBox()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ExportFollowObservationTest#lateWeakContinuationDoesNotUseRelaxedEarlyThresholds()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ExportFollowObservationTest#lostTargetHandoffRefusesAmbiguousNearbyCandidates()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ExportFollowObservationTest#longOrLostGapHoldsLastCameraInsteadOfFollowingPredictionForever()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ExportFollowObservationTest#observedFollowTargetUsesCurrentBox()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ExportPipelinePrivacyModePolicyTest#final export uses tight mask whenever full body privacy is selected()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ExportPipelinePrivacyModePolicyTest#deterministic face tracking primary preserves analyze ids without production tracker()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ExportPipelinePrivacyModePolicyTest#face only identity roots fail safe to selected ids without analysis metadata()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ExportPipelinePrivacyModePolicyTest#face reference canonicalization collapses subpixel cpu noise without touching tracker policy()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ExportPipelinePrivacyModePolicyTest#fresh full body class primary is restricted to full body only exports()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ExportPipelinePrivacyModePolicyTest#deterministic cpu primary is restricted to debug face only yolo exports()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ExportPipelinePrivacyModePolicyTest#face only identity roots include credible unselected analysis neighbors()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ExportPipelinePrivacyModePolicyTest#production CPU4T reuse is restricted to debug full body CPU fallback()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.PreviewAnalysisCacheTest#testClearForAnalysisSelectivelyRemovesTargetCache()",
+      "passed": true,
+      "seconds": 0.05
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.PreviewAnalysisCacheTest#testLruEvictionRecyclesOldest()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.PreviewAnalysisCacheTest#clearCannotRecycleWhileCopyIsReadingBitmap()",
+      "passed": true,
+      "seconds": 0.006
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.PreviewAnalysisCacheTest#copyRemainsOwnedByCallerAfterEviction()",
+      "passed": true,
+      "seconds": 0.004
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ProcessingProfileTest#testDefaultFallbackToQuality()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ProcessingProfileTest#fullBodyAndMultiPersonPrivacyNeverRenderWithSkippedSilhouetteObservations()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ProcessingProfileTest#testBalancedProfileUsesStride2()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ProcessingProfileTest#testInferenceCadenceWithStride3MaintainsTracking()",
+      "passed": true,
+      "seconds": 0.099
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ProcessingProfileTest#testQualityProfileUsesStride1()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ProcessingProfileTest#singleFacePixelTrackingKeepsTheRequestedAccelerationCadence()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.ProcessingProfileTest#testSpeedProfileUsesStride3()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.SurfaceFrameHandoffTest#testStrictMonotonicPtsCfrSchedule()",
+      "passed": true,
+      "seconds": 0.004
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.SurfaceFrameHandoffTest#testEosTokenTerminatesLoopCleanly()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.SurfaceFrameHandoffTest#testTimeoutSkipsStaleFrameWithoutLeakingDuplicatePts()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.SurfaceFrameHandoffTest#testDecoderTokenSequenceHandshakeMonotonic()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.pipeline.SurfaceTimestampStatsTest#testSurfaceTimestampMetricsComputation()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.BodyMaskFaceHeadEstimatorTest#arm crossing local head window cannot turn body silhouette into face centroid()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.BodyMaskFaceHeadEstimatorTest#distant raised arm cannot pull local face fallback away from head seed()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.BodyMaskFaceHeadEstimatorTest#current body mask pulls fallback toward shifted head silhouette()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.BodyMaskFaceHeadEstimatorTest#missing mapper refuses mask geometry instead of guessing letterbox()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.CanonicalFaceRoiSamplerTest#optimized sampler matches scalar reference for varied deterministic rois()",
+      "passed": true,
+      "seconds": 0.023
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.CanonicalFaceRoiSamplerTest#opaque prepared canonical fast path matches historical prepared sampler byte exactly()",
+      "passed": true,
+      "seconds": 0.023
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.CanonicalFaceRoiSamplerTest#same canonical pixels and source rect produce byte exact roi()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.CanonicalFaceRoiSamplerTest#bottom up canonical buffer becomes top down face roi()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.CanonicalFaceRoiSamplerTest#prepared canonical input matches direct sampler byte exactly()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOcclusionBridgePolicyTest#short hold follows only coherent observed body translation()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOcclusionBridgePolicyTest#only appearance occlusion rejects are eligible()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOcclusionBridgePolicyTest#unobserved hold stays local and expires at one hundred milliseconds()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyDormancyPolicyTest#fresh ambiguous body motion can bridge beyond stale timeout without identity commit()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyDormancyPolicyTest#fresh body motion never invents a face without trusted face history()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyDormancyPolicyTest#medium miss without body mask becomes dormant instead of guessing()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyDormancyPolicyTest#medium miss without trusted face becomes dormant()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyDormancyPolicyTest#long unobserved identity stops rendering despite retained body mask()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyDormancyPolicyTest#fresh observation always uses direct face mode()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyDormancyPolicyTest#medium miss uses full body mask compensation when face history exists()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyDormancyPolicyTest#missing observation history does not invent face geometry()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyDormancyPolicyTest#short YOLO miss keeps direct privacy bridge()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyDormantReactivationPolicyTest#dormant detector hit cannot enlarge hidden trusted face size()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyDormantReactivationPolicyTest#dormant probe rejects body translation larger than half trusted face diameter()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceOnlyDormantReactivationPolicyTest#dormant probe requires current fresh motion and hidden trusted face()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePixelMotionTrackerTest#high resolution roi tracker follows a small source face without full frame downscale()",
+      "passed": true,
+      "seconds": 0.02
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePixelMotionTrackerTest#unique face texture follows current pixels and preserves source size()",
+      "passed": true,
+      "seconds": 0.047
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePixelMotionTrackerTest#continuous current pixel evidence renews the tracklet but a real gap expires it()",
+      "passed": true,
+      "seconds": 0.037
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePixelMotionTrackerTest#bulk roi gray conversion preserves exact match outcomes()",
+      "passed": true,
+      "seconds": 0.024
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePixelMotionTrackerTest#repeated lookalike peaks are rejected as ambiguous()",
+      "passed": true,
+      "seconds": 0.004
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePixelMotionTrackerTest#roi partial occlusion fallback still rejects repeated lookalike peaks()",
+      "passed": true,
+      "seconds": 0.006
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePixelMotionTrackerTest#roi tracker cannot renew forever without a detector refresh()",
+      "passed": true,
+      "seconds": 0.036
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePixelMotionTrackerTest#roi partial occlusion keeps current pixel evidence from two agreeing quadrants()",
+      "passed": true,
+      "seconds": 0.004
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyClassFallbackContinuityTest#unguided frame follows body translation instead of raw body head center()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyClassFallbackContinuityTest#guided availability toggle is bounded for one anonymous selected owner()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyClassFallbackResolverTest#evidence with any non selected possible owner never gets class fallback()",
+      "passed": true,
+      "seconds": 0.004
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyClassFallbackResolverTest#selected ambiguous evidence fills uncovered dormant face without identity assignment()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyClassFallbackResolverTest#unique owner fallback keeps fresh center but reuses conservative trusted face size()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyMaskBuilderTest#face seam closure preserves open edges and larger gaps()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyMaskBuilderTest#compatible face mask unions with existing body privacy mask()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyMaskBuilderTest#face ellipse rasterizes in visual top letterboxed proto coordinates()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyMaskBuilderTest#multiple face regions rasterize as union()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyMaskBuilderTest#frame edge ellipse clips safely while preserving privacy pixels()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyMaskBuilderTest#detector miss or ambiguity falls back to nonzero yolo head region()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyMaskBuilderTest#incompatible privacy mask union fails closed()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyMaskBuilderTest#adjacent opaque face masks close an isolated raster seam without mutating inputs()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyMaskBuilderTest#detected facial keypoints move privacy center away from pose-skewed bbox center()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyMaskBuilderTest#selected roi face maps to expanded detected privacy ellipse()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyTemporalStabilizerTest#fallback after trusted detection keeps conservative size without generic jump()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyTemporalStabilizerTest#fallback center follows current yolo head rather than stale detector center()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyTemporalStabilizerTest#observed bbox bottom jump with stable top is not trusted as person translation()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyTemporalStabilizerTest#detector recovery shrinks gradually instead of snapping()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyTemporalStabilizerTest#retaining active tracks drops old stabilization history()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyTemporalStabilizerTest#trusted current pixel center is not slowed by residual position gate()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyTemporalStabilizerTest#implausible one frame face jump is bounded relative to stable person motion()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyTemporalStabilizerTest#whole person translation is not slowed by relative face jump gate()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyTemporalStabilizerTest#observed bbox top jump with stable feet is not trusted as person translation()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyTemporalStabilizerTest#fallback without trusted detection keeps original conservative geometry()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyTemporalStabilizerTest#unobserved tracker jump cannot bypass face position gate as whole person motion()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FacePrivacyTemporalStabilizerTest#trusted face size does not explode when current person bbox expands()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceReferenceGeometryCanonicalizerTest#subpixel roi plans collapse before canonical sampling()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceReferenceGeometryCanonicalizerTest#subpixel face regions collapse to the same half pixel lattice()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceTrustedMaskFallbackTest#fresh mask moves trusted seed toward current head without following body box center()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.FaceTrustedMaskFallbackTest#stale trusted seed cannot render without current head like mask support()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PersonBboxMotionEstimatorTest#coherent whole-person translation follows both axes()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PersonBboxMotionEstimatorTest#symmetric contraction preserves small center movement()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PersonBboxMotionEstimatorTest#symmetric expansion does not invent translation()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PersonBboxMotionEstimatorTest#top-edge-only coverage jitter does not become vertical translation()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PersonBboxMotionEstimatorTest#small edge disagreement keeps average translation()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PersonBboxMotionEstimatorTest#bottom-edge-only coverage jitter does not become vertical translation()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PersonBboxMotionEstimatorTest#one-sided width change does not become horizontal translation()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PersonPrivacyModeResolverTest#full body wins when the same id appears in both request lists()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PersonPrivacyModeResolverTest#legacy selected ids remain full body when face list is absent()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PersonPrivacyModeResolverTest#face-only ids become face-only without changing full-body ids()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PersonPrivacyModeResolverTest#duplicate request ids collapse deterministically()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PersonPrivacyPolicyAdapterTest#face only missing detector mask escalates to full body instead of exposing face()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PersonPrivacyPolicyAdapterTest#incompatible face mask escalates to full body()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PersonPrivacyPolicyAdapterTest#face only substitutes privacy mask but preserves yolo identity geometry and state()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PersonPrivacyPolicyAdapterTest#mixed face and full body policies reuse existing resolver union()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PersonPrivacyPolicyAdapterTest#selected track with no face or body mask is explicitly unresolved()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PersonPrivacyPolicyAdapterTest#none persons retain body masks for occlusion evidence without becoming selected()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PersonPrivacyPolicyAdapterTest#foreground body evidence cannot punch a hole through face privacy()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyActiveSelectedBehindForegroundTest#testActiveSelectedBehindForegroundIsLayeredUnderForeground()",
+      "passed": true,
+      "seconds": 0.007
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyActiveSelectedForegroundTest#testActiveSelectedInForegroundNeverSubtractedByBackgroundUnselected()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyAmbiguousDepthPrivacyWinsTest#testAmbiguousDepthPreservesPrivacyMask()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyClassTemporalTrackerTest#mergedDetectionBetweenClassesRemainsUnknown()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyClassTemporalTrackerTest#hardSeedsAllowFreshClassInferenceOnFollowingFrame()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyClassTemporalTrackerTest#farNewEntrantWithoutHardEvidenceStaysUnknown()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyClassTemporalTrackerTest#selectedAndUnselectedCrossWithoutExactIdentityCommits()",
+      "passed": true,
+      "seconds": 0.01
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyClassTemporalTrackerTest#runtimeHardLabelsCannotOverwriteInitialPrivacyRoots()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyClassTemporalTrackerTest#oneFrameOcclusionRetainsUnselectedClassOnReturn()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyClassTemporalTrackerTest#frameSimilarityCachePreservesDecisionsAndEliminatesDuplicateEvaluations()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshClassEvidenceTest#freshPrimaryTinyDepthCoreWithoutIndependentOwnershipKeepsPrivacy()",
+      "passed": true,
+      "seconds": 0.006
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshClassEvidenceTest#externalFreshSelectedCoverageMetadataSuppressesDuplicateFallback()",
+      "passed": true,
+      "seconds": 0.008
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshClassEvidenceTest#trackedSelectedFallbackDoesNotUseRelaxedFreshBboxGate()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshClassEvidenceTest#freshSelectedClassEvidenceReplacesStaleSelectedMaskWithoutAssigningIdentity()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshClassEvidenceTest#freshPrimaryCannotCreatePrivacyWhenUserSelectionIsEmpty()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshClassEvidenceTest#freshPrimaryStrongForegroundUnselectedCarvesEvenWhenInstanceProbabilitiesTie()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshClassEvidenceTest#distantTemporalSelectedEvidenceDoesNotDisableUnmatchedStaleFallback()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshClassEvidenceTest#overlappingSelectedBodiesRetainUncoveredRearSilhouette()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshClassEvidenceTest#freshPrimaryTinyDepthCoreCanCarveWhenIndependentOwnershipIsStrong()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshClassEvidenceTest#freshPrimaryNeverUsesTrackedFallbackOnCurrentFreshUnselectedPerson()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshClassEvidenceTest#freshPrimaryBackgroundUnselectedNeverCarvesTiedSelectedMask()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshClassEvidenceTest#freshPrimaryUsesOnlyMissingSelectedCountAsTrackedFallback()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshClassEvidenceTest#renderOccluderNeverOverridesAnotherSelectedTarget()",
+      "passed": true,
+      "seconds": 0.004
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshClassEvidenceTest#freshPrimaryRejectsFallbackOlderThanAbsoluteObservationWindowEvenWhenStateCounterReset()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshClassEvidenceTest#temporalSelectedEvidenceAutomaticallyReplacesMatchingStaleGhostOneToOne()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshClassEvidenceTest#freshPrimaryForegroundUnselectedCarvesTrackedSelectedFallback()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshClassEvidenceTest#freshPrimaryTinyDepthCoreCanCarveWhenCurrentGeometryIsStrong()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshClassEvidenceTest#singletonFreshSelectedResidualSuppressesSameTrackedFallbackAndUsesOtherMissingSlot()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshClassEvidenceTest#freshPrimaryAmbiguousDepthKeepsPrivacyWhenInstanceProbabilitiesTie()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshClassEvidenceTest#freshPrimaryStrongForegroundCanUseMaskEvidenceWhenFreshBboxOverlapIsJustBelowLegacyGate()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshClassEvidenceTest#freshPrimaryForegroundUsesRendererVisibleSoftMaskSupport()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshClassEvidenceTest#freshUnselectedClassEvidenceCanExposeClearPixelsOverStaleSelectedMask()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshClassEvidenceTest#trackedSelectedFallbackKeepsPrivacyWhenFreshDepthIsAmbiguous()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshClassEvidenceTest#freshPrimaryIgnoresWrongTrackedSelectedMaskOnFreshUnselectedPerson()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshOccluderTest#testActiveTargetNeverSubtractedByUnselectedPerson()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshOccluderTest#testExplicitOccluderRelationAloneCannotCarveAmbiguousSelectedPrivacy()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyFreshOccluderTest#testOccludedTargetPreservesSafetyBoundaryWhenEroded()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyMultipleSelectedOwnershipTest#testMultiSelectedUnionCombinesWithoutInterference()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyOccludedStrongForegroundTest#testExplicitOccluderNeedsPixelEvidenceBeforeCarvingSelectedPrivacy()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyOccludedStrongForegroundTest#conservativeMixedPolicyUsesFreshExplicitOccluderCoreWithStrongDepth()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyOccludedStrongForegroundTest#conservativeMixedPolicyRejectsUnconfirmedOccluderWhileTargetIsOccluded()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyOccluderCoreErosionTest#testErodeReducesMaskDimensionsByRadius()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyOcclusionResolverTest#faceOnlyNoCarveFastPathsPreserveExactResolvedMasks()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyOcclusionResolverTest#testCase2_OccludedSelectedTargetCarvedOnlyByExplicitOccluder()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyOcclusionResolverTest#testCase5_TwoUnselectedPersonsNeverProducePrivacyMask()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyOcclusionResolverTest#bboxDisjointUnselectedMaskMatchesNoOccluderSelectedUnionPixelForPixel()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyOcclusionResolverTest#testCase3_TwoSelectedPersonsBothAnonymizedEvenWhenOccluding()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyOcclusionResolverTest#testCase4_MultiTargetIsolationOccluderDoesNotAffectUnrelatedTarget()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyOcclusionResolverTest#testCase1_ActiveSelectedTargetNeverCarvedByUnselectedPerson()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyOcclusionResolverTest#allSelectedFastPathMatchesPerTargetDilationThenUnionPixelForPixel()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyRawMaskOwnershipTest#testCanonicalRawMaskAreaIsNotAlteredByTracking()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacyReacquiringNoStaleHoleTest#testReacquiringTargetNeverSubtractedByStaleOccluder()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacySafetyBackportTest#missingCurrentSelectedFullBodyMaskMustFailClosed()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacySafetyBackportTest#multipleProtectedTracksReportOnlyCurrentInvalidMasks()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacySafetyBackportTest#truncatedMaskBufferIsRejectedWithoutReadingOutOfBounds()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacySafetyBackportTest#onlyMaskPixelsAtOrAboveRealTightThresholdAreRenderable()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacySoftPixelOwnershipTest#testNewFreshForegroundCanOwnPixelsWhenInstanceEvidenceIsOverwhelming()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacySoftPixelOwnershipTest#testFreshUnselectedCanOwnPixelsAgainstClearlyStaleSelectedMask()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacySoftPixelOwnershipTest#testNewUnselectedIdentityCannotCarveOnAmbiguousEvidence()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacySoftPixelOwnershipTest#testFootYAloneCannotOverrideAmbiguousSoftOwnership()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.PrivacySoftPixelOwnershipTest#testSoftConfidenceCanEstablishUnselectedPixelOwnerWithoutFootYDepth()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.ResolvedPrivacyMergeTest#face only no-occluder merge fast path is byte exact()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.ResolvedPrivacyMergeTest#one selected target hole cannot carve another selected target privacy()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.ResolvedPrivacyMergeTest#inconsistent resolved flags fail closed()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.ResolvedPrivacyMergeTest#incompatible resolved mask contracts fail closed()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.privacy.ResolvedPrivacyMergeTest#empty resolved list stays empty()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.profiler.PipelineProfilerTest#snapshotSummaryExposesStructuredStageTimings()",
+      "passed": true,
+      "seconds": 0.009
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.LegStretchRenderTest#legStretchNoLongerUsesPrivacyMaskAsBeautyMask()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.LegStretchRenderTest#legStretchUsesIndependentProtagonistMask()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.PrivacyRenderGlErrorPolicyTest#successfulRenderAndPreviewKeepExistingPolicy()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.PrivacyRenderGlErrorPolicyTest#glFailureAbortsFaceOnlyProtectedExport()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.PrivacyRenderGlErrorPolicyTest#validFaceStickerStillUsesOverlayOnlyWhenAllEvidenceIsPresent()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.PrivacyRenderGlErrorPolicyTest#missingMainShaderFailsClosedForProtectedFullBodyOrFaceExport()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.PrivacyRenderGlErrorPolicyTest#previewAndOptionalShadowCropKeepLogOnlyPolicy()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.PrivacyRenderGlErrorPolicyTest#glFailureAbortsProtectedFullBodyExport()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.PrivacyRenderGlErrorPolicyTest#finalProtectedPortraitCropMustAbortOnGlErrorOrMissingProgram()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.PrivacyRenderGlErrorPolicyTest#missingOptionalFaceStickerShaderMustRetainOpaquePrivacyCompositor()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.RenderCoordinateConventionTest#glBottomMapsToVisualBottom()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.RenderCoordinateConventionTest#testBitmapTextureMatrixFlipsY()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.RenderCoordinateConventionTest#glCenterRemainsCenter()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.RenderCoordinateConventionTest#testMaskShaderUsesVisualTopLeftYConvention()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.RenderCoordinateConventionTest#testComputeTransformMatrixDegenerateProtection()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.RenderCoordinateConventionTest#glTopMapsToVisualTop()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.StickerRenderTest#testHeadZonePlacementCalculation()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.StickerRenderTest#testBuiltInStickerVariantsAreRenderable()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.StickerRenderTest#testDefaultStickerBitmapCreation()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.StickerRenderTest#faceStickerPlacementCoversPrivacyEllipseWithOverscan()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.StickerRenderTest#testShaderSourcesContainStickerUniforms()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.render.StickerRenderTest#testMaskBufferMergingLogic()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.service.ExportForegroundServiceTypeTest#android 15 and newer use media processing foreground service type()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.service.ExportForegroundServiceTypeTest#android 14 uses data sync foreground service type()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.service.ExportForegroundServiceTypeTest#export GPU fallback uses the validated CPU4T thread count()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.storage.AnalysisIdMappingTest#testReorderedExportDetectionsMapToOriginalAnalysisIds()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.storage.RegenerableCacheRegistryTest#hundredSyntheticSessionsReleaseOnlyTheirOwnFiles()",
+      "passed": true,
+      "seconds": 0.693
+    },
+    {
+      "case": "art.gaoge.dance.engine.storage.RegenerableCacheRegistryTest#releaseWaitsForRealPreviewAndExportCompletion()",
+      "passed": true,
+      "seconds": 0.013
+    },
+    {
+      "case": "art.gaoge.dance.engine.storage.RegenerableCacheRegistryTest#futureTimestampsAndUnknownNamesAreConservativelySkipped()",
+      "passed": true,
+      "seconds": 0.014
+    },
+    {
+      "case": "art.gaoge.dance.engine.storage.RegenerableCacheRegistryTest#linksCannotEscapeWhitelistAndSourceUriIsNeverFollowed()",
+      "passed": true,
+      "seconds": 0.027
+    },
+    {
+      "case": "art.gaoge.dance.engine.storage.RegenerableCacheRegistryTest#cancelledNativeWorkerKeepsCacheUntilActualCompletionCallback()",
+      "passed": true,
+      "seconds": 0.013
+    },
+    {
+      "case": "art.gaoge.dance.engine.storage.RegenerableCacheRegistryTest#memoryCleanupWaitsForRealLeaseAndFailedDiskCleanupRetries()",
+      "passed": true,
+      "seconds": 0.017
+    },
+    {
+      "case": "art.gaoge.dance.engine.storage.RegenerableCacheRegistryTest#orphanTtlAndInactiveBudgetExcludeRetainedGroups()",
+      "passed": true,
+      "seconds": 0.045
+    },
+    {
+      "case": "art.gaoge.dance.engine.storage.RegenerableCacheRegistryTest#trimReturnedPathsRemainRetainedUntilOwnerDetach()",
+      "passed": true,
+      "seconds": 0.011
+    },
+    {
+      "case": "art.gaoge.dance.engine.storage.RegenerableCacheRegistryTest#identicalClockStillCreatesUniqueIdsAndInvalidAcquireCannotTouchFiles()",
+      "passed": true,
+      "seconds": 0.01
+    },
+    {
+      "case": "art.gaoge.dance.engine.storage.RegenerableCacheRegistryTest#detachProtectsInFlightAnalysisAndOtherEngine()",
+      "passed": true,
+      "seconds": 0.018
+    },
+    {
+      "case": "art.gaoge.dance.engine.storage.RegenerableCacheRegistryTest#exactPreviewGroupDoesNotDeletePrefixCollisionsOrExcludedTrees()",
+      "passed": true,
+      "seconds": 0.026
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.HungarianSolverTest#testRectangularMoreTracksThanDetections()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.HungarianSolverTest#testExactDiagonalMatching()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.HungarianSolverTest#testEmptyMatrix()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.HungarianSolverTest#testRejectsHighCostEntriesAboveThreshold()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.KalmanFilterTest#testLearnsVerticalVelocity()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.KalmanFilterTest#testMissingDetectionsAndResume()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.KalmanFilterTest#testLearnsHorizontalVelocity()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.KalmanFilterTest#testStaticObjectStaysStable()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.KalmanGatingConsistencyTest#testKalmanPredictedStateEqualsAssociationPredictedBbox()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.LostTrackPrivacySafetyTest#testLostTrackPrivacyMaskRespectsPortraitLetterbox()",
+      "passed": true,
+      "seconds": 0.093
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.LostTrackPrivacySafetyTest#testMixedModeLongLostSelectedTombstoneDoesNotReviveMaskInsideNewOcclusionGroup()",
+      "passed": true,
+      "seconds": 0.012
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.LostTrackPrivacySafetyTest#testFastProtectedFrameEdgeExitStopsRenderingImmediately()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.LostTrackPrivacySafetyTest#testLostTrackPrivacyMaskRespectsLandscapeLetterbox()",
+      "passed": true,
+      "seconds": 0.012
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.LostTrackPrivacySafetyTest#testLostFrame4DoesNotUseStaleMask()",
+      "passed": true,
+      "seconds": 0.01
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.LostTrackPrivacySafetyTest#mixedModeObservationAgeWinsOverRepeatedOcclusionStateResets()",
+      "passed": true,
+      "seconds": 0.01
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.LostTrackPrivacySafetyTest#testCanonicalMaskIsNotOverwrittenByWarpOrFallback()",
+      "passed": true,
+      "seconds": 0.023
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.LostTrackPrivacySafetyTest#testFastFrameEdgeExitKeepsLegacyLostMaskWhenDormancyPolicyDisabled()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.LostTrackPrivacySafetyTest#testReDetectionReplacesFallbackWithRealSegmentationMask()",
+      "passed": true,
+      "seconds": 0.015
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.LostTrackPrivacySafetyTest#testMixedModeSelectedMaskStopsAfterThreeRealMissesButIdentitySurvives()",
+      "passed": true,
+      "seconds": 0.005
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.LostTrackPrivacySafetyTest#testPrivacyCoverageThresholdOnMovingLostPerson()",
+      "passed": true,
+      "seconds": 0.011
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.LostTrackPrivacySafetyTest#testLostTrackEventuallyRemoved()",
+      "passed": true,
+      "seconds": 0.023
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.LostTrackPrivacySafetyTest#testProtectedSelectedRejectsWeakEvidenceRecoveryCandidate()",
+      "passed": true,
+      "seconds": 0.006
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.LostTrackPrivacySafetyTest#testLostTrackFallbackMaskExpandsConservatively()",
+      "passed": true,
+      "seconds": 0.015
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.LostTrackPrivacySafetyTest#testFullBodyOnlyKeepsHistoricalMaskAcrossSameThreeMisses()",
+      "passed": true,
+      "seconds": 0.004
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.LostTrackPrivacySafetyTest#testLostFrame10PrivacyMaskFollowsPredictedBBox()",
+      "passed": true,
+      "seconds": 0.019
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.LostTrackPrivacySafetyTest#testProtectedSelectedIdentitySurvivesRemovalWindowAndReacquiresOriginalId()",
+      "passed": true,
+      "seconds": 0.014
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.SelectionSemanticsTest#testSinglePersonSelectedNeverLeaksToOthersEvenWhenLost()",
+      "passed": true,
+      "seconds": 0.006
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.SelectionSemanticsTest#testEmptySelectionDoesNotAnonymizeAnyone()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.SelectionSemanticsTest#testMultiPersonSelectiveAnonymization()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerAmbiguousCrossingTest#testGlobalNearTieBeforeOverlapDoesNotCommitIdentity()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerAmbiguousCrossingTest#unprotected two track winner does not become definitive occluder when protected mask ownership is equal()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerAmbiguousCrossingTest#motion evidence still rejects spatially unrelated candidate()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerAmbiguousCrossingTest#testProtectedGlobalCommitRequiresAbsoluteIdentityEvidence()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerAmbiguousCrossingTest#testAmbiguousOverlapDefersCommitWithoutSwapping()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerAmbiguousCrossingTest#two track uncertain occluder requires face only protected mask ownership()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerAmbiguousCrossingTest#motion evidence gate is looser than protected identity commit gate()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerAmbiguousReservationTest#testFullBodyIdentityDoesNotUseFaceOnlyReservationEscape()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerAmbiguousReservationTest#testStrictFaceOnlyReservationEscapeRequiresMultipleOwnerGroups()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerAmbiguousReservationTest#testStrictFaceOnlyIdentityCanEscapeTwoIndependentGroupReservations()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerAmbiguousReservationTest#testExtraDetectionInsideActiveOcclusionGroupDoesNotCreateDuplicateId()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerAmbiguousReservationTest#committedGroupMatchDoesNotEraseAssociationTimeReservationGeometry()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerAmbiguousReservationTest#testFacePrivacyClassEvidenceDoesNotChangeFullBodyPrivacySelection()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerAmbiguousReservationTest#testAmbiguousGroupDetectionDoesNotForciblyCreateNewTrackOrSwap()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerAmbiguousReservationTest#testNearTieGroupAssignmentsRemainAmbiguousWithoutSecondBestMargin()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerAmbiguousReservationTest#testStrictFaceOnlyIdentityDoesNotEscapeSingleNeighborGroupReservation()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerAmbiguousReservationTest#testOnlyInitializationExposesHardPrivacyClassRoots()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerAmbiguousReservationTest#testBalancedResidualSelectedDetectionBecomesFreshPrivacyEvidenceWithoutIdentityCommit()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerAmbiguousReservationTest#ambiguousHungarianDetectionSupportsNeighborReservationWithoutIdentityCommit()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerAmbiguousReservationTest#testAmbiguousGroupAssignmentsDoNotLeakIntoGlobalHungarian()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerAmbiguousReservationTest#testBalancedResidualUnselectedDetectionBecomesFreshPrivacyEvidenceWithoutIdentityCommit()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerAmbiguousReservationTest#testSubpixelGroupBoundaryGrazeDoesNotStealIndependentDetection()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerAmbiguousReservationTest#testFacePrivacyClassDoesNotChangeAmbiguousProtectedLostIdentityLifecycle()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerCameraPanTest#testCameraPanGlobalMotionCompensationPreservesIdentities()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerCrossingIdentityTest#testTwoDancersCrossingAtSpeedMaintainsIdentities()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerFastBackgroundExitTest#testFastBackgroundCrossingAndExitDoesNotStealForegroundIdentity()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerFastLateralMotionTest#testFastLateralDisplacementTrackPreservation()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerGroupLifecycleTest#testGroupLifecycleSeparationTransitionsToReacquiringAndDoesNotLock()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerLongOcclusionReacquisitionTest#testLongOcclusion25FramesDoesNotInstantRemoveTargetAndReacquiresId()",
+      "passed": true,
+      "seconds": 0.028
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerLostRecoveryIsolationTest#globallyUncertainOccluderIsIgnoredOnlyForProtectedLostTrack()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerLostRecoveryIsolationTest#protectedLostAnchorOcclusionRequiresCurrentPredictionToRemainNearAnchor()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerLostRecoveryIsolationTest#testLostTrackIsNotGloballyReboundToPersonAtStaleLastObservedPosition()",
+      "passed": true,
+      "seconds": 0.002
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerMovingMaskCrossingTest#testTwoPeopleCrossingPreservesIdContinuityWithMovingMasks()",
+      "passed": true,
+      "seconds": 0.016
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerNoSceneMotionRegressionTest#testSceneMotionDisabledDoesNotShiftPredictedBboxes()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerOcclusionGroupFirstTest#testOcclusionGroupFirstPreventsIdSwapOnCrossing()",
+      "passed": true,
+      "seconds": 0.005
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerOcclusionMotionConsensusTest#freshOccluderMotionIsUsedBeforeMatchedObservationStateIsOverwritten()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerOcclusionTest#testOccludedTargetNotRemovedQuicklyDuringOcclusion()",
+      "passed": true,
+      "seconds": 0.006
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerOcclusionTest#testTwoPeopleCrossingMaintainsIdWithoutRectangleFallback()",
+      "passed": true,
+      "seconds": 0.02
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerPrivacySelectionSplitTest#identity protected face-only track remains unselected for full-body privacy class()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerPrivacySelectionSplitTest#legacy protected setter keeps historical selected privacy semantics()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerReacquireIdentityTest#testReacquireTransitionPreservesIdentityAfterTemporaryOcclusion()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerSampledMaskIoUTest#protectedUnobservedPredictionIsBoundedAroundReliableAnchor()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerSampledMaskIoUTest#directWarpedSampleIoUMatchesMaterializedWarpOrdering()",
+      "passed": true,
+      "seconds": 0.004
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerSampledMaskIoUTest#preparedWarpedSamplesMatchDirectIoUExactlyAcrossCandidates()",
+      "passed": true,
+      "seconds": 0.01
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerSampledMaskIoUTest#protectedSelectedGroupCommitRequiresAbsoluteIdentityEvidence()",
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerSampledMaskIoUTest#sampledAssociationIoUPreservesCandidateOrdering()",
+      "passed": true,
+      "seconds": 0.006
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerTest#testNewPersonEntersAndOldLeaves()",
+      "passed": true,
+      "seconds": 0.015
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerTest#optimizedWarpMaskMatchesHistoricalScalarBytesWithDilation()",
+      "passed": true,
+      "seconds": 0.03
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerTest#testWarpMaskMultiAspectRatioLetterboxParity()",
+      "passed": true,
+      "seconds": 0.005
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerTest#skippedInferenceDoesNotIncrementMissedFrames()",
+      "passed": true,
+      "seconds": 0.005
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerTest#testTemporarilyLostTrackWarpsMaskAndRecovers()",
+      "passed": true,
+      "seconds": 0.008
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerTest#framesSinceLastObservationTracksAbsoluteFreshnessAcrossStateCounters()",
+      "passed": true,
+      "seconds": 0.005
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerTest#actualEmptyDetectionIncrementsMissedFramesAndEventuallyMarksTrackLost()",
+      "passed": true,
+      "seconds": 0.005
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerTest#testTwoPeopleCrossingMaintainsStableIds()",
+      "passed": true,
+      "seconds": 0.011
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerTest#testRemovedTrackDoesNotReviveInPredictOrUpdate()",
+      "passed": true,
+      "seconds": 0.005
+    },
+    {
+      "case": "art.gaoge.dance.engine.tracking.TrackManagerTest#skippedInferenceStillMovesPredictedBBoxAndPrivacyMask()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.YoloPreprocessorOrientationTest#glReadPixelsBottomUpBufferIsConvertedToTopDownYoloInput()",
+      "passed": true,
+      "seconds": 0.003
+    },
+    {
+      "case": "art.gaoge.dance.engine.YoloPreprocessorOrientationTest#rightToLeftColOrderFlipsHorizontalAxis()",
+      "passed": true,
+      "seconds": 0.001
+    },
+    {
+      "case": "art.gaoge.dance.engine.YoloPreprocessorOrientationTest#optimizedRgbaArrayMatchesReferenceNormalizationAndFloatBufferContract()",
+      "passed": true,
+      "seconds": 0.004
+    },
+    {
+      "case": "art.gaoge.dance.engine.YoloPreprocessorOrientationTest#productionNonMaterializedPathMatchesMaterializedFloatArrayForAllOrientations()",
+      "passed": true,
+      "seconds": 0.008
+    },
+    {
+      "case": "art.gaoge.dance.engine.YoloPreprocessorOrientationTest#testNonSymmetricTopObjectOrientationParity()",
+      "passed": true,
+      "seconds": 0.05
+    },
+    {
+      "case": "art.gaoge.dance.engine.YoloPreprocessorOrientationTest#topDownRgbaBufferIsNotFlipped()",
+      "passed": true,
+      "seconds": 0.001
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+[
+  {
+    "case": "view-published-video",
+    "result": "passed"
+  },
+  {
+    "case": "open-share-sheet-and-return",
+    "result": "passed",
+    "recipient_selected": false
+  }
+]

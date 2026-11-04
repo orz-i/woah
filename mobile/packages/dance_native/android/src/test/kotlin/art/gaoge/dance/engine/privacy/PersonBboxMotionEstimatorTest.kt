@@ -44,4 +44,18 @@ class PersonBboxMotionEstimatorTest {
         assertTrue(result.dx in 19f..21f)
         assertTrue(result.dy in 13f..15f)
     }
+
+    @Test
+    fun `symmetric expansion does not invent translation`() {
+        val result = PersonBboxMotionEstimator.estimate(base, FloatRect(40f, 70f, 360f, 730f))
+        assertEquals(0f, result.dx)
+        assertEquals(0f, result.dy)
+    }
+
+    @Test
+    fun `symmetric contraction preserves small center movement`() {
+        val result = PersonBboxMotionEstimator.estimate(base, FloatRect(155f, 145f, 255f, 665f))
+        assertEquals(5f, result.dx)
+        assertEquals(5f, result.dy)
+    }
 }

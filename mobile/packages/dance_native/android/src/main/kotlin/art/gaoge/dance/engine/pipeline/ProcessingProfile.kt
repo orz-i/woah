@@ -5,6 +5,16 @@ data class ProcessingProfile(
     val inferenceStride: Int,
     val inputSize: Int = 640
 ) {
+    fun privacyInferenceStride(
+        hasFullBodyTargets: Boolean,
+        hasFaceOnlyTargets: Boolean,
+        scenePersonCount: Int
+    ): Int = if (hasFullBodyTargets || (hasFaceOnlyTargets && scenePersonCount > 1)) {
+        // A predicted body box cannot predict moving limbs or ownership during
+        // crossings. Reusing its old silhouette can expose protected people.
+        1
+    } else inferenceStride
+
     companion object {
         val QUALITY = ProcessingProfile("quality", inferenceStride = 1, inputSize = 640)
         val BALANCED = ProcessingProfile("balanced", inferenceStride = 2, inputSize = 640)

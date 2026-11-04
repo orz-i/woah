@@ -15,6 +15,32 @@ import kotlin.math.floor
  * ellipse geometry, not a soft alpha edge that could under-mask a face.
  */
 object FacePrivacyMaskBuilder {
+    /** Close isolated raster seams where adjacent opaque face ellipses meet. */
+    fun fillIsolatedHoles(mask: NativeMask?): NativeMask? {
+        if (mask == null || mask.width < 3 || mask.height < 3) return mask
+        val width = mask.width
+        val count = width * mask.height
+        var filled: ByteBuffer? = null
+        for (y in 1 until mask.height - 1) {
+            for (x in 1 until width - 1) {
+                val index = y * width + x
+                if (mask.buffer.get(index) == 0.toByte() &&
+                    mask.buffer.get(index - 1) == 255.toByte() &&
+                    mask.buffer.get(index + 1) == 255.toByte() &&
+                    mask.buffer.get(index - width) == 255.toByte() &&
+                    mask.buffer.get(index + width) == 255.toByte()) {
+                    val target = filled ?: ByteBuffer.allocateDirect(count).apply {
+                        put(mask.buffer.duplicate().apply { position(0); limit(count) })
+                        rewind()
+                        filled = this
+                    }
+                    target.put(index, 255.toByte())
+                }
+            }
+        }
+        return filled?.let { mask.copy(buffer = it) } ?: mask
+    }
+
     fun build(
         regions: List<FacePrivacyEllipse>,
         mapper: ModelCoordinateMapper,

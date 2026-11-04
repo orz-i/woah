@@ -817,6 +817,11 @@ class FaceOnlyPrivacyFrameProcessor(
             val renderMode = renderModeByTrackId[trackId] ?: FaceOnlyRenderMode.DORMANT
             val isDormantProbe = dormantReactivationProbeTrackIds.contains(trackId)
             val hasFreshBodyMotion = hasFreshOrRecentBodyMotionByTrackId[trackId] == true
+            // Local face refresh may bridge a short body-observation gap, but
+            // must not become an independent tracker after the body expires.
+            if (!trackedPerson.observedThisFrame &&
+                trackedPerson.framesSinceLastObservation > MAX_LOCAL_FACE_UNOBSERVED_FRAMES &&
+                !hasFreshBodyMotion) return@forEach
             val roiTrackRegion = pixelMotionTracker.currentRoiRegion(trackId, ptsUs)
             val localPlan = if (roiTrackRegion != null) {
                 // Always center the next high-resolution crop on the last
@@ -1110,9 +1115,14 @@ class FaceOnlyPrivacyFrameProcessor(
                             evidenceGapReacquireDetectorZeroObservationTrackIds += trackId
                         }
                     }
+                    // A broad ROI can see a neighbor even when this person's
+                    // own face is in profile. Anchor proximity is not ownership.
+                    val ownedFaces = FaceRoiCandidateSelector.ownedObservations(
+                        locatorResult.observations, plan, person.bbox
+                    )
                     val selectedFace = if (isDormantProbe) {
                         FaceRoiCandidateSelector.select(
-                            faces = locatorResult.observations,
+                            faces = ownedFaces,
                             roiWidth = FACE_ROI_SIZE,
                             roiHeight = FACE_ROI_SIZE,
                             anchorX = plan.anchorX,
@@ -1121,7 +1131,7 @@ class FaceOnlyPrivacyFrameProcessor(
                         )
                     } else if (renderMode == FaceOnlyRenderMode.DORMANT && appearanceOcclusionReject) {
                         FaceRoiCandidateSelector.select(
-                            faces = locatorResult.observations,
+                            faces = ownedFaces,
                             roiWidth = FACE_ROI_SIZE,
                             roiHeight = FACE_ROI_SIZE,
                             anchorX = plan.anchorX,
@@ -1130,7 +1140,7 @@ class FaceOnlyPrivacyFrameProcessor(
                         )
                     } else {
                         FaceRoiCandidateSelector.select(
-                            faces = locatorResult.observations,
+                            faces = ownedFaces,
                             roiWidth = FACE_ROI_SIZE,
                             roiHeight = FACE_ROI_SIZE,
                             anchorX = plan.anchorX,
@@ -1261,7 +1271,9 @@ class FaceOnlyPrivacyFrameProcessor(
                             }
                         }
                         val selectedFace = FaceRoiCandidateSelector.select(
-                            faces = locatorResult.observations,
+                            faces = FaceRoiCandidateSelector.ownedObservations(
+                                locatorResult.observations, reacquirePlan, person.bbox
+                            ),
                             roiWidth = FACE_ROI_SIZE,
                             roiHeight = FACE_ROI_SIZE,
                             anchorX = reacquirePlan.anchorX,
@@ -1534,7 +1546,11 @@ class FaceOnlyPrivacyFrameProcessor(
         val adaptation = PersonPrivacyPolicyAdapter.adapt(
             persons = secondaryPersons,
             modeByTrackId = renderableFaceOnlyTrackIds.associateWith { PersonPrivacyMode.FACE_ONLY },
-            faceMaskByTrackId = faceMasks
+            faceMaskByTrackId = faceMasks,
+            // Person segmentation has no face ownership semantics. An overlapping
+            // foreground body mask can contain the protected rear face itself;
+            // subtracting it creates transient holes through the face privacy.
+            includeUnselectedBodyOccluders = false
         )
         val unresolved = linkedSetOf<Int>().apply {
             addAll(missingTrackIds)
@@ -1567,6 +1583,9 @@ class FaceOnlyPrivacyFrameProcessor(
                 )
             baseResolved != null -> baseResolved
             else -> classResolved
+        }?.let { merged ->
+            val filled = FacePrivacyMaskBuilder.fillIsolatedHoles(merged.privacyMask)
+            if (filled === merged.privacyMask) merged else merged.copy(privacyMask = filled)
         }
         val privacyResolveMs = (System.nanoTime() - privacyResolveStartNs) / 1_000_000.0
 
@@ -1676,9 +1695,10 @@ class FaceOnlyPrivacyFrameProcessor(
         fun create(
             context: Context,
             mapper: ModelCoordinateMapper,
-            diagnosticJobId: String? = null
+            diagnosticJobId: String? = null,
+            preferGpu: Boolean = true
         ): FaceOnlyPrivacyFrameProcessor {
-            val locator = requireNotNull(FaceLocatorProvider.createOrNull(context, enabled = true)) {
+            val locator = requireNotNull(FaceLocatorProvider.createOrNull(context, enabled = true, preferGpu = preferGpu)) {
                 "Face locator was not available after explicit enable"
             }
             return FaceOnlyPrivacyFrameProcessor(

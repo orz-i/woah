@@ -70,7 +70,11 @@ class DanceNativeApiImpl(
         }
     }
 
-    private val segmenter = art.gaoge.dance.engine.inference.YoloLiteRtSegmenter(context)
+    private val segmenter = art.gaoge.dance.engine.inference.YoloLiteRtSegmenter(
+        context,
+        requestedAccelerator = art.gaoge.dance.engine.litert.LiteRtAccelerator.CPU,
+        cpuNumThreads = 4
+    )
     private val cacheManager = art.gaoge.dance.engine.storage.CacheManager(context)
     private val analyzePipeline = art.gaoge.dance.engine.pipeline.AnalyzePipeline(context, cacheManager)
     private val previewPipeline = art.gaoge.dance.engine.pipeline.PreviewPipeline(context, segmenter, cacheManager)

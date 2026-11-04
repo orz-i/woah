@@ -8,6 +8,20 @@ import kotlin.test.assertNull
 
 class FaceRoiCandidateSelectorTest {
     @Test
+    fun `wide ROI cannot assign the adjacent person's face to the target`() {
+        val plan = FaceHeadRoiPlan(FloatRect(0f, 0f, 400f, 400f), .5f, .5f, 400)
+        val ownFace = FaceObservation(FloatRect(125f, 110f, 155f, 150f), .6f)
+        val neighbor = FaceObservation(FloatRect(220f, 105f, 250f, 145f), .99f)
+        val owned = FaceRoiCandidateSelector.ownedObservations(
+            listOf(ownFace, neighbor), plan, FloatRect(100f, 70f, 200f, 390f)
+        )
+        assertEquals(listOf(ownFace), owned)
+        assertEquals(emptyList(), FaceRoiCandidateSelector.ownedObservations(
+            listOf(neighbor), plan, FloatRect(100f, 70f, 200f, 390f)
+        ))
+    }
+
+    @Test
     fun `central target wins over higher confidence neighboring face`() {
         val faces = listOf(
             FaceObservation(FloatRect(108f, 88f, 148f, 128f), 0.46f),

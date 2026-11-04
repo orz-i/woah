@@ -54,6 +54,13 @@ object PersonBboxMotionEstimator {
             return (firstEdgeDelta + secondEdgeDelta) * 0.5f
         }
 
+        // Symmetric growth/shrinkage changes extent, not position. Choosing
+        // either equally moving edge would invent a large translation.
+        if (firstEdgeDelta * secondEdgeDelta < 0f &&
+            abs(abs(firstEdgeDelta) - abs(secondEdgeDelta)) <= agreementTolerance) {
+            return (firstEdgeDelta + secondEdgeDelta) * 0.5f
+        }
+
         // One edge is changing the detector-box extent more than the other.
         // The quieter edge is the safer short-term translation cue.
         return if (abs(firstEdgeDelta) <= abs(secondEdgeDelta)) {

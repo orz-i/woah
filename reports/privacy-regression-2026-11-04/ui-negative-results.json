@@ -1,0 +1,13 @@
+[
+  {
+    "case": "no-person-import-retry-export-blocked",
+    "result": "passed",
+    "no_new_export_job": true
+  },
+  {
+    "case": "corrupt-video-rejected",
+    "result": "passed",
+    "error_code": "VIDEO_PROBE_FAILED",
+    "no_new_export_job": true
+  }
+]
