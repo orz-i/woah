@@ -1,0 +1,12 @@
+{
+  "recorded_at_utc": "2026-11-05T02:43:38Z",
+  "installed_apk_sha256": {
+    "art.gaoge.dance": "f79fc4263945e5add73bebc733649051ef52788c6ec2c90d311f73d14d2fba96",
+    "art.gaoge.dance.engine.test": "cf7515d41609d43f64020a7bdc076d31912dfc62f4a2f443e60154b44fc76cdc"
+  },
+  "pid": "9989",
+  "battery": "Current OPLUS Battery Service state:\r\n  Charger voltage : 4900\r\n  Battery current : 312\r\n  ChargerTechnology: 0\r\n  ChargeFastCharger: false\r\n  PlugType: 2\r\n  UpdatesStopped: false\r\n  UsbHwStatus: 0\r\n  BatteryHwStatus: 1\r\n  HwStatusIsSet: 1\r\n  BatteryIcStatus: 1\r\n  IcStatusIsSet: 1\r\n\r\n  mUsbStatus: 0\r\n  PhoneTemp: 390\r\n  ThermalFeatureOn: true\r\nCurrent Battery Service state:\r\n  AC powered: false\r\n  USB powered: true\r\n  Wireless powered: false\r\n  Dock powered: false\r\n  Max charging current: 500000\r\n  Max charging voltage: 5000000\r\n  Charge counter: 2082000\r\n  status: 2\r\n  health: 2\r\n  present: true\r\n  level: 65\r\n  scale: 100\r\n  voltage: 3895\r\n  temperature: 397\r\n  technology: Li-ion",
+  "storage": "Filesystem       Size Used Avail Use% Mounted on\r\n/dev/block/dm-66 105G  74G   31G  71% /data/user/0",
+  "fixtures_reused_from": "environment.json",
+  "main_app_note": "Candidate installed after native instrumentation; current main APK remains the earlier baseline during these native tests."
+}

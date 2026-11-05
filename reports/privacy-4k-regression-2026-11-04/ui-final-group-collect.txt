@@ -1,0 +1,36 @@
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "preparing", "currentFrame": 0, "totalFrames": 0, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 19, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 43, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 71, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 95, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 119, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 143, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 167, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 191, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 215, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 239, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 263, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 282, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 306, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 326, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 346, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 369, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 389, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 413, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 433, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 453, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 473, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 496, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 514, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 538, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 556, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "processing", "currentFrame": 576, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066", "state": "completed", "currentFrame": 581, "totalFrames": 581, "targetWidth": 3840, "targetHeight": 2160, "errorCode": null, "errorMessage": null}
+{"label": "返回首页", "bounds": "[42,115][186,259]", "enabled": "true", "selected": "false"}
+{"label": "更多操作", "bounds": "[894,115][1038,259]", "enabled": "true", "selected": "false"}
+{"label": "26", "bounds": "[0,1417][1080,1429]", "enabled": "true", "selected": "false"}
+{"label": "0", "bounds": "[0,1417][1080,1429]", "enabled": "true", "selected": "false"}
+{"label": "已保存至系统相册\n74.6 MB", "bounds": "[54,1998][1026,2118]", "enabled": "true", "selected": "false"}
+{"label": "查看视频", "bounds": "[54,2160][522,2304]", "enabled": "true", "selected": "false"}
+{"label": "分享视频", "bounds": "[558,2160][1026,2304]", "enabled": "true", "selected": "false"}
+{"tag": "group-final-4k", "result": "passed", "decoded_frames": 581, "dimensions": [3840, 2160]}

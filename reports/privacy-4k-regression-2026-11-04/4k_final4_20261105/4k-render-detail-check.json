@@ -1,0 +1,37 @@
+{
+  "file": "group_4k_face_solid.mp4",
+  "sha256": "f9e345b99d180aa275a80e56a3b9c200f23e0fe9f25a1d63ab4def3b89d1d9fc",
+  "frame": 290,
+  "checks": {
+    "native_mse_below_half_640_proxy_on_window": true,
+    "native_preserves_at_least_60_percent_source_edge_energy": true
+  },
+  "result": "passed",
+  "structured_region": {
+    "region": "window_edge",
+    "crop": [
+      3300,
+      600,
+      500,
+      400
+    ],
+    "mean_native_bgr_delta": [
+      0.6780449748039246,
+      -0.4243749976158142,
+      -0.2660149931907654
+    ],
+    "native_mse": 3.4929416179656982,
+    "native_color_offset_removed_mse": 3.2560737133026123,
+    "proxy_mse": 9.531428337097168,
+    "laplacian_variance_source_native_proxy": [
+      6.54038667678833,
+      5.069842338562012,
+      1.5341283082962036
+    ],
+    "laplacian_correlation_native": 0.2598365120213363,
+    "laplacian_correlation_proxy": 0.12157502892065017
+  },
+  "all_region_metrics": "4k-render-detail-comparison.json",
+  "visual_comparison": "4k-render-detail-window_edge-source-native-640proxy.png",
+  "interpretation": "Unmasked window structure retains more detail than the 640px upscale reference. Flat-floor MSE alone was inconclusive: low texture and re-encoding differences dominate it; original measurements remain preserved. This is a representative detail check in addition to exact geometry and full-frame timestamps."
+}

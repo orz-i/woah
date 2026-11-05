@@ -1,0 +1,21 @@
+{
+  "source": "group-mirror-8956295.mp4",
+  "output": "group_4k_face_solid.mp4",
+  "output_sha256": "f9e345b99d180aa275a80e56a3b9c200f23e0fe9f25a1d63ab4def3b89d1d9fc",
+  "frame": 290,
+  "unmasked_crop_xywh": [
+    3200,
+    1700,
+    600,
+    400
+  ],
+  "native_mse_to_source": 5.459109783172607,
+  "640_proxy_mse_to_source": 3.171626329421997,
+  "laplacian_variance_source_native_640proxy": [
+    6.386483999982638,
+    5.671265093315973,
+    1.6505458993749995
+  ],
+  "purpose": "Representative content-detail check; width/height metadata alone is insufficient to distinguish a 640px upscale.",
+  "result": "needs_review"
+}

@@ -1,0 +1,15 @@
+{
+  "case": "group-final-4k",
+  "frame": 0,
+  "crop": [
+    3000,
+    1400,
+    700,
+    400
+  ],
+  "source_vs_output_mse": 9.520919799804688,
+  "comparison_artifact": "ui-background-integrity.jpg",
+  "note": "An unmasked background patch from the actual UI export; source on the left and saved output on the right.",
+  "result": "passed",
+  "observation": "Source and saved output show the same unmasked floor. No preview controls appear in this encoded patch."
+}

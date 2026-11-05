@@ -1,0 +1,8 @@
+*.apk
+*.mp4
+*.xml
+*.logcat.txt
+ui-*.png
+__pycache__/
+.raw-diag/
+privacy-review/review_group_*.png

@@ -1,0 +1,15 @@
+{
+  "recorded_at_utc": "2026-11-05T01:20:02Z",
+  "app_apk_sha256": "d333d56bd5692dbe2e2c55d75e13a672ecf920d6a126e25a0915b98781ed7efd",
+  "source_sha256": {
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt": "be541255ca5c4f478f7ac3b17137b0fe79a4a7270506e849504e21e485fe3ee2",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/inference/HighResolutionPrivacyCoverage.kt": "2c1518353fc4da1b3a06b1429acea690cda0d39e8cae79f9530eae1d86a6e412",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/media/Mp4FastStart.kt": "6bd4c04ad6de79c4a9a43a5da593a361a5e775895900df187aa3c1be56637eec"
+  },
+  "flutter_app_tests": {
+    "tests": 272,
+    "passed": 272
+  },
+  "installed_on_device": false,
+  "build_log": "app-build-current-observations.txt"
+}

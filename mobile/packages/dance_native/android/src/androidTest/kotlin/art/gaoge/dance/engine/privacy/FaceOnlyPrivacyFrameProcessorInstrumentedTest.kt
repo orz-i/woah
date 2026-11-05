@@ -30,6 +30,39 @@ import kotlin.test.assertTrue
 @RunWith(AndroidJUnit4::class)
 class FaceOnlyPrivacyFrameProcessorInstrumentedTest {
     @Test
+    fun coveredUnconfirmedHeadDoesNotInventPrivacyOnOccludingBody() {
+        withProcessor(FixedLocator(emptyList())) { processor, texture, _ ->
+            val result = processor.resolveFrame(
+                frameTexture = texture, texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(person(7, FloatRect(220f, 40f, 420f, 350f))),
+                faceOnlyTrackIds = setOf(7), ptsUs = 0L, coveredHeadFallbackTrackIds = setOf(7)
+            )
+            assertTrue(result.readyForRender)
+            assertTrue(result.stickerPlacements.isEmpty())
+            assertTrue(result.fallbackTrackIds.isEmpty())
+            assertFalse(result.resolvedPrivacy?.hasPrivacy == true)
+        }
+    }
+
+    @Test
+    fun coveredHeadHintNeverSuppressesCurrentDetectedFace() {
+        withProcessor(FixedLocator(listOf(FaceObservation(FloatRect(104f, 96f, 152f, 144f), 0.9f)))) {
+                processor, texture, _ ->
+            val result = processor.resolveFrame(
+                frameTexture = texture, texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
+                textureType = SourceTextureType.TEXTURE_2D,
+                persons = listOf(person(7, FloatRect(220f, 40f, 420f, 350f))),
+                faceOnlyTrackIds = setOf(7), ptsUs = 0L, coveredHeadFallbackTrackIds = setOf(7)
+            )
+            assertTrue(result.readyForRender)
+            assertEquals(setOf(7), result.detectedTrackIds)
+            assertEquals(1, result.stickerPlacements.size)
+            assertTrue(result.resolvedPrivacy?.hasPrivacy == true)
+        }
+    }
+
+    @Test
     fun parallelBatchExecutionPreservesStartupDetectorSemantics() {
         val observation = FaceObservation(FloatRect(104f, 96f, 152f, 144f), 0.9f)
         val persons = listOf(

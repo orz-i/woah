@@ -1,0 +1,9 @@
+{
+  "result": "stopped_by_tester_after_visual_failure",
+  "native_first_case_passed": true,
+  "false_face_pixels_on_trouser_leg": 576,
+  "sample_pixels": 576,
+  "frame": 580,
+  "known_mirror_face_regression_passed": true,
+  "process_termination_is_not_product_crash": true
+}

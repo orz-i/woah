@@ -137,4 +137,33 @@ class ExportJobStoreTest {
             tempDir.deleteRecursively()
         }
     }
+
+    @Test
+    fun lateWorkerProgressCannotReopenATerminalJob() {
+        val tempDir = kotlin.io.path.createTempDirectory("export_job_terminal_").toFile()
+        try {
+            val store = ExportJobStore(tempDir)
+            for (state in listOf("cancelled", "completed", "failed", "interrupted")) {
+                val id = "job_$state"
+                val record = ExportJobRecord.fromRequest(id, createDummyRequest(), "processing")
+                store.saveJob(record)
+                val terminal = record.toJobStatusDto().copy(
+                    state = state, currentFrame = 3, totalFrames = 180,
+                    outputUri = if (state == "completed") record.outputPath else null
+                )
+                store.updateStatus(id, terminal)
+                val writes = store.diskWriteCount
+                store.updateStatus(id, terminal.copy(state = "processing", currentFrame = 4, outputUri = null))
+                store.updateStatus(id, terminal.copy(state = "muxing", currentFrame = 5, outputUri = null))
+                val conflicting = if (state == "completed") "cancelled" else "completed"
+                store.updateStatus(id, terminal.copy(state = conflicting, outputUri = record.outputPath))
+                assertEquals(terminal, store.getJob(id)?.toJobStatusDto())
+                assertEquals(terminal, ExportJobStore(tempDir).getJob(id)?.toJobStatusDto())
+                assertEquals(writes, store.diskWriteCount)
+            }
+        } finally {
+            File(tempDir, "export_jobs.json").delete()
+            tempDir.delete()
+        }
+    }
 }

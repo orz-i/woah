@@ -1,0 +1,356 @@
+00:00 +0: loading D:/dance-anonymizer/mobile/app/test/app/system_appearance_test.dart
+00:00 +0: D:/dance-anonymizer/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:00 +1: D:/dance-anonymizer/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:00 +2: D:/dance-anonymizer/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:00 +3: D:/dance-anonymizer/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:00 +4: D:/dance-anonymizer/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:00 +5: D:/dance-anonymizer/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:00 +6: D:/dance-anonymizer/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:01 +7: D:/dance-anonymizer/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:01 +8: D:/dance-anonymizer/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:01 +9: D:/dance-anonymizer/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:01 +10: D:/dance-anonymizer/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:01 +11: D:/dance-anonymizer/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:01 +12: D:/dance-anonymizer/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:01 +13: D:/dance-anonymizer/mobile/app/test/app/system_appearance_test.dart: system appearance switches Home live without losing the workflow
+00:01 +14: D:/dance-anonymizer/mobile/app/test/core/flow_back_button_test.dart: FlowBackButton renders properly and fires callback on tap
+00:01 +15: D:/dance-anonymizer/mobile/app/test/features/analysis_session_test.dart: 100 synthetic sessions close once and late results release themselves
+00:01 +16: D:/dance-anonymizer/mobile/app/test/app/system_appearance_test.dart: hidden Wavi stage stays cinematic in both system modes
+00:01 +16: D:/dance-anonymizer/mobile/app/test/features/analysis_session_test.dart: a release failure can retry and never becomes an unhandled future
+[AnalysisSession] CACHE_RELEASE_DEFERRED
+00:01 +17: D:/dance-anonymizer/mobile/app/test/app/system_appearance_test.dart: hidden Wavi stage stays cinematic in both system modes
+00:01 +18: D:/dance-anonymizer/mobile/app/test/app/system_appearance_test.dart: hidden Wavi stage stays cinematic in both system modes
+00:01 +18: D:/dance-anonymizer/mobile/app/test/features/analysis_session_test.dart: older analysis completing after replacement cannot overwrite new state
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:01 +19: D:/dance-anonymizer/mobile/app/test/app/system_appearance_test.dart: hidden Wavi stage stays cinematic in both system modes
+00:01 +19: D:/dance-anonymizer/mobile/app/test/features/analysis_session_test.dart: late analysis error cannot replace a newer ready state
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:01 +20: D:/dance-anonymizer/mobile/app/test/app/system_appearance_test.dart: hidden Wavi stage stays cinematic in both system modes
+00:01 +20: D:/dance-anonymizer/mobile/app/test/features/analysis_session_test.dart: closed session receives no state update and releases late analysis
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:01 +21: D:/dance-anonymizer/mobile/app/test/app/system_appearance_test.dart: hidden Wavi stage stays cinematic in both system modes
+00:01 +21: D:/dance-anonymizer/mobile/app/test/features/analysis_session_test.dart: disposed controller releases its late response without reading state
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:01 +22: D:/dance-anonymizer/mobile/app/test/app/system_appearance_test.dart: hidden Wavi stage stays cinematic in both system modes
+00:01 +22: D:/dance-anonymizer/mobile/app/test/features/analysis_session_test.dart: preparing an already cached project invalidates an older analysis
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:01 +23: D:/dance-anonymizer/mobile/app/test/app/system_appearance_test.dart: hidden Wavi stage stays cinematic in both system modes
+00:02 +24: D:/dance-anonymizer/mobile/app/test/features/comparison_async_regression_test.dart: a failed old practice reopen cannot report into a new session
+00:02 +25: D:/dance-anonymizer/mobile/app/test/features/comparison_async_regression_test.dart: failed durable rollback remains visible and can be retried
+00:03 +26: D:/dance-anonymizer/mobile/app/test/features/comparison_async_regression_test.dart: mirror edits keep project actions disabled until settled
+00:03 +27: D:/dance-anonymizer/mobile/app/test/features/comparison_async_regression_test.dart: mirror edits keep project actions disabled until settled
+00:04 +28: D:/dance-anonymizer/mobile/app/test/features/comparison_async_regression_test.dart: mirror edits keep project actions disabled until settled
+00:04 +29: D:/dance-anonymizer/mobile/app/test/features/comparison_async_regression_test.dart: mirror edits keep project actions disabled until settled
+00:04 +30: D:/dance-anonymizer/mobile/app/test/features/comparison_async_regression_test.dart: mirror edits keep project actions disabled until settled
+00:04 +31: D:/dance-anonymizer/mobile/app/test/features/comparison_async_regression_test.dart: mirror edits keep project actions disabled until settled
+00:04 +32: D:/dance-anonymizer/mobile/app/test/features/comparison_entry_route_regression_test.dart: repeated manual entry creates and releases exactly two previews
+00:04 +33: D:/dance-anonymizer/mobile/app/test/features/comparison_entry_route_regression_test.dart: repeated manual entry creates and releases exactly two previews
+00:04 +34: D:/dance-anonymizer/mobile/app/test/features/comparison_entry_route_regression_test.dart: repeated manual entry creates and releases exactly two previews
+00:04 +35: D:/dance-anonymizer/mobile/app/test/features/comparison_entry_route_regression_test.dart: repeated manual entry creates and releases exactly two previews
+00:04 +36: D:/dance-anonymizer/mobile/app/test/features/comparison_entry_route_regression_test.dart: repeated manual entry creates and releases exactly two previews
+00:04 +37: D:/dance-anonymizer/mobile/app/test/features/comparison_entry_route_regression_test.dart: repeated manual entry creates and releases exactly two previews
+00:04 +38: D:/dance-anonymizer/mobile/app/test/features/comparison_lifecycle_regression_test.dart: failed manual preview must stay open instead of reporting applied calibration
+00:04 +39: D:/dance-anonymizer/mobile/app/test/features/comparison_lifecycle_regression_test.dart: failed manual preview must stay open instead of reporting applied calibration
+00:05 +40: D:/dance-anonymizer/mobile/app/test/features/comparison_lifecycle_regression_test.dart: failed manual preview must stay open instead of reporting applied calibration
+00:05 +41: D:/dance-anonymizer/mobile/app/test/features/comparison_lifecycle_regression_test.dart: failed manual preview must stay open instead of reporting applied calibration
+00:05 +42: D:/dance-anonymizer/mobile/app/test/features/comparison_lifecycle_regression_test.dart: failed manual preview must stay open instead of reporting applied calibration
+00:05 +43: D:/dance-anonymizer/mobile/app/test/features/comparison_lifecycle_regression_test.dart: failed manual preview must stay open instead of reporting applied calibration
+00:05 +44: D:/dance-anonymizer/mobile/app/test/features/comparison_lifecycle_regression_test.dart: failed manual preview must stay open instead of reporting applied calibration
+00:05 +45: D:/dance-anonymizer/mobile/app/test/features/comparison_lifecycle_regression_test.dart: failed manual preview must stay open instead of reporting applied calibration
+00:05 +46: D:/dance-anonymizer/mobile/app/test/features/comparison_lifecycle_regression_test.dart: failed manual preview must stay open instead of reporting applied calibration
+00:05 +47: D:/dance-anonymizer/mobile/app/test/features/comparison_lifecycle_regression_test.dart: failed manual preview must stay open instead of reporting applied calibration
+00:05 +48: D:/dance-anonymizer/mobile/app/test/features/comparison_lifecycle_regression_test.dart: failed manual preview must stay open instead of reporting applied calibration
+00:05 +49: D:/dance-anonymizer/mobile/app/test/features/comparison_lifecycle_regression_test.dart: failed manual preview must stay open instead of reporting applied calibration
+00:05 +50: D:/dance-anonymizer/mobile/app/test/features/comparison_entry_route_regression_test.dart: export exit pops only its dialog (false)
+00:05 +51: D:/dance-anonymizer/mobile/app/test/features/comparison_entry_route_regression_test.dart: export exit pops only its dialog (false)
+00:05 +52: D:/dance-anonymizer/mobile/app/test/features/comparison_entry_route_regression_test.dart: export exit pops only its dialog (false)
+00:05 +53: D:/dance-anonymizer/mobile/app/test/features/comparison_export_test.dart: iOS saved export opens without another Photos request
+00:05 +54: D:/dance-anonymizer/mobile/app/test/features/comparison_async_regression_test.dart: visible Cancel restores native and saved state during ApplyStage.save
+00:06 +55: D:/dance-anonymizer/mobile/app/test/features/comparison_entry_route_regression_test.dart: export exit pops only its dialog (true)
+00:06 +56: D:/dance-anonymizer/mobile/app/test/features/comparison_entry_route_regression_test.dart: export exit pops only its dialog (true)
+00:06 +57: D:/dance-anonymizer/mobile/app/test/features/comparison_entry_route_regression_test.dart: export exit pops only its dialog (true)
+00:06 +58: D:/dance-anonymizer/mobile/app/test/features/comparison_entry_route_regression_test.dart: export exit pops only its dialog (true)
+00:06 +59: D:/dance-anonymizer/mobile/app/test/features/comparison_export_test.dart: an active background export resumes progress before opening preview decoders
+00:06 +60: D:/dance-anonymizer/mobile/app/test/features/comparison_entry_route_regression_test.dart: Back during a button cancellation closes once it finishes
+00:06 +61: D:/dance-anonymizer/mobile/app/test/features/comparison_entry_route_regression_test.dart: Back during a button cancellation closes once it finishes
+00:06 +62: D:/dance-anonymizer/mobile/app/test/features/comparison_entry_route_regression_test.dart: Back during a button cancellation closes once it finishes
+00:06 +63: D:/dance-anonymizer/mobile/app/test/features/comparison_entry_route_regression_test.dart: Back during a button cancellation closes once it finishes
+00:06 +64: D:/dance-anonymizer/mobile/app/test/features/comparison_entry_route_regression_test.dart: Back during a button cancellation closes once it finishes
+00:06 +65: D:/dance-anonymizer/mobile/app/test/features/comparison_export_test.dart: A/B export uses selected bounds and cancel returns a terminal result
+00:06 +66: D:/dance-anonymizer/mobile/app/test/features/comparison_entry_route_regression_test.dart: a failed cancellation stays open and allows retry
+00:07 +67: D:/dance-anonymizer/mobile/app/test/features/comparison_entry_route_regression_test.dart: a failed cancellation stays open and allows retry
+00:07 +68: D:/dance-anonymizer/mobile/app/test/features/comparison_music_rate_test.dart: manual controls keep contrast in dark appearance
+00:07 +69: D:/dance-anonymizer/mobile/app/test/features/comparison_music_rate_test.dart: manual controls keep contrast in dark appearance
+00:07 +70: D:/dance-anonymizer/mobile/app/test/features/comparison_music_rate_test.dart: manual controls keep contrast in dark appearance
+00:08 +71: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: view options show check on active state dark
+00:08 +72: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: view options show check on active state dark
+00:08 +73: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: view options show check on active state dark
+00:09 +74: D:/dance-anonymizer/mobile/app/test/features/comparison_music_rate_test.dart: failed dual-anchor save stays open and cancel restores the saved rate
+00:09 +75: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: loop button uses a non-color active cue dark
+00:09 +76: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: loop button uses a non-color active cue dark
+00:10 +77: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: loop button uses a non-color active cue dark
+00:10 +78: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: loop button uses a non-color active cue dark
+00:10 +79: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: loop button uses a non-color active cue dark
+00:10 +80: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: loop button uses a non-color active cue dark
+00:10 +81: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: loop button uses a non-color active cue dark
+00:10 +82: D:/dance-anonymizer/mobile/app/test/features/comparison_music_rate_test.dart: dual-anchor controls remain reachable at large text Size(640.0, 320.0)
+00:10 +83: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:10 +84: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:10 +85: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:10 +86: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:10 +87: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:10 +88: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:10 +89: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:10 +90: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:10 +91: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +92: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +93: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +94: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +95: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +96: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +97: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +98: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +99: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:11 +100: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:12 +101: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:12 +102: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:12 +103: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:12 +104: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:12 +105: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:12 +106: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:12 +107: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:12 +108: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +109: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +110: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +111: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +111: D:/dance-anonymizer/mobile/app/test/features/export_lifecycle_test.dart: synchronous plan listener can dispose before native submission
+[ExportController] EXPORT_START_FAILED code=UNKNOWN_ERROR
+00:13 +112: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +113: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +114: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +115: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +116: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +117: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +117: D:/dance-anonymizer/mobile/app/test/features/export_lifecycle_test.dart: native start failure after disposal is contained
+[ExportController] EXPORT_START_FAILED code=UNKNOWN_ERROR
+00:13 +118: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +119: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +119: D:/dance-anonymizer/mobile/app/test/features/export_lifecycle_test.dart: persistent disposed cleanup error is contained, not marked success
+[ExportController] EXPORT_CLEANUP_FAILED code=UNKNOWN_ERROR
+00:13 +120: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +121: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +122: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +123: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +124: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +125: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +126: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +127: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +128: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +129: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +130: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +131: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +132: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +133: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +134: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +135: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +136: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +137: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +138: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +139: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +140: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +141: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: large text keeps picture actions reachable and marker retry saves exactly once
+00:13 +142: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:13 +143: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:13 +144: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:13 +145: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:13 +146: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:13 +147: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:13 +148: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:14 +149: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:14 +150: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:14 +151: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:14 +152: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:14 +153: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:14 +154: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:14 +155: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:14 +155: D:/dance-anonymizer/mobile/app/test/features/export_test.dart: ExportController forwards temporal trim bounds
+[ExportController] EXPORT_CLEANUP_FAILED code=UNKNOWN_ERROR
+00:14 +156: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:14 +156: D:/dance-anonymizer/mobile/app/test/features/export_test.dart: ExportController forwards portrait reframe output dimensions
+[ExportController] EXPORT_CLEANUP_FAILED code=UNKNOWN_ERROR
+00:14 +157: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:14 +157: D:/dance-anonymizer/mobile/app/test/features/export_test.dart: ExportController preserves 4K 59.94 media contract when capability allows it
+[ExportController] EXPORT_CLEANUP_FAILED code=UNKNOWN_ERROR
+00:14 +158: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:14 +158: D:/dance-anonymizer/mobile/app/test/features/export_test.dart: ExportController forwards adaptive crop clarity restoration
+[ExportController] EXPORT_CLEANUP_FAILED code=UNKNOWN_ERROR
+00:14 +159: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:14 +159: D:/dance-anonymizer/mobile/app/test/features/export_test.dart: ExportController applies user FHD preference before device fallback
+[ExportController] EXPORT_CLEANUP_FAILED code=UNKNOWN_ERROR
+00:14 +160: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:14 +160: D:/dance-anonymizer/mobile/app/test/features/export_test.dart: ExportController applies encoder dimension capability explicitly
+[ExportController] EXPORT_CLEANUP_FAILED code=UNKNOWN_ERROR
+00:14 +161: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:14 +162: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:14 +163: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: embedded source controls, history and swap stay usable in a small portrait viewport
+00:14 +164: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: picture controls, drag and pinch affect only the selected video and save on done
+00:14 +165: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: picture controls, drag and pinch affect only the selected video and save on done
+00:14 +166: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: picture controls, drag and pinch affect only the selected video and save on done
+00:15 +167: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: picture controls, drag and pinch affect only the selected video and save on done
+00:15 +168: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: picture controls, drag and pinch affect only the selected video and save on done
+00:15 +169: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: picture controls, drag and pinch affect only the selected video and save on done
+00:15 +170: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: picture controls, drag and pinch affect only the selected video and save on done
+00:15 +170: D:/dance-anonymizer/mobile/app/test/features/home_workbench_test.dart: canceling a replacement does not reuse the previously selected video
+[ImportVideoController] VIDEO_PROBE_REQUEST
+00:15 +171: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: picture controls, drag and pinch affect only the selected video and save on done
+00:15 +172: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: picture controls, drag and pinch affect only the selected video and save on done
+00:15 +173: D:/dance-anonymizer/mobile/app/test/features/comparison_picture_markers_test.dart: picture controls, drag and pinch affect only the selected video and save on done
+00:16 +174: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: large text and landscape keep primary controls visible without overflow
+00:16 +175: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: large text and landscape keep primary controls visible without overflow
+00:16 +176: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: large text and landscape keep primary controls visible without overflow
+00:16 +177: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: large text and landscape keep primary controls visible without overflow
+00:16 +178: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: large text and landscape keep primary controls visible without overflow
+00:16 +179: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: large text and landscape keep primary controls visible without overflow
+00:16 +180: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: large text and landscape keep primary controls visible without overflow
+00:16 +181: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: large text and landscape keep primary controls visible without overflow
+00:16 +182: D:/dance-anonymizer/mobile/app/test/features/home_workbench_test.dart: iOS workbench launches the comparison workflow
+00:16 +183: D:/dance-anonymizer/mobile/app/test/features/home_workbench_test.dart: iOS workbench launches the comparison workflow
+00:16 +184: D:/dance-anonymizer/mobile/app/test/features/home_workbench_test.dart: iOS workbench launches the comparison workflow
+00:16 +185: D:/dance-anonymizer/mobile/app/test/features/home_workbench_test.dart: iOS workbench launches the comparison workflow
+00:16 +186: D:/dance-anonymizer/mobile/app/test/features/home_workbench_test.dart: iOS workbench launches the comparison workflow
+00:16 +187: D:/dance-anonymizer/mobile/app/test/features/home_workbench_test.dart: iOS workbench launches the comparison workflow
+00:16 +188: D:/dance-anonymizer/mobile/app/test/features/home_workbench_test.dart: iOS workbench launches the comparison workflow
+00:17 +189: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: manual mode exposes independent source sliders, hides shared controls and saves both anchors
+00:17 +190: D:/dance-anonymizer/mobile/app/test/features/export_test.dart: cancel dialog theme survives export route exit light
+00:17 +191: D:/dance-anonymizer/mobile/app/test/features/export_test.dart: cancel dialog theme survives export route exit light
+00:17 +192: D:/dance-anonymizer/mobile/app/test/features/import_video_test.dart: home preserves its video protection card alongside standalone workflows
+00:17 +193: D:/dance-anonymizer/mobile/app/test/features/import_video_test.dart: home preserves its video protection card alongside standalone workflows
+00:17 +194: D:/dance-anonymizer/mobile/app/test/features/import_video_test.dart: home preserves its video protection card alongside standalone workflows
+00:17 +195: D:/dance-anonymizer/mobile/app/test/features/import_video_test.dart: home preserves its video protection card alongside standalone workflows
+00:17 +196: D:/dance-anonymizer/mobile/app/test/features/import_video_test.dart: home preserves its video protection card alongside standalone workflows
+00:17 +197: D:/dance-anonymizer/mobile/app/test/features/import_video_test.dart: home preserves its video protection card alongside standalone workflows
+00:17 +198: D:/dance-anonymizer/mobile/app/test/features/import_video_test.dart: home preserves its video protection card alongside standalone workflows
+00:18 +199: D:/dance-anonymizer/mobile/app/test/features/import_video_test.dart: home preserves its video protection card alongside standalone workflows
+00:18 +200: D:/dance-anonymizer/mobile/app/test/features/import_video_test.dart: home preserves its video protection card alongside standalone workflows
+00:18 +201: D:/dance-anonymizer/mobile/app/test/features/import_video_test.dart: home preserves its video protection card alongside standalone workflows
+00:18 +202: D:/dance-anonymizer/mobile/app/test/features/import_video_test.dart: home preserves its video protection card alongside standalone workflows
+00:18 +203: D:/dance-anonymizer/mobile/app/test/features/import_video_test.dart: home preserves its video protection card alongside standalone workflows
+00:18 +204: D:/dance-anonymizer/mobile/app/test/features/import_video_test.dart: home preserves its video protection card alongside standalone workflows
+00:18 +205: D:/dance-anonymizer/mobile/app/test/features/import_video_test.dart: home preserves its video protection card alongside standalone workflows
+00:18 +206: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: view choices preserve playback and rotation override is released on exit
+00:18 +207: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: view choices preserve playback and rotation override is released on exit
+00:18 +208: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: view choices preserve playback and rotation override is released on exit
+00:18 +209: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: view choices preserve playback and rotation override is released on exit
+00:18 +210: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: view choices preserve playback and rotation override is released on exit
+00:18 +211: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: view choices preserve playback and rotation override is released on exit
+00:18 +212: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: view choices preserve playback and rotation override is released on exit
+00:18 +213: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: view choices preserve playback and rotation override is released on exit
+00:18 +214: D:/dance-anonymizer/mobile/app/test/features/home_workbench_test.dart: single import completes and resets after editor
+[ImportVideoController] VIDEO_PROBE_REQUEST
+00:18 +215: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: portrait side-by-side manual calibration keeps sliders usable and cancel only discards cue changes
+00:19 +216: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: portrait side-by-side manual calibration keeps sliders usable and cancel only discards cue changes
+00:19 +216: D:/dance-anonymizer/mobile/app/test/features/home_workbench_test.dart: failed probe shows an error without navigating to editor
+[ImportVideoController] VIDEO_PROBE_REQUEST
+[ImportVideoController] VIDEO_PROBE_FAILED code=UNKNOWN_ERROR
+00:19 +217: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: portrait side-by-side manual calibration keeps sliders usable and cancel only discards cue changes
+00:19 +218: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: portrait side-by-side manual calibration keeps sliders usable and cancel only discards cue changes
+00:19 +219: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: empty reference and target slots select their own source and start automatic calibration
+00:19 +219: D:/dance-anonymizer/mobile/app/test/features/privacy_selection_regression_test.dart: occluded low confidence person remains protected when choosing a hero
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:19 +220: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: empty reference and target slots select their own source and start automatic calibration
+00:19 +221: D:/dance-anonymizer/mobile/app/test/features/comparison_test.dart: empty reference and target slots select their own source and start automatic calibration
+00:20 +222: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: preview error stays readable in dark appearance
+00:20 +223: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: preview error stays readable in dark appearance
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:21 +224: D:/dance-anonymizer/mobile/app/test/features/result_screen_test.dart: failed auto-save exposes retry and blocks share until saved
+00:21 +224: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: preview error stays readable in light appearance
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:21 +225: D:/dance-anonymizer/mobile/app/test/features/result_screen_test.dart: failed auto-save exposes retry and blocks share until saved
+00:21 +226: D:/dance-anonymizer/mobile/app/test/features/result_screen_test.dart: failed auto-save exposes retry and blocks share until saved
+00:21 +226: D:/dance-anonymizer/mobile/app/test/privacy_logging_test.dart: real repository preserves source URI but import error is fixed
+[ImportVideoController] VIDEO_PROBE_REQUEST
+[NativeRepository] VIDEO_PROBE_REQUEST
+[ImportVideoController] VIDEO_PROBE_FAILED code=VIDEO_OPEN_FAILED
+00:21 +227: D:/dance-anonymizer/mobile/app/test/features/result_screen_test.dart: failed auto-save exposes retry and blocks share until saved
+00:22 +228: D:/dance-anonymizer/mobile/app/test/features/woah_easter_egg_test.dart: Wavi reveals and cycles short messages by tapping the mascot
+00:22 +228: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: selection cues are visible in dark theme
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:22 +229: D:/dance-anonymizer/mobile/app/test/features/woah_easter_egg_test.dart: Wavi reveals and cycles short messages by tapping the mascot
+00:22 +230: D:/dance-anonymizer/mobile/app/test/features/woah_easter_egg_test.dart: Wavi reveals and cycles short messages by tapping the mascot
+00:22 +231: D:/dance-anonymizer/mobile/app/test/features/woah_easter_egg_test.dart: Wavi reveals and cycles short messages by tapping the mascot
+00:22 +232: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: selection cues are visible in light theme
+00:22 +233: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: selection cues are visible in light theme
+00:22 +234: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: selection cues are visible in light theme
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:22 +235: D:/dance-anonymizer/mobile/app/test/features/result_screen_test.dart: success result keeps share open diagnostics and next actions
+00:23 +236: D:/dance-anonymizer/mobile/app/test/features/woah_easter_egg_test.dart: long pressing the home Woah enters Wavi page and back exits
+00:23 +237: D:/dance-anonymizer/mobile/app/test/features/woah_easter_egg_test.dart: long pressing the home Woah enters Wavi page and back exits
+00:23 +238: D:/dance-anonymizer/mobile/app/test/widget_test.dart: App smoke test initializes correctly
+00:23 +239: D:/dance-anonymizer/mobile/app/test/widget_test.dart: App smoke test initializes correctly
+00:23 +239: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: selection cues fit compact large-text at 1.6
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:23 +240: D:/dance-anonymizer/mobile/app/test/widget_test.dart: App smoke test initializes correctly
+00:23 +240: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: selection cues fit compact large-text at 2.0
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:23 +241: D:/dance-anonymizer/mobile/app/test/widget_test.dart: App smoke test initializes correctly
+00:23 +242: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: tools start closed and can be deselected without losing edits
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:24 +243: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: empty recognition offers local recovery and retry opens editor
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:24 +244: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: trim distinguishes output bounds and supports precise end adjustment
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:24 +245: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: unified editor uses fixed media workspace and four real tools
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:24 +246: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: face sticker tool exposes custom import and size control
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:24 +247: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: compact dark editor shows all protection styles
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:24 +248: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: compact light editor shows all protection styles
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:24 +249: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: leg stretch appears only after selecting a protagonist
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:25 +250: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: saved Profile applies to a fresh video and stays collapsed
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:25 +251: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: Profile changes are persisted for the next video
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:25 +252: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: saved Profile never overrides an existing configured project
+00:25 +253: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: tool navigation keeps the media workspace stable
+00:25 +254: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: resolution preset updates project and survives trim reanalysis
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:25 +255: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: temporal trim change reanalyzes from the new first frame
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:26 +256: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: queued trim accessibility changes cannot outrun reanalysis
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:26 +257: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: shortening the end preserves subject, face style and analyzed IDs
+00:26 +258: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: new trim start keeps face style and requires review of new IDs
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:26 +259: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: reopening with cached analysis does not rerun person analysis
+00:26 +260: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: stage target changes feed the real effect preview request
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:26 +261: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: full-body and face effect drafts survive mode switching
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:26 +262: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: restore default targets preserves face-only scope without mixed rendering
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:26 +263: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: portrait subject auto-removes full-body privacy and survives export
+00:27 +264: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: portrait subject auto-removes face-only privacy
+00:27 +265: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: cancel subject selection leaves original privacy and framing intact
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:27 +266: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: reopening a crop-only project does not silently restore privacy targets
+00:27 +267: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: real editor export fast native cancellation does not flash an error
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:27 +268: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: real editor export route returns cleanly after cancellation race
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:27 +269: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: session survives export result back and releases only on final home
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:27 +270: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: replacing editor releases only the old explicitly owned session
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:27 +271: D:/dance-anonymizer/mobile/app/test/features/protection_editor_test.dart: single next action goes directly to export
+[PersonSelectionController] VIDEO_ANALYSIS_REQUEST
+00:28 +272: All tests passed!

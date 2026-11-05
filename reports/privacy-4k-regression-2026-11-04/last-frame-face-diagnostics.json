@@ -1,0 +1,898 @@
+[
+  {
+    "wall_time": "2026-11-05T01:26:49.362Z",
+    "elapsed_ms": 611770,
+    "session_id": "20261105_011637_86801575",
+    "pid": 31590,
+    "thread": "[redacted]",
+    "level": "INFO",
+    "component": "CrossDeviceTrackingDiagnostics",
+    "event": "FACE_PRIVACY_TEMPORAL_CLASS_EVIDENCE",
+    "fields": {
+      "job_id": "job_f7cd7c99-1a80-4c48-86a9-0882267b6b1c",
+      "pts_us": 23160000,
+      "selected_detection_indices": [
+        3
+      ],
+      "unknown_detection_indices": [
+        0,
+        1,
+        2
+      ],
+      "mapped_detection_indices": [],
+      "mapped_unknown_detection_indices": [],
+      "mapped_residual_track_ids": [],
+      "elapsed_ms": 0.918125
+    }
+  },
+  {
+    "wall_time": "2026-11-05T01:26:49.363Z",
+    "elapsed_ms": 611771,
+    "session_id": "20261105_011637_86801575",
+    "pid": 31590,
+    "thread": "[redacted]",
+    "level": "INFO",
+    "component": "CrossDeviceTrackingDiagnostics",
+    "event": "YOLO_CPU_MT4_TRACK_SHADOW",
+    "fields": {
+      "job_id": "job_f7cd7c99-1a80-4c48-86a9-0882267b6b1c",
+      "pts_us": 23160000,
+      "should_infer": true,
+      "cpu_inference_ordinal": 579,
+      "cpu_full_source": "CPU",
+      "adaptive_shadow_matrix_enabled": false,
+      "identity_protected_track_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "cpu_full_tracks": [
+        {
+          "id": 0,
+          "state": "LOST",
+          "bbox_q0_0625px": [
+            7944,
+            19426,
+            10844,
+            27853
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 283,
+          "missed_frames": 34,
+          "occluded_by_track_ids": []
+        },
+        {
+          "id": 1,
+          "state": "OCCLUDED",
+          "bbox_q0_0625px": [
+            17582,
+            10224,
+            23291,
+            24928
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 5,
+          "missed_frames": 5,
+          "occluded_by_track_ids": [
+            5
+          ]
+        },
+        {
+          "id": 2,
+          "state": "LOST",
+          "bbox_q0_0625px": [
+            -6465,
+            12408,
+            -1114,
+            37530
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 299,
+          "missed_frames": 127,
+          "occluded_by_track_ids": []
+        },
+        {
+          "id": 3,
+          "state": "OCCLUDED",
+          "bbox_q0_0625px": [
+            24989,
+            13409,
+            29697,
+            26064
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 45,
+          "missed_frames": 45,
+          "occluded_by_track_ids": [
+            5
+          ]
+        },
+        {
+          "id": 4,
+          "state": "LOST",
+          "bbox_q0_0625px": [
+            -2288,
+            -2843,
+            1622,
+            19211
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 139,
+          "missed_frames": 70,
+          "occluded_by_track_ids": []
+        },
+        {
+          "id": 5,
+          "state": "ACTIVE",
+          "bbox_q0_0625px": [
+            15010,
+            189,
+            32997,
+            34343
+          ],
+          "observed_this_frame": true,
+          "frames_since_last_observation": 0,
+          "missed_frames": 0,
+          "occluded_by_track_ids": []
+        },
+        {
+          "id": 6,
+          "state": "ACTIVE",
+          "bbox_q0_0625px": [
+            43779,
+            8477,
+            52359,
+            30294
+          ],
+          "observed_this_frame": true,
+          "frames_since_last_observation": 0,
+          "missed_frames": 0,
+          "occluded_by_track_ids": []
+        },
+        {
+          "id": 8,
+          "state": "OCCLUDED",
+          "bbox_q0_0625px": [
+            13506,
+            17141,
+            17127,
+            26619
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 7,
+          "missed_frames": 7,
+          "occluded_by_track_ids": [
+            5
+          ]
+        },
+        {
+          "id": 10,
+          "state": "OCCLUDED",
+          "bbox_q0_0625px": [
+            19491,
+            18624,
+            21685,
+            25862
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 40,
+          "missed_frames": 40,
+          "occluded_by_track_ids": [
+            5
+          ]
+        },
+        {
+          "id": 11,
+          "state": "OCCLUDED",
+          "bbox_q0_0625px": [
+            12458,
+            11457,
+            17623,
+            27337
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 36,
+          "missed_frames": 33,
+          "occluded_by_track_ids": [
+            5
+          ]
+        },
+        {
+          "id": 12,
+          "state": "OCCLUDED",
+          "bbox_q0_0625px": [
+            17205,
+            19965,
+            19849,
+            27164
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 116,
+          "missed_frames": 114,
+          "occluded_by_track_ids": [
+            5
+          ]
+        },
+        {
+          "id": 14,
+          "state": "ACTIVE",
+          "bbox_q0_0625px": [
+            35747,
+            13659,
+            39827,
+            26933
+          ],
+          "observed_this_frame": true,
+          "frames_since_last_observation": 0,
+          "missed_frames": 0,
+          "occluded_by_track_ids": []
+        }
+      ],
+      "adaptive_tracks": {},
+      "adaptive_sources": {},
+      "adaptive_reasons": {},
+      "adaptive_metrics": {}
+    }
+  },
+  {
+    "wall_time": "2026-11-05T01:26:49.363Z",
+    "elapsed_ms": 611771,
+    "session_id": "20261105_011637_86801575",
+    "pid": 31590,
+    "thread": "[redacted]",
+    "level": "INFO",
+    "component": "ExportPipeline",
+    "event": "FACE_ONLY_PRODUCTION_TRACK_SIGNATURE",
+    "fields": {
+      "job_id": "job_f7cd7c99-1a80-4c48-86a9-0882267b6b1c",
+      "pts_us": 23160000,
+      "should_infer": true,
+      "face_only_person_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "identity_protected_track_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "tracks": [
+        {
+          "id": 0,
+          "state": "OCCLUDED",
+          "bbox_q0_0625px": [
+            18376,
+            18546,
+            21195,
+            25927
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 53,
+          "missed_frames": 53,
+          "occluded_by_track_ids": [
+            5
+          ]
+        },
+        {
+          "id": 1,
+          "state": "REACQUIRING",
+          "bbox_q0_0625px": [
+            12679,
+            18121,
+            15395,
+            27441
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 30,
+          "missed_frames": 1,
+          "occluded_by_track_ids": []
+        },
+        {
+          "id": 2,
+          "state": "LOST",
+          "bbox_q0_0625px": [
+            -615,
+            -1409,
+            692,
+            7363
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 127,
+          "missed_frames": 95,
+          "occluded_by_track_ids": []
+        },
+        {
+          "id": 3,
+          "state": "OCCLUDED",
+          "bbox_q0_0625px": [
+            25445,
+            13562,
+            29925,
+            26109
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 44,
+          "missed_frames": 44,
+          "occluded_by_track_ids": [
+            5
+          ]
+        },
+        {
+          "id": 4,
+          "state": "REACQUIRING",
+          "bbox_q0_0625px": [
+            1352,
+            2847,
+            8531,
+            25335
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 151,
+          "missed_frames": 9,
+          "occluded_by_track_ids": []
+        },
+        {
+          "id": 5,
+          "state": "ACTIVE",
+          "bbox_q0_0625px": [
+            15010,
+            189,
+            32997,
+            34343
+          ],
+          "observed_this_frame": true,
+          "frames_since_last_observation": 0,
+          "missed_frames": 0,
+          "occluded_by_track_ids": []
+        },
+        {
+          "id": 6,
+          "state": "ACTIVE",
+          "bbox_q0_0625px": [
+            43779,
+            8477,
+            52359,
+            30294
+          ],
+          "observed_this_frame": true,
+          "frames_since_last_observation": 0,
+          "missed_frames": 0,
+          "occluded_by_track_ids": []
+        }
+      ]
+    }
+  },
+  {
+    "wall_time": "2026-11-05T01:26:49.367Z",
+    "elapsed_ms": 611775,
+    "session_id": "20261105_011637_86801575",
+    "pid": 31590,
+    "thread": "[redacted]",
+    "level": "INFO",
+    "component": "ExportPipeline",
+    "event": "FACE_ONLY_STICKER_PLACEMENT_SIGNATURE",
+    "fields": {
+      "job_id": "job_f7cd7c99-1a80-4c48-86a9-0882267b6b1c",
+      "pts_us": 23160000,
+      "geometry_source": "[redacted]",
+      "mask_source": "[redacted]",
+      "placements": [
+        {
+          "track_id": -2003934,
+          "source": "YOLO_HEAD_FALLBACK",
+          "source_rect_q0_0625px": [
+            46482,
+            8382,
+            51033,
+            12933
+          ]
+        },
+        {
+          "track_id": -2003933,
+          "source": "YOLO_HEAD_FALLBACK",
+          "source_rect_q0_0625px": [
+            36686,
+            13736,
+            38850,
+            15901
+          ]
+        },
+        {
+          "track_id": -2003932,
+          "source": "YOLO_HEAD_FALLBACK",
+          "source_rect_q0_0625px": [
+            17455,
+            305,
+            26995,
+            9846
+          ]
+        },
+        {
+          "track_id": -2003931,
+          "source": "YOLO_HEAD_FALLBACK",
+          "source_rect_q0_0625px": [
+            20976,
+            20734,
+            23867,
+            23625
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "wall_time": "2026-11-05T01:26:50.388Z",
+    "elapsed_ms": 612796,
+    "session_id": "20261105_011637_86801575",
+    "pid": 31590,
+    "thread": "[redacted]",
+    "level": "INFO",
+    "component": "CrossDeviceTrackingDiagnostics",
+    "event": "FACE_PRIVACY_TEMPORAL_CLASS_EVIDENCE",
+    "fields": {
+      "job_id": "job_f7cd7c99-1a80-4c48-86a9-0882267b6b1c",
+      "pts_us": 23200000,
+      "selected_detection_indices": [
+        5
+      ],
+      "unknown_detection_indices": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "mapped_detection_indices": [
+        2
+      ],
+      "mapped_unknown_detection_indices": [
+        2
+      ],
+      "mapped_residual_track_ids": [
+        1
+      ],
+      "elapsed_ms": 1.093177
+    }
+  },
+  {
+    "wall_time": "2026-11-05T01:26:50.388Z",
+    "elapsed_ms": 612796,
+    "session_id": "20261105_011637_86801575",
+    "pid": 31590,
+    "thread": "[redacted]",
+    "level": "INFO",
+    "component": "CrossDeviceTrackingDiagnostics",
+    "event": "YOLO_CPU_MT4_TRACK_SHADOW",
+    "fields": {
+      "job_id": "job_f7cd7c99-1a80-4c48-86a9-0882267b6b1c",
+      "pts_us": 23200000,
+      "should_infer": true,
+      "cpu_inference_ordinal": 580,
+      "cpu_full_source": "CPU",
+      "adaptive_shadow_matrix_enabled": false,
+      "identity_protected_track_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "cpu_full_tracks": [
+        {
+          "id": 0,
+          "state": "LOST",
+          "bbox_q0_0625px": [
+            7944,
+            19426,
+            10844,
+            27853
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 284,
+          "missed_frames": 35,
+          "occluded_by_track_ids": []
+        },
+        {
+          "id": 1,
+          "state": "OCCLUDED",
+          "bbox_q0_0625px": [
+            17348,
+            10237,
+            23056,
+            24940
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 6,
+          "missed_frames": 6,
+          "occluded_by_track_ids": [
+            5
+          ]
+        },
+        {
+          "id": 2,
+          "state": "LOST",
+          "bbox_q0_0625px": [
+            -6464,
+            12409,
+            -1113,
+            37531
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 300,
+          "missed_frames": 128,
+          "occluded_by_track_ids": []
+        },
+        {
+          "id": 3,
+          "state": "OCCLUDED",
+          "bbox_q0_0625px": [
+            24753,
+            13422,
+            29461,
+            26076
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 46,
+          "missed_frames": 46,
+          "occluded_by_track_ids": [
+            5
+          ]
+        },
+        {
+          "id": 4,
+          "state": "LOST",
+          "bbox_q0_0625px": [
+            -2288,
+            -2843,
+            1622,
+            19211
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 140,
+          "missed_frames": 71,
+          "occluded_by_track_ids": []
+        },
+        {
+          "id": 5,
+          "state": "ACTIVE",
+          "bbox_q0_0625px": [
+            14746,
+            217,
+            32318,
+            34364
+          ],
+          "observed_this_frame": true,
+          "frames_since_last_observation": 0,
+          "missed_frames": 0,
+          "occluded_by_track_ids": []
+        },
+        {
+          "id": 6,
+          "state": "ACTIVE",
+          "bbox_q0_0625px": [
+            44036,
+            8541,
+            52381,
+            30298
+          ],
+          "observed_this_frame": true,
+          "frames_since_last_observation": 0,
+          "missed_frames": 0,
+          "occluded_by_track_ids": []
+        },
+        {
+          "id": 8,
+          "state": "OCCLUDED",
+          "bbox_q0_0625px": [
+            13270,
+            17154,
+            16891,
+            26631
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 8,
+          "missed_frames": 8,
+          "occluded_by_track_ids": [
+            5,
+            11
+          ]
+        },
+        {
+          "id": 10,
+          "state": "OCCLUDED",
+          "bbox_q0_0625px": [
+            19255,
+            18636,
+            21449,
+            25875
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 41,
+          "missed_frames": 41,
+          "occluded_by_track_ids": [
+            5
+          ]
+        },
+        {
+          "id": 11,
+          "state": "ACTIVE",
+          "bbox_q0_0625px": [
+            12953,
+            10851,
+            16012,
+            27209
+          ],
+          "observed_this_frame": true,
+          "frames_since_last_observation": 0,
+          "missed_frames": 0,
+          "occluded_by_track_ids": []
+        },
+        {
+          "id": 12,
+          "state": "OCCLUDED",
+          "bbox_q0_0625px": [
+            16969,
+            19978,
+            19613,
+            27177
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 117,
+          "missed_frames": 115,
+          "occluded_by_track_ids": [
+            5,
+            11
+          ]
+        },
+        {
+          "id": 14,
+          "state": "ACTIVE",
+          "bbox_q0_0625px": [
+            35696,
+            13805,
+            39849,
+            26984
+          ],
+          "observed_this_frame": true,
+          "frames_since_last_observation": 0,
+          "missed_frames": 0,
+          "occluded_by_track_ids": []
+        }
+      ],
+      "adaptive_tracks": {},
+      "adaptive_sources": {},
+      "adaptive_reasons": {},
+      "adaptive_metrics": {}
+    }
+  },
+  {
+    "wall_time": "2026-11-05T01:26:50.388Z",
+    "elapsed_ms": 612796,
+    "session_id": "20261105_011637_86801575",
+    "pid": 31590,
+    "thread": "[redacted]",
+    "level": "INFO",
+    "component": "ExportPipeline",
+    "event": "FACE_ONLY_PRODUCTION_TRACK_SIGNATURE",
+    "fields": {
+      "job_id": "job_f7cd7c99-1a80-4c48-86a9-0882267b6b1c",
+      "pts_us": 23200000,
+      "should_infer": true,
+      "face_only_person_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "identity_protected_track_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "tracks": [
+        {
+          "id": 0,
+          "state": "OCCLUDED",
+          "bbox_q0_0625px": [
+            18140,
+            18558,
+            20959,
+            25940
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 54,
+          "missed_frames": 54,
+          "occluded_by_track_ids": [
+            5
+          ]
+        },
+        {
+          "id": 1,
+          "state": "REACQUIRING",
+          "bbox_q0_0625px": [
+            12905,
+            18123,
+            15170,
+            27440
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 31,
+          "missed_frames": 2,
+          "occluded_by_track_ids": []
+        },
+        {
+          "id": 2,
+          "state": "LOST",
+          "bbox_q0_0625px": [
+            -615,
+            -1409,
+            691,
+            7363
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 128,
+          "missed_frames": 96,
+          "occluded_by_track_ids": []
+        },
+        {
+          "id": 3,
+          "state": "OCCLUDED",
+          "bbox_q0_0625px": [
+            25209,
+            13574,
+            29689,
+            26121
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 45,
+          "missed_frames": 45,
+          "occluded_by_track_ids": [
+            5
+          ]
+        },
+        {
+          "id": 4,
+          "state": "REACQUIRING",
+          "bbox_q0_0625px": [
+            1352,
+            2847,
+            8531,
+            25335
+          ],
+          "observed_this_frame": false,
+          "frames_since_last_observation": 152,
+          "missed_frames": 10,
+          "occluded_by_track_ids": []
+        },
+        {
+          "id": 5,
+          "state": "ACTIVE",
+          "bbox_q0_0625px": [
+            14746,
+            217,
+            32318,
+            34364
+          ],
+          "observed_this_frame": true,
+          "frames_since_last_observation": 0,
+          "missed_frames": 0,
+          "occluded_by_track_ids": []
+        },
+        {
+          "id": 6,
+          "state": "ACTIVE",
+          "bbox_q0_0625px": [
+            44036,
+            8541,
+            52381,
+            30298
+          ],
+          "observed_this_frame": true,
+          "frames_since_last_observation": 0,
+          "missed_frames": 0,
+          "occluded_by_track_ids": []
+        }
+      ]
+    }
+  },
+  {
+    "wall_time": "2026-11-05T01:26:50.394Z",
+    "elapsed_ms": 612802,
+    "session_id": "20261105_011637_86801575",
+    "pid": 31590,
+    "thread": "[redacted]",
+    "level": "INFO",
+    "component": "ExportPipeline",
+    "event": "FACE_ONLY_STICKER_PLACEMENT_SIGNATURE",
+    "fields": {
+      "job_id": "job_f7cd7c99-1a80-4c48-86a9-0882267b6b1c",
+      "pts_us": 23200000,
+      "geometry_source": "[redacted]",
+      "mask_source": "[redacted]",
+      "placements": [
+        {
+          "track_id": -2003940,
+          "source": "YOLO_HEAD_FALLBACK",
+          "source_rect_q0_0625px": [
+            46539,
+            8445,
+            50965,
+            12871
+          ]
+        },
+        {
+          "track_id": -2003939,
+          "source": "YOLO_HEAD_FALLBACK",
+          "source_rect_q0_0625px": [
+            36723,
+            13793,
+            38926,
+            15996
+          ]
+        },
+        {
+          "track_id": -2003938,
+          "source": "YOLO_HEAD_FALLBACK",
+          "source_rect_q0_0625px": [
+            17855,
+            363,
+            27175,
+            9682
+          ]
+        },
+        {
+          "track_id": -2003937,
+          "source": "YOLO_HEAD_FALLBACK",
+          "source_rect_q0_0625px": [
+            21060,
+            19707,
+            23994,
+            22642
+          ]
+        },
+        {
+          "track_id": -2003936,
+          "source": "YOLO_HEAD_FALLBACK",
+          "source_rect_q0_0625px": [
+            13481,
+            12140,
+            15483,
+            14142
+          ]
+        },
+        {
+          "track_id": -2003935,
+          "source": "YOLO_HEAD_FALLBACK",
+          "source_rect_q0_0625px": [
+            13586,
+            19212,
+            15185,
+            20811
+          ]
+        }
+      ]
+    }
+  }
+]

@@ -38,7 +38,13 @@ class NativeDiagnosticsSnapshotIntegrityTest {
 
     @AfterTest
     fun tearDown() {
-        tempDir.deleteRecursively()
+        NativeDiagnostics.flushCriticalNow(5000L)
+        // initialize() is process-wide: the first context remains owned by the
+        // live writer. Deleting it here corrupts later tests in this same JVM.
+        val writerRoot = NativeDiagnostics.getDiagnosticsDir()?.canonicalFile?.toPath()
+        if (writerRoot == null || !writerRoot.startsWith(tempDir.canonicalFile.toPath())) {
+            tempDir.deleteRecursively()
+        }
     }
 
     @Test

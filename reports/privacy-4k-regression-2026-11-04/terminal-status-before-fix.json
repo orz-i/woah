@@ -1,0 +1,4 @@
+{
+  "result": "failed",
+  "message": "org.opentest4j.AssertionFailedError: expected: <JobStatusDto(jobId=job_cancelled, state=cancelled, currentFrame=3, totalFrames=180, fps=0.0, progress=0.0, outputUri=null, currentPreviewPath=null, errorCode=null, errorMessage=null)> but was: <JobStatusDto(jobId=job_cancelled, state=completed, currentFrame=3, totalFrames=180, fps=0.0, progress=0.0, outputUri=/dummy/out.mp4, currentPreviewPath=null, errorCode=null, errorMessage=null)>"
+}

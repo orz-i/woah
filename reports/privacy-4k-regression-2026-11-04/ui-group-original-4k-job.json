@@ -1,0 +1,51 @@
+{
+  "tag": "group-original-4k",
+  "source": "group",
+  "input": "group-mirror-8956295.mp4",
+  "pid": "20842",
+  "source_sha256": "376c2ae73c92c23dceb042d27450aaa45ba2f44a3d7b0a5f3c26e9bea6c2dd73",
+  "gallery_ids_before": [
+    "1000003484",
+    "1000003490",
+    "1000003687",
+    "1000003697",
+    "1000003698",
+    "1000003699",
+    "1000003700",
+    "1000003703",
+    "1000003704",
+    "1000003705"
+  ],
+  "job": {
+    "jobId": "job_bbd96c84-6691-4537-a13e-a0324f7e3086",
+    "state": "preparing",
+    "sourceUri": "/data/user/0/art.gaoge.dance/cache/file_picker/1793857186725/group-mirror-8956295.mp4",
+    "outputPath": "export_1793857303903.mp4",
+    "analysisCacheId": "analysis_1793857187586_c61bf771-7c84-48d4-90c8-b8ed36c58e54",
+    "targetWidth": 3840,
+    "targetHeight": 2160,
+    "targetFps": 25,
+    "videoBitrate": 26956800,
+    "selectedPersonIds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "createdAt": 1793857303966,
+    "updatedAt": 1793857303966,
+    "progress": 0,
+    "currentFrame": 0,
+    "totalFrames": 0,
+    "fps": 0,
+    "outputUri": null,
+    "errorCode": null,
+    "errorMessage": null,
+    "processingProfile": "quality",
+    "effectsJson": "{\"fillMode\":\"mosaic\",\"fillColorArgb\":4278190080,\"borderColorArgb\":4294967295,\"opacity\":1,\"borderWidth\":0.15019435508578516,\"blurStrength\":22.20535457835478,\"skinWhiten\":0,\"legStretchEnabled\":false,\"legStretch\":0,\"legZoneTop\":0.55,\"legZoneBottom\":0.95}",
+    "followJson": "{\"enabled\":false,\"targetPersonId\":null,\"zoom\":1,\"smoothFactor\":0.1,\"outputAspectRatio\":null}"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "recorded_at_utc": "2026-11-05T04:00:40Z",
+  "stay_on_setting_current": "0",
+  "restore_required": false,
+  "optional_keep_awake_command_returncode": 137,
+  "optional_keep_awake_change_applied": false,
+  "ui_fixture_album": "/sdcard/Movies/Woah4KQA_cf7515d4",
+  "same_original_bytes_sha256": {
+    "group-mirror-8956295.mp4": "376c2ae73c92c23dceb042d27450aaa45ba2f44a3d7b0a5f3c26e9bea6c2dd73",
+    "solo-portrait-7570258.mp4": "f401df9259f7fcbf7b01121cbb720e744e0dbba6e3ebce2f64027d37c873d6a1"
+  },
+  "reason": "Dedicated UI album excludes HD derivatives with the same media timestamps."
+}

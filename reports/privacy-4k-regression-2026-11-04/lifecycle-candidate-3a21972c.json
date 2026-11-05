@@ -1,0 +1,24 @@
+{
+  "recorded_at_utc": "2026-11-05T05:22:19.523651+00:00",
+  "run": "4k_terminal_20261105",
+  "test_apk_sha256": "3a21972cf2f7812265993c6d79f91386396443e1822faa7fe30b4f3ea7530a39",
+  "artifact_path": "candidate-test-3a21972c.apk",
+  "source_sha256": {
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt": "4951c86fa488343ce04d6a056dd96e1255d3d6712423fa4ae2720975e4f64274",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/inference/HighResolutionPrivacyCoverage.kt": "56f9f851c9cd9cc788c74ad4429443d66b58c5abdb6d503a3859fd7f41002efd",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/media/Mp4FastStart.kt": "6bd4c04ad6de79c4a9a43a5da593a361a5e775895900df187aa3c1be56637eec",
+    "mobile/packages/dance_native/android/src/androidTest/kotlin/art/gaoge/dance/engine/pipeline/FourKPrivacyWorkflowInstrumentedTest.kt": "78cdc5ae22d296b8810726f347697d1120c81d9e2e4c7172bac603457c737f71",
+    "mobile/packages/dance_native/android/src/androidTest/kotlin/art/gaoge/dance/engine/pipeline/FourKDetectionReviewInstrumentedTest.kt": "5987727ee40bfe2671f09eb9450b7cefda5f1c260730092a88652858d720e682",
+    "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/inference/HighResolutionPrivacyCoverageTest.kt": "1b84a83ca84527a6c1dbb2378376818ac57f2447fb1322bff5b8ce19dac64c67",
+    "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/media/Mp4FastStartTest.kt": "21ad43b3bebd49ba9607bb1d18a4e729d06f83972e737baff08ecf2bcf709257",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/FaceOnlyPrivacyFrameProcessor.kt": "fbe5e4380ecc80485fd8e9707d70ba94735d74dd37dc1ee91ca06b5d552f5e94",
+    "mobile/packages/dance_native/android/src/androidTest/kotlin/art/gaoge/dance/engine/privacy/FaceOnlyPrivacyFrameProcessorInstrumentedTest.kt": "a5cc472bd9d0b37f8744cd40fdc509e206f66ee82f654cfd629a16a4e938f542",
+    "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/diagnostics/NativeDiagnosticsNoHotPathBlockingTest.kt": "dd08187470558db45ef2ce3b84f0fc1d7221f9ca0017fbf668d2a2de7c87d5e0",
+    "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/diagnostics/NativeDiagnosticsSnapshotIntegrityTest.kt": "b0cd740f2cdeb20e22c988d28823eaa351b042308bea88a6e7d357cc606408df",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/export/ExportCoordinator.kt": "1412dd947c9c95d4ebced13038bda3b21582b116b34d938ab2a0223bed932c03",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/export/ExportJobStore.kt": "ae9d84abea0b24cd5f7665b4406ce0a51c46bd59211373843fda72f91f9cb954",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/service/ExportForegroundService.kt": "76cad56db7b9969e20363586abe7a5f0a7af522c13b53e164f069b5356ebbb92",
+    "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/export/ExportJobStoreTest.kt": "6ff318c8b9d1c0fdaf55dbbb933e3e8671940021e921cdd5960ea9f1af877646"
+  },
+  "build_log": "terminal-final-build-tests.txt"
+}

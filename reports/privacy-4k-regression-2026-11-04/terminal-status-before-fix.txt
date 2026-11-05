@@ -1,0 +1,197 @@
+Starting a Gradle Daemon, 1 incompatible Daemon could not be reused, use --status for details
+
+> Configure project :gradle
+WARNING: Unsupported Kotlin plugin version.
+The `embedded-kotlin` and `kotlin-dsl` plugins rely on features of Kotlin `2.2.0` that might work differently than in the requested version `2.2.20`.
+
+> Task :gradle:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :gradle:pluginDescriptors UP-TO-DATE
+> Task :gradle:processResources
+
+> Task :gradle:compileKotlin
+w: file:///D:/runtimes/flutter/packages/flutter_tools/gradle/src/main/kotlin/Deeplink.kt:13:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to property.
+- To opt in to applying to both value parameter and property, add '-Xannotation-default-target=param-property' to your compiler arguments.
+- To keep applying to the value parameter only, use the '@param:' annotation target.
+
+See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
+w: file:///D:/runtimes/flutter/packages/flutter_tools/gradle/src/main/kotlin/Deeplink.kt:15:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to property.
+- To opt in to applying to both value parameter and property, add '-Xannotation-default-target=param-property' to your compiler arguments.
+- To keep applying to the value parameter only, use the '@param:' annotation target.
+
+See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
+w: file:///D:/runtimes/flutter/packages/flutter_tools/gradle/src/main/kotlin/Deeplink.kt:17:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to property.
+- To opt in to applying to both value parameter and property, add '-Xannotation-default-target=param-property' to your compiler arguments.
+- To keep applying to the value parameter only, use the '@param:' annotation target.
+
+See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
+w: file:///D:/runtimes/flutter/packages/flutter_tools/gradle/src/main/kotlin/Deeplink.kt:19:5 This annotation is currently applied to the value parameter only, but in the future it will also be applied to property.
+- To opt in to applying to both value parameter and property, add '-Xannotation-default-target=param-property' to your compiler arguments.
+- To keep applying to the value parameter only, use the '@param:' annotation target.
+
+See https://youtrack.jetbrains.com/issue/KT-73255 for more details.
+w: file:///D:/runtimes/flutter/packages/flutter_tools/gradle/src/main/kotlin/FlutterPlugin.kt:12:8 'interface ApkVariant : Any, BaseVariant, InstallableVariant, AndroidArtifactVariant, InternalBaseVariant' is deprecated. Deprecated in Java.
+w: file:///D:/runtimes/flutter/packages/flutter_tools/gradle/src/main/kotlin/FlutterPlugin.kt:625:69 'interface ApkVariant : Any, BaseVariant, InstallableVariant, AndroidArtifactVariant, InternalBaseVariant' is deprecated. Deprecated in Java.
+w: file:///D:/runtimes/flutter/packages/flutter_tools/gradle/src/main/kotlin/FlutterPluginUtils.kt:12:8 'interface BaseVariantOutput : Any, OutputFile' is deprecated. Deprecated in Java.
+w: file:///D:/runtimes/flutter/packages/flutter_tools/gradle/src/main/kotlin/plugins/PluginHandler.kt:168:70 Unchecked cast of 'NamedDomainObjectContainer<out BuildType>' to 'NamedDomainObjectContainer<BuildType>'.
+w: file:///D:/runtimes/flutter/packages/flutter_tools/gradle/src/main/kotlin/plugins/PluginHandler.kt:169:75 Unchecked cast of 'NamedDomainObjectContainer<out BuildType>' to 'NamedDomainObjectContainer<BuildType>'.
+
+> Task :gradle:compileJava NO-SOURCE
+> Task :gradle:compileGroovy NO-SOURCE
+> Task :gradle:classes
+> Task :gradle:jar
+
+> Configure project :app
+WARNING: The option setting 'android.builtInKotlin=false' is deprecated.
+The current default is 'true'.
+It will be removed in version 10.0 of the Android Gradle plugin.
+WARNING: The option setting 'android.newDsl=false' is deprecated.
+The current default is 'true'.
+It will be removed in version 10.0 of the Android Gradle plugin.
+w: [33m[1mDeprecated 'org.jetbrains.kotlin.android' plugin usage[0m[0m
+The 'org.jetbrains.kotlin.android' plugin in project ':app' is no longer required for Kotlin support since AGP 9.0.
+[32m[1mSolution:[0m[0m
+[32m[3mRemove both `android.builtInKotlin=true` and `android.newDsl=false` from `gradle.properties`, then migrate to built-in Kotlin.[0m[0m
+[36mSee [0m[34mhttps://kotl.in/gradle/agp-built-in-kotlin[0m[36m for more details.[0m
+
+
+> Configure project :android_file_picker
+w: [33m[1mDeprecated 'org.jetbrains.kotlin.android' plugin usage[0m[0m
+The 'org.jetbrains.kotlin.android' plugin in project ':android_file_picker' is no longer required for Kotlin support since AGP 9.0.
+[32m[1mSolution:[0m[0m
+[32m[3mRemove both `android.builtInKotlin=true` and `android.newDsl=false` from `gradle.properties`, then migrate to built-in Kotlin.[0m[0m
+[36mSee [0m[34mhttps://kotl.in/gradle/agp-built-in-kotlin[0m[36m for more details.[0m
+
+
+> Configure project :dance_native
+w: [33m[1mDeprecated 'org.jetbrains.kotlin.android' plugin usage[0m[0m
+The 'org.jetbrains.kotlin.android' plugin in project ':dance_native' is no longer required for Kotlin support since AGP 9.0.
+[32m[1mSolution:[0m[0m
+[32m[3mRemove both `android.builtInKotlin=true` and `android.newDsl=false` from `gradle.properties`, then migrate to built-in Kotlin.[0m[0m
+[36mSee [0m[34mhttps://kotl.in/gradle/agp-built-in-kotlin[0m[36m for more details.[0m
+
+
+> Configure project :shared_preferences_android
+w: [33m[1mDeprecated 'org.jetbrains.kotlin.android' plugin usage[0m[0m
+The 'org.jetbrains.kotlin.android' plugin in project ':shared_preferences_android' is no longer required for Kotlin support since AGP 9.0.
+[32m[1mSolution:[0m[0m
+[32m[3mRemove both `android.builtInKotlin=true` and `android.newDsl=false` from `gradle.properties`, then migrate to built-in Kotlin.[0m[0m
+[36mSee [0m[34mhttps://kotl.in/gradle/agp-built-in-kotlin[0m[36m for more details.[0m
+
+
+> Configure project :video_player_android
+w: [33m[1mDeprecated 'org.jetbrains.kotlin.android' plugin usage[0m[0m
+The 'org.jetbrains.kotlin.android' plugin in project ':video_player_android' is no longer required for Kotlin support since AGP 9.0.
+[32m[1mSolution:[0m[0m
+[32m[3mRemove both `android.builtInKotlin=true` and `android.newDsl=false` from `gradle.properties`, then migrate to built-in Kotlin.[0m[0m
+[36mSee [0m[34mhttps://kotl.in/gradle/agp-built-in-kotlin[0m[36m for more details.[0m
+
+
+> Task :dance_native:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :dance_native:syncFaceDetectorAsset
+> Task :dance_native:verifyFaceDetectorAsset
+> Task :dance_native:syncLiteRtModelAssets
+> Task :dance_native:verifyLiteRtModelAssets
+> Task :dance_native:verifyNoOnnxRuntime
+> Task :dance_native:verifyNoPlayServicesLiteRt
+> Task :dance_native:preBuild
+> Task :dance_native:preDebugBuild
+> Task :dance_native:generateDebugBuildConfig
+> Task :dance_native:generateDebugResources UP-TO-DATE
+> Task :dance_native:packageDebugResources UP-TO-DATE
+> Task :dance_native:processDebugNavigationResources UP-TO-DATE
+> Task :dance_native:parseDebugLocalResources UP-TO-DATE
+> Task :dance_native:generateDebugRFile UP-TO-DATE
+> Task :dance_native:javaPreCompileDebug UP-TO-DATE
+> Task :dance_native:preDebugUnitTestBuild
+> Task :dance_native:writeDebugAarMetadata UP-TO-DATE
+> Task :dance_native:checkDebugUnitTestAarMetadata UP-TO-DATE
+> Task :dance_native:compileDebugLibraryResources UP-TO-DATE
+> Task :dance_native:mapDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :dance_native:generateDebugUnitTestResources UP-TO-DATE
+> Task :dance_native:mergeDebugUnitTestResources UP-TO-DATE
+> Task :dance_native:extractDeepLinksDebug UP-TO-DATE
+> Task :dance_native:processDebugManifest UP-TO-DATE
+> Task :dance_native:processDebugUnitTestManifest UP-TO-DATE
+> Task :dance_native:processDebugUnitTestResources UP-TO-DATE
+> Task :dance_native:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :dance_native:generateDebugUnitTestAssets UP-TO-DATE
+> Task :dance_native:generateDebugAssets UP-TO-DATE
+> Task :dance_native:mergeDebugAssets UP-TO-DATE
+> Task :dance_native:mergeDebugUnitTestAssets UP-TO-DATE
+> Task :dance_native:packageDebugUnitTestForUnitTest UP-TO-DATE
+> Task :dance_native:generateDebugUnitTestConfig UP-TO-DATE
+> Task :dance_native:compileDebugKotlin
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/debug/kotlin/art/gaoge/dance/engine/comparison/ComparisonM0Activity.kt:296:33 'field unappliedRotationDegrees: Int' is deprecated. Deprecated in Java.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/comparison/ComparisonExportService.kt:84:132 'constructor(p0: Context!): Notification.Builder' is deprecated. Deprecated in Java.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/comparison/ComparisonPcmDecoder.kt:87:81 Unnecessary non-null assertion (!!) on a non-null receiver of type 'ComparisonMusicFeatureBuilder'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/comparison/ComparisonPcmDecoder.kt:95:48 Unnecessary non-null assertion (!!) on a non-null receiver of type 'SonicAudioProcessor'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/comparison/ComparisonPcmDecoder.kt:95:58 Unnecessary non-null assertion (!!) on a non-null receiver of type 'ComparisonMusicFeatureBuilder'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/comparison/ComparisonPcmDecoder.kt:97:27 Unnecessary non-null assertion (!!) on a non-null receiver of type 'ComparisonMusicFeatureBuilder'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/comparison/ComparisonSession.kt:265:68 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Long'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/comparison/ComparisonSession.kt:276:62 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Long'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/comparison/ComparisonSession.kt:277:49 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Long'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/comparison/ComparisonSession.kt:278:58 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Long'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/comparison/ComparisonSession.kt:279:47 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Long'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:213:53 Unnecessary safe call on a non-null receiver of type 'YoloLiteRtSegmenter'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:222:72 Unnecessary safe call on a non-null receiver of type 'YoloLiteRtSegmenter'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:320:39 Condition is always 'true'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:388:51 Unnecessary safe call on a non-null receiver of type 'CropClarityAbCapture'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:442:33 This class is not recommended for use in Kotlin. Use 'kotlin.Any' instead.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:616:76 Unnecessary safe call on a non-null receiver of type 'CanonicalYuvInferenceDecoder'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:617:80 Unnecessary safe call on a non-null receiver of type 'CanonicalYuvInferenceDecoder'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:618:77 Unnecessary safe call on a non-null receiver of type 'CanonicalYuvInferenceDecoder'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:619:80 Unnecessary safe call on a non-null receiver of type 'CanonicalYuvInferenceDecoder'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:854:39 Unnecessary safe call on a non-null receiver of type 'SurfaceTexture'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:855:39 Unnecessary safe call on a non-null receiver of type 'SurfaceTexture'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:859:64 Unnecessary safe call on a non-null receiver of type 'SurfaceTexture'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:1217:75 Redundant call of conversion method.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:2053:85 Elvis operator (?:) always returns the left operand of non-nullable type 'Int'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:2331:45 Unnecessary safe call on a non-null receiver of type 'CoroutineScope'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:2377:25 Condition is always 'true'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/render/GlRenderer.kt:191:87 Elvis operator (?:) always returns the left operand of non-nullable type 'Bitmap'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/service/ExportForegroundService.kt:137:55 Unnecessary non-null assertion (!!) on a non-null receiver of type 'ExportRequestDto'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/service/ExportForegroundService.kt:142:61 Unnecessary non-null assertion (!!) on a non-null receiver of type 'YoloLiteRtSegmenter'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/service/ExportForegroundService.kt:144:40 Unnecessary non-null assertion (!!) on a non-null receiver of type 'ExportRequestDto'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/service/ExportForegroundService.kt:145:38 Unnecessary non-null assertion (!!) on a non-null receiver of type 'ExportRequestDto'.
+
+> Task :dance_native:compileDebugJavaWithJavac
+> Task :dance_native:processDebugJavaRes
+> Task :dance_native:bundleLibRuntimeToJarDebug
+> Task :dance_native:bundleLibCompileToJarDebug
+
+> Task :dance_native:compileDebugUnitTestKotlin
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/pipeline/SurfaceFrameHandoffTest.kt:16:25 This class is not recommended for use in Kotlin. Use 'kotlin.Any' instead.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/pipeline/SurfaceFrameHandoffTest.kt:55:25 This class is not recommended for use in Kotlin. Use 'kotlin.Any' instead.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/PrivacyFreshOccluderTest.kt:59:40 Unnecessary non-null assertion (!!) on a non-null receiver of type 'NativeMask'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/PrivacyFreshOccluderTest.kt:104:40 Unnecessary non-null assertion (!!) on a non-null receiver of type 'NativeMask'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/PrivacyFreshOccluderTest.kt:152:40 Unnecessary non-null assertion (!!) on a non-null receiver of type 'NativeMask'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/PrivacyMultipleSelectedOwnershipTest.kt:61:40 Unnecessary non-null assertion (!!) on a non-null receiver of type 'NativeMask'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/PrivacyOcclusionResolverTest.kt:168:64 Unnecessary non-null assertion (!!) on a non-null receiver of type 'NativeMask'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/PrivacyOcclusionResolverTest.kt:258:39 Unnecessary non-null assertion (!!) on a non-null receiver of type 'NativeMask'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/PrivacyOcclusionResolverTest.kt:298:39 Unnecessary non-null assertion (!!) on a non-null receiver of type 'NativeMask'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/PrivacyOcclusionResolverTest.kt:396:39 Unnecessary non-null assertion (!!) on a non-null receiver of type 'NativeMask'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/PrivacyReacquiringNoStaleHoleTest.kt:58:40 Unnecessary non-null assertion (!!) on a non-null receiver of type 'NativeMask'.
+
+> Task :dance_native:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :dance_native:processDebugUnitTestJavaRes UP-TO-DATE
+
+> Task :dance_native:testDebugUnitTest FAILED
+
+ExportJobStoreTest > lateWorkerProgressCannotReopenATerminalJob() FAILED
+    org.opentest4j.AssertionFailedError at ExportJobStoreTest.kt:160
+
+1 test completed, 1 failed
+
+
+[Incubating] Problems report is available at: file:///D:/dance-anonymizer/mobile/app/build/reports/problems/problems-report.html
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':dance_native:testDebugUnitTest'.
+> There were failing tests. See the report at: file:///D:/dance-anonymizer/mobile/app/build/dance_native/reports/tests/testDebugUnitTest/index.html
+
+* Try:
+> Run with --scan to generate a Build Scan (Powered by Develocity).
+
+BUILD FAILED in 1m 36s
+40 actionable tasks: 17 executed, 23 up-to-date

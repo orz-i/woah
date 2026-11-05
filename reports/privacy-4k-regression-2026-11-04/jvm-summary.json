@@ -1,0 +1,10 @@
+{
+  "counts": {
+    "tests": 569,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "candidate": "cf7515d41609d43f64020a7bdc076d31912dfc62f4a2f443e60154b44fc76cdc",
+  "log": "fresh-active-final-build-tests.txt"
+}

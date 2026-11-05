@@ -1,0 +1,1234 @@
+[
+  {
+    "file": "duo_full_solid.mp4",
+    "sha256": "f207c64847521123f7db625fc315f52aa83c4344f9bdaea8d63b187b384fbb42",
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": "30000/1001",
+    "video_duration": 1.6016,
+    "decoded_frames": 48,
+    "declared_frames": 48,
+    "strictly_increasing_decoded_pts": true,
+    "pts_count": 48,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": null,
+    "audio_duration": null,
+    "av_duration_delta_ms": null,
+    "atoms": {
+      "valid": true,
+      "file_size": 211536,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 964
+        },
+        {
+          "name": "free",
+          "offset": 988,
+          "size": 2228
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 208320
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "all_expected_frames": true,
+      "increasing_pts": true,
+      "no_black_or_green_frames": true,
+      "streaming_layout": true,
+      "audio_sync": true
+    },
+    "result": "passed"
+  },
+  {
+    "file": "group_4k_full.mp4",
+    "sha256": "e430eb046600f8ef265ad60149fe780cf958229ad702852694a0ca8b859f57bd",
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": "25/1",
+    "video_duration": 1.6,
+    "decoded_frames": 40,
+    "declared_frames": 40,
+    "strictly_increasing_decoded_pts": true,
+    "pts_count": 40,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": null,
+    "audio_duration": null,
+    "av_duration_delta_ms": null,
+    "atoms": {
+      "valid": true,
+      "file_size": 601408,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 932
+        },
+        {
+          "name": "free",
+          "offset": 956,
+          "size": 2260
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 598192
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "all_expected_frames": true,
+      "increasing_pts": true,
+      "no_black_or_green_frames": true,
+      "streaming_layout": true,
+      "audio_sync": true
+    },
+    "result": "passed"
+  },
+  {
+    "file": "group_all_faces.mp4",
+    "sha256": "e1298afe55858bc52e2dae6b15f0bdb18570424608b64964d3bc0c083fb3731c",
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": "25/1",
+    "video_duration": 3.04,
+    "decoded_frames": 76,
+    "declared_frames": 76,
+    "strictly_increasing_decoded_pts": true,
+    "pts_count": 76,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": null,
+    "audio_duration": null,
+    "av_duration_delta_ms": null,
+    "atoms": {
+      "valid": true,
+      "file_size": 1005680,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 1084
+        },
+        {
+          "name": "free",
+          "offset": 1108,
+          "size": 2108
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 1002464
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "all_expected_frames": true,
+      "increasing_pts": true,
+      "no_black_or_green_frames": true,
+      "streaming_layout": true,
+      "audio_sync": true
+    },
+    "result": "passed"
+  },
+  {
+    "file": "group_face_solid_follow.mp4",
+    "sha256": "5c552d983be0490ce746e97c5c83218bb2e58f8700b83ba799cb793e5043d1b1",
+    "width": 720,
+    "height": 1280,
+    "codec": "h264",
+    "fps": "25/1",
+    "video_duration": 3.04,
+    "decoded_frames": 76,
+    "declared_frames": 76,
+    "strictly_increasing_decoded_pts": true,
+    "pts_count": 76,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": null,
+    "audio_duration": null,
+    "av_duration_delta_ms": null,
+    "atoms": {
+      "valid": true,
+      "file_size": 1152480,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 1083
+        },
+        {
+          "name": "free",
+          "offset": 1107,
+          "size": 2109
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 1149264
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "all_expected_frames": true,
+      "increasing_pts": true,
+      "no_black_or_green_frames": true,
+      "streaming_layout": true,
+      "audio_sync": true
+    },
+    "result": "passed"
+  },
+  {
+    "file": "group_face_sticker_follow.mp4",
+    "sha256": "ece97df143fbebbc8ca21f81adaf4adf350100e410ad99ce300180d34f32ff54",
+    "width": 720,
+    "height": 1280,
+    "codec": "h264",
+    "fps": "25/1",
+    "video_duration": 3.04,
+    "decoded_frames": 76,
+    "declared_frames": 76,
+    "strictly_increasing_decoded_pts": true,
+    "pts_count": 76,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": null,
+    "audio_duration": null,
+    "av_duration_delta_ms": null,
+    "atoms": {
+      "valid": true,
+      "file_size": 1188176,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 1083
+        },
+        {
+          "name": "free",
+          "offset": 1107,
+          "size": 2109
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 1184960
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "all_expected_frames": true,
+      "increasing_pts": true,
+      "no_black_or_green_frames": true,
+      "streaming_layout": true,
+      "audio_sync": true
+    },
+    "result": "passed"
+  },
+  {
+    "file": "group_first_solid.mp4",
+    "sha256": "6fbfe0a9b1f2b8448b0fdfad53e7a212aba3a077d341094ec870fedbf9376054",
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": "25/1",
+    "video_duration": 1.6,
+    "decoded_frames": 40,
+    "declared_frames": 40,
+    "strictly_increasing_decoded_pts": true,
+    "pts_count": 40,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": null,
+    "audio_duration": null,
+    "av_duration_delta_ms": null,
+    "atoms": {
+      "valid": true,
+      "file_size": 541120,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 932
+        },
+        {
+          "name": "free",
+          "offset": 956,
+          "size": 2260
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 537904
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "all_expected_frames": true,
+      "increasing_pts": true,
+      "no_black_or_green_frames": true,
+      "streaming_layout": true,
+      "audio_sync": true
+    },
+    "result": "passed"
+  },
+  {
+    "file": "group_full_balanced.mp4",
+    "sha256": "b123af306aea1321b620f31177f1dc244e792f09dbc65af7eb9841aedefacda8",
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": "25/1",
+    "video_duration": 1.6,
+    "decoded_frames": 40,
+    "declared_frames": 40,
+    "strictly_increasing_decoded_pts": true,
+    "pts_count": 40,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": null,
+    "audio_duration": null,
+    "av_duration_delta_ms": null,
+    "atoms": {
+      "valid": true,
+      "file_size": 552544,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 932
+        },
+        {
+          "name": "free",
+          "offset": 956,
+          "size": 2260
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 549328
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "all_expected_frames": true,
+      "increasing_pts": true,
+      "no_black_or_green_frames": true,
+      "streaming_layout": true,
+      "audio_sync": true
+    },
+    "result": "passed"
+  },
+  {
+    "file": "group_full_blur.mp4",
+    "sha256": "ccfaa096a776dfe9fbdd5f7dbac698103f65626eb3754513e2cd8e01bd1b80e1",
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": "25/1",
+    "video_duration": 1.6,
+    "decoded_frames": 40,
+    "declared_frames": 40,
+    "strictly_increasing_decoded_pts": true,
+    "pts_count": 40,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": null,
+    "audio_duration": null,
+    "av_duration_delta_ms": null,
+    "atoms": {
+      "valid": true,
+      "file_size": 588880,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 932
+        },
+        {
+          "name": "free",
+          "offset": 956,
+          "size": 2260
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 585664
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "all_expected_frames": true,
+      "increasing_pts": true,
+      "no_black_or_green_frames": true,
+      "streaming_layout": true,
+      "audio_sync": true
+    },
+    "result": "passed"
+  },
+  {
+    "file": "group_full_gradient.mp4",
+    "sha256": "ebbf93384e82aa3d75a9d6f57b76a15da68ba197e5dfc035a78e07dbeb4482c6",
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": "25/1",
+    "video_duration": 1.6,
+    "decoded_frames": 40,
+    "declared_frames": 40,
+    "strictly_increasing_decoded_pts": true,
+    "pts_count": 40,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": null,
+    "audio_duration": null,
+    "av_duration_delta_ms": null,
+    "atoms": {
+      "valid": true,
+      "file_size": 516480,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 932
+        },
+        {
+          "name": "free",
+          "offset": 956,
+          "size": 2260
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 513264
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "all_expected_frames": true,
+      "increasing_pts": true,
+      "no_black_or_green_frames": true,
+      "streaming_layout": true,
+      "audio_sync": true
+    },
+    "result": "passed"
+  },
+  {
+    "file": "group_full_length_follow.mp4",
+    "sha256": "9b41594a971826f5b5c4dc5a6f5bb0b521324b208493b6933a9db74beb8a0105",
+    "width": 720,
+    "height": 1280,
+    "codec": "h264",
+    "fps": "25/1",
+    "video_duration": 23.24,
+    "decoded_frames": 581,
+    "declared_frames": 581,
+    "strictly_increasing_decoded_pts": true,
+    "pts_count": 581,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": null,
+    "audio_duration": null,
+    "av_duration_delta_ms": null,
+    "atoms": {
+      "valid": true,
+      "file_size": 9204560,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 3183
+        },
+        {
+          "name": "free",
+          "offset": 3207,
+          "size": 9
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 9201344
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "all_expected_frames": true,
+      "increasing_pts": true,
+      "no_black_or_green_frames": true,
+      "streaming_layout": true,
+      "audio_sync": true
+    },
+    "result": "passed"
+  },
+  {
+    "file": "group_full_mosaic.mp4",
+    "sha256": "ee97b2b547741385a5c2d9cc566d9c877656284cb60800c7de6ba90b589527c1",
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": "25/1",
+    "video_duration": 1.6,
+    "decoded_frames": 40,
+    "declared_frames": 40,
+    "strictly_increasing_decoded_pts": true,
+    "pts_count": 40,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": null,
+    "audio_duration": null,
+    "av_duration_delta_ms": null,
+    "atoms": {
+      "valid": true,
+      "file_size": 481328,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 932
+        },
+        {
+          "name": "free",
+          "offset": 956,
+          "size": 2260
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 478112
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "all_expected_frames": true,
+      "increasing_pts": true,
+      "no_black_or_green_frames": true,
+      "streaming_layout": true,
+      "audio_sync": true
+    },
+    "result": "passed"
+  },
+  {
+    "file": "group_full_solid.mp4",
+    "sha256": "acfbde3edc6896bf7d1dda1bd99cd7de0fed73b07e3b22b45252cf0f47e965aa",
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": "25/1",
+    "video_duration": 1.6,
+    "decoded_frames": 40,
+    "declared_frames": 40,
+    "strictly_increasing_decoded_pts": true,
+    "pts_count": 40,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": null,
+    "audio_duration": null,
+    "av_duration_delta_ms": null,
+    "atoms": {
+      "valid": true,
+      "file_size": 549760,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 932
+        },
+        {
+          "name": "free",
+          "offset": 956,
+          "size": 2260
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 546544
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "all_expected_frames": true,
+      "increasing_pts": true,
+      "no_black_or_green_frames": true,
+      "streaming_layout": true,
+      "audio_sync": true
+    },
+    "result": "passed"
+  },
+  {
+    "file": "group_full_speed.mp4",
+    "sha256": "15233836a92e022200b82fb2c548d9389688068aade4c19ed4a3c9402924674d",
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": "25/1",
+    "video_duration": 1.6,
+    "decoded_frames": 40,
+    "declared_frames": 40,
+    "strictly_increasing_decoded_pts": true,
+    "pts_count": 40,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": null,
+    "audio_duration": null,
+    "av_duration_delta_ms": null,
+    "atoms": {
+      "valid": true,
+      "file_size": 552544,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 932
+        },
+        {
+          "name": "free",
+          "offset": 956,
+          "size": 2260
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 549328
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "all_expected_frames": true,
+      "increasing_pts": true,
+      "no_black_or_green_frames": true,
+      "streaming_layout": true,
+      "audio_sync": true
+    },
+    "result": "passed"
+  },
+  {
+    "file": "solo_4k_sticker.mp4",
+    "sha256": "b0e0f944eeb0406756f27f19eb30d1741815b17e407c39fd0d544b02b2a70137",
+    "width": 540,
+    "height": 1024,
+    "codec": "h264",
+    "fps": "25/1",
+    "video_duration": 1.6,
+    "decoded_frames": 40,
+    "declared_frames": 40,
+    "strictly_increasing_decoded_pts": true,
+    "pts_count": 40,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": "aac",
+    "audio_duration": 1.6,
+    "av_duration_delta_ms": 0.0,
+    "atoms": {
+      "valid": true,
+      "file_size": 301027,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 1711
+        },
+        {
+          "name": "free",
+          "offset": 1735,
+          "size": 1481
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 297811
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "all_expected_frames": true,
+      "increasing_pts": true,
+      "no_black_or_green_frames": true,
+      "streaming_layout": true,
+      "audio_sync": true
+    },
+    "result": "passed"
+  },
+  {
+    "file": "solo_face_balanced.mp4",
+    "sha256": "4db43fe6b9a60050e0697e06a4bacff936271a4a491aabdf6b9f9d7e30171761",
+    "width": 540,
+    "height": 1024,
+    "codec": "h264",
+    "fps": "25/1",
+    "video_duration": 1.6,
+    "decoded_frames": 40,
+    "declared_frames": 40,
+    "strictly_increasing_decoded_pts": true,
+    "pts_count": 40,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": "aac",
+    "audio_duration": 1.6,
+    "av_duration_delta_ms": 0.0,
+    "atoms": {
+      "valid": true,
+      "file_size": 272499,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 1711
+        },
+        {
+          "name": "free",
+          "offset": 1735,
+          "size": 1481
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 269283
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "all_expected_frames": true,
+      "increasing_pts": true,
+      "no_black_or_green_frames": true,
+      "streaming_layout": true,
+      "audio_sync": true
+    },
+    "result": "passed"
+  },
+  {
+    "file": "solo_face_blur.mp4",
+    "sha256": "e77e87e0ced8a2659cf1e89d39a2cf75a4e94d5c1b0a58c3d37783d4c327280f",
+    "width": 540,
+    "height": 1024,
+    "codec": "h264",
+    "fps": "25/1",
+    "video_duration": 1.6,
+    "decoded_frames": 40,
+    "declared_frames": 40,
+    "strictly_increasing_decoded_pts": true,
+    "pts_count": 40,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": "aac",
+    "audio_duration": 1.6,
+    "av_duration_delta_ms": 0.0,
+    "atoms": {
+      "valid": true,
+      "file_size": 208979,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 1711
+        },
+        {
+          "name": "free",
+          "offset": 1735,
+          "size": 1481
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 205763
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "all_expected_frames": true,
+      "increasing_pts": true,
+      "no_black_or_green_frames": true,
+      "streaming_layout": true,
+      "audio_sync": true
+    },
+    "result": "passed"
+  },
+  {
+    "file": "solo_face_gradient.mp4",
+    "sha256": "663e8ff21f154c117d9602df2b5f64362738401bce0dc4be64066ceb7580ff0e",
+    "width": 540,
+    "height": 1024,
+    "codec": "h264",
+    "fps": "25/1",
+    "video_duration": 1.6,
+    "decoded_frames": 40,
+    "declared_frames": 40,
+    "strictly_increasing_decoded_pts": true,
+    "pts_count": 40,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": "aac",
+    "audio_duration": 1.6,
+    "av_duration_delta_ms": 0.0,
+    "atoms": {
+      "valid": true,
+      "file_size": 214115,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 1711
+        },
+        {
+          "name": "free",
+          "offset": 1735,
+          "size": 1481
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 210899
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "all_expected_frames": true,
+      "increasing_pts": true,
+      "no_black_or_green_frames": true,
+      "streaming_layout": true,
+      "audio_sync": true
+    },
+    "result": "passed"
+  },
+  {
+    "file": "solo_face_mosaic.mp4",
+    "sha256": "cc026df093404e74c68db48da358acfaa443c086fe7127c9d0af7cc616d8c291",
+    "width": 540,
+    "height": 1024,
+    "codec": "h264",
+    "fps": "25/1",
+    "video_duration": 1.6,
+    "decoded_frames": 40,
+    "declared_frames": 40,
+    "strictly_increasing_decoded_pts": true,
+    "pts_count": 40,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": "aac",
+    "audio_duration": 1.6,
+    "av_duration_delta_ms": 0.0,
+    "atoms": {
+      "valid": true,
+      "file_size": 204787,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 1711
+        },
+        {
+          "name": "free",
+          "offset": 1735,
+          "size": 1481
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 201571
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "all_expected_frames": true,
+      "increasing_pts": true,
+      "no_black_or_green_frames": true,
+      "streaming_layout": true,
+      "audio_sync": true
+    },
+    "result": "passed"
+  },
+  {
+    "file": "solo_face_solid.mp4",
+    "sha256": "1c2cf4118c6b33f0b670b12d77c50868ae491c0be3782e1c748c2ba062827c3e",
+    "width": 540,
+    "height": 1024,
+    "codec": "h264",
+    "fps": "25/1",
+    "video_duration": 1.6,
+    "decoded_frames": 40,
+    "declared_frames": 40,
+    "strictly_increasing_decoded_pts": true,
+    "pts_count": 40,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": "aac",
+    "audio_duration": 1.6,
+    "av_duration_delta_ms": 0.0,
+    "atoms": {
+      "valid": true,
+      "file_size": 213779,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 1711
+        },
+        {
+          "name": "free",
+          "offset": 1735,
+          "size": 1481
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 210563
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "all_expected_frames": true,
+      "increasing_pts": true,
+      "no_black_or_green_frames": true,
+      "streaming_layout": true,
+      "audio_sync": true
+    },
+    "result": "passed"
+  },
+  {
+    "file": "solo_face_speed.mp4",
+    "sha256": "86cf3be54008e8a9b4d12e76805ce31838b0410e10c2e6d86b268be940c213a1",
+    "width": 540,
+    "height": 1024,
+    "codec": "h264",
+    "fps": "25/1",
+    "video_duration": 1.6,
+    "decoded_frames": 40,
+    "declared_frames": 40,
+    "strictly_increasing_decoded_pts": true,
+    "pts_count": 40,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": "aac",
+    "audio_duration": 1.6,
+    "av_duration_delta_ms": 0.0,
+    "atoms": {
+      "valid": true,
+      "file_size": 272499,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 1711
+        },
+        {
+          "name": "free",
+          "offset": 1735,
+          "size": 1481
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 269283
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "all_expected_frames": true,
+      "increasing_pts": true,
+      "no_black_or_green_frames": true,
+      "streaming_layout": true,
+      "audio_sync": true
+    },
+    "result": "passed"
+  },
+  {
+    "file": "solo_face_sticker.mp4",
+    "sha256": "b5c7a7d1e736450b6684c0034e1731c56f5f61c224dbd80e0f7c243840e068a2",
+    "width": 540,
+    "height": 1024,
+    "codec": "h264",
+    "fps": "25/1",
+    "video_duration": 1.6,
+    "decoded_frames": 40,
+    "declared_frames": 40,
+    "strictly_increasing_decoded_pts": true,
+    "pts_count": 40,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": "aac",
+    "audio_duration": 1.6,
+    "av_duration_delta_ms": 0.0,
+    "atoms": {
+      "valid": true,
+      "file_size": 272499,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 1711
+        },
+        {
+          "name": "free",
+          "offset": 1735,
+          "size": 1481
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 269283
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "all_expected_frames": true,
+      "increasing_pts": true,
+      "no_black_or_green_frames": true,
+      "streaming_layout": true,
+      "audio_sync": true
+    },
+    "result": "passed"
+  },
+  {
+    "file": "solo_nonzero_trim.mp4",
+    "sha256": "92c423a8781b325712504b9f9dd2596ecacd0bf50b00410ce4df9e094588c873",
+    "width": 540,
+    "height": 1024,
+    "codec": "h264",
+    "fps": "25/1",
+    "video_duration": 1.6,
+    "decoded_frames": 40,
+    "declared_frames": 40,
+    "strictly_increasing_decoded_pts": true,
+    "pts_count": 40,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": "aac",
+    "audio_duration": 1.6,
+    "av_duration_delta_ms": 0.0,
+    "atoms": {
+      "valid": true,
+      "file_size": 257475,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 1759
+        },
+        {
+          "name": "free",
+          "offset": 1783,
+          "size": 1433
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 254259
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "all_expected_frames": true,
+      "increasing_pts": true,
+      "no_black_or_green_frames": true,
+      "streaming_layout": true,
+      "audio_sync": true
+    },
+    "result": "passed"
+  }
+]

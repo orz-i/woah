@@ -1,0 +1,9 @@
+{
+  "apk_sha256": "59acfaf71dff0db1d694cb4ec8f7bf926ae77ea427aca3d98164813ff0b9659a",
+  "device_serial": "334da6a3",
+  "userdata_preserved": true,
+  "sticker_album": "/sdcard/Pictures/Woah4KQASticker_59acfaf7",
+  "sticker_sha256": "9cfc5ad34e89b6eebddcd5ec715c224a86c99ea5b9fad999407dee7e32f681b6",
+  "scan_result": "Broadcasting: Intent { act=android.intent.action.MEDIA_SCANNER_SCAN_FILE dat=file:///... flg=0x400000 }\r\nBroadcast completed: result=0",
+  "video_fixture_album": "/sdcard/Movies/Woah4KQA_cf7515d4"
+}

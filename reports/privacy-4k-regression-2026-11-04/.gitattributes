@@ -1,0 +1,4 @@
+# Preserve captured evidence bytes and their SHA-256 hashes across platforms.
+* -text whitespace=cr-at-eol
+# Console captures include CRCRLF, blank records and indentation verbatim.
+*.txt -whitespace

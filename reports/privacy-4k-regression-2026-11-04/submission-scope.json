@@ -1,0 +1,126 @@
+{
+  "recorded_at_utc": "2026-11-05T06:44:37.565792+00:00",
+  "base_commit": "4215ece50d7223828999d262ea02ab7ece294274",
+  "branch": "codex/android-4k-privacy-regression-20261105",
+  "native_sources": [
+    {
+      "path": "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt",
+      "tested_worktree_sha256": "4951c86fa488343ce04d6a056dd96e1255d3d6712423fa4ae2720975e4f64274",
+      "git_blob_content_sha256": "85ff2ffd006b60f11c6cb94233a66ad08de6060f32dec4303fbdf357e05c93ed",
+      "difference": "Git CRLF/LF normalization only"
+    },
+    {
+      "path": "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/inference/HighResolutionPrivacyCoverage.kt",
+      "tested_worktree_sha256": "56f9f851c9cd9cc788c74ad4429443d66b58c5abdb6d503a3859fd7f41002efd",
+      "git_blob_content_sha256": "cb70a5f081183b5c4a420b2554edbd3710e6ae20f22f4370f0dfbd0471542d9a",
+      "difference": "Git CRLF/LF normalization only"
+    },
+    {
+      "path": "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/media/Mp4FastStart.kt",
+      "tested_worktree_sha256": "6bd4c04ad6de79c4a9a43a5da593a361a5e775895900df187aa3c1be56637eec",
+      "git_blob_content_sha256": "6bd4c04ad6de79c4a9a43a5da593a361a5e775895900df187aa3c1be56637eec",
+      "difference": "identical bytes"
+    },
+    {
+      "path": "mobile/packages/dance_native/android/src/androidTest/kotlin/art/gaoge/dance/engine/pipeline/FourKPrivacyWorkflowInstrumentedTest.kt",
+      "tested_worktree_sha256": "78cdc5ae22d296b8810726f347697d1120c81d9e2e4c7172bac603457c737f71",
+      "git_blob_content_sha256": "5e17100cc3c580e399369e02bff91fa504b12a1974012d43bdf2c7d9612d2018",
+      "difference": "Git CRLF/LF normalization only"
+    },
+    {
+      "path": "mobile/packages/dance_native/android/src/androidTest/kotlin/art/gaoge/dance/engine/pipeline/FourKDetectionReviewInstrumentedTest.kt",
+      "tested_worktree_sha256": "5987727ee40bfe2671f09eb9450b7cefda5f1c260730092a88652858d720e682",
+      "git_blob_content_sha256": "5987727ee40bfe2671f09eb9450b7cefda5f1c260730092a88652858d720e682",
+      "difference": "identical bytes"
+    },
+    {
+      "path": "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/inference/HighResolutionPrivacyCoverageTest.kt",
+      "tested_worktree_sha256": "1b84a83ca84527a6c1dbb2378376818ac57f2447fb1322bff5b8ce19dac64c67",
+      "git_blob_content_sha256": "ef3edf0795baa9751286f746fdda0ee951f116bf3d5053bbff32e00c185e2751",
+      "difference": "Git CRLF/LF normalization only"
+    },
+    {
+      "path": "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/media/Mp4FastStartTest.kt",
+      "tested_worktree_sha256": "21ad43b3bebd49ba9607bb1d18a4e729d06f83972e737baff08ecf2bcf709257",
+      "git_blob_content_sha256": "21ad43b3bebd49ba9607bb1d18a4e729d06f83972e737baff08ecf2bcf709257",
+      "difference": "identical bytes"
+    },
+    {
+      "path": "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/FaceOnlyPrivacyFrameProcessor.kt",
+      "tested_worktree_sha256": "fbe5e4380ecc80485fd8e9707d70ba94735d74dd37dc1ee91ca06b5d552f5e94",
+      "git_blob_content_sha256": "93556094453b1c3645894bf1c57c05c1694f79111c77f38f2d119faafbd8c173",
+      "difference": "Git CRLF/LF normalization only"
+    },
+    {
+      "path": "mobile/packages/dance_native/android/src/androidTest/kotlin/art/gaoge/dance/engine/privacy/FaceOnlyPrivacyFrameProcessorInstrumentedTest.kt",
+      "tested_worktree_sha256": "a5cc472bd9d0b37f8744cd40fdc509e206f66ee82f654cfd629a16a4e938f542",
+      "git_blob_content_sha256": "b3d47788c2303934f22ec433aebf70adba984ae3da33367bdd204af19ce5dca4",
+      "difference": "Git CRLF/LF normalization only"
+    },
+    {
+      "path": "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/diagnostics/NativeDiagnosticsNoHotPathBlockingTest.kt",
+      "tested_worktree_sha256": "dd08187470558db45ef2ce3b84f0fc1d7221f9ca0017fbf668d2a2de7c87d5e0",
+      "git_blob_content_sha256": "6bd0c0167a85793b7f081c1f4a2959bb49ac4d5987636611799b674c15967d3f",
+      "difference": "Git CRLF/LF normalization only"
+    },
+    {
+      "path": "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/diagnostics/NativeDiagnosticsSnapshotIntegrityTest.kt",
+      "tested_worktree_sha256": "b0cd740f2cdeb20e22c988d28823eaa351b042308bea88a6e7d357cc606408df",
+      "git_blob_content_sha256": "61bc7bd60bf4251b74532947500032941cc2cc0559d72a9fe92e3e009a564f80",
+      "difference": "Git CRLF/LF normalization only"
+    },
+    {
+      "path": "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/export/ExportCoordinator.kt",
+      "tested_worktree_sha256": "1412dd947c9c95d4ebced13038bda3b21582b116b34d938ab2a0223bed932c03",
+      "git_blob_content_sha256": "9feca923325cb615b41e8cf520813d5c853b0a28171dd94a16c43f4c0460e5b0",
+      "difference": "Git CRLF/LF normalization only"
+    },
+    {
+      "path": "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/export/ExportJobStore.kt",
+      "tested_worktree_sha256": "ae9d84abea0b24cd5f7665b4406ce0a51c46bd59211373843fda72f91f9cb954",
+      "git_blob_content_sha256": "cec0af682cfb74e5109e134d82b765dad5534cd598fbbff0efa07b7a09ccc4da",
+      "difference": "Git CRLF/LF normalization only"
+    },
+    {
+      "path": "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/service/ExportForegroundService.kt",
+      "tested_worktree_sha256": "87fc86c384a01a80cb73f7069eb90833eb8c42d70bbd9a8d1e93ebbefba3105a",
+      "git_blob_content_sha256": "dfe632b48b790b1ca4538ea6dc3c7bbe19e0281d71ee5ba6c9b1caf31d61b885",
+      "difference": "Git CRLF/LF normalization only"
+    },
+    {
+      "path": "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/export/ExportJobStoreTest.kt",
+      "tested_worktree_sha256": "6ff318c8b9d1c0fdaf55dbbb933e3e8671940021e921cdd5960ea9f1af877646",
+      "git_blob_content_sha256": "6b9aa4e5d8270d7e045e9d431e538dcd63f71b430a2f836e1563def748ae4560",
+      "difference": "Git CRLF/LF normalization only"
+    },
+    {
+      "path": "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/export/ExportTerminalStatus.kt",
+      "tested_worktree_sha256": "e899ed5108dea492640aba1dec7bf351fc07f3d78da86fda241b7e77a81fffcf",
+      "git_blob_content_sha256": "bce30e10295aa91ab680c12d4a21dd60dbdce68cca86daf5e98a1e09617078c5",
+      "difference": "Git CRLF/LF normalization only"
+    },
+    {
+      "path": "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/export/ExportTerminalStatusTest.kt",
+      "tested_worktree_sha256": "d743fcc74121898e5da7070caeaa0e27c887a7f65c00c823b3ae45cdd7709273",
+      "git_blob_content_sha256": "de40d594968ac5553584115467087dd74e487b06bf377338b5e9008f97b0b467",
+      "difference": "Git CRLF/LF normalization only"
+    }
+  ],
+  "report_files_before_this_receipt": 505,
+  "scope_isolated": true,
+  "raw_media_and_apks_excluded": true,
+  "unrelated_paths_excluded": [
+    ".workbuddy/",
+    "docs/design/lime-beat/qa/2026-11-05-color-study/"
+  ],
+  "local_checks": {
+    "platform_contracts": "passed",
+    "original_4k_regression": "passed",
+    "windows_ci_tools": {
+      "tests": 59,
+      "passed": 58,
+      "errors": 1,
+      "existing_platform_path_issue": "test_wrong_generator_version_fails; tools/ci unchanged from base"
+    }
+  }
+}

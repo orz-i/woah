@@ -1,0 +1,257 @@
+[
+  {
+    "tag": "group-final-4k",
+    "source": "group",
+    "input": "group-mirror-8956295.mp4",
+    "pid": "31490",
+    "source_sha256": "376c2ae73c92c23dceb042d27450aaa45ba2f44a3d7b0a5f3c26e9bea6c2dd73",
+    "gallery_ids_before": [
+      "1000003484",
+      "1000003490",
+      "1000003687",
+      "1000003697",
+      "1000003698",
+      "1000003699",
+      "1000003700",
+      "1000003703",
+      "1000003704",
+      "1000003705"
+    ],
+    "job": {
+      "jobId": "job_d3ede765-5f56-46a3-a382-fcde1e09a066",
+      "state": "completed",
+      "sourceUri": "/data/user/0/art.gaoge.dance/cache/file_picker/1793858587418/group-mirror-8956295.mp4",
+      "outputPath": "export_1793858624633.mp4",
+      "analysisCacheId": "analysis_1793858588228_4871c403-bdbb-437a-8c41-42d22d0e3a08",
+      "targetWidth": 3840,
+      "targetHeight": 2160,
+      "targetFps": 25,
+      "videoBitrate": 26956800,
+      "selectedPersonIds": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "createdAt": 1793858624688,
+      "updatedAt": 1793859151003,
+      "progress": 1,
+      "currentFrame": 581,
+      "totalFrames": 581,
+      "fps": 1.1046698444145726,
+      "outputUri": "/data/user/0/art.gaoge.dance/cache/exports/export_1793858624862.mp4",
+      "errorCode": null,
+      "errorMessage": null,
+      "processingProfile": "quality",
+      "effectsJson": "{\"fillMode\":\"mosaic\",\"fillColorArgb\":4278190080,\"borderColorArgb\":4294967295,\"opacity\":1,\"borderWidth\":0.15019435508578516,\"blurStrength\":22.20535457835478,\"skinWhiten\":0,\"legStretchEnabled\":false,\"legStretch\":0,\"legZoneTop\":0.55,\"legZoneBottom\":0.95}",
+      "followJson": "{\"enabled\":false,\"targetPersonId\":null,\"zoom\":1,\"smoothFactor\":0.1,\"outputAspectRatio\":null}"
+    },
+    "media": {
+      "file": "ui-group-final-4k.mp4",
+      "case": "group-final-4k",
+      "sha256": "64c5583284509422dbfb29dac4df30c13e1b195447f0bce386412599a7e34ae1",
+      "width": 3840,
+      "height": 2160,
+      "codec": "h264",
+      "fps": "25/1",
+      "bitrate": "26928727",
+      "duration_seconds": 23.24,
+      "decoded_frames": 581,
+      "expected_frames": 581,
+      "first_pts_us": 0,
+      "last_pts_us": 23200000,
+      "black_frames": 0,
+      "green_frames": 0,
+      "audio_codec": null,
+      "av_duration_delta_ms": null,
+      "atoms": {
+        "valid": true,
+        "file_size": 78231184,
+        "atoms": [
+          {
+            "name": "ftyp",
+            "offset": 0,
+            "size": 24
+          },
+          {
+            "name": "moov",
+            "offset": 24,
+            "size": 3184
+          },
+          {
+            "name": "free",
+            "offset": 3208,
+            "size": 8
+          },
+          {
+            "name": "mdat",
+            "offset": 3216,
+            "size": 78227968
+          }
+        ],
+        "has_ftyp": true,
+        "has_moov": true,
+        "has_mdat": true,
+        "fast_start_ready": true
+      },
+      "checks": {
+        "source_resolution_preserved": true,
+        "every_frame_decodes": true,
+        "every_source_presentation_timestamp_preserved": true,
+        "strictly_increasing_pts": true,
+        "no_black_frames": true,
+        "no_green_frames": true,
+        "audio_presence_preserved": true,
+        "av_duration_delta_within_100ms": true,
+        "faststart": true
+      },
+      "native_case_result": "passed",
+      "result": "passed"
+    },
+    "gallery": {
+      "_id": "1000003716",
+      "_display_name": "Woah_da238c8c-9e38-48c6-af35-e819c4682e6c.mp4",
+      "_size": "78231184",
+      "width": "3840",
+      "height": "2160",
+      "duration": "23240",
+      "relative_path": "Movies/Woah/",
+      "is_pending": "0",
+      "content_uri": "content://media/external_primary/video/media/1000003716",
+      "path": "/sdcard/Movies/Woah/Woah_da238c8c-9e38-48c6-af35-e819c4682e6c.mp4",
+      "sha256": "64c5583284509422dbfb29dac4df30c13e1b195447f0bce386412599a7e34ae1",
+      "matches_export_bytes": true
+    },
+    "comparison_artifact": "ui-group-final-4k-privacy-crops.jpg",
+    "saved_to_gallery": true,
+    "source_resolution_preserved": true,
+    "result": "passed"
+  },
+  {
+    "tag": "solo-final-4k",
+    "source": "solo",
+    "input": "solo-portrait-7570258.mp4",
+    "pid": "31490",
+    "source_sha256": "f401df9259f7fcbf7b01121cbb720e744e0dbba6e3ebce2f64027d37c873d6a1",
+    "gallery_ids_before": [
+      "1000003484",
+      "1000003490",
+      "1000003687",
+      "1000003697",
+      "1000003698",
+      "1000003699",
+      "1000003700",
+      "1000003703",
+      "1000003704",
+      "1000003705",
+      "1000003716"
+    ],
+    "job": {
+      "jobId": "job_583ca01d-01d1-46d8-841d-9c8780616f36",
+      "state": "completed",
+      "sourceUri": "/data/user/0/art.gaoge.dance/cache/file_picker/1793859263155/solo-portrait-7570258.mp4",
+      "outputPath": "export_1793859462516.mp4",
+      "analysisCacheId": "analysis_1793859263415_7fd087a4-c4a4-4d81-9032-33399e9204ad",
+      "targetWidth": 2160,
+      "targetHeight": 4096,
+      "targetFps": 25,
+      "videoBitrate": 28753920,
+      "selectedPersonIds": [],
+      "createdAt": 1793859462534,
+      "updatedAt": 1793859633252,
+      "progress": 1,
+      "currentFrame": 662,
+      "totalFrames": 662,
+      "fps": 3.9004041808562033,
+      "outputUri": "/data/user/0/art.gaoge.dance/cache/exports/export_1793859462588.mp4",
+      "errorCode": null,
+      "errorMessage": null,
+      "processingProfile": "quality",
+      "effectsJson": "{\"fillMode\":\"sticker\",\"fillColorArgb\":4278190080,\"borderColorArgb\":4294967295,\"opacity\":1,\"borderWidth\":0,\"blurStrength\":15,\"skinWhiten\":0,\"legStretchEnabled\":false,\"legStretch\":0,\"legZoneTop\":0.55,\"legZoneBottom\":0.95}",
+      "followJson": "{\"enabled\":false,\"targetPersonId\":null,\"zoom\":1,\"smoothFactor\":0.1,\"outputAspectRatio\":null}"
+    },
+    "media": {
+      "file": "ui-solo-final-4k.mp4",
+      "case": "solo-final-4k",
+      "sha256": "b1b4a98546c5134d04f0a1e03fbcc3c998648837729de4501fadd4dcb98ef109",
+      "width": 2160,
+      "height": 4096,
+      "codec": "h264",
+      "fps": "25/1",
+      "bitrate": "4124838",
+      "duration_seconds": 26.48,
+      "decoded_frames": 662,
+      "expected_frames": 662,
+      "first_pts_us": 0,
+      "last_pts_us": 26440000,
+      "black_frames": 0,
+      "green_frames": 0,
+      "audio_codec": "aac",
+      "av_duration_delta_ms": 15.999999999998238,
+      "atoms": {
+        "valid": true,
+        "file_size": 14505009,
+        "atoms": [
+          {
+            "name": "ftyp",
+            "offset": 0,
+            "size": 24
+          },
+          {
+            "name": "moov",
+            "offset": 24,
+            "size": 9383
+          },
+          {
+            "name": "free",
+            "offset": 9407,
+            "size": 3192
+          },
+          {
+            "name": "mdat",
+            "offset": 12599,
+            "size": 14492410
+          }
+        ],
+        "has_ftyp": true,
+        "has_moov": true,
+        "has_mdat": true,
+        "fast_start_ready": true
+      },
+      "checks": {
+        "source_resolution_preserved": true,
+        "every_frame_decodes": true,
+        "every_source_presentation_timestamp_preserved": true,
+        "strictly_increasing_pts": true,
+        "no_black_frames": true,
+        "no_green_frames": true,
+        "audio_presence_preserved": true,
+        "av_duration_delta_within_100ms": true,
+        "faststart": true
+      },
+      "native_case_result": "passed",
+      "result": "passed"
+    },
+    "gallery": {
+      "_id": "1000003717",
+      "_display_name": "Woah_757ce487-04dd-4d4e-8dea-f7f52780e8ea.mp4",
+      "_size": "14505009",
+      "width": "2160",
+      "height": "4096",
+      "duration": "26496",
+      "relative_path": "Movies/Woah/",
+      "is_pending": "0",
+      "content_uri": "content://media/external_primary/video/media/1000003717",
+      "path": "/sdcard/Movies/Woah/Woah_757ce487-04dd-4d4e-8dea-f7f52780e8ea.mp4",
+      "sha256": "b1b4a98546c5134d04f0a1e03fbcc3c998648837729de4501fadd4dcb98ef109",
+      "matches_export_bytes": true
+    },
+    "comparison_artifact": "ui-solo-final-4k-privacy-crops.jpg",
+    "saved_to_gallery": true,
+    "source_resolution_preserved": true,
+    "result": "passed"
+  }
+]

@@ -1,0 +1,11 @@
+{
+  "tests": 17,
+  "passed": 17,
+  "log": "export-plan-existing-tests.txt",
+  "fixture_plans": "fixture-export-plans.json",
+  "source_sha256": {
+    "mobile/packages/dance_domain/lib/src/export_plan.dart": "3607962481defff73a6f89b0fbfb2cba16712e15041bde6dc6422e56408c881c",
+    "mobile/packages/dance_domain/lib/src/project.dart": "170e1e39b9b1dcc4cdd3bdf6b5a1e96e6488b7fce065a7de939cc93cbbf76eef",
+    "mobile/app/lib/features/export/presentation/export_controller.dart": "82e59be167a5e0f7aa977919c52f24d6c935e732a848ebddb3f69df4981cff43"
+  }
+}

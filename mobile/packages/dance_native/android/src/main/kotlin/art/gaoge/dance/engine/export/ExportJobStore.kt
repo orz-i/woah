@@ -4,7 +4,6 @@ import android.content.Context
 import art.gaoge.dance.engine.bridge.JobStatusDto
 import org.json.JSONArray
 import java.io.File
-import java.util.concurrent.ConcurrentHashMap
 
 class ExportJobStore(
     private val filesDir: File,
@@ -13,7 +12,7 @@ class ExportJobStore(
     constructor(context: Context, diskPersistIntervalMs: Long = 3000L) : this(context.filesDir, diskPersistIntervalMs)
 
     private val lock = Any()
-    private val memoryCache = ConcurrentHashMap<String, ExportJobRecord>()
+    private val memoryCache = mutableMapOf<String, ExportJobRecord>()
     private var lastDiskPersistTime = 0L
 
     var diskWriteCount = 0
@@ -67,43 +66,45 @@ class ExportJobStore(
 
     fun saveJob(record: ExportJobRecord) {
         synchronized(lock) {
-            record.updatedAt = System.currentTimeMillis()
-            memoryCache[record.jobId] = record
-            lastDiskPersistTime = System.currentTimeMillis()
+            val now = System.currentTimeMillis()
+            memoryCache[record.jobId] = record.copy(updatedAt = now)
+            lastDiskPersistTime = now
             persistToDiskLocked()
         }
     }
 
-    fun getJob(jobId: String): ExportJobRecord? {
-        return memoryCache[jobId]
+    fun getJob(jobId: String): ExportJobRecord? = synchronized(lock) {
+        memoryCache[jobId]?.copy()
     }
 
-    fun updateStatus(jobId: String, status: JobStatusDto) {
-        synchronized(lock) {
-            val record = memoryCache[jobId] ?: return
-            record.state = status.state
-            record.currentFrame = status.currentFrame
-            record.totalFrames = status.totalFrames
-            record.fps = status.fps
-            record.progress = status.progress
-            record.outputUri = status.outputUri ?: record.outputUri
-            if (status.errorCode != null || status.errorMessage != null) {
-                record.errorCode = art.gaoge.dance.engine.diagnostics.NativeDiagnosticPrivacy.safeCode(status.errorCode)
-                record.errorMessage = art.gaoge.dance.engine.diagnostics.NativeDiagnosticPrivacy.message(record.errorCode, "export")
-            }
-            val now = System.currentTimeMillis()
-            record.updatedAt = now
+    fun updateStatus(jobId: String, status: JobStatusDto): Boolean = synchronized(lock) {
+        val record = memoryCache[jobId] ?: return@synchronized false
+        // Cancellation can publish while the worker is draining an already queued frame.
+        // Once observed, a terminal result must survive that worker's late callbacks.
+        if (isTerminal(record.state)) return@synchronized false
 
-            val isTerminal = when (status.state.lowercase()) {
-                "completed", "failed", "cancelled", "interrupted" -> true
-                else -> false
-            }
-
-            if (isTerminal || (now - lastDiskPersistTime) >= diskPersistIntervalMs) {
-                lastDiskPersistTime = now
-                persistToDiskLocked()
-            }
+        record.state = status.state
+        record.currentFrame = status.currentFrame
+        record.totalFrames = status.totalFrames
+        record.fps = status.fps
+        record.progress = status.progress
+        record.outputUri = status.outputUri ?: record.outputUri
+        if (status.errorCode != null || status.errorMessage != null) {
+            record.errorCode = art.gaoge.dance.engine.diagnostics.NativeDiagnosticPrivacy.safeCode(status.errorCode)
+            record.errorMessage = art.gaoge.dance.engine.diagnostics.NativeDiagnosticPrivacy.message(record.errorCode, "export")
         }
+        val now = System.currentTimeMillis()
+        record.updatedAt = now
+        if (isTerminal(status.state) || (now - lastDiskPersistTime) >= diskPersistIntervalMs) {
+            lastDiskPersistTime = now
+            persistToDiskLocked()
+        }
+        true
+    }
+
+    private fun isTerminal(state: String): Boolean = when (state) {
+        "completed", "failed", "cancelled", "interrupted" -> true
+        else -> false
     }
 
     fun flush() {
@@ -132,7 +133,7 @@ class ExportJobStore(
         }
     }
 
-    fun getAllJobs(): List<ExportJobRecord> {
-        return memoryCache.values.sortedByDescending { it.createdAt }
+    fun getAllJobs(): List<ExportJobRecord> = synchronized(lock) {
+        memoryCache.values.sortedByDescending { it.createdAt }.map { it.copy() }
     }
 }

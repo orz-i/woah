@@ -1,0 +1,195 @@
+D:\dance-anonymizer\reports\privacy-4k-regression-2026-11-04\legacy_cf7515d4
+{"stage": "run_regression_media.py", "status": "started"}
+{"case": "group_all_faces", "fill": "solid", "input": "group-hd-8956295.mp4", "width": "960", "height": "540", "endMs": "3040", "result": "passed", "elapsed_seconds": 98.2, "apk_sha256": "ba5cf9095027891faa22a2cc8b8acf39929096e908a5fa9b99582bedb2e9c93e"}
+{"case": "group_face_sticker_follow", "fill": "sticker", "input": "group-hd-8956295.mp4", "hero": "6", "width": "720", "height": "1280", "endMs": "3040", "result": "passed", "elapsed_seconds": 32.39, "apk_sha256": "ba5cf9095027891faa22a2cc8b8acf39929096e908a5fa9b99582bedb2e9c93e"}
+{"case": "group_face_solid_follow", "fill": "solid", "input": "group-hd-8956295.mp4", "hero": "6", "width": "720", "height": "1280", "endMs": "3040", "result": "passed", "elapsed_seconds": 32.0, "apk_sha256": "ba5cf9095027891faa22a2cc8b8acf39929096e908a5fa9b99582bedb2e9c93e"}
+{"case": "solo_face_sticker", "fill": "sticker", "result": "passed", "elapsed_seconds": 18.06, "apk_sha256": "ba5cf9095027891faa22a2cc8b8acf39929096e908a5fa9b99582bedb2e9c93e"}
+{"case": "solo_face_mosaic", "fill": "mosaic", "result": "passed", "elapsed_seconds": 17.86, "apk_sha256": "ba5cf9095027891faa22a2cc8b8acf39929096e908a5fa9b99582bedb2e9c93e"}
+{"case": "solo_face_blur", "fill": "blur", "result": "passed", "elapsed_seconds": 17.73, "apk_sha256": "ba5cf9095027891faa22a2cc8b8acf39929096e908a5fa9b99582bedb2e9c93e"}
+{"case": "solo_face_solid", "fill": "solid", "result": "passed", "elapsed_seconds": 18.05, "apk_sha256": "ba5cf9095027891faa22a2cc8b8acf39929096e908a5fa9b99582bedb2e9c93e"}
+{"case": "solo_face_gradient", "fill": "gradient", "result": "passed", "elapsed_seconds": 18.06, "apk_sha256": "ba5cf9095027891faa22a2cc8b8acf39929096e908a5fa9b99582bedb2e9c93e"}
+{"case": "group_full_solid", "fill": "solid", "faceOnly": "false", "input": "group-hd-8956295.mp4", "width": "960", "height": "540", "result": "passed", "elapsed_seconds": 42.39, "apk_sha256": "ba5cf9095027891faa22a2cc8b8acf39929096e908a5fa9b99582bedb2e9c93e"}
+{"case": "group_full_mosaic", "fill": "mosaic", "faceOnly": "false", "input": "group-hd-8956295.mp4", "width": "960", "height": "540", "result": "passed", "elapsed_seconds": 43.11, "apk_sha256": "ba5cf9095027891faa22a2cc8b8acf39929096e908a5fa9b99582bedb2e9c93e"}
+{"case": "group_full_blur", "fill": "blur", "faceOnly": "false", "input": "group-hd-8956295.mp4", "width": "960", "height": "540", "result": "passed", "elapsed_seconds": 42.05, "apk_sha256": "ba5cf9095027891faa22a2cc8b8acf39929096e908a5fa9b99582bedb2e9c93e"}
+{"case": "group_full_gradient", "fill": "gradient", "faceOnly": "false", "input": "group-hd-8956295.mp4", "width": "960", "height": "540", "result": "passed", "elapsed_seconds": 42.52, "apk_sha256": "ba5cf9095027891faa22a2cc8b8acf39929096e908a5fa9b99582bedb2e9c93e"}
+{"case": "group_first_solid", "fill": "solid", "faceOnly": "false", "input": "group-hd-8956295.mp4", "width": "960", "height": "540", "select": "first", "result": "passed", "elapsed_seconds": 20.48, "apk_sha256": "ba5cf9095027891faa22a2cc8b8acf39929096e908a5fa9b99582bedb2e9c93e"}
+{"case": "solo_face_balanced", "fill": "sticker", "profile": "balanced", "result": "passed", "elapsed_seconds": 17.22, "apk_sha256": "ba5cf9095027891faa22a2cc8b8acf39929096e908a5fa9b99582bedb2e9c93e"}
+{"case": "solo_face_speed", "fill": "sticker", "profile": "speed", "result": "passed", "elapsed_seconds": 16.62, "apk_sha256": "ba5cf9095027891faa22a2cc8b8acf39929096e908a5fa9b99582bedb2e9c93e"}
+{"case": "solo_nonzero_trim", "fill": "sticker", "startMs": "1000", "endMs": "2600", "result": "passed", "elapsed_seconds": 17.39, "apk_sha256": "ba5cf9095027891faa22a2cc8b8acf39929096e908a5fa9b99582bedb2e9c93e"}
+{"case": "group_4k_full", "fill": "solid", "faceOnly": "false", "input": "group-mirror-8956295.mp4", "width": "960", "height": "540", "result": "passed", "elapsed_seconds": 43.34, "apk_sha256": "ba5cf9095027891faa22a2cc8b8acf39929096e908a5fa9b99582bedb2e9c93e"}
+{"case": "solo_4k_sticker", "fill": "sticker", "input": "solo-portrait-7570258.mp4", "result": "passed", "elapsed_seconds": 17.78, "apk_sha256": "ba5cf9095027891faa22a2cc8b8acf39929096e908a5fa9b99582bedb2e9c93e"}
+{"case": "duo_full_solid", "fill": "solid", "faceOnly": "false", "input": "duo-dance-6940536.mp4", "width": "960", "height": "540", "result": "passed", "elapsed_seconds": 18.7, "apk_sha256": "ba5cf9095027891faa22a2cc8b8acf39929096e908a5fa9b99582bedb2e9c93e"}
+group_full_speed passed
+group_full_balanced passed
+group_full_length_follow passed in 204.77s
+Traceback (most recent call last):
+  File "D:\dance-anonymizer\reports\privacy-4k-regression-2026-11-04\legacy_cf7515d4\run_regression_media.py", line 36, in <module>
+    assert 'OK (1 test)' in output and 'INSTRUMENTATION_STATUS_CODE: 0' in output, output
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: INSTRUMENTATION_STATUS: class=art.gaoge.dance.engine.pipeline.NetworkPrivacyWorkflowInstrumentedTest
+
+INSTRUMENTATION_STATUS: current=1
+
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+
+INSTRUMENTATION_STATUS: numtests=1
+
+INSTRUMENTATION_STATUS: stream=
+
+art.gaoge.dance.engine.pipeline.NetworkPrivacyWorkflowInstrumentedTest:
+
+INSTRUMENTATION_STATUS: test=productionApiReleasesResourcesAfterCompletionAndCancellation
+
+INSTRUMENTATION_STATUS_CODE: 1
+
+INSTRUMENTATION_STATUS: class=art.gaoge.dance.engine.pipeline.NetworkPrivacyWorkflowInstrumentedTest
+
+INSTRUMENTATION_STATUS: current=1
+
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+
+INSTRUMENTATION_STATUS: numtests=1
+
+INSTRUMENTATION_STATUS: stack=org.junit.ComparisonFailure: expected:<[cancelled]> but was:<[processing]>
+
+	at org.junit.Assert.assertEquals(Assert.java:117)
+
+	at kotlin.test.junit.JUnitAsserter.assertEquals(JUnitSupport.kt:32)
+
+	at kotlin.test.AssertionsKt__AssertionsKt.assertEquals(Assertions.kt:63)
+
+	at kotlin.test.AssertionsKt.assertEquals(Unknown Source:1)
+
+	at kotlin.test.AssertionsKt__AssertionsKt.assertEquals$default(Assertions.kt:62)
+
+	at kotlin.test.AssertionsKt.assertEquals$default(Unknown Source:1)
+
+	at art.gaoge.dance.engine.pipeline.NetworkPrivacyWorkflowInstrumentedTest$productionApiReleasesResourcesAfterCompletionAndCancellation$1$3$1.invokeSuspend(NetworkPrivacyWorkflowInstrumentedTest.kt:93)
+
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:101)
+
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)
+
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:47)
+
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+
+	at art.gaoge.dance.engine.pipeline.NetworkPrivacyWorkflowInstrumentedTest.productionApiReleasesResourcesAfterCompletionAndCancellation(NetworkPrivacyWorkflowInstrumentedTest.kt:29)
+
+
+
+INSTRUMENTATION_STATUS: stream=
+
+Error in productionApiReleasesResourcesAfterCompletionAndCancellation(art.gaoge.dance.engine.pipeline.NetworkPrivacyWorkflowInstrumentedTest):
+
+org.junit.ComparisonFailure: expected:<[cancelled]> but was:<[processing]>
+
+	at org.junit.Assert.assertEquals(Assert.java:117)
+
+	at kotlin.test.junit.JUnitAsserter.assertEquals(JUnitSupport.kt:32)
+
+	at kotlin.test.AssertionsKt__AssertionsKt.assertEquals(Assertions.kt:63)
+
+	at kotlin.test.AssertionsKt.assertEquals(Unknown Source:1)
+
+	at kotlin.test.AssertionsKt__AssertionsKt.assertEquals$default(Assertions.kt:62)
+
+	at kotlin.test.AssertionsKt.assertEquals$default(Unknown Source:1)
+
+	at art.gaoge.dance.engine.pipeline.NetworkPrivacyWorkflowInstrumentedTest$productionApiReleasesResourcesAfterCompletionAndCancellation$1$3$1.invokeSuspend(NetworkPrivacyWorkflowInstrumentedTest.kt:93)
+
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:101)
+
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)
+
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:47)
+
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+
+	at art.gaoge.dance.engine.pipeline.NetworkPrivacyWorkflowInstrumentedTest.productionApiReleasesResourcesAfterCompletionAndCancellation(NetworkPrivacyWorkflowInstrumentedTest.kt:29)
+
+
+
+INSTRUMENTATION_STATUS: test=productionApiReleasesResourcesAfterCompletionAndCancellation
+
+INSTRUMENTATION_STATUS_CODE: -2
+
+INSTRUMENTATION_RESULT: stream=
+
+
+
+Time: 16.154
+
+There was 1 failure:
+
+1) productionApiReleasesResourcesAfterCompletionAndCancellation(art.gaoge.dance.engine.pipeline.NetworkPrivacyWorkflowInstrumentedTest)
+
+org.junit.ComparisonFailure: expected:<[cancelled]> but was:<[processing]>
+
+	at org.junit.Assert.assertEquals(Assert.java:117)
+
+	at kotlin.test.junit.JUnitAsserter.assertEquals(JUnitSupport.kt:32)
+
+	at kotlin.test.AssertionsKt__AssertionsKt.assertEquals(Assertions.kt:63)
+
+	at kotlin.test.AssertionsKt.assertEquals(Unknown Source:1)
+
+	at kotlin.test.AssertionsKt__AssertionsKt.assertEquals$default(Assertions.kt:62)
+
+	at kotlin.test.AssertionsKt.assertEquals$default(Unknown Source:1)
+
+	at art.gaoge.dance.engine.pipeline.NetworkPrivacyWorkflowInstrumentedTest$productionApiReleasesResourcesAfterCompletionAndCancellation$1$3$1.invokeSuspend(NetworkPrivacyWorkflowInstrumentedTest.kt:93)
+
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:101)
+
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:263)
+
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)
+
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:47)
+
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+
+	at art.gaoge.dance.engine.pipeline.NetworkPrivacyWorkflowInstrumentedTest.productionApiReleasesResourcesAfterCompletionAndCancellation(NetworkPrivacyWorkflowInstrumentedTest.kt:29)
+
+
+
+FAILURES!!!
+
+Tests run: 1,  Failures: 1
+
+
+
+
+
+INSTRUMENTATION_CODE: -1
+
+
+Traceback (most recent call last):
+  File "D:\dance-anonymizer\reports\privacy-4k-regression-2026-11-04\run_followup.py", line 40, in <module>
+    subprocess.run([sys.executable, str(legacy / name), *args], check=True)
+  File "C:\Users\mouta\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['D:\\dance-anonymizer\\.venv\\Scripts\\python.exe', 'D:\\dance-anonymizer\\reports\\privacy-4k-regression-2026-11-04\\legacy_cf7515d4\\run_regression_media.py']' returned non-zero exit status 1.

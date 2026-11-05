@@ -1,0 +1,33 @@
+{
+  "source": "solo_4k_body_solid.mp4",
+  "output": "faststart_reordered_solo.mp4",
+  "before": [
+    {
+      "mime": "audio\/mp4a-latm",
+      "packets": 1242,
+      "payload_sha256": "7f7528fe5c004a9bbaad49003568a14b8496ec7b65e5b0d8e3723fc08550829a",
+      "pts_sha256": "64eb5c40253323ba64bcf2ecdd162ed9ee2e00e9a7c47e2bf7676217380c2307"
+    },
+    {
+      "mime": "video\/avc",
+      "packets": 662,
+      "payload_sha256": "a2a5095764b7927485e6682294fdfda4cb40d21e7f49806f801e3c6e96c9f5fb",
+      "pts_sha256": "118847d8274d09cada585722a89c5825b51a0b8958507e9a0ae7fb707625cded"
+    }
+  ],
+  "after": [
+    {
+      "mime": "audio\/mp4a-latm",
+      "packets": 1242,
+      "payload_sha256": "7f7528fe5c004a9bbaad49003568a14b8496ec7b65e5b0d8e3723fc08550829a",
+      "pts_sha256": "64eb5c40253323ba64bcf2ecdd162ed9ee2e00e9a7c47e2bf7676217380c2307"
+    },
+    {
+      "mime": "video\/avc",
+      "packets": 662,
+      "payload_sha256": "a2a5095764b7927485e6682294fdfda4cb40d21e7f49806f801e3c6e96c9f5fb",
+      "pts_sha256": "118847d8274d09cada585722a89c5825b51a0b8958507e9a0ae7fb707625cded"
+    }
+  ],
+  "all_encoded_samples_and_pts_identical": true
+}

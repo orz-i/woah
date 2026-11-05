@@ -1,0 +1,1308 @@
+
+> Configure project :gradle
+WARNING: Unsupported Kotlin plugin version.
+The `embedded-kotlin` and `kotlin-dsl` plugins rely on features of Kotlin `2.2.0` that might work differently than in the requested version `2.2.20`.
+
+> Task :gradle:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :gradle:compileKotlin UP-TO-DATE
+> Task :gradle:compileJava NO-SOURCE
+> Task :gradle:compileGroovy NO-SOURCE
+> Task :gradle:pluginDescriptors UP-TO-DATE
+> Task :gradle:processResources UP-TO-DATE
+> Task :gradle:classes UP-TO-DATE
+> Task :gradle:jar UP-TO-DATE
+
+> Configure project :app
+WARNING: The option setting 'android.builtInKotlin=false' is deprecated.
+The current default is 'true'.
+It will be removed in version 10.0 of the Android Gradle plugin.
+WARNING: The option setting 'android.newDsl=false' is deprecated.
+The current default is 'true'.
+It will be removed in version 10.0 of the Android Gradle plugin.
+w: [33m[1mDeprecated 'org.jetbrains.kotlin.android' plugin usage[0m[0m
+The 'org.jetbrains.kotlin.android' plugin in project ':app' is no longer required for Kotlin support since AGP 9.0.
+[32m[1mSolution:[0m[0m
+[32m[3mRemove both `android.builtInKotlin=true` and `android.newDsl=false` from `gradle.properties`, then migrate to built-in Kotlin.[0m[0m
+[36mSee [0m[34mhttps://kotl.in/gradle/agp-built-in-kotlin[0m[36m for more details.[0m
+
+
+> Configure project :android_file_picker
+w: [33m[1mDeprecated 'org.jetbrains.kotlin.android' plugin usage[0m[0m
+The 'org.jetbrains.kotlin.android' plugin in project ':android_file_picker' is no longer required for Kotlin support since AGP 9.0.
+[32m[1mSolution:[0m[0m
+[32m[3mRemove both `android.builtInKotlin=true` and `android.newDsl=false` from `gradle.properties`, then migrate to built-in Kotlin.[0m[0m
+[36mSee [0m[34mhttps://kotl.in/gradle/agp-built-in-kotlin[0m[36m for more details.[0m
+
+
+> Configure project :dance_native
+w: [33m[1mDeprecated 'org.jetbrains.kotlin.android' plugin usage[0m[0m
+The 'org.jetbrains.kotlin.android' plugin in project ':dance_native' is no longer required for Kotlin support since AGP 9.0.
+[32m[1mSolution:[0m[0m
+[32m[3mRemove both `android.builtInKotlin=true` and `android.newDsl=false` from `gradle.properties`, then migrate to built-in Kotlin.[0m[0m
+[36mSee [0m[34mhttps://kotl.in/gradle/agp-built-in-kotlin[0m[36m for more details.[0m
+
+
+> Configure project :shared_preferences_android
+w: [33m[1mDeprecated 'org.jetbrains.kotlin.android' plugin usage[0m[0m
+The 'org.jetbrains.kotlin.android' plugin in project ':shared_preferences_android' is no longer required for Kotlin support since AGP 9.0.
+[32m[1mSolution:[0m[0m
+[32m[3mRemove both `android.builtInKotlin=true` and `android.newDsl=false` from `gradle.properties`, then migrate to built-in Kotlin.[0m[0m
+[36mSee [0m[34mhttps://kotl.in/gradle/agp-built-in-kotlin[0m[36m for more details.[0m
+
+
+> Configure project :video_player_android
+w: [33m[1mDeprecated 'org.jetbrains.kotlin.android' plugin usage[0m[0m
+The 'org.jetbrains.kotlin.android' plugin in project ':video_player_android' is no longer required for Kotlin support since AGP 9.0.
+[32m[1mSolution:[0m[0m
+[32m[3mRemove both `android.builtInKotlin=true` and `android.newDsl=false` from `gradle.properties`, then migrate to built-in Kotlin.[0m[0m
+[36mSee [0m[34mhttps://kotl.in/gradle/agp-built-in-kotlin[0m[36m for more details.[0m
+
+
+> Task :dance_native:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :dance_native:syncFaceDetectorAsset
+> Task :dance_native:verifyFaceDetectorAsset
+> Task :dance_native:syncLiteRtModelAssets
+> Task :dance_native:verifyLiteRtModelAssets
+> Task :dance_native:verifyNoOnnxRuntime
+> Task :dance_native:verifyNoPlayServicesLiteRt
+> Task :dance_native:preBuild
+> Task :dance_native:preDebugBuild
+> Task :dance_native:generateDebugBuildConfig
+> Task :dance_native:generateDebugResources UP-TO-DATE
+> Task :dance_native:packageDebugResources UP-TO-DATE
+> Task :dance_native:processDebugNavigationResources UP-TO-DATE
+> Task :dance_native:parseDebugLocalResources UP-TO-DATE
+> Task :dance_native:generateDebugRFile UP-TO-DATE
+> Task :dance_native:javaPreCompileDebug UP-TO-DATE
+> Task :dance_native:preDebugUnitTestBuild
+> Task :dance_native:writeDebugAarMetadata UP-TO-DATE
+> Task :dance_native:checkDebugUnitTestAarMetadata UP-TO-DATE
+> Task :dance_native:compileDebugLibraryResources UP-TO-DATE
+> Task :dance_native:mapDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :dance_native:generateDebugUnitTestResources UP-TO-DATE
+> Task :dance_native:mergeDebugUnitTestResources UP-TO-DATE
+> Task :dance_native:extractDeepLinksDebug UP-TO-DATE
+> Task :dance_native:processDebugManifest UP-TO-DATE
+> Task :dance_native:processDebugUnitTestManifest UP-TO-DATE
+> Task :dance_native:processDebugUnitTestResources UP-TO-DATE
+> Task :dance_native:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :dance_native:generateDebugUnitTestAssets UP-TO-DATE
+> Task :dance_native:generateDebugAssets UP-TO-DATE
+> Task :dance_native:mergeDebugAssets UP-TO-DATE
+> Task :dance_native:mergeDebugUnitTestAssets UP-TO-DATE
+> Task :dance_native:packageDebugUnitTestForUnitTest UP-TO-DATE
+> Task :dance_native:generateDebugUnitTestConfig UP-TO-DATE
+
+> Task :dance_native:compileDebugKotlin
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/debug/kotlin/art/gaoge/dance/engine/comparison/ComparisonM0Activity.kt:296:33 'field unappliedRotationDegrees: Int' is deprecated. Deprecated in Java.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/comparison/ComparisonExportService.kt:84:132 'constructor(p0: Context!): Notification.Builder' is deprecated. Deprecated in Java.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/comparison/ComparisonPcmDecoder.kt:87:81 Unnecessary non-null assertion (!!) on a non-null receiver of type 'ComparisonMusicFeatureBuilder'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/comparison/ComparisonPcmDecoder.kt:95:48 Unnecessary non-null assertion (!!) on a non-null receiver of type 'SonicAudioProcessor'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/comparison/ComparisonPcmDecoder.kt:95:58 Unnecessary non-null assertion (!!) on a non-null receiver of type 'ComparisonMusicFeatureBuilder'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/comparison/ComparisonPcmDecoder.kt:97:27 Unnecessary non-null assertion (!!) on a non-null receiver of type 'ComparisonMusicFeatureBuilder'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/comparison/ComparisonSession.kt:265:68 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Long'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/comparison/ComparisonSession.kt:276:62 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Long'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/comparison/ComparisonSession.kt:277:49 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Long'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/comparison/ComparisonSession.kt:278:58 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Long'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/comparison/ComparisonSession.kt:279:47 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Long'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:213:53 Unnecessary safe call on a non-null receiver of type 'YoloLiteRtSegmenter'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:222:72 Unnecessary safe call on a non-null receiver of type 'YoloLiteRtSegmenter'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:320:39 Condition is always 'true'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:388:51 Unnecessary safe call on a non-null receiver of type 'CropClarityAbCapture'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:442:33 This class is not recommended for use in Kotlin. Use 'kotlin.Any' instead.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:616:76 Unnecessary safe call on a non-null receiver of type 'CanonicalYuvInferenceDecoder'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:617:80 Unnecessary safe call on a non-null receiver of type 'CanonicalYuvInferenceDecoder'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:618:77 Unnecessary safe call on a non-null receiver of type 'CanonicalYuvInferenceDecoder'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:619:80 Unnecessary safe call on a non-null receiver of type 'CanonicalYuvInferenceDecoder'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:854:39 Unnecessary safe call on a non-null receiver of type 'SurfaceTexture'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:855:39 Unnecessary safe call on a non-null receiver of type 'SurfaceTexture'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:859:64 Unnecessary safe call on a non-null receiver of type 'SurfaceTexture'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:1216:75 Redundant call of conversion method.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:2047:85 Elvis operator (?:) always returns the left operand of non-nullable type 'Int'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:2325:45 Unnecessary safe call on a non-null receiver of type 'CoroutineScope'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt:2371:25 Condition is always 'true'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/render/GlRenderer.kt:191:87 Elvis operator (?:) always returns the left operand of non-nullable type 'Bitmap'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/service/ExportForegroundService.kt:137:55 Unnecessary non-null assertion (!!) on a non-null receiver of type 'ExportRequestDto'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/service/ExportForegroundService.kt:142:61 Unnecessary non-null assertion (!!) on a non-null receiver of type 'YoloLiteRtSegmenter'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/service/ExportForegroundService.kt:144:40 Unnecessary non-null assertion (!!) on a non-null receiver of type 'ExportRequestDto'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/service/ExportForegroundService.kt:145:38 Unnecessary non-null assertion (!!) on a non-null receiver of type 'ExportRequestDto'.
+
+> Task :dance_native:compileDebugJavaWithJavac
+> Task :dance_native:bundleLibRuntimeToJarDebug
+> Task :dance_native:processDebugJavaRes UP-TO-DATE
+> Task :dance_native:bundleLibCompileToJarDebug
+
+> Task :dance_native:compileDebugUnitTestKotlin
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/pipeline/SurfaceFrameHandoffTest.kt:16:25 This class is not recommended for use in Kotlin. Use 'kotlin.Any' instead.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/pipeline/SurfaceFrameHandoffTest.kt:55:25 This class is not recommended for use in Kotlin. Use 'kotlin.Any' instead.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/PrivacyFreshOccluderTest.kt:59:40 Unnecessary non-null assertion (!!) on a non-null receiver of type 'NativeMask'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/PrivacyFreshOccluderTest.kt:104:40 Unnecessary non-null assertion (!!) on a non-null receiver of type 'NativeMask'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/PrivacyFreshOccluderTest.kt:152:40 Unnecessary non-null assertion (!!) on a non-null receiver of type 'NativeMask'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/PrivacyMultipleSelectedOwnershipTest.kt:61:40 Unnecessary non-null assertion (!!) on a non-null receiver of type 'NativeMask'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/PrivacyOcclusionResolverTest.kt:168:64 Unnecessary non-null assertion (!!) on a non-null receiver of type 'NativeMask'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/PrivacyOcclusionResolverTest.kt:258:39 Unnecessary non-null assertion (!!) on a non-null receiver of type 'NativeMask'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/PrivacyOcclusionResolverTest.kt:298:39 Unnecessary non-null assertion (!!) on a non-null receiver of type 'NativeMask'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/PrivacyOcclusionResolverTest.kt:396:39 Unnecessary non-null assertion (!!) on a non-null receiver of type 'NativeMask'.
+w: file:///D:/dance-anonymizer/mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/PrivacyReacquiringNoStaleHoleTest.kt:58:40 Unnecessary non-null assertion (!!) on a non-null receiver of type 'NativeMask'.
+
+> Task :dance_native:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :dance_native:processDebugUnitTestJavaRes UP-TO-DATE
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+
+> Task :dance_native:testDebugUnitTest
+
+NativeDiagnosticsSnapshotIntegrityTest > testSnapshotIntegrityWithHeavyConcurrentEvents() PASSED
+
+NativeDiagnosticsTest > testPipelineLifecycleWritesLatestStageAtomically() PASSED
+
+NativeDiagnosticsTest > eventFieldSnapshotDetachesMutableCallerOwnedValues() PASSED
+
+NativeDiagnosticsTest > testEventWritesValidJsonLine() PASSED
+
+NativeDiagnosticsTest > testRootCauseUnwrap() PASSED
+
+NativeDiagnosticsTest > testConcurrentEventCallsDoNotCorruptFile() PASSED
+
+NativeDiagnosticsTest > testBreadcrumbAtomicReplace() PASSED
+
+DanceNativePluginTest > onMethodCall_getPlatformVersion_returnsExpectedValue() PASSED
+
+ExportJobRecordTest > testSerializationDeserializationRoundtrip() PASSED
+
+MaskPrivacyProcessorTest > testDilationExpandsSinglePixel() PASSED
+
+MaskPrivacyProcessorTest > thresholdProducesCanonicalBinaryContour() PASSED
+
+ModelCoordinateMapperTest > testProtoMapping() PASSED
+
+ModelCoordinateMapperTest > test16x9LandscapeMapping() PASSED
+
+ModelCoordinateMapperTest > testMultiAspectRatioLetterboxInvariants() PASSED
+
+ModelCoordinateMapperTest > test9x16PortraitMapping() PASSED
+
+YoloPreprocessorOrientationTest > glReadPixelsBottomUpBufferIsConvertedToTopDownYoloInput() PASSED
+
+YoloPreprocessorOrientationTest > rightToLeftColOrderFlipsHorizontalAxis() PASSED
+
+YoloPreprocessorOrientationTest > optimizedRgbaArrayMatchesReferenceNormalizationAndFloatBufferContract() PASSED
+
+YoloPreprocessorOrientationTest > productionNonMaterializedPathMatchesMaterializedFloatArrayForAllOrientations() PASSED
+
+YoloPreprocessorOrientationTest > testNonSymmetricTopObjectOrientationParity() PASSED
+
+YoloPreprocessorOrientationTest > topDownRgbaBufferIsNotFlipped() PASSED
+
+DanceNativeExceptionTest > testExceptionMessageIncludesCodeAndMessage() PASSED
+
+DanceNativeExceptionTest > testExceptionWithCause() PASSED
+
+DynamicReframeContractTest > movingSubjectChangesFinalCropAndTextureMatrix() PASSED
+
+OcclusionProxyStabilizerTest > largeRealMotionBreaksOutImmediatelyAndConverges() PASSED
+
+OcclusionProxyStabilizerTest > alternatingMicroMotionStaysLocked() PASSED
+
+OcclusionProxyStabilizerTest > sustainedMotionIsApproximatelyFrameRateIndependent() PASSED
+
+OcclusionProxyStabilizerTest > resetDoesNotCarryPreviousProxyComposition() PASSED
+
+OcclusionProxyStabilizerTest > sustainedSmallDriftBreaksOutAfterConfirmation() PASSED
+
+ReframeGeometryTest > cropTextureMatrixMapsOutputUvIntoRequestedGlCrop() PASSED
+
+ReframeGeometryTest > postCropCompositionKeepsFullSourceAspectWithoutRenderingUnneededPixels() PASSED
+
+ReframeGeometryTest > exactPortraitPreviewMatchesExportGeometryAndNeverEnlarges() PASSED
+
+ReframeGeometryTest > fullFrameIsStableAcrossCoordinateConversion() PASSED
+
+ReframeGeometryTest > visualTopLeftCropConvertsToScreenGlWithoutChangingHorizontalBounds() PASSED
+
+ReframeGeometryTest > impossibleTinyFrameDoesNotClaimExactPortraitGeometry() PASSED
+
+SmoothFollowerTest > missingTargetDuringPanNeverMovesPastLastTrustedPosition() PASSED
+
+SmoothFollowerTest > reacquisitionIsSmoothedAndSpeedLimited() PASSED
+
+SmoothFollowerTest > missingTargetHoldsTrustedCompositionInsteadOfDrifting() PASSED
+
+SmoothFollowerTest > bodyBoxJitterInsideDeadZoneDoesNotMoveCamera() PASSED
+
+SmoothFollowerTest > narrowerPortraitCropsVerticallyInVisualTopLeftSpace() PASSED
+
+SmoothFollowerTest > landscapeToPortraitPreservesFullHeightAndCentersSelectedSubject() PASSED
+
+SmoothFollowerTest > portraitSourceIsNotNeedlesslyZoomed() PASSED
+
+SmoothFollowerTest > panUsesElapsedTimeRatherThanFrameCount() PASSED
+
+SmoothFollowerTest > invalidObservationsAndDuplicateTimestampsCannotPoisonCamera() PASSED
+
+SmoothFollowerTest > largePanRampsVelocityInsteadOfStartingAtFullSpeed() PASSED
+
+SmoothFollowerTest > moderateCompositionShiftOutsideNewDeadZoneEventuallyMovesCamera() PASSED
+
+SmoothFollowerTest > largePanCatchesUpFasterWithoutTeleporting() PASSED
+
+SmoothFollowerTest > edgesShiftRatherThanShrinkCropOrRevealBlackBars() PASSED
+
+SmoothFollowerTest > suddenDirectionReversalBrakesBeforeMovingOpposite() PASSED
+
+SmoothFollowerTest > backwardSeekAndResetDoNotReusePreviousCamera() PASSED
+
+CropClarityBackendPolicyTest > missing model keeps deterministic shader fallback() PASSED
+
+CropClarityBackendPolicyTest > scale one disables restoration even when model exists() PASSED
+
+CropClarityBackendPolicyTest > valid model plus gpu compile selects neural candidate() PASSED
+
+CropClarityBackendPolicyTest > gpu compile failure keeps deterministic shader fallback() PASSED
+
+CropClarityBackendPolicyTest > mild upscale keeps deterministic shader even when neural is available() PASSED
+
+CropClarityQualityGateTest > boundedStrength() PASSED
+
+CropClarityQualityGateTest > debugAndCropRequired() PASSED
+
+CropClarityQualityGateTest > metadataOverestimateDoesNotSkipFinalSample() PASSED
+
+CropClarityQualityGateTest > firstMiddleNearEndAreUniqueAndBounded() PASSED
+
+CropClarityTilePlannerTest > small frame uses one partial tile with the full core() PASSED
+
+CropClarityTilePlannerTest > portrait crop tiles retain every source pixel exactly once() PASSED
+
+CropClarityTilePlannerTest > all tiles stay inside fixed neural input envelope() PASSED
+
+ComparisonAudioClockTest > resamplesTenMillisecondPublicationsAtDisplayCadence() PASSED
+
+ComparisonAudioClockTest > seekResetDiscardsOldAnchors() PASSED
+
+ComparisonAudioClockTest > aStalledPublishedClockCannotRunAway() PASSED
+
+ComparisonAudioClockTest > speedChangeResetsAndThenFollowsHalfSpeed() PASSED
+
+ComparisonExportManagerTest > obsoleteQueuedWorkerIsIgnoredAfterRetry() PASSED
+
+ComparisonExportManagerTest > savedCompletedExportNeedsNoReplacementFlag() PASSED
+
+ComparisonExportManagerTest > confirmedReplacementReclaimsPreviousPrivateMovieAndAgedOrphans() PASSED
+
+ComparisonExportManagerTest > oldServiceInterruptionCannotCancelTheRetry() PASSED
+
+ComparisonExportManagerTest > interruptedWorkerCannotThrowOrModifyItsRetry() PASSED
+
+ComparisonExportManagerTest > unsavedCompletedExportIsNotSilentlyOverwritten() PASSED
+
+ComparisonExportTest > oldProjectsDefaultRateAndPicturesButPracticeSpeedNeverBecomesExportRate() PASSED
+
+ComparisonExportTest > vfrLedgerAllowsCodecLatencyAndAnArbitraryAbStart() PASSED
+
+ComparisonExportTest > jobIdentityCannotEscapeTheOwnedOutputDirectory() PASSED
+
+ComparisonExportTest > frozenSettingsRoundTripPreservesMappingAndIndependentGeometry() PASSED
+
+ComparisonExportTest > missingReorderedRetimedAndUnflushedFramesCannotBecomeSuccessfulFiles() PASSED
+
+ComparisonExportTest > pcmClipUsesSampleBoundariesAndPreservesNonZeroSourcePts() PASSED
+
+ComparisonExportTest > affineNegativeOffsetUsesRealSourceOriginAndExclusiveAbEnd() PASSED
+
+ComparisonFrameProbeTest > mismatchedReleaseTimesCannotMasqueradeAsGoodSync() PASSED
+
+ComparisonFrameProbeTest > epochChangeRejectsOldObservations() PASSED
+
+ComparisonFrameProbeTest > pairsByPlannedReleaseAndMeasuresMediaOffsetNotCallbackOrder() PASSED
+
+ComparisonFrameProbeTest > timeWindowsExposeDriftAndKeepExportBounded() PASSED
+
+ComparisonGlTimingTest > staleObservationsCannotEnterNewSeekEpoch() PASSED
+
+ComparisonGlTimingTest > oneWindowPreservesExistingCaptureRectangles() PASSED
+
+ComparisonGlTimingTest > bothArrangementsContainPortraitAndLandscapeSourcesWithoutOverlap() PASSED
+
+ComparisonGlTimingTest > windowExportIsBoundedAndRetainsCoverageFailures() PASSED
+
+ComparisonGlTimingTest > coverageUsesActualPtsAcrossDifferentFrameIntervals() PASSED
+
+ComparisonGlTimingTest > negativeOffsetStartsTeacherAtOneSecondAndLearnerAtZero() PASSED
+
+ComparisonManualMusicAnchorTest > negativeOffsetRetainsTheCorrectNonzeroOverlapStart() PASSED
+
+ComparisonManualMusicAnchorTest > parsesExactMicrosecondsAndMinuteNotation() PASSED
+
+ComparisonManualMusicAnchorTest > positiveOffsetMapsTheExactMusicEventWithoutChangingMotion() PASSED
+
+ComparisonManualMusicAnchorTest > rejectsAmbiguousPrecisionOverflowAndInvalidMinuteSeconds() PASSED
+
+ComparisonManualMusicAnchorTest > rejectsEndpointsAndUnplayableAnchorsBeforeChangingThePlayer() PASSED
+
+ComparisonMusicMatcherTest > rejectsSilenceAndUnrelatedMusic() PASSED
+
+ComparisonMusicMatcherTest > repeatedMusicReturnsAmbiguityInsteadOfInventingConfidence() PASSED
+
+ComparisonMusicMatcherTest > aConstantTempoChangeIsEstimatedInsteadOfPretendingItIsAnOffset() PASSED
+
+ComparisonMusicMatcherTest > oneSharedShortSectionCannotStandInForThreeAgreeingWindows() PASSED
+
+ComparisonMusicMatcherTest > findsPositiveMusicOffsetDespiteGainAndNoiseWithoutUsingVideo() PASSED
+
+ComparisonMusicMatcherTest > delayedRoomReflectionsAndAnotherSoundTrackRetainTheCommonMusic() PASSED
+
+ComparisonMusicMatcherTest > retainsNegativeOffsetAndNonzeroAudioSourceOrigins() PASSED
+
+ComparisonMusicMatcherTest > unrelatedSongsWithTheSameBeatGridNeverAutoApply() PASSED
+
+ComparisonMusicMatcherTest > findsAPartiallyOverlappingMusicPassageWithDifferentSourceTrims() PASSED
+
+ComparisonMusicMatcherTest > cancellationPropagatesBeforePublishingAMatch() PASSED
+
+ComparisonMusicRateTest > aDoubleSpeedVersion() PASSED
+
+ComparisonMusicRateTest > slowMusicWithPitchPreserved() PASSED
+
+ComparisonMusicRateTest > nonPresetMusicRate() PASSED
+
+ComparisonMusicRateTest > changingTempoCannotBecomeOneConfidentMapping() PASSED
+
+ComparisonMusicRateTest > slowMusicThatAlsoShiftsPitch() PASSED
+
+ComparisonMusicRateTest > negativeInterceptAndNonzeroSourceOrigins() PASSED
+
+ComparisonMusicRateTest > affineOverlapAndInversePreserveMusicCorrespondence() PASSED
+
+ComparisonMusicRateTest > aHalfSpeedVersion() PASSED
+
+ComparisonMusicRateTest > slightClockDriftIsAContinuousRate() PASSED
+
+ComparisonMusicRateTest > fasterMusicWithPitchPreserved() PASSED
+
+ComparisonMusicRateTest > speedChangeThatAlsoShiftsPitch() PASSED
+
+ComparisonMusicRateTest > invalidScaleNeverReachesDecoders() PASSED
+
+ComparisonMusicResamplingTest > sameRatePcmBypassesInactiveSonicWithoutLosingSamples() PASSED
+
+ComparisonMusicResamplingTest > resamplesBothRealSourceRatesAndDrainsTheirTails() PASSED
+
+ComparisonPictureTest > rejectsInvalidNumbersAndDefaultsOldBridgePayloads() PASSED
+
+ComparisonPictureTest > zoomExpandsIntoThePaneRatherThanTheOriginalLetterboxedRectangle() PASSED
+
+ComparisonPictureTest > extremePanCannotMoveANarrowPictureOutsideItsPane() PASSED
+
+ComparisonPictureTest > panesDoNotOverlapAndTheDividerDoesNotBecomePictureArea() PASSED
+
+ComparisonPictureTest > screenPanKeepsItsDirectionAcrossRotatedAspectAndMirrorChoice() PASSED
+
+ComparisonPictureTest > identityPreservesTheExistingFitIncludingOddPixelRounding() PASSED
+
+ComparisonPracticeTest > firstAndLastFramesStayInsideTheSharedOverlap() PASSED
+
+ComparisonPracticeTest > forwardFollowsVfrPresentationBoundariesRatherThanAverageFps() PASSED
+
+ComparisonPracticeTest > previousDecodesImmediatelyBeforeTheDisplayedFrameNotBeforeTheClock() PASSED
+
+ComparisonPracticeTest > loopUsesExclusiveEndAndPreservesNegativeMusicMappingOnRestart() PASSED
+
+ComparisonPracticeTest > previousFrameMayBeginBeforeTheCommonMusicRange() PASSED
+
+ComparisonSelectedSourceCopyTest > cancellationNeverPublishesPartialMedia() PASSED
+
+ComparisonSelectedSourceCopyTest > brokenProviderNeverPublishesOrKeepsPartialMedia() PASSED
+
+ComparisonSelectedSourceCopyTest > copiesExactBytesAndDigestThenClosesInput() PASSED
+
+ComparisonSelectedSourceCopyTest > anExistingDestinationIsUntouchedAndTheNewInputIsClosed() PASSED
+
+ComparisonSessionPlaybackTest > outsideActiveLoopRestartsAtItsOwnA() PASSED
+
+ComparisonSessionPlaybackTest > final100msLoopDoesNotRestartTheFullClip() PASSED
+
+ComparisonSessionPlaybackTest > withoutLoopTheFullClipStillReplaysFromZero() PASSED
+
+ComparisonSessionPlaybackTest > pausedNearTheEndOfAWiderLoopKeepsItsPosition() PASSED
+
+ComparisonSyncSeekTest > propagatesCancellationAndRejectsMissingSyncSamples() PASSED
+
+ComparisonSyncSeekTest > boundsRetriesAndFailsRatherThanAcceptingAFutureFrame() PASSED
+
+ComparisonSyncSeekTest > retriesAFutureBFrameSyncPointWithoutMovingTheRequestedTarget() PASSED
+
+ComparisonSyncSeekTest > leavesAlreadyPrecedingSyncSeeksUnchangedIncludingZeroAndNegativeOffsets() PASSED
+
+ComparisonTimeMappingTest > learnerMusicStartsEarlier() PASSED
+
+ComparisonTimeMappingTest > noOverlapIsExplicit() PASSED
+
+ComparisonTimeMappingTest > distinctNonZeroSourceValidRanges() PASSED
+
+ComparisonTimeMappingTest > outOfRangeCompareTimeIsNotSilentlyClamped() PASSED
+
+ComparisonTimeMappingTest > invalidInputsNeverWrap() PASSED
+
+ComparisonTimeMappingTest > learnerMusicStartsThreeSecondsLater() PASSED
+
+ComparisonUriPermissionsTest > persist only access returned by the picker() PASSED
+
+ComparisonUriPermissionsTest > no read or write grant does not request persistent access() PASSED
+
+CrossDeviceTrackingDiagnosticsTest > adaptiveSchedulerForcesCpuOnGapLocalOverlapAndProtectedTrackState() PASSED
+
+CrossDeviceTrackingDiagnosticsTest > adaptiveSchedulerSkipsStableSeparatedGpuFrameWithoutGivingGpuIdentityAuthority() PASSED
+
+CrossDeviceTrackingDiagnosticsTest > adaptiveSchedulerForcesCpuWhenProtectedGpuCandidateIsMissing() PASSED
+
+CrossDeviceTrackingDiagnosticsTest > conservativeUnknownFaceEvidenceRejectsFarOrMultiOwnerGeometry() PASSED
+
+CrossDeviceTrackingDiagnosticsTest > adaptiveSchedulerIgnoresUnrelatedOverlapAwayFromProtectedIdentity() PASSED
+
+CrossDeviceTrackingDiagnosticsTest > conservativeUnknownFaceEvidenceRequiresOneStrongDormantSelectedOwner() PASSED
+
+CrossDeviceTrackingDiagnosticsTest > productionTrackIdsAreMappedToCpuDetectionOrderByFirstFrameGeometry() PASSED
+
+CrossDeviceTrackingDiagnosticsTest > disablingAdaptiveMatrixPreservesCpuFullTrackingExactly() PASSED
+
+DiagnosticBundleExporterTest > bundleScopeExcludesHistoricalSessionsAndJobs() PASSED
+
+DiagnosticBundleExporterTest > testBundleCreatesValidZipWithRequiredEntries() FAILED
+    org.opentest4j.AssertionFailedError at DiagnosticBundleExporterTest.kt:104
+
+DiagnosticBundleExporterTest > previewBundleRejectsAllPerJobArtifactsWhenNoLifecycleJobExists() PASSED
+
+DiagnosticPrivacyTest > exceptionsAndNonGeneratedChannelRejectArbitraryDescriptions() PASSED
+
+DiagnosticPrivacyTest > actualZipRedactsHistoricTextPreservesQualityAndRejectsSourceLinks() FAILED
+    java.io.FileNotFoundException at DiagnosticPrivacyTest.kt:129
+
+DiagnosticPrivacyTest > legacyJobErrorsAreProjectedOnNewWritesWithoutChangingMediaFields() PASSED
+
+DiagnosticPrivacyTest > recursiveFieldsAreBoundedAndNeverStringifyUnknownObjects() PASSED
+
+NativeDiagnosticsNoHotPathBlockingTest > testCriticalEventDoesNotBlockCallingThread() PASSED
+
+YoloTensorDiagnosticsTest > fullExportGeometrySignatureDoesNotScanOrHashMaskBytes() PASSED
+
+YoloTensorDiagnosticsTest > associationMaskSummaryUsesTrackManagerThresholdWithoutMutatingBufferPosition() PASSED
+
+ExportJobStoreTest > testThrottledDiskWritesAndImmediateTerminalPersistence() PASSED
+
+ExportJobStoreTest > testProcessingJobBecomesInterruptedAfterRecovery() PASSED
+
+ExportTerminalStatusTest > unexpectedFailureStillReportsAnActionableError() PASSED
+
+ExportTerminalStatusTest > cancellationDuringNativeCleanupNeverBecomesFailure() PASSED
+
+OwnedExportJobsTest > cancelledParentBeforeBodyEntryStillFinishesOnce() PASSED
+
+OwnedExportJobsTest > failedCleanupDoesNotReleaseNativeLane() PASSED
+
+OwnedExportJobsTest > fastWorkerCannotReinsertCompletedJob() PASSED
+
+OwnedExportJobsTest > oldServiceCancellationNeverTouchesNewReservation() PASSED
+
+OwnedExportJobsTest > latestDuplicateOrProgressStartIdIsUsedOnlyWhenIdle() PASSED
+
+OwnedExportJobsTest > cancellationDoesNotCloseOrReleaseBlockedNativeWork() PASSED
+
+OwnedExportJobsTest > duplicateStartDoesNotFinishOrReplaceExistingWorker() PASSED
+
+PreviewExportResourceGateTest > detachDrainsAndPermanentlyRejectsOldOwner() PASSED
+
+PreviewExportResourceGateTest > cancelledDrainRollsBackOnlyItsOwnReservation() PASSED
+
+PreviewExportResourceGateTest > serviceDeserializedJobIdReleasesTheReservationByValue() PASSED
+
+PreviewExportResourceGateTest > cancelNotificationDoesNotReleaseExportUntilWorkerFinishes() PASSED
+
+PreviewExportResourceGateTest > exportWaitsForActualPreviewAndRejectsQueuedPreview() PASSED
+
+PreviewExportResourceGateTest > exportDrainsAllEngineOwnersAndFailsBeforeStartingOnCleanupError() PASSED
+
+PreviewExportResourceGateTest > cacheMutationIsBlockedDuringExportAndWaitsForPreview() PASSED
+
+UnifiedCancellationTest > testCoordinatorCancelJobSetsFlagAndUpdatesJobStore() PASSED
+
+FaceHeadRoiPlannerTest > invalid person box is rejected() PASSED
+
+FaceHeadRoiPlannerTest > upper roi stays square and centers normal target head() PASSED
+
+FaceHeadRoiPlannerTest > roi shifts inside frame while preserving edge anchor() PASSED
+
+FaceLocatorProviderTest > face locator is disabled unless caller explicitly opts in() PASSED
+
+FacePersonAssociatorTest > one person cannot own two simultaneous face detections() PASSED
+
+FacePersonAssociatorTest > rejects a face-like box located in lower body() PASSED
+
+FacePersonAssociatorTest > allows partially clipped face above person box() PASSED
+
+FacePersonAssociatorTest > matches each face to the corresponding nearby person() PASSED
+
+FaceRoiCandidateSelectorTest > off anchor neighbor is rejected() PASSED
+
+FaceRoiCandidateSelectorTest > well separated central target still wins over neighbor() PASSED
+
+FaceRoiCandidateSelectorTest > shifted anchor supports target near frame boundary() PASSED
+
+FaceRoiCandidateSelectorTest > wide ROI cannot assign the adjacent person's face to the target() PASSED
+
+FaceRoiCandidateSelectorTest > central facial keypoints rescue profile bbox whose box center is off anchor() PASSED
+
+FaceRoiCandidateSelectorTest > central target wins over higher confidence neighboring face() PASSED
+
+FaceRoiCandidateSelectorTest > near tie around target anchor is rejected as ambiguous() PASSED
+
+HighResolutionPrivacyCoverageTest > bottom tile body mask is projected to source coordinates without letterbox leakage() PASSED
+
+HighResolutionPrivacyCoverageTest > lower-body fragment cannot become an anonymous face while distinct mirror foreground survives() PASSED
+
+HighResolutionPrivacyCoverageTest > current face evidence keeps visible adjacency but cannot inherit a dormant identity across a gap() PASSED
+
+HighResolutionPrivacyCoverageTest > tile clipping cannot create an anonymous face on a foreground torso() PASSED
+
+HighResolutionPrivacyCoverageTest > primary measurements stay unchanged while overlapping tile duplicates collapse() PASSED
+
+HighResolutionPrivacyCoverageTest > distinct partially occluded neighboring people are retained() PASSED
+
+HighResolutionPrivacyCoverageTest > detailed all-person coverage never adopts a selective or follow exemption() PASSED
+
+HighResolutionPrivacyCoverageTest > fully protected scene retains every current face observation() PASSED
+
+YoloLiteRtTensorAdapterTest > array production path matches buffer compatibility path exactly() PASSED
+
+YoloLiteRtTensorAdapterTest > array production path exposes decode substage telemetry() PASSED
+
+YoloMaskAwareNmsTest > testCaseC_NonOverlappingBboxesBothSurvive() PASSED
+
+YoloMaskAwareNmsTest > arrayBackedProtoViewsMatchBufferBackedMaskBytesExactly() PASSED
+
+YoloMaskAwareNmsTest > exactMaskByteSigmoidMatchesHistoricalAcrossFloatBoundaries() PASSED
+
+YoloMaskAwareNmsTest > testCaseB_DuplicateDetectionIsSuppressed() PASSED
+
+YoloMaskAwareNmsTest > channelMajorNchwDecodeMatchesPerPixelReferenceAcrossCandidateBounds() PASSED
+
+YoloMaskAwareNmsTest > boundedCandidateSupportMaskIouMatchesFullScanExactly() PASSED
+
+YoloMaskAwareNmsTest > testCaseA_TwoOverlappingPersonsBothSurvive() PASSED
+
+LiteRtModelRunnerPolicyTest > testRunnerCloseIsIdempotent() PASSED
+
+LiteRtModelRunnerPolicyTest > testPolicyDefaultsAndPresets() PASSED
+
+LiteRtTelemetryTest > testStrictGpuExceptionMessagePreservesModelNameAndDetails() PASSED
+
+LiteRtTelemetryTest > testLiteRtRuntimeInfoFields() PASSED
+
+AudioTrackCopierTest > ordinary audio access units preserve sync status() PASSED
+
+AudioTrackCopierTest > encrypted samples cannot masquerade as codec config() PASSED
+
+AudioTrackCopierTest > unknown flags fail closed() PASSED
+
+AudioTrackCopierTest > partial samples cannot masquerade as end of stream() PASSED
+
+CanonicalYuvInferenceDecoderTest > limitedRangeNeutralEndpointsMapToBlackAndWhite() PASSED
+
+CanonicalYuvInferenceDecoderTest > precomputedPlaneOffsetsMatchReferenceSamplerForPaddedInterleavedLayout() PASSED
+
+CanonicalYuvInferenceDecoderTest > optimizedPlaneSamplerMatchesFixedPointBilinearReference() PASSED
+
+CanonicalYuvInferenceDecoderTest > packedRgbaIntWritesSameLittleEndianByteContract() PASSED
+
+CanonicalYuvInferenceDecoderTest > fullRangeNeutralKeepsLumaExactly() PASSED
+
+CanonicalYuvInferenceDecoderTest > optimizedColorLookupIsByteExactAcrossStandardsAndRanges() PASSED
+
+CanonicalYuvInferenceDecoderTest > inverseRotationMapsDisplayCornersBackToSource() PASSED
+
+GallerySaveTransactionTest > emptySourceNeverPublishesEmptyMedia() PASSED
+
+GallerySaveTransactionTest > inputCloseFailureDoesNotPublish() PASSED
+
+GallerySaveTransactionTest > outputCloseFailureDoesNotPublish() PASSED
+
+GallerySaveTransactionTest > publishFailureRollsBack() PASSED
+
+GallerySaveTransactionTest > rollbackFailureIsExplicitAndRetainsBothCauses() PASSED
+
+GallerySaveTransactionTest > cancellationAfterCommitStartsCannotDeletePublishedAsset() PASSED
+
+GallerySaveTransactionTest > fullDiskWriteFailureRollsBackOnlyOwnedUri() PASSED
+
+GallerySaveTransactionTest > insertFailureDoesNotDeleteAnyExistingMedia() PASSED
+
+GallerySaveTransactionTest > outputOpenFailureRollsBackOnlyOwnedUri() PASSED
+
+GallerySaveTransactionTest > failedSaveNeverChangesSyntheticSourceFile() PASSED
+
+GallerySaveTransactionTest > flushFailureRollsBackBeforePublish() PASSED
+
+GallerySaveTransactionTest > closesBothStreamsBeforePublishingAndPreservesBytes() PASSED
+
+GallerySaveTransactionTest > cancellationAfterCopyButBeforeCommitRollsBack() PASSED
+
+GallerySaveTransactionTest > preCancelledOperationNeverOpensSource() PASSED
+
+GallerySaveTransactionTest > readFailureRollsBackOnlyOwnedUri() PASSED
+
+GallerySaveTransactionTest > cancellationAfterInsertRollsBackBeforeOpeningOutput() PASSED
+
+GallerySaveTransactionTest > sourceOpenFailureDoesNotCreateDestination() PASSED
+
+GallerySaveWorkerTest > closeRacingSubmissionRejectionStillRepliesOnce() PASSED
+
+GallerySaveWorkerTest > oldAttachmentCloseCannotCancelNewAttachmentWork() PASSED
+
+GallerySaveWorkerTest > slowIoNeverRunsOnCallerAndReplyUsesCapturedDispatcher() PASSED
+
+GallerySaveWorkerTest > detachDuringCopyRollsBackBeforeSingleFailureReply() PASSED
+
+GallerySaveWorkerTest > queuedDetachDrainsCancellationAndRepliesExactlyOnce() PASSED
+
+GallerySaveWorkerTest > replyFailureNeverRollsBackCommittedMedia() PASSED
+
+GallerySaveWorkerTest > detachAfterCommitStartsDoesNotUndoSuccessfulSave() PASSED
+
+GallerySaveWorkerTest > submitAfterDetachRepliesWithoutSchedulingIo() PASSED
+
+Mp4FastStartTest > co64 offsets across multiple media boxes use each actual relocation() PASSED
+
+Mp4FastStartTest > existing fast start file is returned unchanged without another copy() PASSED
+
+Mp4FastStartTest > tail index relocation preserves all sample bytes and updates stco() PASSED
+
+Mp4FastStartTest > cancellation removes only its own copy and preserves the muxed input() PASSED
+
+Mp4FastStartTest > invalid chunk reference cannot publish a damaged copy or alter the original() PASSED
+
+ExportFollowObservationTest > lostTargetCanHandOffToUniqueGeometricContinuation() PASSED
+
+ExportFollowObservationTest > handoffStopsAfterMaximumContinuityWindow() PASSED
+
+ExportFollowObservationTest > reacquiringDuplicateCanBeProxyOnlyWhenGeometryIsVeryClose() PASSED
+
+ExportFollowObservationTest > lostTargetHandoffRejectsDistantOrScaleMismatchedTrack() PASSED
+
+ExportFollowObservationTest > longGapCanBorrowExplicitObservedOccluderWithoutChangingIdentity() PASSED
+
+ExportFollowObservationTest > lateStrongContinuationCanChainToNextCameraIdentity() PASSED
+
+ExportFollowObservationTest > shortReacquireGapUsesPredictedBox() PASSED
+
+ExportFollowObservationTest > lateWeakContinuationDoesNotUseRelaxedEarlyThresholds() PASSED
+
+ExportFollowObservationTest > lostTargetHandoffRefusesAmbiguousNearbyCandidates() PASSED
+
+ExportFollowObservationTest > longOrLostGapHoldsLastCameraInsteadOfFollowingPredictionForever() PASSED
+
+ExportFollowObservationTest > observedFollowTargetUsesCurrentBox() PASSED
+
+ExportPipelinePrivacyModePolicyTest > final export uses tight mask whenever full body privacy is selected() PASSED
+
+ExportPipelinePrivacyModePolicyTest > deterministic face tracking primary preserves analyze ids without production tracker() PASSED
+
+ExportPipelinePrivacyModePolicyTest > face only identity roots fail safe to selected ids without analysis metadata() PASSED
+
+ExportPipelinePrivacyModePolicyTest > face reference canonicalization collapses subpixel cpu noise without touching tracker policy() PASSED
+
+ExportPipelinePrivacyModePolicyTest > fresh full body class primary is restricted to full body only exports() PASSED
+
+ExportPipelinePrivacyModePolicyTest > deterministic cpu primary is restricted to debug face only yolo exports() PASSED
+
+ExportPipelinePrivacyModePolicyTest > face only identity roots include credible unselected analysis neighbors() PASSED
+
+ExportPipelinePrivacyModePolicyTest > production CPU4T reuse is restricted to debug full body CPU fallback() PASSED
+
+PreviewAnalysisCacheTest > testClearForAnalysisSelectivelyRemovesTargetCache() PASSED
+
+PreviewAnalysisCacheTest > testLruEvictionRecyclesOldest() PASSED
+
+PreviewAnalysisCacheTest > clearCannotRecycleWhileCopyIsReadingBitmap() PASSED
+
+PreviewAnalysisCacheTest > copyRemainsOwnedByCallerAfterEviction() PASSED
+
+ProcessingProfileTest > testDefaultFallbackToQuality() PASSED
+
+ProcessingProfileTest > fullBodyAndMultiPersonPrivacyNeverRenderWithSkippedSilhouetteObservations() PASSED
+
+ProcessingProfileTest > testBalancedProfileUsesStride2() PASSED
+
+ProcessingProfileTest > testInferenceCadenceWithStride3MaintainsTracking() PASSED
+
+ProcessingProfileTest > testQualityProfileUsesStride1() PASSED
+
+ProcessingProfileTest > singleFacePixelTrackingKeepsTheRequestedAccelerationCadence() PASSED
+
+ProcessingProfileTest > testSpeedProfileUsesStride3() PASSED
+
+SurfaceFrameHandoffTest > testStrictMonotonicPtsCfrSchedule() PASSED
+
+SurfaceFrameHandoffTest > testEosTokenTerminatesLoopCleanly() PASSED
+
+SurfaceFrameHandoffTest > testTimeoutSkipsStaleFrameWithoutLeakingDuplicatePts() PASSED
+
+SurfaceFrameHandoffTest > testDecoderTokenSequenceHandshakeMonotonic() PASSED
+
+SurfaceTimestampStatsTest > testSurfaceTimestampMetricsComputation() PASSED
+
+BodyMaskFaceHeadEstimatorTest > arm crossing local head window cannot turn body silhouette into face centroid() PASSED
+
+BodyMaskFaceHeadEstimatorTest > distant raised arm cannot pull local face fallback away from head seed() PASSED
+
+BodyMaskFaceHeadEstimatorTest > current body mask pulls fallback toward shifted head silhouette() PASSED
+
+BodyMaskFaceHeadEstimatorTest > missing mapper refuses mask geometry instead of guessing letterbox() PASSED
+
+CanonicalFaceRoiSamplerTest > optimized sampler matches scalar reference for varied deterministic rois() PASSED
+
+CanonicalFaceRoiSamplerTest > opaque prepared canonical fast path matches historical prepared sampler byte exactly() PASSED
+
+CanonicalFaceRoiSamplerTest > same canonical pixels and source rect produce byte exact roi() PASSED
+
+CanonicalFaceRoiSamplerTest > bottom up canonical buffer becomes top down face roi() PASSED
+
+CanonicalFaceRoiSamplerTest > prepared canonical input matches direct sampler byte exactly() PASSED
+
+FaceOcclusionBridgePolicyTest > short hold follows only coherent observed body translation() PASSED
+
+FaceOcclusionBridgePolicyTest > only appearance occlusion rejects are eligible() PASSED
+
+FaceOcclusionBridgePolicyTest > unobserved hold stays local and expires at one hundred milliseconds() PASSED
+
+FaceOnlyDormancyPolicyTest > fresh ambiguous body motion can bridge beyond stale timeout without identity commit() PASSED
+
+FaceOnlyDormancyPolicyTest > fresh body motion never invents a face without trusted face history() PASSED
+
+FaceOnlyDormancyPolicyTest > medium miss without body mask becomes dormant instead of guessing() PASSED
+
+FaceOnlyDormancyPolicyTest > medium miss without trusted face becomes dormant() PASSED
+
+FaceOnlyDormancyPolicyTest > long unobserved identity stops rendering despite retained body mask() PASSED
+
+FaceOnlyDormancyPolicyTest > fresh observation always uses direct face mode() PASSED
+
+FaceOnlyDormancyPolicyTest > medium miss uses full body mask compensation when face history exists() PASSED
+
+FaceOnlyDormancyPolicyTest > missing observation history does not invent face geometry() PASSED
+
+FaceOnlyDormancyPolicyTest > short YOLO miss keeps direct privacy bridge() PASSED
+
+FaceOnlyDormantReactivationPolicyTest > dormant detector hit cannot enlarge hidden trusted face size() PASSED
+
+FaceOnlyDormantReactivationPolicyTest > dormant probe rejects body translation larger than half trusted face diameter() PASSED
+
+FaceOnlyDormantReactivationPolicyTest > dormant probe requires current fresh motion and hidden trusted face() PASSED
+
+FacePixelMotionTrackerTest > high resolution roi tracker follows a small source face without full frame downscale() PASSED
+
+FacePixelMotionTrackerTest > unique face texture follows current pixels and preserves source size() PASSED
+
+FacePixelMotionTrackerTest > continuous current pixel evidence renews the tracklet but a real gap expires it() PASSED
+
+FacePixelMotionTrackerTest > bulk roi gray conversion preserves exact match outcomes() PASSED
+
+FacePixelMotionTrackerTest > repeated lookalike peaks are rejected as ambiguous() PASSED
+
+FacePixelMotionTrackerTest > roi partial occlusion fallback still rejects repeated lookalike peaks() PASSED
+
+FacePixelMotionTrackerTest > roi tracker cannot renew forever without a detector refresh() PASSED
+
+FacePixelMotionTrackerTest > roi partial occlusion keeps current pixel evidence from two agreeing quadrants() PASSED
+
+FacePrivacyClassFallbackContinuityTest > unguided frame follows body translation instead of raw body head center() PASSED
+
+FacePrivacyClassFallbackContinuityTest > guided availability toggle is bounded for one anonymous selected owner() PASSED
+
+FacePrivacyClassFallbackResolverTest > evidence with any non selected possible owner never gets class fallback() PASSED
+
+FacePrivacyClassFallbackResolverTest > selected ambiguous evidence fills uncovered dormant face without identity assignment() PASSED
+
+FacePrivacyClassFallbackResolverTest > unique owner fallback keeps fresh center but reuses conservative trusted face size() PASSED
+
+FacePrivacyMaskBuilderTest > face seam closure preserves open edges and larger gaps() PASSED
+
+FacePrivacyMaskBuilderTest > compatible face mask unions with existing body privacy mask() PASSED
+
+FacePrivacyMaskBuilderTest > face ellipse rasterizes in visual top letterboxed proto coordinates() PASSED
+
+FacePrivacyMaskBuilderTest > multiple face regions rasterize as union() PASSED
+
+FacePrivacyMaskBuilderTest > frame edge ellipse clips safely while preserving privacy pixels() PASSED
+
+FacePrivacyMaskBuilderTest > detector miss or ambiguity falls back to nonzero yolo head region() PASSED
+
+FacePrivacyMaskBuilderTest > incompatible privacy mask union fails closed() PASSED
+
+FacePrivacyMaskBuilderTest > adjacent opaque face masks close an isolated raster seam without mutating inputs() PASSED
+
+FacePrivacyMaskBuilderTest > detected facial keypoints move privacy center away from pose-skewed bbox center() PASSED
+
+FacePrivacyMaskBuilderTest > selected roi face maps to expanded detected privacy ellipse() PASSED
+
+FacePrivacyTemporalStabilizerTest > fallback after trusted detection keeps conservative size without generic jump() PASSED
+
+FacePrivacyTemporalStabilizerTest > fallback center follows current yolo head rather than stale detector center() PASSED
+
+FacePrivacyTemporalStabilizerTest > observed bbox bottom jump with stable top is not trusted as person translation() PASSED
+
+FacePrivacyTemporalStabilizerTest > detector recovery shrinks gradually instead of snapping() PASSED
+
+FacePrivacyTemporalStabilizerTest > retaining active tracks drops old stabilization history() PASSED
+
+FacePrivacyTemporalStabilizerTest > trusted current pixel center is not slowed by residual position gate() PASSED
+
+FacePrivacyTemporalStabilizerTest > implausible one frame face jump is bounded relative to stable person motion() PASSED
+
+FacePrivacyTemporalStabilizerTest > whole person translation is not slowed by relative face jump gate() PASSED
+
+FacePrivacyTemporalStabilizerTest > observed bbox top jump with stable feet is not trusted as person translation() PASSED
+
+FacePrivacyTemporalStabilizerTest > fallback without trusted detection keeps original conservative geometry() PASSED
+
+FacePrivacyTemporalStabilizerTest > unobserved tracker jump cannot bypass face position gate as whole person motion() PASSED
+
+FacePrivacyTemporalStabilizerTest > trusted face size does not explode when current person bbox expands() PASSED
+
+FaceReferenceGeometryCanonicalizerTest > subpixel roi plans collapse before canonical sampling() PASSED
+
+FaceReferenceGeometryCanonicalizerTest > subpixel face regions collapse to the same half pixel lattice() PASSED
+
+FaceTrustedMaskFallbackTest > fresh mask moves trusted seed toward current head without following body box center() PASSED
+
+FaceTrustedMaskFallbackTest > stale trusted seed cannot render without current head like mask support() PASSED
+
+PersonBboxMotionEstimatorTest > coherent whole-person translation follows both axes() PASSED
+
+PersonBboxMotionEstimatorTest > symmetric contraction preserves small center movement() PASSED
+
+PersonBboxMotionEstimatorTest > symmetric expansion does not invent translation() PASSED
+
+PersonBboxMotionEstimatorTest > top-edge-only coverage jitter does not become vertical translation() PASSED
+
+PersonBboxMotionEstimatorTest > small edge disagreement keeps average translation() PASSED
+
+PersonBboxMotionEstimatorTest > bottom-edge-only coverage jitter does not become vertical translation() PASSED
+
+PersonBboxMotionEstimatorTest > one-sided width change does not become horizontal translation() PASSED
+
+PersonPrivacyModeResolverTest > full body wins when the same id appears in both request lists() PASSED
+
+PersonPrivacyModeResolverTest > legacy selected ids remain full body when face list is absent() PASSED
+
+PersonPrivacyModeResolverTest > face-only ids become face-only without changing full-body ids() PASSED
+
+PersonPrivacyModeResolverTest > duplicate request ids collapse deterministically() PASSED
+
+PersonPrivacyPolicyAdapterTest > face only missing detector mask escalates to full body instead of exposing face() PASSED
+
+PersonPrivacyPolicyAdapterTest > incompatible face mask escalates to full body() PASSED
+
+PersonPrivacyPolicyAdapterTest > face only substitutes privacy mask but preserves yolo identity geometry and state() PASSED
+
+PersonPrivacyPolicyAdapterTest > mixed face and full body policies reuse existing resolver union() PASSED
+
+PersonPrivacyPolicyAdapterTest > selected track with no face or body mask is explicitly unresolved() PASSED
+
+PersonPrivacyPolicyAdapterTest > none persons retain body masks for occlusion evidence without becoming selected() PASSED
+
+PersonPrivacyPolicyAdapterTest > foreground body evidence cannot punch a hole through face privacy() PASSED
+
+PrivacyActiveSelectedBehindForegroundTest > testActiveSelectedBehindForegroundIsLayeredUnderForeground() PASSED
+
+PrivacyActiveSelectedForegroundTest > testActiveSelectedInForegroundNeverSubtractedByBackgroundUnselected() PASSED
+
+PrivacyAmbiguousDepthPrivacyWinsTest > testAmbiguousDepthPreservesPrivacyMask() PASSED
+
+PrivacyClassTemporalTrackerTest > mergedDetectionBetweenClassesRemainsUnknown() PASSED
+
+PrivacyClassTemporalTrackerTest > hardSeedsAllowFreshClassInferenceOnFollowingFrame() PASSED
+
+PrivacyClassTemporalTrackerTest > farNewEntrantWithoutHardEvidenceStaysUnknown() PASSED
+
+PrivacyClassTemporalTrackerTest > selectedAndUnselectedCrossWithoutExactIdentityCommits() PASSED
+
+PrivacyClassTemporalTrackerTest > runtimeHardLabelsCannotOverwriteInitialPrivacyRoots() PASSED
+
+PrivacyClassTemporalTrackerTest > oneFrameOcclusionRetainsUnselectedClassOnReturn() PASSED
+
+PrivacyClassTemporalTrackerTest > frameSimilarityCachePreservesDecisionsAndEliminatesDuplicateEvaluations() PASSED
+
+PrivacyFreshClassEvidenceTest > freshPrimaryTinyDepthCoreWithoutIndependentOwnershipKeepsPrivacy() PASSED
+
+PrivacyFreshClassEvidenceTest > externalFreshSelectedCoverageMetadataSuppressesDuplicateFallback() PASSED
+
+PrivacyFreshClassEvidenceTest > trackedSelectedFallbackDoesNotUseRelaxedFreshBboxGate() PASSED
+
+PrivacyFreshClassEvidenceTest > freshSelectedClassEvidenceReplacesStaleSelectedMaskWithoutAssigningIdentity() PASSED
+
+PrivacyFreshClassEvidenceTest > freshPrimaryCannotCreatePrivacyWhenUserSelectionIsEmpty() PASSED
+
+PrivacyFreshClassEvidenceTest > freshPrimaryStrongForegroundUnselectedCarvesEvenWhenInstanceProbabilitiesTie() PASSED
+
+PrivacyFreshClassEvidenceTest > distantTemporalSelectedEvidenceDoesNotDisableUnmatchedStaleFallback() PASSED
+
+PrivacyFreshClassEvidenceTest > overlappingSelectedBodiesRetainUncoveredRearSilhouette() PASSED
+
+PrivacyFreshClassEvidenceTest > freshPrimaryTinyDepthCoreCanCarveWhenIndependentOwnershipIsStrong() PASSED
+
+PrivacyFreshClassEvidenceTest > freshPrimaryNeverUsesTrackedFallbackOnCurrentFreshUnselectedPerson() PASSED
+
+PrivacyFreshClassEvidenceTest > freshPrimaryBackgroundUnselectedNeverCarvesTiedSelectedMask() PASSED
+
+PrivacyFreshClassEvidenceTest > freshPrimaryUsesOnlyMissingSelectedCountAsTrackedFallback() PASSED
+
+PrivacyFreshClassEvidenceTest > renderOccluderNeverOverridesAnotherSelectedTarget() PASSED
+
+PrivacyFreshClassEvidenceTest > freshPrimaryRejectsFallbackOlderThanAbsoluteObservationWindowEvenWhenStateCounterReset() PASSED
+
+PrivacyFreshClassEvidenceTest > temporalSelectedEvidenceAutomaticallyReplacesMatchingStaleGhostOneToOne() PASSED
+
+PrivacyFreshClassEvidenceTest > freshPrimaryForegroundUnselectedCarvesTrackedSelectedFallback() PASSED
+
+PrivacyFreshClassEvidenceTest > freshPrimaryTinyDepthCoreCanCarveWhenCurrentGeometryIsStrong() PASSED
+
+PrivacyFreshClassEvidenceTest > singletonFreshSelectedResidualSuppressesSameTrackedFallbackAndUsesOtherMissingSlot() PASSED
+
+PrivacyFreshClassEvidenceTest > freshPrimaryAmbiguousDepthKeepsPrivacyWhenInstanceProbabilitiesTie() PASSED
+
+PrivacyFreshClassEvidenceTest > freshPrimaryStrongForegroundCanUseMaskEvidenceWhenFreshBboxOverlapIsJustBelowLegacyGate() PASSED
+
+PrivacyFreshClassEvidenceTest > freshPrimaryForegroundUsesRendererVisibleSoftMaskSupport() PASSED
+
+PrivacyFreshClassEvidenceTest > freshUnselectedClassEvidenceCanExposeClearPixelsOverStaleSelectedMask() PASSED
+
+PrivacyFreshClassEvidenceTest > trackedSelectedFallbackKeepsPrivacyWhenFreshDepthIsAmbiguous() PASSED
+
+PrivacyFreshClassEvidenceTest > freshPrimaryIgnoresWrongTrackedSelectedMaskOnFreshUnselectedPerson() PASSED
+
+PrivacyFreshOccluderTest > testActiveTargetNeverSubtractedByUnselectedPerson() PASSED
+
+PrivacyFreshOccluderTest > testExplicitOccluderRelationAloneCannotCarveAmbiguousSelectedPrivacy() PASSED
+
+PrivacyFreshOccluderTest > testOccludedTargetPreservesSafetyBoundaryWhenEroded() PASSED
+
+PrivacyMultipleSelectedOwnershipTest > testMultiSelectedUnionCombinesWithoutInterference() PASSED
+
+PrivacyOccludedStrongForegroundTest > testExplicitOccluderNeedsPixelEvidenceBeforeCarvingSelectedPrivacy() PASSED
+
+PrivacyOccludedStrongForegroundTest > conservativeMixedPolicyUsesFreshExplicitOccluderCoreWithStrongDepth() PASSED
+
+PrivacyOccludedStrongForegroundTest > conservativeMixedPolicyRejectsUnconfirmedOccluderWhileTargetIsOccluded() PASSED
+
+PrivacyOccluderCoreErosionTest > testErodeReducesMaskDimensionsByRadius() PASSED
+
+PrivacyOcclusionResolverTest > faceOnlyNoCarveFastPathsPreserveExactResolvedMasks() PASSED
+
+PrivacyOcclusionResolverTest > testCase2_OccludedSelectedTargetCarvedOnlyByExplicitOccluder() PASSED
+
+PrivacyOcclusionResolverTest > testCase5_TwoUnselectedPersonsNeverProducePrivacyMask() PASSED
+
+PrivacyOcclusionResolverTest > bboxDisjointUnselectedMaskMatchesNoOccluderSelectedUnionPixelForPixel() PASSED
+
+PrivacyOcclusionResolverTest > testCase3_TwoSelectedPersonsBothAnonymizedEvenWhenOccluding() PASSED
+
+PrivacyOcclusionResolverTest > testCase4_MultiTargetIsolationOccluderDoesNotAffectUnrelatedTarget() PASSED
+
+PrivacyOcclusionResolverTest > testCase1_ActiveSelectedTargetNeverCarvedByUnselectedPerson() PASSED
+
+PrivacyOcclusionResolverTest > allSelectedFastPathMatchesPerTargetDilationThenUnionPixelForPixel() PASSED
+
+PrivacyRawMaskOwnershipTest > testCanonicalRawMaskAreaIsNotAlteredByTracking() PASSED
+
+PrivacyReacquiringNoStaleHoleTest > testReacquiringTargetNeverSubtractedByStaleOccluder() PASSED
+
+PrivacySafetyBackportTest > missingCurrentSelectedFullBodyMaskMustFailClosed() PASSED
+
+PrivacySafetyBackportTest > multipleProtectedTracksReportOnlyCurrentInvalidMasks() PASSED
+
+PrivacySafetyBackportTest > truncatedMaskBufferIsRejectedWithoutReadingOutOfBounds() PASSED
+
+PrivacySafetyBackportTest > onlyMaskPixelsAtOrAboveRealTightThresholdAreRenderable() PASSED
+
+PrivacySoftPixelOwnershipTest > testNewFreshForegroundCanOwnPixelsWhenInstanceEvidenceIsOverwhelming() PASSED
+
+PrivacySoftPixelOwnershipTest > testFreshUnselectedCanOwnPixelsAgainstClearlyStaleSelectedMask() PASSED
+
+PrivacySoftPixelOwnershipTest > testNewUnselectedIdentityCannotCarveOnAmbiguousEvidence() PASSED
+
+PrivacySoftPixelOwnershipTest > testFootYAloneCannotOverrideAmbiguousSoftOwnership() PASSED
+
+PrivacySoftPixelOwnershipTest > testSoftConfidenceCanEstablishUnselectedPixelOwnerWithoutFootYDepth() PASSED
+
+ResolvedPrivacyMergeTest > face only no-occluder merge fast path is byte exact() PASSED
+
+ResolvedPrivacyMergeTest > one selected target hole cannot carve another selected target privacy() PASSED
+
+ResolvedPrivacyMergeTest > inconsistent resolved flags fail closed() PASSED
+
+ResolvedPrivacyMergeTest > incompatible resolved mask contracts fail closed() PASSED
+
+ResolvedPrivacyMergeTest > empty resolved list stays empty() PASSED
+
+PipelineProfilerTest > snapshotSummaryExposesStructuredStageTimings() PASSED
+
+LegStretchRenderTest > legStretchNoLongerUsesPrivacyMaskAsBeautyMask() PASSED
+
+LegStretchRenderTest > legStretchUsesIndependentProtagonistMask() PASSED
+
+PrivacyRenderGlErrorPolicyTest > successfulRenderAndPreviewKeepExistingPolicy() PASSED
+
+PrivacyRenderGlErrorPolicyTest > glFailureAbortsFaceOnlyProtectedExport() PASSED
+
+PrivacyRenderGlErrorPolicyTest > validFaceStickerStillUsesOverlayOnlyWhenAllEvidenceIsPresent() PASSED
+
+PrivacyRenderGlErrorPolicyTest > missingMainShaderFailsClosedForProtectedFullBodyOrFaceExport() PASSED
+
+PrivacyRenderGlErrorPolicyTest > previewAndOptionalShadowCropKeepLogOnlyPolicy() PASSED
+
+PrivacyRenderGlErrorPolicyTest > glFailureAbortsProtectedFullBodyExport() PASSED
+
+PrivacyRenderGlErrorPolicyTest > finalProtectedPortraitCropMustAbortOnGlErrorOrMissingProgram() PASSED
+
+PrivacyRenderGlErrorPolicyTest > missingOptionalFaceStickerShaderMustRetainOpaquePrivacyCompositor() PASSED
+
+RenderCoordinateConventionTest > glBottomMapsToVisualBottom() PASSED
+
+RenderCoordinateConventionTest > testBitmapTextureMatrixFlipsY() PASSED
+
+RenderCoordinateConventionTest > glCenterRemainsCenter() PASSED
+
+RenderCoordinateConventionTest > testMaskShaderUsesVisualTopLeftYConvention() PASSED
+
+RenderCoordinateConventionTest > testComputeTransformMatrixDegenerateProtection() PASSED
+
+RenderCoordinateConventionTest > glTopMapsToVisualTop() PASSED
+
+StickerRenderTest > testHeadZonePlacementCalculation() PASSED
+
+StickerRenderTest > testBuiltInStickerVariantsAreRenderable() PASSED
+
+StickerRenderTest > testDefaultStickerBitmapCreation() PASSED
+
+StickerRenderTest > faceStickerPlacementCoversPrivacyEllipseWithOverscan() PASSED
+
+StickerRenderTest > testShaderSourcesContainStickerUniforms() PASSED
+
+StickerRenderTest > testMaskBufferMergingLogic() PASSED
+
+ExportForegroundServiceTypeTest > android 15 and newer use media processing foreground service type() PASSED
+
+ExportForegroundServiceTypeTest > android 14 uses data sync foreground service type() PASSED
+
+ExportForegroundServiceTypeTest > export GPU fallback uses the validated CPU4T thread count() PASSED
+
+AnalysisIdMappingTest > testReorderedExportDetectionsMapToOriginalAnalysisIds() PASSED
+
+RegenerableCacheRegistryTest > hundredSyntheticSessionsReleaseOnlyTheirOwnFiles() PASSED
+
+RegenerableCacheRegistryTest > releaseWaitsForRealPreviewAndExportCompletion() PASSED
+
+RegenerableCacheRegistryTest > futureTimestampsAndUnknownNamesAreConservativelySkipped() PASSED
+
+RegenerableCacheRegistryTest > linksCannotEscapeWhitelistAndSourceUriIsNeverFollowed() PASSED
+
+RegenerableCacheRegistryTest > cancelledNativeWorkerKeepsCacheUntilActualCompletionCallback() PASSED
+
+RegenerableCacheRegistryTest > memoryCleanupWaitsForRealLeaseAndFailedDiskCleanupRetries() PASSED
+
+RegenerableCacheRegistryTest > orphanTtlAndInactiveBudgetExcludeRetainedGroups() PASSED
+
+RegenerableCacheRegistryTest > trimReturnedPathsRemainRetainedUntilOwnerDetach() PASSED
+
+RegenerableCacheRegistryTest > identicalClockStillCreatesUniqueIdsAndInvalidAcquireCannotTouchFiles() PASSED
+
+RegenerableCacheRegistryTest > detachProtectsInFlightAnalysisAndOtherEngine() PASSED
+
+RegenerableCacheRegistryTest > exactPreviewGroupDoesNotDeletePrefixCollisionsOrExcludedTrees() PASSED
+
+HungarianSolverTest > testRectangularMoreTracksThanDetections() PASSED
+
+HungarianSolverTest > testExactDiagonalMatching() PASSED
+
+HungarianSolverTest > testEmptyMatrix() PASSED
+
+HungarianSolverTest > testRejectsHighCostEntriesAboveThreshold() PASSED
+
+KalmanFilterTest > testLearnsVerticalVelocity() PASSED
+
+KalmanFilterTest > testMissingDetectionsAndResume() PASSED
+
+KalmanFilterTest > testLearnsHorizontalVelocity() PASSED
+
+KalmanFilterTest > testStaticObjectStaysStable() PASSED
+
+KalmanGatingConsistencyTest > testKalmanPredictedStateEqualsAssociationPredictedBbox() PASSED
+
+LostTrackPrivacySafetyTest > testLostTrackPrivacyMaskRespectsPortraitLetterbox() PASSED
+
+LostTrackPrivacySafetyTest > testMixedModeLongLostSelectedTombstoneDoesNotReviveMaskInsideNewOcclusionGroup() PASSED
+
+LostTrackPrivacySafetyTest > testFastProtectedFrameEdgeExitStopsRenderingImmediately() PASSED
+
+LostTrackPrivacySafetyTest > testLostTrackPrivacyMaskRespectsLandscapeLetterbox() PASSED
+
+LostTrackPrivacySafetyTest > testLostFrame4DoesNotUseStaleMask() PASSED
+
+LostTrackPrivacySafetyTest > mixedModeObservationAgeWinsOverRepeatedOcclusionStateResets() PASSED
+
+LostTrackPrivacySafetyTest > testCanonicalMaskIsNotOverwrittenByWarpOrFallback() PASSED
+
+LostTrackPrivacySafetyTest > testFastFrameEdgeExitKeepsLegacyLostMaskWhenDormancyPolicyDisabled() PASSED
+
+LostTrackPrivacySafetyTest > testReDetectionReplacesFallbackWithRealSegmentationMask() PASSED
+
+LostTrackPrivacySafetyTest > testMixedModeSelectedMaskStopsAfterThreeRealMissesButIdentitySurvives() PASSED
+
+LostTrackPrivacySafetyTest > testPrivacyCoverageThresholdOnMovingLostPerson() PASSED
+
+LostTrackPrivacySafetyTest > testLostTrackEventuallyRemoved() PASSED
+
+LostTrackPrivacySafetyTest > testProtectedSelectedRejectsWeakEvidenceRecoveryCandidate() PASSED
+
+LostTrackPrivacySafetyTest > testLostTrackFallbackMaskExpandsConservatively() PASSED
+
+LostTrackPrivacySafetyTest > testFullBodyOnlyKeepsHistoricalMaskAcrossSameThreeMisses() PASSED
+
+LostTrackPrivacySafetyTest > testLostFrame10PrivacyMaskFollowsPredictedBBox() PASSED
+
+LostTrackPrivacySafetyTest > testProtectedSelectedIdentitySurvivesRemovalWindowAndReacquiresOriginalId() PASSED
+
+SelectionSemanticsTest > testSinglePersonSelectedNeverLeaksToOthersEvenWhenLost() PASSED
+
+SelectionSemanticsTest > testEmptySelectionDoesNotAnonymizeAnyone() PASSED
+
+SelectionSemanticsTest > testMultiPersonSelectiveAnonymization() PASSED
+
+TrackManagerAmbiguousCrossingTest > testGlobalNearTieBeforeOverlapDoesNotCommitIdentity() PASSED
+
+TrackManagerAmbiguousCrossingTest > unprotected two track winner does not become definitive occluder when protected mask ownership is equal() PASSED
+
+TrackManagerAmbiguousCrossingTest > motion evidence still rejects spatially unrelated candidate() PASSED
+
+TrackManagerAmbiguousCrossingTest > testProtectedGlobalCommitRequiresAbsoluteIdentityEvidence() PASSED
+
+TrackManagerAmbiguousCrossingTest > testAmbiguousOverlapDefersCommitWithoutSwapping() PASSED
+
+TrackManagerAmbiguousCrossingTest > two track uncertain occluder requires face only protected mask ownership() PASSED
+
+TrackManagerAmbiguousCrossingTest > motion evidence gate is looser than protected identity commit gate() PASSED
+
+TrackManagerAmbiguousReservationTest > testFullBodyIdentityDoesNotUseFaceOnlyReservationEscape() PASSED
+
+TrackManagerAmbiguousReservationTest > testStrictFaceOnlyReservationEscapeRequiresMultipleOwnerGroups() PASSED
+
+TrackManagerAmbiguousReservationTest > testStrictFaceOnlyIdentityCanEscapeTwoIndependentGroupReservations() PASSED
+
+TrackManagerAmbiguousReservationTest > testExtraDetectionInsideActiveOcclusionGroupDoesNotCreateDuplicateId() PASSED
+
+TrackManagerAmbiguousReservationTest > committedGroupMatchDoesNotEraseAssociationTimeReservationGeometry() PASSED
+
+TrackManagerAmbiguousReservationTest > testFacePrivacyClassEvidenceDoesNotChangeFullBodyPrivacySelection() PASSED
+
+TrackManagerAmbiguousReservationTest > testAmbiguousGroupDetectionDoesNotForciblyCreateNewTrackOrSwap() PASSED
+
+TrackManagerAmbiguousReservationTest > testNearTieGroupAssignmentsRemainAmbiguousWithoutSecondBestMargin() PASSED
+
+TrackManagerAmbiguousReservationTest > testStrictFaceOnlyIdentityDoesNotEscapeSingleNeighborGroupReservation() PASSED
+
+TrackManagerAmbiguousReservationTest > testOnlyInitializationExposesHardPrivacyClassRoots() PASSED
+
+TrackManagerAmbiguousReservationTest > testBalancedResidualSelectedDetectionBecomesFreshPrivacyEvidenceWithoutIdentityCommit() PASSED
+
+TrackManagerAmbiguousReservationTest > ambiguousHungarianDetectionSupportsNeighborReservationWithoutIdentityCommit() PASSED
+
+TrackManagerAmbiguousReservationTest > testAmbiguousGroupAssignmentsDoNotLeakIntoGlobalHungarian() PASSED
+
+TrackManagerAmbiguousReservationTest > testBalancedResidualUnselectedDetectionBecomesFreshPrivacyEvidenceWithoutIdentityCommit() PASSED
+
+TrackManagerAmbiguousReservationTest > testSubpixelGroupBoundaryGrazeDoesNotStealIndependentDetection() PASSED
+
+TrackManagerAmbiguousReservationTest > testFacePrivacyClassDoesNotChangeAmbiguousProtectedLostIdentityLifecycle() PASSED
+
+TrackManagerCameraPanTest > testCameraPanGlobalMotionCompensationPreservesIdentities() PASSED
+
+TrackManagerCrossingIdentityTest > testTwoDancersCrossingAtSpeedMaintainsIdentities() PASSED
+
+TrackManagerFastBackgroundExitTest > testFastBackgroundCrossingAndExitDoesNotStealForegroundIdentity() PASSED
+
+TrackManagerFastLateralMotionTest > testFastLateralDisplacementTrackPreservation() PASSED
+
+TrackManagerGroupLifecycleTest > testGroupLifecycleSeparationTransitionsToReacquiringAndDoesNotLock() PASSED
+
+TrackManagerLongOcclusionReacquisitionTest > testLongOcclusion25FramesDoesNotInstantRemoveTargetAndReacquiresId() PASSED
+
+TrackManagerLostRecoveryIsolationTest > globallyUncertainOccluderIsIgnoredOnlyForProtectedLostTrack() PASSED
+
+TrackManagerLostRecoveryIsolationTest > protectedLostAnchorOcclusionRequiresCurrentPredictionToRemainNearAnchor() PASSED
+
+TrackManagerLostRecoveryIsolationTest > testLostTrackIsNotGloballyReboundToPersonAtStaleLastObservedPosition() PASSED
+
+TrackManagerMovingMaskCrossingTest > testTwoPeopleCrossingPreservesIdContinuityWithMovingMasks() PASSED
+
+TrackManagerNoSceneMotionRegressionTest > testSceneMotionDisabledDoesNotShiftPredictedBboxes() PASSED
+
+TrackManagerOcclusionGroupFirstTest > testOcclusionGroupFirstPreventsIdSwapOnCrossing() PASSED
+
+TrackManagerOcclusionMotionConsensusTest > freshOccluderMotionIsUsedBeforeMatchedObservationStateIsOverwritten() PASSED
+
+TrackManagerOcclusionTest > testOccludedTargetNotRemovedQuicklyDuringOcclusion() PASSED
+
+TrackManagerOcclusionTest > testTwoPeopleCrossingMaintainsIdWithoutRectangleFallback() PASSED
+
+TrackManagerPrivacySelectionSplitTest > identity protected face-only track remains unselected for full-body privacy class() PASSED
+
+TrackManagerPrivacySelectionSplitTest > legacy protected setter keeps historical selected privacy semantics() PASSED
+
+TrackManagerReacquireIdentityTest > testReacquireTransitionPreservesIdentityAfterTemporaryOcclusion() PASSED
+
+TrackManagerSampledMaskIoUTest > protectedUnobservedPredictionIsBoundedAroundReliableAnchor() PASSED
+
+TrackManagerSampledMaskIoUTest > directWarpedSampleIoUMatchesMaterializedWarpOrdering() PASSED
+
+TrackManagerSampledMaskIoUTest > preparedWarpedSamplesMatchDirectIoUExactlyAcrossCandidates() PASSED
+
+TrackManagerSampledMaskIoUTest > protectedSelectedGroupCommitRequiresAbsoluteIdentityEvidence() PASSED
+
+TrackManagerSampledMaskIoUTest > sampledAssociationIoUPreservesCandidateOrdering() PASSED
+
+TrackManagerTest > testNewPersonEntersAndOldLeaves() PASSED
+
+TrackManagerTest > optimizedWarpMaskMatchesHistoricalScalarBytesWithDilation() PASSED
+
+TrackManagerTest > testWarpMaskMultiAspectRatioLetterboxParity() PASSED
+
+TrackManagerTest > skippedInferenceDoesNotIncrementMissedFrames() PASSED
+
+TrackManagerTest > testTemporarilyLostTrackWarpsMaskAndRecovers() PASSED
+
+TrackManagerTest > framesSinceLastObservationTracksAbsoluteFreshnessAcrossStateCounters() PASSED
+
+TrackManagerTest > actualEmptyDetectionIncrementsMissedFramesAndEventuallyMarksTrackLost() PASSED
+
+TrackManagerTest > testTwoPeopleCrossingMaintainsStableIds() PASSED
+
+TrackManagerTest > testRemovedTrackDoesNotReviveInPredictOrUpdate() PASSED
+
+TrackManagerTest > skippedInferenceStillMovesPredictedBBoxAndPrivacyMask() PASSED
+
+568 tests completed, 2 failed
+
+> Task :dance_native:testDebugUnitTest FAILED
+
+[Incubating] Problems report is available at: file:///D:/dance-anonymizer/mobile/app/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':dance_native:testDebugUnitTest'.
+> There were failing tests. See the report at: file:///D:/dance-anonymizer/mobile/app/build/dance_native/reports/tests/testDebugUnitTest/index.html
+
+* Try:
+> Run with --scan to generate a Build Scan (Powered by Develocity).
+
+BUILD FAILED in 55s
+40 actionable tasks: 13 executed, 27 up-to-date
