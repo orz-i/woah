@@ -1,0 +1,32 @@
+{
+  "case": "group_full_gradient",
+  "input": "group-hd-8956295.mp4",
+  "face_only": false,
+  "fill": "gradient",
+  "trim_start_ms": 0,
+  "trim_end_ms": 1600,
+  "detected_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "selected_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "state": "completed",
+  "frames": 40,
+  "output_bytes": 516480,
+  "expected_frames": 40,
+  "actual_frames": 40,
+  "last_output_pts_us": 1560000
+}

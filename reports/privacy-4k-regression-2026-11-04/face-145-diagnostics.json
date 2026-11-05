@@ -1,0 +1,242 @@
+[
+  {
+    "job_id": "job_f14b1868-ced9-46bc-917e-7051a8db282b",
+    "rows": [
+      {
+        "event": "FACE_ROI_DETECTOR_DIAGNOSTIC",
+        "job_id": "job_f14b1868-ced9-46bc-917e-7051a8db282b",
+        "pts_us": 5800000,
+        "track_id": -2000021,
+        "phase": "NORMAL",
+        "render_mode": "DIRECT",
+        "roi_pixel_source": "SURFACE_TEXTURE",
+        "rgba_grid_sha256": "e6e51e52dd209fc4e7bc5708daefd6b6e77664adbad35e2798b16feae1a766c4",
+        "observation_count": 1,
+        "selected_face": true,
+        "detector_rejected": false,
+        "pixel_reject_reason": "AMBIGUOUS_PEAK",
+        "source_rect_q0_0625px": [
+          7187,
+          16635,
+          10265,
+          19712
+        ],
+        "person_bbox_q0_0625px": [
+          7348,
+          17225,
+          10461,
+          26804
+        ]
+      },
+      {
+        "event": "FACE_ROI_DETECTOR_DIAGNOSTIC",
+        "job_id": "job_f14b1868-ced9-46bc-917e-7051a8db282b",
+        "pts_us": 5800000,
+        "track_id": -2000018,
+        "phase": "NORMAL",
+        "render_mode": "DIRECT",
+        "roi_pixel_source": "SURFACE_TEXTURE",
+        "rgba_grid_sha256": "c933b225de65533bf10963edbb5928c96ff2da0eb38d9afb43ebbc57db2a19c0",
+        "observation_count": 0,
+        "selected_face": false,
+        "detector_rejected": false,
+        "pixel_reject_reason": null,
+        "source_rect_q0_0625px": [
+          4490,
+          15037,
+          8380,
+          18927
+        ],
+        "person_bbox_q0_0625px": [
+          5157,
+          15962,
+          8003,
+          26892
+        ]
+      },
+      {
+        "event": "FACE_ONLY_STICKER_PLACEMENT_SIGNATURE",
+        "job_id": "job_f14b1868-ced9-46bc-917e-7051a8db282b",
+        "pts_us": 5800000,
+        "geometry_source": "[redacted]",
+        "mask_source": "[redacted]",
+        "placements": [
+          {
+            "track_id": -2000021,
+            "source": "DETECTED_FACE",
+            "source_rect_q0_0625px": [
+              8096,
+              17709,
+              9254,
+              18867
+            ]
+          },
+          {
+            "track_id": -2000019,
+            "source": "PREDICTED_FACE",
+            "source_rect_q0_0625px": [
+              16640,
+              9253,
+              19499,
+              12112
+            ]
+          },
+          {
+            "track_id": -2000018,
+            "source": "YOLO_HEAD_FALLBACK",
+            "source_rect_q0_0625px": [
+              5126,
+              16131,
+              6664,
+              17668
+            ]
+          },
+          {
+            "track_id": -2000013,
+            "source": "YOLO_HEAD_FALLBACK",
+            "source_rect_q0_0625px": [
+              34741,
+              11089,
+              37687,
+              14035
+            ]
+          },
+          {
+            "track_id": -2000006,
+            "source": "PREDICTED_FACE",
+            "source_rect_q0_0625px": [
+              42294,
+              7149,
+              45711,
+              10566
+            ]
+          },
+          {
+            "track_id": -2000004,
+            "source": "PREDICTED_FACE",
+            "source_rect_q0_0625px": [
+              25212,
+              4545,
+              29026,
+              8359
+            ]
+          },
+          {
+            "track_id": -2000002,
+            "source": "PREDICTED_FACE",
+            "source_rect_q0_0625px": [
+              16654,
+              9278,
+              19488,
+              12112
+            ]
+          },
+          {
+            "track_id": -2000001,
+            "source": "YOLO_HEAD_FALLBACK",
+            "source_rect_q0_0625px": [
+              10878,
+              14556,
+              12162,
+              15841
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "job_id": "job_f7cd7c99-1a80-4c48-86a9-0882267b6b1c",
+    "rows": [
+      {
+        "event": "FACE_ONLY_STICKER_PLACEMENT_SIGNATURE",
+        "job_id": "job_f7cd7c99-1a80-4c48-86a9-0882267b6b1c",
+        "pts_us": 5800000,
+        "geometry_source": "[redacted]",
+        "mask_source": "[redacted]",
+        "placements": [
+          {
+            "track_id": -2001178,
+            "source": "YOLO_HEAD_FALLBACK",
+            "source_rect_q0_0625px": [
+              41977,
+              6707,
+              46738,
+              11468
+            ]
+          },
+          {
+            "track_id": -2001177,
+            "source": "YOLO_HEAD_FALLBACK",
+            "source_rect_q0_0625px": [
+              33657,
+              13097,
+              37132,
+              16572
+            ]
+          },
+          {
+            "track_id": -2001176,
+            "source": "YOLO_HEAD_FALLBACK",
+            "source_rect_q0_0625px": [
+              25958,
+              4138,
+              31516,
+              9696
+            ]
+          },
+          {
+            "track_id": -2001175,
+            "source": "YOLO_HEAD_FALLBACK",
+            "source_rect_q0_0625px": [
+              19472,
+              9489,
+              23294,
+              13311
+            ]
+          },
+          {
+            "track_id": -2001174,
+            "source": "YOLO_HEAD_FALLBACK",
+            "source_rect_q0_0625px": [
+              14147,
+              8854,
+              19101,
+              13808
+            ]
+          },
+          {
+            "track_id": -2001173,
+            "source": "YOLO_HEAD_FALLBACK",
+            "source_rect_q0_0625px": [
+              10620,
+              14298,
+              12420,
+              16098
+            ]
+          },
+          {
+            "track_id": -2001172,
+            "source": "YOLO_HEAD_FALLBACK",
+            "source_rect_q0_0625px": [
+              8190,
+              17174,
+              9842,
+              18826
+            ]
+          },
+          {
+            "track_id": -2001171,
+            "source": "YOLO_HEAD_FALLBACK",
+            "source_rect_q0_0625px": [
+              5826,
+              16738,
+              7335,
+              18248
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

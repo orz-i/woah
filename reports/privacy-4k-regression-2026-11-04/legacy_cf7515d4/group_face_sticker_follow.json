@@ -1,0 +1,32 @@
+{
+  "case": "group_face_sticker_follow",
+  "input": "group-hd-8956295.mp4",
+  "face_only": true,
+  "fill": "sticker",
+  "trim_start_ms": 0,
+  "trim_end_ms": 3040,
+  "detected_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "selected_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "hero": 6,
+  "state": "completed",
+  "frames": 76,
+  "output_bytes": 1188176,
+  "expected_frames": 76,
+  "actual_frames": 76,
+  "last_output_pts_us": 3000000
+}

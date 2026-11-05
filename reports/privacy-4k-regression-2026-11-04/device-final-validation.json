@@ -1,0 +1,8 @@
+{
+  "recorded_at_utc": "2026-11-05T06:22:27.621380+00:00",
+  "main_app_pid": "31490",
+  "installed_app_apk_sha256": "59acfaf71dff0db1d694cb4ec8f7bf926ae77ea427aca3d98164813ff0b9659a",
+  "installed_test_apk_sha256": "0cd88802cd9a886edb350bcf4f71bdd2e5f22f983bc8d54300b4526b56b7243f",
+  "both_match_frozen_candidates": true,
+  "stay_on_setting_unchanged": true
+}

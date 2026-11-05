@@ -1,0 +1,28 @@
+[
+  {
+    "file": "group_4k_face_solid.mp4",
+    "sha256": "a7941f9f9d3fbfa0df257f61efc03d35e488b927d0ab28c44d964f147aa6bbaf",
+    "algorithm_version": 3,
+    "interior_margin_source_pixels": 12.0,
+    "frames": 581,
+    "frames_with_candidates": 1,
+    "candidates": [
+      {
+        "frame": 86,
+        "interior_pixels": 872,
+        "bbox": [
+          2399,
+          529,
+          26,
+          48
+        ],
+        "parent_bbox": [
+          2158,
+          308,
+          581,
+          510
+        ]
+      }
+    ]
+  }
+]

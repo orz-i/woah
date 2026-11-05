@@ -1,0 +1,75 @@
+{
+  "pid": 6043,
+  "cases": [
+    {
+      "case": "group_4k_face_solid",
+      "input": "group-mirror-8956295.mp4",
+      "face_only": true,
+      "fill": "solid",
+      "profile": "quality",
+      "pid": 6043,
+      "state": "completed",
+      "stage": "preview_after",
+      "width": 3840,
+      "height": 2160,
+      "fps": 25,
+      "requested_bitrate": 26956800,
+      "trim_start_ms": 0,
+      "trim_end_ms": 23240,
+      "detected_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "job_id": "job_9b93c33b-d28b-4b04-8fee-bd55b69b6ac0",
+      "current_frame": 581,
+      "total_frames": 581,
+      "elapsed_seconds": 205.196,
+      "expected_frames": 581,
+      "actual_frames": 581,
+      "last_pts_us": 23200000,
+      "output_bytes": 78334656,
+      "pss_kb_after": 264634,
+      "result": "passed"
+    },
+    {
+      "case": "solo_4k_body_solid",
+      "input": "solo-portrait-7570258.mp4",
+      "face_only": false,
+      "fill": "solid",
+      "profile": "quality",
+      "pid": 6043,
+      "state": "completed",
+      "stage": "preview_after",
+      "width": 2160,
+      "height": 4096,
+      "fps": 25,
+      "requested_bitrate": 28753920,
+      "trim_start_ms": 0,
+      "trim_end_ms": 26496,
+      "detected_ids": [
+        0
+      ],
+      "job_id": "job_9d0519bb-4a6a-414f-a8a7-e6a242f7400f",
+      "current_frame": 662,
+      "total_frames": 662,
+      "elapsed_seconds": 179.562,
+      "expected_frames": 662,
+      "actual_frames": 662,
+      "last_pts_us": 26440000,
+      "output_bytes": 13024625,
+      "pss_kb_after": 257362,
+      "result": "passed"
+    }
+  ],
+  "capabilities": "NativeCapabilitiesDto(platform=android, osVersion=34, gpuSupported=true, h264Encoder=true, hevcEncoder=true, maxEncodeWidth=8192, maxEncodeHeight=8192, cpuCores=8, recommendedProfile=balanced, supportedProfiles=[quality, balanced, speed], inferenceBackends=[litert_gpu, litert_cpu])",
+  "planned_cases": [
+    "group_4k_face_solid",
+    "solo_4k_body_solid"
+  ],
+  "result": "passed"
+}

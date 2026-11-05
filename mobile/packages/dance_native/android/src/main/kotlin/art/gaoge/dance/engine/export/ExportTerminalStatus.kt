@@ -1,6 +1,7 @@
 package art.gaoge.dance.engine.export
 
 import art.gaoge.dance.engine.bridge.JobStatusDto
+import java.io.File
 
 /**
  * Classifies native export teardown without converting a user-requested
@@ -29,5 +30,11 @@ internal object ExportTerminalStatus {
             errorCode = errorCode,
             errorMessage = errorMessage
         )
+    }
+    /** The renderer supplies the actual path, including names allocated in its export cache. */
+    fun discardCancelledCompletion(completion: JobStatusDto, storedState: String): Boolean {
+        if (completion.state != "completed" || storedState != "cancelled") return true
+        val output = completion.outputUri?.let(::File) ?: return true
+        return output.delete() || !output.exists()
     }
 }

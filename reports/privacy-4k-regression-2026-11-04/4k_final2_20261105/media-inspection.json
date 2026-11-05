@@ -1,0 +1,64 @@
+[
+  {
+    "file": "group_4k_face_solid.mp4",
+    "case": "group_4k_face_solid",
+    "sha256": "a7941f9f9d3fbfa0df257f61efc03d35e488b927d0ab28c44d964f147aa6bbaf",
+    "width": 3840,
+    "height": 2160,
+    "codec": "h264",
+    "fps": "25/1",
+    "bitrate": "26953958",
+    "duration_seconds": 23.24,
+    "decoded_frames": 581,
+    "expected_frames": 581,
+    "first_pts_us": 0,
+    "last_pts_us": 23200000,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": null,
+    "av_duration_delta_ms": null,
+    "atoms": {
+      "valid": true,
+      "file_size": 78304480,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 3184
+        },
+        {
+          "name": "free",
+          "offset": 3208,
+          "size": 8
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 78301264
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "source_resolution_preserved": true,
+      "every_frame_decodes": true,
+      "every_source_presentation_timestamp_preserved": true,
+      "strictly_increasing_pts": true,
+      "no_black_frames": true,
+      "no_green_frames": true,
+      "audio_presence_preserved": true,
+      "av_duration_delta_within_100ms": true,
+      "faststart": true
+    },
+    "native_case_result": "passed",
+    "result": "passed"
+  }
+]

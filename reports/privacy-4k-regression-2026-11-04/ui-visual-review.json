@@ -1,0 +1,28 @@
+[
+  {
+    "tag": "group-final-4k",
+    "sha256": "64c5583284509422dbfb29dac4df30c13e1b195447f0bce386412599a7e34ae1",
+    "comparison_artifact": "ui-group-final-4k-privacy-crops.jpg",
+    "comparison_sha256": "31dec0e3de251f2c326b62fdfa8f4f5b86ad6cc3e31112828d1a4f04045fd3f1",
+    "frames_reviewed": [
+      145,
+      290,
+      580
+    ],
+    "result": "passed",
+    "observation": "Requested full-body mosaic protects the side and mirror faces."
+  },
+  {
+    "tag": "solo-final-4k",
+    "sha256": "b1b4a98546c5134d04f0a1e03fbcc3c998648837729de4501fadd4dcb98ef109",
+    "comparison_artifact": "ui-solo-final-4k-privacy-crops.jpg",
+    "comparison_sha256": "b535cef801beaaf344ccba21a5eb26d75538c36b181e30e2a9be02d4b6a0df65",
+    "frames_reviewed": [
+      0,
+      330,
+      661
+    ],
+    "result": "passed",
+    "observation": "The imported original smiling PNG covers the first, middle and last face; body remains visible."
+  }
+]

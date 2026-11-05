@@ -1,0 +1,11 @@
+[
+  {
+    "file": "group_4k_face_solid.mp4",
+    "sha256": "7a22599757dbae7657af4e52f36c63c9da3024005d7b01f9537b0f9fcbb661d9",
+    "algorithm_version": 3,
+    "interior_margin_source_pixels": 12.0,
+    "frames": 581,
+    "frames_with_candidates": 0,
+    "candidates": []
+  }
+]

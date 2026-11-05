@@ -147,6 +147,11 @@ class ExportPipeline(
         } else {
             null
         }
+        val enhanceFullScenePrivacy = art.gaoge.dance.engine.inference.HighResolutionPrivacyCoverage.applies(
+            sourceWidth = videoInfo.displayWidth.toInt(), sourceHeight = videoInfo.displayHeight.toInt(),
+            initialIds = analysisMetadata?.persons?.map { it.id }?.toSet().orEmpty(),
+            bodyIds = fullBodyPersonIds, faceIds = faceOnlyPersonIds, followsPerson = request.follow.enabled
+        )
         val faceOnlyIdentityProtectedIds = if (faceOnlyPersonIds.isNotEmpty()) {
             resolveFaceOnlyIdentityProtectedIds(
                 metadata = analysisMetadata,
@@ -421,6 +426,7 @@ class ExportPipeline(
                 // stay in the full visual source space, never in portrait output.
                 val mapper = art.gaoge.dance.engine.geometry.ModelCoordinateMapper(trackingWidth, trackingHeight, 640)
                 val profiler = art.gaoge.dance.engine.profiler.PipelineProfiler()
+                val anonymousFaceCoverage = art.gaoge.dance.engine.inference.HighResolutionPrivacyCoverage.FaceObservations()
                 val inferencePixelDiagnostics = if (art.gaoge.dance.engine.diagnostics.DiagnosticsBuild.ENABLED) {
                     art.gaoge.dance.engine.diagnostics.InferencePixelDiagnostics(
                         jobId = jobId,
@@ -541,7 +547,7 @@ class ExportPipeline(
                     )
                 } else null
                 val profile = ProcessingProfile.fromName(request.processingProfile)
-                val frameStride = profile.privacyInferenceStride(
+                val frameStride = if (enhanceFullScenePrivacy) 1 else profile.privacyInferenceStride(
                     hasFullBodyTargets = fullBodyPersonIds.isNotEmpty(),
                     hasFaceOnlyTargets = faceOnlyPersonIds.isNotEmpty(),
                     scenePersonCount = analysisMetadata?.persons?.size ?: allPrivacyTargetIds.size
@@ -551,7 +557,7 @@ class ExportPipeline(
                     isDebugBuild = art.gaoge.dance.engine.BuildConfig.DEBUG,
                     fullBodyPersonIds = fullBodyPersonIds,
                     faceOnlyPersonIds = faceOnlyPersonIds
-                )
+                ) && !enhanceFullScenePrivacy
                 val reuseProductionCpuFallbackForCpuMt4Reference =
                     shouldReuseProductionCpuFallbackForCpuMt4Reference(
                         isDebugBuild = art.gaoge.dance.engine.BuildConfig.DEBUG,
@@ -886,6 +892,8 @@ class ExportPipeline(
                     var preferFreshPrivacyClassPrimary = false
                     var cpuReferenceTrackedForFace: List<TrackedPerson>? = null
                     var canonicalModelRgbaForFace: java.nio.ByteBuffer? = null
+                    var fullSceneDetections = emptyList<art.gaoge.dance.engine.inference.PersonDetection>()
+                    var coveredHeadFallbackIds = emptySet<Int>()
 
                         // 2. Perform Inference / Temporal Mask Tracking
                         val trackedList: List<art.gaoge.dance.engine.tracking.TrackedPerson> = run {
@@ -893,7 +901,7 @@ class ExportPipeline(
                             // Standard YOLO pipeline
                             val shouldInfer = (processedFrames == 1) || (processedFrames % frameStride == 0)
                             var cpuMt4DetectionsForShadow: List<art.gaoge.dance.engine.inference.PersonDetection>? = null
-                            val detections = if (shouldInfer) {
+                            var detections = if (shouldInfer) {
                                 var usedCanonicalInput = false
                                 val canonicalDecoder = canonicalInferenceDecoder
                                 val canonicalRgba = if (canonicalDecoder != null) {
@@ -1103,6 +1111,38 @@ class ExportPipeline(
                                 emptyList()
                             }
 
+                            if (shouldInfer && enhanceFullScenePrivacy) {
+                                val extras = profiler.recordStage("highResolutionPrivacyCoverage") {
+                                    art.gaoge.dance.engine.inference.HighResolutionPrivacyCoverage
+                                        .views(trackingWidth, trackingHeight).flatMap { view ->
+                                            val tileMapper = art.gaoge.dance.engine.geometry.ModelCoordinateMapper(
+                                                view.width.toInt(), view.height.toInt(), inferenceFbo.size
+                                            )
+                                            val crop = FloatArray(16)
+                                            val window = art.gaoge.dance.engine.inference.HighResolutionPrivacyCoverage
+                                                .textureWindow(view, trackingWidth, trackingHeight)
+                                            android.opengl.Matrix.setIdentityM(crop, 0)
+                                            android.opengl.Matrix.translateM(crop, 0,
+                                                window.left, window.top, 0f)
+                                            android.opengl.Matrix.scaleM(crop, 0,
+                                                window.width, window.height, 1f)
+                                            val textureMatrix = FloatArray(16)
+                                            android.opengl.Matrix.multiplyMM(textureMatrix, 0, finalTexMatrix, 0, crop, 0)
+                                            inferenceRenderer.renderToFbo(renderTexId, textureMatrix, tileMapper,
+                                                inferenceFbo, renderTexType)
+                                            segmenter.segmentGlReadbackRgbaSync(inferenceFbo.readRgbaPixels(), tileMapper, ptsUs)
+                                                .persons.filter {
+                                                    art.gaoge.dance.engine.inference.HighResolutionPrivacyCoverage
+                                                        .isComplete(it, view, trackingWidth, trackingHeight)
+                                                }.map {
+                                                    art.gaoge.dance.engine.inference.HighResolutionPrivacyCoverage.toScene(it, view, mapper)
+                                                }
+                                        }
+                                }
+                                detections = art.gaoge.dance.engine.inference.HighResolutionPrivacyCoverage.merge(detections, extras)
+                                fullSceneDetections = detections
+                            }
+
                             val deterministicTrackingPrimary = if (preferDebugFaceDeterministicCpuPrimary) {
                                 val diagnostics = checkNotNull(crossDeviceTrackingDiagnostics) {
                                     "Deterministic Face tracking diagnostics unavailable"
@@ -1258,7 +1298,15 @@ class ExportPipeline(
                             }
                             val temporalPrivacyEvidence = if (shouldInfer && allowFreshFullBodyClassPrimary) {
                                 profiler.recordStage("privacyClassTracking") {
-                                    privacyClassTemporalTracker.update(
+                                    if (enhanceFullScenePrivacy) detections.mapIndexed { index, detection ->
+                                        // The analysis has no exempt person. New detailed observations
+                                        // must not acquire an exemption merely by receiving a new ID.
+                                        art.gaoge.dance.engine.tracking.FreshPrivacyClassEvidence(
+                                            selectionClass = art.gaoge.dance.engine.tracking.PrivacySelectionClass.SELECTED,
+                                            detectionIndex = index, detection = detection, residualTrackIds = emptySet(),
+                                            conservativeUnknown = true
+                                        )
+                                    } else privacyClassTemporalTracker.update(
                                         detections = detections,
                                         hardClassByDetectionIndex = if (processedFrames == 1) {
                                             trackManager.getHardPrivacyClassByDetectionIndex()
@@ -1345,8 +1393,9 @@ class ExportPipeline(
 
                         val faceOnlyFrameResult = faceOnlyPrivacyProcessor?.let { processor ->
                             val useCpuReferenceGeometry =
-                                art.gaoge.dance.engine.BuildConfig.DEBUG && cpuReferenceTrackedForFace != null
-                            val faceGeometryPersons = if (useCpuReferenceGeometry) {
+                                art.gaoge.dance.engine.BuildConfig.DEBUG && cpuReferenceTrackedForFace != null &&
+                                    !enhanceFullScenePrivacy
+                            val trackedFaceGeometryPersons = if (useCpuReferenceGeometry) {
                                 // Keep the complete deterministic CPU reference for FACE_ONLY:
                                 // identity/state, geometry and body-mask evidence. Mixing the
                                 // production GPU mask back into this path reintroduces a second
@@ -1357,6 +1406,10 @@ class ExportPipeline(
                             } else {
                                 trackedList
                             }
+                            // Current pixels remain protectable while exact identity is unresolved.
+                            val faceGeometryPersons = if (enhanceFullScenePrivacy) {
+                                anonymousFaceCoverage.current(fullSceneDetections)
+                            } else trackedFaceGeometryPersons
                             val protectedMotionEvidence = if (useCpuReferenceGeometry) {
                                 canonicalizeCpuReferenceMotionEvidence(
                                     crossDeviceTrackingDiagnostics
@@ -1377,13 +1430,18 @@ class ExportPipeline(
                                 // deterministic candidate is validated on devices.
                                 emptyList()
                             }
+                            coveredHeadFallbackIds = if (enhanceFullScenePrivacy) {
+                                art.gaoge.dance.engine.inference.HighResolutionPrivacyCoverage.coveredHeadFallbackIds(faceGeometryPersons)
+                            } else emptySet()
                             profiler.recordStage("faceOnlyPrivacy") {
                                 processor.resolveFrame(
                                     frameTexture = renderTexId,
                                     texMatrix = finalTexMatrix,
                                     textureType = renderTexType,
                                     persons = faceGeometryPersons,
-                                    faceOnlyTrackIds = faceOnlyPersonIds,
+                                    faceOnlyTrackIds = if (enhanceFullScenePrivacy) {
+                                        faceGeometryPersons.map { it.id }.toSet()
+                                    } else faceOnlyPersonIds,
                                     fullBodyTrackIds = selectedIds,
                                     protectedMotionEvidence = protectedMotionEvidence,
                                     freshPrivacyClassEvidence = freshFacePrivacyClassEvidence,
@@ -1391,7 +1449,8 @@ class ExportPipeline(
                                     // The 640px YOLO diagnostic input loses small/occluded
                                     // faces even though their body identities are retained.
                                     canonicalModelRgbaBottomUp = null,
-                                    ptsUs = ptsUs
+                                    ptsUs = ptsUs,
+                                    coveredHeadFallbackTrackIds = coveredHeadFallbackIds
                                 )
                             }
                         }
@@ -1404,12 +1463,17 @@ class ExportPipeline(
                                     fields = mapOf(
                                         "job_id" to jobId,
                                         "pts_us" to ptsUs,
-                                        "geometry_source" to if (cpuReferenceTrackedForFace != null) {
+                                        "covered_head_fallback_track_ids" to coveredHeadFallbackIds.sorted(),
+                                        "geometry_source" to if (enhanceFullScenePrivacy) {
+                                            "CURRENT_SCENE_OBSERVATIONS"
+                                        } else if (cpuReferenceTrackedForFace != null) {
                                             "CPU_MT4_REFERENCE"
                                         } else {
                                             "PRODUCTION_TRACKS"
                                         },
-                                        "mask_source" to if (cpuReferenceTrackedForFace != null) {
+                                        "mask_source" to if (enhanceFullScenePrivacy) {
+                                            "CURRENT_SCENE_OBSERVATIONS"
+                                        } else if (cpuReferenceTrackedForFace != null) {
                                             "CPU_MT4_REFERENCE"
                                         } else {
                                             "PRODUCTION_TRACKS"
@@ -2433,10 +2497,22 @@ class ExportPipeline(
                     return@post
                 }
 
-                // Atomically finalize output file
-                if (tempOutFile.exists()) {
-                    if (finalOutFile.exists()) finalOutFile.delete()
-                    tempOutFile.renameTo(finalOutFile)
+                // Android's muxer can append a larger audio/video index at EOF.
+                // Prepare streaming layout before publishing; copy media bytes unchanged.
+                val publicationFile = art.gaoge.dance.engine.media.Mp4FastStart.prepare(tempOutFile) { isCancelled.get() }
+                if (publicationFile == null || isCancelled.get()) {
+                    if (publicationFile != tempOutFile) publicationFile?.delete()
+                    tempOutFile.delete()
+                    status = status.copy(state = "cancelled")
+                    emitProgress(status, onStatusChange)
+                    return@post
+                }
+                try {
+                    check(!finalOutFile.exists() || finalOutFile.delete()) { "Cannot replace export destination" }
+                    check(publicationFile.renameTo(finalOutFile)) { "Cannot publish finalized export" }
+                    if (publicationFile != tempOutFile) tempOutFile.delete()
+                } finally {
+                    if (publicationFile != tempOutFile) publicationFile.delete()
                 }
 
 

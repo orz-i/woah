@@ -1,0 +1,21 @@
+======================================================================
+ERROR: test_wrong_generator_version_fails (test_pigeon_codegen.PigeonCodegenTests.test_wrong_generator_version_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\dance-anonymizer\tools\ci\test_pigeon_codegen.py", line 50, in test_wrong_generator_version_fails
+    generator(root)
+  File "D:\dance-anonymizer\tools\ci\pigeon_codegen.py", line 38, in generator
+    version = re.search(r'^version:\s*([^\s]+)', (package / 'pubspec.yaml').read_text(), re.M)
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mouta\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\pathlib.py", line 1027, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mouta\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 22] Invalid argument: '\\C:\\Users\\mouta\\AppData\\Local\\Temp\\tmprj3mxi1u\\pigeon\\pubspec.yaml'
+
+----------------------------------------------------------------------
+Ran 59 tests in 0.716s
+
+FAILED (errors=1)

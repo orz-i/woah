@@ -1,0 +1,18 @@
+{"jobId": "job_583ca01d-01d1-46d8-841d-9c8780616f36", "state": "preparing", "currentFrame": 0, "totalFrames": 0, "targetWidth": 2160, "targetHeight": 4096, "errorCode": null, "errorMessage": null}
+{"jobId": "job_583ca01d-01d1-46d8-841d-9c8780616f36", "state": "processing", "currentFrame": 62, "totalFrames": 662, "targetWidth": 2160, "targetHeight": 4096, "errorCode": null, "errorMessage": null}
+{"jobId": "job_583ca01d-01d1-46d8-841d-9c8780616f36", "state": "processing", "currentFrame": 148, "totalFrames": 662, "targetWidth": 2160, "targetHeight": 4096, "errorCode": null, "errorMessage": null}
+{"jobId": "job_583ca01d-01d1-46d8-841d-9c8780616f36", "state": "processing", "currentFrame": 221, "totalFrames": 662, "targetWidth": 2160, "targetHeight": 4096, "errorCode": null, "errorMessage": null}
+{"jobId": "job_583ca01d-01d1-46d8-841d-9c8780616f36", "state": "processing", "currentFrame": 305, "totalFrames": 662, "targetWidth": 2160, "targetHeight": 4096, "errorCode": null, "errorMessage": null}
+{"jobId": "job_583ca01d-01d1-46d8-841d-9c8780616f36", "state": "processing", "currentFrame": 377, "totalFrames": 662, "targetWidth": 2160, "targetHeight": 4096, "errorCode": null, "errorMessage": null}
+{"jobId": "job_583ca01d-01d1-46d8-841d-9c8780616f36", "state": "processing", "currentFrame": 462, "totalFrames": 662, "targetWidth": 2160, "targetHeight": 4096, "errorCode": null, "errorMessage": null}
+{"jobId": "job_583ca01d-01d1-46d8-841d-9c8780616f36", "state": "processing", "currentFrame": 536, "totalFrames": 662, "targetWidth": 2160, "targetHeight": 4096, "errorCode": null, "errorMessage": null}
+{"jobId": "job_583ca01d-01d1-46d8-841d-9c8780616f36", "state": "processing", "currentFrame": 625, "totalFrames": 662, "targetWidth": 2160, "targetHeight": 4096, "errorCode": null, "errorMessage": null}
+{"jobId": "job_583ca01d-01d1-46d8-841d-9c8780616f36", "state": "completed", "currentFrame": 662, "totalFrames": 662, "targetWidth": 2160, "targetHeight": 4096, "errorCode": null, "errorMessage": null}
+{"label": "返回首页", "bounds": "[42,115][186,259]", "enabled": "true", "selected": "false"}
+{"label": "更多操作", "bounds": "[894,115][1038,259]", "enabled": "true", "selected": "false"}
+{"label": "100", "bounds": "[0,1534][1080,1546]", "enabled": "true", "selected": "false"}
+{"label": "0", "bounds": "[0,1534][1080,1546]", "enabled": "true", "selected": "false"}
+{"label": "已保存至系统相册\n13.8 MB", "bounds": "[54,1998][1026,2118]", "enabled": "true", "selected": "false"}
+{"label": "查看视频", "bounds": "[54,2160][522,2304]", "enabled": "true", "selected": "false"}
+{"label": "分享视频", "bounds": "[558,2160][1026,2304]", "enabled": "true", "selected": "false"}
+{"tag": "solo-final-4k", "result": "passed", "decoded_frames": 662, "dimensions": [2160, 4096]}

@@ -1,0 +1,12 @@
+{
+  "apk_sha256": "736cc68288803c5395c06c9d5777dd113c833e6c12bde6962f67c159414e5e3b",
+  "test_apk_sha256": "2dd9a418df42479f98c91211e64722163282b96bffeb43999359013afe6f413c",
+  "source_sha256": {
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/ExportPipeline.kt": "d13c685bfb62bc72a0104f5ff77e1b8b0da46a2f92d8b236471d7d7b9630eff8",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/inference/HighResolutionPrivacyCoverage.kt": "b3bcb52e32314ca1c0b600000041c49927ca23132a90b7f6cb334864fa9b54b8",
+    "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/media/Mp4FastStart.kt": "6bd4c04ad6de79c4a9a43a5da593a361a5e775895900df187aa3c1be56637eec",
+    "mobile/packages/dance_native/android/src/androidTest/kotlin/art/gaoge/dance/engine/pipeline/FourKPrivacyWorkflowInstrumentedTest.kt": "af9c3df72e4227cf3e2c1b7ecf2ea406d007bb256d7226d6d6ba899112d48057",
+    "mobile/packages/dance_native/android/src/androidTest/kotlin/art/gaoge/dance/engine/pipeline/FourKDetectionReviewInstrumentedTest.kt": "ef72cb003da5926e576a59670921e1182a85098cf8ac5e1836cec2faa66f2cdd"
+  },
+  "reuses_unchanged_previous_entrypoints": true
+}

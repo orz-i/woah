@@ -1,0 +1,399 @@
+{
+  "recorded_at_utc": "2026-11-05T06:22:32.418868+00:00",
+  "result": "passed",
+  "videos": [
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105/group_4k_face_solid.mp4",
+      "bytes": 78392864,
+      "sha256": "f9e345b99d180aa275a80e56a3b9c200f23e0fe9f25a1d63ab4def3b89d1d9fc",
+      "decoded_frames": 581
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105/group_4k_body_solid.mp4",
+      "bytes": 78407184,
+      "sha256": "8d2c8e8a641eab2efcae688156f1f2ae7fac893b99bbe7dc9d5915ef1294033d",
+      "decoded_frames": 581
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105/solo_4k_body_solid.mp4",
+      "bytes": 13024625,
+      "sha256": "0d94b4ce1c605536683841c7d36e38919dd5e8db8fc417282d6c94263d624b15",
+      "decoded_frames": 662
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105/solo_4k_face_sticker.mp4",
+      "bytes": 15262705,
+      "sha256": "822aea4e21d892294f6833fd0b00100ef0a81a630c008eaa78dd89b81737a98c",
+      "decoded_frames": 662
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105/group_4k_body_mosaic.mp4",
+      "bytes": 78225008,
+      "sha256": "c296e46490812839399dfad4b3f0eeacc7fccffbc43d4398accf93ffc3a0b3ec",
+      "decoded_frames": 581
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105/group_4k_body_blur.mp4",
+      "bytes": 78311536,
+      "sha256": "adeb256274c77c4ee3f2ea83d239a43f34e3127c7ccca5dbbe15bb700ab53f9c",
+      "decoded_frames": 581
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105/group_4k_body_gradient.mp4",
+      "bytes": 78466432,
+      "sha256": "e6774bf0fab1765a6d550247ee9e311d84df58d0d9c0e8002f4ff694cec6881d",
+      "decoded_frames": 581
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105/group_4k_face_mosaic.mp4",
+      "bytes": 78362096,
+      "sha256": "370ddb15bd1436de50b9b464c51519cb161a0b5ef14ec8f99d25ff82a96fce6f",
+      "decoded_frames": 581
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105/group_4k_face_blur.mp4",
+      "bytes": 78378064,
+      "sha256": "4a81455a6e4e8263b2de1e7e3df356e724c5275523f34b81003d6244e983a8d3",
+      "decoded_frames": 581
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105/group_4k_face_gradient.mp4",
+      "bytes": 78371088,
+      "sha256": "1d44e0b1e8fbea1c341074ddb04ae09e5ad39636e28f763aeb385262d2138989",
+      "decoded_frames": 581
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105/group_4k_face_sticker.mp4",
+      "bytes": 78391104,
+      "sha256": "02d0e34e05247e55c98e3ccb694a3bf5b5b8c412d687a2830169c823d0dcee71",
+      "decoded_frames": 581
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105/solo_4k_body_mosaic.mp4",
+      "bytes": 13062209,
+      "sha256": "115eb0725a0ec78ecfcd420e983a6bda40a1aadf7444f369c551a276bcafb6af",
+      "decoded_frames": 662
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105/solo_4k_body_blur.mp4",
+      "bytes": 12227473,
+      "sha256": "009c3da14d2a051555c6f74bb0afce4a1d271569dfa5a5ae6ea919c905b467b0",
+      "decoded_frames": 662
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105/solo_4k_body_gradient.mp4",
+      "bytes": 12899089,
+      "sha256": "a332923fee597898b0bb26e0368effbb44442b203d41d22887983f66982a83f8",
+      "decoded_frames": 662
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105/solo_4k_face_solid.mp4",
+      "bytes": 13833841,
+      "sha256": "f63157148b113cb44eb7616e89a9f9d99beb10ee165b7e2fce95779c3a100936",
+      "decoded_frames": 662
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105/solo_4k_face_mosaic.mp4",
+      "bytes": 13948113,
+      "sha256": "06ac83efd4e98c2a15951e7ff3f8bd8d80aa6ef71997c4c97f167eaf31a741d5",
+      "decoded_frames": 662
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105/solo_4k_face_blur.mp4",
+      "bytes": 13929889,
+      "sha256": "874fb4bfccf44a95a1fb1b47d956031b7d776af71cc31d556db20561a33c775a",
+      "decoded_frames": 662
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105/solo_4k_face_gradient.mp4",
+      "bytes": 13901329,
+      "sha256": "f5ed2ce33d785c6c3fe79576ad37a05972b67bcee17f327d95ecb6fd08a38951",
+      "decoded_frames": 662
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105/group_4k_body_mosaic_balanced.mp4",
+      "bytes": 78206384,
+      "sha256": "9031cc14c7149acd6b62fe7e2a89ef57746005517f285fdca5c0c4284c686918",
+      "decoded_frames": 581
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105/solo_4k_face_sticker_balanced.mp4",
+      "bytes": 15476129,
+      "sha256": "af373a37efc3828886be497382be3ee05d4a4ec83cee84d2826305c9229737e2",
+      "decoded_frames": 662
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105/group_4k_body_mosaic_speed.mp4",
+      "bytes": 78206384,
+      "sha256": "e2485359b469c12fb77b635975b037b79d515aec00745847d017626e5db1a387",
+      "decoded_frames": 581
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105/solo_4k_face_sticker_speed.mp4",
+      "bytes": 15370785,
+      "sha256": "0eab140a33d134b38b0d0acb86fcf17be0ff9f9b4e5dc021fff7f9f9b0791dc7",
+      "decoded_frames": 662
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105/solo_4k_retry_sticker.mp4",
+      "bytes": 15262705,
+      "sha256": "301e2ca99db6aed1072eb581b09d5fabacf90669cf09f06b88823c945e410163",
+      "decoded_frames": 662
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105/solo_4k_nonzero_trim.mp4",
+      "bytes": 907811,
+      "sha256": "e2707403e07cced57640cf7da160f60228e423f0a5593355fa9165dfa4a7ea79",
+      "decoded_frames": 40
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_terminal_final_20261105/group_4k_body_mosaic_balanced.mp4",
+      "bytes": 78206384,
+      "sha256": "45bc04dd68e568f6360ff52e3ed4c720b7c00abb4754c4928ab58fa94e127bbf",
+      "decoded_frames": 581
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_terminal_final_20261105/solo_4k_retry_sticker.mp4",
+      "bytes": 15262705,
+      "sha256": "f25f87e2358d37a6b9897cf4983746722e14382d4220d559cb79a2337be28ad1",
+      "decoded_frames": 662
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_terminal_final_20261105/solo_4k_nonzero_trim.mp4",
+      "bytes": 907811,
+      "sha256": "2fdd141a563ff5a6c37e18eec848ed251805ef261fc4b63162afe9587ed27e3d",
+      "decoded_frames": 40
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/legacy_cf7515d4/duo_full_solid.mp4",
+      "bytes": 211536,
+      "sha256": "f207c64847521123f7db625fc315f52aa83c4344f9bdaea8d63b187b384fbb42",
+      "decoded_frames": 48
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/legacy_cf7515d4/group_4k_full.mp4",
+      "bytes": 601408,
+      "sha256": "e430eb046600f8ef265ad60149fe780cf958229ad702852694a0ca8b859f57bd",
+      "decoded_frames": 40
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/legacy_cf7515d4/group_all_faces.mp4",
+      "bytes": 1005680,
+      "sha256": "e1298afe55858bc52e2dae6b15f0bdb18570424608b64964d3bc0c083fb3731c",
+      "decoded_frames": 76
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/legacy_cf7515d4/group_face_solid_follow.mp4",
+      "bytes": 1152480,
+      "sha256": "5c552d983be0490ce746e97c5c83218bb2e58f8700b83ba799cb793e5043d1b1",
+      "decoded_frames": 76
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/legacy_cf7515d4/group_face_sticker_follow.mp4",
+      "bytes": 1188176,
+      "sha256": "ece97df143fbebbc8ca21f81adaf4adf350100e410ad99ce300180d34f32ff54",
+      "decoded_frames": 76
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/legacy_cf7515d4/group_first_solid.mp4",
+      "bytes": 541120,
+      "sha256": "6fbfe0a9b1f2b8448b0fdfad53e7a212aba3a077d341094ec870fedbf9376054",
+      "decoded_frames": 40
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/legacy_cf7515d4/group_full_balanced.mp4",
+      "bytes": 552544,
+      "sha256": "b123af306aea1321b620f31177f1dc244e792f09dbc65af7eb9841aedefacda8",
+      "decoded_frames": 40
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/legacy_cf7515d4/group_full_blur.mp4",
+      "bytes": 588880,
+      "sha256": "ccfaa096a776dfe9fbdd5f7dbac698103f65626eb3754513e2cd8e01bd1b80e1",
+      "decoded_frames": 40
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/legacy_cf7515d4/group_full_gradient.mp4",
+      "bytes": 516480,
+      "sha256": "ebbf93384e82aa3d75a9d6f57b76a15da68ba197e5dfc035a78e07dbeb4482c6",
+      "decoded_frames": 40
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/legacy_cf7515d4/group_full_length_follow.mp4",
+      "bytes": 9204560,
+      "sha256": "9b41594a971826f5b5c4dc5a6f5bb0b521324b208493b6933a9db74beb8a0105",
+      "decoded_frames": 581
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/legacy_cf7515d4/group_full_mosaic.mp4",
+      "bytes": 481328,
+      "sha256": "ee97b2b547741385a5c2d9cc566d9c877656284cb60800c7de6ba90b589527c1",
+      "decoded_frames": 40
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/legacy_cf7515d4/group_full_solid.mp4",
+      "bytes": 549760,
+      "sha256": "acfbde3edc6896bf7d1dda1bd99cd7de0fed73b07e3b22b45252cf0f47e965aa",
+      "decoded_frames": 40
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/legacy_cf7515d4/group_full_speed.mp4",
+      "bytes": 552544,
+      "sha256": "15233836a92e022200b82fb2c548d9389688068aade4c19ed4a3c9402924674d",
+      "decoded_frames": 40
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/legacy_cf7515d4/solo_4k_sticker.mp4",
+      "bytes": 301027,
+      "sha256": "b0e0f944eeb0406756f27f19eb30d1741815b17e407c39fd0d544b02b2a70137",
+      "decoded_frames": 40
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/legacy_cf7515d4/solo_face_balanced.mp4",
+      "bytes": 272499,
+      "sha256": "4db43fe6b9a60050e0697e06a4bacff936271a4a491aabdf6b9f9d7e30171761",
+      "decoded_frames": 40
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/legacy_cf7515d4/solo_face_blur.mp4",
+      "bytes": 208979,
+      "sha256": "e77e87e0ced8a2659cf1e89d39a2cf75a4e94d5c1b0a58c3d37783d4c327280f",
+      "decoded_frames": 40
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/legacy_cf7515d4/solo_face_gradient.mp4",
+      "bytes": 214115,
+      "sha256": "663e8ff21f154c117d9602df2b5f64362738401bce0dc4be64066ceb7580ff0e",
+      "decoded_frames": 40
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/legacy_cf7515d4/solo_face_mosaic.mp4",
+      "bytes": 204787,
+      "sha256": "cc026df093404e74c68db48da358acfaa443c086fe7127c9d0af7cc616d8c291",
+      "decoded_frames": 40
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/legacy_cf7515d4/solo_face_solid.mp4",
+      "bytes": 213779,
+      "sha256": "1c2cf4118c6b33f0b670b12d77c50868ae491c0be3782e1c748c2ba062827c3e",
+      "decoded_frames": 40
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/legacy_cf7515d4/solo_face_speed.mp4",
+      "bytes": 272499,
+      "sha256": "86cf3be54008e8a9b4d12e76805ce31838b0410e10c2e6d86b268be940c213a1",
+      "decoded_frames": 40
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/legacy_cf7515d4/solo_face_sticker.mp4",
+      "bytes": 272499,
+      "sha256": "b5c7a7d1e736450b6684c0034e1731c56f5f61c224dbd80e0f7c243840e068a2",
+      "decoded_frames": 40
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/legacy_cf7515d4/solo_nonzero_trim.mp4",
+      "bytes": 257475,
+      "sha256": "92c423a8781b325712504b9f9dd2596ecacd0bf50b00410ce4df9e094588c873",
+      "decoded_frames": 40
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/ui-group-final-4k.mp4",
+      "bytes": 78231184,
+      "sha256": "64c5583284509422dbfb29dac4df30c13e1b195447f0bce386412599a7e34ae1",
+      "decoded_frames": 581,
+      "gallery_path": "/sdcard/Movies/Woah/Woah_da238c8c-9e38-48c6-af35-e819c4682e6c.mp4"
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/ui-solo-final-4k.mp4",
+      "bytes": 14505009,
+      "sha256": "b1b4a98546c5134d04f0a1e03fbcc3c998648837729de4501fadd4dcb98ef109",
+      "decoded_frames": 662,
+      "gallery_path": "/sdcard/Movies/Woah/Woah_757ce487-04dd-4d4e-8dea-f7f52780e8ea.mp4"
+    }
+  ],
+  "authoritative_video_count": 51,
+  "independently_decoded_frames": 18438,
+  "artifacts": [
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/README.md",
+      "bytes": 14690,
+      "sha256": "6b0d5013e3f701a60834a9dc2fe96997dab583ade951747d18b5d26418fdf3a9"
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/test-summary.json",
+      "bytes": 7806,
+      "sha256": "1691105cca3b893293d1aab8ebfbfb65ea0db9ef47ce1af2caa6478f46b67618"
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/environment.json",
+      "bytes": 2573,
+      "sha256": "985516a17614c5ed25b9e2bf30dbd2411c1f3beb1306c2966bf2b3653bdd27eb"
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/final-candidate.json",
+      "bytes": 2413,
+      "sha256": "c92030bd60d5a51d41d7c02a2f81dd979f46e911ca4c10c01f67246df83ef63e"
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/lifecycle-candidate.json",
+      "bytes": 3581,
+      "sha256": "d2cf52c95d5775c0413eaeed7d6eeceaa8e95b7b051bdf202c5ec4e434c18371"
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/app-candidate.json",
+      "bytes": 2006,
+      "sha256": "c5b1a34c0cdb4b57b166721545143d10f2f8b23021f3070a762165f12efde33e"
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/terminal-jvm-summary.json",
+      "bytes": 257,
+      "sha256": "99bd574e0c1705f95cd20c9eddbc92afab99fc41828026e61af8f2bc3bbcfe03"
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/publication-final-build-tests.txt",
+      "bytes": 89050,
+      "sha256": "45b8e1278a88c4ca122d924c27ccfa4e79757ee696c6cc76ce2b5624fe8bab86"
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/ui-results.json",
+      "bytes": 8542,
+      "sha256": "41e668c18f1f237272db8c52fb3f40a560164600a62beb84c640864f749f491a"
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/ui-visual-review.json",
+      "bytes": 962,
+      "sha256": "7e0ab69632d884058dcb8795da9fcaeb795b5ae9eae68e9acebbe517b7385fc5"
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/device-final-validation.json",
+      "bytes": 369,
+      "sha256": "45a66d95dfc0db4634e1bdd81ea73dba655313eef9ff131508b8ddbd72f43d02"
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_final4_20261105-matrix-instrumentation.txt",
+      "bytes": 936,
+      "sha256": "b5366f90382401f5392d7aca31d683817c5b51ffd5c0fb18ac9d8f628424af40"
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/4k_terminal_final_20261105-matrix-instrumentation.txt",
+      "bytes": 934,
+      "sha256": "22c3eb7444a90f04d5a053d364936b439c19482060aa02337ed49512240340fc"
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/candidate-test-cf7515d4.apk",
+      "bytes": 135362288,
+      "sha256": "cf7515d41609d43f64020a7bdc076d31912dfc62f4a2f443e60154b44fc76cdc"
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/candidate-test-0cd88802.apk",
+      "bytes": 135362286,
+      "sha256": "0cd88802cd9a886edb350bcf4f71bdd2e5f22f983bc8d54300b4526b56b7243f"
+    },
+    {
+      "path": "reports/privacy-4k-regression-2026-11-04/candidate-app-59acfaf7.apk",
+      "bytes": 272813135,
+      "sha256": "59acfaf71dff0db1d694cb4ec8f7bf926ae77ea427aca3d98164813ff0b9659a"
+    }
+  ],
+  "note": "Large media/APKs remain local and ignored by Git. Historical failed/intermediate runs are retained separately and are excluded from these authoritative counts."
+}

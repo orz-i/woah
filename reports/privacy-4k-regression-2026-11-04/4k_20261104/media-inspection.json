@@ -1,0 +1,185 @@
+[
+  {
+    "file": "group_4k_body_solid.mp4",
+    "case": "group_4k_body_solid",
+    "sha256": "578fb0eb65f2aeaf6ecf5a212a8cf9dfa767fe3a7200d7abef4fe5067caa3a15",
+    "width": 3840,
+    "height": 2160,
+    "codec": "h264",
+    "fps": "25/1",
+    "bitrate": "26970244",
+    "duration_seconds": 23.24,
+    "decoded_frames": 581,
+    "expected_frames": 581,
+    "first_pts_us": 0,
+    "last_pts_us": 23200000,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": null,
+    "av_duration_delta_ms": null,
+    "atoms": {
+      "valid": true,
+      "file_size": 78351792,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 3184
+        },
+        {
+          "name": "free",
+          "offset": 3208,
+          "size": 8
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 78348576
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "source_resolution_preserved": true,
+      "every_frame_decodes": true,
+      "every_source_presentation_timestamp_preserved": true,
+      "strictly_increasing_pts": true,
+      "no_black_frames": true,
+      "no_green_frames": true,
+      "audio_presence_preserved": true,
+      "av_duration_delta_within_100ms": true,
+      "faststart": true
+    },
+    "result": "passed"
+  },
+  {
+    "file": "group_4k_body_mosaic.mp4",
+    "case": "group_4k_body_mosaic",
+    "sha256": "7e1d2ec2a6225d9a89becc314187c73723786b4b4e5405c0a653447de01c8880",
+    "width": 3840,
+    "height": 2160,
+    "codec": "h264",
+    "fps": "25/1",
+    "bitrate": "26918119",
+    "duration_seconds": 23.24,
+    "decoded_frames": 581,
+    "expected_frames": 581,
+    "first_pts_us": 0,
+    "last_pts_us": 23200000,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": null,
+    "av_duration_delta_ms": null,
+    "atoms": {
+      "valid": true,
+      "file_size": 78200368,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 3184
+        },
+        {
+          "name": "free",
+          "offset": 3208,
+          "size": 8
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 78197152
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "source_resolution_preserved": true,
+      "every_frame_decodes": true,
+      "every_source_presentation_timestamp_preserved": true,
+      "strictly_increasing_pts": true,
+      "no_black_frames": true,
+      "no_green_frames": true,
+      "audio_presence_preserved": true,
+      "av_duration_delta_within_100ms": true,
+      "faststart": true
+    },
+    "result": "passed"
+  },
+  {
+    "file": "group_4k_body_blur.mp4",
+    "case": "group_4k_body_blur",
+    "sha256": "14b90b8f1e5896559f51aaf544d19ed75d557fad369ffb5925ccdc18a31e9cc6",
+    "width": 3840,
+    "height": 2160,
+    "codec": "h264",
+    "fps": "25/1",
+    "bitrate": "26962957",
+    "duration_seconds": 23.24,
+    "decoded_frames": 581,
+    "expected_frames": 581,
+    "first_pts_us": 0,
+    "last_pts_us": 23200000,
+    "black_frames": 0,
+    "green_frames": 0,
+    "audio_codec": null,
+    "av_duration_delta_ms": null,
+    "atoms": {
+      "valid": true,
+      "file_size": 78330624,
+      "atoms": [
+        {
+          "name": "ftyp",
+          "offset": 0,
+          "size": 24
+        },
+        {
+          "name": "moov",
+          "offset": 24,
+          "size": 3184
+        },
+        {
+          "name": "free",
+          "offset": 3208,
+          "size": 8
+        },
+        {
+          "name": "mdat",
+          "offset": 3216,
+          "size": 78327408
+        }
+      ],
+      "has_ftyp": true,
+      "has_moov": true,
+      "has_mdat": true,
+      "fast_start_ready": true
+    },
+    "checks": {
+      "source_resolution_preserved": true,
+      "every_frame_decodes": true,
+      "every_source_presentation_timestamp_preserved": true,
+      "strictly_increasing_pts": true,
+      "no_black_frames": true,
+      "no_green_frames": true,
+      "audio_presence_preserved": true,
+      "av_duration_delta_within_100ms": true,
+      "faststart": true
+    },
+    "result": "passed"
+  }
+]

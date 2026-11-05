@@ -1,0 +1,15 @@
+{
+  "result": "failed",
+  "kind": "visual_privacy_leak",
+  "source": "group-mirror-8956295.mp4",
+  "output": "4k_20261104/group_4k_body_solid.mp4",
+  "frames": [
+    217,
+    290,
+    507
+  ],
+  "confirmed_frame": 290,
+  "description": "Unmasked clearly visible people in the mirror despite all initial persons selected; production detection has no corresponding box at frame 290.",
+  "structural_media_checks": "passed",
+  "baseline_matrix_stopped_by_tester_after_confirming_privacy_failure": true
+}

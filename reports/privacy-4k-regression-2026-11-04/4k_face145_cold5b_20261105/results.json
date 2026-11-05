@@ -1,0 +1,45 @@
+{
+  "pid": 8169,
+  "cases": [
+    {
+      "case": "group_4k_face_solid",
+      "input": "group-mirror-8956295.mp4",
+      "face_only": true,
+      "fill": "solid",
+      "profile": "quality",
+      "pid": 8169,
+      "state": "completed",
+      "stage": "preview_after",
+      "width": 3840,
+      "height": 2160,
+      "fps": 25,
+      "requested_bitrate": 26956800,
+      "trim_start_ms": 5800,
+      "trim_end_ms": 5840,
+      "detected_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "job_id": "job_2ceedf97-ae01-4623-9b7e-975d23b95f9a",
+      "current_frame": 1,
+      "total_frames": 1,
+      "elapsed_seconds": 7.099,
+      "expected_frames": 1,
+      "actual_frames": 1,
+      "last_pts_us": 0,
+      "output_bytes": 172672,
+      "pss_kb_after": 171780,
+      "result": "passed"
+    }
+  ],
+  "capabilities": "NativeCapabilitiesDto(platform=android, osVersion=34, gpuSupported=true, h264Encoder=true, hevcEncoder=true, maxEncodeWidth=8192, maxEncodeHeight=8192, cpuCores=8, recommendedProfile=balanced, supportedProfiles=[quality, balanced, speed], inferenceBackends=[litert_gpu, litert_cpu])",
+  "planned_cases": [
+    "group_4k_face_solid"
+  ],
+  "result": "passed"
+}

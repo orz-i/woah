@@ -1,0 +1,29 @@
+[
+  {
+    "file": "group_4k_face_solid.mp4",
+    "sha256": "f9e345b99d180aa275a80e56a3b9c200f23e0fe9f25a1d63ab4def3b89d1d9fc",
+    "result": "passed",
+    "source_fixture_sha256": "376c2ae73c92c23dceb042d27450aaa45ba2f44a3d7b0a5f3c26e9bea6c2dd73",
+    "candidates": [
+      {
+        "frame": 86,
+        "interior_pixels": 881,
+        "bbox": [
+          2399,
+          527,
+          26,
+          50
+        ],
+        "parent_bbox": [
+          2157,
+          308,
+          582,
+          510
+        ],
+        "classification": "gap_between_distinct_faces",
+        "reason": "原片/成片同帧对照确认这是两个独立人脸遮罩之间的手臂区域；两张真实人脸均被遮挡。候选不含眼、鼻、口或其他暴露面部。",
+        "comparison_artifact": "opaque-face-gap-frame86.jpg"
+      }
+    ]
+  }
+]

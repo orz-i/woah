@@ -1,0 +1,37 @@
+[
+  {
+    "file": "group_4k_face_solid.mp4",
+    "sha256": "f9e345b99d180aa275a80e56a3b9c200f23e0fe9f25a1d63ab4def3b89d1d9fc",
+    "algorithm_version": 3,
+    "interior_margin_source_pixels": 12.0,
+    "frames": 581,
+    "frames_with_candidates": 1,
+    "candidates": [
+      {
+        "frame": 86,
+        "interior_pixels": 881,
+        "bbox": [
+          2399,
+          527,
+          26,
+          50
+        ],
+        "parent_bbox": [
+          2157,
+          308,
+          582,
+          510
+        ]
+      }
+    ]
+  },
+  {
+    "file": "solo_4k_face_solid.mp4",
+    "sha256": "f63157148b113cb44eb7616e89a9f9d99beb10ee165b7e2fce95779c3a100936",
+    "algorithm_version": 3,
+    "interior_margin_source_pixels": 12.8,
+    "frames": 662,
+    "frames_with_candidates": 0,
+    "candidates": []
+  }
+]

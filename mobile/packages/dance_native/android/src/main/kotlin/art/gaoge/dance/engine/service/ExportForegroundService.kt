@@ -145,8 +145,13 @@ class ExportForegroundService : Service() {
                     request = request!!,
                     isCancelled = isCancelled,
                     onStatusChange = { status ->
-                        coordinator.notifyProgress(status)
-                        updateNotification(status)
+                        if (coordinator.notifyProgress(status)) {
+                            updateNotification(status)
+                        } else if (status.state == "completed" && !ExportTerminalStatus.discardCancelledCompletion(
+                                status, coordinator.getJobStatus(jobId).state
+                            )) {
+                            android.util.Log.w("ExportForegroundService", "Cancelled export output cleanup failed")
+                        }
                     }
                 )
             } catch (error: Throwable) {

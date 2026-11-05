@@ -1,0 +1,324 @@
+[
+  {
+    "case": "group_4k_face_solid",
+    "file": "group_4k_face_solid.mp4",
+    "sha256": "f9e345b99d180aa275a80e56a3b9c200f23e0fe9f25a1d63ab4def3b89d1d9fc",
+    "comparison_artifact": "group_4k_face_solid-privacy-crops.jpg",
+    "comparison_sha256": "8b0918d2c91bedbe52e7a5cd5c9cc152657279b4a3a1c66c227ff81ba8bee411",
+    "frames_reviewed": [
+      145,
+      290,
+      580
+    ],
+    "result": "passed",
+    "observation": "Side and mirror faces are covered; trouser leg remains unchanged."
+  },
+  {
+    "case": "group_4k_body_solid",
+    "file": "group_4k_body_solid.mp4",
+    "sha256": "8d2c8e8a641eab2efcae688156f1f2ae7fac893b99bbe7dc9d5915ef1294033d",
+    "comparison_artifact": "group_4k_body_solid-privacy-crops.jpg",
+    "comparison_sha256": "0d103d13dd5d47a23640d66fffae4a762e2fdcf06b700b69965d5b47bbe8b012",
+    "frames_reviewed": [
+      145,
+      290,
+      580
+    ],
+    "result": "passed",
+    "observation": "Side and mirror faces and the body fragment have the requested full-body effect."
+  },
+  {
+    "case": "solo_4k_body_solid",
+    "file": "solo_4k_body_solid.mp4",
+    "sha256": "0d94b4ce1c605536683841c7d36e38919dd5e8db8fc417282d6c94263d624b15",
+    "comparison_artifact": "solo_4k_body_solid-privacy-crops.jpg",
+    "comparison_sha256": "ff97badd9f66462570d4d0db8b0de87195a23ef25f1ff638610a95b015f158f7",
+    "frames_reviewed": [
+      0,
+      330,
+      661
+    ],
+    "result": "passed",
+    "observation": "First, middle and last face crops are covered by the requested effect."
+  },
+  {
+    "case": "solo_4k_face_sticker",
+    "file": "solo_4k_face_sticker.mp4",
+    "sha256": "822aea4e21d892294f6833fd0b00100ef0a81a630c008eaa78dd89b81737a98c",
+    "comparison_artifact": "solo_4k_face_sticker-privacy-crops.jpg",
+    "comparison_sha256": "c4e3cc0558c2f1db7f74f299768aee6c1713387428bd7d653dc41d4e17f25b38",
+    "frames_reviewed": [
+      0,
+      330,
+      661
+    ],
+    "result": "passed",
+    "observation": "First, middle and last face crops are covered by the requested effect."
+  },
+  {
+    "case": "group_4k_body_mosaic",
+    "file": "group_4k_body_mosaic.mp4",
+    "sha256": "c296e46490812839399dfad4b3f0eeacc7fccffbc43d4398accf93ffc3a0b3ec",
+    "comparison_artifact": "group_4k_body_mosaic-privacy-crops.jpg",
+    "comparison_sha256": "514c73d7a4d62d9a32791020a8976cbc9921d0e2bf1e0136d067433f1c597b61",
+    "frames_reviewed": [
+      145,
+      290,
+      580
+    ],
+    "result": "passed",
+    "observation": "Side and mirror faces and the body fragment have the requested full-body effect."
+  },
+  {
+    "case": "group_4k_body_blur",
+    "file": "group_4k_body_blur.mp4",
+    "sha256": "adeb256274c77c4ee3f2ea83d239a43f34e3127c7ccca5dbbe15bb700ab53f9c",
+    "comparison_artifact": "group_4k_body_blur-privacy-crops.jpg",
+    "comparison_sha256": "7ccd41034e13b73f334241c2126e146199ab02b0aad974ed2fc35a2d184f8bd2",
+    "frames_reviewed": [
+      145,
+      290,
+      580
+    ],
+    "result": "passed",
+    "observation": "Side and mirror faces and the body fragment have the requested full-body effect."
+  },
+  {
+    "case": "group_4k_body_gradient",
+    "file": "group_4k_body_gradient.mp4",
+    "sha256": "e6774bf0fab1765a6d550247ee9e311d84df58d0d9c0e8002f4ff694cec6881d",
+    "comparison_artifact": "group_4k_body_gradient-privacy-crops.jpg",
+    "comparison_sha256": "4ee2b876e71f7d4c933d99e51e13eb3009afbedac6fce1fad74b52b6ff130eb9",
+    "frames_reviewed": [
+      145,
+      290,
+      580
+    ],
+    "result": "passed",
+    "observation": "Side and mirror faces and the body fragment have the requested full-body effect."
+  },
+  {
+    "case": "group_4k_face_mosaic",
+    "file": "group_4k_face_mosaic.mp4",
+    "sha256": "370ddb15bd1436de50b9b464c51519cb161a0b5ef14ec8f99d25ff82a96fce6f",
+    "comparison_artifact": "group_4k_face_mosaic-privacy-crops.jpg",
+    "comparison_sha256": "a1dac90f9a4bb504aca79478f89821b3aa39fecb67eb6f93647fd38e52182207",
+    "frames_reviewed": [
+      145,
+      290,
+      580
+    ],
+    "result": "passed",
+    "observation": "Side and mirror faces are covered; trouser leg remains unchanged."
+  },
+  {
+    "case": "group_4k_face_blur",
+    "file": "group_4k_face_blur.mp4",
+    "sha256": "4a81455a6e4e8263b2de1e7e3df356e724c5275523f34b81003d6244e983a8d3",
+    "comparison_artifact": "group_4k_face_blur-privacy-crops.jpg",
+    "comparison_sha256": "bfbba0a12527547f243c03f9c2f08f7842a8740e11f9cb7bcbd40c24154cf3fd",
+    "frames_reviewed": [
+      145,
+      290,
+      580
+    ],
+    "result": "passed",
+    "observation": "Side and mirror faces are covered; trouser leg remains unchanged."
+  },
+  {
+    "case": "group_4k_face_gradient",
+    "file": "group_4k_face_gradient.mp4",
+    "sha256": "1d44e0b1e8fbea1c341074ddb04ae09e5ad39636e28f763aeb385262d2138989",
+    "comparison_artifact": "group_4k_face_gradient-privacy-crops.jpg",
+    "comparison_sha256": "ab1b0fe4036d74db82aa55124ed57c21340172c63a4e160a6ac5381bdca93619",
+    "frames_reviewed": [
+      145,
+      290,
+      580
+    ],
+    "result": "passed",
+    "observation": "Side and mirror faces are covered; trouser leg remains unchanged."
+  },
+  {
+    "case": "group_4k_face_sticker",
+    "file": "group_4k_face_sticker.mp4",
+    "sha256": "02d0e34e05247e55c98e3ccb694a3bf5b5b8c412d687a2830169c823d0dcee71",
+    "comparison_artifact": "group_4k_face_sticker-privacy-crops.jpg",
+    "comparison_sha256": "b309b2808aae14b9061e62e8d45a3d1d3c03adb07f4c176bc1a497fb99cb78c4",
+    "frames_reviewed": [
+      145,
+      290,
+      580
+    ],
+    "result": "passed",
+    "observation": "Side and mirror faces are covered; trouser leg remains unchanged."
+  },
+  {
+    "case": "solo_4k_body_mosaic",
+    "file": "solo_4k_body_mosaic.mp4",
+    "sha256": "115eb0725a0ec78ecfcd420e983a6bda40a1aadf7444f369c551a276bcafb6af",
+    "comparison_artifact": "solo_4k_body_mosaic-privacy-crops.jpg",
+    "comparison_sha256": "1f8765411784cd841bf7562520f7592221df748f2f5aab856a35768639658d97",
+    "frames_reviewed": [
+      0,
+      330,
+      661
+    ],
+    "result": "passed",
+    "observation": "First, middle and last face crops are covered by the requested effect."
+  },
+  {
+    "case": "solo_4k_body_blur",
+    "file": "solo_4k_body_blur.mp4",
+    "sha256": "009c3da14d2a051555c6f74bb0afce4a1d271569dfa5a5ae6ea919c905b467b0",
+    "comparison_artifact": "solo_4k_body_blur-privacy-crops.jpg",
+    "comparison_sha256": "4a9da09b3ad261601b0e9b5b1083e6ba10f488f39833a4a26bb37237d3780a34",
+    "frames_reviewed": [
+      0,
+      330,
+      661
+    ],
+    "result": "passed",
+    "observation": "First, middle and last face crops are covered by the requested effect."
+  },
+  {
+    "case": "solo_4k_body_gradient",
+    "file": "solo_4k_body_gradient.mp4",
+    "sha256": "a332923fee597898b0bb26e0368effbb44442b203d41d22887983f66982a83f8",
+    "comparison_artifact": "solo_4k_body_gradient-privacy-crops.jpg",
+    "comparison_sha256": "b76d4c2d390d19eea4312a0a6f0c94647fc2536410c54b03fb785df88891e252",
+    "frames_reviewed": [
+      0,
+      330,
+      661
+    ],
+    "result": "passed",
+    "observation": "First, middle and last face crops are covered by the requested effect."
+  },
+  {
+    "case": "solo_4k_face_solid",
+    "file": "solo_4k_face_solid.mp4",
+    "sha256": "f63157148b113cb44eb7616e89a9f9d99beb10ee165b7e2fce95779c3a100936",
+    "comparison_artifact": "solo_4k_face_solid-privacy-crops.jpg",
+    "comparison_sha256": "f1ad648d49577b835f32c9e56b185555a7667dff1b607c8bb178321c37498834",
+    "frames_reviewed": [
+      0,
+      330,
+      661
+    ],
+    "result": "passed",
+    "observation": "First, middle and last face crops are covered by the requested effect."
+  },
+  {
+    "case": "solo_4k_face_mosaic",
+    "file": "solo_4k_face_mosaic.mp4",
+    "sha256": "06ac83efd4e98c2a15951e7ff3f8bd8d80aa6ef71997c4c97f167eaf31a741d5",
+    "comparison_artifact": "solo_4k_face_mosaic-privacy-crops.jpg",
+    "comparison_sha256": "ef0504acf5cb06496b85c41b06cd0f00eb34f9160d35c4aebc12d153c410025e",
+    "frames_reviewed": [
+      0,
+      330,
+      661
+    ],
+    "result": "passed",
+    "observation": "First, middle and last face crops are covered by the requested effect."
+  },
+  {
+    "case": "solo_4k_face_blur",
+    "file": "solo_4k_face_blur.mp4",
+    "sha256": "874fb4bfccf44a95a1fb1b47d956031b7d776af71cc31d556db20561a33c775a",
+    "comparison_artifact": "solo_4k_face_blur-privacy-crops.jpg",
+    "comparison_sha256": "dd1d6785b9a86f26103d064b27fce9a736ecaa19813bab261c1ecd8ae868c844",
+    "frames_reviewed": [
+      0,
+      330,
+      661
+    ],
+    "result": "passed",
+    "observation": "First, middle and last face crops are covered by the requested effect."
+  },
+  {
+    "case": "solo_4k_face_gradient",
+    "file": "solo_4k_face_gradient.mp4",
+    "sha256": "f5ed2ce33d785c6c3fe79576ad37a05972b67bcee17f327d95ecb6fd08a38951",
+    "comparison_artifact": "solo_4k_face_gradient-privacy-crops.jpg",
+    "comparison_sha256": "1ba7579d145592a411b323ab9aeb62368ddaabd86f0c5461df912eb66c69076f",
+    "frames_reviewed": [
+      0,
+      330,
+      661
+    ],
+    "result": "passed",
+    "observation": "First, middle and last face crops are covered by the requested effect."
+  },
+  {
+    "case": "group_4k_body_mosaic_balanced",
+    "file": "group_4k_body_mosaic_balanced.mp4",
+    "sha256": "9031cc14c7149acd6b62fe7e2a89ef57746005517f285fdca5c0c4284c686918",
+    "comparison_artifact": "group_4k_body_mosaic_balanced-privacy-crops.jpg",
+    "comparison_sha256": "061b972aca92115ebd7b8f8a23a6b16f81607f173a9a88f2233bf8f70bba2754",
+    "frames_reviewed": [
+      145,
+      290,
+      580
+    ],
+    "result": "passed",
+    "observation": "Side and mirror faces and the body fragment have the requested full-body effect."
+  },
+  {
+    "case": "solo_4k_face_sticker_balanced",
+    "file": "solo_4k_face_sticker_balanced.mp4",
+    "sha256": "af373a37efc3828886be497382be3ee05d4a4ec83cee84d2826305c9229737e2",
+    "comparison_artifact": "solo_4k_face_sticker_balanced-privacy-crops.jpg",
+    "comparison_sha256": "bbcfb54b2e26cce0cae49a9a447739aa12b5831d8fdcc8c63fc68398f43486ef",
+    "frames_reviewed": [
+      0,
+      330,
+      661
+    ],
+    "result": "passed",
+    "observation": "First, middle and last face crops are covered by the requested effect."
+  },
+  {
+    "case": "group_4k_body_mosaic_speed",
+    "file": "group_4k_body_mosaic_speed.mp4",
+    "sha256": "e2485359b469c12fb77b635975b037b79d515aec00745847d017626e5db1a387",
+    "comparison_artifact": "group_4k_body_mosaic_speed-privacy-crops.jpg",
+    "comparison_sha256": "061b972aca92115ebd7b8f8a23a6b16f81607f173a9a88f2233bf8f70bba2754",
+    "frames_reviewed": [
+      145,
+      290,
+      580
+    ],
+    "result": "passed",
+    "observation": "Side and mirror faces and the body fragment have the requested full-body effect."
+  },
+  {
+    "case": "solo_4k_face_sticker_speed",
+    "file": "solo_4k_face_sticker_speed.mp4",
+    "sha256": "0eab140a33d134b38b0d0acb86fcf17be0ff9f9b4e5dc021fff7f9f9b0791dc7",
+    "comparison_artifact": "solo_4k_face_sticker_speed-privacy-crops.jpg",
+    "comparison_sha256": "955c9ea07c993379045ae542b3dab8f807b584ea0b5b67065e96a3ad7564a5ca",
+    "frames_reviewed": [
+      0,
+      330,
+      661
+    ],
+    "result": "passed",
+    "observation": "First, middle and last face crops are covered by the requested effect."
+  },
+  {
+    "case": "solo_4k_retry_sticker",
+    "file": "solo_4k_retry_sticker.mp4",
+    "sha256": "301e2ca99db6aed1072eb581b09d5fabacf90669cf09f06b88823c945e410163",
+    "comparison_artifact": "solo_4k_retry_sticker-privacy-crops.jpg",
+    "comparison_sha256": "c4e3cc0558c2f1db7f74f299768aee6c1713387428bd7d653dc41d4e17f25b38",
+    "frames_reviewed": [
+      0,
+      330,
+      661
+    ],
+    "result": "passed",
+    "observation": "First, middle and last face crops are covered by the requested effect."
+  }
+]

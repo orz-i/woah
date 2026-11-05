@@ -1,0 +1,9 @@
+{
+  "recorded_at_utc": "2026-11-05T04:29:45.981886+00:00",
+  "native_pid": 9989,
+  "passed_cases_at_observation": 18,
+  "battery_level_percent": 43,
+  "battery_temperature_celsius": 39.2,
+  "usb_powered": true,
+  "note": "Read-only dumpsys battery during the uninterrupted 4K run; no power setting changed."
+}

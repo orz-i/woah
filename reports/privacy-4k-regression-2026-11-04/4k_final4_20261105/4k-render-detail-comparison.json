@@ -1,0 +1,50 @@
+[
+  {
+    "region": "window_edge",
+    "crop": [
+      3300,
+      600,
+      500,
+      400
+    ],
+    "mean_native_bgr_delta": [
+      0.6780449748039246,
+      -0.4243749976158142,
+      -0.2660149931907654
+    ],
+    "native_mse": 3.4929416179656982,
+    "native_color_offset_removed_mse": 3.2560737133026123,
+    "proxy_mse": 9.531428337097168,
+    "laplacian_variance_source_native_proxy": [
+      6.54038667678833,
+      5.069842338562012,
+      1.5341283082962036
+    ],
+    "laplacian_correlation_native": 0.2598365120213363,
+    "laplacian_correlation_proxy": 0.12157502892065017
+  },
+  {
+    "region": "floor",
+    "crop": [
+      3200,
+      1700,
+      600,
+      400
+    ],
+    "mean_native_bgr_delta": [
+      -0.5454458594322205,
+      0.5355374813079834,
+      2.2224042415618896
+    ],
+    "native_mse": 5.459109783172607,
+    "native_color_offset_removed_mse": 3.6179797649383545,
+    "proxy_mse": 3.171626329421997,
+    "laplacian_variance_source_native_proxy": [
+      6.386483192443848,
+      5.671265602111816,
+      1.6505457162857056
+    ],
+    "laplacian_correlation_native": 0.08348685246652038,
+    "laplacian_correlation_proxy": 0.021288273657040332
+  }
+]

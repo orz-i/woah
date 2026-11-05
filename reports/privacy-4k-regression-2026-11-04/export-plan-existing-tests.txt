@@ -1,0 +1,19 @@
+00:00 +0: loading test/export_plan_test.dart
+00:00 +0: preserves 4K source geometry when encoder capability allows it
+00:00 +1: applies one explicit capability fallback instead of native hidden caps
+00:00 +2: treats landscape capability pair as portrait capability when needed
+00:00 +3: portrait reframe keeps source-derived pixels beyond the old 1920 cap
+00:00 +4: 1080p landscape portrait crop restores clarity up to FHD
+00:00 +5: 720p landscape portrait crop never exceeds the 2x restoration bound
+00:00 +6: 4K portrait crop already has enough source pixels and skips restoration
+00:00 +7: HD portrait preference restores only to the HD envelope
+00:00 +8: large follow zoom still respects the strict 2x restoration ceiling
+00:00 +9: encoder fallback can disable restoration when output is below crop pixels
+00:00 +10: 9:16 capability fallback keeps an exact ratio
+00:00 +11: FHD caps 4K without upscaling smaller sources
+00:00 +12: HD caps 16:9 4K to 1280x720
+00:00 +13: FHD fits non-16:9 material inside the standard envelope
+00:00 +14: 9:16 FHD and HD keep exact portrait ratios
+00:00 +15: normalizes odd source geometry downward and never enlarges it
+00:00 +16: falls back to 30 fps only when source fps is unusable
+00:00 +17: All tests passed!

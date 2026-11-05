@@ -1,0 +1,11 @@
+{
+  "result": "stopped_by_tester_after_visual_failure",
+  "frame": 145,
+  "source_pts_us": 5800000,
+  "same_frame_source_red_core_pixels": 0,
+  "full_video_red_core_pixels": 0,
+  "cold_start_red_core_pixels": 576,
+  "sample_pixels": 576,
+  "cause": "Adjacent-body cache borrowed another face; cold-start current observations protect the visible side face.",
+  "process_termination_is_not_product_crash": true
+}

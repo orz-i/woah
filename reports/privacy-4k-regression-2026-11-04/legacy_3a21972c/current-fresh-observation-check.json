@@ -1,0 +1,9 @@
+{
+  "before_mask": 0,
+  "after_mask": 255,
+  "actual_face_detector_observations": 1,
+  "old_identity_unchanged": true,
+  "anonymous_track_ids": [
+    -2000000
+  ]
+}

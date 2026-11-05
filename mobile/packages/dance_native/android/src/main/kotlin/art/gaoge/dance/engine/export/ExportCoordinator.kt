@@ -66,12 +66,8 @@ class ExportCoordinator private constructor(private val appContext: Context) {
         if (flag != null) {
             flag.set(true)
         }
-        val record = jobStore.getJob(jobId)
-        if (record != null && record.state != "completed" && record.state != "failed") {
-            val cancelledStatus = record.toJobStatusDto().copy(state = "cancelled")
-            jobStore.updateStatus(jobId, cancelledStatus)
-            notifyProgress(cancelledStatus)
-        }
+        val record = jobStore.getJob(jobId) ?: return
+        notifyProgress(record.toJobStatusDto().copy(state = "cancelled", outputUri = null))
     }
 
     fun cancelAllJobs() {
@@ -83,13 +79,16 @@ class ExportCoordinator private constructor(private val appContext: Context) {
 
     private val notifyScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main + kotlinx.coroutines.SupervisorJob())
 
-    fun notifyProgress(status: JobStatusDto) {
-        jobStore.updateStatus(status.jobId, status)
+    fun notifyProgress(status: JobStatusDto): Boolean {
+        if (!jobStore.updateStatus(status.jobId, status)) return false
         notifyScope.launch {
+            // A previously accepted progress event may already be queued on Main.
+            if (jobStore.getJob(status.jobId)?.state != status.state) return@launch
             try {
                 eventEmitter?.onProgressUpdate(status)
             } catch (_: Throwable) {}
         }
+        return true
     }
 
     fun getJobStatus(jobId: String): JobStatusDto {

@@ -4,6 +4,8 @@ import art.gaoge.dance.engine.bridge.JobStatusDto
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class ExportTerminalStatusTest {
     private fun processingStatus(): JobStatusDto = JobStatusDto(
@@ -52,5 +54,19 @@ class ExportTerminalStatusTest {
         assertEquals("Unexpected encoder failure", result.errorMessage)
         assertNull(result.currentPreviewPath)
         assertEquals(42L, result.currentFrame)
+    }
+
+    @Test
+    fun lateCompletedFileIsRemovedOnlyWhenCancellationWon() {
+        val output = kotlin.io.path.createTempFile("allocated_export_", ".mp4").toFile()
+        try {
+            val completion = processingStatus().copy(state = "completed", outputUri = output.absolutePath)
+            assertTrue(ExportTerminalStatus.discardCancelledCompletion(completion, "completed"))
+            assertTrue(output.isFile, "Never delete a completed job's published file")
+            assertTrue(ExportTerminalStatus.discardCancelledCompletion(completion, "cancelled"))
+            assertFalse(output.exists(), "Clean the renderer's actual file after a rejected completion")
+        } finally {
+            output.delete()
+        }
     }
 }

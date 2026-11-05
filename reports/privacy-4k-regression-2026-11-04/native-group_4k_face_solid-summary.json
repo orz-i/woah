@@ -1,0 +1,402 @@
+{
+  "job_id": "job_f14b1868-ced9-46bc-917e-7051a8db282b",
+  "session_id": "20261105_015150_6a42c80e",
+  "created_at": "2026-11-05T02:02:39.537Z",
+  "summary": {
+    "job_id": "job_f14b1868-ced9-46bc-917e-7051a8db282b",
+    "profile": "quality",
+    "source_width": 3840,
+    "source_height": 2160,
+    "source_fps": 25,
+    "target_width": 3840,
+    "target_height": 2160,
+    "target_fps": 25,
+    "crop_clarity_scale": 1,
+    "selected_ids": [],
+    "face_only_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "decoded_frames": 581,
+    "latched_frames": 581,
+    "rendered_frames": 581,
+    "encoded_frames": 581,
+    "face_detector_call_count": 1168,
+    "face_detector_observation_count": 1002,
+    "face_detector_zero_observation_call_count": 255,
+    "face_detector_rejected_call_count": 327,
+    "face_detected_track_frames": 586,
+    "face_predicted_track_frames": 1851,
+    "face_fallback_track_frames": 1476,
+    "face_body_mask_guided_track_frames": 1442,
+    "face_position_clamped_track_frames": 436,
+    "face_body_compensated_track_frames": 0,
+    "face_fresh_body_motion_track_frames": 0,
+    "face_recent_body_motion_bridge_track_frames": 0,
+    "face_dormant_reactivation_probe_track_frames": 0,
+    "face_dormant_probe_motion_rejected_track_frames": 0,
+    "face_dormant_reactivated_by_face_detection_events": 0,
+    "face_dormant_exact_reacquired_track_frames": 19,
+    "face_dormant_suppressed_track_frames": 28,
+    "face_dormant_pixel_motion_bridge_track_frames": 0,
+    "face_pixel_motion_track_frames": 1955,
+    "face_partial_occlusion_pixel_motion_track_frames": 196,
+    "face_pixel_motion_rejected_track_frames": 496,
+    "face_roi_read_count": 3098,
+    "face_occlusion_hold_track_frames": 0,
+    "face_occlusion_reacquire_detector_track_frames": 0,
+    "face_appearance_reacquire_detector_track_frames": 0,
+    "face_evidence_gap_reacquire_detector_track_frames": 0,
+    "face_evidence_gap_reacquire_detector_success_track_frames": 0,
+    "face_evidence_gap_reacquire_detector_zero_observation_track_frames": 0,
+    "face_evidence_gap_reacquire_detector_rejected_track_frames": 0,
+    "face_occlusion_hold_max_age_us": 100000,
+    "face_pixel_motion_backend": "SOURCE_ROI_256",
+    "face_pixel_motion_evidence_gap_us": 150000,
+    "face_pixel_motion_detector_seed_max_age_us": 800000,
+    "face_detector_calls_by_track_id": {},
+    "face_detector_rejected_calls_by_track_id": {},
+    "face_detected_frames_by_track_id": {},
+    "face_predicted_frames_by_track_id": {},
+    "face_fallback_frames_by_track_id": {},
+    "face_body_mask_guided_frames_by_track_id": {},
+    "face_position_clamped_frames_by_track_id": {},
+    "face_body_compensated_frames_by_track_id": {},
+    "face_fresh_body_motion_frames_by_track_id": {},
+    "face_recent_body_motion_bridge_frames_by_track_id": {},
+    "face_dormant_reactivation_probe_frames_by_track_id": {},
+    "face_dormant_probe_motion_rejected_frames_by_track_id": {},
+    "face_dormant_reactivated_by_face_detection_events_by_track_id": {},
+    "face_dormant_exact_reacquired_frames_by_track_id": {},
+    "face_dormant_suppressed_frames_by_track_id": {},
+    "face_dormant_pixel_motion_bridge_frames_by_track_id": {},
+    "face_pixel_motion_frames_by_track_id": {},
+    "face_partial_occlusion_pixel_motion_frames_by_track_id": {},
+    "face_pixel_motion_rejected_frames_by_track_id": {},
+    "face_occlusion_hold_frames_by_track_id": {},
+    "face_occlusion_reacquire_detector_frames_by_track_id": {},
+    "face_appearance_reacquire_detector_frames_by_track_id": {},
+    "face_evidence_gap_reacquire_detector_frames_by_track_id": {},
+    "face_evidence_gap_reacquire_detector_success_frames_by_track_id": {},
+    "face_evidence_gap_reacquire_detector_zero_observation_frames_by_track_id": {},
+    "face_evidence_gap_reacquire_detector_rejected_frames_by_track_id": {},
+    "face_pixel_motion_reject_reasons": {
+      "AMBIGUOUS_PEAK": 379,
+      "BODY_ANCHOR_RESIDUAL": 3,
+      "LOW_CORRELATION": 114
+    },
+    "face_pixel_motion_reject_reasons_by_track_id": {},
+    "face_dormant_suppression_reasons": {
+      "EVIDENCE_GAP_EXPIRED": 8,
+      "NO_PIXEL_STATE": 20
+    },
+    "face_dormant_suppression_reasons_by_track_id": {},
+    "face_dormant_reactivation_sticker_max_width_by_track_id": {},
+    "face_dormant_reactivation_sticker_max_height_by_track_id": {},
+    "face_sticker_min_width_by_track_id": {},
+    "face_sticker_max_width_by_track_id": {},
+    "face_sticker_min_height_by_track_id": {},
+    "face_sticker_max_height_by_track_id": {},
+    "face_sticker_max_center_step_by_track_id": {},
+    "face_sticker_max_consecutive_center_step_by_track_id": {},
+    "face_partial_occlusion_max_center_step_by_track_id": {},
+    "face_partial_occlusion_max_consecutive_center_step_by_track_id": {},
+    "face_deterministic_cpu_primary_preferred": false,
+    "face_deterministic_cpu_primary_inference_frames": 0,
+    "face_deterministic_cpu_primary_fallback_frames": 0,
+    "cross_device_adaptive_shadow_matrix_enabled": false,
+    "cross_device_adaptive_shadow_tracker_steps": 0,
+    "fresh_full_body_class_primary_enabled": false,
+    "conservative_mixed_full_body_occluder_policy_enabled": false,
+    "surface_wait_timeout_count": 0,
+    "duplicate_surface_timestamp_count": 0,
+    "non_monotonic_surface_timestamp_count": 0,
+    "max_surface_pts_delta_us": 0,
+    "p95_surface_pts_delta_us": 0,
+    "stage_timings": {
+      "canonicalYuvToRgba": {
+        "count": 581,
+        "avg_ms": 60.48192771084337,
+        "p50_ms": 61,
+        "p95_ms": 70,
+        "max_ms": 235
+      },
+      "drainEncoder": {
+        "count": 581,
+        "avg_ms": 15.524956970740103,
+        "p50_ms": 15,
+        "p95_ms": 19,
+        "max_ms": 23
+      },
+      "faceDetectorCpu": {
+        "count": 581,
+        "avg_ms": 52.44922547332186,
+        "p50_ms": 52,
+        "p95_ms": 78,
+        "max_ms": 90
+      },
+      "faceDetectorWall": {
+        "count": 581,
+        "avg_ms": 28.619621342512907,
+        "p50_ms": 28,
+        "p95_ms": 42,
+        "max_ms": 50
+      },
+      "faceMaskBuild": {
+        "count": 581,
+        "avg_ms": 0.04991394148020654,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "max_ms": 1
+      },
+      "faceOnlyPrivacy": {
+        "count": 581,
+        "avg_ms": 81.66092943201377,
+        "p50_ms": 81,
+        "p95_ms": 101,
+        "max_ms": 200
+      },
+      "facePixelMotionCpu": {
+        "count": 569,
+        "avg_ms": 19.43585237258348,
+        "p50_ms": 19,
+        "p95_ms": 33,
+        "max_ms": 134
+      },
+      "facePrivacyResolve": {
+        "count": 581,
+        "avg_ms": 6.774526678141136,
+        "p50_ms": 7,
+        "p95_ms": 9,
+        "max_ms": 65
+      },
+      "faceRoiReadback": {
+        "count": 581,
+        "avg_ms": 9.91394148020654,
+        "p50_ms": 10,
+        "p95_ms": 13,
+        "max_ms": 16
+      },
+      "renderEffects": {
+        "count": 581,
+        "avg_ms": 1.4939759036144578,
+        "p50_ms": 1,
+        "p95_ms": 2,
+        "max_ms": 19
+      },
+      "tracking": {
+        "count": 581,
+        "avg_ms": 33.929432013769365,
+        "p50_ms": 31,
+        "p95_ms": 63,
+        "max_ms": 163
+      },
+      "yoloCandidateScan": {
+        "count": 581,
+        "avg_ms": 0.0017211703958691911,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "max_ms": 1
+      },
+      "yoloCpuInference": {
+        "count": 581,
+        "avg_ms": 115.94664371772805,
+        "p50_ms": 113,
+        "p95_ms": 128,
+        "max_ms": 235
+      },
+      "yoloCpuMt4Probe": {
+        "count": 581,
+        "avg_ms": 116.92082616179002,
+        "p50_ms": 115,
+        "p95_ms": 123,
+        "max_ms": 286
+      },
+      "yoloCpuMt4Probe_yoloCandidateScan": {
+        "count": 581,
+        "avg_ms": 0.0017211703958691911,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "max_ms": 1
+      },
+      "yoloCpuMt4Probe_yoloDecode": {
+        "count": 581,
+        "avg_ms": 10.099827882960414,
+        "p50_ms": 10,
+        "p95_ms": 13,
+        "max_ms": 19
+      },
+      "yoloCpuMt4Probe_yoloDiagnostics": {
+        "count": 581,
+        "avg_ms": 1.4371772805507745,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "max_ms": 148
+      },
+      "yoloCpuMt4Probe_yoloInputWrite": {
+        "count": 581,
+        "avg_ms": 0.9156626506024096,
+        "p50_ms": 1,
+        "p95_ms": 2,
+        "max_ms": 3
+      },
+      "yoloCpuMt4Probe_yoloLiteRtRun": {
+        "count": 581,
+        "avg_ms": 97.48192771084338,
+        "p50_ms": 96,
+        "p95_ms": 103,
+        "max_ms": 160
+      },
+      "yoloCpuMt4Probe_yoloMaskAwareNms": {
+        "count": 581,
+        "avg_ms": 9.61790017211704,
+        "p50_ms": 10,
+        "p95_ms": 13,
+        "max_ms": 17
+      },
+      "yoloCpuMt4Probe_yoloMaskDecode": {
+        "count": 581,
+        "avg_ms": 8.375215146299483,
+        "p50_ms": 8,
+        "p95_ms": 11,
+        "max_ms": 14
+      },
+      "yoloCpuMt4Probe_yoloMaskIouScan": {
+        "count": 581,
+        "avg_ms": 0.0034423407917383822,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "max_ms": 1
+      },
+      "yoloCpuMt4Probe_yoloMaskMaterialize": {
+        "count": 581,
+        "avg_ms": 0.05335628227194492,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "max_ms": 4
+      },
+      "yoloCpuMt4Probe_yoloOutputRead": {
+        "count": 581,
+        "avg_ms": 3.280550774526678,
+        "p50_ms": 3,
+        "p95_ms": 5,
+        "max_ms": 8
+      },
+      "yoloCpuMt4Probe_yoloPreprocess": {
+        "count": 581,
+        "avg_ms": 1.1858864027538727,
+        "p50_ms": 1,
+        "p95_ms": 2,
+        "max_ms": 4
+      },
+      "yoloDecode": {
+        "count": 581,
+        "avg_ms": 10.598967297762478,
+        "p50_ms": 10,
+        "p95_ms": 14,
+        "max_ms": 50
+      },
+      "yoloDiagnostics": {
+        "count": 581,
+        "avg_ms": 1.2237521514629948,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "max_ms": 89
+      },
+      "yoloInputWrite": {
+        "count": 581,
+        "avg_ms": 0.6746987951807228,
+        "p50_ms": 1,
+        "p95_ms": 1,
+        "max_ms": 2
+      },
+      "yoloLiteRtRun": {
+        "count": 581,
+        "avg_ms": 96.55077452667814,
+        "p50_ms": 95,
+        "p95_ms": 101,
+        "max_ms": 204
+      },
+      "yoloMaskAwareNms": {
+        "count": 581,
+        "avg_ms": 10.06540447504303,
+        "p50_ms": 10,
+        "p95_ms": 13,
+        "max_ms": 50
+      },
+      "yoloMaskDecode": {
+        "count": 581,
+        "avg_ms": 8.78657487091222,
+        "p50_ms": 8,
+        "p95_ms": 11,
+        "max_ms": 47
+      },
+      "yoloMaskIouScan": {
+        "count": 581,
+        "avg_ms": 0.0034423407917383822,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "max_ms": 1
+      },
+      "yoloMaskMaterialize": {
+        "count": 581,
+        "avg_ms": 0.022375215146299483,
+        "p50_ms": 0,
+        "p95_ms": 0,
+        "max_ms": 4
+      },
+      "yoloOutputRead": {
+        "count": 581,
+        "avg_ms": 3.6798623063683307,
+        "p50_ms": 3,
+        "p95_ms": 6,
+        "max_ms": 17
+      },
+      "yoloPipelineTotal": {
+        "count": 581,
+        "avg_ms": 116.41996557659208,
+        "p50_ms": 114,
+        "p95_ms": 129,
+        "max_ms": 236
+      },
+      "yoloPreprocess": {
+        "count": 581,
+        "avg_ms": 1.0567986230636832,
+        "p50_ms": 1,
+        "p95_ms": 1,
+        "max_ms": 6
+      }
+    },
+    "yolo_requested_accelerator": "CPU",
+    "yolo_effective_accelerator": "CPU",
+    "yolo_gpu_fallback_reason": null,
+    "yolo_effective_cpu_num_threads": 4,
+    "yolo_inference_input_path": "CANONICAL_YUV_CPU",
+    "canonical_yuv_validation_scope": "FULL_EXPORT_DEBUG",
+    "canonical_yuv_validation_window_us": -1,
+    "canonical_yuv_validation_window_completed": false,
+    "canonical_yuv_fallback_reason": null,
+    "cpu_mt4_probe_threads": 4,
+    "cpu_mt4_signature_scope": "FULL_EXPORT",
+    "cpu_mt4_probe_inference_frames": 581,
+    "cpu_mt4_production_reuse_frames": 0,
+    "cpu_mt4_production_reuse_parity_frames": 0,
+    "cpu_mt4_production_reuse_parity_exact": true,
+    "cpu_mt4_reference_source_policy": "INDEPENDENT_CPU4T_FULL_EXPORT",
+    "cpu_mt4_production_reuse_parity_interval_frames": 120,
+    "cpu_mt4_shadow_adaptive_schedules": [
+      "dense",
+      "safe",
+      "balanced",
+      "aggressive",
+      "sparse"
+    ],
+    "cpu_mt4_probe_fallback_reason": null,
+    "state": "completed"
+  }
+}

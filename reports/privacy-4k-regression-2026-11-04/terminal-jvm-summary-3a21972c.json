@@ -1,0 +1,11 @@
+{
+  "counts": {
+    "tests": 570,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "candidate": "3a21972cf2f7812265993c6d79f91386396443e1822faa7fe30b4f3ea7530a39",
+  "log": "terminal-final-build-tests.txt",
+  "serial_build": true
+}

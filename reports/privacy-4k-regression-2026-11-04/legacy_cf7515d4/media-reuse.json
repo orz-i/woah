@@ -1,0 +1,7 @@
+{
+  "result": "passed",
+  "videos": 22,
+  "fixture_case_count": 19,
+  "test_apk_sha256": "cf7515d41609d43f64020a7bdc076d31912dfc62f4a2f443e60154b44fc76cdc",
+  "reason": "The 22 cases call ExportPipeline directly; the subsequent fix only changes service/store/coordinator status delivery. The rendering and MP4 sources are unchanged."
+}

@@ -558,7 +558,8 @@ class FaceOnlyPrivacyFrameProcessor(
         protectedMotionEvidence: List<ProtectedTrackMotionEvidence> = emptyList(),
         freshPrivacyClassEvidence: List<FreshPrivacyClassEvidence> = emptyList(),
         canonicalModelRgbaBottomUp: ByteBuffer? = null,
-        ptsUs: Long
+        ptsUs: Long,
+        coveredHeadFallbackTrackIds: Set<Int> = emptySet()
     ): FaceOnlyPrivacyFrameResult {
         val canonicalizeReferenceGeometry = canonicalModelRgbaBottomUp != null
         if (faceOnlyTrackIds.isEmpty()) {
@@ -903,6 +904,7 @@ class FaceOnlyPrivacyFrameProcessor(
         val detected = linkedSetOf<Int>()
         val predicted = linkedSetOf<Int>()
         val fallback = linkedSetOf<Int>()
+        val coveredHeadFallbackSuppressed = linkedSetOf<Int>()
         var inferenceMs = 0.0
         var detectorWallMs = 0.0
         var detectorCallCount = 0
@@ -1358,6 +1360,13 @@ class FaceOnlyPrivacyFrameProcessor(
                     if (fallbackGeometry.bodyMaskGuided) bodyMaskGuidedTrackIds += trackId
                 }?.region
             }
+            if (region?.source == FacePrivacyRegionSource.YOLO_HEAD_FALLBACK &&
+                coveredHeadFallbackTrackIds.contains(trackId)) {
+                // A current detected face or pixel match above always wins. Only
+                // discard an unconfirmed guessed head inside a nearer body.
+                coveredHeadFallbackSuppressed += trackId
+                region = null
+            }
             if (region != null) {
                 if (canonicalizeReferenceGeometry) {
                     region = FaceReferenceGeometryCanonicalizer.ellipse(region)
@@ -1454,6 +1463,7 @@ class FaceOnlyPrivacyFrameProcessor(
             addAll(dormantReactivatedTrackIds)
             addAll(dormantPixelMotionBridgeTrackIds)
             addAll(occlusionHoldTrackIds)
+            removeAll(coveredHeadFallbackSuppressed)
         }
         val dormantSuppressedTrackIds = activeFaceOnlyTrackIds
             .filterTo(linkedSetOf()) { !renderableFaceOnlyTrackIds.contains(it) }

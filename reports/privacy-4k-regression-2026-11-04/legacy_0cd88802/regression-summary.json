@@ -1,0 +1,22 @@
+{
+  "result": "passed",
+  "test_apk_sha256": "0cd88802cd9a886edb350bcf4f71bdd2e5f22f983bc8d54300b4526b56b7243f",
+  "native_run": "4k_terminal_final_20261105",
+  "native_lifecycle_cases": 4,
+  "native_lifecycle_outputs": 3,
+  "native_pid": 26560,
+  "previous_40_device_cases": 40,
+  "previous_production_lifecycle": {
+    "stages": [
+      "preview_0",
+      "export_0",
+      "preview_1",
+      "export_1",
+      "preview_2",
+      "export_2",
+      "final_preview"
+    ],
+    "state": "passed"
+  },
+  "fresh_observation_proof": true
+}

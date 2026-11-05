@@ -1,0 +1,31 @@
+{
+  "result": "passed",
+  "source_sha256": "376c2ae73c92c23dceb042d27450aaa45ba2f44a3d7b0a5f3c26e9bea6c2dd73",
+  "state_samples": [
+    {
+      "state": "cancelled",
+      "current_frame": 188,
+      "output_uri": null
+    },
+    {
+      "state": "cancelled",
+      "current_frame": 188,
+      "output_uri": null
+    },
+    {
+      "state": "cancelled",
+      "current_frame": 188,
+      "output_uri": null
+    },
+    {
+      "state": "cancelled",
+      "current_frame": 188,
+      "output_uri": null
+    }
+  ],
+  "gallery_rows_unchanged": true,
+  "pid": "20842",
+  "job_id": "job_bbd96c84-6691-4537-a13e-a0324f7e3086",
+  "build_sha256": "a52db8034a5824ac7a6de0dfb213e88be8b37f32dc1d4218565db96d1bbce88b",
+  "intentional_qa_cancellation": true
+}
