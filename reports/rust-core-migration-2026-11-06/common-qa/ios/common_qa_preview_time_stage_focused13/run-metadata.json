@@ -1,0 +1,150 @@
+{
+  "started_utc": "2026-11-06T08:18:41.077286+00:00",
+  "udid": "EE228BE6-0F7F-48E1-9892-313B7CFFBB63",
+  "config": {
+    "run_id": "common_qa_preview_time_stage_focused13",
+    "cases": [
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "sticker",
+        "startMs": 0,
+        "endMs": 640,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_custom_gallery_probe",
+        "customSticker": true,
+        "saveToGallery": true,
+        "bitrate": 28753920,
+        "expected_frames": 16
+      }
+    ],
+    "core_smokes": true,
+    "build_source_fingerprint": "40e488fd2f3bc5e730f903df88e5be49816ac5532821fa01ebd1083b74426880",
+    "partial_stage_check": true,
+    "verify_previews": true,
+    "lifecycle": false
+  },
+  "sources": {
+    "corrupt-video-1024bytes.mp4": {
+      "sha256": "630b36e85f6e26cd9371088fd201979ca82f1300b04aee24210c9e67df6e7e80",
+      "bytes": 1024
+    },
+    "custom-sticker.png": {
+      "sha256": "9cfc5ad34e89b6eebddcd5ec715c224a86c99ea5b9fad999407dee7e32f681b6",
+      "bytes": 806
+    },
+    "duo-dance-6940536.mp4": {
+      "sha256": "9a8553ea9eb07a4d5e11e6ea8059ca7bf302df703fe804ea5ba604ef08235a76",
+      "bytes": 3748966
+    },
+    "group-hd-8956295.mp4": {
+      "sha256": "d95c0ba298ab0701c01e349185afa049d51ae1037b6907c960d6e1b8fcd01cd5",
+      "bytes": 15726991
+    },
+    "group-mirror-8956295.mp4": {
+      "sha256": "376c2ae73c92c23dceb042d27450aaa45ba2f44a3d7b0a5f3c26e9bea6c2dd73",
+      "bytes": 69505821
+    },
+    "no-person-flower.mp4": {
+      "sha256": "0cd83d944a6ca7822b4a8306cecc60a36e859b041f6702c6a1ad9ead78924451",
+      "bytes": 1128375
+    },
+    "solo-hd-7570258.mp4": {
+      "sha256": "21e0b8319470426718502c31bdabf43c2889b3013cda760c4c1ce8ee69decce0",
+      "bytes": 7454617
+    },
+    "solo-portrait-7570258.mp4": {
+      "sha256": "f401df9259f7fcbf7b01121cbb720e744e0dbba6e3ebce2f64027d37c873d6a1",
+      "bytes": 21156880
+    }
+  },
+  "git_head": "18fd3e405dcd69880ffa4101a6bc145aa53c5c33",
+  "native_sources": {
+    "ComparisonApi.g.swift": "4944f17d7cdabae15df706065583aebbbbd0ab96286d8c8fe47e8f4c8bcfe7da",
+    "DanceApi.g.swift": "a01fe0fa10ffd0dbadc0ec345659c93d3a560c4a0bb31db36ead9b81e02e5fc2",
+    "DanceNativePlugin.swift": "779259d5741f2cc47645666437967f62707efb6cba8f54afa41233cd202cabfe",
+    "IOSAnalysisCache.swift": "25ec4bc147d970dbcf578be3677fb7153c8024439f073a17c62cb44d976d8c71",
+    "IOSAnalyzePipeline.swift": "87dddc7c4051a95cf0469b6cd03a79726c9c529c8815f354c168b79843a3cfa3",
+    "IOSCacheLifecycleSmoke.swift": "e7c649964547a3f2523993de75c19b7322c4029f96a8386c7dcd0f042d45118c",
+    "IOSComparisonComposition.swift": "4c043091e195ef7c4afb5b251855ff9fe435a57a3d18515bbc5eb57cfbc23c6b",
+    "IOSComparisonCompositor.swift": "1588d3e5580e530bd3f4b042417224b18eb39c3eb75fac16ebd310cdfbf22dbe",
+    "IOSComparisonExportCoordinator.swift": "0deee1a801afca05092cf0e8dde898abca68a6cc945880b5abb6efb8ffa73302",
+    "IOSComparisonExportFiles.swift": "bbd9f7967cfb738b2837defc36068f817f54533b66301285511bd3484da537be",
+    "IOSComparisonExportPipeline.swift": "b16c2a4b3eeede863dc3aac3ca9ccd8e2943087a2735807e5cfe88a8f9e1dd7f",
+    "IOSComparisonExportSpec.swift": "ff2f16d340269711721054fa3667bb9f0dfac71f5a7330af8e96fe0ee8d365ac",
+    "IOSComparisonFiles.swift": "69cbc0f4c8331dc16026bafbfc305e25a87f1c4e80f15910d6642eb76a952f76",
+    "IOSComparisonFrameIndex.swift": "3c792a0f7267af1ce76f431e08f552dab4a2234c5a2ddf78bce76a38e5f83ba6",
+    "IOSComparisonModels.swift": "34f709c54da359603e06140b4545b1d9ebf00209f7b1172ac543023af160dfda",
+    "IOSComparisonMusicAligner.swift": "7aea7756a0e44326e8fa0448cad39e59a47fe3e99be74bf6f3c418891ba9f7da",
+    "IOSComparisonMusicFeatures.swift": "ab380a79563f95fe75a4f9b2b7f66969784066f70b646dc3f8de5ae674b1ae31",
+    "IOSComparisonMusicMatcher.swift": "6aeb9649e45342391289f9ed5f998a21ef662437b1420deccbc0216e8b763cc5",
+    "IOSComparisonMusicPcmDecoder.swift": "d64205f3868751c6d6d8837addf578b7f3344e106dd330cfe8b7a858a2346e3f",
+    "IOSComparisonMusicRateMatcher.swift": "0dce2c418c55e94d0c143566207a1ab9ba06b6cd37abeaa0fbe7a663964fa78c",
+    "IOSComparisonNativeApi.swift": "3dba7d89cadb568424181c9419ff1292bcff8a4ee68095315f72a0e0046d24c7",
+    "IOSComparisonPicker.swift": "8056b0e4a96b88054902c6657cce67cc70936f7b8cc8c9b9d31d0781cd0f93c6",
+    "IOSComparisonPlayer.swift": "093c0ce5291983d5ff4f6c5392734945c9c81cbac07cbb499cc19cfd82f651cc",
+    "IOSComparisonProjectStore.swift": "aebfd4c5ed8dfabbe0b00bea329ada95b116ec0a62e03987024a9e4e87e92a04",
+    "IOSCropClarityRestorer.swift": "e32fa39ed598b9bcbdd88e90d2d7ff71b8feae8a0e3f64a840f0f4441f20354d",
+    "IOSDeviceCapabilities.swift": "fa3012dc9fe494254cc22d319eaa5d0eefd5a89032e07d69254bcd49bbe719f8",
+    "IOSDiagnosticPrivacy.swift": "f4cd79164ced17302dbe3562d9a5f9e6ef5a6c5161204593d507a5355f2376a7",
+    "IOSDiagnosticPrivacySmoke.swift": "9158948a50856924df290978e3e669da7b60eea0ab90594fe7f3ffb9cde58fa8",
+    "IOSExportCoordinator.swift": "bdd077cd6f597efc4ad8037bdd32aeeb7bae4b68971444831cf0d7389061634f",
+    "IOSExportJobJournal.swift": "1222ff7376dbc447949dccf5805e6fc039ac11a59ae6aeea7e3acbbfbe111f63",
+    "IOSExportPhase4Smoke.swift": "ce680840218e049a9aec3de5a77c7d131e0626798cc78b91e9c54d42918f961a",
+    "IOSExportPipeline.swift": "0b6c68ab70fc90208c5445533bf96b879705913fbe42f3220c1bfc309cddffb8",
+    "IOSFacePrivacyPhase5Smoke.swift": "a08311d3c5e42ad91e18af366dc4a2d836315cda6b2099057a0067b3e1c54db2",
+    "IOSFacePrivacyPipeline.swift": "db22408e6d8d39df05885c4bc58a0ed9cf0412358eda0b159fd3da18c5bd06df",
+    "IOSFrameKernel.swift": "b4ff304f25832352544ad098c5fea7e6b66c0fa385089d7debbb2120ee8e3f5e",
+    "IOSGoldenTracePhase5Smoke.swift": "b93effa92eef0d0fb8193b018b85ec9372bff6dfc20a1e67841c96c217497b1d",
+    "IOSGoldenTraceResources.swift": "5b1f6a157d349a5ec290c8f4096db73c9d466d2ff455bf76f9330fba872ebd93",
+    "IOSHighResolutionPrivacyCoverage.swift": "41792a1a097876afc69293f03914f10b2595eb7921eea45807472720f38b3782",
+    "IOSMediaLibraryBridge.swift": "59e569f635408e93e49315de1608a79a18d267a970709b85c84be7fef765dd9e",
+    "IOSMetalPhase3Smoke.swift": "2f988235835f972f46f363c1c51cc2220e0e1b0e7c34e3b907a322d4e4c5beac",
+    "IOSMetalPreviewRenderer.swift": "633b87c3e086cfb7e5d3c10cd71cc6eed05407b2a79da8b18779bfe15c3ba14d",
+    "IOSModelResources.swift": "cdccf3ffd53f3d6ea5dbbb6608691dee304e85a77b5ba239b28b26eff01118db",
+    "IOSOcclusionProxyStabilizer.swift": "501c89fd6d7a33b3524d26aee0da8e323c68567a05d19105582f919d87c0ea23",
+    "IOSPixelAuditCropRecorder.swift": "78356c82122073e32a1319633d5c00b67e9d7e96fbca2dca0ce8a58eca9fdbd8",
+    "IOSPreviewIdentityMatcher.swift": "5f7b99216ab0fa0b8146b5c32b36426074b9b96ff5b54f781963bc9c56de64e7",
+    "IOSPreviewPipeline.swift": "f1cd336105bb4a44e8b7ee74e000ab0e3a45964e9cb50e3d6ae05551ac6e8453",
+    "IOSPrivacyClassPhase6Smoke.swift": "f756f96cff24e87b145582bb8de4c485c5c490d2462236ec87da7e84f253a432",
+    "IOSPrivacyClassTemporalTracker.swift": "b30a29342ad7c999b415bf15b14d58bdc181270b869ec874e78762efffd9cdc0",
+    "IOSPrivacyIdentityFrameRecorder.swift": "09fc9d1a80ce8d9ea483a191218ffef4983a135f1cbdde88a01752a27b1f1851",
+    "IOSPrivacyMaskProjector.swift": "e57308f1f8227c6b08c561fc8b410d755daefb6416f788e069b39a08cc1d088c",
+    "IOSRegenerableCacheRegistry.swift": "18dc84cdb45f9e408cb374159d2f0a36eb7bb49ab1ac3adf130e00970b15e35a",
+    "IOSSubjectReframer.swift": "4e8eb89620943d03bd1778aef7a12dc14fcf23bc89738f5a17bbd76c96964b60",
+    "IOSTemporalIdentityTracker.swift": "6caa0ee06ec247effff743a7eef24d0f199690f248401e5433e56691be7bb422",
+    "IOSVideoProbe.swift": "81f859119e05b173c6a0a295d9367dcecfee89720c31d98bed9c932a6ec903c3",
+    "IOSYoloPhase1Probe.swift": "3579db7fb12fb639116b9e4170a96f3f34455e70f08dba331842cf114182c026",
+    "IOSYoloPostprocessor.swift": "23e530ba403ad335437edebaf721703bd15f38ef93749b4b1a7ab4b2bc37dd67",
+    "IOSYoloPreprocessor.swift": "8408d907af1ddfae0675b650f6a15fc26a420968a6299682fe47badee499fe63",
+    "IOSYoloRunner.swift": "c58a7b5f031a177e226245bc7190203a84ea403179a045539a7d91ddf7b1e928"
+  },
+  "harness_sha256": "515705b9a3043ed9658988f5b20b32c6743d5408c98d7f5dc9e5032fed711b78",
+  "binary_sha256": "632f0cd6ea83fa12e8c5a16b58059166b8b741112611281fc6dc823b787b42a6",
+  "native_binary_images": {
+    "Runner": "632f0cd6ea83fa12e8c5a16b58059166b8b741112611281fc6dc823b787b42a6"
+  },
+  "app_bundle": "/Users/mini/Coding/woah-rust-tools/builds/common-qa-preview-time/Runner.app",
+  "container": "/Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Data/Application/BEFD2659-777B-4FBC-BDDF-0965F0853BCF",
+  "native_optimization": "-O; Flutter debug simulator",
+  "preview_files_sha256": {
+    "solo_4k_custom_gallery_probe-0.png": "fb29a8708aa6002d6394b4de81b223a24e064ebd8dd9e73c3344189a2dd166aa",
+    "solo_4k_custom_gallery_probe-0-source.png": "9f6efbd0bdd0af2a1be6be65075252c8abcfa3e6a9835fb5ba6c6e3d0d6698a8",
+    "solo_4k_custom_gallery_probe-300.png": "acd02198008bef6a72e56b20ea2179fd5a43729e7dff261e1bde6acae678cbb6",
+    "solo_4k_custom_gallery_probe-300-source.png": "9a0c92b025fab3e926cf791ad628e491b939382c16ee235732e6c166abc7f1bd",
+    "solo_4k_custom_gallery_probe-600.png": "69a1320dc382be2126e3945219021a11d1a46aec062038063ff936d36f79a12e",
+    "solo_4k_custom_gallery_probe-600-source.png": "80373c1f676c3bfbf280c6e6353e8e559096a32e4907cc7ec5807326b2c13829"
+  },
+  "crop_traces": [
+    "qa_pixel_crops_3BD97553-9BA9-4BAB-9A63-B78406AC489F.jsonl"
+  ],
+  "resources": {
+    "samples": 2,
+    "peak_rss_kib": 1261360,
+    "minimum_free_disk_bytes": 24681652224,
+    "peak_system_swap_used_bytes": 3807117312
+  },
+  "finished_utc": "2026-11-06T08:19:01.176986+00:00"
+}

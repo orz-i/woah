@@ -1,0 +1,25 @@
+{
+  "run_id": "common_qa_preview_time_stage_focused13",
+  "cases": [
+    {
+      "input": "solo-portrait-7570258.mp4",
+      "fill": "sticker",
+      "startMs": 0,
+      "endMs": 640,
+      "faceOnly": true,
+      "profile": "quality",
+      "width": 2160,
+      "height": 4096,
+      "case": "solo_4k_custom_gallery_probe",
+      "customSticker": true,
+      "saveToGallery": true,
+      "bitrate": 28753920,
+      "expected_frames": 16
+    }
+  ],
+  "core_smokes": true,
+  "build_source_fingerprint": "40e488fd2f3bc5e730f903df88e5be49816ac5532821fa01ebd1083b74426880",
+  "partial_stage_check": true,
+  "verify_previews": true,
+  "lifecycle": false
+}

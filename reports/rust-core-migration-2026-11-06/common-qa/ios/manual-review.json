@@ -1,0 +1,39 @@
+{
+  "platform": "ios",
+  "runs": [
+    {
+      "run_id": "common_qa_preview_time_stage_legacy22",
+      "cases": 1,
+      "status": "finished",
+      "movies": [
+        {
+          "case": "group_face_solid_follow",
+          "movie_sha256": "576dd9f330d5890d277a9c636934a9fb9a777bafcdf6db665425cfbbb160bfdb",
+          "bytes": 1560167,
+          "gallery_original": null
+        }
+      ]
+    },
+    {
+      "run_id": "common_qa_preview_time_stage_focused13",
+      "cases": 1,
+      "status": "finished",
+      "movies": [
+        {
+          "case": "solo_4k_custom_gallery_probe",
+          "movie_sha256": "2a2591144306c78674be3562ae89b6b5afcaa0340387b511b9cbff51799c5d97",
+          "bytes": 772195,
+          "gallery_original": null
+        }
+      ]
+    }
+  ],
+  "reviewed_protected_previews": 6,
+  "reviewed_movie_hero_candidates": [
+    44,
+    45
+  ],
+  "finding": "The two automatically uncovered cores are the turquoise-shirt hero6 and must remain clear. Adjacent visible non-hero face is covered. All six protected previews viewed; custom face sticker follows the current face. No full-62 claim.",
+  "limits": "Source face oracle is incomplete. This is a two-case stage subset; final full-duration/4K acceptance is outstanding.",
+  "image_retention": "Curated JPEG boards in Git; exact protected/control bytes and hashes retained in original Mac stage archive. JSON audit hashes refer to those original files."
+}

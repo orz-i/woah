@@ -1,0 +1,54 @@
+{
+  "run_id": "common_qa_preview_time_stage_legacy22",
+  "cases": [
+    {
+      "case": "group_face_solid_follow",
+      "input_binding_sha256": "257e92c65c73f193a4f10c3302aa157d0167346d1f5354be2e0ab2ee87680f32",
+      "decoded_frames": 76,
+      "tested_visible_face_cores": 2,
+      "outside_or_tiny_cores": 23,
+      "uncovered_face_cores": [
+        {
+          "output_frame": 44,
+          "source_frame": 44,
+          "source_pts_us": 1760000,
+          "source_bbox": [
+            1196.5346145629883,
+            257.36443787813187,
+            1276.7180728912354,
+            337.5478935241699
+          ],
+          "output_core": [
+            253,
+            320,
+            318,
+            385
+          ],
+          "coverage_fraction": 0.0
+        },
+        {
+          "output_frame": 45,
+          "source_frame": 45,
+          "source_pts_us": 1800000,
+          "source_bbox": [
+            1207.5132751464844,
+            246.8357965350151,
+            1294.7292065620422,
+            334.051730632782
+          ],
+          "output_core": [
+            267,
+            309,
+            338,
+            380
+          ],
+          "coverage_fraction": 0.0
+        }
+      ],
+      "follow_hero_id": 6,
+      "status": "needs_hero_visual_review",
+      "coverage_measure": "decoded_opaque_red_pixels",
+      "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+    }
+  ]
+}
