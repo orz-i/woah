@@ -89,8 +89,14 @@ def verify_tensor_contract() -> dict:
     swift_pre = (SOURCES / "IOSYoloPreprocessor.swift").read_text(encoding="utf-8")
     check("static let inputSize = 640" in swift_pre, "Swift YOLO preprocessor must remain 640x640")
     check("letterboxValue: UInt8 = 114" in swift_pre, "Swift letterbox padding must match Android RGB 114")
-    check("let gOffset = pixels" in swift_pre and "let bOffset = pixels * 2" in swift_pre,
-          "Swift preprocessor must emit NCHW RGB channels")
+    bridge = (SOURCES / "IOSFrameKernel.swift").read_text(encoding="utf-8")
+    pixels = (ROOT / "crates/frame-kernel/src/pixels.rs").read_text(encoding="utf-8")
+    check("IOSFrameKernel.normalizePixels(resized.pixels" in swift_pre
+          and "interleaved: Bool = false" in bridge
+          and "frame_kernel_normalize_pixels(" in bridge
+          and "red:0,green:1,blue:2" in bridge
+          and "channel * pixels + pixel" in pixels,
+          "Swift preprocessor must delegate NCHW RGB normalization to FrameKernel")
     return contract
 
 

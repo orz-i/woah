@@ -1,0 +1,206 @@
+{
+  "run_id": "frame_kernel_pixels_focused",
+  "cases": [
+    {
+      "case": "group_4k_body_face_union",
+      "movie_sha256": "ee4329c374640cf366d7cd71073d81a0bda1557fd61371f0a2fa1e82907d9322",
+      "crop_trace_sha256": null,
+      "sampled_output_frames": [
+        0,
+        11,
+        20,
+        39
+      ],
+      "boards": [
+        "visual-boards/group_4k_body_face_union-0.jpg",
+        "visual-boards/group_4k_body_face_union-1.jpg",
+        "visual-boards/group_4k_body_face_union-overview-0.jpg"
+      ]
+    },
+    {
+      "case": "solo_4k_body_face_union",
+      "movie_sha256": "88bd1e81130ea6e44f81012acbffcd724cb45915a228f48b4e4b8e7844ccd086",
+      "crop_trace_sha256": null,
+      "sampled_output_frames": [
+        0,
+        20,
+        22,
+        39
+      ],
+      "boards": [
+        "visual-boards/solo_4k_body_face_union-0.jpg",
+        "visual-boards/solo_4k_body_face_union-1.jpg",
+        "visual-boards/solo_4k_body_face_union-overview-0.jpg"
+      ]
+    },
+    {
+      "case": "solo_4k_raised_arm_sticker",
+      "movie_sha256": "4ceed8bae1cbecbfc743c0f3ccdfb5677590f312b12b243af36d05b8f4693e2b",
+      "crop_trace_sha256": null,
+      "sampled_output_frames": [
+        0,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        39
+      ],
+      "boards": [
+        "visual-boards/solo_4k_raised_arm_sticker-0.jpg",
+        "visual-boards/solo_4k_raised_arm_sticker-1.jpg",
+        "visual-boards/solo_4k_raised_arm_sticker-2.jpg",
+        "visual-boards/solo_4k_raised_arm_sticker-3.jpg",
+        "visual-boards/solo_4k_raised_arm_sticker-4.jpg",
+        "visual-boards/solo_4k_raised_arm_sticker-overview-0.jpg"
+      ]
+    },
+    {
+      "case": "solo_4k_raised_arm_solid",
+      "movie_sha256": "c8d5bc5f1d1d9e32f2e0f93cd9f0718b67aa4022eb5baba2091e94e9b3d0e888",
+      "crop_trace_sha256": null,
+      "sampled_output_frames": [
+        0,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        39
+      ],
+      "boards": [
+        "visual-boards/solo_4k_raised_arm_solid-0.jpg",
+        "visual-boards/solo_4k_raised_arm_solid-1.jpg",
+        "visual-boards/solo_4k_raised_arm_solid-2.jpg",
+        "visual-boards/solo_4k_raised_arm_solid-3.jpg",
+        "visual-boards/solo_4k_raised_arm_solid-4.jpg",
+        "visual-boards/solo_4k_raised_arm_solid-overview-0.jpg"
+      ]
+    },
+    {
+      "case": "solo_4k_raised_arm_body",
+      "movie_sha256": "aae230fc34e7c583b33e5c19ae11f073b15ac5ea25f41c7d60fdfd3594de2eca",
+      "crop_trace_sha256": null,
+      "sampled_output_frames": [
+        0,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        39
+      ],
+      "boards": [
+        "visual-boards/solo_4k_raised_arm_body-0.jpg",
+        "visual-boards/solo_4k_raised_arm_body-1.jpg",
+        "visual-boards/solo_4k_raised_arm_body-2.jpg",
+        "visual-boards/solo_4k_raised_arm_body-3.jpg",
+        "visual-boards/solo_4k_raised_arm_body-4.jpg",
+        "visual-boards/solo_4k_raised_arm_body-overview-0.jpg"
+      ]
+    },
+    {
+      "case": "group_hd_overlap_face",
+      "movie_sha256": "d9caceccd62a8a8bc159395ad7d528273bf7b23a5762c5c73fccd45b3d39db17",
+      "crop_trace_sha256": null,
+      "sampled_output_frames": [
+        0
+      ],
+      "boards": [
+        "visual-boards/group_hd_overlap_face-0.jpg",
+        "visual-boards/group_hd_overlap_face-overview-0.jpg"
+      ]
+    },
+    {
+      "case": "group_hd_overlap_body",
+      "movie_sha256": "2cfb67447fd7d8aef690162d5fc303a5295ff9e272d99fdbf30f08b4086a6e4e",
+      "crop_trace_sha256": null,
+      "sampled_output_frames": [
+        0
+      ],
+      "boards": [
+        "visual-boards/group_hd_overlap_body-0.jpg",
+        "visual-boards/group_hd_overlap_body-overview-0.jpg"
+      ]
+    },
+    {
+      "case": "group_4k_face_solid",
+      "movie_sha256": "3bb63d473eb52f19a48083d65d3738ccf052fc623c58b96ce54c85831fba334d",
+      "crop_trace_sha256": null,
+      "sampled_output_frames": [
+        0,
+        5,
+        9
+      ],
+      "boards": [
+        "visual-boards/group_4k_face_solid-0.jpg",
+        "visual-boards/group_4k_face_solid-overview-0.jpg"
+      ]
+    },
+    {
+      "case": "group_4k_body_solid",
+      "movie_sha256": "46440a02fb740893eb8d33b85c1cde5ef7b270874a70e80a8923409bc339bd87",
+      "crop_trace_sha256": null,
+      "sampled_output_frames": [
+        0,
+        5,
+        9
+      ],
+      "boards": [
+        "visual-boards/group_4k_body_solid-0.jpg",
+        "visual-boards/group_4k_body_solid-overview-0.jpg"
+      ]
+    },
+    {
+      "case": "group_4k_tail_face",
+      "movie_sha256": "7192825083003ad2f027b4e1b0dd54aee643b8ccb732c8bb0e7173d80ac8611a",
+      "crop_trace_sha256": null,
+      "sampled_output_frames": [
+        0,
+        5,
+        9
+      ],
+      "boards": [
+        "visual-boards/group_4k_tail_face-0.jpg",
+        "visual-boards/group_4k_tail_face-overview-0.jpg"
+      ]
+    },
+    {
+      "case": "solo_4k_custom_gallery_probe",
+      "movie_sha256": "b6d72aac39b74a5764c38ca7cabf20de900a69e8f7c671701b7bf14d18c9bb90",
+      "crop_trace_sha256": null,
+      "sampled_output_frames": [
+        0,
+        8,
+        15
+      ],
+      "boards": [
+        "visual-boards/solo_4k_custom_gallery_probe-0.jpg",
+        "visual-boards/solo_4k_custom_gallery_probe-overview-0.jpg"
+      ]
+    },
+    {
+      "case": "solo_4k_immediate_retry_probe",
+      "movie_sha256": "1fae9a97065057d329d0b32577ad22c35a88baa65c6b82c402471a48b2bd3992",
+      "crop_trace_sha256": null,
+      "sampled_output_frames": [
+        0,
+        20,
+        39
+      ],
+      "boards": [
+        "visual-boards/solo_4k_immediate_retry_probe-0.jpg",
+        "visual-boards/solo_4k_immediate_retry_probe-overview-0.jpg"
+      ]
+    }
+  ]
+}

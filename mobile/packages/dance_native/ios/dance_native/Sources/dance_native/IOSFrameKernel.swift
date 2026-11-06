@@ -8,6 +8,48 @@ enum IOSFrameKernel {
     precondition(frame_kernel_abi_version() == 1, "Unsupported FrameKernel ABI")
   }()
 
+  static func letterbox(width: Int, height: Int, outputWidth: Int, outputHeight: Int) throws -> [Float] {
+    _ = checkedABI
+    guard [width,height,outputWidth,outputHeight].allSatisfy({ (1...65535).contains($0) }) else { throw pixelError() }
+    var plan = FrameKernelLetterbox()
+    guard frame_kernel_letterbox(UInt32(width),UInt32(height),UInt32(outputWidth),UInt32(outputHeight),&plan) == 0 else { throw pixelError() }
+    return [plan.scale,plan.width,plan.height,plan.left,plan.top]
+  }
+
+  static func normalizePixels(_ input: [UInt8], width: Int, height: Int, flipRows: Bool = false,
+      flipColumns: Bool = false, interleaved: Bool = false, scale: Float = 1 / 255, bias: Float = 0) throws -> [Float] {
+    _ = checkedABI
+    guard (1...65535).contains(width), (1...65535).contains(height), width*height <= 16_777_216 else { throw pixelError() }
+    var output = [Float](repeating:0,count:width*height*3)
+    let spec = FrameKernelPixelSpec(width:UInt32(width),height:UInt32(height),row_stride:UInt32(width*4),
+      channels:4,red:0,green:1,blue:2,flip_rows:flipRows ? 1:0,flip_columns:flipColumns ? 1:0,
+      interleaved:interleaved ? 1:0,scale:scale,bias:bias)
+    let result = input.withUnsafeBufferPointer { pixels in output.withUnsafeMutableBufferPointer { out in
+      frame_kernel_normalize_pixels(pixels.baseAddress,pixels.count,spec,out.baseAddress,out.count)
+    } }
+    guard result == 0 else { throw pixelError() }
+    return output
+  }
+
+  static func resizeRgba(_ input: [UInt8], width: Int, height: Int, outputWidth: Int,
+      outputHeight: Int, fill: UInt8 = 114) throws -> (pixels: [UInt8], geometry: [Float]) {
+    _ = checkedABI
+    guard [width,height,outputWidth,outputHeight].allSatisfy({ (1...65535).contains($0) }),
+      outputWidth*outputHeight <= 16_777_216 else { throw pixelError() }
+    var output = [UInt8](repeating:0,count:outputWidth*outputHeight*4)
+    var plan = FrameKernelLetterbox()
+    let result = input.withUnsafeBufferPointer { pixels in output.withUnsafeMutableBufferPointer { out in
+      frame_kernel_resize_rgba(pixels.baseAddress,pixels.count,UInt32(width),UInt32(height),UInt32(width*4),
+        out.baseAddress,out.count,UInt32(outputWidth),UInt32(outputHeight),fill,&plan)
+    } }
+    guard result == 0 else { throw pixelError() }
+    return (output,[plan.scale,plan.width,plan.height,plan.left,plan.top])
+  }
+
+  private static func pixelError() -> PigeonError {
+    PigeonError(code:"INFERENCE_PREPROCESS_FAILED",message:"FrameKernel rejected the pixel input contract.",details:nil)
+  }
+
   static func matchRects(rows: [SIMD4<Float>], columns: [SIMD4<Float>], maxCost: Float) throws -> [(row: Int, column: Int)] {
     _ = checkedABI
     let rows = rows.map { FrameKernelRect(left: $0.x, top: $0.y, right: $0.z, bottom: $0.w) }

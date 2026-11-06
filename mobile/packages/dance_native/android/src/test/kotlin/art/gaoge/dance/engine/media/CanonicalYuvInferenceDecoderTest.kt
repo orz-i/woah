@@ -12,7 +12,7 @@ class CanonicalYuvInferenceDecoderTest {
     fun limitedRangeNeutralEndpointsMapToBlackAndWhite() {
         assertEquals(
             0x000000,
-            CanonicalYuvToRgba.yuvToRgb(
+            ReferenceCanonicalYuvToRgba.yuvToRgb(
                 y = 16,
                 u = 128,
                 v = 128,
@@ -22,7 +22,7 @@ class CanonicalYuvInferenceDecoderTest {
         )
         assertEquals(
             0xFFFFFF,
-            CanonicalYuvToRgba.yuvToRgb(
+            ReferenceCanonicalYuvToRgba.yuvToRgb(
                 y = 235,
                 u = 128,
                 v = 128,
@@ -36,7 +36,7 @@ class CanonicalYuvInferenceDecoderTest {
     fun fullRangeNeutralKeepsLumaExactly() {
         assertEquals(
             0x494949,
-            CanonicalYuvToRgba.yuvToRgb(
+            ReferenceCanonicalYuvToRgba.yuvToRgb(
                 y = 73,
                 u = 128,
                 v = 128,
@@ -48,10 +48,10 @@ class CanonicalYuvInferenceDecoderTest {
 
     @Test
     fun inverseRotationMapsDisplayCornersBackToSource() {
-        assertEquals(0.0 to 0.0, CanonicalYuvToRgba.inverseRotate(0.0, 0.0, 1920, 1080, 0))
-        assertEquals(0.0 to 1079.0, CanonicalYuvToRgba.inverseRotate(0.0, 0.0, 1920, 1080, 90))
-        assertEquals(1919.0 to 1079.0, CanonicalYuvToRgba.inverseRotate(0.0, 0.0, 1920, 1080, 180))
-        assertEquals(1919.0 to 0.0, CanonicalYuvToRgba.inverseRotate(0.0, 0.0, 1920, 1080, 270))
+        assertEquals(0.0 to 0.0, ReferenceCanonicalYuvToRgba.inverseRotate(0.0, 0.0, 1920, 1080, 0))
+        assertEquals(0.0 to 1079.0, ReferenceCanonicalYuvToRgba.inverseRotate(0.0, 0.0, 1920, 1080, 90))
+        assertEquals(1919.0 to 1079.0, ReferenceCanonicalYuvToRgba.inverseRotate(0.0, 0.0, 1920, 1080, 180))
+        assertEquals(1919.0 to 0.0, ReferenceCanonicalYuvToRgba.inverseRotate(0.0, 0.0, 1920, 1080, 270))
     }
 
     @Test
@@ -61,42 +61,42 @@ class CanonicalYuvInferenceDecoderTest {
             50, 60, 70, 80,
             90, 100, 110, 120
         )
-        val plane = CanonicalYuvToRgba.PlaneSnapshot(bytes, bytes.size, rowStride = 4, pixelStride = 1)
-        val x = CanonicalYuvToRgba.AxisSamples(
+        val plane = ReferenceCanonicalYuvToRgba.PlaneSnapshot(bytes, bytes.size, rowStride = 4, pixelStride = 1)
+        val x = ReferenceCanonicalYuvToRgba.AxisSamples(
             i0 = intArrayOf(1),
             i1 = intArrayOf(2),
             w1 = intArrayOf(64)
         )
-        val y = CanonicalYuvToRgba.AxisSamples(
+        val y = ReferenceCanonicalYuvToRgba.AxisSamples(
             i0 = intArrayOf(0),
             i1 = intArrayOf(1),
             w1 = intArrayOf(128)
         )
 
         // x=1.25, y=0.5 -> ((20*.75 + 30*.25) + (60*.75 + 70*.25)) / 2 = 42.5 -> 43.
-        assertEquals(43, CanonicalYuvToRgba.sampleSnapshot(plane, x, 0, y, 0))
+        assertEquals(43, ReferenceCanonicalYuvToRgba.sampleSnapshot(plane, x, 0, y, 0))
     }
 
     @Test
     fun precomputedPlaneOffsetsMatchReferenceSamplerForPaddedInterleavedLayout() {
         val bytes = ByteArray(40) { index -> (index * 7 + 3).toByte() }
-        val plane = CanonicalYuvToRgba.PlaneSnapshot(
+        val plane = ReferenceCanonicalYuvToRgba.PlaneSnapshot(
             bytes = bytes,
             length = bytes.size,
             rowStride = 10,
             pixelStride = 2
         )
-        val x = CanonicalYuvToRgba.AxisSamples(
+        val x = ReferenceCanonicalYuvToRgba.AxisSamples(
             i0 = intArrayOf(0, 1, 2),
             i1 = intArrayOf(1, 2, 3),
             w1 = intArrayOf(0, 64, 192)
         )
-        val y = CanonicalYuvToRgba.AxisSamples(
+        val y = ReferenceCanonicalYuvToRgba.AxisSamples(
             i0 = intArrayOf(0, 1, 2),
             i1 = intArrayOf(1, 2, 3),
             w1 = intArrayOf(0, 128, 224)
         )
-        val access = CanonicalYuvToRgba.buildPlaneAccessPlan(
+        val access = ReferenceCanonicalYuvToRgba.buildPlaneAccessPlan(
             x = x,
             y = y,
             rowStride = plane.rowStride,
@@ -106,8 +106,8 @@ class CanonicalYuvInferenceDecoderTest {
         for (yi in 0..2) {
             for (xi in 0..2) {
                 assertEquals(
-                    CanonicalYuvToRgba.sampleSnapshot(plane, x, xi, y, yi),
-                    CanonicalYuvToRgba.sampleSnapshotFast(plane, access, xi, yi)
+                    ReferenceCanonicalYuvToRgba.sampleSnapshot(plane, x, xi, y, yi),
+                    ReferenceCanonicalYuvToRgba.sampleSnapshotFast(plane, access, xi, yi)
                 )
             }
         }
@@ -130,12 +130,12 @@ class CanonicalYuvInferenceDecoderTest {
                 for (y in values) {
                     for (u in values) {
                         for (v in values) {
-                            val reference = CanonicalYuvToRgba.rgbaLittleEndianInt(
-                                CanonicalYuvToRgba.yuvToRgb(y, u, v, standard, range)
+                            val reference = ReferenceCanonicalYuvToRgba.rgbaLittleEndianInt(
+                                ReferenceCanonicalYuvToRgba.yuvToRgb(y, u, v, standard, range)
                             )
                             assertEquals(
                                 reference,
-                                CanonicalYuvToRgba.optimizedRgbaFromYuv(y, u, v, standard, range),
+                                ReferenceCanonicalYuvToRgba.optimizedRgbaFromYuv(y, u, v, standard, range),
                                 "standard=$standard range=$range y=$y u=$u v=$v"
                             )
                         }
@@ -148,7 +148,7 @@ class CanonicalYuvInferenceDecoderTest {
     @Test
     fun packedRgbaIntWritesSameLittleEndianByteContract() {
         val buffer = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN)
-        buffer.putInt(CanonicalYuvToRgba.rgbaLittleEndianInt(0x123456))
+        buffer.putInt(ReferenceCanonicalYuvToRgba.rgbaLittleEndianInt(0x123456))
         assertEquals(listOf(0x12, 0x34, 0x56, 0xFF), buffer.array().map { it.toInt() and 0xFF })
     }
 }

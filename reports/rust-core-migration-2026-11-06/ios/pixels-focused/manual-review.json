@@ -1,0 +1,23 @@
+{
+  "run": "frame_kernel_pixels_focused",
+  "reviewer": "Codex visual inspection",
+  "reviewed": true,
+  "method": "Three original critical boards and three montages covering all remaining nine movies. All 12 output cases visually inspected at sampled endpoints/midpoints and configured critical source frames.",
+  "critical_sources": [
+    145,
+    217,
+    290,
+    411,
+    557,
+    580
+  ],
+  "finding": "Visible selected faces remain covered in the reviewed boards; body/face union covers source411, raised-arm face557 remains opaque under solid/sticker/body.",
+  "existing_observations": [
+    "Extra shoulder sticker/solid fallback during the raised-arm interval remains conservative overmask.",
+    "Source576 small conservative region persists."
+  ],
+  "limits": [
+    "Native face oracle is incomplete; these focused samples do not replace final full 62-case acceptance.",
+    "No claim of exact iOS pixel equivalence: sampling changed from platform interpolation to the common fixed-point kernel."
+  ]
+}

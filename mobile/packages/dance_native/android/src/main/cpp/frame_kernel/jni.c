@@ -1,6 +1,7 @@
 /* JNI transport only. All geometry and privacy rules are implemented in Rust. */
 #include <jni.h>
 #include <stdlib.h>
+#include <string.h>
 #include "frame_kernel.h"
 
 static void invalid(JNIEnv *env) {
@@ -34,6 +35,51 @@ static jintArray match_output(JNIEnv *env,FrameKernelMatchPair *pairs,int32_t co
     if (!values) { invalid(env); return NULL; }
     for (int32_t i=0;i<count;i++) { values[i*2]=(jint)pairs[i].row;values[i*2+1]=(jint)pairs[i].column; }
     (*env)->SetIntArrayRegion(env,result,0,count*2,values);free(values);return result;
+}
+JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_letterboxNative(JNIEnv *env,jobject self,jint w,jint h,jint ow,jint oh) {
+    (void)self;FrameKernelLetterbox p;
+    if (w<=0 || h<=0 || ow<=0 || oh<=0 || frame_kernel_letterbox((uint32_t)w,(uint32_t)h,(uint32_t)ow,(uint32_t)oh,&p)) { invalid(env);return NULL; }
+    jfloatArray out=(*env)->NewFloatArray(env,5);jfloat values[5]={p.scale,p.width,p.height,p.left,p.top};
+    if (out) (*env)->SetFloatArrayRegion(env,out,0,5,values);return out;
+}
+JNIEXPORT void JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_normalizePixelsNative(JNIEnv *env,jobject self,
+    jobject input,jint w,jint h,jint row_stride,jint channels,jint red,jint green,jint blue,
+    jboolean flip_rows,jboolean flip_columns,jboolean interleaved,jfloat scale,jfloat bias,jfloatArray output) {
+    (void)self;
+    if (!input || !output || w<=0 || h<=0 || row_stride<=0 || channels<3 || channels>4 || red<0 || green<0 || blue<0) { invalid(env);return; }
+    const uint8_t *bytes=(*env)->GetDirectBufferAddress(env,input);jlong len=(*env)->GetDirectBufferCapacity(env,input);
+    if (!bytes || len<=0) { invalid(env);return; }
+    jfloat *floats=(*env)->GetFloatArrayElements(env,output,NULL);if (!floats) return;
+    FrameKernelPixelSpec spec={(uint32_t)w,(uint32_t)h,(uint32_t)row_stride,(uint32_t)channels,
+        (uint32_t)red,(uint32_t)green,(uint32_t)blue,flip_rows ? 1u:0u,flip_columns ? 1u:0u,interleaved ? 1u:0u,scale,bias};
+    int result=frame_kernel_normalize_pixels(bytes,(size_t)len,spec,floats,(size_t)(*env)->GetArrayLength(env,output));
+    (*env)->ReleaseFloatArrayElements(env,output,floats,result ? JNI_ABORT:0);
+    if (result) invalid(env);
+}
+JNIEXPORT void JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_resizeRgbaNative(JNIEnv *env,jobject self,jobject input,
+    jint w,jint h,jint stride,jobject output,jint ow,jint oh,jint fill) {
+    (void)self;
+    if (!input || !output || w<=0 || h<=0 || stride<=0 || ow<=0 || oh<=0 || fill<0 || fill>255) { invalid(env);return; }
+    const uint8_t *bytes=(*env)->GetDirectBufferAddress(env,input);uint8_t *out=(*env)->GetDirectBufferAddress(env,output);
+    jlong len=(*env)->GetDirectBufferCapacity(env,input),capacity=(*env)->GetDirectBufferCapacity(env,output);
+    if (!bytes || !out || bytes==out || len<=0 || capacity<=0 || frame_kernel_resize_rgba(bytes,(size_t)len,(uint32_t)w,(uint32_t)h,
+        (uint32_t)stride,out,(size_t)capacity,(uint32_t)ow,(uint32_t)oh,(uint8_t)fill,NULL)) invalid(env);
+}
+JNIEXPORT void JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_yuv420Native(JNIEnv *env,jobject self,
+    jobject y,jobject u,jobject v,jintArray metadata,jobject output) {
+    (void)self;
+    if (!y || !u || !v || !metadata || !output || (*env)->GetArrayLength(env,metadata)!=21) { invalid(env);return; }
+    jint m[21];(*env)->GetIntArrayRegion(env,metadata,0,21,m);if ((*env)->ExceptionCheck(env)) return;
+    for (int i=0;i<21;i++) if (m[i]<0) {invalid(env);return;}
+    FrameKernelYuvSpec spec;memcpy(&spec,m,sizeof(spec));
+    jobject inputs[3]={y,u,v};FrameKernelPlane planes[3];
+    for (int i=0;i<3;i++) {
+        const uint8_t *p=(*env)->GetDirectBufferAddress(env,inputs[i]);jlong n=(*env)->GetDirectBufferCapacity(env,inputs[i]);
+        if (!p || n<=0) {invalid(env);return;}
+        planes[i]=(FrameKernelPlane){p,(size_t)n,(uint32_t)m[15+i*2],(uint32_t)m[16+i*2]};
+    }
+    uint8_t *out=(*env)->GetDirectBufferAddress(env,output);jlong capacity=(*env)->GetDirectBufferCapacity(env,output);
+    if (!out || capacity<=0 || frame_kernel_yuv420_rgba(planes[0],planes[1],planes[2],spec,out,(size_t)capacity)) invalid(env);
 }
 JNIEXPORT jintArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_matchCostsNative(JNIEnv *env,jobject self,
     jfloatArray costs,jint rows,jint columns,jfloat max_cost) {

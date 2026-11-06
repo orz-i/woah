@@ -10,7 +10,9 @@ mod ffi;
 pub mod geometry;
 pub mod instances;
 mod mask_transitions;
+pub mod pixels;
 pub mod protection;
+pub mod yuv;
 
 pub use ffi::*;
 
