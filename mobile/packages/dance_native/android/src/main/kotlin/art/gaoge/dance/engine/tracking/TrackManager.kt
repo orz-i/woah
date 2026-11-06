@@ -195,6 +195,7 @@ class TrackManager(val config:TrackingConfig=TrackingConfig(),private val diagno
             config.postOcclusionGraceFrames,config.occlusionMaxDurationFrames,config.minSceneMotionInliers,
             if(config.enableSceneMotionCompensation)1 else 0,config.privacyOccluderErosionRadius)).also{session=it}
     }
+    @Synchronized fun reserveNextIdentity(minimum:Long){owned().reserveNextIdentity(minimum)}
     override fun initialize(detections:List<PersonDetection>)=initializeWithAssignedIds(detections,emptyList())
     fun initializeWithAssignedIds(detections:List<PersonDetection>,assignedIds:List<Int>)=advance(0,0L,detections,assignedIds)
     override fun update(detections:List<PersonDetection>,timestampUs:Long)=advance(1,timestampUs,detections)

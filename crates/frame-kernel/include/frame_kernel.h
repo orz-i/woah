@@ -166,9 +166,24 @@ typedef struct FrameKernelTrackingObservation {
  uint32_t mask_width, mask_height;
  FrameKernelTransform transform;
 } FrameKernelTrackingObservation;
+typedef struct FrameKernelReplayPlan {
+ uint32_t required, reset;
+ int64_t start_us, step_us;
+ uint32_t regular_count, append_target;
+ int64_t target_us;
+} FrameKernelReplayPlan;
+/* Flags: bit0 hero, bit1 named privacy targets. Scope comes from scene_scope.
+   Anchor -1 means unknown; last -1 means no live replay state. A named identity
+   cannot be replayed before its observed anchor. Zero succeeds, -1 fails closed.
+   Decode regular_count steps start_us + i*step_us, then target_us if append_target.
+   Decoders and inference remain native; every observation feeds the same session. */
+int32_t frame_kernel_replay_plan(uint32_t scope, uint32_t flags, int64_t anchor_us,
+ int64_t last_us, int64_t target_us, int64_t step_us, FrameKernelReplayPlan *output);
 FrameKernelTrackingOptions frame_kernel_tracking_defaults(void);
 uint64_t frame_kernel_tracking_create(FrameKernelTrackingOptions options);
 int32_t frame_kernel_tracking_destroy(uint64_t session);
+/* After initialization, reserve IDs below the analysis namespace floor. */
+int32_t frame_kernel_tracking_reserve_id_floor(uint64_t session, int64_t minimum_next_id);
 int32_t frame_kernel_tracking_selection(uint64_t session,
  const int64_t *protected_ids, size_t protected_len,
  const int64_t *body_ids, size_t body_len, const int64_t *face_ids, size_t face_len, uint32_t dormancy);

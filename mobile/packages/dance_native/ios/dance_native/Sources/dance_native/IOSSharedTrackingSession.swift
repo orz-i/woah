@@ -52,6 +52,16 @@ struct IOSSharedTrackingSnapshot {
   let hardClasses: [Int: UInt32]
   let motionEvidence: [IOSSharedTrackingMotionEvidence]
 }
+struct IOSSharedReplayPlan {
+  let required: Bool, reset: Bool
+  let startUs: Int64, stepUs: Int64, targetUs: Int64
+  let regularCount: Int, appendTarget: Bool
+  var count: Int { regularCount + (appendTarget ? 1 : 0) }
+  func time(_ index: Int) -> Int64 {
+    precondition(index >= 0 && index < count)
+    return index < regularCount ? startUs + Int64(index) * stepUs : targetUs
+  }
+}
 final class IOSSharedTrackingSession {
   private let id: UInt64
   private let lock = NSLock()
@@ -63,6 +73,19 @@ final class IOSSharedTrackingSession {
   private static func failure() -> NSError {
     NSError(domain: "FrameKernelTrackingTransport", code: 1,
       userInfo: [NSLocalizedDescriptionKey: "Invalid shared tracking input or snapshot."])
+  }
+  static func replayPlan(scope: UInt32, hero: Bool, namedTargets: Bool,
+      anchorUs: Int64?, lastUs: Int64?, targetUs: Int64, stepUs: Int64) throws -> IOSSharedReplayPlan {
+    var p = FrameKernelReplayPlan()
+    let flags: UInt32 = (hero ? 1 : 0) | (namedTargets ? 2 : 0)
+    guard frame_kernel_replay_plan(scope, flags, anchorUs ?? -1, lastUs ?? -1, targetUs, stepUs, &p) == 0 else { throw failure() }
+    return IOSSharedReplayPlan(required: p.required != 0, reset: p.reset != 0,
+      startUs: p.start_us, stepUs: p.step_us, targetUs: p.target_us,
+      regularCount: Int(p.regular_count), appendTarget: p.append_target != 0)
+  }
+  func reserveNextIdentity(_ minimum: Int64) throws {
+    lock.lock(); defer { lock.unlock() }
+    guard frame_kernel_tracking_reserve_id_floor(id, minimum) == 0 else { throw Self.failure() }
   }
   func configure(protected: Set<Int>, body: Set<Int>, face: Set<Int>, dormancy: Bool) throws {
     lock.lock(); defer { lock.unlock() }

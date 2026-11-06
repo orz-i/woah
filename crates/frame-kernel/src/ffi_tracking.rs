@@ -422,6 +422,46 @@ fn encode(t: &Tracker) -> Vec<u8> {
     }
     w.0
 }
+/// Reserve the analysis identity namespace, including roots absent from the
+/// initial detector result. A future entrant must never inherit their IDs.
+#[unsafe(no_mangle)]
+pub extern "C" fn frame_kernel_tracking_reserve_id_floor(id: u64, minimum_next_id: i64) -> i32 {
+    if minimum_next_id < 0 {
+        return -1;
+    }
+    let Some(owner) = session(id) else { return -1 };
+    let Ok(mut s) = owner.lock() else { return -1 };
+    s.tracker.next_id = s.tracker.next_id.max(minimum_next_id);
+    0
+}
+
+/// # Safety
+/// Output must be non-null, aligned and writable for one ReplayPlan. The caller
+/// retains ownership; no source frame or decoder is owned by this function.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_replay_plan(
+    scope: u32,
+    flags: u32,
+    anchor: i64,
+    last: i64,
+    target: i64,
+    step: i64,
+    output: *mut crate::tracking_replay::ReplayPlan,
+) -> i32 {
+    if output.is_null()
+        || !(output as usize)
+            .is_multiple_of(std::mem::align_of::<crate::tracking_replay::ReplayPlan>())
+    {
+        return -1;
+    }
+    let Some(plan) = crate::tracking_replay::plan(scope, flags, anchor, last, target, step) else {
+        return -1;
+    };
+    // SAFETY: The caller supplies a live writable aligned output object.
+    unsafe { output.write(plan) };
+    0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

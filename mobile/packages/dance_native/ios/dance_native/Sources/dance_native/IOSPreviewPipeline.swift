@@ -16,6 +16,7 @@ final class IOSPreviewPipeline {
   private let fileManager: FileManager
   private let registry: IOSRegenerableCacheRegistry
   private let cacheLock = NSLock()
+  private let identityReplay = IOSPreviewIdentityReplay()
   private var frameAnalysisCache: [String: CachedFrameAnalysis] = [:]
   private var facePrivacyResolvers: [String: IOSFacePrivacyTemporalResolver] = [:]
   private var metalRenderer: IOSMetalPreviewRenderer?
@@ -53,7 +54,14 @@ final class IOSPreviewPipeline {
     }
 
     let requestedTimestampMs = max(Int64(0), request.timestampMs)
-    let cacheKey = "\(request.analysisCacheId)_\(requestedTimestampMs)"
+    let metadata = try analysisCache.loadMetadata(cacheId: request.analysisCacheId)
+    let fullBodyIds = Set(request.selectedPersonIds.map { Int($0) })
+    let faceOnlyIds = Set((request.faceOnlyPersonIds ?? []).map { Int($0) }).subtracting(fullBodyIds)
+    let heroId = request.follow.enabled ? request.follow.targetPersonId.map { Int($0) } : nil
+    let scope = IOSFrameKernel.sceneScope(roots: Set(metadata?.persons.map(\.id) ?? []),
+      body: fullBodyIds, face: faceOnlyIds, hero: heroId)
+    let policyKey = "\(request.analysisCacheId)_\((metadata?.anchorTimestampUs).map(String.init) ?? "unknown")_\(fullBodyIds.sorted())_\(faceOnlyIds.sorted())_\(heroId.map(String.init) ?? "none")"
+    let cacheKey = "\(request.analysisCacheId)_\(requestedTimestampMs)_\(policyKey)"
     let frameAnalysis: CachedFrameAnalysis
     if let cached = cachedFrame(key: cacheKey) {
       frameAnalysis = cached
@@ -61,22 +69,17 @@ final class IOSPreviewPipeline {
       frameAnalysis = try await analyzeFrame(
         sourceUri: sourceUri,
         cacheId: request.analysisCacheId,
-        timestampMs: requestedTimestampMs
+        timestampMs: requestedTimestampMs, metadata: metadata, scope: UInt32(scope),
+        hero: heroId, body: fullBodyIds, face: faceOnlyIds, policyKey: policyKey
       )
       storeFrame(frameAnalysis, key: cacheKey)
     }
 
-    let fullBodyIds = Set(request.selectedPersonIds.map { Int($0) })
-    let faceOnlyIds = Set((request.faceOnlyPersonIds ?? []).map { Int($0) })
-      .subtracting(fullBodyIds)
-    let metadata = try analysisCache.loadMetadata(cacheId: request.analysisCacheId)
-    let heroId = request.follow.enabled ? request.follow.targetPersonId.map {Int($0)} : nil
-    let scope = IOSFrameKernel.sceneScope(roots: Set(metadata?.persons.map(\.id) ?? []), body: fullBodyIds, face: faceOnlyIds, hero: heroId)
     let allOthers = (scope & 4) != 0
-    let observedHero = heroId.flatMap { id in frameAnalysis.persons.first(where: {$0.id == id})?.detection }
+    let observedHero = heroId.flatMap { id in frameAnalysis.persons.first(where: {$0.id == id && !$0.conservativePrivacyFallback})?.detection }
     let heroBounds = observedHero.map {SIMD4<Float>($0.x1,$0.y1,$0.x2,$0.y2)}
     let renderPersons = allOthers
-      ? try IOSPrivacySelectionScope.currentPersons(detections: frameAnalysis.persons.map(\.detection),
+      ? try IOSPrivacySelectionScope.currentPersons(detections: frameAnalysis.persons.filter { !$0.conservativePrivacyFallback }.map(\.detection),
           heroId: heroId, observedHeroBounds: heroBounds, frameIndex: Int(requestedTimestampMs))
       : frameAnalysis.persons
     let targets = IOSFrameKernel.sceneTargets(roots: Set(metadata?.persons.map(\.id) ?? []),
@@ -186,10 +189,11 @@ final class IOSPreviewPipeline {
   func clearForAnalysis(cacheId: String) {
     cacheLock.lock()
     frameAnalysisCache = frameAnalysisCache.filter { key, _ in
-      key.range(of: "^\(NSRegularExpression.escapedPattern(for: cacheId))_[0-9]+$", options: .regularExpression) == nil
+      !key.hasPrefix(cacheId + "_")
     }
     facePrivacyResolvers.removeValue(forKey: cacheId)?.reset()
     cacheLock.unlock()
+    identityReplay.clear(cacheId: cacheId)
     removePreviewFiles(cacheId: cacheId)
   }
 
@@ -207,7 +211,8 @@ final class IOSPreviewPipeline {
   private func analyzeFrame(
     sourceUri: String,
     cacheId: String,
-    timestampMs: Int64
+    timestampMs: Int64, metadata: IOSAnalysisMetadata?, scope: UInt32,
+    hero: Int?, body: Set<Int>, face: Set<Int>, policyKey: String
   ) async throws -> CachedFrameAnalysis {
     let url = IOSVideoProbe.assetURL(from: sourceUri)
     let securityScoped = url.isFileURL && url.startAccessingSecurityScopedResource()
@@ -246,13 +251,29 @@ final class IOSPreviewPipeline {
       image: generated.image,
       preferredBackend: .xnnpack
     )
-    let metadata = try analysisCache.loadMetadata(cacheId: cacheId)
-    let persons = try IOSPreviewIdentityMatcher.assign(
-      detections: inference.detections,
-      metadata: metadata,
-      frameWidth: generated.image.width,
-      frameHeight: generated.image.height
-    )
+    let tracks = try await asset.loadTracks(withMediaType: .video)
+    let rawFps = try await tracks.first?.load(.nominalFrameRate) ?? 30
+    let fps = rawFps.isFinite && rawFps > 0 ? Double(rawFps) : 30.0
+    let stepUs = max(Int64(1), Int64((1_000_000.0 / fps).rounded()))
+    let plan: IOSSharedReplayPlan
+    do {
+      plan = try IOSSharedTrackingSession.replayPlan(scope: scope, hero: hero != nil,
+        namedTargets: !body.isEmpty || !face.isEmpty, anchorUs: metadata?.anchorTimestampUs,
+        lastUs: nil, targetUs: clampedTimestampMs * 1_000, stepUs: stepUs)
+    } catch {
+      throw PigeonError(code: "PREVIEW_PRIVACY_UNRESOLVED",
+        message: "Preview identity requires a valid observed analysis anchor.", details: nil)
+    }
+    let persons: [IOSPreviewPerson]
+    if plan.required {
+      persons = try identityReplay.resolve(cacheId: cacheId, key: policyKey,
+        metadata: metadata, scope: scope, hero: hero, body: body, face: face,
+        timestampUs: clampedTimestampMs * 1_000, stepUs: stepUs,
+        image: generated.image, inference: inference, asset: asset, runner: runner)
+    } else {
+      persons = try IOSPreviewIdentityMatcher.assign(detections: inference.detections,
+        metadata: metadata, frameWidth: generated.image.width, frameHeight: generated.image.height)
+    }
     return CachedFrameAnalysis(
       image: generated.image,
       persons: persons,

@@ -510,3 +510,13 @@ JNIEXPORT jbyteArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_tracki
  result=(*env)->NewByteArray(env,(jsize)size);if(result&&size)(*env)->SetByteArrayRegion(env,result,0,(jsize)size,(const jbyte*)snapshot);
  cleanup:free(snapshot);free(observations);if(v)(*env)->ReleaseFloatArrayElements(env,values,v,JNI_ABORT);if(pool)(*env)->ReleaseByteArrayElements(env,pixels,pool,JNI_ABORT);release_ids(env,&off);release_ids(env,&ids);if(!result)invalid(env);return result;
 }
+
+JNIEXPORT jlongArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_replayPlanNative(JNIEnv *env,jobject self,jint scope,jint flags,jlong anchor,jlong last,jlong target,jlong step) {
+ (void)self;FrameKernelReplayPlan p;
+ if(frame_kernel_replay_plan((uint32_t)scope,(uint32_t)flags,(int64_t)anchor,(int64_t)last,(int64_t)target,(int64_t)step,&p)){invalid(env);return NULL;}
+ jlong values[7]={(jlong)p.required,(jlong)p.reset,p.start_us,p.step_us,(jlong)p.regular_count,(jlong)p.append_target,p.target_us};jlongArray out=(*env)->NewLongArray(env,7);if(out)(*env)->SetLongArrayRegion(env,out,0,7,values);return out;
+}
+
+JNIEXPORT void JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_trackingReserveNative(JNIEnv *env,jobject self,jlong id,jlong minimum) {
+ (void)self;if(frame_kernel_tracking_reserve_id_floor((uint64_t)id,(int64_t)minimum))invalid(env);
+}

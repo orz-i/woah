@@ -114,9 +114,10 @@ final class IOSAnalyzePipeline {
     try cache.saveMetadata(
       cacheId: cacheId,
       metadata: IOSAnalysisMetadata(
-        schemaVersion: 1,
+        schemaVersion: 2,
         sourceUri: request.videoUri,
-        persons: cachedPersons
+        persons: cachedPersons,
+        anchorTimestampUs: Int64((CMTimeGetSeconds(generated.actualTime) * 1_000_000).rounded())
       )
     )
     committed = true

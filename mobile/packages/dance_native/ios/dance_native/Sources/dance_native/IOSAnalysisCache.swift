@@ -20,6 +20,11 @@ struct IOSAnalysisMetadata: Codable {
   let schemaVersion: Int
   let sourceUri: String
   let persons: [IOSCachedPerson]
+  let anchorTimestampUs: Int64?
+  init(schemaVersion: Int, sourceUri: String, persons: [IOSCachedPerson], anchorTimestampUs: Int64? = nil) {
+    self.schemaVersion = schemaVersion; self.sourceUri = sourceUri
+    self.persons = persons; self.anchorTimestampUs = anchorTimestampUs
+  }
 }
 
 final class IOSAnalysisCache {

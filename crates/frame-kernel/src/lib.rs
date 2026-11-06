@@ -23,6 +23,7 @@ pub mod tracking_groups;
 pub mod tracking_lifecycle;
 pub mod tracking_mask;
 pub mod tracking_motion;
+pub mod tracking_replay;
 mod tracking_update;
 mod tracking_update_groups;
 mod tracking_update_misses;

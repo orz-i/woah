@@ -11,8 +11,19 @@ internal object FrameKernel {
         check(abiVersion() == 1) { "Unsupported FrameKernel ABI" }
     }
 
+    private external fun replayPlanNative(scope:Int,flags:Int,anchor:Long,last:Long,target:Long,step:Long):LongArray
+    data class ReplayPlan(val required:Boolean,val reset:Boolean,val startUs:Long,val stepUs:Long,val regularCount:Int,val appendTarget:Boolean,val targetUs:Long) {
+        val count:Int get()=regularCount+if(appendTarget)1 else 0
+        fun time(index:Int):Long {require(index in 0 until count);return if(index<regularCount)startUs+index*stepUs else targetUs}
+    }
+    fun replayPlan(scope:Int,hero:Boolean,namedTargets:Boolean,anchorUs:Long?,lastUs:Long?,targetUs:Long,stepUs:Long):ReplayPlan {
+        val v=replayPlanNative(scope,(if(hero)1 else 0) or (if(namedTargets)2 else 0),anchorUs?:-1L,lastUs?:-1L,targetUs,stepUs)
+        return ReplayPlan(v[0]!=0L,v[1]!=0L,v[2],v[3],v[4].toInt(),v[5]!=0L,v[6])
+    }
+
     private external fun trackingCreateNative(scalars:FloatArray,integers:IntArray):Long
     private external fun trackingDestroyNative(id:Long)
+    private external fun trackingReserveNative(id:Long,minimum:Long)
     private external fun trackingSelectionNative(id:Long,protected:LongArray,body:LongArray,face:LongArray,dormancy:Boolean)
     private external fun trackingStepNative(id:Long,action:Int,timestampUs:Long,values:FloatArray,offsets:LongArray,pixels:ByteArray,assigned:LongArray):ByteArray
     class TrackingSession(scalars:FloatArray,integers:IntArray):AutoCloseable {
@@ -23,6 +34,7 @@ internal object FrameKernel {
         @Synchronized fun step(action:Int,timestampUs:Long,values:FloatArray,offsets:LongArray,pixels:ByteArray,assigned:LongArray):ByteArray {
             check(id!=0L);return trackingStepNative(id,action,timestampUs,values,offsets,pixels,assigned)
         }
+        @Synchronized fun reserveNextIdentity(minimum:Long){check(id!=0L);trackingReserveNative(id,minimum)}
         @Synchronized override fun close() {if(id!=0L){trackingDestroyNative(id);id=0L}}
     }
 
