@@ -155,14 +155,20 @@ def audit(row,path,dest,metadata):
           black_frames=black,green_frames=green,privacy_probes=privacy_probes,
           topology_candidates=holes,topology_scope='FACE_ONLY solid interior holes; not semantic face coverage')
         if row.get('saveToGallery'):
-            media=pathlib.Path('/Users/mini/Library/Developer/CoreSimulator/Devices')/metadata['udid']/'data/Media'
-            since=__import__('datetime').datetime.fromisoformat(metadata['started_utc']).timestamp()-1
             matches=[]
-            for candidate in media.rglob('*'):
-                if not candidate.is_file() or candidate.suffix.lower() not in ['.mp4','.mov']: continue
-                stat=candidate.stat()
-                if stat.st_size==path.stat().st_size and stat.st_mtime>=since and sha(candidate)==result['sha256']:
-                    matches.append(str(candidate.relative_to(media)))
+            if metadata.get('platform')=='android':
+                original=row.get('gallery_original') or {}
+                candidate=path.parent.parent/'gallery'/pathlib.Path(original.get('path','missing')).name
+                if candidate.is_file() and candidate.stat().st_size==path.stat().st_size and sha(candidate)==result['sha256']:
+                    matches.append(str(candidate.relative_to(path.parent.parent)))
+            else:
+                media=pathlib.Path('/Users/mini/Library/Developer/CoreSimulator/Devices')/metadata['udid']/'data/Media'
+                since=__import__('datetime').datetime.fromisoformat(metadata['started_utc']).timestamp()-1
+                for candidate in media.rglob('*'):
+                    if not candidate.is_file() or candidate.suffix.lower() not in ['.mp4','.mov']: continue
+                    stat=candidate.stat()
+                    if stat.st_size==path.stat().st_size and stat.st_mtime>=since and sha(candidate)==result['sha256']:
+                        matches.append(str(candidate.relative_to(media)))
             result['gallery_original_sha_matches']=matches
             if not row.get('gallery_save_completed') or not matches: result['status']='failed_gallery_original_check'
         if any(not p['passed'] for p in privacy_probes):result['status']='failed_privacy_probe'
@@ -171,8 +177,12 @@ def audit(row,path,dest,metadata):
     except Exception as error:result['error']=str(error)
     return result
 
-def main():
-    p=argparse.ArgumentParser();p.add_argument('run_id');args=p.parse_args()
+def main(argv=None):
+    global REPORT,SOURCES
+    p=argparse.ArgumentParser();p.add_argument('run_id')
+    p.add_argument('--report-root',type=pathlib.Path,default=REPORT)
+    p.add_argument('--sources',type=pathlib.Path,default=SOURCES)
+    args=p.parse_args(argv);REPORT=args.report_root.resolve();SOURCES=args.sources.resolve()
     root=REPORT/'artifacts'/args.run_id
     data=json.loads((root/'results.json').read_text())
     metadata=json.loads((root/'run-metadata.json').read_text()) if (root/'run-metadata.json').exists() else {}
