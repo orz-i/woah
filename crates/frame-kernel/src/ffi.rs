@@ -10,6 +10,12 @@ use crate::{
     geometry::{self, Rect, Transform},
 };
 
+/// Source context probe timestamp, or -1 for a zero/invalid request.
+#[unsafe(no_mangle)]
+pub extern "C" fn frame_kernel_region_context_probe_us(timestamp_us: i64) -> i64 {
+    crate::region_continuation::context_probe_us(timestamp_us).unwrap_or(-1)
+}
+
 /// # Safety
 /// Inputs are readable aligned values. Output is disjoint writable storage.
 /// Return total records (history then current), -1 invalid, <=-2 capacity query.

@@ -360,6 +360,11 @@ final class IOSExportPipeline {
         facePrivacyResolver = IOSFacePrivacyTemporalResolver()
       }
 
+      if freshSceneCoverage, let runner, let facePrivacyResolver {
+        try IOSSceneRegionContext.seed(asset: asset, timestampUs: trimStartMs * 1_000,
+          runner: runner, resolver: facePrivacyResolver, preferredBackend: .xnnpack)
+      }
+
       let videoReader = try makeVideoReader(
         asset: asset,
         track: videoTrack,

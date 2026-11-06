@@ -95,9 +95,19 @@ final class IOSPreviewPipeline {
     }
     let coveredHeadIds = allOthers
       ? IOSHighResolutionPrivacyCoverage.coveredHeadFallbackIds(persons: renderPersons, preprocess: frameAnalysis.preprocess) : []
+    let uniformSceneCoverage = heroId == nil && (scope & 3) != 0
+    let privacyResolver = uniformSceneCoverage ? IOSFacePrivacyTemporalResolver()
+      : facePrivacyResolver(cacheId: request.analysisCacheId)
+    if uniformSceneCoverage && !requestedPrivacyIds.isEmpty {
+      let url = IOSVideoProbe.assetURL(from: sourceUri)
+      let scoped = url.isFileURL && url.startAccessingSecurityScopedResource()
+      defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+      try IOSSceneRegionContext.seed(asset: AVURLAsset(url: url),
+        timestampUs: requestedTimestampMs * 1_000, runner: runner, resolver: privacyResolver)
+    }
     let faceRegions = try requestedPrivacyIds.isEmpty
       ? [:]
-      : facePrivacyResolver(cacheId: request.analysisCacheId).resolve(
+      : privacyResolver.resolve(
         image: frameAnalysis.image,
         persons: renderPersons,
         faceOnlyIds: requestedPrivacyIds,

@@ -6,6 +6,12 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertTrue
 
 class FrameKernelRegionContinuationTest {
+    @Test fun sourceContextUsesTheSameBoundedTimestampPlan() {
+        kotlin.test.assertNull(FrameKernel.regionContextProbeUs(0))
+        kotlin.test.assertNull(FrameKernel.regionContextProbeUs(-1))
+        kotlin.test.assertEquals(21_960_000L,FrameKernel.regionContextProbeUs(22_360_000))
+        kotlin.test.assertEquals(0L,FrameKernel.regionContextProbeUs(1))
+    }
     @Test fun freshAnonymousIdsDoNotEraseRecentObservedFaceCoverage() {
         val core=FrameKernel.RegionContinuation()
         val observed=floatArrayOf(1298.2534f,1206.1788f,116.943756f,131.11876f)

@@ -48,3 +48,6 @@ continuation.reset()
 let reset = try continuation.step(raw:weak,anchor:currentAnchor,timestampUs:22_400_000,kind:2)
 check(reset == weak,"reset must clear spatial history")
 print("REGION_CONTINUATION_SWIFT_PASSED")
+
+check(IOSFrameKernel.regionContextProbeUs(0) == nil, "zero time has no earlier context")
+check(IOSFrameKernel.regionContextProbeUs(22_360_000) == 21_960_000, "shared context probe time")

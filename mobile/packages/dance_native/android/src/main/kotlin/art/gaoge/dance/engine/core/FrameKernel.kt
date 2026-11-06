@@ -17,6 +17,8 @@ internal object FrameKernel {
 
     private external fun continueRegionNative(values: FloatArray, clock: LongArray,
         current: FloatArray, pts: Long, kind: Int): FloatArray
+    private external fun regionContextProbeUsNative(pts: Long): Long
+    fun regionContextProbeUs(pts: Long): Long? = regionContextProbeUsNative(pts).takeIf { it >= 0 }
     class RegionContinuation {
         private val values = FloatArray(1024 * 8)
         private val clock = LongArray(1025)

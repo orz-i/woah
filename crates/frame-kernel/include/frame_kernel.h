@@ -32,6 +32,7 @@ typedef struct FrameKernelRegionMeasurement {
 int32_t frame_kernel_continue_regions(const FrameKernelRegionMeasurement *history, size_t history_len,
     const FrameKernelRegionMeasurement *current, size_t current_len, int64_t now, uint32_t enabled,
     FrameKernelRegionMeasurement *output, size_t capacity);
+int64_t frame_kernel_region_context_probe_us(int64_t timestamp_us);
 typedef struct FrameKernelRegionState {
     FrameKernelEllipse output;
     float reference_radius_x, reference_radius_y, reference_width, reference_height;

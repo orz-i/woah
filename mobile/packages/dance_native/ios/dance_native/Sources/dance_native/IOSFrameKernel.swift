@@ -8,6 +8,12 @@ enum IOSFrameKernel {
     precondition(frame_kernel_abi_version() == 1, "Unsupported FrameKernel ABI")
   }()
 
+  static func regionContextProbeUs(_ timestampUs: Int64) -> Int64? {
+    _ = checkedABI
+    let result = frame_kernel_region_context_probe_us(timestampUs)
+    return result >= 0 ? result : nil
+  }
+
   final class RegionContinuation {
     private var history: [FrameKernelRegionMeasurement] = []
     func reset() { history.removeAll(keepingCapacity: true) }
