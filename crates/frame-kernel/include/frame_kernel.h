@@ -12,6 +12,23 @@
 extern "C" {
 #endif
 typedef struct FrameKernelRect { float left, top, right, bottom; } FrameKernelRect;
+typedef struct FrameKernelEllipse { float center_x, center_y, radius_x, radius_y; } FrameKernelEllipse;
+typedef struct FrameKernelRegionMeasurement {
+    FrameKernelEllipse region; FrameKernelRect anchor; int64_t timestamp_us;
+    uint32_t kind, flags;
+} FrameKernelRegionMeasurement;
+typedef struct FrameKernelRegionState {
+    FrameKernelEllipse output;
+    float reference_radius_x, reference_radius_y, reference_width, reference_height;
+    FrameKernelRect anchor; int64_t timestamp_us; uint32_t flags;
+} FrameKernelRegionState;
+/* Initialize state to zero. kind: 0 observed, 1 projected, 2 estimated.
+   Measurement flags: 1 current observed anchor, 2 trusted local center,
+   4 half-pixel lattice, 8 weak translation-only center, 16 cover measured extent.
+   All state/output memory belongs to the caller; outputs cannot alias state.
+   0 success, -1 invalid; invalid inputs leave state and output unchanged. */
+int32_t frame_kernel_region_step(FrameKernelRegionState *state, FrameKernelRegionMeasurement measurement, FrameKernelEllipse *output);
+int32_t frame_kernel_anchor_translation(FrameKernelRect previous, FrameKernelRect current, float output[2]);
 typedef struct FrameKernelTransform {
     float scale, pad_left, pad_top;
     uint32_t source_width, source_height, input_size, proto_size;

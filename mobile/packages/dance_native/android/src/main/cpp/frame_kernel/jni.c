@@ -368,3 +368,34 @@ JNIEXPORT void JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_reprojectMas
     if (!input || !result || input_len<0 || output_len<0 || input==result ||
         frame_kernel_reproject_mask(input,(size_t)input_len,l,s,v,result,(size_t)output_len)!=0) invalid(env);
 }
+JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_regionStepNative(JNIEnv *env,jobject self,
+    jfloatArray values,jlongArray clock,jfloatArray region,jfloatArray anchor,jlong pts,jint kind,jint flags) {
+    (void)self;FrameKernelRegionState state={0};FrameKernelRegionMeasurement input={0};FrameKernelEllipse output;
+    jfloat v[12],raw[4];jlong time[2];
+    if(!values || !clock || !region || (*env)->GetArrayLength(env,values)!=12 ||
+        (*env)->GetArrayLength(env,clock)!=2 || (*env)->GetArrayLength(env,region)!=4) {invalid(env);return NULL;}
+    (*env)->GetFloatArrayRegion(env,values,0,12,v);(*env)->GetLongArrayRegion(env,clock,0,2,time);
+    (*env)->GetFloatArrayRegion(env,region,0,4,raw);
+    if((*env)->ExceptionCheck(env) || !read_rect(env,anchor,&input.anchor)) return NULL;
+    if(time[1]<0 || time[1]>7 || kind<0 || flags<0) {invalid(env);return NULL;}
+    state.output=(FrameKernelEllipse){v[0],v[1],v[2],v[3]};
+    state.reference_radius_x=v[4];state.reference_radius_y=v[5];state.reference_width=v[6];state.reference_height=v[7];
+    state.anchor=(FrameKernelRect){v[8],v[9],v[10],v[11]};state.timestamp_us=(int64_t)time[0];state.flags=(uint32_t)time[1];
+    input.region=(FrameKernelEllipse){raw[0],raw[1],raw[2],raw[3]};input.timestamp_us=(int64_t)pts;
+    input.kind=(uint32_t)kind;input.flags=(uint32_t)flags;
+    if(frame_kernel_region_step(&state,input,&output)) {invalid(env);return NULL;}
+    jfloatArray result=(*env)->NewFloatArray(env,4);if(!result) return NULL;
+    jfloat out[4]={output.center_x,output.center_y,output.radius_x,output.radius_y};
+    jfloat stored[12]={state.output.center_x,state.output.center_y,state.output.radius_x,state.output.radius_y,
+        state.reference_radius_x,state.reference_radius_y,state.reference_width,state.reference_height,
+        state.anchor.left,state.anchor.top,state.anchor.right,state.anchor.bottom};
+    time[0]=(jlong)state.timestamp_us;time[1]=(jlong)state.flags;
+    (*env)->SetFloatArrayRegion(env,result,0,4,out);(*env)->SetFloatArrayRegion(env,values,0,12,stored);
+    (*env)->SetLongArrayRegion(env,clock,0,2,time);return result;
+}
+JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_anchorTranslationNative(JNIEnv *env,jobject self,jfloatArray previous,jfloatArray current) {
+    (void)self;FrameKernelRect a,b;float out[2];
+    if(!read_rect(env,previous,&a) || !read_rect(env,current,&b)) return NULL;
+    if(frame_kernel_anchor_translation(a,b,out)) {invalid(env);return NULL;}
+    jfloatArray result=(*env)->NewFloatArray(env,2);if(result) (*env)->SetFloatArrayRegion(env,result,0,2,out);return result;
+}

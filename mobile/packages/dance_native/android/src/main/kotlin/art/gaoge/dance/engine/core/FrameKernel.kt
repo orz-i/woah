@@ -11,6 +11,25 @@ internal object FrameKernel {
         check(abiVersion() == 1) { "Unsupported FrameKernel ABI" }
     }
 
+    private external fun regionStepNative(values: FloatArray, clock: LongArray, raw: FloatArray,
+        anchor: FloatArray, pts: Long, kind: Int, flags: Int): FloatArray
+    private external fun anchorTranslationNative(previous: FloatArray, current: FloatArray): FloatArray
+
+    class RegionState {
+        private val values = FloatArray(12)
+        private val clock = LongArray(2)
+        fun step(raw: FloatArray, anchor: FloatRect, pts: Long, kind: Int,
+            observed: Boolean = true, trustedCenter: Boolean = false, canonical: Boolean = false,
+            translationOnly: Boolean = false, coverCurrent: Boolean = false): FloatArray {
+            val flags = (if (observed) 1 else 0) or (if (trustedCenter) 2 else 0) or
+                (if (canonical) 4 else 0) or (if (translationOnly) 8 else 0) or (if (coverCurrent) 16 else 0)
+            return regionStepNative(values, clock, raw, anchor.values(), pts, kind, flags)
+        }
+        fun snapshot(): FloatArray = values.copyOf()
+    }
+    fun anchorTranslation(previous: FloatRect, current: FloatRect): FloatArray =
+        anchorTranslationNative(previous.values(), current.values())
+
     private external fun abiVersion(): Int
     private external fun associationDefaultsNative(): FloatArray
     private external fun associationScoreNative(values: FloatArray, historyAge: Long, flags: Int, weights: FloatArray): Float

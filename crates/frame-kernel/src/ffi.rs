@@ -10,6 +10,52 @@ use crate::{
     geometry::{self, Rect, Transform},
 };
 
+/// # Safety
+/// State and output are writable, aligned, nonoverlapping caller-owned values.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_region_step(
+    state: *mut crate::temporal_region::RegionState,
+    measurement: crate::temporal_region::RegionMeasurement,
+    output: *mut crate::temporal_region::Ellipse,
+) -> i32 {
+    if state.is_null() || output.is_null() {
+        return -1;
+    }
+    // SAFETY: both pointers are checked; alignment/lifetime are caller contracts.
+    let mut next = unsafe { state.read() };
+    let Some(region) = next.step(measurement) else {
+        return -1;
+    };
+    // SAFETY: output buffers are disjoint and no references are retained.
+    unsafe {
+        state.write(next);
+        output.write(region);
+    }
+    0
+}
+
+/// # Safety
+/// Output points to two writable aligned floats; no data is retained.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_anchor_translation(
+    previous: Rect,
+    current: Rect,
+    output: *mut f32,
+) -> i32 {
+    if output.is_null() {
+        return -1;
+    }
+    let Some(value) = crate::temporal_region::anchor_translation(previous, current) else {
+        return -1;
+    };
+    // SAFETY: caller supplies space for two aligned floats.
+    unsafe {
+        output.write(value[0]);
+        output.add(1).write(value[1]);
+    }
+    0
+}
+
 unsafe fn id_slice<'a>(pointer: *const i64, len: usize) -> Option<&'a [i64]> {
     if len > 100_000 || (len > 0 && pointer.is_null()) {
         return None;

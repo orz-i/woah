@@ -72,6 +72,37 @@ enum IOSFrameKernel {
     return result == -1 ? nil:Int(result)
   }
 
+  static func anchorTranslation(previous: SIMD4<Float>, current: SIMD4<Float>) -> SIMD2<Float> {
+    _ = checkedABI
+    let a=FrameKernelRect(left:previous.x,top:previous.y,right:previous.z,bottom:previous.w)
+    let b=FrameKernelRect(left:current.x,top:current.y,right:current.z,bottom:current.w)
+    var output=[Float](repeating:0,count:2)
+    let status=output.withUnsafeMutableBufferPointer {frame_kernel_anchor_translation(a,b,$0.baseAddress)}
+    precondition(status==0,"Invalid shared anchor geometry")
+    return SIMD2<Float>(output[0],output[1])
+  }
+
+  final class RegionState {
+    private var state=FrameKernelRegionState()
+    var referenceRadii: SIMD2<Float>? {
+      state.flags & 2 == 0 ? nil:SIMD2<Float>(state.reference_radius_x,state.reference_radius_y)
+    }
+    func step(region: SIMD4<Float>, anchor: SIMD4<Float>, timestampUs: Int64, kind: UInt32,
+        observed: Bool=true, trustedCenter: Bool=false, canonical: Bool=false,
+        translationOnly: Bool=false, coverCurrent: Bool=false) throws -> SIMD4<Float> {
+      _ = IOSFrameKernel.checkedABI
+      let flags:UInt32=(observed ? 1:0) | (trustedCenter ? 2:0) | (canonical ? 4:0)
+        | (translationOnly ? 8:0) | (coverCurrent ? 16:0)
+      let measurement=FrameKernelRegionMeasurement(
+        region:FrameKernelEllipse(center_x:region.x,center_y:region.y,radius_x:region.z,radius_y:region.w),
+        anchor:FrameKernelRect(left:anchor.x,top:anchor.y,right:anchor.z,bottom:anchor.w),
+        timestamp_us:timestampUs,kind:kind,flags:flags)
+      var output=FrameKernelEllipse()
+      guard frame_kernel_region_step(&state,measurement,&output)==0 else {throw IOSFrameKernel.pixelError()}
+      return SIMD4<Float>(output.center_x,output.center_y,output.radius_x,output.radius_y)
+    }
+  }
+
   final class BoxFilter {
     private var state = FrameKernelBoxFilter()
     init(bounds: SIMD4<Float>, timestampUs: Int64) throws {

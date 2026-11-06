@@ -38,3 +38,12 @@ input pointers after a call. Consumers must not alias input and output memory.
 
 This is an unpublished initial API. Keep `publish = false` until API stability,
 packaging and compatibility have been reviewed separately.
+
+Temporal region state is also shared: observed/projected/estimated geometry,
+reference-size updates, asymmetric size smoothing, anchor edge agreement,
+weak-measurement translation and residual position gates. Its state is a
+caller-owned 64-byte value; native key maps are lifetime/transport adapters.
+Flags describe evidence strength rather than a platform or detector framework.
+Both face adapters request full current measured extent, including growth;
+Android's old 90% floor remains only in the frozen compatibility corpus.
+The shared anonymous path has private state and cannot mutate identity.
