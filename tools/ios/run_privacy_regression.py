@@ -24,13 +24,18 @@ def atomic(path, data):
     temp.replace(path)
 
 def main():
+    global REPORT, SOURCES
     parser = argparse.ArgumentParser()
     parser.add_argument('config', type=pathlib.Path)
     parser.add_argument('--udid', default='EE228BE6-0F7F-48E1-9892-313B7CFFBB63')
     parser.add_argument('--install', action='store_true')
     parser.add_argument('--app', type=pathlib.Path, default=ROOT/'mobile/app/build/ios/iphonesimulator/Runner.app')
     parser.add_argument('--optimized-native', action='store_true')
+    parser.add_argument('--report-root', type=pathlib.Path, default=REPORT)
+    parser.add_argument('--sources', type=pathlib.Path, default=SOURCES)
+    parser.add_argument('--deadline-hours', type=float, default=5)
     args = parser.parse_args()
+    REPORT, SOURCES = args.report_root.resolve(), args.sources.resolve()
     config = json.loads(args.config.read_text())
     run_id = config['run_id']
     if not run_id.replace('_', '').replace('-', '').isalnum(): raise ValueError('Invalid run ID')
@@ -82,7 +87,7 @@ def main():
             args.udid,BUNDLE],env=launch_env,stdout=log,stderr=subprocess.STDOUT)
         last = None
         resources = []
-        deadline = time.monotonic() + 5*3600
+        deadline = time.monotonic() + args.deadline_hours*3600
         while time.monotonic() < deadline:
             if results.exists():
                 try: data = json.loads(results.read_text())
@@ -136,6 +141,6 @@ def main():
                         return 0
             if process.poll() is not None: raise RuntimeError(f'Simulator runner exited: {process.returncode}; see {dest}/console.log')
             time.sleep(5)
-        raise TimeoutError('Five hour run deadline; leave simulator evidence intact')
+        raise TimeoutError('Run deadline exceeded; simulator evidence preserved')
 
 if __name__ == '__main__': raise SystemExit(main())

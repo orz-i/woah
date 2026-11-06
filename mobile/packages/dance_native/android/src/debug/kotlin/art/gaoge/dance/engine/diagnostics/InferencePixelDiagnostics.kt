@@ -25,7 +25,7 @@ class InferencePixelDiagnostics(
         surfaceTransform: FloatArray,
         decoderFormatFields: Map<String, Any?> = emptyMap()
     ) {
-        if (!art.gaoge.dance.engine.BuildConfig.DEBUG || captured >= maxCaptures) return
+        if (!art.gaoge.dance.engine.BuildConfig.DEBUG || DiagnosticsBuild.metadataOnly || captured >= maxCaptures) return
 
         val expectedBytes = width * height * 4
         val duplicate = rgbaBuffer.duplicate()

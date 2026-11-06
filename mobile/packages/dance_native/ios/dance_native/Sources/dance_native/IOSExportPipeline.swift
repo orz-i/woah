@@ -346,7 +346,7 @@ final class IOSExportPipeline {
       // Read-only geometry: the independent pixel auditor projects separately
       // captured YOLO masks into the actual followed output coordinate system.
       let cropRecorder = IOSPixelAuditCropRecorder(
-        sourceName: sourceURL.lastPathComponent,
+        sourceName: sourceURL.lastPathComponent, outputName: output.final.lastPathComponent,
         outputWidth: target.width, outputHeight: target.height
       )
 #endif

@@ -71,7 +71,8 @@ data class FaceOnlyPrivacyFrameResult(
     val maskBuildMs: Double,
     val privacyResolveMs: Double,
     val stickerPlacements: List<FaceStickerPlacement>,
-    val bodySupplementResolved: ResolvedCompositorMasks? = null
+    val bodySupplementResolved: ResolvedCompositorMasks? = null,
+    val qaFaceRegions: Map<Int, FacePrivacyEllipse> = emptyMap()
 )
 
 /**
@@ -907,6 +908,7 @@ class FaceOnlyPrivacyFrameProcessor(
         val dueDetectorTrackIds = detectorCandidates.take(detectorBudget).toSet()
 
         val faceMasks = linkedMapOf<Int, NativeMask>()
+        val qaFaceRegions = if (art.gaoge.dance.engine.diagnostics.DiagnosticsBuild.metadataOnly) linkedMapOf<Int, FacePrivacyEllipse>() else null
         val detected = linkedSetOf<Int>()
         val predicted = linkedSetOf<Int>()
         val fallback = linkedSetOf<Int>()
@@ -1449,6 +1451,7 @@ class FaceOnlyPrivacyFrameProcessor(
                 maskBuildMs += (System.nanoTime() - maskStartNs) / 1_000_000.0
                 builtMask?.let { mask ->
                     faceMasks[trackId] = mask
+                    qaFaceRegions?.put(trackId, region)
                 }
                 when (region.source) {
                     FacePrivacyRegionSource.DETECTED_FACE -> detected += trackId
@@ -1510,6 +1513,7 @@ class FaceOnlyPrivacyFrameProcessor(
             it.residualTrackIds.isNotEmpty() && it.residualTrackIds.all(bodySupplementTrackIds::contains)
         }.map { it.syntheticTrackId }.toSet()
         classFallbacks.forEach { classFallback ->
+            qaFaceRegions?.put(classFallback.syntheticTrackId, classFallback.region)
             FaceStickerPlacement.from(
                 trackId = classFallback.syntheticTrackId,
                 region = classFallback.region,
@@ -1679,7 +1683,8 @@ class FaceOnlyPrivacyFrameProcessor(
             stickerPlacements = stickerPlacements.filterNot {
                 bodySupplementTrackIds.contains(it.trackId) || bodyClassFallbackIds.contains(it.trackId)
             },
-            bodySupplementResolved = bodyResolved
+            bodySupplementResolved = bodyResolved,
+            qaFaceRegions = qaFaceRegions.orEmpty()
         )
     }
 

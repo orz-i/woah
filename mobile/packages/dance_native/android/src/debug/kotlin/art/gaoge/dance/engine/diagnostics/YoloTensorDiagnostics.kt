@@ -32,7 +32,7 @@ class YoloTensorDiagnostics(
         if (!art.gaoge.dance.engine.BuildConfig.DEBUG || ptsUs < 0L || ptsUs > signatureMaxPtsUs) return
         if (!capturedPts.add(ptsUs)) return
 
-        if (ptsUs > artifactMaxPtsUs) {
+        if (DiagnosticsBuild.metadataOnly || ptsUs > artifactMaxPtsUs) {
             recordGeometrySignature(jobId, ptsUs, detections)
             return
         }

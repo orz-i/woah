@@ -1,7 +1,8 @@
-// Simulator-only real-media regression entrypoint. Never used by production main.dart.
+// Shared Android-device/iOS-simulator media QA. Never used by production main.dart.
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:dance_domain/dance_domain.dart';
 import 'package:dance_native/dance_native.dart';
@@ -20,7 +21,7 @@ class _QaApp extends StatefulWidget {
 }
 
 class _QaAppState extends State<_QaApp> {
-  String state = 'Preparing real-media iOS regression';
+  String state = 'Preparing real-media privacy regression';
   final List<String> lines = [];
 
   @override
@@ -49,7 +50,7 @@ class _QaAppState extends State<_QaApp> {
   @override
   Widget build(BuildContext context) => MaterialApp(
     home: Scaffold(
-      appBar: AppBar(title: const Text('Woah iOS Privacy QA • real media')),
+      appBar: AppBar(title: const Text('Woah Privacy QA • real media')),
       body: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
@@ -245,14 +246,26 @@ class _QA {
   _QA({required this.log});
   final void Function(String) log;
   late final DanceNativeClient client = DanceNativeClient();
-  late final Directory data = Directory.systemTemp.parent;
-  late final Directory docs = Directory('${data.path}/Documents');
+  late final Directory data;
+  late final Directory docs;
+  String? activeCase;
+  DateTime lastProgressWrite = DateTime.fromMillisecondsSinceEpoch(0);
+  bool verifyPreviews = false;
   late final Directory sources = Directory('${docs.path}/qa_sources');
   late Directory outputs = Directory('${docs.path}/qa_outputs');
   final Map<String, AnalyzeResultDto> analysis = {};
   final List<Map<String, Object?>> rows = [];
 
   Future<void> run() async {
+    const qaDirectory = String.fromEnvironment('WOAH_PRIVACY_QA_DIRECTORY');
+    if (qaDirectory.isNotEmpty) {
+      docs = Directory(qaDirectory);
+    } else if (Platform.isIOS) {
+      docs = Directory('${Directory.systemTemp.parent.path}/Documents');
+    } else {
+      throw StateError('Build Android QA with WOAH_PRIVACY_QA_DIRECTORY');
+    }
+    data = docs.parent;
     log('QA_BOOT data=${data.path} pid=$pid');
     await outputs.create(recursive: true);
     final modeFile = File('${docs.path}/qa_mode.txt');
@@ -274,7 +287,17 @@ class _QA {
       }
       outputs = Directory('${docs.path}/qa_ios_runs/$runId/outputs');
       await outputs.create(recursive: true);
-      if (config['core_smokes'] == true) {
+      verifyPreviews = config['verify_previews'] == true;
+      const compiledFingerprint = String.fromEnvironment(
+        'WOAH_QA_SOURCE_FINGERPRINT',
+      );
+      if (config['build_source_fingerprint'] != null &&
+          config['build_source_fingerprint'] != compiledFingerprint) {
+        throw StateError(
+          'Installed QA binary does not match the requested source manifest',
+        );
+      }
+      if (config['core_smokes'] == true && Platform.isIOS) {
         final checks = <String, Object?>{};
         try {
           for (final method in const [
@@ -394,7 +417,7 @@ class _QA {
     if (analysis.containsKey(key)) return analysis[key]!;
     final file = File('${sources.path}/$input');
     if (!await file.exists()) {
-      throw StateError('Missing simulator media input ${file.path}');
+      throw StateError('Missing QA media input ${file.path}');
     }
     final info = await client.probeVideo(file.path);
     log(
@@ -417,8 +440,21 @@ class _QA {
     Duration timeout = const Duration(minutes: 5),
   }) async {
     final start = DateTime.now();
+    var lastAdvance = start;
+    var previousFrame = -1;
     while (DateTime.now().difference(start) < timeout) {
       final status = await client.getJobStatus(job);
+      if (status.currentFrame != previousFrame) {
+        previousFrame = status.currentFrame;
+        lastAdvance = DateTime.now();
+      }
+      await recordProgress(status);
+      if (DateTime.now().difference(lastAdvance) > const Duration(minutes: 8)) {
+        await client.cancelJob(job);
+        throw TimeoutException(
+          'Export made no frame progress for eight minutes: $job',
+        );
+      }
       if (status.state == 'completed' ||
           status.state == 'failed' ||
           status.state == 'cancelled' ||
@@ -434,6 +470,18 @@ class _QA {
       'Export job timed out: $job ${statusRecord(status)}',
       timeout,
     );
+  }
+
+  Future<void> recordProgress(JobStatusDto status) async {
+    final now = DateTime.now();
+    if (now.difference(lastProgressWrite) < const Duration(seconds: 2)) return;
+    lastProgressWrite = now;
+    await persist('qa_current_progress.json', {
+      'case': activeCase,
+      'process_id': pid,
+      'updated_at_utc': now.toUtc().toIso8601String(),
+      ...statusRecord(status),
+    });
   }
 
   EffectConfig effect(String fill, {String? stickerAssetId}) => EffectConfig(
@@ -460,6 +508,7 @@ class _QA {
     final width = (c['width'] as int?) ?? 540;
     final height = (c['height'] as int?) ?? 1024;
     final startedAt = DateTime.now();
+    activeCase = name;
     log(
       'QA_CASE_START $name input=$input fill=$fill trim=[$startMs,$endMs) profile=$profile',
     );
@@ -498,6 +547,52 @@ class _QA {
           .toList();
       row['selected_ids'] = selected;
       row['hero_id'] = hero;
+      final qaEffects = effect(fill, stickerAssetId: stickerAsset);
+      final qaFollow = FollowConfig(
+        enabled: hero != null,
+        targetPersonId: hero,
+        outputAspectRatio: hero != null ? width / height : null,
+      );
+      if (verifyPreviews) {
+        final directory = Directory('${outputs.parent.path}/previews');
+        await directory.create(recursive: true);
+        final frameMs = (1000 / a.videoInfo.fps).ceil();
+        final lastMs = (endMs - frameMs).clamp(startMs, endMs - 1).toInt();
+        final previewRows = <Map<String, Object?>>[];
+        final previewTimes = {startMs, (startMs + lastMs) ~/ 2, lastMs};
+        if (hero == 6 && startMs <= 6600 && lastMs >= 6600) {
+          previewTimes.add(6600);
+        }
+        for (final at in previewTimes) {
+          final preview = await client.getPreviewFrame(
+            analysisCacheId: a.analysisCacheId,
+            timestampMs: at,
+            selectedPersonIds: faceOnly ? [] : selected,
+            faceOnlyPersonIds: faceOnly ? selected : [],
+            effects: qaEffects,
+            follow: qaFollow,
+          );
+          final bytes = await File(preview.thumbnailPath).readAsBytes();
+          final codec = await ui.instantiateImageCodec(bytes);
+          final image = (await codec.getNextFrame()).image;
+          if (image.width <= 0 || image.height <= 0) {
+            throw StateError('Empty preview image');
+          }
+          final target = File('${directory.path}/$name-$at.png');
+          await target.writeAsBytes(bytes);
+          previewRows.add({
+            'requested_ms': at,
+            'actual_ms': preview.timestampMs,
+            'width': image.width,
+            'height': image.height,
+            'bytes': bytes.length,
+            'file': target.uri.pathSegments.last,
+          });
+          image.dispose();
+          codec.dispose();
+        }
+        row['previews'] = previewRows;
+      }
       final out = File('${outputs.path}/$name.mp4');
       if (await out.exists()) await out.delete();
       final job = await client.startExport(
@@ -506,12 +601,8 @@ class _QA {
         outputFilePath: out.path,
         selectedPersonIds: faceOnly ? [] : selected,
         faceOnlyPersonIds: faceOnly ? selected : [],
-        effects: effect(fill, stickerAssetId: stickerAsset),
-        follow: FollowConfig(
-          enabled: hero != null,
-          targetPersonId: hero,
-          outputAspectRatio: hero != null ? width / height : null,
-        ),
+        effects: qaEffects,
+        follow: qaFollow,
         targetWidth: width,
         targetHeight: height,
         targetFps: a.videoInfo.fps,
@@ -526,6 +617,7 @@ class _QA {
         final deadline = DateTime.now().add(const Duration(minutes: 10));
         while (true) {
           final progress = await client.getJobStatus(job);
+          await recordProgress(progress);
           if (progress.state == 'completed' ||
               progress.state == 'failed' ||
               progress.state == 'cancelled' ||
@@ -543,7 +635,7 @@ class _QA {
           await Future<void>.delayed(const Duration(milliseconds: 220));
         }
       }
-      final s = await terminal(job, timeout: const Duration(minutes: 35));
+      final s = await terminal(job, timeout: const Duration(minutes: 90));
       row.addAll(statusRecord(s));
       row['file_bytes'] = await out.exists() ? await out.length() : 0;
       row['result'] = cancelAt != null
@@ -559,7 +651,9 @@ class _QA {
           .whereType<File>()
           .where(
             (f) =>
-                f.path.contains('.$name.') && f.path.endsWith('.partial.mp4'),
+                (f.path.contains('.$name.') &&
+                    f.path.endsWith('.partial.mp4')) ||
+                f.path.endsWith('/$name.tmp.mp4'),
           )
           .map((f) => f.path)
           .toList();
@@ -568,6 +662,17 @@ class _QA {
         row['gallery_saved_uri'] = await client.saveVideoToGallery(out.path);
         row['gallery_save_completed'] = row['gallery_saved_uri'] != null;
         if (row['gallery_save_completed'] != true) row['result'] = 'failed';
+        if (Platform.isAndroid && row['gallery_save_completed'] == true) {
+          final original = await const MethodChannel('dance_native')
+              .invokeMapMethod<String, dynamic>(
+                'copyPrivacyQaGalleryOriginal',
+                {'uri': row['gallery_saved_uri']},
+              );
+          if (original == null || (original['bytes'] as int? ?? 0) <= 0) {
+            throw StateError('Saved gallery original was not readable');
+          }
+          row['gallery_original'] = original;
+        }
       }
     } catch (error, stack) {
       row['result'] = 'failed';
@@ -668,6 +773,14 @@ class _QA {
       'started_at_utc': started,
       'process_id': pid,
       'mode': 'matrix',
+      'platform': Platform.operatingSystem,
+      'verify_previews': verifyPreviews,
+      'compiled_source_fingerprint': const String.fromEnvironment(
+        'WOAH_QA_SOURCE_FINGERPRINT',
+      ),
+      'compiled_source_commit': const String.fromEnvironment(
+        'WOAH_QA_SOURCE_COMMIT',
+      ),
       'capabilities': capabilities,
       'cases': rows,
       'status': 'running',
