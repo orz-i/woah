@@ -46,6 +46,12 @@ jobs:
           uv run --locked python tools/evaluate_tracking.py
           uv run --locked python tools/verify_video.py
 
+      - name: Verify shared Rust privacy core
+        run: |
+          rustup toolchain install 1.97.1 --profile minimal --component rustfmt --component clippy
+          python tools/rust/run.py check
+          python tools/rust/verify_matrix.py
+
       - name: Verify Android namespace contract
         run: python tools/release/verify_android_namespace.py
 
