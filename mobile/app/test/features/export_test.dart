@@ -1397,6 +1397,7 @@ class _PreviewToggleRepository implements NativeProcessingRepository {
   int startExportCalls = 0;
   bool diagnosticShared = false;
   int cancelCalls = 0;
+  JobStatusDto? _terminal;
   Completer<String>? startCompleter;
   Completer<void>? cancelCompleter;
 
@@ -1456,13 +1457,31 @@ class _PreviewToggleRepository implements NativeProcessingRepository {
   }
 
   @override
-  Future<void> cancelJob(String jobId) {
+  Future<void> cancelJob(String jobId) async {
     cancelCalls += 1;
-    return cancelCompleter?.future ?? Future<void>.value();
+    await cancelCompleter?.future;
+    _terminal ??= JobStatusDto(
+      jobId: jobId,
+      state: 'cancelled',
+      currentFrame: 8,
+      totalFrames: 100,
+      fps: 10,
+      progress: .08,
+    );
+  }
+
+  @override
+  Future<JobStatusDto> getJobStatus(String jobId) async => _terminal!;
+
+  void _publish(JobStatusDto status) {
+    if (['completed', 'failed', 'cancelled'].contains(status.state)) {
+      _terminal ??= status;
+    }
+    _progress.add(status);
   }
 
   void emitPreview(String path, {required int frame}) {
-    _progress.add(
+    _publish(
       JobStatusDto(
         jobId: 'preview-toggle-job',
         state: 'processing',
@@ -1476,7 +1495,7 @@ class _PreviewToggleRepository implements NativeProcessingRepository {
   }
 
   void emitCompleted(String outputUri) {
-    _progress.add(
+    _publish(
       JobStatusDto(
         jobId: 'preview-toggle-job',
         state: 'completed',
@@ -1490,7 +1509,7 @@ class _PreviewToggleRepository implements NativeProcessingRepository {
   }
 
   void emitFailure(String message) {
-    _progress.add(
+    _publish(
       JobStatusDto(
         jobId: 'preview-toggle-job',
         state: 'failed',
