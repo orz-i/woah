@@ -42,6 +42,7 @@ def verify_preview_pipeline() -> None:
         'code: "PREVIEW_PRIVACY_UNRESOLVED"',
         "IOSFrameKernel.sceneScope(",
         "IOSFrameKernel.sceneTargets(",
+        "protectUnassignedFaces: scope != 0",
         "IOSPrivacySelectionScope.currentPersons(",
         "IOSFrameKernel.faceProtectionIds(body: renderBodyIds, face: renderFaceIds)",
         "IOSPrivacySelectionScope.compositorFaceIds(selected: renderFaceIds,",

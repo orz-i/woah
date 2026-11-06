@@ -102,7 +102,7 @@ final class IOSPreviewPipeline {
         persons: renderPersons,
         faceOnlyIds: requestedPrivacyIds,
         preprocess: frameAnalysis.preprocess,
-        protectUnassignedFaces: allOthers,
+        protectUnassignedFaces: scope != 0,
         unmaskedPersonId: renderPersons.contains(where: {$0.id == heroId}) ? heroId:nil,
         coveredHeadFallbackIds: coveredHeadIds,
         timestampUs: requestedTimestampMs * 1_000
