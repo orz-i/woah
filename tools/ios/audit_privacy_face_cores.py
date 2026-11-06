@@ -7,6 +7,7 @@ import sys
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT))
 from tools.privacy.lifecycle_evidence import retry_case
+from tools.privacy.review_frames import sequential_selected
 REPORT=ROOT/'reports/privacy-ios-22-and-4k-regression-2026-11-05'
 SOURCES=ROOT/'reports/privacy-ios-regression-2026-11-04/artifacts/sources'
 
@@ -133,29 +134,45 @@ def main(argv=None):
 
 def make_review(row,exposed,run,summary):
     source_name=row['input'];source=SOURCES/source_name
-    source_cap=cv2.VideoCapture(str(source));output_cap=cv2.VideoCapture(str(run/'outputs'/(row['case']+'.mp4')))
-    # Every uncovered core is reviewed, including isolated one-frame candidates.
+    # Random seeking is not reliable in the simulator's OpenCV/FFmpeg build.
+    # Decode from frame zero and crop immediately; retain only review tiles.
     picked=exposed
+    clips={}
+    movie=run/'outputs'/(row['case']+'.mp4')
+    for path,side,key in [(source,0,'source_frame'),(movie,1,'output_frame')]:
+        indices={}
+        for i,item in enumerate(picked):indices.setdefault(item[key],[]).append((i,item))
+        cap=cv2.VideoCapture(str(path))
+        try:
+            for n,frame in sequential_selected(cap,indices):
+                for i,item in indices[n]:
+                    if side==0:
+                        x1,y1,x2,y2=item['source_bbox'];fw,fh=x2-x1,y2-y1
+                        a=max(0,int(x1-fw*.5));b=min(frame.shape[1],int(x2+fw*.5))
+                        d=max(0,int(y1-fh*.35));e=min(frame.shape[0],int(y2+fh*2.5))
+                    else:
+                        x1,y1,x2,y2=item['output_core'];pad=max(x2-x1,y2-y1)
+                        a=max(0,x1-pad);b=min(frame.shape[1],x2+pad)
+                        d=max(0,y1-pad);e=min(frame.shape[0],y2+pad*3)
+                    if b<=a or e<=d:raise ValueError('Review crop is empty')
+                    clips[i,side]=cv2.resize(frame[d:e,a:b],(120,180))
+        finally:cap.release()
     tiles=[]
     review=run/'face-review';review.mkdir(exist_ok=True)
     for i,item in enumerate(picked):
-        source_cap.set(cv2.CAP_PROP_POS_FRAMES,item['source_frame']);ok,image=source_cap.read()
-        output_cap.set(cv2.CAP_PROP_POS_FRAMES,item['output_frame']);good,out=output_cap.read()
-        if not ok or not good:raise ValueError('Review source/output frame unavailable')
-        x1,y1,x2,y2=item['source_bbox'];fw,fh=x2-x1,y2-y1
-        a=max(0,int(x1-fw*.5));b=min(image.shape[1],int(x2+fw*.5));d=max(0,int(y1-fh*.35));e=min(image.shape[0],int(y2+fh*2.5))
-        src=cv2.resize(image[d:e,a:b],(120,180))
-        x1,y1,x2,y2=item['output_core'];pad=max(x2-x1,y2-y1)
-        a=max(0,x1-pad);b=min(out.shape[1],x2+pad);d=max(0,y1-pad);e=min(out.shape[0],y2+pad*3)
-        dst=cv2.resize(out[d:e,a:b],(120,180))
-        tile=np.concatenate([src,dst],axis=1)
+        tile=np.concatenate([clips[i,0],clips[i,1]],axis=1)
         label=np.full((25,240,3),255,np.uint8);cv2.putText(label,f"f{item['source_frame']} cov={item['coverage_fraction']:.2f}",(4,18),cv2.FONT_HERSHEY_SIMPLEX,.45,(0,0,0),1)
         tiles.append(np.concatenate([label,tile],axis=0))
-    source_cap.release();output_cap.release()
     for start in range(0,len(tiles),30):
         batch=tiles[start:start+30];canvas=np.full((205*((len(batch)+5)//6),240*6,3),235,np.uint8)
         for i,tile in enumerate(batch):canvas[(i//6)*205:(i//6+1)*205,(i%6)*240:(i%6+1)*240]=tile
         cv2.imwrite(str(review/f"{row['case']}-{start//30}.jpg"),canvas)
     (summary/(row['case']+'-review-samples.json')).write_text(json.dumps(picked,indent=2)+'\n')
+    binding={'decoding':'sequential_from_frame_zero','candidate_count':len(picked),
+      'movie_sha256':sha(movie),'source_sha256':sha(source),
+      'candidate_sha256':hashlib.sha256(json.dumps(picked,sort_keys=True).encode()).hexdigest(),
+      'boards':{p.name:sha(p) for p in sorted(review.glob(row['case']+'-*.jpg'))}}
+    (summary/(row['case']+'-review-binding.json')).write_text(json.dumps(binding,indent=2)+'\n')
+
 
 if __name__=='__main__':raise SystemExit(main())
