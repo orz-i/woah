@@ -13,4 +13,15 @@ class PrivacyQaIsolation(unittest.TestCase):
                 run_regression.Android(args)
             device.assert_not_called()
 
+class PrivacyQaLaunch(unittest.TestCase):
+    def test_launch_tolerates_a_missing_pid_before_process_creation(self):
+        with patch.object(run_regression, 'command', side_effect=[None, '', '123']), patch.object(run_regression.time, 'sleep') as sleep:
+            self.assertEqual(run_regression.wait_for_android_process(['adb']), '123')
+            self.assertEqual(sleep.call_count, 2)
+
+    def test_launch_fails_when_process_never_starts(self):
+        with patch.object(run_regression, 'command', return_value=None):
+            with self.assertRaisesRegex(TimeoutError, 'did not start'):
+                run_regression.wait_for_android_process(['adb'], timeout=0)
+
 if __name__=='__main__':unittest.main()

@@ -42,6 +42,15 @@ def atomic(path, value):
 
 def utc(): return dt.datetime.now(dt.timezone.utc).isoformat()
 
+
+def wait_for_android_process(adb, timeout=30):
+    deadline=time.monotonic()+timeout
+    while True:
+        pid=command(*adb, 'shell', 'pidof', ANDROID_PACKAGE, required=False)
+        if pid:return pid
+        if time.monotonic()>=deadline:raise TimeoutError('QA process did not start within the launch deadline')
+        time.sleep(.2)
+
 class Android:
     def __init__(self, args):
         self.args = args
@@ -95,7 +104,8 @@ class Android:
                               ['ro.product.model','ro.build.version.release','ro.product.cpu.abi']}}
         atomic(dest/'run-metadata.json', metadata)
         command(*self.adb, 'shell', 'am', 'force-stop', ANDROID_PACKAGE)
-        command(*self.adb, 'shell', 'am', 'start', '-n', ANDROID_PACKAGE+'/art.gaoge.dance.MainActivity')
+        command(*self.adb, 'shell', 'am', 'start', '-W', '-n', ANDROID_PACKAGE+'/art.gaoge.dance.MainActivity')
+        wait_for_android_process(self.adb)
         completed = set(); last = None; advanced = time.monotonic(); data = None
         try:
             while time.monotonic() < deadline:
