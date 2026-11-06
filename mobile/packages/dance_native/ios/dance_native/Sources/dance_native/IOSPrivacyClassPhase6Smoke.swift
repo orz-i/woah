@@ -263,6 +263,32 @@ enum IOSPrivacyClassPhase6Smoke {
       throw failure("FULL_BODY-only fresh privacy-class primary rendered the wrong class.")
     }
 
+    // A selected FULL_BODY identity may remain unresolved while its detection
+    // merges into the unselected foreground (e.g. real group dance crossing).
+    // The fresh class tracker then sees only one selected + one unselected
+    // detection for two protected roots. A pure count-based prefix previously
+    // copied the *already observed* selected root again and omitted the
+    // unresolved selected root, making its conservative protected bbox vanish.
+    let fallbackProtected = try renderer.render(
+      source: source,
+      persons: [
+        IOSPreviewPerson(id: 0, detection: selectedDetection),
+        IOSPreviewPerson(id: 1, detection: unselectedDetection,
+                         conservativePrivacyFallback: true),
+      ],
+      preprocess: preprocess,
+      fullBodyIds: [0, 1],
+      faceOnlyIds: [],
+      effects: effects,
+      freshFullBodyPrivacyEvidence: evidence,
+      preferFreshFullBodyClassPrimary: true
+    )
+    let fallbackSelectedPixel = try pixel(fallbackProtected, x: 16, y: 32)
+    let fallbackMissingRootPixel = try pixel(fallbackProtected, x: 48, y: 32)
+    guard isPrivacyRed(fallbackSelectedPixel), isPrivacyRed(fallbackMissingRootPixel) else {
+      throw failure("FULL_BODY fresh-class compositor omitted an unresolved selected root's fail-closed mask.")
+    }
+
     // Defense in depth: even if a caller mistakenly supplies fresh evidence,
     // any FACE_ONLY membership disables the non-identity FULL_BODY primary.
     let mixed = try renderer.render(
@@ -283,6 +309,7 @@ enum IOSPrivacyClassPhase6Smoke {
     return [
       "full_body_selected_pixel": [selectedPixel.r, selectedPixel.g, selectedPixel.b, selectedPixel.a],
       "full_body_unselected_pixel": [unselectedPixel.r, unselectedPixel.g, unselectedPixel.b, unselectedPixel.a],
+      "full_body_unresolved_selected_fallback_pixel": [fallbackMissingRootPixel.r, fallbackMissingRootPixel.g, fallbackMissingRootPixel.b, fallbackMissingRootPixel.a],
       "mixed_fresh_pixel": [mixedFreshPixel.r, mixedFreshPixel.g, mixedFreshPixel.b, mixedFreshPixel.a],
       "mixed_tracked_pixel": [mixedTrackedPixel.r, mixedTrackedPixel.g, mixedTrackedPixel.b, mixedTrackedPixel.a],
     ]

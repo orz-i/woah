@@ -50,6 +50,9 @@ def verify_trace_contract() -> None:
         "ambiguous_face_only_defers_identity_commit",
         "protected_lost_stale_anchor_isolation",
         "long_occlusion_grace_reacquires_original_id",
+        "full_body_ambiguous_root_reservation_prevents_duplicate_id",
+        "selected_root_occluded_by_unselected_hero_fails_closed",
+        "face_only_selected_root_occluded_by_unselected_hero_fails_closed",
         "selected_identity_long_gap_fails_closed",
     }
     names = {case.get("name") for case in cases if isinstance(case, dict)}
@@ -333,7 +336,8 @@ def verify_ios_replay_surface() -> None:
         "IOSFacePrivacyGeometry.fallbackEllipse(person.detection)",
         "dx * dx + dy * dy <= 1",
         "faceRect(",
-        "faceRegions.keys.filter({ $0 < 0 }).sorted()",
+        r"let renderedFaceIds = Set(facePersons.map(\.id))",
+        "faceRegions.keys.filter({ $0 < 0 && !renderedFaceIds.contains($0) }).sorted()",
         "regionsToRender.append(region)",
     ):
         check(token in renderer, f"Phase 5C-G Metal FACE_ONLY rendering missing: {token}")
@@ -346,7 +350,9 @@ def verify_ios_replay_surface() -> None:
         "IOSFacePrivacyTemporalResolver(locator: faceLocatorProvider())",
         "facePrivacyResolver?.resolve(",
         "preprocess: inference.preprocess",
-        "freshPrivacyClassEvidence: tracker.facePrivacyClassEvidence()",
+        "let useCurrentObservations = freshSceneCoverage || currentSceneFaceCoverage",
+        "freshPrivacyClassEvidence: useCurrentObservations ? [] : tracker.facePrivacyClassEvidence()",
+        "faceOnlyIds: renderFaceOnlyIds.union(renderFullBodyIds)",
         "faceRegions: faceRegions",
     ):
         check(token in export, f"Phase 5C-G export FACE_ONLY wiring missing: {token}")
@@ -622,9 +628,32 @@ def verify_cloud_gate() -> None:
     )
 
 
+def verify_regression_fixture_mode_parity() -> None:
+    # A previous iOS `group_full_length_follow` fixture silently changed
+    # Android FACE_ONLY to iOS FULL_BODY. Treat 22-case argument equivalence
+    # as an explicit CI gate rather than relying on shared case names.
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    from tools.ci.verify_android_ios_privacy_matrix import verify as verify_matrix
+
+    for filename in ("ios_privacy_regression_20261104_main.dart",):
+        path = ROOT / "mobile/app/lib" / filename
+        source_text = text(path, filename)
+        if not source_text:
+            continue
+        try:
+            result = verify_matrix(source_text)
+        except (ValueError, KeyError, OSError) as exc:
+            FAILURES.append(f"Android/iOS regression intent invalid for {filename}: {exc}")
+            continue
+        check(result["total_cases"] == 22 and result["matched"] == 22,
+              f"Android/iOS fixture mismatch in {filename}: {result['failed']} material differences")
+
+
 def main() -> int:
     verify_trace_contract()
     verify_ios_replay_surface()
+    verify_regression_fixture_mode_parity()
     verify_android_reference_boundary()
     verify_cloud_gate()
     if FAILURES:

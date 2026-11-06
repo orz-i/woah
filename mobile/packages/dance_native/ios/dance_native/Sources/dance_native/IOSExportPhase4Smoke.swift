@@ -25,11 +25,15 @@ enum IOSExportPhase4Smoke {
     let sourceURL = directory.appendingPathComponent("source_\(nonce).mp4")
     let outputURL = directory.appendingPathComponent("output_\(nonce).mp4")
     let cancelURL = directory.appendingPathComponent("cancel_\(nonce).mp4")
+    let queuedCancelURL = directory.appendingPathComponent("queued_cancel_\(nonce).mp4")
+    let retryURL = directory.appendingPathComponent("retry_\(nonce).mp4")
     let toneURL = directory.appendingPathComponent("tone_\(nonce).caf")
     defer {
       try? fileManager.removeItem(at: sourceURL)
       try? fileManager.removeItem(at: outputURL)
       try? fileManager.removeItem(at: cancelURL)
+      try? fileManager.removeItem(at: queuedCancelURL)
+      try? fileManager.removeItem(at: retryURL)
       try? fileManager.removeItem(at: toneURL)
     }
 
@@ -213,12 +217,15 @@ enum IOSExportPhase4Smoke {
     }
     let inferenceEntered = DispatchSemaphore(value: 0)
     let inferenceDrain = DispatchSemaphore(value: 0)
+    let firstInference = FirstCallLatch()
     let cancelCoordinator = IOSExportCoordinator(
       analysisCache: cache,
       inferenceProvider: { image in
-        inferenceEntered.signal()
-        guard inferenceDrain.wait(timeout: .now() + 30) == .success else {
-          throw smokeError("CACHE_LEASE_FIXTURE_TIMEOUT", "Synthetic inference did not drain.")
+        if firstInference.take() {
+          inferenceEntered.signal()
+          guard inferenceDrain.wait(timeout: .now() + 30) == .success else {
+            throw smokeError("CACHE_LEASE_FIXTURE_TIMEOUT", "Synthetic inference did not drain.")
+          }
         }
         return try inferenceState.infer(image: image)
       },
@@ -235,6 +242,32 @@ enum IOSExportPhase4Smoke {
     }.value
     guard enteredInference else { throw smokeError("CACHE_LEASE_FIXTURE_NOT_ENTERED", "Synthetic export did not enter inference.") }
     cancelCoordinator.cancel(jobId: cancelJobId)
+    let immediatePartialPrefix = ".\(cancelURL.deletingPathExtension().lastPathComponent)."
+    let immediatePartial = (try fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil))
+      .contains { $0.lastPathComponent.hasPrefix(immediatePartialPrefix) && $0.pathExtension == "mp4" }
+    guard !immediatePartial else {
+      throw smokeError("CANCEL_TEMP_NOT_UNLINKED", "Cancelled state retained the registered temporary movie.")
+    }
+    // The first decoder is deliberately held in inference. Retrying must be
+    // accepted now, while execution and cache release stay serialized.
+    let queuedCancelJobId = try cancelCoordinator.start(request: exportRequest(
+      sourceURL: sourceURL, cacheId: cacheId, outputURL: queuedCancelURL))
+    var busyGuard = false
+    do {
+      _ = try cancelCoordinator.start(request: exportRequest(
+        sourceURL: sourceURL, cacheId: cacheId, outputURL: retryURL))
+    } catch let error as PigeonError {
+      busyGuard = error.code == "EXPORT_BUSY"
+    }
+    guard busyGuard else {
+      throw smokeError("EXPORT_BUSY_GUARD_MISSING", "A second non-cancelled export was admitted.")
+    }
+    cancelCoordinator.cancel(jobId: queuedCancelJobId)
+    let retryJobId = try cancelCoordinator.start(request: exportRequest(
+      sourceURL: sourceURL, cacheId: cacheId, outputURL: retryURL))
+    guard cancelCoordinator.status(jobId: retryJobId)?.state == "preparing" else {
+      throw smokeError("RETRY_DID_NOT_WAIT", "Retry ran before the retiring decoder released its runtime.")
+    }
     IOSRegenerableCacheRegistry.shared.requestRelease(cacheId: cacheId, owner: cacheOwner)
     IOSRegenerableCacheRegistry.shared.drainForTesting()
     guard try cache.loadMetadata(cacheId: cacheId) != nil else {
@@ -262,6 +295,30 @@ enum IOSExportPhase4Smoke {
     }
     guard try cache.loadMetadata(cacheId: cacheId) == nil else {
       throw smokeError("CACHE_LEASE_NOT_RELEASED", "Export cache remained after actual worker completion.")
+    }
+    let retryStatus = try await waitForTerminal(
+      coordinator: cancelCoordinator, jobId: retryJobId, timeoutSeconds: 30, onPoll: { _ in })
+    guard retryStatus.state == "completed",
+          cancelCoordinator.status(jobId: cancelJobId)?.state == "cancelled",
+          cancelCoordinator.status(jobId: queuedCancelJobId)?.state == "cancelled",
+          !fileManager.fileExists(atPath: queuedCancelURL.path) else {
+      throw smokeError("IMMEDIATE_RETRY_STATE_MISMATCH", "Cancelled workers overwrote or blocked the immediate retry.")
+    }
+    let retryInfo = try await inspectAsset(retryURL)
+    guard retryInfo.presentationFrameCount == expectedOutputFrames else {
+      throw smokeError("IMMEDIATE_RETRY_FRAME_MISMATCH", "Immediate retry did not export the full fixture.")
+    }
+    for _ in 0..<2 {
+      var rejectedMissingCache = false
+      do {
+        _ = try cancelCoordinator.start(request: exportRequest(
+          sourceURL: sourceURL, cacheId: cacheId, outputURL: retryURL))
+      } catch let error as PigeonError {
+        rejectedMissingCache = error.code != "EXPORT_BUSY"
+      }
+      guard rejectedMissingCache else {
+        throw smokeError("ADMISSION_RESERVATION_LEAK", "A failed cache acquisition left an active export reservation.")
+      }
     }
     guard !fileManager.fileExists(atPath: cancelURL.path) else {
       throw smokeError("EXPORT_SMOKE_CANCEL_OUTPUT_LEAK", "Cancelled export left a final output file.")
@@ -307,6 +364,10 @@ enum IOSExportPhase4Smoke {
       "cancel_state": cancelled.state,
       "cancel_partial_clean": !leakedPartial,
       "cancel_cache_lease_drained": true,
+      "immediate_retry_frames": retryInfo.presentationFrameCount,
+      "queued_cancel_state": cancelCoordinator.status(jobId: queuedCancelJobId)?.state ?? "missing",
+      "active_export_busy_guard": busyGuard,
+      "failed_admission_releases_reservation": true,
       "phase5_face_only_e2e": faceOnlyReport,
     ]
   }
@@ -579,6 +640,16 @@ enum IOSExportPhase4Smoke {
       lock.lock()
       defer { lock.unlock() }
       return values
+    }
+  }
+
+  private final class FirstCallLatch {
+    private let lock = NSLock()
+    private var first = true
+    func take() -> Bool {
+      lock.lock(); defer { lock.unlock() }
+      let result = first; first = false
+      return result
     }
   }
 

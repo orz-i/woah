@@ -67,6 +67,22 @@ class IOSPhase4LegStretchContractTest(unittest.TestCase):
         )
         self.assertTrue(any("renderer leg stretch implementation" in f for f in failures), failures)
 
+    def test_renderer_leg_stretch_flag_packing_must_retain_w_lane(self) -> None:
+        failures = self._verify_modified(
+            "IOSMetalPreviewRenderer.swift",
+            "const uint legStretchEnabled = packedFlags.w;",
+            "const uint legStretchEnabled = packedFlags.z;",
+        )
+        self.assertTrue(any("renderer leg stretch implementation" in f for f in failures), failures)
+
+    def test_renderer_leg_stretch_swift_flag_must_not_be_dropped(self) -> None:
+        failures = self._verify_modified(
+            "IOSMetalPreviewRenderer.swift",
+            "var packedFlags = SIMD4<UInt32>(fillMode, stickerFlag, customStickerFlag, legStretchFlag)",
+            "var packedFlags = SIMD4<UInt32>(fillMode, stickerFlag, customStickerFlag, 0)",
+        )
+        self.assertTrue(any("renderer leg stretch implementation" in f for f in failures), failures)
+
     def test_unsupported_skin_whitening_remains_rejected(self) -> None:
         failures = self._verify_modified(
             "IOSExportPipeline.swift",

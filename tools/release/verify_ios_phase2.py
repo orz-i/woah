@@ -48,7 +48,11 @@ def verify_cache_contract() -> None:
     check(
         'code: "INVALID_CACHE_ID"' in cache
         and 'cacheId.range(of: "^[A-Za-z0-9_-]+$", options: .regularExpression)' in cache
-        and "directory.resolvingSymlinksInPath() == directory" in cache
+        # Compare the resolved filesystem path rather than URL objects:
+        # Foundation drops trailing directory-hint slashes on Simulator.
+        # Both the analysis child and canonical parent must reject symlinks.
+        and "directory.resolvingSymlinksInPath().path == directory.path" in cache
+        and "rootDirectory.resolvingSymlinksInPath().path == rootDirectory.path" in cache
         and "file.resolvingSymlinksInPath() == file" in cache
         and "FileAttributeType) != .typeSymbolicLink" in cache,
         "iOS cache paths must reject invalid identifiers and directory/leaf symlink escapes",

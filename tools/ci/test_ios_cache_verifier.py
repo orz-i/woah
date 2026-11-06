@@ -35,6 +35,18 @@ class IOSCacheVerifierTests(unittest.TestCase):
         self.verify_all()
         self.assertEqual([], gate.FAILURES)
 
+    def test_missing_analysis_directory_symlink_guard_fails(self):
+        self.rejected_mutation(
+            'IOSAnalysisCache.swift',
+            'directory.resolvingSymlinksInPath().path == directory.path', 'true',
+        )
+
+    def test_missing_analysis_root_symlink_guard_fails(self):
+        self.rejected_mutation(
+            'IOSAnalysisCache.swift',
+            'rootDirectory.resolvingSymlinksInPath().path == rootDirectory.path', 'true',
+        )
+
     def test_missing_leaf_symlink_guard_fails(self):
         self.rejected_mutation('IOSAnalysisCache.swift',
                                'file.resolvingSymlinksInPath() == file', 'true')
