@@ -43,10 +43,11 @@ jobs:
       - name: Verify shared Rust core and Apple targets
         run: |
           rustup toolchain install 1.97.1 --profile minimal --component rustfmt --component clippy
-          rustup target add --toolchain 1.97.1 aarch64-apple-ios aarch64-apple-ios-sim
+          rustup target add --toolchain 1.97.1 aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
           python tools/rust/run.py check
           python tools/rust/run.py build --target aarch64-apple-ios
           python tools/rust/run.py build --target aarch64-apple-ios-sim
+          python tools/rust/run.py build --target x86_64-apple-ios
           python tools/rust/verify_matrix.py
 
       - name: Verify repository iOS contracts

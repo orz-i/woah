@@ -18,6 +18,10 @@ Native iOS media, rendering, and on-device inference bridge for Woah.
   # plugin pod itself static as well so CocoaPods does not try to build a
   # dynamic dance_native framework with a transitive static binary dependency.
   s.static_framework = true
+  s.libraries = 'woah_privacy_core', 'iconv'
+  s.user_target_xcconfig = {
+    'LIBRARY_SEARCH_PATHS' => '$(inherited) "$(PODS_CONFIGURATION_BUILD_DIR)/dance_native/RustCore"'
+  }
   s.dependency 'Flutter'
   # The first-party general Swift runtime currently available through CocoaPods
   # is TensorFlowLiteSwift. This compatibility bridge is intentionally isolated
@@ -28,7 +32,25 @@ Native iOS media, rendering, and on-device inference bridge for Woah.
   s.platform = :ios, '17.0'
 
   # Flutter.framework does not contain a i386 slice.
-  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
+  s.pod_target_xcconfig = {
+    'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386',
+    'SWIFT_INCLUDE_PATHS' => '$(inherited) "$(PODS_TARGET_SRCROOT)/../core/include"',
+    'LIBRARY_SEARCH_PATHS' => '$(inherited) "$(BUILT_PRODUCTS_DIR)/RustCore"',
+    'OTHER_LDFLAGS' => '$(inherited) -lwoah_privacy_core -liconv'
+  }
+  s.script_phase = {
+    :name => 'Build shared Rust privacy core',
+    :execution_position => :before_compile,
+    :script => 'set -eu; python3 "${PODS_TARGET_SRCROOT}/../../../../tools/rust/build_xcode.py"',
+    :input_files => Dir.glob('src/**/*.rs', :base => File.expand_path('../core', __dir__)).sort.map { |path|
+      '$(PODS_TARGET_SRCROOT)/../core/' + path
+    } +
+      ['$(PODS_TARGET_SRCROOT)/../core/Cargo.toml', '$(PODS_TARGET_SRCROOT)/../core/Cargo.lock',
+       '$(PODS_TARGET_SRCROOT)/../../../../rust-toolchain.toml',
+       '$(PODS_TARGET_SRCROOT)/../../../../tools/rust/build_xcode.py',
+       '$(PODS_TARGET_SRCROOT)/../../../../tools/rust/run.py'],
+    :output_files => ['$(BUILT_PRODUCTS_DIR)/RustCore/libwoah_privacy_core.a']
+  }
   s.swift_version = '5.0'
 
   # If your plugin requires a privacy manifest, for example if it uses any

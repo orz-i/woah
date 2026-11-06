@@ -151,6 +151,67 @@ pub fn reproject_mask(
     true
 }
 
+/// Nearest-neighbour output projection. Keep arithmetic order stable: encoded
+/// privacy edges must not change when a platform changes its row-cache strategy.
+#[allow(clippy::too_many_arguments)]
+pub fn project_mask(
+    mask: &[u8],
+    transform: Transform,
+    source_width: u32,
+    source_height: u32,
+    width: u32,
+    height: u32,
+    crop: Rect,
+    output: &mut [u8],
+) -> bool {
+    if !transform.valid()
+        || !crop.valid()
+        || source_width == 0
+        || source_height == 0
+        || width == 0
+        || height == 0
+        || width > 16384
+        || height > 16384
+        || u64::from(width) * u64::from(height) > 64 * 1024 * 1024
+        || mask.len() != (transform.proto_size * transform.proto_size) as usize
+        || output.len() != width as usize * height as usize
+    {
+        return false;
+    }
+    let xs: Vec<_> = (0..width)
+        .map(|x| {
+            let sx = (x as f32 + 0.5) * source_width as f32 / width as f32
+                * (crop.right - crop.left)
+                + crop.left * source_width as f32;
+            transform.proto_x(sx)
+        })
+        .collect();
+    let size = transform.proto_size as usize;
+    let mut rows: Vec<Option<Vec<u8>>> = (0..size).map(|_| None).collect();
+    output.fill(0);
+    for y in 0..height {
+        let sy = (y as f32 + 0.5) * source_height as f32 / height as f32 * (crop.bottom - crop.top)
+            + crop.top * source_height as f32;
+        let py = transform.proto_y(sy);
+        if py < 0 || py >= size as i32 {
+            continue;
+        }
+        let row = rows[py as usize].get_or_insert_with(|| {
+            xs.iter()
+                .map(|&px| {
+                    if px >= 0 && px < size as i32 {
+                        mask[py as usize * size + px as usize]
+                    } else {
+                        0
+                    }
+                })
+                .collect()
+        });
+        output[y as usize * width as usize..(y as usize + 1) * width as usize].copy_from_slice(row);
+    }
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
