@@ -73,7 +73,7 @@ class Android:
         if original not in ['null','0','1','2','3','4','5','6','7']:
             raise RuntimeError('Cannot snapshot Android wake setting')
         try:
-            command(*self.adb,'shell','svc','power','stayon','usb')
+            command(*self.adb,'shell','svc','power','stayon','true')
             command(*self.adb,'shell','input','keyevent','KEYCODE_WAKEUP')
             command(*self.adb,'shell','wm','dismiss-keyguard')
             command(*self.adb,'shell','cmd','statusbar','collapse')
