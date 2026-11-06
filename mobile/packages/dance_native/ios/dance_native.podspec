@@ -34,7 +34,7 @@ Native iOS media, rendering, and on-device inference bridge for Woah.
   # Flutter.framework does not contain a i386 slice.
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386',
-    'SWIFT_INCLUDE_PATHS' => '$(inherited) "$(PODS_TARGET_SRCROOT)/../../../../crates/frame-kernel/include"',
+    'SWIFT_INCLUDE_PATHS' => '$(inherited) "$(PODS_ROOT)/../../../../crates/frame-kernel/include"',
     'LIBRARY_SEARCH_PATHS' => '$(inherited) "$(BUILT_PRODUCTS_DIR)/FrameKernel"',
     'OTHER_LDFLAGS' => '$(inherited) -lframe_kernel -liconv'
   }
