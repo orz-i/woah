@@ -8,6 +8,7 @@ ROOT=pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT))
 from tools.privacy.lifecycle_evidence import retry_case
 from tools.privacy.review_frames import sequential_selected
+from tools.privacy.source_time import bind_microsecond_frame
 REPORT=ROOT/'reports/privacy-ios-22-and-4k-regression-2026-11-05'
 SOURCES=ROOT/'reports/privacy-ios-regression-2026-11-04/artifacts/sources'
 
@@ -80,13 +81,13 @@ def main(argv=None):
             if prior.get('follow_hero_id') is not None and prior['uncovered_face_cores']:
                 make_review(row,prior['uncovered_face_cores'],run,summary)
             continue
-        cap=cv2.VideoCapture(str(output));n=0;tested=0;outside=0;exposed=[]
+        cap=cv2.VideoCapture(str(output));n=0;tested=0;outside=0;exposed=[];quantized_pts=[]
         while True:
             ok,image=cap.read()
             if not ok:break
             if n>=len(crops):raise ValueError('Missing per-frame source crop')
-            c=crops[n];key=c['t_us'];source=frames.get(key)
-            if source is None:raise ValueError(f'Source PTS binding missing {key}')
+            c=crops[n];key=c['t_us'];source,scan_key=bind_microsecond_frame(frames,key)
+            if scan_key!=key:quantized_pts.append({'frame_index':n,'native_pts_us':key,'scan_pts_us':scan_key})
             if c['frame_index']!=n:raise ValueError('Crop frame index mismatch')
             height,width=image.shape[:2]
             mask=None if planned_geometry else red(image)
@@ -122,6 +123,7 @@ def main(argv=None):
         hero=row.get('hero_id')
         result={'case':row['case'],'input_binding_sha256':binding,'decoded_frames':n,'tested_visible_face_cores':tested,
                 'outside_or_tiny_cores':outside,'uncovered_face_cores':exposed,'follow_hero_id':hero,
+                'microsecond_quantization_matches':quantized_pts,
                 'status':'needs_hero_visual_review' if hero is not None else ('passed_all_detected_face_cores' if not exposed else 'failed_face_cores'),
                 'coverage_measure':'recorded_source_ellipses' if planned_geometry else 'decoded_opaque_red_pixels',
                 'scope':'Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks.'}
