@@ -1,0 +1,20 @@
+[
+  {
+    "board": "reports/privacy-ios-22-and-4k-regression-2026-11-05/artifacts/rust_geometry_focused/visual-boards/solo_4k_raised_arm_sticker-overview-0.jpg",
+    "sha256": "0e1b0814a62ce3a370930e54d4df4728d490f08bc8a83f078c3dc71fb645e65f",
+    "review": "manually inspected in Mac Pi read image tool",
+    "observation": "Source557 face protected; known conservative extra sticker remains."
+  },
+  {
+    "board": "reports/privacy-ios-22-and-4k-regression-2026-11-05/artifacts/rust_geometry_focused/visual-boards/group_hd_overlap_face-overview-0.jpg",
+    "sha256": "685cc4081d87dbcbd8b4424c79c468bfb58d788af0e659de4cadaf98d349a6c3",
+    "review": "manually inspected in Mac Pi read image tool",
+    "observation": "Source343 side-face protected."
+  },
+  {
+    "board": "reports/privacy-ios-22-and-4k-regression-2026-11-05/artifacts/rust_geometry_focused/visual-boards/group_4k_tail_face-overview-0.jpg",
+    "sha256": "f94b7af017ac02f9987470bd76eb73548c30d2cb1e75cda7c66e8a3ec920ddac",
+    "review": "manually inspected in Mac Pi read image tool",
+    "observation": "Source576 known conservative small extra mask remains;580 trouser probe clear."
+  }
+]
