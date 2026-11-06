@@ -1,0 +1,4 @@
+module FrameKernelC {
+    header "frame_kernel.h"
+    export *
+}

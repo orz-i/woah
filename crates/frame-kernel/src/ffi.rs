@@ -4,14 +4,18 @@ use crate::{
 };
 
 #[unsafe(no_mangle)]
-pub extern "C" fn woah_core_abi_version() -> u32 {
+pub extern "C" fn frame_kernel_abi_version() -> u32 {
     ABI_VERSION
 }
 
 /// # Safety
 /// `output` must point to at least four writable, aligned Rect values.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn woah_core_detail_views(width: u32, height: u32, output: *mut Rect) -> i32 {
+pub unsafe extern "C" fn frame_kernel_detail_views(
+    width: u32,
+    height: u32,
+    output: *mut Rect,
+) -> i32 {
     let Some(views) = geometry::detail_views(width, height) else {
         return -1;
     };
@@ -26,7 +30,7 @@ pub unsafe extern "C" fn woah_core_detail_views(width: u32, height: u32, output:
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn woah_core_detail_complete(
+pub extern "C" fn frame_kernel_detail_complete(
     box_: Rect,
     view: Rect,
     width: u32,
@@ -36,7 +40,7 @@ pub extern "C" fn woah_core_detail_complete(
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn woah_core_iou(a: Rect, b: Rect) -> f32 {
+pub extern "C" fn frame_kernel_iou(a: Rect, b: Rect) -> f32 {
     geometry::iou(a, b)
 }
 
@@ -44,7 +48,7 @@ pub extern "C" fn woah_core_iou(a: Rect, b: Rect) -> f32 {
 /// Input/output point to nonoverlapping initialized buffers of their specified
 /// lengths. Output is writable. No pointer is retained after this call.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn woah_core_reproject_mask(
+pub unsafe extern "C" fn frame_kernel_reproject_mask(
     mask: *const u8,
     mask_len: usize,
     local: Transform,
@@ -78,7 +82,7 @@ pub unsafe extern "C" fn woah_core_reproject_mask(
 /// lengths. No pointer is retained after this call.
 #[unsafe(no_mangle)]
 #[allow(clippy::too_many_arguments)]
-pub unsafe extern "C" fn woah_core_project_mask(
+pub unsafe extern "C" fn frame_kernel_project_mask(
     mask: *const u8,
     mask_len: usize,
     transform: Transform,

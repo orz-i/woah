@@ -3,5 +3,5 @@
 version = 4
 
 [[package]]
-name = "woah_privacy_core"
+name = "frame-kernel"
 version = "0.1.0"

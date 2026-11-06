@@ -10,7 +10,7 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
-CORE = ROOT / 'mobile/packages/dance_native/core'
+CORE = ROOT / 'crates/frame-kernel'
 
 
 def main() -> int:

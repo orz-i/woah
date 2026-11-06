@@ -7,7 +7,7 @@ import subprocess
 import sys
 
 ROOT=Path(__file__).resolve().parents[2]
-CORE=ROOT/'mobile/packages/dance_native/core'
+CORE=ROOT/'crates/frame-kernel'
 
 
 def main():
@@ -20,8 +20,8 @@ def main():
         elif platform=='iphonesimulator' and arch=='x86_64': target='x86_64-apple-ios'
         else: raise SystemExit('Unsupported Rust Apple slice: '+platform+'/'+arch)
         subprocess.run([sys.executable,str(ROOT/'tools/rust/run.py'),'build','--target',target],check=True)
-        slices.append(CORE/'target'/target/'release/libwoah_privacy_core.a')
-    output=Path(os.environ['BUILT_PRODUCTS_DIR'])/'RustCore/libwoah_privacy_core.a'
+        slices.append(CORE/'target'/target/'release/libframe_kernel.a')
+    output=Path(os.environ['BUILT_PRODUCTS_DIR'])/'FrameKernel/libframe_kernel.a'
     output.parent.mkdir(parents=True,exist_ok=True)
     if len(slices)==1: shutil.copyfile(slices[0],output)
     else: subprocess.run(['xcrun','lipo','-create',*[str(p) for p in slices],'-output',str(output)],check=True)

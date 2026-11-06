@@ -7,7 +7,7 @@ enum IOSPrivacyMaskProjector {
   static func project(mask: [UInt8], preprocess: IOSYoloPreprocessResult,
                       sourceWidth: Int, sourceHeight: Int, width: Int, height: Int,
                       crop: SIMD4<Float>) -> [UInt8] {
-    IOSPrivacyCore.project(mask: mask, preprocess: preprocess, sourceWidth: sourceWidth,
+    IOSFrameKernel.project(mask: mask, preprocess: preprocess, sourceWidth: sourceWidth,
       sourceHeight: sourceHeight, width: width, height: height, crop: crop)
   }
 }

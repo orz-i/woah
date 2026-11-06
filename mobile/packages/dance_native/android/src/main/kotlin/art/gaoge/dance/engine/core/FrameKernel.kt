@@ -5,10 +5,10 @@ import art.gaoge.dance.engine.inference.FloatRect
 import java.nio.ByteBuffer
 
 /** Transport adapter only; the production and JVM paths load the same Rust core. */
-internal object PrivacyCore {
+internal object FrameKernel {
     init {
-        System.loadLibrary("woah_privacy_core_jni")
-        check(abiVersion() == 1) { "Unsupported Woah privacy core ABI" }
+        System.loadLibrary("frame_kernel_jni")
+        check(abiVersion() == 1) { "Unsupported FrameKernel ABI" }
     }
 
     private external fun abiVersion(): Int

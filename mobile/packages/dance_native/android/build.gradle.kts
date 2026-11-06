@@ -145,13 +145,13 @@ android {
     }
 }
 
-val rustCore = file("../core")
+val rustCore = file("../../../../crates/frame-kernel")
 val rustTools = file("../../../../tools/rust")
-val rustJniDir = layout.buildDirectory.dir("rustJniLibs")
-val rustHostDir = layout.buildDirectory.dir("rustHost")
+val rustJniDir = layout.buildDirectory.dir("frameKernelJniLibs")
+val rustHostDir = layout.buildDirectory.dir("frameKernelHost")
 val rustPython = System.getenv("WOAH_PYTHON") ?: "python"
 val buildRustAndroid = tasks.register("buildRustAndroid") {
-    inputs.files(fileTree(rustCore) { exclude("target/**") }, fileTree(rustTools))
+    inputs.files(fileTree(rustCore) { exclude("target/**") }, fileTree(rustTools), fileTree("src/main/cpp/frame_kernel"))
     inputs.file(file("../../../../rust-toolchain.toml"))
     outputs.dir(rustJniDir)
     doLast {
@@ -166,7 +166,7 @@ val buildRustAndroid = tasks.register("buildRustAndroid") {
     }
 }
 val buildRustHost = tasks.register("buildRustHost") {
-    inputs.files(fileTree(rustCore) { exclude("target/**") }, fileTree(rustTools))
+    inputs.files(fileTree(rustCore) { exclude("target/**") }, fileTree(rustTools), fileTree("src/main/cpp/frame_kernel"))
     inputs.file(file("../../../../rust-toolchain.toml"))
     outputs.dir(rustHostDir)
     doLast {
