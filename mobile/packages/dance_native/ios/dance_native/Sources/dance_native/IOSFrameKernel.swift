@@ -8,6 +8,40 @@ enum IOSFrameKernel {
     precondition(frame_kernel_abi_version() == 1, "Unsupported FrameKernel ABI")
   }()
 
+  static func sceneScope(roots: Set<Int>, body: Set<Int>, face: Set<Int>, hero: Int?) -> Int {
+    _ = checkedABI
+    let roots=roots.map {Int64($0)},body=body.map {Int64($0)},face=face.map {Int64($0)}
+    let result=roots.withUnsafeBufferPointer { r in body.withUnsafeBufferPointer { b in face.withUnsafeBufferPointer { f in
+      frame_kernel_scene_scope(r.baseAddress,r.count,b.baseAddress,b.count,f.baseAddress,f.count,hero == nil ? 0:1,Int64(hero ?? 0))
+    } } }
+    precondition(result>=0,"Invalid shared selection scope")
+    return Int(result)
+  }
+
+  static func compositorTargets(selected: Set<Int>, covered: Set<Int>, explicit: Set<Int>) -> Set<Int> {
+    _ = checkedABI
+    let selected=selected.map {Int64($0)},covered=covered.map {Int64($0)},explicit=explicit.map {Int64($0)}
+    var output=[Int64](repeating:0,count:selected.count)
+    let count=selected.withUnsafeBufferPointer { s in covered.withUnsafeBufferPointer { c in explicit.withUnsafeBufferPointer { e in
+      output.withUnsafeMutableBufferPointer { out in
+        frame_kernel_compositor_targets(s.baseAddress,s.count,c.baseAddress,c.count,e.baseAddress,e.count,out.baseAddress,out.count)
+      }
+    } } }
+    precondition(count>=0,"Invalid shared compositor target plan")
+    return Set(output.prefix(Int(count)).map {Int($0)})
+  }
+
+  static func currentHeroIndex(boxes: [SIMD4<Float>], observed: SIMD4<Float>?) throws -> Int? {
+    _ = checkedABI
+    let boxes=boxes.map {FrameKernelRect(left:$0.x,top:$0.y,right:$0.z,bottom:$0.w)}
+    let hero=observed.map {FrameKernelRect(left:$0.x,top:$0.y,right:$0.z,bottom:$0.w)}
+    let result=boxes.withUnsafeBufferPointer {
+      frame_kernel_current_hero_index($0.baseAddress,$0.count,hero == nil ? 0:1,hero ?? FrameKernelRect())
+    }
+    guard result >= -1 else {throw PigeonError(code:"TRACKING_OBSERVATION_INVALID",message:"FrameKernel rejected the current observation geometry.",details:nil)}
+    return result == -1 ? nil:Int(result)
+  }
+
   struct BoxFilter {
     private var state = FrameKernelBoxFilter()
     init(bounds: SIMD4<Float>, timestampUs: Int64) throws {

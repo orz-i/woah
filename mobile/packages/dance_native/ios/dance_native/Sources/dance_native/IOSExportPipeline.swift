@@ -306,10 +306,9 @@ final class IOSExportPipeline {
       let identityFrameHeight = max(1, Int(displaySize.height.rounded()))
       let followTargetId = request.follow.enabled ? request.follow.targetPersonId.map { Int($0) } : nil
       let initialIds = Set(metadata?.persons.map(\.id) ?? [])
-      let freshSceneCoverage = !request.follow.enabled && !initialIds.isEmpty
+      let scope = IOSFrameKernel.sceneScope(roots: initialIds, body: fullBodyIds, face: faceOnlyIds, hero: followTargetId)
+      let freshSceneCoverage = !request.follow.enabled && (scope & 3) != 0
         && IOSHighResolutionPrivacyCoverage.hasDetailResolution(width: identityFrameWidth, height: identityFrameHeight)
-        && ((faceOnlyIds.isEmpty && fullBodyIds.isSuperset(of: initialIds))
-          || (fullBodyIds.isEmpty && faceOnlyIds.isSuperset(of: initialIds)))
       let currentSceneFaceCoverage = IOSPrivacySelectionScope.coversAllOtherFaces(
         metadata: metadata, fullBodyIds: fullBodyIds, faceOnlyIds: faceOnlyIds, followTargetId: followTargetId)
       let camera = IOSSubjectReframer()
@@ -495,7 +494,7 @@ final class IOSExportPipeline {
           // occlusion proxy/handoff never grants an identity/privacy exemption.
           let observedHero = currentSceneFaceCoverage ? followTargetId.flatMap { tracker.observedBounds(for: $0) } : nil
           let renderPersons = useCurrentObservations
-            ? IOSPrivacySelectionScope.currentPersons(detections: inference.detections,
+            ? try IOSPrivacySelectionScope.currentPersons(detections: inference.detections,
                 heroId: currentSceneFaceCoverage ? followTargetId : nil,
                 observedHeroBounds: observedHero, frameIndex: Int(outputFrameIndex))
             : tracked
