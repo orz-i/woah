@@ -1,5 +1,6 @@
 /* JNI transport only. All geometry and privacy rules are implemented in Rust. */
 #include <jni.h>
+#include <stdlib.h>
 #include "frame_kernel.h"
 
 static void invalid(JNIEnv *env) {
@@ -24,6 +25,33 @@ static int read_transform(JNIEnv *env, jfloatArray values, FrameKernelTransform 
 }
 JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_abiVersion(JNIEnv *env,jobject self) {
     (void)env; (void)self; return (jint)frame_kernel_abi_version();
+}
+JNIEXPORT jboolean JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_needsFaceProtectionNative(JNIEnv *env,jobject self,jboolean body,jboolean face) {
+    (void)env; (void)self;
+    return (frame_kernel_protection_layers(body,face,0) & FRAME_KERNEL_LAYER_FACE) ? JNI_TRUE:JNI_FALSE;
+}
+JNIEXPORT jlongArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_faceProtectionIdsNative(JNIEnv *env,jobject self,jlongArray body,jlongArray face) {
+    (void)self;
+    if (!body || !face) { invalid(env); return NULL; }
+    jsize nb=(*env)->GetArrayLength(env,body), nf=(*env)->GetArrayLength(env,face);
+    size_t total=(size_t)nb+(size_t)nf;
+    if (total>65536) { invalid(env); return NULL; }
+    if (!total) return (*env)->NewLongArray(env,0);
+    jlong *storage=malloc(total*2*sizeof(jlong));
+    if (!storage) { invalid(env); return NULL; }
+    if (nb) (*env)->GetLongArrayRegion(env,body,0,nb,storage);
+    if (nf) (*env)->GetLongArrayRegion(env,face,0,nf,storage+nb);
+    jlongArray result=NULL;
+    if (!(*env)->ExceptionCheck(env)) {
+        int32_t n=frame_kernel_face_targets((const int64_t*)storage,nb,(const int64_t*)(storage+nb),nf,(int64_t*)(storage+total),total);
+        if (n<0 || (size_t)n>total) invalid(env);
+        else {
+            result=(*env)->NewLongArray(env,n);
+            if (result) (*env)->SetLongArrayRegion(env,result,0,n,storage+total);
+        }
+    }
+    free(storage);
+    return result;
 }
 JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_detailViewsNative(JNIEnv *env,jobject self,jint width,jint height) {
     (void)self;

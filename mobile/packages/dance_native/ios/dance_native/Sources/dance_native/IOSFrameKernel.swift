@@ -8,6 +8,26 @@ enum IOSFrameKernel {
     precondition(frame_kernel_abi_version() == 1, "Unsupported FrameKernel ABI")
   }()
 
+  static func needsFaceProtection(body: Bool, face: Bool) -> Bool {
+    _ = checkedABI
+    return (frame_kernel_protection_layers(body ? 1 : 0, face ? 1 : 0, 0) & FRAME_KERNEL_LAYER_FACE) != 0
+  }
+
+  static func faceProtectionIds(body: Set<Int>, face: Set<Int>) -> Set<Int> {
+    _ = checkedABI
+    let bodies = body.map { Int64($0) }, faces = face.map { Int64($0) }
+    var result = [Int64](repeating: 0, count: bodies.count + faces.count)
+    let count = bodies.withUnsafeBufferPointer { b in
+      faces.withUnsafeBufferPointer { f in
+        result.withUnsafeMutableBufferPointer { out in
+          frame_kernel_face_targets(b.baseAddress, b.count, f.baseAddress, f.count, out.baseAddress, out.count)
+        }
+      }
+    }
+    precondition(count >= 0, "Invalid shared face protection plan")
+    return Set(result.prefix(Int(count)).map { Int($0) })
+  }
+
   static func rect(_ r: CGRect) -> FrameKernelRect {
     FrameKernelRect(left: Float32(r.minX), top: Float32(r.minY), right: Float32(r.maxX), bottom: Float32(r.maxY))
   }

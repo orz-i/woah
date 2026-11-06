@@ -353,7 +353,7 @@ final class IOSExportPipeline {
 #endif
       var privacyClassHardRootsSent = false
       let facePrivacyResolver: IOSFacePrivacyTemporalResolver?
-      if faceOnlyIds.isEmpty && fullBodyIds.isEmpty {
+      if !IOSFrameKernel.needsFaceProtection(body: !fullBodyIds.isEmpty, face: !faceOnlyIds.isEmpty) {
         facePrivacyResolver = nil
       } else if let faceLocatorProvider {
         facePrivacyResolver = IOSFacePrivacyTemporalResolver(locator: faceLocatorProvider())
@@ -512,7 +512,7 @@ final class IOSExportPipeline {
             persons: renderPersons,
             // Full-body segmentation can omit a profile, a jaw or a mirror
             // face. Its privacy mask must also include the selected faces.
-            faceOnlyIds: renderFaceOnlyIds.union(renderFullBodyIds),
+            faceOnlyIds: IOSFrameKernel.faceProtectionIds(body: renderFullBodyIds, face: renderFaceOnlyIds),
             preprocess: inference.preprocess,
             freshPrivacyClassEvidence: useCurrentObservations ? [] : tracker.facePrivacyClassEvidence(),
             protectUnassignedFaces: useCurrentObservations && (!faceOnlyIds.isEmpty || !fullBodyIds.isEmpty),

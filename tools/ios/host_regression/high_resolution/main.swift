@@ -1,6 +1,11 @@
 import Foundation
 import CoreGraphics
 func check(_ value: Bool, _ message: String) { if !value { fatalError(message) } }
+check(IOSFrameKernel.needsFaceProtection(body: true, face: false), "body must protect faces")
+check(!IOSFrameKernel.needsFaceProtection(body: false, face: false), "empty protection plan")
+check(IOSFrameKernel.faceProtectionIds(body: [-3, 9, 2], face: [2, 5]) == [-3, 2, 5, 9], "face target transport")
+check(IOSFrameKernel.faceProtectionIds(body: [], face: []).isEmpty, "empty face target transport")
+print("BODY_FACE_PROTECTION_C_ABI=PASS")
 func prep(_ w: Int, _ h: Int) -> IOSYoloPreprocessResult {
   let s=min(Float32(640)/Float32(w),Float32(640)/Float32(h))
   return IOSYoloPreprocessResult(input:[],scale:s,padLeft:Float32(640-Int(Float32(w)*s))/2,

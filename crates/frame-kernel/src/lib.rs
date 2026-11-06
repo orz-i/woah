@@ -6,6 +6,7 @@
 
 mod ffi;
 pub mod geometry;
+pub mod protection;
 
 pub use ffi::*;
 
