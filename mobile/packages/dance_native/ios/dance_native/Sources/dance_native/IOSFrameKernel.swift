@@ -8,6 +8,50 @@ enum IOSFrameKernel {
     precondition(frame_kernel_abi_version() == 1, "Unsupported FrameKernel ABI")
   }()
 
+  final class WorkLifecycle {
+    private var state: Int32 = 0
+    var acceptingProgress: Bool { state <= 1 }
+    var canAdmitReplacement: Bool {
+      _ = checkedABI
+      return frame_kernel_work_can_replace(UInt32(state)) == 1
+    }
+    func requestCancel() -> Bool {
+      _ = checkedABI
+      state = frame_kernel_work_transition(UInt32(state), 0)
+      precondition(state >= 0)
+      return state == 1
+    }
+    @discardableResult func observe(_ outcome: String) -> Bool {
+      let event: UInt32
+      switch outcome {
+      case "completed": event = 1
+      case "failed": event = 2
+      case "cancelled": event = 3
+      default: return false
+      }
+      _ = checkedABI
+      state = frame_kernel_work_transition(UInt32(state), event)
+      precondition(state >= 0)
+      return true
+    }
+    func release() -> String {
+      _ = checkedABI
+      state = frame_kernel_work_transition(UInt32(state), 4)
+      switch state {
+      case 5: return "completed"
+      case 6: return "failed"
+      case 7: return "cancelled"
+      default: preconditionFailure("Shared worker outcome is not terminal")
+      }
+    }
+  }
+
+  static func regionContextProbeUs(_ timestampUs: Int64) -> Int64? {
+    _ = checkedABI
+    let result = frame_kernel_region_context_probe_us(timestampUs)
+    return result >= 0 ? result : nil
+  }
+
   final class RegionContinuation {
     private var history: [FrameKernelRegionMeasurement] = []
     func reset() { history.removeAll(keepingCapacity: true) }

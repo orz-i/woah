@@ -152,6 +152,15 @@ final class IOSExportJobJournal {
     withLock { (try? read(jobId))?.status() }
   }
 
+  /// Only after the cancellation token prohibits publication. Preserve the
+  /// active journal until the worker acknowledges resource release.
+  func cleanCancelledTemporary(_ jobId: String) {
+    withLock {
+      guard let record = try? read(jobId) else { return }
+      cleanRegisteredTemp(record)
+    }
+  }
+
   func cleanTerminal(_ jobId: String) {
     withLock {
       guard let record = try? read(jobId),

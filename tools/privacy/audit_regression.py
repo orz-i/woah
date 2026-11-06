@@ -8,6 +8,7 @@ sys.path.insert(0,str(ROOT/'tools/ios'))
 import audit_privacy_regression as media
 import audit_privacy_face_cores as faces
 from audit_previews import audit_run as audit_previews
+from gallery_evidence import verify_saved_gallery
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
@@ -29,6 +30,9 @@ def main():
         print('PREVIEWS_NOT_RUN_EXPORT_ONLY_STAGE',flush=True);preview_result=0
     else:
         preview_result=audit_previews(run,a.report,a.media,a.source_faces)
+    gallery=verify_saved_gallery(run)
+    destination=a.report/'gallery-audits'/a.run_id/'results.json';destination.parent.mkdir(parents=True,exist_ok=True)
+    destination.write_text(json.dumps({'run_id':a.run_id,'cases':gallery},indent=2)+'\n',encoding='utf-8')
     return 1 if media_result or face_result or preview_result else 0
 
 if __name__=='__main__':raise SystemExit(main())

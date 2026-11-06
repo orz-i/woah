@@ -6,6 +6,11 @@ use crate::{
     temporal_region::{Ellipse, RegionMeasurement, anchor_translation},
 };
 const WINDOW_US: i64 = 500_000;
+/// One bounded source-context sample before a nonzero trim/preview time.
+/// Its measurement is never rendered as an output frame.
+pub fn context_probe_us(timestamp_us: i64) -> Option<i64> {
+    (timestamp_us > 0).then(|| timestamp_us.saturating_sub(400_000).max(0))
+}
 fn valid(m: &RegionMeasurement) -> bool {
     m.kind <= 2
         && m.flags <= 31
@@ -95,6 +100,9 @@ pub fn step(
                 m.region = enclose(m.region, projected);
             }
         }
+    }
+    if resolved.iter().any(|m| !valid(m)) {
+        return None;
     }
     let mut out = retained;
     if enabled {
@@ -243,5 +251,25 @@ mod tests {
         };
         assert_eq!(count, -1);
         assert_eq!(out.region, sentinel.region);
+    }
+    #[test]
+    fn context_probe_stays_before_the_requested_frame_and_inside_the_lease() {
+        assert_eq!(context_probe_us(-1), None);
+        assert_eq!(context_probe_us(0), None);
+        for t in [1, 399_999, 400_000, 400_001, 22_360_000, i64::MAX] {
+            let p = context_probe_us(t).unwrap();
+            assert!(p >= 0 && p < t && t - p < WINDOW_US);
+        }
+        assert_eq!(context_probe_us(22_360_000), Some(21_960_000));
+    }
+    #[test]
+    fn overflowing_composed_extent_is_rejected() {
+        let mut old = measured();
+        old.region.center_x = -f32::MAX * 0.9;
+        old.region.radius_x = f32::MAX * 0.9;
+        let mut input = fallback();
+        input.region.center_x = f32::MAX * 0.9;
+        input.region.radius_x = f32::MAX * 0.9;
+        assert!(step(&[old], &[input], input.timestamp_us, true).is_none());
     }
 }

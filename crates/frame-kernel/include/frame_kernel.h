@@ -11,6 +11,14 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+/* Worker events: 0 cancel request, 1 published success, 2 failure,
+   3 cancellation acknowledged, 4 resources released.
+   States: 0 running, 1 cancellation requested, 2/3/4 pending success/failure/
+   cancellation, 5/6/7 terminal success/failure/cancellation. -1 invalid.
+   Do not expose pending outcomes as terminal; release native resources first. */
+int32_t frame_kernel_work_transition(uint32_t state, uint32_t event);
+int32_t frame_kernel_work_can_replace(uint32_t state);
+
 typedef struct FrameKernelRect { float left, top, right, bottom; } FrameKernelRect;
 typedef struct FrameKernelSceneTarget { int64_t id; uint32_t layers; } FrameKernelSceneTarget;
 /* layers: 1 body, 2 face. Body always has both bits for its face supplement.
@@ -32,6 +40,7 @@ typedef struct FrameKernelRegionMeasurement {
 int32_t frame_kernel_continue_regions(const FrameKernelRegionMeasurement *history, size_t history_len,
     const FrameKernelRegionMeasurement *current, size_t current_len, int64_t now, uint32_t enabled,
     FrameKernelRegionMeasurement *output, size_t capacity);
+int64_t frame_kernel_region_context_probe_us(int64_t timestamp_us);
 typedef struct FrameKernelRegionState {
     FrameKernelEllipse output;
     float reference_radius_x, reference_radius_y, reference_width, reference_height;

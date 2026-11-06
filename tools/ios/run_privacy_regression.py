@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Run the simulator-only real-media harness, preserving each run and its binary."""
-import argparse, datetime, hashlib, json, os, pathlib, plistlib, re, shutil, subprocess, time
+import argparse, datetime, hashlib, json, os, pathlib, plistlib, re, shutil, subprocess, sys, time
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0,str(ROOT))
+from tools.privacy.gallery_evidence import capture_simulator_gallery
 REPORT = ROOT / 'reports/privacy-ios-22-and-4k-regression-2026-11-05'
 SOURCES = ROOT / 'reports/privacy-ios-regression-2026-11-04/artifacts/sources'
 BUNDLE = 'art.gaoge.dance'
@@ -152,6 +154,7 @@ def main():
                             raise RuntimeError(f'Incomplete matrix: {len(data["cases"])} != {expected_count}')
                         if any(r['result'] not in ['output_created','cancelled_cleanly'] for r in data['cases']):
                             raise RuntimeError('Native matrix contains failures; preserve results for diagnosis')
+                        capture_simulator_gallery(dest,pathlib.Path.home()/'Library/Developer/CoreSimulator/Devices'/args.udid/'data/Media/DCIM')
                         print('QA_RUN_FINISHED',run_id,flush=True)
                         return 0
             if process.poll() is not None: raise RuntimeError(f'Simulator runner exited: {process.returncode}; see {dest}/console.log')

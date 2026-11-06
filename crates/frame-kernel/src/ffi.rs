@@ -10,6 +10,12 @@ use crate::{
     geometry::{self, Rect, Transform},
 };
 
+/// Source context probe timestamp, or -1 for a zero/invalid request.
+#[unsafe(no_mangle)]
+pub extern "C" fn frame_kernel_region_context_probe_us(timestamp_us: i64) -> i64 {
+    crate::region_continuation::context_probe_us(timestamp_us).unwrap_or(-1)
+}
+
 /// # Safety
 /// Inputs are readable aligned values. Output is disjoint writable storage.
 /// Return total records (history then current), -1 invalid, <=-2 capacity query.
@@ -962,4 +968,16 @@ pub unsafe extern "C" fn frame_kernel_project_mask(
     } else {
         -1
     }
+}
+
+/// Native worker completion barrier; -1 rejects an invalid state or event.
+#[unsafe(no_mangle)]
+pub extern "C" fn frame_kernel_work_transition(state: u32, event: u32) -> i32 {
+    crate::work_lifecycle::transition(state, event).map_or(-1, |s| s as i32)
+}
+
+/// -1 invalid; otherwise 1 permits a serialized replacement and 0 rejects it.
+#[unsafe(no_mangle)]
+pub extern "C" fn frame_kernel_work_can_replace(state: u32) -> i32 {
+    crate::work_lifecycle::can_replace(state).map_or(-1, i32::from)
 }

@@ -456,3 +456,21 @@ JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_conti
     if(!result && !(*env)->ExceptionCheck(env))invalid(env);
     return result;
 }
+
+JNIEXPORT jlong JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_regionContextProbeUsNative(JNIEnv *env,jobject self,jlong pts) {
+    (void)env;(void)self;return frame_kernel_region_context_probe_us(pts);
+}
+
+JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_workTransitionNative(JNIEnv *env,jobject self,jint state,jint event) {
+    (void)self;
+    int32_t result=frame_kernel_work_transition((uint32_t)state,(uint32_t)event);
+    if(result<0) invalid(env);
+    return result;
+}
+
+JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_workCanReplaceNative(JNIEnv *env,jobject self,jint state) {
+    (void)self;
+    int32_t result=frame_kernel_work_can_replace((uint32_t)state);
+    if(result<0) invalid(env);
+    return result;
+}

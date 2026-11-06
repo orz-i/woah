@@ -13,7 +13,11 @@ class CacheLifecycleContracts(unittest.TestCase):
         cancel = coordinator.split('fun cancelJob(', 1)[1].split('fun cancelAllJobs', 1)[0]
         self.assertNotIn('cacheLeases', cancel)
         finish = coordinator.split('fun onJobFinished(', 1)[1]
-        self.assertIn('cacheLeases.remove(jobId)?.close()', finish)
+        ordered=['cacheLeases[jobId]?.close()', 'cacheLeases.remove(jobId)',
+                 'resourceGate.finishExport(jobId)', 'state = lifecycle.release()', 'publish(terminal)']
+        for before,after in zip(ordered,ordered[1:]):
+            self.assertLess(finish.index(before),finish.index(after))
+        self.assertNotIn('state = "cancelled"',cancel)
         self.assertIn('request.analysisCacheId.takeIf { it.isNotBlank() }', coordinator)
         api = (ANDROID / 'bridge/DanceNativeApiImpl.kt').read_text()
         release = api.split('override suspend fun releaseProject', 1)[1].split('fun close()', 1)[0]

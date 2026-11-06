@@ -90,52 +90,8 @@ class PreviewPipeline(
             trackedPersons = cachedEntry.trackedPersons
         } else {
             // 1. Extract frame Bitmap at requested timestamp
-            val retriever = MediaMetadataRetriever()
-            val rawBitmap = try {
-                if (sourceUri.startsWith("content://")) {
-                    retriever.setDataSource(context, Uri.parse(sourceUri))
-                } else {
-                    retriever.setDataSource(sourceUri.removePrefix("file://"))
-                }
-                val timeUs = (request.timestampMs * 1000L).coerceAtLeast(0L)
-                // Privacy geometry must describe the requested moment, including
-                // non-keyframes. A failed decode must not silently show frame zero.
-                retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST)
-                    ?: throw DanceNativeException(
-                        DanceNativeException.DECODE_FRAME_FAILED,
-                        "Failed to extract video frame at timestamp ${request.timestampMs}ms"
-                    )
-            } catch (e: DanceNativeException) {
-                throw e
-            } catch (e: Exception) {
-                throw DanceNativeException(
-                    DanceNativeException.DECODE_FRAME_FAILED,
-                    "Failed to extract frame: ${e.message}",
-                    e
-                )
-            } finally {
-                try { retriever.release() } catch (_: Exception) {}
-            }
-
-            // Convert Android Hardware Bitmap to ARGB_8888 software bitmap for OpenGL upload & inference
-            val softwareBmp = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && rawBitmap.config == Bitmap.Config.HARDWARE) {
-                rawBitmap.copy(Bitmap.Config.ARGB_8888, false).also {
-                    if (rawBitmap != it) rawBitmap.recycle()
-                }
-            } else {
-                rawBitmap
-            }
-
-            // Apply rotation if needed
-            val rotation = videoInfo.rotation.toInt()
-            val baseRotatedBitmap = if (rotation != 0) {
-                val matrix = Matrix().apply { postRotate(rotation.toFloat()) }
-                val rotated = Bitmap.createBitmap(softwareBmp, 0, 0, softwareBmp.width, softwareBmp.height, matrix, true)
-                if (softwareBmp != rotated) softwareBmp.recycle()
-                rotated
-            } else {
-                softwareBmp
-            }
+            val baseRotatedBitmap = art.gaoge.dance.engine.media.SourceFrameReader.read(
+                context,sourceUri,request.timestampMs*1000L,videoInfo.rotation.toInt())
 
             val frameWidth = baseRotatedBitmap.width
             val frameHeight = baseRotatedBitmap.height
@@ -249,6 +205,10 @@ class PreviewPipeline(
         val fullBodyPersonIds = sceneTargets.body
         val faceOnlyPersonIds = sceneTargets.faceOnly
 
+        val uniformSceneCoverage = heroId == null && (scope and 3) != 0
+        if (uniformSceneCoverage && art.gaoge.dance.engine.core.FrameKernel.regionContextProbeUs(request.timestampMs*1000L) != null) {
+            try { segmenter.initialize() } catch (error:Throwable) {rotatedBitmap.recycle();throw error}
+        }
         val eglCore = EglCore()
         val eglSurface = eglCore.createOffscreenSurface(previewWidth, previewHeight)
         eglCore.makeCurrent(eglSurface)
@@ -307,6 +267,10 @@ class PreviewPipeline(
                 // Keep its CPU path; sustained export uses the GPU workers.
                 val processor = FaceOnlyPrivacyFrameProcessor.create(context, faceMapper, preferGpu = false)
                 faceOnlyPrivacyProcessor = processor
+                if (uniformSceneCoverage) {
+                    art.gaoge.dance.engine.privacy.SceneRegionContext.seed(context,segmenter,processor,
+                        sourceUri,request.timestampMs*1000L,videoInfo.rotation.toInt(),sourceFrameWidth,sourceFrameHeight)
+                }
                 processor.resolveFrame(
                     frameTexture = frameTextureId,
                     texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
@@ -315,7 +279,8 @@ class PreviewPipeline(
                     faceOnlyTrackIds = faceOnlyPersonIds,
                     fullBodyTrackIds = fullBodyPersonIds,
                     bodySupplementTrackIds = fullBodyPersonIds,
-                    ptsUs = request.timestampMs * 1000L
+                    ptsUs = request.timestampMs * 1000L,
+                    conservativeSceneCoverage = uniformSceneCoverage
                 ).also { result ->
                     if (!result.readyForRender) {
                         throw DanceNativeException(

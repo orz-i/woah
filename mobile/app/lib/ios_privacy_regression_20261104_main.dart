@@ -286,6 +286,11 @@ class _QA {
         throw StateError('Invalid QA run id');
       }
       outputs = Directory('${docs.path}/qa_ios_runs/$runId/outputs');
+      if (await outputs.parent.exists()) {
+        throw StateError(
+          'Preserve existing QA run; choose a new run id: $runId',
+        );
+      }
       await outputs.create(recursive: true);
       verifyPreviews = config['verify_previews'] == true;
       const compiledFingerprint = String.fromEnvironment(
