@@ -358,10 +358,18 @@ enum IOSFacePrivacyPhase5Smoke {
       makeDetection(x1: 27, y1: 4, x2: 33, y2: 60),
       makeDetection(x1: 31, y1: 4, x2: 37, y2: 60),
     ]
+    // The first ambiguous observation establishes the canonical quarantine
+    // group. Fresh class evidence requires the next real observation in that
+    // existing group; it must not be inferred only from global cardinality.
+    _ = try selectedClassTracker.update(detections: freshAmbiguousDetections,
+      preprocess: preprocess, timestampUs: 33_333)
+    guard selectedClassTracker.facePrivacyClassEvidence().isEmpty else {
+      throw smokeFailure("Class evidence was emitted before a real ambiguity group existed.")
+    }
     let selectedClassPersons = try selectedClassTracker.update(
       detections: freshAmbiguousDetections,
       preprocess: preprocess,
-      timestampUs: 33_333
+      timestampUs: 66_666
     )
     let selectedClassEvidence = selectedClassTracker.facePrivacyClassEvidence()
     guard selectedClassEvidence.count == 2,
@@ -424,6 +432,8 @@ enum IOSFacePrivacyPhase5Smoke {
       preprocess: preprocess,
       timestampUs: 33_333
     )
+    _ = try mixedClassTracker.update(detections: freshAmbiguousDetections,
+      preprocess: preprocess, timestampUs: 66_666)
     guard mixedClassTracker.facePrivacyClassEvidence().isEmpty else {
       throw smokeFailure("Ambiguous detection with an unselected possible owner received FACE_ONLY class fallback.")
     }
