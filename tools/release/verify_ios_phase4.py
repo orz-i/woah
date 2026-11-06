@@ -104,7 +104,11 @@ def verify_media_pipeline() -> None:
         "effects.legStretchEnabled ? legStretchTargetId : nil",
         "Self.buildLegStretchInputs(",
         "let legStretchValue = max(1.0, min(1.5, 1.0 + effects.legStretch))",
-        "encoder.setBytes(&legStretchFlag",
+        # Simulator Metal has 14 constant-buffer slots; the four selector
+        # flags (including leg-stretch) are packed without changing semantics.
+        "var packedFlags = SIMD4<UInt32>(fillMode, stickerFlag, customStickerFlag, legStretchFlag)",
+        "encoder.setBytes(&packedFlags",
+        "const uint legStretchEnabled = packedFlags.w;",
         "if (legStretchEnabled == 1 && legStretch > 1.0",
     ):
         check(token in renderer, f"iOS renderer leg stretch implementation missing: {token}")

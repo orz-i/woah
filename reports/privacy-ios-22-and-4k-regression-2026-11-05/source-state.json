@@ -1,0 +1,135 @@
+{
+  "created_utc": "2026-11-06T01:05:44.093193+00:00",
+  "workspace": "/Users/mini/Coding/woah",
+  "branch": "codex/ios-22-and-4k-regression-20261105",
+  "base_head": "186113fe0fa22072d52452f2eabf747f6e0bb769",
+  "uncommitted": true,
+  "generated_pods_project_diff_restored": true,
+  "scope": "iOS privacy production, QA harness, tests and auditing tools; no UI/brand changes in this working diff",
+  "patch": {
+    "path": "artifacts/working-tree.patch",
+    "sha256": "852597836944e565ae0c184c12e2e444d67f81b1cb93dae0640f69e35084e590"
+  },
+  "files": [
+    {
+      "path": "mobile/app/lib/ios_privacy_regression_20261104_main.dart",
+      "sha256": "5ee742f7bd583ae042f9a9654f73f26de8b33198b5a7156e671348629c837a30",
+      "bytes": 32601
+    },
+    {
+      "path": "mobile/packages/dance_native/ios/dance_native/Sources/dance_native/IOSExportCoordinator.swift",
+      "sha256": "bdd077cd6f597efc4ad8037bdd32aeeb7bae4b68971444831cf0d7389061634f",
+      "bytes": 9453
+    },
+    {
+      "path": "mobile/packages/dance_native/ios/dance_native/Sources/dance_native/IOSExportPhase4Smoke.swift",
+      "sha256": "ce680840218e049a9aec3de5a77c7d131e0626798cc78b91e9c54d42918f961a",
+      "bytes": 48407
+    },
+    {
+      "path": "mobile/packages/dance_native/ios/dance_native/Sources/dance_native/IOSExportPipeline.swift",
+      "sha256": "edc321061d723689e2a27ca0d9ec6d1216e0d3615e78de761ff5c39e9abc7c1a",
+      "bytes": 39072
+    },
+    {
+      "path": "mobile/packages/dance_native/ios/dance_native/Sources/dance_native/IOSFacePrivacyPhase5Smoke.swift",
+      "sha256": "a08311d3c5e42ad91e18af366dc4a2d836315cda6b2099057a0067b3e1c54db2",
+      "bytes": 30644
+    },
+    {
+      "path": "mobile/packages/dance_native/ios/dance_native/Sources/dance_native/IOSFacePrivacyPipeline.swift",
+      "sha256": "db22408e6d8d39df05885c4bc58a0ed9cf0412358eda0b159fd3da18c5bd06df",
+      "bytes": 50798
+    },
+    {
+      "path": "mobile/packages/dance_native/ios/dance_native/Sources/dance_native/IOSHighResolutionPrivacyCoverage.swift",
+      "sha256": "73cffa4f0408cf35ebb54cf5ccc0c1fbdb0ed7a412eda4e895b58d9dee934e1f",
+      "bytes": 6063
+    },
+    {
+      "path": "mobile/packages/dance_native/ios/dance_native/Sources/dance_native/IOSMetalPreviewRenderer.swift",
+      "sha256": "633b87c3e086cfb7e5d3c10cd71cc6eed05407b2a79da8b18779bfe15c3ba14d",
+      "bytes": 39852
+    },
+    {
+      "path": "mobile/packages/dance_native/ios/dance_native/Sources/dance_native/IOSPixelAuditCropRecorder.swift",
+      "sha256": "c3be238302a98aa5fda7de01fd6050fd2425379d69af51c730c0c6f9cc04329c",
+      "bytes": 2477
+    },
+    {
+      "path": "mobile/packages/dance_native/ios/dance_native/Sources/dance_native/IOSPrivacyMaskProjector.swift",
+      "sha256": "5eb22c892cd6d108ae5be18eefa36f1650bbe086bd023a9318a846a7f8de4d44",
+      "bytes": 1668
+    },
+    {
+      "path": "mobile/packages/dance_native/ios/dance_native/Sources/dance_native/IOSTemporalIdentityTracker.swift",
+      "sha256": "6255d4c53821c812589ed5565055d5e9433281fef15572dd20706a3b4df20834",
+      "bytes": 44614
+    },
+    {
+      "path": "tools/ios/audio_regression_check.py",
+      "sha256": "6b423498dffca96a60555e2cd4f28090a80f5bed64448be7954a42df13329271",
+      "bytes": 1558
+    },
+    {
+      "path": "tools/ios/audit_privacy_face_cores.py",
+      "sha256": "b6349e599ce776fd76dc9b9914ee12b2dca78eb214881167cdf3035cf0aad248",
+      "bytes": 8992
+    },
+    {
+      "path": "tools/ios/audit_privacy_regression.py",
+      "sha256": "473b48a4f8a120a4d3ff3433356a286f224ba5f5b129b59596e8eface3b3306f",
+      "bytes": 12692
+    },
+    {
+      "path": "tools/ios/host_regression/high_resolution/InferenceStubs.swift",
+      "sha256": "67a04037bfc4d4b092afdd979dea9f22eb2a68c7f0ee0c805a249608f9361982",
+      "bytes": 440
+    },
+    {
+      "path": "tools/ios/host_regression/high_resolution/main.swift",
+      "sha256": "6038fe735d37702edf9e7d93ee1c74095f574b06c0023b045daabf462e80647f",
+      "bytes": 3432
+    },
+    {
+      "path": "tools/ios/host_regression/run_high_resolution.sh",
+      "sha256": "ff1ca885b28d0a6f5ddcb7eda66f06e3869d5e75a2d9e95dc727d4d94cebfbf5",
+      "bytes": 583
+    },
+    {
+      "path": "tools/ios/host_regression/run_tracker.sh",
+      "sha256": "fe997ddaf0dc52925fde4e93a0a2a6b6bca6dee7d1c4cdd84591dd4e86b62ed6",
+      "bytes": 727
+    },
+    {
+      "path": "tools/ios/host_regression/tracker/main.swift",
+      "sha256": "9c0326537d9f1b93d4ff4624e5a0467e9a7023d0c0acd8c5eadd71c975815634",
+      "bytes": 24330
+    },
+    {
+      "path": "tools/ios/prepare_privacy_visual_review.py",
+      "sha256": "46c8c7c55836690c5049d34ac2666cfda560dabdd8d5c1b5af5dd43fab6c6a04",
+      "bytes": 6012
+    },
+    {
+      "path": "tools/ios/privacy_source_faces.swift",
+      "sha256": "b9aa573eccccc38cb076a2ebd344f21a9cb46a854c0730f422dd6a82b42c7576",
+      "bytes": 2695
+    },
+    {
+      "path": "tools/ios/run_privacy_regression.py",
+      "sha256": "13222804d352ab93b5cc1163c67e76bf057e0d155ff10b550f79729a1b4f915d",
+      "bytes": 9282
+    },
+    {
+      "path": "tools/ios/summarize_privacy_regression.py",
+      "sha256": "47d20ff8e50c5bdfae68943dd09aff48f5c44c85a3c3625bc75d71df43576dcf",
+      "bytes": 8172
+    },
+    {
+      "path": "tools/ios/test_audio_regression_check.py",
+      "sha256": "57daa1ed8222f78534c8f90b67710a0690eabf1deada001bfbacd1e220d5dd64",
+      "bytes": 1060
+    }
+  ]
+}

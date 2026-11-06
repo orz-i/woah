@@ -6,6 +6,7 @@ final class IOSExportCoordinator {
   private let pipeline: IOSExportPipeline
   private let observer: StatusObserver
   private let registry: IOSRegenerableCacheRegistry
+  private let journal = IOSExportJobJournal()
   private let lock = NSLock()
   private var statuses: [String: JobStatusDto] = [:]
   private var cancellations: [String: IOSExportCancellationFlag] = [:]
@@ -28,18 +29,6 @@ final class IOSExportCoordinator {
   }
 
   func start(request: ExportRequestDto) throws -> String {
-    let active = withLock {
-      !tasks.isEmpty || statuses.values.contains { !Self.isTerminal($0.state) }
-    }
-    guard !active else {
-      throw PigeonError(
-        code: "EXPORT_BUSY",
-        message: "An iOS export job is already active.",
-        details: nil
-      )
-    }
-
-    let cacheLease = request.analysisCacheId.isEmpty ? nil : try registry.acquire(cacheId: request.analysisCacheId)
     let jobId = "job_\(Int64(Date().timeIntervalSince1970 * 1000))_\(UUID().uuidString.prefix(8))"
     let cancellation = IOSExportCancellationFlag()
     let initial = JobStatusDto(
@@ -54,9 +43,36 @@ final class IOSExportCoordinator {
       errorCode: nil,
       errorMessage: nil
     )
-    withLock {
+    // Reserve admission atomically. A cancelled job may still own a decoder,
+    // writer and cache lease while its current frame unwinds. Accept the retry
+    // now, but serialize its actual pipeline behind those runtime owners.
+    let admission = withLock { () -> (Bool, [Task<Void, Never>]) in
+      guard !statuses.values.contains(where: { !Self.isTerminal($0.state) }) else { return (false, []) }
+      let predecessors = Array(tasks.values)
       statuses[jobId] = initial
       cancellations[jobId] = cancellation
+      return (true, predecessors)
+    }
+    guard admission.0 else {
+      throw PigeonError(code: "EXPORT_BUSY", message: "An iOS export job is already active.", details: nil)
+    }
+    let cacheLease: IOSRegenerableCacheRegistry.Lease?
+    do {
+      cacheLease = request.analysisCacheId.isEmpty ? nil : try registry.acquire(cacheId: request.analysisCacheId)
+    } catch {
+      withLock { statuses.removeValue(forKey: jobId); cancellations.removeValue(forKey: jobId) }
+      throw error
+    }
+    do {
+      try journal.begin(initial)
+    } catch {
+      cacheLease?.close()
+      withLock { statuses.removeValue(forKey: jobId); cancellations.removeValue(forKey: jobId) }
+      throw PigeonError(
+        code: "EXPORT_FAILED",
+        message: "Could not durably record the initial privacy export state.",
+        details: nil
+      )
     }
     observer(initial)
 
@@ -64,10 +80,15 @@ final class IOSExportCoordinator {
     // this launch gate, an immediate validation failure can clean up before the
     // task is inserted and leave a stale task entry that blocks future exports.
     let launchGate = DispatchSemaphore(value: 0)
-    let task = Task.detached(priority: .userInitiated) { [weak self, cacheLease] in
+    let task = Task.detached(priority: .userInitiated) { [weak self, cacheLease, predecessors = admission.1] in
       defer { cacheLease?.close() }
       launchGate.wait()
       guard let self else { return }
+      for predecessor in predecessors { await predecessor.value }
+      if cancellation.isCancelled {
+        self.finishCancelled(jobId: jobId)
+        return
+      }
       do {
         let output = try await self.pipeline.execute(
           jobId: jobId,
@@ -75,6 +96,9 @@ final class IOSExportCoordinator {
           cancellation: cancellation,
           onStatus: { [weak self] status in
             self?.update(status)
+          },
+          onOutputPrepared: { [self] final, temp in
+            try self.journal.rememberPaths(jobId: jobId, final: final, temp: temp)
           }
         )
         if cancellation.isCancelled {
@@ -109,25 +133,28 @@ final class IOSExportCoordinator {
     // the final file, cancellation is too late and completion owns the terminal
     // state. Before that point, cancel wins and publication is prohibited.
     guard cancellation?.cancel() == true else { return }
-    guard let current = status(jobId: jobId), !Self.isTerminal(current.state) else { return }
-    let cancelled = JobStatusDto(
-      jobId: current.jobId,
-      state: "cancelled",
-      currentFrame: current.currentFrame,
-      totalFrames: current.totalFrames,
-      fps: current.fps,
-      progress: current.progress,
-      outputUri: nil,
-      currentPreviewPath: current.currentPreviewPath,
-      errorCode: nil,
-      errorMessage: nil
-    )
-    withLock { statuses[jobId] = cancelled }
+    let cancelled = withLock { () -> JobStatusDto? in
+      guard let current = statuses[jobId], !Self.isTerminal(current.state) else { return nil }
+      let terminal = JobStatusDto(
+        jobId: current.jobId, state: "cancelled",
+        currentFrame: current.currentFrame, totalFrames: current.totalFrames,
+        fps: current.fps, progress: current.progress, outputUri: nil,
+        currentPreviewPath: current.currentPreviewPath, errorCode: nil, errorMessage: nil
+      )
+      statuses[jobId] = terminal
+      try? journal.update(terminal)
+      return terminal
+    }
+    guard let cancelled else { return }
+    // Publication is prohibited by the cancellation token. Unlink only this
+    // job's registered private temporary files now; the retiring worker closes
+    // its handles and performs the same idempotent cleanup before a retry runs.
+    journal.cleanTerminal(jobId)
     observer(cancelled)
   }
 
   func status(jobId: String) -> JobStatusDto? {
-    withLock { statuses[jobId] }
+    withLock { statuses[jobId] } ?? journal.status(jobId)
   }
 
   func hasActiveRuntime(jobId: String) -> Bool {
@@ -140,6 +167,7 @@ final class IOSExportCoordinator {
         return false
       }
       statuses[status.jobId] = status
+      try? journal.update(status)
       return true
     }
     if accepted { observer(status) }
@@ -209,8 +237,15 @@ final class IOSExportCoordinator {
   }
 
   private func setTerminal(_ status: JobStatusDto) {
-    withLock { statuses[status.jobId] = status }
-    observer(status)
+    let accepted = withLock { () -> Bool in
+      // Cancellation and a writer failure can finish on different threads.
+      // The first terminal snapshot owns the result and cannot be overwritten.
+      if let current = statuses[status.jobId], Self.isTerminal(current.state) { return false }
+      statuses[status.jobId] = status
+      try? journal.update(status)
+      return true
+    }
+    if accepted { observer(status) }
     cleanupRuntime(jobId: status.jobId)
   }
 
@@ -219,6 +254,7 @@ final class IOSExportCoordinator {
       cancellations.removeValue(forKey: jobId)
       tasks.removeValue(forKey: jobId)
     }
+    journal.cleanTerminal(jobId)
   }
 
   private func withLock<T>(_ body: () -> T) -> T {

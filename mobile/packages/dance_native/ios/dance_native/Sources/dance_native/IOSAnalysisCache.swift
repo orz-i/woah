@@ -201,8 +201,11 @@ final class IOSAnalysisCache {
       )
     }
     let directory = rootDirectory.appendingPathComponent(cacheId, isDirectory: true)
-    guard directory.resolvingSymlinksInPath() == directory,
-          rootDirectory.resolvingSymlinksInPath() == rootDirectory else {
+    // Foundation on iOS Simulator may remove the trailing directory slash when
+    // resolving a not-yet-created folder. Compare canonical filesystem paths,
+    // not URL directory-hint metadata; still reject symlink traversal.
+    guard directory.resolvingSymlinksInPath().path == directory.path,
+          rootDirectory.resolvingSymlinksInPath().path == rootDirectory.path else {
       throw cacheError("Invalid analysis cache path.")
     }
     return directory

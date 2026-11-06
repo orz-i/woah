@@ -1,0 +1,142 @@
+{
+  "run_id": "complete_preflight_v3",
+  "cases": [
+    {
+      "case": "group_4k_body_face_union",
+      "input": "group-mirror-8956295.mp4",
+      "width": 3840,
+      "height": 2160,
+      "startMs": 16000,
+      "endMs": 17600,
+      "bitrate": 26956800,
+      "fill": "solid",
+      "faceOnly": false
+    },
+    {
+      "case": "solo_4k_body_face_union",
+      "input": "solo-portrait-7570258.mp4",
+      "width": 2160,
+      "height": 4096,
+      "startMs": 7800,
+      "endMs": 9400,
+      "bitrate": 28753920,
+      "fill": "solid",
+      "faceOnly": false
+    },
+    {
+      "case": "solo_4k_raised_arm_sticker",
+      "input": "solo-portrait-7570258.mp4",
+      "width": 2160,
+      "height": 4096,
+      "startMs": 21440,
+      "endMs": 23040,
+      "bitrate": 28753920,
+      "fill": "sticker",
+      "faceOnly": true
+    },
+    {
+      "case": "solo_4k_raised_arm_solid",
+      "input": "solo-portrait-7570258.mp4",
+      "width": 2160,
+      "height": 4096,
+      "startMs": 21440,
+      "endMs": 23040,
+      "bitrate": 28753920,
+      "fill": "solid",
+      "faceOnly": true
+    },
+    {
+      "case": "solo_4k_raised_arm_body",
+      "input": "solo-portrait-7570258.mp4",
+      "width": 2160,
+      "height": 4096,
+      "startMs": 21440,
+      "endMs": 23040,
+      "bitrate": 28753920,
+      "fill": "solid",
+      "faceOnly": false
+    },
+    {
+      "case": "group_hd_overlap_face",
+      "input": "group-hd-8956295.mp4",
+      "startMs": 13720,
+      "endMs": 13760,
+      "width": 1920,
+      "height": 1080,
+      "fill": "solid"
+    },
+    {
+      "case": "group_hd_overlap_body",
+      "input": "group-hd-8956295.mp4",
+      "startMs": 13720,
+      "endMs": 13760,
+      "width": 1920,
+      "height": 1080,
+      "fill": "solid",
+      "faceOnly": false
+    },
+    {
+      "case": "group_4k_face_solid",
+      "input": "group-mirror-8956295.mp4",
+      "width": 3840,
+      "height": 2160,
+      "endMs": 6000,
+      "bitrate": 26956800,
+      "fill": "solid",
+      "startMs": 5600
+    },
+    {
+      "case": "group_4k_body_solid",
+      "input": "group-mirror-8956295.mp4",
+      "width": 3840,
+      "height": 2160,
+      "endMs": 11800,
+      "bitrate": 26956800,
+      "fill": "solid",
+      "faceOnly": false,
+      "startMs": 11400
+    },
+    {
+      "case": "group_4k_tail_face",
+      "input": "group-mirror-8956295.mp4",
+      "width": 3840,
+      "height": 2160,
+      "endMs": 23240,
+      "bitrate": 26956800,
+      "fill": "solid",
+      "startMs": 22840
+    },
+    {
+      "case": "solo_4k_custom_gallery_probe",
+      "input": "solo-portrait-7570258.mp4",
+      "width": 2160,
+      "height": 4096,
+      "endMs": 640,
+      "fill": "sticker",
+      "customSticker": true,
+      "saveToGallery": true,
+      "bitrate": 28753920
+    },
+    {
+      "input": "solo-portrait-7570258.mp4",
+      "width": 2160,
+      "height": 4096,
+      "bitrate": 28753920,
+      "fill": "sticker",
+      "case": "solo_4k_cancel_probe",
+      "endMs": 26480,
+      "cancelAtFrame": 25
+    },
+    {
+      "input": "solo-portrait-7570258.mp4",
+      "width": 2160,
+      "height": 4096,
+      "bitrate": 28753920,
+      "fill": "sticker",
+      "case": "solo_4k_immediate_retry_probe",
+      "startMs": 1000,
+      "endMs": 2600
+    }
+  ],
+  "core_smokes": true
+}

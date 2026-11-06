@@ -85,6 +85,8 @@ def verify_ios_surface() -> None:
         "freshFullBodyPrivacyEvidence: evidence",
         "preferFreshFullBodyClassPrimary: true",
         "FULL_BODY-only fresh privacy-class primary rendered the wrong class",
+        "FULL_BODY fresh-class compositor omitted an unresolved selected root's fail-closed mask",
+        "full_body_unresolved_selected_fallback_pixel",
         "Mixed/FACE_ONLY composition consumed non-identity FULL_BODY class evidence",
         "IOS_PHASE6_PRIVACY_CLASS_SMOKE_FAILED",
     ):
@@ -96,13 +98,21 @@ def verify_ios_surface() -> None:
         "let freshSyntheticBase = Int.min / 4",
         "evidence.selectionClass == .selected",
         "&& faceOnlyIds.isEmpty",
-        "let fallbackDeficit = max(0, fullBodyIds.count - freshSelectedCount)",
+        # Count-first selection of *observed* root masks drops an unresolved
+        # selected root during selected/unselected merges. Always keep the
+        # privacy-grade conservative fallback before filling a class deficit.
+        "let unresolvedSelected = trackedFullBodyPersons",
+        ".filter { $0.conservativePrivacyFallback }",
+        "let remainingDeficit = max(0, fullBodyIds.count - freshSelectedIds.count",
+        "- unresolvedSelected.count)",
+        "let fallbackSelectedArray = unresolvedSelected + observedSupplement",
         "privacyPersons = freshPersons + fallbackSelectedArray",
     ):
         check(token in renderer, f"Phase 6 FULL_BODY fresh-primary renderer missing: {token}")
 
     for token in (
-        "let privacyClassTracker = !fullBodyIds.isEmpty && faceOnlyIds.isEmpty",
+        "let privacyClassTracker = !freshSceneCoverage && !fullBodyIds.isEmpty && faceOnlyIds.isEmpty",
+        "let renderFullBodyIds = freshSceneCoverage && !fullBodyIds.isEmpty ? sceneIds : fullBodyIds",
         "IOSPrivacyClassTemporalTracker()",
         "var privacyClassHardRootsSent = false",
         "let rootPersons = IOSPreviewIdentityMatcher.assign(",

@@ -1,0 +1,59 @@
+{
+  "observations": [
+    {
+      "id": "face-only-partial-body-conservative-fallback",
+      "status": "known_conservative_overmask",
+      "run_id": "complete_4k_v2",
+      "case": "group_4k_face_solid",
+      "source_frame": 576,
+      "movie_sha256": "2420444e117dd832b197766fe5144d5f3ddc90021d81e5b97456b48337211a07",
+      "evidence": {
+        "path": "artifacts/complete_4k_v2/visual-boards/group_4k_face_solid-partial-body576.jpg",
+        "sha256": "37c615fd077d971eae430878582f5e4955c83e2fd2c523f9d64ec03e6c8a32bd"
+      },
+      "description": "YOLO reports a short lower-body fragment behind the foreground person. Its guessed head can cover a small part of a leg although no face is visible there.",
+      "safety_tradeoff": "Only fully covered guessed heads are suppressed; current detected faces always remain protected. Do not relax that rule merely to erase an ambiguous fragment overlay.",
+      "acceptance": "This is an explicit precision limitation, not a zero-false-positive claim. The known final-frame580 foreground trouser-leg probe remains clear."
+    },
+    {
+      "id": "occluded-face-additive-head-fallback",
+      "status": "known_conservative_overmask",
+      "run_id": "complete_4k_v2",
+      "case": "solo_4k_retry_sticker",
+      "source_frames": [
+        551,
+        552,
+        553,
+        554,
+        555,
+        556,
+        557,
+        558,
+        559
+      ],
+      "movie_sha256": "564fc7086a603a0e21ea8a8c39a4b6f273295e8f14d6ebb31e75e96cbeb66f10",
+      "evidence": {
+        "path": "artifacts/complete_4k_v2/visual-boards/solo_4k_retry_sticker-partial551-559.jpg",
+        "sha256": "788ca6c16bf803410bc4c20fc990a59eb4570fc611263ea68ce8ed36acd9a515"
+      },
+      "description": "During face-detector misses, recent supported face padding is added to the current head fallback. This closes the visible partial-face leak, but can also cover an arm/background and show two stickers.",
+      "safety_tradeoff": "History is not used to remove current-frame fallback coverage or grant identity exemptions. The padding expires after800ms and cannot renew itself.",
+      "acceptance": "Explicit precision limitation; tests do not claim one perfect face rectangle or zero overmask for every frame."
+    },
+    {
+      "id": "selected-first-unknown-class-overmask",
+      "status": "known_conservative_overmask",
+      "run_id": "complete_22",
+      "case": "group_first_solid",
+      "source_frame": 39,
+      "movie_sha256": "478ac34a336179700302b84c5fbd45225901a87bd49918c262b17b027a37d550",
+      "evidence": {
+        "path": "artifacts/complete_22/visual-boards/group_first_solid-overview-0.jpg",
+        "sha256": "7100010b64932379ae7693c486eb46bf4a00612e128b26624f02da8a0521733c"
+      },
+      "description": "Selected root0 remains on the left mirror. The existing FULL_BODY class guard can additionally mask newly observed/uncertain bodies. Foreground extra protection at frame39 is8040 pixels in both the earlier regression and the final run.",
+      "safety_tradeoff": "The inherited unknown-class fail-closed guard is preserved; this is not a claim that only one body is masked on every frame.",
+      "comparison": "selected-first-observation.json"
+    }
+  ]
+}

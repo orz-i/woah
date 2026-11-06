@@ -599,6 +599,33 @@ enum IOSFacePrivacyPhase5Smoke {
     guard cornerPixel.b >= 230, cornerPixel.r <= 30 else {
       throw smokeFailure("FACE_ONLY privacy regressed to a rectangular mask instead of ellipse geometry.")
     }
+    let bodyWithoutHead = IOSPreviewPerson(id: 0, detection: IOSYoloDetection(
+      x1: 8, y1: 4, x2: 44, y2: 60, confidence: 0.99,
+      mask: makeProtoMask(sourceRects: [(20, 26, 44, 60)], preprocess: preprocess)))
+    let unselectedNeighbor = IOSPreviewPerson(id: 1, detection: makeDetection(x1: 46, y1: 4, x2: 62, y2: 60))
+    let fullBodyFaceUnion = try renderer.render(
+      source: source, persons: [bodyWithoutHead, unselectedNeighbor], preprocess: preprocess,
+      fullBodyIds: [0], faceOnlyIds: [], effects: effects,
+      faceRegions: [0: detectedRegion, 1: IOSFacePrivacyEllipse(centerX: 54, centerY: 12,
+        radiusX: 4, radiusY: 6, source: .detectedFace)])
+    let bodyFacePixel = try pixel(fullBodyFaceUnion, x: 32, y: 12)
+    let bodyTorsoPixel = try pixel(fullBodyFaceUnion, x: 32, y: 40)
+    let unselectedFacePixel = try pixel(fullBodyFaceUnion, x: 54, y: 12)
+    guard bodyFacePixel.r >= 240, bodyFacePixel.b <= 20, bodyTorsoPixel.r >= 240,
+          unselectedFacePixel.b >= 230, unselectedFacePixel.r <= 30 else {
+      throw smokeFailure("Full-body privacy omitted its selected face or included an unselected face.")
+    }
+
+    let suppressedHeadIds = IOSPrivacySelectionScope.compositorFaceIds(
+      selected: [0], coveredHeadFallbackIds: [0], explicitFaceRegionIds: [])
+    let suppressedHeadRendered = try renderer.render(
+      source: source, persons: [person], preprocess: preprocess,
+      fullBodyIds: [], faceOnlyIds: suppressedHeadIds, effects: effects
+    )
+    let suppressedHeadPixel = try pixel(suppressedHeadRendered, x: 32, y: 12)
+    guard suppressedHeadPixel.b >= 230, suppressedHeadPixel.r <= 30 else {
+      throw smokeFailure("The compositor recreated a fully occluded guessed head.")
+    }
     let syntheticRendered = try renderer.render(
       source: source,
       persons: [],
@@ -656,6 +683,9 @@ enum IOSFacePrivacyPhase5Smoke {
       "class_continuity_steps": [continuityFirstStep, continuitySecondStep],
       "class_continuity_translation": [translatedSecond.centerX, translatedSecond.centerY],
       "vision_runtime_face_count": visionRuntimeFaces.count,
+      "full_body_face_union_pixel": [bodyFacePixel.r, bodyFacePixel.g, bodyFacePixel.b, bodyFacePixel.a],
+      "full_body_unselected_face_pixel": [unselectedFacePixel.r, unselectedFacePixel.g, unselectedFacePixel.b, unselectedFacePixel.a],
+      "suppressed_head_pixel": [suppressedHeadPixel.r, suppressedHeadPixel.g, suppressedHeadPixel.b, suppressedHeadPixel.a],
       "center_pixel": [centerPixel.r, centerPixel.g, centerPixel.b, centerPixel.a],
       "corner_pixel": [cornerPixel.r, cornerPixel.g, cornerPixel.b, cornerPixel.a],
       "synthetic_pixel": [syntheticPixel.r, syntheticPixel.g, syntheticPixel.b, syntheticPixel.a],
@@ -785,9 +815,9 @@ enum IOSFacePrivacyPhase5Smoke {
             ) else {
         return false
       }
+      // Match the top-row-first CGImage -> writer readback convention. A
+      // second Y flip would test the opposite body location instead of a face.
       context.interpolationQuality = .none
-      context.translateBy(x: 0, y: CGFloat(height))
-      context.scaleBy(x: 1, y: -1)
       context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
       return true
     }
