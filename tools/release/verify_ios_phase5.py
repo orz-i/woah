@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import sys
 from pathlib import Path
 
@@ -57,6 +58,27 @@ def verify_trace_contract() -> None:
     }
     names = {case.get("name") for case in cases if isinstance(case, dict)}
     check(required_cases.issubset(names), f"Golden Trace missing privacy-critical cases: {sorted(required_cases - names)}")
+
+    captured=ROOT/"crates/frame-kernel/testdata/tracking-golden-canonical-v1.json"
+    raw=captured.read_bytes()
+    check(hashlib.sha256(raw).hexdigest()=="20708f44714c6d6a68e4fae095f6f7dee74c196e8689a8a6fcc4f9660edb954b",
+          "Independent native Golden capture changed; regenerate and review provenance")
+    canonical={case['name']:case for case in json.loads(raw)['cases']}
+    for case in cases:
+        reference=canonical.get(case.get('name'))
+        check(reference is not None,f"Native Golden capture missing {case.get('name')}")
+        if reference is None:continue
+        by_step={step['step']:step for step in reference['steps']}
+        for index,step in enumerate(case.get('steps',[])):
+            if not step.get('expect'):continue
+            actual={row['id']:row for row in by_step[index]['tracks']}
+            for expected in step['expect']:
+                native=actual.get(expected.get('id'))
+                check(native is not None,f"{case['name']}: expected ID not in native capture")
+                if native is None:continue
+                for key in ['state','observed','identityProtected','privacySelected','missedFrames','observationAge']:
+                    if key in expected:
+                        check(expected[key]==native[key],f"{case['name']}: native Golden mismatch {key}")
 
     allowed_states = {"ACTIVE", "OCCLUDED", "REACQUIRING", "LOST"}
     for case in cases:
@@ -122,7 +144,11 @@ def verify_trace_contract() -> None:
                     check(expectation.get("privacySelected") is True, f"{name}: fallback may only cover a selected identity")
                 grace = expectation.get("occlusionGraceRemaining")
                 if grace is not None:
-                    check(isinstance(grace, int) and 0 <= grace <= 10, f"{name}: invalid occlusion grace expectation")
+                    maximum=90 if expectation.get("state")=="OCCLUDED" else 10
+                    check(isinstance(grace,int) and 0<=grace<=maximum,f"{name}: invalid occlusion grace expectation")
+                    if expectation.get("state")=="OCCLUDED":
+                        age=expectation.get("observationAge")
+                        check(isinstance(age,int) and age+grace==90,f"{name}: occlusion lease must follow real observation age")
                 travel_ratio = expectation.get("maxPredictionTravelRatio")
                 if travel_ratio is not None:
                     check(
@@ -147,38 +173,20 @@ def verify_ios_replay_surface() -> None:
     podspec = text(ROOT / "mobile/packages/dance_native/ios/dance_native.podspec", "dance_native.podspec")
     dart = text(ROOT / "mobile/app/lib/ios_phase5_smoke_main.dart", "combined iOS smoke entrypoint")
 
-    for token in (
-        "struct IOSTemporalTrackSnapshot",
-        "func paritySnapshots()",
-        "identityProtected: identityProtectedIds.contains(track.id)",
-        "privacySelected: privacyTargetIds.contains(track.id)",
-        "track.state = .active",
-        "REACQUIRING is reserved for the interval",
-        "postOcclusionGraceFrames = 10",
-        "protectedGroupActiveMinBBoxIoU: Float32 = 0.35",
-        "protectedGroupReacquireMinBBoxIoU: Float32 = 0.45",
-        "protectedRecoveryMinBBoxIoU: Float32 = 0.50",
-        "protectedRecoveryMinMaskIoU: Float32 = 0.45",
-        "protectedUnobservedMaxCenterTravelRatio: Float32 = 0.30",
-        "protectedLostRecoveryGeometrySufficient",
-        "boundProtectedPredictionAroundLastObservation",
-        "track.occlusionGraceRemaining = postOcclusionGraceFrames",
-        "struct IOSFreshFacePrivacyClassEvidence",
-        "private let faceOnlyPrivacyIds: Set<Int>",
-        "currentFacePrivacyEvidence.removeAll(keepingCapacity: true)",
-        "var ambiguousProtectedDetections = Set<Int>()",
-        "ambiguousProtectedDetections.insert(candidate.detectionIndex)",
-        "ambiguousProtectedDetections.contains($0)",
-        "inferFacePrivacyClassEvidence(",
-        "associationAmbiguityMargin: Float32 = 0.05",
-        "possibleOwners.insert(track.id)",
-        "componentDetections.count == componentOwners.count",
-        "A 1-detection / 2-owner merge is intentionally *not* enough",
-        "componentOwners.allSatisfy({ faceOnlyPrivacyIds.contains($0) })",
-        "reservedDetections.insert(detectionIndex)",
-        "func facePrivacyClassEvidence() -> [IOSFreshFacePrivacyClassEvidence]",
-    ):
-        check(token in tracker, f"Phase 5 tracker parity surface missing: {token}")
+    adapter=text(SOURCES/"IOSSharedTrackingSession.swift","Swift tracking C ABI transport")
+    check("frame_kernel_tracking_step(" in adapter,"Swift identity transport must call Rust")
+    for token in ("struct IOSTemporalTrackSnapshot", "func paritySnapshots()",
+                  "identityProtected: identityProtectedIds.contains(track.id)",
+                  "privacySelected: privacyTargetIds.contains(track.id)",
+                  "IOSSharedTrackingSession()", "session.step(",
+                  "func facePrivacyClassEvidence() -> [IOSFreshFacePrivacyClassEvidence]"):
+        check(token in tracker,f"Shared tracker adapter missing: {token}")
+    shared="\n".join(text(ROOT/"crates/frame-kernel/src"/name,name) for name in
+        ["tracking.rs","tracking_update.rs","tracking_update_groups.rs","tracking_update_misses.rs","tracking_motion.rs","tracking_evidence.rs"])
+    for token in ("pub fn update(","pub(super) fn associate_groups(","geometry_ambiguous(",
+                  "self.face_class_evidence.push", "post_occlusion_grace_frames: 10",
+                  "occlusion_max_duration_frames: 90", "association_ambiguity_margin: 0.05"):
+        check(token in shared,f"Shared tracking policy missing: {token}")
 
     for token in (
         "IOSGoldenTraceResources.phase5TrackingURL()",
@@ -406,10 +414,10 @@ def verify_ios_replay_surface() -> None:
 
 
 def verify_android_reference_boundary() -> None:
-    android = text(
-        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/tracking/TrackManager.kt",
-        "Android TrackManager",
-    )
+    production=text(ROOT/"mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/tracking/TrackManager.kt","Android shared tracker owner")
+    check("FrameKernel.TrackingSession(" in production and "owner.step(" in production,
+          "Android production identity updates must use shared Rust")
+    android=production+text(ROOT/"mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/tracking/CanonicalTrackManager.kt","frozen native tracker reference")
     for token in (
         "val maxMissedFrames: Int = 15",
         "val postOcclusionGraceFrames: Int = 10",

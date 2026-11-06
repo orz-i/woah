@@ -75,7 +75,7 @@ def verify_analyze_pipeline() -> None:
         "preferredBackend: .xnnpack",
         "cache.saveVideoUri(cacheId: cacheId, videoUri: request.videoUri)",
         "cache.savePersonThumbnail(",
-        "schemaVersion: 1",
+        "schemaVersion: 2",
         "cache.saveMetadata(",
         "analysisCacheId: cacheId",
         "id: Int64(index)",
