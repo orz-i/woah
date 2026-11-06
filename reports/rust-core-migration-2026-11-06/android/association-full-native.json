@@ -1,0 +1,32 @@
+{
+  "case": "frame_kernel_association_full",
+  "input": "group-hd-8956295.mp4",
+  "face_only": true,
+  "fill": "solid",
+  "trim_start_ms": 0,
+  "trim_end_ms": 23240,
+  "detected_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "selected_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "hero": 6,
+  "state": "completed",
+  "frames": 581,
+  "output_bytes": 9204560,
+  "expected_frames": 581,
+  "actual_frames": 581,
+  "last_output_pts_us": 23200000
+}

@@ -1,0 +1,149 @@
+{
+  "run_id": "frame_kernel_association_focused_retry",
+  "cases": [
+    {
+      "case": "group_4k_body_face_union",
+      "input_binding_sha256": "a7c7a1660647f5493d484d0de4043fed8eb2a79046b9b63e14075d2b584d8a7e",
+      "decoded_frames": 40,
+      "tested_visible_face_cores": 29,
+      "outside_or_tiny_cores": 0,
+      "uncovered_face_cores": [],
+      "follow_hero_id": null,
+      "status": "passed_all_detected_face_cores",
+      "coverage_measure": "decoded_opaque_red_pixels",
+      "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+    },
+    {
+      "case": "solo_4k_body_face_union",
+      "input_binding_sha256": "5a5e109e011045db2535f7a183d2531a04808a2bbfcca00172cc0c986f576ae5",
+      "decoded_frames": 40,
+      "tested_visible_face_cores": 40,
+      "outside_or_tiny_cores": 0,
+      "uncovered_face_cores": [],
+      "follow_hero_id": null,
+      "status": "passed_all_detected_face_cores",
+      "coverage_measure": "decoded_opaque_red_pixels",
+      "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+    },
+    {
+      "case": "solo_4k_raised_arm_sticker",
+      "input_binding_sha256": "7b48401b6040ed0596c81131419bcb3f73c22ba38cdbbe30b77ce2033858220d",
+      "decoded_frames": 40,
+      "tested_visible_face_cores": 30,
+      "outside_or_tiny_cores": 0,
+      "uncovered_face_cores": [],
+      "follow_hero_id": null,
+      "status": "passed_all_detected_face_cores",
+      "coverage_measure": "recorded_source_ellipses",
+      "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+    },
+    {
+      "case": "solo_4k_raised_arm_solid",
+      "input_binding_sha256": "8c4513f6c607c1f4d19a7b8757e6db5bd26a9195d8f951462e8aafd518ab3b1f",
+      "decoded_frames": 40,
+      "tested_visible_face_cores": 30,
+      "outside_or_tiny_cores": 0,
+      "uncovered_face_cores": [],
+      "follow_hero_id": null,
+      "status": "passed_all_detected_face_cores",
+      "coverage_measure": "decoded_opaque_red_pixels",
+      "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+    },
+    {
+      "case": "solo_4k_raised_arm_body",
+      "input_binding_sha256": "69598d141a77ed62745cbf2f68407c9c663d0972a33c6ae9ac10bc2c43ea4ff6",
+      "decoded_frames": 40,
+      "tested_visible_face_cores": 30,
+      "outside_or_tiny_cores": 0,
+      "uncovered_face_cores": [],
+      "follow_hero_id": null,
+      "status": "passed_all_detected_face_cores",
+      "coverage_measure": "decoded_opaque_red_pixels",
+      "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+    },
+    {
+      "case": "group_hd_overlap_face",
+      "input_binding_sha256": "62ec5c7e99b8373a2b2ad82f4fd02732fe91b77756bc2611cc7df5d272c9c11a",
+      "decoded_frames": 1,
+      "tested_visible_face_cores": 4,
+      "outside_or_tiny_cores": 0,
+      "uncovered_face_cores": [],
+      "follow_hero_id": null,
+      "status": "passed_all_detected_face_cores",
+      "coverage_measure": "decoded_opaque_red_pixels",
+      "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+    },
+    {
+      "case": "group_hd_overlap_body",
+      "input_binding_sha256": "c2750d9f8deac32cfe367d90b633169623a87a241e4f16f06e83abc2055438a2",
+      "decoded_frames": 1,
+      "tested_visible_face_cores": 4,
+      "outside_or_tiny_cores": 0,
+      "uncovered_face_cores": [],
+      "follow_hero_id": null,
+      "status": "passed_all_detected_face_cores",
+      "coverage_measure": "decoded_opaque_red_pixels",
+      "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+    },
+    {
+      "case": "group_4k_face_solid",
+      "input_binding_sha256": "f5840eb7be60e21a88ba2549ca298f6fd8946b117530059dddb9883a12249006",
+      "decoded_frames": 10,
+      "tested_visible_face_cores": 31,
+      "outside_or_tiny_cores": 0,
+      "uncovered_face_cores": [],
+      "follow_hero_id": null,
+      "status": "passed_all_detected_face_cores",
+      "coverage_measure": "decoded_opaque_red_pixels",
+      "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+    },
+    {
+      "case": "group_4k_body_solid",
+      "input_binding_sha256": "5fa57f80cd6663c16cd3ee78460daea2ebeb06bfd149052176d8045147070f0e",
+      "decoded_frames": 10,
+      "tested_visible_face_cores": 23,
+      "outside_or_tiny_cores": 0,
+      "uncovered_face_cores": [],
+      "follow_hero_id": null,
+      "status": "passed_all_detected_face_cores",
+      "coverage_measure": "decoded_opaque_red_pixels",
+      "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+    },
+    {
+      "case": "group_4k_tail_face",
+      "input_binding_sha256": "214ee1723b5a3374a06a607ee32d6e8993b8da39f60aab819698d29b7017cee5",
+      "decoded_frames": 10,
+      "tested_visible_face_cores": 4,
+      "outside_or_tiny_cores": 0,
+      "uncovered_face_cores": [],
+      "follow_hero_id": null,
+      "status": "passed_all_detected_face_cores",
+      "coverage_measure": "decoded_opaque_red_pixels",
+      "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+    },
+    {
+      "case": "solo_4k_custom_gallery_probe",
+      "input_binding_sha256": "e42bad509d94741871d2e7c33742b8dd19cd87502112bc48e363b7d4dcbcbe5f",
+      "decoded_frames": 16,
+      "tested_visible_face_cores": 16,
+      "outside_or_tiny_cores": 0,
+      "uncovered_face_cores": [],
+      "follow_hero_id": null,
+      "status": "passed_all_detected_face_cores",
+      "coverage_measure": "recorded_source_ellipses",
+      "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+    },
+    {
+      "case": "solo_4k_immediate_retry_probe",
+      "input_binding_sha256": "fe958f24bccc371c2aabbf3fba1f7a7e7c6b8c2143cacdfa880b8521398cd40c",
+      "decoded_frames": 40,
+      "tested_visible_face_cores": 40,
+      "outside_or_tiny_cores": 0,
+      "uncovered_face_cores": [],
+      "follow_hero_id": null,
+      "status": "passed_all_detected_face_cores",
+      "coverage_measure": "recorded_source_ellipses",
+      "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+    }
+  ]
+}
