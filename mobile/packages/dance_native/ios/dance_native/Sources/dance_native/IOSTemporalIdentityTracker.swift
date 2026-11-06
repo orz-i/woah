@@ -1,4 +1,5 @@
 import Foundation
+import FrameKernelC
 
 /// Only a uniform FACE_ONLY selection of every initial person except the
 /// explicit follow target can use identity-independent current face coverage.
@@ -81,17 +82,10 @@ final class IOSTemporalIdentityTracker {
     var lastTimestampUs: Int64
   }
 
-  private struct Candidate {
-    let trackIndex: Int
-    let detectionIndex: Int
-    let score: Float32
-    let bboxIoU: Float32
-    let maskIoU: Float32
-  }
-
   private let metadata: IOSAnalysisMetadata?
   private let identityProtectedIds: Set<Int>
   private let privacyTargetIds: Set<Int>
+  private let bodyPrivacyIds: Set<Int>
   private let faceOnlyPrivacyIds: Set<Int>
   private let usesCurrentSceneFaceCoverage: Bool
   private let frameWidth: Int
@@ -129,6 +123,7 @@ final class IOSTemporalIdentityTracker {
   private var currentFacePrivacyEvidence: [IOSFreshFacePrivacyClassEvidence] = []
   private var nextTrackId = 0
   private var initialized = false
+  private var sharedSession: IOSSharedTrackingSession?
   private var latestTimestampUs: Int64 = 0
   private var followStateTargetId: Int?
   private var followIdentityTrackId: Int?
@@ -149,6 +144,7 @@ final class IOSTemporalIdentityTracker {
     self.metadata = metadata
     self.frameWidth = max(1, frameWidth)
     self.frameHeight = max(1, frameHeight)
+    bodyPrivacyIds = fullBodyIds
     faceOnlyPrivacyIds = faceOnlyIds.subtracting(fullBodyIds)
     privacyTargetIds = fullBodyIds.union(faceOnlyIds)
     self.usesCurrentSceneFaceCoverage = usesCurrentSceneFaceCoverage
@@ -182,138 +178,79 @@ final class IOSTemporalIdentityTracker {
     timestampUs: Int64
   ) throws -> [IOSPreviewPerson] {
     latestTimestampUs = timestampUs
-    currentFacePrivacyEvidence.removeAll(keepingCapacity: true)
+    let session: IOSSharedTrackingSession
+    if let existing = sharedSession { session = existing }
+    else {
+      session = try IOSSharedTrackingSession()
+      try session.configure(protected: identityProtectedIds, body: bodyPrivacyIds,
+        face: faceOnlyPrivacyIds, dormancy: !bodyPrivacyIds.isEmpty && !faceOnlyPrivacyIds.isEmpty)
+      sharedSession = session
+    }
+    let observations = detections.map { detection in
+      IOSSharedTrackingObservation(bounds: SIMD4(detection.x1, detection.y1, detection.x2, detection.y2),
+        confidence: detection.confidence, footY: detection.y2,
+        mask: detection.mask.isEmpty ? nil : detection.mask,
+        maskWidth: detection.mask.isEmpty ? 0 : IOSYoloPostprocessor.protoSize,
+        maskHeight: detection.mask.isEmpty ? 0 : IOSYoloPostprocessor.protoSize,
+        transform: IOSFrameKernel.transform(preprocess))
+    }
+    var assigned: [Int] = []
     if !initialized {
-      initialized = true
-      let assigned = try IOSPreviewIdentityMatcher.assign(
-        detections: detections,
-        metadata: metadata,
-        frameWidth: frameWidth,
-        frameHeight: frameHeight
-      )
-      tracks = assigned.map { person in
-        nextTrackId = max(nextTrackId, person.id + 1)
-        return Track(
-          id: person.id,
-          detection: person.detection,
-          predictedX1: person.detection.x1,
-          predictedY1: person.detection.y1,
-          predictedX2: person.detection.x2,
-          predictedY2: person.detection.y2,
-          lastTimestampUs: timestampUs
-        )
+      assigned = try IOSPreviewIdentityMatcher.assign(detections: detections, metadata: metadata,
+        frameWidth: frameWidth, frameHeight: frameHeight).map(\.id)
+    }
+    let snapshot = try session.step(action: initialized ? 1 : 0, timestampUs: timestampUs,
+      observations: observations, assignedIds: assigned)
+    let previous = Dictionary(uniqueKeysWithValues: tracks.map { ($0.id, $0) })
+    tracks = snapshot.regions.map { region in
+      let anchor = region.anchor
+      let canonical = IOSYoloDetection(x1: anchor.x, y1: anchor.y, x2: anchor.z, y2: anchor.w,
+        confidence: region.confidence,
+        mask: region.observed ? (region.mask ?? []) : (previous[region.id]?.detection.mask ?? []))
+      var track = Track(id: region.id, detection: canonical,
+        predictedX1: region.bounds.x, predictedY1: region.bounds.y,
+        predictedX2: region.bounds.z, predictedY2: region.bounds.w, lastTimestampUs: timestampUs)
+      switch region.state {
+      case 2: track.state = .occluded
+      case 3: track.state = .reacquiring
+      case 4, 5: track.state = .lost
+      default: track.state = .active
       }
-      try ensureInitialPrivacyRoots()
-      return tracks.map { IOSPreviewPerson(id: $0.id, detection: $0.detection) }
+      track.missedFrames = region.missedFrames
+      track.occlusionGraceRemaining = track.state == .reacquiring
+        ? max(0, postOcclusionGraceFrames - region.missedFrames)
+        : max(0, maxOcclusionFrames - region.missedFrames)
+      track.age = region.age
+      track.observedThisFrame = region.observed
+      return track
     }
-
-    try predict(timestampUs: timestampUs)
-    let assignments = assign(detections: detections)
-    var matchedTracks = Set<Int>()
-    var matchedDetections = Set<Int>()
-    var ambiguousProtectedDetections = Set<Int>()
-
-    for candidate in assignments {
-      guard !matchedTracks.contains(candidate.trackIndex),
-            !matchedDetections.contains(candidate.detectionIndex) else {
-        continue
-      }
-      let protected = identityProtectedIds.contains(tracks[candidate.trackIndex].id)
-      if protected && isAmbiguousProtectedAssignment(candidate, detections: detections) {
-        ambiguousProtectedDetections.insert(candidate.detectionIndex)
-        continue
-      }
-      try observe(
-        trackIndex: candidate.trackIndex,
-        detection: detections[candidate.detectionIndex],
-        timestampUs: timestampUs
-      )
-      matchedTracks.insert(candidate.trackIndex)
-      matchedDetections.insert(candidate.detectionIndex)
+    if !initialized { try ensureInitialPrivacyRoots(); initialized = true }
+    currentFacePrivacyEvidence = snapshot.faceEvidence.filter { $0.selection == 0 }.map { evidence in
+      IOSFreshFacePrivacyClassEvidence(detectionIndex: evidence.detectionIndex,
+        detection: detections[evidence.detectionIndex], residualTrackIds: evidence.residualIds)
     }
-
-    let reservedFaceClassDetections = inferFacePrivacyClassEvidence(
-      detections: detections,
-      candidates: assignments,
-      matchedTracks: matchedTracks,
-      matchedDetections: matchedDetections,
-      ambiguousProtectedDetections: ambiguousProtectedDetections
-    )
-
-    for index in tracks.indices where !matchedTracks.contains(index) {
-      markMissed(trackIndex: index)
-    }
-
-    // Android reserves ambiguous protected-group detections instead of
-    // immediately minting a new identity for a sample whose ownership is not
-    // established. In FULL_BODY-only mode, that same detector sample is
-    // already fed to the separate fail-closed privacy-class compositor.
-    // Creating a new unprotected track here would make a stale duplicate
-    // compete with the original protected ID on every later frame, eventually
-    // turning a recoverable crossing into 91-frame false LOST.
-    // Keep FACE_ONLY's existing cardinality-balanced residual-ID behavior:
-    // anonymous class evidence must never rename a protected face identity.
-    let reservedFullBodyAmbiguityDetections = faceOnlyPrivacyIds.isEmpty
-      && !privacyTargetIds.isEmpty ? ambiguousProtectedDetections : []
-    for detectionIndex in detections.indices
-      where !matchedDetections.contains(detectionIndex)
-        && !reservedFaceClassDetections.contains(detectionIndex)
-        && !reservedFullBodyAmbiguityDetections.contains(detectionIndex) {
-      let detection = detections[detectionIndex]
-      tracks.append(Track(
-        id: nextTrackId,
-        detection: detection,
-        predictedX1: detection.x1,
-        predictedY1: detection.y1,
-        predictedX2: detection.x2,
-        predictedY2: detection.y2,
-        lastTimestampUs: timestampUs
-      ))
-      nextTrackId += 1
-    }
-
-    tracks.removeAll { track in
-      !identityProtectedIds.contains(track.id) && track.missedFrames > maxMissedFrames
-    }
-
     var output: [IOSPreviewPerson] = []
-    output.reserveCapacity(tracks.count)
-    for track in tracks {
-      if track.observedThisFrame {
-        output.append(IOSPreviewPerson(id: track.id, detection: track.detection))
-        continue
+    for (region, track) in zip(snapshot.regions, tracks) {
+      if !region.observed && !privacyTargetIds.contains(region.id) { continue }
+      if !region.observed && usesCurrentSceneFaceCoverage && !detections.isEmpty
+        && faceOnlyPrivacyIds.contains(region.id) { continue }
+      if !region.observed && region.missedFrames > maxOcclusionFrames {
+        throw PigeonError(code: "EXPORT_PRIVACY_UNRESOLVED",
+          message: "Selected export identity could not be resolved safely.",
+          details: ["personId": region.id, "missedFrames": region.missedFrames])
       }
-      guard privacyTargetIds.contains(track.id) else { continue }
-      // In this narrowly scoped selection the compositor protects every fresh
-      // non-hero observation AND every unowned detected face. A missing root
-      // keeps its real LOST state; neither the hero nor a new entrant is renamed
-      // to revive it. No stale predicted head is used as current face geometry.
-      // With no current scene observations, retain the normal fail-closed path.
-      if usesCurrentSceneFaceCoverage && !detections.isEmpty && faceOnlyPrivacyIds.contains(track.id) { continue }
-      if track.missedFrames > maxOcclusionFrames {
-        throw PigeonError(
-          code: "EXPORT_PRIVACY_UNRESOLVED",
-          message: "Selected iOS export identity could not be resolved safely.",
-          details: ["personId": track.id, "missedFrames": track.missedFrames]
-        )
+      let rendered: IOSYoloDetection
+      if let mask = region.mask {
+        rendered = IOSYoloDetection(x1: region.bounds.x, y1: region.bounds.y,
+          x2: region.bounds.z, y2: region.bounds.w, confidence: region.confidence, mask: mask)
+      } else if region.observed { rendered = track.detection }
+      else { rendered = conservativeFallbackDetection(track: track, preprocess: preprocess) }
+      guard region.observed || intersectsFrame(rendered) else {
+        throw PigeonError(code: "EXPORT_PRIVACY_UNRESOLVED",
+          message: "Selected export identity has no visible privacy fallback.", details: region.id)
       }
-      let fallback = conservativeFallbackDetection(track: track, preprocess: preprocess)
-      // A prediction outside the source frame is not proof that the selected
-      // person physically exited. Do not encode an unprotected frame while
-      // the identity is still unresolved: the 90-frame limit is a maximum,
-      // not permission to silently omit a missing privacy mask.
-      guard intersectsFrame(fallback) else {
-        throw PigeonError(
-          code: "EXPORT_PRIVACY_UNRESOLVED",
-          message: "Selected iOS export identity has no visible privacy fallback.",
-          details: ["personId": track.id, "missedFrames": track.missedFrames]
-        )
-      }
-      output.append(IOSPreviewPerson(
-        id: track.id,
-        detection: fallback,
-        conservativePrivacyFallback: true
-      ))
+      output.append(IOSPreviewPerson(id: region.id, detection: rendered,
+        conservativePrivacyFallback: !region.observed))
     }
     return output
   }
@@ -336,97 +273,6 @@ final class IOSTemporalIdentityTracker {
   /// even when they failed the normal identity-evidence threshold, because such
   /// a competitor can still be the reason `isAmbiguousProtectedAssignment`
   /// refused an identity commit.
-  private func inferFacePrivacyClassEvidence(
-    detections: [IOSYoloDetection],
-    candidates: [Candidate],
-    matchedTracks: Set<Int>,
-    matchedDetections: Set<Int>,
-    ambiguousProtectedDetections: Set<Int>
-  ) -> Set<Int> {
-    guard !faceOnlyPrivacyIds.isEmpty else { return [] }
-
-    let ambiguousDetections = detections.indices.filter {
-      !matchedDetections.contains($0) && ambiguousProtectedDetections.contains($0)
-    }
-    guard !ambiguousDetections.isEmpty else { return [] }
-
-    var ownerIdsByDetection: [Int: Set<Int>] = [:]
-    for detectionIndex in ambiguousDetections {
-      let candidateScores = candidates.compactMap { candidate -> Float32? in
-        guard candidate.detectionIndex == detectionIndex,
-              !matchedTracks.contains(candidate.trackIndex) else {
-          return nil
-        }
-        return candidate.score
-      }
-      guard let bestCandidateScore = candidateScores.max() else { continue }
-
-      let detection = detections[detectionIndex]
-      var possibleOwners = Set<Int>()
-      for trackIndex in tracks.indices where !matchedTracks.contains(trackIndex) {
-        let track = tracks[trackIndex]
-        let score = bboxIoU(track: track, detection: detection) * 0.45
-          + maskIoU(track.detection.mask, detection.mask) * 0.35
-          + motionScore(track: track, detection: detection) * 0.20
-        if score >= bestCandidateScore - associationAmbiguityMargin {
-          possibleOwners.insert(track.id)
-        }
-      }
-      if !possibleOwners.isEmpty {
-        ownerIdsByDetection[detectionIndex] = possibleOwners
-      }
-    }
-
-    var visitedDetections = Set<Int>()
-    var reservedDetections = Set<Int>()
-    for seedDetection in ambiguousDetections.sorted() {
-      guard !visitedDetections.contains(seedDetection),
-            let seedOwners = ownerIdsByDetection[seedDetection],
-            !seedOwners.isEmpty else {
-        continue
-      }
-
-      var componentDetections: Set<Int> = [seedDetection]
-      var componentOwners = seedOwners
-      var expanded = true
-      while expanded {
-        expanded = false
-        for detectionIndex in ambiguousDetections
-          where !componentDetections.contains(detectionIndex) {
-          guard let owners = ownerIdsByDetection[detectionIndex],
-                !componentOwners.isDisjoint(with: owners) else {
-            continue
-          }
-          componentDetections.insert(detectionIndex)
-          componentOwners.formUnion(owners)
-          expanded = true
-        }
-      }
-      visitedDetections.formUnion(componentDetections)
-
-      // Android only infers privacy class for a cardinality-balanced residual
-      // set. A 1-detection / 2-owner merge is intentionally *not* enough.
-      guard componentDetections.count == componentOwners.count,
-            componentOwners.allSatisfy({ faceOnlyPrivacyIds.contains($0) }) else {
-        continue
-      }
-
-      for detectionIndex in componentDetections.sorted() {
-        currentFacePrivacyEvidence.append(IOSFreshFacePrivacyClassEvidence(
-          detectionIndex: detectionIndex,
-          detection: detections[detectionIndex],
-          residualTrackIds: componentOwners
-        ))
-        reservedDetections.insert(detectionIndex)
-      }
-    }
-    return reservedDetections
-  }
-
-  /// Phase 5 Golden Trace observation surface. This is intentionally internal
-  /// to the native module and does not change the Flutter/Pigeon API. It lets
-  /// deterministic Simulator tests compare iOS identity/privacy lifecycle
-  /// decisions with the Android TrackManager reference contract.
   func observedBounds(for id: Int) -> SIMD4<Float>? {
     guard let track = tracks.first(where: { $0.id == id && $0.observedThisFrame }) else { return nil }
     let box = track.detection
@@ -729,247 +575,6 @@ final class IOSTemporalIdentityTracker {
         details: unresolved.sorted()
       )
     }
-  }
-
-  private func predict(timestampUs: Int64) throws {
-    for index in tracks.indices {
-      var track = tracks[index]
-      track.observedThisFrame = false
-      let motion = try track.motion ?? IOSFrameKernel.BoxFilter(
-        bounds: SIMD4<Float>(track.detection.x1, track.detection.y1, track.detection.x2, track.detection.y2),
-        timestampUs: track.lastTimestampUs)
-      let bounds = try motion.predict(timestampUs: timestampUs)
-      track.motion = motion
-      track.predictedX1 = bounds.x
-      track.predictedY1 = bounds.y
-      track.predictedX2 = bounds.z
-      track.predictedY2 = bounds.w
-      if identityProtectedIds.contains(track.id), track.missedFrames > 0 {
-        boundProtectedPredictionAroundLastObservation(track: &track)
-      }
-      track.lastTimestampUs = timestampUs
-      track.age += 1
-      tracks[index] = track
-    }
-  }
-
-  private func assign(detections: [IOSYoloDetection]) -> [Candidate] {
-    guard !tracks.isEmpty, !detections.isEmpty else { return [] }
-    var candidates: [Candidate] = []
-    candidates.reserveCapacity(tracks.count * detections.count)
-    for trackIndex in tracks.indices {
-      let track = tracks[trackIndex]
-      for detectionIndex in detections.indices {
-        let detection = detections[detectionIndex]
-        let bbox = bboxIoU(track: track, detection: detection)
-        let mask = maskIoU(track.detection.mask, detection.mask)
-        let motion = motionScore(track: track, detection: detection)
-        let score = bbox * 0.45 + mask * 0.35 + motion * 0.20
-        let protected = identityProtectedIds.contains(track.id)
-        let threshold: Float32 = protected ? 0.22 : 0.18
-        let identityEvidence = protected
-          ? protectedIdentityEvidenceSufficient(state: track.state, bboxIoU: bbox, maskIoU: mask)
-          : (bbox >= 0.08 || mask >= 0.06)
-        let recoveryGeometry = !protected
-          || track.state != .lost
-          || protectedLostRecoveryGeometrySufficient(track: track, detection: detection, bboxIoU: bbox)
-        if score >= threshold && identityEvidence && recoveryGeometry {
-          candidates.append(Candidate(
-            trackIndex: trackIndex,
-            detectionIndex: detectionIndex,
-            score: score,
-            bboxIoU: bbox,
-            maskIoU: mask
-          ))
-        }
-      }
-    }
-    candidates.sort {
-      if $0.score != $1.score { return $0.score > $1.score }
-      if $0.trackIndex != $1.trackIndex { return $0.trackIndex < $1.trackIndex }
-      return $0.detectionIndex < $1.detectionIndex
-    }
-    return candidates
-  }
-
-  private func isAmbiguousProtectedAssignment(
-    _ candidate: Candidate,
-    detections: [IOSYoloDetection]
-  ) -> Bool {
-    let track = tracks[candidate.trackIndex]
-    let competingDetectionScore = detections.indices
-      .filter { $0 != candidate.detectionIndex }
-      .map { detectionIndex -> Float32 in
-        let detection = detections[detectionIndex]
-        return bboxIoU(track: track, detection: detection) * 0.45
-          + maskIoU(track.detection.mask, detection.mask) * 0.35
-          + motionScore(track: track, detection: detection) * 0.20
-      }
-      .max() ?? -1
-    if competingDetectionScore >= candidate.score - associationAmbiguityMargin {
-      return true
-    }
-
-    let detection = detections[candidate.detectionIndex]
-    let competingTrackScore = tracks.indices
-      .filter { $0 != candidate.trackIndex }
-      .map { trackIndex -> Float32 in
-        let other = tracks[trackIndex]
-        return bboxIoU(track: other, detection: detection) * 0.45
-          + maskIoU(other.detection.mask, detection.mask) * 0.35
-          + motionScore(track: other, detection: detection) * 0.20
-      }
-      .max() ?? -1
-    return competingTrackScore >= candidate.score - associationAmbiguityMargin
-  }
-
-  private func observe(
-    trackIndex: Int,
-    detection: IOSYoloDetection,
-    timestampUs: Int64
-  ) throws {
-    var track = tracks[trackIndex]
-    let bounds = SIMD4<Float>(detection.x1, detection.y1, detection.x2, detection.y2)
-    let motion = try track.motion ?? IOSFrameKernel.BoxFilter(bounds: bounds, timestampUs: timestampUs)
-    try motion.observe(bounds: bounds, timestampUs: timestampUs)
-    track.motion = motion
-    track.detection = detection
-    track.predictedX1 = detection.x1
-    track.predictedY1 = detection.y1
-    track.predictedX2 = detection.x2
-    track.predictedY2 = detection.y2
-    track.observedThisFrame = true
-    // Android TrackManager exposes a successfully re-observed identity as
-    // ACTIVE in that same frame. REACQUIRING is reserved for the interval in
-    // which the identity is still unresolved, not the first fresh observation.
-    track.state = .active
-    track.missedFrames = 0
-    track.occlusionGraceRemaining = 0
-    track.lastTimestampUs = timestampUs
-    tracks[trackIndex] = track
-  }
-
-  private func markMissed(trackIndex: Int) {
-    var track = tracks[trackIndex]
-    track.missedFrames += 1
-    let wasLost = track.state == .lost
-    let overlapsObservedTrack = tracks.indices.contains { otherIndex in
-      guard otherIndex != trackIndex, tracks[otherIndex].observedThisFrame else { return false }
-      return bboxOverlapRatio(track: track, other: tracks[otherIndex]) >= 0.30
-    }
-    if !wasLost && overlapsObservedTrack && track.missedFrames <= maxOcclusionFrames {
-      track.state = .occluded
-      track.occlusionGraceRemaining = postOcclusionGraceFrames
-    } else if !wasLost && track.occlusionGraceRemaining > 0 {
-      track.state = .reacquiring
-      track.occlusionGraceRemaining -= 1
-    } else if wasLost {
-      // A LOST protected identity must not become OCCLUDED again merely because
-      // an unrelated fresh track happens to overlap its bounded prediction.
-      // Android keeps that case in the dedicated strict LOST recovery path.
-      track.state = .lost
-      track.occlusionGraceRemaining = 0
-    } else if track.missedFrames <= maxMissedFrames {
-      track.state = .reacquiring
-    } else {
-      track.state = .lost
-      track.occlusionGraceRemaining = 0
-    }
-    tracks[trackIndex] = track
-  }
-
-  private func protectedIdentityEvidenceSufficient(
-    state: IOSTrackState,
-    bboxIoU: Float32,
-    maskIoU: Float32
-  ) -> Bool {
-    switch state {
-    case .lost:
-      return bboxIoU >= protectedRecoveryMinBBoxIoU
-        || maskIoU >= protectedRecoveryMinMaskIoU
-    case .occluded, .reacquiring:
-      return bboxIoU >= protectedGroupReacquireMinBBoxIoU
-        || maskIoU >= protectedGroupReacquireMinMaskIoU
-    case .active:
-      return bboxIoU >= protectedGroupActiveMinBBoxIoU
-        || maskIoU >= protectedGroupActiveMinMaskIoU
-    }
-  }
-
-  private func protectedLostRecoveryGeometrySufficient(
-    track: Track,
-    detection: IOSYoloDetection,
-    bboxIoU: Float32
-  ) -> Bool {
-    let predictedCenterX = (track.predictedX1 + track.predictedX2) * 0.5
-    let predictedCenterY = (track.predictedY1 + track.predictedY2) * 0.5
-    let observedCenterX = (track.detection.x1 + track.detection.x2) * 0.5
-    let observedCenterY = (track.detection.y1 + track.detection.y2) * 0.5
-    let detectionCenterX = (detection.x1 + detection.x2) * 0.5
-    let detectionCenterY = (detection.y1 + detection.y2) * 0.5
-
-    let dx = predictedCenterX - detectionCenterX
-    let dy = predictedCenterY - detectionCenterY
-    let distance = sqrt(dx * dx + dy * dy)
-    let predictedWidth = max(1, track.predictedX2 - track.predictedX1)
-    let predictedHeight = max(1, track.predictedY2 - track.predictedY1)
-    let detectionWidth = max(1, detection.x2 - detection.x1)
-    let detectionHeight = max(1, detection.y2 - detection.y1)
-    let referenceDimension = max(
-      max(predictedWidth, predictedHeight),
-      max(detectionWidth, detectionHeight)
-    )
-
-    let predictionDx = predictedCenterX - observedCenterX
-    let predictionDy = predictedCenterY - observedCenterY
-    let predictionTravel = sqrt(predictionDx * predictionDx + predictionDy * predictionDy)
-    let candidateDx = detectionCenterX - observedCenterX
-    let candidateDy = detectionCenterY - observedCenterY
-    let predictionProgress: Float32
-    if predictionTravel > 0.0001 {
-      predictionProgress = (
-        candidateDx * predictionDx + candidateDy * predictionDy
-      ) / (predictionTravel * predictionTravel)
-    } else {
-      predictionProgress = 1
-    }
-
-    let hasMeaningfulPrediction = predictionTravel >= referenceDimension * 0.10
-    let motionConsistent = !hasMeaningfulPrediction
-      || bboxIoU > 0.05
-      || predictionProgress >= 0.25
-    let nearby = bboxIoU > 0.05 || distance < referenceDimension * 0.80
-    return nearby && motionConsistent
-  }
-
-  private func boundProtectedPredictionAroundLastObservation(track: inout Track) {
-    let anchorWidth = max(1, track.detection.x2 - track.detection.x1)
-    let anchorHeight = max(1, track.detection.y2 - track.detection.y1)
-    let anchorCenterX = (track.detection.x1 + track.detection.x2) * 0.5
-    let anchorCenterY = (track.detection.y1 + track.detection.y2) * 0.5
-    let predictedCenterX = (track.predictedX1 + track.predictedX2) * 0.5
-    let predictedCenterY = (track.predictedY1 + track.predictedY2) * 0.5
-    let dx = predictedCenterX - anchorCenterX
-    let dy = predictedCenterY - anchorCenterY
-    let travel = sqrt(dx * dx + dy * dy)
-    let maxTravel = max(anchorWidth, anchorHeight) * protectedUnobservedMaxCenterTravelRatio
-    let travelScale = travel > maxTravel && travel > 0.0001 ? maxTravel / travel : 1
-    let centerX = anchorCenterX + dx * travelScale
-    let centerY = anchorCenterY + dy * travelScale
-    let rawPredictedWidth = max(1, track.predictedX2 - track.predictedX1)
-    let rawPredictedHeight = max(1, track.predictedY2 - track.predictedY1)
-    let predictedWidth = min(
-      anchorWidth * protectedUnobservedMaxScale,
-      max(anchorWidth * protectedUnobservedMinScale, rawPredictedWidth)
-    )
-    let predictedHeight = min(
-      anchorHeight * protectedUnobservedMaxScale,
-      max(anchorHeight * protectedUnobservedMinScale, rawPredictedHeight)
-    )
-    track.predictedX1 = centerX - predictedWidth * 0.5
-    track.predictedY1 = centerY - predictedHeight * 0.5
-    track.predictedX2 = centerX + predictedWidth * 0.5
-    track.predictedY2 = centerY + predictedHeight * 0.5
   }
 
   private func conservativeFallbackDetection(
