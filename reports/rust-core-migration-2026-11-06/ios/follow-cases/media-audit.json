@@ -1,0 +1,92 @@
+{
+  "run_id": "frame_kernel_follow_cases",
+  "cases": [
+    {
+      "case": "group_face_sticker_follow",
+      "status": "passed_media",
+      "sha256": "89cc56fce9fd2285ed26044212cc07b2b7858e92417a3176a59e634ae5b3a4c1",
+      "bytes": 1577849,
+      "dimensions": [
+        720,
+        1280
+      ],
+      "decoded_frames": 76,
+      "expected_frames": 76,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "f977d38ebfd9fc2384511bdac26ebed215bee7480bfcf275f40bf5a03a490d3b"
+    },
+    {
+      "case": "group_face_solid_follow",
+      "status": "passed_media",
+      "sha256": "612afc91701a7e9b562d6ae2693c465fb16efa2d7066e1e91cfd5f0016c68da8",
+      "bytes": 1557357,
+      "dimensions": [
+        720,
+        1280
+      ],
+      "decoded_frames": 76,
+      "expected_frames": 76,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "f4aee20f6b761fbc330bb9c9ff99ac9ebbcb68fc338a20d6983621d01657b58b"
+    },
+    {
+      "case": "group_full_length_follow",
+      "status": "passed_media",
+      "sha256": "380a6d2a4f16fd61a33c220be1c22dea53fd21adf301eae180ddcadade682267",
+      "bytes": 11574305,
+      "dimensions": [
+        720,
+        1280
+      ],
+      "decoded_frames": 581,
+      "expected_frames": 581,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "2d4e72743ac73af4c66364816b86964766aa695a717a036602dcb3b385f3c28b"
+    }
+  ]
+}

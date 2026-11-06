@@ -1,0 +1,44 @@
+[
+  {
+    "case": "group_face_sticker_follow",
+    "baseline": {
+      "run": "complete_22",
+      "frames": 76,
+      "decoded_bgr_sha256": "fce388150de903c0f094a3238fb8785e4b66b3c5045c666e7ba87d65d4dc76cb"
+    },
+    "current": {
+      "run": "frame_kernel_follow_cases",
+      "frames": 76,
+      "decoded_bgr_sha256": "fce388150de903c0f094a3238fb8785e4b66b3c5045c666e7ba87d65d4dc76cb"
+    },
+    "same": true
+  },
+  {
+    "case": "group_face_solid_follow",
+    "baseline": {
+      "run": "complete_22",
+      "frames": 76,
+      "decoded_bgr_sha256": "0ff9ccf10942d6b6cfb295545bea05e3e47eb1a630ba7c0b9b02a77c82fd7d12"
+    },
+    "current": {
+      "run": "frame_kernel_follow_cases",
+      "frames": 76,
+      "decoded_bgr_sha256": "0ff9ccf10942d6b6cfb295545bea05e3e47eb1a630ba7c0b9b02a77c82fd7d12"
+    },
+    "same": true
+  },
+  {
+    "case": "group_full_length_follow",
+    "baseline": {
+      "run": "complete_22",
+      "frames": 581,
+      "decoded_bgr_sha256": "9be83cb291916ef5f8e3e23e5855e08a1dd3a72a00179d50999c914722aab9a3"
+    },
+    "current": {
+      "run": "frame_kernel_follow_cases",
+      "frames": 581,
+      "decoded_bgr_sha256": "9be83cb291916ef5f8e3e23e5855e08a1dd3a72a00179d50999c914722aab9a3"
+    },
+    "same": true
+  }
+]

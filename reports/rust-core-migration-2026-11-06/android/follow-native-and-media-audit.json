@@ -1,0 +1,188 @@
+{
+  "device": "334da6a3 OnePlus8T Android14 API34 arm64-v8a",
+  "algorithm_commit": "fd09469c",
+  "apk_sha256": "f6b0d8b7fac3806153d8605ab167db50a597d9d764b8eccef6c93000ee57f964",
+  "encoding_probe_bitrate": 4000000,
+  "cases": [
+    {
+      "case": "frame_kernel_follow_sticker",
+      "native": {
+        "case": "frame_kernel_follow_sticker",
+        "input": "group-hd-8956295.mp4",
+        "face_only": true,
+        "fill": "sticker",
+        "trim_start_ms": 0,
+        "trim_end_ms": 3040,
+        "detected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "selected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "hero": 6,
+        "state": "completed",
+        "frames": 76,
+        "output_bytes": 1188176,
+        "expected_frames": 76,
+        "actual_frames": 76,
+        "last_output_pts_us": 3000000
+      },
+      "media": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "codec_type": "video",
+            "width": 720,
+            "height": 1280,
+            "avg_frame_rate": "25/1",
+            "time_base": "1/90000"
+          }
+        ],
+        "format": {
+          "duration": "3.040000"
+        }
+      },
+      "decoded_frames": 76,
+      "decoded_bgr_sha256": "7eabb273e6aff9f7b48b3d7fdacc7e271125c21d3c3f3ad46bcd3e4701edd7b5",
+      "first_frame_sha256": "e927284af95d45cd6b3617759cfe88e68ad54f7ac8cede73d6f4f7531e6bb65c",
+      "last_frame_sha256": "0ddd6cefae44c5ef4fd1cb8daa46baa1d01ab6f5e356d61bff5552dedef4b2ca",
+      "first_pts_us": 0,
+      "last_pts_us": 3000000,
+      "strict_source_cadence": true,
+      "file_sha256": "efdef7f7519263ff0bb4c2ee16f3dc779cd5268aaf64f5da8f5213957149b6e6"
+    },
+    {
+      "case": "frame_kernel_follow_solid",
+      "native": {
+        "case": "frame_kernel_follow_solid",
+        "input": "group-hd-8956295.mp4",
+        "face_only": true,
+        "fill": "solid",
+        "trim_start_ms": 0,
+        "trim_end_ms": 3040,
+        "detected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "selected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "hero": 6,
+        "state": "completed",
+        "frames": 76,
+        "output_bytes": 1152480,
+        "expected_frames": 76,
+        "actual_frames": 76,
+        "last_output_pts_us": 3000000
+      },
+      "media": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "codec_type": "video",
+            "width": 720,
+            "height": 1280,
+            "avg_frame_rate": "25/1",
+            "time_base": "1/90000"
+          }
+        ],
+        "format": {
+          "duration": "3.040000"
+        }
+      },
+      "decoded_frames": 76,
+      "decoded_bgr_sha256": "2c8a324db0fce3880366a391ce1e9a74b625b3e5150b1eb1135cc69446560d03",
+      "first_frame_sha256": "101e4366e10ef6b1bb2ac34af836dbb7dc5497a5e4287f446bd91bbfa987eb1f",
+      "last_frame_sha256": "d946d8b387e029099f2d0641fbb0d22f09a5b919cb850e50805f611c015db062",
+      "first_pts_us": 0,
+      "last_pts_us": 3000000,
+      "strict_source_cadence": true,
+      "file_sha256": "6e07d846332b211b5441b03424b11ef1165b4cb72ea9bf09cea632fa4db12a59"
+    },
+    {
+      "case": "frame_kernel_follow_full",
+      "native": {
+        "case": "frame_kernel_follow_full",
+        "input": "group-hd-8956295.mp4",
+        "face_only": true,
+        "fill": "solid",
+        "trim_start_ms": 0,
+        "trim_end_ms": 23240,
+        "detected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "selected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "hero": 6,
+        "state": "completed",
+        "frames": 581,
+        "output_bytes": 9204560,
+        "expected_frames": 581,
+        "actual_frames": 581,
+        "last_output_pts_us": 23200000
+      },
+      "media": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "codec_type": "video",
+            "width": 720,
+            "height": 1280,
+            "avg_frame_rate": "25/1",
+            "time_base": "1/90000"
+          }
+        ],
+        "format": {
+          "duration": "23.240000"
+        }
+      },
+      "decoded_frames": 581,
+      "decoded_bgr_sha256": "cea0d0005a617b66b4b35871c7717315ddc4eab1f427977b7335c7c0676cc877",
+      "first_frame_sha256": "101e4366e10ef6b1bb2ac34af836dbb7dc5497a5e4287f446bd91bbfa987eb1f",
+      "last_frame_sha256": "a9295114488f423a9ae2c3b7e8cba37fc3afd28785701278c4b8db5b4d40d61a",
+      "first_pts_us": 0,
+      "last_pts_us": 23200000,
+      "strict_source_cadence": true,
+      "file_sha256": "4f5adf79641e20dec6fa7fcfdb3e9f05336da5f12887e4d20559023882a8ab86"
+    }
+  ]
+}
