@@ -4,10 +4,10 @@ from __future__ import annotations
 import argparse
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
-import tomllib
 
 ROOT = Path(__file__).resolve().parents[2]
 CORE = ROOT / 'mobile/packages/dance_native/core'
@@ -18,7 +18,11 @@ def main() -> int:
     parser.add_argument('action', choices=('doctor', 'lock', 'check', 'test', 'build'))
     parser.add_argument('--target')
     args = parser.parse_args()
-    version = tomllib.loads((ROOT / 'rust-toolchain.toml').read_text())['toolchain']['channel']
+    pins = re.findall(r'^channel\s*=\s*"(\d+\.\d+\.\d+)"\s*$',
+                      (ROOT / 'rust-toolchain.toml').read_text(encoding='utf-8'), re.M)
+    if len(pins) != 1:
+        raise SystemExit('Expected exactly one fixed stable Rust version in rust-toolchain.toml')
+    version = pins[0]
     rustup = shutil.which('rustup')
     if not rustup:
         raise SystemExit('rustup is required; put its bin directory on PATH (see docs/rust-core-migration.md)')

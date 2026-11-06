@@ -48,7 +48,11 @@ def main():
         for name, binding in data['materials'].items():
             path = args.materials / name
             assert path.stat().st_size == binding['bytes'], name
-            assert hashlib.file_digest(path.open('rb'),'sha256').hexdigest() == binding['sha256'], name
+            digest = hashlib.sha256()
+            with path.open('rb') as source:
+                for chunk in iter(lambda: source.read(1024 * 1024), b''):
+                    digest.update(chunk)
+            assert digest.hexdigest() == binding['sha256'], name
     if args.output:
         assert args.suite, '--output requires --suite'
         suite = next(s for s in data['suites'] if s['id'] == args.suite)
