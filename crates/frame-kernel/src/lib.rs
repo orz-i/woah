@@ -20,6 +20,7 @@ pub mod tracking;
 pub mod tracking_groups;
 pub mod tracking_lifecycle;
 pub mod tracking_mask;
+pub mod tracking_motion;
 pub mod work_lifecycle;
 pub mod yuv;
 
