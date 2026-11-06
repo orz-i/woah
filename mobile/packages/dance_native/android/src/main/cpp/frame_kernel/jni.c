@@ -36,6 +36,28 @@ static jintArray match_output(JNIEnv *env,FrameKernelMatchPair *pairs,int32_t co
     for (int32_t i=0;i<count;i++) { values[i*2]=(jint)pairs[i].row;values[i*2+1]=(jint)pairs[i].column; }
     (*env)->SetIntArrayRegion(env,result,0,count*2,values);free(values);return result;
 }
+JNIEXPORT jboolean JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_reservationReleaseNative(JNIEnv *env,jobject self,jint flags,jint owners,jfloat box,jfloat mask) {
+    (void)self;
+    int32_t result=owners<0 ? -1:frame_kernel_reservation_release(flags,owners,box,mask);
+    if(result<0) invalid(env);
+    return result==1 ? JNI_TRUE:JNI_FALSE;
+}
+JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_associationDefaultsNative(JNIEnv *env,jobject self) {
+    (void)self;FrameKernelAssociationWeights c=frame_kernel_association_defaults();
+    jfloat values[5]={c.bounds,c.mask,c.motion,c.direction,c.gating_threshold};jfloatArray out=(*env)->NewFloatArray(env,5);
+    if(out) (*env)->SetFloatArrayRegion(env,out,0,5,values);return out;
+}
+JNIEXPORT jfloat JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_associationScoreNative(JNIEnv *env,jobject self,
+    jfloatArray values,jlong history_age,jint flags,jfloatArray weights) {
+    (void)self;jfloat v[18],w[5];float score=0;
+    if(!values || !weights || (*env)->GetArrayLength(env,values)!=18 || (*env)->GetArrayLength(env,weights)!=5 || history_age<0 || flags<0) {invalid(env);return 0;}
+    (*env)->GetFloatArrayRegion(env,values,0,18,v);(*env)->GetFloatArrayRegion(env,weights,0,5,w);
+    if((*env)->ExceptionCheck(env)) return 0;
+    FrameKernelAssociationEvidence e={{v[0],v[1],v[2],v[3]},{v[4],v[5],v[6],v[7]},{v[8],v[9],v[10],v[11]},
+        v[12],v[13],v[14],v[15],v[16],v[17],(int64_t)history_age,(uint32_t)flags};
+    FrameKernelAssociationWeights c={w[0],w[1],w[2],w[3],w[4]};
+    if(frame_kernel_association_score(e,c,&score)) invalid(env);return score;
+}
 typedef struct IdInput { jlongArray array; jlong *values; jsize count; } IdInput;
 static int read_ids(JNIEnv *env,jlongArray array,IdInput *input) {
     if (!array) {invalid(env);return 0;}

@@ -1,4 +1,5 @@
 use crate::association::MatchPair;
+use crate::association_score::{AssociationEvidence, AssociationWeights};
 use crate::box_filter::BoxFilter;
 use crate::camera::FollowState;
 use crate::instances::{InstanceDetection, InstanceMetrics, InstanceSpec, InstanceThresholds};
@@ -19,6 +20,44 @@ unsafe fn id_slice<'a>(pointer: *const i64, len: usize) -> Option<&'a [i64]> {
         // SAFETY: the FFI caller supplies readable aligned input for len IDs.
         Some(unsafe { std::slice::from_raw_parts(pointer, len) })
     }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn frame_kernel_association_defaults() -> AssociationWeights {
+    AssociationWeights::default()
+}
+
+/// Returns 1 for release, 0 for quarantine, -1 for invalid evidence.
+#[unsafe(no_mangle)]
+pub extern "C" fn frame_kernel_reservation_release(
+    flags: u32,
+    owner_groups: u32,
+    bbox_iou: f32,
+    mask_iou: f32,
+) -> i32 {
+    crate::association_score::reservation_release(flags, owner_groups, bbox_iou, mask_iou)
+        .map_or(-1, i32::from)
+}
+
+/// # Safety
+/// output points to one writable aligned float and does not alias input data.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_association_score(
+    evidence: AssociationEvidence,
+    weights: AssociationWeights,
+    output: *mut f32,
+) -> i32 {
+    if output.is_null() {
+        return -1;
+    }
+    let Some(score) = crate::association_score::score(evidence, weights) else {
+        return -1;
+    };
+    // SAFETY: caller supplies one aligned writable float; all inputs validated.
+    unsafe {
+        output.write(score);
+    }
+    0
 }
 
 /// # Safety

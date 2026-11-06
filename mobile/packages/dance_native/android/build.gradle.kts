@@ -100,6 +100,7 @@ android {
         getByName("test") {
             java.srcDirs("src/test/kotlin")
             java.srcDirs("src/reference/kotlin")
+            resources.srcDir(file("../../../../testdata/privacy/tracking"))
         }
         getByName("androidTest") {
             java.srcDirs("src/androidTest/kotlin")

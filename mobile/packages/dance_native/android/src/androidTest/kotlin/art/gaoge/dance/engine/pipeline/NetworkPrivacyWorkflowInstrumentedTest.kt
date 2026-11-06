@@ -129,6 +129,12 @@ class NetworkPrivacyWorkflowInstrumentedTest {
             .put("face_only", faceOnly).put("fill", fill).put("trim_start_ms", start).put("trim_end_ms", end)
         val output = File(root, "$name.mp4")
         output.delete()
+        val replay = args.getString("recordTracker", "false").toBoolean()
+        if (replay) {
+            val directory = File(root, "$name-tracking")
+            check(!directory.exists()) { "Preserve the previous recording; choose a new case name" }
+            System.setProperty("framekernel.tracker.replay", directory.absolutePath)
+        }
         val segmenter = YoloLiteRtSegmenter(
             context,
             requestedAccelerator = if (args.getString("profile", "quality") == "quality")
@@ -193,6 +199,7 @@ class NetworkPrivacyWorkflowInstrumentedTest {
             summary.put("exception", error.javaClass.simpleName).put("message", error.message)
             throw error
         } finally {
+            System.clearProperty("framekernel.tracker.replay")
             File(root, "$name.json").writeText(summary.toString(2))
             segmenter.close()
         }

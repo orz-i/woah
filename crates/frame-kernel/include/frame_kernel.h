@@ -17,6 +17,19 @@ typedef struct FrameKernelTransform {
     uint32_t source_width, source_height, input_size, proto_size;
 } FrameKernelTransform;
 uint32_t frame_kernel_abi_version(void);
+typedef struct FrameKernelAssociationWeights { float bounds, mask, motion, direction, gating_threshold; } FrameKernelAssociationWeights;
+typedef struct FrameKernelAssociationEvidence {
+    FrameKernelRect predicted, observed, candidate;
+    float mask_iou, gating_distance, velocity_x, velocity_y, history_x, history_y;
+    int64_t history_age_us;
+    uint32_t flags;
+} FrameKernelAssociationEvidence;
+FrameKernelAssociationWeights frame_kernel_association_defaults(void);
+/* flags: strict unique match=1, durable non-body identity=2, current owner support=4.
+ * Returns 1 release, 0 quarantine, -1 invalid. */
+int32_t frame_kernel_reservation_release(uint32_t flags, uint32_t owner_groups, float bbox_iou, float mask_iou);
+int32_t frame_kernel_association_score(FrameKernelAssociationEvidence evidence,
+    FrameKernelAssociationWeights weights, float *output);
 int32_t frame_kernel_scene_scope(const int64_t *roots, size_t roots_len, const int64_t *body, size_t body_len,
     const int64_t *face, size_t face_len, uint32_t has_hero, int64_t hero);
 int32_t frame_kernel_compositor_targets(const int64_t *selected, size_t selected_len,

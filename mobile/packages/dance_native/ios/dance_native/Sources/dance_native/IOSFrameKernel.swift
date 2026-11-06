@@ -8,6 +8,36 @@ enum IOSFrameKernel {
     precondition(frame_kernel_abi_version() == 1, "Unsupported FrameKernel ABI")
   }()
 
+  static var associationWeights: [Float] {
+    _ = checkedABI
+    let value=frame_kernel_association_defaults()
+    return [value.bounds,value.mask,value.motion,value.direction,value.gating_threshold]
+  }
+
+  static func associationScore(_ v: [Float], historyAgeUs: Int64, flags: UInt32, weights: [Float]) throws -> Float {
+    _ = checkedABI
+    guard v.count == 18,weights.count == 5 else {throw pixelError()}
+    let evidence=FrameKernelAssociationEvidence(
+      predicted:FrameKernelRect(left:v[0],top:v[1],right:v[2],bottom:v[3]),
+      observed:FrameKernelRect(left:v[4],top:v[5],right:v[6],bottom:v[7]),
+      candidate:FrameKernelRect(left:v[8],top:v[9],right:v[10],bottom:v[11]),
+      mask_iou:v[12],gating_distance:v[13],velocity_x:v[14],velocity_y:v[15],
+      history_x:v[16],history_y:v[17],history_age_us:historyAgeUs,flags:flags)
+    let config=FrameKernelAssociationWeights(bounds:weights[0],mask:weights[1],motion:weights[2],direction:weights[3],gating_threshold:weights[4])
+    var score:Float=0
+    guard frame_kernel_association_score(evidence,config,&score) == 0 else {throw pixelError()}
+    return score
+  }
+
+  static func reservationRelease(strict: Bool, durableNonBody: Bool, owners: UInt32,
+      currentOwnerSupport: Bool, bboxIoU: Float, maskIoU: Float) throws -> Bool {
+    _ = checkedABI
+    let flags:UInt32=(strict ? 1:0) | (durableNonBody ? 2:0) | (currentOwnerSupport ? 4:0)
+    let result=frame_kernel_reservation_release(flags,owners,bboxIoU,maskIoU)
+    guard result >= 0 else {throw pixelError()}
+    return result == 1
+  }
+
   static func sceneScope(roots: Set<Int>, body: Set<Int>, face: Set<Int>, hero: Int?) -> Int {
     _ = checkedABI
     let roots=roots.map {Int64($0)},body=body.map {Int64($0)},face=face.map {Int64($0)}
