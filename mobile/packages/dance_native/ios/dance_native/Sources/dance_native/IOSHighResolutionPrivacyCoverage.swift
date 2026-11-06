@@ -13,7 +13,7 @@ enum IOSHighResolutionPrivacyCoverage {
   }
 
   static func views(width: Int, height: Int) -> [CGRect] {
-    IOSPrivacyCore.views(width: width, height: height)
+    IOSFrameKernel.views(width: width, height: height)
   }
 
   static func enhance(image: CGImage, primary: IOSYoloInferenceResult,
@@ -33,12 +33,12 @@ enum IOSHighResolutionPrivacyCoverage {
   }
 
   static func isComplete(_ d: IOSYoloDetection, view: CGRect, width: Int, height: Int) -> Bool {
-    IOSPrivacyCore.isComplete(d, view: view, width: width, height: height)
+    IOSFrameKernel.isComplete(d, view: view, width: width, height: height)
   }
 
   static func toScene(_ d: IOSYoloDetection, view: CGRect,
                       local: IOSYoloPreprocessResult, scene: IOSYoloPreprocessResult) -> IOSYoloDetection {
-    let mask = IOSPrivacyCore.reproject(mask: d.mask, view: view, local: local, scene: scene)
+    let mask = IOSFrameKernel.reproject(mask: d.mask, view: view, local: local, scene: scene)
     return IOSYoloDetection(x1: d.x1 + Float32(view.minX), y1: d.y1 + Float32(view.minY),
       x2: d.x2 + Float32(view.minX), y2: d.y2 + Float32(view.minY), confidence: d.confidence, mask: mask)
   }
@@ -92,6 +92,6 @@ enum IOSHighResolutionPrivacyCoverage {
   }
 
   private static func iou(_ a: IOSYoloDetection, _ b: IOSYoloDetection) -> Float32 {
-    IOSPrivacyCore.iou(a, b)
+    IOSFrameKernel.iou(a, b)
   }
 }

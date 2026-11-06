@@ -1,7 +1,7 @@
 package art.gaoge.dance.engine.inference
 
 import art.gaoge.dance.engine.geometry.ModelCoordinateMapper
-import art.gaoge.dance.engine.core.PrivacyCore
+import art.gaoge.dance.engine.core.FrameKernel
 import java.nio.ByteBuffer
 import kotlin.math.floor
 import kotlin.math.ceil
@@ -23,7 +23,7 @@ internal object HighResolutionPrivacyCoverage {
             (bodyIds.isEmpty() && faceIds.containsAll(initialIds)))
 
     fun views(width: Int, height: Int): List<FloatRect> {
-        return PrivacyCore.detailViews(width, height)
+        return FrameKernel.detailViews(width, height)
     }
 
     // Inference readback is converted from bottom-up rows. Select a visual
@@ -34,7 +34,7 @@ internal object HighResolutionPrivacyCoverage {
 
     /** Cropped foreground people must not become extra anonymous heads at a tile boundary. */
     fun isComplete(detection: PersonDetection, view: FloatRect, width: Int, height: Int): Boolean {
-        return PrivacyCore.detailComplete(detection.bbox, view, width, height)
+        return FrameKernel.detailComplete(detection.bbox, view, width, height)
     }
 
     /** Reproject each local mask into the canonical full-scene proto space before tracking. */
@@ -43,7 +43,7 @@ internal object HighResolutionPrivacyCoverage {
         val mask = localMask?.let {
             val local = requireNotNull(it.mapper)
             val pixels = ByteBuffer.allocateDirect(mapper.protoSize * mapper.protoSize)
-            PrivacyCore.reprojectMask(it.buffer, pixels, local, mapper, view)
+            FrameKernel.reprojectMask(it.buffer, pixels, local, mapper, view)
             NativeMask(mapper.protoSize, mapper.protoSize, pixels, mapper.srcWidth, mapper.srcHeight, mapper)
         }
         val box = detection.bbox.offset(view.left, view.top)
@@ -114,6 +114,6 @@ internal object HighResolutionPrivacyCoverage {
     }
 
     private fun intersectionOverUnion(a: FloatRect, b: FloatRect): Float {
-        return PrivacyCore.iou(a, b)
+        return FrameKernel.iou(a, b)
     }
 }

@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 ROOT=Path(__file__).resolve().parents[2]
-CORE=ROOT/'mobile/packages/dance_native/core'
+CORE=ROOT/'crates/frame-kernel'
 TARGETS={'arm64-v8a':'aarch64-linux-android','armeabi-v7a':'armv7-linux-androideabi','x86_64':'x86_64-linux-android'}
 
 
@@ -28,7 +28,7 @@ def main():
     library=CORE/'target'
     if target: library/=target
     library/='release'
-    library/='woah_privacy_core.lib' if sys.platform=='win32' and not target else 'libwoah_privacy_core.a'
+    library/='frame_kernel.lib' if sys.platform=='win32' and not target else 'libframe_kernel.a'
     cmake=shutil.which('cmake')
     if not cmake:
         sdk=Path(os.environ.get('ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT') or
@@ -38,7 +38,7 @@ def main():
     if not cmake: raise SystemExit('CMake is required (Android SDK CMake is supported)')
     build=CORE/'target/bridge'/args.abi
     output=args.output.resolve()
-    flags=['-DCMAKE_BUILD_TYPE=Release','-DWOAH_RUST_LIBRARY='+str(library),
+    flags=['-DCMAKE_BUILD_TYPE=Release','-DFRAME_KERNEL_LIBRARY='+str(library), '-DFRAME_KERNEL_INCLUDE='+str(CORE/'include'),
            '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY='+str(output),
            '-DCMAKE_RUNTIME_OUTPUT_DIRECTORY='+str(output),
            '-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE='+str(output)]
@@ -65,8 +65,11 @@ def main():
             sdk_version=resource_compilers[-1].parents[1].name
             os.environ['LIB']=';'.join(str(kits/'Lib'/sdk_version/p/'x64') for p in ('ucrt','um'))+';'+os.environ.get('LIB','')
             os.environ['INCLUDE']=';'.join(str(kits/'Include'/sdk_version/p) for p in ('ucrt','shared','um','winrt'))+';'+os.environ.get('INCLUDE','')
-            flags+=['-DCMAKE_RC_COMPILER='+str(resource_compilers[-1]),
-                    '-DCMAKE_MT='+str(resource_compilers[-1].with_name('mt.exe'))]
+            # CMake writes these paths into generated CMake scripts. Forward
+            # slashes prevent Windows path segments such as \Program Files
+            # from becoming invalid CMake string escapes on a clean build.
+            flags+=['-DCMAKE_RC_COMPILER='+resource_compilers[-1].as_posix(),
+                    '-DCMAKE_MT='+resource_compilers[-1].with_name('mt.exe').as_posix()]
     if target:
         flags+=['-DCMAKE_TOOLCHAIN_FILE='+str(args.ndk/'build/cmake/android.toolchain.cmake'),
                 '-DANDROID_ABI='+args.abi,'-DANDROID_PLATFORM=android-24']
@@ -74,7 +77,7 @@ def main():
         ninja=Path(cmake).with_name('ninja.exe' if sys.platform=='win32' else 'ninja')
         flags+=['-G','Ninja']
         if ninja.is_file(): flags+=['-DCMAKE_MAKE_PROGRAM='+str(ninja)]
-    subprocess.run([cmake,'-S',str(CORE/'bridge'),'-B',str(build),*flags],check=True)
+    subprocess.run([cmake,'-S',str(ROOT/'mobile/packages/dance_native/android/src/main/cpp/frame_kernel'),'-B',str(build),*flags],check=True)
     subprocess.run([cmake,'--build',str(build),'--config','Release'],check=True)
 
 

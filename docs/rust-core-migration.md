@@ -1,5 +1,10 @@
 # Rust privacy core migration
 
+The reusable library is FrameKernel (`frame-kernel`, Rust import `frame_kernel`)
+in `crates/frame-kernel`. Its C ABI uses `frame_kernel_*` and the Clang module
+`FrameKernelC`. JNI and Swift consumers stay in the mobile plugin adapter layer;
+the library has no application or platform framework dependencies.
+
 Approved scope: one Rust algorithm implementation, native Android/iOS media,
 inference runtime and GPU adapters. Baseline is master 5e659270 (PR #20).
 No UI or brand changes belong to these stages.

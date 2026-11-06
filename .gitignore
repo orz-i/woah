@@ -5,6 +5,7 @@
 # --- Python ---
 # Rust build output (Cargo.lock remains tracked).
 **/core/target/
+/crates/*/target/
 
 __pycache__/
 *.py[cod]

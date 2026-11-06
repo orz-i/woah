@@ -1,7 +1,8 @@
-//! Platform-independent privacy decisions and geometry.
+//! Platform-independent frame geometry and region processing.
 //!
 //! Pixel ownership, decoding, model execution and GPU resources stay in adapters.
 //! The C ABI is the only unsafe boundary; algorithms operate on checked slices.
+#![doc = include_str!("../README.md")]
 
 mod ffi;
 pub mod geometry;
