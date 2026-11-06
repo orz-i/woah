@@ -11,6 +11,61 @@ use crate::{
 };
 
 /// # Safety
+/// All ID slices are readable/aligned and output has capacity disjoint entries.
+/// Returns count; -1 invalid; <=-2 insufficient capacity, need -(result+1).
+/// No partial writes on failure and no caller pointers are retained.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_scene_targets(
+    roots: *const i64,
+    roots_len: usize,
+    body: *const i64,
+    body_len: usize,
+    face: *const i64,
+    face_len: usize,
+    current: *const i64,
+    current_len: usize,
+    has_hero: u32,
+    hero: i64,
+    output: *mut crate::protection::SceneTarget,
+    capacity: usize,
+) -> i32 {
+    // SAFETY: slice construction is bounded by the shared checked ID helper.
+    let (Some(roots), Some(body), Some(face), Some(current)) = (unsafe {
+        (
+            id_slice(roots, roots_len),
+            id_slice(body, body_len),
+            id_slice(face, face_len),
+            id_slice(current, current_len),
+        )
+    }) else {
+        return -1;
+    };
+    if has_hero > 1 {
+        return -1;
+    }
+    let targets = crate::protection::scene_targets(
+        roots,
+        body,
+        face,
+        current,
+        (has_hero == 1).then_some(hero),
+    );
+    if capacity < targets.len() {
+        return -(targets.len() as i32) - 1;
+    }
+    if !targets.is_empty() {
+        if output.is_null() {
+            return -1;
+        }
+        // SAFETY: caller supplies disjoint storage for capacity target entries.
+        unsafe {
+            std::ptr::copy_nonoverlapping(targets.as_ptr(), output, targets.len());
+        }
+    }
+    targets.len() as i32
+}
+
+/// # Safety
 /// State and output are writable, aligned, nonoverlapping caller-owned values.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn frame_kernel_region_step(

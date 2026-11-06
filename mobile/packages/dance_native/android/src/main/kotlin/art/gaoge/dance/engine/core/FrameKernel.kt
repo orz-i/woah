@@ -33,6 +33,15 @@ internal object FrameKernel {
     private external fun abiVersion(): Int
     private external fun associationDefaultsNative(): FloatArray
     private external fun associationScoreNative(values: FloatArray, historyAge: Long, flags: Int, weights: FloatArray): Float
+    private external fun sceneTargetsNative(roots: LongArray, body: LongArray, face: LongArray,
+        current: LongArray, hasHero: Boolean, hero: Long): LongArray
+    data class SceneTargets(val body: Set<Int>, val faceOnly: Set<Int>)
+    fun sceneTargets(roots: Set<Int>, body: Set<Int>, face: Set<Int>, current: Set<Int>, hero: Int?): SceneTargets {
+        val targets=sceneTargetsNative(roots.ids(),body.ids(),face.ids(),current.ids(),hero!=null,hero?.toLong()?:0)
+            .asList().chunked(2)
+        return SceneTargets(targets.filter { it[1] and 1L != 0L }.map {it[0].toInt()}.toSet(),
+            targets.filter { it[1] == 2L }.map {it[0].toInt()}.toSet())
+    }
     private external fun sceneScopeNative(roots: LongArray, body: LongArray, face: LongArray, hasHero: Boolean, hero: Long): Int
     private external fun compositorTargetsNative(selected: LongArray, covered: LongArray, explicit: LongArray): LongArray
     private external fun currentHeroIndexNative(boxes: FloatArray, observed: FloatArray?): Int

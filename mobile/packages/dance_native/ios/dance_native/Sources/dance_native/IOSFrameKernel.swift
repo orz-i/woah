@@ -38,6 +38,23 @@ enum IOSFrameKernel {
     return result == 1
   }
 
+  struct SceneTargets { let body: Set<Int>; let faceOnly: Set<Int> }
+  static func sceneTargets(roots: Set<Int>, body: Set<Int>, face: Set<Int>, current: Set<Int>, hero: Int?) -> SceneTargets {
+    _ = checkedABI
+    let roots=roots.map {Int64($0)},body=body.map {Int64($0)},face=face.map {Int64($0)},current=current.map {Int64($0)}
+    var output=[FrameKernelSceneTarget](repeating:FrameKernelSceneTarget(),count:body.count+face.count+current.count)
+    let count=roots.withUnsafeBufferPointer { r in body.withUnsafeBufferPointer { b in face.withUnsafeBufferPointer { f in current.withUnsafeBufferPointer { c in
+      output.withUnsafeMutableBufferPointer { out in
+        frame_kernel_scene_targets(r.baseAddress,r.count,b.baseAddress,b.count,f.baseAddress,f.count,
+          c.baseAddress,c.count,hero == nil ? 0:1,Int64(hero ?? 0),out.baseAddress,out.count)
+      }
+    } } } }
+    precondition(count>=0,"Invalid shared current-scene selection")
+    let rows=output.prefix(Int(count))
+    return SceneTargets(body:Set(rows.filter {$0.layers & 1 != 0}.map {Int($0.id)}),
+      faceOnly:Set(rows.filter {$0.layers == 2}.map {Int($0.id)}))
+  }
+
   static func sceneScope(roots: Set<Int>, body: Set<Int>, face: Set<Int>, hero: Int?) -> Int {
     _ = checkedABI
     let roots=roots.map {Int64($0)},body=body.map {Int64($0)},face=face.map {Int64($0)}

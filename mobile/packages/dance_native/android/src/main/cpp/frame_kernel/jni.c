@@ -399,3 +399,20 @@ JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_ancho
     if(frame_kernel_anchor_translation(a,b,out)) {invalid(env);return NULL;}
     jfloatArray result=(*env)->NewFloatArray(env,2);if(result) (*env)->SetFloatArrayRegion(env,result,0,2,out);return result;
 }
+JNIEXPORT jlongArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_sceneTargetsNative(JNIEnv *env,jobject self,
+    jlongArray roots,jlongArray body,jlongArray face,jlongArray current,jboolean has_hero,jlong hero) {
+    (void)self;IdInput r={0},b={0},f={0},c={0};jlongArray result=NULL;FrameKernelSceneTarget *targets=NULL;
+    if(read_ids(env,roots,&r) && read_ids(env,body,&b) && read_ids(env,face,&f) && read_ids(env,current,&c)) {
+        size_t capacity=(size_t)b.count+(size_t)f.count+(size_t)c.count;
+        targets=capacity ? malloc(capacity*sizeof(FrameKernelSceneTarget)):NULL;
+        if(capacity && !targets) {invalid(env);}else {
+            int32_t count=frame_kernel_scene_targets((const int64_t*)r.values,r.count,(const int64_t*)b.values,b.count,
+                (const int64_t*)f.values,f.count,(const int64_t*)c.values,c.count,has_hero ? 1:0,(int64_t)hero,targets,capacity);
+            if(count<0) {invalid(env);}else {
+                result=(*env)->NewLongArray(env,count*2);
+                if(result) for(int32_t i=0;i<count;i++) {jlong pair[2]={(jlong)targets[i].id,(jlong)targets[i].layers};(*env)->SetLongArrayRegion(env,result,i*2,2,pair);}
+            }
+        }
+    }
+    free(targets);release_ids(env,&r);release_ids(env,&b);release_ids(env,&f);release_ids(env,&c);return result;
+}

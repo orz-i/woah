@@ -12,6 +12,14 @@
 extern "C" {
 #endif
 typedef struct FrameKernelRect { float left, top, right, bottom; } FrameKernelRect;
+typedef struct FrameKernelSceneTarget { int64_t id; uint32_t layers; } FrameKernelSceneTarget;
+/* layers: 1 body, 2 face. Body always has both bits for its face supplement.
+   No aliases/retained pointers. Count or -1 invalid; <=-2 need -(result+1).
+   Individual/mixed absent IDs remain requested; only uniform intent maps current IDs. */
+int32_t frame_kernel_scene_targets(const int64_t *roots, size_t roots_len,
+    const int64_t *body, size_t body_len, const int64_t *face, size_t face_len,
+    const int64_t *current, size_t current_len, uint32_t has_hero, int64_t hero,
+    FrameKernelSceneTarget *output, size_t capacity);
 typedef struct FrameKernelEllipse { float center_x, center_y, radius_x, radius_y; } FrameKernelEllipse;
 typedef struct FrameKernelRegionMeasurement {
     FrameKernelEllipse region; FrameKernelRect anchor; int64_t timestamp_us;
