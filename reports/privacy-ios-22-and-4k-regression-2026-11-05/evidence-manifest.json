@@ -1,0 +1,280 @@
+{
+  "generated_utc": "2026-11-06T01:08:13.909222+00:00",
+  "status": "passed_with_observations",
+  "full_evidence_root": "/Users/mini/Coding/woah/reports/privacy-ios-22-and-4k-regression-2026-11-05",
+  "accepted_runs": [
+    "complete_22",
+    "complete_4k_v2",
+    "complete_preflight_v3"
+  ],
+  "bound_reports_and_snapshots": [
+    {
+      "path": "README.md",
+      "bytes": 13780,
+      "sha256": "f9e67bb25809b9d6990f5679f96585e75bfd016e0b588f9d5b7115010df9d500"
+    },
+    {
+      "path": "case-table.md",
+      "bytes": 8319,
+      "sha256": "579d128f3d0946a306a36c01c56667d8f6d1ded58e19743ad5498b3c182a12bd"
+    },
+    {
+      "path": "test-summary.json",
+      "bytes": 54731,
+      "sha256": "4dedb4867b7031578a154b54a827c90615845c073c20267f167fe50e6af504ff"
+    },
+    {
+      "path": "known-observations.json",
+      "bytes": 3223,
+      "sha256": "d6f040ba41853a899405d21c7e7f96dd9bd741419dad9ba74d9cb69ab8d20d31"
+    },
+    {
+      "path": "visual-reviews.json",
+      "bytes": 60600,
+      "sha256": "695a5d5c6a1615157ea1b5e322636337e3849c4cf2fdc828c6dfcb91674a31e9"
+    },
+    {
+      "path": "installed-build-binding.json",
+      "bytes": 6755,
+      "sha256": "b3c8b3ddc47fa838b893702c070aba8cf9deb2c007f83edb774a3bdd0a176329"
+    },
+    {
+      "path": "stream-inventory.json",
+      "bytes": 21650,
+      "sha256": "754f602c142e7d86b4c02832202e0b0b92e0a2443fcca7711a44f77569f10cb2"
+    },
+    {
+      "path": "source-state.json",
+      "bytes": 5374,
+      "sha256": "e25f1746518ead703c3e25a87836d83a845a0f4ceb33e2c66640c2195137b965"
+    },
+    {
+      "path": "legacy-matrix-binding.json",
+      "bytes": 986,
+      "sha256": "ccbb4c92655ca94d495211369fd9bb20e71d06196621236ace0ca0a5f3ba63b0"
+    },
+    {
+      "path": "audio-control.json",
+      "bytes": 1786,
+      "sha256": "6242fefcd6fbed8560497076b618108d99bc24b638259dfb8c8b622e57392bfb"
+    },
+    {
+      "path": "selected-first-observation.json",
+      "bytes": 812,
+      "sha256": "08a4686b3b4bf6d2de664249d634863b20b900d52d3d4e138cbac654c212873a"
+    },
+    {
+      "path": "cleanup.json",
+      "bytes": 373,
+      "sha256": "07d4006c8ef3ea451dc9ab5a8fe2bcc71869b6880a3f268b1cf4e38edfa376c8"
+    },
+    {
+      "path": "configs/complete_22.json",
+      "bytes": 95,
+      "sha256": "206464d905d27de571e07cf278ce274d11e005eab1ed3846fb61057d1e41b93d"
+    },
+    {
+      "path": "configs/complete_4k_v2.json",
+      "bytes": 6643,
+      "sha256": "681516e6525f06ab3f0604ab12ad7ef2c787e6ed17924e1d98aa5aaf8cb091c5"
+    },
+    {
+      "path": "configs/complete_preflight_v3.json",
+      "bytes": 3286,
+      "sha256": "cd55ce6ab6b86dfe43a1f7604e861ca03204d7cfc73d95410cc6d3fd08f3619c"
+    },
+    {
+      "path": "artifacts/working-tree.patch",
+      "bytes": 159789,
+      "sha256": "852597836944e565ae0c184c12e2e444d67f81b1cb93dae0640f69e35084e590"
+    },
+    {
+      "path": "artifacts/source-snapshot.tar.gz",
+      "bytes": 98719,
+      "sha256": "6a8861cb8a91c63bdc36f5ff23db62289114ff7f7bb8cb53504d016bc7aedf90"
+    },
+    {
+      "path": "artifacts/complete_22/results.json",
+      "bytes": 25032,
+      "sha256": "22c348bf319be4ae468ffc9d1ea01062dfdb71270d40e8cf99f81583749ee00f"
+    },
+    {
+      "path": "artifacts/complete_22/run-metadata.json",
+      "bytes": 9894,
+      "sha256": "20151749d539074f1cabcc65dcca93b3f7d8a4f684c8bb70245dcf97cfbf70fb"
+    },
+    {
+      "path": "artifacts/complete_22/core-smokes.json",
+      "bytes": 7191,
+      "sha256": "0a586dd2cb615736795a618769f281bdcadd03a11e9d0bb0c8803b61a66fa459"
+    },
+    {
+      "path": "artifacts/complete_22/qa_lifecycle_results.json",
+      "bytes": 1625,
+      "sha256": "1de9b8c92b9b97c3c13e8cb630acc615d697535820f91f002963cef7a25b1da0"
+    },
+    {
+      "path": "artifacts/complete_22/qa_negative_results.json",
+      "bytes": 324,
+      "sha256": "783e09a0fdecffeb9d61126422f56d99c7fe2059a784e8ad12499be78dba3d37"
+    },
+    {
+      "path": "media-audits/complete_22/results.json",
+      "bytes": 20012,
+      "sha256": "d248a583990acde6aad149d0b22c0e43ec146d25983baea83a308d3520b0eeea"
+    },
+    {
+      "path": "face-audits/complete_22/results.json",
+      "bytes": 81277,
+      "sha256": "3d42775b6549eb0e684c138d9d19b13ae4f4a1d7285084f1ab7b22f7593775b5"
+    },
+    {
+      "path": "artifacts/complete_4k_v2/results.json",
+      "bytes": 33904,
+      "sha256": "8a5824bd7bbee141634bd1132f513a1588c20f666075340dabc1df7d923361ea"
+    },
+    {
+      "path": "artifacts/complete_4k_v2/run-metadata.json",
+      "bytes": 17192,
+      "sha256": "ba6e28ae858d1bd3cebda15e2fe8bc175a29cca7894f35c0bcb06617847caf75"
+    },
+    {
+      "path": "media-audits/complete_4k_v2/results.json",
+      "bytes": 30305,
+      "sha256": "e9efb04756a73e5ae4c8b8aa1d2e0e62034036e5c65773accb620247a112739e"
+    },
+    {
+      "path": "face-audits/complete_4k_v2/results.json",
+      "bytes": 16509,
+      "sha256": "e4adc2b15e2a9f8e52802fdde51d7a9be5369ef3dccaa615ebdedfe4a492ffe3"
+    },
+    {
+      "path": "artifacts/complete_preflight_v3/results.json",
+      "bytes": 16633,
+      "sha256": "44700325e7c6b1b1d10bfdea10f58e5c3aa600d61354eaf423dab615800fcd3c"
+    },
+    {
+      "path": "artifacts/complete_preflight_v3/run-metadata.json",
+      "bytes": 12641,
+      "sha256": "aee458e95cc52b778933142b7ccbe16135939c1bcb787facc4193f122544d28c"
+    },
+    {
+      "path": "artifacts/complete_preflight_v3/core-smokes.json",
+      "bytes": 7190,
+      "sha256": "aa78bb2454cf7d50a93fff1398fc1707dd613fb0f5738675871c56273cffd4e1"
+    },
+    {
+      "path": "media-audits/complete_preflight_v3/results.json",
+      "bytes": 15319,
+      "sha256": "ad6015ff499653ffe391f1e21697d8d7f6a298c6efd194600221d2d5e91ee320"
+    },
+    {
+      "path": "face-audits/complete_preflight_v3/results.json",
+      "bytes": 7644,
+      "sha256": "bcf51f65aed65ad786f1d09a0c4113de1f57168efcde6f28956a3e85dc4e5d96"
+    }
+  ],
+  "reviewed_movie_count": 60,
+  "verified_visual_board_sha256": {
+    "artifacts/complete_preflight_v3/visual-boards/group_hd_overlap_face-0.jpg": "685cc4081d87dbcbd8b4424c79c468bfb58d788af0e659de4cadaf98d349a6c3",
+    "artifacts/complete_preflight_v3/visual-boards/group_4k_face_solid-0.jpg": "2ddcdb65f5cd1f485adac67702dce6afcfa27a6ad3e80ad40b3550c0ab515791",
+    "artifacts/complete_preflight_v3/visual-boards/group_4k_tail_face-0.jpg": "f94b7af017ac02f9987470bd76eb73548c30d2cb1e75cda7c66e8a3ec920ddac",
+    "artifacts/body-face-union-before-after.jpg": "2cb9142d7dbaab246c5acc5c89e9bfa62863841d11abfb413e27dc15b8312d32",
+    "artifacts/complete_preflight_v3/visual-boards/solo_4k_custom_gallery_probe-0.jpg": "619fa34570256843eed61281e64b32e39e0e45adf75d9531fc3d98d5f1d0f575",
+    "artifacts/complete_preflight_v3/visual-boards/solo_4k_immediate_retry_probe-0.jpg": "bb1202a2adccc6794fb337bba57b1cba3105c060163b11286b9751b2f1959b5e",
+    "artifacts/complete_preflight_v3/visual-boards/solo_4k_raised_arm_sticker-overview-0.jpg": "0e1b0814a62ce3a370930e54d4df4728d490f08bc8a83f078c3dc71fb645e65f",
+    "artifacts/complete_preflight_v3/visual-boards/solo_4k_raised_arm_solid-overview-0.jpg": "c1d5b5a3c01c7d22390e82656b831d4e9b3c6b0640760b1136af27f8318b5cbd",
+    "artifacts/complete_preflight_v3/visual-boards/solo_4k_raised_arm_body-overview-0.jpg": "1cc14a24af18c77eb620aeb0a02c9a03f743f5524426cc4c581dbe05ee35bfeb",
+    "artifacts/complete_preflight_v3/visual-boards/group_hd_overlap_body-overview-0.jpg": "959e7b42b56141a31aab2609cb2008b98405dfc1f0e0ed723d733ec4b40d348a",
+    "artifacts/complete_preflight_v3/visual-boards/group_4k_body_solid-overview-0.jpg": "7352bce2b1fffdc172f69d40faaa27f12dc5565c739bba281e72109027d88eec",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_body_solid-overview-0.jpg": "73b4f2cc106f6aaab8875d62b288a0e2fb9725a3eca52aed91fb93f5e4c3ed16",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_body_solid-overview-1.jpg": "4456c684e6546a217d14c5c82153a9240a8302a73733025fac784ca7b785f606",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_body_solid-overview-0.jpg": "dd7fcd284c6ca86838d18923588d1132e0a23062cebcf76b1cc9852228d97fda",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_body_solid-overview-1.jpg": "9469ef127f3e8062e3881d53857580c314ec7093607ba596d869dfcd15319474",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_nonzero_trim-overview-0.jpg": "b0f05fdfbc2dcea51a1405b8d6ebf6340237f31011eb0d53635990f96fa00ef7",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_retry_sticker-overview-0.jpg": "c93d8e735e385662824fa2d537b4946dd59764f203d83062a691c8fd2b881888",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_retry_sticker-overview-1.jpg": "0e46368bbe72a90dd5c3d95a4156b3da15df4173a21d484c49be9ec0ca2ada87",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_retry_sticker-partial551-559.jpg": "788ca6c16bf803410bc4c20fc990a59eb4570fc611263ea68ce8ed36acd9a515",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_face_solid-overview-0.jpg": "dd9969c0297045ebda78f4520b38fb4eb8aa9a3ee49a8a290ced724b9666f609",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_face_solid-overview-1.jpg": "16703e7c9d7bee08b6c9b710c40b65a21b975d9d078b0d34f4ea583a85d25538",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_face_solid-partial-body576.jpg": "37c615fd077d971eae430878582f5e4955c83e2fd2c523f9d64ec03e6c8a32bd",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_face_sticker-overview-0.jpg": "856ef6d5e15b135773cf3d58991f4c0656e755cf7eca9fca6c56930bbcab8f6e",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_face_sticker-overview-1.jpg": "98c1ddcc7bf217c34ae8ffdfa573a103533c62a7aaa08f7eef85d253ab5771c8",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_body_mosaic-overview-0.jpg": "0e6c12a9c2a1c4838ecbf7917d581286872c674ab938532d36736d6b7ab3b587",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_body_mosaic-overview-1.jpg": "3fe9860a5cab4768d88c64542b1eb9ff545053d29d2f59409cbe9ca744eaff23",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_body_blur-overview-0.jpg": "f2f21fc3bdf25c81ced885faa3bc54fcf5bc4c5029cf308cc34b4160705c5011",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_body_blur-overview-1.jpg": "fb41034cf6e447dcd934b2c72ebd5a895a75043d7eda2623526b7feda699a8cb",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_body_gradient-overview-0.jpg": "3f4380f11a463708a4f1def0ee09c8490a96b29448bdaca5e10933002a9865c3",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_body_gradient-overview-1.jpg": "887d2beb3101195271e98e6b699eb48abcf9065bbf66faf0ecb3edbae8a2ca52",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_face_mosaic-overview-0.jpg": "3e87d53ca629873b94295715eabfbe0df26ebc575c55fc48696fcd55c1ad77eb",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_face_mosaic-overview-1.jpg": "9614501d784c09f156acd1d0c546b740eedda978f7bf9ec254ef1cf8c860af09",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_face_blur-overview-0.jpg": "0584799621c0af4b2b54a435ac86f9dcd1f800ac03df672a218a59d2581844eb",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_face_blur-overview-1.jpg": "a8e9018e5e94a315adb2ba84cd316b99dd01cfe21d10c19ac4e1e2d4cedb866a",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_face_gradient-overview-0.jpg": "f9b8382d9d7ead73ce08837680fbc31bc8fc6c503a2e719323bcada85fcaccdf",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_face_gradient-overview-1.jpg": "008e41d9376feefacdb1fcdf702221f70a994fd1d4e3a0a533b0dfbdbfcca84e",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_face_sticker-overview-0.jpg": "7af196631e1ad392296318d2674608e77a0aa068b571f89327cd29564406b116",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_face_sticker-overview-1.jpg": "f1567f1996f6cb5fdca252faea20fc196e7b0f1c157d026d89e8960ae97f59a4",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_body_mosaic-overview-0.jpg": "a9843202814c9a084d542510ca496c501b6bfbb4c85303d34e727c3aa38ab7e5",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_body_mosaic-overview-1.jpg": "13b8802d1ab466f9408b9a37256a41f78a10c7fb83a8e2ffa13af06c19bf8536",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_body_blur-overview-0.jpg": "10a8c834c693b54d0a60e4502a2a571ffe9589b15beddf4b236b2967257e6a0d",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_body_blur-overview-1.jpg": "8a2b395f0a2c261e5f23a7220952882976cd899b53a591963d5d86f1502d18b9",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_body_gradient-overview-0.jpg": "cab349110ae6321c09ac8e72add4554c2c0d4dceb96a9c92bf63d3661b80baf7",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_body_gradient-overview-1.jpg": "88db96bf85f1dd22316b31b71e4c27b7d3c4fa0d4731953c13fd283b735c6ca7",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_face_solid-overview-0.jpg": "1fe27c7333d323cabfe190a647c885b6ed4ad012572b4779f62edb2c877c0393",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_face_solid-overview-1.jpg": "5f813fbbd6ab0d35940abd77d03c76ff795b058086d3c90bd759147d03af51a9",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_face_mosaic-overview-0.jpg": "fd2e2228f92108072ce29be59c5bc8c2449440f9f7f4b75b279fc95496ce0228",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_face_mosaic-overview-1.jpg": "a4653b91fa0f862b5e327d3cff5e98579c82d21533e08d7f59b7aa6a6be119dd",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_face_blur-overview-0.jpg": "f48ec35a4a9b965b62292050fcc9a314c9622ae79ac5b9bfb9fc69bb2db81e83",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_face_blur-overview-1.jpg": "1b96060a5fec2351779e294c089ada38d8c5c978d4aa384578d47573fb03932e",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_face_gradient-overview-0.jpg": "e1c4ca0d87c882148c6f81e7f6e8303428c7db20f483bbbb15518a72c4137e75",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_face_gradient-overview-1.jpg": "e39211ba35b25640f0069de90704824e3ae19f39f4793917095eba6346883adc",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_body_mosaic_balanced-overview-0.jpg": "1f6d819d9441619dfc1dbd731a328034b44bcad0fa32ce9cb2aa649d312662f2",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_body_mosaic_balanced-overview-1.jpg": "cf57c146a7638be5e02d55896419b1a24e0b5a5b9dad13a4c0a0c83aab460f99",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_face_sticker_balanced-overview-0.jpg": "ab57feb4ecd8337f2898a4691b4dd9df941cea055bc97f07d0a80d01db2694c7",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_face_sticker_balanced-overview-1.jpg": "14f6ca803b4d878a44cb817e07c9e15b75e0c500a8debeafb89ece91bbb417e2",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_body_mosaic_speed-overview-0.jpg": "1a1550052659a220ca84f141fd7208afb10ae29cdc47faca0fab8125bf778785",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_body_mosaic_speed-overview-1.jpg": "e920fe75711444cd1a0ee9f3c8f490a7ca9d20b3d2f88ed0c7382dc641b1772d",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_face_sticker_speed-overview-0.jpg": "348e270024fd3ae15304c424332ca446af2c9cd864d47a3f65ec8318b1ad7192",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_face_sticker_speed-overview-1.jpg": "f225cd51bd23834f87bbb1d42291042b806f8c222a3b8e949abb6dbc44f52d42",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_face_custom_sticker_gallery-overview-0.jpg": "2825e72910404368bdd31729c08aa8130aad9d5e0b47b302681bfed57ac7f0db",
+    "artifacts/complete_4k_v2/visual-boards/group_4k_face_custom_sticker_gallery-overview-1.jpg": "1d10c6681a3c60b748371fd14872688181bcffebc20a8fa853ad96675faf049c",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_face_custom_sticker_gallery-overview-0.jpg": "a3118d955b634aecff4e85169527e758716dea518a03426e4e1312b2647d0f18",
+    "artifacts/complete_4k_v2/visual-boards/solo_4k_face_custom_sticker_gallery-overview-1.jpg": "dae2ebecde327a91aad9b641a2189615210c62980bfa46ce2f0a5c9569811934",
+    "artifacts/complete_22/visual-boards/group_all_faces-overview-0.jpg": "621b29c99930df5e205c33d7a371a1d1baf86e020f941a986271fddbe3f139e4",
+    "artifacts/complete_22/visual-boards/group_face_sticker_follow-overview-0.jpg": "f06c567ae4e3c08e6435d114991b426b0d2639c8eb945bcc725003272b2ddbd1",
+    "artifacts/complete_22/face-review/group_face_sticker_follow-0.jpg": "b60b75e0204787259b5c5c78fb79993fd7d05aacef9eb994466952eb18649c98",
+    "artifacts/complete_22/visual-boards/group_face_solid_follow-overview-0.jpg": "5385be3a74a8a713bcd888de1c7e5bc61054dfb1edbf51181db89f3ac124c1f3",
+    "artifacts/complete_22/face-review/group_face_solid_follow-0.jpg": "dea51c0d7a5db83ba3623c0c7a030f669bd77aea36ad54ccec35f2cb33977d3a",
+    "artifacts/complete_22/visual-boards/group_full_solid-overview-0.jpg": "f7c4e8e345b443967bc26c4bf9a260e0cbf6892a43d673a777c973f4faa13b21",
+    "artifacts/complete_22/visual-boards/group_full_mosaic-overview-0.jpg": "6fda54460e2d9f114c027a1fb3477a241a1b183113e7ff7f82ab1929fcb3040a",
+    "artifacts/complete_22/visual-boards/group_full_blur-overview-0.jpg": "da1ce8ee7c816e6a4cf1f97773e34295df8324f1e730f13c5062169dbd84c769",
+    "artifacts/complete_22/visual-boards/group_full_gradient-overview-0.jpg": "a912cf03d708f048b098b502de85b574957111e03691ba17b8a905bdf09c1393",
+    "artifacts/complete_22/visual-boards/group_first_solid-overview-0.jpg": "7100010b64932379ae7693c486eb46bf4a00612e128b26624f02da8a0521733c",
+    "artifacts/complete_22/visual-boards/group_4k_full-overview-0.jpg": "9a192d8d65769a3beca2e2401c717675faea8ec49cd72a9d8fe35924de62e061",
+    "artifacts/complete_22/visual-boards/duo_full_solid-overview-0.jpg": "887be9389fa7cbbc1865132ffc1d80fe6b3e0bd7bf843101f464625110c4c0c6",
+    "artifacts/complete_22/visual-boards/solo_face_sticker-full-and-face.jpg": "6d19d3cb54935175ac13587c0d550a6dc385eba07fffde6cdca534648012e606",
+    "artifacts/complete_22/visual-boards/solo_face_mosaic-full-and-face.jpg": "713645b71147bb19e4edc06c8e9737460babb16b17868715edde286f90d37cd0",
+    "artifacts/complete_22/visual-boards/solo_face_blur-full-and-face.jpg": "bee6bd7773b0c6117be3b13ea74b2f447166d1a887d398ff7e0a65f8a8a85757",
+    "artifacts/complete_22/visual-boards/solo_face_solid-full-and-face.jpg": "237d33083fb566456c3af7e5d9f540beb08f4ccb1efe9cba764bab7c756e822c",
+    "artifacts/complete_22/visual-boards/solo_face_gradient-full-and-face.jpg": "40cacd8f8736a6da5604c2192b5c76fc02e223727eb9400ffbb65b0e5d140876",
+    "artifacts/complete_22/visual-boards/solo_face_balanced-full-and-face.jpg": "231423e2d0ca23b77bce83cd2c62a495de2b9369e21e7fe926fbe9180980df53",
+    "artifacts/complete_22/visual-boards/solo_face_speed-full-and-face.jpg": "8819783dbce3a79f820daf75b02e24608eff225882b4b718b9579aaf3579a95c",
+    "artifacts/complete_22/visual-boards/solo_nonzero_trim-full-and-face.jpg": "f9560fc17f083def992daae411d3146f2b51833a6009e3294f9ac23932e4c4e1",
+    "artifacts/complete_22/visual-boards/solo_4k_sticker-full-and-face.jpg": "cd702e1b1d91674566a01d2a7e91deb33646024365c40c362e43c57bcb6a4340",
+    "artifacts/complete_22/visual-boards/group_full_balanced-overview-0.jpg": "4c33e8dd3628c32889bbfbb8430601d0a7b65e92c5d8f54cfc64698867517763",
+    "artifacts/complete_22/visual-boards/group_full_speed-overview-0.jpg": "62ceda35f014e3a6aa8310d5e863dfb2cb05d4768e99fff0f1e3a71e5c48769c",
+    "artifacts/complete_22/visual-boards/group_full_length_follow-overview-0.jpg": "a6e2023015d0ee8f4a3d825301269d1e30e8c02030e2ec4aa94c01362adb5f59",
+    "artifacts/complete_22/face-review/group_full_length_follow-0.jpg": "476af818e519fc826d3a9684dd6d31a8ce8a1ce28a2d17cb31806077c4da4111",
+    "artifacts/complete_22/face-review/group_full_length_follow-1.jpg": "5b8d7bfff70b95f4effcc36a38e37411fc10871ccadefb128b6842fb36e59818",
+    "artifacts/complete_22/face-review/group_full_length_follow-2.jpg": "a192fe5c8bc51c643f8c1346d0354d0c06551a631b2ca7a2da8982dca3ae66ae",
+    "artifacts/complete_22/face-review/group_full_length_follow-3.jpg": "bec9a72b51b6c7d97e51d7ca6d064166a9a6f74eb1c570d596275f859996d3aa",
+    "artifacts/complete_22/face-review/group_full_length_follow-4.jpg": "e81c115395be5e5217058f6dfe00ec53e07db0c7c6a14a7a4d7a40cd247c9219",
+    "artifacts/complete_22/face-review/group_full_length_follow-5.jpg": "005ebf7a4f2b8ac6b39838fdb41ac37a485fe4d1f02f19b13c878e58f626e5e2"
+  },
+  "limits": "MP4, all crop traces, build products and complete review boards remain on the Mac; compact delivery includes reports and selected visual evidence.",
+  "publication_update": {
+    "date": "2026-11-06",
+    "README_snapshot_sha256": "507179fcfec9ad19bc4d6b1ec2f589f5cdce30299b7bc06048f7b2992e4823b9",
+    "reason": "Add commit-record link and remove Markdown trailing spaces; acceptance data and source binding unchanged."
+  }
+}

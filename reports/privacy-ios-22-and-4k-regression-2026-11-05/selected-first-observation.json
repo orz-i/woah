@@ -1,0 +1,31 @@
+{
+  "scope": "Existing FULL_BODY unknown-class fail-closed behavior; original root0 bounding box remains in the left mirror. Newly observed bodies may also receive conservative protection.",
+  "comparison": [
+    {
+      "run": "regression_22",
+      "movie_sha256": "e228cbaf367419d58960aa8888b16eeff3492462c1522d9e40edbb466733c39a",
+      "frame": 39,
+      "all_red_pixels": 15585,
+      "foreground_extra_red_pixels": 8040,
+      "roi": [
+        568,
+        160,
+        640,
+        390
+      ]
+    },
+    {
+      "run": "complete_22",
+      "movie_sha256": "478ac34a336179700302b84c5fbd45225901a87bd49918c262b17b027a37d550",
+      "frame": 39,
+      "all_red_pixels": 15597,
+      "foreground_extra_red_pixels": 8040,
+      "roi": [
+        568,
+        160,
+        640,
+        390
+      ]
+    }
+  ]
+}

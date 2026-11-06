@@ -1,0 +1,53 @@
+{
+  "status": "passed_nonsilent_audio_preservation",
+  "checked_utc": "2026-11-05T16:02:51.115309+00:00",
+  "origin": "Existing required runIOSExportPhase4Smoke; retained read-only hardlinks from complete_22",
+  "source": "artifacts/tone-control-capture/source_4eed3854-fe10-45f7-9eea-28eb3e50ae12.mp4",
+  "source_sha256": "90075885c834ae458ff484aa7c4744abe429c1a8b931af10deb5f29656564d1d",
+  "source_interval_ms": [
+    200,
+    800
+  ],
+  "signal": "440Hz periodic tone",
+  "scope": "Non-silent energy/waveform and 36-frame/0.6s trim preservation. Periodicity does not uniquely establish absolute A/V offset.",
+  "outputs": [
+    {
+      "file": "artifacts/tone-control-capture/output_4eed3854-fe10-45f7-9eea-28eb3e50ae12.mp4",
+      "sha256": "522f977eb9eb91b8a4269a2d76f236c2a3aa6525bb8d7a68f413383d0dd7c776",
+      "frames": 36,
+      "first_pts": 0.0,
+      "last_pts": 0.583333,
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "audio_duration_seconds": 0.6,
+      "pcm": {
+        "correlation": 0.99999040973017,
+        "lag_ms": 0.0,
+        "reference_rms": 0.07068496248849157,
+        "output_rms": 0.07072031613054658,
+        "gain_ratio": 1.0005001578951218
+      }
+    },
+    {
+      "file": "artifacts/tone-control-capture/retry_4eed3854-fe10-45f7-9eea-28eb3e50ae12.mp4",
+      "sha256": "9f1e87194ef7f4e6da535d4a09a129cb57ab9511976d9fc9ccfd23568cfa7c84",
+      "frames": 36,
+      "first_pts": 0.0,
+      "last_pts": 0.583333,
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "audio_duration_seconds": 0.6,
+      "pcm": {
+        "correlation": 0.99999040973017,
+        "lag_ms": 0.0,
+        "reference_rms": 0.07068496248849157,
+        "output_rms": 0.07072031613054658,
+        "gain_ratio": 1.0005001578951218
+      }
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "checked_utc": "2026-11-05T16:04:35.384622+00:00",
+  "source_branch": "codex/ios-identity-indeterminate-truth-20261105",
+  "source_commit": "babb1d425677b863fd9dcbefdc0af86cd7af6950",
+  "file": "mobile/app/lib/ios_privacy_regression_20261104_main.dart",
+  "legacy_case_block_sha256": "499b00d55f472094cf87aefadf4a8cf52ffc9ecba51d53ac801bb223f24d9bae",
+  "unchanged_from_user_branch": true,
+  "case_count": 22,
+  "cases": [
+    "group_all_faces",
+    "group_face_sticker_follow",
+    "group_face_solid_follow",
+    "group_full_solid",
+    "group_full_mosaic",
+    "group_full_blur",
+    "group_full_gradient",
+    "group_first_solid",
+    "group_4k_full",
+    "duo_full_solid",
+    "solo_face_sticker",
+    "solo_face_mosaic",
+    "solo_face_blur",
+    "solo_face_solid",
+    "solo_face_gradient",
+    "solo_face_balanced",
+    "solo_face_speed",
+    "solo_nonzero_trim",
+    "solo_4k_sticker",
+    "group_full_balanced",
+    "group_full_speed",
+    "group_full_length_follow"
+  ]
+}
