@@ -854,6 +854,16 @@ class _QA {
       final source = 'solo-portrait-7570258.mp4';
       final a = await analyze(source, startMs: analysisStartMs);
       final ids = a.persons.map((p) => p.id).toList();
+      result.addAll({
+        'input': source,
+        'target_width': 674,
+        'target_height': 1280,
+        'retry_start_ms': 1000,
+        'retry_end_ms': 2920,
+        'face_only': true,
+        'fill': 'sticker',
+        'selected_ids': ids,
+      });
       if (ids.isEmpty) {
         throw StateError('No person detected for 4K cancellation input');
       }
@@ -897,10 +907,21 @@ class _QA {
       result['after_cancel'] = statusRecord(after);
       await Future<void>.delayed(const Duration(seconds: 2));
       result['cancelled_output_exists'] = await live.exists();
+      final partialFiles = (await outputs.list().toList())
+          .whereType<File>()
+          .where(
+            (f) =>
+                f.path.endsWith('/cancel_long_4k.tmp.mp4') ||
+                f.path.contains('/.cancel_long_4k.'),
+          )
+          .map((f) => f.path)
+          .toList();
+      result['cancelled_partial_files'] = partialFiles;
       result['cancel_passed'] =
           after.state == 'cancelled' &&
           after.outputUri == null &&
-          !await live.exists();
+          !await live.exists() &&
+          partialFiles.isEmpty;
       await snapshot();
       log('QA_LIFECYCLE_CANCEL ${result['cancel_passed']}');
       // Keep the original analysis and process; a prior cancellation must not

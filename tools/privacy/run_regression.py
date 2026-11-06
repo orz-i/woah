@@ -15,8 +15,10 @@ import sys
 import time
 try:
     from .build_qa import inputs, fingerprint, binary_hashes, android_package_id
+    from .lifecycle_evidence import verify_lifecycle
 except ImportError:
     from build_qa import inputs, fingerprint, binary_hashes, android_package_id
+    from lifecycle_evidence import verify_lifecycle
 
 ROOT = Path(__file__).resolve().parents[2]
 MATRIX = ROOT / 'testdata/privacy/matrix.json'
@@ -186,9 +188,14 @@ class Android:
             for name in ['qa_lifecycle_results.json','qa_negative_results.json']:
                 value=self.read(name)
                 if config.get('lifecycle') and value: atomic(dest/name,value)
+            if config.get('lifecycle'):
+                (dest/'outputs').mkdir(exist_ok=True)
+                command(*self.adb,'pull',ANDROID_DOCUMENTS+'/'+relative+'/outputs/retry_custom_sticker.mp4',
+                        dest/'outputs/retry_custom_sticker.mp4',required=False)
         if not data or data['status']!='finished' or len(data['cases'])!=len(config['cases']): raise RuntimeError('Incomplete matrix')
         if any(r['result'] not in ['output_created','cancelled_cleanly'] for r in data['cases']): raise RuntimeError('Matrix contains failures')
         if len(by_output)!=len(config['cases']): raise RuntimeError('Missing per-case crop traces')
+        verify_lifecycle(dest)
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)

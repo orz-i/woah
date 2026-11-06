@@ -1,6 +1,7 @@
 package art.gaoge.dance.engine.privacy
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.opengl.GLES20
 import android.opengl.GLUtils
 import art.gaoge.dance.engine.core.FrameKernel
@@ -16,10 +17,15 @@ internal object SceneRegionContext {
     fun seed(context:Context,segmenter:YoloLiteRtSegmenter,processor:FaceOnlyPrivacyFrameProcessor,
         sourceUri:String,timestampUs:Long,rotation:Int,width:Int,height:Int) {
         val probe=FrameKernel.regionContextProbeUs(timestampUs)?:return
-        val bitmap=SourceFrameReader.read(context,sourceUri,probe,rotation)
+        require(width > 0 && height > 0)
+        val decoded=SourceFrameReader.read(context,sourceUri,probe,rotation)
+        val bitmap=try {
+            if(decoded.width==width && decoded.height==height) decoded
+            else Bitmap.createScaledBitmap(decoded,width,height,true)
+        } catch(error:Throwable) { decoded.recycle();throw error }
+        if(bitmap!==decoded) decoded.recycle()
         val textures=IntArray(1)
         try {
-            require(bitmap.width==width && bitmap.height==height){"Source context geometry mismatch"}
             val detections=segmenter.segmentBitmapSync(bitmap,probe).persons
             val persons=detections.mapIndexed { index,d->TrackedPerson(id=-4_000_000-index,
                 bbox=d.bbox,mask=d.mask,confidence=d.confidence,state=TrackState.ACTIVE,observedThisFrame=true,footY=d.footY) }
