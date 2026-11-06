@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -52,6 +53,16 @@ def binary_hashes(binary):
     if binary.is_file():return {binary.name:sha(binary)}
     return {p.relative_to(binary).as_posix():sha(p) for p in sorted(binary.rglob('*')) if p.is_file()}
 
+def android_package_id(binary):
+    sdk=os.environ.get('ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT')
+    if not sdk:raise RuntimeError('Android SDK is required to inspect the QA package before installation')
+    candidates=sorted((Path(sdk)/'build-tools').glob('*/aapt2.exe' if os.name=='nt' else '*/aapt2'))
+    if not candidates:raise RuntimeError('Android aapt2 is required to inspect the QA package')
+    text=subprocess.check_output([str(candidates[-1]),'dump','badging',str(binary)],text=True)
+    match=re.search(r"^package: name='([^']+)'",text,re.M)
+    if not match:raise RuntimeError('APK package metadata is missing')
+    return match.group(1)
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('platform',choices=['android','ios'])
@@ -75,10 +86,12 @@ def main():
         raise FileExistsError('Preserve the previous binary; choose a new output directory')
     defines=['--dart-define=WOAH_QA_SOURCE_FINGERPRINT='+digest,'--dart-define=WOAH_QA_SOURCE_COMMIT='+head]
     if args.platform=='android':
-        env=dict(os.environ,ORG_GRADLE_PROJECT_woahPrivacyQa='true')
+        env=dict(os.environ,ORG_GRADLE_PROJECT_WOAH_PRIVACY_QA='true')
         run([flutter,'build','apk','--debug','--no-pub','--target','lib/privacy_regression_main.dart',
              '--dart-define=WOAH_PRIVACY_QA_DIRECTORY=/sdcard/Android/data/art.gaoge.dance.privacyqa/files',*defines],env=env)
         binary=APP/'build/app/outputs/flutter-apk/app-debug.apk'
+        if android_package_id(binary)!='art.gaoge.dance.privacyqa':
+            raise RuntimeError('Refuse to archive an APK without the isolated privacyqa package ID')
     else:
         run([flutter,'build','ios','--simulator','--debug','--no-codesign','--config-only','--no-pub',
              '--target','lib/privacy_regression_main.dart',*defines])

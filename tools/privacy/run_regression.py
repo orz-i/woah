@@ -12,7 +12,10 @@ import shutil
 import subprocess
 import sys
 import time
-from build_qa import inputs, fingerprint, binary_hashes
+try:
+    from .build_qa import inputs, fingerprint, binary_hashes, android_package_id
+except ImportError:
+    from build_qa import inputs, fingerprint, binary_hashes, android_package_id
 
 ROOT = Path(__file__).resolve().parents[2]
 MATRIX = ROOT / 'testdata/privacy/matrix.json'
@@ -42,6 +45,8 @@ def utc(): return dt.datetime.now(dt.timezone.utc).isoformat()
 class Android:
     def __init__(self, args):
         self.args = args
+        if android_package_id(args.binary) != ANDROID_PACKAGE:
+            raise RuntimeError('Refuse to install an APK without the isolated privacyqa package ID')
         self.adb = ['adb', '-s', args.serial]
         if command(*self.adb, 'get-state') != 'device': raise RuntimeError('ADB device is not ready')
         if args.install: command(*self.adb, 'install', '-r', args.binary)
