@@ -1,0 +1,498 @@
+{
+  "platform": "ios",
+  "run_id": "cancel_scale_model_0d119275_legacy22",
+  "api": {
+    "started_at_utc": "2026-11-06T13:42:41.273045Z",
+    "process_id": 1755,
+    "mode": "matrix",
+    "platform": "ios",
+    "verify_previews": true,
+    "compiled_source_fingerprint": "b2d234a4e297d137aa3125bdc9d9b609fb1008211afd8d6709062ac94114fbe1",
+    "compiled_source_commit": "0d1192753f63aeb5fc3e88b3e0448d1ae2efcc11",
+    "capabilities": "NativeCapabilitiesDto(platform: ios, osVersion: 17.0.1, gpuSupported: true, h264Encoder: false, hevcEncoder: false, maxEncodeWidth: 0, maxEncodeHeight: 0, cpuCores: 10, recommendedProfile: balanced, supportedProfiles: [], inferenceBackends: [tflite_metal, tflite_xnnpack])",
+    "cases": [
+      {
+        "input": "solo-hd-7570258.mp4",
+        "fill": "solid",
+        "startMs": 0,
+        "endMs": 1600,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 540,
+        "height": 1024,
+        "case": "solo_face_solid",
+        "expected_frames": 40,
+        "start_ms": 0,
+        "end_ms": 1600,
+        "face_only": true,
+        "output_width": 540,
+        "output_height": 1024,
+        "result": "output_created",
+        "pid": 1755,
+        "detected_ids": [
+          0
+        ],
+        "selected_ids": [
+          0
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 0,
+            "dto_timestamp_ms": 0,
+            "control_file": "solo_face_solid-0-source.png",
+            "control_bytes": 104909,
+            "control_width": 1080,
+            "control_height": 2048,
+            "width": 1080,
+            "height": 2048,
+            "bytes": 104371,
+            "file": "solo_face_solid-0.png"
+          },
+          {
+            "requested_ms": 780,
+            "dto_timestamp_ms": 780,
+            "control_file": "solo_face_solid-780-source.png",
+            "control_bytes": 103499,
+            "control_width": 1080,
+            "control_height": 2048,
+            "width": 1080,
+            "height": 2048,
+            "bytes": 103514,
+            "file": "solo_face_solid-780.png"
+          },
+          {
+            "requested_ms": 1560,
+            "dto_timestamp_ms": 1560,
+            "control_file": "solo_face_solid-1560-source.png",
+            "control_bytes": 104657,
+            "control_width": 1080,
+            "control_height": 2048,
+            "width": 1080,
+            "height": 2048,
+            "bytes": 104040,
+            "file": "solo_face_solid-1560.png"
+          }
+        ],
+        "job_id": "job_1793972562762_9427E1E3",
+        "state": "completed",
+        "current_frame": 40,
+        "total_frames": 40,
+        "progress": 1.0,
+        "fps": 3.972279025083588,
+        "output_uri": "file:///Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Data/Application/65ADB883-2C64-42FF-BC92-91CFD535E1A9/Documents/qa_ios_runs/cancel_scale_model_0d119275_legacy22/outputs/solo_face_solid.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 313144,
+        "partial_files": [],
+        "elapsed_seconds": 11.964
+      }
+    ],
+    "status": "finished",
+    "finished_at_utc": "2026-11-06T13:43:18.596130Z"
+  },
+  "metadata": {
+    "started_utc": "2026-11-06T13:42:29.022020+00:00",
+    "udid": "EE228BE6-0F7F-48E1-9892-313B7CFFBB63",
+    "config": {
+      "run_id": "cancel_scale_model_0d119275_legacy22",
+      "cases": [
+        {
+          "input": "solo-hd-7570258.mp4",
+          "fill": "solid",
+          "startMs": 0,
+          "endMs": 1600,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 540,
+          "height": 1024,
+          "case": "solo_face_solid",
+          "expected_frames": 40
+        }
+      ],
+      "core_smokes": true,
+      "build_source_fingerprint": "b2d234a4e297d137aa3125bdc9d9b609fb1008211afd8d6709062ac94114fbe1",
+      "partial_stage_check": true,
+      "verify_previews": true,
+      "stage_export_only": false,
+      "lifecycle": true
+    },
+    "sources": {
+      "corrupt-video-1024bytes.mp4": {
+        "sha256": "630b36e85f6e26cd9371088fd201979ca82f1300b04aee24210c9e67df6e7e80",
+        "bytes": 1024
+      },
+      "custom-sticker.png": {
+        "sha256": "9cfc5ad34e89b6eebddcd5ec715c224a86c99ea5b9fad999407dee7e32f681b6",
+        "bytes": 806
+      },
+      "duo-dance-6940536.mp4": {
+        "sha256": "9a8553ea9eb07a4d5e11e6ea8059ca7bf302df703fe804ea5ba604ef08235a76",
+        "bytes": 3748966
+      },
+      "group-hd-8956295.mp4": {
+        "sha256": "d95c0ba298ab0701c01e349185afa049d51ae1037b6907c960d6e1b8fcd01cd5",
+        "bytes": 15726991
+      },
+      "group-mirror-8956295.mp4": {
+        "sha256": "376c2ae73c92c23dceb042d27450aaa45ba2f44a3d7b0a5f3c26e9bea6c2dd73",
+        "bytes": 69505821
+      },
+      "no-person-flower.mp4": {
+        "sha256": "0cd83d944a6ca7822b4a8306cecc60a36e859b041f6702c6a1ad9ead78924451",
+        "bytes": 1128375
+      },
+      "solo-hd-7570258.mp4": {
+        "sha256": "21e0b8319470426718502c31bdabf43c2889b3013cda760c4c1ce8ee69decce0",
+        "bytes": 7454617
+      },
+      "solo-portrait-7570258.mp4": {
+        "sha256": "f401df9259f7fcbf7b01121cbb720e744e0dbba6e3ebce2f64027d37c873d6a1",
+        "bytes": 21156880
+      }
+    },
+    "git_head": "0d1192753f63aeb5fc3e88b3e0448d1ae2efcc11",
+    "native_sources": {
+      "ComparisonApi.g.swift": "4944f17d7cdabae15df706065583aebbbbd0ab96286d8c8fe47e8f4c8bcfe7da",
+      "DanceApi.g.swift": "a01fe0fa10ffd0dbadc0ec345659c93d3a560c4a0bb31db36ead9b81e02e5fc2",
+      "DanceNativePlugin.swift": "e9942f8d9c5e342b2eda16de12f160339ff80c86919c3c00994f41cb0e7ecb85",
+      "IOSAnalysisCache.swift": "25ec4bc147d970dbcf578be3677fb7153c8024439f073a17c62cb44d976d8c71",
+      "IOSAnalyzePipeline.swift": "87dddc7c4051a95cf0469b6cd03a79726c9c529c8815f354c168b79843a3cfa3",
+      "IOSCacheLifecycleSmoke.swift": "e7c649964547a3f2523993de75c19b7322c4029f96a8386c7dcd0f042d45118c",
+      "IOSComparisonComposition.swift": "4c043091e195ef7c4afb5b251855ff9fe435a57a3d18515bbc5eb57cfbc23c6b",
+      "IOSComparisonCompositor.swift": "1588d3e5580e530bd3f4b042417224b18eb39c3eb75fac16ebd310cdfbf22dbe",
+      "IOSComparisonExportCoordinator.swift": "0deee1a801afca05092cf0e8dde898abca68a6cc945880b5abb6efb8ffa73302",
+      "IOSComparisonExportFiles.swift": "bbd9f7967cfb738b2837defc36068f817f54533b66301285511bd3484da537be",
+      "IOSComparisonExportPipeline.swift": "b16c2a4b3eeede863dc3aac3ca9ccd8e2943087a2735807e5cfe88a8f9e1dd7f",
+      "IOSComparisonExportSpec.swift": "ff2f16d340269711721054fa3667bb9f0dfac71f5a7330af8e96fe0ee8d365ac",
+      "IOSComparisonFiles.swift": "69cbc0f4c8331dc16026bafbfc305e25a87f1c4e80f15910d6642eb76a952f76",
+      "IOSComparisonFrameIndex.swift": "3c792a0f7267af1ce76f431e08f552dab4a2234c5a2ddf78bce76a38e5f83ba6",
+      "IOSComparisonModels.swift": "34f709c54da359603e06140b4545b1d9ebf00209f7b1172ac543023af160dfda",
+      "IOSComparisonMusicAligner.swift": "7aea7756a0e44326e8fa0448cad39e59a47fe3e99be74bf6f3c418891ba9f7da",
+      "IOSComparisonMusicFeatures.swift": "ab380a79563f95fe75a4f9b2b7f66969784066f70b646dc3f8de5ae674b1ae31",
+      "IOSComparisonMusicMatcher.swift": "6aeb9649e45342391289f9ed5f998a21ef662437b1420deccbc0216e8b763cc5",
+      "IOSComparisonMusicPcmDecoder.swift": "d64205f3868751c6d6d8837addf578b7f3344e106dd330cfe8b7a858a2346e3f",
+      "IOSComparisonMusicRateMatcher.swift": "0dce2c418c55e94d0c143566207a1ab9ba06b6cd37abeaa0fbe7a663964fa78c",
+      "IOSComparisonNativeApi.swift": "3dba7d89cadb568424181c9419ff1292bcff8a4ee68095315f72a0e0046d24c7",
+      "IOSComparisonPicker.swift": "8056b0e4a96b88054902c6657cce67cc70936f7b8cc8c9b9d31d0781cd0f93c6",
+      "IOSComparisonPlayer.swift": "093c0ce5291983d5ff4f6c5392734945c9c81cbac07cbb499cc19cfd82f651cc",
+      "IOSComparisonProjectStore.swift": "aebfd4c5ed8dfabbe0b00bea329ada95b116ec0a62e03987024a9e4e87e92a04",
+      "IOSCropClarityRestorer.swift": "e32fa39ed598b9bcbdd88e90d2d7ff71b8feae8a0e3f64a840f0f4441f20354d",
+      "IOSDeviceCapabilities.swift": "fa3012dc9fe494254cc22d319eaa5d0eefd5a89032e07d69254bcd49bbe719f8",
+      "IOSDiagnosticPrivacy.swift": "f4cd79164ced17302dbe3562d9a5f9e6ef5a6c5161204593d507a5355f2376a7",
+      "IOSDiagnosticPrivacySmoke.swift": "9158948a50856924df290978e3e669da7b60eea0ab90594fe7f3ffb9cde58fa8",
+      "IOSExportCoordinator.swift": "c134e59abcf639823a5b8552739c4b1e935212f4dd31f95bc02f7bad3f9ff3ae",
+      "IOSExportJobJournal.swift": "b3b31a7903714a4d9db0c7219147b7ac00fd55c07c23409d66d13c61ca70754c",
+      "IOSExportPhase4Smoke.swift": "ce680840218e049a9aec3de5a77c7d131e0626798cc78b91e9c54d42918f961a",
+      "IOSExportPipeline.swift": "c06830cbdeb27fb8cebc4aeef1f893e0fe058b1cb55afe0a8df2090700c3764e",
+      "IOSFacePrivacyPhase5Smoke.swift": "00bd94a6b5ddc642e18e313b70c5bb7bb09e809ed77c6fd92414ab6ca6923f41",
+      "IOSFacePrivacyPipeline.swift": "7c29627cb9cf817ec22336f5132b0b7d4ebd6b7faf85d2201b0088746772a1af",
+      "IOSFrameKernel.swift": "a87b439f117965384c0be6cb7793f0dbb0f7f7d017130c514cf5fe87ed62e233",
+      "IOSGoldenTracePhase5Smoke.swift": "b93effa92eef0d0fb8193b018b85ec9372bff6dfc20a1e67841c96c217497b1d",
+      "IOSGoldenTraceResources.swift": "5b1f6a157d349a5ec290c8f4096db73c9d466d2ff455bf76f9330fba872ebd93",
+      "IOSHighResolutionPrivacyCoverage.swift": "41792a1a097876afc69293f03914f10b2595eb7921eea45807472720f38b3782",
+      "IOSMediaLibraryBridge.swift": "59e569f635408e93e49315de1608a79a18d267a970709b85c84be7fef765dd9e",
+      "IOSMetalPhase3Smoke.swift": "2f988235835f972f46f363c1c51cc2220e0e1b0e7c34e3b907a322d4e4c5beac",
+      "IOSMetalPreviewRenderer.swift": "633b87c3e086cfb7e5d3c10cd71cc6eed05407b2a79da8b18779bfe15c3ba14d",
+      "IOSModelResources.swift": "cdccf3ffd53f3d6ea5dbbb6608691dee304e85a77b5ba239b28b26eff01118db",
+      "IOSOcclusionProxyStabilizer.swift": "501c89fd6d7a33b3524d26aee0da8e323c68567a05d19105582f919d87c0ea23",
+      "IOSPixelAuditCropRecorder.swift": "78356c82122073e32a1319633d5c00b67e9d7e96fbca2dca0ce8a58eca9fdbd8",
+      "IOSPreviewIdentityMatcher.swift": "5f7b99216ab0fa0b8146b5c32b36426074b9b96ff5b54f781963bc9c56de64e7",
+      "IOSPreviewPipeline.swift": "29bb2f8a46ec8fd1c9ac1b3e8800889d18a4d7cc3bccf76167923e64005e6398",
+      "IOSPrivacyClassPhase6Smoke.swift": "f756f96cff24e87b145582bb8de4c485c5c490d2462236ec87da7e84f253a432",
+      "IOSPrivacyClassTemporalTracker.swift": "b30a29342ad7c999b415bf15b14d58bdc181270b869ec874e78762efffd9cdc0",
+      "IOSPrivacyIdentityFrameRecorder.swift": "09fc9d1a80ce8d9ea483a191218ffef4983a135f1cbdde88a01752a27b1f1851",
+      "IOSPrivacyMaskProjector.swift": "e57308f1f8227c6b08c561fc8b410d755daefb6416f788e069b39a08cc1d088c",
+      "IOSRegenerableCacheRegistry.swift": "18dc84cdb45f9e408cb374159d2f0a36eb7bb49ab1ac3adf130e00970b15e35a",
+      "IOSSceneRegionContext.swift": "53703f1bdadb11f379bcff3bf06a27fbc358e67d19134b279f6b8538a99dfb63",
+      "IOSSubjectReframer.swift": "4e8eb89620943d03bd1778aef7a12dc14fcf23bc89738f5a17bbd76c96964b60",
+      "IOSTemporalIdentityTracker.swift": "6caa0ee06ec247effff743a7eef24d0f199690f248401e5433e56691be7bb422",
+      "IOSVideoProbe.swift": "81f859119e05b173c6a0a295d9367dcecfee89720c31d98bed9c932a6ec903c3",
+      "IOSYoloPhase1Probe.swift": "3579db7fb12fb639116b9e4170a96f3f34455e70f08dba331842cf114182c026",
+      "IOSYoloPostprocessor.swift": "23e530ba403ad335437edebaf721703bd15f38ef93749b4b1a7ab4b2bc37dd67",
+      "IOSYoloPreprocessor.swift": "8408d907af1ddfae0675b650f6a15fc26a420968a6299682fe47badee499fe63",
+      "IOSYoloRunner.swift": "c58a7b5f031a177e226245bc7190203a84ea403179a045539a7d91ddf7b1e928"
+    },
+    "harness_sha256": "779fe8a1a42bc27f04e754880b99ccf15c5416b5cdf4aea559b1d4245fb60195",
+    "binary_sha256": "c90ba9bbdb7a1b17b22a1ac7cdc37032edb398515e851c02784b6d0bcead9e2e",
+    "native_binary_images": {
+      "Runner": "c90ba9bbdb7a1b17b22a1ac7cdc37032edb398515e851c02784b6d0bcead9e2e"
+    },
+    "app_bundle": "/Users/mini/Coding/woah-rust-tools/builds/cancel-scale-model-0d119275/Runner.app",
+    "container": "/Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Data/Application/65ADB883-2C64-42FF-BC92-91CFD535E1A9",
+    "native_optimization": "-O; Flutter debug simulator",
+    "preview_files_sha256": {
+      "solo_face_solid-0.png": "e78d9c6b68ffb5fd5163c399341d224ad94ac9b26e76d9efdcb49b7e8663ee75",
+      "solo_face_solid-0-source.png": "482dac38163959bd26e1e08bba3b87ca063da40723640c66adb1f39cff4723c8",
+      "solo_face_solid-780.png": "7b481dbeafc9ea798d545f950508a26c8328742f89483d6dd9582b541fe89787",
+      "solo_face_solid-780-source.png": "0d4a7e47acc4a627b37562f5e2eaace835746a906f7e5d3d94ed0f04d84d66e2",
+      "solo_face_solid-1560.png": "fb0283577dbed8c9d951a8bd57ab6147c50c571c7daeff1501c76780de440c0e",
+      "solo_face_solid-1560-source.png": "2c3e5b7d1a786b9b12cd7d617a273b019c7b521d4e4f28bd7d595b0753b2e228"
+    },
+    "crop_traces": [
+      "qa_pixel_crops_06B13665-3A94-4741-911D-2D5FC16FF343.jsonl",
+      "qa_pixel_crops_09BDCEFC-DB73-4FEB-A27F-F99A9384FB69.jsonl",
+      "qa_pixel_crops_76E37C0B-F7AF-4368-9EDC-29C2140F119A.jsonl"
+    ],
+    "resources": {
+      "samples": 8,
+      "peak_rss_kib": 1275728,
+      "minimum_free_disk_bytes": 18714456064,
+      "peak_system_swap_used_bytes": 2772697088
+    },
+    "finished_utc": "2026-11-06T13:43:19.238926+00:00"
+  },
+  "build": {
+    "source_commit": "0d1192753f63aeb5fc3e88b3e0448d1ae2efcc11",
+    "source_fingerprint": "b2d234a4e297d137aa3125bdc9d9b609fb1008211afd8d6709062ac94114fbe1",
+    "binary_name": "Runner.app",
+    "binary_sha256": "c90ba9bbdb7a1b17b22a1ac7cdc37032edb398515e851c02784b6d0bcead9e2e"
+  },
+  "audit_file_sha256": {
+    "media": "e69b08f519d3108c24a5487fae7f330c9ed4ecb9e2de2ff49bfcfaad84b5771c",
+    "faces": "c05072e7e739d49b0964ee6e846422e08d885e93e32f9d2beaf7a219e8fef8cf",
+    "previews": "80808d7821063ee3cd77612ccab5787fdc10ebace71665919d22c5428512cb1a",
+    "gallery": "69b9dd25fbea81ed8a52823d5cde4dcafd32aafbb4744a40d7bbc33ec3caec70",
+    "lifecycle": "dc185ec81e0df0ac47f9b654d33cac1a960ca46d86b615a47e0c37d00997b1b6"
+  },
+  "media": {
+    "run_id": "cancel_scale_model_0d119275_legacy22",
+    "cases": [
+      {
+        "case": "solo_face_solid",
+        "status": "passed_media",
+        "sha256": "9aebfce347989e8aae7ed94b1edd30b3c275413b9cbdef2ab0ef29815f398bbb",
+        "bytes": 313144,
+        "dimensions": [
+          540,
+          1024
+        ],
+        "decoded_frames": 40,
+        "expected_frames": 40,
+        "max_pts_delta_seconds": 0.0,
+        "audio_streams": 1,
+        "audio_waveform": {
+          "correlation": 1.0,
+          "lag_ms": 0.0,
+          "reference_rms": 0.0,
+          "output_rms": 0.0,
+          "gain_ratio": 1.0,
+          "alignment_observable": false
+        },
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "4ba9ca788d5c176dd5544db5ca9f329a6ad704dc01a74a56c548c261f01c50a0"
+      },
+      {
+        "case": "retry_custom_sticker",
+        "status": "passed_media",
+        "sha256": "1d7dae1d9cf5dafc956662e061ddb27f8aaf51c19222f9fcff4ffc629311330b",
+        "bytes": 549970,
+        "dimensions": [
+          674,
+          1280
+        ],
+        "decoded_frames": 48,
+        "expected_frames": 48,
+        "max_pts_delta_seconds": 2.220446049250313e-16,
+        "audio_streams": 1,
+        "audio_waveform": {
+          "correlation": 1.0,
+          "lag_ms": 0.0,
+          "reference_rms": 0.0,
+          "output_rms": 0.0,
+          "gain_ratio": 1.0,
+          "alignment_observable": false
+        },
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "8a5214bcbc3fccbd0efb268952b13eb5ee48e5805a4c061780bc5ea5cf8a43d3"
+      }
+    ]
+  },
+  "faces": {
+    "run_id": "cancel_scale_model_0d119275_legacy22",
+    "cases": [
+      {
+        "case": "solo_face_solid",
+        "input_binding_sha256": "e66927de7263ca115d6d79f17c356d42f0e29765759640b8ab4224a378c653db",
+        "decoded_frames": 40,
+        "tested_visible_face_cores": 40,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "retry_custom_sticker",
+        "input_binding_sha256": "7be1f13a8a69eccb5b82c77ec9c4c863c9279b27969f792530b26f1742e95060",
+        "decoded_frames": 48,
+        "tested_visible_face_cores": 48,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "recorded_source_ellipses",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      }
+    ]
+  },
+  "previews": {
+    "run_id": "cancel_scale_model_0d119275_legacy22",
+    "auditor_sha256": "719614621c2405e82b213421cb206edc128eea0aad7659a9d4d3d6e940f56ff7",
+    "cases": [
+      {
+        "case": "solo_face_solid",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 0,
+            "status": "passed",
+            "best_expected_frame": 0,
+            "expected_pts_seconds": 0.0,
+            "correlation": 0.9989258711811398,
+            "control_sha256": "482dac38163959bd26e1e08bba3b87ca063da40723640c66adb1f39cff4723c8",
+            "protected_sha256": "e78d9c6b68ffb5fd5163c399341d224ad94ac9b26e76d9efdcb49b7e8663ee75",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 780,
+            "status": "passed",
+            "best_expected_frame": 19,
+            "expected_pts_seconds": 0.76,
+            "correlation": 0.9989594990805801,
+            "control_sha256": "0d4a7e47acc4a627b37562f5e2eaace835746a906f7e5d3d94ed0f04d84d66e2",
+            "protected_sha256": "7b481dbeafc9ea798d545f950508a26c8328742f89483d6dd9582b541fe89787",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 1560,
+            "status": "passed",
+            "best_expected_frame": 39,
+            "expected_pts_seconds": 1.56,
+            "correlation": 0.999006191911723,
+            "control_sha256": "2c3e5b7d1a786b9b12cd7d617a273b019c7b521d4e4f28bd7d595b0753b2e228",
+            "protected_sha256": "fb0283577dbed8c9d951a8bd57ab6147c50c571c7daeff1501c76780de440c0e",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      }
+    ]
+  },
+  "gallery": {
+    "run_id": "cancel_scale_model_0d119275_legacy22",
+    "cases": []
+  },
+  "lifecycle": {
+    "process_id": 1755,
+    "status": "passed_api_chain",
+    "analysis_start_ms": 0,
+    "long_trim_start_ms": 0,
+    "input": "solo-portrait-7570258.mp4",
+    "target_width": 674,
+    "target_height": 1280,
+    "retry_start_ms": 1000,
+    "retry_end_ms": 2920,
+    "face_only": true,
+    "fill": "sticker",
+    "selected_ids": [
+      0
+    ],
+    "custom_sticker_asset": "/Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Data/Application/65ADB883-2C64-42FF-BC92-91CFD535E1A9/Library/Application Support/stickers/sticker_1793972573436.png",
+    "custom_sticker_exists": true,
+    "cancel_job_id": "job_1793972573438_27C7CF4B",
+    "before_cancel": {
+      "state": "exporting",
+      "job_id": "job_1793972573438_27C7CF4B",
+      "current_frame": 8,
+      "total_frames": 662,
+      "progress": 0.010574018126888218,
+      "fps": 2.41846886670454,
+      "output_uri": null,
+      "error_code": null,
+      "error_message": null
+    },
+    "after_cancel": {
+      "state": "cancelled",
+      "job_id": "job_1793972573438_27C7CF4B",
+      "current_frame": 9,
+      "total_frames": 662,
+      "progress": 0.012084592145015106,
+      "fps": 2.45173626410169,
+      "output_uri": null,
+      "error_code": null,
+      "error_message": null
+    },
+    "cancelled_output_exists": false,
+    "cancelled_partial_files": [],
+    "cancel_passed": true,
+    "retry_status": {
+      "state": "completed",
+      "job_id": "job_1793972579248_835E9A04",
+      "current_frame": 48,
+      "total_frames": 48,
+      "progress": 1.0,
+      "fps": 2.587196184594002,
+      "output_uri": "file:///Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Data/Application/65ADB883-2C64-42FF-BC92-91CFD535E1A9/Documents/qa_ios_runs/cancel_scale_model_0d119275_legacy22/outputs/retry_custom_sticker.mp4",
+      "error_code": null,
+      "error_message": null
+    },
+    "retry_bytes": 549970,
+    "retry_passed": true
+  },
+  "negative": {
+    "process_id": 1755,
+    "status": "passed_api_checks",
+    "flower_ids": [],
+    "flower_no_person": true,
+    "corrupt_rejected": true,
+    "corrupt_error": "PlatformException(NATIVE_OPERATION_FAILED, stage=probe; code=NATIVE_OPERATION_FAILED, null, null)",
+    "valid_reimport_person_ids": [
+      0
+    ],
+    "valid_reimport": true
+  },
+  "lifecycle_audit": {
+    "run_id": "cancel_scale_model_0d119275_legacy22",
+    "status": "passed_api_chain",
+    "retry_movie": "outputs/retry_custom_sticker.mp4",
+    "retry_sha256": "1d7dae1d9cf5dafc956662e061ddb27f8aaf51c19222f9fcff4ffc629311330b",
+    "retry_bytes": 549970,
+    "negative_status": "passed_api_checks",
+    "scope": "API flow and owned file evidence. Independent media, face and visual audits remain required."
+  }
+}
