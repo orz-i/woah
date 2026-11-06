@@ -1,0 +1,15 @@
+{
+  "run": "frame_kernel_box_focused_and_follow",
+  "reviewer": "Codex visual inspection",
+  "reviewed_uncovered_candidates": 162,
+  "reviewed_full_length_candidates": 158,
+  "hero_id": 6,
+  "review_boards": 8,
+  "overview_boards": 3,
+  "finding": "Every candidate is the intentionally exempt cyan-top/patterned-pants selected hero. Other visible faces are masked in the reviewed overview frames.",
+  "focused_review_reuse": "All 12 focused movies / 288 frames match pixels-focused output exactly; reuse the 12-movie manually reviewed pixel-stage boards.",
+  "limits": [
+    "Source face oracle is incomplete and non-solid geometry checks do not alone prove rendered coverage.",
+    "Final two-platform 62-case acceptance and full identity/selection migration remain pending."
+  ]
+}

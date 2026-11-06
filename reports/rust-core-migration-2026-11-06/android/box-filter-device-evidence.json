@@ -1,0 +1,39 @@
+{
+  "native": {
+    "case": "frame_kernel_box_full",
+    "input": "group-hd-8956295.mp4",
+    "face_only": true,
+    "fill": "solid",
+    "trim_start_ms": 0,
+    "trim_end_ms": 23240,
+    "detected_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "selected_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "hero": 6,
+    "state": "completed",
+    "frames": 581,
+    "output_bytes": 9204560,
+    "expected_frames": 581,
+    "actual_frames": 581,
+    "last_output_pts_us": 23200000
+  },
+  "decoded_frames": 581,
+  "decoded_bgr_sha256": "cea0d0005a617b66b4b35871c7717315ddc4eab1f427977b7335c7c0676cc877",
+  "matches_preprocessing_pixels": true,
+  "file_sha256": "3d23e0f5245128a1a87be27a6410a3b29914222149ed35099d2cd038a1b91cdb",
+  "source_algorithm_commit": "13244001"
+}
