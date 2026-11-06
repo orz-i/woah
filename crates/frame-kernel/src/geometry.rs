@@ -31,7 +31,7 @@ pub fn overlap_iou(a: Rect, b: Rect) -> f32 {
 /// Explicit preprocessing metadata. Adapters must describe the transform that
 /// actually produced their tensor; never reconstruct a subtly different one.
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Transform {
     pub scale: f32,
     pub pad_left: f32,

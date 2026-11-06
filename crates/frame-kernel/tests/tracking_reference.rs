@@ -103,6 +103,35 @@ fn masks_and_prediction_lifecycle_match_frozen_android_bytes() {
             expected.to_bits(),
             "fractional association {seed}"
         );
+        if stride == 4 {
+            let mut tracker = Tracker::new(TrackingConfig::default());
+            tracker
+                .initialize(
+                    vec![Detection {
+                        bounds: previous,
+                        mask: Some(mask(seed)),
+                        confidence: 0.9,
+                        foot_y: previous.bottom,
+                    }],
+                    &[5],
+                )
+                .unwrap();
+            tracker.tracks[0].predicted_bounds = predicted;
+            let candidates = [Detection {
+                bounds: predicted,
+                mask: Some(mask(seed + 3)),
+                confidence: 0.9,
+                foot_y: predicted.bottom,
+            }];
+            let mut cache = frame_kernel::tracking_evidence::AssociationCache::default();
+            for _ in 0..2 {
+                assert_eq!(
+                    cache.mask_iou(&tracker.tracks[0], &candidates, 0).to_bits(),
+                    expected.to_bits(),
+                    "cached native mask reference {seed}"
+                );
+            }
+        }
         assert_mask(
             conservative_mask(&mask(seed), predicted, missed).as_ref(),
             r.mask(),

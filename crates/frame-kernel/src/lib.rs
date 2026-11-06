@@ -17,6 +17,7 @@ pub mod protection;
 pub mod region_continuation;
 pub mod temporal_region;
 pub mod tracking;
+pub mod tracking_evidence;
 pub mod tracking_groups;
 pub mod tracking_lifecycle;
 pub mod tracking_mask;
