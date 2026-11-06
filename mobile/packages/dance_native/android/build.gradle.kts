@@ -99,9 +99,11 @@ android {
         }
         getByName("test") {
             java.srcDirs("src/test/kotlin")
+            java.srcDirs("src/reference/kotlin")
         }
         getByName("androidTest") {
             java.srcDirs("src/androidTest/kotlin")
+            java.srcDirs("src/reference/kotlin")
             // Benchmark-only fixtures. These directories are packaged only into
             // the instrumentation APK and never into the production AAR/APK.
             assets.srcDirs(

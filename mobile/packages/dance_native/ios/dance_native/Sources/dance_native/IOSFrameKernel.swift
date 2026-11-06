@@ -8,6 +8,59 @@ enum IOSFrameKernel {
     precondition(frame_kernel_abi_version() == 1, "Unsupported FrameKernel ABI")
   }()
 
+  /// Buffer ownership and DTO transport only. The generic core receives the
+  /// model layout from the consumer; it contains no YOLO/project constants.
+  final class InstanceDecoder {
+    private var capacity = 32
+    private var values = [FrameKernelInstanceDetection](repeating: FrameKernelInstanceDetection(), count: 32)
+    private var masks = [UInt8](repeating: 0, count: 32 * 160 * 160)
+
+    func decode(head: [Float32], proto: [Float32], preprocess: IOSYoloPreprocessResult,
+                headTransposed: Bool, protoNhwc: Bool, confidence: Float32,
+                bboxIoU: Float32, maskIoU: Float32) throws -> [IOSYoloDetection] {
+      _ = IOSFrameKernel.checkedABI
+      guard (1...65535).contains(preprocess.sourceWidth), (1...65535).contains(preprocess.sourceHeight),
+            (1...65535).contains(preprocess.inputSize) else { throw contractError() }
+      let spec = FrameKernelInstanceSpec(anchors: UInt32(IOSYoloPostprocessor.anchorCount),
+        attributes: UInt32(IOSYoloPostprocessor.attributeCount), score_index: 4, coefficient_index: 84,
+        channels: UInt32(IOSYoloPostprocessor.protoChannels), head_transposed: headTransposed ? 1 : 0,
+        proto_nhwc: protoNhwc ? 1 : 0, coordinate_units: 2)
+      let thresholds = FrameKernelInstanceThresholds(confidence: confidence, bbox_iou: bboxIoU, mask_iou: maskIoU)
+      let transform = IOSFrameKernel.transform(preprocess)
+      let pixels = IOSYoloPostprocessor.protoSize * IOSYoloPostprocessor.protoSize
+      var count: Int32 = 0
+      while true {
+        count = head.withUnsafeBufferPointer { h in
+          proto.withUnsafeBufferPointer { p in
+            values.withUnsafeMutableBufferPointer { v in
+              masks.withUnsafeMutableBufferPointer { m in
+                frame_kernel_decode_instances(h.baseAddress, h.count, p.baseAddress, p.count, spec, transform,
+                  thresholds, v.baseAddress, v.count, m.baseAddress, m.count, nil)
+              }
+            }
+          }
+        }
+        if count >= 0 { break }
+        if count == -1 { throw contractError() }
+        let required = -Int(count) - 1
+        guard required > capacity, required <= IOSYoloPostprocessor.anchorCount else { throw contractError() }
+        capacity = required
+        values = [FrameKernelInstanceDetection](repeating: FrameKernelInstanceDetection(), count: capacity)
+        masks = [UInt8](repeating: 0, count: capacity * pixels)
+      }
+      return (0..<Int(count)).map { i in
+        let value = values[i]
+        // Return independently owned masks before reusing the workspace.
+        return IOSYoloDetection(x1: value.bounds.left, y1: value.bounds.top, x2: value.bounds.right,
+          y2: value.bounds.bottom, confidence: value.confidence, mask: Array(masks[i*pixels..<(i+1)*pixels]))
+      }
+    }
+
+    private func contractError() -> PigeonError {
+      PigeonError(code: "YOLO_TENSOR_CONTRACT_MISMATCH", message: "FrameKernel rejected the instance tensor contract.", details: nil)
+    }
+  }
+
   static func needsFaceProtection(body: Bool, face: Bool) -> Bool {
     _ = checkedABI
     return (frame_kernel_protection_layers(body ? 1 : 0, face ? 1 : 0, 0) & FRAME_KERNEL_LAYER_FACE) != 0

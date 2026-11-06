@@ -26,6 +26,68 @@ static int read_transform(JNIEnv *env, jfloatArray values, FrameKernelTransform 
 JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_abiVersion(JNIEnv *env,jobject self) {
     (void)env; (void)self; return (jint)frame_kernel_abi_version();
 }
+JNIEXPORT jbyteArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_maskBytesNative(JNIEnv *env,jobject self,jfloatArray input) {
+    (void)self;
+    if (!input) { invalid(env); return NULL; }
+    jsize n=(*env)->GetArrayLength(env,input);
+    jbyteArray result=(*env)->NewByteArray(env,n);
+    if (!result || !n) return result;
+    uint8_t *bytes=malloc((size_t)n);
+    if (!bytes) { invalid(env); return NULL; }
+    jfloat *values=(*env)->GetFloatArrayElements(env,input,NULL);
+    if (!values) { free(bytes); return NULL; }
+    int32_t status=frame_kernel_mask_bytes(values,(size_t)n,bytes,(size_t)n);
+    (*env)->ReleaseFloatArrayElements(env,input,values,JNI_ABORT);
+    if (status) { free(bytes); invalid(env); return NULL; }
+    (*env)->SetByteArrayRegion(env,result,0,n,(const jbyte*)bytes);
+    free(bytes); return result;
+}
+JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_decodeInstancesNative(JNIEnv *env,jobject self,
+    jfloatArray head,jfloatArray proto,jintArray spec_values,jfloatArray transform_values,jfloatArray thresholds_values,
+    jfloatArray detection_values,jobject mask_buffer,jlongArray metrics_values) {
+    (void)self;
+    if (!head || !proto || !spec_values || !thresholds_values || !detection_values || !mask_buffer || !metrics_values ||
+        (*env)->GetArrayLength(env,spec_values)!=8 || (*env)->GetArrayLength(env,thresholds_values)!=3 ||
+        (*env)->GetArrayLength(env,detection_values)%5 || (*env)->GetArrayLength(env,metrics_values)!=5) {
+        invalid(env); return -1;
+    }
+    FrameKernelTransform transform;
+    if (!read_transform(env,transform_values,&transform)) return -1;
+    jint s[8]; jfloat t[3];
+    (*env)->GetIntArrayRegion(env,spec_values,0,8,s);
+    (*env)->GetFloatArrayRegion(env,thresholds_values,0,3,t);
+    if ((*env)->ExceptionCheck(env)) return -1;
+    FrameKernelInstanceSpec spec={(uint32_t)s[0],(uint32_t)s[1],(uint32_t)s[2],(uint32_t)s[3],(uint32_t)s[4],(uint32_t)s[5],(uint32_t)s[6],(uint32_t)s[7]};
+    FrameKernelInstanceThresholds thresholds={t[0],t[1],t[2]};
+    size_t capacity=(size_t)(*env)->GetArrayLength(env,detection_values)/5;
+    jlong bytes=(*env)->GetDirectBufferCapacity(env,mask_buffer);
+    uint8_t *masks=(*env)->GetDirectBufferAddress(env,mask_buffer);
+    if (capacity>100000 || bytes<0 || (bytes>0 && !masks)) { invalid(env); return -1; }
+    FrameKernelInstanceDetection *detections=capacity ? malloc(capacity*sizeof(*detections)) : NULL;
+    if (capacity && !detections) { invalid(env); return -1; }
+    jfloat *h=(*env)->GetFloatArrayElements(env,head,NULL);
+    if (!h) { free(detections); return -1; }
+    jfloat *p=(*env)->GetFloatArrayElements(env,proto,NULL);
+    if (!p) { (*env)->ReleaseFloatArrayElements(env,head,h,JNI_ABORT); free(detections); return -1; }
+    FrameKernelInstanceMetrics metrics={0};
+    int32_t n=frame_kernel_decode_instances(h,(size_t)(*env)->GetArrayLength(env,head),p,(size_t)(*env)->GetArrayLength(env,proto),
+        spec,transform,thresholds,detections,capacity,masks,(size_t)bytes,&metrics);
+    (*env)->ReleaseFloatArrayElements(env,head,h,JNI_ABORT);
+    (*env)->ReleaseFloatArrayElements(env,proto,p,JNI_ABORT);
+    if (n==-1) { free(detections); invalid(env); return -1; }
+    if (n>0) {
+        jfloat *out=malloc((size_t)n*5*sizeof(jfloat));
+        if (!out) { free(detections); invalid(env); return -1; }
+        for (int32_t i=0;i<n;i++) {
+            out[i*5]=detections[i].bounds.left; out[i*5+1]=detections[i].bounds.top;
+            out[i*5+2]=detections[i].bounds.right; out[i*5+3]=detections[i].bounds.bottom; out[i*5+4]=detections[i].confidence;
+        }
+        (*env)->SetFloatArrayRegion(env,detection_values,0,n*5,out); free(out);
+    }
+    jlong stats[5]={(jlong)metrics.candidate_scan_ns,(jlong)metrics.suppression_ns,(jlong)metrics.mask_decode_ns,(jlong)metrics.mask_iou_ns,(jlong)metrics.materialize_ns};
+    (*env)->SetLongArrayRegion(env,metrics_values,0,5,stats);
+    free(detections); return n;
+}
 JNIEXPORT jboolean JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_needsFaceProtectionNative(JNIEnv *env,jobject self,jboolean body,jboolean face) {
     (void)env; (void)self;
     return (frame_kernel_protection_layers(body,face,0) & FRAME_KERNEL_LAYER_FACE) ? JNI_TRUE:JNI_FALSE;
