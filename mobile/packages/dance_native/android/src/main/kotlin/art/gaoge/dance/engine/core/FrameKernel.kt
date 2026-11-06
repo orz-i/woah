@@ -11,6 +11,35 @@ internal object FrameKernel {
         check(abiVersion() == 1) { "Unsupported FrameKernel ABI" }
     }
 
+    private external fun workCanReplaceNative(state: Int): Int
+    private external fun workTransitionNative(state: Int, event: Int): Int
+    class WorkLifecycle {
+        private var state = 0
+        val acceptingProgress: Boolean get() = state <= 1
+        val canAdmitReplacement: Boolean get() = workCanReplaceNative(state) == 1
+        fun requestCancel(): Boolean {
+            state = workTransitionNative(state, 0)
+            return state == 1
+        }
+        fun observe(outcome: String): Boolean {
+            val event = when(outcome) {
+                "completed" -> 1; "failed" -> 2; "cancelled" -> 3
+                else -> return false
+            }
+            state = workTransitionNative(state, event)
+            return true
+        }
+        fun outcomeAfterRelease(): String = terminalName(workTransitionNative(state, 4))
+        fun release(): String {
+            state = workTransitionNative(state, 4)
+            return terminalName(state)
+        }
+        private fun terminalName(value: Int): String = when(value) {
+            5 -> "completed"; 6 -> "failed"; 7 -> "cancelled"
+            else -> error("Shared worker outcome is not terminal")
+        }
+    }
+
     private external fun regionStepNative(values: FloatArray, clock: LongArray, raw: FloatArray,
         anchor: FloatArray, pts: Long, kind: Int, flags: Int): FloatArray
     private external fun anchorTranslationNative(previous: FloatArray, current: FloatArray): FloatArray

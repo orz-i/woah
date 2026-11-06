@@ -969,3 +969,15 @@ pub unsafe extern "C" fn frame_kernel_project_mask(
         -1
     }
 }
+
+/// Native worker completion barrier; -1 rejects an invalid state or event.
+#[unsafe(no_mangle)]
+pub extern "C" fn frame_kernel_work_transition(state: u32, event: u32) -> i32 {
+    crate::work_lifecycle::transition(state, event).map_or(-1, |s| s as i32)
+}
+
+/// -1 invalid; otherwise 1 permits a serialized replacement and 0 rejects it.
+#[unsafe(no_mangle)]
+pub extern "C" fn frame_kernel_work_can_replace(state: u32) -> i32 {
+    crate::work_lifecycle::can_replace(state).map_or(-1, i32::from)
+}

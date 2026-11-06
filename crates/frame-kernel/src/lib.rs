@@ -16,6 +16,7 @@ pub mod pixels;
 pub mod protection;
 pub mod region_continuation;
 pub mod temporal_region;
+pub mod work_lifecycle;
 pub mod yuv;
 
 pub use ffi::*;

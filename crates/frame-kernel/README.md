@@ -47,3 +47,11 @@ Flags describe evidence strength rather than a platform or detector framework.
 Both face adapters request full current measured extent, including growth;
 Android's old 90% floor remains only in the frozen compatibility corpus.
 The shared anonymous path has private state and cannot mutate identity.
+
+
+Worker completion uses the same Rust transition table on both platforms.
+A cancellation request does not publish a terminal result. The native owner
+closes decoders, encoders, leases and private files before releasing the pending
+outcome. Successful publication seals completion against a later cancellation;
+cancellation accepted before publication wins over teardown errors. Transport
+adapters map outcome names; filesystem operations and platform locks stay native.
