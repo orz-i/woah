@@ -461,7 +461,7 @@ final class IOSExportPipeline {
           if let privacyClassTracker {
             var hardRoots: [Int: IOSPrivacySelectionClass] = [:]
             if !privacyClassHardRootsSent, !inference.detections.isEmpty {
-              let rootPersons = IOSPreviewIdentityMatcher.assign(
+              let rootPersons = try IOSPreviewIdentityMatcher.assign(
                 detections: inference.detections,
                 metadata: metadata,
                 frameWidth: identityFrameWidth,

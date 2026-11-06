@@ -218,7 +218,7 @@ final class IOSPreviewPipeline {
       preferredBackend: .xnnpack
     )
     let metadata = try analysisCache.loadMetadata(cacheId: cacheId)
-    let persons = IOSPreviewIdentityMatcher.assign(
+    let persons = try IOSPreviewIdentityMatcher.assign(
       detections: inference.detections,
       metadata: metadata,
       frameWidth: generated.image.width,

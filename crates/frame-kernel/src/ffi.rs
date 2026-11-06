@@ -1,9 +1,93 @@
+use crate::association::MatchPair;
 use crate::camera::FollowState;
 use crate::instances::{InstanceDetection, InstanceMetrics, InstanceSpec, InstanceThresholds};
 use crate::{
     ABI_VERSION,
     geometry::{self, Rect, Transform},
 };
+
+unsafe fn write_matches(pairs: &[MatchPair], output: *mut MatchPair, capacity: usize) -> i32 {
+    if capacity < pairs.len() {
+        return -(pairs.len() as i32) - 1;
+    }
+    if pairs.is_empty() {
+        return 0;
+    }
+    if output.is_null() {
+        return -1;
+    }
+    // SAFETY: caller supplies aligned writable output, disjoint from the owned
+    // local pairs vector. Capacity and nonnull pointer were checked above.
+    unsafe {
+        std::ptr::copy_nonoverlapping(pairs.as_ptr(), output, pairs.len());
+    }
+    pairs.len() as i32
+}
+
+/// # Safety
+/// Nonempty buffers are aligned, readable/writable as declared and disjoint.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_match_costs(
+    costs: *const f32,
+    len: usize,
+    rows: u32,
+    columns: u32,
+    max_cost: f32,
+    output: *mut MatchPair,
+    capacity: usize,
+) -> i32 {
+    if crate::association::dimensions(rows, columns) != Some(len) || (len > 0 && costs.is_null()) {
+        return -1;
+    }
+    let costs = if len == 0 {
+        &[]
+    } else {
+        // SAFETY: caller supplies a readable aligned input of validated length.
+        unsafe { std::slice::from_raw_parts(costs, len) }
+    };
+    let Some(pairs) = crate::association::match_costs(costs, rows, columns, max_cost) else {
+        return -1;
+    };
+    // SAFETY: output contract is supplied by caller; helper checks size/null.
+    unsafe { write_matches(&pairs, output, capacity) }
+}
+
+/// # Safety
+/// Nonempty buffers are aligned, readable/writable as declared and disjoint.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_match_rects(
+    rows: *const Rect,
+    nr: u32,
+    columns: *const Rect,
+    nc: u32,
+    max_cost: f32,
+    output: *mut MatchPair,
+    capacity: usize,
+) -> i32 {
+    if crate::association::dimensions(nr, nc).is_none()
+        || (nr > 0 && rows.is_null())
+        || (nc > 0 && columns.is_null())
+    {
+        return -1;
+    }
+    let rows = if nr == 0 {
+        &[]
+    } else {
+        // SAFETY: caller supplies a readable aligned array of nr Rect values.
+        unsafe { std::slice::from_raw_parts(rows, nr as usize) }
+    };
+    let columns = if nc == 0 {
+        &[]
+    } else {
+        // SAFETY: caller supplies a readable aligned array of nc Rect values.
+        unsafe { std::slice::from_raw_parts(columns, nc as usize) }
+    };
+    let Some(pairs) = crate::association::match_rects(rows, columns, max_cost) else {
+        return -1;
+    };
+    // SAFETY: output contract is supplied by caller; helper checks size/null.
+    unsafe { write_matches(&pairs, output, capacity) }
+}
 
 /// # Safety
 /// state points to one writable, aligned FollowState.

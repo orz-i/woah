@@ -26,6 +26,49 @@ static int read_transform(JNIEnv *env, jfloatArray values, FrameKernelTransform 
 JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_abiVersion(JNIEnv *env,jobject self) {
     (void)env; (void)self; return (jint)frame_kernel_abi_version();
 }
+static jintArray match_output(JNIEnv *env,FrameKernelMatchPair *pairs,int32_t count) {
+    if (count<0) { invalid(env); return NULL; }
+    jintArray result=(*env)->NewIntArray(env,count*2);
+    if (!result || !count) return result;
+    jint *values=malloc((size_t)count*2*sizeof(jint));
+    if (!values) { invalid(env); return NULL; }
+    for (int32_t i=0;i<count;i++) { values[i*2]=(jint)pairs[i].row;values[i*2+1]=(jint)pairs[i].column; }
+    (*env)->SetIntArrayRegion(env,result,0,count*2,values);free(values);return result;
+}
+JNIEXPORT jintArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_matchCostsNative(JNIEnv *env,jobject self,
+    jfloatArray costs,jint rows,jint columns,jfloat max_cost) {
+    (void)self;
+    if (!costs || rows<0 || columns<0 || rows>100000 || columns>100000 || (int64_t)rows*columns>1000000) { invalid(env);return NULL; }
+    jsize len=(*env)->GetArrayLength(env,costs);
+    if ((int64_t)rows*columns!=len) { invalid(env);return NULL; }
+    size_t capacity=(size_t)(rows<columns ? rows:columns);
+    if (!capacity) return match_output(env,NULL,frame_kernel_match_costs(NULL,0,(uint32_t)rows,(uint32_t)columns,max_cost,NULL,0));
+    FrameKernelMatchPair *pairs=malloc(capacity*sizeof(*pairs));
+    if (!pairs) { invalid(env);return NULL; }
+    jfloat *input=(*env)->GetFloatArrayElements(env,costs,NULL);
+    if (!input) { free(pairs);return NULL; }
+    int32_t n=frame_kernel_match_costs(input,(size_t)len,(uint32_t)rows,(uint32_t)columns,max_cost,pairs,capacity);
+    (*env)->ReleaseFloatArrayElements(env,costs,input,JNI_ABORT);
+    jintArray result=match_output(env,pairs,n);free(pairs);return result;
+}
+JNIEXPORT jintArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_matchRectsNative(JNIEnv *env,jobject self,
+    jfloatArray rows,jfloatArray columns,jfloat max_cost) {
+    (void)self;
+    if (!rows || !columns) { invalid(env);return NULL; }
+    jsize nr=(*env)->GetArrayLength(env,rows),nc=(*env)->GetArrayLength(env,columns);
+    if (nr%4 || nc%4 || nr/4>100000 || nc/4>100000 || (int64_t)(nr/4)*(nc/4)>1000000) { invalid(env);return NULL; }
+    size_t capacity=(size_t)(nr<nc ? nr:nc)/4;
+    FrameKernelMatchPair *pairs=capacity ? malloc(capacity*sizeof(*pairs)):NULL;
+    if (capacity && !pairs) { invalid(env);return NULL; }
+    jfloat *r=nr ? (*env)->GetFloatArrayElements(env,rows,NULL):NULL;
+    if (nr && !r) { free(pairs);return NULL; }
+    jfloat *c=nc ? (*env)->GetFloatArrayElements(env,columns,NULL):NULL;
+    if (nc && !c) { if (r) (*env)->ReleaseFloatArrayElements(env,rows,r,JNI_ABORT);free(pairs);return NULL; }
+    int32_t n=frame_kernel_match_rects((const FrameKernelRect*)r,(uint32_t)(nr/4),(const FrameKernelRect*)c,(uint32_t)(nc/4),max_cost,pairs,capacity);
+    if (r) (*env)->ReleaseFloatArrayElements(env,rows,r,JNI_ABORT);
+    if (c) (*env)->ReleaseFloatArrayElements(env,columns,c,JNI_ABORT);
+    jintArray result=match_output(env,pairs,n);free(pairs);return result;
+}
 static int read_follow(JNIEnv *env,jfloatArray values,jlongArray clock,FrameKernelFollowState *state) {
     if (!values || !clock || (*env)->GetArrayLength(env,values)!=6 || (*env)->GetArrayLength(env,clock)!=3) {
         invalid(env); return 0;

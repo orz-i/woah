@@ -17,6 +17,17 @@ impl Rect {
     }
 }
 
+/// Ordinary bounding-box IoU, including subpixel areas. Detail-tile merging's
+/// historical denominator clamp is intentionally a separate operation.
+pub fn overlap_iou(a: Rect, b: Rect) -> f32 {
+    let area = (a.right.min(b.right) - a.left.max(b.left)).max(0.0)
+        * (a.bottom.min(b.bottom) - a.top.max(b.top)).max(0.0);
+    let union = (a.right - a.left).max(0.0) * (a.bottom - a.top).max(0.0)
+        + (b.right - b.left).max(0.0) * (b.bottom - b.top).max(0.0)
+        - area;
+    if union > 0.0 { area / union } else { 0.0 }
+}
+
 /// Explicit preprocessing metadata. Adapters must describe the transform that
 /// actually produced their tensor; never reconstruct a subtly different one.
 #[repr(C)]

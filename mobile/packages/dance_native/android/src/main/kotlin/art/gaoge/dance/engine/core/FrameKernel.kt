@@ -12,6 +12,8 @@ internal object FrameKernel {
     }
 
     private external fun abiVersion(): Int
+    private external fun matchCostsNative(costs: FloatArray, rows: Int, columns: Int, maxCost: Float): IntArray
+    private external fun matchRectsNative(rows: FloatArray, columns: FloatArray, maxCost: Float): IntArray
     private external fun followResetNative(values: FloatArray, clock: LongArray)
     private external fun followStepNative(values: FloatArray, clock: LongArray, target: FloatArray?, pts: Long,
         sourceAspect: Float, outputAspect: Float, zoom: Float, smooth: Float): FloatArray
@@ -27,6 +29,15 @@ internal object FrameKernel {
     private external fun reprojectMaskNative(mask: ByteBuffer, output: ByteBuffer, local: FloatArray, scene: FloatArray, view: FloatArray)
 
     fun needsFaceProtection(body: Boolean, face: Boolean): Boolean = needsFaceProtectionNative(body, face)
+
+    fun matchCosts(costs: FloatArray, rows: Int, columns: Int, maxCost: Float): List<Pair<Int, Int>> =
+        matchCostsNative(costs, rows, columns, maxCost).asList().chunked(2).map { it[0] to it[1] }
+    fun matchRects(rows: List<FloatRect>, columns: List<FloatRect>, maxCost: Float): List<Pair<Int, Int>> {
+        fun flatten(rects: List<FloatRect>): FloatArray = FloatArray(rects.size * 4).also { result ->
+            rects.forEachIndexed { i, r -> r.values().copyInto(result, i * 4) }
+        }
+        return matchRectsNative(flatten(rows), flatten(columns), maxCost).asList().chunked(2).map { it[0] to it[1] }
+    }
 
     fun followReset(values: FloatArray, clock: LongArray) = followResetNative(values, clock)
     fun followStep(values: FloatArray, clock: LongArray, target: FloatRect?, pts: Long,

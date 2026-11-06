@@ -14,6 +14,13 @@ typedef struct FrameKernelTransform {
     uint32_t source_width, source_height, input_size, proto_size;
 } FrameKernelTransform;
 uint32_t frame_kernel_abi_version(void);
+typedef struct FrameKernelMatchPair { uint32_t row, column; } FrameKernelMatchPair;
+/* Stable thresholded greedy matching, not an optimal Hungarian assignment.
+   Returns count; -1 invalid; <=-2 needs -(result+1) pair capacity, no partial writes. */
+int32_t frame_kernel_match_costs(const float *costs, size_t len, uint32_t rows, uint32_t columns,
+    float max_cost, FrameKernelMatchPair *output, size_t capacity);
+int32_t frame_kernel_match_rects(const FrameKernelRect *rows, uint32_t nr, const FrameKernelRect *columns,
+    uint32_t nc, float max_cost, FrameKernelMatchPair *output, size_t capacity);
 typedef struct FrameKernelFollowState {
     float camera_x, camera_y, target_x, target_y, velocity_x, velocity_y;
     int64_t last_pts_us;
