@@ -20,7 +20,7 @@ Native iOS media, rendering, and on-device inference bridge for Woah.
   s.static_framework = true
   s.libraries = 'woah_privacy_core', 'iconv'
   s.user_target_xcconfig = {
-    'LIBRARY_SEARCH_PATHS' => '$(inherited) "$(BUILT_PRODUCTS_DIR)/RustCore"'
+    'LIBRARY_SEARCH_PATHS' => '$(inherited) "$(PODS_CONFIGURATION_BUILD_DIR)/dance_native/RustCore"'
   }
   s.dependency 'Flutter'
   # The first-party general Swift runtime currently available through CocoaPods
