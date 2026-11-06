@@ -82,6 +82,15 @@ class Mp4Muxer(
         }
     }
 
+    fun finishAudio(endTimeUs: Long) = synchronized(lock) {
+        check(isStarted && audioTrackIndex >= 0) { "Audio track is not ready" }
+        require(endTimeUs > 0) { "Audio end time must be positive" }
+        val info = MediaCodec.BufferInfo().apply {
+            set(0, 0, endTimeUs, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+        }
+        muxer.writeSampleData(audioTrackIndex, ByteBuffer.allocateDirect(0), info)
+    }
+
     fun writeSampleData(trackIndex: Int, byteBuf: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) {
         synchronized(lock) {
             check(isStarted) { "Cannot write sample data: Muxer has not started" }

@@ -56,6 +56,8 @@ class AudioTrackCopier(
 
         val buffer = ByteBuffer.allocateDirect(bufferCapacity)
         val bufferInfo = MediaCodec.BufferInfo()
+        var writtenSamples = 0
+        var lastSourcePtsUs = -1L
 
         while (true) {
             val sampleSize = extractor.readSampleData(buffer, 0)
@@ -80,7 +82,20 @@ class AudioTrackCopier(
             }
 
             muxer.writeAudioSample(buffer, bufferInfo)
+            writtenSamples++
+            lastSourcePtsUs = sampleTimeUs
             extractor.advance()
+        }
+        // With only one access unit there is no previous sample duration for
+        // MediaMuxer to inherit. Without EOS the whole AAC packet can be discarded.
+        if (writtenSamples == 1) {
+            val boundaryUs = extractor.sampleTime.takeIf { it >= 0L }
+                ?: audioFormat?.takeIf { it.containsKey(MediaFormat.KEY_DURATION) }
+                    ?.getLong(MediaFormat.KEY_DURATION)
+            val finalUs = boundaryUs?.let { minOf(it, endUs ?: it) }
+            if (finalUs != null && finalUs > lastSourcePtsUs) {
+                muxer.finishAudio(finalUs - startUs)
+            }
         }
     }
 
