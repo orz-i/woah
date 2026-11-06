@@ -175,7 +175,7 @@ val buildRustHost = tasks.register("buildRustHost") {
         }.result.get().assertNormalExitValue()
     }
 }
-android.sourceSets.getByName("main").jniLibs.srcDir(rustJniDir)
+android.sourceSets.getByName("main").jniLibs.srcDir(rustJniDir.get().asFile)
 tasks.named("preBuild").configure { dependsOn(buildRustAndroid) }
 tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     dependsOn(buildRustHost)

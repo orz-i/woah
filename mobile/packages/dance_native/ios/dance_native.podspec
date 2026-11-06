@@ -38,7 +38,9 @@ Native iOS media, rendering, and on-device inference bridge for Woah.
     :name => 'Build shared Rust privacy core',
     :execution_position => :before_compile,
     :script => 'set -eu; python3 "${PODS_TARGET_SRCROOT}/../../../../tools/rust/build_xcode.py"',
-    :input_files => Dir.glob(File.join(__dir__, '../core/src/**/*.rs')) +
+    :input_files => Dir.glob('src/**/*.rs', :base => File.expand_path('../core', __dir__)).sort.map { |path|
+      '$(PODS_TARGET_SRCROOT)/../core/' + path
+    } +
       ['$(PODS_TARGET_SRCROOT)/../core/Cargo.toml', '$(PODS_TARGET_SRCROOT)/../core/Cargo.lock',
        '$(PODS_TARGET_SRCROOT)/../../../../rust-toolchain.toml',
        '$(PODS_TARGET_SRCROOT)/../../../../tools/rust/build_xcode.py',
