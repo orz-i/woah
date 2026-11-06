@@ -147,11 +147,14 @@ class ExportPipeline(
         } else {
             null
         }
-        val enhanceFullScenePrivacy = art.gaoge.dance.engine.inference.HighResolutionPrivacyCoverage.applies(
-            sourceWidth = videoInfo.displayWidth.toInt(), sourceHeight = videoInfo.displayHeight.toInt(),
-            initialIds = analysisMetadata?.persons?.map { it.id }?.toSet().orEmpty(),
-            bodyIds = fullBodyPersonIds, faceIds = faceOnlyPersonIds, followsPerson = request.follow.enabled
-        )
+        val initialIds = analysisMetadata?.persons?.map { it.id }?.toSet().orEmpty()
+        val privacyScope = art.gaoge.dance.engine.core.FrameKernel.sceneScope(initialIds,
+            fullBodyPersonIds, faceOnlyPersonIds, if (request.follow.enabled) request.follow.targetPersonId?.toInt() else null)
+        val currentOtherFaceCoverage = (privacyScope and art.gaoge.dance.engine.core.FrameKernel.SCENE_OTHER_FACES) != 0
+        val detailResolution = art.gaoge.dance.engine.inference.HighResolutionPrivacyCoverage.hasDetailResolution(
+            videoInfo.displayWidth.toInt(), videoInfo.displayHeight.toInt())
+        val allSceneCoverage = !request.follow.enabled && detailResolution && (privacyScope and 3) != 0
+        val enhanceSpatialDetail = detailResolution && initialIds.size > 1 && (allSceneCoverage || currentOtherFaceCoverage)
         val faceOnlyIdentityProtectedIds = if (faceOnlyPersonIds.isNotEmpty()) {
             resolveFaceOnlyIdentityProtectedIds(
                 metadata = analysisMetadata,
@@ -547,7 +550,7 @@ class ExportPipeline(
                     )
                 } else null
                 val profile = ProcessingProfile.fromName(request.processingProfile)
-                val frameStride = if (enhanceFullScenePrivacy) 1 else profile.privacyInferenceStride(
+                val frameStride = if (allSceneCoverage || currentOtherFaceCoverage) 1 else profile.privacyInferenceStride(
                     hasFullBodyTargets = fullBodyPersonIds.isNotEmpty(),
                     hasFaceOnlyTargets = faceOnlyPersonIds.isNotEmpty(),
                     scenePersonCount = analysisMetadata?.persons?.size ?: allPrivacyTargetIds.size
@@ -557,7 +560,7 @@ class ExportPipeline(
                     isDebugBuild = art.gaoge.dance.engine.BuildConfig.DEBUG,
                     fullBodyPersonIds = fullBodyPersonIds,
                     faceOnlyPersonIds = faceOnlyPersonIds
-                ) && !enhanceFullScenePrivacy
+                ) && !allSceneCoverage
                 val reuseProductionCpuFallbackForCpuMt4Reference =
                     shouldReuseProductionCpuFallbackForCpuMt4Reference(
                         isDebugBuild = art.gaoge.dance.engine.BuildConfig.DEBUG,
@@ -894,6 +897,7 @@ class ExportPipeline(
                     var cpuReferenceTrackedForFace: List<TrackedPerson>? = null
                     var canonicalModelRgbaForFace: java.nio.ByteBuffer? = null
                     var fullSceneDetections = emptyList<art.gaoge.dance.engine.inference.PersonDetection>()
+                    var currentFaceCoverageDetections = emptyList<art.gaoge.dance.engine.inference.PersonDetection>()
                     var coveredHeadFallbackIds = emptySet<Int>()
 
                         // 2. Perform Inference / Temporal Mask Tracking
@@ -1112,7 +1116,7 @@ class ExportPipeline(
                                 emptyList()
                             }
 
-                            if (shouldInfer && enhanceFullScenePrivacy) {
+                            if (shouldInfer && enhanceSpatialDetail) {
                                 val extras = profiler.recordStage("highResolutionPrivacyCoverage") {
                                     art.gaoge.dance.engine.inference.HighResolutionPrivacyCoverage
                                         .views(trackingWidth, trackingHeight).flatMap { view ->
@@ -1143,6 +1147,9 @@ class ExportPipeline(
                                 detections = art.gaoge.dance.engine.inference.HighResolutionPrivacyCoverage.merge(detections, extras)
                                 fullSceneDetections = detections
                             }
+
+                            fullSceneDetections = detections
+                            currentFaceCoverageDetections = if (enhanceSpatialDetail) detections else cpuMt4DetectionsForShadow ?: detections
 
                             val deterministicTrackingPrimary = if (preferDebugFaceDeterministicCpuPrimary) {
                                 val diagnostics = checkNotNull(crossDeviceTrackingDiagnostics) {
@@ -1299,7 +1306,7 @@ class ExportPipeline(
                             }
                             val temporalPrivacyEvidence = if (shouldInfer && allowFreshFullBodyClassPrimary) {
                                 profiler.recordStage("privacyClassTracking") {
-                                    if (enhanceFullScenePrivacy) detections.mapIndexed { index, detection ->
+                                    if (allSceneCoverage) detections.mapIndexed { index, detection ->
                                         // The analysis has no exempt person. New detailed observations
                                         // must not acquire an exemption merely by receiving a new ID.
                                         art.gaoge.dance.engine.tracking.FreshPrivacyClassEvidence(
@@ -1395,7 +1402,7 @@ class ExportPipeline(
                         val faceOnlyFrameResult = faceOnlyPrivacyProcessor?.let { processor ->
                             val useCpuReferenceGeometry =
                                 art.gaoge.dance.engine.BuildConfig.DEBUG && cpuReferenceTrackedForFace != null &&
-                                    !enhanceFullScenePrivacy
+                                    !allSceneCoverage
                             val trackedFaceGeometryPersons = if (useCpuReferenceGeometry) {
                                 // Keep the complete deterministic CPU reference for FACE_ONLY:
                                 // identity/state, geometry and body-mask evidence. Mixing the
@@ -1408,17 +1415,26 @@ class ExportPipeline(
                                 trackedList
                             }
                             // Current pixels remain protectable while exact identity is unresolved.
-                            val faceGeometryPersons = if (enhanceFullScenePrivacy) {
-                                anonymousFaceCoverage.current(fullSceneDetections)
-                            } else trackedFaceGeometryPersons
+                            val heroId = if (currentOtherFaceCoverage) request.follow.targetPersonId?.toInt() else null
+                            val observedHero = trackedFaceGeometryPersons.singleOrNull { it.id == heroId && it.observedThisFrame }?.bbox
+                            val faceGeometryPersons = when {
+                                allSceneCoverage -> anonymousFaceCoverage.current(fullSceneDetections)
+                                currentOtherFaceCoverage -> {
+                                    val current = if (useCpuReferenceGeometry) currentFaceCoverageDetections.map {
+                                        it.copy(bbox = FaceReferenceGeometryCanonicalizer.rect(it.bbox))
+                                    } else currentFaceCoverageDetections
+                                    anonymousFaceCoverage.current(current, heroId, observedHero)
+                                }
+                                else -> trackedFaceGeometryPersons
+                            }
                             val currentSceneIds = faceGeometryPersons.map { it.id }.toSet()
-                            val bodyFaceIds = if (enhanceFullScenePrivacy && fullBodyPersonIds.isNotEmpty()) {
-                                currentSceneIds
-                            } else fullBodyPersonIds
-                            val explicitFaceIds = if (enhanceFullScenePrivacy && faceOnlyPersonIds.isNotEmpty()) {
-                                currentSceneIds
-                            } else faceOnlyPersonIds
-                            val protectedMotionEvidence = if (useCpuReferenceGeometry) {
+                            val bodyFaceIds = if (allSceneCoverage && fullBodyPersonIds.isNotEmpty()) currentSceneIds else fullBodyPersonIds
+                            val explicitFaceIds = when {
+                                currentOtherFaceCoverage -> currentSceneIds - setOfNotNull(heroId)
+                                allSceneCoverage && faceOnlyPersonIds.isNotEmpty() -> currentSceneIds
+                                else -> faceOnlyPersonIds
+                            }
+                            val protectedMotionEvidence = if (currentOtherFaceCoverage) emptyList() else if (useCpuReferenceGeometry) {
                                 canonicalizeCpuReferenceMotionEvidence(
                                     crossDeviceTrackingDiagnostics
                                         ?.getCpuFullProtectedTrackMotionEvidence()
@@ -1427,7 +1443,7 @@ class ExportPipeline(
                             } else {
                                 trackManager.getFreshProtectedTrackMotionEvidence()
                             }
-                            val freshFacePrivacyClassEvidence = if (useCpuReferenceGeometry) {
+                            val freshFacePrivacyClassEvidence = if (currentOtherFaceCoverage) emptyList() else if (useCpuReferenceGeometry) {
                                 val diagnostics = crossDeviceTrackingDiagnostics
                                 buildList {
                                     addAll(diagnostics?.getCpuFullFreshFacePrivacyClassEvidence().orEmpty())
@@ -1438,7 +1454,7 @@ class ExportPipeline(
                                 // deterministic candidate is validated on devices.
                                 emptyList()
                             }
-                            coveredHeadFallbackIds = if (enhanceFullScenePrivacy) {
+                            coveredHeadFallbackIds = if (allSceneCoverage || currentOtherFaceCoverage) {
                                 art.gaoge.dance.engine.inference.HighResolutionPrivacyCoverage.coveredHeadFallbackIds(faceGeometryPersons)
                             } else emptySet()
                             profiler.recordStage("faceOnlyPrivacy") {
@@ -1471,14 +1487,14 @@ class ExportPipeline(
                                         "job_id" to jobId,
                                         "pts_us" to ptsUs,
                                         "covered_head_fallback_track_ids" to coveredHeadFallbackIds.sorted(),
-                                        "geometry_source" to if (enhanceFullScenePrivacy) {
+                                        "geometry_source" to if (allSceneCoverage) {
                                             "CURRENT_SCENE_OBSERVATIONS"
                                         } else if (cpuReferenceTrackedForFace != null) {
                                             "CPU_MT4_REFERENCE"
                                         } else {
                                             "PRODUCTION_TRACKS"
                                         },
-                                        "mask_source" to if (enhanceFullScenePrivacy) {
+                                        "mask_source" to if (allSceneCoverage) {
                                             "CURRENT_SCENE_OBSERVATIONS"
                                         } else if (cpuReferenceTrackedForFace != null) {
                                             "CPU_MT4_REFERENCE"

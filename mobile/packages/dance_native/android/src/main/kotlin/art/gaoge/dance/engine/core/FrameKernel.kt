@@ -12,6 +12,11 @@ internal object FrameKernel {
     }
 
     private external fun abiVersion(): Int
+    private external fun associationDefaultsNative(): FloatArray
+    private external fun associationScoreNative(values: FloatArray, historyAge: Long, flags: Int, weights: FloatArray): Float
+    private external fun sceneScopeNative(roots: LongArray, body: LongArray, face: LongArray, hasHero: Boolean, hero: Long): Int
+    private external fun compositorTargetsNative(selected: LongArray, covered: LongArray, explicit: LongArray): LongArray
+    private external fun currentHeroIndexNative(boxes: FloatArray, observed: FloatArray?): Int
     private external fun boxFilterStepNative(values: FloatArray, clock: LongArray, operation: Int, bounds: FloatArray?, pts: Long, factor: Float): FloatArray
     private external fun invertMatrix4Native(values: FloatArray): FloatArray?
     private external fun letterboxNative(width: Int, height: Int, outputWidth: Int, outputHeight: Int): FloatArray
@@ -79,6 +84,26 @@ internal object FrameKernel {
         reprojectMaskNative(mask, output, local.values(), scene.values(), view.values())
 
     fun letterbox(width: Int, height: Int, outputWidth: Int, outputHeight: Int) = letterboxNative(width, height, outputWidth, outputHeight)
+    data class AssociationWeights(val bounds: Float, val mask: Float, val motion: Float, val direction: Float, val gating: Float)
+    val associationDefaults: AssociationWeights by lazy {
+        val v = associationDefaultsNative()
+        AssociationWeights(v[0], v[1], v[2], v[3], v[4])
+    }
+    private external fun reservationReleaseNative(flags: Int, owners: Int, box: Float, mask: Float): Boolean
+    fun reservationRelease(strict: Boolean, durableNonBody: Boolean, owners: Int, direct: Boolean, box: Float, mask: Float): Boolean =
+        reservationReleaseNative((if (strict) 1 else 0) or (if (durableNonBody) 2 else 0) or (if (direct) 4 else 0), owners, box, mask)
+    fun associationScore(values: FloatArray, historyAge: Long, flags: Int, weights: FloatArray): Float =
+        associationScoreNative(values, historyAge, flags, weights)
+    const val SCENE_BODY = 1
+    const val SCENE_FACE = 2
+    const val SCENE_OTHER_FACES = 4
+    fun sceneScope(roots: Set<Int>, body: Set<Int>, face: Set<Int>, hero: Int?): Int =
+        sceneScopeNative(roots.ids(), body.ids(), face.ids(), hero != null, hero?.toLong() ?: 0)
+    fun compositorTargets(selected: Set<Int>, covered: Set<Int>, explicit: Set<Int>): Set<Int> =
+        compositorTargetsNative(selected.ids(), covered.ids(), explicit.ids()).map { it.toInt() }.toSet()
+    fun currentHeroIndex(boxes: List<FloatRect>, observed: FloatRect?): Int =
+        currentHeroIndexNative(boxes.flatMap { it.values().asList() }.toFloatArray(), observed?.values())
+    private fun Set<Int>.ids() = map { it.toLong() }.toLongArray()
     fun boxFilterStep(values: FloatArray, clock: LongArray, operation: Int, bounds: FloatRect? = null, pts: Long = -1, factor: Float = 1f) =
         boxFilterStepNative(values, clock, operation, bounds?.values(), pts, factor)
     fun invertMatrix4(values: FloatArray) = invertMatrix4Native(values)

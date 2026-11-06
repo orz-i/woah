@@ -36,6 +36,70 @@ static jintArray match_output(JNIEnv *env,FrameKernelMatchPair *pairs,int32_t co
     for (int32_t i=0;i<count;i++) { values[i*2]=(jint)pairs[i].row;values[i*2+1]=(jint)pairs[i].column; }
     (*env)->SetIntArrayRegion(env,result,0,count*2,values);free(values);return result;
 }
+JNIEXPORT jboolean JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_reservationReleaseNative(JNIEnv *env,jobject self,jint flags,jint owners,jfloat box,jfloat mask) {
+    (void)self;
+    int32_t result=owners<0 ? -1:frame_kernel_reservation_release(flags,owners,box,mask);
+    if(result<0) invalid(env);
+    return result==1 ? JNI_TRUE:JNI_FALSE;
+}
+JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_associationDefaultsNative(JNIEnv *env,jobject self) {
+    (void)self;FrameKernelAssociationWeights c=frame_kernel_association_defaults();
+    jfloat values[5]={c.bounds,c.mask,c.motion,c.direction,c.gating_threshold};jfloatArray out=(*env)->NewFloatArray(env,5);
+    if(out) (*env)->SetFloatArrayRegion(env,out,0,5,values);return out;
+}
+JNIEXPORT jfloat JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_associationScoreNative(JNIEnv *env,jobject self,
+    jfloatArray values,jlong history_age,jint flags,jfloatArray weights) {
+    (void)self;jfloat v[18],w[5];float score=0;
+    if(!values || !weights || (*env)->GetArrayLength(env,values)!=18 || (*env)->GetArrayLength(env,weights)!=5 || history_age<0 || flags<0) {invalid(env);return 0;}
+    (*env)->GetFloatArrayRegion(env,values,0,18,v);(*env)->GetFloatArrayRegion(env,weights,0,5,w);
+    if((*env)->ExceptionCheck(env)) return 0;
+    FrameKernelAssociationEvidence e={{v[0],v[1],v[2],v[3]},{v[4],v[5],v[6],v[7]},{v[8],v[9],v[10],v[11]},
+        v[12],v[13],v[14],v[15],v[16],v[17],(int64_t)history_age,(uint32_t)flags};
+    FrameKernelAssociationWeights c={w[0],w[1],w[2],w[3],w[4]};
+    if(frame_kernel_association_score(e,c,&score)) invalid(env);return score;
+}
+typedef struct IdInput { jlongArray array; jlong *values; jsize count; } IdInput;
+static int read_ids(JNIEnv *env,jlongArray array,IdInput *input) {
+    if (!array) {invalid(env);return 0;}
+    input->array=array;input->count=(*env)->GetArrayLength(env,array);
+    if (input->count>100000) {invalid(env);return 0;}
+    input->values=input->count ? (*env)->GetLongArrayElements(env,array,NULL):NULL;
+    return !input->count || input->values!=NULL;
+}
+static void release_ids(JNIEnv *env,IdInput *input) {
+    if (input->values) (*env)->ReleaseLongArrayElements(env,input->array,input->values,JNI_ABORT);
+}
+JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_sceneScopeNative(JNIEnv *env,jobject self,
+    jlongArray roots,jlongArray body,jlongArray face,jboolean has_hero,jlong hero) {
+    (void)self;IdInput r={0},b={0},f={0};int result=-1;
+    if (read_ids(env,roots,&r) && read_ids(env,body,&b) && read_ids(env,face,&f))
+        result=frame_kernel_scene_scope((const int64_t*)r.values,(size_t)r.count,(const int64_t*)b.values,(size_t)b.count,
+            (const int64_t*)f.values,(size_t)f.count,has_hero ? 1u:0u,(int64_t)hero);
+    release_ids(env,&r);release_ids(env,&b);release_ids(env,&f);if (result<0) invalid(env);return result;
+}
+JNIEXPORT jlongArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_compositorTargetsNative(JNIEnv *env,jobject self,
+    jlongArray selected,jlongArray covered,jlongArray explicit_ids) {
+    (void)self;IdInput s={0},c={0},e={0};jlongArray result=NULL;int64_t *out=NULL;
+    if (read_ids(env,selected,&s) && read_ids(env,covered,&c) && read_ids(env,explicit_ids,&e)) {
+        out=s.count ? malloc((size_t)s.count*sizeof(int64_t)):NULL;
+        if (s.count && !out) {invalid(env);}else{
+            int n=frame_kernel_compositor_targets((const int64_t*)s.values,(size_t)s.count,(const int64_t*)c.values,(size_t)c.count,
+                (const int64_t*)e.values,(size_t)e.count,out,(size_t)s.count);
+            if(n<0) {invalid(env);}else{result=(*env)->NewLongArray(env,n);if(result && n) (*env)->SetLongArrayRegion(env,result,0,n,(const jlong*)out);}
+        }
+    }
+    free(out);release_ids(env,&s);release_ids(env,&c);release_ids(env,&e);return result;
+}
+JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_currentHeroIndexNative(JNIEnv *env,jobject self,jfloatArray boxes,jfloatArray observed) {
+    (void)self;FrameKernelRect hero={0};int result=-2;
+    if (!boxes || (observed && !read_rect(env,observed,&hero))) {invalid(env);return result;}
+    jsize len=(*env)->GetArrayLength(env,boxes);if (len%4 || len/4>100000) {invalid(env);return result;}
+    jfloat *input=len ? (*env)->GetFloatArrayElements(env,boxes,NULL):NULL;
+    if(len && !input) return result;
+    result=frame_kernel_current_hero_index((const FrameKernelRect*)input,(size_t)len/4,observed ? 1u:0u,hero);
+    if(input) (*env)->ReleaseFloatArrayElements(env,boxes,input,JNI_ABORT);
+    if(result< -1) invalid(env);return result;
+}
 JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_boxFilterStepNative(JNIEnv *env,jobject self,
     jfloatArray values,jlongArray clock,jint operation,jfloatArray bounds,jlong pts,jfloat factor) {
     (void)self;FrameKernelBoxFilter state;FrameKernelRect box={0},out;float distance=0;

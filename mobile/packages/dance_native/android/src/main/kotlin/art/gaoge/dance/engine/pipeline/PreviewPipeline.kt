@@ -78,6 +78,7 @@ class PreviewPipeline(
             )
 
         val videoInfo = VideoProbe.probe(context, sourceUri)
+        val metadata = cacheManager.getAnalysisMetadata(request.analysisCacheId)
         val cacheKey = "${request.analysisCacheId}_${request.timestampMs}"
         val cachedEntry = analysisCache.copyForUse(cacheKey)
 
@@ -148,7 +149,6 @@ class PreviewPipeline(
 
 
             // 3. Assign stable IDs matching analysis cache
-            val metadata = cacheManager.getAnalysisMetadata(request.analysisCacheId)
             val tracker = TrackManager()
             val persons = if (metadata != null && metadata.persons.isNotEmpty() && detections.isNotEmpty()) {
                 val cached = metadata.persons
@@ -297,12 +297,24 @@ class PreviewPipeline(
                 // Keep its CPU path; sustained export uses the GPU workers.
                 val processor = FaceOnlyPrivacyFrameProcessor.create(context, faceMapper, preferGpu = false)
                 faceOnlyPrivacyProcessor = processor
+                val scope = art.gaoge.dance.engine.core.FrameKernel.sceneScope(metadata?.persons?.map { it.id }?.toSet().orEmpty(),
+                    fullBodyPersonIds, faceOnlyPersonIds, if (request.follow.enabled) request.follow.targetPersonId?.toInt() else null)
+                val allOthers = (scope and art.gaoge.dance.engine.core.FrameKernel.SCENE_OTHER_FACES) != 0
+                val heroId = if (allOthers) request.follow.targetPersonId?.toInt() else null
+                val current = if (allOthers) {
+                    val detections = trackedPersons.filter { it.observedThisFrame }.map {
+                        art.gaoge.dance.engine.inference.PersonDetection(it.bbox, it.confidence, it.mask, it.footY ?: it.bbox.bottom)
+                    }
+                    val observedHero = trackedPersons.singleOrNull { it.id == heroId && it.observedThisFrame }?.bbox
+                    art.gaoge.dance.engine.inference.HighResolutionPrivacyCoverage.FaceObservations().current(detections, heroId, observedHero)
+                } else trackedPersons
+                val faceIds = if (allOthers) current.map { it.id }.toSet() - setOfNotNull(heroId) else faceOnlyPersonIds
                 processor.resolveFrame(
                     frameTexture = frameTextureId,
                     texMatrix = RenderCoordinateConvention.bitmapTextureMatrix(),
                     textureType = SourceTextureType.TEXTURE_2D,
-                    persons = trackedPersons,
-                    faceOnlyTrackIds = faceOnlyPersonIds,
+                    persons = current,
+                    faceOnlyTrackIds = faceIds,
                     fullBodyTrackIds = fullBodyPersonIds,
                     bodySupplementTrackIds = fullBodyPersonIds,
                     ptsUs = request.timestampMs * 1000L

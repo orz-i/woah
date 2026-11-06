@@ -15,14 +15,14 @@ data class TrackingConfig(
     val maxMissedFrames: Int = 15,
     val postOcclusionGraceFrames: Int = 10,
     val minMatchScore: Float = 0.20f,
-    val bboxIouWeight: Float = 0.35f,
-    val maskIouWeight: Float = 0.25f,
-    val motionWeight: Float = 0.25f,
-    val directionWeight: Float = 0.15f,
+    val bboxIouWeight: Float = art.gaoge.dance.engine.core.FrameKernel.associationDefaults.bounds,
+    val maskIouWeight: Float = art.gaoge.dance.engine.core.FrameKernel.associationDefaults.mask,
+    val motionWeight: Float = art.gaoge.dance.engine.core.FrameKernel.associationDefaults.motion,
+    val directionWeight: Float = art.gaoge.dance.engine.core.FrameKernel.associationDefaults.direction,
     val occlusionOverlapRatio: Float = 0.30f,
     val occlusionMaxDurationFrames: Int = 90,
     val associationAmbiguityMargin: Float = 0.05f,
-    val kalmanGatingThreshold: Float = 16.0f,
+    val kalmanGatingThreshold: Float = art.gaoge.dance.engine.core.FrameKernel.associationDefaults.gating,
     val minSceneMotionInliers: Int = 2,
     val sceneMotionTolerance: Float = 25.0f,
     val maxGlobalShift: Float = 300.0f,
@@ -771,94 +771,6 @@ class TrackManager(
             return computedIoU
         }
 
-        fun computeMatchScore(track: InternalTrack, detectionIndex: Int): Float {
-            val det = detections[detectionIndex]
-            val predBox = track.currentPredictedBbox
-            val detBox = det.bbox
-            val bIoU = computeBBoxIoU(predBox, detBox)
-            val gateDist = track.kalman.gatingDistance(det.bbox)
-
-            val dxPred = detBox.centerX - predBox.centerX
-            val dyPred = detBox.centerY - predBox.centerY
-            val distToPred = sqrt(dxPred * dxPred + dyPred * dyPred)
-
-            // Association is prediction-first.  A REACQUIRING identity must not
-            // be pulled back toward its stale lastObserved location after two
-            // people cross: that makes A prefer the person who moved into A's
-            // old position.  The Kalman prediction already carries the motion
-            // evidence; lastObserved remains useful for direction diagnostics,
-            // but is not a competing distance shortcut for identity commitment.
-            val dist = distToPred
-            val inGroup = occlusionGroups.any { it.trackIds.contains(track.id) }
-            val isFlexibleGate = track.state == TrackState.REACQUIRING || track.state == TrackState.LOST || inGroup
-            val maxAllowedDist = if (isFlexibleGate) {
-                max(predBox.width * 2.5f, predBox.height * 2.0f)
-            } else {
-                max(predBox.width * 1.5f, predBox.height * 0.8f)
-            }
-
-            // Physical Gate: Reject candidates with no spatial overlap that exceed physical displacement limit
-            if (bIoU <= 0f && dist > maxAllowedDist) {
-                return 0f
-            }
-
-            val mIoU = computePredictedMaskIoU(track, detectionIndex)
-            val distScore = (1.0f - (dist / maxAllowedDist)).coerceIn(0f, 1f)
-            val motionScore = maxOf(distScore, (1.0f - (gateDist / (config.kalmanGatingThreshold * 2f))).coerceIn(0f, 1f))
-
-            // During the short post-ambiguity reacquisition window, preserve
-            // the sign of the last reliable observed->observed displacement.
-            // This is deliberately not a permanent direction lock: the evidence
-            // expires after 0.5s.  If two people cross, returning to the old side
-            // (projection ~= 0 or negative) must not beat the identity that
-            // continues along the recent trajectory merely because bbox IoU is
-            // temporarily larger there.
-            if (track.state == TrackState.REACQUIRING) {
-                val historyDx = track.lastReliableObservedMotionDx
-                val historyDy = track.lastReliableObservedMotionDy
-                val historyMagSq = historyDx * historyDx + historyDy * historyDy
-                val historyAgeUs = if (track.lastReliableObservedMotionTimestampUs == Long.MIN_VALUE) {
-                    Long.MAX_VALUE
-                } else {
-                    (timestampUs - track.lastReliableObservedMotionTimestampUs).coerceAtLeast(0L)
-                }
-                val minReliableMotion = max(10f, max(track.lastObservedBbox.width, track.lastObservedBbox.height) * 0.08f)
-                if (historyAgeUs <= 500_000L && historyMagSq >= minReliableMotion * minReliableMotion) {
-                    val candidateDx = detBox.centerX - track.lastObservedBbox.centerX
-                    val candidateDy = detBox.centerY - track.lastObservedBbox.centerY
-                    val progress = (candidateDx * historyDx + candidateDy * historyDy) / historyMagSq
-                    if (progress < 0.15f) {
-                        return 0f
-                    }
-                }
-            }
-
-            val vx = track.kalman.state[4]
-            val vy = track.kalman.state[5]
-            val motionDx = detBox.centerX - track.lastObservedBbox.centerX
-            val motionDy = detBox.centerY - track.lastObservedBbox.centerY
-            val dirXMatch = if (abs(vx) > 30f && abs(motionDx) > 10f) (vx * motionDx > 0) else null
-            val dirYMatch = if (abs(vy) > 30f && abs(motionDy) > 10f) (vy * motionDy > 0) else null
-            val directionScore = when {
-                dirXMatch == true && dirYMatch == true -> 1.0f
-                dirXMatch == true && dirYMatch == null -> 1.0f
-                dirXMatch == null && dirYMatch == true -> 1.0f
-                dirXMatch == false && dirYMatch == false -> 0.0f
-                dirXMatch == false || dirYMatch == false -> 0.0f
-                else -> 0.5f
-            }
-
-            val rawScore = config.bboxIouWeight * bIoU +
-                           config.maskIouWeight * mIoU +
-                           config.motionWeight * motionScore +
-                           config.directionWeight * directionScore
-
-            // Penalize candidate if both track and detection have non-null masks with negligible spatial overlap
-            val maskPenalty = if (track.lastObservedMask != null && det.mask != null && mIoU < 0.05f) 0.4f else 1.0f
-
-            return (rawScore * maskPenalty).coerceIn(0f, 1f)
-        }
-
         fun recordReliableObservedMotion(track: InternalTrack, det: PersonDetection) {
             val dx = det.bbox.centerX - track.lastObservedBbox.centerX
             val dy = det.bbox.centerY - track.lastObservedBbox.centerY
@@ -876,9 +788,31 @@ class TrackManager(
             }
         }
 
+        fun computeMatchScore(track: InternalTrack, detectionIndex: Int): Float {
+            val det = detections[detectionIndex]
+            val p = track.currentPredictedBbox; val o = track.lastObservedBbox; val d = det.bbox
+            val phase = when (track.state) {
+                TrackState.ACTIVE -> 0
+                TrackState.OCCLUDED -> 1
+                TrackState.REACQUIRING -> 2
+                else -> 3
+            }
+            val flags = phase or (if (occlusionGroups.any { it.trackIds.contains(track.id) }) 4 else 0) or
+                (if (track.lastObservedMask != null) 8 else 0) or (if (det.mask != null) 16 else 0)
+            val age = if (track.lastReliableObservedMotionTimestampUs == Long.MIN_VALUE) Long.MAX_VALUE else
+                (timestampUs - track.lastReliableObservedMotionTimestampUs).coerceAtLeast(0L)
+            return art.gaoge.dance.engine.core.FrameKernel.associationScore(
+                floatArrayOf(p.left, p.top, p.right, p.bottom, o.left, o.top, o.right, o.bottom,
+                    d.left, d.top, d.right, d.bottom, computePredictedMaskIoU(track, detectionIndex),
+                    track.kalman.gatingDistance(d), track.kalman.state[4], track.kalman.state[5],
+                    track.lastReliableObservedMotionDx, track.lastReliableObservedMotionDy), age, flags,
+                floatArrayOf(config.bboxIouWeight, config.maskIouWeight, config.motionWeight, config.directionWeight, config.kalmanGatingThreshold))
+        }
+
         // 3. PHASE B: OCCLUSION / REACQUIRING GROUP-FIRST ASSOCIATION WITH RESERVATION ISOLATION
         val reservedGroupTrackIndices = mutableSetOf<Int>()
         val reservedGroupDetectionIndices = mutableSetOf<Int>()
+        val directGroupReservationIndices = mutableSetOf<Int>()
         val reservedGroupOwnerTrackIdsByDetectionIndex = mutableMapOf<Int, MutableSet<Int>>()
         val reservedGroupOwnerGroupsByDetectionIndex = mutableMapOf<Int, MutableSet<Set<Int>>>()
         val reservedGlobalDetectionIndices = mutableSetOf<Int>()
@@ -921,6 +855,7 @@ class TrackManager(
             // ordinary recovery on another solely because a near-threshold
             // identity commit happened first. Keep an immutable per-frame group
             // snapshot and combine it with Hungarian-assigned detections below.
+            val reservationPredictedGeometry = groupTrackIndices.map { tracks[it].currentPredictedBbox }
             val reservationTrackGeometry = groupTrackIndices.flatMap { tIdx ->
                 val groupTrack = tracks[tIdx]
                 listOf(groupTrack.currentPredictedBbox, groupTrack.lastObservedBbox)
@@ -1111,6 +1046,7 @@ class TrackManager(
                     }
                     reservedGroupTrackIndices.add(tIdx)
                     reservedGroupDetectionIndices.add(dIdx)
+                    directGroupReservationIndices.add(dIdx)
                     reservedGroupOwnerTrackIdsByDetectionIndex
                         .getOrPut(dIdx) { mutableSetOf() }
                         .addAll(group.trackIds)
@@ -1217,6 +1153,13 @@ class TrackManager(
                     }
                     if (overlapsGroupMember || hungarianDetectionSupport != null) {
                         reservedGroupDetectionIndices.add(dIdx)
+                        // A stale merged observation may be much wider than the
+                        // current group. Preserve its quarantine, but do not
+                        // treat that historical extent as current owner support
+                        // against an independently verified reciprocal winner.
+                        if (reservationPredictedGeometry.any { hasMeaningfulGroupReservationOverlap(it, detBox) }) {
+                            directGroupReservationIndices.add(dIdx)
+                        }
                         reservedGroupOwnerTrackIdsByDetectionIndex
                             .getOrPut(dIdx) { mutableSetOf() }
                             .addAll(group.trackIds)
@@ -1457,7 +1400,10 @@ class TrackManager(
                         isStrictFaceOnlyReservationRescueEligible(
                             wouldStrictGlobalCommit = wouldStrictGlobalCommit,
                             faceOnlyIdentityProtected = faceOnlyIdentityProtected,
-                            reservationOwnerGroupCount = reservationOwnerGroups.size
+                            reservationOwnerGroupCount = reservationOwnerGroups.size,
+                            directOwnerSupport = directGroupReservationIndices.contains(dIdx),
+                            bboxIoU = candidateBBoxIoU,
+                            maskIoU = candidateMaskIoU
                         )
                     ) {
                         strictFaceOnlyRescueDetectionIndices.add(dIdx)
@@ -1536,18 +1482,10 @@ class TrackManager(
             }
         }
 
-        // Group reservation remains the default isolation boundary. A reserved
-        // detection is exposed to the real Global Hungarian only when at least
-        // two independent occlusion groups simultaneously quarantine it and the
-        // counterfactual full candidate set already proves a strict, unique
-        // commit to a FACE_ONLY identity-protected track outside all owners.
-        // A single owning group keeps the original isolation semantics. This
-        // prevents ordinary neighboring-group detections from broadly escaping
-        // reservation while still resolving the multi-group quarantine seen at
-        // the cross-device topology fork. FULL_BODY privacy-selected tracks and
-        // ordinary tracks never use this escape. Keep the detection in
-        // reservedGroupDetectionIndices so a failed real Global commit still
-        // cannot fall through to recovery or new-track creation in the same frame.
+        // A strict reciprocal winner can release multi-group reservations, or
+        // indirect-only single-group reservations with recovery-grade bbox AND
+        // mask evidence. Direct single-group ownership remains quarantined.
+        // Retain reservation membership if the real global commit later fails.
         val remainingDetectionIndices = detections.indices.filter { dIdx ->
             !matchedDetectionIndices.contains(dIdx) &&
                 (
@@ -2589,11 +2527,13 @@ class TrackManager(
         internal fun isStrictFaceOnlyReservationRescueEligible(
             wouldStrictGlobalCommit: Boolean,
             faceOnlyIdentityProtected: Boolean,
-            reservationOwnerGroupCount: Int
-        ): Boolean =
-            wouldStrictGlobalCommit &&
-                faceOnlyIdentityProtected &&
-                reservationOwnerGroupCount >= 2
+            reservationOwnerGroupCount: Int,
+            directOwnerSupport: Boolean = true,
+            bboxIoU: Float = 0f,
+            maskIoU: Float = 0f
+        ): Boolean = art.gaoge.dance.engine.core.FrameKernel.reservationRelease(
+            wouldStrictGlobalCommit, faceOnlyIdentityProtected, reservationOwnerGroupCount,
+            directOwnerSupport, bboxIoU, maskIoU)
 
         internal fun isProtectedLostAnchorOcclusionSupported(
             trackState: TrackState,

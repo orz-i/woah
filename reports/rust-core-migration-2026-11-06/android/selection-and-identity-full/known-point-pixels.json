@@ -1,0 +1,22 @@
+{
+  "hero_frame_165": {
+    "roi": [
+      342,
+      337,
+      382,
+      373
+    ],
+    "before": 1.0,
+    "after": 0.0
+  },
+  "tail_frame_580_visible_head_slice": {
+    "roi": [
+      0,
+      546,
+      8,
+      590
+    ],
+    "before_selection": 0.0,
+    "after": 1.0
+  }
+}

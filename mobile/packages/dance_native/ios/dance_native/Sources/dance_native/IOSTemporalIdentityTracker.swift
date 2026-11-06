@@ -5,29 +5,19 @@ import Foundation
 enum IOSPrivacySelectionScope {
   static func coversAllOtherFaces(metadata: IOSAnalysisMetadata?, fullBodyIds: Set<Int>,
                                   faceOnlyIds: Set<Int>, followTargetId: Int?) -> Bool {
-    let roots = Set(metadata?.persons.map(\.id) ?? [])
-    guard let hero = followTargetId, roots.count > 1, roots.contains(hero),
-          fullBodyIds.isEmpty, !faceOnlyIds.isEmpty else { return false }
-    return faceOnlyIds == roots.subtracting([hero])
+    (IOSFrameKernel.sceneScope(roots: Set(metadata?.persons.map(\.id) ?? []),
+      body: fullBodyIds, face: faceOnlyIds, hero: followTargetId) & 4) != 0
   }
 
   static func compositorFaceIds(selected: Set<Int>, coveredHeadFallbackIds: Set<Int>,
                                 explicitFaceRegionIds: Set<Int>) -> Set<Int> {
-    // Absence of a region is meaningful for a fully covered guessed head.
-    // Do not let the renderer's generic fallback recreate that omitted guess.
-    selected.subtracting(coveredHeadFallbackIds.subtracting(explicitFaceRegionIds))
+    IOSFrameKernel.compositorTargets(selected: selected, covered: coveredHeadFallbackIds, explicit: explicitFaceRegionIds)
   }
 
   static func currentPersons(detections: [IOSYoloDetection], heroId: Int?,
-                             observedHeroBounds: SIMD4<Float>?, frameIndex: Int) -> [IOSPreviewPerson] {
-    var heroIndex: Int?
-    if heroId != nil, let box = observedHeroBounds {
-      let matches = detections.indices.filter { index in
-        let d = detections[index]
-        return d.x1 == box.x && d.y1 == box.y && d.x2 == box.z && d.y2 == box.w
-      }
-      if matches.count == 1 { heroIndex = matches[0] }
-    }
+                             observedHeroBounds: SIMD4<Float>?, frameIndex: Int) throws -> [IOSPreviewPerson] {
+    let boxes=detections.map {SIMD4<Float>($0.x1,$0.y1,$0.x2,$0.y2)}
+    let heroIndex=try IOSFrameKernel.currentHeroIndex(boxes: boxes, observed: heroId == nil ? nil:observedHeroBounds)
     return detections.enumerated().map { index, detection in
       IOSPreviewPerson(id: index == heroIndex ? (heroId ?? -1)
         : -2_000_000 - frameIndex * 1000 - index, detection: detection)

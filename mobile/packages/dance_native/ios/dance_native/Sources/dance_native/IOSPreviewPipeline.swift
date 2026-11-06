@@ -69,8 +69,19 @@ final class IOSPreviewPipeline {
     let fullBodyIds = Set(request.selectedPersonIds.map { Int($0) })
     let faceOnlyIds = Set((request.faceOnlyPersonIds ?? []).map { Int($0) })
       .subtracting(fullBodyIds)
-    let requestedPrivacyIds = IOSFrameKernel.faceProtectionIds(body: fullBodyIds, face: faceOnlyIds)
-    let resolvedIds = Set(frameAnalysis.persons.map(\.id))
+    let metadata = try analysisCache.loadMetadata(cacheId: request.analysisCacheId)
+    let heroId = request.follow.enabled ? request.follow.targetPersonId.map {Int($0)} : nil
+    let scope = IOSFrameKernel.sceneScope(roots: Set(metadata?.persons.map(\.id) ?? []), body: fullBodyIds, face: faceOnlyIds, hero: heroId)
+    let allOthers = (scope & 4) != 0
+    let observedHero = heroId.flatMap { id in frameAnalysis.persons.first(where: {$0.id == id})?.detection }
+    let heroBounds = observedHero.map {SIMD4<Float>($0.x1,$0.y1,$0.x2,$0.y2)}
+    let renderPersons = allOthers
+      ? try IOSPrivacySelectionScope.currentPersons(detections: frameAnalysis.persons.map(\.detection),
+          heroId: heroId, observedHeroBounds: heroBounds, frameIndex: Int(requestedTimestampMs))
+      : frameAnalysis.persons
+    let renderFaceIds = allOthers ? Set(renderPersons.map(\.id)).subtracting(heroId.map {[$0]} ?? []) : faceOnlyIds
+    let requestedPrivacyIds = IOSFrameKernel.faceProtectionIds(body: fullBodyIds, face: renderFaceIds)
+    let resolvedIds = Set(renderPersons.map(\.id))
     let unresolvedIds = requestedPrivacyIds.subtracting(resolvedIds)
     guard unresolvedIds.isEmpty else {
       throw PigeonError(
@@ -79,14 +90,18 @@ final class IOSPreviewPipeline {
         details: unresolvedIds.sorted()
       )
     }
-
+    let coveredHeadIds = allOthers
+      ? IOSHighResolutionPrivacyCoverage.coveredHeadFallbackIds(persons: renderPersons, preprocess: frameAnalysis.preprocess) : []
     let faceRegions = requestedPrivacyIds.isEmpty
       ? [:]
       : facePrivacyResolver(cacheId: request.analysisCacheId).resolve(
         image: frameAnalysis.image,
-        persons: frameAnalysis.persons,
+        persons: renderPersons,
         faceOnlyIds: requestedPrivacyIds,
         preprocess: frameAnalysis.preprocess,
+        protectUnassignedFaces: allOthers,
+        unmaskedPersonId: renderPersons.contains(where: {$0.id == heroId}) ? heroId:nil,
+        coveredHeadFallbackIds: coveredHeadIds,
         timestampUs: requestedTimestampMs * 1_000
       )
     let renderer = try renderer()
@@ -127,10 +142,11 @@ final class IOSPreviewPipeline {
     }
     let rendered = try renderer.render(
       source: frameAnalysis.image,
-      persons: frameAnalysis.persons,
+      persons: renderPersons,
       preprocess: frameAnalysis.preprocess,
       fullBodyIds: fullBodyIds,
-      faceOnlyIds: faceOnlyIds,
+      faceOnlyIds: IOSPrivacySelectionScope.compositorFaceIds(selected: renderFaceIds,
+        coveredHeadFallbackIds: coveredHeadIds, explicitFaceRegionIds: Set(faceRegions.keys)),
       effects: request.effects,
       faceRegions: faceRegions,
       tightMask: request.tightMaskPreview ?? false,

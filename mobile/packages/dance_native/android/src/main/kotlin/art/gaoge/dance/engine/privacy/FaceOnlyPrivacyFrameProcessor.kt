@@ -565,6 +565,8 @@ class FaceOnlyPrivacyFrameProcessor(
         coveredHeadFallbackTrackIds: Set<Int> = emptySet()
     ): FaceOnlyPrivacyFrameResult {
         val faceTargetIds = FrameKernel.faceProtectionIds(bodySupplementTrackIds, faceOnlyTrackIds)
+        val fallbackTargetIds = if (coveredHeadFallbackTrackIds.isEmpty()) faceTargetIds else
+            FrameKernel.compositorTargets(faceTargetIds, coveredHeadFallbackTrackIds, emptySet())
         val canonicalizeReferenceGeometry = canonicalModelRgbaBottomUp != null
         if (faceTargetIds.isEmpty()) {
             return FaceOnlyPrivacyFrameResult(
@@ -1365,7 +1367,7 @@ class FaceOnlyPrivacyFrameProcessor(
                 }?.region
             }
             if (region?.source == FacePrivacyRegionSource.YOLO_HEAD_FALLBACK &&
-                coveredHeadFallbackTrackIds.contains(trackId)) {
+                !fallbackTargetIds.contains(trackId)) {
                 // A current detected face or pixel match above always wins. Only
                 // discard an unconfirmed guessed head inside a nearer body.
                 coveredHeadFallbackSuppressed += trackId

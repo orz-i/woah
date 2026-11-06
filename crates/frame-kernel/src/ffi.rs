@@ -1,4 +1,5 @@
 use crate::association::MatchPair;
+use crate::association_score::{AssociationEvidence, AssociationWeights};
 use crate::box_filter::BoxFilter;
 use crate::camera::FollowState;
 use crate::instances::{InstanceDetection, InstanceMetrics, InstanceSpec, InstanceThresholds};
@@ -8,6 +9,168 @@ use crate::{
     ABI_VERSION,
     geometry::{self, Rect, Transform},
 };
+
+unsafe fn id_slice<'a>(pointer: *const i64, len: usize) -> Option<&'a [i64]> {
+    if len > 100_000 || (len > 0 && pointer.is_null()) {
+        return None;
+    }
+    if len == 0 {
+        Some(&[])
+    } else {
+        // SAFETY: the FFI caller supplies readable aligned input for len IDs.
+        Some(unsafe { std::slice::from_raw_parts(pointer, len) })
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn frame_kernel_association_defaults() -> AssociationWeights {
+    AssociationWeights::default()
+}
+
+/// Returns 1 for release, 0 for quarantine, -1 for invalid evidence.
+#[unsafe(no_mangle)]
+pub extern "C" fn frame_kernel_reservation_release(
+    flags: u32,
+    owner_groups: u32,
+    bbox_iou: f32,
+    mask_iou: f32,
+) -> i32 {
+    crate::association_score::reservation_release(flags, owner_groups, bbox_iou, mask_iou)
+        .map_or(-1, i32::from)
+}
+
+/// # Safety
+/// output points to one writable aligned float and does not alias input data.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_association_score(
+    evidence: AssociationEvidence,
+    weights: AssociationWeights,
+    output: *mut f32,
+) -> i32 {
+    if output.is_null() {
+        return -1;
+    }
+    let Some(score) = crate::association_score::score(evidence, weights) else {
+        return -1;
+    };
+    // SAFETY: caller supplies one aligned writable float; all inputs validated.
+    unsafe {
+        output.write(score);
+    }
+    0
+}
+
+/// # Safety
+/// Nonempty ID buffers are readable/aligned for the declared lengths.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_scene_scope(
+    roots: *const i64,
+    roots_len: usize,
+    body: *const i64,
+    body_len: usize,
+    face: *const i64,
+    face_len: usize,
+    has_hero: u32,
+    hero: i64,
+) -> i32 {
+    if has_hero > 1 {
+        return -1;
+    }
+    // SAFETY: input lifetimes and lengths are supplied by the caller.
+    let (Some(roots), Some(body), Some(face)) = (unsafe {
+        (
+            id_slice(roots, roots_len),
+            id_slice(body, body_len),
+            id_slice(face, face_len),
+        )
+    }) else {
+        return -1;
+    };
+    crate::protection::scene_scope(
+        roots,
+        body,
+        face,
+        if has_hero == 1 { Some(hero) } else { None },
+    ) as i32
+}
+
+/// # Safety
+/// Nonempty ID buffers are readable/aligned. Output is writable/aligned for
+/// capacity IDs and disjoint from input. No pointers are retained.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_compositor_targets(
+    selected: *const i64,
+    selected_len: usize,
+    covered: *const i64,
+    covered_len: usize,
+    explicit: *const i64,
+    explicit_len: usize,
+    output: *mut i64,
+    capacity: usize,
+) -> i32 {
+    // SAFETY: input lifetimes and lengths are supplied by the caller.
+    let (Some(selected), Some(covered), Some(explicit)) = (unsafe {
+        (
+            id_slice(selected, selected_len),
+            id_slice(covered, covered_len),
+            id_slice(explicit, explicit_len),
+        )
+    }) else {
+        return -1;
+    };
+    let ids = crate::protection::compositor_targets(selected, covered, explicit);
+    if capacity < ids.len() {
+        return -(ids.len() as i32) - 1;
+    }
+    if !ids.is_empty() {
+        if output.is_null() {
+            return -1;
+        }
+        // SAFETY: caller provides a disjoint writable output; size is checked.
+        unsafe {
+            std::ptr::copy_nonoverlapping(ids.as_ptr(), output, ids.len());
+        }
+    }
+    ids.len() as i32
+}
+
+/// # Safety
+/// Nonempty detections are aligned/readable. -1 means no supported exemption;
+/// -2 means invalid input. A nonnegative result is the only exempted index.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_current_hero_index(
+    detections: *const Rect,
+    len: usize,
+    has_observed: u32,
+    observed: Rect,
+) -> i32 {
+    if len > 100_000 || (len > 0 && detections.is_null()) || has_observed > 1 {
+        return -2;
+    }
+    let finite = |r: &Rect| {
+        [r.left, r.top, r.right, r.bottom]
+            .iter()
+            .all(|x| x.is_finite())
+    };
+    let detections = if len == 0 {
+        &[]
+    } else {
+        // SAFETY: caller supplies a readable aligned array of len rectangles.
+        unsafe { std::slice::from_raw_parts(detections, len) }
+    };
+    if detections.iter().any(|r| !finite(r)) || (has_observed == 1 && !finite(&observed)) {
+        return -2;
+    }
+    crate::protection::current_hero_index(
+        detections,
+        if has_observed == 1 {
+            Some(observed)
+        } else {
+            None
+        },
+    )
+    .map_or(-1, |index| index as i32)
+}
 
 unsafe fn write_matches(pairs: &[MatchPair], output: *mut MatchPair, capacity: usize) -> i32 {
     if capacity < pairs.len() {

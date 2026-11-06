@@ -10,6 +10,8 @@ import kotlin.math.min
 
 /** Extra detail for crowded, fully protected scenes; never infers a user's exemptions. */
 internal object HighResolutionPrivacyCoverage {
+    fun hasDetailResolution(width: Int, height: Int): Boolean = max(width, height) >= 1920 && min(width, height) >= 1080
+
     fun applies(
         sourceWidth: Int,
         sourceHeight: Int,
@@ -17,10 +19,8 @@ internal object HighResolutionPrivacyCoverage {
         bodyIds: Set<Int>,
         faceIds: Set<Int>,
         followsPerson: Boolean
-    ): Boolean = max(sourceWidth, sourceHeight) >= 1920 && min(sourceWidth, sourceHeight) >= 1080 &&
-        initialIds.size > 1 && !followsPerson &&
-        ((faceIds.isEmpty() && bodyIds.containsAll(initialIds)) ||
-            (bodyIds.isEmpty() && faceIds.containsAll(initialIds)))
+    ): Boolean = hasDetailResolution(sourceWidth, sourceHeight) && initialIds.size > 1 && !followsPerson &&
+        (FrameKernel.sceneScope(initialIds, bodyIds, faceIds, null) and 3) != 0
 
     fun views(width: Int, height: Int): List<FloatRect> {
         return FrameKernel.detailViews(width, height)
@@ -66,12 +66,17 @@ internal object HighResolutionPrivacyCoverage {
          * body association from borrowing a neighbor's face/ROI cache.
          * ACTIVE still permits actual face localization on every observation.
          */
-        fun current(detections: List<PersonDetection>): List<art.gaoge.dance.engine.tracking.TrackedPerson> = detections.map { detection ->
-            if (nextId == Int.MIN_VALUE) nextId = -2_000_000
-            art.gaoge.dance.engine.tracking.TrackedPerson(
-                id = nextId--, bbox = detection.bbox, mask = detection.mask, confidence = detection.confidence,
-                state = art.gaoge.dance.engine.tracking.TrackState.ACTIVE, observedThisFrame = true, footY = detection.footY
-            )
+        fun current(detections: List<PersonDetection>, heroId: Int? = null, observedHero: FloatRect? = null): List<art.gaoge.dance.engine.tracking.TrackedPerson> {
+            val heroIndex = FrameKernel.currentHeroIndex(detections.map { it.bbox }, if (heroId != null) observedHero else null)
+            return detections.mapIndexed { index, detection ->
+                if (nextId == Int.MIN_VALUE) nextId = -2_000_000
+                if (nextId == heroId) nextId--
+                art.gaoge.dance.engine.tracking.TrackedPerson(
+                    id = if (index == heroIndex) requireNotNull(heroId) else nextId--,
+                    bbox = detection.bbox, mask = detection.mask, confidence = detection.confidence,
+                    state = art.gaoge.dance.engine.tracking.TrackState.ACTIVE, observedThisFrame = true, footY = detection.footY
+                )
+            }
         }
     }
 

@@ -3,11 +3,69 @@
 //! A body segmentation is evidence about a silhouette, not proof that its face
 //! is covered. BODY therefore always requests a face supplement. A supplement
 //! belongs to the body fill; only an explicit FACE_ONLY layer uses a sticker.
+use crate::geometry::Rect;
 use std::collections::BTreeSet;
 
 pub const BODY: u32 = 1;
 pub const FACE: u32 = 2;
 pub const STICKER: u32 = 4;
+pub const SCENE_BODY: u32 = 1;
+pub const SCENE_FACE: u32 = 2;
+pub const SCENE_OTHER_FACES: u32 = 4;
+
+/// Scope follows explicit selection intent. A current observation may be protected
+/// independently of its long-lived identity only for these uniform selections.
+pub fn scene_scope(roots: &[i64], body: &[i64], face: &[i64], follow: Option<i64>) -> u32 {
+    let roots: BTreeSet<_> = roots.iter().copied().collect();
+    let body: BTreeSet<_> = body.iter().copied().collect();
+    let face: BTreeSet<_> = face.iter().copied().collect();
+    if roots.is_empty() {
+        return 0;
+    }
+    if let Some(hero) = follow {
+        if roots.len() > 1
+            && roots.contains(&hero)
+            && body.is_empty()
+            && !face.is_empty()
+            && face == roots.iter().copied().filter(|&id| id != hero).collect()
+        {
+            SCENE_OTHER_FACES
+        } else {
+            0
+        }
+    } else if face.is_empty() && body.is_superset(&roots) {
+        SCENE_BODY
+    } else if body.is_empty() && face.is_superset(&roots) {
+        SCENE_FACE
+    } else {
+        0
+    }
+}
+
+pub fn compositor_targets(selected: &[i64], covered: &[i64], explicit: &[i64]) -> Vec<i64> {
+    let covered: BTreeSet<_> = covered.iter().collect();
+    let explicit: BTreeSet<_> = explicit.iter().collect();
+    selected
+        .iter()
+        .copied()
+        .filter(|id| !covered.contains(id) || explicit.contains(id))
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
+
+/// A hero exemption needs exactly one current, exact observation. Predictions,
+/// missing observations and duplicate geometry never justify an exemption.
+pub fn current_hero_index(detections: &[Rect], observed: Option<Rect>) -> Option<usize> {
+    let hero = observed?;
+    let mut matches = detections.iter().enumerate().filter(|(_, r)| **r == hero);
+    let (index, _) = matches.next()?;
+    if matches.next().is_none() {
+        Some(index)
+    } else {
+        None
+    }
+}
 
 pub fn layers(full_body: bool, face_only: bool, sticker: bool) -> u32 {
     if full_body {
@@ -32,6 +90,28 @@ pub fn face_targets(body_ids: &[i64], face_ids: &[i64]) -> Vec<i64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn current_scope_never_exempts_an_ambiguous_or_absent_hero() {
+        assert_eq!(
+            scene_scope(&[0, 1, 2], &[], &[0, 1], Some(2)),
+            SCENE_OTHER_FACES
+        );
+        assert_eq!(scene_scope(&[0, 1, 2], &[], &[0], Some(2)), 0);
+        assert_eq!(scene_scope(&[0, 1], &[0], &[1], None), 0);
+        assert_eq!(scene_scope(&[0], &[0], &[], None), SCENE_BODY);
+        assert_eq!(scene_scope(&[0], &[], &[0], None), SCENE_FACE);
+        assert_eq!(compositor_targets(&[0, 1, 2], &[1, 2], &[2]), [0, 2]);
+        let r = Rect {
+            left: 1.0,
+            top: 2.0,
+            right: 3.0,
+            bottom: 4.0,
+        };
+        assert_eq!(current_hero_index(&[r], Some(r)), Some(0));
+        assert_eq!(current_hero_index(&[r, r], Some(r)), None);
+        assert_eq!(current_hero_index(&[r], None), None);
+    }
 
     #[test]
     fn body_keeps_face_coverage_with_a_mixed_sticker_selection() {

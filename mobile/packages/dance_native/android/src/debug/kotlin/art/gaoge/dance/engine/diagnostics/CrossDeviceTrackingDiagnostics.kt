@@ -70,7 +70,8 @@ internal class CrossDeviceTrackingDiagnostics(
         val metrics: AdaptiveMetrics
     )
 
-    private val cpuFullTracker = TrackManager(diagnosticsEnabled = false)
+    private val cpuFullTracker = TrackManager(diagnosticsEnabled = TrackerReplayCapture.enabled)
+    private val replayBodyIds = fullBodyPersonIds.toSet()
     private val faceOnlyPersonIds = faceOnlyPersonIds.toSortedSet()
     private val facePrivacyClassTemporalTracker = if (this.faceOnlyPersonIds.isNotEmpty()) {
         PrivacyClassTemporalTracker()
@@ -155,6 +156,8 @@ internal class CrossDeviceTrackingDiagnostics(
                 }
 
                 cpuFullTracked = cpuFullTracker.initializeWithAssignedIds(cpuDetections, assignedIds)
+                TrackerReplayCapture.record(ptsUs, cpuDetections, assignedIds, identityProtectedTrackIds,
+                    replayBodyIds, faceOnlyPersonIds, cpuFullTracked)
                 adaptiveShadowTrackerSteps += adaptiveTrackers.size.toLong()
                 adaptiveTracked = adaptiveTrackers.mapValues { (config, tracker) ->
                     adaptiveSources[config.key] = cpuFullSource
@@ -192,6 +195,8 @@ internal class CrossDeviceTrackingDiagnostics(
                 } else {
                     cpuFullTracker.update(cpuDetections, ptsUs)
                 }
+                TrackerReplayCapture.record(ptsUs, cpuDetections, null, identityProtectedTrackIds,
+                    replayBodyIds, faceOnlyPersonIds, cpuFullTracked)
 
                 adaptiveShadowTrackerSteps += adaptiveTrackers.size.toLong()
                 adaptiveTracked = adaptiveTrackers.mapValues { (config, tracker) ->
