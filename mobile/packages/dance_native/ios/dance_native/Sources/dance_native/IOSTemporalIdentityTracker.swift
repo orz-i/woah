@@ -82,8 +82,7 @@ final class IOSTemporalIdentityTracker {
     var predictedY1: Float32
     var predictedX2: Float32
     var predictedY2: Float32
-    var velocityX: Float32 = 0
-    var velocityY: Float32 = 0
+    var motion: IOSFrameKernel.BoxFilter?
     var state: IOSTrackState = .active
     var missedFrames: Int = 0
     var occlusionGraceRemaining: Int = 0
@@ -218,7 +217,7 @@ final class IOSTemporalIdentityTracker {
       return tracks.map { IOSPreviewPerson(id: $0.id, detection: $0.detection) }
     }
 
-    predict(timestampUs: timestampUs)
+    try predict(timestampUs: timestampUs)
     let assignments = assign(detections: detections)
     var matchedTracks = Set<Int>()
     var matchedDetections = Set<Int>()
@@ -234,7 +233,7 @@ final class IOSTemporalIdentityTracker {
         ambiguousProtectedDetections.insert(candidate.detectionIndex)
         continue
       }
-      observe(
+      try observe(
         trackIndex: candidate.trackIndex,
         detection: detections[candidate.detectionIndex],
         timestampUs: timestampUs
@@ -742,20 +741,19 @@ final class IOSTemporalIdentityTracker {
     }
   }
 
-  private func predict(timestampUs: Int64) {
+  private func predict(timestampUs: Int64) throws {
     for index in tracks.indices {
       var track = tracks[index]
       track.observedThisFrame = false
-      let deltaSeconds = track.lastTimestampUs > 0
-        ? min(0.20, max(0.0, Double(timestampUs - track.lastTimestampUs) / 1_000_000.0))
-        : (1.0 / 30.0)
-      let frameScale = Float32(deltaSeconds * 30.0)
-      let dx = track.velocityX * frameScale
-      let dy = track.velocityY * frameScale
-      track.predictedX1 += dx
-      track.predictedX2 += dx
-      track.predictedY1 += dy
-      track.predictedY2 += dy
+      let motion = try track.motion ?? IOSFrameKernel.BoxFilter(
+        bounds: SIMD4<Float>(track.detection.x1, track.detection.y1, track.detection.x2, track.detection.y2),
+        timestampUs: track.lastTimestampUs)
+      let bounds = try motion.predict(timestampUs: timestampUs)
+      track.motion = motion
+      track.predictedX1 = bounds.x
+      track.predictedY1 = bounds.y
+      track.predictedX2 = bounds.z
+      track.predictedY2 = bounds.w
       if identityProtectedIds.contains(track.id), track.missedFrames > 0 {
         boundProtectedPredictionAroundLastObservation(track: &track)
       }
@@ -839,16 +837,12 @@ final class IOSTemporalIdentityTracker {
     trackIndex: Int,
     detection: IOSYoloDetection,
     timestampUs: Int64
-  ) {
+  ) throws {
     var track = tracks[trackIndex]
-    let oldCenterX = (track.detection.x1 + track.detection.x2) * 0.5
-    let oldCenterY = (track.detection.y1 + track.detection.y2) * 0.5
-    let newCenterX = (detection.x1 + detection.x2) * 0.5
-    let newCenterY = (detection.y1 + detection.y2) * 0.5
-    let observedDx = newCenterX - oldCenterX
-    let observedDy = newCenterY - oldCenterY
-    track.velocityX = track.velocityX * 0.55 + observedDx * 0.45
-    track.velocityY = track.velocityY * 0.55 + observedDy * 0.45
+    let bounds = SIMD4<Float>(detection.x1, detection.y1, detection.x2, detection.y2)
+    let motion = try track.motion ?? IOSFrameKernel.BoxFilter(bounds: bounds, timestampUs: timestampUs)
+    try motion.observe(bounds: bounds, timestampUs: timestampUs)
+    track.motion = motion
     track.detection = detection
     track.predictedX1 = detection.x1
     track.predictedY1 = detection.y1

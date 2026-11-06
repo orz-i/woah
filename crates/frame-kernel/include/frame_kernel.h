@@ -15,6 +15,14 @@ typedef struct FrameKernelTransform {
 } FrameKernelTransform;
 uint32_t frame_kernel_abi_version(void);
 
+typedef struct FrameKernelBoxFilter { float mean[8], covariance[64]; int64_t timestamp_us; } FrameKernelBoxFilter;
+/* operations: 0 initialize, 1 predict, 2 measurement update, 3 velocity damping,
+   4 Mahalanobis gating, 5 current bounds. Invalid inputs leave outputs unchanged. */
+int32_t frame_kernel_box_filter_step(FrameKernelBoxFilter *state, uint32_t operation, FrameKernelRect bounds,
+    int64_t pts_us, float factor, FrameKernelRect *bounds_out, float *distance_out);
+/* 0 success; 1 singular; -1 invalid; no partial output on failure. */
+int32_t frame_kernel_invert_matrix4(const float *input, float *output);
+
 typedef struct FrameKernelLetterbox { float scale, width, height, left, top; } FrameKernelLetterbox;
 typedef struct FrameKernelPixelSpec {
     uint32_t width, height, row_stride, channels, red, green, blue;

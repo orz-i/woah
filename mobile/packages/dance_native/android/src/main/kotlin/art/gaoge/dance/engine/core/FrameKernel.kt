@@ -12,6 +12,8 @@ internal object FrameKernel {
     }
 
     private external fun abiVersion(): Int
+    private external fun boxFilterStepNative(values: FloatArray, clock: LongArray, operation: Int, bounds: FloatArray?, pts: Long, factor: Float): FloatArray
+    private external fun invertMatrix4Native(values: FloatArray): FloatArray?
     private external fun letterboxNative(width: Int, height: Int, outputWidth: Int, outputHeight: Int): FloatArray
     private external fun normalizePixelsNative(input: ByteBuffer, width: Int, height: Int, rowStride: Int,
         channels: Int, red: Int, green: Int, blue: Int, flipRows: Boolean, flipColumns: Boolean,
@@ -77,6 +79,9 @@ internal object FrameKernel {
         reprojectMaskNative(mask, output, local.values(), scene.values(), view.values())
 
     fun letterbox(width: Int, height: Int, outputWidth: Int, outputHeight: Int) = letterboxNative(width, height, outputWidth, outputHeight)
+    fun boxFilterStep(values: FloatArray, clock: LongArray, operation: Int, bounds: FloatRect? = null, pts: Long = -1, factor: Float = 1f) =
+        boxFilterStepNative(values, clock, operation, bounds?.values(), pts, factor)
+    fun invertMatrix4(values: FloatArray) = invertMatrix4Native(values)
     fun yuv420(y: ByteBuffer, u: ByteBuffer, v: ByteBuffer, metadata: IntArray, output: ByteBuffer) = yuv420Native(y, u, v, metadata, output)
 
     fun normalizePixels(input: ByteBuffer, width: Int, height: Int, rowStride: Int, output: FloatArray,

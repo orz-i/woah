@@ -1,0 +1,7 @@
+{
+  "apk_sha256": "f67aa1141a92af615a45f9ead4327890bc38a3f986bbeae607b41f224c948100",
+  "bytes": 151564845,
+  "archive": "pixels-2e4733bb.apk",
+  "source_algorithm_commit": "2e4733bb",
+  "capture": "Pulled installed independent test APK from the device before replacing it with the box-filter APK."
+}
