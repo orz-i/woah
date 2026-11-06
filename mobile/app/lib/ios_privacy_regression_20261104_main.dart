@@ -884,7 +884,10 @@ class _QA {
       JobStatusDto? last;
       while (DateTime.now().difference(start) < const Duration(minutes: 3)) {
         last = await client.getJobStatus(jobId);
-        if (last.currentFrame >= 8 && last.state == 'exporting') break;
+        if (last.currentFrame >= 8 &&
+            (last.state == 'exporting' || last.state == 'processing')) {
+          break;
+        }
         if (last.state == 'failed' || last.state == 'completed') break;
         await Future<void>.delayed(const Duration(milliseconds: 250));
       }

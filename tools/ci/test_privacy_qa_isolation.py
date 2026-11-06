@@ -23,6 +23,17 @@ class PrivacyQaAcceptanceBoundary(unittest.TestCase):
             self.assertEqual(result.exception.code,2)
             device.assert_not_called()
 
+class LifecycleStageBoundary(unittest.TestCase):
+    def test_lifecycle_diagnosis_requires_a_marked_legacy_subset(self):
+        import io
+        base=['runner','android','--prefix','test','--media','media','--report','report',
+              '--binary','qa.apk','--stage-lifecycle']
+        for extra in [[],['--case-filter','probe','--suite','focused13']]:
+            with self.subTest(extra=extra), patch('sys.argv',base+extra), patch('sys.stderr',new_callable=io.StringIO), patch.object(run_regression,'Android') as device:
+                with self.assertRaises(SystemExit) as result:run_regression.main()
+                self.assertEqual(result.exception.code,2)
+                device.assert_not_called()
+
 class PrivacyQaLaunch(unittest.TestCase):
     def test_launch_tolerates_a_missing_pid_before_process_creation(self):
         with patch.object(run_regression, 'command', side_effect=[None, '', '123']), patch.object(run_regression.time, 'sleep') as sleep:

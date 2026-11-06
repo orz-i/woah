@@ -94,3 +94,9 @@ original with the exported movie byte for byte. iOS collection is performed by
 the host against this QA simulator's DCIM directory, restricted to the run-time
 window and exact output hash; the application retains add-only Photos permission.
 Missing, ambiguous, or changed saved originals remain failures.
+
+For cancellation-interface diagnosis use --suite legacy22 --case-filter CASE
+--stage-lifecycle. It retains previews plus the cancel/retry chain and is always
+marked as a partial stage check. The public cancel future waits for the native
+worker and shared completion barrier; a completed request is not an early terminal
+notification while encoders and private files are still retiring.

@@ -386,6 +386,7 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
 
   func cancelJob(jobId: String) async throws {
     exportCoordinator.cancel(jobId: jobId)
+    await exportCoordinator.waitForRuntime(jobId: jobId)
   }
 
   func getJobStatus(jobId: String) async throws -> JobStatusDto {
