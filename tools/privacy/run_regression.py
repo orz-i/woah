@@ -30,10 +30,24 @@ def sha(path):
     return h.hexdigest()
 
 def command(*args, required=True):
-    result = subprocess.run([str(x) for x in args], text=True, capture_output=True)
+    argv=[str(x) for x in args]
+    adb=Path(argv[0]).name.lower().removesuffix('.exe')=='adb'
+    verb=3 if len(argv)>3 and argv[1]=='-s' else 1
+    readonly=adb and len(argv)>verb and (argv[verb] in ['pull','get-state'] or
+        (argv[verb]=='shell' and len(argv)>verb+1 and argv[verb+1] in
+         ['cat','pidof','find','sha256sum','getprop','ls','dumpsys']))
+    deadline=time.monotonic()+30
+    retried=False
+    while True:
+        result=subprocess.run(argv,text=True,capture_output=True)
+        transport_error=result.returncode and re.search(r"device .* not found|device offline|no devices/emulators found|device disconnected",result.stderr)
+        if not (readonly and transport_error and time.monotonic()<deadline):break
+        if not retried:print('ADB_READ_TRANSPORT_RETRY',flush=True)
+        retried=True;time.sleep(.5)
     if required and result.returncode:
         raise RuntimeError(f'{args[0]} failed ({result.returncode}): {result.stderr[-1500:]}')
-    return result.stdout.strip() if result.returncode == 0 else None
+    return result.stdout.strip() if result.returncode==0 else None
+
 
 def atomic(path, value):
     path = Path(path); path.parent.mkdir(parents=True, exist_ok=True)
@@ -69,21 +83,15 @@ class Android:
 
     @contextmanager
     def awake(self):
-        original=command(*self.adb,'shell','settings','get','global','stay_on_while_plugged_in')
-        if original not in ['null','0','1','2','3','4','5','6','7']:
-            raise RuntimeError('Cannot snapshot Android wake setting')
-        try:
-            command(*self.adb,'shell','svc','power','stayon','true')
-            command(*self.adb,'shell','input','keyevent','KEYCODE_WAKEUP')
-            command(*self.adb,'shell','wm','dismiss-keyguard')
-            command(*self.adb,'shell','cmd','statusbar','collapse')
-            policy=command(*self.adb,'shell','dumpsys','window','policy')
-            if re.search(r'\bshowing=true\b',policy):
-                raise RuntimeError('Android requires manual unlock before foreground-service export tests')
-            yield
-        finally:
-            if original=='null': command(*self.adb,'shell','settings','delete','global','stay_on_while_plugged_in')
-            else: command(*self.adb,'shell','settings','put','global','stay_on_while_plugged_in',original)
+        # The isolated QA Activity owns FLAG_KEEP_SCREEN_ON. Do not require
+        # WRITE_SECURE_SETTINGS: several real phones deny global ADB changes.
+        command(*self.adb,'shell','input','keyevent','KEYCODE_WAKEUP')
+        command(*self.adb,'shell','wm','dismiss-keyguard')
+        command(*self.adb,'shell','cmd','statusbar','collapse')
+        policy=command(*self.adb,'shell','dumpsys','window','policy')
+        if re.search(r'\bshowing=true\b',policy):
+            raise RuntimeError('Android requires manual unlock before foreground-service export tests')
+        yield
 
     def read(self, relative):
         value = command(*self.adb, 'shell', 'cat', ANDROID_DOCUMENTS+'/'+relative, required=False)

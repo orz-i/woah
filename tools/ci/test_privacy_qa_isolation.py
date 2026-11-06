@@ -35,32 +35,34 @@ class PrivacyQaLaunch(unittest.TestCase):
                 run_regression.wait_for_android_process(['adb'], timeout=0)
 
 
-class AndroidWakeLeaseTest(unittest.TestCase):
+class AndroidForegroundReadinessTest(unittest.TestCase):
     def adapter(self):
         adapter=object.__new__(run_regression.Android)
         adapter.adb=['adb','-s','test-device']
         return adapter
 
-    def test_restores_original_setting_even_when_export_raises(self):
-        calls=[]
-        def command(*args,**kwargs):
-            calls.append(args)
-            if args[-4:]==('settings','get','global','stay_on_while_plugged_in'):return '0'
-            if args[-3:]==('dumpsys','window','policy'):return 'KeyguardServiceDelegate\n showing=false'
-            return ''
-        with patch.object(run_regression,'command',side_effect=command):
-            with self.assertRaisesRegex(RuntimeError,'export failed'):
-                with self.adapter().awake():raise RuntimeError('export failed')
-        self.assertEqual(calls[-1][-5:],('settings','put','global','stay_on_while_plugged_in','0'))
+    def test_ready_phone_never_requires_global_settings_write(self):
+        with patch.object(run_regression,'command',return_value='showing=false') as device:
+            with self.adapter().awake():pass
+        self.assertFalse(any('settings' in call.args for call in device.call_args_list))
 
     def test_locked_phone_is_rejected_before_any_matrix_work(self):
-        def command(*args,**kwargs):
-            if args[-4:]==('settings','get','global','stay_on_while_plugged_in'):return 'null'
-            if args[-3:]==('dumpsys','window','policy'):return 'KeyguardServiceDelegate\n showing=true'
-            return ''
-        with patch.object(run_regression,'command',side_effect=command) as device:
+        with patch.object(run_regression,'command',return_value='KeyguardServiceDelegate\n showing=true'):
             with self.assertRaisesRegex(RuntimeError,'manual unlock'):
                 with self.adapter().awake():self.fail('Must not run behind a locked screen')
-        self.assertEqual(device.call_args.args[-4:],('settings','delete','global','stay_on_while_plugged_in'))
+
+    def test_transient_adb_read_disconnect_retries_without_restarting_app(self):
+        import subprocess
+        replies=[subprocess.CompletedProcess([],1,'',"adb: device 'test-device' not found"),subprocess.CompletedProcess([],0,'{"status":"finished"}','')]
+        with patch.object(run_regression.subprocess,'run',side_effect=replies) as process, patch.object(run_regression.time,'sleep'):
+            value=run_regression.command('adb','-s','test-device','shell','cat','results.json')
+        self.assertEqual(value,'{"status":"finished"}')
+        self.assertEqual(process.call_args_list[0].args,process.call_args_list[1].args)
+
+    def test_failed_mutation_is_not_automatically_repeated(self):
+        import subprocess
+        with patch.object(run_regression.subprocess,'run',return_value=subprocess.CompletedProcess([],1,'',"adb: device 'test-device' not found")) as process:
+            with self.assertRaises(RuntimeError):run_regression.command('adb','-s','test-device','shell','am','start','test')
+        self.assertEqual(process.call_count,1)
 
 if __name__=='__main__':unittest.main()
