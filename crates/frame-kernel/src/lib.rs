@@ -5,6 +5,7 @@
 #![doc = include_str!("../README.md")]
 
 pub mod association;
+pub mod box_filter;
 pub mod camera;
 mod ffi;
 pub mod geometry;

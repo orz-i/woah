@@ -36,6 +36,28 @@ static jintArray match_output(JNIEnv *env,FrameKernelMatchPair *pairs,int32_t co
     for (int32_t i=0;i<count;i++) { values[i*2]=(jint)pairs[i].row;values[i*2+1]=(jint)pairs[i].column; }
     (*env)->SetIntArrayRegion(env,result,0,count*2,values);free(values);return result;
 }
+JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_boxFilterStepNative(JNIEnv *env,jobject self,
+    jfloatArray values,jlongArray clock,jint operation,jfloatArray bounds,jlong pts,jfloat factor) {
+    (void)self;FrameKernelBoxFilter state;FrameKernelRect box={0},out;float distance=0;
+    if (!values || !clock || (*env)->GetArrayLength(env,values)!=72 || (*env)->GetArrayLength(env,clock)!=1 || operation<0) {invalid(env);return NULL;}
+    (*env)->GetFloatArrayRegion(env,values,0,8,state.mean);
+    (*env)->GetFloatArrayRegion(env,values,8,64,state.covariance);
+    jlong time;(*env)->GetLongArrayRegion(env,clock,0,1,&time);state.timestamp_us=(int64_t)time;
+    if ((*env)->ExceptionCheck(env) || (bounds && !read_rect(env,bounds,&box))) return NULL;
+    if (frame_kernel_box_filter_step(&state,(uint32_t)operation,box,(int64_t)pts,factor,&out,&distance)) {invalid(env);return NULL;}
+    jfloatArray result=(*env)->NewFloatArray(env,5);if (!result) return NULL;
+    jfloat output[5]={out.left,out.top,out.right,out.bottom,distance};
+    (*env)->SetFloatArrayRegion(env,result,0,5,output);
+    (*env)->SetFloatArrayRegion(env,values,0,8,state.mean);(*env)->SetFloatArrayRegion(env,values,8,64,state.covariance);
+    time=(jlong)state.timestamp_us;(*env)->SetLongArrayRegion(env,clock,0,1,&time);return result;
+}
+JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_invertMatrix4Native(JNIEnv *env,jobject self,jfloatArray matrix) {
+    (void)self;float input[16],output[16];
+    if (!matrix || (*env)->GetArrayLength(env,matrix)!=16) {invalid(env);return NULL;}
+    (*env)->GetFloatArrayRegion(env,matrix,0,16,input);if ((*env)->ExceptionCheck(env)) return NULL;
+    int status=frame_kernel_invert_matrix4(input,output);if (status==1) return NULL;if(status) {invalid(env);return NULL;}
+    jfloatArray result=(*env)->NewFloatArray(env,16);if (result) (*env)->SetFloatArrayRegion(env,result,0,16,output);return result;
+}
 JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_letterboxNative(JNIEnv *env,jobject self,jint w,jint h,jint ow,jint oh) {
     (void)self;FrameKernelLetterbox p;
     if (w<=0 || h<=0 || ow<=0 || oh<=0 || frame_kernel_letterbox((uint32_t)w,(uint32_t)h,(uint32_t)ow,(uint32_t)oh,&p)) { invalid(env);return NULL; }

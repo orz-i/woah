@@ -1,4 +1,5 @@
 use crate::association::MatchPair;
+use crate::box_filter::BoxFilter;
 use crate::camera::FollowState;
 use crate::instances::{InstanceDetection, InstanceMetrics, InstanceSpec, InstanceThresholds};
 use crate::pixels::{Letterbox, PixelSpec};
@@ -24,6 +25,85 @@ unsafe fn write_matches(pairs: &[MatchPair], output: *mut MatchPair, capacity: u
         std::ptr::copy_nonoverlapping(pairs.as_ptr(), output, pairs.len());
     }
     pairs.len() as i32
+}
+
+/// # Safety
+/// state, bounds_out and distance_out are aligned writable, pairwise disjoint
+/// objects. State is fully initialized. No pointer is retained.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_box_filter_step(
+    state: *mut BoxFilter,
+    operation: u32,
+    bounds: Rect,
+    pts_us: i64,
+    factor: f32,
+    bounds_out: *mut Rect,
+    distance_out: *mut f32,
+) -> i32 {
+    if state.is_null() || bounds_out.is_null() || distance_out.is_null() || operation > 5 {
+        return -1;
+    }
+    // SAFETY: caller supplies one initialized aligned state; mutate locally until valid.
+    let mut next = unsafe { state.read() };
+    let finite = |r: Rect| {
+        [r.left, r.top, r.right, r.bottom]
+            .iter()
+            .all(|x| x.is_finite())
+    };
+    if (operation != 0 && !next.valid())
+        || ([0, 2, 4].contains(&operation) && !finite(bounds))
+        || (operation == 3 && !factor.is_finite())
+    {
+        return -1;
+    }
+    let mut distance = 0.0;
+    match operation {
+        0 => next.init(bounds, pts_us),
+        1 => {
+            next.predict(pts_us);
+        }
+        2 => next.update(bounds, pts_us),
+        3 => next.dampen(factor),
+        4 => distance = next.gating_distance(bounds),
+        _ => {}
+    }
+    let output = next.bounds();
+    if !next.valid() || !finite(output) || !distance.is_finite() {
+        return -1;
+    }
+    // SAFETY: all caller-owned outputs are validated and disjoint.
+    unsafe {
+        state.write(next);
+        bounds_out.write(output);
+        distance_out.write(distance);
+    }
+    0
+}
+
+/// # Safety
+/// input/output point to 16 aligned readable/writable floats and do not overlap.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_invert_matrix4(input: *const f32, output: *mut f32) -> i32 {
+    if input.is_null() || output.is_null() {
+        return -1;
+    }
+    // SAFETY: caller supplies 16 readable aligned floats.
+    let input = unsafe { std::slice::from_raw_parts(input, 16) };
+    if input.iter().any(|x| !x.is_finite()) {
+        return -1;
+    }
+    let matrix = std::array::from_fn(|r| std::array::from_fn(|c| input[r * 4 + c]));
+    let Some(inv) = crate::box_filter::invert4(matrix) else {
+        return 1;
+    };
+    if inv.iter().flatten().any(|x| !x.is_finite()) {
+        return -1;
+    }
+    // SAFETY: caller supplies 16 writable aligned floats, disjoint from input.
+    unsafe {
+        std::ptr::copy_nonoverlapping(inv.as_ptr().cast::<f32>(), output, 16);
+    }
+    0
 }
 
 /// # Safety
