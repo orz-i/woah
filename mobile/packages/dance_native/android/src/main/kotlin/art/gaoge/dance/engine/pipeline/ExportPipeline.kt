@@ -2509,6 +2509,14 @@ class ExportPipeline(
                     return@post
                 }
 
+                if (encodedFrameCount > 0 && lastEncoderPtsUs >= 0L) {
+                    val endTimeUs = minOf(
+                        lastEncoderPtsUs + (frameDurationNs / 1_000L).coerceAtLeast(1L),
+                        trimEndUs - trimStartUs
+                    )
+                    muxer.finishVideo(endTimeUs)
+                }
+
                 // Copy audio
                 if (hasAudioTrack && audioCopier.audioTrackIndexInSource >= 0) {
                     audioCopier.copyToMuxer(muxer)

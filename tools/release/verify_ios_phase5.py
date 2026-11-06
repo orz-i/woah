@@ -380,7 +380,11 @@ def verify_ios_replay_surface() -> None:
     )
     for token in (
         "facePrivacyResolvers: [String: IOSFacePrivacyTemporalResolver]",
-        "facePrivacyResolver(cacheId: request.analysisCacheId).resolve(",
+        "let privacyResolver = uniformSceneCoverage ? IOSFacePrivacyTemporalResolver()",
+        ": facePrivacyResolver(cacheId: request.analysisCacheId)",
+        "try IOSSceneRegionContext.seed(",
+        "runner: runner, resolver: privacyResolver)",
+        ": privacyResolver.resolve(" ,
         "preprocess: frameAnalysis.preprocess",
         "facePrivacyResolvers.removeValue(forKey: cacheId)?.reset()",
         "faceRegions: faceRegions",
