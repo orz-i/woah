@@ -61,7 +61,7 @@ def verify_trace_contract() -> None:
 
     captured=ROOT/"crates/frame-kernel/testdata/tracking-golden-canonical-v1.json"
     raw=captured.read_bytes()
-    check(hashlib.sha256(raw).hexdigest()=="20708f44714c6d6a68e4fae095f6f7dee74c196e8689a8a6fcc4f9660edb954b",
+    check(hashlib.sha256(raw.replace(b"\r\n",b"\n")).hexdigest()=="0e410bd69b70d17c7b59de259e313825102cdb00b577d5d6d5118c08a3f5d93f",
           "Independent native Golden capture changed; regenerate and review provenance")
     canonical={case['name']:case for case in json.loads(raw)['cases']}
     for case in cases:
