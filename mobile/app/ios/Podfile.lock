@@ -40,7 +40,7 @@ EXTERNAL SOURCES:
     :path: Flutter
 
 SPEC CHECKSUMS:
-  dance_native: ab2b38d2a07094028778aff02aec506baed627e3
+  dance_native: d147978790b7f428e63649405699fd8bc1f9711c
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   TensorFlowLiteC: eac6d689a8d391d1b202dc59e3d9165ba64aaf73
   TensorFlowLiteSwift: 723fe42222815e72490c79feeff05305530de393
