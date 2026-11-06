@@ -1,0 +1,30 @@
+[
+  {
+    "version": "before",
+    "sha256": "609730985da7be7d6f65281c4532119727bbe72a6106a0491ba163f31f62fa93",
+    "decoded_frames": 40,
+    "decoded_sha256": "4d8404d0e5ae5fc11d468abfc17dc3cc59c934872ba206125d02164f36b80db3",
+    "source_frame": 411,
+    "face_core_roi": [
+      825,
+      526,
+      845,
+      556
+    ],
+    "red_coverage": 0.0
+  },
+  {
+    "version": "after",
+    "sha256": "a91d7906c5deefd3ad15bac9727139fa836e5dfb0bcaa6816d5ebc6ab0c1117e",
+    "decoded_frames": 40,
+    "decoded_sha256": "76d0dd943330ad6c95c392441b661e0f333d772698288e135993d1de54c14c20",
+    "source_frame": 411,
+    "face_core_roi": [
+      825,
+      526,
+      845,
+      556
+    ],
+    "red_coverage": 1.0
+  }
+]
