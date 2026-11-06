@@ -1,0 +1,17 @@
+{
+  "comparisons": [
+    {
+      "phase": "follow",
+      "frames": 581,
+      "decoded_bgr_sha256": "cea0d0005a617b66b4b35871c7717315ddc4eab1f427977b7335c7c0676cc877",
+      "file_sha256": "4f5adf79641e20dec6fa7fcfdb3e9f05336da5f12887e4d20559023882a8ab86"
+    },
+    {
+      "phase": "association",
+      "frames": 581,
+      "decoded_bgr_sha256": "cea0d0005a617b66b4b35871c7717315ddc4eab1f427977b7335c7c0676cc877",
+      "file_sha256": "1d603c25ee86253e7c5cd36abd115b025c7a05eeb6be556ff296b4975e76ec0e"
+    }
+  ],
+  "exact_pixels": true
+}

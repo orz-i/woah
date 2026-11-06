@@ -73,8 +73,7 @@ def verify_identity_contract() -> None:
     matcher = text("IOSPreviewIdentityMatcher.swift")
     for token in (
         "maxCostThreshold: Float32 = 0.70",
-        "1.0 - bboxIoU",
-        "candidates.sort",
+        "IOSFrameKernel.matchRects(",
         "usedIds",
         "assignedIds",
         "cached.map(\\.id).max()",
@@ -86,9 +85,15 @@ def verify_identity_contract() -> None:
         / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/PreviewPipeline.kt"
     ).read_text(encoding="utf-8")
     check(
-        "HungarianSolver.match(costMatrix, maxCostThreshold = 0.70f)" in android,
+        "FrameKernel.matchRects(cachedBoxes," in android and "maxCost = 0.70f" in android,
         "Android preview matching threshold changed; revisit iOS parity",
     )
+    adapter = text("IOSFrameKernel.swift")
+    core_path = ROOT / "crates/frame-kernel/src/association.rs"
+    core = core_path.read_text(encoding="utf-8") if core_path.is_file() else ""
+    check("frame_kernel_match_rects(" in adapter and "pub fn match_rects(" in core
+          and "pub fn match_costs(" in core and "total_cmp" in core,
+          "Preview identity association must use the deterministic shared core")
 
 
 def verify_metal_renderer() -> None:

@@ -1,0 +1,20 @@
+{
+  "reviewed": true,
+  "reviewer": "Codex visual inspection",
+  "run": "frame_kernel_follow_cases",
+  "cases": [
+    "group_face_sticker_follow",
+    "group_face_solid_follow",
+    "group_full_length_follow"
+  ],
+  "reviewed_uncovered_candidates": 161,
+  "hero_id": 6,
+  "finding": "All candidates are the intentionally exempt cyan-top / patterned-pants selected person. Other visible faces masked in reviewed overview boards.",
+  "review_boards": 8,
+  "baseline": "complete_22",
+  "decoded_frames_identical": 733,
+  "limits": [
+    "Source face detector is not complete ground truth.",
+    "Android and iOS partial-ear border difference at source 580 remains an observation for shared selection/fallback migration; no final two-platform privacy acceptance claimed."
+  ]
+}

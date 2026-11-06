@@ -1,0 +1,5 @@
+{
+  "basis": "All 12 movies / 288 decoded frames exactly match frame_kernel_instances_focused. Reuse its manually inspected hard-frame boards; all face-core/media audits and native smokes repeated and passed.",
+  "initial_attempt": "frame_kernel_association_focused",
+  "initial_failure": "Simulator temporarily reported no H264/HEVC encoding capability and failed phase4 media smoke before real cases. Original binary passed six smokes and 13 cases after restarting the same simulator. No source bypass or disabled check."
+}

@@ -196,7 +196,7 @@ final class IOSTemporalIdentityTracker {
     currentFacePrivacyEvidence.removeAll(keepingCapacity: true)
     if !initialized {
       initialized = true
-      let assigned = IOSPreviewIdentityMatcher.assign(
+      let assigned = try IOSPreviewIdentityMatcher.assign(
         detections: detections,
         metadata: metadata,
         frameWidth: frameWidth,

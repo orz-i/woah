@@ -23,7 +23,6 @@ import art.gaoge.dance.engine.render.RenderCoordinateConvention
 import art.gaoge.dance.engine.render.SourceTextureType
 import art.gaoge.dance.engine.render.TextureRenderTarget
 import art.gaoge.dance.engine.storage.CacheManager
-import art.gaoge.dance.engine.tracking.HungarianSolver
 import art.gaoge.dance.engine.tracking.TrackManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -153,23 +152,15 @@ class PreviewPipeline(
             val tracker = TrackManager()
             val persons = if (metadata != null && metadata.persons.isNotEmpty() && detections.isNotEmpty()) {
                 val cached = metadata.persons
-                val costMatrix = Array(cached.size) { r ->
-                    val cPerson = cached[r]
-                    val cLeft = (cPerson.bbox.left * frameWidth).toFloat()
-                    val cTop = (cPerson.bbox.top * frameHeight).toFloat()
-                    val cRight = (cPerson.bbox.right * frameWidth).toFloat()
-                    val cBottom = (cPerson.bbox.bottom * frameHeight).toFloat()
-                    val cBox = FloatRect(cLeft, cTop, cRight, cBottom)
-
-                    FloatArray(detections.size) { c ->
-                        val dBox = detections[c].bbox
-                        1.0f - TrackManager.computeBBoxIoU(cBox, dBox)
-                    }
+                val cachedBoxes = cached.map { person ->
+                    FloatRect((person.bbox.left * frameWidth).toFloat(), (person.bbox.top * frameHeight).toFloat(),
+                        (person.bbox.right * frameWidth).toFloat(), (person.bbox.bottom * frameHeight).toFloat())
                 }
-                val matchResult = HungarianSolver.match(costMatrix, maxCostThreshold = 0.70f)
+                val matches = art.gaoge.dance.engine.core.FrameKernel.matchRects(cachedBoxes,
+                    detections.map { it.bbox }, maxCost = 0.70f)
                 val assignedIds = IntArray(detections.size) { -1 }
                 val usedIds = mutableSetOf<Int>()
-                for (m in matchResult.matches) {
+                for (m in matches) {
                     val cachedId = cached[m.first].id
                     assignedIds[m.second] = cachedId
                     usedIds.add(cachedId)

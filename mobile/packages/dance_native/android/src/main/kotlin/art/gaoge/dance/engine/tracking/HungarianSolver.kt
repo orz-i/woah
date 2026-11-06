@@ -6,59 +6,22 @@ data class MatchResult(
     val unmatchedDetections: List<Int>
 )
 
+/** Compatibility name; the established solver is thresholded greedy matching. */
 object HungarianSolver {
-
-    /**
-     * Solves bipartite matching minimizing cost with a maximum acceptable threshold.
-     */
-    fun match(
-        costMatrix: Array<FloatArray>,
-        maxCostThreshold: Float = 0.50f
-    ): MatchResult {
-        val numRows = costMatrix.size
-        if (numRows == 0) {
-            return MatchResult(emptyList(), emptyList(), emptyList())
+    fun match(costMatrix: Array<FloatArray>, maxCostThreshold: Float = 0.50f): MatchResult {
+        val rows = costMatrix.size
+        if (rows == 0) return MatchResult(emptyList(), emptyList(), emptyList())
+        val columns = costMatrix[0].size
+        require(costMatrix.all { it.size == columns }) { "Ragged association matrix" }
+        require(rows <= 100_000 && columns <= 100_000 && rows.toLong() * columns <= 1_000_000) {
+            "Association matrix exceeds the shared core contract"
         }
-        val numCols = costMatrix[0].size
-        if (numCols == 0) {
-            return MatchResult(emptyList(), (0 until numRows).toList(), emptyList())
-        }
-
-        // Greedy priority queue matching with thresholding
-        val flatCosts = mutableListOf<Triple<Int, Int, Float>>()
-        for (r in 0 until numRows) {
-            for (c in 0 until numCols) {
-                if (costMatrix[r][c] <= maxCostThreshold) {
-                    flatCosts.add(Triple(r, c, costMatrix[r][c]))
-                }
-            }
-        }
-        flatCosts.sortBy { it.third }
-
-        val matchedRows = BooleanArray(numRows)
-        val matchedCols = BooleanArray(numCols)
-        val matches = mutableListOf<Pair<Int, Int>>()
-
-        for (item in flatCosts) {
-            val r = item.first
-            val c = item.second
-            if (!matchedRows[r] && !matchedCols[c]) {
-                matchedRows[r] = true
-                matchedCols[c] = true
-                matches.add(Pair(r, c))
-            }
-        }
-
-        val unmatchedTracks = mutableListOf<Int>()
-        for (r in 0 until numRows) {
-            if (!matchedRows[r]) unmatchedTracks.add(r)
-        }
-
-        val unmatchedDetections = mutableListOf<Int>()
-        for (c in 0 until numCols) {
-            if (!matchedCols[c]) unmatchedDetections.add(c)
-        }
-
-        return MatchResult(matches, unmatchedTracks, unmatchedDetections)
+        val costs = FloatArray(rows * columns)
+        costMatrix.forEachIndexed { i, values -> values.copyInto(costs, i * columns) }
+        val matches = art.gaoge.dance.engine.core.FrameKernel.matchCosts(costs, rows, columns, maxCostThreshold)
+        val matchedRows = matches.map { it.first }.toSet()
+        val matchedColumns = matches.map { it.second }.toSet()
+        return MatchResult(matches, (0 until rows).filterNot(matchedRows::contains),
+            (0 until columns).filterNot(matchedColumns::contains))
     }
 }

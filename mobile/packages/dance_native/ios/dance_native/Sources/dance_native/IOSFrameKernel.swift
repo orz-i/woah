@@ -8,6 +8,25 @@ enum IOSFrameKernel {
     precondition(frame_kernel_abi_version() == 1, "Unsupported FrameKernel ABI")
   }()
 
+  static func matchRects(rows: [SIMD4<Float>], columns: [SIMD4<Float>], maxCost: Float) throws -> [(row: Int, column: Int)] {
+    _ = checkedABI
+    let rows = rows.map { FrameKernelRect(left: $0.x, top: $0.y, right: $0.z, bottom: $0.w) }
+    let columns = columns.map { FrameKernelRect(left: $0.x, top: $0.y, right: $0.z, bottom: $0.w) }
+    var pairs = [FrameKernelMatchPair](repeating: FrameKernelMatchPair(), count: min(rows.count, columns.count))
+    let count = rows.withUnsafeBufferPointer { r in
+      columns.withUnsafeBufferPointer { c in
+        pairs.withUnsafeMutableBufferPointer { out in
+          frame_kernel_match_rects(r.baseAddress, UInt32(r.count), c.baseAddress, UInt32(c.count),
+            maxCost, out.baseAddress, out.count)
+        }
+      }
+    }
+    guard count >= 0 else {
+      throw PigeonError(code: "IDENTITY_ASSOCIATION_INVALID", message: "FrameKernel rejected identity association inputs.", details: nil)
+    }
+    return pairs.prefix(Int(count)).map { (Int($0.row), Int($0.column)) }
+  }
+
   final class Follower {
     private var state = FrameKernelFollowState()
     init() { _ = IOSFrameKernel.checkedABI; reset() }
