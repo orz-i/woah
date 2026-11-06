@@ -115,7 +115,7 @@ def verify_ios_surface() -> None:
         "let renderFullBodyIds = freshSceneCoverage && !fullBodyIds.isEmpty ? sceneIds : fullBodyIds",
         "IOSPrivacyClassTemporalTracker()",
         "var privacyClassHardRootsSent = false",
-        "let rootPersons = IOSPreviewIdentityMatcher.assign(",
+        "let rootPersons = try IOSPreviewIdentityMatcher.assign(",
         "hardRoots[index] = fullBodyIds.contains(rootPersons[index].id)",
         "privacyClassHardRootsSent = true",
         "freshFullBodyPrivacyEvidence = privacyClassTracker.update(",

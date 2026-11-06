@@ -1,6 +1,6 @@
 import Foundation
 import CryptoKit
-import FrameKernelC
+@_implementationOnly import FrameKernelC
 func check(_ value: Bool, _ message: String) { if !value { fatalError(message) } }
 var state: UInt32 = 0x13579bdf
 var bytes = Data()
