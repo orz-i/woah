@@ -163,8 +163,17 @@ class LiteRtModelRunner(
             }
         }
 
-        val inShapes = extractInputShapes()
-        val outShapes = extractOutputShapes()
+        val tensorMetadata = try {
+            val bytes = if (modelFile != null && modelFile.isFile) modelFile.readBytes()
+                else requireNotNull(assetManager).open(requireNotNull(assetPath)).use { it.readBytes() }
+            LiteRtTensorMetadata.read(bytes)
+        } catch (error: Throwable) {
+            closeQuietly()
+            throw DanceNativeException(DanceNativeException.MODEL_OUTPUT_INVALID,
+                "Model tensor metadata could not be read.", error)
+        }
+        val inShapes = tensorMetadata.inputs
+        val outShapes = tensorMetadata.outputs
 
         val info = LiteRtRuntimeInfo(
             modelName = modelName,
@@ -203,28 +212,6 @@ class LiteRtModelRunner(
             DanceNativeException.MODEL_NOT_FOUND,
             "No valid model source provided for LiteRT runner '$modelName'"
         )
-    }
-
-    private fun extractInputShapes(): List<List<Int>> {
-        return try {
-            val count = inputBuffers.size
-            (0 until count).map { idx ->
-                emptyList<Int>()
-            }
-        } catch (_: Throwable) {
-            emptyList()
-        }
-    }
-
-    private fun extractOutputShapes(): List<List<Int>> {
-        return try {
-            val count = outputBuffers.size
-            (0 until count).map { idx ->
-                emptyList<Int>()
-            }
-        } catch (_: Throwable) {
-            emptyList()
-        }
     }
 
     private fun checkInitialized() {
