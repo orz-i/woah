@@ -147,6 +147,7 @@ mod tests {
         let mut distance = 123.0;
         // SAFETY: null input is permitted for zero count; output points to a live disjoint float.
         assert_eq!(
+            // SAFETY: the test supplies the documented readable row and disjoint live output.
             unsafe {
                 frame_kernel_face_select(
                     std::ptr::null(),
@@ -165,6 +166,7 @@ mod tests {
         row[5] = 7.0;
         // SAFETY: one readable 18-float row and disjoint output are supplied.
         assert_eq!(
+            // SAFETY: the test supplies the documented readable row and disjoint live output.
             unsafe {
                 frame_kernel_face_select(row.as_ptr(), 1, view, 0.5, 0.5, 0.22, 0.04, &mut distance)
             },
