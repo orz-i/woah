@@ -83,4 +83,14 @@ class AndroidForegroundReadinessTest(unittest.TestCase):
             with self.assertRaises(RuntimeError):run_regression.command('adb','-s','test-device','shell','am','start','test')
         self.assertEqual(process.call_count,1)
 
+class IosQaModelBinding(unittest.TestCase):
+    def test_missing_or_mismatched_model_is_rejected_before_a_successful_archive(self):
+        import tempfile
+        from tools.privacy import build_qa
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            for contents in [None,b'invalid model']:
+                if contents is not None:(root/'yolo11n-seg-fp16.tflite').write_bytes(contents)
+                with self.assertRaisesRegex(RuntimeError,'pinned model contract'):build_qa.verify_ios_model(root)
+
 if __name__=='__main__':unittest.main()
