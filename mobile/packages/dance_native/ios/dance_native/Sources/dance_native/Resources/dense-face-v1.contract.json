@@ -1,6 +1,6 @@
 {
   "model": "blaze_face_full_range.tflite",
-  "source": "mobile/packages/dance_native/android/src/main/assets/models/face/blaze_face_full_range.tflite",
+  "source": "testdata/models/face/blaze_face_full_range.tflite",
   "expected_size_bytes": 1083786,
   "expected_sha256": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b",
   "flatbuffer_magic": "TFL3",
@@ -39,5 +39,6 @@
     "face_detector_graph.cc": "99ea0f1fc638a0764368aaf132cdddd39c4efffb9b64635d2cde379fe0038dc4",
     "face_detection.pbtxt": "fd341aa362fde402827d170ebf372045daa6543a6157d613ee9a08e5e42e72e0",
     "non_max_suppression_calculator.cc": "3389748b19e0a7e03cbe1e27d470d71d7a22369a78203fff0bdf702286fc6e4d"
-  }
+  },
+  "source_url": "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_full_range/float16/1/blaze_face_full_range.tflite"
 }
