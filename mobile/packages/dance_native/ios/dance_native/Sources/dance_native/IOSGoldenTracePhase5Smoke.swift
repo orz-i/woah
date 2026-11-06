@@ -53,6 +53,7 @@ private struct IOSPhase5TrackExpectation: Decodable {
   let id: Int
   let state: String
   let missedFrames: Int
+  let observationAge: Int?
   let occlusionGraceRemaining: Int?
   let observed: Bool
   let identityProtected: Bool
@@ -344,6 +345,9 @@ enum IOSGoldenTracePhase5Smoke {
           frame: frame,
           "track \(expectation.id) missedFrames expected=\(expectation.missedFrames) actual=\(snapshot.missedFrames)"
         )
+      }
+      if let age = expectation.observationAge, snapshot.observationAge != age {
+        throw failure(caseName, frame: frame, "track observation age differs from the canonical trace")
       }
       if let expectedGrace = expectation.occlusionGraceRemaining {
         guard snapshot.occlusionGraceRemaining == expectedGrace else {

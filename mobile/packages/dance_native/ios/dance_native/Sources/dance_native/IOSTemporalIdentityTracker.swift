@@ -1,5 +1,5 @@
 import Foundation
-import FrameKernelC
+@_implementationOnly import FrameKernelC
 
 /// Only a uniform FACE_ONLY selection of every initial person except the
 /// explicit follow target can use identity-independent current face coverage.
@@ -43,6 +43,7 @@ struct IOSTemporalTrackSnapshot {
   let id: Int
   let state: IOSTrackState
   let missedFrames: Int
+  let observationAge: Int
   let occlusionGraceRemaining: Int
   let observedThisFrame: Bool
   let identityProtected: Bool
@@ -76,6 +77,7 @@ final class IOSTemporalIdentityTracker {
     var motion: IOSFrameKernel.BoxFilter?
     var state: IOSTrackState = .active
     var missedFrames: Int = 0
+    var observationAge: Int = 0
     var occlusionGraceRemaining: Int = 0
     var age: Int = 1
     var observedThisFrame: Bool = true
@@ -217,9 +219,10 @@ final class IOSTemporalIdentityTracker {
       default: track.state = .active
       }
       track.missedFrames = region.missedFrames
+      track.observationAge = region.observationAge
       track.occlusionGraceRemaining = track.state == .reacquiring
         ? max(0, postOcclusionGraceFrames - region.missedFrames)
-        : max(0, maxOcclusionFrames - region.missedFrames)
+        : track.state == .occluded ? max(0, maxOcclusionFrames - region.observationAge) : 0
       track.age = region.age
       track.observedThisFrame = region.observed
       return track
@@ -234,7 +237,7 @@ final class IOSTemporalIdentityTracker {
       if !region.observed && !privacyTargetIds.contains(region.id) { continue }
       if !region.observed && usesCurrentSceneFaceCoverage && !detections.isEmpty
         && faceOnlyPrivacyIds.contains(region.id) { continue }
-      if !region.observed && region.missedFrames > maxOcclusionFrames {
+      if !region.observed && region.observationAge > maxOcclusionFrames {
         throw PigeonError(code: "EXPORT_PRIVACY_UNRESOLVED",
           message: "Selected export identity could not be resolved safely.",
           details: ["personId": region.id, "missedFrames": region.missedFrames])
@@ -549,6 +552,7 @@ final class IOSTemporalIdentityTracker {
         id: track.id,
         state: track.state,
         missedFrames: track.missedFrames,
+        observationAge: track.observationAge,
         occlusionGraceRemaining: track.occlusionGraceRemaining,
         observedThisFrame: track.observedThisFrame,
         identityProtected: identityProtectedIds.contains(track.id),

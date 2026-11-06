@@ -1,5 +1,5 @@
 import Foundation
-import FrameKernelC
+@_implementationOnly import FrameKernelC
 
 /// DTO transport only. Session lifetime and byte buffers belong to Swift;
 /// observation association and all track transitions execute inside Rust.
