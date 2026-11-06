@@ -13,6 +13,16 @@ class PrivacyQaIsolation(unittest.TestCase):
                 run_regression.Android(args)
             device.assert_not_called()
 
+class PrivacyQaAcceptanceBoundary(unittest.TestCase):
+    def test_export_only_cannot_be_mistaken_for_full_acceptance(self):
+        import io
+        args=['runner','android','--prefix','test','--media','media','--report','report',
+              '--binary','qa.apk','--stage-export-only']
+        with patch('sys.argv',args), patch('sys.stderr',new_callable=io.StringIO), patch.object(run_regression,'Android') as device:
+            with self.assertRaises(SystemExit) as result:run_regression.main()
+            self.assertEqual(result.exception.code,2)
+            device.assert_not_called()
+
 class PrivacyQaLaunch(unittest.TestCase):
     def test_launch_tolerates_a_missing_pid_before_process_creation(self):
         with patch.object(run_regression, 'command', side_effect=[None, '', '123']), patch.object(run_regression.time, 'sleep') as sleep:

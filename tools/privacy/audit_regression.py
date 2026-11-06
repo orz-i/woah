@@ -22,7 +22,13 @@ def main():
     args=[a.run_id,'--report-root',str(a.report),'--sources',str(a.media)]
     media_result=media.main(args)
     face_result=faces.main(args+['--source-faces',str(a.source_faces),'--require-face-cache'])
-    preview_result=audit_previews(run,a.report,a.media,a.source_faces)
+    if metadata['config'].get('stage_export_only') and metadata['config'].get('partial_stage_check'):
+        marker=a.report/'preview-audits'/a.run_id/'results.json';marker.parent.mkdir(parents=True,exist_ok=True)
+        marker.write_text(json.dumps({'run_id':a.run_id,'status':'not_run_export_only_stage',
+            'scope':'Export-only diagnosis. Does not establish preview behavior or complete flow acceptance.'},indent=2)+'\n',encoding='utf-8')
+        print('PREVIEWS_NOT_RUN_EXPORT_ONLY_STAGE',flush=True);preview_result=0
+    else:
+        preview_result=audit_previews(run,a.report,a.media,a.source_faces)
     return 1 if media_result or face_result or preview_result else 0
 
 if __name__=='__main__':raise SystemExit(main())

@@ -175,9 +175,12 @@ def main():
     p.add_argument('--udid',default='EE228BE6-0F7F-48E1-9892-313B7CFFBB63')
     p.add_argument('--install',action='store_true')
     p.add_argument('--case-filter',help='Explicit partial stage check; final acceptance omits this option')
+    p.add_argument('--stage-export-only',action='store_true',help='Export diagnosis only; requires --case-filter and never qualifies as full acceptance')
     p.add_argument('--build-manifest',type=Path)
     p.add_argument('--deadline-hours',type=float,default=16)
     args=p.parse_args()
+    if args.stage_export_only and not args.case_filter:
+        p.error('Export-only diagnosis requires an explicit --case-filter; final acceptance must include previews')
     if not re.fullmatch(r'[A-Za-z0-9_-]+',args.prefix): p.error('Use a simple unique run prefix')
     build_path=args.build_manifest or args.binary.parent/'build-manifest.json'
     build=json.loads(build_path.read_text(encoding='utf-8'))
@@ -203,7 +206,8 @@ def main():
         config={'run_id':run_id,'cases':cases,'core_smokes':True,
                 'build_source_fingerprint':build['source_fingerprint'],
                 'partial_stage_check':args.case_filter is not None,
-                'verify_previews':True,'lifecycle':suite['id']=='legacy22' and args.case_filter is None}
+                'verify_previews':not args.stage_export_only,'stage_export_only':args.stage_export_only,
+                'lifecycle':suite['id']=='legacy22' and args.case_filter is None}
         shutil.copyfile(build_path,dest/'build-manifest.json')
         if len({c['case'] for c in config['cases']})!=len(config['cases']): raise ValueError('Duplicate output names in a suite')
         print('QA_SUITE_START',args.platform,run_id,len(config['cases']),flush=True)
