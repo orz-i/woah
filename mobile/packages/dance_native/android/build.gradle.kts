@@ -80,6 +80,7 @@ android {
     namespace = "art.gaoge.dance.engine"
 
     compileSdk = 36
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -142,6 +143,44 @@ android {
             }
         }
     }
+}
+
+val rustCore = file("../core")
+val rustTools = file("../../../../tools/rust")
+val rustJniDir = layout.buildDirectory.dir("rustJniLibs")
+val rustHostDir = layout.buildDirectory.dir("rustHost")
+val rustPython = System.getenv("WOAH_PYTHON") ?: "python"
+val buildRustAndroid = tasks.register("buildRustAndroid") {
+    inputs.files(fileTree(rustCore) { exclude("target/**") }, fileTree(rustTools))
+    inputs.file(file("../../../../rust-toolchain.toml"))
+    outputs.dir(rustJniDir)
+    doLast {
+        val sdk = androidComponents.sdkComponents.sdkDirectory.get().asFile
+        val ndk = File(sdk, "ndk/28.2.13676358")
+        for (abi in listOf("arm64-v8a", "armeabi-v7a", "x86_64")) {
+            providers.exec {
+                commandLine(rustPython, File(rustTools, "build_jni.py"), "--abi", abi,
+                    "--ndk", ndk, "--output", File(rustJniDir.get().asFile, abi))
+            }.result.get().assertNormalExitValue()
+        }
+    }
+}
+val buildRustHost = tasks.register("buildRustHost") {
+    inputs.files(fileTree(rustCore) { exclude("target/**") }, fileTree(rustTools))
+    inputs.file(file("../../../../rust-toolchain.toml"))
+    outputs.dir(rustHostDir)
+    doLast {
+        providers.exec {
+            commandLine(rustPython, File(rustTools, "build_jni.py"), "--output", rustHostDir.get().asFile)
+        }.result.get().assertNormalExitValue()
+    }
+}
+android.sourceSets.getByName("main").jniLibs.srcDir(rustJniDir)
+tasks.named("preBuild").configure { dependsOn(buildRustAndroid) }
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    dependsOn(buildRustHost)
+    systemProperty("java.library.path", rustHostDir.get().asFile.absolutePath +
+        File.pathSeparator + System.getProperty("java.library.path"))
 }
 
 kotlin {

@@ -13,9 +13,7 @@ enum IOSHighResolutionPrivacyCoverage {
   }
 
   static func views(width: Int, height: Int) -> [CGRect] {
-    let w = width * 3 / 5, h = height * 3 / 5
-    return [(0, 0), (width - w, 0), (0, height - h), (width - w, height - h)]
-      .map { CGRect(x: $0.0, y: $0.1, width: w, height: h) }
+    IOSPrivacyCore.views(width: width, height: height)
   }
 
   static func enhance(image: CGImage, primary: IOSYoloInferenceResult,
@@ -35,33 +33,12 @@ enum IOSHighResolutionPrivacyCoverage {
   }
 
   static func isComplete(_ d: IOSYoloDetection, view: CGRect, width: Int, height: Int) -> Bool {
-    let mx = Float32(view.width) * 0.02, my = Float32(view.height) * 0.02
-    return (view.minX == 0 || d.x1 > mx) && (view.minY == 0 || d.y1 > my)
-      && (view.maxX == CGFloat(width) || d.x2 < Float32(view.width) - mx)
-      && (view.maxY == CGFloat(height) || d.y2 < Float32(view.height) - my)
+    IOSPrivacyCore.isComplete(d, view: view, width: width, height: height)
   }
 
   static func toScene(_ d: IOSYoloDetection, view: CGRect,
                       local: IOSYoloPreprocessResult, scene: IOSYoloPreprocessResult) -> IOSYoloDetection {
-    let size = IOSYoloPostprocessor.protoSize
-    var mask = [UInt8](repeating: 0, count: size * size)
-    if d.mask.count == mask.count {
-      for y in 0..<size {
-        let sourceY = ((Float32(y) + 0.5) * Float32(scene.inputSize) / Float32(size) - scene.padTop) / scene.scale
-        let ly = sourceY - Float32(view.minY)
-        guard sourceY >= 0, sourceY < Float32(scene.sourceHeight),
-              ly >= 0, ly < Float32(view.height) else { continue }
-        let py = min(size - 1, max(0, Int(floor((ly * local.scale + local.padTop) / Float32(local.inputSize) * Float32(size)))))
-        for x in 0..<size {
-          let sourceX = ((Float32(x) + 0.5) * Float32(scene.inputSize) / Float32(size) - scene.padLeft) / scene.scale
-          let lx = sourceX - Float32(view.minX)
-          guard sourceX >= 0, sourceX < Float32(scene.sourceWidth),
-                lx >= 0, lx < Float32(view.width) else { continue }
-          let px = min(size - 1, max(0, Int(floor((lx * local.scale + local.padLeft) / Float32(local.inputSize) * Float32(size)))))
-          mask[y * size + x] = d.mask[py * size + px]
-        }
-      }
-    }
+    let mask = IOSPrivacyCore.reproject(mask: d.mask, view: view, local: local, scene: scene)
     return IOSYoloDetection(x1: d.x1 + Float32(view.minX), y1: d.y1 + Float32(view.minY),
       x2: d.x2 + Float32(view.minX), y2: d.y2 + Float32(view.minY), confidence: d.confidence, mask: mask)
   }
@@ -115,8 +92,6 @@ enum IOSHighResolutionPrivacyCoverage {
   }
 
   private static func iou(_ a: IOSYoloDetection, _ b: IOSYoloDetection) -> Float32 {
-    let intersection = max(0, min(a.x2, b.x2) - max(a.x1, b.x1))
-      * max(0, min(a.y2, b.y2) - max(a.y1, b.y1))
-    return intersection / max(1, (a.x2-a.x1)*(a.y2-a.y1) + (b.x2-b.x1)*(b.y2-b.y1) - intersection)
+    IOSPrivacyCore.iou(a, b)
   }
 }

@@ -18,6 +18,9 @@ float woah_core_iou(WoahRect a, WoahRect b);
 /* Buffers must not overlap; no memory is retained or freed by this call. */
 int32_t woah_core_reproject_mask(const uint8_t *mask, size_t mask_len,
     WoahTransform local, WoahTransform scene, WoahRect view, uint8_t *output, size_t output_len);
+int32_t woah_core_project_mask(const uint8_t *mask, size_t mask_len, WoahTransform transform,
+    uint32_t source_width, uint32_t source_height, uint32_t width, uint32_t height,
+    WoahRect crop, uint8_t *output, size_t output_len);
 #ifdef __cplusplus
 }
 #endif

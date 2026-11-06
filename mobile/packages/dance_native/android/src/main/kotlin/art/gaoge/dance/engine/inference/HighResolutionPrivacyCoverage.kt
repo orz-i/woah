@@ -1,6 +1,7 @@
 package art.gaoge.dance.engine.inference
 
 import art.gaoge.dance.engine.geometry.ModelCoordinateMapper
+import art.gaoge.dance.engine.core.PrivacyCore
 import java.nio.ByteBuffer
 import kotlin.math.floor
 import kotlin.math.ceil
@@ -22,10 +23,7 @@ internal object HighResolutionPrivacyCoverage {
             (bodyIds.isEmpty() && faceIds.containsAll(initialIds)))
 
     fun views(width: Int, height: Int): List<FloatRect> {
-        val w = width * 3 / 5
-        val h = height * 3 / 5
-        return listOf(0 to 0, width - w to 0, 0 to height - h, width - w to height - h)
-            .map { (x, y) -> FloatRect(x.toFloat(), y.toFloat(), (x + w).toFloat(), (y + h).toFloat()) }
+        return PrivacyCore.detailViews(width, height)
     }
 
     // Inference readback is converted from bottom-up rows. Select a visual
@@ -36,13 +34,7 @@ internal object HighResolutionPrivacyCoverage {
 
     /** Cropped foreground people must not become extra anonymous heads at a tile boundary. */
     fun isComplete(detection: PersonDetection, view: FloatRect, width: Int, height: Int): Boolean {
-        val box = detection.bbox
-        val xMargin = view.width * 0.02f
-        val yMargin = view.height * 0.02f
-        return (view.left == 0f || box.left > xMargin) &&
-            (view.top == 0f || box.top > yMargin) &&
-            (view.right == width.toFloat() || box.right < view.width - xMargin) &&
-            (view.bottom == height.toFloat() || box.bottom < view.height - yMargin)
+        return PrivacyCore.detailComplete(detection.bbox, view, width, height)
     }
 
     /** Reproject each local mask into the canonical full-scene proto space before tracking. */
@@ -51,20 +43,7 @@ internal object HighResolutionPrivacyCoverage {
         val mask = localMask?.let {
             val local = requireNotNull(it.mapper)
             val pixels = ByteBuffer.allocateDirect(mapper.protoSize * mapper.protoSize)
-            for (y in 0 until mapper.protoSize) {
-                for (x in 0 until mapper.protoSize) {
-                    val modelX = (x + 0.5f) * mapper.modelInputSize / mapper.protoSize
-                    val modelY = (y + 0.5f) * mapper.modelInputSize / mapper.protoSize
-                    if (modelX < mapper.padLeft || modelX >= mapper.padLeft + mapper.scaledW ||
-                        modelY < mapper.padTop || modelY >= mapper.padTop + mapper.scaledH) continue
-                    val sourceX = mapper.modelToSourceX(modelX) - view.left
-                    val sourceY = mapper.modelToSourceY(modelY) - view.top
-                    if (sourceX < 0 || sourceY < 0 || sourceX >= view.width || sourceY >= view.height) continue
-                    val px = floor(local.sourceToProtoX(sourceX)).toInt().coerceIn(0, it.width - 1)
-                    val py = floor(local.sourceToProtoY(sourceY)).toInt().coerceIn(0, it.height - 1)
-                    pixels.put(y * mapper.protoSize + x, it.buffer.get(py * it.width + px))
-                }
-            }
+            PrivacyCore.reprojectMask(it.buffer, pixels, local, mapper, view)
             NativeMask(mapper.protoSize, mapper.protoSize, pixels, mapper.srcWidth, mapper.srcHeight, mapper)
         }
         val box = detection.bbox.offset(view.left, view.top)
@@ -135,8 +114,6 @@ internal object HighResolutionPrivacyCoverage {
     }
 
     private fun intersectionOverUnion(a: FloatRect, b: FloatRect): Float {
-        val area = (min(a.right, b.right) - max(a.left, b.left)).coerceAtLeast(0f) *
-            (min(a.bottom, b.bottom) - max(a.top, b.top)).coerceAtLeast(0f)
-        return area / (a.width * a.height + b.width * b.height - area).coerceAtLeast(1f)
+        return PrivacyCore.iou(a, b)
     }
 }

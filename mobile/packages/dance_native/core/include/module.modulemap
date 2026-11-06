@@ -1,0 +1,4 @@
+module WoahPrivacyCore {
+    header "woah_privacy_core.h"
+    export *
+}

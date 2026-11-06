@@ -49,6 +49,7 @@ jobs:
       - name: Verify shared Rust privacy core
         run: |
           rustup toolchain install 1.97.1 --profile minimal --component rustfmt --component clippy
+          rustup target add --toolchain 1.97.1 aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
           python tools/rust/run.py check
           python tools/rust/verify_matrix.py
 
@@ -117,6 +118,9 @@ jobs:
       - name: Verify locked Android resolution
         working-directory: mobile/app/android
         run: ./gradlew :app:verifyWoahDependencyLocks :dance_native:verifyWoahDependencyLocks
+
+      - name: Install pinned Rust JNI build tools
+        run: sdkmanager 'ndk;28.2.13676358' 'cmake;3.22.1'
 
       - name: Run Android Native Unit Tests
         env:
