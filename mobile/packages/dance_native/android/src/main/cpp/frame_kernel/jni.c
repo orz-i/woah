@@ -416,3 +416,43 @@ JNIEXPORT jlongArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_sceneT
     }
     free(targets);release_ids(env,&r);release_ids(env,&b);release_ids(env,&f);release_ids(env,&c);return result;
 }
+
+JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_continueRegionNative(
+    JNIEnv *env,jobject self,jfloatArray state,jlongArray clocks,jfloatArray current,jlong pts,jint kind) {
+    (void)self;
+    if(!state || !clocks || !current || (*env)->GetArrayLength(env,state)!=8192 ||
+       (*env)->GetArrayLength(env,clocks)!=1025 || (*env)->GetArrayLength(env,current)!=8 || kind<0 || kind>2) {invalid(env);return NULL;}
+    jlong count=0;(*env)->GetLongArrayRegion(env,clocks,0,1,&count);
+    if((*env)->ExceptionCheck(env)) return NULL;
+    if(count<0 || count>1024){invalid(env);return NULL;}
+    jfloat raw[8];(*env)->GetFloatArrayRegion(env,current,0,8,raw);
+    if((*env)->ExceptionCheck(env))return NULL;
+    jfloat *values=(*env)->GetFloatArrayElements(env,state,NULL);
+    jlong *times=(*env)->GetLongArrayElements(env,clocks,NULL);
+    FrameKernelRegionMeasurement *history=count ? calloc((size_t)count,sizeof(*history)):NULL;
+    FrameKernelRegionMeasurement *output=calloc(1025,sizeof(*output));
+    jfloatArray result=NULL;int commit=JNI_ABORT;
+    if(!values || !times || (count && !history) || !output) goto done;
+    for(int i=0;i<count;i++) {
+        float *v=values+i*8;
+        history[i]=(FrameKernelRegionMeasurement){{v[0],v[1],v[2],v[3]},{v[4],v[5],v[6],v[7]},times[i+1],0,0};
+    }
+    FrameKernelRegionMeasurement m={{raw[0],raw[1],raw[2],raw[3]},{raw[4],raw[5],raw[6],raw[7]},pts,(uint32_t)kind,0};
+    int n=frame_kernel_continue_regions(history,(size_t)count,&m,1,pts,1,output,1025);
+    if(n<1){invalid(env);goto done;}
+    result=(*env)->NewFloatArray(env,4);if(!result)goto done;
+    FrameKernelEllipse e=output[n-1].region;jfloat answer[4]={e.center_x,e.center_y,e.radius_x,e.radius_y};
+    (*env)->SetFloatArrayRegion(env,result,0,4,answer);if((*env)->ExceptionCheck(env))goto done;
+    for(int i=0;i<n-1;i++) {
+        FrameKernelRegionMeasurement r=output[i];float *v=values+i*8;
+        v[0]=r.region.center_x;v[1]=r.region.center_y;v[2]=r.region.radius_x;v[3]=r.region.radius_y;
+        v[4]=r.anchor.left;v[5]=r.anchor.top;v[6]=r.anchor.right;v[7]=r.anchor.bottom;times[i+1]=r.timestamp_us;
+    }
+    times[0]=n-1;commit=0;
+ done:
+    free(history);free(output);
+    if(times)(*env)->ReleaseLongArrayElements(env,clocks,times,commit);
+    if(values)(*env)->ReleaseFloatArrayElements(env,state,values,commit);
+    if(!result && !(*env)->ExceptionCheck(env))invalid(env);
+    return result;
+}

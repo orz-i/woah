@@ -8,6 +8,28 @@ enum IOSFrameKernel {
     precondition(frame_kernel_abi_version() == 1, "Unsupported FrameKernel ABI")
   }()
 
+  final class RegionContinuation {
+    private var history: [FrameKernelRegionMeasurement] = []
+    func reset() { history.removeAll(keepingCapacity: true) }
+    func step(raw: SIMD4<Float>, anchor: SIMD4<Float>, timestampUs: Int64, kind: UInt32) throws -> SIMD4<Float> {
+      _ = checkedABI
+      var measurement = FrameKernelRegionMeasurement(
+        region: FrameKernelEllipse(center_x: raw.x, center_y: raw.y, radius_x: raw.z, radius_y: raw.w),
+        anchor: FrameKernelRect(left: anchor.x, top: anchor.y, right: anchor.z, bottom: anchor.w),
+        timestamp_us: timestampUs, kind: kind, flags: 0)
+      var output = [FrameKernelRegionMeasurement](repeating: FrameKernelRegionMeasurement(), count: 1025)
+      let count = history.withUnsafeBufferPointer { old in
+        output.withUnsafeMutableBufferPointer { out in
+          frame_kernel_continue_regions(old.baseAddress, old.count, &measurement, 1, timestampUs, 1, out.baseAddress, out.count)
+        }
+      }
+      guard count >= 1 else { throw pixelError() }
+      history = Array(output.prefix(Int(count) - 1))
+      let region = output[Int(count) - 1].region
+      return SIMD4(region.center_x, region.center_y, region.radius_x, region.radius_y)
+    }
+  }
+
   static var associationWeights: [Float] {
     _ = checkedABI
     let value=frame_kernel_association_defaults()

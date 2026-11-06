@@ -15,6 +15,16 @@ internal object FrameKernel {
         anchor: FloatArray, pts: Long, kind: Int, flags: Int): FloatArray
     private external fun anchorTranslationNative(previous: FloatArray, current: FloatArray): FloatArray
 
+    private external fun continueRegionNative(values: FloatArray, clock: LongArray,
+        current: FloatArray, pts: Long, kind: Int): FloatArray
+    class RegionContinuation {
+        private val values = FloatArray(1024 * 8)
+        private val clock = LongArray(1025)
+        fun reset() { clock[0] = 0 }
+        fun step(raw: FloatArray, anchor: FloatRect, pts: Long, kind: Int): FloatArray =
+            continueRegionNative(values, clock, raw + anchor.values(), pts, kind)
+    }
+
     class RegionState {
         private val values = FloatArray(12)
         private val clock = LongArray(2)
