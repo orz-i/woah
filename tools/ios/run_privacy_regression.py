@@ -128,6 +128,11 @@ def main():
                                 if not image.is_file() or image.stat().st_size!=preview['bytes']:
                                     raise RuntimeError('Missing or incomplete archived preview: '+preview['file'])
                                 preview_files[preview['file']]=sha(image)
+                                if preview.get('control_file'):
+                                    control=dest/'previews'/preview['control_file']
+                                    if not control.is_file() or control.stat().st_size!=preview['control_bytes']:
+                                        raise RuntimeError('Missing or incomplete native preview control')
+                                    preview_files[preview['control_file']]=sha(control)
                         meta['preview_files_sha256']=preview_files
                         for name in ['qa_lifecycle_results.json','qa_negative_results.json']:
                             if config.get('lifecycle') and (docs/name).exists(): shutil.copyfile(docs/name,dest/name)

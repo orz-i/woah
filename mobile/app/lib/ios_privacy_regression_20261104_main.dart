@@ -580,16 +580,39 @@ class _QA {
           }
           final target = File('${directory.path}/$name-$at.png');
           await target.writeAsBytes(bytes);
+          final previewWidth = image.width;
+          final previewHeight = image.height;
+          image.dispose();
+          codec.dispose();
+          // A full-frame, unprotected control verifies native decode time
+          // independently of the privacy effect and follow crop under test.
+          final control = await client.getPreviewFrame(
+            analysisCacheId: a.analysisCacheId,
+            timestampMs: at,
+            selectedPersonIds: const [],
+            faceOnlyPersonIds: const [],
+            effects: effect('solid'),
+            follow: const FollowConfig(),
+          );
+          final controlBytes = await File(control.thumbnailPath).readAsBytes();
+          final controlCodec = await ui.instantiateImageCodec(controlBytes);
+          final controlImage = (await controlCodec.getNextFrame()).image;
+          final controlFile = File('${directory.path}/$name-$at-source.png');
+          await controlFile.writeAsBytes(controlBytes);
           previewRows.add({
             'requested_ms': at,
-            'actual_ms': preview.timestampMs,
-            'width': image.width,
-            'height': image.height,
+            'dto_timestamp_ms': preview.timestampMs,
+            'control_file': controlFile.uri.pathSegments.last,
+            'control_bytes': controlBytes.length,
+            'control_width': controlImage.width,
+            'control_height': controlImage.height,
+            'width': previewWidth,
+            'height': previewHeight,
             'bytes': bytes.length,
             'file': target.uri.pathSegments.last,
           });
-          image.dispose();
-          codec.dispose();
+          controlImage.dispose();
+          controlCodec.dispose();
         }
         row['previews'] = previewRows;
       }

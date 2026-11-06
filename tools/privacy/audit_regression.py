@@ -7,6 +7,7 @@ ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'tools/ios'))
 import audit_privacy_regression as media
 import audit_privacy_face_cores as faces
+from audit_previews import audit_run as audit_previews
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
@@ -21,6 +22,7 @@ def main():
     args=[a.run_id,'--report-root',str(a.report),'--sources',str(a.media)]
     media_result=media.main(args)
     face_result=faces.main(args+['--source-faces',str(a.source_faces),'--require-face-cache'])
-    return 1 if media_result or face_result else 0
+    preview_result=audit_previews(run,a.report,a.media)
+    return 1 if media_result or face_result or preview_result else 0
 
 if __name__=='__main__':raise SystemExit(main())

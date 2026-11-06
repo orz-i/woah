@@ -98,8 +98,9 @@ class PreviewPipeline(
                     retriever.setDataSource(sourceUri.removePrefix("file://"))
                 }
                 val timeUs = (request.timestampMs * 1000L).coerceAtLeast(0L)
-                retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-                    ?: retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                // Privacy geometry must describe the requested moment, including
+                // non-keyframes. A failed decode must not silently show frame zero.
+                retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST)
                     ?: throw DanceNativeException(
                         DanceNativeException.DECODE_FRAME_FAILED,
                         "Failed to extract video frame at timestamp ${request.timestampMs}ms"
