@@ -18,6 +18,10 @@ Native iOS media, rendering, and on-device inference bridge for Woah.
   # plugin pod itself static as well so CocoaPods does not try to build a
   # dynamic dance_native framework with a transitive static binary dependency.
   s.static_framework = true
+  s.libraries = 'woah_privacy_core', 'iconv'
+  s.user_target_xcconfig = {
+    'LIBRARY_SEARCH_PATHS' => '$(inherited) "$(BUILT_PRODUCTS_DIR)/RustCore"'
+  }
   s.dependency 'Flutter'
   # The first-party general Swift runtime currently available through CocoaPods
   # is TensorFlowLiteSwift. This compatibility bridge is intentionally isolated
