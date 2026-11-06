@@ -1,0 +1,24 @@
+{
+  "case": "frame_kernel_instances_body411",
+  "input": "group-mirror-8956295.mp4",
+  "face_only": false,
+  "fill": "solid",
+  "trim_start_ms": 16000,
+  "trim_end_ms": 17600,
+  "detected_ids": [
+    0,
+    1,
+    2
+  ],
+  "selected_ids": [
+    0,
+    1,
+    2
+  ],
+  "state": "completed",
+  "frames": 40,
+  "output_bytes": 753760,
+  "expected_frames": 40,
+  "actual_frames": 40,
+  "last_output_pts_us": 1560000
+}
