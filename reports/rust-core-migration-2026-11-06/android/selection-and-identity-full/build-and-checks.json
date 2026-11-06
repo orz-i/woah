@@ -1,0 +1,19 @@
+{
+  "algorithm_commit": "6d54edab",
+  "apk_sha256": "fecb03262eb6e2d7cf71d1244bf2c82e17fd7c31a33ea914a207ce13b43940c9",
+  "apk_bytes": 151564845,
+  "apk_build_note": "Built from the implementation later committed as 6d54edab; embedded pre-commit Git head is 1035ff02. The archived bytes are the installed tested APK.",
+  "jvm_tests": 585,
+  "jvm_failures": 0,
+  "rust_unit_tests": 19,
+  "rust_doc_tests": 1,
+  "arm_contract_tests": 1,
+  "arm_contract_seconds": 0.593,
+  "replayed_frames": 190,
+  "captured_hero_unobserved_before": 22,
+  "hero_unobserved_after": 0,
+  "association_score_cases": 10000,
+  "reservation_cases": 512,
+  "vector_sha256": "9970b76bf03ed4aeb7f0fcc3df51b8b2a41c1dea8f5cfa0f744c255bfe4fa55d",
+  "device_export_seconds": 924.592
+}

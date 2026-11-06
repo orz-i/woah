@@ -1,0 +1,29 @@
+{
+  "case": "frame_kernel_identity_scope_full",
+  "status": "passed_media",
+  "sha256": "b0d2bd12ca00b200e59b52084010038773a48cd2d56f2bb375516c79d32b292d",
+  "bytes": 9251888,
+  "dimensions": [
+    720,
+    1280
+  ],
+  "decoded_frames": 581,
+  "expected_frames": 581,
+  "max_pts_delta_seconds": 0.0,
+  "audio_streams": 0,
+  "audio_waveform": null,
+  "faststart": {
+    "atoms": [
+      "ftyp",
+      "moov",
+      "free",
+      "mdat"
+    ],
+    "moov_before_mdat": true
+  },
+  "black_frames": 0,
+  "green_frames": 0,
+  "privacy_probes": [],
+  "topology_candidates": [],
+  "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage"
+}
