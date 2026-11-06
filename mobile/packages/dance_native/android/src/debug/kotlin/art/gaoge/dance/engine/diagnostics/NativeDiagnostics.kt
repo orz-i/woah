@@ -93,6 +93,7 @@ object NativeDiagnostics {
 
         val appCtx = context.applicationContext ?: context
         appContext = appCtx
+        DiagnosticsBuild.metadataOnly = appCtx.packageName.endsWith(".privacyqa")
 
         val diagDir = File(appCtx.filesDir, "diagnostics").apply { mkdirs() }
         diagnosticsDir = diagDir
@@ -197,6 +198,7 @@ object NativeDiagnostics {
      * the render/inference thread. Artifacts are included by createConsistentSnapshot().
      */
     fun writeArtifactAsync(fileName: String, bytes: ByteArray) {
+        if (DiagnosticsBuild.metadataOnly) return
         val diagDir = diagnosticsDir ?: return
         val safeName = fileName.replace(Regex("[^A-Za-z0-9._-]"), "_")
         if (safeName.isBlank()) return

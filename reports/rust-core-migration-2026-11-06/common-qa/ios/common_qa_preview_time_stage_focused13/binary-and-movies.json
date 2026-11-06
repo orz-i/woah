@@ -1,0 +1,15 @@
+{
+  "source_commit": "18fd3e405dcd69880ffa4101a6bc145aa53c5c33",
+  "source_fingerprint": "40e488fd2f3bc5e730f903df88e5be49816ac5532821fa01ebd1083b74426880",
+  "binary_sha256": "632f0cd6ea83fa12e8c5a16b58059166b8b741112611281fc6dc823b787b42a6",
+  "movies": [
+    {
+      "case": "solo_4k_custom_gallery_probe",
+      "movie_sha256": "2a2591144306c78674be3562ae89b6b5afcaa0340387b511b9cbff51799c5d97",
+      "bytes": 772195,
+      "gallery_original": null
+    }
+  ],
+  "full_manifest_archive": "reports/rust-core-migration-2026-11-06/stages/preview-time/ios/artifacts/common_qa_preview_time_stage_focused13/build-manifest.json",
+  "partial_stage_check": true
+}

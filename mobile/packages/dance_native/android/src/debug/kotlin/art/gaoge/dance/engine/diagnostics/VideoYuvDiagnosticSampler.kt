@@ -24,7 +24,7 @@ object VideoYuvDiagnosticSampler {
     private const val UV_GRID = 32
 
     fun capture(context: Context, sourceUri: String, jobId: String) {
-        if (!art.gaoge.dance.engine.BuildConfig.DEBUG) return
+        if (!art.gaoge.dance.engine.BuildConfig.DEBUG || DiagnosticsBuild.metadataOnly) return
 
         val extractor = MediaExtractor()
         var decoder: MediaCodec? = null

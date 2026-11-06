@@ -1,0 +1,17 @@
+{
+  "run_id": "common_qa_preview_time_stage_focused13",
+  "cases": [
+    {
+      "case": "solo_4k_custom_gallery_probe",
+      "input_binding_sha256": "96ae995c1ea5619b0ff65e1e6bb39b197fa10358adf854f83c34a1b58f01c0a1",
+      "decoded_frames": 16,
+      "tested_visible_face_cores": 16,
+      "outside_or_tiny_cores": 0,
+      "uncovered_face_cores": [],
+      "follow_hero_id": null,
+      "status": "passed_all_detected_face_cores",
+      "coverage_measure": "recorded_source_ellipses",
+      "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "restored_source_commit": "67df0b9b",
+  "entrypoint": "lib/main.dart",
+  "application_id": "art.gaoge.dance",
+  "installed_apk_sha256": "d3a9233fe6cedb35a45a9b9aa6e2a862c2bf768e17c107bd12568bead48fc862",
+  "install_result": "Performing Streamed Install\nSuccess\n",
+  "data_clear_performed": false,
+  "qa_cases_started_on_wrong_package": false,
+  "sha256_after_isolated_qa_install": "d3a9233fe6cedb35a45a9b9aa6e2a862c2bf768e17c107bd12568bead48fc862"
+}

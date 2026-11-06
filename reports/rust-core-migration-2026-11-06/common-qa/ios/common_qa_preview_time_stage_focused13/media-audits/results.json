@@ -1,0 +1,44 @@
+{
+  "run_id": "common_qa_preview_time_stage_focused13",
+  "cases": [
+    {
+      "case": "solo_4k_custom_gallery_probe",
+      "status": "passed_media",
+      "sha256": "2a2591144306c78674be3562ae89b6b5afcaa0340387b511b9cbff51799c5d97",
+      "bytes": 772195,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "decoded_frames": 16,
+      "expected_frames": 16,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 1,
+      "audio_waveform": {
+        "correlation": 1.0,
+        "lag_ms": 0.0,
+        "reference_rms": 0.0,
+        "output_rms": 0.0,
+        "gain_ratio": 1.0,
+        "alignment_observable": false
+      },
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "gallery_original_sha_matches": [
+        "DCIM/100APPLE/IMG_0035.MP4"
+      ],
+      "input_binding_sha256": "68a63b697367ce73e8da9cdaf56f80c9d3cfbce28ba2c6a6fdfeef9e7e5036b7"
+    }
+  ]
+}

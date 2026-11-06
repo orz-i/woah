@@ -9,7 +9,7 @@ final class IOSPixelAuditCropRecorder {
   private let handle: FileHandle
   private var frameIndex = 0
 
-  init?(sourceName: String, outputWidth: Int, outputHeight: Int) {
+  init?(sourceName: String, outputName: String, outputWidth: Int, outputHeight: Int) {
     guard ProcessInfo.processInfo.environment["WOAH_PIXEL_CROP_AUDIT"] == "1" else { return nil }
     guard let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return nil }
     let url = dir.appendingPathComponent("qa_pixel_crops_\(UUID().uuidString).jsonl")
@@ -19,7 +19,7 @@ final class IOSPixelAuditCropRecorder {
     handle = file
     append([
       "kind": "header", "schema": "woah-ios-pixel-crop-v1",
-      "source_basename": sourceName, "output_width": outputWidth,
+      "source_basename": sourceName, "output_basename": outputName, "output_width": outputWidth,
       "output_height": outputHeight,
     ])
   }

@@ -24,13 +24,18 @@ def atomic(path, data):
     temp.replace(path)
 
 def main():
+    global REPORT, SOURCES
     parser = argparse.ArgumentParser()
     parser.add_argument('config', type=pathlib.Path)
     parser.add_argument('--udid', default='EE228BE6-0F7F-48E1-9892-313B7CFFBB63')
     parser.add_argument('--install', action='store_true')
     parser.add_argument('--app', type=pathlib.Path, default=ROOT/'mobile/app/build/ios/iphonesimulator/Runner.app')
     parser.add_argument('--optimized-native', action='store_true')
+    parser.add_argument('--report-root', type=pathlib.Path, default=REPORT)
+    parser.add_argument('--sources', type=pathlib.Path, default=SOURCES)
+    parser.add_argument('--deadline-hours', type=float, default=5)
     args = parser.parse_args()
+    REPORT, SOURCES = args.report_root.resolve(), args.sources.resolve()
     config = json.loads(args.config.read_text())
     run_id = config['run_id']
     if not run_id.replace('_', '').replace('-', '').isalnum(): raise ValueError('Invalid run ID')
@@ -82,7 +87,7 @@ def main():
             args.udid,BUNDLE],env=launch_env,stdout=log,stderr=subprocess.STDOUT)
         last = None
         resources = []
-        deadline = time.monotonic() + 5*3600
+        deadline = time.monotonic() + args.deadline_hours*3600
         while time.monotonic() < deadline:
             if results.exists():
                 try: data = json.loads(results.read_text())
@@ -114,6 +119,21 @@ def main():
                             try: os.link(source,target)
                             except OSError: shutil.copyfile(source,target)
                     if data['status']=='finished':
+                        preview_source=live/'previews'
+                        if preview_source.exists():shutil.copytree(preview_source,dest/'previews',dirs_exist_ok=True)
+                        preview_files={}
+                        for row in data['cases']:
+                            for preview in row.get('previews',[]):
+                                image=dest/'previews'/preview['file']
+                                if not image.is_file() or image.stat().st_size!=preview['bytes']:
+                                    raise RuntimeError('Missing or incomplete archived preview: '+preview['file'])
+                                preview_files[preview['file']]=sha(image)
+                                if preview.get('control_file'):
+                                    control=dest/'previews'/preview['control_file']
+                                    if not control.is_file() or control.stat().st_size!=preview['control_bytes']:
+                                        raise RuntimeError('Missing or incomplete native preview control')
+                                    preview_files[preview['control_file']]=sha(control)
+                        meta['preview_files_sha256']=preview_files
                         for name in ['qa_lifecycle_results.json','qa_negative_results.json']:
                             if config.get('lifecycle') and (docs/name).exists(): shutil.copyfile(docs/name,dest/name)
                         if (live/'core-smokes.json').exists(): shutil.copyfile(live/'core-smokes.json',dest/'core-smokes.json')
@@ -136,6 +156,6 @@ def main():
                         return 0
             if process.poll() is not None: raise RuntimeError(f'Simulator runner exited: {process.returncode}; see {dest}/console.log')
             time.sleep(5)
-        raise TimeoutError('Five hour run deadline; leave simulator evidence intact')
+        raise TimeoutError('Run deadline exceeded; simulator evidence preserved')
 
 if __name__ == '__main__': raise SystemExit(main())

@@ -1,0 +1,43 @@
+{
+  "platform": "android",
+  "runs": [
+    {
+      "run_id": "common_qa_preview_time_stage_legacy22",
+      "cases": 1,
+      "status": "finished",
+      "movies": [
+        {
+          "case": "group_face_solid_follow",
+          "movie_sha256": "0240c7a415fd8629fea3516c8518203839fad74e652594a2f6721df8ec484a1a",
+          "bytes": 1170112,
+          "gallery_original": null
+        }
+      ]
+    },
+    {
+      "run_id": "common_qa_preview_time_retry_focused13",
+      "cases": 1,
+      "status": "finished",
+      "movies": [
+        {
+          "case": "solo_4k_custom_gallery_probe",
+          "movie_sha256": "091a9d19fd6327b1621278a1c5f7eadd8a118b8fb6b63669fbf17cac2b8f50f3",
+          "bytes": 363022,
+          "gallery_original": {
+            "path": "/storage/emulated/0/Android/data/art.gaoge.dance.privacyqa/files/qa_gallery/1d0ab7a0-de8d-4028-8e13-0fdc7df02ecc.mp4",
+            "bytes": 363022,
+            "sha256": "091a9d19fd6327b1621278a1c5f7eadd8a118b8fb6b63669fbf17cac2b8f50f3"
+          }
+        }
+      ]
+    }
+  ],
+  "reviewed_protected_previews": 6,
+  "reviewed_movie_hero_candidates": [
+    44,
+    45
+  ],
+  "finding": "The two automatically uncovered cores are the turquoise-shirt hero6 and must remain clear. Adjacent visible non-hero face is covered. All six protected previews viewed; custom face sticker follows the current face. No full-62 claim.",
+  "limits": "Source face oracle is incomplete. This is a two-case stage subset; final full-duration/4K acceptance is outstanding.",
+  "image_retention": "Curated JPEG boards in Git; exact protected/control bytes and hashes retained in original Windows stage archive. JSON audit hashes refer to those original files."
+}

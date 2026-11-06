@@ -14,6 +14,39 @@ internal object DiagnosticsChannelBridge {
         context: Context?
     ): Boolean {
         when (call.method) {
+            "copyPrivacyQaGalleryOriginal" -> {
+                val ctx = context
+                if (ctx == null || !ctx.packageName.endsWith(".privacyqa")) {
+                    result.error("QA_ONLY", "Requires the isolated QA package", null)
+                    return true
+                }
+                val raw = call.argument<String>("uri")
+                val uri = raw?.let(android.net.Uri::parse)
+                if (uri?.scheme != "content" || uri.authority != "media") {
+                    result.error("INVALID_ARGS", "Expected an owned MediaStore video", null)
+                    return true
+                }
+                Thread {
+                    try {
+                        ctx.contentResolver.query(uri, arrayOf("owner_package_name"), null, null, null).use { cursor ->
+                            check(cursor != null && cursor.moveToFirst() && cursor.getString(0) == ctx.packageName) {
+                                "Gallery verification only reads this QA package's saved media"
+                            }
+                        }
+                        val directory = java.io.File(ctx.getExternalFilesDir(null), "qa_gallery").apply { mkdirs() }
+                        val target = java.io.File(directory, "${java.util.UUID.randomUUID()}.mp4")
+                        val digest = java.security.MessageDigest.getInstance("SHA-256")
+                        java.security.DigestInputStream(requireNotNull(ctx.contentResolver.openInputStream(uri)), digest).use { input ->
+                            target.outputStream().use { input.copyTo(it) }
+                        }
+                        result.success(mapOf("path" to target.absolutePath, "bytes" to target.length(),
+                            "sha256" to digest.digest().joinToString("") { "%02x".format(it) }))
+                    } catch (error: Exception) {
+                        result.error("QA_GALLERY_READ_FAILED", error.javaClass.simpleName, null)
+                    }
+                }.apply { isDaemon = true; start() }
+                return true
+            }
             "createDiagnosticBundle" -> {
                 val ctx = context
                 if (ctx == null) {

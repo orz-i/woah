@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 REPORT=ROOT/'reports/privacy-ios-22-and-4k-regression-2026-11-05'
+SOURCES=ROOT/'reports/privacy-ios-regression-2026-11-04/artifacts/sources'
 
 def sha(path):
     digest=hashlib.sha256()
@@ -19,12 +20,20 @@ def red(frame):
 def read_jsonl(p):
     return [json.loads(line) for line in p.read_text().splitlines() if line.strip()]
 
-def main():
-    parser=argparse.ArgumentParser();parser.add_argument('run_id');args=parser.parse_args()
+def main(argv=None):
+    global REPORT,SOURCES
+    parser=argparse.ArgumentParser();parser.add_argument('run_id')
+    parser.add_argument('--report-root',type=pathlib.Path,default=REPORT)
+    parser.add_argument('--sources',type=pathlib.Path,default=SOURCES)
+    parser.add_argument('--source-faces',type=pathlib.Path)
+    parser.add_argument('--require-face-cache',action='store_true')
+    args=parser.parse_args(argv);REPORT=args.report_root.resolve();SOURCES=args.sources.resolve()
+    cache_root=args.source_faces or REPORT/'artifacts/source-faces'
     run=REPORT/'artifacts'/args.run_id
     data=json.loads((run/'results.json').read_text())
     meta=json.loads((run/'run-metadata.json').read_text())
     traces=[read_jsonl(run/'crop-traces'/p) for p in meta.get('crop_traces',[])]
+    trace_by_output={t[0]['output_basename']:(t,name) for t,name in zip(traces,meta.get('crop_traces',[])) if t[0].get('output_basename')}
     rows=[];summary=REPORT/'face-audits'/args.run_id;summary.mkdir(parents=True,exist_ok=True)
     previous={}
     for prior in [REPORT/'face-audits'/(args.run_id+'_prefix')/'results.json',summary/'results.json']:
@@ -34,19 +43,27 @@ def main():
         if row.get('select')=='first' or row.get('result')!='output_created':continue
         planned_geometry = row.get('fill')!='solid'
         source_name=row.get('input','solo-hd-7570258.mp4')
-        cache=REPORT/'artifacts/source-faces'/(pathlib.Path(source_name).stem+'.jsonl')
-        if not cache.exists():continue
+        cache=cache_root/(pathlib.Path(source_name).stem+'.jsonl')
+        if not cache.exists():
+            if args.require_face_cache:raise ValueError('Missing independent source face scan: '+source_name)
+            continue
         source_faces=read_jsonl(cache)
         if source_faces[-1].get('kind')!='finished':raise ValueError('Source face scan not complete')
         if source_faces[0]['sha256']!=meta['sources'][source_name]['sha256']:raise ValueError('Source face scan SHA mismatch')
         frames={round(f['pts']*1000000):f for f in source_faces if f['kind']=='frame'}
-        if row_index>=len(traces):raise ValueError('Missing crop trace')
-        trace=traces[row_index];header=trace[0];crops=trace[1:]
+        if trace_by_output:
+            trace_pair=trace_by_output.get(row['case']+'.mp4')
+            if trace_pair is None:raise ValueError('Missing explicitly bound crop trace')
+            trace,trace_name=trace_pair
+        else:
+            if row_index>=len(traces):raise ValueError('Missing crop trace')
+            trace=traces[row_index];trace_name=meta['crop_traces'][row_index]
+        header=trace[0];crops=trace[1:]
         if header['source_basename']!=source_name or header['output_width']!=row['output_width'] or header['output_height']!=row['output_height']:
             raise ValueError('Trace/output binding mismatch')
         output=run/'outputs'/(row['case']+'.mp4')
         binding=hashlib.sha256(json.dumps({'row':row,'binary_sha256':meta['binary_sha256'],
-          'movie_sha256':sha(output),'trace_sha256':sha(run/'crop-traces'/meta['crop_traces'][row_index]),
+          'movie_sha256':sha(output),'trace_sha256':sha(run/'crop-traces'/trace_name),
           'source_faces_sha256':sha(cache),'auditor_revision':revision},sort_keys=True).encode()).hexdigest()
         prior=previous.get(row['case'])
         if prior and prior.get('input_binding_sha256')==binding:
@@ -109,7 +126,7 @@ def main():
     return 1 if any(r['status']=='failed_face_cores' for r in rows) else 0
 
 def make_review(row,exposed,run,summary):
-    source_name=row['input'];source=ROOT/'reports/privacy-ios-regression-2026-11-04/artifacts/sources'/source_name
+    source_name=row['input'];source=SOURCES/source_name
     source_cap=cv2.VideoCapture(str(source));output_cap=cv2.VideoCapture(str(run/'outputs'/(row['case']+'.mp4')))
     # Every uncovered core is reviewed, including isolated one-frame candidates.
     picked=exposed

@@ -286,6 +286,7 @@ class ExportPipeline(
         var pipelineException: Throwable? = null
 
         glHandler.post {
+            var privacyAudit: art.gaoge.dance.engine.diagnostics.PrivacyRegressionCapture? = null
             var eglCore: EglCore? = null
             var eglSurface: android.opengl.EGLSurface? = null
             var glRenderer: GlRenderer? = null
@@ -339,6 +340,9 @@ class ExportPipeline(
 
                 val trackingWidth = if (request.follow.enabled) videoInfo.displayWidth.toInt() else targetWidth
                 val trackingHeight = if (request.follow.enabled) videoInfo.displayHeight.toInt() else targetHeight
+                privacyAudit = art.gaoge.dance.engine.diagnostics.PrivacyRegressionCapture.open(
+                    context, File(sourceUri).name, finalOutFile.name, targetWidth, targetHeight,
+                    videoInfo.displayWidth.toInt(), videoInfo.displayHeight.toInt(), trackingWidth, trackingHeight)
                 val postCropEnabled = request.follow.enabled &&
                     request.follow.outputAspectRatio?.let { it.isFinite() && it > 0.0 } == true
 
@@ -1861,6 +1865,7 @@ class ExportPipeline(
                         // 4. Render privacy in full-frame source aspect first. Auto-reframe
                         // is a second GPU pass over the already-protected RGBA frame so
                         // crop geometry can never alter mask/sticker coordinates.
+                        var auditCrop = FloatRect(0f, 0f, 1f, 1f)
                         profiler.recordStage("renderEffects") {
                             if (postCropEnabled) {
                                 val target = requireNotNull(privacyRenderTarget)
@@ -2162,6 +2167,7 @@ class ExportPipeline(
                                     zoom = request.follow.zoom.toFloat(),
                                     smoothFactor = request.follow.smoothFactor.toFloat()
                                 )
+                                auditCrop = visualCrop
                                 val reframeMotion = reframeFollower.motionState()
                                 if (!reframeInitialized) {
                                     art.gaoge.dance.engine.diagnostics.NativeDiagnostics.event(
@@ -2335,6 +2341,8 @@ class ExportPipeline(
                                     cropClarityJobId = jobId
                                 )
                             }
+                            privacyAudit?.record(ptsUs, auditCrop, faceOnlyFrameResult?.qaFaceRegions.orEmpty(),
+                                trackedList, request.follow.targetPersonId?.toInt())
                             renderedFrameCount++
                         }
 
@@ -2741,6 +2749,7 @@ class ExportPipeline(
                 )
                 pipelineException = e
             } finally {
+                try { privacyAudit?.close() } catch (_: Throwable) {}
                 try { previewScope?.cancel() } catch (_: Throwable) {}
                 try { cpuMt4ProbeSegmenter?.close() } catch (_: Throwable) {}
                 try { canonicalInferenceDecoder?.close() } catch (_: Throwable) {}

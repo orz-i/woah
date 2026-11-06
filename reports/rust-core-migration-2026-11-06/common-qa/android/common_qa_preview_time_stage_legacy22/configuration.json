@@ -1,0 +1,23 @@
+{
+  "run_id": "common_qa_preview_time_stage_legacy22",
+  "cases": [
+    {
+      "input": "group-hd-8956295.mp4",
+      "fill": "solid",
+      "startMs": 0,
+      "endMs": 3040,
+      "faceOnly": true,
+      "profile": "quality",
+      "width": 720,
+      "height": 1280,
+      "case": "group_face_solid_follow",
+      "hero": 6,
+      "expected_frames": 76
+    }
+  ],
+  "core_smokes": true,
+  "build_source_fingerprint": "cfcd0b4b034cf99b663bd5a705fdde80c06fa5c22d50fee423c8c89a61059f3f",
+  "partial_stage_check": true,
+  "verify_previews": true,
+  "lifecycle": false
+}

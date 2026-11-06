@@ -103,6 +103,12 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Opt-in isolated QA package, so media regression never replaces a user's app.
+            if (providers.gradleProperty("WOAH_PRIVACY_QA").orNull == "true") {
+                applicationIdSuffix = ".privacyqa"
+            }
+        }
         release {
             signingConfig = if (hasReleaseSigning) signingConfigs.getByName("release") else null
             proguardFiles(

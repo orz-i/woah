@@ -9,7 +9,8 @@ import re
 import shutil
 import subprocess
 import tempfile
-from urllib.parse import unquote, urljoin, urlparse
+from urllib.parse import urljoin, urlparse
+from urllib.request import url2pathname
 
 ROOT = Path(__file__).resolve().parents[2]
 NATIVE = ROOT / 'mobile/packages/dance_native'
@@ -34,7 +35,7 @@ def generator(native: Path = NATIVE) -> tuple[Path, Path]:
     uri = urlparse(urljoin(config.as_uri(), packages[0]['rootUri']))
     if uri.scheme != 'file' or uri.netloc:
         raise ValueError('Expected a local resolved Pigeon package')
-    package = Path(unquote(uri.path))
+    package = Path(url2pathname(uri.path))
     version = re.search(r'^version:\s*([^\s]+)', (package / 'pubspec.yaml').read_text(), re.M)
     if not version or version.group(1) != VERSION:
         raise ValueError(f'Pigeon must resolve to {VERSION}')
@@ -55,7 +56,7 @@ def generate(destination: Path, schema_root: Path, config: Path, entry: Path) ->
     for schema in SCHEMAS:
         subprocess.run(['dart', f'--packages={config}', str(entry),
                         '--input', str(schema_root / schema), '--base_path', str(destination)], check=True)
-    actual_files = {str(path.relative_to(destination)) for path in destination.rglob('*') if path.is_file()}
+    actual_files = {path.relative_to(destination).as_posix() for path in destination.rglob('*') if path.is_file()}
     if actual_files != set(OUTPUTS):
         raise ValueError(f'Unexpected generated file set: {sorted(actual_files)}')
     return snapshot(destination)
