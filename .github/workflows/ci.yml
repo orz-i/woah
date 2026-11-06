@@ -120,7 +120,11 @@ jobs:
         run: ./gradlew :app:verifyWoahDependencyLocks :dance_native:verifyWoahDependencyLocks
 
       - name: Install pinned Rust JNI build tools
-        run: sdkmanager 'ndk;28.2.13676358' 'cmake;3.22.1'
+        run: |
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          sdkmanager_path="$(find "$sdk_root/cmdline-tools" -maxdepth 3 -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -n "$sdkmanager_path"
+          "$sdkmanager_path" 'ndk;28.2.13676358' 'cmake;3.22.1'
 
       - name: Run Android Native Unit Tests
         env:
