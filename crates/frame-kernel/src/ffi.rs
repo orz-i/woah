@@ -1,8 +1,86 @@
+use crate::camera::FollowState;
 use crate::instances::{InstanceDetection, InstanceMetrics, InstanceSpec, InstanceThresholds};
 use crate::{
     ABI_VERSION,
     geometry::{self, Rect, Transform},
 };
+
+/// # Safety
+/// state points to one writable, aligned FollowState.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_follow_reset(state: *mut FollowState) -> i32 {
+    if state.is_null() {
+        return -1;
+    }
+    // SAFETY: caller supplies one writable, aligned state; no pointers retained.
+    unsafe {
+        state.write(FollowState::default());
+    }
+    0
+}
+
+/// # Safety
+/// state and output point to valid aligned, writable, nonoverlapping objects.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_follow_step(
+    state: *mut FollowState,
+    target: Rect,
+    has_target: i32,
+    pts_us: i64,
+    source_aspect: f32,
+    output_aspect: f32,
+    zoom: f32,
+    smooth: f32,
+    output: *mut Rect,
+) -> i32 {
+    if state.is_null() || output.is_null() || !(0..=1).contains(&has_target) {
+        return -1;
+    }
+    // SAFETY: caller supplies one live aligned state; work locally until valid.
+    let mut next = unsafe { state.read() };
+    let Some(crop) = next.step(
+        if has_target == 1 { Some(target) } else { None },
+        pts_us,
+        source_aspect,
+        output_aspect,
+        zoom,
+        smooth,
+    ) else {
+        return -1;
+    };
+    // SAFETY: outputs are writable, aligned, disjoint and have the stated sizes.
+    unsafe {
+        state.write(next);
+        output.write(crop);
+    }
+    0
+}
+
+/// # Safety
+/// output points to two writable aligned u32 values.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_fit_even_ratio(
+    width: u32,
+    height: u32,
+    max_height: u32,
+    ratio_w: u32,
+    ratio_h: u32,
+    output: *mut u32,
+) -> i32 {
+    let Some((w, h)) = crate::camera::fit_even_ratio(width, height, max_height, ratio_w, ratio_h)
+    else {
+        return -1;
+    };
+    if output.is_null() {
+        return -1;
+    }
+    // SAFETY: caller supplies two writable aligned u32 values; null checked.
+    unsafe {
+        output.write(w);
+        output.add(1).write(h);
+    }
+    0
+}
 
 /// # Safety
 /// Nonempty buffers must be valid, aligned, disjoint and have the stated lengths.

@@ -26,6 +26,49 @@ static int read_transform(JNIEnv *env, jfloatArray values, FrameKernelTransform 
 JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_abiVersion(JNIEnv *env,jobject self) {
     (void)env; (void)self; return (jint)frame_kernel_abi_version();
 }
+static int read_follow(JNIEnv *env,jfloatArray values,jlongArray clock,FrameKernelFollowState *state) {
+    if (!values || !clock || (*env)->GetArrayLength(env,values)!=6 || (*env)->GetArrayLength(env,clock)!=3) {
+        invalid(env); return 0;
+    }
+    jfloat f[6];jlong t[3];
+    (*env)->GetFloatArrayRegion(env,values,0,6,f);(*env)->GetLongArrayRegion(env,clock,0,3,t);
+    if ((*env)->ExceptionCheck(env)) return 0;
+    if ((t[1]!=0 && t[1]!=1) || (t[2]!=0 && t[2]!=1)) { invalid(env); return 0; }
+    *state=(FrameKernelFollowState){f[0],f[1],f[2],f[3],f[4],f[5],(int64_t)t[0],(uint32_t)t[1],(uint32_t)t[2]};
+    return 1;
+}
+static void write_follow(JNIEnv *env,jfloatArray values,jlongArray clock,const FrameKernelFollowState *state) {
+    jfloat f[6]={state->camera_x,state->camera_y,state->target_x,state->target_y,state->velocity_x,state->velocity_y};
+    jlong t[3]={(jlong)state->last_pts_us,(jlong)state->initialized,(jlong)state->has_time};
+    (*env)->SetFloatArrayRegion(env,values,0,6,f);(*env)->SetLongArrayRegion(env,clock,0,3,t);
+}
+JNIEXPORT void JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_followResetNative(JNIEnv *env,jobject self,jfloatArray values,jlongArray clock) {
+    (void)self;FrameKernelFollowState state;
+    if (!read_follow(env,values,clock,&state)) return;
+    if (frame_kernel_follow_reset(&state)) { invalid(env); return; }
+    write_follow(env,values,clock,&state);
+}
+JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_followStepNative(JNIEnv *env,jobject self,
+    jfloatArray values,jlongArray clock,jfloatArray target,jlong pts,jfloat source,jfloat output,jfloat zoom,jfloat smooth) {
+    (void)self;FrameKernelFollowState state;FrameKernelRect box={0},crop;
+    if (!read_follow(env,values,clock,&state) || (target && !read_rect(env,target,&box))) return NULL;
+    if (frame_kernel_follow_step(&state,box,target ? 1:0,(int64_t)pts,source,output,zoom,smooth,&crop)) { invalid(env); return NULL; }
+    jfloatArray result=(*env)->NewFloatArray(env,4);
+    if (!result) return NULL;
+    jfloat f[4]={crop.left,crop.top,crop.right,crop.bottom};
+    (*env)->SetFloatArrayRegion(env,result,0,4,f);write_follow(env,values,clock,&state);
+    return result;
+}
+JNIEXPORT jintArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_fitEvenRatioNative(JNIEnv *env,jobject self,
+    jint width,jint height,jint max_height,jint ratio_w,jint ratio_h) {
+    (void)self;
+    if (width<=0 || height<=0 || max_height<=0 || ratio_w<=0 || ratio_h<=0) return NULL;
+    uint32_t size[2];
+    if (frame_kernel_fit_even_ratio((uint32_t)width,(uint32_t)height,(uint32_t)max_height,(uint32_t)ratio_w,(uint32_t)ratio_h,size)) return NULL;
+    jintArray result=(*env)->NewIntArray(env,2);jint values[2]={(jint)size[0],(jint)size[1]};
+    if (result) (*env)->SetIntArrayRegion(env,result,0,2,values);
+    return result;
+}
 JNIEXPORT jbyteArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_maskBytesNative(JNIEnv *env,jobject self,jfloatArray input) {
     (void)self;
     if (!input) { invalid(env); return NULL; }

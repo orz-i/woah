@@ -14,6 +14,16 @@ typedef struct FrameKernelTransform {
     uint32_t source_width, source_height, input_size, proto_size;
 } FrameKernelTransform;
 uint32_t frame_kernel_abi_version(void);
+typedef struct FrameKernelFollowState {
+    float camera_x, camera_y, target_x, target_y, velocity_x, velocity_y;
+    int64_t last_pts_us;
+    uint32_t initialized, has_time;
+} FrameKernelFollowState;
+int32_t frame_kernel_follow_reset(FrameKernelFollowState *state);
+int32_t frame_kernel_follow_step(FrameKernelFollowState *state, FrameKernelRect target, int32_t has_target,
+    int64_t pts_us, float source_aspect, float output_aspect, float zoom, float smooth, FrameKernelRect *output);
+int32_t frame_kernel_fit_even_ratio(uint32_t width, uint32_t height, uint32_t max_height,
+    uint32_t ratio_w, uint32_t ratio_h, uint32_t *output);
 typedef struct FrameKernelInstanceSpec {
     uint32_t anchors, attributes, score_index, coefficient_index, channels;
     uint32_t head_transposed, proto_nhwc, coordinate_units;

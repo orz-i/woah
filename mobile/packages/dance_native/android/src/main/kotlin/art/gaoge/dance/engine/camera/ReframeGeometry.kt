@@ -27,10 +27,7 @@ object ReframeGeometry {
         sourceHeight: Int,
         maxHeight: Int = Int.MAX_VALUE
     ): Pair<Int, Int>? {
-        if (sourceWidth <= 0 || sourceHeight <= 0 || maxHeight <= 0) return null
-        val units = min(sourceWidth / 18, min(sourceHeight, maxHeight) / 32)
-        if (units <= 0) return null
-        return units * 18 to units * 32
+        return art.gaoge.dance.engine.core.FrameKernel.fitEvenRatio(sourceWidth, sourceHeight, maxHeight, 9, 16)
     }
 
     /**

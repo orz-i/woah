@@ -12,6 +12,10 @@ internal object FrameKernel {
     }
 
     private external fun abiVersion(): Int
+    private external fun followResetNative(values: FloatArray, clock: LongArray)
+    private external fun followStepNative(values: FloatArray, clock: LongArray, target: FloatArray?, pts: Long,
+        sourceAspect: Float, outputAspect: Float, zoom: Float, smooth: Float): FloatArray
+    private external fun fitEvenRatioNative(width: Int, height: Int, maxHeight: Int, ratioWidth: Int, ratioHeight: Int): IntArray?
     private external fun maskBytesNative(input: FloatArray): ByteArray
     private external fun decodeInstancesNative(head: FloatArray, proto: FloatArray, spec: IntArray, transform: FloatArray,
         thresholds: FloatArray, detections: FloatArray, masks: ByteBuffer, metrics: LongArray): Int
@@ -23,6 +27,15 @@ internal object FrameKernel {
     private external fun reprojectMaskNative(mask: ByteBuffer, output: ByteBuffer, local: FloatArray, scene: FloatArray, view: FloatArray)
 
     fun needsFaceProtection(body: Boolean, face: Boolean): Boolean = needsFaceProtectionNative(body, face)
+
+    fun followReset(values: FloatArray, clock: LongArray) = followResetNative(values, clock)
+    fun followStep(values: FloatArray, clock: LongArray, target: FloatRect?, pts: Long,
+        sourceAspect: Float, outputAspect: Float, zoom: Float, smooth: Float): FloatRect {
+        val result = followStepNative(values, clock, target?.values(), pts, sourceAspect, outputAspect, zoom, smooth)
+        return FloatRect(result[0], result[1], result[2], result[3])
+    }
+    fun fitEvenRatio(width: Int, height: Int, maxHeight: Int, ratioWidth: Int, ratioHeight: Int): Pair<Int, Int>? =
+        fitEvenRatioNative(width, height, maxHeight, ratioWidth, ratioHeight)?.let { it[0] to it[1] }
 
     fun maskBytes(input: FloatArray): ByteArray = maskBytesNative(input)
 

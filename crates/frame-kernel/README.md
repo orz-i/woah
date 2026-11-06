@@ -11,7 +11,8 @@ GPU resources belong to consumers and adapters outside this directory.
 Current functionality includes overlapping detail views, tile boundary checks,
 prototype-mask reprojection, cropped output-mask projection, configurable instance
 segmentation postprocessing and protection-layer intent (including face supplements
-for full-body targets). Detection-head dimensions, score/coefficient offsets,
+for full-body targets), plus a source-PTS follow camera and generic encoder-even
+ratio sizing. Detection-head dimensions, score/coefficient offsets,
 tensor layouts and coordinate units are supplied by consumers. Tracking,
 inference preprocessing and temporal protection policies are subsequent migration work;
 this initial extraction does not claim those modules are complete.
