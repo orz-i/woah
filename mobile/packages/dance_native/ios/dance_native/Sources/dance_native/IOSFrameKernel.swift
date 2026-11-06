@@ -8,6 +8,33 @@ enum IOSFrameKernel {
     precondition(frame_kernel_abi_version() == 1, "Unsupported FrameKernel ABI")
   }()
 
+  final class Follower {
+    private var state = FrameKernelFollowState()
+    init() { _ = IOSFrameKernel.checkedABI; reset() }
+    func reset() { precondition(frame_kernel_follow_reset(&state) == 0) }
+    func motionState() -> [Float] {
+      [state.camera_x, state.camera_y, state.target_x, state.target_y, state.velocity_x, state.velocity_y]
+    }
+    func crop(target: SIMD4<Float>?, ptsUs: Int64, sourceAspect: Float, outputAspect: Float,
+              zoom: Float, smooth: Float) -> SIMD4<Float> {
+      let target = target.map { FrameKernelRect(left: $0.x, top: $0.y, right: $0.z, bottom: $0.w) }
+      var output = FrameKernelRect()
+      precondition(frame_kernel_follow_step(&state, target ?? FrameKernelRect(), target == nil ? 0 : 1,
+        ptsUs, sourceAspect, outputAspect, zoom, smooth, &output) == 0, "Invalid shared follow camera input")
+      return SIMD4<Float>(output.left, output.top, output.right, output.bottom)
+    }
+  }
+
+  static func fitEvenRatio(width: Int, height: Int, maxHeight: Int, ratioWidth: Int, ratioHeight: Int) -> (width: Int, height: Int)? {
+    _ = checkedABI
+    guard width > 0, height > 0, maxHeight > 0, ratioWidth > 0, ratioHeight > 0,
+      width <= Int(UInt32.max), height <= Int(UInt32.max), ratioWidth <= Int(UInt32.max), ratioHeight <= Int(UInt32.max) else { return nil }
+    var size = [UInt32](repeating: 0, count: 2)
+    guard frame_kernel_fit_even_ratio(UInt32(width), UInt32(height), UInt32(clamping: maxHeight),
+      UInt32(ratioWidth), UInt32(ratioHeight), &size) == 0 else { return nil }
+    return (Int(size[0]), Int(size[1]))
+  }
+
   /// Buffer ownership and DTO transport only. The generic core receives the
   /// model layout from the consumer; it contains no YOLO/project constants.
   final class InstanceDecoder {
