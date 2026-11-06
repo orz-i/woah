@@ -352,7 +352,7 @@ def verify_ios_replay_surface() -> None:
         "preprocess: inference.preprocess",
         "let useCurrentObservations = freshSceneCoverage || currentSceneFaceCoverage",
         "freshPrivacyClassEvidence: useCurrentObservations ? [] : tracker.facePrivacyClassEvidence()",
-        "faceOnlyIds: renderFaceOnlyIds.union(renderFullBodyIds)",
+        "faceOnlyIds: IOSFrameKernel.faceProtectionIds(body: renderFullBodyIds, face: renderFaceOnlyIds)",
         "faceRegions: faceRegions",
     ):
         check(token in export, f"Phase 5C-G export FACE_ONLY wiring missing: {token}")

@@ -40,7 +40,7 @@ def verify_preview_pipeline() -> None:
         "preferredBackend: .xnnpack",
         "IOSPreviewIdentityMatcher.assign(",
         'code: "PREVIEW_PRIVACY_UNRESOLVED"',
-        "fullBodyIds.union(faceOnlyIds)",
+        "IOSFrameKernel.faceProtectionIds(body: fullBodyIds, face: faceOnlyIds)",
         ".subtracting(fullBodyIds)",
         "renderer.render(",
         "kCGImageDestinationLossyCompressionQuality: 0.85",
@@ -53,6 +53,19 @@ def verify_preview_pipeline() -> None:
     check(
         "Keep preview inference deterministic" in pipeline,
         "Preview inference must document the XNNPACK determinism boundary",
+    )
+    adapter = text("IOSFrameKernel.swift")
+    check(
+        "static func faceProtectionIds(body: Set<Int>, face: Set<Int>)" in adapter
+        and "frame_kernel_face_targets(" in adapter,
+        "Preview face targets must cross the shared Rust C ABI",
+    )
+    core_path = ROOT / "crates/frame-kernel/src/protection.rs"
+    core = core_path.read_text(encoding="utf-8") if core_path.is_file() else ""
+    check(
+        "pub fn face_targets(" in core and ".chain(face_ids)" in core
+        and "BODY | FACE" in core,
+        "Shared core must protect the union of body/face targets and supplement body faces",
     )
 
 
