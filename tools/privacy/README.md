@@ -59,3 +59,21 @@ A completed launcher proves API-flow and file-creation results only. Independent
 full movie decode, timestamps, dimensions, audio and privacy/visual audits are
 still required before acceptance. Preserve every failure and use a new run ID
 for a repaired binary. Simulator results do not establish iPhone performance.
+
+
+## Independent auditing
+
+Use the existing source-only Vision scans for the same five person-containing
+videos. Each scan binds its source SHA and includes a finished-frame record.
+A missing scan fails the common auditor instead of silently skipping the case.
+The native face detector under test is not the source-face oracle.
+
+```powershell
+.venv/Scripts/python.exe tools/privacy/audit_regression.py RUN_ID --report REPORT_DIRECTORY --media .qa-runtime/rust-migration/woah-rust-media --source-faces .qa-runtime/rust-migration/source-faces
+```
+
+On Mac use the prepared audit Python environment and
+`reports/privacy-ios-22-and-4k-regression-2026-11-05/artifacts/source-faces`.
+For an explicitly marked stage subset, add `--allow-partial-stage`. Automatic
+hero and topology candidates still require recorded visual review; a successful
+script exit alone is not complete semantic privacy acceptance.

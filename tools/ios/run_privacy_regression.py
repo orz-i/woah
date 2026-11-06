@@ -119,6 +119,16 @@ def main():
                             try: os.link(source,target)
                             except OSError: shutil.copyfile(source,target)
                     if data['status']=='finished':
+                        preview_source=live/'previews'
+                        if preview_source.exists():shutil.copytree(preview_source,dest/'previews',dirs_exist_ok=True)
+                        preview_files={}
+                        for row in data['cases']:
+                            for preview in row.get('previews',[]):
+                                image=dest/'previews'/preview['file']
+                                if not image.is_file() or image.stat().st_size!=preview['bytes']:
+                                    raise RuntimeError('Missing or incomplete archived preview: '+preview['file'])
+                                preview_files[preview['file']]=sha(image)
+                        meta['preview_files_sha256']=preview_files
                         for name in ['qa_lifecycle_results.json','qa_negative_results.json']:
                             if config.get('lifecycle') and (docs/name).exists(): shutil.copyfile(docs/name,dest/name)
                         if (live/'core-smokes.json').exists(): shutil.copyfile(live/'core-smokes.json',dest/'core-smokes.json')
