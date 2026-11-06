@@ -230,27 +230,28 @@ final class IOSMetalPreviewRenderer {
     encoder.setTexture(outputTexture, index: 2)
     encoder.setTexture(customStickerTexture, index: 3)
     encoder.setTexture(legMaskTexture, index: 4)
-    encoder.setBytes(&fillMode, length: MemoryLayout<UInt32>.size, index: 0)
+    // The iOS Simulator Metal backend supports at most 14 constant buffer
+    // bindings. Pack four independent UInt32 selectors into one 16-byte vector
+    // without changing shader semantics, privacy behavior, or field precision.
+    var packedFlags = SIMD4<UInt32>(fillMode, stickerFlag, customStickerFlag, legStretchFlag)
+    encoder.setBytes(&packedFlags, length: MemoryLayout<SIMD4<UInt32>>.size, index: 0)
     encoder.setBytes(&fillColor, length: MemoryLayout<SIMD4<Float>>.size, index: 1)
     encoder.setBytes(&borderColor, length: MemoryLayout<SIMD4<Float>>.size, index: 2)
     encoder.setBytes(&opacity, length: MemoryLayout<Float>.size, index: 3)
     encoder.setBytes(&borderWidth, length: MemoryLayout<Float>.size, index: 4)
     encoder.setBytes(&blurStrength, length: MemoryLayout<Float>.size, index: 5)
-    encoder.setBytes(&stickerFlag, length: MemoryLayout<UInt32>.size, index: 6)
-    encoder.setBytes(&faceRectCount, length: MemoryLayout<UInt32>.size, index: 7)
+    encoder.setBytes(&faceRectCount, length: MemoryLayout<UInt32>.size, index: 6)
     faceRects.withUnsafeBytes { raw in
       if let base = raw.baseAddress {
-        encoder.setBytes(base, length: raw.count, index: 8)
+        encoder.setBytes(base, length: raw.count, index: 7)
       }
     }
-    encoder.setBytes(&customStickerFlag, length: MemoryLayout<UInt32>.size, index: 9)
-    encoder.setBytes(&stickerScale, length: MemoryLayout<Float>.size, index: 10)
-    encoder.setBytes(&legStretchFlag, length: MemoryLayout<UInt32>.size, index: 11)
-    encoder.setBytes(&legStretch, length: MemoryLayout<Float>.size, index: 12)
-    encoder.setBytes(&legZoneTop, length: MemoryLayout<Float>.size, index: 13)
-    encoder.setBytes(&legZoneBottom, length: MemoryLayout<Float>.size, index: 14)
-    encoder.setBytes(&legRect, length: MemoryLayout<SIMD4<Float>>.size, index: 15)
-    encoder.setBytes(&cropClarityStrength, length: MemoryLayout<Float>.size, index: 16)
+    encoder.setBytes(&stickerScale, length: MemoryLayout<Float>.size, index: 8)
+    encoder.setBytes(&legStretch, length: MemoryLayout<Float>.size, index: 9)
+    encoder.setBytes(&legZoneTop, length: MemoryLayout<Float>.size, index: 10)
+    encoder.setBytes(&legZoneBottom, length: MemoryLayout<Float>.size, index: 11)
+    encoder.setBytes(&legRect, length: MemoryLayout<SIMD4<Float>>.size, index: 12)
+    encoder.setBytes(&cropClarityStrength, length: MemoryLayout<Float>.size, index: 13)
 
     let threadWidth = max(1, pipeline.threadExecutionWidth)
     let threadHeight = max(1, pipeline.maxTotalThreadsPerThreadgroup / threadWidth)
@@ -451,7 +452,10 @@ final class IOSMetalPreviewRenderer {
     let cropHeight = sourceCrop.w - sourceCrop.y
     let trackedFullBodyPersons = persons.filter { fullBodyIds.contains($0.id) }
     let effectiveFaceOnlyIds = faceOnlyIds.subtracting(fullBodyIds)
-    let facePersons = persons.filter { effectiveFaceOnlyIds.contains($0.id) }
+    // A full-body matte may leave actual face pixels outside its contour.
+    // Include explicit selected face protection in the same union mask.
+    let facePersons = persons.filter { effectiveFaceOnlyIds.contains($0.id)
+      || (fullBodyIds.contains($0.id) && faceRegions[$0.id] != nil) }
 
     // Android allows identity-independent temporal class evidence to become the
     // primary compositor input only for FULL_BODY-only composition. Never let
@@ -474,17 +478,23 @@ final class IOSMetalPreviewRenderer {
     let privacyPersons: [IOSPreviewPerson]
     let effectiveFullBodyIds: Set<Int>
     if useFreshPrimary {
-      let freshSelectedCount = freshSelectedIds.count
-      let fallbackDeficit = max(0, fullBodyIds.count - freshSelectedCount)
-      let fallbackSelected = trackedFullBodyPersons
-        .sorted {
-          if $0.conservativePrivacyFallback != $1.conservativePrivacyFallback {
-            return !$0.conservativePrivacyFallback
-          }
-          return $0.id < $1.id
-        }
-        .prefix(fallbackDeficit)
-      let fallbackSelectedArray = Array(fallbackSelected)
+      // Fresh class masks have no native identity labels. A missing selected
+      // root's conservative bbox fallback must NEVER be replaced by an
+      // arbitrary observed root just because its class score is stronger.
+      // Always keep every unresolved selected root's fail-closed geometry; only
+      // use observed root masks to fill any remaining class-count deficit.
+      // This is intentionally privacy-conservative and can cover extra pixels
+      // until the exact protected identity is safely reacquired.
+      let unresolvedSelected = trackedFullBodyPersons
+        .filter { $0.conservativePrivacyFallback }
+        .sorted { $0.id < $1.id }
+      let remainingDeficit = max(0, fullBodyIds.count - freshSelectedIds.count
+        - unresolvedSelected.count)
+      let observedSupplement = trackedFullBodyPersons
+        .filter { !$0.conservativePrivacyFallback }
+        .sorted { $0.id < $1.id }
+        .prefix(remainingDeficit)
+      let fallbackSelectedArray = unresolvedSelected + observedSupplement
       privacyPersons = freshPersons + fallbackSelectedArray
       effectiveFullBodyIds = freshSelectedIds.union(fallbackSelectedArray.map { $0.id })
     } else {
@@ -503,31 +513,14 @@ final class IOSMetalPreviewRenderer {
     }
 
     var mask = [UInt8](repeating: 0, count: previewWidth * previewHeight)
-    if !fullBodyPersons.isEmpty {
-      for previewY in 0..<previewHeight {
-        let sourceY = (Float32(previewY) + 0.5)
-          * Float32(sourceHeight) / Float32(previewHeight) * cropHeight + sourceCrop.y * Float32(sourceHeight)
-        let modelY = sourceY * preprocess.scale + preprocess.padTop
-        let protoY = Int(floor(
-          Double(modelY / Float32(preprocess.inputSize) * Float32(IOSYoloPostprocessor.protoSize))
-        ))
-        guard protoY >= 0, protoY < IOSYoloPostprocessor.protoSize else { continue }
-        for previewX in 0..<previewWidth {
-          let sourceX = (Float32(previewX) + 0.5)
-            * Float32(sourceWidth) / Float32(previewWidth) * cropWidth + sourceCrop.x * Float32(sourceWidth)
-          let modelX = sourceX * preprocess.scale + preprocess.padLeft
-          let protoX = Int(floor(
-            Double(modelX / Float32(preprocess.inputSize) * Float32(IOSYoloPostprocessor.protoSize))
-          ))
-          guard protoX >= 0, protoX < IOSYoloPostprocessor.protoSize else { continue }
-          let protoIndex = protoY * IOSYoloPostprocessor.protoSize + protoX
-          var value: UInt8 = 0
-          for fullMask in effectiveFullBodyMasks {
-            value = max(value, fullMask[protoIndex])
-          }
-          mask[previewY * previewWidth + previewX] = value
-        }
+    if !effectiveFullBodyMasks.isEmpty {
+      var sceneMask = [UInt8](repeating: 0, count: IOSYoloPostprocessor.protoSize * IOSYoloPostprocessor.protoSize)
+      for fullMask in effectiveFullBodyMasks {
+        for index in sceneMask.indices { sceneMask[index] = max(sceneMask[index], fullMask[index]) }
       }
+      mask = IOSPrivacyMaskProjector.project(mask: sceneMask, preprocess: preprocess,
+        sourceWidth: sourceWidth, sourceHeight: sourceHeight,
+        width: previewWidth, height: previewHeight, crop: sourceCrop)
     }
 
     var regionsToRender: [IOSFacePrivacyEllipse] = []
@@ -538,7 +531,8 @@ final class IOSMetalPreviewRenderer {
       guard let region else { continue }
       regionsToRender.append(region)
     }
-    for syntheticId in faceRegions.keys.filter({ $0 < 0 }).sorted() {
+    let renderedFaceIds = Set(facePersons.map(\.id))
+    for syntheticId in faceRegions.keys.filter({ $0 < 0 && !renderedFaceIds.contains($0) }).sorted() {
       if let region = faceRegions[syntheticId] {
         regionsToRender.append(region)
       }
@@ -764,8 +758,10 @@ final class IOSMetalPreviewRenderer {
             ) else {
         return false
       }
-      context.translateBy(x: 0, y: CGFloat(height))
-      context.scaleBy(x: 1, y: -1)
+      // The memory buffer is top-row first, as are CPU privacyMask, faceRects,
+      // leg masks and the canonical YOLO source coordinate system. Flipping
+      // only the source here previously put the protected FACE masks over the
+      // lower half of otherwise upright exported video (a privacy regression).
       context.interpolationQuality = .high
       // Crop the original image directly at output resolution, without first
       // stretching the full landscape frame into a portrait intermediate.
@@ -849,25 +845,26 @@ kernel void woahPreviewKernel(
   texture2d<float, access::write> output [[texture(2)]],
   texture2d<float, access::sample> stickerTexture [[texture(3)]],
   texture2d<float, access::read> legMask [[texture(4)]],
-  constant uint &fillMode [[buffer(0)]],
+  constant uint4 &packedFlags [[buffer(0)]],
   constant float4 &fillColor [[buffer(1)]],
   constant float4 &borderColor [[buffer(2)]],
   constant float &opacity [[buffer(3)]],
   constant float &borderWidth [[buffer(4)]],
   constant float &blurStrength [[buffer(5)]],
-  constant uint &stickerEnabled [[buffer(6)]],
-  constant uint &faceRectCount [[buffer(7)]],
-  constant float4 *faceRects [[buffer(8)]],
-  constant uint &customStickerEnabled [[buffer(9)]],
-  constant float &stickerScale [[buffer(10)]],
-  constant uint &legStretchEnabled [[buffer(11)]],
-  constant float &legStretch [[buffer(12)]],
-  constant float &legZoneTop [[buffer(13)]],
-  constant float &legZoneBottom [[buffer(14)]],
-  constant float4 &legRect [[buffer(15)]],
-  constant float &cropClarityStrength [[buffer(16)]],
+  constant uint &faceRectCount [[buffer(6)]],
+  constant float4 *faceRects [[buffer(7)]],
+  constant float &stickerScale [[buffer(8)]],
+  constant float &legStretch [[buffer(9)]],
+  constant float &legZoneTop [[buffer(10)]],
+  constant float &legZoneBottom [[buffer(11)]],
+  constant float4 &legRect [[buffer(12)]],
+  constant float &cropClarityStrength [[buffer(13)]],
   uint2 gid [[thread_position_in_grid]]
 ) {
+  const uint fillMode = packedFlags.x;
+  const uint stickerEnabled = packedFlags.y;
+  const uint customStickerEnabled = packedFlags.z;
+  const uint legStretchEnabled = packedFlags.w;
   uint width = output.get_width();
   uint height = output.get_height();
   if (gid.x >= width || gid.y >= height) return;

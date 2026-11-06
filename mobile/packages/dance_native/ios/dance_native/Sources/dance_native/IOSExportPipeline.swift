@@ -39,6 +39,103 @@ enum IOSExportPipelineError: Error {
   case cancelled
 }
 
+/// Feeds PCM on an independent writer-input queue while the video task runs
+/// YOLO/Metal and H.264. AVAssetWriter must receive BOTH tracks concurrently:
+/// serially filling a single track can exhaust its internal muxing queue even
+/// when there are only a few source frames left to encode.
+private final class IOSAsyncAudioWriter: @unchecked Sendable {
+  private let reader: AVAssetReader
+  private let output: AVAssetReaderTrackOutput
+  private let input: AVAssetWriterInput
+  private let writer: AVAssetWriter
+  private let cancellation: IOSExportCancellationFlag
+  private let rebase: (CMSampleBuffer) throws -> CMSampleBuffer
+  private let queue = DispatchQueue(label: "art.gaoge.dance.ios-export-audio", qos: .userInitiated)
+  private let finished = DispatchSemaphore(value: 0)
+  private let lock = NSLock()
+  private var stopRequested = false
+  private var terminalError: Error?
+
+  init(
+    reader: AVAssetReader,
+    output: AVAssetReaderTrackOutput,
+    input: AVAssetWriterInput,
+    writer: AVAssetWriter,
+    cancellation: IOSExportCancellationFlag,
+    rebase: @escaping (CMSampleBuffer) throws -> CMSampleBuffer
+  ) {
+    self.reader = reader
+    self.output = output
+    self.input = input
+    self.writer = writer
+    self.cancellation = cancellation
+    self.rebase = rebase
+  }
+
+  func requestStop() {
+    lock.lock()
+    stopRequested = true
+    lock.unlock()
+  }
+
+  private var shouldStop: Bool {
+    lock.lock()
+    defer { lock.unlock() }
+    return stopRequested || cancellation.isCancelled
+  }
+
+  private func fail(_ message: String) -> PigeonError {
+    PigeonError(code: "EXPORT_FAILED", message: message, details: nil)
+  }
+
+  func start() {
+    queue.async { [self] in
+      do {
+        while let sample = output.copyNextSampleBuffer() {
+          if shouldStop { throw IOSExportPipelineError.cancelled }
+          let deadline = CFAbsoluteTimeGetCurrent() + 60.0
+          while !input.isReadyForMoreMediaData {
+            if shouldStop { throw IOSExportPipelineError.cancelled }
+            if writer.status == .failed {
+              throw fail("iOS audio writer input failed.")
+            }
+            if CFAbsoluteTimeGetCurrent() > deadline {
+              throw fail("iOS audio input remained blocked for more than 60 seconds.")
+            }
+            Thread.sleep(forTimeInterval: 0.002)
+          }
+          let rebased = try rebase(sample)
+          guard input.append(rebased) else {
+            throw fail("Could not append iOS export audio sample.")
+          }
+        }
+        if reader.status == .failed {
+          throw fail("iOS audio decoding failed.")
+        }
+        if shouldStop { throw IOSExportPipelineError.cancelled }
+        input.markAsFinished()
+      } catch {
+        reader.cancelReading()
+        lock.lock()
+        terminalError = error
+        lock.unlock()
+      }
+      finished.signal()
+    }
+  }
+
+  func waitForCompletion(timeout: TimeInterval = 120.0) throws {
+    if finished.wait(timeout: .now() + timeout) != .success {
+      requestStop()
+      throw fail("iOS audio encoder did not finish within the bounded wait.")
+    }
+    lock.lock()
+    let error = terminalError
+    lock.unlock()
+    if let error { throw error }
+  }
+}
+
 final class IOSExportPipeline {
   typealias InferenceProvider = (CGImage) throws -> IOSYoloInferenceResult
   typealias FaceLocatorProvider = () -> IOSFaceLocating
@@ -65,7 +162,8 @@ final class IOSExportPipeline {
     jobId: String,
     request: ExportRequestDto,
     cancellation: IOSExportCancellationFlag,
-    onStatus: @escaping (JobStatusDto) -> Void
+    onStatus: @escaping (JobStatusDto) -> Void,
+    onOutputPrepared: ((URL, URL) throws -> Void)? = nil
   ) async throws -> URL {
     try validate(request: request)
     if cancellation.isCancelled { throw IOSExportPipelineError.cancelled }
@@ -118,6 +216,9 @@ final class IOSExportPipeline {
     let bitrate = max(2_000_000, min(80_000_000, Int(request.videoBitrate)))
     let expectedFrameRate = max(1, Int(targetFps.rounded()))
     let output = try outputURLs(request: request)
+    // Journal the exact temporary path before AVAssetWriter can create it, so
+    // recovery can remove only this job's orphan after a force-kill.
+    try onOutputPrepared?(output.final, output.temp)
     try? fileManager.removeItem(at: output.temp)
 
     let writer = try AVAssetWriter(outputURL: output.temp, fileType: .mp4)
@@ -193,6 +294,7 @@ final class IOSExportPipeline {
     )
     onStatus(initialStatus)
 
+    var audioFeed: IOSAsyncAudioWriter?
     do {
       let metadata = try analysisCache.loadMetadata(cacheId: request.analysisCacheId)
       let runner = inferenceProvider == nil ? IOSYoloRunner() : nil
@@ -203,6 +305,13 @@ final class IOSExportPipeline {
       let identityFrameWidth = max(1, Int(displaySize.width.rounded()))
       let identityFrameHeight = max(1, Int(displaySize.height.rounded()))
       let followTargetId = request.follow.enabled ? request.follow.targetPersonId.map { Int($0) } : nil
+      let initialIds = Set(metadata?.persons.map(\.id) ?? [])
+      let freshSceneCoverage = !request.follow.enabled && !initialIds.isEmpty
+        && IOSHighResolutionPrivacyCoverage.hasDetailResolution(width: identityFrameWidth, height: identityFrameHeight)
+        && ((faceOnlyIds.isEmpty && fullBodyIds.isSuperset(of: initialIds))
+          || (fullBodyIds.isEmpty && faceOnlyIds.isSuperset(of: initialIds)))
+      let currentSceneFaceCoverage = IOSPrivacySelectionScope.coversAllOtherFaces(
+        metadata: metadata, fullBodyIds: fullBodyIds, faceOnlyIds: faceOnlyIds, followTargetId: followTargetId)
       let camera = IOSSubjectReframer()
       var cameraHasFrame = false
       var followSeed: SIMD4<Float>?
@@ -215,21 +324,36 @@ final class IOSExportPipeline {
       }
       let tracker = IOSTemporalIdentityTracker(
         metadata: metadata,
-        fullBodyIds: fullBodyIds,
-        faceOnlyIds: faceOnlyIds,
+        fullBodyIds: freshSceneCoverage ? [] : fullBodyIds,
+        faceOnlyIds: freshSceneCoverage ? [] : faceOnlyIds,
         frameWidth: identityFrameWidth,
         frameHeight: identityFrameHeight,
-        followTargetId: followTargetId
+        followTargetId: followTargetId,
+        usesCurrentSceneFaceCoverage: currentSceneFaceCoverage
       )
-      // Match Android's production boundary: identity-independent privacy-class
-      // continuity may drive only the FULL_BODY-only compositor. Mixed/FACE_ONLY
-      // composition stays rooted exclusively in exact temporal track IDs.
-      let privacyClassTracker = !fullBodyIds.isEmpty && faceOnlyIds.isEmpty
+      // Temporal full-body class continuity never upgrades a FACE_ONLY effect
+      // to whole-body masking. Uniform scene face coverage above uses only
+      // current face geometry and keeps the strict hero identity separate.
+      let privacyClassTracker = !freshSceneCoverage && !fullBodyIds.isEmpty && faceOnlyIds.isEmpty
         ? IOSPrivacyClassTemporalTracker()
         : nil
+#if DEBUG && targetEnvironment(simulator)
+      let identityRecorder = IOSPrivacyIdentityFrameRecorder(
+        sourceURL: sourceURL, metadata: metadata,
+        fullBodyIds: fullBodyIds, faceOnlyIds: faceOnlyIds,
+        followId: followTargetId, frameWidth: identityFrameWidth,
+        frameHeight: identityFrameHeight
+      )
+      // Read-only geometry: the independent pixel auditor projects separately
+      // captured YOLO masks into the actual followed output coordinate system.
+      let cropRecorder = IOSPixelAuditCropRecorder(
+        sourceName: sourceURL.lastPathComponent,
+        outputWidth: target.width, outputHeight: target.height
+      )
+#endif
       var privacyClassHardRootsSent = false
       let facePrivacyResolver: IOSFacePrivacyTemporalResolver?
-      if faceOnlyIds.isEmpty {
+      if faceOnlyIds.isEmpty && fullBodyIds.isEmpty {
         facePrivacyResolver = nil
       } else if let faceLocatorProvider {
         facePrivacyResolver = IOSFacePrivacyTemporalResolver(locator: faceLocatorProvider())
@@ -245,6 +369,29 @@ final class IOSExportPipeline {
       guard videoReader.reader.startReading() else {
         throw readerError(videoReader.reader, fallback: "Could not start iOS video decoding.")
       }
+      // Both writer inputs advance independently, avoiding muxer backpressure.
+      if let audioTrack, let audioInput {
+        let prepared = try makeAudioReader(
+          asset: asset,
+          track: audioTrack,
+          timeRange: CMTimeRange(start: trimStart, duration: trimmedDuration)
+        )
+        guard prepared.reader.startReading() else {
+          throw readerError(prepared.reader, fallback: "Could not start iOS audio decoding.")
+        }
+        let feeder = IOSAsyncAudioWriter(
+          reader: prepared.reader,
+          output: prepared.output,
+          input: audioInput,
+          writer: writer,
+          cancellation: cancellation,
+          rebase: { [self] sample in
+            try rebasedSampleBuffer(sample, subtracting: trimStart)
+          }
+        )
+        audioFeed = feeder
+        feeder.start()
+      }
 
       let startedAt = CFAbsoluteTimeGetCurrent()
       var outputFrameIndex: Int64 = 0
@@ -254,132 +401,195 @@ final class IOSExportPipeline {
         seconds: 1.0 / targetFps,
         preferredTimescale: 60_000
       )
-      while let sample = videoReader.output.copyNextSampleBuffer() {
-        if cancellation.isCancelled { throw IOSExportPipelineError.cancelled }
-        let sourcePTS = CMSampleBufferGetPresentationTimeStamp(sample)
-        var presentation = CMTimeSubtract(sourcePTS, trimStart)
-        if !presentation.isValid || CMTimeCompare(presentation, .zero) < 0 {
-          presentation = .zero
-        }
-        if CMTimeCompare(presentation, trimmedDuration) >= 0 { continue }
-        if lastPresentation.isValid, CMTimeCompare(presentation, lastPresentation) <= 0 {
-          presentation = CMTimeAdd(lastPresentation, fallbackFrameDuration)
-        }
-        guard let sourcePixelBuffer = CMSampleBufferGetImageBuffer(sample) else { continue }
-        let frame = try orientedImage(
-          pixelBuffer: sourcePixelBuffer,
-          preferredTransform: preferredTransform
-        )
-        let inference: IOSYoloInferenceResult
-        if let inferenceProvider {
-          inference = try inferenceProvider(frame)
-        } else {
-          guard let runner else {
-            throw exportError("IOS_INFERENCE_RUNTIME_UNAVAILABLE", "iOS YOLO runner was not initialized.")
+      while true {
+        // A detached Swift task has no per-iteration Objective-C pool. Core
+        // Image/Vision temporaries otherwise accumulate for the entire movie
+        // (tens of GiB for 4K), even after Swift frame values leave scope.
+        let hasFrame = try autoreleasepool { () throws -> Bool in
+          guard let sample = videoReader.output.copyNextSampleBuffer() else { return false }
+          if cancellation.isCancelled { throw IOSExportPipelineError.cancelled }
+          let sourcePTS = CMSampleBufferGetPresentationTimeStamp(sample)
+          var presentation = CMTimeSubtract(sourcePTS, trimStart)
+          if !presentation.isValid || CMTimeCompare(presentation, .zero) < 0 {
+            presentation = .zero
           }
-          // Production export identity/detection stays on XNNPACK until real
-          // iPhone delegate parity is accepted, matching the analysis root.
-          inference = try runner.run(image: frame, preferredBackend: .xnnpack)
-        }
-        let timestampUs = Int64((CMTimeGetSeconds(sourcePTS) * 1_000_000.0).rounded())
-        let tracked = try tracker.update(
-          detections: inference.detections,
-          preprocess: inference.preprocess,
-          timestampUs: timestampUs
-        )
-        var freshFullBodyPrivacyEvidence: [IOSFreshPrivacyClassEvidence] = []
-        if let privacyClassTracker {
-          var hardRoots: [Int: IOSPrivacySelectionClass] = [:]
-          if !privacyClassHardRootsSent, !inference.detections.isEmpty {
-            let rootPersons = IOSPreviewIdentityMatcher.assign(
-              detections: inference.detections,
-              metadata: metadata,
-              frameWidth: identityFrameWidth,
-              frameHeight: identityFrameHeight
-            )
-            if rootPersons.count == inference.detections.count {
-              for index in inference.detections.indices {
-                hardRoots[index] = fullBodyIds.contains(rootPersons[index].id)
-                  ? .selected
-                  : .unselected
-              }
-              privacyClassHardRootsSent = true
+          if CMTimeCompare(presentation, trimmedDuration) >= 0 { return true }
+          if lastPresentation.isValid, CMTimeCompare(presentation, lastPresentation) <= 0 {
+            presentation = CMTimeAdd(lastPresentation, fallbackFrameDuration)
+          }
+          guard let sourcePixelBuffer = CMSampleBufferGetImageBuffer(sample) else { return true }
+          let frame = try orientedImage(
+            pixelBuffer: sourcePixelBuffer,
+            preferredTransform: preferredTransform
+          )
+          let inference: IOSYoloInferenceResult
+          if let inferenceProvider {
+            inference = try inferenceProvider(frame)
+          } else {
+            guard let runner else {
+              throw exportError("IOS_INFERENCE_RUNTIME_UNAVAILABLE", "iOS YOLO runner was not initialized.")
+            }
+            // Production export identity/detection stays on XNNPACK until real
+            // iPhone delegate parity is accepted, matching the analysis root.
+            let primary = try runner.run(image: frame, preferredBackend: .xnnpack)
+            if (freshSceneCoverage || currentSceneFaceCoverage)
+                && IOSHighResolutionPrivacyCoverage.applies(width: frame.width, height: frame.height,
+                  initialCount: metadata?.persons.count ?? 0) {
+              inference = try IOSHighResolutionPrivacyCoverage.enhance(image: frame, primary: primary, runner: runner)
+            } else {
+              inference = primary
             }
           }
-          freshFullBodyPrivacyEvidence = privacyClassTracker.update(
-            detections: inference.detections,
-            preprocess: inference.preprocess,
-            hardClassByDetectionIndex: hardRoots,
-            timestampUs: timestampUs
-          )
-        }
-        let faceRegions = facePrivacyResolver?.resolve(
-          image: frame,
-          persons: tracked,
-          faceOnlyIds: faceOnlyIds,
-          preprocess: inference.preprocess,
-          freshPrivacyClassEvidence: tracker.facePrivacyClassEvidence(),
-          timestampUs: timestampUs
-        ) ?? [:]
-        var sourceCrop = SIMD4<Float>(0, 0, 1, 1)
-        if let followTargetId {
-          let sourceAspect = Float(frame.width) / Float(frame.height)
-          let followBounds = tracker.followBounds(for: followTargetId).map { box in
-            SIMD4<Float>(box.x / Float(frame.width), box.y / Float(frame.height), box.z / Float(frame.width), box.w / Float(frame.height))
+          let timestampUs = Int64((CMTimeGetSeconds(sourcePTS) * 1_000_000.0).rounded())
+  #if DEBUG && targetEnvironment(simulator)
+          identityRecorder?.recordInput(inference, timestampUs: timestampUs)
+  #endif
+          let tracked: [IOSPreviewPerson]
+          do {
+            tracked = try tracker.update(
+              detections: inference.detections,
+              preprocess: inference.preprocess,
+              timestampUs: timestampUs
+            )
+          } catch {
+  #if DEBUG && targetEnvironment(simulator)
+            identityRecorder?.recordFailure(timestampUs: timestampUs, error: error, tracker: tracker)
+  #endif
+            throw error
           }
-          sourceCrop = camera.crop(
-            target: followBounds ?? (cameraHasFrame ? nil : followSeed),
-            presentationTimeUs: timestampUs,
-            sourceAspectRatio: sourceAspect,
-            outputAspectRatio: request.follow.outputAspectRatio.map { Float($0) } ?? sourceAspect,
-            zoom: Float(request.follow.zoom),
-            smoothFactor: Float(request.follow.smoothFactor)
+          var freshFullBodyPrivacyEvidence: [IOSFreshPrivacyClassEvidence] = []
+          if let privacyClassTracker {
+            var hardRoots: [Int: IOSPrivacySelectionClass] = [:]
+            if !privacyClassHardRootsSent, !inference.detections.isEmpty {
+              let rootPersons = IOSPreviewIdentityMatcher.assign(
+                detections: inference.detections,
+                metadata: metadata,
+                frameWidth: identityFrameWidth,
+                frameHeight: identityFrameHeight
+              )
+              if rootPersons.count == inference.detections.count {
+                for index in inference.detections.indices {
+                  hardRoots[index] = fullBodyIds.contains(rootPersons[index].id)
+                    ? .selected
+                    : .unselected
+                }
+                privacyClassHardRootsSent = true
+              }
+            }
+            freshFullBodyPrivacyEvidence = privacyClassTracker.update(
+              detections: inference.detections,
+              preprocess: inference.preprocess,
+              hardClassByDetectionIndex: hardRoots,
+              timestampUs: timestampUs
+            )
+          }
+  #if DEBUG && targetEnvironment(simulator)
+          identityRecorder?.recordTracking(tracker: tracker, timestampUs: timestampUs,
+                                           classEvidence: freshFullBodyPrivacyEvidence)
+  #endif
+          // A uniform all-person selection has no identity exemptions. Each
+          // current observation gets an isolated face lease; stale roots must not
+          // borrow a neighbour's localization cache or paint a floating head.
+          let useCurrentObservations = freshSceneCoverage || currentSceneFaceCoverage
+          // Only the exact currently observed hero can be exempt. A camera
+          // occlusion proxy/handoff never grants an identity/privacy exemption.
+          let observedHero = currentSceneFaceCoverage ? followTargetId.flatMap { tracker.observedBounds(for: $0) } : nil
+          let renderPersons = useCurrentObservations
+            ? IOSPrivacySelectionScope.currentPersons(detections: inference.detections,
+                heroId: currentSceneFaceCoverage ? followTargetId : nil,
+                observedHeroBounds: observedHero, frameIndex: Int(outputFrameIndex))
+            : tracked
+          let unmaskedPersonId = currentSceneFaceCoverage && renderPersons.contains(where: { $0.id == followTargetId })
+            ? followTargetId : nil
+          let sceneIds = Set(renderPersons.map(\.id))
+          let renderFullBodyIds = freshSceneCoverage && !fullBodyIds.isEmpty ? sceneIds : fullBodyIds
+          let renderFaceOnlyIds = currentSceneFaceCoverage ? sceneIds.subtracting(unmaskedPersonId.map { [$0] } ?? [])
+            : (freshSceneCoverage && !faceOnlyIds.isEmpty ? sceneIds : faceOnlyIds)
+          let coveredHeadFallbackIds = useCurrentObservations
+            ? IOSHighResolutionPrivacyCoverage.coveredHeadFallbackIds(persons: renderPersons, preprocess: inference.preprocess) : []
+          let faceRegions = facePrivacyResolver?.resolve(
+            image: frame,
+            persons: renderPersons,
+            // Full-body segmentation can omit a profile, a jaw or a mirror
+            // face. Its privacy mask must also include the selected faces.
+            faceOnlyIds: renderFaceOnlyIds.union(renderFullBodyIds),
+            preprocess: inference.preprocess,
+            freshPrivacyClassEvidence: useCurrentObservations ? [] : tracker.facePrivacyClassEvidence(),
+            protectUnassignedFaces: useCurrentObservations && (!faceOnlyIds.isEmpty || !fullBodyIds.isEmpty),
+            unmaskedPersonId: unmaskedPersonId,
+            coveredHeadFallbackIds: coveredHeadFallbackIds,
+            timestampUs: timestampUs
+          ) ?? [:]
+          if useCurrentObservations && (!faceOnlyIds.isEmpty || !fullBodyIds.isEmpty) && facePrivacyResolver?.localizationFailed == true {
+            throw exportError("EXPORT_PRIVACY_UNRESOLVED", "Current scene face localization failed.")
+          }
+          var sourceCrop = SIMD4<Float>(0, 0, 1, 1)
+          if let followTargetId {
+            let sourceAspect = Float(frame.width) / Float(frame.height)
+            let followBounds = tracker.followBounds(for: followTargetId).map { box in
+              SIMD4<Float>(box.x / Float(frame.width), box.y / Float(frame.height), box.z / Float(frame.width), box.w / Float(frame.height))
+            }
+            sourceCrop = camera.crop(
+              target: followBounds ?? (cameraHasFrame ? nil : followSeed),
+              presentationTimeUs: timestampUs,
+              sourceAspectRatio: sourceAspect,
+              outputAspectRatio: request.follow.outputAspectRatio.map { Float($0) } ?? sourceAspect,
+              zoom: Float(request.follow.zoom),
+              smoothFactor: Float(request.follow.smoothFactor)
+            )
+            cameraHasFrame = true
+          }
+  #if DEBUG && targetEnvironment(simulator)
+          cropRecorder?.record(timestampUs: timestampUs, crop: sourceCrop,
+            faceRegions: faceRegions, persons: renderPersons, unmaskedPersonId: unmaskedPersonId)
+  #endif
+          let rendered = try renderer.render(
+            source: frame,
+            persons: renderPersons,
+            preprocess: inference.preprocess,
+            fullBodyIds: renderFullBodyIds,
+            faceOnlyIds: IOSPrivacySelectionScope.compositorFaceIds(selected: renderFaceOnlyIds,
+              coveredHeadFallbackIds: coveredHeadFallbackIds, explicitFaceRegionIds: Set(faceRegions.keys)),
+            effects: request.effects,
+            faceRegions: faceRegions,
+            freshFullBodyPrivacyEvidence: freshFullBodyPrivacyEvidence,
+            preferFreshFullBodyClassPrimary: privacyClassTracker != nil
+              && !freshFullBodyPrivacyEvidence.isEmpty,
+            tightMask: !fullBodyIds.isEmpty,
+            outputWidth: target.width,
+            outputHeight: target.height,
+            sourceCrop: sourceCrop,
+            legStretchTargetId: followTargetId,
+            cropClarityScale: request.cropClarityScale ?? 1.0
           )
-          cameraHasFrame = true
-        }
-        let rendered = try renderer.render(
-          source: frame,
-          persons: tracked,
-          preprocess: inference.preprocess,
-          fullBodyIds: fullBodyIds,
-          faceOnlyIds: faceOnlyIds,
-          effects: request.effects,
-          faceRegions: faceRegions,
-          freshFullBodyPrivacyEvidence: freshFullBodyPrivacyEvidence,
-          preferFreshFullBodyClassPrimary: privacyClassTracker != nil
-            && !freshFullBodyPrivacyEvidence.isEmpty,
-          tightMask: !fullBodyIds.isEmpty,
-          outputWidth: target.width,
-          outputHeight: target.height,
-          sourceCrop: sourceCrop,
-          legStretchTargetId: followTargetId,
-          cropClarityScale: request.cropClarityScale ?? 1.0
-        )
-        let outputPixelBuffer = try makePixelBuffer(
-          adaptor: adaptor,
-          image: rendered,
-          width: target.width,
-          height: target.height
-        )
+          let outputPixelBuffer = try makePixelBuffer(
+            adaptor: adaptor,
+            image: rendered,
+            width: target.width,
+            height: target.height
+          )
 
-        try waitUntilReady(videoInput, cancellation: cancellation)
-        guard adaptor.append(outputPixelBuffer, withPresentationTime: presentation) else {
-          throw writerError(writer, fallback: "Failed to append an iOS export video frame.")
+          try waitUntilReady(videoInput, cancellation: cancellation, writer: writer)
+          guard adaptor.append(outputPixelBuffer, withPresentationTime: presentation) else {
+            throw writerError(writer, fallback: "Failed to append an iOS export video frame.")
+          }
+          lastPresentation = presentation
+          sawVideoFrame = true
+          outputFrameIndex += 1
+          emitProgress(
+            jobId: jobId,
+            currentFrame: outputFrameIndex,
+            totalFrames: totalFrames,
+            mediaProgress: min(
+              0.99,
+              max(0, CMTimeGetSeconds(presentation) / trimmedDurationSeconds)
+            ),
+            startedAt: startedAt,
+            onStatus: onStatus
+          )
+          return true
         }
-        lastPresentation = presentation
-        sawVideoFrame = true
-        outputFrameIndex += 1
-        emitProgress(
-          jobId: jobId,
-          currentFrame: outputFrameIndex,
-          totalFrames: totalFrames,
-          mediaProgress: min(
-            0.99,
-            max(0, CMTimeGetSeconds(presentation) / trimmedDurationSeconds)
-          ),
-          startedAt: startedAt,
-          onStatus: onStatus
-        )
+        if !hasFrame { break }
       }
       if videoReader.reader.status == .failed {
         throw readerError(videoReader.reader, fallback: "iOS video decoding failed.")
@@ -389,18 +599,9 @@ final class IOSExportPipeline {
       }
       videoInput.markAsFinished()
 
-      if let audioTrack, let audioInput {
-        try appendAudio(
-          asset: asset,
-          track: audioTrack,
-          input: audioInput,
-          writer: writer,
-          trimStart: trimStart,
-          trimmedDuration: trimmedDuration,
-          cancellation: cancellation
-        )
-        audioInput.markAsFinished()
-      }
+      // The audio queue has its own AVAssetWriterInput and marks it finished
+      // after the trimmed PCM tail. Completion is bounded to avoid a deadlock.
+      try audioFeed?.waitForCompletion()
 
       if cancellation.isCancelled { throw IOSExportPipelineError.cancelled }
       try await finish(writer: writer)
@@ -413,6 +614,7 @@ final class IOSExportPipeline {
       guard committed else { throw IOSExportPipelineError.cancelled }
       return output.final
     } catch {
+      audioFeed?.requestStop()
       writer.cancelWriting()
       try? fileManager.removeItem(at: output.temp)
       throw error
@@ -519,17 +721,13 @@ final class IOSExportPipeline {
     return (reader, output)
   }
 
-  private func appendAudio(
+  private func makeAudioReader(
     asset: AVAsset,
     track: AVAssetTrack,
-    input: AVAssetWriterInput,
-    writer: AVAssetWriter,
-    trimStart: CMTime,
-    trimmedDuration: CMTime,
-    cancellation: IOSExportCancellationFlag
-  ) throws {
+    timeRange: CMTimeRange
+  ) throws -> (reader: AVAssetReader, output: AVAssetReaderTrackOutput) {
     let reader = try AVAssetReader(asset: asset)
-    reader.timeRange = CMTimeRange(start: trimStart, duration: trimmedDuration)
+    reader.timeRange = timeRange
     let output = AVAssetReaderTrackOutput(
       track: track,
       outputSettings: [
@@ -545,24 +743,7 @@ final class IOSExportPipeline {
       throw exportError("AUDIO_DECODER_UNAVAILABLE", "AVAssetReader rejected the source audio track.")
     }
     reader.add(output)
-    guard reader.startReading() else {
-      throw readerError(reader, fallback: "Could not start iOS audio decoding.")
-    }
-    while let sample = output.copyNextSampleBuffer() {
-      if cancellation.isCancelled {
-        reader.cancelReading()
-        throw IOSExportPipelineError.cancelled
-      }
-      try waitUntilReady(input, cancellation: cancellation)
-      let rebased = try rebasedSampleBuffer(sample, subtracting: trimStart)
-      guard input.append(rebased) else {
-        reader.cancelReading()
-        throw writerError(writer, fallback: "Failed to append iOS export audio.")
-      }
-    }
-    if reader.status == .failed {
-      throw readerError(reader, fallback: "iOS audio decoding failed.")
-    }
+    return (reader, output)
   }
 
   private func audioFormat(track: AVAssetTrack) async throws -> (sampleRate: Double, channels: Int) {
@@ -691,8 +872,9 @@ final class IOSExportPipeline {
           ) else {
       throw exportError("FRAME_CONVERSION_FAILED", "Could not draw into the iOS writer pixel buffer.")
     }
-    context.translateBy(x: 0, y: CGFloat(height))
-    context.scaleBy(x: 1, y: -1)
+    // The renderer's RGBA CGImage and Metal masks both use top-row-first
+    // pixels. Keep that convention when copying to AVAssetWriter; a second
+    // Core Graphics Y flip would invert face privacy relative to the movie.
     context.interpolationQuality = .high
     context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
     return pixelBuffer
@@ -700,10 +882,18 @@ final class IOSExportPipeline {
 
   private func waitUntilReady(
     _ input: AVAssetWriterInput,
-    cancellation: IOSExportCancellationFlag
+    cancellation: IOSExportCancellationFlag,
+    writer: AVAssetWriter? = nil
   ) throws {
+    let deadline = CFAbsoluteTimeGetCurrent() + 60.0
     while !input.isReadyForMoreMediaData {
       if cancellation.isCancelled { throw IOSExportPipelineError.cancelled }
+      if let writer, writer.status == .failed {
+        throw writerError(writer, fallback: "iOS writer failed while waiting for media input.")
+      }
+      if CFAbsoluteTimeGetCurrent() > deadline {
+        throw exportError("EXPORT_FAILED", "iOS writer input remained blocked for over 60 seconds.")
+      }
       Thread.sleep(forTimeInterval: 0.002)
     }
   }

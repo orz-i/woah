@@ -58,10 +58,11 @@ enum IOSYoloPreprocessor {
       context.setFillColor(red: gray, green: gray, blue: gray, alpha: 1.0)
       context.fill(CGRect(x: 0, y: 0, width: size, height: size))
 
-      // Express draw coordinates in the same top-left/downward convention used
-      // by Android's canonical visual frame before converting pixels to NCHW.
-      context.translateBy(x: 0, y: CGFloat(size))
-      context.scaleBy(x: 1.0, y: -1.0)
+      // CGContext's RGBA bitmap is already row-major top-to-bottom when
+      // drawing this CGImage. Applying a second Y flip inverted every video
+      // inference frame (unlike Android's upright letterbox), which made
+      // multiple real people disappear at the analysis root. The input pixel
+      // orientation is verified against the matching FFmpeg source frames.
       context.interpolationQuality = .high
       context.draw(
         image,

@@ -1,5 +1,40 @@
 import Foundation
 
+/// Only a uniform FACE_ONLY selection of every initial person except the
+/// explicit follow target can use identity-independent current face coverage.
+enum IOSPrivacySelectionScope {
+  static func coversAllOtherFaces(metadata: IOSAnalysisMetadata?, fullBodyIds: Set<Int>,
+                                  faceOnlyIds: Set<Int>, followTargetId: Int?) -> Bool {
+    let roots = Set(metadata?.persons.map(\.id) ?? [])
+    guard let hero = followTargetId, roots.count > 1, roots.contains(hero),
+          fullBodyIds.isEmpty, !faceOnlyIds.isEmpty else { return false }
+    return faceOnlyIds == roots.subtracting([hero])
+  }
+
+  static func compositorFaceIds(selected: Set<Int>, coveredHeadFallbackIds: Set<Int>,
+                                explicitFaceRegionIds: Set<Int>) -> Set<Int> {
+    // Absence of a region is meaningful for a fully covered guessed head.
+    // Do not let the renderer's generic fallback recreate that omitted guess.
+    selected.subtracting(coveredHeadFallbackIds.subtracting(explicitFaceRegionIds))
+  }
+
+  static func currentPersons(detections: [IOSYoloDetection], heroId: Int?,
+                             observedHeroBounds: SIMD4<Float>?, frameIndex: Int) -> [IOSPreviewPerson] {
+    var heroIndex: Int?
+    if heroId != nil, let box = observedHeroBounds {
+      let matches = detections.indices.filter { index in
+        let d = detections[index]
+        return d.x1 == box.x && d.y1 == box.y && d.x2 == box.z && d.y2 == box.w
+      }
+      if matches.count == 1 { heroIndex = matches[0] }
+    }
+    return detections.enumerated().map { index, detection in
+      IOSPreviewPerson(id: index == heroIndex ? (heroId ?? -1)
+        : -2_000_000 - frameIndex * 1000 - index, detection: detection)
+    }
+  }
+}
+
 enum IOSTrackState: String {
   case active = "ACTIVE"
   case occluded = "OCCLUDED"
@@ -69,6 +104,7 @@ final class IOSTemporalIdentityTracker {
   private let identityProtectedIds: Set<Int>
   private let privacyTargetIds: Set<Int>
   private let faceOnlyPrivacyIds: Set<Int>
+  private let usesCurrentSceneFaceCoverage: Bool
   private let frameWidth: Int
   private let frameHeight: Int
   private let maxMissedFrames = 15
@@ -118,13 +154,17 @@ final class IOSTemporalIdentityTracker {
     faceOnlyIds: Set<Int>,
     frameWidth: Int,
     frameHeight: Int,
-    followTargetId: Int? = nil
+    followTargetId: Int? = nil,
+    usesCurrentSceneFaceCoverage: Bool = false
   ) {
     self.metadata = metadata
     self.frameWidth = max(1, frameWidth)
     self.frameHeight = max(1, frameHeight)
     faceOnlyPrivacyIds = faceOnlyIds.subtracting(fullBodyIds)
     privacyTargetIds = fullBodyIds.union(faceOnlyIds)
+    self.usesCurrentSceneFaceCoverage = usesCurrentSceneFaceCoverage
+      && IOSPrivacySelectionScope.coversAllOtherFaces(metadata: metadata,
+        fullBodyIds: fullBodyIds, faceOnlyIds: faceOnlyIds, followTargetId: followTargetId)
     if faceOnlyIds.isEmpty {
       identityProtectedIds = privacyTargetIds
     } else {
@@ -135,7 +175,8 @@ final class IOSTemporalIdentityTracker {
       let credible = Set((metadata?.persons ?? [])
         .filter { $0.confidence >= 0.60 }
         .map(\.id))
-      identityProtectedIds = privacyTargetIds.union(credible)
+      let explicitHero = self.usesCurrentSceneFaceCoverage ? Set(followTargetId.map { [$0] } ?? []) : []
+      identityProtectedIds = privacyTargetIds.union(credible).union(explicitHero)
     }
     // Camera following is not a privacy guarantee. Keep the explicit follow ID
     // out of the strict privacy-grade identity lane so an ambiguous crossing
@@ -214,9 +255,21 @@ final class IOSTemporalIdentityTracker {
       markMissed(trackIndex: index)
     }
 
+    // Android reserves ambiguous protected-group detections instead of
+    // immediately minting a new identity for a sample whose ownership is not
+    // established. In FULL_BODY-only mode, that same detector sample is
+    // already fed to the separate fail-closed privacy-class compositor.
+    // Creating a new unprotected track here would make a stale duplicate
+    // compete with the original protected ID on every later frame, eventually
+    // turning a recoverable crossing into 91-frame false LOST.
+    // Keep FACE_ONLY's existing cardinality-balanced residual-ID behavior:
+    // anonymous class evidence must never rename a protected face identity.
+    let reservedFullBodyAmbiguityDetections = faceOnlyPrivacyIds.isEmpty
+      && !privacyTargetIds.isEmpty ? ambiguousProtectedDetections : []
     for detectionIndex in detections.indices
       where !matchedDetections.contains(detectionIndex)
-        && !reservedFaceClassDetections.contains(detectionIndex) {
+        && !reservedFaceClassDetections.contains(detectionIndex)
+        && !reservedFullBodyAmbiguityDetections.contains(detectionIndex) {
       let detection = detections[detectionIndex]
       tracks.append(Track(
         id: nextTrackId,
@@ -242,6 +295,12 @@ final class IOSTemporalIdentityTracker {
         continue
       }
       guard privacyTargetIds.contains(track.id) else { continue }
+      // In this narrowly scoped selection the compositor protects every fresh
+      // non-hero observation AND every unowned detected face. A missing root
+      // keeps its real LOST state; neither the hero nor a new entrant is renamed
+      // to revive it. No stale predicted head is used as current face geometry.
+      // With no current scene observations, retain the normal fail-closed path.
+      if usesCurrentSceneFaceCoverage && !detections.isEmpty && faceOnlyPrivacyIds.contains(track.id) { continue }
       if track.missedFrames > maxOcclusionFrames {
         throw PigeonError(
           code: "EXPORT_PRIVACY_UNRESOLVED",
@@ -250,13 +309,22 @@ final class IOSTemporalIdentityTracker {
         )
       }
       let fallback = conservativeFallbackDetection(track: track, preprocess: preprocess)
-      if intersectsFrame(fallback) {
-        output.append(IOSPreviewPerson(
-          id: track.id,
-          detection: fallback,
-          conservativePrivacyFallback: true
-        ))
+      // A prediction outside the source frame is not proof that the selected
+      // person physically exited. Do not encode an unprotected frame while
+      // the identity is still unresolved: the 90-frame limit is a maximum,
+      // not permission to silently omit a missing privacy mask.
+      guard intersectsFrame(fallback) else {
+        throw PigeonError(
+          code: "EXPORT_PRIVACY_UNRESOLVED",
+          message: "Selected iOS export identity has no visible privacy fallback.",
+          details: ["personId": track.id, "missedFrames": track.missedFrames]
+        )
       }
+      output.append(IOSPreviewPerson(
+        id: track.id,
+        detection: fallback,
+        conservativePrivacyFallback: true
+      ))
     }
     return output
   }
