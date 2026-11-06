@@ -77,3 +77,10 @@ On Mac use the prepared audit Python environment and
 For an explicitly marked stage subset, add `--allow-partial-stage`. Automatic
 hero and topology candidates still require recorded visual review; a successful
 script exit alone is not complete semantic privacy acceptance.
+
+Preview auditing also requires a native full-frame unprotected control at each
+requested time. The auditor compares it with the nearest independently decoded
+source PTS (including ties) and records image SHA/NCC. DTO timestamps alone do
+not establish decode accuracy. Protected output still requires visual review.
+Android startup waits for Activity launch and actual process creation, so a
+brief missing PID between suites cannot be mistaken for a crashed export.

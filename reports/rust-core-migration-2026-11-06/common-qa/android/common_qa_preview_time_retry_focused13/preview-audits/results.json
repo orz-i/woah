@@ -1,0 +1,39 @@
+{
+  "run_id": "common_qa_preview_time_retry_focused13",
+  "cases": [
+    {
+      "case": "solo_4k_custom_gallery_probe",
+      "status": "passed_preview_time",
+      "previews": [
+        {
+          "requested_ms": 0,
+          "status": "passed",
+          "best_expected_frame": 0,
+          "expected_pts_seconds": 0.0,
+          "correlation": 0.9983877082914944,
+          "control_sha256": "120590417fd6fa171f380e29722bf07e7e9861c1cacedb7fa44086848190c029",
+          "protected_sha256": "3916b75b93cbee0871f2c2e281095cd0e803ae096c5ce103ebee3e8938644985"
+        },
+        {
+          "requested_ms": 300,
+          "status": "passed",
+          "best_expected_frame": 8,
+          "expected_pts_seconds": 0.32,
+          "correlation": 0.9982410790271793,
+          "control_sha256": "6b9dd1f5334db55abd590bc5b0a40473c84e49b68c42edafcdcff7d320d367f3",
+          "protected_sha256": "937ae04d689e2c62d79803aaaaf09217e431ab3866f45d8173a542bb66196687"
+        },
+        {
+          "requested_ms": 600,
+          "status": "passed",
+          "best_expected_frame": 15,
+          "expected_pts_seconds": 0.6,
+          "correlation": 0.99843538467459,
+          "control_sha256": "5bf5dcd2accc0c89bce7b4ad4635d1735131d3b0a9e05eb949dfde683185daef",
+          "protected_sha256": "b236b700562771d6f7d418809377d3e7aef945915e4c3537742233085f932dc9"
+        }
+      ],
+      "scope": "Raw native decode controls verify requested time; protected preview geometry/effect still requires visual review."
+    }
+  ]
+}

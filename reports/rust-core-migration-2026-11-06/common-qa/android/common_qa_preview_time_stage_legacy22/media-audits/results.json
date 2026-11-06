@@ -1,0 +1,35 @@
+{
+  "run_id": "common_qa_preview_time_stage_legacy22",
+  "cases": [
+    {
+      "case": "group_face_solid_follow",
+      "status": "passed_media",
+      "sha256": "0240c7a415fd8629fea3516c8518203839fad74e652594a2f6721df8ec484a1a",
+      "bytes": 1170112,
+      "dimensions": [
+        720,
+        1280
+      ],
+      "decoded_frames": 76,
+      "expected_frames": 76,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "00e1b54f643c370247fcd0164f38791c2c6a1cb968561a4546438c2b69be9331"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "source_commit": "18fd3e405dcd69880ffa4101a6bc145aa53c5c33",
+  "source_fingerprint": "cfcd0b4b034cf99b663bd5a705fdde80c06fa5c22d50fee423c8c89a61059f3f",
+  "binary_sha256": "8e80cd706c2362de9a166ebcae11e0742050a81ca52d1ab92e6390f6787a1505",
+  "movies": [
+    {
+      "case": "group_face_solid_follow",
+      "movie_sha256": "0240c7a415fd8629fea3516c8518203839fad74e652594a2f6721df8ec484a1a",
+      "bytes": 1170112,
+      "gallery_original": null
+    }
+  ],
+  "full_manifest_archive": "reports\\rust-core-migration-2026-11-06\\stages\\preview-time\\android\\artifacts\\common_qa_preview_time_stage_legacy22\\build-manifest.json",
+  "partial_stage_check": true
+}

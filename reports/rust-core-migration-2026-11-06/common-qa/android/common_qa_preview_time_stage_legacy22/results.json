@@ -1,0 +1,102 @@
+{
+  "started_at_utc": "2026-11-06T08:17:17.704199Z",
+  "process_id": 13880,
+  "mode": "matrix",
+  "platform": "android",
+  "verify_previews": true,
+  "compiled_source_fingerprint": "cfcd0b4b034cf99b663bd5a705fdde80c06fa5c22d50fee423c8c89a61059f3f",
+  "compiled_source_commit": "18fd3e405dcd69880ffa4101a6bc145aa53c5c33",
+  "capabilities": "NativeCapabilitiesDto(platform: android, osVersion: 34, gpuSupported: true, h264Encoder: true, hevcEncoder: true, maxEncodeWidth: 8192, maxEncodeHeight: 8192, cpuCores: 8, recommendedProfile: balanced, supportedProfiles: [quality, balanced, speed], inferenceBackends: [litert_gpu, litert_cpu])",
+  "cases": [
+    {
+      "input": "group-hd-8956295.mp4",
+      "fill": "solid",
+      "startMs": 0,
+      "endMs": 3040,
+      "faceOnly": true,
+      "profile": "quality",
+      "width": 720,
+      "height": 1280,
+      "case": "group_face_solid_follow",
+      "hero": 6,
+      "expected_frames": 76,
+      "start_ms": 0,
+      "end_ms": 3040,
+      "face_only": true,
+      "output_width": 720,
+      "output_height": 1280,
+      "result": "output_created",
+      "pid": 13880,
+      "detected_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "selected_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "hero_id": 6,
+      "previews": [
+        {
+          "requested_ms": 0,
+          "dto_timestamp_ms": 0,
+          "control_file": "group_face_solid_follow-0-source.png",
+          "control_bytes": 113398,
+          "control_width": 1280,
+          "control_height": 720,
+          "width": 594,
+          "height": 1056,
+          "bytes": 70001,
+          "file": "group_face_solid_follow-0.png"
+        },
+        {
+          "requested_ms": 1500,
+          "dto_timestamp_ms": 1500,
+          "control_file": "group_face_solid_follow-1500-source.png",
+          "control_bytes": 112172,
+          "control_width": 1280,
+          "control_height": 720,
+          "width": 594,
+          "height": 1056,
+          "bytes": 67759,
+          "file": "group_face_solid_follow-1500.png"
+        },
+        {
+          "requested_ms": 3000,
+          "dto_timestamp_ms": 3000,
+          "control_file": "group_face_solid_follow-3000-source.png",
+          "control_bytes": 116332,
+          "control_width": 1280,
+          "control_height": 720,
+          "width": 594,
+          "height": 1056,
+          "bytes": 67401,
+          "file": "group_face_solid_follow-3000.png"
+        }
+      ],
+      "job_id": "job_68044b18-a6f7-48e2-8099-abac93c8b689",
+      "state": "completed",
+      "current_frame": 76,
+      "total_frames": 76,
+      "progress": 1.0,
+      "fps": 0.9981743915733068,
+      "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/common_qa_preview_time_stage_legacy22/outputs/group_face_solid_follow.mp4",
+      "error_code": null,
+      "error_message": null,
+      "file_bytes": 1170112,
+      "partial_files": [],
+      "elapsed_seconds": 80.537
+    }
+  ],
+  "status": "finished",
+  "finished_at_utc": "2026-11-06T08:18:38.261458Z"
+}

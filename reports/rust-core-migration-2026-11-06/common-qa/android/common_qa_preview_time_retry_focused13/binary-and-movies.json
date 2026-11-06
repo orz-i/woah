@@ -1,0 +1,19 @@
+{
+  "source_commit": "18fd3e405dcd69880ffa4101a6bc145aa53c5c33",
+  "source_fingerprint": "cfcd0b4b034cf99b663bd5a705fdde80c06fa5c22d50fee423c8c89a61059f3f",
+  "binary_sha256": "8e80cd706c2362de9a166ebcae11e0742050a81ca52d1ab92e6390f6787a1505",
+  "movies": [
+    {
+      "case": "solo_4k_custom_gallery_probe",
+      "movie_sha256": "091a9d19fd6327b1621278a1c5f7eadd8a118b8fb6b63669fbf17cac2b8f50f3",
+      "bytes": 363022,
+      "gallery_original": {
+        "path": "/storage/emulated/0/Android/data/art.gaoge.dance.privacyqa/files/qa_gallery/1d0ab7a0-de8d-4028-8e13-0fdc7df02ecc.mp4",
+        "bytes": 363022,
+        "sha256": "091a9d19fd6327b1621278a1c5f7eadd8a118b8fb6b63669fbf17cac2b8f50f3"
+      }
+    }
+  ],
+  "full_manifest_archive": "reports\\rust-core-migration-2026-11-06\\stages\\preview-time\\android\\artifacts\\common_qa_preview_time_retry_focused13\\build-manifest.json",
+  "partial_stage_check": true
+}

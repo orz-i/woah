@@ -1,0 +1,101 @@
+{
+  "started_at_utc": "2026-11-06T08:20:14.731629Z",
+  "process_id": 14924,
+  "mode": "matrix",
+  "platform": "android",
+  "verify_previews": true,
+  "compiled_source_fingerprint": "cfcd0b4b034cf99b663bd5a705fdde80c06fa5c22d50fee423c8c89a61059f3f",
+  "compiled_source_commit": "18fd3e405dcd69880ffa4101a6bc145aa53c5c33",
+  "capabilities": "NativeCapabilitiesDto(platform: android, osVersion: 34, gpuSupported: true, h264Encoder: true, hevcEncoder: true, maxEncodeWidth: 8192, maxEncodeHeight: 8192, cpuCores: 8, recommendedProfile: balanced, supportedProfiles: [quality, balanced, speed], inferenceBackends: [litert_gpu, litert_cpu])",
+  "cases": [
+    {
+      "input": "solo-portrait-7570258.mp4",
+      "fill": "sticker",
+      "startMs": 0,
+      "endMs": 640,
+      "faceOnly": true,
+      "profile": "quality",
+      "width": 2160,
+      "height": 4096,
+      "case": "solo_4k_custom_gallery_probe",
+      "customSticker": true,
+      "saveToGallery": true,
+      "bitrate": 28753920,
+      "expected_frames": 16,
+      "start_ms": 0,
+      "end_ms": 640,
+      "face_only": true,
+      "output_width": 2160,
+      "output_height": 4096,
+      "result": "output_created",
+      "pid": 14924,
+      "detected_ids": [
+        0
+      ],
+      "custom_sticker_bytes": 806,
+      "selected_ids": [
+        0
+      ],
+      "hero_id": null,
+      "previews": [
+        {
+          "requested_ms": 0,
+          "dto_timestamp_ms": 0,
+          "control_file": "solo_4k_custom_gallery_probe-0-source.png",
+          "control_bytes": 67472,
+          "control_width": 1280,
+          "control_height": 2427,
+          "width": 1280,
+          "height": 2427,
+          "bytes": 70301,
+          "file": "solo_4k_custom_gallery_probe-0.png"
+        },
+        {
+          "requested_ms": 300,
+          "dto_timestamp_ms": 300,
+          "control_file": "solo_4k_custom_gallery_probe-300-source.png",
+          "control_bytes": 69424,
+          "control_width": 1280,
+          "control_height": 2427,
+          "width": 1280,
+          "height": 2427,
+          "bytes": 71940,
+          "file": "solo_4k_custom_gallery_probe-300.png"
+        },
+        {
+          "requested_ms": 600,
+          "dto_timestamp_ms": 600,
+          "control_file": "solo_4k_custom_gallery_probe-600-source.png",
+          "control_bytes": 65740,
+          "control_width": 1280,
+          "control_height": 2427,
+          "width": 1280,
+          "height": 2427,
+          "bytes": 68538,
+          "file": "solo_4k_custom_gallery_probe-600.png"
+        }
+      ],
+      "job_id": "job_b5580408-1b29-4b50-a4cc-6b4b80b328a8",
+      "state": "completed",
+      "current_frame": 16,
+      "total_frames": 16,
+      "progress": 1.0,
+      "fps": 2.4136370493287074,
+      "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/common_qa_preview_time_retry_focused13/outputs/solo_4k_custom_gallery_probe.mp4",
+      "error_code": null,
+      "error_message": null,
+      "file_bytes": 363022,
+      "partial_files": [],
+      "gallery_saved_uri": "content://media/external_primary/video/media/1000003728",
+      "gallery_save_completed": true,
+      "gallery_original": {
+        "path": "/storage/emulated/0/Android/data/art.gaoge.dance.privacyqa/files/qa_gallery/1d0ab7a0-de8d-4028-8e13-0fdc7df02ecc.mp4",
+        "bytes": 363022,
+        "sha256": "091a9d19fd6327b1621278a1c5f7eadd8a118b8fb6b63669fbf17cac2b8f50f3"
+      },
+      "elapsed_seconds": 12.419
+    }
+  ],
+  "status": "finished",
+  "finished_at_utc": "2026-11-06T08:20:27.194668Z"
+}
